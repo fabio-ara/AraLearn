@@ -42,10 +42,11 @@ jobs:
       - name: Analisar código
         run: npm run lint
 
-      - name: Validar corte relacional e fixtures
-        run: |
-          npm run validate:cutover
-          npm run catalog:validate
+      - name: Validar corte relacional
+        run: npm run validate:cutover
+
+      - name: Validar fixtures do catálogo
+        run: npm run catalog:validate
 
       - name: Instalar Chromium para testes de interface
         run: npx playwright install chromium
@@ -102,6 +103,103 @@ jobs:
 
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
+
+      - name: Conferir paridade vertical no banco real
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          {
+            psql "$DB_URL" -At -F '|' -c "
+              select case
+                when c.relkind in ('r', 'p') then 'table'
+                when c.relkind = 'v' then 'view'
+                when c.relkind = 'm' then 'materialized_view'
+              end,
+              n.nspname || '.' || c.relname
+              from pg_class c
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname in ('public', 'private')
+                and c.relkind in ('r', 'p', 'v', 'm')
+              order by 1, 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'function',
+                n.nspname || '.' || p.proname || '(' ||
+                pg_get_function_identity_arguments(p.oid) || ')'
+              from pg_proc p
+              join pg_namespace n on n.oid = p.pronamespace
+              where n.nspname in ('public', 'private')
+              order by 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'index',
+                n.nspname || '.' || t.relname || '/' || i.relname
+              from pg_index x
+              join pg_class t on t.oid = x.indrelid
+              join pg_class i on i.oid = x.indexrelid
+              join pg_namespace n on n.oid = t.relnamespace
+              where n.nspname in ('public', 'private')
+              order by 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'constraint',
+                n.nspname || '.' || c.relname || '/' || k.conname || '[' ||
+                case k.contype
+                  when 'c' then 'check'
+                  when 'f' then 'foreign_key'
+                  when 'p' then 'primary_key'
+                  when 'u' then 'unique'
+                  when 'x' then 'exclusion'
+                  when 'n' then 'not_null'
+                  else k.contype::text
+                end || ']'
+              from pg_constraint k
+              join pg_class c on c.oid = k.conrelid
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname in ('public', 'private')
+              order by 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'trigger',
+                n.nspname || '.' || c.relname || '/' || t.tgname
+              from pg_trigger t
+              join pg_class c on c.oid = t.tgrelid
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname in ('public', 'private')
+                and not t.tgisinternal
+              order by 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'policy',
+                n.nspname || '.' || c.relname || '/' || p.polname
+              from pg_policy p
+              join pg_class c on c.oid = p.polrelid
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname in ('public', 'private')
+              order by 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'rls',
+                n.nspname || '.' || c.relname || '=' ||
+                case
+                  when c.relforcerowsecurity then 'forced'
+                  when c.relrowsecurity then 'enabled'
+                  else 'disabled'
+                end
+              from pg_class c
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname in ('public', 'private')
+                and c.relkind in ('r', 'p')
+              order by 2;
+            "
+            psql "$DB_URL" -At -F '|' -c "
+              select 'bucket', 'storage.' || id
+              from storage.buckets
+              order by id;
+            "
+          } | node scripts/auditVerticalParity.mjs --database-inventory -
 
       - name: Conferir o lint do banco
         run: npx --yes supabase@2.109.1 db lint --local --level warning --fail-on warning

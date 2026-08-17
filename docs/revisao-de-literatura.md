@@ -79,6 +79,84 @@ Essa estratégia oferece rastreabilidade, mas não garante exaustividade. Novas
 fontes devem entrar na bibliografia somente depois de conferência e devem
 alterar a síntese quando contradizem, limitam ou refinam o argumento vigente.
 
+O corpus inicial não conserva um diário completo das consultas que o
+originaram. Portanto, não é possível reconstruir retrospectivamente, com
+precisão, todas as bases, expressões, datas e contagens usadas. Essa limitação
+é declarada em vez de preencher lacunas com buscas presumidas.
+
+### Protocolo prospectivo de busca e atualização
+
+A partir desta versão, toda busca destinada a ampliar ou revisar o corpus segue
+o protocolo **ARA-LIT-1**. Ele aumenta a reprodutibilidade da revisão narrativa,
+mas não a converte automaticamente em revisão sistemática ou de escopo. Um
+estudo que reivindique um desses métodos precisa de protocolo próprio e das
+etapas exigidas pelo método escolhido.
+
+1. formular uma pergunta delimitada e associá-la a um eixo desta revisão;
+2. escolher bases adequadas ao eixo — por exemplo, ERIC ou PsycINFO para
+   educação e psicologia, Scopus ou Web of Science para cobertura
+   interdisciplinar, ACM Digital Library ou IEEE Xplore para interação e
+   computação, e fontes institucionais primárias para normas;
+3. registrar, antes da seleção, a base, a consulta exatamente como executada,
+   a data e hora em UTC, os filtros e a contagem informada pela base;
+4. deduplicar primeiro por DOI e, quando ele não existir, por título, ano e
+   autoria, conservando a decisão em caso de dúvida;
+5. avaliar título e resumo segundo os critérios abaixo; registrar o motivo da
+   exclusão quando a decisão depender do texto integral;
+6. conferir identidade bibliográfica e, conforme o desenho da fonte, examinar
+   população, contexto, tarefa, comparação, resultados, limitações e risco de
+   viés;
+7. incluir os metadados confirmados em `referencias.bib`, atualizar a síntese e
+   a matriz de rastreabilidade e explicar quando a nova fonte contradiz ou
+   restringe uma afirmação anterior.
+
+Consultas em mecanismos de busca gerais e rastreamento de referências para
+trás ou para a frente podem complementar as bases. Eles devem ser identificados
+como tal no registro; não substituem silenciosamente uma base declarada.
+
+### Critérios ARA-LIT-1
+
+Uma fonte pode ser incluída quando tem identidade verificável, relação direta
+com a pergunta registrada e informação suficiente para avaliar o alcance da
+afirmação utilizada. Conforme a pergunta, são elegíveis estudos primários,
+sínteses de evidência, trabalhos teóricos, normas e documentação técnica
+primária. Não há corte cronológico geral: cada filtro de data precisa de
+justificativa registrada.
+
+São excluídos como fundamento científico materiais promocionais, fontes sem
+proveniência verificável e textos cuja relação com a pergunta dependa apenas de
+analogia. Uma fonte não é excluída por contradizer a decisão atual; resultados
+nulos, adversos e explicações rivais são necessários para avaliar o argumento.
+Idioma, acesso ao texto integral e tipo de publicação não devem ser usados como
+filtros ocultos: quando afetarem a seleção, aparecem no campo `filtros` ou nas
+observações.
+
+### Registro reprodutível
+
+O arquivo
+[`evidence/registro-buscas-bibliograficas.csv`](evidence/registro-buscas-bibliograficas.csv)
+recebe uma linha por consulta realmente executada. Seu cabeçalho inicial, sem
+linhas retrospectivas inventadas, torna explícito que nenhuma nova busca foi
+registrada ainda neste protocolo.
+
+| Campo | Significado |
+| --- | --- |
+| `registro_id` | identificador estável da consulta |
+| `data_hora_utc` | instante da execução em ISO 8601 e UTC |
+| `eixo` | pergunta ou seção desta revisão atendida |
+| `base_ou_indice` | serviço consultado, sem agrupar bases diferentes numa linha |
+| `consulta_exata` | expressão copiada da interface ou API consultada |
+| `filtros` | limites de data, idioma, campo, tipo ou outros, inclusive “nenhum” |
+| campos de contagem | total informado, deduplicação, triagens e inclusões daquele fluxo |
+| `motivos_exclusao_texto_integral` | categorias e contagens das exclusões decididas após leitura integral |
+| `versao_criterios` | versão aplicada, inicialmente `ARA-LIT-1` |
+| `responsavel` | identificador ou papel definido no protocolo da investigação |
+| `observacoes` | falhas, limites, motivo de nova execução ou ligação para evidência complementar |
+
+Se a mesma consulta for repetida, recebe nova linha: resultados de uma base
+podem mudar ao longo do tempo. Correções preservam o valor anterior no histórico
+do Git e explicam a mudança em `observacoes`.
+
 ## 1. Aprendizagem móvel, interrupção e retomada
 
 ### Conceitos necessários

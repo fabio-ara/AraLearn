@@ -77,4 +77,5 @@ servidor sob um pin imutável e recompõe um único documento JSON
 válido ao concluir.
 
 Esses mecanismos demonstram rastreabilidade técnica, não validade educacional.
-A regressão integral, stress e avaliação humana permanecem no marco #109.
+A data da regressão integrada e as pendências de stress e avaliação humana
+permanecem explícitas no [estado corrente](estado-atual-e-roadmap.md).

@@ -13,7 +13,16 @@ import { AUTHORING_WORKSPACE_MCP_TOOLS } from "../supabase/functions/_shared/ara
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
-const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
+const outputArgumentIndex = process.argv.indexOf("--output");
+const requestedOutput = outputArgumentIndex >= 0
+  ? process.argv[outputArgumentIndex + 1]
+  : "";
+if (outputArgumentIndex >= 0 && !requestedOutput) {
+  throw new TypeError("--output exige um diretório de destino.");
+}
+const OUTPUT_ROOT = requestedOutput
+  ? path.resolve(requestedOutput)
+  : path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
 const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
   SCRIPT_DIR,
   "syncInstructionalDesignSchemas.mjs"

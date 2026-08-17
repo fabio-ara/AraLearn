@@ -1,0 +1,77 @@
+{
+  "contract": "aralearn.development-baseline.v1",
+  "capturedAt": "2026-08-17T03:05:25Z",
+  "scope": "Leitura do repositório, da stack local e do projeto Supabase vinculado; nenhuma escrita remota.",
+  "repository": {
+    "migrations": 128,
+    "runtimeManifestRevision": "20260815235900",
+    "resourcePackages": 32,
+    "mcpTools": 30,
+    "edgeFunctionsInRepository": 3
+  },
+  "linkedSupabase": {
+    "status": "ACTIVE_HEALTHY",
+    "postgresVersion": "17.6.1",
+    "database": {
+      "databaseSize": "63 MB",
+      "tableSize": "21 MB",
+      "indexSize": "22 MB",
+      "walSize": "128 MB",
+      "projectTables": 110,
+      "privateTables": 103,
+      "publicTables": 7,
+      "projectFunctions": 341
+    },
+    "storage": {
+      "privateBuckets": 2,
+      "objectsListed": 18,
+      "authoringArtifacts": 2,
+      "courseRevisionArtifacts": 16,
+      "bytes": null,
+      "measurementLimit": "A CLI listou objetos, mas não forneceu o total de bytes; medir antes da decisão destrutiva final."
+    },
+    "edgeFunctions": [
+      { "name": "aralearn-authoring-action", "version": 87 },
+      { "name": "aralearn-authoring-mcp", "version": 111 },
+      { "name": "aralearn-course-revisions", "version": 88 }
+    ],
+    "egressCurrentCycle": null,
+    "egressMeasurementLimit": "O consumo do ciclo não estava disponível pela CLI usada; consultar a medição oficial do projeto no gate final."
+  },
+  "localSupabase": {
+    "postgresImageVersion": "17.6.1.147",
+    "configuredPostgresMajor": 15,
+    "vectorStatus": "restart-loop",
+    "warning": "A divergência PG15/PG17 e o Vector instável impedem tratar logs locais e paridade de versão como confiáveis até correção dedicada."
+  },
+  "freePlanLimitsCheckedAt": "2026-08-17",
+  "freePlanLimits": {
+    "databaseSizePerProject": "500 MB",
+    "storageSizePerOrganization": "1 GB",
+    "egressPerOrganization": "5 GB",
+    "edgeInvocationsPerOrganization": 500000,
+    "edgeMaximumMemory": "256 MB",
+    "edgeMaximumCpuTimePerRequest": "2 s",
+    "edgeMaximumDurationFree": "150 s",
+    "edgeMaximumBundleCli": "20 MB",
+    "sources": [
+      "https://supabase.com/docs/guides/platform/billing-on-supabase",
+      "https://supabase.com/docs/guides/platform/database-size",
+      "https://supabase.com/docs/guides/functions/limits"
+    ]
+  },
+  "interpretation": {
+    "databaseQuotaUsedApproxPercent": 12.6,
+    "largestCosts": [
+      "private.sync_idempotency: 11 MB total",
+      "private.sync_changes: 10 MB total",
+      "private.authoring_workspace_entities: 6.648 MB total",
+      "public.courses: 4.672 MB total"
+    ],
+    "complexitySignals": [
+      "A maior parte das estruturas experimentais e parametrizadas está vazia no momento da medição.",
+      "Tabela vazia não prova inutilidade, mas exige caso de uso, consumidor e orçamento antes de permanecer.",
+      "O runtime remoto não deve ser atualizado antes de manifesto, bundle Edge e modelo canônico convergirem."
+    ]
+  }
+}

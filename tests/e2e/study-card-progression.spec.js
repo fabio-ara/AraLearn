@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
 import { canonicalRevisionHash } from "../../src/storage/canonicalRevision.js";
@@ -10,6 +10,7 @@ import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 const USER_ID = "77777777-7777-4777-8777-777777777777";
 const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
 const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e";
+const CAPTURE_STUDY_SCREENSHOTS = process.env.ARALEARN_CAPTURE_STUDY === "1";
 const EXAMPLE_ROWS = contractToRelationalRows(createExampleProjectDocument());
 
 function largeCourseRows() {
@@ -1369,6 +1370,29 @@ test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos difere
   expect(Math.abs(second.ctaTop - first.ctaTop)).toBeLessThanOrEqual(1);
   expect(second.ctaBottom).toBeLessThanOrEqual(second.viewportHeight);
   expect(second.bodyBottom - second.footerBottom).toBeLessThanOrEqual(14);
+});
+
+test("gera capturas canônicas do percurso móvel de Estudo", async ({ page }) => {
+  test.skip(!CAPTURE_STUDY_SCREENSHOTS, "Captura opt-in para não alterar artefatos em cada regressão.");
+  mkdirSync("docs/screenshots/study", { recursive: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page);
+  await page.evaluate(() => document.documentElement.setAttribute("data-color-mode", "light"));
+  await page.locator('[data-action="open-course"]').tap();
+  await page.screenshot({
+    path: "docs/screenshots/study/study-course-390-light.png",
+    animations: "disabled"
+  });
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos"
+  });
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  await page.screenshot({
+    path: "docs/screenshots/study/study-card-390-light.png",
+    animations: "disabled"
+  });
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {

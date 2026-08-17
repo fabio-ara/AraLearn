@@ -12,6 +12,10 @@ pré-requisitos, passos, resultado esperado e recuperação de falhas. Os
 [princípios editoriais](principios-editoriais.md) explicam como esses gêneros e
 tipos de evidência são separados.
 
+A página [Origens do AraLearn](origens-do-aralearn.md) apresenta a genealogia
+biográfica declarada do projeto e explica por que essa memória não substitui
+evidência científica nem representa endosso institucional.
+
 ## Começar a usar
 
 Para conhecer o produto e realizar tarefas, leia:
@@ -129,17 +133,13 @@ resultado empírico:
 6. [Auditoria do front-end](auditoria-front-end.md).
 
 O [estado do produto](estado-atual-e-roadmap.md) informa o que está
-implementado, o que ainda requer estabilização e quais questões permanecem
-abertas, sem tratar teste de software como evidência de aprendizagem.
-Enquanto a regressão final de Autoria estiver em andamento, o
-[checkpoint recuperável da #109](checkpoint-autoria-109.md) registra evidências,
-pendências e o comando exato de retomada.
+implementado, conectado, acessível e verificado, além dos limites e das
+divergências em relação à intenção atual. Ele não trata teste de software como
+evidência de aprendizagem nem mistura o estado corrente com trabalho futuro.
 O [roteiro de aceitação humana da Autoria](roteiro-aceitacao-humana-autoria.md)
 prepara a etapa com pessoa leiga que automação alguma pode aprovar.
-O [checklist de UX integrada](checklist-ux-autoria-integrada.md) separa a
-regressão automatizada da verificação humana e especializada ainda pendente.
-O [relatório docs↔código da Autoria](conformidade-documentacao-autoria.md)
-mostra as fontes de implementação e as evidências automatizadas por assunto.
+A [matriz de conformidade técnica](matriz-conformidade-tecnica.md) localiza as
+fontes de implementação e as evidências automatizadas por assunto.
 
 ## Operar e implantar
 
@@ -167,7 +167,8 @@ mostra as fontes de implementação e as evidências automatizadas por assunto.
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |
 | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) | fundamento, decisão e avaliação |
-| [Estado do produto](estado-atual-e-roadmap.md) | capacidades, limites e próximos ciclos |
+| [Estado do produto](estado-atual-e-roadmap.md) | capacidades correntes, evidências, limites e alinhamento |
+| [Inventário editorial](inventario-documentacao.md) | destino de cada página durante a consolidação documental |
 | [Referências bibliográficas](referencias.md) | fontes citadas, em formato legível e com ligações persistentes |
 | [Fonte BibTeX](referencias.bib) | metadados canônicos para processadores e gerenciadores bibliográficos |
 

@@ -4523,6 +4523,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -4611,6 +4613,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",

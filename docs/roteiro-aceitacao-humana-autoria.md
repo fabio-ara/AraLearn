@@ -29,6 +29,8 @@ repetidas em uma tela larga.
 | 8. Ver Resultados | encontra Resultados e diferencia dado disponível de conclusão pedagógica | leituras como score, ranking ou causalidade inexistente |
 | 9. Voltar ao Estudo | retorna ao leitor com o mesmo curso/contexto | perda de contexto, atalhos ocultos ou navegação redundante |
 | 10. Catálogo grande | procura uma família e filtra facetas numa coleção simulada grande | paginação invisível, resultado inesperado ou perda da seleção |
+| 11. Comparar variantes **(pesquisador)** | localiza duas materializações do mesmo planejamento, identifica o parâmetro que varia e não confunde diferença descritiva com efeito causal | parâmetro efetivo, proveniência, denominador e interpretação usados |
+| 12. Abrir uma atribuição **(participante)** | alcança somente o curso a que recebeu acesso, sem ver condição, seed, roster ou dados de outra pessoa | conteúdo exposto, mensagem de acesso e comportamento depois de retirada |
 
 ## Critério de decisão
 
@@ -52,6 +54,9 @@ Pergunte, sem sugerir a resposta:
 4. “Onde você procuraria um problema no curso?”
 5. “Que palavras, botões ou telas pareceram técnicas demais?”
 
-Anexe as observações ao fechamento da #109 e compare celular e desktop. Um
-resultado humano positivo é necessário para encerrar o critério de simplicidade;
-a ausência de teste humano deve continuar visível como pendência.
+Registre as observações como evidência datada e compare celular e desktop. Um
+resultado humano positivo é necessário para declarar o critério de simplicidade
+atendido; a ausência de teste humano deve continuar visível no
+[estado corrente](estado-atual-e-roadmap.md). A sessão de pesquisa também exige
+revisão especializada sobre validade das medidas e proteção dos participantes;
+aprovação de UX não substitui revisão ética ou científica.

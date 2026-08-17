@@ -448,9 +448,9 @@ a #103 concentra contratos, resolvedor, binding, persistência SQL e offline; a
 #104 cobre seleção JIT de knowledge, prompts, MCP/Action, acesso ao catálogo e
 os cenários A–H como regressão de engenharia. A
 regressão integral de código, banco, integrações, UI e artefatos distribuídos é
-concentrada no fechamento da #109. Falha focada não é adiada; ausência de uma
-suíte transversal numa etapa intermediária não deve ser descrita como suporte
-que ainda não foi integrado.
+registrada com data e commit no [estado corrente](estado-atual-e-roadmap.md).
+Falha focada não é adiada; ausência de uma suíte transversal depois de uma
+mudança não deve ser descrita como suporte que ainda não foi integrado.
 
 Permanecem perguntas empíricas:
 

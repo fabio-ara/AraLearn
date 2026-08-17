@@ -61,10 +61,11 @@ jobs:
       - name: Analisar código
         run: npm run lint
 
-      - name: Validar corte relacional e fixtures
-        run: |
-          npm run validate:cutover
-          npm run catalog:validate
+      - name: Validar corte relacional
+        run: npm run validate:cutover
+
+      - name: Validar fixtures do catálogo
+        run: npm run catalog:validate
 
       - name: Instalar Chromium para testes de interface
         run: npx playwright install chromium

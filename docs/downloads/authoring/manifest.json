@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 839565,
-      "sha256": "9aa129e9d2def4957bb494b56971d46ecd9243eff270e05a119fdd9ffb9ae9b3",
+      "bytes": 839801,
+      "sha256": "e4faa83823e2f38330c67e4d9f59f602415582a0cf716380271e4e5a0ccde9e1",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -57,8 +57,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 29022,
-          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
+          "bytes": 29115,
+          "sha256": "8717d35ae4484a0e90f7a8db6352246b036a4651c9568ad9cef33eb6b02cc202"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -97,8 +97,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 13949,
-          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
+          "bytes": 13958,
+          "sha256": "f9c3fb4e4dbb71a4f06f80f05d7e7537e5042a51b0736a35dbe2ba51f2a889e7"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -222,8 +222,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 10498,
-          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
+          "bytes": 10632,
+          "sha256": "17e2c9e63ad72b50f5b4a14ee01f78c0f17937bf6fb280967fabb1842c391675"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -285,8 +285,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 1150267,
-      "sha256": "5cdb2df835a3f21fcc98423683c4223856c0a0e12f968f6b2c2cca3d3ab5b08f",
+      "bytes": 1150503,
+      "sha256": "9cb775b7009c60547bec8b186a110d468afafd89ed893a8ea340e5001f0f492b",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -335,8 +335,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 29004,
-          "sha256": "e9fadded714e817f8523012b8af70b2799d8c7a95565d93bb144e10291d9f581"
+          "bytes": 29097,
+          "sha256": "8b8ff056b02cb8378dd554b3f42b8cafe1d46125a427f4d53613f7cfca1e46b1"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -375,8 +375,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 13949,
-          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
+          "bytes": 13958,
+          "sha256": "f9c3fb4e4dbb71a4f06f80f05d7e7537e5042a51b0736a35dbe2ba51f2a889e7"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -535,8 +535,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 10446,
-          "sha256": "35bdc3373a1c1fa0042496a5bd79a96dd64bce9acf7679f40c92658b49e024d2"
+          "bytes": 10580,
+          "sha256": "4082cd0a43c8fdd47d204b0d6c46bc5b6efdcc4c921c108e4d7c2d7868b5a92d"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -598,8 +598,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 849796,
-      "sha256": "1c7b8c2d16adccd0431a0389a7c57b798334e8e6424678cff4591fecc31777ff",
+      "bytes": 850032,
+      "sha256": "3ff379516a4f85736bd05f2d533707f411c85b4cc4d26e03052fcf5bf091d8cf",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -648,8 +648,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 29022,
-          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
+          "bytes": 29115,
+          "sha256": "8717d35ae4484a0e90f7a8db6352246b036a4651c9568ad9cef33eb6b02cc202"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -688,8 +688,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 13949,
-          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
+          "bytes": 13958,
+          "sha256": "f9c3fb4e4dbb71a4f06f80f05d7e7537e5042a51b0736a35dbe2ba51f2a889e7"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -828,8 +828,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 10498,
-          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
+          "bytes": 10632,
+          "sha256": "17e2c9e63ad72b50f5b4a14ee01f78c0f17937bf6fb280967fabb1842c391675"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -891,8 +891,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 851291,
-      "sha256": "73fb8a99b212460696c1c6ada573893f265bfbd7e6eb7dc7cbd868d6ddbe8db4",
+      "bytes": 851527,
+      "sha256": "d33275f01828b9b2594533df40161ab203be1999fcba2bbbd0cec9f8ad1e8d2f",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -941,8 +941,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 29022,
-          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
+          "bytes": 29115,
+          "sha256": "8717d35ae4484a0e90f7a8db6352246b036a4651c9568ad9cef33eb6b02cc202"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -981,8 +981,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 13949,
-          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
+          "bytes": 13958,
+          "sha256": "f9c3fb4e4dbb71a4f06f80f05d7e7537e5042a51b0736a35dbe2ba51f2a889e7"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -1126,8 +1126,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 10498,
-          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
+          "bytes": 10632,
+          "sha256": "17e2c9e63ad72b50f5b4a14ee01f78c0f17937bf6fb280967fabb1842c391675"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -1189,8 +1189,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 850925,
-      "sha256": "11ba4c2b66212f8e3b869923cc81eca792dc4c7806eb3b64dc11f92c0738363c",
+      "bytes": 851161,
+      "sha256": "cb6a034ce6724188ae3170e9e72d84739268fe3eaf4fa8d788175d7d925c136b",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1239,8 +1239,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 29022,
-          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
+          "bytes": 29115,
+          "sha256": "8717d35ae4484a0e90f7a8db6352246b036a4651c9568ad9cef33eb6b02cc202"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -1279,8 +1279,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 13949,
-          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
+          "bytes": 13958,
+          "sha256": "f9c3fb4e4dbb71a4f06f80f05d7e7537e5042a51b0736a35dbe2ba51f2a889e7"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -1419,8 +1419,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 10498,
-          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
+          "bytes": 10632,
+          "sha256": "17e2c9e63ad72b50f5b4a14ee01f78c0f17937bf6fb280967fabb1842c391675"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -1482,8 +1482,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 852449,
-      "sha256": "ff0cfffedefeae70a3f7c6f2ca56a8e5ac2aeeaeb827acf19c37e555dbbb374f",
+      "bytes": 852685,
+      "sha256": "f7d3f6ee2da102ac6e1f68cd4f2a641481004feb0161f5d69ba7b104feb04da6",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1532,8 +1532,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 29022,
-          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
+          "bytes": 29115,
+          "sha256": "8717d35ae4484a0e90f7a8db6352246b036a4651c9568ad9cef33eb6b02cc202"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -1572,8 +1572,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 13949,
-          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
+          "bytes": 13958,
+          "sha256": "f9c3fb4e4dbb71a4f06f80f05d7e7537e5042a51b0736a35dbe2ba51f2a889e7"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -1707,8 +1707,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 10498,
-          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
+          "bytes": 10632,
+          "sha256": "17e2c9e63ad72b50f5b4a14ee01f78c0f17937bf6fb280967fabb1842c391675"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",

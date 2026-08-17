@@ -216,9 +216,10 @@ validação também recusa os seis schemas de desenho quando eles divergem da fo
 JavaScript canônica. A regressão JIT cobre cenários determinísticos de
 engenharia; não valida aprendizagem ou adequação pedagógica. A auditoria
 documental confere links, estrutura e afirmações obsoletas. O lint detecta erros
-estáticos. Durante a sequência de Autoria, cada issue executa testes
-proporcionais ao escopo; a regressão integral é concentrada no fechamento da
-#109.
+estáticos. Durante a evolução da Autoria, cada alteração executa primeiro os
+testes proporcionais ao risco que introduz. A regressão integral fica
+concentrada em marcos que atravessam várias camadas e no fechamento de release,
+em vez de ser repetida sem nova evidência a verificar.
 
 Exemplos em [`examples/`](examples/) servem para aprender o formato, não como
 credenciais nem como dados de produção. Segredos administrativos nunca devem

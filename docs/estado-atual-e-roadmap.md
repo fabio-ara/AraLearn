@@ -1,341 +1,218 @@
-# Estado atual e agenda de desenvolvimento
-
-Este documento distingue três tipos de afirmação:
-
-- **implementado**: existe no código e possui verificação automatizada;
-- **verificado tecnicamente**: o comportamento foi exercitado em ambiente de
-  teste, mas isso não demonstra benefício educacional;
-- **a investigar**: depende de estudo com pessoas, contextos e conteúdos reais.
-
-A distinção evita transformar disponibilidade técnica em alegação de eficácia.
-Um recurso pode funcionar corretamente e ainda precisar de avaliação de
-compreensão, usabilidade ou aprendizagem.
-
-## Síntese da versão atual
-
-O AraLearn está disponível como aplicação web instalável e aplicativo Android.
-As duas distribuições executam o mesmo núcleo e mantêm a largura de leitura
-orientada a celulares. A conta dá acesso a Coleções, Trilhas, estudo, autoria,
-workspaces e observações, conforme suas capacidades.
-
-O produto possui duas atividades paralelas:
-
-- **Estudo** apresenta o curso em microssequências, registra progresso local e
-  permite observações situadas;
-- **Autoria** permite criar, revisar e organizar o mesmo tipo de curso sem
-  converter o conteúdo para uma estrutura intermediária incompatível.
-
-Um curso incompleto já pode ser estudado. Publicação não significa “tornar o
-rascunho visível”, mas fixar uma composição validada como artefato imutável e
-apontar o catálogo para essa revisão.
-
-## Capacidades implementadas
-
-### Estudo
-
-- navegação por curso, módulo, lição, microssequência e card;
-- retomada pelo progresso funcional, sem inferir domínio ou proficiência;
-- marcação **Rever** e observações vinculadas ao contexto estudado;
-- funcionamento sem conexão depois do primeiro download do curso;
-- fila local para sincronizar alterações quando a rede volta;
-- tema claro ou escuro aplicado sem consulta remota;
-- resposta e avanço pelo botão Play sem esperar tarefas de rede;
-- ausência deliberada de telemetria de tempo, tentativas, acertos ou presença
-  inferida.
-
-O progresso informa onde a pessoa parou e quais cards concluiu. Ele não é nota,
-diagnóstico cognitivo nem modelo de domínio. Essa limitação preserva uma
-interpretação honesta dos dados disponíveis.
-
-### Autoria contextual
-
-- edição manual dos textos autorizados na própria representação;
-- seleção visual de cards, microssequências e lições;
-- assistência por modelo de linguagem para editar texto ou recompor um card;
-- conversa limitada a oito turnos e histórico local de até nove versões de um
-  card durante a sessão;
-- desfazer, refazer e restaurar versões sem nova chamada ao provedor;
-- validação de schema, semântica e revisão antes de persistir;
-- escopo de escrita derivado da seleção feita pela pessoa.
-
-O histórico curto da assistência existe para sustentar iterações imediatas. O
-pedido, o contexto enviado e a resposta integral do provedor não são
-persistidos. A decisão reduz armazenamento e exposição de conteúdo, mas impede
-usar esse chat efêmero como registro longitudinal de pesquisa.
-
-### Resources de card
-
-O catálogo é composto por packages independentes do kernel. Cada package
-declara contrato autoral, perfil acadêmico, capacidades de prática e renderer.
-O catálogo atual contém trinta e dois packages, dos quais vinte e nove
-materializam conteúdo e três materializam respostas.
-
-Representações diagramáticas usam motores especializados quando isso reduz
-medição manual de coordenadas: Graphviz/Viz.js para diferentes grafos e
-diagramas; Vega e Vega-Lite para gráficos e planos; MathML para notação
-matemática e científica. As bibliotecas são distribuídas com o aplicativo para
-continuarem disponíveis sem conexão.
-
-A quantidade atual não define uma cobertura universal das áreas do
-conhecimento. Quando falta uma representação especializada, a autoria pode usar
-um substituto declarado e registrar a lacuna do catálogo. A qualidade
-acadêmica da escolha continua sujeita a revisão humana e avaliação no domínio.
-
-### Persistência e publicação
-
-- IndexedDB conserva no dispositivo cursos, progresso e operações pendentes;
-- PostgreSQL conserva identidades, relações, revisões e estado colaborativo;
-- Supabase Storage conserva artefatos integrais e imutáveis de publicação;
-- análises, parâmetros, conjuntos disponíveis, snapshots efetivos, blueprints
-  v2 e manifestos possuem persistência relacional versionada própria;
-- compare-and-swap impede sobrescrita silenciosa entre revisões concorrentes;
-- chaves de idempotência tornam a repetição de uma requisição segura;
-- hashes identificam o conteúdo exato submetido ou publicado;
-- objetos sem referência tornam-se elegíveis à coleta de lixo.
-
-Essa distribuição evita guardar uma cópia integral do curso para cada pequena
-alteração e, ao mesmo tempo, permite demonstrar qual composição foi revisada ou
-publicada.
-
-### Workspaces e colaboração
-
-- workspaces pessoais, de turma ou equipe;
-- seis papéis locais com capacidades derivadas no servidor;
-- convites, entrada, saída e transferência de propriedade;
-- curso corrente acessível em Trilhas sem duplicação automática;
-- observações de estudo e notas situadas;
-- triagem, resposta e vínculo entre observação e correção confirmada;
-- submissão, revisão editorial e publicação conforme autorização.
-
-O papel não é uma permissão isolada gravada no token. Autenticação identifica a
-conta; relações e estado do workspace determinam capacidades; cada operação é
-autorizada novamente sobre seu alvo atual.
-
-### Autoria remota
-
-Clientes compatíveis podem conduzir autoria por MCP; um GPT personalizado usa
-uma Action OpenAPI. Ambos atravessam o mesmo registro, os mesmos schemas e o
-mesmo executor. A autenticação é individual por OAuth 2.1, e nenhuma superfície
-recebe acesso administrativo direto ao banco.
-
-O modelo consulta a biblioteca de resources progressivamente, recebe apenas os
-contratos escolhidos, um por chamada, valida o card e pode auditar a adequação
-da representação. A ferramenta agrupada `gerirDesenhoInstrucional` lê o slice
-JIT de uma microssequência e opera análise, assignments, `ResourceSet`,
-snapshot, blueprint e manifesto pelas mesmas regras persistentes do backend.
-Continuidade estruturada conserva brief, planejamento, decisões, mandatos e
-achados entre sessões sem armazenar o transcript inteiro.
-
-## Núcleo persistente de desenho parametrizado
-
-Uma análise bibliográfica focal fundamenta contratos versionados para
-análise instrucional, parâmetros por escopo, valores efetivos, manifesto de
-materialização e `ResourceSet`. A proposta preserva unidades e relações não
-escalares, admite números somente com unidade e denominador explícitos e separa
-disponibilidade, seleção e materialização de resources.
-
-O núcleo da #103 promove esses contratos para validação de runtime, entidades
-normalizadas no PostgreSQL e uma réplica fracionada no IndexedDB. Os artefatos
-instrucionais são imutáveis e versionados; a revisão corrente do workspace,
-CAS e idempotência coordenam cada gravação. O resolvedor segue
-`workspace → course → module → lesson → microsequence`: o ancestral aplicável
-mais próximo dentro da classe de autoridade vencedora substitui o valor
-completo. A prioridade é lock, override manual, Auto e default; duplicidades do
-mesmo modo no mesmo escopo falham e locks são verificados como gate separado.
-
-`ResourceSet` conserva a disponibilidade exata de `package@version`; o
-manifesto distingue a seleção autorizada e a instância efetivamente usada. O
-blueprint pedagógico v2 permanece contextual por microssequência e recebe um
-binding versionado com análise e snapshot, sem ser substituído por calibração
-global. Um diff determinístico aponta divergências factuais entre referências,
-passos, cobertura declarada e resources; ele não realiza a auditoria semântica.
-
-Workspaces anteriores permanecem `unresolved` até uma análise explícita;
-conteúdo já materializado é marcado `legacy_unrestricted`: o sistema não
-inventa parâmetros nem disponibilidade retroativos. Parte continua unidade
-operacional de coordenação e não integra a cadeia de herança dos parâmetros. A
-réplica local permite consultar a última fatia sincronizada e enfileirar somente
-override manual ou restauração de Auto;
-ela nunca concede autoridade e revalida revisão, capacidade e locks ao voltar à
-rede.
-
-Desde a #104, essas operações estão expostas pelo MCP e pela Action por uma
-única ferramenta coesa. A integração recupera knowledge por intenção, trabalha
-uma microssequência por vez e retoma pelo workspace, sem depender do chat. A
-interface responsiva da #105 projeta o mesmo estado no celular, desktop e APK:
-Estudo conserva Trilhas; Autoria reúne Workspaces e Coleções; Mapa, Desenho,
-Conteúdo e Auditoria usam exposição progressiva. Valores estruturados admitem
-Auto/override, research lock fica não editável e Resources preserva seleção
-versionada entre páginas e escopos sem configuração card a card.
-
-A listagem e o Mapa recebem estado canônico revisionado, sem inferir processo
-por publicação, quantidade de cards ou cache visitado. A réplica local é
-vinculada à conta, avança monotonicamente e sincroniza intenções pendentes na
-reconexão; conflito continua explícito. A #106 completa o ciclo de auditoria:
-uma rodada imutável confronta o desenho e os cards/resources reais, separa
-checks determinísticos de revisão semântica, conserva a decisão humana e só
-permite verificar um reparo em outra rodada corrente. Schemas,
-persistência e testes demonstram coerência técnica no escopo coberto, não
-validade educacional nem adequação dos valores escolhidos.
-
-O fundamento, o fluxo e os limites estão em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md) e [Auditoria de
-conformidade instrucional](auditoria-de-conformidade-instrucional.md).
-
-## O que foi verificado tecnicamente
-
-A suíte automatizada cobre, entre outros aspectos:
-
-- contratos de curso, card e packages;
-- paridade entre o runtime do navegador e o runtime das Edge Functions;
-- renderização em larguras móveis, nos temas claro e escuro;
-- lacunas independentes dentro de resources compostos;
-- hidratação de Graphviz e Vega sob a política de segurança de conteúdo;
-- retomada, avanço e troca de tema sem dependência da rede;
-- concorrência, idempotência e autorização relacional;
-- geração dos pacotes de integração e do aplicativo Android;
-- integridade das fixtures do catálogo;
-- contratos promovidos e referências internas do desenho instrucional em corpus
-  multidomínio;
-- resolução por escopo, precedência de locks, autorização por `ResourceSet`,
-  binding do blueprint v2, diff factual e projeção legada explícita;
-- cache fracionado e fila não canônica de desenho no IndexedDB, incluindo
-  isolamento por conta, concorrência entre instâncias e revalidação remota.
-- seleção JIT de knowledge, registro público da tool agrupada, contratos de
-  resource unitários e regressão de engenharia A–H para orientação, variação
-  Auto, override manual e lock de pesquisa.
-
-Esses testes sustentam afirmações de conformidade da implementação. Não
-demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
-compreendido por todos os públicos ou que uma assistência reduz efetivamente o
-trabalho de autoria.
-
-Na sequência de Autoria, a regressão intermediária é proporcional ao escopo de
-cada issue; a #103 concentra contratos, domínio, SQL/PG emulado e IndexedDB, e
-a #104 concentra prompt, knowledge, MCP/Action, catálogo restrito e pacotes
-distribuídos. Falhas focadas precisam ser resolvidas na própria etapa. A
-regressão integral entre código, banco, integrações, UI e distribuições fica
-concentrada no fechamento da #109, conforme o requisito normativo da sequência.
-
-## Limitações conhecidas
-
-### Evidência educacional
-
-Ainda não há evidência empírica suficiente para atribuir ganhos de aprendizagem
-ao AraLearn. A relação entre microteoria, prática, retomada e compreensão é uma
-hipótese de design apoiada por literatura, não um resultado causal já medido.
-As unidades, limites e parâmetros propostos para a autoria também são
-operacionalizações do AraLearn e hipóteses a avaliar; suas contagens não medem
-carga cognitiva, domínio, fidelidade ou qualidade.
-
-### Cobertura disciplinar
-
-O catálogo possui representações gerais e packages especializados, com maior
-densidade inicial em computação e matemática. Áreas como linguística,
-biologia, química e ciências humanas requerem avaliação sistemática das
-notações utilizadas e, quando necessário, novos packages.
-
-### Avaliação de usabilidade
-
-Testes geométricos detectam recortes, sobreposições e problemas de interação,
-mas não substituem observação de pessoas. A compreensão dos papéis, a clareza
-das observações e a leitura de diagramas densos precisam ser estudadas em
-condições reais.
-
-### Dependências remotas
-
-Estudar conteúdo já baixado não depende da rede. Login inicial, aquisição de um
-curso ainda ausente, convites, sincronização, assistência por API e publicação
-dependem dos serviços remotos. O aplicativo precisa comunicar essa fronteira
-sem bloquear operações que são estritamente locais.
-
-### Limites de armazenamento
-
-O projeto opera com orçamento restrito de banco e Storage. Artefatos imutáveis,
-projeções compactas, retenções específicas e coleta de lixo reduzem o consumo,
-mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
-A [medição reproduzível do payload parametrizado](evidence/parameterized-authoring-storage-budget-2026-08-15.json)
-cobre um cenário sintético de 500 microssequências; não estima páginas, índices
-ou custo real de produção.
-
-## Agenda de avaliação e desenvolvimento
-
-### Prioridade 1 — uso cotidiano
-
-- observar retomada em trajetos curtos e conexão instável;
-- testar alternância entre web e Android;
-- verificar compreensão do estado offline e da fila de sincronização;
-- acompanhar acessibilidade e gestos em telas pequenas;
-- medir tempo de resposta local sob limitação de CPU.
-
-### Prioridade 2 — qualidade pedagógica
-
-- avaliar se cards de teoria partem de premissas compreensíveis para iniciantes;
-- verificar progressão conceitual sem condensação excessiva;
-- medir cobertura e diversidade das práticas;
-- comparar a representação escolhida com convenções da área;
-- observar transferência entre o que foi explicado e o que foi praticado.
-- testar se unidades, relações e requisitos explícitos revelam compressão e
-  desalinhamento sem induzir fragmentação ou falsa precisão.
-
-### Prioridade 3 — autoria e revisão
-
-- avaliar o esforço necessário para produzir e revisar cursos extensos;
-- testar a continuidade entre sessões e a compreensão dos mandatos;
-- comparar reparos locais e recomposições estruturais;
-- estudar confiança, contestação e reversão das sugestões do modelo;
-- verificar se observações de estudantes apoiam correções sem se tornarem
-  vigilância comportamental.
-- testar com pessoas a interface responsiva já implementada, sua linguagem
-  simples, descoberta e exposição progressiva, prioritariamente no celular;
-- avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
-  separadamente, inclusive quando não houver representação adequada.
-
-### Prioridade 4 — infraestrutura
-
-- acompanhar crescimento do PostgreSQL e do Storage;
-- testar coleta de lixo e restauração operacional;
-- medir payloads, contexto e custo dos fluxos de autoria;
-- ampliar testes de concorrência e falhas parciais;
-- avaliar recuperação semântica e evolução do catálogo sem acoplamento ao
-  kernel.
-
-## Perguntas abertas
-
-- A organização em microssequências melhora a retomada depois de interrupções?
-- A combinação entre microteoria e práticas variadas reduz premissas ocultas?
-- Limites locais de novidade e coordenação ajudam a encontrar compressão sem
-  se transformar em scores artificiais?
-- Requisitos de explicação e evidência são compreendidos e corrigidos por
-  autores de diferentes áreas?
-- `ResourceSet` permite condições reproduzíveis sem produzir equivalência
-  falsa entre representações?
-- Resources especializados melhoram a interpretação de estruturas complexas?
-- A autoria assistida reduz trabalho mecânico sem reduzir a responsabilidade
-  editorial humana?
-- A proveniência registrada é suficiente para reconstruir decisões sem guardar
-  conversas integrais?
-- A arquitetura de artefatos imutáveis mantém custo sustentável quando o
-  catálogo e o número de workspaces crescem?
-
-Essas perguntas orientam avaliação; não antecipam resultados. O
-[Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) descreve
-como separar verificação técnica, inspeção especializada e investigação com
-participantes. A [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
-liga construtos, decisões, implementação, testes e evidências esperadas.
-
-## Como acompanhar o estado
-
-O estado publicado deve ser lido em conjunto com:
-
-- [Visão do produto](visao-do-produto.md), para a finalidade e o escopo;
-- [Arquitetura](arquitetura.md), para os componentes;
-- [Modelo didático](modelo-didatico.md), para as hipóteses pedagógicas;
-- [Matriz de conformidade técnica](matriz-conformidade-tecnica.md), para a
-  evidência verificável da implementação;
-- [Plano de controle e artefatos](plano-de-controle-e-artefatos.md), para os
-  procedimentos operacionais.
-
-O histórico cronológico de versões pertence ao [`CHANGELOG.md`](../CHANGELOG.md).
-Este documento descreve apenas o estado corrente e as lacunas que permanecem
-relevantes.
+# Estado corrente do produto
+
+Esta página é a fonte única para saber o que o AraLearn oferece **agora**. Ela
+não é um roadmap, uma lista de desejos nem a história do desenvolvimento. O
+trabalho futuro pertence às issues; estados anteriores permanecem no Git, nas
+issues encerradas e nas evidências datadas.
+
+**Data de corte da leitura do código:** 17 de agosto de 2026. **Data da última
+regressão integrada registrada:** 16 de agosto de 2026, no commit
+`cb777d0d7f5fc5c2c77be0839cc59564dd8a8e51`. Mudanças posteriores ainda precisam
+de nova regressão integral. Por isso, “funciona” abaixo significa somente que a
+capacidade passou nas condições e na data indicadas, não que esteja validada
+para qualquer conteúdo, pessoa ou implantação.
+
+Os nomes **Estudo**, **Autoria**, *workspace*, *microssequência*, *card*,
+*resource*, *finding* e outros termos em uso no código são identificadores do
+modelo corrente. Sua presença nesta página não os aprova como vocabulário final.
+A revisão terminológica avaliará cada conceito nas áreas acadêmicas pertinentes
+e fará um corte limpo em código, interface, dados e documentação.
+
+## Como ler a matriz
+
+As colunas respondem a perguntas diferentes:
+
+- **Existe:** há código, contrato ou estrutura persistente para o caso de uso?
+- **Conectado:** as camadas necessárias participam de um fluxo executável?
+- **Acessível:** uma pessoa alcança a capacidade pelo aplicativo e/ou ela é
+  oferecida a um cliente autorizado pelo Model Context Protocol (MCP)?
+- **Uso verificado:** há registro de uso real, além de fixture, teste ou smoke?
+- **Funciona:** qual comportamento foi exercitado e qual é a evidência datada?
+- **Necessário:** o problema atendido faz parte da intenção atual do produto?
+- **Alinhamento:** a solução corrente corresponde a essa intenção?
+- **Limites e destino:** o que a evidência não demonstra e qual disposição de
+  produto já foi decidida?
+
+“Parcial” não significa “quase pronto”: pode indicar uma ligação incompleta, uma
+superfície inacessível ou uma solução tecnicamente ampla para o problema errado.
+Teste automatizado não conta como uso real nem como evidência de aprendizagem.
+
+## Matriz por caso de uso
+
+| Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Estudar um curso e retomar o ponto alcançado | Sim: leitor, hierarquia didática, progresso, modo offline e fila local | Sim: curso e progresso passam por domínio, IndexedDB e sincronização remota quando disponível | Aplicativo: sim. MCP: não se aplica ao ato de estudar | Uso corrente foi relatado, mas não há protocolo ou conjunto de dados que permita auditá-lo | **Evidência técnica de 16/08/2026:** jornada Playwright com curso de 1.052 cards e suíte integrada; não mede aprendizagem | Sim | Alto: **Estudo** é a referência visual e comportamental atual | Preservar o comportamento durante a refatoração; revalidar em celular, desktop e Android e estudar usabilidade com pessoas |
+| Manter um único curso vivo entre estudo e produção | Parcial: a composição corrente pode ser estudada antes de publicação, mas também existem revisões e artefatos publicados | Sim para o curso privado corrente: estrutura planejada aparece em Trilhas e cards materializados tornam-se estudáveis; publicação abre outro caminho | Aplicativo: **Autoria** altera a composição e **Estudo** abre sua projeção por Trilhas. MCP: opera o estado autoral | Não registrado em uso longitudinal real | **Evidência técnica de 16/08/2026:** projeção do estado corrente, retorno ao leitor e jornada Action foram testados; não houve ensaio humano prolongado de mudanças durante a produção | Sim | Parcial: já existe estudo sem publicação, mas *workspace*, Trilha, revisão corrente e publicação escondem essa unidade sob vários conceitos | Tornar o curso privado, vivo e mutável o objeto concreto de entrada; remover publicação imutável e os estados paralelos do modelo final |
+| Inspecionar e editar manualmente a produção no celular | Sim: superfícies de Mapa, Desenho, Conteúdo, Auditoria e Resultados | Sim para os fluxos cobertos: a interface chama o cliente autoral e o backend relacional | Aplicativo: sim. MCP: lê e altera parte do mesmo estado por ferramentas próprias | Não houve aceitação registrada com pessoa leiga | **Evidência técnica de 16/08/2026:** 143 cenários E2E e capturas em 360, 390, 412 e 1.280 px; isso verifica geometria e ações, não compreensão | Sim | Baixo a parcial: existe cobertura ampla, mas a experiência corrente é mais complexa e textual que **Estudo** | Reconstruir a entrada em torno de cursos concretos, navegação didática e rolagem vertical de cards; nenhuma tela sem função de produto permanece |
+| Planejar, materializar e retomar a produção por Parte | Sim: plano, execuções, Partes, contexto causal, tentativas e cards materializados | Sim: contratos, serviço autoral, PostgreSQL e MCP formam um fluxo | Aplicativo: visualização parcial do andamento. MCP: sim, com operações próprias | Somente fixtures, jornadas automatizadas e smokes | **Evidência técnica de 16/08/2026:** testes de domínio, PGlite, PostgreSQL local e jornada MCP/Action; limites reais de modelos e cursos completos ainda não foram medidos | Sim: Parte reduz o número de iterações necessárias para produzir um curso | Parcial: o conceito é necessário, mas “parte” também nomeia entidades estruturais em trechos do código e seus defaults ainda não são controláveis de modo simples | Conservar uma unidade de lote de produção com tamanho padrão configurável; eliminar a ambiguidade nominal e expor progresso e mudança de plano no aplicativo |
+| Usar assistência autoral por conversa e MCP | Sim: servidor MCP, Action, OAuth, catálogo progressivo, continuidade e executor compartilhado | Sim: clientes autorizados atravessam Edge Function, serviço e persistência | Aplicativo: mostra projeções do estado, mas não todas as operações compostas. MCP: sim | Não há corpus de sessões reais de autoria analisado | **Evidência técnica de 16/08/2026:** smokes OAuth local e hospedado e jornada Action passaram; uma resposta era limitada a 96 KiB | Sim | Parcial: a separação entre conversa e estado persistido é correta, mas quantidade de ferramentas, contratos e conceitos impõe carga excessiva | Manter uma experiência conversacional orientada por intenção; a pessoa não escolhe ferramentas. Renomear e reduzir contratos após ensaios com limites reais de contexto e processamento |
+| Parametrizar propriedades pedagógicas e representações | Sim: análise, parâmetros por escopo, valores efetivos, locks, conjuntos e manifestos | Sim: domínio, PostgreSQL, réplica parcial no IndexedDB, aplicativo e MCP | Aplicativo: sim, em **Desenho** e **Resources**. MCP: sim | Não houve investigação educacional real com esses controles | **Evidência técnica de 16/08/2026:** testes de resolução, autorização, interface e pacote de 500 microssequências; não validam os construtos | Sim | Parcial: escopo, herança e seleção são problemas reais; parte do modelo corrente cristaliza cedo demais modos, artefatos imutáveis e governança | Redefinir parâmetros como propriedades semânticas observáveis, separar limites editoriais e testar controles Auto/manual. Manter somente estruturas necessárias à pesquisa e à produção |
+| Escolher representações modulares para os cards | Sim: 32 packages declarados, catálogo, contratos, validadores e renderizadores | Sim: navegador e Edge usam runtime sincronizado; MCP descobre e inspeciona contratos | Aplicativo: catálogo e cards são visíveis. MCP: sim | Uso acadêmico real das 32 representações não foi verificado | **Evidência técnica anterior a 17/08/2026:** corpus, schemas e paridade de runtime têm testes; a fixture do catálogo precisou ser regenerada depois de mudanças recentes | Sim | Parcial: modularidade é útil, mas a fronteira entre package, kernel, MCP e planejamento e o próprio termo *resource* ainda precisam de fundamentação | Auditar exemplos, carga de contexto e dependências; manter apenas módulos com valor instrucional demonstrável e adotar nomenclatura academicamente defensável |
+| Registrar fontes, proveniência e ancoragem do conteúdo | Parcial: contratos possuem referências, hashes, evidências e alguns campos de origem | Parcial: os registros não formam uma cadeia simples e completa entre fonte, trecho planejado, card e reparo | Aplicativo: fragmentário. MCP: fragmentário | Não | Não há evidência integrada datada que reconstrua uma fonte interna ou externa até o conteúdo exibido e sua revisão | Sim | Baixo: o autor especialista ainda não recebe visibilidade suficiente das fontes e ancoragens | Projetar uma cadeia rastreável e econômica; fontes e ancoragens precisam ser visíveis e editáveis na produção e legíveis pelo MCP |
+| Comentar um card, auditar, reparar e verificar | Parcial: observações de estudo, notas situadas, findings, rodadas de auditoria, reparo e reauditoria | Parcial: existem fluxos separados, mas comentário de estudante, observação do autor e conversa não convergem numa fila autoral simples | Aplicativo: ações distintas existem em **Estudo** e **Autoria**. MCP: acessa auditoria e reparo, com lacunas na entrada unificada | Não há uso real registrado do ciclo completo | **Evidência técnica de 16/08/2026:** testes de finding, alvo, currentness e reauditoria passaram; não há demonstração longitudinal de comentário até correção confirmada | Sim | Parcial a baixo | Unificar as entradas por origem e assunto, preservar o vínculo com o card e mostrar o estado da resolução; somente fatos observáveis alimentam analytics |
+| Possuir privadamente um curso e conceder acesso direto | Parcial: propriedade, membership, convites, papéis e capabilities existem | Sim no modelo de *workspace* e publicação corrente | Aplicativo: sim por Coleções, Trilhas, conta e *workspaces*. MCP: sim conforme capability | Somente smokes e fixtures | **Evidência técnica de 16/08/2026:** testes de autorização, RLS, convites e OAuth; não há estudo de compreensão da governança | Sim | Baixo: seis papéis, tipos de *workspace* e publicação misturam acesso, organização e processo | Substituir por proprietário único e concessão explícita de acesso ao curso. Coleções e Trilhas só sobrevivem se demonstrarem outra função concreta; não haverá aliases nem adaptadores do modelo removido |
+| Produzir variantes comparáveis e analisar métricas de autoria | Sim: condições, variantes, locks, freeze, atribuição, outcomes, datasets e visualização de Resultados | Sim nas jornadas e no schema correntes | Aplicativo: sim para parte do fluxo. MCP: sim por operações especializadas | Não houve estudo educacional real | **Evidência técnica de 16/08/2026:** jornada PGlite, pgTAP, gráfico/tabela e exportação passaram; as 68 relações privadas da fixture indicam custo estrutural relevante | Sim: variantes e dados brutos são centrais à pesquisa educacional | Baixo a parcial: o problema é correto, mas a arquitetura e as medidas atuais não foram aceitas como modelo mínimo nem validadas cientificamente | Reconstruir a partir das perguntas de pesquisa; conservar dados brutos, proveniência, denominadores e exportação, sem inferir causalidade nem manter workflow institucional desnecessário |
+| Fixar, revisar editorialmente e publicar uma revisão imutável | Sim: revisões, submissão, revisão editorial, targets, hashes e Storage | Sim | Aplicativo: sim. MCP/Action: sim | Somente jornadas automatizadas | **Evidência técnica de 16/08/2026:** jornada Action local percorreu publicação e revisão editorial | Não, no modelo atual desejado | Baixo | Remover do produto final a distinção entre rascunho e publicado e os workflows associados. Se compartilhamento público surgir depois, será uma decisão explícita e separada |
+| Operar dentro do orçamento do Supabase Free Plan | Parcial: há limites locais de payload, retenção e coleta de objetos | Parcial: banco, Storage e Edge Functions remotos estão ativos, mas a telemetria de egress e bytes do Storage não foi obtida | Aplicativo e MCP usam o backend; não há superfície simples de orçamento para quem pesquisa | Há uma medição pontual do projeto vinculado, sem série temporal | **Evidência operacional de 17/08/2026:** o [baseline de infraestrutura](evidence/baseline-infraestrutura-2026-08-17.json) registra uso, limites oficiais e lacunas; a stack local tem divergência de versão PostgreSQL e Vector instável | Sim | Parcial | Medir crescimento e egress antes do corte; corrigir paridade local; cada estrutura persistente precisa de consumidor, finalidade de pesquisa e orçamento. Tabela vazia não é removida só por estar vazia |
+
+## Três mapas do comportamento corrente
+
+Os diagramas mostram o sistema encontrado, inclusive suas separações. Eles não
+antecipam a arquitetura da substituição.
+
+### Estudo, curso e Autoria
+
+**Descrição textual:** a Autoria modifica uma composição corrente dentro de um workspace; sua projeção em Trilhas permite estudar cards materializados antes de publicação e o IndexedDB conserva a cópia local; em paralelo, uma etapa opcional de publicação fixa outra revisão, acrescentando estados e conceitos ao mesmo curso.
+
+```mermaid
+flowchart LR
+    A[Autoria] <--> W[Composição corrente<br/>no workspace]
+    W -->|projeção em Trilhas| I[Curso no IndexedDB]
+    I <--> E[Estudo]
+    W -->|publicar ou atualizar| R[Revisão distribuída<br/>separada]
+```
+
+O acesso antes de publicação já existe. A divergência está na quantidade de
+objetos intermediários e no segundo caminho imutável, não na impossibilidade de
+estudar o conteúdo corrente.
+
+### Planejamento, Parte, conteúdo e retorno humano
+
+**Descrição textual:** o planejamento divide a produção em Partes; cada Parte materializa vários cards; cards podem receber observações no Estudo e findings na Autoria; triagem, auditoria e reparo produzem uma nova revisão, mas as duas entradas humanas ainda chegam por caminhos distintos.
+
+```mermaid
+flowchart LR
+    P[Planejamento] --> B[Parte de produção]
+    B --> C[Vários cards]
+    C --> O[Observação no Estudo]
+    C --> F[Finding na Autoria]
+    O --> T[Triagem e auditoria]
+    F --> T
+    T --> X[Reparo]
+    X --> C
+```
+
+Parte é necessária como lote de produção: não é sinônimo de módulo, lição,
+microssequência ou card. O código corrente ainda usa “parte” também para alguns
+elementos estruturais, o que precisa desaparecer na revisão terminológica.
+
+### Aplicativo, persistência local, Supabase e MCP
+
+**Descrição textual:** o aplicativo lê e grava dados locais no IndexedDB. Os
+fluxos de Estudo e sincronização chamam RPCs pelo PostgREST; os fluxos de
+Autoria assistida e de artefatos passam por Edge Functions. Um cliente MCP
+autorizado também chega ao domínio autoral pelas Edge Functions, sem passar
+pela interface. As operações locais pendentes voltam ao PostgREST quando há
+conexão. PostgreSQL guarda relações e estado compartilhado; Storage recebe
+somente os artefatos que passam pela camada autoral apropriada.
+
+```mermaid
+flowchart LR
+    U[Pessoa] <--> APP[Aplicativo]
+    APP <--> IDB[IndexedDB]
+    APP <--> REST[PostgREST / RPC]
+    APP <--> EDGE[Edge Functions<br/>Autoria e artefatos]
+    MCP[Cliente MCP autorizado] <--> EDGE
+    IDB -. operações pendentes .-> REST
+    REST <--> PG[PostgreSQL]
+    EDGE <--> PG[PostgreSQL]
+    EDGE <--> ST[Storage]
+```
+
+Nem o aplicativo nem o cliente MCP recebem acesso administrativo direto ao
+banco. PostgREST expõe apenas as operações permitidas; as Edge Functions
+autenticam e autorizam seus próprios casos de uso. IndexedDB sustenta leitura e
+intenção local; PostgreSQL permanece a autoridade para relações, autorização e
+estado compartilhado; Storage conserva objetos grandes quando há justificativa
+para não armazená-los em linhas.
+
+## Evidência visual móvel do estado encontrado
+
+As capturas abaixo são baselines do runtime corrente, não propostas para a
+nova Autoria. Ambas usam viewport de 390 × 844 pixels, tema claro e dados
+determinísticos de teste. A captura de Estudo é regenerada pelo cenário opt-in
+`gera capturas canônicas do percurso móvel de Estudo`; a de Autoria vem da
+fixture canônica do fluxo integral.
+
+| Estudo | Autoria corrente |
+| --- | --- |
+| ![Leitor móvel de Estudo exibindo um card teórico, progresso e quatro controles iconográficos.](screenshots/study/study-card-390-light.png) | ![Mapa móvel da Autoria corrente exibindo o curso, duas microssequências e cinco destinos fixos na barra inferior.](screenshots/authoring/authoring-map-390-light.png) |
+
+O contraste visual confirma duas afirmações diferentes. Estudo concentra uma
+tarefa e o conteúdo visível; a Autoria já preserva largura móvel e controles
+iconográficos, mas distribui o curso entre cinco áreas abstratas e não oferece
+na tela inicial a inspeção contínua dos cards. Essa observação orienta a
+reconcepção, mas não demonstra por si só qual alternativa será mais
+compreensível: isso exige protótipo e avaliação humana.
+
+### Protótipo de compreensão — não implementado
+
+O protótipo abaixo testa somente uma hipótese para a próxima etapa: apresentar
+um curso vivo como objeto concreto, mostrar suas Partes planejadas e concluídas
+e manter planejamento e andamento acessíveis por poucos controles. Ele não
+define schema, não comprova usabilidade e não representa uma funcionalidade já
+disponível. A composição reúne as versões móvel e desktop para permitir a
+comparação antes de qualquer mudança funcional.
+
+![Protótipo móvel e desktop de um curso vivo, com lista de Partes, estado de materialização e acesso compacto ao planejamento.](screenshots/authoring/prototype-course-part-v1.png)
+
+A versão vetorial regenerável está em
+[`prototype-course-part-v1.svg`](screenshots/authoring/prototype-course-part-v1.svg).
+As decisões de vocabulário, navegação e interação continuam sujeitas à revisão
+terminológica e aos testes posteriores; a evidência desta etapa é apenas que a
+relação **Curso → Partes → conteúdo produzido** pode ser mostrada sem expor
+*workspace*, revisão, lock ou identificadores internos.
+
+## Evidências e lacunas transversais
+
+A [evidência integrada legível por máquina](evidence/authoring-integrated-validation-2026-08-16.json)
+registra os comandos e números de 16 de agosto de 2026. Naquela execução:
+
+- `npm test` aprovou 1.164 testes, com um ensaio de PostgreSQL real ignorado por
+  ausência das dependências exigidas;
+- `npm run test:e2e` aprovou 143 cenários, com uma captura opt-in ignorada;
+- em 17/08/2026, o cenário opt-in focado gerou duas capturas móveis de Estudo
+  em 5,9 segundos, inclusive a imagem exibida nesta página, sem repetir a suíte
+  E2E;
+- a stack Supabase local aplicou as migrations e aprovou 330 testes pgTAP;
+- os smokes OAuth do MCP local e hospedado passaram;
+- o curso grande exercitado tinha 175 microssequências e 1.052 cards;
+- a fixture relacional de experimento ocupou 3.817.472 bytes em 68 relações
+  privadas, incluindo índices e TOAST;
+- o orçamento serializado de desenho para 500 microssequências somou 7.042.790
+  bytes, sem medir páginas e índices reais do PostgreSQL.
+
+Esses resultados não demonstram aceitação por pessoa leiga, adequação das
+medidas, validade de construto, eficácia educacional, sustentabilidade no
+Supabase Free Plan ou operação prolongada com cursos reais. A
+[matriz de conformidade técnica](matriz-conformidade-tecnica.md) localiza código
+e testes; o [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md)
+define observações que automação não pode substituir.
+
+Os principais sinais de complexidade desproporcional são:
+
+- dois estados operacionais para aquilo que a intenção descreve como um curso
+  vivo;
+- governança por *workspaces*, seis papéis, capabilities, submissão e publicação
+  para um problema imediato de propriedade privada e acesso direto;
+- dezenas de relações privadas de Autoria antes de uso educacional real;
+- conceitos iguais ou próximos nomeados de maneiras distintas entre interface,
+  domínio, MCP e banco, e o termo “parte” usado para duas funções;
+- backend de experimentos, analytics e publicação mais amplo que as tarefas que
+  uma pessoa consegue compreender e executar pela interface;
+- proveniência e observações, embora essenciais, ainda fragmentadas entre
+  contratos e fluxos.
+
+## Regra do próximo estado publicado
+
+Quando um modelo for substituído, o estado final não conservará nomenclatura,
+UI, rota, alias, adapter, leitura, escrita ou fallback do modelo anterior. Isso
+inclui nomes de arquivos, funções, tabelas, campos, ferramentas MCP, testes e
+documentos. Dados que precisem sobreviver serão transformados uma única vez;
+essa transformação não se tornará uma camada permanente de compatibilidade.
+
+A história permanece recuperável no Git, nas issues encerradas e nas evidências
+datadas. O código ativo e a documentação corrente descrevem somente o produto
+vigente. Um corte só pode ser declarado completo depois de busca textual,
+inspeção de schema, testes de integração e verificação visual confirmarem que o
+modelo removido não continua executável nem ensinável por acidente.

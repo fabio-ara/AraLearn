@@ -33,8 +33,8 @@ Cada texto declara ou deixa clara sua função predominante:
 - **referência:** define termos, contratos, campos ou estados para consulta;
 - **avaliação:** liga proposições a evidências e informa o que ainda não foi
   demonstrado;
-- **registro de estado:** descreve capacidades correntes e trabalho futuro sem
-  misturá-los com instruções de uso.
+- **registro de estado:** descreve somente capacidades correntes, evidências e
+  lacunas, sem misturá-las com instruções de uso ou planejamento futuro.
 
 Misturar esses gêneros torna a leitura imprevisível. Um guia não deve exigir
 que a pessoa reconstrua o procedimento a partir de uma discussão arquitetural;
@@ -51,6 +51,31 @@ com progressão e justificativa; os materiais executáveis conservam apenas o
 necessário para orientar uma operação. Essa separação evita transformar um
 manual didático em prompt e evita consumir contexto do modelo com exposições
 que não mudam sua decisão.
+
+## Um proprietário para cada tipo de informação
+
+Cada afirmação mutável tem um único lugar canônico. Outros textos podem apontar
+para ele, mas não mantêm uma segunda versão da mesma informação:
+
+| Tipo de informação | Proprietário | O que não pertence ali |
+| --- | --- | --- |
+| finalidade e compromissos do produto | `docs/visao-do-produto.md` | estado técnico ou tarefas futuras |
+| capacidade corrente, evidência e lacuna | `docs/estado-atual-e-roadmap.md` | agenda, cronologia ou instrução de uso |
+| percurso de leitura da documentação | `docs/README.md` | explicação duplicada dos capítulos |
+| procedimento que uma pessoa executa agora | guia operacional do assunto | arquitetura futura ou diário de implementação |
+| justificativa conceitual e alternativas | capítulo conceitual do assunto | procedimento operacional completo |
+| vocabulário aprovado | glossário técnico ou de construtos correspondente | aliases históricos e nomes provisórios apresentados como sinônimos |
+| ligação entre alegação, código e teste | matriz de conformidade aplicável | narrativa histórica de tarefas |
+| história do modelo substituído | Git, issues encerradas e evidências datadas | código ativo ou documentação corrente |
+| trabalho futuro e decisão ainda aberta | issues do GitHub | documentação apresentada como realidade atual |
+| operação privada, credenciais, recuperação e release | manual do repositório privado | conteúdo público ou arquitetura pedagógica duplicada |
+| instrução executável para clientes de autoria | `authoring/` | capítulo didático para pessoas |
+
+Relatórios de checkpoint, checklists ligados a uma tarefa e cópias narrativas de
+uma matriz não permanecem na documentação pública depois do ciclo. Evidência
+reproduzível pode permanecer em `docs/evidence/`; procedimentos reutilizáveis
+são incorporados ao guia ou roteiro estável correspondente; o restante já está
+preservado pelo Git.
 
 ## Três bases de evidência
 
@@ -100,6 +125,37 @@ formatação de código somente quando a grafia exata importa. Na explicação
 conceitual, usam-se termos em português. Palavras internas do processo de
 desenvolvimento, números de tarefas e referências à conversa que originou uma
 decisão não pertencem ao texto público.
+
+O vocabulário do produto é uma decisão técnica e científica. Um nome só é
+adotado depois de confrontar o conceito com as áreas pertinentes — por exemplo,
+engenharia de software, design instrucional, ciência da aprendizagem,
+psicometria ou metodologia de pesquisa — e de registrar definição, escopo,
+alternativas e fontes. Costume interno e antiguidade no código não justificam
+um termo.
+
+### Corte limpo ao substituir um modelo
+
+Uma substituição conceitual não mantém compatibilidade interna com o modelo
+retirado. No mesmo corte devem desaparecer:
+
+- nomes antigos de interface, rotas e mensagens;
+- arquivos, funções, classes, schemas, tabelas, campos e ferramentas MCP
+  correspondentes;
+- aliases, adapters, dual read, dual write e fallbacks;
+- testes e exemplos que ainda tornem executável ou ensinável o fluxo removido;
+- documentação que apresente a arquitetura anterior como opção corrente.
+
+Quando dados existentes precisarem sobreviver, uma transformação controlada os
+leva ao contrato novo uma única vez. Ela não se torna uma camada permanente do
+runtime. Depois da validação e do corte, a implementação anterior fica
+disponível somente no histórico do Git e nas evidências datadas. Segurança,
+integridade referencial e recuperação operacional continuam obrigatórias; não
+são justificativa para conservar dois modelos simultaneamente.
+
+A conclusão exige uma busca de resíduos em todo o repositório, inspeção do
+schema ativo, execução dos testes e verificação visual. Renomear apenas o texto
+da interface enquanto identificadores e comportamentos antigos continuam
+ativos não é adequação vocabular.
 
 ## Profundidade relevante
 

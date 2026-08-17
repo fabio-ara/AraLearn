@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -13,7 +14,9 @@ import {
 } from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
+const TRACKED_OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
+const TEMPORARY_ROOT = await mkdtemp(path.join(tmpdir(), "aralearn-authoring-packages-"));
+const OUTPUT = path.join(TEMPORARY_ROOT, "generated");
 const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
   ROOT,
   "scripts",
@@ -251,7 +254,11 @@ function actionInputValidator(actionSchema, operationId) {
 }
 
 function build() {
-  execFileSync(process.execPath, [path.join(ROOT, "scripts", "buildAuthoringPackages.mjs")], {
+  execFileSync(process.execPath, [
+    path.join(ROOT, "scripts", "buildAuthoringPackages.mjs"),
+    "--output",
+    OUTPUT
+  ], {
     cwd: ROOT,
     stdio: "pipe"
   });
@@ -454,6 +461,18 @@ assert.doesNotMatch(
   /(?:4C\/ID|Evidence-Centered Design|carga cognitiva|Sweller|Koedinger)/iu,
   "Prompt de sistema incorporou teoria que pertence ao knowledge recuperável."
 );
+for (const fileName of [
+  "manifest.json",
+  "SHA256SUMS.txt",
+  ...manifest.archives.map(({ file }) => file),
+  ...manifest.files.map(({ file }) => file)
+]) {
+  assert.deepEqual(
+    await readFile(path.join(TRACKED_OUTPUT, fileName)),
+    await readFile(path.join(OUTPUT, fileName)),
+    `${fileName} está desatualizado; execute npm run authoring:packages.`
+  );
+}
 for (const obsolete of [
   "consultarProximaParte",
   "entregarFaseDeAutoria",
@@ -1199,4 +1218,5 @@ assert.deepEqual(exampleNames, [
   "README.md"
 ]);
 
-console.log("Pacotes MCP de autoria validados.");
+await rm(TEMPORARY_ROOT, { recursive: true, force: true });
+console.log("Pacotes MCP de autoria validados sem alterar os artefatos versionados.");

@@ -88,9 +88,9 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | hash prova autoria e qualidade | canonicalização e SHA-256 | testes de hash | não oferecido; hash prova identidade dos bytes, não autoria ou mérito |
 | estado instrucional persiste objetos imutáveis e versionados sob CAS | migrations `20260815193000_parameterized_authoring_design.sql` e `20260815230000_authoring_blueprint_artifact_receipt.sql`; módulos de `src/authoring/`; `authoringDesignService.js` | `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js`; `authoring-design-service.test.js`; `authoring-mcp.test.js` | demonstrado com limite; blueprint e binding são imutáveis, apenas o apontador corrente é mutável; MCP/Action e a projeção visual responsiva usam o mesmo estado |
 | lista e Mapa mostram estado autoral canônico sem depender de cache visitado | `20260815233000_authoring_product_state_projection.sql`; `workspaceEngine.js`; `workspaceContinuity.js`; `authoringWorkspaceProjection.js` | `authoring-product-state-pglite.test.js`; `authoring-workspace-continuity.test.js`; `authoring-workspace-view-model.test.js` | demonstrado para planejamento, análise, materialização, finding e pronto; estado é de processo, não score de qualidade |
-| Autoria tem paridade funcional no celular, desktop e APK | `AuthoringWorkspaceSurface.js`; `renderAuthoringWorkspace.js`; `public/styles.css`; `public/main.js` | `authoring-workspace-surface.spec.js`; testes de retorno e Android | demonstrado nas jornadas e viewports cobertos; compreensibilidade por pessoa leiga permanece teste humano da #109 |
+| Autoria tem paridade funcional no celular, desktop e APK | `AuthoringWorkspaceSurface.js`; `renderAuthoringWorkspace.js`; `public/styles.css`; `public/main.js` | `authoring-workspace-surface.spec.js`; testes de retorno e Android | demonstrado nas jornadas e viewports cobertos; compreensibilidade por pessoa leiga permanece teste humano, acompanhado no estado corrente |
 | editor de Resources preserva conjunto exato entre páginas e escopos | `AuthoringWorkspaceClient.js`; `WorkspaceDesignOfflineStore.js`; view `resource_set`; `AuthoringWorkspaceSurface.js` | testes de client/store; `authoring-design-service.test.js`; `authoring-workspace-surface.spec.js` | demonstrado com seleção progressiva e resultados parciais explícitos; disponibilidade não obriga uso e não configura cards individualmente |
-| Analytics são versionados, não punitivos e exportáveis | migration `20260817120000_authoring_analytics.sql`; `authoringAnalytics.js`; serviço app-only `authoringAnalyticsService.js`; destino Resultados | PGlite integrado de outcome/pseudônimo/pins; testes domain/service/client/VM; Playwright 360/390/412/1280; pgTAP `070_authoring_analytics_test.sql` | demonstrado nos cenários proporcionais: gráfico e tabela partilham valores, quatro datasets são pinados e Resources permanecem explícitos; não demonstra validade das medidas, escala nem avaliação humana, reservadas à #109 |
+| Analytics são versionados, não punitivos e exportáveis | migration `20260817120000_authoring_analytics.sql`; `authoringAnalytics.js`; serviço app-only `authoringAnalyticsService.js`; destino Resultados | PGlite integrado de outcome/pseudônimo/pins; testes domain/service/client/VM; Playwright 360/390/412/1280; pgTAP `070_authoring_analytics_test.sql` | demonstrado nos cenários proporcionais: gráfico e tabela partilham valores, quatro datasets são pinados e Resources permanecem explícitos; não demonstra validade das medidas, escala nem avaliação humana |
 | GC do desenho apaga qualquer artefato antigo | `private.prune_authoring_design_state_v1` | `parameterized-authoring-design-pglite.test.js` | não oferecido; somente versões substituídas, antigas e sem referência são elegíveis; manifestos são preservados |
 
 ## 6. Auth, RLS, MCP e Action
@@ -98,6 +98,7 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | Propriedade | Implementação | Verificação | Estado e limite |
 |---|---|---|---|
 | dados pessoais são isolados por JWT, RLS e RPC | migrations, políticas e cliente Auth | pgTAP, PostgREST e smoke com duas contas | demonstrado nos fluxos cobertos |
+| uma estrutura persistente pode surgir sem caso de uso revisado | `auditVerticalParity.mjs`; inventário exato versionado de relações, funções, índices, restrições, triggers, policies, estado RLS e buckets | `vertical-parity-audit.test.js`; comparação do PostgreSQL após `db reset` na CI | não oferecido: todo objeto novo falha até a regeneração e a revisão explícitas do inventário; a classificação estrutural não demonstra necessidade de produto nem correção da regra SQL |
 | papel nominal concede toda operação sem examinar alvo | adaptador Supabase e migrations de capacidade | testes de acesso e protocolo | não oferecido; papel e relações derivam capacidade e cada operação revalida alvo/estado |
 | MCP usa Streamable HTTP sem sessão de servidor | `mcpServer.js`; função `aralearn-authoring-mcp` | testes runtime, Deno e jornada MCP | demonstrado: protocolo `2025-11-25`, JSON-RPC e sem `MCP-Session-Id`; corpo até 32 MiB |
 | MCP aceita credencial estática de autoria | servidor MCP e segurança | testes OAuth e smoke local | não oferecido; exige access token OAuth do recurso protegido |
@@ -156,14 +157,18 @@ npm.cmd run catalog:validate
 npm.cmd run audit:frontend
 npm.cmd run audit:residues
 npm.cmd run audit:docs
+npm.cmd run audit:parity
 ```
 
-Durante a sequência de Autoria, a validação intermediária é proporcional ao
-escopo da issue: na #107, os focos incluem contratos experimentais, control
-plane, locks, freeze, diff, assignment, isolamento do participante e entrega
-offline da revisão já atribuída. A
-regressão integral é concentrada no fechamento da #109. Isso não permite fechar
-uma etapa com teste focado falhando nem alegar integração ainda não exercitada.
+Durante a evolução da Autoria, a validação intermediária é proporcional ao
+risco: começa por verificações estáticas e testes do comportamento alterado,
+avança para a integração da fatia vertical e concentra a regressão integral em
+mudanças que atravessam várias camadas, marcos de fechamento e releases. Uma
+suíte ampla já aprovada não é repetida sem mudança de código, fixture,
+dependência, ambiente ou outro insumo relevante. A execução integral é
+registrada com data e commit no [estado corrente](estado-atual-e-roadmap.md).
+Isso não permite concluir uma etapa com teste focado falhando nem alegar
+integração ainda não exercitada.
 Para o banco parametrizado, o ensaio autocontido está em
 `tests/runtime/parameterized-authoring-design-pglite.test.js`; o complemento de
 RLS/PostgREST no stack Supabase está em

@@ -671,9 +671,10 @@ disponibilidade prolongada, custo real em escala ou equivalência com outro
 backend. A #104 demonstra a exposição por MCP e Action e a #105, sua projeção
 visual responsiva; a auditoria semântico-instrucional completa pertence à #106. Os
 cenários A–H são regressões determinísticas de engenharia, não validação
-educacional. A regressão integral fica concentrada no fechamento da #109;
-etapas intermediárias executam testes proporcionais ao risco. Essas afirmações
-exigem métodos próprios de avaliação. A
+educacional. A regressão integrada mais recente está identificada no
+[estado corrente](estado-atual-e-roadmap.md); mudanças posteriores executam
+testes proporcionais ao risco e exigem nova regressão antes de publicação.
+Essas afirmações exigem métodos próprios de avaliação. A
 [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) relaciona cada
 propriedade com código, migrations e testes; [Persistência relacional e
 sincronização](persistencia-relacional.md) aprofunda a réplica, a outbox e as

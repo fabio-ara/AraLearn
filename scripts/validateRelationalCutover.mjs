@@ -349,6 +349,9 @@ async function main() {
   const authoringProductStateProjection = migrations.find(({ fileName }) =>
     fileName === "20260815233000_authoring_product_state_projection.sql"
   );
+  const authoringDesignConformanceAudit = migrations.find(({ fileName }) =>
+    fileName === "20260815235900_authoring_design_conformance_audit.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -374,7 +377,8 @@ async function main() {
       || !catalogCollectionReordering || !unifiedTrails || !trailPersonalState
       || !trailObservationThreads || !unifiedTrailsCleanCutover || !alphabeticTrails
       || !alphabeticCatalog || !alphabeticCatalogRuntime || !authoringContinuity
-      || !authoringContinuityVolatility || !authoringProductStateProjection) {
+      || !authoringContinuityVolatility || !authoringProductStateProjection
+      || !authoringDesignConformanceAudit) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -1214,7 +1218,11 @@ async function main() {
       || !removedRuntimeManifestWrappers.source.includes("Wrappers historicos do manifesto ainda existem")) {
     fail("A remoção física dos wrappers históricos do manifesto não é verificada.");
   }
-  if (runtimeManifest.schemaRevision !== "20260815233000" || runtimeManifest.contractVersion !== 1) {
+  if (!authoringDesignConformanceAudit.source.includes("authoring-design-conformance-audit-v1")
+      || !authoringDesignConformanceAudit.source.includes('"20260815235900"')) {
+    fail("A migration da auditoria de conformidade não avança o manifesto esperado.");
+  }
+  if (runtimeManifest.schemaRevision !== "20260815235900" || runtimeManifest.contractVersion !== 1) {
     fail("O manifesto estático não aponta para o runtime autoral corrente.");
   }
   for (const feature of [
@@ -1241,7 +1249,8 @@ async function main() {
     "flat-runtime-manifest-v1",
     "parameterized-authoring-design-v1",
     "authoring-blueprint-artifact-receipt-v1",
-    "authoring-product-state-projection-v1"
+    "authoring-product-state-projection-v1",
+    "authoring-design-conformance-audit-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
