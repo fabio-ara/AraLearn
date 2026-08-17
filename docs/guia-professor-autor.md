@@ -3,8 +3,9 @@
 Autoria é a interface manual e visual do mesmo Curso vivo usado em Estudo e
 pelas ferramentas conversacionais. Nesta revisão, ela permite criar Cursos,
 editar o plano instrucional e as Partes em linguagem natural, consultar a
-composição, levar um pedido de materialização ao chat conectado e gerir acesso
-direto. Edição contextual de Unidades, proveniência, auditoria, correção,
+hierarquia, inspecionar Unidades em sequência vertical, levar um pedido de
+materialização ao chat conectado e gerir acesso direto. Edição contextual de
+Unidades, proveniência, auditoria, correção,
 variantes e analytics ainda não devem ser tratadas como disponíveis.
 
 ## Abrir a Autoria
@@ -75,12 +76,20 @@ Percorre Módulos, Lições e Microssequências didáticas em páginas. A tela m
 o título, contexto e resumo de cada entidade. Ela é uma inspeção da hierarquia,
 não um segundo documento.
 
-### Conteúdo
+### Inspeção
 
-Lista as Unidades de estudo já materializadas, usando a mesma revisão do Curso.
-Nesta fatia, Conteúdo ainda não oferece a rolagem vertical contínua nem a edição
-contextual de cada Unidade. Essas capacidades precisam ser integradas antes de
-considerar a inspeção autoral móvel concluída.
+Apresenta as Unidades de estudo materializadas numa sequência vertical e usa a
+mesma revisão do Curso do início ao fim da leitura. A barra fixa informa a
+posição curricular e permite avançar ou voltar. O filtro limita a sequência a
+uma Parte, às Unidades sem Parte ou ao Curso completo; links de contexto abrem
+o Módulo, a Lição, a Microssequência ou a Unidade exata.
+
+A página carrega 12 Unidades por vez e mantém uma janela limitada enquanto a
+pessoa rola. A Unidade e a distância em relação à barra são conservadas apenas
+neste dispositivo. Ao voltar, a tela tenta reancorar essa posição; se o Curso
+mudou, relê a nova revisão antes de continuar. Respostas aparecem somente para
+preservar a representação, mas ficam desativadas: Inspeção não é Estudo nem
+editor contextual.
 
 ### Pessoas
 
@@ -139,7 +148,8 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 
 1. listar os Cursos próprios;
 2. escolher o Curso pelo título e confirmar sua identidade;
-3. ler o plano instrucional, a hierarquia ou páginas de entidades;
+3. ler o plano instrucional, a hierarquia, a vista `study_units` ou páginas de
+   entidades;
 4. formular a alteração;
 5. usar a revisão do Curso e a versão específica lidas como condições da
    escrita;
@@ -150,6 +160,12 @@ confirmar etapas de materialização, alterar a composição por uma operação
 separada, gerir perfil e acesso e consultar componentes didáticos. Interface e
 MCP usam as mesmas relações, regras de domínio, transações e projeções; não há
 um plano reservado ao chat.
+
+Para revisar conteúdo, prefira `lerCurso` com `view: "study_units"`. Escolha o
+mesmo escopo disponível na interface e use a revisão devolvida, a âncora para
+entrar numa Unidade específica e os cursores para percorrer páginas adjacentes.
+O MCP recebe os mesmos links profundos, limites e erros da Inspeção visual; não
+deve baixar a composição inteira apenas para revisar Unidades.
 
 Se outra edição alterar o Curso antes da escrita, o servidor recusa a revisão
 antiga. A resposta correta é reler e reconciliar a intenção; sobrescrever
@@ -191,6 +207,11 @@ substituições ou exclusões. Cada entidade precisa respeitar:
 - contrato fechado de conteúdo;
 - revisão corrente do Curso.
 
+O contrato da composição usa `aralearn.course.v1`, `studyUnits` como coleção da
+Microssequência e `study_unit` como tipo persistido. Esses nomes não possuem
+alias corrente. Cada linha alterada é validada pelo seu tipo, e dependências de
+Microssequência são verificadas no escopo das Lições atingidas.
+
 Uma etapa de materialização pode confirmar no mesmo commit mudanças de
 entidades, vínculo com a Microssequência-alvo, fatos da etapa, revisão do Curso
 e atividade. A escrita geral da composição permanece separada do planejamento:
@@ -218,11 +239,12 @@ persistência, autorização, MCP quando aplicável e verificação de navegador
 Depois de alterar um Curso:
 
 1. releia o Curso na Autoria;
-2. abra-o em Estudo;
-3. percorra a hierarquia até a Unidade afetada;
-4. confira conteúdo, resposta, feedback e navegação;
-5. teste em largura de smartphone;
-6. registre qualquer divergência como observação precisa.
+2. use a Inspeção e o link profundo da Unidade afetada;
+3. abra-o em Estudo;
+4. percorra a hierarquia até a mesma Unidade;
+5. confira conteúdo, resposta, feedback e navegação;
+6. teste em 360, 390 e 430 px e desktop;
+7. registre qualquer divergência como observação precisa.
 
 A síntese deve distinguir o que mudou para quem estuda, o que mudou por trás,
 por que foi necessário, qual complexidade entrou ou saiu, como foi verificado e

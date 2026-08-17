@@ -6,7 +6,7 @@ import {
   PEDAGOGICAL_COMMENT_MAX_CHARACTERS,
   normalizePedagogicalCommentDraft
 } from "../../src/domain/pedagogicalComment.js";
-import { renderCardCommentOverlay } from "../../src/ui/renderCardCommentOverlay.js";
+import { renderStudyUnitCommentOverlay } from "../../src/ui/renderStudyUnitCommentOverlay.js";
 
 test("categorias de observação são pequenas, estáveis e distintas", () => {
   assert.deepEqual(
@@ -42,16 +42,16 @@ test("observação exige categoria fechada, texto curto e não vazio", () => {
 });
 
 test("overlay não expõe IDs e só oferece retirada quando existe observação", () => {
-  const fresh = renderCardCommentOverlay({
+  const fresh = renderStudyUnitCommentOverlay({
     draft: { category: "suggestion", body: "Inclua outro exemplo." }
   });
   assert.match(fresh, /Tipo de observação/u);
   assert.match(fresh, /value="suggestion" checked/u);
   assert.match(fresh, /maxlength="1000"/u);
   assert.doesNotMatch(fresh, /comment-delete/u);
-  assert.doesNotMatch(fresh, /cardId|courseId|workspaceId/u);
+  assert.doesNotMatch(fresh, /studyUnitId|courseId|workspaceId/u);
 
-  const existing = renderCardCommentOverlay({
+  const existing = renderStudyUnitCommentOverlay({
     draft: {
       category: "observation",
       body: "Rever depois.",

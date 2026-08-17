@@ -1,9 +1,9 @@
-function cards(microsequence) {
-  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+function studyUnits(microsequence) {
+  return Array.isArray(microsequence?.studyUnits) ? microsequence.studyUnits : [];
 }
 
 export function resolveMicrosequenceRuntimeIncluded(microsequence) {
-  return cards(microsequence).length > 0;
+  return studyUnits(microsequence).length > 0;
 }
 
 export function isRunnableMicrosequence(microsequence) {

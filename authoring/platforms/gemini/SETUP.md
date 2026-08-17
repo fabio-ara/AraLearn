@@ -23,7 +23,7 @@ Tenha acesso à criação de Gems e ao pacote Gemini gerado pelo AraLearn.
 1. Crie uma Gem.
 2. Cole `GEM_INSTRUCTIONS.md` nas instruções.
 3. Adicione `core/`, `knowledge/`, `schemas/`,
-   `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento.
+   `docs/aralearn-contract.md` e `docs/componentes-didaticos.md` ao conhecimento.
 4. Se houver limite de anexos, reúna os textos sem retirar schemas nem
    cabeçalhos que distinguem cada responsabilidade.
 5. Planeje ou revise apenas com os contratos disponíveis nos arquivos.

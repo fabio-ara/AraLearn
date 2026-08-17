@@ -20,7 +20,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "private-person-avatar-v1",
   "self-account-deletion-v1",
   "course-instructional-plan-v1",
-  "course-authoring-part-materialization-v1"
+  "course-authoring-part-materialization-v1",
+  "course-study-unit-inspection-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -166,7 +167,7 @@ function equalArray(actual, expected) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260817160000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260817170000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -179,6 +180,9 @@ async function validateManifest() {
   const authoringPlanMigration = await read(
     "supabase/migrations/20260817160000_course_authoring_plan.sql"
   );
+  const inspectionMigration = await read(
+    "supabase/migrations/20260817170000_course_study_unit_inspection.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
@@ -186,13 +190,18 @@ async function validateManifest() {
       !authoringPlanMigration.includes(
         "$advance_course_instructional_plan_runtime_manifest$"
       ) ||
-      !authoringPlanMigration.includes("'schemaRevision', '20260817160000'")) {
+      !authoringPlanMigration.includes("'schemaRevision', '20260817160000'") ||
+      !inspectionMigration.includes(
+        "$advance_course_study_unit_inspection_runtime_manifest$"
+      ) ||
+      !inspectionMigration.includes("'schemaRevision', '20260817170000'")) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
   for (const feature of REQUIRED_FEATURES) {
     if (!courseMigration.includes(`'${feature}'`) &&
         !profileMigration.includes(`'${feature}'`) &&
-        !authoringPlanMigration.includes(`'${feature}'`)) {
+        !authoringPlanMigration.includes(`'${feature}'`) &&
+        !inspectionMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -306,5 +315,6 @@ await validateDeploymentPath();
 
 console.log(
   "Runtime de Curso validado: identidade viva única, composição paginada, acesso direto, " +
-  "estado pessoal, perfil humano, acesso de Estudo, avatar privado, Autoria visual e MCP."
+  "estado pessoal, perfil humano, acesso de Estudo, avatar privado, inspeção vertical, " +
+  "Autoria visual e MCP."
 );

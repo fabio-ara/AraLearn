@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -29,7 +29,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -55,7 +55,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -110,10 +110,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "alg-1",
                       "position": 1,
@@ -215,10 +215,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "alg-4",
                       "position": 1,
@@ -331,10 +331,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "alg-6",
                       "position": 1,
@@ -597,7 +597,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -623,7 +623,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -680,10 +680,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "db-1",
                       "position": 1,
@@ -1034,10 +1034,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "db-5",
                       "position": 1,
@@ -1373,7 +1373,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -1399,7 +1399,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -1465,10 +1465,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "tcp-1",
                       "position": 1,
@@ -1572,10 +1572,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "tcp-4",
                       "position": 1,
@@ -1892,10 +1892,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "tcp-7",
                       "position": 1,
@@ -2202,7 +2202,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -2228,7 +2228,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -2285,10 +2285,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "bpmn-1",
                       "position": 1,
@@ -2570,10 +2570,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "bpmn-5",
                       "position": 1,

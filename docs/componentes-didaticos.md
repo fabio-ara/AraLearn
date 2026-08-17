@@ -1,6 +1,6 @@
-# Packages de card
+# Componentes didáticos e packages
 
-No AraLearn, um **package de card** é um módulo que representa um objeto de conhecimento ou uma forma de resposta cuja estrutura possui significado pedagógico. Ele reúne contrato, validação, renderização, acessibilidade, edição e avaliação. O kernel conhece apenas como packages ocupam um card; não conhece a estrutura interna de grafo, matriz, fórmula ou processo.
+No AraLearn, um **package de componente** é um módulo que representa um objeto de conhecimento ou uma forma de resposta cuja estrutura possui significado pedagógico. Ele reúne contrato, validação, renderização, acessibilidade, edição e avaliação. O kernel conhece apenas como packages ocupam os slots de uma Unidade de estudo; não conhece a estrutura interna de grafo, matriz, fórmula ou processo.
 
 Essa separação resolve dois problemas:
 
@@ -30,7 +30,7 @@ Representações múltiplas podem favorecer compreensão quando suas funções s
 
 O kernel em `src/resources/kernel/` oferece:
 
-- envelope e slots de card;
+- envelope e slots da Unidade de estudo;
 - resolução de `package@version`;
 - validação estrutural e de composição;
 - montagem do renderer;
@@ -69,15 +69,15 @@ O catálogo não é uma lista solta de nomes. Ele descreve packages com facetas 
 
 Essa organização combina três necessidades. O modelo precisa recuperar candidatos por intenção; a manutenção precisa acrescentar termos sem alterar um algoritmo gigante; a curadoria precisa confrontar por que um candidato foi escolhido.
 
-`consultarBibliotecaDeResources` expõe o protocolo `aralearn.resource-library.v1` de maneira progressiva:
+`consultarComponentesDidaticos` expõe o protocolo `aralearn.resource-library.v1` de maneira progressiva:
 
 1. `explore` mostra famílias e facetas;
 2. `search` ranqueia candidatos;
 3. `inspect` compara até oito perfis;
 4. `contracts` entrega exatamente um contrato versionado por chamada;
-5. `validate_card` verifica estrutura e composição;
+5. `validate_study_unit` verifica estrutura e composição a partir de `studyUnitJson`;
 6. `audit_representation` examina adequação e legibilidade;
-7. `preview_card` informa se o runtime pode abrir a composição.
+7. `preview_study_unit` informa se o runtime pode abrir a composição.
 
 Não se envia todo o catálogo nem todos os schemas ao modelo. A autoria planeja primeiro, busca depois e carrega apenas a lista curta. Assim, ampliar a biblioteca altera dados catalográficos e packages, não a interface da ferramenta.
 
@@ -98,9 +98,9 @@ conjunto precisa admitir package, papel e ajuste. A política pode bloquear
 pode restringir ainda mais. Sem representação adequada, a autoria registra a
 lacuna e não finge equivalência.
 
-## 5. Composição do card
+## 5. Composição da Unidade de estudo
 
-Um card possui:
+Uma Unidade de estudo possui:
 
 - zero ou mais instâncias `content`;
 - no máximo uma instância `response`;
@@ -173,10 +173,10 @@ O autor edita os textos visíveis no próprio resource, não JSON estrutural nem
 uma tela paralela de campos. `editableTargets()` delimita os caminhos permitidos;
 o renderer associa esses caminhos aos rótulos já apresentados e habilita apenas
 contorno, cursor de texto e caret. Entrar no modo de edição não muda a geometria
-do card. Coordenadas, ids relacionais, tipos de nó, índices e textos apenas
+da Unidade. Coordenadas, ids relacionais, tipos de nó, índices e textos apenas
 acessíveis continuam fora da superfície editável.
 
-A seleção visual pode abranger uma instância, um card ou um recorte hierárquico autorizado. A assistência por API recebe:
+A seleção visual pode abranger uma instância, uma Unidade ou um recorte hierárquico autorizado. A assistência por API recebe:
 
 - objetivo e conversa curta;
 - contexto didático de leitura;
@@ -184,7 +184,7 @@ A seleção visual pode abranger uma instância, um card ou um recorte hierárqu
 - lista explícita de caminhos textuais graváveis;
 - versão corrente para desfazer, refazer e restaurar.
 
-Um modelo leve pode propor `edit_text` somente nos alvos autorizados. Uma recomposição estrutural exige o card inteiro e nova validação. O retorno nunca ganha autoridade apenas porque contém JSON bem-formado.
+Um modelo leve pode propor `edit_text` somente nos alvos autorizados. Uma recomposição estrutural exige a Unidade inteira e nova validação. O retorno nunca ganha autoridade apenas porque contém JSON bem-formado.
 
 ## 8. Motores de representação
 
@@ -244,7 +244,7 @@ escolha com alternativas exatas e inequívocas. O package não avalia digitaçã
 expressões regulares, equivalência semântica nem resposta livre por modelo. Sua
 lista cronológica, os rótulos de streams e o texto monoespaçado selecionável
 fornecem uma ordem de leitura acessível; no celular, conteúdo largo usa rolagem
-local sem alterar espaços ou quebrar o fluxo do card.
+local sem alterar espaços ou quebrar o fluxo da Unidade.
 
 Observar e interpretar uma sessão pode preparar reconhecimento, previsão ou
 diagnóstico, mas não substitui operar um ambiente real quando executar a ação é
@@ -253,18 +253,18 @@ externa adequada ou declarar explicitamente a limitação.
 
 ## 10. Leitura sem gramática adicional
 
-O estudante não deve aprender uma legenda inventada pelo AraLearn para só então compreender o objeto. O package segue a notação reconhecida na área e o card introduz termos ou convenções que façam parte do próprio conteúdo. Uma breve instrução de leitura é apropriada quando a disciplina realmente ensina aquela representação; vocabulário de implementação ou instruções óbvias de rolagem não são conteúdo didático.
+O estudante não deve aprender uma legenda inventada pelo AraLearn para só então compreender o objeto. O package segue a notação reconhecida na área e a Unidade introduz termos ou convenções que façam parte do próprio conteúdo. Uma breve instrução de leitura é apropriada quando a disciplina realmente ensina aquela representação; vocabulário de implementação ou instruções óbvias de rolagem não são conteúdo didático.
 
-Teoria e prática admitem densidades diferentes. Um card de teoria apresenta uma transformação conceitual delimitada, sem condensar vários pressupostos. Um card de prática pode conter contexto residente mais rico porque o estudante precisa operar sobre ele; ainda assim, rótulos e relações devem permanecer legíveis.
+Teoria e prática admitem densidades diferentes. Uma Unidade de teoria apresenta uma transformação conceitual delimitada, sem condensar vários pressupostos. Uma Unidade de prática pode conter contexto residente mais rico porque o estudante precisa operar sobre ela; ainda assim, rótulos e relações devem permanecer legíveis.
 
 ## 11. Mobile, orientação e escalabilidade
 
 Os dez packages que usam a camada compartilhada `system-diagrams` apresentam um
 único diagrama dentro de um quadro estável. A orientação continua favorecendo a
 leitura vertical, mas o estudante pode ampliar e mover o próprio desenho no
-card. Em telas táteis, uma pinça com dois dedos altera a escala em torno do ponto
+corpo da Unidade. Em telas táteis, uma pinça com dois dedos altera a escala em torno do ponto
 tocado; quando o conteúdo ampliado ultrapassa o quadro, o arraste percorre os
-dois eixos sem redimensionar o card.
+dois eixos sem redimensionar a Unidade.
 
 Quando houver prática, o controle real da lacuna permanece no ponto semântico
 do diagrama. Ele não é duplicado em painel, legenda ou projeção paralela. A
@@ -275,7 +275,7 @@ Uma faixa superior reservada no quadro apresenta, no canto direito e somente
 por ícones e nomes acessíveis, os comandos de diminuir, aumentar e expandir. Ela
 não é sobreposta ao desenho. A expansão move a mesma viewport para um diálogo cuja
 largura não excede a largura móvel do aplicativo; ali, diminuir e aumentar ficam
-à esquerda e o retorno ao card fica à direita. Não há botão visível de ajuste:
+à esquerda e o retorno à Unidade fica à direita. Não há botão visível de ajuste:
 reduzir até o limite retoma automaticamente o enquadramento global e responsivo.
 Pinça e arraste continuam disponíveis. Escala e posição são estado efêmero do
 renderer: auxiliam a navegação corrente, mas não integram curso, progresso ou
@@ -303,7 +303,7 @@ Um equivalente textual não torna automaticamente um diagrama compreensível a t
 
 ## 13. Validação e auditoria
 
-`validate_card` verifica:
+`validate_study_unit` verifica:
 
 - envelope e slots;
 - `package@version` instalado;
@@ -327,7 +327,7 @@ O renderer real e os testes de navegador verificam geometria e comportamento. Ne
 4. implemente normalização, validação, renderer e acessibilidade;
 5. declare edição e alvos de prática sem expor estrutura;
 6. teste exposição, lacunas independentes, digitação e respostas compatíveis;
-7. teste claro/escuro, 360/390/412 px, textos longos e dados complexos;
+7. teste claro/escuro, 360/390/430 px e desktop, textos longos e dados complexos;
 8. regenere catálogo e packages de autoria;
 9. execute auditoria de resíduos para impedir renderer ou alias antigo;
 10. atualize documentação e evidência de conformidade.

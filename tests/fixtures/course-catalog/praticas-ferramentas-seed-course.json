@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -314,7 +314,7 @@
                     "evita a frase simplista Visual Basic morreu"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-tese-central",
                       "position": 1,
@@ -922,7 +922,7 @@
                     "reconhece propriedade e método em exemplos curtos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vocab-por-que",
                       "position": 1,
@@ -1576,7 +1576,7 @@
                     "identifica VS Code como editor leve"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-ambientes-analogia",
                       "position": 1,
@@ -2152,7 +2152,7 @@
                     "explica o Hello World associado ao clique de um botão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-hello-finalidade",
                       "position": 1,
@@ -2745,7 +2745,7 @@
                     "reconhece que drag and drop é recurso do ambiente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-eventos-modelo-mental",
                       "position": 1,
@@ -3273,7 +3273,7 @@
                     "responde com segurança à pergunta compilada ou interpretada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-classificacao-intro",
                       "position": 1,
@@ -4012,7 +4012,7 @@
                     "rejeita nomes genéricos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-convencoes-intro",
                       "position": 1,
@@ -4545,7 +4545,7 @@
                     "diferencia comentário útil de comentário redundante"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-boas-praticas-intro",
                       "position": 1,
@@ -5323,7 +5323,7 @@
                     "reconhece que documentação não é só comentário no código"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-organizacao-intro",
                       "position": 1,
@@ -5987,7 +5987,7 @@
                     "organiza os tópicos em ordem de apresentação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flow-roteiro-10-min",
                       "position": 1,

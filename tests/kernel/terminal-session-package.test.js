@@ -3,9 +3,9 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
-  renderCardEnvelope,
-  validateCardEnvelope
-} from "../../src/resources/kernel/cardEnvelope.js";
+  renderStudyUnitEnvelope,
+  validateStudyUnitEnvelope
+} from "../../src/resources/kernel/studyUnitEnvelope.js";
 import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
 import {
   RESOURCE_PACKAGE_REGISTRY,
@@ -280,11 +280,11 @@ test("gap de escolha materializa somente dentro da entrada e permanece determin√
     topics: [],
     sources: []
   };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
 
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: response,
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    studyUnitResponse: response,
     responseBlockKey: "terminal-response-block",
     blockKey: "terminal-response-block",
     responseState: { values: [] }

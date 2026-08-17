@@ -92,6 +92,21 @@ test("mapeia lista, leituras e criação sem identidade indireta", () => {
   assert.equal(
     mapAuthoringMcpToolCall("lerCurso", {
       courseId: COURSE_ID,
+      view: "study_units",
+      expectedRevision: 4,
+      scope: { kind: "authoring_part", id: PART_ID },
+      anchorStudyUnitId: "unit-a",
+      direction: "backward",
+      limit: 12,
+      maxBytes: 262144
+    }).path,
+    `/v1/courses/${COURSE_ID}/study-units?expectedRevision=4` +
+      `&scopeKind=authoring_part&scopeId=${PART_ID}&anchorStudyUnitId=unit-a` +
+      "&direction=backward&limit=12&maxBytes=262144"
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
       view: "instructional_plan"
     }).path,
     `/v1/courses/${COURSE_ID}/instructional-plan`
@@ -280,15 +295,17 @@ test("schema MCP anuncia leitura retomável somente com as duas identidades", ()
   assert.ok(schema.properties.view.enum.includes("part_materialization"));
   assert.equal(schema.properties.authoringPartId.pattern, schema.properties.courseId.pattern);
   assert.equal(schema.properties.materializationId.pattern, schema.properties.courseId.pattern);
+  assert.ok(schema.properties.view.enum.includes("study_units"));
+  assert.equal(schema.properties.maxBytes.maximum, 1_500_000);
 });
 
-test("schema MCP anuncia posição 1 para card e 0 para as demais entidades", () => {
+test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais entidades", () => {
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
     .inputSchema.properties.upserts.items;
   assert.equal(schema.properties.position.minimum, 0);
   assert.deepEqual(schema.allOf, [{
     if: {
-      properties: { entityType: { const: "card" } },
+      properties: { entityType: { const: "study_unit" } },
       required: ["entityType"]
     },
     then: { properties: { position: { minimum: 1 } } }

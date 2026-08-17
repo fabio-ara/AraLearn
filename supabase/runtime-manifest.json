@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260817160000",
+  "schemaRevision": "20260817170000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -16,6 +16,7 @@
     "private-person-avatar-v1",
     "self-account-deletion-v1",
     "course-instructional-plan-v1",
-    "course-authoring-part-materialization-v1"
+    "course-authoring-part-materialization-v1",
+    "course-study-unit-inspection-v1"
   ]
 }

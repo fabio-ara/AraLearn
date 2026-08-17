@@ -20,7 +20,7 @@ function exampleInstance(packageId, slot, id) {
   }, slot);
 }
 
-function auditedPracticeCard() {
+function auditedPracticeStudyUnit() {
   return {
     id: "catalog-audit-card",
     position: 1,
@@ -152,15 +152,15 @@ test("inspeção e contratos em lote mantêm limites e ausência item a item", (
 });
 
 test("validação e auditoria separam conteúdo, resposta e feedback sem simular prévia", () => {
-  const card = auditedPracticeCard();
-  const validation = RESOURCE_CATALOG.validateCard(card);
+  const studyUnit = auditedPracticeStudyUnit();
+  const validation = RESOURCE_CATALOG.validateStudyUnit(studyUnit);
   assert.equal(validation.valid, true, validation.errors.join(" "));
   assert.deepEqual(validation.composition.map(({ slot }) => slot), [
     "content", "response", "feedback"
   ]);
 
   const audit = RESOURCE_CATALOG.auditRepresentation({
-    card,
+    studyUnit,
     intent: {
       query: "gráfico estatístico de tendência",
       disciplineIds: ["discipline.statistics"],
@@ -180,17 +180,17 @@ test("validação e auditoria separam conteúdo, resposta e feedback sem simular
     reason: "A auditoria do catálogo não executa layout, hidratação nem captura visual."
   });
 
-  const preview = RESOURCE_CATALOG.previewDescriptor(card);
+  const preview = RESOURCE_CATALOG.previewStudyUnitDescriptor(studyUnit);
   assert.equal(preview.rendered, false);
   assert.equal(preview.structural.valid, true);
   assert.match(preview.reason, /renderer do aplicativo/u);
 });
 
-test("auditoria nunca aprova semanticamente um card estruturalmente inválido", () => {
-  const card = auditedPracticeCard();
-  card.content[0].data = {};
+test("auditoria nunca aprova semanticamente uma Unidade de estudo estruturalmente inválida", () => {
+  const studyUnit = auditedPracticeStudyUnit();
+  studyUnit.content[0].data = {};
   const audit = RESOURCE_CATALOG.auditRepresentation({
-    card,
+    studyUnit,
     intent: {
       structureIds: ["structure.quantitative_series"],
       taskOperationIds: ["task_operation.compare"]
@@ -200,5 +200,5 @@ test("auditoria nunca aprova semanticamente um card estruturalmente inválido", 
   assert.equal(audit.overallFit, "substitute");
   assert.equal(audit.selections[0].fit, "substitute");
   assert.ok(audit.selections[0].missing.includes("contract:content"));
-  assert.match(audit.warnings[0], /estruturalmente inválido/u);
+  assert.match(audit.warnings[0], /estruturalmente inválida/u);
 });

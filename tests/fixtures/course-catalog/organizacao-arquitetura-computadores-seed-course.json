@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -188,7 +188,7 @@
                     "explica por que processar localmente pode preservar privacidade e funcionar offline"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-01-01-problema-concreto",
                       "position": 1,
@@ -596,7 +596,7 @@
                     "usa um exemplo concreto para explicar o fluxo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-exemplo-rag-pdf",
                       "position": 1,
@@ -1060,7 +1060,7 @@
                     "relaciona token e TTFT"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-03-01-embedding-explicacao",
                       "position": 1,
@@ -1481,7 +1481,7 @@
                     "interpreta TTFT e energia como somas aproximadas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-formula-cosseno-ponte",
                       "position": 1,
@@ -1981,7 +1981,7 @@
                     "ordena corretamente as etapas do pipeline"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-comparacao-metodos",
                       "position": 1,
@@ -2422,7 +2422,7 @@
                     "interpreta c* e memória aproximada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-06-01-ecovector-ideia",
                       "position": 1,
@@ -2855,7 +2855,7 @@
                     "explica por que menos tokens reduzem trabalho do modelo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-07-01-scr-ideia",
                       "position": 1,
@@ -3304,7 +3304,7 @@
                     "evita afirmações absolutas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-08-01-arquitetura-papeis",
                       "position": 1,
@@ -3719,7 +3719,7 @@
                     "evita exageros"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-09-02-fluxo-slides",
                       "position": 1,
@@ -4280,7 +4280,7 @@
                     "distingue problema conceitual de problema de engenharia"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m1-1-tese",
                       "position": 1,
@@ -4612,7 +4612,7 @@
                     "reconhece arquitetura híbrida como condição realista"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m2-1-tres-modos",
                       "position": 1,
@@ -5015,7 +5015,7 @@
                     "interpreta |ψ⟩ = α|0⟩ + β|1⟩ como combinação de estados básicos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m3-1-bit-qubit",
                       "position": 1,
@@ -5297,7 +5297,7 @@
                     "identifica que a medição produz 0 ou 1"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m4-1-regra-normalizacao",
                       "position": 1,
@@ -5643,7 +5643,7 @@
                     "reconhece que portas transformam amplitudes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m5-1-portas-papeis",
                       "position": 1,
@@ -6022,7 +6022,7 @@
                     "reconhece que a saída medida é clássica"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m6-1-fluxo-geral",
                       "position": 1,
@@ -6444,7 +6444,7 @@
                     "relaciona modelo abstrato e realização física"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m7-1-arvore-modelos",
                       "position": 1,
@@ -6856,7 +6856,7 @@
                     "entende Shor como exemplo conceitual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m8-1-crescimentos",
                       "position": 1,
@@ -7173,7 +7173,7 @@
                     "reconhece por que a pergunta importa para computação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m9-1-interpretacoes",
                       "position": 1,
@@ -7535,7 +7535,7 @@
                     "entende por que a base preferida é problema para certas explicações"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m10-1-medicao-modelos",
                       "position": 1,
@@ -8006,7 +8006,7 @@
                     "identifica que emaranhamento é importante, mas não basta isoladamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m11-1-cautela",
                       "position": 1,
@@ -8359,7 +8359,7 @@
                     "sintetiza que arquitetura depende do suporte físico da informação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m12-1-limites",
                       "position": 1,
@@ -9167,7 +9167,7 @@
                     "calcula valor decimal de binário pequeno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-notacao-regra-base",
                       "position": 1,
@@ -9560,7 +9560,7 @@
                     "evita ler restos na ordem errada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-dec-bin-fluxo-13",
                       "position": 1,
@@ -10138,7 +10138,7 @@
                     "converte bytes binários para hexadecimal"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-hex-regra",
                       "position": 1,
@@ -10624,7 +10624,7 @@
                     "calcula OR em linhas da tabela verdade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-or-regra",
                       "position": 1,
@@ -11033,7 +11033,7 @@
                     "reconhece dados e instruções na memória"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-cpu-regra",
                       "position": 1,
@@ -11459,7 +11459,7 @@
                     "diferencia IR, UC e registradores"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-componentes-mapa",
                       "position": 1,
@@ -12107,7 +12107,7 @@
                     "associa ARM/RISC à eficiência energética"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-risc-cisc-regra",
                       "position": 1,
@@ -12560,7 +12560,7 @@
                     "identifica RAW"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-paralelismo-regra",
                       "position": 1,
@@ -13021,7 +13021,7 @@
                     "associa multicore a MIMD"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flynn-regra",
                       "position": 1,
@@ -13551,7 +13551,7 @@
                     "associa PCIe a GPU, rede rápida e SSD NVMe"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-hw-regra",
                       "position": 1,

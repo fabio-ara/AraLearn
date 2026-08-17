@@ -11,11 +11,13 @@ import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 const APPLICATION_ORIGIN = "http://127.0.0.1:4182";
 
 function readLocalSupabaseStatus() {
-  const executable = process.platform === "win32" ? "npx.cmd" : "npx";
+  const windows = process.platform === "win32";
   try {
     const output = execFileSync(
-      executable,
-      ["--yes", "supabase@2.109.1", "status", "-o", "json"],
+      windows ? (process.env.ComSpec || "cmd.exe") : "npx",
+      windows
+        ? ["/d", "/s", "/c", "npx --yes supabase@2.109.1 status -o json"]
+        : ["--yes", "supabase@2.109.1", "status", "-o", "json"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     );
     const objectStart = output.indexOf("{");
@@ -279,7 +281,7 @@ try {
   assert.equal(partChange.data.planVersion, 3);
 
   const compositionRows = flattenCourseDocument({
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [{
       id: courseId,
       title: "Curso vivo de smoke",
@@ -303,7 +305,7 @@ try {
             goal: "Validar a composição.",
             role: "explain",
             dependsOn: [], covers: [], checks: [], errors: [],
-            cards: [{
+            studyUnits: [{
               id: "study-unit-smoke",
               position: 1,
               title: "Unidade canônica",
@@ -316,12 +318,29 @@ try {
               }],
               response: null,
               feedback: [], topics: [], sources: [],
+            }, {
+              id: "study-unit-smoke-2",
+              position: 2,
+              title: "Segunda Unidade canônica",
+              role: "theory",
+              content: [{
+                id: "content-smoke-2",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "Segunda página validada sem recompor o Curso." },
+              }],
+              response: null,
+              feedback: [], topics: [], sources: [],
             }],
           }],
         }],
       }],
     }],
   }).rows;
+  assert.equal(
+    compositionRows.some(({ entityType }) => entityType === "study_unit"),
+    true,
+  );
   const composition = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
@@ -331,7 +350,7 @@ try {
     deletes: [],
   }, ownerToken);
   assert.equal(composition.data.revision, 4);
-  assert.equal(composition.data.upsertedCount, 4);
+  assert.equal(composition.data.upsertedCount, 5);
 
   const assignment = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
@@ -440,6 +459,50 @@ try {
   assert.equal(ownerPlan.data.plan.parts[0].id, authoringPartId);
   assert.equal(ownerPlan.data.plan.parts[0].progress.state, "materialized");
 
+  const firstInspectionPage = await courseAction("lerCurso", {
+    courseId,
+    view: "study_units",
+    expectedRevision: 8,
+    scope: { kind: "course" },
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536,
+  }, ownerToken);
+  assert.equal(
+    firstInspectionPage.data.contract,
+    "aralearn.course-study-unit-inspection-page.v1",
+  );
+  assert.equal(firstInspectionPage.data.courseRevision, 8);
+  assert.equal(firstInspectionPage.data.totalCount, 2);
+  assert.equal(firstInspectionPage.data.items.length, 1);
+  assert.equal(
+    firstInspectionPage.data.items[0].studyUnit.id,
+    "study-unit-smoke",
+  );
+  assert.deepEqual(firstInspectionPage.data.nextCursor, {
+    studyUnitId: "study-unit-smoke",
+  });
+  assert.equal(firstInspectionPage.data.hasMore, true);
+  assert.ok(firstInspectionPage.data.pageBytes <= 65_536);
+
+  const secondInspectionPage = await courseAction("lerCurso", {
+    courseId,
+    view: "study_units",
+    expectedRevision: 8,
+    scope: { kind: "course" },
+    cursor: firstInspectionPage.data.nextCursor,
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536,
+  }, ownerToken);
+  assert.equal(secondInspectionPage.data.items.length, 1);
+  assert.equal(
+    secondInspectionPage.data.items[0].studyUnit.id,
+    "study-unit-smoke-2",
+  );
+  assert.equal(secondInspectionPage.data.hasPrevious, true);
+  assert.equal(secondInspectionPage.data.hasMore, false);
+
   const learnerBeforeGrant = await rpc("list_courses_v1", {
     p_query: null,
     p_limit: 24,
@@ -479,6 +542,21 @@ try {
     p_before_id: null,
   }, learnerToken);
   assert.equal(itemForCourse(learnerAuthoringCourses, courseId), null);
+  assertDenied(
+    await request("/functions/v1/aralearn-course-api/app/lerCurso", {
+      method: "POST",
+      token: learnerToken,
+      body: {
+        courseId,
+        view: "study_units",
+        expectedRevision: 8,
+        limit: 1,
+        maxBytes: 65_536,
+      },
+      origin: APPLICATION_ORIGIN,
+    }),
+    "Curso compartilhado não entra na Inspeção autoral",
+  );
 
   const sharedCourse = await rpc("get_course_v1", {
     p_course_id: courseId,

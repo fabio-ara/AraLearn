@@ -5,7 +5,7 @@ import {
 import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
 import { findCourse } from "./CourseStudyNavigation.js";
 
-const PROJECT_CONTRACT = "aralearn.library.v1";
+const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
 const MAX_LIST_PAGES = 100;
 const REVIEW_PAGE_SIZE = 20;
 const REVIEW_PAGE_CACHE_KEY = "course.v1.review-page";
@@ -74,7 +74,7 @@ export class CourseStudyRepository {
     this.api = api;
     this.cache = cache;
     this.clock = clock;
-    this.project = { contract: PROJECT_CONTRACT, courses: [] };
+    this.project = { contract: COURSE_DOCUMENT_CONTRACT, courses: [] };
     this.personalByCourseId = new Map();
     this.loadedCourseById = new Map();
     this.courseList = [];
@@ -141,7 +141,7 @@ export class CourseStudyRepository {
 
   #rebuildProject() {
     this.project = {
-      contract: PROJECT_CONTRACT,
+      contract: COURSE_DOCUMENT_CONTRACT,
       courses: this.courseList.map((descriptor) => {
         const loaded = this.loadedCourseById.get(descriptor.courseId);
         return clone(loaded?.revision === descriptor.revision
@@ -444,4 +444,4 @@ export class CourseStudyRepository {
   }
 }
 
-export { PROJECT_CONTRACT as COURSE_STUDY_PROJECT_CONTRACT };
+export { COURSE_DOCUMENT_CONTRACT as COURSE_STUDY_DOCUMENT_CONTRACT };

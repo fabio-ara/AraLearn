@@ -13,7 +13,7 @@ export const paragraphPackage = Object.freeze({
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.ordering"]),
     limitations: Object.freeze([
       "Não representa relações espaciais ou tabulares.",
-      "Não deve condensar conceitos independentes para reduzir cards."
+      "Não deve condensar conceitos independentes para reduzir Unidades de estudo."
     ]),
     accessibility: "O próprio texto constitui a alternativa não visual."
   }),
@@ -24,7 +24,7 @@ export const paragraphPackage = Object.freeze({
     rules: Object.freeze([
       "Situe termos novos antes de depender deles.",
       "Use crases somente para a unidade literal completa intencionada.",
-      "Separe conceitos independentes em outras instâncias ou cards."
+      "Separe conceitos independentes em outras instâncias ou Unidades de estudo."
     ]),
     example: Object.freeze({
       text: "O protocolo define regras para que duas partes troquem mensagens de forma previsível.",

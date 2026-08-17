@@ -25,7 +25,8 @@ estado pessoal: progresso, marcas para rever e observações.
 ### Autoria
 
 Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
-e editar planejamento e Partes, inspecionar composição, copiar um pedido de
+e editar planejamento e Partes, percorrer a composição em uma sequência
+vertical, copiar um pedido de
 materialização para o chat conectado e gerir acesso. O MCP autoral possui a
 mesma restrição de propriedade e opera o mesmo estado persistido.
 
@@ -188,12 +189,26 @@ tentativa, não altera a composição e não muda o status da Parte. Os estados
 Planejada, Em materialização, Atenção necessária, Parcial e Materializada são
 derivados de vínculos, Unidades, tentativas e etapas persistidas pelo serviço.
 
-## Consultar Estrutura e Conteúdo
+## Consultar Estrutura e Inspeção
 
-**Estrutura** pagina Módulos, Lições e Microssequências. **Conteúdo** pagina
-Unidades já materializadas. Essas áreas são, nesta revisão, superfícies de
-inspeção. A edição contextual e a rolagem vertical contínua ainda não foram
-conectadas ao runtime canônico.
+**Estrutura** pagina Módulos, Lições e Microssequências. **Inspeção** apresenta
+as Unidades de estudo em uma sequência vertical fiel ao renderer de Estudo,
+sem ativar respostas nem edição. Escolha o Curso inteiro, uma Parte, as
+Unidades sem Parte, um Módulo, uma Lição ou uma Microssequência; cada troca de
+escopo volta ao início daquele recorte.
+
+Uma página traz normalmente 12 Unidades, e a interface mantém no DOM no máximo
+36 por vez. Ao se aproximar de uma extremidade, o aplicativo busca a página
+anterior ou seguinte e substitui trechos distantes por espaçadores, preservando
+a posição visual. Um link profundo abre o escopo correto e inclui a Unidade
+ancorada na primeira página. A posição corrente é local ao dispositivo; ao
+reabrir o Curso, o aplicativo tenta restaurá-la sob a mesma revisão e se
+reposiciona pela Unidade quando a revisão mudou.
+
+Sem conexão, a Inspeção só reutiliza a página exata já guardada para a mesma
+revisão, escopo, âncora ou cursor, direção e limites. Ela a identifica como
+offline ou desatualizada e não inventa uma página aproximada. Revogação de autoridade
+purga esse cache na próxima validação online.
 
 ## Conceder acesso
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+
+import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 
 const projectUrl = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/u, "");
 const accessToken = String(
@@ -99,177 +100,130 @@ assert.equal(initialized.capabilities.tools.listChanged, false);
 
 await call("ping");
 const listed = await call("tools/list");
-assert.ok(Array.isArray(listed.tools) && listed.tools.length >= 10);
-assert.ok(listed.tools.length <= 30, "A integração do ChatGPT aceita no máximo 30 operações.");
+assert.deepEqual(listed.tools.map(({ name }) => name), [
+  "listarCursos",
+  "lerCurso",
+  "criarCurso",
+  "alterarCurso",
+  "gerirPessoas",
+  "consultarComponentesDidaticos"
+]);
 assert.ok(listed.tools.every((entry) => entry.securitySchemes?.[0]?.type === "oauth2"));
-assert.equal(listed.tools.some((entry) => entry.name === "concluirCurso"), false);
 assert.equal(
-  listed.tools.some((entry) => entry.name === "inserirEntidadeNoWorkspace"),
+  listed.tools.some(({ name }) =>
+    /workspace|trilha|cole(?:ç|c)[aã]o|publica(?:ç|c)[aã]o/iu.test(name)
+  ),
   false
 );
-for (const expected of [
-  "criarEstruturaNoWorkspace",
-  "salvarCardsNaMicrossequencia",
-  "reorganizarWorkspace",
-  "excluirDoWorkspace"
-]) {
-  assert.equal(
-    listed.tools.some((entry) => entry.name === expected),
-    true,
-    `Ferramenta incremental ausente: ${expected}.`
-  );
-}
 
-const fixture = JSON.parse(await readFile(
-  new URL("../../tests/fixtures/package/project-minimal.json", import.meta.url),
-  "utf8"
-));
-const workspaceRequestId = randomUUID();
-let workspaceId = null;
-let workspaceRevision = null;
-try {
+const profile = await tool("gerirPessoas", { operation: "read_profile" });
+assert.match(String(profile.userId || ""), /^[0-9a-f-]{36}$/iu);
+const componentSearch = await tool("consultarComponentesDidaticos", {
+  operation: "search",
+  query: "explicação progressiva em prosa",
+  slot: "content",
+  limit: 4
+});
+assert.equal(componentSearch.contract, "aralearn.instructional-component-library.v1");
+assert.equal(
+  componentSearch.result.candidates.some(
+    ({ packageId }) => packageId === "aralearn.resource.paragraph"
+  ),
+  true
+);
+
+if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
   const createArguments = {
-    requestId: workspaceRequestId,
-    title: `Smoke MCP ${new Date().toISOString()}`
+    requestId: randomUUID(),
+    title: `Smoke MCP ${new Date().toISOString()}`,
+    objective: "Validar o contrato hospedado corrente sem conservar dados de teste."
   };
-  const created = await tool("criarWorkspaceDeAutoria", createArguments);
-  workspaceId = created.workspaceId;
-  workspaceRevision = created.revision;
-  const replayed = await tool("criarWorkspaceDeAutoria", createArguments);
-  assert.equal(replayed.workspaceId, workspaceId, "Retry não recuperou o workspace.");
+  const created = await tool("criarCurso", createArguments);
+  const replayed = await tool("criarCurso", createArguments);
+  assert.equal(replayed.courseId, created.courseId, "Retry não recuperou o Curso.");
+  assert.equal(replayed.idempotent, true);
 
-  const course = fixture.courses[0];
-  const moduleValue = course.modules[0];
-  const lesson = moduleValue.lessons[0];
-  const microsequence = lesson.microsequences[0];
-  const microsequencePath = [
-    course.id,
-    moduleValue.id,
-    lesson.id,
-    microsequence.id
-  ];
-  const structured = await tool("criarEstruturaNoWorkspace", {
-    requestId: randomUUID(),
-    workspaceId,
-    expectedRevision: created.revision,
-    parts: [
-      {
-        entityType: "course",
-        id: course.id,
-        title: course.title,
-        goal: course.goal
-      },
-      {
-        entityType: "module",
-        parentPath: [course.id],
-        id: moduleValue.id,
-        title: moduleValue.title,
-        goal: moduleValue.guide.goal,
-        include: moduleValue.guide.include,
-        exclude: moduleValue.guide.exclude,
-        notation: moduleValue.guide.notation,
-        avoid: moduleValue.guide.avoid
-      },
-      {
-        entityType: "lesson",
-        parentPath: [course.id, moduleValue.id],
-        id: lesson.id,
-        title: lesson.title,
-        goal: lesson.guide.goal,
-        include: lesson.guide.include,
-        exclude: lesson.guide.exclude,
-        notation: lesson.guide.notation,
-        avoid: lesson.guide.avoid,
-        topics: lesson.topics
-      },
-      {
-        entityType: "microsequence",
-        parentPath: [course.id, moduleValue.id, lesson.id],
-        id: microsequence.id,
-        title: microsequence.title,
-        goal: microsequence.goal,
-        role: microsequence.role,
-        dependsOn: microsequence.dependsOn,
-        covers: microsequence.covers,
-        checks: microsequence.checks
-      }
-    ]
-  });
-  workspaceRevision = structured.revision;
-  const packageCatalog = await tool("consultarBibliotecaDeResources", {
-    operation: "search",
-    query: "explicação progressiva em prosa",
-    slot: "content",
-    structureIds: ["structure.prose"],
-    limit: 4
-  });
-  assert.equal(
-    packageCatalog.result.candidates.some(
-      ({ packageId }) => packageId === "aralearn.resource.paragraph"
-    ),
-    true
-  );
-  const paragraphContract = await tool("consultarBibliotecaDeResources", {
-    operation: "contracts",
-    packages: [{
-      packageId: "aralearn.resource.paragraph",
-      version: "1.0.0"
+  const compositionRows = flattenCourseDocument({
+    contract: "aralearn.course.v1",
+    courses: [{
+      id: created.courseId,
+      title: createArguments.title,
+      goal: createArguments.objective,
+      modules: [{
+        id: "module-hosted-smoke",
+        title: "Módulo hospedado",
+        guide: {
+          goal: "Validar o módulo.", include: ["Curso"], exclude: [], notation: [], avoid: []
+        },
+        lessons: [{
+          id: "lesson-hosted-smoke",
+          title: "Lição hospedada",
+          guide: {
+            goal: "Validar a lição.", include: ["Curso"], exclude: [], notation: [], avoid: []
+          },
+          topics: [],
+          microsequences: [{
+            id: "microsequence-hosted-smoke",
+            title: "Microssequência hospedada",
+            goal: "Validar a paginação owner-only.",
+            role: "explain",
+            dependsOn: [], covers: [], checks: [], errors: [],
+            studyUnits: [1, 2].map((position) => ({
+              id: `study-unit-hosted-smoke-${position}`,
+              position,
+              title: `Unidade hospedada ${position}`,
+              role: "theory",
+              content: [{
+                id: `content-hosted-smoke-${position}`,
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: `Conteúdo hospedado ${position}.` }
+              }],
+              response: null,
+              feedback: [],
+              topics: [],
+              sources: []
+            }))
+          }]
+        }]
+      }]
     }]
-  });
-  assert.equal(
-    paragraphContract.result.items[0].definition.manifest.id,
-    "aralearn.resource.paragraph"
-  );
-  const authoringCards = structuredClone(microsequence.cards);
-  const materialized = await tool("salvarCardsNaMicrossequencia", {
+  }).rows;
+  assert.equal(compositionRows.some(({ entityType }) => entityType === "study_unit"), true);
+  const changed = await tool("alterarCurso", {
     requestId: randomUUID(),
-    workspaceId,
-    expectedRevision: structured.revision,
-    microsequencePath,
-    mode: "replace",
-    cardsJson: JSON.stringify(authoringCards)
+    courseId: created.courseId,
+    expectedRevision: created.revision,
+    operation: "commit_course_composition",
+    upserts: compositionRows,
+    deletes: []
   });
-  workspaceRevision = materialized.revision;
-  const renamed = await tool("reorganizarWorkspace", {
-    operation: "rename_entity",
-    requestId: randomUUID(),
-    workspaceId,
-    expectedRevision: materialized.revision,
-    entityType: "course",
-    entityPath: [course.id],
-    title: `${course.title} — smoke`
+  assert.equal(changed.revision, 2);
+
+  const firstPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "study_units",
+    expectedRevision: changed.revision,
+    scope: { kind: "course" },
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536
   });
-  workspaceRevision = renamed.revision;
-  const outline = await tool("lerWorkspaceDeAutoria", {
-    workspaceId,
-    view: "outline"
+  assert.equal(firstPage.contract, "aralearn.course-study-unit-inspection-page.v1");
+  assert.equal(firstPage.items[0].studyUnit.id, "study-unit-hosted-smoke-1");
+  const secondPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "study_units",
+    expectedRevision: changed.revision,
+    scope: { kind: "course" },
+    cursor: firstPage.nextCursor,
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536
   });
-  assert.equal(outline.revision, renamed.revision);
-  assert.deepEqual(outline.content.courses[0].entityPath, [course.id]);
-  const cards = await tool("listarCardsDaMicrossequencia", {
-    workspaceId,
-    microsequencePath,
-    limit: 20
-  });
-  assert.equal(cards.items.length, authoringCards.length);
-  const microtheories = await tool("revisarMicroteoriasDoWorkspace", {
-    workspaceId,
-    entityPath: microsequencePath
-  });
-  assert.ok(
-    microtheories.content.courses[0].modules[0].lessons[0].microtheories.length > 0
-  );
-} finally {
-  if (workspaceId) {
-    await tool("excluirDoWorkspace", {
-      operation: "delete_workspace",
-      requestId: randomUUID(),
-      workspaceId,
-      expectedRevision: workspaceRevision
-    });
-  }
+  assert.equal(secondPage.items[0].studyUnit.id, "study-unit-hosted-smoke-2");
 }
 
 console.log(
-  "Smoke MCP hospedado v5: OAuth, replay, autoria incremental, leitura e limpeza aprovados."
+  "Smoke MCP hospedado: OAuth, ferramentas correntes, componentes e Inspeção aprovados."
 );

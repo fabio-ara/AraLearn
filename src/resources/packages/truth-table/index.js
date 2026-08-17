@@ -12,7 +12,7 @@ export const truthTablePackage = Object.freeze({
     taskOperations: Object.freeze(["evaluate-proposition", "compare-valuations", "identify-tautology", "inspect-equivalence"]),
     academic: academicProfile({ domains: ["lógica proposicional", "matemática discreta", "circuitos digitais"], knowledgeObjects: ["valoração", "fórmula proposicional", "coluna de resultado"], conventions: ["V e F por valoração", "uma linha por combinação", "subfórmulas em colunas quando necessárias"], appropriateWhen: ["é preciso observar o valor de uma fórmula em diferentes valorações"], avoidWhen: ["a tarefa é apenas definir um conectivo em prosa"], technologies: ["tabela HTML semântica"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
-    limitations: Object.freeze(["Use no máximo cinco variáveis por card móvel.", "Explique os conectivos antes da primeira tabela densa."]),
+    limitations: Object.freeze(["Use no máximo cinco variáveis por Unidade de estudo móvel.", "Explique os conectivos antes da primeira tabela densa."]),
     accessibility: "Cabeçalhos identificam variáveis, subfórmulas e resultado; cada valoração é uma linha."
   }),
   authoringContract: Object.freeze({

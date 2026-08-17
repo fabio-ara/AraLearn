@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -61,7 +61,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-1-exposition",
                       "position": 1,
@@ -226,7 +226,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-2-exposition",
                       "position": 1,
@@ -391,7 +391,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-3-exposition",
                       "position": 1,
@@ -652,7 +652,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-4-exposition",
                       "position": 1,
@@ -943,7 +943,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-5-exposition",
                       "position": 1,
@@ -1557,7 +1557,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-6-exposition",
                       "position": 1,
@@ -1877,7 +1877,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-7-exposition",
                       "position": 1,
@@ -2165,7 +2165,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-8-exposition",
                       "position": 1,
@@ -2381,7 +2381,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-9-exposition",
                       "position": 1,
@@ -2626,7 +2626,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-10-exposition",
                       "position": 1,
@@ -2905,7 +2905,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-11-exposition",
                       "position": 1,
@@ -3108,7 +3108,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-12-exposition",
                       "position": 1,
@@ -3341,7 +3341,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-13-exposition",
                       "position": 1,
@@ -3856,7 +3856,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-14-exposition",
                       "position": 1,
@@ -4182,7 +4182,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-15-exposition",
                       "position": 1,
@@ -4627,7 +4627,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-16-exposition",
                       "position": 1,
@@ -5054,7 +5054,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-17-exposition",
                       "position": 1,
@@ -5497,7 +5497,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-18-exposition",
                       "position": 1,
@@ -5874,7 +5874,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-19-exposition",
                       "position": 1,
@@ -6443,7 +6443,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-20-exposition",
                       "position": 1,
@@ -6784,7 +6784,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-21-exposition",
                       "position": 1,
@@ -7172,7 +7172,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-22-exposition",
                       "position": 1,
@@ -7527,7 +7527,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-23-exposition",
                       "position": 1,
@@ -7877,7 +7877,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-24-exposition",
                       "position": 1,
@@ -8279,7 +8279,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-25-exposition",
                       "position": 1,
@@ -8622,7 +8622,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-26-exposition",
                       "position": 1,
@@ -9050,7 +9050,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-27-exposition",
                       "position": 1,
@@ -9435,7 +9435,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-28-exposition",
                       "position": 1,
@@ -9739,7 +9739,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-29-exposition",
                       "position": 1,
@@ -9924,7 +9924,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "choice-card",
                       "position": 1,
@@ -10018,7 +10018,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "gap-choice-card",
                       "position": 1,
@@ -10162,7 +10162,7 @@
                     "Play como confirmação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ordering-card",
                       "position": 1,

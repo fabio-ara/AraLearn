@@ -68,48 +68,45 @@ class FakeWindow {
   }
 }
 
-function entityFixture() {
-  return [
-    {
-      entityType: "module",
-      entityId: "module-a",
-      parentType: null,
-      parentId: null,
-      position: 0,
-      version: 1,
-      content: { title: "Base" }
+function outlineFixture(courseId = COURSE_ID) {
+  return {
+    contract: "aralearn.course.v1",
+    courseId,
+    title: "Fundamentos",
+    goal: "Compreender relações essenciais.",
+    revision: 5,
+    ownership: "owned",
+    canEdit: true,
+    counts: {
+      moduleCount: 1,
+      lessonCount: 1,
+      topicCount: 0,
+      microsequenceCount: 1,
+      studyUnitCount: 1
     },
-    {
-      entityType: "lesson",
-      entityId: "lesson-a",
-      parentType: "module",
-      parentId: "module-a",
-      position: 0,
-      version: 1,
-      content: { title: "Relações" }
+    createdAt: "2026-08-17T09:00:00Z",
+    updatedAt: "2026-08-17T10:00:00Z",
+    outline: {
+      courseId,
+      title: "Fundamentos",
+      goal: "Compreender relações essenciais.",
+      modules: [{
+        id: "module-a",
+        title: "Base",
+        lessons: [{
+          id: "lesson-a",
+          title: "Relações",
+          topics: [],
+          microsequences: [{
+            id: "micro-a",
+            title: "Primeiro caso",
+            studyUnitCount: 1
+          }]
+        }]
+      }]
     },
-    {
-      entityType: "microsequence",
-      entityId: "micro-a",
-      parentType: "lesson",
-      parentId: "lesson-a",
-      position: 0,
-      version: 1,
-      content: { title: "Primeiro caso" }
-    },
-    {
-      entityType: "card",
-      entityId: "unit-a",
-      parentType: "microsequence",
-      parentId: "micro-a",
-      position: 1,
-      version: 1,
-      content: {
-        title: "Exemplo guiado",
-        content: [{ data: { text: "Compare os dois valores." } }]
-      }
-    }
-  ];
+    deepLink: `#/authoring/courses/${courseId}?section=structure`
+  };
 }
 
 function listPage(overrides = {}) {
@@ -346,15 +343,17 @@ function controllerFixture(overrides = {}) {
         canEdit: true
       };
     },
-    async getCourseEntities(courseId) {
-      return {
-        contract: "aralearn.course-entities.v1",
-        courseId,
-        revision: 5,
-        items: entityFixture(),
-        hasMore: false,
-        nextCursor: null
-      };
+    async loadAuthoringOutline(courseId) {
+      return outlineFixture(courseId);
+    },
+    async loadAuthoringStudyUnits() {
+      throw new Error("A raiz falsa não monta a sequência de Inspeção.");
+    },
+    async loadAuthoringInspectionPosition() {
+      return null;
+    },
+    async saveAuthoringInspectionPosition() {
+      return undefined;
     },
     async listCourseAccess(courseId) {
       return {
@@ -394,23 +393,6 @@ function controllerFixture(overrides = {}) {
     }
   };
   Object.assign(controller, overrides);
-  controller.loadCourseDocument ??= async function loadCourseDocument(courseId, {
-    entityPageSize = 500
-  } = {}) {
-    const course = await this.getCourse(courseId);
-    const rows = [];
-    let cursor = null;
-    do {
-      const page = await this.getCourseEntities(courseId, {
-        revision: course.revision,
-        cursor,
-        limit: entityPageSize
-      });
-      rows.push(...page.items);
-      cursor = page.hasMore ? page.nextCursor : null;
-    } while (cursor);
-    return { course, rows, document: { courses: [] }, offline: false, stale: false };
-  };
   return controller;
 }
 
@@ -439,7 +421,7 @@ test("lista abre diretamente Cursos concretos com destino canônico em um toque"
   assert.doesNotMatch(root.innerHTML, /Compartilhado|Somente leitura/u);
   assert.match(
     root.innerHTML,
-    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "structure" }).replace("?", "\\?"), "u")
+    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "inspection" }).replace("?", "\\?"), "u")
   );
   assert.match(root.innerHTML, /<svg/u);
   assert.doesNotMatch(root.innerHTML, /<textarea|Workspace|Trilha|Coleção|publicação/iu);
@@ -512,14 +494,14 @@ test("paginação da lista encaminha o cursor opaco e acrescenta a página segui
   assert.doesNotMatch(root.innerHTML, /data-course-authoring-action="load-more-courses"/u);
 });
 
-test("deep link carrega cabeçalho e entidades da mesma revisão e alterna seção no hashchange", async () => {
+test("Inspeção carrega só cabeçalho; Estrutura usa outline sem composição paralela", async () => {
   const calls = [];
   const root = new FakeRoot();
   const windowValue = new FakeWindow();
   const locationValue = {
     pathname: "/",
     search: "?theme=dark",
-    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "inspection" })
   };
   const surface = createCourseAuthoringSurface({
     root,
@@ -533,15 +515,9 @@ test("deep link carrega cabeçalho e entidades da mesma revisão e alterna seç�
           revision: 5
         };
       },
-      async getCourseEntities(courseId, options) {
-        calls.push(["entities", courseId, options]);
-        return {
-          courseId,
-          revision: 5,
-          items: entityFixture(),
-          hasMore: false,
-          nextCursor: null
-        };
+      async loadAuthoringOutline(courseId) {
+        calls.push(["outline", courseId]);
+        return outlineFixture(courseId);
       }
     }),
     locationValue,
@@ -550,24 +526,23 @@ test("deep link carrega cabeçalho e entidades da mesma revisão e alterna seç�
   });
 
   assert.equal(await surface.open(), true);
-  assert.deepEqual(calls, [
-    ["course", COURSE_ID],
-    ["entities", COURSE_ID, { revision: 5, cursor: null, limit: 500 }]
-  ]);
-  assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Conteúdo<\/span>/u);
-  assert.match(root.innerHTML, /Exemplo guiado/u);
-  assert.match(root.innerHTML, /Base · Relações · Primeiro caso/u);
+  assert.deepEqual(calls, [["course", COURSE_ID]]);
+  assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Inspeção<\/span>/u);
+  assert.match(root.innerHTML, /data-course-inspection-host/u);
+  assert.doesNotMatch(root.innerHTML, /Exemplo guiado/u);
 
   locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "structure" });
   windowValue.dispatch("hashchange");
-  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Estrutura<\/span>/u);
-  assert.equal(calls.length, 2);
+  assert.match(root.innerHTML, /Base · Relações/u);
+  assert.deepEqual(calls, [["course", COURSE_ID], ["outline", COURSE_ID]]);
 });
 
 test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segunda hierarquia", async () => {
   const root = new FakeRoot();
-  let entityReads = 0;
+  let outlineReads = 0;
+  let inspectionReads = 0;
   let materializationReads = 0;
   const basePlan = authoringPlanFixture();
   basePlan.recentActivity.unshift({
@@ -607,9 +582,13 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
           }
         };
       },
-      async getCourseEntities() {
-        entityReads += 1;
+      async loadAuthoringOutline() {
+        outlineReads += 1;
         throw new Error("Planejamento não deve carregar a composição do Curso.");
+      },
+      async loadAuthoringStudyUnits() {
+        inspectionReads += 1;
+        throw new Error("Planejamento não deve carregar Unidades de estudo.");
       },
       async loadPartMaterialization() {
         materializationReads += 1;
@@ -625,7 +604,8 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   });
 
   assert.equal(await surface.open(), true);
-  assert.equal(entityReads, 0);
+  assert.equal(outlineReads, 0);
+  assert.equal(inspectionReads, 0);
   assert.equal(materializationReads, 0);
   assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Planejamento<\/span>/u);
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
@@ -1219,27 +1199,20 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
 test("atribui microssequência existente por escolha legível somente quando solicitado", async () => {
   const root = new FakeRoot();
   const calls = [];
-  let documentReads = 0;
+  let outlineReads = 0;
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
-      async loadCourseDocument(courseId) {
-        documentReads += 1;
-        return {
-          course: await this.getCourse(courseId),
-          rows: [...entityFixture(), {
-            entityType: "microsequence",
-            entityId: "micro-c",
-            parentType: "lesson",
-            parentId: "lesson-a",
-            position: 1,
-            version: 1,
-            content: { title: "Terceiro caso" }
-          }],
-          document: { courses: [] },
-          offline: false,
-          stale: false
-        };
+      async loadAuthoringOutline(courseId) {
+        outlineReads += 1;
+        const value = structuredClone(outlineFixture(courseId));
+        value.counts.microsequenceCount = 2;
+        value.outline.modules[0].lessons[0].microsequences.push({
+          id: "micro-c",
+          title: "Terceiro caso",
+          studyUnitCount: 0
+        });
+        return value;
       },
       async mutateAuthoringPlan(value) {
         calls.push(structuredClone(value));
@@ -1253,7 +1226,7 @@ test("atribui microssequência existente por escolha legível somente quando sol
     windowValue: new FakeWindow()
   });
   await surface.open();
-  assert.equal(documentReads, 0);
+  assert.equal(outlineReads, 0);
 
   root.listeners.get("click")({
     target: {
@@ -1264,7 +1237,7 @@ test("atribui microssequência existente por escolha legível somente quando sol
   });
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(documentReads, 1);
+  assert.equal(outlineReads, 1);
   assert.match(root.innerHTML, /Base · Relações · Terceiro caso/u);
   assert.doesNotMatch(root.innerHTML, /value="micro-a"/u);
 
@@ -1434,7 +1407,7 @@ test("deep link compartilhado é recusado pela Autoria", async () => {
 
   assert.equal(await surface.open(), false);
   assert.doesNotMatch(root.innerHTML, /section=planning|>Planejamento<\/span>/u);
-  assert.match(root.innerHTML, /acesso a este Curso não está mais disponível/u);
+  assert.match(root.innerHTML, /Somente o proprietário pode acessar esta área/u);
   assert.doesNotMatch(root.innerHTML, /Orientações|Partes de autoria|Decisões/u);
 });
 
@@ -1540,46 +1513,32 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   assert.match(root.innerHTML, /Acesso revogado; o estado pessoal foi preservado/u);
 });
 
-test("detalhe reúne todas as páginas antes de projetar a ordem do Curso", async () => {
+test("Estrutura lê um único outline e nunca carrega composição", async () => {
   const root = new FakeRoot();
-  const cursors = [];
-  const nextCursor = { entityType: "lesson", entityId: "lesson-a" };
+  const calls = [];
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
-      async getCourse(courseId) {
-        return { courseId, title: "Fundamentos", revision: 5 };
+      async loadAuthoringOutline(courseId) {
+        calls.push(["outline", courseId]);
+        return outlineFixture(courseId);
       },
-      async getCourseEntities(courseId, options) {
-        cursors.push(options.cursor);
-        return options.cursor ? {
-          courseId,
-          revision: 5,
-          items: entityFixture().filter((item) =>
-            ["microsequence", "card"].includes(item.entityType)),
-          hasMore: false,
-          nextCursor: null
-        } : {
-          courseId,
-          revision: 5,
-          items: entityFixture().filter((item) =>
-            ["module", "lesson"].includes(item.entityType)),
-          hasMore: true,
-          nextCursor
-        };
+      async loadAuthoringStudyUnits() {
+        calls.push(["inspection"]);
+        throw new Error("Estrutura não deveria carregar Unidades de estudo");
       }
     }),
     locationValue: {
       pathname: "/",
       search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "structure" })
     },
     windowValue: new FakeWindow()
   });
 
   assert.equal(await surface.open(), true);
-  assert.deepEqual(cursors, [null, nextCursor]);
-  assert.match(root.innerHTML, /Exemplo guiado/u);
+  assert.deepEqual(calls, [["outline", COURSE_ID]]);
+  assert.match(root.innerHTML, /Primeiro caso/u);
   assert.doesNotMatch(root.innerHTML, /Carregar mais/u);
 });
 
@@ -1632,7 +1591,7 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
   const revokedSurface = createCourseAuthoringSurface({
     root: revokedRoot,
     controller: controllerFixture({
-      async getCourse() {
+      async loadAuthoringOutline() {
         const error = new Error("not found");
         error.status = 404;
         throw error;

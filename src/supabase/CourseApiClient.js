@@ -47,12 +47,58 @@ function entityCursor(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("Cursor de entidades inválido.");
   }
+  if (Object.keys(value).length !== 2 ||
+      Object.keys(value).some((field) => !new Set(["entityType", "entityId"]).has(field))) {
+    throw new TypeError("Cursor de entidades inválido.");
+  }
   const entityType = String(value.entityType || "").trim();
   const entityId = String(value.entityId || "").trim();
-  if (!entityType || !entityId || entityType.length > 40 || entityId.length > 240) {
+  if (!new Set(["module", "lesson", "topic", "microsequence", "study_unit"]).has(entityType) ||
+      !entityId || entityId.length > 240) {
     throw new TypeError("Cursor de entidades inválido.");
   }
   return { entityType, entityId };
+}
+
+const AUTHORING_INSPECTION_SCOPE_KINDS = new Set([
+  "course",
+  "authoring_part",
+  "unassigned",
+  "module",
+  "lesson",
+  "didactic_microsequence"
+]);
+
+function boundedIdentifier(value, label) {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized !== value || normalized.length > 240 ||
+      hasControlCharacter(normalized)) {
+    throw new TypeError(`${label} inválida.`);
+  }
+  return normalized;
+}
+
+function authoringInspectionScope(value = { kind: "course", id: null }) {
+  const source = exactObject(value, new Set(["kind", "id"]), "Escopo da inspeção");
+  const kind = String(source.kind || "").trim();
+  if (!AUTHORING_INSPECTION_SCOPE_KINDS.has(kind)) {
+    throw new TypeError("Escopo da inspeção inválido.");
+  }
+  if (kind === "course" || kind === "unassigned") {
+    if (source.id != null) throw new TypeError("Escopo da inspeção inválido.");
+    return { kind, id: null };
+  }
+  const id = kind === "authoring_part"
+    ? uuid(source.id, "Parte da inspeção")
+    : boundedIdentifier(source.id, "Identidade do escopo");
+  return { kind, id };
+}
+
+function authoringStudyUnitCursor(value) {
+  if (value == null) return null;
+  const source = exactObject(value, new Set(["studyUnitId"]), "Cursor da inspeção");
+  if (Object.keys(source).length !== 1) throw new TypeError("Cursor da inspeção inválido.");
+  return { studyUnitId: boundedIdentifier(source.studyUnitId, "Unidade do cursor") };
 }
 
 function timestamp(value, label) {
@@ -331,6 +377,48 @@ export class CourseApiClient {
     return this.executeCourseAction("lerCurso", {
       courseId: uuid(courseId, "Curso"),
       view: "instructional_plan"
+    });
+  }
+
+  loadAuthoringOutline(courseId) {
+    return this.executeCourseAction("lerCurso", {
+      courseId: uuid(courseId, "Curso"),
+      view: "outline"
+    });
+  }
+
+  loadAuthoringStudyUnits(courseId, {
+    expectedRevision,
+    scope = { kind: "course", id: null },
+    anchorStudyUnitId = null,
+    cursor: cursorValue = null,
+    direction = "forward",
+    limit = 12,
+    maxBytes = 512 * 1024
+  } = {}) {
+    const normalizedScope = authoringInspectionScope(scope);
+    const normalizedCursor = authoringStudyUnitCursor(cursorValue);
+    const normalizedAnchor = anchorStudyUnitId == null
+      ? null
+      : boundedIdentifier(anchorStudyUnitId, "Unidade de âncora");
+    const normalizedDirection = String(direction || "").trim();
+    if (!new Set(["forward", "backward"]).has(normalizedDirection) ||
+        (normalizedAnchor && normalizedCursor)) {
+      throw new TypeError("Paginação da inspeção inválida.");
+    }
+    return this.executeCourseAction("lerCurso", {
+      courseId: uuid(courseId, "Curso"),
+      view: "study_units",
+      expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
+      scope: normalizedScope,
+      anchorStudyUnitId: normalizedAnchor,
+      cursor: normalizedCursor,
+      direction: normalizedDirection,
+      limit: positiveInteger(limit, "Limite da inspeção", { maximum: 24 }),
+      maxBytes: positiveInteger(maxBytes, "Limite de bytes", {
+        minimum: 64 * 1024,
+        maximum: 1_500_000
+      })
     });
   }
 

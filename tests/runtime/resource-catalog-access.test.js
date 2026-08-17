@@ -49,7 +49,7 @@ function exampleInstance(packageId, slot, id) {
   }, slot);
 }
 
-function cardWith(packageId, role = "theory") {
+function studyUnitWith(packageId, role = "theory") {
   return {
     id: `card-${packageId.split(".").at(-1)}`,
     position: 1,
@@ -129,7 +129,7 @@ test("avaliação exata de candidato preserva fit, limitação e ResourceSet aut
     packageId: "aralearn.resource.paragraph",
     version: "1.0.0"
   }, {
-    cardRole: "theory",
+    studyUnitRole: "theory",
     slot: "content",
     structureIds: ["structure.prose"],
     taskOperationIds: ["task_operation.explain"]
@@ -146,7 +146,7 @@ test("avaliação exata de candidato preserva fit, limitação e ResourceSet aut
     packageId: "aralearn.resource.paragraph",
     version: "1.0.0"
   }, {
-    cardRole: "practice",
+    studyUnitRole: "practice",
     slot: "response",
     structureIds: ["structure.quantitative_series"],
     taskOperationIds: ["task_operation.compare"]
@@ -192,7 +192,7 @@ test("fit e papel usam um único ResourceSet autorizador exato", () => {
   const embedded = result.catalog.search({
     query: "explicação progressiva em prosa",
     slot: "content",
-    cardRole: "practice",
+    studyUnitRole: "practice",
     structureIds: ["structure.prose"]
   });
   assert.equal(embedded.coverage.status, "blocked");
@@ -261,15 +261,15 @@ test("política de representação trata versatile como aproximação registrada
 
 test("validação e auditoria rejeitam package materializado fora da disponibilidade", () => {
   const restricted = access().catalog;
-  const allowed = cardWith("aralearn.resource.paragraph");
-  assert.equal(restricted.validateCard(allowed).valid, true);
+  const allowed = studyUnitWith("aralearn.resource.paragraph");
+  assert.equal(restricted.validateStudyUnit(allowed).valid, true);
 
-  const outside = cardWith("aralearn.resource.chart");
-  const validation = restricted.validateCard(outside);
+  const outside = studyUnitWith("aralearn.resource.chart");
+  const validation = restricted.validateStudyUnit(outside);
   assert.equal(validation.valid, false);
   assert.ok(validation.errors.some((message) => message.includes("ResourceSet efetivo")));
   const audit = restricted.auditRepresentation({
-    card: outside,
+    studyUnit: outside,
     intent: {
       structureIds: ["structure.quantitative_series"],
       taskOperationIds: ["task_operation.compare"]

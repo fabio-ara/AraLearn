@@ -130,11 +130,13 @@ Os tipos correntes são:
 - `lesson`;
 - `topic`;
 - `microsequence`;
-- `card`.
+- `study_unit`.
 
-O nome técnico `card` ainda faz parte do contrato corrente; a discussão
-acadêmica de nomenclatura não deve ser resolvida por um alias silencioso no
-banco.
+O documento final usa `aralearn.course.v1` e
+`microsequence.studyUnits`. A migration `1700` converte uma única vez o
+discriminador anterior; constraints e funções correntes aceitam somente
+`study_unit`. Identidades, posição local na Microssequência e metadados da linha
+são preservados, sem alias permanente.
 
 Listas e composição são paginadas por cursores estáveis. Na Autoria, o
 navegador busca primeiro o cabeçalho fino e depois recompõe a hierarquia a
@@ -209,6 +211,16 @@ proprietário e as operações necessárias a perfil e acesso. Desse modo, o MCP
 autoral não depende de um filtro opcional feito depois que dados já chegaram à
 função.
 
+A Inspeção visual e a vista MCP `study_units` usam a mesma RPC service-role
+owner-only `list_owned_course_study_units_for_actor_v1`. Ela pagina em ordem
+curricular por Curso, Parte, Unidades sem Parte, Módulo, Lição ou
+Microssequência. Uma âncora inclui a Unidade-alvo na página inicial; um cursor
+`{studyUnitId}` continua para frente ou para trás, e os dois são mutuamente
+exclusivos. A página normal contém 12 itens, o máximo é 24, `maxBytes` fica
+entre 64 KiB e 1.500.000 bytes e a resposta falha fechada acima de 1,75 MiB.
+A helper privada não possui `EXECUTE` para papéis de cliente, e a função pública
+é concedida somente a `service_role`, revalidando ator e propriedade.
+
 `verify_jwt = false` no arquivo de configuração não significa ausência de
 autenticação. Cada função verifica o protocolo apropriado na própria entrada:
 token de sessão na API e OAuth no MCP. A opção da plataforma apenas evita uma
@@ -234,6 +246,12 @@ da Parte e entre 1 e 64 etapas. Registrar uma etapa admite até 64 mudanças de
 entidade no total e confirma conteúdo, vínculo, fatos e progresso numa única
 transação. Contexto e fatos possuem limites pequenos no banco e na Edge
 Function.
+
+Na composição segmentada, o domínio valida cada linha de acordo com
+`module|lesson|topic|microsequence|study_unit`; o banco cerca a hierarquia e
+verifica `dependsOn` somente nas Lições afetadas pelo lote. Uma escrita não
+recompõe o Curso inteiro, mas também não deixa conteúdo de outro tipo passar sem
+validação semântica.
 
 Plano e materialização incluem comando, versões esperadas e canal no hash;
 composição inclui o lote exato e a revisão esperada. O servidor consulta o
@@ -371,13 +389,14 @@ linha](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 ## Manifesto do runtime
 
 `supabase/runtime-manifest.json` descreve o contrato que site, Edge Functions e
-banco precisam compartilhar. A revisão local deste corte é `20260817160000`,
+banco precisam compartilhar. A revisão local deste corte é `20260817170000`,
 contrato v1. Entre as capacidades observáveis estão:
 
 - identidade única e viva de Curso;
 - plano instrucional normalizado e editável;
 - Partes de autoria e materialização retomável;
 - composição paginada;
+- Unidade de estudo canônica e Inspeção vertical owner-only;
 - acesso direto e restrito ao Estudo;
 - estado pessoal;
 - CAS e idempotência;
@@ -396,6 +415,10 @@ O desenho reduz trabalho e armazenamento sem criar infraestrutura paralela:
 
 - listas devolvem projeções finas, sem plano instrucional ou composição;
 - composição e fila **Rever** são paginadas;
+- a Inspeção usa páginas de até 24 Unidades, janela de DOM de até 36 e resposta
+  de até 1,75 MiB;
+- o cache de Inspeção conserva no máximo quatro páginas ou 8 MiB por Curso,
+  separado por revisão e pedido exato;
 - plano é lido sob demanda e traz atividade recente limitada;
 - tentativas conservam apenas contexto e fatos limitados, sem transcrição de
   chat;
@@ -475,8 +498,9 @@ Use o roteiro detalhado de [Implantação](implantacao.md). O script seguro come
 em modo de verificação:
 
 O projeto hospedado que já contém os oito Cursos é uma exceção operacional: a
-staging e as migrations `20260817140000`, `20260817150000` e
-`20260817160000` precisam usar a mesma conexão e transação e não podem ser
+staging e as migrations `20260817140000`, `20260817150000`,
+`20260817160000` e `20260817170000` precisam usar a mesma conexão e transação e
+não podem ser
 aplicadas isoladamente por `db push`. O importador transitório descrito abaixo
 executa esse corte. Uma instalação vazia continua usando o fluxo comum.
 
@@ -496,8 +520,9 @@ revisões diferentes; limpar IndexedDB não atualiza migrations remotas.
 ### Atestação privada do corte de identidade
 
 `scripts/courseCutover/` lê e valida a origem, produz a staging e executa
-staging + conjunto ordenado de migrations na mesma conexão e na mesma
-transação. Sem `--apply`, o comando não escreve no banco.
+staging + migrations `1400` → `1500` → `1600` → `1700` na mesma conexão e na
+mesma transação, e registra as quatro versões no ledger. Sem `--apply`, o
+comando não escreve no banco. Não há `db push` separado da `1700` nesse corte.
 
 Antes de qualquer aplicação, o runner grava fora do repositório público uma
 atestação privada sem conteúdo, token, senha ou chave. Ela contém somente hash
@@ -538,12 +563,15 @@ As afirmações deste documento podem ser confrontadas em:
 - `supabase/migrations/20260817140000_course_identity_cutover.sql`;
 - `supabase/migrations/20260817150000_course_profiles_access.sql`;
 - `supabase/migrations/20260817160000_course_authoring_plan.sql`;
+- `supabase/migrations/20260817170000_course_study_unit_inspection.sql`;
 - `supabase/functions/_shared/aralearn-authoring/`;
 - `supabase/runtime-manifest.json`;
 - `tests/runtime/course-identity-cutover-pglite.test.js`;
 - `tests/runtime/course-authoring-plan.test.js`;
 - `tests/runtime/course-api-client.test.js`;
 - `tests/runtime/course-mcp-tools.test.js`;
+- `tests/runtime/course-inspection-sequence.test.js`;
+- `tests/runtime/course-postgres-concurrency.test.js`;
 - `supabase/tests/course-runtime-local-smoke.mjs`.
 
 Um teste aprovado demonstra o cenário codificado. Ele não prova disponibilidade

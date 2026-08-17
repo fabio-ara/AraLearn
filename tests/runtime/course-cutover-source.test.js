@@ -18,6 +18,14 @@ import { canonicalSha256 } from "../../scripts/courseCutover/courseCutoverImport
 import { runCourseIdentityCutover } from
   "../../scripts/courseCutover/runCourseIdentityCutover.mjs";
 
+test("ajuda descreve as quatro migrations da transação hospedada", async () => {
+  const source = await fs.readFile(new URL(
+    "../../scripts/courseCutover/runCourseIdentityCutover.mjs",
+    import.meta.url
+  ), "utf8");
+  assert.match(source, /migrations 1400\/1500\/1600\/1700 em uma transação/u);
+});
+
 test("snapshot SQL lê somente a árvore e os quatro descritores correntes", () => {
   assert.match(COURSE_CUTOVER_SOURCE_SQL, /with recursive mapping/iu);
   assert.match(COURSE_CUTOVER_SOURCE_SQL, /private\.authoring_workspace_entities/iu);
@@ -152,7 +160,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
         documentHash: "2".repeat(64),
         rowHash: "3".repeat(64),
         entityStateHash: "4".repeat(64),
-        counts: { cards: 8 }
+        counts: { studyUnits: 8 }
       }
     }],
     summary: {
@@ -160,7 +168,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
       artifactCount: 4,
       overlapCount: 2,
       entityCount: 16,
-      counts: [{ cards: 8 }, { cards: 4 }]
+      counts: [{ studyUnits: 8 }, { studyUnits: 4 }]
     }
   });
   const directories = [];
@@ -188,6 +196,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     migrationSql: "migration",
     profileAccessMigrationSql: "profile-migration",
     authoringPlanMigrationSql: "authoring-plan-migration",
+    studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     readSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -208,6 +217,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     migrationSql: "migration",
     profileAccessMigrationSql: "profile-migration",
     authoringPlanMigrationSql: "authoring-plan-migration",
+    studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     readSnapshot: async () => (++reads === 1 ? firstSnapshot : { marker: "drift" }),
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -223,6 +233,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     migrationSql: "migration",
     profileAccessMigrationSql: "profile-migration",
     authoringPlanMigrationSql: "authoring-plan-migration",
+    studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     readSnapshot: async () => firstSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -238,7 +249,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
       documentHash: "2".repeat(64),
       rowHash: "3".repeat(64),
       entityStateHash: "4".repeat(64),
-      counts: { cards: 8 }
+      counts: { studyUnits: 8 }
     }],
     writeAttestation
   });
@@ -266,7 +277,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
         documentHash: "2".repeat(64),
         rowHash: "3".repeat(64),
         entityStateHash: "4".repeat(64),
-        counts: { cards: 8 }
+        counts: { studyUnits: 8 }
       }
     }],
     summary: {
@@ -274,7 +285,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
       artifactCount: 0,
       overlapCount: 0,
       entityCount: 8,
-      counts: [{ cards: 8 }]
+      counts: [{ studyUnits: 8 }]
     }
   };
   const createArtifactLoader = async () => {
@@ -288,6 +299,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
     migrationSql: "migration-without-content",
     profileAccessMigrationSql: "profile-migration-without-content",
     authoringPlanMigrationSql: "authoring-plan-migration-without-content",
+    studyUnitInspectionMigrationSql: "study-unit-inspection-migration-without-content",
     readSnapshot: async () => snapshot,
     createArtifactLoader,
     prepare: async () => preparation,

@@ -8,6 +8,10 @@ const migrationUrl = new URL(
   "../../supabase/migrations/20260817160000_course_authoring_plan.sql",
   import.meta.url
 );
+const studyUnitInspectionMigrationUrl = new URL(
+  "../../supabase/migrations/20260817170000_course_study_unit_inspection.sql",
+  import.meta.url
+);
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const LEARNER = "00000000-0000-4000-8000-000000000002";
@@ -139,6 +143,9 @@ async function databaseFixture({
       ) references private.course_entities(course_id,entity_type,entity_id)
         on delete cascade deferrable initially deferred
     );
+    create index course_entities_parent_v1_idx on private.course_entities(
+      course_id,parent_type,parent_id,entity_type,position,entity_id
+    );
 
     create table public.course_access(
       course_id uuid not null references public.courses(id) on delete cascade,
@@ -214,6 +221,16 @@ async function databaseFixture({
     ) returns jsonb language sql stable as $$ select '{}'::jsonb $$;
     create function private.get_course_for_actor_v1(uuid,uuid,boolean)
       returns jsonb language sql stable as $$ select '{}'::jsonb $$;
+    create function private.list_course_entities_for_actor_v1(
+      uuid,uuid,bigint,integer,text,text
+    ) returns jsonb language sql stable as $$
+      select jsonb_build_object('entityType','card')
+    $$;
+    create function private.list_course_review_items_for_actor_v1(
+      uuid,integer,timestamptz,uuid,text
+    ) returns jsonb language sql stable as $$
+      select jsonb_build_object('entityType','card')
+    $$;
     create function public.list_owned_courses_for_actor_v1(
       uuid,text,integer,timestamptz,uuid
     ) returns jsonb language sql stable as $$ select '{}'::jsonb $$;
@@ -255,7 +272,8 @@ async function databaseFixture({
     ) values
       ($1,'module','module-a',null,null,0,'{"title":"Módulo A"}'),
       ($1,'lesson','lesson-a','module','module-a',0,'{"title":"Lição A"}'),
-      ($1,'microsequence','micro-a','lesson','lesson-a',0,'{"title":"Micro A"}'),
+      ($1,'microsequence','micro-a','lesson','lesson-a',0,
+        '{"title":"Micro A","dependsOn":[]}'),
       ($1,'card','card-a','microsequence','micro-a',1,'{"title":"Unidade A"}')
   `, [COURSE]);
   return database;
@@ -263,6 +281,10 @@ async function databaseFixture({
 
 async function applyMigration(database) {
   await database.exec(await fs.readFile(migrationUrl, "utf8"));
+}
+
+async function applyStudyUnitInspectionMigration(database) {
+  await database.exec(await fs.readFile(studyUnitInspectionMigrationUrl, "utf8"));
 }
 
 function planTarget(planId, partId) {
@@ -1397,5 +1419,471 @@ test("expõe somente leitura ao browser e remove assinaturas substituídas", asy
   assert.equal(await scalar(database, `
     select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
   `), "20260817160000");
+  await database.close();
+});
+
+async function inspectionDatabaseFixture() {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await database.exec(`
+    update private.course_entities
+    set entity_id='unit-a', content=jsonb_build_object(
+      'title','Unidade A','body',repeat('a',70000)
+    )
+    where course_id='${COURSE}' and entity_type='card' and entity_id='card-a';
+
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values
+      ('${COURSE}','card','unit-a-2','microsequence','micro-a',2,
+        '{"title":"Unidade A2"}'),
+      ('${COURSE}','microsequence','micro-b','lesson','lesson-a',1,
+        '{"title":"Micro B","dependsOn":[]}'),
+      ('${COURSE}','module','module-b',null,null,1,
+        '{"title":"Módulo B"}'),
+      ('${COURSE}','lesson','lesson-b','module','module-b',0,
+        '{"title":"Lição B"}'),
+      ('${COURSE}','microsequence','micro-c','lesson','lesson-b',0,
+        '{"title":"Micro C","dependsOn":[]}'),
+      ('${COURSE}','card','unit-c-1','microsequence','micro-c',1,
+        '{"title":"Unidade C1"}');
+
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    )
+    select '${COURSE}','card','unit-b-'||unit_value,
+      'microsequence','micro-b',unit_value,
+      jsonb_build_object('title','Unidade B'||unit_value)
+    from generate_series(1,60) unit_value;
+  `);
+  await applyStudyUnitInspectionMigration(database);
+  return database;
+}
+
+async function inspectionPage(database, {
+  actorId = OWNER,
+  revision = 4,
+  scopeKind = "course",
+  scopeId = null,
+  anchorStudyUnitId = null,
+  cursorStudyUnitId = null,
+  direction = "forward",
+  limit = 12,
+  maxBytes = 1_500_000
+} = {}) {
+  return scalar(database, `
+    select public.list_owned_course_study_units_for_actor_v1(
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+    ) as value
+  `, [
+    actorId, COURSE, revision, scopeKind, scopeId,
+    anchorStudyUnitId, cursorStudyUnitId, direction, limit, maxBytes
+  ]);
+}
+
+async function inspectionCommit(database, {
+  revision,
+  upserts = [],
+  deletes = [],
+  requestId
+}) {
+  await actor(database, OWNER, "service_role");
+  return scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,$3,$4,$5,$6
+    ) as value
+  `, [OWNER, COURSE, revision, upserts, deletes, requestId]);
+}
+
+test("1700 corta o discriminador legado e fecha grants da inspeção", async () => {
+  const database = await inspectionDatabaseFixture();
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where entity_type='card'
+  `), 0);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where entity_type='study_unit'
+  `), 63);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from pg_proc function_value
+    join pg_namespace namespace_value on namespace_value.oid=function_value.pronamespace
+    where namespace_value.nspname in ('public','private')
+      and function_value.proname in (
+        'course_authoring_part_progress_v1',
+        'get_course_for_actor_v1',
+        'get_course_instructional_plan_for_actor_v1',
+        'list_course_entities_for_actor_v1',
+        'list_course_review_items_for_actor_v1',
+        'list_courses_for_actor_v1',
+        'list_owned_courses_for_actor_v1',
+        'advance_course_authoring_part_materialization_for_actor_v1',
+        'commit_course_composition_for_actor_v1'
+      )
+      and strpos(function_value.prosrc,quote_literal('card'))>0
+  `), 0);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from pg_proc function_value
+    join pg_namespace namespace_value
+      on namespace_value.oid=function_value.pronamespace
+    where namespace_value.nspname='public'
+      and function_value.proname in (
+        'advance_course_authoring_part_materialization_for_actor_v1',
+        'commit_course_composition_for_actor_v1'
+      )
+      and strpos(
+        function_value.prosrc,
+        'private.assert_course_lesson_dependencies_v1'
+      )>0
+  `), 2);
+  assert.equal(await scalar(database, `
+    select has_function_privilege(
+      'service_role',
+      'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+      'EXECUTE'
+    ) as value
+  `), true);
+  assert.equal(await scalar(database, `
+    select has_function_privilege(
+      'authenticated',
+      'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+      'EXECUTE'
+    ) as value
+  `), false);
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260817170000");
+  await assert.rejects(() => database.exec(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values('${COURSE}','card','legacy-unit','microsequence','micro-a',3,'{}')
+  `), /course_entities_type_v1|check constraint/iu);
+  await assert.rejects(() => database.exec(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values(
+      '${COURSE}','study_unit','invalid-title','microsequence','micro-a',3,'{}'
+    )
+  `), /course_entities_content_v1|check constraint/iu);
+  await assert.rejects(() => database.exec(`
+    update private.course_entities set content='{"title":"   "}'
+    where course_id='${COURSE}'
+      and entity_type='study_unit' and entity_id='unit-a-2'
+  `), /course_entities_content_v1|check constraint/iu);
+  await assert.rejects(() => database.exec(`
+    update private.course_entities set content=jsonb_build_object(
+      'title','Unidade grande','body',repeat('x',1048576)
+    ) where course_id='${COURSE}'
+      and entity_type='study_unit' and entity_id='unit-a-2'
+  `), /course_entities_content_v1|check constraint/iu);
+  await assert.rejects(() => database.exec(`
+    update private.course_entities set content='{"title":"Micro","cards":[]}'
+    where course_id='${COURSE}' and entity_type='microsequence' and entity_id='micro-a'
+  `), /course_entities_content_v1|check constraint/iu);
+  await database.close();
+});
+
+test("1700 aborta antes do corte quando Unidade legada não tem título", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await database.exec(`
+    update private.course_entities set content='{}'
+    where course_id='${COURSE}' and entity_type='card' and entity_id='card-a'
+  `);
+  await assert.rejects(
+    () => applyStudyUnitInspectionMigration(database),
+    /Unidade legada possui título inválido/iu
+  );
+  await database.exec("rollback;");
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id='${COURSE}' and entity_type='card'
+  `), 1);
+  await database.close();
+});
+
+test("1700 reverte o rename se uma função corrente estiver ausente", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await database.exec(`
+    drop function private.list_course_review_items_for_actor_v1(
+      uuid,integer,timestamptz,uuid,text
+    )
+  `);
+  await assert.rejects(
+    () => applyStudyUnitInspectionMigration(database),
+    /Função corrente ausente/iu
+  );
+  await database.exec("rollback;");
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id='${COURSE}' and entity_type='card'
+  `), 1);
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260817160000");
+  await database.close();
+});
+
+test("inspeção owner-only ordena currículo e Parte apenas filtra", async () => {
+  const database = await inspectionDatabaseFixture();
+  const partId = await scalar(database, `
+    select id as value from private.course_authoring_parts where course_id=$1
+  `, [COURSE]);
+  const page = await inspectionPage(database, { limit: 24 });
+  assert.equal(page.contract, "aralearn.course-study-unit-inspection-page.v1");
+  assert.equal(page.courseRevision, 4);
+  assert.equal(page.totalCount, 63);
+  assert.deepEqual(page.items.slice(0, 3).map(({ studyUnit }) => studyUnit.id), [
+    "unit-a", "unit-a-2", "unit-b-1"
+  ]);
+  assert.deepEqual(page.items[0].curriculumPath, {
+    module: { id: "module-a", position: 0, title: "Módulo A" },
+    lesson: { id: "lesson-a", position: 0, title: "Lição A" },
+    didacticMicrosequence: { id: "micro-a", position: 0, title: "Micro A" }
+  });
+  assert.equal(page.items[0].authoringPart.id, partId);
+  assert.equal(page.items[0].authoringPart.state, "partially_materialized");
+  assert.equal(page.scopeOptions.authoringParts[0].id, partId);
+  assert.equal(page.scopeOptions.unassignedStudyUnitCount, 61);
+
+  const partPage = await inspectionPage(database, {
+    scopeKind: "authoring_part",
+    scopeId: partId
+  });
+  assert.equal(partPage.totalCount, 2);
+  assert.deepEqual(partPage.items.map(({ studyUnit }) => studyUnit.id), [
+    "unit-a", "unit-a-2"
+  ]);
+  assert.deepEqual(partPage.items.map(({ ordinal }) => ordinal), [1, 2]);
+
+  const unassigned = await inspectionPage(database, { scopeKind: "unassigned" });
+  assert.equal(unassigned.totalCount, 61);
+  assert.equal(unassigned.items.every(({ authoringPart }) => authoringPart === null), true);
+  const modulePage = await inspectionPage(database, {
+    scopeKind: "module",
+    scopeId: "module-b"
+  });
+  assert.equal(modulePage.totalCount, 1);
+  assert.equal(modulePage.items[0].studyUnit.id, "unit-c-1");
+
+  await database.exec(`
+    insert into public.course_access(course_id,user_id,granted_by)
+    values('${COURSE}','${LEARNER}','${OWNER}')
+  `);
+  await assert.rejects(
+    () => inspectionPage(database, { actorId: LEARNER }),
+    /não autorizada|não autorizado/iu
+  );
+  const outsider = "00000000-0000-4000-8000-000000000003";
+  await database.exec(`insert into auth.users values('${outsider}','outsider@example.test')`);
+  await assert.rejects(
+    () => inspectionPage(database, { actorId: outsider }),
+    /inexistente|inacessível/iu
+  );
+  await database.close();
+});
+
+test("composição cerca dependsOn somente nas Lições old e new afetadas", async () => {
+  const database = await inspectionDatabaseFixture();
+  const micro = (title, dependsOn) => ({
+    title,
+    goal: `Explicar ${title}.`,
+    role: "explain",
+    dependsOn,
+    covers: [],
+    checks: [],
+    errors: []
+  });
+  const microUpsert = ({ id, parentId, position, dependsOn }) => ({
+    entityType: "microsequence",
+    entityId: id,
+    parentType: "lesson",
+    parentId,
+    position,
+    content: micro(id, dependsOn)
+  });
+  const invalidCases = [{
+    requestId: "inspection-dependency-missing",
+    upsert: microUpsert({
+      id: "micro-b", parentId: "lesson-a", position: 1,
+      dependsOn: ["micro-missing"]
+    })
+  }, {
+    requestId: "inspection-dependency-posterior",
+    upsert: microUpsert({
+      id: "micro-a", parentId: "lesson-a", position: 0,
+      dependsOn: ["micro-b"]
+    })
+  }, {
+    requestId: "inspection-dependency-cross-lesson",
+    upsert: microUpsert({
+      id: "micro-b", parentId: "lesson-b", position: 1,
+      dependsOn: ["micro-a"]
+    })
+  }];
+  for (const invalid of invalidCases) {
+    await assert.rejects(
+      () => inspectionCommit(database, {
+        revision: 4,
+        upserts: [invalid.upsert],
+        requestId: invalid.requestId
+      }),
+      (error) => error.code === "23514" && /dependsOn/iu.test(error.message)
+    );
+  }
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id='${COURSE}'
+  `), 4);
+  assert.equal(await scalar(database, `
+    select parent_id as value from private.course_entities
+    where course_id='${COURSE}'
+      and entity_type='microsequence' and entity_id='micro-b'
+  `), "lesson-a");
+
+  const created = await inspectionCommit(database, {
+    revision: 4,
+    upserts: [microUpsert({
+      id: "micro-d", parentId: "lesson-a", position: 2,
+      dependsOn: ["micro-b"]
+    })],
+    requestId: "inspection-dependency-create"
+  });
+  assert.equal(created.revision, 5);
+  await assert.rejects(
+    () => inspectionCommit(database, {
+      revision: 5,
+      upserts: [microUpsert({
+        id: "micro-d", parentId: "lesson-a", position: 1,
+        dependsOn: ["micro-b"]
+      })],
+      deletes: [{ entityType: "microsequence", entityId: "micro-b" }],
+      requestId: "inspection-dependency-delete"
+    }),
+    (error) => error.code === "23514" && /dependsOn/iu.test(error.message)
+  );
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id='${COURSE}'
+  `), 5);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id='${COURSE}' and entity_type='study_unit'
+      and parent_id='micro-b'
+  `), 60);
+  assert.equal(await scalar(database, `
+    select position as value from private.course_entities
+    where course_id='${COURSE}'
+      and entity_type='microsequence' and entity_id='micro-d'
+  `), 2);
+  await database.close();
+});
+
+test("âncora, cursor e direção preservam ordem crescente e limites", async () => {
+  const database = await inspectionDatabaseFixture();
+  const anchored = await inspectionPage(database, {
+    anchorStudyUnitId: "unit-b-30",
+    direction: "backward",
+    limit: 3
+  });
+  assert.deepEqual(anchored.items.map(({ studyUnit }) => studyUnit.id), [
+    "unit-b-28", "unit-b-29", "unit-b-30"
+  ]);
+  assert.equal(anchored.hasPrevious, true);
+  assert.equal(anchored.hasMore, true);
+  assert.deepEqual(anchored.previousCursor, { studyUnitId: "unit-b-28" });
+  assert.deepEqual(anchored.nextCursor, { studyUnitId: "unit-b-30" });
+
+  const before = await inspectionPage(database, {
+    cursorStudyUnitId: "unit-b-30",
+    direction: "backward",
+    limit: 3
+  });
+  assert.deepEqual(before.items.map(({ studyUnit }) => studyUnit.id), [
+    "unit-b-27", "unit-b-28", "unit-b-29"
+  ]);
+  const after = await inspectionPage(database, {
+    cursorStudyUnitId: "unit-b-30",
+    direction: "forward",
+    limit: 2
+  });
+  assert.deepEqual(after.items.map(({ studyUnit }) => studyUnit.id), [
+    "unit-b-31", "unit-b-32"
+  ]);
+
+  const bounded = await inspectionPage(database, {
+    limit: 24,
+    maxBytes: 65_536
+  });
+  assert.equal(bounded.items.length, 1);
+  assert.equal(bounded.items[0].studyUnit.id, "unit-a");
+  assert.equal(bounded.pageBytes > 65_536, true);
+  assert.equal(bounded.hasMore, true);
+
+  await assert.rejects(
+    () => inspectionPage(database, { revision: 3 }),
+    /mudou|releia/iu
+  );
+  await assert.rejects(
+    () => inspectionPage(database, { maxBytes: 1_500_001 }),
+    /inválida/iu
+  );
+  await assert.rejects(
+    () => inspectionPage(database, { maxBytes: 65_535 }),
+    /inválida/iu
+  );
+  await assert.rejects(
+    () => inspectionPage(database, {
+      scopeKind: "module",
+      scopeId: "module-b",
+      anchorStudyUnitId: "unit-a"
+    }),
+    (error) => error.code === "PT404" && /âncora inexistente/iu.test(error.message)
+  );
+  await assert.rejects(
+    () => inspectionPage(database, { cursorStudyUnitId: "missing-unit" }),
+    (error) => error.code === "22023" && /Cursor de Unidade/iu.test(error.message)
+  );
+  await assert.rejects(
+    () => inspectionPage(database, {
+      anchorStudyUnitId: "unit-a",
+      cursorStudyUnitId: "unit-a-2"
+    }),
+    /inválida/iu
+  );
+  await database.close();
+});
+
+test("pagina mais de 50 Unidades sem lacuna, repetição ou carga integral", async () => {
+  const database = await inspectionDatabaseFixture();
+  const identities = [];
+  let cursorStudyUnitId = null;
+  let requestCount = 0;
+  const pageSizes = [];
+  do {
+    const page = await inspectionPage(database, {
+      cursorStudyUnitId,
+      limit: 24
+    });
+    requestCount += 1;
+    pageSizes.push(page.items.length);
+    identities.push(...page.items.map(({ studyUnit }) => studyUnit.id));
+    cursorStudyUnitId = page.nextCursor?.studyUnitId || null;
+    if (!page.hasMore) break;
+  } while (requestCount < 10);
+  assert.equal(identities.length, 63);
+  assert.equal(new Set(identities).size, identities.length);
+  assert.equal(requestCount, 3, JSON.stringify(pageSizes));
+  assert.equal(identities.at(0), "unit-a");
+  assert.equal(identities.at(-1), "unit-c-1");
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from pg_indexes
+    where schemaname='private' and indexname in (
+      'course_entities_parent_v1_idx',
+      'course_authoring_part_microsequences_course_unique_v1',
+      'course_authoring_part_microsequences_order_v1'
+    )
+  `), 3);
   await database.close();
 });

@@ -56,12 +56,15 @@ mantém em JSON o conteúdo interno que precisa ser validado como contrato.
 de entidades. **Composição (`compose`)** é a operação inversa. O roundtrip é
 válido somente quando recompõe um documento aceito pelo contrato.
 
-**Envelope `aralearn.library.v1`.** Documento operacional que contém a lista de
-Cursos usada pelo renderer. No corte canônico, cada documento de composição
-contém exatamente um Curso.
+**Documento `aralearn.course.v1`.** Contrato hierárquico corrente. O perfil de
+intercâmbio usa `courses` para um ou mais Cursos ou recortes, e o kernel oferece o perfil
+unitário `course`; ambos exigem que cada Microssequência exponha suas Unidades
+em `studyUnits` e não criam outro nome de contrato.
 
-**Unidade de estudo.** Unidade persistida e renderizada no percurso. O conceito
-inclui mais do que prática de recuperação.
+**Unidade de estudo (`study_unit`).** Unidade persistida e renderizada no
+percurso. `study_unit` é o discriminador relacional corrente, e `studyUnits` é
+a coleção no documento. O conceito inclui mais do que prática de recuperação;
+não existe alias semântico corrente para a entidade.
 
 **Parte de autoria.** Agrupamento operacional configurável para planejar,
 produzir e revisar várias Microssequências numa iteração. Não é um nível entre
@@ -143,6 +146,26 @@ o necessário para localizar, ordenar e desenhar a Home.
 **Paginação por cursor.** Leitura em que a próxima página começa depois da
 última chave estável recebida. Curso usa data + UUID; entidade usa tipo +
 identidade dentro de uma revisão fixada.
+
+**Inspeção.** Superfície owner-only que percorre Unidades em uma sequência
+vertical fiel ao renderer, com respostas inertes. Pode ser delimitada por
+Curso, Parte, ausência de Parte, Módulo, Lição ou Microssequência.
+
+**Âncora de Inspeção.** Identidade de Unidade que precisa estar incluída na
+página inicial, usada na entrada por link profundo e na restauração. Não pode
+ser enviada junto com cursor.
+
+**Cursor de Inspeção.** Fronteira `{studyUnitId}` para buscar a página anterior
+ou seguinte sem renumerar a sequência. O cursor não é a posição curricular da
+Unidade.
+
+**Posição local de Inspeção.** Registro por dispositivo com escopo, identidade
+da Unidade, deslocamento em relação ao topo fixo e revisão do Curso. Serve para
+retomada; não é estado compartilhado nem fato pedagógico.
+
+**Janela virtualizada.** Trecho limitado da sequência mantido no DOM enquanto
+itens distantes são representados por espaçadores. A Inspeção mantém no máximo
+36 Unidades e carrega páginas nas duas direções.
 
 **Carregamento sob demanda (`lazy loading`).** Busca da composição apenas
 quando o Curso é aberto. Não significa que qualquer dado local seja descartado

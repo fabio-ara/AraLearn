@@ -1,11 +1,13 @@
 import { validateProjectDocument } from "./aralearnProject.js";
 
+export { validateCourseEntityContent } from "./aralearnProject.js";
+
 const COURSE_ENTITY_TYPES = Object.freeze([
   "module",
   "lesson",
   "topic",
   "microsequence",
-  "card"
+  "study_unit"
 ]);
 
 const COURSE_ENTITY_TYPE_SET = new Set(COURSE_ENTITY_TYPES);
@@ -15,7 +17,7 @@ const PARENT_TYPE = Object.freeze({
   lesson: "module",
   topic: "lesson",
   microsequence: "lesson",
-  card: "microsequence"
+  study_unit: "microsequence"
 });
 
 const CHILDREN = Object.freeze({
@@ -31,9 +33,9 @@ const CHILDREN = Object.freeze({
   ]),
   topic: Object.freeze([]),
   microsequence: Object.freeze([
-    Object.freeze({ entityType: "card", field: "cards" })
+    Object.freeze({ entityType: "study_unit", field: "studyUnits" })
   ]),
-  card: Object.freeze([])
+  study_unit: Object.freeze([])
 });
 
 const ROW_FIELDS = new Set([
@@ -93,7 +95,7 @@ function contentWithoutStructure(entityType, entity) {
 }
 
 function entityPosition(entityType, entity, index) {
-  if (entityType !== "card") return index;
+  if (entityType !== "study_unit") return index;
   const position = Number(entity?.position);
   if (!Number.isSafeInteger(position) || position < 1) {
     fail(
@@ -150,7 +152,7 @@ function normalizeRow(rawRow, index) {
     );
   }
   const position = Number(rawRow.position);
-  const minimumPosition = entityType === "card" ? 1 : 0;
+  const minimumPosition = entityType === "study_unit" ? 1 : 0;
   if (!Number.isSafeInteger(position) || position < minimumPosition) {
     fail(
       "invalid_course_entity_position",
@@ -253,7 +255,7 @@ export function normalizeCourseEntityRows(rows = []) {
         }
       );
     }
-    if (siblings[0].entityType !== "card" &&
+    if (siblings[0].entityType !== "study_unit" &&
         siblings.some((row, index) => row.position !== index)) {
       fail(
         "non_contiguous_course_entity_positions",
@@ -340,7 +342,7 @@ export function composeCourseDocument(courseValue, rows = []) {
     const entity = cloneJson(row.content, "Conteúdo da entidade");
     entity.id = row.entityId;
     for (const child of CHILDREN[row.entityType]) entity[child.field] = [];
-    if (row.entityType === "card") entity.position = row.position;
+    if (row.entityType === "study_unit") entity.position = row.position;
     entities.set(identityKey(row.entityType, row.entityId), entity);
   }
   const modules = [];
@@ -371,7 +373,7 @@ export function composeCourseDocument(courseValue, rows = []) {
     parent[child.field].push(entity);
   }
   const document = {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [{ ...course, modules }]
   };
   const validation = validateProjectDocument(document);
@@ -403,7 +405,7 @@ export function courseEntityOutline(courseValue, rows = []) {
           title: microsequence.title,
           goal: microsequence.goal,
           role: microsequence.role,
-          studyUnitCount: microsequence.cards.length
+          studyUnitCount: microsequence.studyUnits.length
         }))
       }))
     }))

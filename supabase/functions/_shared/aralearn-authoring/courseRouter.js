@@ -1,22 +1,24 @@
 import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
+import { validateCourseEntityContent } from
+  "../aralearn/runtime/domain/courseEntities.js";
 
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
-const ENTITY_TYPES = new Set(["module", "lesson", "topic", "microsequence", "card"]);
+const ENTITY_TYPES = new Set(["module", "lesson", "topic", "microsequence", "study_unit"]);
 const ENTITY_PARENT = Object.freeze({
   module: null,
   lesson: "module",
   topic: "lesson",
   microsequence: "lesson",
-  card: "microsequence"
+  study_unit: "microsequence"
 });
 const ENTITY_CHILD_FIELDS = Object.freeze({
   module: Object.freeze(["lessons"]),
   lesson: Object.freeze(["topics", "microsequences"]),
   topic: Object.freeze([]),
-  microsequence: Object.freeze(["cards"]),
-  card: Object.freeze([])
+  microsequence: Object.freeze(["studyUnits"]),
+  study_unit: Object.freeze([])
 });
 const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/u;
 
@@ -161,6 +163,63 @@ function courseEntityQuery(request) {
   };
 }
 
+function courseStudyUnitQuery(request) {
+  const url = new URL(request.url);
+  const expectedRevision = positiveInteger(
+    url.searchParams.get("expectedRevision"),
+    "expectedRevision"
+  );
+  const scopeKind = String(url.searchParams.get("scopeKind") || "course").trim();
+  const scopeIdSource = url.searchParams.get("scopeId");
+  let scopeId = scopeIdSource == null ? null : scopeIdSource.trim();
+  const idlessScope = scopeKind === "course" || scopeKind === "unassigned";
+  if (!new Set([
+    "course", "authoring_part", "unassigned", "module", "lesson",
+    "didactic_microsequence"
+  ]).has(scopeKind) || idlessScope !== (scopeId === null) ||
+      (scopeId != null && (!scopeId || scopeId !== scopeIdSource || scopeId.length > 240))) {
+    fail("invalid_pagination", "O escopo da inspeção é inválido.");
+  }
+  if (scopeKind === "authoring_part") scopeId = courseUuid(scopeId, "scopeId");
+  const anchorStudyUnitId = url.searchParams.get("anchorStudyUnitId");
+  const cursorStudyUnitId = url.searchParams.get("cursorStudyUnitId");
+  for (const [field, value] of [
+    ["anchorStudyUnitId", anchorStudyUnitId],
+    ["cursorStudyUnitId", cursorStudyUnitId]
+  ]) {
+    if (value != null && (!value.trim() || value !== value.trim() || value.length > 240)) {
+      fail("invalid_pagination", `${field} é inválido.`, { field });
+    }
+  }
+  if (anchorStudyUnitId != null && cursorStudyUnitId != null) {
+    fail("invalid_pagination", "Âncora e cursor são mutuamente exclusivos.");
+  }
+  const direction = String(url.searchParams.get("direction") || "forward").trim();
+  if (!new Set(["forward", "backward"]).has(direction)) {
+    fail("invalid_pagination", "direction é inválida.");
+  }
+  const maxBytes = positiveInteger(url.searchParams.get("maxBytes"), "maxBytes", {
+    defaultValue: 512 * 1024,
+    maximum: 1_500_000
+  });
+  if (maxBytes < 64 * 1024) {
+    fail("invalid_pagination", "maxBytes é inválido.", { field: "maxBytes" });
+  }
+  return {
+    expectedRevision,
+    scopeKind,
+    scopeId,
+    anchorStudyUnitId,
+    cursorStudyUnitId,
+    direction,
+    limit: positiveInteger(url.searchParams.get("limit"), "limit", {
+      defaultValue: 12,
+      maximum: 24
+    }),
+    maxBytes
+  };
+}
+
 function validateEntityIdentity(value, index) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     fail("invalid_course_entity", "A identidade da entidade é inválida.", { index });
@@ -197,19 +256,34 @@ function validateEntity(value, index) {
       .find((field) => Object.hasOwn(value.content, field))
     : null;
   if (parentType !== expectedParent || (parentType === null) !== (parentId === null) ||
-      !Number.isSafeInteger(position) || position < (identity.entityType === "card" ? 1 : 0) ||
+      !Number.isSafeInteger(position) || position < (identity.entityType === "study_unit" ? 1 : 0) ||
       !value.content || typeof value.content !== "object" || Array.isArray(value.content) ||
       invalidContentField) {
     fail("invalid_course_entity", "A posição ou o conteúdo da entidade é inválido.", { index });
   }
   const content = { ...value.content };
-  if (["module", "lesson", "microsequence"].includes(identity.entityType)) {
+  if (["module", "lesson", "microsequence", "study_unit"].includes(identity.entityType)) {
     content.title = text(value.content.title, "content.title", {
       maximum: 300,
       allowLayoutWhitespace: true
     });
   }
-  return { ...identity, parentType, parentId, position, content };
+  const validation = validateCourseEntityContent(identity.entityType, {
+    id: identity.entityId,
+    position,
+    ...content
+  });
+  if (!validation.valid) {
+    fail(
+      "invalid_course_contract",
+      "A entidade não satisfaz o contrato didático do Curso.",
+      { index, errors: validation.errors.slice(0, 12) }
+    );
+  }
+  const normalizedContent = { ...validation.normalized };
+  delete normalizedContent.id;
+  delete normalizedContent.position;
+  return { ...identity, parentType, parentId, position, content: normalizedContent };
 }
 
 function validateCreate(body, request) {
@@ -526,6 +600,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         courseId: route.courseId,
         authoringPartId: route.authoringPartId,
         materializationId: route.materializationId,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "listCourseStudyUnits") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.listCourseStudyUnits({
+        principal,
+        courseId: route.courseId,
+        ...courseStudyUnitQuery(request),
         deadlineAt
       })
     };

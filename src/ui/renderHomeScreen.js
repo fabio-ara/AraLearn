@@ -25,7 +25,7 @@ function countLessons(course) {
 function countStudyUnitsInLesson(lesson) {
   return (lesson.microsequences || []).reduce((total, microsequence) =>
     isRunnableMicrosequence(microsequence)
-      ? total + (microsequence.cards || []).length
+      ? total + (microsequence.studyUnits || []).length
       : total, 0);
 }
 

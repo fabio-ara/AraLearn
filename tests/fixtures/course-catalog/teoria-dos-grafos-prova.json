@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -229,7 +229,7 @@
                     "calcula m em caso pequeno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grafo-conjuntos-regra",
                       "position": 1,
@@ -827,7 +827,7 @@
                     "reconhece ausência de aresta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-adjacencia-incidencia-regra",
                       "position": 1,
@@ -1262,7 +1262,7 @@
                     "escreve lista de graus em ordem não crescente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grau-regra",
                       "position": 1,
@@ -1976,7 +1976,7 @@
                     "relaciona a contagem por graus com a contagem por arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-soma-graus-aresta-duas-extremidades",
                       "position": 1,
@@ -2355,7 +2355,7 @@
                     "reconhece quando uma soma ímpar não pode ser soma dos graus de um grafo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-teorema-soma-graus-regra",
                       "position": 1,
@@ -2672,7 +2672,7 @@
                     "reconhece que a quantidade encontrada deve ser par"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grau-par-impar-regra",
                       "position": 1,
@@ -3024,7 +3024,7 @@
                     "liga soma par à quantidade par de parcelas ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-argumento-paridade-impares",
                       "position": 1,
@@ -3474,7 +3474,7 @@
                     "rejeita lista com quantidade ímpar de graus ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-lista-graus-regra",
                       "position": 1,
@@ -3843,7 +3843,7 @@
                     "identifica impossibilidade por número negativo ou falta de termos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flow-havel-hakimi",
                       "position": 1,
@@ -4281,7 +4281,7 @@
                     "detecta construção que não realiza a lista pedida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-provar-com-construcao",
                       "position": 1,
@@ -4804,7 +4804,7 @@
                     "ordena a lista como 2,2,2,1,1"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-n-22211",
                       "position": 1,
@@ -5280,7 +5280,7 @@
                     "distingue justificativa por soma ímpar de justificativa por construção"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-tabela-listas-prova",
                       "position": 1,
@@ -5859,7 +5859,7 @@
                     "detecta grafo que não é completo por faltar uma aresta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-completo-regra",
                       "position": 1,
@@ -6332,7 +6332,7 @@
                     "detecta erro de não dividir por 2"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-formula-kn-regra",
                       "position": 1,
@@ -6721,7 +6721,7 @@
                     "distingue resposta exata de resposta por mínimo acima do alvo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-380-estrategia",
                       "position": 1,
@@ -7088,7 +7088,7 @@
                     "detecta caminho com 4 vértices como não 2-regular"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-regular-regra",
                       "position": 1,
@@ -7661,7 +7661,7 @@
                     "resolve o caso 3-regular com 5 vértices"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-kregular-formula",
                       "position": 1,
@@ -8033,7 +8033,7 @@
                     "decide impossibilidade de 3-regular com 5 vértices"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-construir-k4",
                       "position": 1,
@@ -8607,7 +8607,7 @@
                     "identifica AC e BD como arestas do complementar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-complementar-regra",
                       "position": 1,
@@ -9030,7 +9030,7 @@
                     "detecta erro de somar em vez de subtrair"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-formula-arestas-complementar",
                       "position": 1,
@@ -9354,7 +9354,7 @@
                     "detecta erro de usar m = n"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-arvore",
                       "position": 1,
@@ -9774,7 +9774,7 @@
                     "aplica alternância de cores em caminho"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-bipartido",
                       "position": 1,
@@ -10154,7 +10154,7 @@
                     "escolhe a forma correta da regra"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-regra-ciclo-impar",
                       "position": 1,
@@ -10679,7 +10679,7 @@
                     "detecta aresta indevida dentro do mesmo grupo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-kpq",
                       "position": 1,
@@ -11076,7 +11076,7 @@
                     "retoma bipartição do caminho A-B-C-D-E"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-complementar-prova",
                       "position": 1,
@@ -11592,7 +11592,7 @@
                     "identifica a ideia de preservar ligações"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-iso-ideia",
                       "position": 1,
@@ -11964,7 +11964,7 @@
                     "detecta vértice sem correspondência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-correspondencia-regra",
                       "position": 1,
@@ -12442,7 +12442,7 @@
                     "rejeita correspondência que quebra adjacência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-preservar-regra",
                       "position": 1,
@@ -13101,7 +13101,7 @@
                     "reconhece que invariantes iguais não bastam para provar isomorfismo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-invariantes-regra",
                       "position": 1,
@@ -13489,7 +13489,7 @@
                     "identifica justificativa correta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-naoiso-listas-graus",
                       "position": 1,
@@ -14056,7 +14056,7 @@
                     "conclui que os grafos são isomorfos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-isoex-g1",
                       "position": 1,
@@ -14647,7 +14647,7 @@
                     "distingue resposta decorada de critério estrutural"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vf-afirmacao-prova",
                       "position": 1,
@@ -15231,7 +15231,7 @@
                     "reconhece que matriz simétrica corresponde ao grafo não orientado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-regra-01",
                       "position": 1,
@@ -15635,7 +15635,7 @@
                     "lista todas as arestas corretamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-metade-superior-regra-01",
                       "position": 1,
@@ -16095,7 +16095,7 @@
                     "calcula graus simples como conferência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grafo-extraido-01",
                       "position": 1,
@@ -16863,7 +16863,7 @@
                     "justifica pela presença de ciclo ímpar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-bipartido-regra-01",
                       "position": 1,
@@ -17623,7 +17623,7 @@
                     "calcula comprimento como número de arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicoes-sequencias-01",
                       "position": 1,
@@ -18353,7 +18353,7 @@
                     "seleciona a justificativa baseada em repetição de vértice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-conexo-definicao-formal",
                       "position": 1,
@@ -18859,7 +18859,7 @@
                     "detecta repetição de aresta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-subgrafo-sequencia-01",
                       "position": 1,
@@ -19570,7 +19570,7 @@
                     "identifica um caminho válido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-matriz-arestas-01",
                       "position": 1,
@@ -20409,7 +20409,7 @@
                     "evita duplicar arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-ponderada-regra",
                       "position": 1,
@@ -20777,7 +20777,7 @@
                     "associa cada aresta ao peso correto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-ler-metade-matriz",
                       "position": 1,
@@ -21284,7 +21284,7 @@
                     "distingue peso de quantidade de arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-regra-peso-total",
                       "position": 1,
@@ -21555,7 +21555,7 @@
                     "rejeita menor número de arestas como critério suficiente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-caminhos-candidatos-a-f",
                       "position": 1,
@@ -21861,7 +21861,7 @@
                     "rejeita A-C-F como resposta final"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-saidas-de-a",
                       "position": 1,
@@ -22195,7 +22195,7 @@
                     "rejeita A-C-F por peso 9"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-registrar-caminho-e-peso",
                       "position": 1,
@@ -22470,7 +22470,7 @@
                     "não decide o menor caminho pela quantidade de arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-nuance-existencia",
                       "position": 1,
@@ -22664,7 +22664,7 @@
                     "responde A-B-E-F com peso 8"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-matriz-lista",
                       "position": 1,
@@ -23229,7 +23229,7 @@
                     "distingue trilha comum de trilha euleriana"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-trilha-euleriana-definicao",
                       "position": 1,
@@ -23594,7 +23594,7 @@
                     "reconhece circuito euleriano em C4"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-criterio-grafo-euleriano",
                       "position": 1,
@@ -24190,7 +24190,7 @@
                     "distingue trilha aberta de circuito euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-criterio-semieuleriano",
                       "position": 1,
@@ -24831,7 +24831,7 @@
                     "explica por que não basta o grafo ser conexo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-criterio-muitos-impares",
                       "position": 1,
@@ -25474,7 +25474,7 @@
                     "não ignora a condição de conexão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-conexao-importa",
                       "position": 1,
@@ -26165,7 +26165,7 @@
                     "classifica mais de 2 ímpares como não euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flow-checklist-euler",
                       "position": 1,
@@ -26618,7 +26618,7 @@
                     "julga como falsa a possibilidade de semieuleriano com quatro ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vf-euler-todos-pares",
                       "position": 1,
@@ -27044,7 +27044,7 @@
                     "não antecipa eulerização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-def-grafo-euleriano",
                       "position": 1,
@@ -27668,7 +27668,7 @@
                     "rejeita apagar arestas ou tornar completo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-ideia-eulerizacao-definicao",
                       "position": 1,
@@ -28033,7 +28033,7 @@
                     "rejeita somar apenas um lado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-aresta-regra",
                       "position": 1,
@@ -28423,7 +28423,7 @@
                     "conclui que par de ímpares fica par"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-caminho-regra",
                       "position": 1,
@@ -29067,7 +29067,7 @@
                     "conclui que o grafo eulerizado é euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-p4-grafo-original",
                       "position": 1,
@@ -29773,7 +29773,7 @@
                     "confere graus finais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-estrela-grafo-original",
                       "position": 1,
@@ -30550,7 +30550,7 @@
                     "conclui se o grafo eulerizado admite circuito euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-checagem-regra",
                       "position": 1,
@@ -30967,7 +30967,7 @@
                     "reconhece a necessidade de checar graus finais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vf-definicao",
                       "position": 1,
@@ -31453,7 +31453,7 @@
                     "responde V/F com justificativa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-definicao",
                       "position": 1,
@@ -32146,7 +32146,7 @@
                     "distingue classificação de eulerização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-mapa-abertura",
                       "position": 1,
@@ -32580,7 +32580,7 @@
                     "conta vértices ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grafo-base-graus",
                       "position": 1,
@@ -33318,7 +33318,7 @@
                     "distingue possível de impossível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-listas-abertura",
                       "position": 1,
@@ -33864,7 +33864,7 @@
                     "constrói K2,3"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-k4-arestas",
                       "position": 1,
@@ -34398,7 +34398,7 @@
                     "distingue trilha de caminho"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-isomorfismo",
                       "position": 1,
@@ -35229,7 +35229,7 @@
                     "responde A-B-E-F"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-ponderada-ad-zero",
                       "position": 1,
@@ -35912,7 +35912,7 @@
                     "confere graus finais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-trilha-euleriana-revisao",
                       "position": 1,
@@ -36600,7 +36600,7 @@
                     "corrige erros prováveis"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-simulado-listas",
                       "position": 1,

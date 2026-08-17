@@ -188,7 +188,7 @@ export const setDiagramPackage = Object.freeze({
       practiceModes: ["exposition", "gap", "typing", "selection", "classification"]
     }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
-    limitations: Object.freeze(["No máximo três conjuntos por card.", "Os contornos não codificam cardinalidade; números e itens pertencem à legenda ancorada por marcadores.", "Para mais de três conjuntos, use uma representação de interseções própria, como UpSet."]),
+    limitations: Object.freeze(["No máximo três conjuntos por Unidade de estudo.", "Os contornos não codificam cardinalidade; números e itens pertencem à legenda ancorada por marcadores.", "Para mais de três conjuntos, use uma representação de interseções própria, como UpSet."]),
     accessibility: "Cada marcador liga uma região visual a uma descrição textual completa; o desenho nunca é a única fonte de informação."
   }),
   authoringContract: Object.freeze({

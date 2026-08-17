@@ -28,6 +28,10 @@ ficam em colunas; o conteúdo próprio fica em JSON validado.
 revisão, propriedade, contagens, progresso e data de atualização. Ela não leva
 a composição inteira de todos os Cursos.
 
+**Inspeção autoral.** Leitura vertical owner-only de Unidades de estudo em uma
+revisão fixada. Pode ser limitada ao Curso, a uma Parte, às Unidades sem Parte
+ou a um recorte curricular e não recompõe o documento integral.
+
 **Estado pessoal.** Progresso, marcas para rever e observações de uma pessoa em
 um Curso. Ele não altera o conteúdo canônico e não é compartilhado com outra
 pessoa que estude o mesmo Curso.
@@ -125,19 +129,33 @@ ou percorre entidades em páginas. Cada página exige a revisão esperada; se o
 Curso mudar entre páginas, a leitura falha em vez de misturar duas versões.
 Depois de composto e validado, o documento é cacheado no IndexedDB.
 
+Autoria possui uma leitura diferente para inspeção: a RPC owner-only devolve
+Unidades em ordem curricular com contexto de Módulo, Lição e Microssequência,
+Parte associada e link profundo. Âncora inclui o alvo de entrada; cursor marca
+a fronteira já consumida e nunca aparece junto da âncora. A interface pede 12
+itens, mantém no máximo 36 artigos no DOM e pagina em ambas as direções. O cache
+local é indexado pela revisão e pelo pedido completo e limitado a quatro
+páginas ou 8 MiB por Curso; a posição local guarda Unidade, escopo e distância
+da barra fixa sem criar escrita remota.
+
 ### Consequências
 
 - a Home cresce com o número de páginas, não com o total de Unidades;
 - um Curso só consome tráfego de composição ao ser aberto;
 - cache conhecido permite abrir conteúdo já carregado sem conexão;
-- Curso atualizado invalida a leitura parcial e é recarregado de modo íntegro.
+- Curso atualizado invalida a leitura parcial e é recarregado de modo íntegro;
+- inspeção longa mantém rede, memória e DOM limitados sem perder contexto;
+- uma página exata pode ser relida offline como stale, mas outro recorte não é
+  usado como aproximação.
 
 ### Limites e evidência
 
 O carregamento inicial de Estudo percorre descritores acessíveis para permitir
-retomada offline. O orçamento de rede prolongado ainda precisa ser medido com
-uso real; “paginado” não significa automaticamente “barato” em qualquer
-cardinalidade.
+retomada offline. A Inspeção usa alvo normal de 512 KiB, aceita entre 64 KiB e
+1.500.000 bytes e falha fechada se a projeção completa ultrapassar 1,75 MiB,
+preservando margem sob 2 MiB. O orçamento de rede prolongado ainda precisa ser
+medido com uso real; “paginado” não significa automaticamente “barato” em
+qualquer cardinalidade.
 
 ## Decisão 3 — composição relacional e documento validado
 
@@ -160,9 +178,16 @@ A solução usa uma única tabela de entidades para cinco tipos:
 | Unidade de estudo | Microssequência | inteiro positivo do contrato |
 
 Chaves estrangeiras compostas garantem que o pai pertence ao mesmo Curso. O
-domínio `courseEntities` achata um documento `aralearn.library.v1`, valida
+domínio `courseEntities` achata um documento `aralearn.course.v1`, valida
 linhas e recompõe o documento usado pelo renderer. Estrutura relacional e
 conteúdo JSON não duplicam `id`, posição nem filhos.
+
+O tipo final da Unidade é `study_unit`, e a coleção filha da Microssequência é
+`studyUnits`; não há alias para o discriminador ou a coleção substituídos. A
+escrita continua segmentada: cada linha alterada passa pelo validador semântico
+do tipo, e o PostgreSQL verifica `dependsOn` somente nas Lições afetadas. A
+inspeção permanece leitura paginada e não é usada como pretexto para recompor o
+Curso antes de cada escrita.
 
 ### Consequências
 
@@ -351,8 +376,9 @@ compatibilidade permanente.
 | cache, paginação e revisão | `src/supabase/CourseController.js` |
 | aplicação de Estudo | `src/study/` |
 | Autoria visual | `src/ui/CourseAuthoringSurface.js` |
+| sequência vertical de Inspeção | `src/ui/CourseInspectionSequence.js` |
 | API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000`, `20260817150000` e `20260817160000` |
+| banco canônico | migrations `20260817140000` a `20260817170000` |
 | importador transitório | `scripts/courseCutover/` |
 
 ## Gates antes da promoção hospedada
@@ -368,8 +394,10 @@ está concluída. A promoção exige, nesta ordem:
    de navegador contra o schema resultante;
 4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
    substituído;
-5. executar o importador e as migrations `1400`, `1500` e `1600` na mesma
-   transação hospedada, abortando diante de drift;
+5. executar o importador e as migrations `1400`, `1500`, `1600` e `1700`, nessa
+   ordem, na mesma transação hospedada, abortando diante de drift; o runner
+   declara e hasheia as quatro antes de `--apply` e não usa `db push` separado
+   para a `1700`;
 6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
 
 O importador é transitório e não entra no runtime. Não há leitura dupla,
@@ -384,6 +412,8 @@ anterior.
 | Cursos compartilhados aparecem somente em Estudo | implementado localmente | controladores owner-only e testes de acesso |
 | lista fina precede composição sob demanda | implementado localmente | RPCs paginadas, cache e testes de revisão |
 | plano e Partes são editáveis sem JSON pela interface e pelo MCP | implementado localmente | domínio, migration `1600`, API, MCP e testes focais |
+| UI e MCP inspecionam as mesmas Unidades por escopo e revisão | implementado localmente | migration `1700`, RPC owner-only, `lerCurso study_units`, cache e testes focais |
+| a Inspeção limita página, payload e janela visual | implementado localmente | 12/24 itens, hard cap de 1,75 MiB, cache limitado e no máximo 36 artigos |
 | remover ou reorganizar Parte não apaga conteúdo produzido | implementado localmente | relações separadas, transações e testes de domínio/banco |
 | progresso de Parte reflete somente fatos persistidos | implementado localmente | projeção relacional de vínculos, entidades, tentativas e etapas |
 | estado pessoal não altera o Curso | implementado localmente | schema, RPC e repositório local |

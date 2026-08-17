@@ -133,6 +133,89 @@ test("lê entidades para o MCP com ator e cerca de versão", async () => {
   assert.equal(payload.p_after_entity_id, "lesson-a");
 });
 
+test("lê inspeção curricular limitada e acrescenta link exato da Unidade", async () => {
+  let payload = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/list_owned_course_study_units_for_actor_v1$/u);
+    payload = JSON.parse(init.body);
+    return json({
+      contract: "aralearn.course-study-unit-inspection-page.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      scope: { kind: "authoring_part", id: PART_ID },
+      totalCount: 1,
+      scopeOptions: {
+        authoringParts: [{
+          id: PART_ID,
+          position: 0,
+          title: "Parte A",
+          state: "materialized"
+        }],
+        unassignedStudyUnitCount: 0
+      },
+      items: [{
+        studyUnit: {
+          id: "unit-a",
+          position: 1,
+          title: "Unidade A",
+          role: "theory",
+          content: [{
+            id: "paragraph-a",
+            package: "aralearn.resource.paragraph",
+            version: "1.0.0",
+            data: { text: "Conteúdo da Unidade A." }
+          }],
+          response: null,
+          feedback: [],
+          topics: [],
+          sources: []
+        },
+        version: 2,
+        updatedAt: "2026-08-17T10:00:00Z",
+        ordinal: 1,
+        curriculumPath: {
+          module: { id: "module-a", position: 0, title: "Módulo A" },
+          lesson: { id: "lesson-a", position: 0, title: "Lição A" },
+          didacticMicrosequence: { id: "micro-a", position: 0, title: "Micro A" }
+        },
+        authoringPart: {
+          id: PART_ID,
+          position: 0,
+          title: "Parte A",
+          state: "materialized"
+        }
+      }],
+      hasPrevious: false,
+      hasMore: false,
+      previousCursor: null,
+      nextCursor: null,
+      pageBytes: 640
+    });
+  });
+
+  const result = await value.listCourseStudyUnits({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    scopeKind: "authoring_part",
+    scopeId: PART_ID,
+    anchorStudyUnitId: "unit-a",
+    direction: "backward",
+    limit: 12,
+    maxBytes: 262144
+  });
+
+  assert.equal(payload.p_actor_id, USER_ID);
+  assert.equal(payload.p_scope_kind, "authoring_part");
+  assert.equal(payload.p_anchor_study_unit_id, "unit-a");
+  assert.equal(payload.p_max_bytes, 262144);
+  assert.equal(
+    result.items[0].deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+      "?section=inspection&studyUnitId=unit-a"
+  );
+});
+
 test("traduz concorrência do banco sem expor detalhes internos", async () => {
   const value = adapter(async () => json({ code: "40001", message: "private.secret" }, 400));
   await assert.rejects(
@@ -154,16 +237,6 @@ test("replay idempotente chega ao receipt mesmo após a revisão avançar", asyn
   const calls = [];
   const value = adapter(async (url) => {
     calls.push(url);
-    if (url.endsWith("/rpc/get_owned_course_for_actor_v1")) {
-      return json({
-        courseId: COURSE_ID,
-        title: "Curso",
-        goal: "Aprender",
-        revision: 3,
-        ownership: "owned",
-        canEdit: true
-      });
-    }
     if (url.endsWith("/rpc/commit_course_composition_for_actor_v1")) {
       return json({ courseId: COURSE_ID, revision: 3, idempotent: true });
     }
@@ -186,7 +259,6 @@ test("replay idempotente chega ao receipt mesmo após a revisão avançar", asyn
   });
   assert.equal(result.idempotent, true);
   assert.deepEqual(calls.map((url) => url.split("/").at(-1)), [
-    "get_owned_course_for_actor_v1",
     "commit_course_composition_for_actor_v1"
   ]);
 });
@@ -401,50 +473,31 @@ test("avanço de materialização encaminha somente a operação delimitada", as
   assert.deepEqual(request.p_payload, payload);
 });
 
-test("recusa composição que quebraria o contrato do Estudo antes da escrita", async () => {
+test("encaminha somente o segmento alterado sem reler a composição integral", async () => {
   const calls = [];
-  const value = adapter(async (url) => {
-    calls.push(url);
-    if (url.endsWith("/rpc/get_owned_course_for_actor_v1")) {
-      return json({
-        courseId: COURSE_ID,
-        title: "Curso",
-        goal: "Aprender",
-        revision: 2,
-        ownership: "owned",
-        canEdit: true
-      });
-    }
-    if (url.endsWith("/rpc/list_owned_course_entities_for_actor_v1")) {
-      return json({
-        courseId: COURSE_ID,
-        revision: 2,
-        items: [],
-        hasMore: false,
-        nextCursor: null
-      });
-    }
-    assert.fail("A escrita não pode ser chamada para uma composição inválida.");
+  const value = adapter(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    assert.match(url, /commit_course_composition_for_actor_v1$/u);
+    return json({ courseId: COURSE_ID, courseRevision: 3, changed: true });
   });
-  await assert.rejects(
-    () => value.commitCourseComposition({
-      principal: { actorId: USER_ID },
-      courseId: COURSE_ID,
-      requestId: "request-change-invalid-0001",
-      expectedRevision: 2,
-      upserts: [{
-        entityType: "card",
-        entityId: "unit-a",
-        parentType: "microsequence",
-        parentId: "missing",
-        position: 1,
-        content: {}
-      }],
-      deletes: []
-    }),
-    (error) => error.code === "invalid_course_contract"
-  );
-  assert.equal(calls.length, 2);
+  const upserts = [{
+    entityType: "module",
+    entityId: "module-a",
+    parentType: null,
+    parentId: null,
+    position: 0,
+    content: { title: "Módulo A" }
+  }];
+  await value.commitCourseComposition({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    requestId: "request-change-segment-0001",
+    expectedRevision: 2,
+    upserts,
+    deletes: []
+  });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].body.p_upserts, upserts);
 });
 
 test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", async () => {

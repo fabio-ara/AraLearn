@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -233,7 +233,7 @@
                     "usar variável antes de atribuir valor",
                     "achar que `==` cria variável"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-01-python-linguagem",
                       "position": 1,
@@ -638,7 +638,7 @@
                     "colocar variável entre aspas quando quer o valor",
                     "achar que `print()` guarda resultado"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-02-variavel-atribuicao",
                       "position": 1,
@@ -1039,7 +1039,7 @@
                     "colocar nome de variável entre aspas quando quer o valor",
                     "achar que `print()` guarda valor"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-03-funcao-nativa-gramatica",
                       "position": 1,
@@ -1448,7 +1448,7 @@
                     "trocar `and` por `or` sem intenção",
                     "esperar número quando a comparação devolve booleano"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-04-comparacao-logica",
                       "position": 1,
@@ -1879,7 +1879,7 @@
                     "usar `else` com condição",
                     "esperar que todos os `elif` executem"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-05-if-indentacao",
                       "position": 1,
@@ -2291,7 +2291,7 @@
                     "comparar texto com número",
                     "esquecer conversão"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-06-input-texto",
                       "position": 1,
@@ -2691,7 +2691,7 @@
                     "incluir limite superior de `range()` por engano",
                     "tirar indentação do corpo do laço"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-07-while-for-range",
                       "position": 1,
@@ -3101,7 +3101,7 @@
                     "trocar nome da lista pelo item atual",
                     "desalinhar `if` dentro do `for`"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a01-08-lista-basica-for-if",
                       "position": 1,
@@ -3698,7 +3698,7 @@
                     "chamar método sem parênteses",
                     "achar que todo comando apenas mostra algo"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-00-gramatica-chamada",
                       "position": 1,
@@ -4088,7 +4088,7 @@
                     "usar `remove()` com índice",
                     "usar `pop()` como se recebesse valor"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-01-lista-mutavel",
                       "position": 1,
@@ -4506,7 +4506,7 @@
                     "usar `append()` em conjunto",
                     "esperar ordem fixa em conjunto"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-02-lista-tupla-set",
                       "position": 1,
@@ -5022,7 +5022,7 @@
                     "usar `for chave, valor in maquina` sem `.items()`",
                     "usar `pop()` com índice em dicionário"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-03-dicionario-chave-valor",
                       "position": 1,
@@ -5424,7 +5424,7 @@
                     "dividir por valor fixo quando deveria usar `len()`",
                     "passar item único onde a função espera coleção"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-04-nativas-colecoes",
                       "position": 1,
@@ -5900,7 +5900,7 @@
                     "usar `for chave, valor in maquina` sem `.items()`",
                     "usar `set()` como método de lista"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-05-metodos-tabela",
                       "position": 1,
@@ -6582,7 +6582,7 @@
                     "usar ordem de conjunto como garantia",
                     "usar dois nomes no dicionário sem `.items()`"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-06-for-range-colecoes",
                       "position": 1,
@@ -7040,7 +7040,7 @@
                     "chamar função antes de definir",
                     "esquecer parênteses na chamada"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-07-parametro-argumento-teoria",
                       "position": 1,
@@ -7412,7 +7412,7 @@
                     "não retornar nada",
                     "usar variável global em vez de parâmetro"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-08-print-return-teoria",
                       "position": 1,
@@ -7838,7 +7838,7 @@
                     "criar função sem chamada",
                     "ignorar argumento passado"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a02-09-criterios-desafio",
                       "position": 1,
@@ -8641,7 +8641,7 @@
                     "inverter `np` e `pd`",
                     "usar alias antes de importar"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-01-import-as-aliases",
                       "position": 1,
@@ -8944,7 +8944,7 @@
                     "usar `array()` sem `np`",
                     "confundir array com lista comum"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-02-array-sentido",
                       "position": 1,
@@ -9222,7 +9222,7 @@
                     "trocar média por soma",
                     "esperar novo array quando o retorno é escalar"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-03-funcoes-numpy",
                       "position": 1,
@@ -9570,7 +9570,7 @@
                     "confundir `+ 2` com anexar `2` ao final",
                     "trocar operação aritmética por comparação"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-04-operacao-vetorizada",
                       "position": 1,
@@ -9865,7 +9865,7 @@
                     "usar listas de tamanhos diferentes",
                     "confundir coluna com índice"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-05-dataframe-sentido",
                       "position": 1,
@@ -10151,7 +10151,7 @@
                     "esquecer aspas no caminho",
                     "não guardar o retorno em `df`"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-06-read-csv-sentido",
                       "position": 1,
@@ -10435,7 +10435,7 @@
                     "usar `df.shape()`",
                     "confundir método com atributo"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-07-termos-estrutura",
                       "position": 1,
@@ -10789,7 +10789,7 @@
                     "errar colchetes de múltiplas colunas",
                     "usar rótulo inexistente"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-08-simples-duplos",
                       "position": 1,
@@ -11107,7 +11107,7 @@
                     "chamar método na coluna errada",
                     "tratar retorno escalar como tabela"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-09-metricas-colunas",
                       "position": 1,
@@ -11467,7 +11467,7 @@
                     "usar `=` em comparação",
                     "não aplicar a máscara ao DataFrame"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-10-fluxo-filtro",
                       "position": 1,
@@ -11817,7 +11817,7 @@
                     "usar `>` quando a regra pede `>=`",
                     "usar `==` em vez de atribuição na nova coluna"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-11-where-sentido",
                       "position": 1,
@@ -12221,7 +12221,7 @@
                     "confundir frequência com média",
                     "usar `describe()` como contagem de categorias"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-12-value-describe",
                       "position": 1,
@@ -12539,7 +12539,7 @@
                     "trocar coluna de grupo e coluna agregada",
                     "confundir contagem com média"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-13-fluxo-groupby",
                       "position": 1,
@@ -12881,7 +12881,7 @@
                     "inverter condição e rótulos",
                     "interpretar contagem como média"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a03-14-requisitos-integrados",
                       "position": 1,
@@ -13626,7 +13626,7 @@
                     "confundir coluna com linha",
                     "tratar qualquer arquivo como tabela estruturada"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-01-dados-dataset-fonte",
                       "position": 1,
@@ -13966,7 +13966,7 @@
                     "esquecer aspas no nome do arquivo",
                     "achar que `read_excel()` apenas mostra a planilha"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-02-pandas-read-excel-conceito",
                       "position": 1,
@@ -14292,7 +14292,7 @@
                     "achar que `columns` mostra os dados das colunas",
                     "ignorar nomes reais e usar campos ausentes"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-03-inspecao-estrutura-conceito",
                       "position": 1,
@@ -14664,7 +14664,7 @@
                     "achar que todo `object` é texto livre sem valor analítico",
                     "confundir `data` em português com `data` em inglês"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-04-dtype-sentido",
                       "position": 1,
@@ -15018,7 +15018,7 @@
                     "aplicar conversão à coluna errada",
                     "converter serial numérico sem entender origem e unidade"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-05-data-date-serial",
                       "position": 1,
@@ -15338,7 +15338,7 @@
                     "tratar resultado zero como método inútil",
                     "começar a limpar dados nesta aula"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-06-ausentes-duplicatas-conceito",
                       "position": 1,
@@ -15767,7 +15767,7 @@
                     "esquecer parênteses em filtros compostos",
                     "comparar a coluna errada"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-07-mascara-conceito",
                       "position": 1,
@@ -16167,7 +16167,7 @@
                     "achar que `describe()` modifica a coluna",
                     "não distinguir resultado numérico de `Series`"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-08-series-estatisticas",
                       "position": 1,
@@ -16567,7 +16567,7 @@
                     "tentar média de coluna categórica",
                     "esquecer `ascending=False` quando quer maior primeiro"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-09-groupby-conceito",
                       "position": 1,
@@ -16976,7 +16976,7 @@
                     "limpar dados quando a tarefa pede detectar",
                     "misturar DataFrame e Series"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a04-10-integracao-conceito",
                       "position": 1,
@@ -17610,7 +17610,7 @@
                     "distingue dado bruto e dado preparado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-01-01",
                       "position": 1,
@@ -17941,7 +17941,7 @@
                     "reconhece `object` em `tempo_ciclo` como indício de texto/mistura"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-02-01",
                       "position": 1,
@@ -18372,7 +18372,7 @@
                     "identifica retorno de `df.isnull().sum()` como contagem por coluna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-03-01",
                       "position": 1,
@@ -18786,7 +18786,7 @@
                     "reconhece que o dataset bruto tem duplicatas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-04-01",
                       "position": 1,
@@ -19046,7 +19046,7 @@
                     "entende por que há dois usos de `df`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-05-01",
                       "position": 1,
@@ -19366,7 +19366,7 @@
                     "prevê redução de linhas após remover duplicatas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-06-01",
                       "position": 1,
@@ -19666,7 +19666,7 @@
                     "entende que conversão pode aumentar ausentes antes do preenchimento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-07-01",
                       "position": 1,
@@ -20024,7 +20024,7 @@
                     "identifica retorno como `Series` preenchida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-08-01",
                       "position": 1,
@@ -20314,7 +20314,7 @@
                     "usa `unique()` para verificar valores distintos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-09-01",
                       "position": 1,
@@ -20574,7 +20574,7 @@
                     "entende que `index=False` evita salvar o índice como coluna extra"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-10-01",
                       "position": 1,
@@ -20917,7 +20917,7 @@
                     "reconhece `show()` como ação de visualização em Spark"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-11-01",
                       "position": 1,
@@ -21255,7 +21255,7 @@
                     "diferencia transformação e visualização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-12-01",
                       "position": 1,
@@ -21615,7 +21615,7 @@
                     "transfere o padrão para outra coluna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a05-13-01",
                       "position": 1,
@@ -22236,7 +22236,7 @@
                     "escolhe gráfico por pergunta analítica, não por preferência estética"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-00-c01-mapeamento-visual",
                       "position": 1,
@@ -22529,7 +22529,7 @@
                     "usa df.columns para verificar nomes antes de plotar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-01-c01-aliases",
                       "position": 1,
@@ -22924,7 +22924,7 @@
                     "entende que linha exige ordem interpretável"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-02-c01-colunas-reais",
                       "position": 1,
@@ -23230,7 +23230,7 @@
                     "interpreta Usinagem como setor com maior contagem"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-03-c01-pergunta-barras",
                       "position": 1,
@@ -23518,7 +23518,7 @@
                     "identifica id_registro no eixo x e temperatura_c no eixo y"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-04-c01-pergunta-linha",
                       "position": 1,
@@ -23769,7 +23769,7 @@
                     "diferencia histograma de gráfico de barras categórico"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-05-c01-pergunta-hist",
                       "position": 1,
@@ -24007,7 +24007,7 @@
                     "evita dizer que temperatura causa produção apenas pelo gráfico"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-06-c01-pergunta-scatter",
                       "position": 1,
@@ -24244,7 +24244,7 @@
                     "diferencia a abordagem de plt.bar() com value_counts()"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-07-c01-seaborn-countplot",
                       "position": 1,
@@ -24485,7 +24485,7 @@
                     "interpreta sem exigir cálculo manual de quartis"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-08-c01-pergunta-boxplot",
                       "position": 1,
@@ -24721,7 +24721,7 @@
                     "diferencia histplot de countplot"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-09-c01-pergunta-histplot",
                       "position": 1,
@@ -24954,7 +24954,7 @@
                     "lê relação visual entre produção e consumo com cautela"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-10-c01-pergunta-hue",
                       "position": 1,
@@ -25190,7 +25190,7 @@
                     "não usa coluna inexistente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-11-c01-colunas-transferencia",
                       "position": 1,
@@ -25600,7 +25600,7 @@
                     "evita afirmação causal sem evidência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a06-12-c01-sintese",
                       "position": 1,
@@ -26143,7 +26143,7 @@
                     "distingue variável numérica, categórica e binária no dataset"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-01-01-importacoes",
                       "position": 1,
@@ -26550,7 +26550,7 @@
                     "diferencia valor típico de variação dos valores"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-02-01-vocabulario-base",
                       "position": 1,
@@ -26873,7 +26873,7 @@
                     "interpreta que a mediana é o valor central depois da ordenação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-03-01-regra-media-mediana",
                       "position": 1,
@@ -27261,7 +27261,7 @@
                     "usa `[0]` quando precisa do primeiro valor modal"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-04-01-ponte-moda",
                       "position": 1,
@@ -27596,7 +27596,7 @@
                     "evita confundir amplitude com média"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-05-01-fluxo-amplitude",
                       "position": 1,
@@ -27923,7 +27923,7 @@
                     "entende que Pandas usa padrão amostral por padrão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-06-01-comparacao-dispersao",
                       "position": 1,
@@ -28324,7 +28324,7 @@
                     "interpreta Q2 como mediana"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-07-01-ponte-quantile",
                       "position": 1,
@@ -28728,7 +28728,7 @@
                     "explica por que `True` conta como `1` e `False` como `0` em média booleana"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-08-01-fluxo-proporcao",
                       "position": 1,
@@ -29174,7 +29174,7 @@
                     "evita afirmar padrão além da descrição visual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-09-01-ideia-histograma",
                       "position": 1,
@@ -29529,7 +29529,7 @@
                     "confere resultados com valores plausíveis"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-10-01-mapa-exercicios",
                       "position": 1,
@@ -29929,7 +29929,7 @@
                     "produz código organizado e legível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-11-01-script-integrado",
                       "position": 1,
@@ -30255,7 +30255,7 @@
                     "evita afirmar origem ou previsão sem análise própria para isso"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-12-01-termos-interpretacao",
                       "position": 1,
@@ -30520,7 +30520,7 @@
                     "mantém comandos legíveis em Pandas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-a07-13-01-cenario-desafio",
                       "position": 1,
@@ -31018,7 +31018,7 @@
                     "escolhe pergunta adequada para cada bloco da aula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-01-c01",
                       "position": 1,
@@ -31294,7 +31294,7 @@
                     "evita trocar `read_csv()` por outro leitor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-02-c01",
                       "position": 1,
@@ -31565,7 +31565,7 @@
                     "diferencia coluna, linha, tipo e identificador"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-03-c01",
                       "position": 1,
@@ -31939,7 +31939,7 @@
                     "interpreta sem exagerar conclusão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-04-c01",
                       "position": 1,
@@ -32215,7 +32215,7 @@
                     "evita aplicar tratamento sem necessidade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-05-c01",
                       "position": 1,
@@ -32523,7 +32523,7 @@
                     "interpreta distribuição de `setor` e `turno`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-06-c01",
                       "position": 1,
@@ -32856,7 +32856,7 @@
                     "interpreta histograma como distribuição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-07-c01",
                       "position": 1,
@@ -33175,7 +33175,7 @@
                     "evita causalidade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-08-c01",
                       "position": 1,
@@ -33502,7 +33502,7 @@
                     "interpreta a célula, não a linha inteira isoladamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-09-c01",
                       "position": 1,
@@ -33806,7 +33806,7 @@
                     "interpreta padrão visual sem concluir causalidade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-10-c01",
                       "position": 1,
@@ -34135,7 +34135,7 @@
                     "não confunde boxplot com histograma"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-11-c01",
                       "position": 1,
@@ -34440,7 +34440,7 @@
                     "evita aplicar IQR a `falha` e `id_registro`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-12-c01",
                       "position": 1,
@@ -34942,7 +34942,7 @@
                     "interpreta média de `falha` como taxa de falha"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-13-c01",
                       "position": 1,
@@ -35296,7 +35296,7 @@
                     "interpreta comparação sem afirmar causa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-14-c01",
                       "position": 1,
@@ -35582,7 +35582,7 @@
                     "escreve conclusão com evidência e cautela"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "a08-15-c01",
                       "position": 1,

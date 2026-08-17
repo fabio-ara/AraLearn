@@ -8,6 +8,12 @@ const MAX_ENTITY_PAGES = 100;
 const ACCESSIBLE_COURSE_IDS_CACHE_KEY = `${CACHE_PREFIX}.accessible-course-ids`;
 const ACCESSIBLE_COURSE_IDS_CONTRACT = "aralearn.accessible-course-ids.v1";
 const REVIEW_PAGE_CACHE_KEY = `${CACHE_PREFIX}.review-page`;
+const AUTHORING_INSPECTION_PAGE_CONTRACT =
+  "aralearn.course-study-unit-inspection-page.v1";
+const AUTHORING_INSPECTION_POSITION_CONTRACT =
+  "aralearn.course-authoring-inspection-position.v1";
+const AUTHORING_INSPECTION_CACHE_MAX_PAGES = 4;
+const AUTHORING_INSPECTION_CACHE_MAX_BYTES = 8 * 1024 * 1024;
 
 function stableCursor(cursor) {
   if (!cursor) return "start";
@@ -24,6 +30,22 @@ function courseCacheKey(courseId, prefix = CACHE_PREFIX) {
 
 function instructionalPlanCacheKey(courseId, prefix = CACHE_PREFIX) {
   return `${prefix}.instructional-plan:${courseId}`;
+}
+
+function authoringOutlineCacheKey(courseId, prefix = CACHE_PREFIX) {
+  return `${prefix}.outline:${courseId}`;
+}
+
+function authoringInspectionCacheKey(courseId, prefix = CACHE_PREFIX) {
+  return `${prefix}.study-unit-inspection:${courseId}`;
+}
+
+function authoringInspectionPositionKey(courseId, prefix = CACHE_PREFIX) {
+  return `${prefix}.study-unit-inspection-position:${courseId}`;
+}
+
+function authoringInspectionRequestKey(revision, options) {
+  return `${revision}:${JSON.stringify(options)}`;
 }
 
 function entityCacheKey(courseId, revision, limit, cursor, prefix = CACHE_PREFIX) {
@@ -135,6 +157,142 @@ function cachedAccessibleCourseIds(value) {
   return courseIds;
 }
 
+function normalizedInspectionScope(value) {
+  const kind = String(value?.kind || "").trim();
+  const id = value?.id == null ? null : String(value.id).trim();
+  if (!new Set([
+    "course", "authoring_part", "unassigned", "module", "lesson",
+    "didactic_microsequence"
+  ]).has(kind) || ((kind === "course" || kind === "unassigned") !== (id === null)) ||
+      (id != null && (!id || id.length > 240))) {
+    throw new TypeError("Escopo da inspeção inválido.");
+  }
+  return { kind, id };
+}
+
+function normalizeInspectionPage(value) {
+  const courseId = String(value?.courseId || "").trim().toLowerCase();
+  const courseRevision = Number(value?.courseRevision);
+  const pageBytes = Number(value?.pageBytes);
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      value.contract !== AUTHORING_INSPECTION_PAGE_CONTRACT ||
+      !UUID_PATTERN.test(courseId) ||
+      !Number.isSafeInteger(courseRevision) || courseRevision < 1 ||
+      !Array.isArray(value.items) || value.items.length > 24 ||
+      typeof value.hasPrevious !== "boolean" || typeof value.hasMore !== "boolean" ||
+      !Number.isSafeInteger(pageBytes) || pageBytes < 0 || pageBytes > 1_750_000) {
+    throw new TypeError("Página da inspeção inválida.");
+  }
+  const scope = normalizedInspectionScope(value.scope);
+  const studyUnitIds = value.items.map((item) => String(item?.studyUnit?.id || "").trim());
+  if (studyUnitIds.some((id) => !id || id.length > 240) ||
+      new Set(studyUnitIds).size !== studyUnitIds.length) {
+    throw new TypeError("Página da inspeção inválida.");
+  }
+  const cursor = (cursorValue, expected) => {
+    if (!expected) {
+      if (cursorValue != null) throw new TypeError("Página da inspeção inválida.");
+      return null;
+    }
+    const studyUnitId = String(cursorValue?.studyUnitId || "").trim();
+    if (!studyUnitId || studyUnitId.length > 240 ||
+        Object.keys(cursorValue || {}).some((field) => field !== "studyUnitId")) {
+      throw new TypeError("Página da inspeção inválida.");
+    }
+    return { studyUnitId };
+  };
+  return {
+    ...structuredClone(value),
+    courseId,
+    courseRevision,
+    scope,
+    previousCursor: cursor(value.previousCursor, value.hasPrevious),
+    nextCursor: cursor(value.nextCursor, value.hasMore),
+    pageBytes
+  };
+}
+
+function normalizeInspectionPosition(courseId, value) {
+  if (value == null) return null;
+  const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+  const studyUnitId = String(value?.studyUnitId || "").trim();
+  const offsetFromStickyTop = Number(value?.offsetFromStickyTop);
+  const courseRevision = Number(value?.courseRevision);
+  if (!UUID_PATTERN.test(normalizedCourseId) ||
+      !value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).some((field) => !new Set([
+        "scope", "studyUnitId", "offsetFromStickyTop", "courseRevision"
+      ]).has(field)) ||
+      !studyUnitId || studyUnitId.length > 240 ||
+      !Number.isFinite(offsetFromStickyTop) || Math.abs(offsetFromStickyTop) > 100_000 ||
+      !Number.isSafeInteger(courseRevision) || courseRevision < 1) {
+    throw new TypeError("Posição da inspeção inválida.");
+  }
+  return {
+    scope: normalizedInspectionScope(value.scope),
+    studyUnitId,
+    offsetFromStickyTop,
+    courseRevision
+  };
+}
+
+function inspectionRequestOptions({
+  expectedRevision,
+  scope = { kind: "course", id: null },
+  anchorStudyUnitId = null,
+  cursor = null,
+  direction = "forward",
+  limit = 12,
+  maxBytes = 512 * 1024
+} = {}) {
+  const revision = Number(expectedRevision);
+  const normalizedDirection = String(direction || "").trim();
+  const normalizedAnchor = anchorStudyUnitId == null
+    ? null
+    : String(anchorStudyUnitId).trim();
+  const normalizedCursor = cursor == null
+    ? null
+    : { studyUnitId: String(cursor?.studyUnitId || "").trim() };
+  const normalizedLimit = Number(limit);
+  const normalizedMaxBytes = Number(maxBytes);
+  if (!Number.isSafeInteger(revision) || revision < 1 ||
+      !new Set(["forward", "backward"]).has(normalizedDirection) ||
+      (normalizedAnchor != null && (!normalizedAnchor || normalizedAnchor.length > 240)) ||
+      (normalizedCursor != null && (
+        !normalizedCursor.studyUnitId || normalizedCursor.studyUnitId.length > 240 ||
+        Object.keys(cursor || {}).some((field) => field !== "studyUnitId")
+      )) ||
+      (normalizedAnchor != null && normalizedCursor != null) ||
+      !Number.isSafeInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 24 ||
+      !Number.isSafeInteger(normalizedMaxBytes) || normalizedMaxBytes < 64 * 1024 ||
+      normalizedMaxBytes > 1_500_000) {
+    throw new TypeError("Paginação da inspeção inválida.");
+  }
+  return {
+    expectedRevision: revision,
+    scope: normalizedInspectionScope(scope),
+    anchorStudyUnitId: normalizedAnchor,
+    cursor: normalizedCursor,
+    direction: normalizedDirection,
+    limit: normalizedLimit,
+    maxBytes: normalizedMaxBytes
+  };
+}
+
+function normalizeAuthoringOutline(courseId, value) {
+  const normalizedCourseId = String(value?.courseId || "").trim().toLowerCase();
+  const revision = Number(value?.revision);
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      normalizedCourseId !== String(courseId || "").trim().toLowerCase() ||
+      !UUID_PATTERN.test(normalizedCourseId) ||
+      !Number.isSafeInteger(revision) || revision < 1 ||
+      !value.outline || typeof value.outline !== "object" || Array.isArray(value.outline) ||
+      !Array.isArray(value.outline.modules)) {
+    throw new TypeError("Estrutura autoral inválida.");
+  }
+  return { ...structuredClone(value), courseId: normalizedCourseId, revision };
+}
+
 export class CourseController {
   constructor({
     api,
@@ -169,6 +327,9 @@ export class CourseController {
       ...(clearLists ? [this.store.deleteCachePrefix(`${this.cachePrefix}.list:`)] : []),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionPositionKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`),
       this.store.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`),
       this.store.deleteCachePrefix(REVIEW_PAGE_CACHE_KEY)
@@ -295,6 +456,9 @@ export class CourseController {
       invalidationPrefixes: [
         `${this.cachePrefix}.list:`,
         courseCacheKey(courseId, this.cachePrefix),
+        authoringOutlineCacheKey(courseId, this.cachePrefix),
+        authoringInspectionCacheKey(courseId, this.cachePrefix),
+        authoringInspectionPositionKey(courseId, this.cachePrefix),
         `${this.cachePrefix}.entities:${courseId}:`,
         `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`,
         REVIEW_PAGE_CACHE_KEY
@@ -308,6 +472,10 @@ export class CourseController {
       await this.store.deleteCachePrefix(
         `${this.cachePrefix}.entities:${courseId}:${previousRevision}:`
       );
+      await Promise.all([
+        this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
+      ]);
     }
     return result;
   }
@@ -466,6 +634,156 @@ export class CourseController {
     );
   }
 
+  loadAuthoringOutline(courseId) {
+    if (typeof this.api.loadAuthoringOutline !== "function") {
+      throw new TypeError("A API de Cursos não oferece a estrutura autoral.");
+    }
+    const key = authoringOutlineCacheKey(courseId, this.cachePrefix);
+    return this.#readThrough(
+      key,
+      () => this.api.loadAuthoringOutline(courseId),
+      {
+        accessSensitive: true,
+        normalize: (value) => normalizeAuthoringOutline(courseId, value),
+        invalidationPrefixes: [
+          `${this.cachePrefix}.list:`,
+          courseCacheKey(courseId, this.cachePrefix),
+          instructionalPlanCacheKey(courseId, this.cachePrefix),
+          authoringOutlineCacheKey(courseId, this.cachePrefix),
+          authoringInspectionCacheKey(courseId, this.cachePrefix)
+        ]
+      }
+    );
+  }
+
+  async #rememberAuthoringInspectionPage(courseId, requestKey, page) {
+    const cacheKey = authoringInspectionCacheKey(courseId, this.cachePrefix);
+    const cached = cachedPayload(await this.store.getCache(cacheKey));
+    let entries = [];
+    if (cached != null) {
+      const valid = cached.contract === "aralearn.course-authoring-inspection-cache.v1" &&
+        Array.isArray(cached.entries) && cached.entries.every((entry) =>
+          entry && typeof entry === "object" && !Array.isArray(entry) &&
+          typeof entry.requestKey === "string" && entry.requestKey.length <= 2_000 &&
+          Number.isSafeInteger(entry.bytes) && entry.bytes >= 0 &&
+          typeof entry.savedAt === "string" && entry.page &&
+          typeof entry.page === "object" && !Array.isArray(entry.page)
+        );
+      if (valid) entries = cached.entries.filter((entry) => entry.requestKey !== requestKey);
+    }
+    entries.push({
+      requestKey,
+      bytes: page.pageBytes,
+      savedAt: this.now(),
+      page: structuredClone(page)
+    });
+    let totalBytes = entries.reduce((total, entry) => total + entry.bytes, 0);
+    while (entries.length > AUTHORING_INSPECTION_CACHE_MAX_PAGES ||
+        totalBytes > AUTHORING_INSPECTION_CACHE_MAX_BYTES) {
+      const removed = entries.shift();
+      totalBytes -= removed.bytes;
+    }
+    await this.store.putCache(cacheKey, {
+      contract: "aralearn.course-authoring-inspection-cache.v1",
+      entries
+    });
+  }
+
+  async #readCachedAuthoringInspectionPage(courseId, requestKey, normalize) {
+    const cacheKey = authoringInspectionCacheKey(courseId, this.cachePrefix);
+    const cached = cachedPayload(await this.store.getCache(cacheKey));
+    if (cached?.contract !== "aralearn.course-authoring-inspection-cache.v1" ||
+        !Array.isArray(cached.entries)) return null;
+    const entry = cached.entries.find((candidate) => candidate?.requestKey === requestKey);
+    if (!entry?.page) return null;
+    const page = normalize(entry.page);
+    await this.#rememberAuthoringInspectionPage(courseId, requestKey, page);
+    return {
+      ...structuredClone(page),
+      offline: true,
+      stale: true
+    };
+  }
+
+  async loadAuthoringStudyUnits(courseId, options = {}) {
+    if (typeof this.api.loadAuthoringStudyUnits !== "function") {
+      throw new TypeError("A API de Cursos não oferece a inspeção de Unidades de estudo.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId)) {
+      throw new TypeError("Curso inválido.");
+    }
+    const normalizedOptions = inspectionRequestOptions(options);
+    const requestKey = authoringInspectionRequestKey(
+      normalizedOptions.expectedRevision,
+      normalizedOptions
+    );
+    const normalize = (value) => {
+      const normalized = normalizeInspectionPage(value);
+      if (normalized.courseId !== normalizedCourseId ||
+          normalized.courseRevision !== normalizedOptions.expectedRevision ||
+          JSON.stringify(normalized.scope) !== JSON.stringify(normalizedOptions.scope)) {
+        throw new TypeError("Página da inspeção não corresponde ao pedido.");
+      }
+      return normalized;
+    };
+    try {
+      const page = normalize(
+        await this.api.loadAuthoringStudyUnits(normalizedCourseId, normalizedOptions)
+      );
+      await this.#rememberAuthoringInspectionPage(normalizedCourseId, requestKey, page);
+      return { ...structuredClone(page), offline: false, stale: false };
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      if (!retryableReadFailure(error)) throw error;
+      const cached = await this.#readCachedAuthoringInspectionPage(
+        normalizedCourseId,
+        requestKey,
+        normalize
+      );
+      if (!cached) throw error;
+      return cached;
+    }
+  }
+
+  async loadAuthoringInspectionPosition(courseId) {
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId)) throw new TypeError("Curso inválido.");
+    const key = authoringInspectionPositionKey(normalizedCourseId, this.cachePrefix);
+    const cached = cachedPayload(await this.store.getCache(key));
+    if (cached == null) return null;
+    try {
+      if (cached.contract !== AUTHORING_INSPECTION_POSITION_CONTRACT ||
+          cached.courseId !== normalizedCourseId) {
+        throw new TypeError("Posição da inspeção inválida.");
+      }
+      return normalizeInspectionPosition(normalizedCourseId, cached.position);
+    } catch {
+      await this.store.putCache(key, null);
+      return null;
+    }
+  }
+
+  async saveAuthoringInspectionPosition(courseId, position) {
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId)) throw new TypeError("Curso inválido.");
+    const key = authoringInspectionPositionKey(normalizedCourseId, this.cachePrefix);
+    if (position == null) {
+      await this.store.putCache(key, null);
+      return null;
+    }
+    const normalized = normalizeInspectionPosition(normalizedCourseId, position);
+    await this.store.putCache(key, {
+      contract: AUTHORING_INSPECTION_POSITION_CONTRACT,
+      courseId: normalizedCourseId,
+      position: normalized,
+      savedAt: this.now()
+    });
+    return structuredClone(normalized);
+  }
+
   loadPartMaterialization(courseId, authoringPartId, materializationId) {
     if (typeof this.api.loadPartMaterialization !== "function") {
       throw new TypeError("A API de Cursos não oferece a leitura da materialização.");
@@ -495,7 +813,9 @@ export class CourseController {
     await Promise.all([
       this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix))
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
     ]);
     return result;
   }
@@ -507,6 +827,8 @@ export class CourseController {
       this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
     ]);
     return result;

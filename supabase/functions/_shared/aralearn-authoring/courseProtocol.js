@@ -68,6 +68,10 @@ export function routeCourseRequest(method, pathname) {
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };
   }
+  const studyUnits = path.match(/^\/v1\/courses\/([^/]+)\/study-units$/u);
+  if (studyUnits && verb === "GET") {
+    return { name: "listCourseStudyUnits", courseId: courseUuid(studyUnits[1]) };
+  }
   const entities = path.match(/^\/v1\/courses\/([^/]+)\/entities$/u);
   if (entities && verb === "GET") {
     return { name: "listCourseEntities", courseId: courseUuid(entities[1]) };

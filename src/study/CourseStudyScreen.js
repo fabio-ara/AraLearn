@@ -1,4 +1,9 @@
-import { getPackageFeedbackEntry, renderPackageCardBlocksWithDock, renderPackageFeedback, readPackageCardText } from "../render/renderPackageCard.js";
+import {
+  getPackageStudyUnitFeedbackEntry,
+  readPackageStudyUnitText,
+  renderPackageStudyUnitBlocksWithDock,
+  renderPackageStudyUnitFeedback
+} from "../render/renderPackageStudyUnit.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { renderHomeScreen } from "../ui/renderHomeScreen.js";
@@ -167,7 +172,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus) {
     progressEntry(course, moduleValue, lesson, progress)?.completedStudyUnitIds || []
   );
   const rows = (lesson.microsequences || []).map((microsequence) => {
-    const units = microsequence.cards || [];
+    const units = microsequence.studyUnits || [];
     return navigationCard({
       level: "microsequence",
       ids: {
@@ -180,7 +185,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus) {
       description: microsequence.goal || "",
       completed: units.filter((unit) => completedIds.has(unit.id)).length,
       total: units.length,
-      detailIcon: "card",
+      detailIcon: "study-unit",
       detailCount: units.length,
       openAction: "open-microsequence",
       openLabel: "Abrir microssequência didática",
@@ -205,7 +210,7 @@ function renderMicrosequenceOverview(
   const completedIds = new Set(
     progressEntry(course, moduleValue, lesson, progress)?.completedStudyUnitIds || []
   );
-  const units = (microsequence.cards || []).map((studyUnit, index) => navigationCard({
+  const units = (microsequence.studyUnits || []).map((studyUnit, index) => navigationCard({
     level: "study-unit",
     ids: {
       "course-id": course.id,
@@ -215,7 +220,7 @@ function renderMicrosequenceOverview(
       "study-unit-id": studyUnit.id
     },
     title: studyUnit.title || studyUnit.id,
-    description: readPackageCardText(studyUnit).slice(0, 140),
+    description: readPackageStudyUnitText(studyUnit).slice(0, 140),
     completed: completedIds.has(studyUnit.id) ? 1 : 0,
     total: 1,
     openAction: "open-study-unit",
@@ -238,22 +243,22 @@ function renderStudyUnit({
   microsequence,
   studyUnit,
   studyUnitIndex,
-  packageCardOptions,
+  packageStudyUnitOptions,
   feedbackOpen,
   hasObservation,
   markedForReview,
   runtimeStatus
 }) {
-  const units = microsequence.cards || [];
-  const runtime = renderPackageCardBlocksWithDock(studyUnit, {
+  const units = microsequence.studyUnits || [];
+  const runtime = renderPackageStudyUnitBlocksWithDock(studyUnit, {
     omitRepeatedHeading: true,
-    ...packageCardOptions
+    ...packageStudyUnitOptions
   });
-  const feedbackEntry = getPackageFeedbackEntry(studyUnit);
+  const feedbackEntry = getPackageStudyUnitFeedbackEntry(studyUnit);
   const feedback = feedbackOpen && feedbackEntry
-    ? renderPackageFeedback(feedbackEntry, {
-        card: studyUnit,
-        ...packageCardOptions,
+    ? renderPackageStudyUnitFeedback(feedbackEntry, {
+        studyUnit,
+        ...packageStudyUnitOptions,
         blockKeyPrefix: "feedback"
       })
     : { bodyHtml: "", dockHtml: "" };
@@ -283,7 +288,7 @@ function renderStudyUnit({
     runtime.bodyHtml + "</div>" + runtime.dockHtml + "</div></article></section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade ' +
     String(studyUnitIndex + 1) + " de " + String(units.length) + '">' +
-    renderUiIcon("card", "study-reader-count-icon") +
+    renderUiIcon("study-unit", "study-reader-count-icon") +
     '<span class="study-reader-count-value">' + String(studyUnitIndex + 1) + "/" +
     String(units.length) + "</span></span></div>" +
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
@@ -320,7 +325,7 @@ export function renderCourseStudyScreen({
   reviewHasMore = false,
   runtimeStatus = {},
   coursePermissionsById,
-  packageCardOptions = {},
+  packageStudyUnitOptions = {},
   feedbackOpen = false,
   hasObservation = false,
   markedForReview = false
@@ -354,7 +359,7 @@ export function renderCourseStudyScreen({
     microsequence,
     studyUnit,
     studyUnitIndex: selection.studyUnitIndex,
-    packageCardOptions,
+    packageStudyUnitOptions,
     feedbackOpen,
     hasObservation,
     markedForReview,

@@ -14,7 +14,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderCardCommentOverlay({
+export function renderStudyUnitCommentOverlay({
   draft = {},
   exists = false,
   error = "",
@@ -28,18 +28,18 @@ export function renderCardCommentOverlay({
   const categories = PEDAGOGICAL_COMMENT_CATEGORIES.map((item) =>
     '<label class="comment-category-chip' +
     (item.value === category ? " is-selected" : "") + '">' +
-    '<input type="radio" name="comment-category" data-field="card-comment-category" value="' +
+    '<input type="radio" name="comment-category" data-field="study-unit-comment-category" value="' +
     escapeHtml(item.value) + '"' + (item.value === category ? " checked" : "") +
     (saving ? " disabled" : "") + '><span>' + escapeHtml(item.label) + "</span></label>"
   ).join("");
   return (
-    '<section class="editor-overlay" aria-label="Observação do card">' +
+    '<section class="editor-overlay" aria-label="Observação da Unidade de estudo">' +
     '<article class="editor-sheet comment-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="comment-close" title="Fechar" aria-label="Fechar">' +
     renderUiIcon("remove-state", "home-tab-icon") +
     "</button>" +
-    '<p class="editor-title">Observação do card</p>' +
+    '<p class="editor-title">Observação da Unidade de estudo</p>' +
     '<button class="icon-ghost" type="button" data-action="comment-save" title="Salvar" aria-label="Salvar"' +
     (saving ? ' disabled aria-disabled="true"' : "") +
     ">" +
@@ -57,7 +57,7 @@ export function renderCardCommentOverlay({
     '<div class="comment-category-list" role="radiogroup" aria-label="Tipo de observação">' +
     categories + "</div>" +
     '<div class="field">' +
-    '<textarea data-field="card-comment" class="comment-textarea" aria-label="Observação" maxlength="' +
+    '<textarea data-field="study-unit-comment" class="comment-textarea" aria-label="Observação" maxlength="' +
     String(PEDAGOGICAL_COMMENT_MAX_CHARACTERS) + '" placeholder="Escreva uma observação curta."' +
     (saving ? ' disabled aria-disabled="true"' : "") +
     ">" +

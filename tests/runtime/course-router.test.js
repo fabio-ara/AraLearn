@@ -39,6 +39,10 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "listCourseEntities",
     courseId: COURSE_ID
   });
+  assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}/study-units`), {
+    name: "listCourseStudyUnits",
+    courseId: COURSE_ID
+  });
   assert.deepEqual(routeCourseRequest(
     "GET",
     `/v1/courses/${COURSE_ID}/instructional-plan`
@@ -152,6 +156,54 @@ test("lê entidades paginadas sob a mesma versão", async () => {
   assert.equal(call.afterEntityId, "micro-a");
 });
 
+test("lê Unidades de estudo por escopo com âncora e orçamento limitado", async () => {
+  let call = null;
+  const adapter = {
+    async listCourseStudyUnits(value) {
+      call = value;
+      return {
+        contract: "aralearn.course-study-unit-inspection-page.v1",
+        courseId: value.courseId,
+        courseRevision: value.expectedRevision,
+        items: []
+      };
+    }
+  };
+  const value = request(
+    `/v1/courses/${COURSE_ID}/study-units?expectedRevision=8` +
+      `&scopeKind=authoring_part&scopeId=${PART_ID}` +
+      "&anchorStudyUnitId=unit-a&direction=backward&limit=12&maxBytes=262144"
+  );
+  const result = await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("GET", new URL(value.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+
+  assert.equal(result.data.courseRevision, 8);
+  assert.equal(call.scopeKind, "authoring_part");
+  assert.equal(call.scopeId, PART_ID);
+  assert.equal(call.anchorStudyUnitId, "unit-a");
+  assert.equal(call.cursorStudyUnitId, null);
+  assert.equal(call.direction, "backward");
+  assert.equal(call.maxBytes, 262144);
+
+  const invalid = request(
+    `/v1/courses/${COURSE_ID}/study-units?expectedRevision=8` +
+      "&anchorStudyUnitId=unit-a&cursorStudyUnitId=unit-b"
+  );
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: invalid,
+      route: routeCourseRequest("GET", new URL(invalid.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_pagination"
+  );
+});
+
 test("cria Curso e reconcilia requestId", async () => {
   let call = null;
   const adapter = {
@@ -237,7 +289,16 @@ test("commit de composição exige versão, conteúdo e escopo de escrita", asyn
       parentType: null,
       parentId: null,
       position: 0,
-      content: { title: "Módulo", guide: {} }
+      content: {
+        title: "Módulo",
+        guide: {
+          goal: "Orientar o módulo.",
+          include: [],
+          exclude: [],
+          notation: [],
+          avoid: []
+        }
+      }
     }],
     deletes: []
   };
@@ -293,7 +354,7 @@ test("composição rejeita hierarquia, posição e conteúdo incompatíveis ante
     requestId: "request-course-invalid-entity",
     expectedRevision: 1,
     upserts: [{
-      entityType: "card",
+      entityType: "study_unit",
       entityId: "unit-a",
       parentType: "lesson",
       parentId: "lesson-a",
@@ -357,6 +418,101 @@ test("composição rejeita título curricular fora do contrato antes do banco", 
   }
 });
 
+test("composição valida semanticamente cada entidade do segmento alterado", async () => {
+  const adapter = {
+    async commitCourseComposition() {
+      assert.fail("O adaptador não pode receber conteúdo didático inválido.");
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/composition`;
+  const invalidRows = [{
+    entityType: "module",
+    entityId: "module-a",
+    parentType: null,
+    parentId: null,
+    position: 0,
+    content: {
+      title: "Módulo",
+      guide: { goal: "Orientar.", include: [], exclude: [], notation: [] }
+    }
+  }, {
+    entityType: "microsequence",
+    entityId: "micro-a",
+    parentType: "lesson",
+    parentId: "lesson-a",
+    position: 0,
+    content: {
+      title: "Microssequência",
+      goal: "Explicar.",
+      role: "papel-inexistente",
+      dependsOn: [],
+      covers: [],
+      checks: [],
+      errors: []
+    }
+  }];
+  for (const [index, row] of invalidRows.entries()) {
+    const requestId = `request-invalid-segment-${index}`;
+    const value = request(path, {
+      method: "POST",
+      requestId,
+      body: { requestId, expectedRevision: 1, upserts: [row], deletes: [] }
+    });
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: value,
+        route: routeCourseRequest("POST", path),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.code === "invalid_course_contract"
+    );
+  }
+});
+
+test("composição rejeita envelope inválido da Unidade sem reler o Curso inteiro", async () => {
+  const adapter = {
+    async commitCourseComposition() {
+      assert.fail("O adaptador não pode receber uma Unidade de estudo inválida.");
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/composition`;
+  const value = request(path, {
+    method: "POST",
+    requestId: "request-invalid-study-unit-envelope",
+    body: {
+      requestId: "request-invalid-study-unit-envelope",
+      expectedRevision: 3,
+      upserts: [{
+        entityType: "study_unit",
+        entityId: "unit-a",
+        parentType: "microsequence",
+        parentId: "micro-a",
+        position: 1,
+        content: {
+          title: "Unidade incompleta",
+          role: "theory",
+          content: [],
+          response: null,
+          feedback: [],
+          topics: [],
+          sources: []
+        }
+      }],
+      deletes: []
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: value,
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_contract"
+  );
+});
+
 test("composição e etapa rejeitam listas malformadas sem descartar dados", async () => {
   const adapter = {
     async commitCourseComposition() {
@@ -374,7 +530,7 @@ test("composição e etapa rejeitam listas malformadas sem descartar dados", asy
       requestId: "request-course-malformed-lists",
       expectedRevision: 1,
       upserts: {},
-      deletes: [{ entityType: "card", entityId: "unit-a" }]
+      deletes: [{ entityType: "study_unit", entityId: "unit-a" }]
     }
   });
   await assert.rejects(

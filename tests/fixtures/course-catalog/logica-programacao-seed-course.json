@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -200,7 +200,7 @@
                     "escolhe a forma correta de um programa mínimo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m1-01-regra-esqueleto",
                       "position": 1,
@@ -590,7 +590,7 @@
                     "não coloca ponto e vírgula em diretiva #include"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m2-01-regra-cabecalhos",
                       "position": 1,
@@ -1005,7 +1005,7 @@
                     "posiciona { e } corretamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m3-01-regra-main-bloco",
                       "position": 1,
@@ -1501,7 +1501,7 @@
                     "identifica que #include não recebe;"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m4-01-regra-ponto-virgula",
                       "position": 1,
@@ -1966,7 +1966,7 @@
                     "reconhece fechamento correto do bloco"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m5-01-modelo-final",
                       "position": 1,
@@ -2612,7 +2612,7 @@
                     "escolhe char para um caractere"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-tipos-regra-curta",
                       "position": 1,
@@ -3056,7 +3056,7 @@
                     "identifica erro de ponto e vírgula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-declaracao-simples-regra",
                       "position": 1,
@@ -3499,7 +3499,7 @@
                     "corrige separação indevida por ponto e vírgula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-declaracao-multipla-regra",
                       "position": 1,
@@ -3974,7 +3974,7 @@
                     "identifica atribuição sem ponto e vírgula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-atribuicao-regra",
                       "position": 1,
@@ -4419,7 +4419,7 @@
                     "reconhece atribuição compatível com o tipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-variaveis-no-bloco-regra",
                       "position": 1,
@@ -5065,7 +5065,7 @@
                     "identifica erro de ponto e vírgula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-printf-texto-regra",
                       "position": 1,
@@ -5465,7 +5465,7 @@
                     "não usa & no printf"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-formatadores-tabela",
                       "position": 1,
@@ -6155,7 +6155,7 @@
                     "termina com ponto e vírgula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-scanf-regra-curta",
                       "position": 1,
@@ -6725,7 +6725,7 @@
                     "escolhe uso correto de &"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-diferenca-printf-scanf-regra",
                       "position": 1,
@@ -7167,7 +7167,7 @@
                     "identifica erro de ponto e vírgula"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-programa-regra-ordem",
                       "position": 1,
@@ -7857,7 +7857,7 @@
                     "identifica incremento no for"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-esqueleto-01",
                       "position": 1,
@@ -8186,7 +8186,7 @@
                     "evita limite que executa uma repetição a mais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-zero-01",
                       "position": 1,
@@ -8459,7 +8459,7 @@
                     "escolhe condição com <= n"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-um-01",
                       "position": 1,
@@ -8733,7 +8733,7 @@
                     "identifica atualização soma = soma + valor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-soma-01",
                       "position": 1,
@@ -9020,7 +9020,7 @@
                     "identifica else como caminho quando a condição falha"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-contagem-01",
                       "position": 1,
@@ -9374,7 +9374,7 @@
                     "detecta bloco mal fechado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-erros-01",
                       "position": 1,
@@ -9802,7 +9802,7 @@
                     "identifica comandos dentro do bloco"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-while-esqueleto-01",
                       "position": 1,
@@ -10094,7 +10094,7 @@
                     "identifica incremento dentro do while"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-while-contador-01",
                       "position": 1,
@@ -10379,7 +10379,7 @@
                     "identifica leitura necessária para atualizar a condição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-while-sentinela-01",
                       "position": 1,
@@ -10710,7 +10710,7 @@
                     "distingue intervalo válido de inválido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-while-validacao-01",
                       "position": 1,
@@ -10984,7 +10984,7 @@
                     "identifica leitura da opção dentro do laço"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-while-menu-01",
                       "position": 1,
@@ -11312,7 +11312,7 @@
                     "detecta condição invertida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-while-erros-01",
                       "position": 1,
@@ -11729,7 +11729,7 @@
                     "reconhece ponto e vírgula final obrigatório"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-do-esqueleto-01",
                       "position": 1,
@@ -11981,7 +11981,7 @@
                     "prevê uma execução mesmo com condição falsa ao final"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-do-execucao-01",
                       "position": 1,
@@ -12273,7 +12273,7 @@
                     "identifica leitura antes do teste"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-do-validacao-01",
                       "position": 1,
@@ -12558,7 +12558,7 @@
                     "identifica condição para repetir processamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-do-repetir-01",
                       "position": 1,
@@ -12894,7 +12894,7 @@
                     "detecta bloco mal fechado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-do-erros-01",
                       "position": 1,
@@ -13315,7 +13315,7 @@
                     "identifica rótulos case"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-switch-esqueleto-01",
                       "position": 1,
@@ -13606,7 +13606,7 @@
                     "identifica break como encerramento do caso"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-case-break-01",
                       "position": 1,
@@ -13903,7 +13903,7 @@
                     "distingue case específico de default"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-default-01",
                       "position": 1,
@@ -14193,7 +14193,7 @@
                     "posiciona break corretamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-menu-switch-01",
                       "position": 1,
@@ -14521,7 +14521,7 @@
                     "identifica default para opção fora da lista"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-switch-classificacao-01",
                       "position": 1,
@@ -14823,7 +14823,7 @@
                     "detecta switch sem variável testada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-switch-erros-01",
                       "position": 1,
@@ -15330,7 +15330,7 @@
                     "identifica posição e valor em uma tabela índice/valor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-01-01",
                       "position": 1,
@@ -15657,7 +15657,7 @@
                     "corrige declaração sem colchetes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-02-01",
                       "position": 1,
@@ -15932,7 +15932,7 @@
                     "corrige uso de int quando o vetor guarda notas reais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-03-01",
                       "position": 1,
@@ -16207,7 +16207,7 @@
                     "distingue índice de valor armazenado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-04-01",
                       "position": 1,
@@ -16525,7 +16525,7 @@
                     "evita usar apenas v quando a posição é exigida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-05-01",
                       "position": 1,
@@ -16789,7 +16789,7 @@
                     "corrige confusão entre variável simples e vetor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-06-01",
                       "position": 1,
@@ -17209,7 +17209,7 @@
                     "evita repetição a mais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-02-01-01",
                       "position": 1,
@@ -17508,7 +17508,7 @@
                     "detecta ausência de &"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-02-02-01",
                       "position": 1,
@@ -17770,7 +17770,7 @@
                     "identifica limite correto de exibição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-02-03-01",
                       "position": 1,
@@ -18069,7 +18069,7 @@
                     "usa formatador compatível com o tipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-02-04-01",
                       "position": 1,
@@ -18333,7 +18333,7 @@
                     "usa printf para exibição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-02-05-01",
                       "position": 1,
@@ -18632,7 +18632,7 @@
                     "corrige limite do for"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-02-06-01",
                       "position": 1,
@@ -19060,7 +19060,7 @@
                     "prevê resultado de soma em vetor pequeno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-03-01-01",
                       "position": 1,
@@ -19356,7 +19356,7 @@
                     "evita dividir por índice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-03-02-01",
                       "position": 1,
@@ -19655,7 +19655,7 @@
                     "atualiza menor quando v[i] < menor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-03-03-01",
                       "position": 1,
@@ -19952,7 +19952,7 @@
                     "distingue valor do índice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-03-04-01",
                       "position": 1,
@@ -20248,7 +20248,7 @@
                     "compara v[i] com media, não i com media"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-03-05-01",
                       "position": 1,
@@ -20548,7 +20548,7 @@
                     "detecta divisão pela quantidade errada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-03-06-01",
                       "position": 1,
@@ -21007,7 +21007,7 @@
                     "detecta uso do vetor errado na expressão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-04-01-01",
                       "position": 1,
@@ -21312,7 +21312,7 @@
                     "evita copiar apenas uma posição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-04-02-01",
                       "position": 1,
@@ -21606,7 +21606,7 @@
                     "incrementa destino apenas quando copia"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-04-03-01",
                       "position": 1,
@@ -21916,7 +21916,7 @@
                     "evita sobrescrever C[j]"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-04-04-01",
                       "position": 1,
@@ -22250,7 +22250,7 @@
                     "detecta troca de índice que quebra associação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-04-05-01",
                       "position": 1,
@@ -22621,7 +22621,7 @@
                     "corrige índice que quebra associação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-04-06-01",
                       "position": 1,
@@ -23154,7 +23154,7 @@
                     "distingue valor armazenado de posição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-linhas-colunas-base",
                       "position": 1,
@@ -23485,7 +23485,7 @@
                     "identifica segundo colchete como quantidade de colunas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-declarar-matriz-base",
                       "position": 1,
@@ -23768,7 +23768,7 @@
                     "escolhe mat[lin][col] para posição variável"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-acesso-linha-coluna-base",
                       "position": 1,
@@ -24061,7 +24061,7 @@
                     "evita confundir linha com coluna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-posicao-matriz-base",
                       "position": 1,
@@ -24436,7 +24436,7 @@
                     "corrige declaração sem colchetes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-erros-declaracao-base",
                       "position": 1,
@@ -24841,7 +24841,7 @@
                     "evita percorrer linha extra"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-linhas-base",
                       "position": 1,
@@ -25164,7 +25164,7 @@
                     "evita parar antes da última coluna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-colunas-base",
                       "position": 1,
@@ -25490,7 +25490,7 @@
                     "prevê quantidade total de posições visitadas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-for-aninhado-base",
                       "position": 1,
@@ -25821,7 +25821,7 @@
                     "detecta acesso com apenas um índice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-scanf-matriz-base",
                       "position": 1,
@@ -26113,7 +26113,7 @@
                     "usa formatador compatível com float"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-printf-matriz-base",
                       "position": 1,
@@ -26469,7 +26469,7 @@
                     "corrige scanf sem &"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-erros-for-aninhado-base",
                       "position": 1,
@@ -27010,7 +27010,7 @@
                     "localiza nota por linha e coluna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-notas-alunos-base",
                       "position": 1,
@@ -27391,7 +27391,7 @@
                     "evita somar a coluna de média quando ela ainda é destino"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-soma-linha-base",
                       "position": 1,
@@ -27719,7 +27719,7 @@
                     "evita dividir por coluna ou linha"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-media-individual-base",
                       "position": 1,
@@ -28050,7 +28050,7 @@
                     "exibe a matriz com a coluna extra"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-coluna-extra-base",
                       "position": 1,
@@ -28380,7 +28380,7 @@
                     "distingue média individual de média geral"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-media-geral-base",
                       "position": 1,
@@ -28692,7 +28692,7 @@
                     "evita comparar linha ou coluna com média"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-contagem-media-base",
                       "position": 1,
@@ -29001,7 +29001,7 @@
                     "aplica matriz sem transformar em outro conteúdo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-codigos-precos-base",
                       "position": 1,
@@ -29559,7 +29559,7 @@
                     "reconhece que nome[0] é caractere"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-01-01",
                       "position": 1,
@@ -29834,7 +29834,7 @@
                     "corrige falta de tamanho"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-02-01",
                       "position": 1,
@@ -30107,7 +30107,7 @@
                     "evita ler como inteiro"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-03-01",
                       "position": 1,
@@ -30404,7 +30404,7 @@
                     "escolhe comando correto para exibir nome"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-04-01",
                       "position": 1,
@@ -30684,7 +30684,7 @@
                     "evita tratar caractere como string inteira"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-05-01",
                       "position": 1,
@@ -30971,7 +30971,7 @@
                     "corrige tipo, tamanho, comando e formatador quando aplicável"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-06-01",
                       "position": 1,
@@ -31423,7 +31423,7 @@
                     "associa linha a pessoa/nome e coluna a caractere"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-02-01-01",
                       "position": 1,
@@ -31721,7 +31721,7 @@
                     "identifica quantidade de nomes e tamanho máximo de cada nome"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-02-02-01",
                       "position": 1,
@@ -31982,7 +31982,7 @@
                     "usa índice de linha para ler cada nome"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-02-03-01",
                       "position": 1,
@@ -32288,7 +32288,7 @@
                     "exibe cada nome da lista"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-02-04-01",
                       "position": 1,
@@ -32585,7 +32585,7 @@
                     "localiza caractere de um nome por linha e coluna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-02-05-01",
                       "position": 1,
@@ -32899,7 +32899,7 @@
                     "corrige uso de dois índices quando o objetivo é a string inteira"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-02-06-01",
                       "position": 1,
@@ -33372,7 +33372,7 @@
                     "reconhece objetivo de ordenar valores"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-03-01-01",
                       "position": 1,
@@ -33691,7 +33691,7 @@
                     "escolhe comparação para crescente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-03-02-01",
                       "position": 1,
@@ -33980,7 +33980,7 @@
                     "evita sobrescrever valor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-03-03-01",
                       "position": 1,
@@ -34300,7 +34300,7 @@
                     "evita acessar v[j + 1] fora do vetor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-03-04-01",
                       "position": 1,
@@ -34569,7 +34569,7 @@
                     "prevê resultado final de vetor pequeno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-03-05-01",
                       "position": 1,
@@ -34863,7 +34863,7 @@
                     "corrige comparação invertida, troca incompleta e limite indevido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-03-06-01",
                       "position": 1,
@@ -35299,7 +35299,7 @@
                     "reconhece que ao trocar nota pode ser necessário trocar dado associado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-04-01-01",
                       "position": 1,
@@ -35660,7 +35660,7 @@
                     "preserva associação por índice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-04-02-01",
                       "position": 1,
@@ -36020,7 +36020,7 @@
                     "identifica campo usado na comparação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-04-03-01",
                       "position": 1,
@@ -36313,7 +36313,7 @@
                     "preserva nome ligado à nota após troca"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-04-04-01",
                       "position": 1,
@@ -36698,7 +36698,7 @@
                     "corrige uso de índice diferente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-04-05-01",
                       "position": 1,
@@ -37297,7 +37297,7 @@
                     "reconhece que uma struct agrupa dados de tipos diferentes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-01-01",
                       "position": 1,
@@ -37603,7 +37603,7 @@
                     "identifica nome da struct, abertura e fechamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-02-01",
                       "position": 1,
@@ -37884,7 +37884,7 @@
                     "associa campo a tipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-03-01",
                       "position": 1,
@@ -38183,7 +38183,7 @@
                     "corrige falta de ponto e vírgula após a struct"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-04-01",
                       "position": 1,
@@ -38402,7 +38402,7 @@
                     "reconhece declaração de variável a partir do tipo struct"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-05-01",
                       "position": 1,
@@ -38660,7 +38660,7 @@
                     "usa ponto para acessar campo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-06-01",
                       "position": 1,
@@ -39026,7 +39026,7 @@
                     "escolhe leitura de campo string"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-02-01-01",
                       "position": 1,
@@ -39234,7 +39234,7 @@
                     "usa & com campo inteiro"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-02-02-01",
                       "position": 1,
@@ -39454,7 +39454,7 @@
                     "usa %f e & em campo real"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-02-03-01",
                       "position": 1,
@@ -39704,7 +39704,7 @@
                     "exibe campo string"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-02-04-01",
                       "position": 1,
@@ -39913,7 +39913,7 @@
                     "exibe campos numéricos sem &"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-02-05-01",
                       "position": 1,
@@ -40192,7 +40192,7 @@
                     "corrige erros comuns de leitura, exibição e acesso"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-02-06-01",
                       "position": 1,
@@ -40628,7 +40628,7 @@
                     "reconhece vetor de registros"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-01-01",
                       "position": 1,
@@ -40898,7 +40898,7 @@
                     "distingue índice do vetor e campo da struct"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-02-01",
                       "position": 1,
@@ -41117,7 +41117,7 @@
                     "usa índice para cada aluno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-03-01",
                       "position": 1,
@@ -41378,7 +41378,7 @@
                     "acessa campo que é vetor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-04-01",
                       "position": 1,
@@ -41655,7 +41655,7 @@
                     "calcula média de notas de um aluno sem perder o índice correto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-05-01",
                       "position": 1,
@@ -41949,7 +41949,7 @@
                     "reconhece campos de uma data"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-06-01",
                       "position": 1,
@@ -42207,7 +42207,7 @@
                     "acessa campo de struct aninhada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-03-07-01",
                       "position": 1,
@@ -42626,7 +42626,7 @@
                     "reconhece novo nome de tipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-01-01",
                       "position": 1,
@@ -42814,7 +42814,7 @@
                     "identifica tipo original e alias"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-02-01",
                       "position": 1,
@@ -43113,7 +43113,7 @@
                     "usa DATA como tipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-03-01",
                       "position": 1,
@@ -43392,7 +43392,7 @@
                     "usa CAD_ALUNO sem a palavra struct"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-04-01",
                       "position": 1,
@@ -43745,7 +43745,7 @@
                     "reconhece campo cujo tipo foi criado por typedef"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-05-01",
                       "position": 1,
@@ -44006,7 +44006,7 @@
                     "declara vetor com tipo criado por typedef"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-06-01",
                       "position": 1,
@@ -44239,7 +44239,7 @@
                     "corrige erros comuns de typedef"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-04-07-01",
                       "position": 1,
@@ -44766,7 +44766,7 @@
                     "reconhece a chamada que executa a função"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0601-ideia-01",
                       "position": 1,
@@ -45045,7 +45045,7 @@
                     "reconhece o ponto e vírgula ao final do protótipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0601-proto-01",
                       "position": 1,
@@ -45351,7 +45351,7 @@
                     "distingue corpo de função de protótipo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0601-defvoid-01",
                       "position": 1,
@@ -45644,7 +45644,7 @@
                     "reconhece quando a função foi definida mas não chamada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0601-chamada-01",
                       "position": 1,
@@ -45933,7 +45933,7 @@
                     "prevê saída de código com chamada intermediária"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0601-fluxo-01",
                       "position": 1,
@@ -46280,7 +46280,7 @@
                     "evita guardar retorno de função void"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0601-erros-01",
                       "position": 1,
@@ -46746,7 +46746,7 @@
                     "relaciona argumento ao parâmetro por posição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0602-paramarg-01",
                       "position": 1,
@@ -47074,7 +47074,7 @@
                     "chama função com variável ou valor literal"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0602-umparam-01",
                       "position": 1,
@@ -47366,7 +47366,7 @@
                     "prevê exibição de soma sem retorno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0602-doisparam-01",
                       "position": 1,
@@ -47648,7 +47648,7 @@
                     "prevê efeito de troca de ordem"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0602-ordem-01",
                       "position": 1,
@@ -47989,7 +47989,7 @@
                     "distingue alteração local de alteração da variável do main"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0602-local-01",
                       "position": 1,
@@ -48270,7 +48270,7 @@
                     "escolhe argumento compatível com o parâmetro"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0602-erroparam-01",
                       "position": 1,
@@ -48747,7 +48747,7 @@
                     "distingue função com retorno de função sem retorno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-tiporet-01",
                       "position": 1,
@@ -49102,7 +49102,7 @@
                     "seleciona retorno compatível com o resultado calculado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-return-01",
                       "position": 1,
@@ -49376,7 +49376,7 @@
                     "prevê resultado devolvido por `soma`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-soma-01",
                       "position": 1,
@@ -49639,7 +49639,7 @@
                     "evita descartar retorno quando o objetivo é guardar o resultado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-receber-01",
                       "position": 1,
@@ -49967,7 +49967,7 @@
                     "guarda retorno real em variável `float`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-media-01",
                       "position": 1,
@@ -50241,7 +50241,7 @@
                     "prevê retorno do fatorial"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-fat-01",
                       "position": 1,
@@ -50575,7 +50575,7 @@
                     "guarda retorno quando necessário"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0603-errosret-01",
                       "position": 1,
@@ -51039,7 +51039,7 @@
                     "prevê que a variável do main não muda"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0604-valor-01",
                       "position": 1,
@@ -51347,7 +51347,7 @@
                     "distingue valor de endereço no padrão mínimo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0604-endereco-01",
                       "position": 1,
@@ -51648,7 +51648,7 @@
                     "relaciona `&variavel` com `int *x`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0604-parampont-01",
                       "position": 1,
@@ -51955,7 +51955,7 @@
                     "prevê alteração por `*x = *x + 1`"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0604-asterisco-01",
                       "position": 1,
@@ -52227,7 +52227,7 @@
                     "prevê o valor alterado no main"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0604-chamadaend-01",
                       "position": 1,
@@ -52568,7 +52568,7 @@
                     "mantém o padrão mínimo de alteração por função"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0604-erropont-01",
                       "position": 1,
@@ -53139,7 +53139,7 @@
                     "identifica falta de break"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0701-01-abertura-controle",
                       "position": 1,
@@ -53611,7 +53611,7 @@
                     "identifica erro de índice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0701-02-abertura-vetor-leitura",
                       "position": 1,
@@ -54049,7 +54049,7 @@
                     "identifica acumulador reiniciado indevidamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0701-03-abertura-media",
                       "position": 1,
@@ -54524,7 +54524,7 @@
                     "identifica erro de limite"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0701-04-abertura-maior-menor",
                       "position": 1,
@@ -54976,7 +54976,7 @@
                     "dimensiona destino"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0701-05-abertura-intercalacao",
                       "position": 1,
@@ -55595,7 +55595,7 @@
                     "identifica limites de matriz"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0702-01-abertura-matriz-notas",
                       "position": 1,
@@ -56069,7 +56069,7 @@
                     "identifica erro de reinicialização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0702-02-abertura-media-linha",
                       "position": 1,
@@ -56569,7 +56569,7 @@
                     "identifica índice fixo indevido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0702-03-abertura-nomes-notas",
                       "position": 1,
@@ -57087,7 +57087,7 @@
                     "identifica limite de linhas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0702-04-abertura-lista-strings",
                       "position": 1,
@@ -57544,7 +57544,7 @@
                     "identifica troca incompleta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0702-05-abertura-bubble",
                       "position": 1,
@@ -58148,7 +58148,7 @@
                     "identifica erro de fechamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0703-01-abertura-struct",
                       "position": 1,
@@ -58637,7 +58637,7 @@
                     "identifica acesso invertido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0703-02-abertura-vetor-struct",
                       "position": 1,
@@ -59148,7 +59148,7 @@
                     "acessa campo com ponto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0703-03-abertura-typedef",
                       "position": 1,
@@ -59627,7 +59627,7 @@
                     "identifica tentativa de guardar retorno inexistente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0703-04-abertura-funcao-void",
                       "position": 1,
@@ -60091,7 +60091,7 @@
                     "identifica falta de return"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0703-05-abertura-funcao-return",
                       "position": 1,
@@ -60569,7 +60569,7 @@
                     "identifica falta de *"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-0703-06-abertura-ponteiro-basico",
                       "position": 1,

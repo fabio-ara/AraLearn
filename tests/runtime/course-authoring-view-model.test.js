@@ -3,15 +3,12 @@ import test from "node:test";
 
 import {
   classifyCourseAuthoringError,
-  countCourseEntities,
   courseListCardinality,
-  mergeCourseEntityPages,
   mergeCourseListPages,
+  normalizeCourseAuthoringOutline,
   normalizeCourseAuthoringPlan,
   normalizeCourseDetail,
-  normalizeCourseEntityPage,
   normalizeCourseListPage,
-  projectCourseEntities,
   projectCoursePlanning
 } from "../../src/ui/courseAuthoringViewModel.js";
 
@@ -41,15 +38,49 @@ function courseItem(courseId = COURSE_ID, title = "Fundamentos") {
   };
 }
 
-function entities(items, options = {}) {
+function outlineFixture() {
   return {
-    contract: "aralearn.course-entities.v1",
+    contract: "aralearn.course.v1",
     courseId: COURSE_ID,
+    title: "Fundamentos",
+    goal: "Compreender relações essenciais.",
     revision: 3,
-    items,
-    hasMore: options.hasMore === true,
-    nextCursor: options.nextCursor || null,
-    offline: options.offline === true
+    ownership: "owned",
+    canEdit: true,
+    counts: {
+      moduleCount: 1,
+      lessonCount: 1,
+      topicCount: 1,
+      microsequenceCount: 2,
+      studyUnitCount: 4
+    },
+    createdAt: "2026-08-17T10:00:00Z",
+    updatedAt: "2026-08-17T12:00:00Z",
+    outline: {
+      courseId: COURSE_ID,
+      title: "Fundamentos",
+      goal: "Compreender relações essenciais.",
+      modules: [{
+        id: "module-a",
+        title: "Base",
+        lessons: [{
+          id: "lesson-a",
+          title: "Relações",
+          topics: [{ id: "topic-a", title: "Proporção", summary: "Uma relação." }],
+          microsequences: [{
+            id: "micro-a",
+            title: "Primeiro caso",
+            goal: "Reconhecer o padrão.",
+            studyUnitCount: 1
+          }, {
+            id: "micro-b",
+            title: "Segundo caso",
+            studyUnitCount: 3
+          }]
+        }]
+      }]
+    },
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
   };
 }
 
@@ -91,7 +122,7 @@ test("lista distingue zero, um e muitos sem perder cursor ou estado offline conh
   assert.deepEqual(merged.items.map((item) => item.courseId), [COURSE_ID, SECOND_COURSE_ID]);
 });
 
-test("detalhe e páginas de entidades exigem o mesmo Curso e a mesma revisão", () => {
+test("detalhe e outline exigem o mesmo Curso e a mesma revisão", () => {
   const course = normalizeCourseDetail({
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -113,13 +144,10 @@ test("detalhe e páginas de entidades exigem o mesmo Curso e a mesma revisão", 
   assert.equal(course.canEdit, true);
 
   assert.throws(
-    () => normalizeCourseEntityPage({
-      courseId: COURSE_ID,
-      revision: 4,
-      items: [],
-      hasMore: false,
-      nextCursor: null
-    }, { expectedCourseId: COURSE_ID, expectedRevision: 3 }),
+    () => normalizeCourseAuthoringOutline(outlineFixture(), {
+      expectedCourseId: COURSE_ID,
+      expectedRevision: 4
+    }),
     (error) => error.code === "course_revision_changed"
   );
 });
@@ -246,7 +274,6 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
   assert.equal(projection.recentActivity[0].eventId, "42");
   assert.equal(projection.recentActivity[0].kind, "plan_changed");
   assert.equal(projection.recentActivity[0].instructionalPlanItemId, ITEM_ID);
-  assert.deepEqual(projectCourseEntities([], { section: "planning" }), []);
 });
 
 test("atividade recente aceita somente o bigint identity decimal positivo do banco", () => {
@@ -458,82 +485,40 @@ test("Autoria rejeita Curso compartilhado antes de projetar título ou deep link
   );
 });
 
-test("entidades viram estrutura plana e conteúdo com contexto curto", () => {
-  const firstPage = normalizeCourseEntityPage(entities([
-    {
-      entityType: "module",
-      entityId: "module-a",
-      parentType: null,
-      parentId: null,
-      position: 0,
-      version: 1,
-      content: { title: "Base" }
-    },
-    {
-      entityType: "lesson",
-      entityId: "lesson-a",
-      parentType: "module",
-      parentId: "module-a",
-      position: 0,
-      version: 1,
-      content: { title: "Relações" }
-    },
-    {
-      entityType: "microsequence",
-      entityId: "micro-a",
-      parentType: "lesson",
-      parentId: "lesson-a",
-      position: 0,
-      version: 1,
-      content: { title: "Primeiro caso", goal: "Reconhecer o padrão." }
-    }
-  ], {
-    hasMore: true,
-    nextCursor: { entityType: "microsequence", entityId: "micro-a" }
-  }), { expectedCourseId: COURSE_ID, expectedRevision: 3 });
-  const secondPage = normalizeCourseEntityPage(entities([{
-    entityType: "card",
-    entityId: "unit-a",
-    parentType: "microsequence",
-    parentId: "micro-a",
-    position: 1,
-    version: 1,
-    content: {
-      title: "Exemplo guiado",
-      content: [{ data: { text: "Compare os dois valores." } }]
-    }
-  }]), { expectedCourseId: COURSE_ID, expectedRevision: 3 });
-  const merged = mergeCourseEntityPages(firstPage, secondPage);
-
-  assert.deepEqual(countCourseEntities(merged.items), { microsequences: 1, units: 1 });
-  assert.deepEqual(
-    projectCourseEntities(merged.items, { section: "structure" }).map((item) => item.label),
-    ["Módulo", "Lição", "Microssequência"]
-  );
-  const content = projectCourseEntities(merged.items, { section: "content" });
-  assert.equal(content.length, 1);
-  assert.equal(content[0].label, "Unidade");
-  assert.equal(content[0].summary, "Compare os dois valores.");
-  assert.equal(content[0].context, "Base · Relações · Primeiro caso");
+test("outline vira uma apresentação estrutural derivada sem carregar Unidades de estudo", () => {
+  const outline = normalizeCourseAuthoringOutline(outlineFixture(), {
+    expectedCourseId: COURSE_ID,
+    expectedRevision: 3
+  });
+  assert.deepEqual(outline.rows.map(({ label, title }) => [label, title]), [
+    ["Módulo", "Base"],
+    ["Lição", "Relações"],
+    ["Tópico", "Proporção"],
+    ["Microssequência didática", "Primeiro caso"],
+    ["Microssequência didática", "Segundo caso"]
+  ]);
+  assert.deepEqual(outline.microsequences, [{
+    id: "micro-a",
+    label: "Base · Relações · Primeiro caso"
+  }, {
+    id: "micro-b",
+    label: "Base · Relações · Segundo caso"
+  }]);
+  assert.equal(outline.rows.some((row) => row.kind === "study_unit"), false);
 });
 
-test("projeção recompõe a ordem didática sem depender da ordem de transporte", () => {
-  const items = normalizeCourseEntityPage(entities([
-    { entityType: "card", entityId: "unit-b", parentType: "microsequence", parentId: "micro-b", position: 1, content: { title: "B" } },
-    { entityType: "microsequence", entityId: "micro-b", parentType: "lesson", parentId: "lesson-a", position: 1, content: { title: "Segunda" } },
-    { entityType: "module", entityId: "module-a", parentType: null, parentId: null, position: 0, content: { title: "Módulo" } },
-    { entityType: "card", entityId: "unit-a", parentType: "microsequence", parentId: "micro-a", position: 1, content: { title: "A" } },
-    { entityType: "lesson", entityId: "lesson-a", parentType: "module", parentId: "module-a", position: 0, content: { title: "Lição" } },
-    { entityType: "microsequence", entityId: "micro-a", parentType: "lesson", parentId: "lesson-a", position: 0, content: { title: "Primeira" } }
-  ]), { expectedCourseId: COURSE_ID, expectedRevision: 3 });
-
-  assert.deepEqual(
-    projectCourseEntities(items.items, { section: "structure" }).map((item) => item.title),
-    ["Módulo", "Lição", "Primeira", "Segunda"]
+test("outline recusa contagens ou identidades duplicadas em vez de criar outra hierarquia", () => {
+  const wrongCount = outlineFixture();
+  wrongCount.counts.studyUnitCount = 5;
+  assert.throws(
+    () => normalizeCourseAuthoringOutline(wrongCount),
+    (error) => error.code === "invalid_course_outline"
   );
-  assert.deepEqual(
-    projectCourseEntities(items.items, { section: "content" }).map((item) => item.title),
-    ["A", "B"]
+  const duplicate = outlineFixture();
+  duplicate.outline.modules[0].lessons[0].microsequences[1].id = "micro-a";
+  assert.throws(
+    () => normalizeCourseAuthoringOutline(duplicate),
+    (error) => error.code === "invalid_course_outline"
   );
 });
 

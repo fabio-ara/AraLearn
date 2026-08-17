@@ -1,7 +1,4 @@
-import {
-  COURSE_AUTHORING_SECTIONS,
-  isCanonicalCourseId
-} from "./courseAuthoringRoute.js";
+import { isCanonicalCourseId } from "./courseAuthoringRoute.js";
 
 const OWNERSHIP_VALUES = new Set(["owned"]);
 const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_condition"]);
@@ -15,18 +12,6 @@ const AUTHORING_ACTIVITY_KINDS = new Set([
 ]);
 const POSITIVE_BIGINT_DECIMAL = /^[1-9][0-9]{0,18}$/u;
 const MAX_BIGINT_DECIMAL = "9223372036854775807";
-const ENTITY_DEFINITIONS = Object.freeze({
-  module: Object.freeze({ label: "Módulo", icon: "module", parentType: null }),
-  lesson: Object.freeze({ label: "Lição", icon: "lesson", parentType: "module" }),
-  topic: Object.freeze({ label: "Tópico", icon: "tags", parentType: "lesson" }),
-  microsequence: Object.freeze({
-    label: "Microssequência",
-    icon: "microsequence",
-    parentType: "lesson"
-  }),
-  card: Object.freeze({ label: "Unidade", icon: "card", parentType: "microsequence" })
-});
-
 export class CourseAuthoringProjectionError extends Error {
   constructor(code, message) {
     super(message);
@@ -609,211 +594,168 @@ export function projectCoursePlanning(course, authoringPlan) {
   });
 }
 
-function normalizeEntity(value, { courseId }) {
-  if (!isPlainObject(value)) {
-    fail("invalid_course_projection", "A página contém uma entidade inválida.");
+function outlineRequiredText(value, label, maximum = 300) {
+  const normalized = text(value);
+  if (!normalized || normalized.length > maximum) {
+    fail("invalid_course_outline", `${label} é inválido.`);
   }
-  const entityType = text(value.entityType);
-  const entityId = text(value.entityId);
-  const definition = ENTITY_DEFINITIONS[entityType];
-  const parentType = value.parentType == null ? null : text(value.parentType);
-  const parentId = value.parentId == null ? null : text(value.parentId);
-  const position = naturalNumber(value.position, { minimum: entityType === "card" ? 1 : 0 });
-  if (!definition || !entityId || parentType !== definition.parentType ||
-      (parentType === null) !== (parentId === null) || position === null ||
-      !isPlainObject(value.content)) {
-    fail("invalid_course_projection", "A página contém uma entidade inconsistente.");
-  }
-  if (value.courseId != null && text(value.courseId) !== courseId) {
-    fail("invalid_course_projection", "A entidade pertence a outro Curso.");
-  }
-  const version = value.version == null ? null : naturalNumber(value.version, { minimum: 1 });
-  if (value.version != null && version === null) {
-    fail("invalid_course_projection", "A versão da entidade é inválida.");
-  }
-  return Object.freeze({
-    entityType,
-    entityId,
-    parentType,
-    parentId,
-    position,
-    version,
-    content: Object.freeze(cloneJson(value.content, "O conteúdo da entidade"))
-  });
+  return normalized;
 }
 
-export function normalizeCourseEntityPage(value, {
+function outlineOptionalText(value, label, maximum = 300) {
+  if (value == null || value === "") return null;
+  return outlineRequiredText(value, label, maximum);
+}
+
+function outlineIdentity(value, label) {
+  const normalized = text(value);
+  if (!normalized || normalized.length > 240) {
+    fail("invalid_course_outline", `${label} é inválida.`);
+  }
+  return normalized;
+}
+
+export function normalizeCourseAuthoringOutline(value, {
   expectedCourseId = "",
   expectedRevision = null
 } = {}) {
-  if (!isPlainObject(value) || !Array.isArray(value.items)) {
-    fail("invalid_course_projection", "A página de entidades do Curso é inválida.");
+  if (!isPlainObject(value) || value.contract !== "aralearn.course.v1" ||
+      !isPlainObject(value.outline) || !Array.isArray(value.outline.modules)) {
+    fail("invalid_course_outline", "A estrutura devolvida é inválida.");
   }
-  const courseId = text(value.courseId);
-  const currentRevision = revision(value.revision);
-  if (!isCanonicalCourseId(courseId) || (expectedCourseId && courseId !== expectedCourseId)) {
-    fail("invalid_course_projection", "A página de entidades pertence a outro Curso.");
-  }
-  if (expectedRevision !== null && currentRevision !== expectedRevision) {
+  const course = normalizeCourseDetail(value, { expectedCourseId });
+  if (expectedRevision !== null && course.revision !== expectedRevision) {
     fail("course_revision_changed", "O Curso mudou durante a leitura.");
   }
-  const items = value.items.map((item) => normalizeEntity(item, { courseId }));
-  const identities = new Set(items.map((item) => `${item.entityType}\u0000${item.entityId}`));
-  if (identities.size !== items.length) {
-    fail("invalid_course_projection", "A página repete uma entidade do Curso.");
+  if (text(value.outline.courseId) !== course.courseId ||
+      outlineRequiredText(value.outline.title, "O título da estrutura") !== course.title ||
+      (text(value.outline.goal) || null) !== course.goal) {
+    fail("invalid_course_outline", "A estrutura não corresponde ao Curso aberto.");
   }
-  const pagination = pageState(value);
-  if (items.length === 0 && pagination.hasMore) {
-    fail("invalid_course_cursor", "A página vazia não pode indicar continuação.");
-  }
-  return Object.freeze({
-    courseId,
-    revision: currentRevision,
-    items: Object.freeze(items),
-    ...pagination,
-    offlineKnown: value.offlineKnown === true || value.offline === true || value.stale === true
-  });
-}
 
-export function mergeCourseEntityPages(currentValue, incomingValue) {
-  const incoming = normalizeCourseEntityPage(incomingValue);
-  if (!currentValue) return incoming;
-  const current = normalizeCourseEntityPage(currentValue);
-  if (current.courseId !== incoming.courseId || current.revision !== incoming.revision) {
-    fail("course_revision_changed", "O Curso mudou durante a paginação.");
-  }
-  const itemsById = new Map(current.items.map((item) => [
-    `${item.entityType}\u0000${item.entityId}`,
-    item
-  ]));
-  incoming.items.forEach((item) => itemsById.set(`${item.entityType}\u0000${item.entityId}`, item));
-  return Object.freeze({
-    courseId: current.courseId,
-    revision: current.revision,
-    items: Object.freeze([...itemsById.values()]),
-    hasMore: incoming.hasMore,
-    nextCursor: incoming.nextCursor,
-    offlineKnown: current.offlineKnown || incoming.offlineKnown
-  });
-}
-
-function entityTitle(entity) {
-  return text(entity.content.title) || text(entity.content.label) ||
-    `${ENTITY_DEFINITIONS[entity.entityType].label} ${entity.position + (entity.entityType === "card" ? 0 : 1)}`;
-}
-
-function packagePreview(value) {
-  if (!Array.isArray(value)) return "";
-  for (const instance of value) {
-    const candidate = text(instance?.data?.text) || text(instance?.data?.title) ||
-      text(instance?.data?.caption);
-    if (candidate) return candidate;
-  }
-  return "";
-}
-
-function entitySummary(entity) {
-  return text(entity.content.summary) || text(entity.content.goal) ||
-    text(entity.content.role) || packagePreview(entity.content.content) || null;
-}
-
-function entityKey(entity) {
-  return `${entity.entityType}\u0000${entity.entityId}`;
-}
-
-const DIDACTIC_CHILD_TYPES = Object.freeze({
-  course: Object.freeze(["module"]),
-  module: Object.freeze(["lesson"]),
-  lesson: Object.freeze(["topic", "microsequence"]),
-  topic: Object.freeze([]),
-  microsequence: Object.freeze(["card"]),
-  card: Object.freeze([])
-});
-
-function didacticEntityOrder(source) {
-  const byParent = new Map();
-  for (const entity of source) {
-    const parentKey = entity.parentType === null
-      ? "course"
-      : `${entity.parentType}\u0000${entity.parentId}`;
-    const key = `${parentKey}\u0000${entity.entityType}`;
-    if (!byParent.has(key)) byParent.set(key, []);
-    byParent.get(key).push(entity);
-  }
-  for (const siblings of byParent.values()) {
-    siblings.sort((left, right) => left.position - right.position ||
-      left.entityId.localeCompare(right.entityId));
-  }
-  const ordered = [];
-  const visited = new Set();
-  const visitChildren = (parentType, parentId = null) => {
-    const parentKey = parentType === "course"
-      ? "course"
-      : `${parentType}\u0000${parentId}`;
-    for (const childType of DIDACTIC_CHILD_TYPES[parentType] || []) {
-      for (const child of byParent.get(`${parentKey}\u0000${childType}`) || []) {
-        const key = entityKey(child);
-        if (visited.has(key)) continue;
-        visited.add(key);
-        ordered.push(child);
-        visitChildren(child.entityType, child.entityId);
-      }
+  const identities = new Set();
+  const rows = [];
+  const microsequences = [];
+  let lessonCount = 0;
+  let topicCount = 0;
+  let studyUnitCount = 0;
+  value.outline.modules.forEach((moduleValue, modulePosition) => {
+    if (!isPlainObject(moduleValue) || !Array.isArray(moduleValue.lessons)) {
+      fail("invalid_course_outline", "Um Módulo da estrutura é inválido.");
     }
-  };
-  visitChildren("course");
-  if (ordered.length !== source.length) {
-    const typeOrder = new Map(Object.keys(ENTITY_DEFINITIONS)
-      .map((entityType, index) => [entityType, index]));
-    const remainder = source.filter((entity) => !visited.has(entityKey(entity)))
-      .sort((left, right) =>
-        (typeOrder.get(left.entityType) ?? 99) - (typeOrder.get(right.entityType) ?? 99) ||
-        left.position - right.position || left.entityId.localeCompare(right.entityId));
-    ordered.push(...remainder);
+    const moduleId = outlineIdentity(moduleValue.id, "A identidade do Módulo");
+    const moduleTitle = outlineRequiredText(moduleValue.title, "O título do Módulo");
+    const moduleIdentity = `module\u0000${moduleId}`;
+    if (identities.has(moduleIdentity)) fail("invalid_course_outline", "A estrutura repete um Módulo.");
+    identities.add(moduleIdentity);
+    rows.push(Object.freeze({
+      kind: "module",
+      entityId: moduleId,
+      label: "Módulo",
+      icon: "module",
+      title: moduleTitle,
+      summary: null,
+      context: null,
+      position: modulePosition
+    }));
+    moduleValue.lessons.forEach((lessonValue, lessonPosition) => {
+      if (!isPlainObject(lessonValue) || !Array.isArray(lessonValue.topics) ||
+          !Array.isArray(lessonValue.microsequences)) {
+        fail("invalid_course_outline", "Uma Lição da estrutura é inválida.");
+      }
+      lessonCount += 1;
+      const lessonId = outlineIdentity(lessonValue.id, "A identidade da Lição");
+      const lessonTitle = outlineRequiredText(lessonValue.title, "O título da Lição");
+      const lessonIdentity = `lesson\u0000${lessonId}`;
+      if (identities.has(lessonIdentity)) fail("invalid_course_outline", "A estrutura repete uma Lição.");
+      identities.add(lessonIdentity);
+      rows.push(Object.freeze({
+        kind: "lesson",
+        entityId: lessonId,
+        label: "Lição",
+        icon: "lesson",
+        title: lessonTitle,
+        summary: null,
+        context: moduleTitle,
+        position: lessonPosition
+      }));
+      lessonValue.topics.forEach((topicValue, topicPosition) => {
+        if (!isPlainObject(topicValue)) {
+          fail("invalid_course_outline", "Um Tópico da estrutura é inválido.");
+        }
+        topicCount += 1;
+        const topicId = outlineIdentity(topicValue.id, "A identidade do Tópico");
+        const topicKey = `topic\u0000${topicId}`;
+        if (identities.has(topicKey)) fail("invalid_course_outline", "A estrutura repete um Tópico.");
+        identities.add(topicKey);
+        rows.push(Object.freeze({
+          kind: "topic",
+          entityId: topicId,
+          label: "Tópico",
+          icon: "tags",
+          title: outlineRequiredText(topicValue.title, "O título do Tópico"),
+          summary: outlineOptionalText(topicValue.summary, "O resumo do Tópico", 4_000),
+          context: `${moduleTitle} · ${lessonTitle}`,
+          position: topicPosition
+        }));
+      });
+      lessonValue.microsequences.forEach((microsequenceValue, microsequencePosition) => {
+        if (!isPlainObject(microsequenceValue)) {
+          fail("invalid_course_outline", "Uma Microssequência didática da estrutura é inválida.");
+        }
+        const microsequenceId = outlineIdentity(
+          microsequenceValue.id,
+          "A identidade da Microssequência didática"
+        );
+        const microsequenceIdentity = `microsequence\u0000${microsequenceId}`;
+        if (identities.has(microsequenceIdentity)) {
+          fail("invalid_course_outline", "A estrutura repete uma Microssequência didática.");
+        }
+        identities.add(microsequenceIdentity);
+        const count = naturalNumber(microsequenceValue.studyUnitCount);
+        if (count === null) {
+          fail("invalid_course_outline", "A contagem da Microssequência didática é inválida.");
+        }
+        studyUnitCount += count;
+        const title = outlineRequiredText(
+          microsequenceValue.title,
+          "O título da Microssequência didática"
+        );
+        const row = Object.freeze({
+          kind: "microsequence",
+          entityId: microsequenceId,
+          label: "Microssequência didática",
+          icon: "microsequence",
+          title,
+          summary: outlineOptionalText(
+            microsequenceValue.goal || microsequenceValue.role,
+            "A descrição da Microssequência didática",
+            4_000
+          ),
+          context: `${moduleTitle} · ${lessonTitle}`,
+          position: microsequencePosition,
+          studyUnitCount: count
+        });
+        rows.push(row);
+        microsequences.push(Object.freeze({
+          id: microsequenceId,
+          label: `${moduleTitle} · ${lessonTitle} · ${title}`
+        }));
+      });
+    });
+  });
+  const counts = course.counts;
+  if (!counts || counts.moduleCount !== value.outline.modules.length ||
+      counts.lessonCount !== lessonCount || counts.topicCount !== topicCount ||
+      counts.microsequenceCount !== microsequences.length ||
+      counts.studyUnitCount !== studyUnitCount) {
+    fail("invalid_course_outline", "As contagens da estrutura são inconsistentes.");
   }
-  return ordered;
-}
-
-function contextForEntity(entity, byIdentity) {
-  const context = [];
-  let current = entity;
-  for (let level = 0; level < 4 && current.parentType && current.parentId; level += 1) {
-    const parent = byIdentity.get(`${current.parentType}\u0000${current.parentId}`);
-    if (!parent) break;
-    context.unshift(entityTitle(parent));
-    current = parent;
-  }
-  return context.join(" · ") || null;
-}
-
-export function projectCourseEntities(items, { section = "structure" } = {}) {
-  if (!COURSE_AUTHORING_SECTIONS.includes(section)) {
-    throw new TypeError("Seção de Curso inválida.");
-  }
-  const source = Array.isArray(items) ? items : [];
-  const byIdentity = new Map(source.map((item) => [entityKey(item), item]));
-  const ordered = didacticEntityOrder(source);
-  const visible = section === "content"
-    ? ordered.filter((item) => item.entityType === "card")
-    : section === "structure"
-      ? ordered.filter((item) => item.entityType !== "card")
-      : [];
-  return Object.freeze(visible.map((item) => Object.freeze({
-    entityType: item.entityType,
-    entityId: item.entityId,
-    label: ENTITY_DEFINITIONS[item.entityType].label,
-    icon: ENTITY_DEFINITIONS[item.entityType].icon,
-    title: entityTitle(item),
-    summary: entitySummary(item),
-    context: contextForEntity(item, byIdentity),
-    position: item.position
-  })));
-}
-
-export function countCourseEntities(items) {
-  const source = Array.isArray(items) ? items : [];
   return Object.freeze({
-    microsequences: source.filter((item) => item.entityType === "microsequence").length,
-    units: source.filter((item) => item.entityType === "card").length
+    course,
+    rows: Object.freeze(rows),
+    microsequences: Object.freeze(microsequences),
+    offlineKnown: value.offlineKnown === true || value.offline === true || value.stale === true
   });
 }
 

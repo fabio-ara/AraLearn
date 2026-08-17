@@ -374,7 +374,7 @@ test("reinício offline conserva caches e não deduz revogação de lista local 
 
 function documentFixture() {
   return {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [{
       id: COURSE_ID,
       title: "Curso",
@@ -602,6 +602,83 @@ test("plano instrucional usa cache autoral e mutação encaminha um comando est�
   }]);
   assert.equal([...store.values.keys()].some((key) =>
     key.includes(`instructional-plan:${COURSE_ID}`)), false);
+});
+
+test("inspeção autoral usa cache paginado limitado e posição local por dispositivo", async () => {
+  const store = new MemoryStateStore();
+  let online = true;
+  const calls = [];
+  const page = {
+    contract: "aralearn.course-study-unit-inspection-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    scope: { kind: "course", id: null },
+    totalCount: 0,
+    scopeOptions: { authoringParts: [], unassignedStudyUnitCount: 0 },
+    items: [],
+    hasPrevious: false,
+    hasMore: false,
+    previousCursor: null,
+    nextCursor: null,
+    pageBytes: 32
+  };
+  const api = {
+    async listCourses() { return courseListPage([]); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadAuthoringOutline(courseId) {
+      if (!online) throw networkFailure();
+      return { courseId, revision: 4, outline: { modules: [] } };
+    },
+    async loadAuthoringStudyUnits(courseId, options) {
+      calls.push({ courseId, options });
+      if (!online) throw networkFailure();
+      return page;
+    }
+  };
+  const controller = new CourseController({ api, store, ownerOnly: true });
+
+  assert.equal((await controller.loadAuthoringOutline(COURSE_ID)).offline, false);
+  const first = await controller.loadAuthoringStudyUnits(COURSE_ID, {
+    expectedRevision: 4
+  });
+  assert.equal(first.offline, false);
+  assert.equal(calls.length, 1);
+
+  online = false;
+  const cached = await controller.loadAuthoringStudyUnits(COURSE_ID, {
+    expectedRevision: 4
+  });
+  assert.equal(cached.offline, true);
+  assert.equal(cached.stale, true);
+
+  const position = {
+    scope: { kind: "course", id: null },
+    studyUnitId: "unit-a",
+    offsetFromStickyTop: 18.5,
+    courseRevision: 4
+  };
+  assert.deepEqual(
+    await controller.saveAuthoringInspectionPosition(COURSE_ID, position),
+    position
+  );
+  assert.deepEqual(await controller.loadAuthoringInspectionPosition(COURSE_ID), position);
+
+  online = true;
+  for (let index = 0; index < 5; index += 1) {
+    await controller.loadAuthoringStudyUnits(COURSE_ID, {
+      expectedRevision: 4,
+      cursor: { studyUnitId: `unit-${index}` }
+    });
+  }
+  const inspectionCache = store.values.get(
+    `course-authoring.v1.study-unit-inspection:${COURSE_ID}`
+  );
+  assert.equal(inspectionCache.entries.length, 4);
+  assert.equal(
+    [...store.values.keys()].some((key) =>
+      key.includes(`study-unit-inspection-position:${COURSE_ID}`)),
+    true
+  );
 });
 
 test("leitura de materialização é sempre remota e preserva as identidades explícitas", async () => {

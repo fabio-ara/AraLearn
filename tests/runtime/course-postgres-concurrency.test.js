@@ -212,14 +212,14 @@ test("PostgreSQL confirma hierarquia fora de ordem somente ao fechar a transaç�
       insert into private.course_entities(
         course_id,entity_type,entity_id,parent_type,parent_id,position,content
       ) values
-        ('${courseId}','card','u','microsequence','s',1,'{"title":"U"}'::jsonb),
+        ('${courseId}','study_unit','u','microsequence','s',1,'{"title":"U"}'::jsonb),
         ('${courseId}','microsequence','s','lesson','l',0,'{"title":"S"}'::jsonb),
         ('${courseId}','lesson','l','module','m',0,'{"title":"L"}'::jsonb),
         ('${courseId}','module','m',null,null,0,'{"title":"M"}'::jsonb);
       insert into private.course_entities(
         course_id,entity_type,entity_id,parent_type,parent_id,position,content
       ) values(
-        '${courseId}','card','u2','microsequence','s',2,'{"title":"U2"}'::jsonb
+        '${courseId}','study_unit','u2','microsequence','s',2,'{"title":"U2"}'::jsonb
       );
       commit;
     `));
@@ -230,27 +230,27 @@ test("PostgreSQL confirma hierarquia fora de ordem somente ao fechar a transaç�
       begin;
       set constraints private.course_entities_sibling_position_v1 deferred;
       update private.course_entities set position=2
-      where course_id='${courseId}' and entity_type='card' and entity_id='u';
+      where course_id='${courseId}' and entity_type='study_unit' and entity_id='u';
       update private.course_entities set position=1
-      where course_id='${courseId}' and entity_type='card' and entity_id='u2';
+      where course_id='${courseId}' and entity_type='study_unit' and entity_id='u2';
       commit;
     `));
     assert.equal(await result(psql(`
       select string_agg(entity_id || ':' || position, ',' order by position)
       from private.course_entities
-      where course_id='${courseId}' and entity_type='card';
+      where course_id='${courseId}' and entity_type='study_unit';
     `)), "u2:1,u:2");
     await assert.rejects(() => result(psql(`
       begin;
       set constraints private.course_entities_sibling_position_v1 deferred;
       update private.course_entities set position=2
-      where course_id='${courseId}' and entity_type='card' and entity_id='u2';
+      where course_id='${courseId}' and entity_type='study_unit' and entity_id='u2';
       commit;
     `)), /course_entities_sibling_position_v1|duplicate key/iu);
     assert.equal(await result(psql(`
       select string_agg(entity_id || ':' || position, ',' order by position)
       from private.course_entities
-      where course_id='${courseId}' and entity_type='card';
+      where course_id='${courseId}' and entity_type='study_unit';
     `)), "u2:1,u:2");
     await assert.rejects(() => result(psql(`
       begin;
@@ -297,8 +297,10 @@ test("PostgreSQL aceita apenas uma composição concorrente na mesma versão", {
             'content',jsonb_build_object('title','Lição ${suffix}')),
           jsonb_build_object('entityType','microsequence','entityId','s-${suffix}',
             'parentType','lesson','parentId','l-${suffix}','position',0,
-            'content',jsonb_build_object('title','Microssequência ${suffix}')),
-          jsonb_build_object('entityType','card','entityId','u-${suffix}',
+            'content',jsonb_build_object(
+              'title','Microssequência ${suffix}','dependsOn',jsonb_build_array()
+            )),
+          jsonb_build_object('entityType','study_unit','entityId','u-${suffix}',
             'parentType','microsequence','parentId','s-${suffix}','position',1,
             'content',jsonb_build_object('title','Unidade ${suffix}'))
         ), '[]'::jsonb, 'concurrency:composition:${suffix}'
@@ -395,7 +397,7 @@ test("PostgreSQL mantém consultas de Curso dentro do orçamento local", {
         cross join generate_series(0,4) s;
       insert into private.course_entities(
         course_id,entity_type,entity_id,parent_type,parent_id,position,content
-      ) select '${courseId}','card','u-'||m||'-'||l||'-'||s||'-'||u,
+      ) select '${courseId}','study_unit','u-'||m||'-'||l||'-'||s||'-'||u,
         'microsequence','s-'||m||'-'||l||'-'||s,u,
         jsonb_build_object('title','Unidade '||m||'-'||l||'-'||s||'-'||u)
         from generate_series(0,19) m cross join generate_series(0,4) l
@@ -433,6 +435,195 @@ test("PostgreSQL mantém consultas de Curso dentro do orçamento local", {
     `)), "3");
   } finally {
     await cleanupUser(ownerId, email);
+  }
+});
+
+test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", {
+  skip: postgresGate
+}, async () => {
+  const ownerId = "00000000-0000-4000-8000-000000000096";
+  const sharedId = "00000000-0000-4000-8000-000000000196";
+  const outsiderId = "00000000-0000-4000-8000-000000000296";
+  const courseId = "10000000-0000-4000-8000-000000000096";
+  const planId = "20000000-0000-4000-8000-000000000096";
+  const partId = "30000000-0000-4000-8000-000000000096";
+  const ownerEmail = "course-inspection-owner-v1@aralearn.invalid";
+  const sharedEmail = "course-inspection-shared-v1@aralearn.invalid";
+  const outsiderEmail = "course-inspection-outsider-v1@aralearn.invalid";
+  await createUser(ownerId, ownerEmail);
+  await createUser(sharedId, sharedEmail);
+  await createUser(outsiderId, outsiderEmail);
+  const pageQuery = ({
+    actorId = ownerId,
+    anchor = null,
+    cursor = null,
+    direction = "forward",
+    limit = 24,
+    maxBytes = 1_500_000
+  } = {}) => `
+    select public.list_owned_course_study_units_for_actor_v1(
+      '${actorId}','${courseId}',1,'course',null,
+      ${anchor === null ? "null" : `'${anchor}'`},
+      ${cursor === null ? "null" : `'${cursor}'`},
+      '${direction}',${limit},${maxBytes}
+    );
+  `;
+  const servicePage = async (options) => JSON.parse(await result(psql(`
+    begin;
+    set local role service_role;
+    ${pageQuery(options)}
+    commit;
+  `)));
+
+  try {
+    await result(psql(`
+      insert into public.courses(id,owner_id,title,goal)
+      values(
+        '${courseId}','${ownerId}',
+        'Curso de inspeção','Inspecionar Unidades em ordem curricular'
+      );
+      insert into private.course_instructional_plans(id,course_id)
+      values('${planId}','${courseId}');
+      insert into private.course_entities(
+        course_id,entity_type,entity_id,parent_type,parent_id,position,content
+      ) values
+        ('${courseId}','module','module-0',null,null,0,
+          '{"title":"Módulo 0"}'::jsonb),
+        ('${courseId}','lesson','lesson-0','module','module-0',0,
+          '{"title":"Lição 0"}'::jsonb),
+        ('${courseId}','microsequence','micro-0','lesson','lesson-0',0,
+          '{"title":"Microssequência 0"}'::jsonb);
+      insert into private.course_entities(
+        course_id,entity_type,entity_id,parent_type,parent_id,position,content
+      ) select '${courseId}','study_unit',
+        'unit-'||lpad(unit_value::text,3,'0'),
+        'microsequence','micro-0',unit_value,
+        case when unit_value=1 then jsonb_build_object(
+          'title','Unidade 001','body',repeat('x',70000)
+        ) else jsonb_build_object(
+          'title','Unidade '||lpad(unit_value::text,3,'0')
+        ) end
+      from generate_series(1,60) unit_value;
+      insert into private.course_authoring_parts(
+        id,course_id,instructional_plan_id,position,title,intent
+      ) values(
+        '${partId}','${courseId}','${planId}',0,
+        'Parte única','Produzir todas as Unidades'
+      );
+      insert into private.course_authoring_part_didactic_microsequences(
+        course_id,authoring_part_id,didactic_microsequence_id,
+        production_position
+      ) values('${courseId}','${partId}','micro-0',0);
+      insert into public.course_access(course_id,user_id,granted_by)
+      values('${courseId}','${sharedId}','${ownerId}');
+      analyze private.course_entities;
+    `));
+
+    assert.equal(await result(psql(`
+      select has_function_privilege(
+        'service_role',
+        'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+        'EXECUTE'
+      ) || '|' || has_function_privilege(
+        'authenticated',
+        'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+        'EXECUTE'
+      );
+    `)), "true|false");
+
+    const first = await servicePage();
+    assert.deepEqual(Object.keys(first).sort(), [
+      "contract", "courseId", "courseRevision", "scope", "totalCount",
+      "scopeOptions", "items", "hasPrevious", "hasMore",
+      "previousCursor", "nextCursor", "pageBytes"
+    ].sort());
+    assert.equal(first.contract, "aralearn.course-study-unit-inspection-page.v1");
+    assert.equal(first.totalCount, 60);
+    assert.equal(first.items.length, 24);
+    assert.equal(first.items[0].studyUnit.id, "unit-001");
+    assert.equal(first.items.at(-1).studyUnit.id, "unit-024");
+    assert.deepEqual(first.items[0].curriculumPath, {
+      module: { id: "module-0", position: 0, title: "Módulo 0" },
+      lesson: { id: "lesson-0", position: 0, title: "Lição 0" },
+      didacticMicrosequence: {
+        id: "micro-0", position: 0, title: "Microssequência 0"
+      }
+    });
+    assert.deepEqual(first.items[0].authoringPart, {
+      id: partId,
+      position: 0,
+      title: "Parte única",
+      state: "partially_materialized"
+    });
+    assert.deepEqual(first.scopeOptions, {
+      authoringParts: [{
+        id: partId,
+        position: 0,
+        title: "Parte única",
+        state: "partially_materialized"
+      }],
+      unassignedStudyUnitCount: 0
+    });
+    assert.deepEqual(first.nextCursor, { studyUnitId: "unit-024" });
+    assert.equal(first.pageBytes < 1_500_000, true);
+
+    const second = await servicePage({ cursor: "unit-024" });
+    assert.equal(second.items[0].studyUnit.id, "unit-025");
+    assert.equal(second.items.at(-1).studyUnit.id, "unit-048");
+    const backward = await servicePage({
+      cursor: "unit-025", direction: "backward", limit: 12
+    });
+    assert.deepEqual(backward.items.map(({ studyUnit }) => studyUnit.id),
+      Array.from({ length: 12 }, (_, index) =>
+        `unit-${String(index + 13).padStart(3, "0")}`));
+    const byteBounded = await servicePage({ maxBytes: 65_536 });
+    assert.equal(byteBounded.items.length, 1);
+    assert.equal(byteBounded.pageBytes > 65_536, true);
+    assert.equal(byteBounded.hasMore, true);
+
+    await assert.rejects(() => servicePage({ actorId: sharedId }),
+      /não autorizada|não autorizado/iu);
+    await assert.rejects(() => servicePage({ actorId: outsiderId }),
+      /inexistente|inacessível/iu);
+    await assert.rejects(() => result(psql(`
+      begin;
+      set local role authenticated;
+      ${pageQuery()}
+      commit;
+    `)), /permission denied|permissão negada/iu);
+
+    const rpcPlan = JSON.parse(await result(psql(`
+      set role service_role;
+      explain(analyze,buffers,format json)
+      ${pageQuery()}
+      reset role;
+    `)))[0].Plan;
+    assert.ok(rpcPlan["Actual Total Time"] < 2_000);
+    const entityPlan = await result(psql(`
+      set enable_seqscan=off;
+      explain(format json)
+      select entity_id from private.course_entities
+      where course_id='${courseId}'
+        and parent_type='microsequence'
+        and parent_id='micro-0'
+        and entity_type='study_unit'
+      order by position,entity_id limit 24;
+    `));
+    assert.match(entityPlan, /"Node Type": "Index Scan"/u);
+    assert.match(entityPlan,
+      /course_entities_(?:parent_v1_idx|sibling_position_v1)/u);
+    assert.equal(await result(psql(`
+      select count(*) from pg_indexes where schemaname='private'
+        and indexname in (
+          'course_entities_parent_v1_idx',
+          'course_authoring_part_microsequences_course_unique_v1',
+          'course_authoring_part_microsequences_order_v1'
+        );
+    `)), "3");
+  } finally {
+    await cleanupUser(sharedId, sharedEmail);
+    await cleanupUser(ownerId, ownerEmail);
+    await cleanupUser(outsiderId, outsiderEmail);
   }
 });
 

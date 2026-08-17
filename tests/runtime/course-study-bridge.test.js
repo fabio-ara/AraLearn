@@ -8,7 +8,7 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 test("a ponte do Estudo delega lista, composição e limpeza a uma única cadeia", async () => {
   const calls = [];
   const document = {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [{ id: COURSE_ID, title: "Curso", goal: "Aprender.", modules: [] }]
   };
   const controller = {

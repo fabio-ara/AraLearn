@@ -26,7 +26,7 @@ export function findMicrosequence(project, courseId, moduleId, lessonId, microse
 export function collectLessonStudyUnits(lesson) {
   return (lesson?.microsequences || []).flatMap((microsequence) =>
     isRunnableMicrosequence(microsequence)
-      ? (microsequence.cards || []).map((studyUnit, index) => ({
+      ? (microsequence.studyUnits || []).map((studyUnit, index) => ({
           microsequenceId: microsequence.id,
           microsequence,
           studyUnitId: studyUnit.id,
@@ -41,7 +41,7 @@ export function firstSelection(project) {
   const moduleValue = first(course?.modules);
   const lesson = first(moduleValue?.lessons);
   const microsequence = first(lesson?.microsequences);
-  const studyUnit = first(microsequence?.cards);
+  const studyUnit = first(microsequence?.studyUnits);
   return {
     courseId: course?.id || null,
     moduleId: moduleValue?.id || null,
@@ -58,7 +58,7 @@ export function selectionForCourse(project, courseId) {
   const moduleValue = first(course.modules);
   const lesson = first(moduleValue?.lessons);
   const microsequence = first(lesson?.microsequences);
-  const studyUnit = first(microsequence?.cards);
+  const studyUnit = first(microsequence?.studyUnits);
   return {
     courseId: course.id,
     moduleId: moduleValue?.id || null,
@@ -74,7 +74,7 @@ export function selectionForModule(project, selection, moduleId) {
   if (!moduleValue) return null;
   const lesson = first(moduleValue.lessons);
   const microsequence = first(lesson?.microsequences);
-  const studyUnit = first(microsequence?.cards);
+  const studyUnit = first(microsequence?.studyUnits);
   return {
     ...selection,
     moduleId: moduleValue.id,
@@ -89,7 +89,7 @@ export function selectionForLesson(project, selection, lessonId) {
   const lesson = findLesson(project, selection.courseId, selection.moduleId, lessonId);
   if (!lesson) return null;
   const microsequence = first(lesson.microsequences);
-  const studyUnit = first(microsequence?.cards);
+  const studyUnit = first(microsequence?.studyUnits);
   return {
     ...selection,
     lessonId: lesson.id,
@@ -108,7 +108,7 @@ export function selectionForMicrosequence(project, selection, microsequenceId, s
     microsequenceId
   );
   if (!microsequence) return null;
-  const units = microsequence.cards || [];
+  const units = microsequence.studyUnits || [];
   const index = Math.max(0, Math.min(studyUnitIndex, Math.max(0, units.length - 1)));
   return {
     ...selection,
@@ -122,7 +122,7 @@ export function exactStudyUnitSelection(project, entityPath) {
   if (!Array.isArray(entityPath) || entityPath.length !== 5) return null;
   const [courseId, moduleId, lessonId, microsequenceId, studyUnitId] = entityPath;
   const microsequence = findMicrosequence(project, courseId, moduleId, lessonId, microsequenceId);
-  const studyUnitIndex = (microsequence?.cards || []).findIndex((unit) => unit.id === studyUnitId);
+  const studyUnitIndex = (microsequence?.studyUnits || []).findIndex((unit) => unit.id === studyUnitId);
   if (studyUnitIndex < 0) return null;
   return { courseId, moduleId, lessonId, microsequenceId, studyUnitId, studyUnitIndex };
 }

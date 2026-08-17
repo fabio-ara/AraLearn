@@ -61,8 +61,8 @@ liga decisões, literatura, implementação e avaliação prevista.
 3. [Supabase](supabase.md) — Auth, banco, Storage, Edge Functions, migrations e
    políticas de acesso;
 4. [Contrato de conteúdo](aralearn-contract.md) — envelopes e validação;
-5. [Componentes didáticos](recursos-de-card.md) — núcleo, pacotes, catálogo e
-   renderização;
+5. [Componentes didáticos e packages](componentes-didaticos.md) — núcleo,
+   pacotes, catálogo e renderização;
 6. [Sistema visual](sistema-visual.md) — tipografia, responsividade e
    acessibilidade;
 7. [Privacidade](privacidade.md) — finalidade, retenção e limites de acesso.
@@ -82,7 +82,7 @@ Comece pelo comportamento já implementado:
 3. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) — percurso
    conversacional e seus limites;
 4. [Assistência por modelo de linguagem](assistencia-por-ia.md) — autoridade,
-   seleção e versões;
+   contexto e concorrência;
 5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — separação
    entre intenção textual e operação estruturada.
 

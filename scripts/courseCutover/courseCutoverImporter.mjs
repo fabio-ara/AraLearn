@@ -19,6 +19,8 @@ const PROFILE_ACCESS_MIGRATION_VERSION = "20260817150000";
 const PROFILE_ACCESS_MIGRATION_NAME = "course_profiles_access";
 const AUTHORING_PLAN_MIGRATION_VERSION = "20260817160000";
 const AUTHORING_PLAN_MIGRATION_NAME = "course_authoring_plan";
+const STUDY_UNIT_INSPECTION_MIGRATION_VERSION = "20260817170000";
+const STUDY_UNIT_INSPECTION_MIGRATION_NAME = "course_study_unit_inspection";
 
 export const COURSE_CUTOVER_STAGING_SCHEMA = Object.freeze([
   Object.freeze({ name: "course_id", sql: "uuid not null" }),
@@ -90,7 +92,7 @@ const CURRENT_GRAPH_LAYOUT = Object.freeze({
   star: "radial"
 });
 
-const ENTITY_CHILDREN = Object.freeze({
+const LEGACY_ENTITY_CHILDREN = Object.freeze({
   course: Object.freeze([
     Object.freeze({ type: "module", field: "modules" })
   ]),
@@ -106,6 +108,24 @@ const ENTITY_CHILDREN = Object.freeze({
     Object.freeze({ type: "card", field: "cards" })
   ]),
   card: Object.freeze([])
+});
+
+const CURRENT_ENTITY_CHILDREN = Object.freeze({
+  course: Object.freeze([
+    Object.freeze({ type: "module", field: "modules" })
+  ]),
+  module: Object.freeze([
+    Object.freeze({ type: "lesson", field: "lessons" })
+  ]),
+  lesson: Object.freeze([
+    Object.freeze({ type: "topic", field: "topics" }),
+    Object.freeze({ type: "microsequence", field: "microsequences" })
+  ]),
+  topic: Object.freeze([]),
+  microsequence: Object.freeze([
+    Object.freeze({ type: "study_unit", field: "studyUnits" })
+  ]),
+  study_unit: Object.freeze([])
 });
 
 export class CourseCutoverImportError extends Error {
@@ -198,7 +218,8 @@ function entityMetadataForRows(entry, rows) {
     ));
   }
   return rows.map((row) => {
-    const metadata = source.get(entityIdentity(row.entityType, row.entityId));
+    const sourceType = row.entityType === "study_unit" ? "card" : row.entityType;
+    const metadata = source.get(entityIdentity(sourceType, row.entityId));
     if (!metadata) {
       fail(
         "missing_entity_metadata",
@@ -658,8 +679,15 @@ function convertCourseTree(courseValue, targetCourseId, resolutions) {
       for (const microsequence of lesson.microsequences || []) {
         delete microsequence.status;
         if (!Array.isArray(microsequence.errors)) microsequence.errors = [];
-        microsequence.cards = (microsequence.cards || []).map((card) =>
+        if (!Array.isArray(microsequence.cards) || Object.hasOwn(microsequence, "studyUnits")) {
+          fail(
+            "invalid_course_source",
+            "Microssequência antiga precisa declarar somente a coleção cards."
+          );
+        }
+        microsequence.studyUnits = microsequence.cards.map((card) =>
           convertCard(card, resolutions));
+        delete microsequence.cards;
       }
     }
   }
@@ -683,7 +711,7 @@ function countCourse(document) {
     lessons: 0,
     topics: 0,
     microsequences: 0,
-    cards: 0,
+    studyUnits: 0,
     packageInstances: 0,
     sourceReferences: 0,
     topicReferences: 0
@@ -696,12 +724,12 @@ function countCourse(document) {
         counts.topics += (lesson.topics || []).length;
         for (const microsequence of lesson.microsequences || []) {
           counts.microsequences += 1;
-          for (const card of microsequence.cards || []) {
-            counts.cards += 1;
-            counts.packageInstances += (card.content || []).length +
-              (card.response ? 1 : 0) + (card.feedback || []).length;
-            counts.sourceReferences += (card.sources || []).length;
-            counts.topicReferences += (card.topics || []).length;
+          for (const studyUnit of microsequence.studyUnits || []) {
+            counts.studyUnits += 1;
+            counts.packageInstances += (studyUnit.content || []).length +
+              (studyUnit.response ? 1 : 0) + (studyUnit.feedback || []).length;
+            counts.sourceReferences += (studyUnit.sources || []).length;
+            counts.topicReferences += (studyUnit.topics || []).length;
           }
         }
       }
@@ -711,31 +739,61 @@ function countCourse(document) {
 }
 
 function countStructuralSource(course) {
-  const document = { contract: "source", courses: [course] };
-  const counts = countCourse(document);
-  delete counts.packageInstances;
+  const counts = {
+    modules: 0,
+    lessons: 0,
+    topics: 0,
+    microsequences: 0,
+    studyUnits: 0,
+    sourceReferences: 0,
+    topicReferences: 0
+  };
+  for (const moduleValue of course.modules || []) {
+    counts.modules += 1;
+    for (const lesson of moduleValue.lessons || []) {
+      counts.lessons += 1;
+      counts.topics += (lesson.topics || []).length;
+      for (const microsequence of lesson.microsequences || []) {
+        counts.microsequences += 1;
+        for (const legacyStudyUnit of microsequence.cards || []) {
+          counts.studyUnits += 1;
+          counts.sourceReferences += (legacyStudyUnit.sources || []).length;
+          counts.topicReferences += (legacyStudyUnit.topics || []).length;
+        }
+      }
+    }
+  }
   return counts;
 }
 
-function preservationSignature(course) {
+function preservationSignature(course, { legacy = false } = {}) {
   const structure = [];
   const references = [];
   const visit = (type, entity, parentType, parentId, position) => {
-    structure.push({ type, id: entity.id, parentType, parentId, position });
-    if (type === "card") {
+    const currentType = type === "card" ? "study_unit" : type;
+    const currentParentType = parentType === "card" ? "study_unit" : parentType;
+    structure.push({
+      type: currentType,
+      id: entity.id,
+      parentType: currentParentType,
+      parentId,
+      position
+    });
+    if (currentType === "study_unit") {
       references.push({
         id: entity.id,
         sources: clone(entity.sources ?? []),
         topics: clone(entity.topics ?? [])
       });
     }
-    for (const child of ENTITY_CHILDREN[type] || []) {
+    const children = legacy ? LEGACY_ENTITY_CHILDREN : CURRENT_ENTITY_CHILDREN;
+    for (const child of children[type] || []) {
       (entity[child.field] || []).forEach((value, index) => visit(
         child.type,
         value,
         type,
         entity.id,
-        child.type === "card" ? value.position : index
+        new Set(["card", "study_unit"]).has(child.type) ? value.position : index
       ));
     }
   };
@@ -758,7 +816,7 @@ function assertPreservedCounts(beforeCourse, document) {
       after: comparableAfter
     });
   }
-  const beforeSignature = preservationSignature(beforeCourse);
+  const beforeSignature = preservationSignature(beforeCourse, { legacy: true });
   const afterSignature = preservationSignature(document.courses[0]);
   if (canonicalRevisionString(beforeSignature.structure) !==
       canonicalRevisionString(afterSignature.structure)) {
@@ -784,7 +842,7 @@ export function convertCourseDocument(value, {
   const beforeCourse = clone(sourceCourse(value));
   const convertedCourse = convertCourseTree(beforeCourse, targetCourseId, resolutions);
   const candidate = {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [convertedCourse]
   };
   const validation = validateProjectDocument(candidate);
@@ -838,7 +896,7 @@ export function assembleWorkspaceCourse(entry) {
       fail("duplicate_workspace_entity", "Entidade viva está duplicada.");
     }
     const entity = { ...clone(row.content), id: row.entityId };
-    for (const child of ENTITY_CHILDREN[row.entityType] || []) entity[child.field] = [];
+    for (const child of LEGACY_ENTITY_CHILDREN[row.entityType] || []) entity[child.field] = [];
     if (row.entityType === "card") entity.position = row.position;
     entities.set(key, { row, entity });
   }
@@ -860,13 +918,13 @@ export function assembleWorkspaceCourse(entry) {
     if (!parent || !relevant.has(entityIdentity(row.parentType, row.parentId))) {
       fail("workspace_entity_orphan", "Entidade viva não possui pai no Curso.");
     }
-    const child = (ENTITY_CHILDREN[row.parentType] || []).find((item) =>
+    const child = (LEGACY_ENTITY_CHILDREN[row.parentType] || []).find((item) =>
       item.type === row.entityType);
     if (!child) fail("workspace_entity_parent_mismatch", "Relação viva é incompatível.");
     parent.entity[child.field].push({ entity, position: row.position });
   }
   for (const { row, entity } of entities.values()) {
-    for (const { field } of ENTITY_CHILDREN[row.entityType] || []) {
+    for (const { field } of LEGACY_ENTITY_CHILDREN[row.entityType] || []) {
       entity[field] = entity[field]
         .sort((left, right) => left.position - right.position)
         .map((item) => item.entity);
@@ -1057,9 +1115,9 @@ function stagingRows(prepared) {
       manifest_hash: manifest.manifestHash,
       course_title: converted.course.title,
       course_goal: converted.course.goal,
-      entity_type: row.entityType,
+      entity_type: row.entityType === "study_unit" ? "card" : row.entityType,
       entity_id: row.entityId,
-      parent_type: row.parentType,
+      parent_type: row.parentType === "study_unit" ? "card" : row.parentType,
       parent_id: row.parentId,
       position: row.position,
       entity_version: metadata.version,
@@ -1386,12 +1444,14 @@ export function buildCourseCutoverSql(
   preparation,
   migrationSql,
   profileAccessMigrationSql,
-  authoringPlanMigrationSql
+  authoringPlanMigrationSql,
+  studyUnitInspectionMigrationSql
 ) {
   if (!isObject(preparation) || !Array.isArray(preparation.rows) ||
       !preparation.rows.length || typeof migrationSql !== "string" ||
       typeof profileAccessMigrationSql !== "string" ||
-      typeof authoringPlanMigrationSql !== "string") {
+      typeof authoringPlanMigrationSql !== "string" ||
+      typeof studyUnitInspectionMigrationSql !== "string") {
     fail(
       "invalid_cutover_execution",
       "Linhas ou migrations do corte estão ausentes."
@@ -1414,6 +1474,13 @@ export function buildCourseCutoverSql(
   );
   const authoringPlanExecutionBody = withoutTransactionGuards(
     authoringPlanTransaction.body
+  );
+  const studyUnitInspectionTransaction = transactionBody(
+    studyUnitInspectionMigrationSql,
+    "a migration da inspeção de Unidades de estudo"
+  );
+  const studyUnitInspectionExecutionBody = withoutTransactionGuards(
+    studyUnitInspectionTransaction.body
   );
   const guardPositions = COURSE_CUTOVER_TRANSACTION_GUARDS.map((guard) =>
     migrationSql.indexOf(guard));
@@ -1461,6 +1528,7 @@ export function buildCourseCutoverSql(
     identityExecutionBody,
     profileAccessTransaction.body,
     authoringPlanExecutionBody,
+    studyUnitInspectionExecutionBody,
     "insert into supabase_migrations.schema_migrations(version,statements,name)",
     `values (${sqlText(CUTOVER_MIGRATION_VERSION)},` +
       `array[${sqlText(identityTransaction.body)}]::text[],` +
@@ -1473,6 +1541,10 @@ export function buildCourseCutoverSql(
     `values (${sqlText(AUTHORING_PLAN_MIGRATION_VERSION)},` +
       `array[${sqlText(authoringPlanTransaction.body)}]::text[],` +
       `${sqlText(AUTHORING_PLAN_MIGRATION_NAME)});`,
+    "insert into supabase_migrations.schema_migrations(version,statements,name)",
+    `values (${sqlText(STUDY_UNIT_INSPECTION_MIGRATION_VERSION)},` +
+      `array[${sqlText(studyUnitInspectionTransaction.body)}]::text[],` +
+      `${sqlText(STUDY_UNIT_INSPECTION_MIGRATION_NAME)});`,
     "commit;",
     ""
   ].join("\n");

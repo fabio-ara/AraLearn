@@ -82,15 +82,27 @@ const courseCursorSchema = objectSchema({
 
 const courseEntityCursorSchema = objectSchema({
   entityType: stringSchema({
-    enum: ["module", "lesson", "topic", "microsequence", "card"]
+    enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
   }),
   entityId: stringSchema({ minLength: 1, maxLength: 240 })
+});
+
+const courseStudyUnitCursorSchema = objectSchema({
+  studyUnitId: stringSchema({ minLength: 1, maxLength: 240 })
+});
+
+const courseStudyUnitScopeSchema = objectSchema({
+  kind: stringSchema({ enum: [
+    "course", "authoring_part", "unassigned", "module", "lesson",
+    "didactic_microsequence"
+  ] }),
+  id: nullableString(stringSchema({ minLength: 1, maxLength: 240 }))
 });
 
 const courseEntitySchema = {
   ...objectSchema({
     entityType: stringSchema({
-      enum: ["module", "lesson", "topic", "microsequence", "card"]
+      enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
     }),
     entityId: stringSchema({ minLength: 1, maxLength: 240 }),
     parentType: {
@@ -104,7 +116,7 @@ const courseEntitySchema = {
   }),
   allOf: [{
     if: {
-      properties: { entityType: { const: "card" } },
+      properties: { entityType: { const: "study_unit" } },
       required: ["entityType"]
     },
     then: { properties: { position: { minimum: 1 } } }
@@ -147,7 +159,7 @@ const materializationCommandSchema = objectSchema({
       maxItems: 64,
       items: objectSchema({
         entityType: stringSchema({
-          enum: ["module", "lesson", "topic", "microsequence", "card"]
+          enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
         }),
         entityId: stringSchema({ minLength: 1, maxLength: 240 })
       })
@@ -209,18 +221,25 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, part_materialization para retomar uma materialização já iniciada, outline para a hierarquia compacta e entities, com a versão recebida, para percorrer a composição antes de alterá-la.",
+    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, study_units para inspecionar Unidades de estudo em ordem curricular com links exatos, part_materialization para retomar uma materialização, outline para a hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
       view: stringSchema({ enum: [
-        "summary", "outline", "instructional_plan", "part_materialization", "entities"
+        "summary", "outline", "instructional_plan", "part_materialization", "study_units",
+        "entities"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
       expectedRevision: { type: "integer", minimum: 1 },
       limit: { type: "integer", minimum: 1, maximum: 100 },
-      cursor: { anyOf: [courseEntityCursorSchema, { type: "null" }] }
+      cursor: {
+        anyOf: [courseEntityCursorSchema, courseStudyUnitCursorSchema, { type: "null" }]
+      },
+      scope: courseStudyUnitScopeSchema,
+      anchorStudyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
+      direction: stringSchema({ enum: ["forward", "backward"] }),
+      maxBytes: { type: "integer", minimum: 65_536, maximum: 1_500_000 }
       }, ["courseId"]),
       allOf: [{
         if: {
@@ -236,6 +255,21 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             ]
           }
         }
+      }, {
+        if: {
+          properties: { view: { const: "study_units" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision"],
+          properties: { limit: { maximum: 24 } }
+        }
+      }, {
+        if: {
+          properties: { view: { const: "entities" } },
+          required: ["view"]
+        },
+        then: { required: ["expectedRevision"] }
       }]
     },
     outputSchema,
@@ -275,7 +309,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         maxItems: 200,
         items: objectSchema({
           entityType: stringSchema({
-            enum: ["module", "lesson", "topic", "microsequence", "card"]
+            enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
           }),
           entityId: stringSchema({ minLength: 1, maxLength: 240 })
         })
@@ -313,7 +347,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
     description: "Explora, pesquisa, inspeciona e valida os componentes didáticos instalados sem carregar contratos desnecessários no contexto.",
     inputSchema: objectSchema({
       operation: stringSchema({
-        enum: ["explore", "search", "inspect", "contracts", "validate_card", "audit_representation", "preview_card"]
+        enum: ["explore", "search", "inspect", "contracts", "validate_study_unit", "audit_representation", "preview_study_unit"]
       }),
       query: stringSchema({ maxLength: 500 }),
       intent: stringSchema({ maxLength: 2_000 }),
@@ -324,7 +358,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         uniqueItems: true,
         items: stringSchema({ minLength: 1, maxLength: 160 })
       },
-      cardJson: stringSchema({ maxLength: 40_000 }),
+      studyUnitJson: stringSchema({ maxLength: 40_000 }),
       limit: { type: "integer", minimum: 1, maximum: 8 }
     }, ["operation"]),
     outputSchema,
@@ -429,12 +463,14 @@ function mapList(raw) {
 function mapRead(raw) {
   exactFields(raw, new Set([
     "courseId", "view", "authoringPartId", "materializationId",
-    "expectedRevision", "limit", "cursor"
+    "expectedRevision", "limit", "cursor", "scope", "anchorStudyUnitId",
+    "direction", "maxBytes"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
   if (!new Set([
-    "summary", "outline", "instructional_plan", "part_materialization", "entities"
+    "summary", "outline", "instructional_plan", "part_materialization", "study_units",
+    "entities"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
   }
@@ -450,7 +486,7 @@ function mapRead(raw) {
       const cursor = object(raw.cursor, "cursor");
       exactFields(cursor, new Set(["entityType", "entityId"]));
       afterEntityType = requiredText(cursor.entityType, "entityType", { maximum: 40 });
-      if (!new Set(["module", "lesson", "topic", "microsequence", "card"]).has(afterEntityType)) {
+      if (!new Set(["module", "lesson", "topic", "microsequence", "study_unit"]).has(afterEntityType)) {
         fail("invalid_tool_argument", "entityType é inválido.", { field: "cursor.entityType" });
       }
       afterEntityId = requiredText(cursor.entityId, "entityId", { maximum: 240 });
@@ -462,15 +498,87 @@ function mapRead(raw) {
       afterEntityId
     })}`);
   }
+  if (view === "study_units") {
+    if (raw.authoringPartId != null || raw.materializationId != null) {
+      fail("invalid_tool_argument", "Identidades de materialização não pertencem à inspeção.");
+    }
+    const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
+    const limit = raw.limit == null ? 12 : positiveInteger(raw.limit, "limit", 24);
+    const maxBytes = raw.maxBytes == null
+      ? 512 * 1024
+      : positiveInteger(raw.maxBytes, "maxBytes", 1_500_000);
+    if (maxBytes < 64 * 1024) {
+      fail("invalid_tool_argument", "maxBytes é inválido.", { field: "maxBytes" });
+    }
+    const direction = raw.direction == null
+      ? "forward"
+      : requiredText(raw.direction, "direction", { maximum: 8 });
+    if (!new Set(["forward", "backward"]).has(direction)) {
+      fail("invalid_tool_argument", "direction é inválida.", { field: "direction" });
+    }
+    let scopeKind = "course";
+    let scopeId = null;
+    if (raw.scope != null) {
+      const scope = object(raw.scope, "scope");
+      exactFields(scope, new Set(["kind", "id"]));
+      scopeKind = requiredText(scope.kind, "scope.kind", { maximum: 32 });
+      if (!new Set([
+        "course", "authoring_part", "unassigned", "module", "lesson",
+        "didactic_microsequence"
+      ]).has(scopeKind)) {
+        fail("invalid_tool_argument", "scope.kind é inválido.", { field: "scope.kind" });
+      }
+      const idless = scopeKind === "course" || scopeKind === "unassigned";
+      if (idless) {
+        if (scope.id != null) {
+          fail("invalid_tool_argument", "scope.id não pertence a este escopo.", {
+            field: "scope.id"
+          });
+        }
+      } else {
+        scopeId = scopeKind === "authoring_part"
+          ? requiredUuid(scope.id, "scope.id")
+          : requiredText(scope.id, "scope.id", { maximum: 240 });
+      }
+    }
+    const anchorStudyUnitId = raw.anchorStudyUnitId == null
+      ? null
+      : requiredText(raw.anchorStudyUnitId, "anchorStudyUnitId", { maximum: 240 });
+    let cursorStudyUnitId = null;
+    if (raw.cursor != null) {
+      if (anchorStudyUnitId != null) {
+        fail("invalid_tool_argument", "Âncora e cursor são mutuamente exclusivos.");
+      }
+      const cursor = object(raw.cursor, "cursor");
+      exactFields(cursor, new Set(["studyUnitId"]));
+      cursorStudyUnitId = requiredText(cursor.studyUnitId, "cursor.studyUnitId", {
+        maximum: 240
+      });
+    }
+    return route("GET", `/v1/courses/${courseId}/study-units${searchParams({
+      expectedRevision,
+      scopeKind,
+      scopeId,
+      anchorStudyUnitId,
+      cursorStudyUnitId,
+      direction,
+      limit,
+      maxBytes
+    })}`);
+  }
   if (view === "instructional_plan") {
     if (raw.authoringPartId != null || raw.materializationId != null ||
-        raw.expectedRevision != null || raw.limit != null || raw.cursor != null) {
+        raw.expectedRevision != null || raw.limit != null || raw.cursor != null ||
+        raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
+        raw.maxBytes != null) {
       fail("invalid_tool_argument", "Paginação não pertence ao plano instrucional.");
     }
     return route("GET", `/v1/courses/${courseId}/instructional-plan`);
   }
   if (view === "part_materialization") {
-    if (raw.expectedRevision != null || raw.limit != null || raw.cursor != null) {
+    if (raw.expectedRevision != null || raw.limit != null || raw.cursor != null ||
+        raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
+        raw.maxBytes != null) {
       fail("invalid_tool_argument", "Paginação não pertence à materialização da Parte.");
     }
     const authoringPartId = requiredUuid(raw.authoringPartId, "authoringPartId");
@@ -482,7 +590,9 @@ function mapRead(raw) {
     );
   }
   if (raw.authoringPartId != null || raw.materializationId != null ||
-      raw.expectedRevision != null || raw.limit != null || raw.cursor != null) {
+      raw.expectedRevision != null || raw.limit != null || raw.cursor != null ||
+      raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
+      raw.maxBytes != null) {
     fail("invalid_tool_argument", "Paginação só pertence à leitura de entidades.");
   }
   return route("GET", `/v1/courses/${courseId}${searchParams({ view })}`);
@@ -665,12 +775,12 @@ function mapPeople(raw) {
 
 function mapResourceLibrary(raw) {
   exactFields(raw, new Set([
-    "operation", "query", "intent", "slot", "packages", "cardJson", "limit"
+    "operation", "query", "intent", "slot", "packages", "studyUnitJson", "limit"
   ]));
   const operation = requiredText(raw.operation, "operation", { maximum: 40 });
   if (!new Set([
-    "explore", "search", "inspect", "contracts", "validate_card",
-    "audit_representation", "preview_card"
+    "explore", "search", "inspect", "contracts", "validate_study_unit",
+    "audit_representation", "preview_study_unit"
   ]).has(operation)) {
     fail("invalid_tool_argument", "operation é inválida.", { field: "operation" });
   }

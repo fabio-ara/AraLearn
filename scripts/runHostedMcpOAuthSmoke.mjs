@@ -61,12 +61,14 @@ async function executeHostedSmoke(accessToken, projectUrl) {
     "SUPABASE_SERVICE_ROLE_KEY",
     "SERVICE_ROLE_KEY",
     "ARALEARN_AUTHORING_MCP_OAUTH_TOKEN",
-    "ARALEARN_AUTHORING_MCP_ORIGIN"
+    "ARALEARN_AUTHORING_MCP_ORIGIN",
+    "ARALEARN_AUTHORING_MCP_EPHEMERAL_USER"
   ].map((name) => [name, process.env[name]]));
   try {
     process.env.SUPABASE_URL = projectUrl;
     process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN = accessToken;
     process.env.ARALEARN_AUTHORING_MCP_ORIGIN = HOSTED_ORIGIN;
+    process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER = "1";
     delete process.env.SUPABASE_SECRET_KEY;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.SERVICE_ROLE_KEY;

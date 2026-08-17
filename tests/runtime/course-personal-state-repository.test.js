@@ -22,7 +22,7 @@ function course() {
         title: "Lição",
         microsequences: [{
           id: "micro-a",
-          cards: [
+          studyUnits: [
             { id: "unit-a", title: "Unidade A" },
             { id: "unit-b", title: "Unidade B" }
           ]

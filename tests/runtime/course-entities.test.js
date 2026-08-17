@@ -6,12 +6,13 @@ import {
   composeCourseDocument,
   courseEntityOutline,
   flattenCourseDocument,
-  normalizeCourseEntityRows
+  normalizeCourseEntityRows,
+  validateCourseEntityContent
 } from "../../src/domain/courseEntities.js";
 
 function documentFixture() {
   return {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [{
       id: "course-a",
       title: "Curso A",
@@ -52,7 +53,7 @@ function documentFixture() {
             covers: ["A"],
             checks: ["reconhecer A"],
             errors: ["confundir A"],
-            cards: [{
+            studyUnits: [{
               id: "card-a",
               position: 1,
               title: "A",
@@ -86,7 +87,7 @@ test("achata e recompõe um Curso sem envelopes de Workspace ou publicação", (
   });
   assert.deepEqual(
     flattened.rows.map(({ entityType }) => entityType),
-    ["module", "lesson", "topic", "microsequence", "card"]
+    ["module", "lesson", "topic", "microsequence", "study_unit"]
   );
   assert.equal(flattened.rows[0].parentType, null);
   assert.equal(flattened.rows[0].parentId, null);
@@ -99,7 +100,7 @@ test("Curso em planejamento pode existir sem entidades didáticas", () => {
   assert.deepEqual(
     composeCourseDocument({ id: "course-empty", title: "Curso vazio", goal: "Planejar." }, []),
     {
-      contract: "aralearn.library.v1",
+      contract: "aralearn.course.v1",
       courses: [{
         id: "course-empty",
         title: "Curso vazio",
@@ -145,4 +146,76 @@ test("rejeita identidade estrutural duplicada no conteúdo JSON", () => {
     (error) => error instanceof CourseEntityError &&
       error.code === "duplicated_course_entity_field"
   );
+});
+
+test("rejeita o tipo de entidade substituído sem alias", () => {
+  const { rows } = flattenCourseDocument(documentFixture());
+  const legacyRow = rows.find(({ entityType }) => entityType === "study_unit");
+  legacyRow.entityType = "card";
+  assert.throws(
+    () => normalizeCourseEntityRows(rows),
+    (error) => error instanceof CourseEntityError &&
+      error.code === "invalid_course_entity_identity"
+  );
+});
+
+test("valida o conteúdo semântico de cada tipo sem recompor o Curso inteiro", () => {
+  const { rows } = flattenCourseDocument(documentFixture());
+  for (const row of rows) {
+    const result = validateCourseEntityContent(row.entityType, {
+      id: row.entityId,
+      position: row.position,
+      ...row.content
+    });
+    assert.equal(result.valid, true, JSON.stringify(result.errors));
+    assert.equal(result.normalized.id, row.entityId);
+    assert.equal(result.normalized.position, row.position);
+  }
+
+  const invalidModule = rows.find(({ entityType }) => entityType === "module");
+  invalidModule.content.guide.include = "A";
+  const moduleResult = validateCourseEntityContent("module", {
+    id: invalidModule.entityId,
+    position: invalidModule.position,
+    ...invalidModule.content
+  });
+  assert.equal(moduleResult.valid, false);
+  assert.match(moduleResult.errors[0].path, /guide\.include/u);
+
+  const invalidMicrosequence = rows.find(({ entityType }) => entityType === "microsequence");
+  invalidMicrosequence.content.role = "invalid";
+  const microsequenceResult = validateCourseEntityContent("microsequence", {
+    id: invalidMicrosequence.entityId,
+    position: invalidMicrosequence.position,
+    ...invalidMicrosequence.content
+  });
+  assert.equal(microsequenceResult.valid, false);
+  assert.match(microsequenceResult.errors[0].path, /role/u);
+});
+
+test("validador segmentado rejeita relações embutidas e tipo substituído", () => {
+  const relationResult = validateCourseEntityContent("lesson", {
+    id: "lesson-a",
+    position: 0,
+    title: "Lição A",
+    guide: {
+      goal: "Ensinar A.",
+      include: ["A"],
+      exclude: [],
+      notation: [],
+      avoid: []
+    },
+    topics: []
+  });
+  assert.equal(relationResult.valid, false);
+  assert.equal(relationResult.errors[0].path, "$.topics");
+
+  const legacyResult = validateCourseEntityContent("card", {
+    id: "legacy-a",
+    position: 1
+  });
+  assert.equal(legacyResult.valid, false);
+  assert.equal(legacyResult.normalized, null);
+
+  assert.equal(validateCourseEntityContent("__proto__", {}).valid, false);
 });

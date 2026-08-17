@@ -1,11 +1,11 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
       "id": "course-resources-gallery",
       "title": "Galeria de packages",
-      "goal": "Demonstrar os packages instalados em cards válidos.",
+      "goal": "Demonstrar os packages instalados em Unidades de estudo válidas.",
       "modules": [
         {
           "id": "module-resources-gallery",
@@ -22,7 +22,7 @@
           "lessons": [
             {
               "id": "lesson-resources-gallery",
-              "title": "Um card por package",
+              "title": "Uma Unidade de estudo por package",
               "guide": {
                 "goal": "Inspecionar cada package em uma operação concreta.",
                 "include": [
@@ -47,7 +47,7 @@
                     "responsividade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "gallery-1",
                       "position": 1,
@@ -2796,6 +2796,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",

@@ -67,8 +67,8 @@ Ao abrir um Curso, a interface oferece quatro destinos compactos:
 
 - **Planejamento:** título, objetivo, público, escopo, orientação, resultados
   pretendidos, unidades de análise, requisitos de evidência e Partes de autoria;
-- **Estrutura:** Módulos, Lições e Microssequências didáticas;
-- **Conteúdo:** Unidades de estudo já materializadas;
+- **Estrutura:** hierarquia compacta de Módulos, Lições e Microssequências;
+- **Inspeção:** sequência vertical paginada das Unidades materializadas;
 - **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
 
 As ferramentas de autoria por **Model Context Protocol (MCP)** leem e alteram
@@ -85,10 +85,11 @@ hierarquia do Curso, e a produção registra tentativas e etapas retomáveis. A
 interface pode copiar um pedido de materialização para o chat conectado, mas
 só mostra como produzido aquilo que o servidor efetivamente gravou.
 
-Inspeção vertical contínua, proveniência, anotações autorais, correção,
-variantes e analytics de pesquisa pertencem às próximas fatias. A documentação
-não os apresenta como concluídos antes de existirem de ponta a ponta na
-interface, no MCP, na persistência e nos testes.
+A Inspeção percorre o Curso inteiro ou um recorte por Parte, Unidades sem Parte,
+Módulo, Lição ou Microssequência, mantém no navegador uma janela limitada e
+conserva localmente a Unidade corrente. Respostas ficam desativadas nessa leitura. Edição
+contextual, proveniência, anotações autorais, correção, variantes e analytics
+de pesquisa pertencem às próximas fatias.
 
 Comece pelo [guia do professor e autor](docs/guia-professor-autor.md). A
 explicação do protocolo está em [Autoria por MCP](docs/autoria-mcp.md).
@@ -105,7 +106,7 @@ O **núcleo de execução de componentes** conhece composição, ciclo de vida,
 acessibilidade e protocolos comuns. Cada **pacote de componente** mantém seu
 contrato, validação, apresentação, campos editáveis, possibilidades de prática
 e descrição acadêmica. A arquitetura é detalhada em
-[Componentes didáticos](docs/recursos-de-card.md).
+[Componentes didáticos e packages](docs/componentes-didaticos.md).
 
 ## Funcionamento sem conexão e sincronização
 
@@ -133,10 +134,10 @@ iconográfica entre áreas.
 
 ## Estado e limites
 
-O código desta revisão implementa a identidade única de Curso vivo, a lista
-paginada com carregamento sob demanda, o estado pessoal, a Autoria restrita ao
-proprietário, o acesso direto para Estudo e o perfil humano mínimo com nome e
-foto privada.
+O código desta revisão implementa a identidade única de Curso vivo, a lista e
+a composição paginadas, a Inspeção vertical owner-only, o estado pessoal, a
+Autoria restrita ao proprietário, o acesso direto para Estudo e o perfil humano
+mínimo com nome e foto privada.
 
 Esse corte ainda não está promovido ao serviço hospedado. Antes da promoção, o
 importador precisa converter e validar todos os Cursos reais, os componentes

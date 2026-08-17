@@ -165,7 +165,7 @@ function renderStartupLoading(root) {
             <ol class="startup-loading-steps" aria-label="Etapas da preparação">
               <li aria-label="Dispositivo" data-startup-loading-step data-threshold="4" data-state="active"><span class="startup-loading-step-icon">${renderUiIcon("save", "startup-loading-icon")}</span></li>
               <li aria-label="Conta" data-startup-loading-step data-threshold="36" data-state="waiting"><span class="startup-loading-step-icon">${renderUiIcon("sign-in", "startup-loading-icon")}</span></li>
-              <li aria-label="Cursos" data-startup-loading-step data-threshold="68" data-state="waiting"><span class="startup-loading-step-icon">${renderUiIcon("card", "startup-loading-icon")}</span></li>
+              <li aria-label="Cursos" data-startup-loading-step data-threshold="68" data-state="waiting"><span class="startup-loading-step-icon">${renderUiIcon("study", "startup-loading-icon")}</span></li>
             </ol>
             <div class="startup-loading-track" role="progressbar" aria-label="Progresso da abertura" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress><span data-startup-loading-fill style="width:4%"></span></div>
             <p class="startup-loading-percent" data-startup-loading-percent>4%</p>

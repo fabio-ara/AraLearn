@@ -1,4 +1,4 @@
-import { validateCardEnvelope } from "../resources/kernel/cardEnvelope.js";
+import { validateStudyUnitEnvelope } from "../resources/kernel/studyUnitEnvelope.js";
 import {
   DESIGN_PARAMETER_CATALOG,
   evaluateInstructionalDesignBundle
@@ -272,7 +272,7 @@ function cardInstances(cards) {
     instances.push({
       cardId: text(card.id),
       cardPosition: Number(card.position),
-      cardRole: text(card.role),
+      studyUnitRole: text(card.role),
       slot,
       slotIndex: index,
       instanceId: text(value.id),
@@ -510,7 +510,7 @@ function addCardAndResourceChecks(collector, value, packageRegistry, context) {
   const cardMap = cardsById(value.cards);
   const cardErrors = [];
   value.cards.forEach((card, index) => {
-    const validation = validateCardEnvelope(card, packageRegistry, `cards[${index}]`);
+    const validation = validateStudyUnitEnvelope(card, packageRegistry, `studyUnits[${index}]`);
     cardErrors.push(...validation.errors);
   });
   collector.add({

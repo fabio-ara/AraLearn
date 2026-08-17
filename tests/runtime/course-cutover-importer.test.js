@@ -250,6 +250,11 @@ test("converte a topologia sintética inteira, compara overlaps e gera staging",
   assert.ok(result.rows.length > 8);
   assert.equal(new Set(result.prepared.map(({ manifest }) =>
     manifest.manifestHash)).size, 8);
+  assert.ok(result.prepared.every(({ converted }) =>
+    converted.document.contract === "aralearn.course.v1" &&
+    converted.rows.some((row) => row.entityType === "study_unit") &&
+    converted.rows.every((row) => row.entityType !== "card")));
+  assert.ok(result.rows.some((row) => row.entity_type === "card"));
   assert.ok(result.rows.every((row) => /^[0-9a-f]{64}$/u.test(row.manifest_hash)));
   assert.ok(result.rows.every((row) => row.course_title && row.course_goal));
   const relationalRow = result.rows.find((row) =>
@@ -267,20 +272,20 @@ test("converte a topologia sintética inteira, compara overlaps e gera staging",
   assert.equal(attestPreparedCourseCutover(result), true);
 
   const gap = result.prepared[2].converted.document.courses[0].modules[0]
-    .lessons[0].microsequences[0].cards[0];
+    .lessons[0].microsequences[0].studyUnits[0];
   assert.equal(gap.response.package, "aralearn.response.gap");
   assert.equal(gap.content[0].data.rows[0][1], "alfa");
   assert.deepEqual(gap.sources, ["source:synthetic:gap"]);
   assert.deepEqual(gap.topics, ["topic-1"]);
 
   const graph = result.prepared[3].converted.document.courses[0].modules[0]
-    .lessons[0].microsequences[0].cards[0];
+    .lessons[0].microsequences[0].studyUnits[0];
   assert.equal(graph.content[0].data.name, "G");
   assert.equal(graph.content[0].data.directed, false);
   assert.equal(graph.content[0].data.layout, "force");
 
   const names = result.prepared[7].converted.document.courses[0].modules[0]
-    .lessons[0].microsequences[0].cards;
+    .lessons[0].microsequences[0].studyUnits;
   assert.equal(names[0].content[0].data.name, "G");
   assert.equal(names[1].content[0].data.name, "R");
 });
@@ -418,7 +423,7 @@ test("converte relações L3 com ids determinísticos e rejeita campos não comp
   ), { targetCourseId: fixture.entries[0].courseId });
   assert.equal(
     converted.document.courses[0].modules[0].lessons[0].microsequences[0]
-      .cards[0].content[0].data.relations[0].id,
+      .studyUnits[0].content[0].data.relations[0].id,
     "relation-1"
   );
 
@@ -468,11 +473,16 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     "../../supabase/migrations/20260817160000_course_authoring_plan.sql",
     import.meta.url
   ), "utf8");
+  const studyUnitInspectionMigration = fs.readFileSync(new URL(
+    "../../supabase/migrations/20260817170000_course_study_unit_inspection.sql",
+    import.meta.url
+  ), "utf8");
   const sql = buildCourseCutoverSql(
     result,
     migration,
     profileAccessMigration,
-    authoringPlanMigration
+    authoringPlanMigration,
+    studyUnitInspectionMigration
   );
   assert.match(sql, /^\\set ON_ERROR_STOP on\nbegin;/u);
   const copyPosition = sql.indexOf("copy course_content_import_v1(");
@@ -497,6 +507,10 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
   assert.match(
     sql,
     /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817160000[\s\S]*course_authoring_plan/u
+  );
+  assert.match(
+    sql,
+    /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817170000[\s\S]*course_study_unit_inspection/u
   );
   assert.ok(
     sql.indexOf("create table public.person_profiles") >
@@ -529,7 +543,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       result,
       migration.replace("        course_goal text not null,", "        course_goal text,"),
       profileAccessMigration,
-      authoringPlanMigration
+      authoringPlanMigration,
+      studyUnitInspectionMigration
     ),
     (error) => error.code === "migration_staging_schema_drift"
   );
@@ -538,7 +553,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       result,
       migration.replace("set local lock_timeout = '15s';", ""),
       profileAccessMigration,
-      authoringPlanMigration
+      authoringPlanMigration,
+      studyUnitInspectionMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -550,7 +566,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
         "set local lock_timeout = '15s';\nset local lock_timeout = '15s';"
       ),
       profileAccessMigration,
-      authoringPlanMigration
+      authoringPlanMigration,
+      studyUnitInspectionMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -559,7 +576,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       result,
       migration,
       profileAccessMigration.replace(/^commit;\s*$/mu, ""),
-      authoringPlanMigration
+      authoringPlanMigration,
+      studyUnitInspectionMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -568,7 +586,18 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       result,
       migration,
       profileAccessMigration,
-      authoringPlanMigration.replace(/^commit;\s*$/mu, "")
+      authoringPlanMigration.replace(/^commit;\s*$/mu, ""),
+      studyUnitInspectionMigration
+    ),
+    (error) => error.code === "migration_transaction_drift"
+  );
+  assert.throws(
+    () => buildCourseCutoverSql(
+      result,
+      migration,
+      profileAccessMigration,
+      authoringPlanMigration,
+      studyUnitInspectionMigration.replace(/^commit;\s*$/mu, "")
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -588,6 +617,7 @@ test("recusa staging ou manifesto alterados depois da atestação", async () => 
   assert.throws(
     () => buildCourseCutoverSql(
       changedManifest,
+      "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n"

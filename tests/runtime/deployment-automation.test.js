@@ -8,6 +8,18 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const scripts = {
+  authoringMcpHostedSmoke: path.join(
+    repositoryRoot,
+    "supabase",
+    "tests",
+    "authoring-mcp-hosted-smoke.mjs"
+  ),
+  authoringMcpLocalSmoke: path.join(
+    repositoryRoot,
+    "supabase",
+    "tests",
+    "authoring-mcp-local-smoke.mjs"
+  ),
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
   courseRuntimeSmoke: path.join(
@@ -273,10 +285,34 @@ test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave com
   assert.match(source, /supabaseServerHeaders/u);
   assert.match(source, /\.\.\.process\.env/u);
   assert.match(source, /aralearn-course-api/u);
+  assert.match(source, /aralearn\.course\.v1/u);
+  assert.match(source, /studyUnits/u);
+  assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
+  assert.match(source, /view:\s*"study_units"/u);
+  assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
   assert.match(source, /list_courses_v1/u);
   assert.match(source, /list_owned_courses_v1/u);
   assert.match(source, /mutate_course_personal_state_v1/u);
+  assert.doesNotMatch(source, /aralearn\.library\.v1/u);
+  assert.doesNotMatch(source, /\bcards\s*:/u);
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
+});
+
+test("smokes MCP exercitam somente o Curso e a Inspeção correntes", () => {
+  for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
+    const source = fs.readFileSync(smokePath, "utf8");
+    assert.match(source, /aralearn\.course\.v1/u);
+    assert.match(source, /studyUnits/u);
+    assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
+    assert.match(source, /view:\s*"study_units"/u);
+    assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+    assert.doesNotMatch(source, /aralearn\.library\.v1/u);
+    assert.doesNotMatch(source, /\bcards\s*:/u);
+    assert.doesNotMatch(
+      source,
+      /criarWorkspaceDeAutoria|salvarCardsNaMicrossequencia|listarCardsDaMicrossequencia/u
+    );
+  }
 });
 
 test("diagnóstico valida configuração pública sem revelar seu valor", {

@@ -33,11 +33,11 @@ function fallbackPolicy(snapshot) {
 
 function candidateRoles({ intent, profile }) {
   const slot = text(intent?.slot);
-  const cardRole = text(intent?.cardRole);
+  const studyUnitRole = text(intent?.studyUnitRole);
   if (slot === "response") return ["response"];
-  if (slot === "content" && cardRole === "practice") return ["embedded_practice"];
-  if (slot === "content" || cardRole === "theory") return ["exposition"];
-  if (cardRole === "practice") {
+  if (slot === "content" && studyUnitRole === "practice") return ["embedded_practice"];
+  if (slot === "content" || studyUnitRole === "theory") return ["exposition"];
+  if (studyUnitRole === "practice") {
     return profile?.slots?.includes("content")
       ? ["embedded_practice"]
       : ["response"];
@@ -51,9 +51,9 @@ function candidateRoles({ intent, profile }) {
   ];
 }
 
-function compositionRole({ cardRole, slot }) {
+function compositionRole({ studyUnitRole, slot }) {
   if (slot === "response") return "response";
-  if (slot === "content" && cardRole === "practice") return "embedded_practice";
+  if (slot === "content" && studyUnitRole === "practice") return "embedded_practice";
   return "exposition";
 }
 
@@ -217,14 +217,14 @@ export function createRestrictedResourceCatalogAccess({
         limitations: candidate.fit === "canonical" ? [] : [limitation]
       };
     },
-    authorizeComposition({ cardRole, fit, limitation, packageRef, profile, slot }) {
+    authorizeComposition({ studyUnitRole, fit, limitation, packageRef, profile, slot }) {
       return authorizerFor({
         fit,
         limitation,
         packageRef,
         profile,
         resourceSets: effectiveSets,
-        roles: [compositionRole({ cardRole, slot })],
+        roles: [compositionRole({ studyUnitRole, slot })],
         snapshotFallbackPolicy
       });
     }

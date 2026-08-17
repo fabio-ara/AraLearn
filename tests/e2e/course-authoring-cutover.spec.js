@@ -41,7 +41,10 @@ async function expectNoHorizontalOverflow(page) {
   const frameWidth = await page.locator(".course-authoring-frame").evaluate(
     (element) => element.getBoundingClientRect().width
   );
-  expect(frameWidth).toBeLessThanOrEqual(430.5);
+  const section = await page.locator(".course-authoring-surface").getAttribute("data-section");
+  expect(frameWidth).toBeLessThanOrEqual(section === "inspection"
+    ? page.viewportSize().width
+    : 430.5);
 }
 
 async function mountCourseAuthoring(page, {
@@ -186,62 +189,88 @@ async function mountCourseAuthoring(page, {
     const count = requestedCardinality === "zero" ? 0 :
       requestedCardinality === "one" ? 1 : definitions.length;
     const courses = definitions.slice(0, count);
-    const entityRows = [{
-      entityType: "module",
-      entityId: "module-a",
-      parentType: null,
-      parentId: null,
-      position: 0,
-      version: 1,
-      content: { title: "Base conceitual" }
-    }, {
-      entityType: "lesson",
-      entityId: "lesson-a",
-      parentType: "module",
-      parentId: "module-a",
-      position: 0,
-      version: 1,
-      content: { title: "Relações e evidências" }
-    }, {
-      entityType: "microsequence",
-      entityId: "microsequence-a",
-      parentType: "lesson",
-      parentId: "lesson-a",
-      position: 0,
-      version: 1,
-      content: {
-        title: "Comparação orientada",
-        goal: "Comparar duas relações sem confundir associação e causa."
-      }
-    }, {
-      entityType: "card",
-      entityId: "study-unit-a",
-      parentType: "microsequence",
-      parentId: "microsequence-a",
-      position: 1,
-      version: 1,
-      content: {
-        title: "Exemplo guiado",
-        role: "theory",
-        content: [{ data: { text: "Compare primeiro as evidências disponíveis." } }]
-      }
-    }, {
-      entityType: "card",
-      entityId: "study-unit-b",
-      parentType: "microsequence",
-      parentId: "microsequence-a",
-      position: 2,
-      version: 1,
-      content: {
-        title: "Prática de contraste",
-        role: "practice",
-        content: [{ data: { text: "Identifique qual conclusão os dados sustentam." } }]
-      }
-    }];
+    const outlineFor = (courseId) => {
+      const detail = courseDetail(courseId);
+      return {
+        contract: "aralearn.course.v1",
+        ...detail,
+        createdAt: "2026-08-17T10:00:00.000Z",
+        updatedAt: "2026-08-17T12:00:00.000Z",
+        outline: {
+          courseId,
+          title: detail.title,
+          goal: detail.goal,
+          modules: [{
+            id: "module-a",
+            title: "Base conceitual",
+            lessons: [{
+              id: "lesson-a",
+              title: "Relações e evidências",
+              topics: [],
+              microsequences: [{
+                id: "microsequence-a",
+                title: "Comparação orientada",
+                goal: "Comparar duas relações sem confundir associação e causa.",
+                studyUnitCount: 60
+              }]
+            }]
+          }]
+        },
+        deepLink: `#/authoring/courses/${courseId}?section=structure`
+      };
+    };
+    const studyUnits = Array.from({ length: 60 }, (_, index) => {
+      const ordinal = index + 1;
+      const diagram = ordinal === 1 ? [{
+        id: "set-diagram-1",
+        package: "aralearn.resource.set_diagram",
+        version: "1.0.0",
+        data: {
+          prompt: "Compare os conjuntos.",
+          kind: "venn",
+          sets: [{ id: "a", symbol: "A", label: "Grupo A" },
+            { id: "b", symbol: "B", label: "Grupo B" }],
+          regions: [{ id: "a-only", setIds: ["a"], items: ["x"] },
+            { id: "both", setIds: ["a", "b"], items: ["y"] }]
+        }
+      }] : [{
+        id: `paragraph-${ordinal}`,
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: `Conteúdo curricular da Unidade ${ordinal}.` }
+      }];
+      const practice = ordinal === 1;
+      return {
+        id: `study-unit-${String(ordinal).padStart(2, "0")}`,
+        position: ordinal,
+        title: ordinal === 1 ? "Exemplo guiado com diagrama" : `Unidade curricular ${ordinal}`,
+        role: practice ? "practice" : "theory",
+        content: diagram,
+        response: practice ? {
+          id: "choice-1",
+          package: "aralearn.response.choice",
+          version: "1.0.0",
+          data: {
+            question: "Qual elemento pertence aos dois conjuntos?",
+            selectionMode: "single",
+            selectionCriterion: "correct",
+            options: [{ id: "x", kind: "text", text: "x" },
+              { id: "y", kind: "text", text: "y" }],
+            answerIds: ["y"]
+          }
+        } : null,
+        feedback: [],
+        topics: [],
+        sources: []
+      };
+    });
     const probe = {
       listReads: 0,
       headerReads: 0,
-      documentReads: 0,
+      outlineReads: 0,
+      inspectionReads: [],
+      positionLoads: 0,
+      positionSaves: [],
       peopleReads: 0,
       planReads: 0,
       materializationReads: [],
@@ -255,7 +284,7 @@ async function mountCourseAuthoring(page, {
       lessonCount: 1,
       topicCount: 0,
       microsequenceCount: 1,
-      studyUnitCount: 2
+      studyUnitCount: 60
     };
     const courseDetail = (courseId) => {
       const course = courses.find((item) => item.courseId === courseId);
@@ -274,6 +303,7 @@ async function mountCourseAuthoring(page, {
         counts
       };
     };
+    let inspectionPosition = null;
     const controller = {
       async listCourses({ query = "" } = {}) {
         probe.listReads += 1;
@@ -294,15 +324,97 @@ async function mountCourseAuthoring(page, {
         probe.headerReads += 1;
         return courseDetail(courseId);
       },
-      async loadCourseDocument(courseId) {
-        probe.documentReads += 1;
+      async loadAuthoringOutline(courseId) {
+        probe.outlineReads += 1;
+        return outlineFor(courseId);
+      },
+      async loadAuthoringStudyUnits(courseId, options) {
+        probe.inspectionReads.push(structuredClone(options));
+        const detail = courseDetail(courseId);
+        if (options.expectedRevision !== detail.revision) {
+          const error = new Error("Revisão alterada");
+          error.code = "course_revision_changed";
+          throw error;
+        }
+        const source = courseId === courseIds[0] ? studyUnits : [];
+        const anchorIndex = options.anchorStudyUnitId
+          ? source.findIndex(({ id }) => id === options.anchorStudyUnitId)
+          : -1;
+        const cursorIndex = options.cursor
+          ? source.findIndex(({ id }) => id === options.cursor.studyUnitId)
+          : -1;
+        if ((options.anchorStudyUnitId && anchorIndex < 0) ||
+            (options.cursor && cursorIndex < 0)) {
+          const error = new Error("Unidade ausente");
+          error.status = 404;
+          throw error;
+        }
+        let start;
+        let selected;
+        if (options.direction === "backward" && cursorIndex >= 0) {
+          start = Math.max(0, cursorIndex - options.limit);
+          selected = source.slice(start, cursorIndex);
+        } else {
+          start = cursorIndex >= 0 ? cursorIndex + 1 : Math.max(0, anchorIndex);
+          selected = source.slice(start, start + options.limit);
+        }
+        const end = start + selected.length;
+        const items = selected.map((studyUnit, index) => ({
+          studyUnit: structuredClone(studyUnit),
+          version: 1,
+          updatedAt: "2026-08-17T12:00:00.000Z",
+          ordinal: start + index + 1,
+          curriculumPath: {
+            module: { id: "module-a", position: 0, title: "Base conceitual" },
+            lesson: { id: "lesson-a", position: 0, title: "Relações e evidências" },
+            didacticMicrosequence: {
+              id: "microsequence-a",
+              position: 0,
+              title: "Comparação orientada"
+            }
+          },
+          authoringPart: {
+            id: "70000000-0000-4000-8000-000000000007",
+            position: 0,
+            title: "Relações iniciais",
+            state: "materialized"
+          },
+          deepLink: `#/authoring/courses/${courseId}?section=inspection&studyUnitId=${studyUnit.id}`
+        }));
         return {
-          course: courseDetail(courseId),
-          rows: structuredClone(entityRows),
-          document: { courses: [] },
-          offline: false,
-          stale: false
+          contract: "aralearn.course-study-unit-inspection-page.v1",
+          courseId,
+          courseRevision: detail.revision,
+          scope: structuredClone(options.scope),
+          totalCount: source.length,
+          scopeOptions: {
+            authoringParts: [{
+              id: "70000000-0000-4000-8000-000000000007",
+              position: 0,
+              title: "Relações iniciais",
+              state: "materialized"
+            }],
+            unassignedStudyUnitCount: 0
+          },
+          items,
+          hasPrevious: start > 0,
+          hasMore: end < source.length,
+          previousCursor: start > 0 && items.length
+            ? { studyUnitId: items[0].studyUnit.id }
+            : null,
+          nextCursor: end < source.length && items.length
+            ? { studyUnitId: items.at(-1).studyUnit.id }
+            : null,
+          pageBytes: 32_768
         };
+      },
+      async loadAuthoringInspectionPosition() {
+        probe.positionLoads += 1;
+        return inspectionPosition ? structuredClone(inspectionPosition) : null;
+      },
+      async saveAuthoringInspectionPosition(courseId, position) {
+        probe.positionSaves.push({ courseId, ...structuredClone(position) });
+        inspectionPosition = structuredClone(position);
       },
       async createCourse(value) {
         probe.createCalls.push(structuredClone(value));
@@ -441,12 +553,21 @@ async function mountCourseAuthoring(page, {
       async grantCourseAccess() { return { changed: true }; },
       async revokeCourseAccess() { return { changed: true }; }
     };
+    const authoringWindow = {
+      addEventListener: window.addEventListener.bind(window),
+      removeEventListener: window.removeEventListener.bind(window),
+      requestAnimationFrame: window.requestAnimationFrame.bind(window),
+      cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+      scrollBy: window.scrollBy.bind(window),
+      matchMedia: window.matchMedia.bind(window),
+      BroadcastChannel: window.BroadcastChannel
+    };
     const surface = createCourseAuthoringSurface({
       root,
       controller,
       locationValue: window.location,
       historyValue: window.history,
-      windowValue: window,
+      windowValue: authoringWindow,
       confirmValue: () => true,
       onClose() { probe.closeCalls += 1; }
     });
@@ -525,6 +646,49 @@ test.describe("Autoria canônica mobile-first", () => {
   }
 });
 
+for (const width of [360, 390, 430, 1280]) {
+  test(`Inspeção virtualiza 60 Unidades de estudo em ${width} px`, async ({ page }, testInfo) => {
+    const clientErrors = captureClientErrors(page);
+    await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });
+    const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=inspection`;
+    await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
+
+    await expect(page.getByRole("heading", { name: "Inspeção" })).toBeVisible();
+    await expect(page.getByText("60 Unidades de estudo", { exact: true })).toBeVisible();
+    await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
+    await expect(page.getByLabel("Filtrar por Parte")).toHaveValue("course:");
+    await expect(page.locator("[data-set-diagram-state=ready]")).toHaveCount(1);
+    await expect(page.locator(
+      '.package-instance[data-package="aralearn.response.choice"] button'
+    ).first()).toBeDisabled();
+    await expectNoHorizontalOverflow(page);
+
+    for (let iteration = 0; iteration < 6; iteration += 1) {
+      const before = await page.locator("[data-inspection-ordinal]").evaluateAll((items) =>
+        Math.max(0, ...items.map((item) => Number(item.dataset.inspectionOrdinal))));
+      const count = await page.locator("[data-inspection-study-unit]").count();
+      expect(count).toBeLessThanOrEqual(36);
+      if (before >= 60) break;
+      const load = page.locator('[data-inspection-load="forward"]');
+      await expect(load).toHaveCount(1);
+      await load.click();
+      await expect.poll(() => page.locator("[data-inspection-ordinal]").evaluateAll((items) =>
+        Math.max(0, ...items.map((item) => Number(item.dataset.inspectionOrdinal))))
+      ).toBeGreaterThan(before);
+    }
+
+    await expect(page.locator('[data-inspection-study-unit="study-unit-60"]')).toHaveCount(1);
+    expect(await page.locator("[data-inspection-study-unit]").count()).toBeLessThanOrEqual(36);
+    await expect.poll(() => page.evaluate(() =>
+      document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`course-inspection-${width}.png`),
+      animations: "disabled"
+    });
+    expect(clientErrors).toEqual([]);
+  });
+}
+
 test("lista distingue zero e um Curso sem criar outra superfície", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 780 });
@@ -544,7 +708,7 @@ test("lista distingue zero e um Curso sem criar outra superfície", async ({ pag
   expect(clientErrors).toEqual([]);
 });
 
-test("deep link lê só o cabeçalho no Planejamento e navega por toda a inspeção", async ({ page }) => {
+test("deep link separa Planejamento, outline, Inspeção e Pessoas", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 820 });
   const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
@@ -554,30 +718,34 @@ test("deep link lê só o cabeçalho no Planejamento e navega por toda a inspeç
   await expect(page.getByText("Priorizar explicações completas", { exact: false })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe)).toMatchObject({
     headerReads: 1,
-    documentReads: 0,
+    outlineReads: 0,
+    inspectionReads: [],
     planReads: 1
   });
 
   await page.getByRole("link", { name: "Estrutura" }).click();
   await expect(page.getByRole("heading", { name: "Estrutura" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Base conceitual" })).toBeVisible();
-  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.documentReads)).toBe(1);
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.outlineReads)).toBe(1);
 
-  await page.getByRole("link", { name: "Conteúdo" }).click();
-  await expect(page.getByRole("heading", { name: "Conteúdo" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Exemplo guiado" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Prática de contraste" })).toBeVisible();
+  await page.getByRole("link", { name: "Inspeção" }).click();
+  await expect(page.getByRole("heading", { name: "Inspeção" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Exemplo guiado com diagrama" })).toBeVisible();
+  await expect(page.locator("[data-set-diagram-state=ready]")).toHaveCount(1);
+  await expect(page.locator(
+    '.package-instance[data-package="aralearn.response.choice"] button'
+  ).first()).toBeDisabled();
   const scrollBeforeRefresh = await page.evaluate(() => {
     const scroller = document.scrollingElement;
     scroller.scrollTop = Math.min(120, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
     return scroller.scrollTop;
   });
   await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
-  await expect(page.getByRole("heading", { name: "Conteúdo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inspeção" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.scrollingElement.scrollTop))
     .toBe(scrollBeforeRefresh);
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
-    `#/authoring/courses/${COURSE_IDS[0]}?section=content`
+    `#/authoring/courses/${COURSE_IDS[0]}?section=inspection`
   );
 
   await page.getByRole("link", { name: "Pessoas" }).click();
@@ -585,6 +753,10 @@ test("deep link lê só o cabeçalho no Planejamento e navega por toda a inspeç
   await expect(page.getByText("Pessoa proprietária")).toBeVisible();
   await expect(page.getByText("Pessoa estudante")).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.peopleReads)).toBe(1);
+  expect(await page.evaluate(() => ({
+    outlineReads: globalThis.__courseAuthoringHarness.probe.outlineReads,
+    inspectionReads: globalThis.__courseAuthoringHarness.probe.inspectionReads.length
+  }))).toEqual({ outlineReads: 1, inspectionReads: 1 });
 
   await page.getByRole("button", { name: "Voltar aos Cursos" }).click();
   await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();

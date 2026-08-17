@@ -12,7 +12,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequence = lesson.microsequences[0];
-  const studyUnit = microsequence.cards[0];
+  const studyUnit = microsequence.studyUnits[0];
   const progress = {
     version: 1,
     lessons: {

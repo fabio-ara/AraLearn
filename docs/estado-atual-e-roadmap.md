@@ -27,7 +27,7 @@ Teste de software não é evidência de aprendizagem nem de compreensão humana.
 | abrir e estudar um Curso vivo | Sim | Sim: descritor → composição paginada → documento validado → IndexedDB → renderer | Proprietário ou pessoa com acesso | Jornada local em viewport móvel; ainda sem nova aceitação humana | Navegação Curso → Módulo → Lição → Microssequência → Unidade, prática, feedback e retomada foram exercitados | Sim | Alto; preserva Estudo como referência | Revalidar no APK e depois da migração hospedada; eficácia educacional não foi medida |
 | manter progresso, revisão e observações pessoais | Sim | Sim: interface → repositório local → fila → RPC → PostgreSQL | Cada pessoa somente sobre seu próprio estado em Curso acessível | Automação local | Validação, revisão, idempotência, reconciliação e reset por Curso têm testes focais | Sim | Alto | Observações ainda não chegam a uma fila autoral de correção; revogação e dispositivo offline exigem testes de campo |
 | criar um Curso privado | Sim | Sim: formulário e MCP → API de Curso → RPC transacional | Somente pessoa autenticada; torna-se proprietária | Automação e interface local | Criação idempotente produz raiz vazia com título, objetivo, plano normalizado e preferência inicial de 7–12 Partes | Sim | Alto | 7–12 é padrão configurável, não regra pedagógica; criação hospedada aguarda o corte |
-| inspecionar o próprio Curso na Autoria | Sim | Sim: lista owner-only → plano vivo ou entidades paginadas → quatro áreas visuais | Somente proprietário | Automação e inspeção local | Planejamento, Estrutura, Conteúdo e Pessoas carregam o estado canônico | Sim | Parcial | Estrutura e Conteúdo ainda são listas; inspeção vertical contínua e edição contextual ampla pertencem à próxima fatia |
+| inspecionar o próprio Curso na Autoria | Sim | Sim: rota → leitura `study_units` owner-only → RPC paginada → sequência vertical | Somente proprietário | Automação e inspeção local | Planejamento, Estrutura, Inspeção e Pessoas usam o estado canônico; a Inspeção pagina 12 por vez e limita a janela a 36 Unidades | Sim | Alto para leitura | Respostas ficam inertes e edição contextual permanece futura; falta nova aceitação humana em 360/390/430 px e desktop |
 | editar o plano instrucional em linguagem natural | Sim | Sim: interface e MCP → domínio de comandos → RPC do plano → projeção comum | Somente proprietário | Automação local | Título, objetivo, público, escopo, orientação, três listas do plano e faixa preferencial usam CAS, versão do plano e recibo idempotente | Sim | Alto | Precisa de nova aceitação humana em celular e desktop; não demonstra qualidade ou efeito educacional |
 | planejar e reorganizar por Parte de autoria | Sim | Sim: controles naturais/MCP → comandos de Parte e vínculo → relações normalizadas | Somente proprietário | Automação local | É possível criar, editar, reordenar, dividir e unir Partes e mover/desvincular Microssequências sem apagar a composição | Sim | Alto | Parte é unidade operacional fora da hierarquia curricular; o melhor dimensionamento continua questão configurável e pesquisável |
 | materializar uma Parte com retomada | Sim no serviço; entrega visual delimitada | API/MCP avançam tentativa e etapas transacionais; a interface apenas copia o pedido para o chat conectado | Somente proprietário | Automação local | Início, etapa e fim usam CAS, idempotência e fatos limitados; progresso é derivado do banco | Sim | Alto | Copiar o pedido não inicia nem conclui materialização; a execução depende do cliente conectado e requer ensaio ponta a ponta real |
@@ -76,11 +76,13 @@ flowchart LR
     O --> D{Destino}
     D --> A[Plano e atividade persistida]
     D --> R[Fixar revisão da composição]
+    D --> IN[Inspeção owner-only por escopo e âncora]
     R --> P[Entidades paginadas]
     P --> V[Compor e validar]
     V --> I[IndexedDB]
     A --> T[Tela de Autoria]
-    I --> U[Tela de Estudo ou inspeção autoral]
+    IN --> W[Janela vertical limitada e cache por revisão]
+    I --> U[Tela de Estudo]
 ```
 
 ## Evidência visual corrente
@@ -91,9 +93,10 @@ A referência móvel de Estudo permanece a captura em 390 × 844 pixels:
 iconográficos.](screenshots/study/study-card-390-light.png)
 
 As capturas antigas de Autoria não representam a superfície canônica desta
-revisão. Novas capturas devem ser produzidas depois que a inspeção vertical e a
-navegação autoral estiverem integradas; conservar imagem desatualizada como
-documentação corrente criaria uma segunda fonte de verdade.
+revisão. A Inspeção vertical já está integrada, mas novas capturas só devem ser
+adotadas depois da verificação da aplicação real em 360, 390 e 430 px e
+desktop; conservar imagem desatualizada como documentação corrente criaria uma
+segunda fonte de verdade.
 
 ## Gates de migração e promoção
 
@@ -105,8 +108,9 @@ O corte não está hospedado. Os gates restantes são:
 3. reconstruir o banco local e executar testes de migration, autorização,
    concorrência e navegador contra o schema resultante;
 4. confirmar ausência de mutações pendentes em dispositivos conhecidos;
-5. executar importação e migrations `1400`, `1500` e `1600` hospedadas numa
-   única transação com verificação de drift;
+5. executar importação e migrations `1400`, `1500`, `1600` e `1700`, nessa
+   ordem, numa única transação com verificação de drift; o runner declara e
+   hasheia as quatro antes de `--apply`, sem `db push` separado para a `1700`;
 6. publicar funções, site e APK somente depois da verificação hospedada.
 
 O importador é ferramenta transitória de desenvolvimento. Ele não entra no
@@ -121,15 +125,14 @@ A ordem seguinte preserva paridade vertical: uma fatia só é concluída quando
 possui comportamento compreensível, interface, MCP quando aplicável,
 persistência, autorização e teste.
 
-1. inspeção móvel vertical da composição;
-2. parâmetros semânticos e regras de componentes;
-3. fontes, âncoras e proveniência;
-4. observações autorais e estudantis reunidas;
-5. auditoria, correção e verificação;
-6. variantes comparáveis;
-7. dados brutos, métricas e visualização de pesquisa;
-8. assistência de pesquisa;
-9. remoção física final, validação completa e release.
+1. parâmetros semânticos e regras de componentes;
+2. fontes, âncoras e proveniência;
+3. observações autorais e estudantis reunidas;
+4. auditoria, correção e verificação;
+5. variantes comparáveis;
+6. dados brutos, métricas e visualização de pesquisa;
+7. assistência de pesquisa;
+8. remoção física final, validação completa e release.
 
 Backend novo sem uma forma de uso ou inspeção na interface e, quando pertinente,
 no MCP não satisfaz uma fatia. Da mesma forma, uma tela sem persistência e

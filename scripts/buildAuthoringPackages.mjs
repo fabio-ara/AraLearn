@@ -28,7 +28,7 @@ const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
   "syncInstructionalDesignSchemas.mjs"
 );
 const PUBLIC_SUPABASE_URL = "https://jrfkphuhcseqmratijjr.supabase.co";
-const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
+const NORMATIVE_DOCS = ["aralearn-contract.md", "componentes-didaticos.md"];
 const DISTRIBUTED_DOCS = [
   ...NORMATIVE_DOCS,
   "autoria-mcp.md",
@@ -84,7 +84,7 @@ const CHATGPT_KNOWLEDGE_VARIANTS = Object.freeze({
     introduction: "Critérios para resolver ResourceSet, descobrir e combinar resources. Na única consultarBibliotecaDeResources, use o snapshot confiável, percorra explore, search, inspect e contracts e valide cada composição antes de salvá-la.",
     sources: CHATGPT_RESOURCE_KNOWLEDGE_SOURCES,
     schemas: [],
-    docs: ["recursos-de-card.md"]
+    docs: ["componentes-didaticos.md"]
   })
 });
 const ARCHIVE_ROOT = "aralearn-authoring";

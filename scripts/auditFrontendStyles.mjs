@@ -74,7 +74,7 @@ export async function auditFrontendRepository() {
     read("../public/styles-tokens.css"),
     read("../public/styles.css"),
     read("../public/styles-shell-baseline.css"),
-    read("../src/render/renderPackageCard.js"),
+    read("../src/render/renderPackageStudyUnit.js"),
     read("../src/ui/renderHomeScreen.js"),
     read("../src/ui/renderLessonScreen.js")
   ]);
@@ -98,7 +98,7 @@ export async function auditFrontendRepository() {
     sourceBytes: Object.freeze({
       tokens: (await stat(new URL("../public/styles-tokens.css", import.meta.url))).size,
       styles: (await stat(new URL("../public/styles.css", import.meta.url))).size,
-      packageRenderer: (await stat(new URL("../src/render/renderPackageCard.js", import.meta.url))).size
+      packageRenderer: (await stat(new URL("../src/render/renderPackageStudyUnit.js", import.meta.url))).size
     })
   });
 }

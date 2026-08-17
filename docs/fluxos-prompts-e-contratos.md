@@ -114,8 +114,8 @@ modelo uma lista curta e carrega somente os contratos escolhidos. Criar cards
 ou microssequência é outra operação e só aparece quando a seleção concedeu
 autoridade sobre o recipiente.
 
-Os limites completos por nível estão em [Assistência por modelo de
-linguagem](assistencia-por-ia.md#autoridade-por-nível).
+As regras correntes de acesso estão em [Assistência por modelo de
+linguagem](assistencia-por-ia.md#autoridade-e-confirmação).
 
 ## Fluxo da autoria estrutural
 

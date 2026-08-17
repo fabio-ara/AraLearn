@@ -129,6 +129,11 @@ conteúdo próprio fica em JSON. Cada linha também conserva `created_at` e
 `updated_at`, de modo que revisão e tempo pertençam à entidade que realmente
 mudou, e não apenas à raiz do Curso.
 
+O discriminador final da Unidade é `study_unit`; o documento
+`aralearn.course.v1` a expõe em `microsequence.studyUnits`. Não há alias no
+contrato corrente. A posição de cada Unidade é local à Microssequência e
+permanece estável no achatamento e na recomposição.
+
 Uma chave estrangeira composta impede que uma entidade aponte para pai de
 outro Curso. Restrições de posição impedem irmãos duplicados. Excluir um pai
 remove descendentes na mesma árvore; o commit completo continua transacional.
@@ -218,6 +223,8 @@ Cada conta possui `aralearn-course-v1-<user-id>`, com uma store genérica
 - cabeçalho de Curso;
 - projeção do plano instrucional e atividade recente;
 - páginas de entidades por revisão;
+- páginas da Inspeção por revisão e pedido completo;
+- posição local da Inspeção por Curso;
 - documento composto validado;
 - estado pessoal e sua pendência.
 
@@ -233,12 +240,35 @@ progresso, mas não milhares de Unidades. Ao abrir:
 1. lê o cabeçalho e fixa a revisão;
 2. percorre páginas de entidades;
 3. recusa página cuja revisão não coincide;
-4. recompõe o documento `aralearn.library.v1`;
+4. recompõe o documento `aralearn.course.v1`;
 5. valida estrutura e componentes;
 6. salva somente o resultado íntegro no cache;
 7. entrega o documento ao renderer.
 
 Essa sequência evita misturar o começo de uma revisão com o fim de outra.
+
+### Inspeção vertical sob demanda
+
+A Inspeção não recompõe o documento inteiro para desenhar uma sequência. Ela
+consulta páginas owner-only de Unidades em ordem curricular, delimitadas por
+Curso, Parte, ausência de Parte, Módulo, Lição ou Microssequência. Uma âncora
+inclui a Unidade-alvo na página de entrada; um cursor `{studyUnitId}` marca a
+fronteira da página seguinte ou anterior. Âncora e cursor são mutuamente
+exclusivos.
+
+A página normal contém 12 itens e aceita no máximo 24. `maxBytes` fica entre
+64 KiB e 1.500.000 bytes; a resposta completa falha fechada acima de 1,75 MiB,
+mantendo margem para o teto de 2 MiB. A interface virtualiza a sequência e
+mantém no DOM no máximo 36 Unidades, com espaçadores para conservar a rolagem.
+
+O cache distingue revisão, escopo, âncora ou cursor, direção, limite e orçamento
+de bytes. Por Curso, conserva no máximo quatro páginas ou 8 MiB, o que ocorrer
+primeiro. Sem rede, somente um pedido exato pode usar a cópia local, marcada
+como offline ou desatualizada; não há aproximação entre escopos, revisões ou
+cursores. A posição local guarda escopo, `studyUnitId`, deslocamento em relação
+ao topo fixo e revisão. Mudança de revisão reancora pela identidade; alvo
+explicitamente removido é informado como ausente. Revogação ou outra perda de
+autoridade purga páginas e posição privadas.
 
 ## Concorrência do Curso
 
@@ -250,7 +280,8 @@ objeto específico. Na transação, o servidor:
 2. bloqueia o Curso;
 3. procura recibo compatível;
 4. compara a revisão;
-5. valida o comando e o estado-alvo;
+5. valida o conteúdo de cada linha pelo tipo e as dependências das Lições
+   afetadas;
 6. aplica tudo ou nada;
 7. calcula as diferenças efetivas;
 8. se algo mudou, incrementa a revisão e registra o evento;
@@ -267,6 +298,11 @@ Planejamento, composição e materialização possuem commits separados. A etapa
 de materialização é a única que pode combinar seu fato operacional com um lote
 pequeno de entidades e o vínculo correspondente; isso ocorre numa única
 transação, não por sincronização posterior.
+
+A composição continua segmentada: o serviço não recompõe o Curso integral a
+cada escrita. Além das restrições SQL de forma e hierarquia, o domínio valida
+`module|lesson|topic|microsequence|study_unit` individualmente, e o banco
+recalcula `dependsOn` somente no conjunto de Lições alcançado pelo lote.
 
 ## Sincronização do estado pessoal
 
@@ -343,6 +379,11 @@ etapa. Ainda faltam medições longitudinais de:
 - invocações e duração de Edge Functions;
 - ocupação de avatares e futuras fontes.
 
+Na Inspeção, paginação de até 24 itens, janela de até 36 Unidades, cache de até
+quatro páginas ou 8 MiB por Curso e hard cap de resposta de 1,75 MiB limitam
+DOM, memória, armazenamento e egress. Esses limites tornam o ensaio no Free
+Plan mensurável; não demonstram, por si só, sustentabilidade em uso prolongado.
+
 Limite implementado não é evidência de sustentabilidade. A promoção deve
 registrar baseline e repetir a medição com dados reais.
 
@@ -350,13 +391,14 @@ registrar baseline e repetir a medição com dados reais.
 
 Testes locais cobrem composição, plano, comandos de Parte, materialização,
 paginação, cache, revisão, idempotência, conflito multi-dispositivo,
-autorização e migrations em PGlite. Jornada de navegador exercita o corte
-local; promoção hospedada e nova aceitação humana ainda são gates.
+autorização e migrations em PGlite. O ensaio focal em PostgreSQL real cobre
+concorrência e o contrato final da Unidade após reset. Jornada de navegador
+exercita o corte local; promoção hospedada e nova aceitação humana ainda são
+gates.
 
 Ainda não estão demonstrados:
 
 - importação integral dos oito Cursos hospedados;
-- concorrência em PostgreSQL real após reset completo;
 - comportamento prolongado com vários dispositivos;
 - orçamento real do Free Plan;
 - migração e Edge Functions hospedadas;

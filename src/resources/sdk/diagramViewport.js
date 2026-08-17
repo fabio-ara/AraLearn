@@ -142,7 +142,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
     canvas.dataset.diagramViewportMode = expanded ? "explore" : "inline";
     toggleExpanded.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggleExpanded.setAttribute("aria-label", expanded
-      ? "Voltar ao card"
+      ? "Voltar à Unidade de estudo"
       : "Explorar diagrama em tela inteira");
   };
 
@@ -301,8 +301,8 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
       clientY: remaining.clientY,
       scrollLeft: canvas.scrollLeft,
       scrollTop: canvas.scrollTop,
-      cardScroller: canvas.closest(".card-sheet-content"),
-      cardScrollTop: canvas.closest(".card-sheet-content")?.scrollTop || 0
+      studyUnitScroller: canvas.closest(".card-sheet-content"),
+      studyUnitScrollTop: canvas.closest(".card-sheet-content")?.scrollTop || 0
     } : null;
     canvas.classList.toggle("is-diagram-panning", Boolean(remaining));
   };
@@ -379,9 +379,9 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
     if (!panOrigin) return;
     const canPanCanvas = canvas.scrollWidth > canvas.clientWidth + 1 ||
       canvas.scrollHeight > canvas.clientHeight + 1;
-    if (!expanded && !canPanCanvas && panOrigin.cardScroller) {
-      panOrigin.cardScroller.scrollTop = Math.max(0,
-        panOrigin.cardScrollTop + panOrigin.clientY - event.clientY
+    if (!expanded && !canPanCanvas && panOrigin.studyUnitScroller) {
+      panOrigin.studyUnitScroller.scrollTop = Math.max(0,
+        panOrigin.studyUnitScrollTop + panOrigin.clientY - event.clientY
       );
     } else {
       canvas.scrollLeft = Math.max(0, panOrigin.scrollLeft + panOrigin.clientX - event.clientX);

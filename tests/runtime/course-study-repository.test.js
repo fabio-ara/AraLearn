@@ -26,7 +26,7 @@ function course(courseId, suffix) {
           goal: "Explicar.",
           role: "explain",
           dependsOn: [], covers: [], checks: [], errors: [],
-          cards: [{
+          studyUnits: [{
             id: `unit-${suffix}`,
             position: 1,
             title: "Unidade",
@@ -62,7 +62,7 @@ function addSecondModule(courseValue, suffix) {
         goal: "Verificar.",
         role: "explain",
         dependsOn: [], covers: [], checks: [], errors: [],
-        cards: [{
+        studyUnits: [{
           id: `unit-${suffix}-first`,
           position: 1,
           title: "Primeira Unidade",
@@ -117,7 +117,7 @@ test("compõe a tela de Estudo de Cursos e isola estado pessoal por courseId", a
     goal: "Preservar escopo.",
     role: "explain",
     dependsOn: [], covers: [], checks: [], errors: [],
-    cards: [{
+    studyUnits: [{
       id: "unit-a-later",
       position: 2,
       title: "Unidade posterior",
@@ -154,7 +154,7 @@ test("compõe a tela de Estudo de Cursos e isola estado pessoal por courseId", a
     async loadCourse(courseId) {
       loadedCourses.push(courseId);
       return {
-        document: { contract: "aralearn.library.v1", courses: [documents.get(courseId)] }
+        document: { contract: "aralearn.course.v1", courses: [documents.get(courseId)] }
       };
     },
     async clearCourse(courseId) {
@@ -309,7 +309,7 @@ test("carrega a fila Rever por páginas somente quando solicitado", async () => 
         };
       },
       async loadCourse() {
-        return { document: { contract: "aralearn.library.v1", courses: [courseValue] } };
+        return { document: { contract: "aralearn.course.v1", courses: [courseValue] } };
       },
       async clearCourse() {}
     },
@@ -374,7 +374,7 @@ test("atualiza progresso, Rever e observação alterados em outro dispositivo", 
         };
       },
       async loadCourse() {
-        return { document: { contract: "aralearn.library.v1", courses: [courseValue] } };
+        return { document: { contract: "aralearn.course.v1", courses: [courseValue] } };
       },
       async clearCourse() {}
     },
@@ -466,7 +466,7 @@ test("retira somente o Curso cujo acesso foi revogado durante o refresh pessoal"
       },
       async loadCourse(courseId) {
         return {
-          document: { contract: "aralearn.library.v1", courses: [documents.get(courseId)] }
+          document: { contract: "aralearn.course.v1", courses: [documents.get(courseId)] }
         };
       },
       async clearCourse(courseId) {
@@ -536,7 +536,7 @@ test("flush purga Curso revogado após mutação offline pendente e libera ciclo
         };
       },
       async loadCourse() {
-        return { document: { contract: "aralearn.library.v1", courses: [courseValue] } };
+        return { document: { contract: "aralearn.course.v1", courses: [courseValue] } };
       },
       async clearCourse(courseId) {
         clearedCourses.push(courseId);

@@ -69,12 +69,13 @@
           "paged-live-course-composition-v1",
           "course-cas-idempotency-v1",
           "course-instructional-plan-v1",
-          "course-authoring-part-materialization-v1"
+          "course-authoring-part-materialization-v1",
+          "course-study-unit-inspection-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_events|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_authoring_part_materializations|private\\.course_authoring_part_materialization_steps)$",
-          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|course_instructional_plan_command_document_v1|course_authoring_part_progress_v1|get_course_instructional_plan_for_actor_v1|delete_course_authoring_relations_before_course_v1)\\(.*\\)$",
-          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|commit_course_instructional_plan_for_actor_v1|advance_course_authoring_part_materialization_for_actor_v1|get_owned_course_instructional_plan_for_actor_v1|get_owned_course_instructional_plan_v1|get_owned_course_authoring_part_materialization_for_actor_v1|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
+          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|list_course_study_units_for_actor_v1|assert_course_lesson_dependencies_v1|course_instructional_plan_command_document_v1|course_authoring_part_progress_v1|get_course_instructional_plan_for_actor_v1|delete_course_authoring_relations_before_course_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|commit_course_instructional_plan_for_actor_v1|advance_course_authoring_part_materialization_for_actor_v1|get_owned_course_instructional_plan_for_actor_v1|get_owned_course_instructional_plan_v1|get_owned_course_authoring_part_materialization_for_actor_v1|list_owned_course_study_units_for_actor_v1|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
         ]
       },
       "ui": [
@@ -84,12 +85,13 @@
       ],
       "visibleEffects": [
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPlanningSection" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadCourseDocument" },
+        { "path": "src/ui/CourseInspectionSequence.js", "token": "createCourseInspectionSequence" },
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadPartMaterialization" }
       ],
       "persistence": [
         { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" },
         { "path": "src/supabase/CourseController.js", "token": "mutateAuthoringPlan" },
+        { "path": "src/supabase/CourseController.js", "token": "loadAuthoringStudyUnits" },
         { "path": "src/supabase/CourseController.js", "token": "loadPartMaterialization" }
       ],
       "routes": [
@@ -99,6 +101,7 @@
       "tests": [
         "tests/runtime/course-mcp-tools.test.js",
         "tests/runtime/course-authoring-surface.test.js",
+        "tests/runtime/course-inspection-sequence.test.js",
         "tests/runtime/course-controller.test.js",
         "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js"
@@ -173,10 +176,10 @@
         ]
       },
       "ui": [
-        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageCardBlocksWithDock" }
+        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageStudyUnitBlocksWithDock" }
       ],
       "visibleEffects": [
-        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageFeedback" }
+        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageStudyUnitFeedback" }
       ],
       "persistence": [
         { "path": "src/resources/packages/generated.js", "token": "RESOURCE_PACKAGE_DEFINITIONS" }

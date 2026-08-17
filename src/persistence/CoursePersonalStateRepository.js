@@ -290,7 +290,7 @@ function courseIndex(course, courseId) {
       const studyUnits = [];
       for (const microsequence of lesson.microsequences || []) {
         const microsequenceId = entityId(microsequence?.id, "Microssequência.id");
-        for (const unit of microsequence.cards || []) {
+        for (const unit of microsequence.studyUnits || []) {
           const studyUnitId = entityId(unit?.id, "Unidade de estudo.id");
           if (studyUnitIds.has(studyUnitId)) throw failure("O Curso repete uma Unidade de estudo.");
           studyUnitIds.add(studyUnitId);

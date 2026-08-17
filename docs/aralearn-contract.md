@@ -13,8 +13,8 @@ o mesmo documento de maneiras incompatíveis.
   os campos e valores admitidos por um documento;
 - **pacote de recurso (`package`)**: módulo que reúne contrato, validação e
   renderização de uma representação ou interação didática;
-- **núcleo (`kernel`)**: camada que organiza cards e pacotes sem incorporar as
-  regras internas de cada representação.
+- **núcleo (`kernel`)**: camada que organiza Unidades de estudo e packages sem
+  incorporar as regras internas de cada representação.
 
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
@@ -23,8 +23,8 @@ O sistema separa quatro responsabilidades:
 
 | Contrato | Responsabilidade |
 |---|---|
-| `aralearn.library.v1` | documento didático completo ou recortado |
-| envelope de card | composição de conteúdo, resposta e feedback |
+| `aralearn.course.v1` | documento didático completo ou recortado |
+| envelope de Unidade de estudo | composição de conteúdo, resposta e feedback |
 | contrato de cada pacote de recurso (`package`) | dados próprios de uma representação ou interação |
 | `aralearn.resource-library.v1` | descoberta, inspeção e validação do catálogo de pacotes |
 
@@ -48,13 +48,13 @@ antiga numa instância já materializada.
 
 Os esquemas se inspiram no vocabulário de [JSON Schema](https://json-schema.org/draft/2020-12), mas `src/resources/kernel/schemaValidation.js` implementa apenas o subconjunto necessário aos pacotes instalados. Portanto, não se deve supor suporte a qualquer palavra-chave do padrão.
 
-## 2. Envelope `aralearn.library.v1`
+## 2. Documento `aralearn.course.v1`
 
-O envelope é a unidade de intercâmbio, persistência, validação e publicação:
+O documento é a unidade de intercâmbio e validação da composição:
 
 ```json
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": []
 }
@@ -70,7 +70,7 @@ courses[]
     └── lessons[]
         ├── topics[]
         └── microsequences[]
-            └── cards[]
+            └── studyUnits[]
 ```
 
 ### Curso, módulo e lição
@@ -85,7 +85,7 @@ Tópicos usam `id`, `label`, `kind`, `checks` e `errors`. `kind` vale `concept`,
 
 ### Microssequência
 
-Uma microssequência exige `id`, `title`, `goal`, `role`, `dependsOn`, `covers`, `checks` e `cards`; `errors` e `branchOf` são opcionais. `role` vale:
+Uma microssequência exige `id`, `title`, `goal`, `role`, `dependsOn`, `covers`, `checks` e `studyUnits`; `errors` e `branchOf` são opcionais. `role` vale:
 
 - `explain`: construir entendimento;
 - `practice`: exercitar operações;
@@ -96,15 +96,18 @@ Uma microssequência exige `id`, `title`, `goal`, `role`, `dependsOn`, `covers`,
 
 ### Evidência normativa
 
-`src/domain/aralearnProject.js` valida o domínio. `authoring/schemas/workspace-envelope.schema.json` descreve a fronteira de integração. Os testes de contrato devem ser consultados junto com ambos: o schema sozinho não expressa todas as relações semânticas.
+`src/domain/aralearnProject.js` valida o documento e
+`src/domain/courseEntities.js` realiza o roundtrip relacional. Os testes de
+contrato precisam ser consultados junto com ambos: uma descrição de forma não
+expressa sozinha todas as relações semânticas.
 
-## 3. Envelope de card
+## 3. Envelope de Unidade de estudo
 
-Todo card tem esta moldura:
+Toda Unidade de estudo tem esta moldura:
 
 ```json
 {
-  "id": "card-id",
+  "id": "study-unit-id",
   "position": 1,
   "title": "Título curto",
   "role": "theory",
@@ -118,31 +121,34 @@ Todo card tem esta moldura:
 
 `position` é inteiro positivo e acompanha a ordem real no recipiente. `role` vale `theory` ou `practice`.
 
-- card de teoria: ao menos uma instância em `content` e `response: null`;
-- card de prática: exatamente uma instância em `response`; `content` pode ficar vazio quando a própria resposta contém todo o estímulo;
+- Unidade de teoria: ao menos uma instância em `content` e `response: null`;
+- Unidade de prática: exatamente uma instância em `response`; `content` pode ficar vazio quando a própria resposta contém todo o estímulo;
 - `feedback`, `topics` e `sources`: sempre listas;
-- ids de instância: únicos dentro do card.
+- ids de instância: únicos dentro da Unidade.
 
 Uma instância de `content`, `response` ou `feedback` tem:
 
 ```json
 {
-  "id": "instancia-no-card",
+  "id": "instancia-na-unidade",
   "package": "aralearn.resource.paragraph",
   "version": "1.0.0",
   "data": {}
 }
 ```
 
-O kernel conhece `id`, `package`, `version` e o slot ocupado. O package conhece `data`. Essa fronteira é implementada em `src/resources/kernel/cardEnvelope.js` e `src/resources/kernel/packageRegistry.js`.
+O kernel conhece `id`, `package`, `version` e o slot ocupado. O package conhece
+`data`. Essa fronteira é implementada em
+`src/resources/kernel/studyUnitEnvelope.js` e
+`src/resources/kernel/packageRegistry.js`.
 
 ### Por que a pergunta não deve ser duplicada
 
 Uma resposta `choice` já contém o estímulo e as alternativas quando esse é seu contrato. Repetir a mesma pergunta num `paragraph` cria dois focos, aumenta o custo de leitura e permite divergência durante edição. O validador de composição rejeita padrões conhecidos de duplicação; conteúdo adicional só deve existir quando fornece contexto necessário que não pertence à resposta.
 
-## 4. Contrato unitário `aralearn.course.v1`
+## 4. Perfil unitário do mesmo contrato
 
-O kernel também oferece uma fronteira para um único curso:
+O kernel também oferece uma fronteira unitária para validar um único Curso:
 
 ```json
 {
@@ -151,7 +157,10 @@ O kernel também oferece uma fronteira para um único curso:
 }
 ```
 
-Ela é útil em testes e operações unitárias. Não aceita `courses`, não substitui `aralearn.library.v1` e não é o protocolo do catálogo. A implementação está em `src/resources/kernel/courseContract.js`.
+Ela é útil em testes e operações unitárias. Não aceita `courses` e não é o
+protocolo do catálogo. Tanto o perfil de intercâmbio quanto este perfil usam o
+contrato final `aralearn.course.v1`; não existe alias para o nome substituído.
+A implementação está em `src/resources/kernel/courseContract.js`.
 
 Ter uma fronteira unitária explícita é preferível a inferir que qualquer objeto semelhante a curso está completo. A consequência é que o chamador precisa escolher deliberadamente o envelope adequado.
 
@@ -185,11 +194,14 @@ Esse protocolo descreve o catálogo de packages, não o conteúdo didático. Ele
 2. `search`: candidatos ranqueados por intenção e restrições;
 3. `inspect`: comparação de até oito perfis;
 4. `contracts`: exatamente um contrato versionado por chamada;
-5. `validate_card`: forma, referências e composição;
+5. `validate_study_unit`: forma, referências e composição, recebida em
+   `studyUnitJson`;
 6. `audit_representation`: ajuste semântico, affordance da resposta e legibilidade do feedback;
-7. `preview_card`: capacidade de abrir a composição no renderer.
+7. `preview_study_unit`: capacidade de abrir a composição no renderer.
 
-`preview_card` e `audit_representation` retornam `rendered: false`: não fingem simular viewport, Graphviz, Vega ou hidratação. Uma prévia geométrica exige o runtime real do aplicativo.
+`preview_study_unit` e `audit_representation` retornam `rendered: false`: não
+fingem simular viewport, Graphviz, Vega ou hidratação. Uma prévia geométrica
+exige o runtime real do aplicativo.
 
 ### Taxonomia e cobertura
 
@@ -219,7 +231,7 @@ objetivo e progressão
 → `ResourceSet` efetivo e busca por facetas
 → comparação da lista curta
 → carregamento dos contratos escolhidos
-→ composição do card
+→ composição da Unidade de estudo
 → validação estrutural
 → auditoria semântica
 → prévia real quando necessária
@@ -228,13 +240,18 @@ objetivo e progressão
 
 Essa sequência economiza contexto: o modelo recebe descrições e apenas os schemas que efetivamente usará. Carregar todos os contratos de uma vez seria simples para um catálogo pequeno, mas cresce linearmente e dificulta distinguir candidatos próximos.
 
-Packages complementares podem coexistir no mesmo card quando cada um cumpre uma função necessária, como fórmula e gráfico. A prática possui uma única resposta formal, embora possa usar múltiplos conteúdos e feedbacks. O validador rejeita slots ou compatibilidades inválidos.
+Packages complementares podem coexistir na mesma Unidade quando cada um cumpre uma função necessária, como fórmula e gráfico. A prática possui uma única resposta formal, embora possa usar múltiplos conteúdos e feedbacks. O validador rejeita slots ou compatibilidades inválidos.
 
-## 8. Publicação e completude
+## 8. Curso vivo e completude
 
-O documento não carrega estados burocráticos como “rascunho”, “pronto” ou “publicado”. Uma microssequência com cards válidos já é estudável; uma microssequência sem cards pode permanecer como parte do planejamento visível.
+O documento não carrega estados burocráticos como “rascunho”, “pronto” ou
+“publicado”. Uma Microssequência com Unidades válidas já é estudável; uma
+Microssequência sem Unidades pode permanecer como parte do planejamento
+visível.
 
-Publicação é uma operação externa: recompõe o documento, valida, canonicaliza, calcula hash, grava artefato imutável e move um ponteiro autorizado. Separar estado editorial do conteúdo impede que um mesmo JSON mude de significado apenas por um rótulo interno.
+O runtime corrente não oferece publicação pública. Estudo, Autoria e MCP operam
+o mesmo Curso vivo, cuja composição relacional é validada sem mudar de
+identidade por um rótulo editorial.
 
 ## 9. Limites e verificação
 
@@ -246,4 +263,5 @@ Validação estrutural não demonstra qualidade pedagógica, correção científ
 - auditoria pedagógica da microssequência;
 - revisão situada e possibilidade de correção.
 
-Consulte [Packages de card](recursos-de-card.md), [Gateway MCP de autoria](autoria-mcp.md) e [Matriz de conformidade técnica](matriz-conformidade-tecnica.md).
+Consulte [Componentes didáticos e packages](componentes-didaticos.md), [Autoria por
+MCP](autoria-mcp.md) e [Matriz de conformidade técnica](matriz-conformidade-tecnica.md).

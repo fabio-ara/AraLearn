@@ -1,4 +1,8 @@
-import { COURSE_CONTRACT, normalizeCardEnvelope, validateCardEnvelope } from "./cardEnvelope.js";
+import {
+  COURSE_CONTRACT,
+  normalizeStudyUnitEnvelope,
+  validateStudyUnitEnvelope
+} from "./studyUnitEnvelope.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -79,9 +83,13 @@ export function validateCourseDocument(document, registry) {
         for (const field of ["dependsOn", "covers", "checks", "errors"]) {
           microErrors.push(...validateTextList(microsequence?.[field], `${microPath}.${field}`));
         }
-        microErrors.push(...validateOrderedEntities(microsequence?.cards, `${microPath}.cards`, (card, cardPath) => (
-          validateCardEnvelope(card, registry, cardPath).errors
-        )));
+        microErrors.push(...validateOrderedEntities(
+          microsequence?.studyUnits,
+          `${microPath}.studyUnits`,
+          (studyUnit, studyUnitPath) => (
+            validateStudyUnitEnvelope(studyUnit, registry, studyUnitPath).errors
+          )
+        ));
         return microErrors;
       }));
       return lessonErrors;
@@ -137,7 +145,10 @@ export function normalizeCourseDocument(document, registry) {
             covers: list(microsequence?.covers).map(text).filter(Boolean),
             checks: list(microsequence?.checks).map(text).filter(Boolean),
             errors: list(microsequence?.errors).map(text).filter(Boolean),
-            cards: normalizeOrdered(microsequence?.cards, (card) => normalizeCardEnvelope(card, registry))
+            studyUnits: normalizeOrdered(
+              microsequence?.studyUnits,
+              (studyUnit) => normalizeStudyUnitEnvelope(studyUnit, registry)
+            )
           }))
         }))
       }))

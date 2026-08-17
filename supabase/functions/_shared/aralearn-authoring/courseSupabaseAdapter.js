@@ -1,7 +1,8 @@
 import { AuthoringApiError } from "./errors.js";
 import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
-import { composeCourseDocument } from "../aralearn/runtime/domain/courseEntities.js";
+import { validateCourseEntityContent } from
+  "../aralearn/runtime/domain/courseEntities.js";
 import {
   applyCourseAuthoringPlanCommand,
   normalizeCourseAuthoringPlan,
@@ -17,6 +18,21 @@ const MATERIALIZATION_FIELDS = new Set([
 const MATERIALIZATION_STEP_FIELDS = new Set([
   "id", "position", "kind", "targetDidacticMicrosequenceId", "productionPosition",
   "status", "version", "resultFacts", "updatedAt", "completedAt"
+]);
+const INSPECTION_FIELDS = new Set([
+  "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions",
+  "items", "hasPrevious", "hasMore", "previousCursor", "nextCursor", "pageBytes"
+]);
+const INSPECTION_ITEM_FIELDS = new Set([
+  "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath", "authoringPart"
+]);
+const INSPECTION_SCOPE_KINDS = new Set([
+  "course", "authoring_part", "unassigned", "module", "lesson",
+  "didactic_microsequence"
+]);
+const AUTHORING_PART_STATES = new Set([
+  "planned", "partially_materialized", "materializing", "attention_required",
+  "materialized"
 ]);
 
 function first(value) {
@@ -52,6 +68,146 @@ function validTimestamp(value, { nullable = false } = {}) {
 
 function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function boundedInspectionId(value, { uuid = false } = {}) {
+  const normalized = String(value || "").trim();
+  return normalized && normalized.length <= 240 && (!uuid || UUID_PATTERN.test(normalized))
+    ? normalized
+    : null;
+}
+
+function normalizeInspectionScope(value) {
+  if (!exactRecord(value, new Set(["kind", "id"]))) invalidInspectionRead();
+  const kind = String(value.kind || "").trim();
+  const id = value.id == null ? null : boundedInspectionId(value.id, {
+    uuid: kind === "authoring_part"
+  });
+  if (!INSPECTION_SCOPE_KINDS.has(kind) ||
+      ((kind === "course" || kind === "unassigned") !== (id === null))) {
+    invalidInspectionRead();
+  }
+  return { kind, id };
+}
+
+function invalidInspectionRead() {
+  throw new AuthoringApiError(
+    503,
+    "course_service_unavailable",
+    "A página de inspeção do Curso é inválida."
+  );
+}
+
+function normalizeInspectionPart(value) {
+  if (value == null) return null;
+  if (!exactRecord(value, new Set(["id", "position", "title", "state"]))) {
+    invalidInspectionRead();
+  }
+  const id = boundedInspectionId(value.id, { uuid: true });
+  const title = String(value.title || "");
+  const state = String(value.state || "").trim();
+  if (!id || !nonNegativeSafeInteger(value.position) || !title.trim() ||
+      title.length > 300 || !AUTHORING_PART_STATES.has(state)) {
+    invalidInspectionRead();
+  }
+  return { id, position: Number(value.position), title, state };
+}
+
+function normalizeCurriculumNode(value) {
+  if (!exactRecord(value, new Set(["id", "position", "title"]))) {
+    invalidInspectionRead();
+  }
+  const id = boundedInspectionId(value.id);
+  const title = String(value.title || "");
+  if (!id || !nonNegativeSafeInteger(value.position) || !title.trim() || title.length > 300) {
+    invalidInspectionRead();
+  }
+  return { id, position: Number(value.position), title };
+}
+
+function normalizeInspectionCursor(value, expected) {
+  if (!expected) {
+    if (value != null) invalidInspectionRead();
+    return null;
+  }
+  if (!exactRecord(value, new Set(["studyUnitId"]))) invalidInspectionRead();
+  const studyUnitId = boundedInspectionId(value.studyUnitId);
+  if (!studyUnitId) invalidInspectionRead();
+  return { studyUnitId };
+}
+
+function normalizeInspectionPage(value, { courseId, expectedRevision, scopeKind, scopeId }) {
+  if (!exactRecord(value, INSPECTION_FIELDS) ||
+      value.contract !== "aralearn.course-study-unit-inspection-page.v1" ||
+      String(value.courseId || "").trim().toLowerCase() !== courseId ||
+      Number(value.courseRevision) !== expectedRevision ||
+      !nonNegativeSafeInteger(value.totalCount) ||
+      !nonNegativeSafeInteger(value.pageBytes) || value.pageBytes > 1_750_000 ||
+      typeof value.hasPrevious !== "boolean" || typeof value.hasMore !== "boolean" ||
+      !Array.isArray(value.items) || value.items.length > 24 ||
+      !exactRecord(value.scopeOptions, new Set([
+        "authoringParts", "unassignedStudyUnitCount"
+      ])) || !Array.isArray(value.scopeOptions.authoringParts) ||
+      !nonNegativeSafeInteger(value.scopeOptions.unassignedStudyUnitCount)) {
+    invalidInspectionRead();
+  }
+  const scope = normalizeInspectionScope(value.scope);
+  if (scope.kind !== scopeKind || scope.id !== scopeId) invalidInspectionRead();
+  const authoringParts = value.scopeOptions.authoringParts.map(normalizeInspectionPart);
+  if (authoringParts.some((part, index) => part.position !== index) ||
+      new Set(authoringParts.map(({ id }) => id)).size !== authoringParts.length) {
+    invalidInspectionRead();
+  }
+  const items = value.items.map((item) => {
+    if (!exactRecord(item, INSPECTION_ITEM_FIELDS) || !jsonRecord(item.studyUnit) ||
+        !exactRecord(item.curriculumPath, new Set([
+          "module", "lesson", "didacticMicrosequence"
+        ]))) {
+      invalidInspectionRead();
+    }
+    const id = boundedInspectionId(item.studyUnit.id);
+    if (!id || !positiveSafeInteger(item.studyUnit.position) ||
+        !positiveSafeInteger(item.version) || !positiveSafeInteger(item.ordinal) ||
+        !validTimestamp(item.updatedAt)) {
+      invalidInspectionRead();
+    }
+    const studyUnitValidation = validateCourseEntityContent("study_unit", item.studyUnit);
+    if (!studyUnitValidation.valid) invalidInspectionRead();
+    return {
+      studyUnit: structuredClone(studyUnitValidation.normalized),
+      version: Number(item.version),
+      updatedAt: item.updatedAt,
+      ordinal: Number(item.ordinal),
+      curriculumPath: {
+        module: normalizeCurriculumNode(item.curriculumPath.module),
+        lesson: normalizeCurriculumNode(item.curriculumPath.lesson),
+        didacticMicrosequence: normalizeCurriculumNode(
+          item.curriculumPath.didacticMicrosequence
+        )
+      },
+      authoringPart: normalizeInspectionPart(item.authoringPart)
+    };
+  });
+  if (new Set(items.map(({ studyUnit }) => studyUnit.id)).size !== items.length) {
+    invalidInspectionRead();
+  }
+  return {
+    contract: value.contract,
+    courseId,
+    courseRevision: Number(value.courseRevision),
+    scope,
+    totalCount: Number(value.totalCount),
+    scopeOptions: {
+      authoringParts,
+      unassignedStudyUnitCount: Number(value.scopeOptions.unassignedStudyUnitCount)
+    },
+    items,
+    hasPrevious: value.hasPrevious,
+    hasMore: value.hasMore,
+    previousCursor: normalizeInspectionCursor(value.previousCursor, value.hasPrevious),
+    nextCursor: normalizeInspectionCursor(value.nextCursor, value.hasMore),
+    pageBytes: Number(value.pageBytes)
+  };
 }
 
 function normalizeMaterializationStep(value) {
@@ -291,6 +447,22 @@ function withDeepLink(value, publicAppUrl, section = "planning") {
   return result;
 }
 
+function withInspectionDeepLinks(value, publicAppUrl) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      !Array.isArray(value.items)) return value;
+  const result = structuredClone(value);
+  result.items = result.items.map((item) => {
+    const studyUnitId = String(item?.studyUnit?.id || "").trim();
+    if (!studyUnitId) return item;
+    return {
+      ...item,
+      deepLink: `${publicAppUrl}/#/authoring/courses/${result.courseId}` +
+        `?section=inspection&studyUnitId=${encodeURIComponent(studyUnitId)}`
+    };
+  });
+  return result;
+}
+
 function authoringChannel(principal) {
   if (principal?.authenticationKind === "application") return "application";
   if (principal?.authenticationKind === "oauth") return "mcp";
@@ -331,29 +503,6 @@ function editableInstructionalPlan(value) {
         }))
       : []
   });
-}
-
-function entityKey(value) {
-  return `${String(value?.entityType || "")}\u0000${String(value?.entityId || "")}`;
-}
-
-function applyEntityChanges(rows, upserts, deletes) {
-  const byId = new Map(rows.map((row) => [entityKey(row), structuredClone(row)]));
-  const removed = new Set(deletes.map(entityKey));
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const [key, row] of byId) {
-      if (removed.has(key) || row.parentType == null) continue;
-      if (removed.has(`${row.parentType}\u0000${row.parentId}`)) {
-        removed.add(key);
-        changed = true;
-      }
-    }
-  }
-  for (const key of removed) byId.delete(key);
-  for (const upsert of upserts) byId.set(entityKey(upsert), structuredClone(upsert));
-  return [...byId.values()];
 }
 
 export class CourseSupabaseAdapter {
@@ -589,6 +738,43 @@ export class CourseSupabaseAdapter {
     }, { deadlineAt }));
   }
 
+  async listCourseStudyUnits({
+    principal,
+    courseId,
+    expectedRevision,
+    scopeKind,
+    scopeId = null,
+    anchorStudyUnitId = null,
+    cursorStudyUnitId = null,
+    direction = "forward",
+    limit = 12,
+    maxBytes = 512 * 1024,
+    deadlineAt = null
+  }) {
+    const result = first(await this.rpc(
+      "list_owned_course_study_units_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_expected_revision: expectedRevision,
+        p_scope_kind: scopeKind,
+        p_scope_id: scopeId,
+        p_anchor_study_unit_id: anchorStudyUnitId,
+        p_cursor_study_unit_id: cursorStudyUnitId,
+        p_direction: direction,
+        p_limit: limit,
+        p_max_bytes: maxBytes
+      },
+      { deadlineAt }
+    ));
+    return withInspectionDeepLinks(normalizeInspectionPage(result, {
+      courseId,
+      expectedRevision,
+      scopeKind,
+      scopeId
+    }), this.publicAppUrl);
+  }
+
   async listCourseAccess({ principal, courseId, deadlineAt = null }) {
     return first(await this.rpc("list_course_access_for_actor_v1", {
       p_actor_id: principal.actorId,
@@ -625,73 +811,6 @@ export class CourseSupabaseAdapter {
       p_request_id: requestId
     }, { deadlineAt }));
     return withDeepLink(result, this.publicAppUrl);
-  }
-
-  async #validateCompositionChangeAtCurrentRevision({
-    principal,
-    courseId,
-    expectedRevision,
-    upserts,
-    deletes,
-    deadlineAt
-  }) {
-    const course = await this.getCourse({
-      principal,
-      courseId,
-      includeOutline: false,
-      deadlineAt
-    });
-    if (Number(course?.revision) !== expectedRevision) {
-      // O banco consulta o receipt antes da cerca de revisão. Encaminhar a
-      // mesma requisição permite replay idempotente; uma requisição realmente
-      // obsoleta continua falhando no CAS da própria transação.
-      return false;
-    }
-    const rows = [];
-    const seenCursors = new Set();
-    let afterEntityType = null;
-    let afterEntityId = null;
-    for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
-      const page = await this.listCourseEntities({
-        principal,
-        courseId,
-        expectedRevision,
-        limit: 500,
-        afterEntityType,
-        afterEntityId,
-        deadlineAt
-      });
-      if (!Array.isArray(page?.items)) {
-        throw new AuthoringApiError(503, "course_service_unavailable", "A leitura do Curso ficou incompleta.");
-      }
-      rows.push(...page.items);
-      if (page.hasMore !== true) break;
-      const cursor = page.nextCursor;
-      const cursorKey = JSON.stringify(cursor);
-      if (!cursor?.entityType || !cursor?.entityId || seenCursors.has(cursorKey)) {
-        throw new AuthoringApiError(503, "course_service_unavailable", "A paginação do Curso ficou inconsistente.");
-      }
-      seenCursors.add(cursorKey);
-      afterEntityType = cursor.entityType;
-      afterEntityId = cursor.entityId;
-      if (pageIndex === 99) {
-        throw new AuthoringApiError(413, "course_too_large", "O Curso excede o limite seguro de validação.");
-      }
-    }
-    try {
-      composeCourseDocument({
-        id: courseId,
-        title: String(course?.title || "").trim(),
-        goal: String(course?.goal || "").trim()
-      }, applyEntityChanges(rows, upserts, deletes));
-    } catch {
-      throw new AuthoringApiError(
-        422,
-        "invalid_course_contract",
-        "A alteração produziria um Curso incompatível com o Estudo."
-      );
-    }
-    return true;
   }
 
   async commitCourseInstructionalPlan({
@@ -741,19 +860,6 @@ export class CourseSupabaseAdapter {
     payload,
     deadlineAt = null
   }) {
-    const entityChanges = operation === "record_step" && payload?.status === "completed"
-      ? payload.entityChanges
-      : null;
-    if (entityChanges && (entityChanges.upserts.length || entityChanges.deletes.length)) {
-      await this.#validateCompositionChangeAtCurrentRevision({
-        principal,
-        courseId,
-        expectedRevision: expectedCourseRevision,
-        upserts: entityChanges.upserts,
-        deletes: entityChanges.deletes,
-        deadlineAt
-      });
-    }
     const result = first(await this.rpc(
       "advance_course_authoring_part_materialization_for_actor_v1",
       {
@@ -782,14 +888,6 @@ export class CourseSupabaseAdapter {
     deletes = [],
     deadlineAt = null
   }) {
-    await this.#validateCompositionChangeAtCurrentRevision({
-      principal,
-      courseId,
-      expectedRevision,
-      upserts,
-      deletes,
-      deadlineAt
-    });
     const result = first(await this.rpc("commit_course_composition_for_actor_v1", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,

@@ -24,7 +24,7 @@ pelo AraLearn.
 1. Crie um Project.
 2. Use `PROJECT_INSTRUCTIONS.md` como instruções do Project.
 3. Adicione `core/`, `knowledge/`, `schemas/`,
-   `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento.
+   `docs/aralearn-contract.md` e `docs/componentes-didaticos.md` ao conhecimento.
 4. Se houver limite de anexos, reúna os textos em um arquivo único sem remover
    schemas nem distinguir menos as seções.
 5. Use o Project para planejar, revisar ou produzir conteúdo apenas quando os

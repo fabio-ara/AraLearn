@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -60,7 +60,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-annotated-text-theory-card",
                       "position": 1,
@@ -244,7 +244,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-code-theory-card",
                       "position": 1,
@@ -343,7 +343,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-interlinear-gloss-theory-card",
                       "position": 1,
@@ -549,7 +549,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-paragraph-theory-card",
                       "position": 1,
@@ -691,7 +691,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-chart-theory-card",
                       "position": 1,
@@ -1025,7 +1025,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-formula-theory-card",
                       "position": 1,
@@ -1373,7 +1373,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-matrix-theory-card",
                       "position": 1,
@@ -1510,7 +1510,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-plane-theory-card",
                       "position": 1,
@@ -1918,7 +1918,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-reaction-theory-card",
                       "position": 1,
@@ -2069,7 +2069,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-table-theory-card",
                       "position": 1,
@@ -2232,7 +2232,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-truth-table-theory-card",
                       "position": 1,
@@ -2244,7 +2244,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Tabela-verdade: Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. É apropriado quando é preciso observar o valor de uma fórmula em diferentes valorações. Na leitura, observe esta convenção: V e F por valoração. Limite importante: Use no máximo cinco variáveis por card móvel.",
+                            "text": "Tabela-verdade: Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. É apropriado quando é preciso observar o valor de uma fórmula em diferentes valorações. Na leitura, observe esta convenção: V e F por valoração. Limite importante: Use no máximo cinco variáveis por Unidade de estudo móvel.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2495,7 +2495,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-graph-theory-card",
                       "position": 1,
@@ -2783,7 +2783,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-relation-map-theory-card",
                       "position": 1,
@@ -3022,7 +3022,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-set-diagram-theory-card",
                       "position": 1,
@@ -3034,7 +3034,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Diagrama de conjuntos: Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. É apropriado quando pertencimento simultâneo, ausência de interseção ou operações entre conjuntos são parte da inferência. Na leitura, observe esta convenção: contorno por conjunto. Limite importante: No máximo três conjuntos por card.",
+                            "text": "Diagrama de conjuntos: Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. É apropriado quando pertencimento simultâneo, ausência de interseção ou operações entre conjuntos são parte da inferência. Na leitura, observe esta convenção: contorno por conjunto. Limite importante: No máximo três conjuntos por Unidade de estudo.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3248,7 +3248,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-tree-theory-card",
                       "position": 1,
@@ -3472,7 +3472,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-bpmn-process-theory-card",
                       "position": 1,
@@ -3874,7 +3874,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-call-stack-theory-card",
                       "position": 1,
@@ -4063,7 +4063,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-flow-theory-card",
                       "position": 1,
@@ -4243,7 +4243,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-state-machine-theory-card",
                       "position": 1,
@@ -4500,7 +4500,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-state-transition-table-theory-card",
                       "position": 1,
@@ -4751,7 +4751,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-terminal-session-theory-card",
                       "position": 1,
@@ -4959,7 +4959,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-database-schema-theory-card",
                       "position": 1,
@@ -5331,7 +5331,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-entity-relationship-theory-card",
                       "position": 1,
@@ -5604,7 +5604,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-software-container-theory-card",
                       "position": 1,
@@ -5892,7 +5892,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-software-system-context-theory-card",
                       "position": 1,
@@ -6097,7 +6097,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-system-internal-block-theory-card",
                       "position": 1,
@@ -6415,7 +6415,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-memory-layout-theory-card",
                       "position": 1,
@@ -6635,7 +6635,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-network-topology-theory-card",
                       "position": 1,
@@ -6880,7 +6880,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-resource-packet-layout-theory-card",
                       "position": 1,
@@ -7151,7 +7151,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-response-choice-theory-card",
                       "position": 1,
@@ -7246,7 +7246,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-response-gap-theory-card",
                       "position": 1,
@@ -7335,7 +7335,7 @@
                     "a prática usa uma modalidade declarada pelo package"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "catalog-aralearn-response-ordering-theory-card",
                       "position": 1,

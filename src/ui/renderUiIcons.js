@@ -317,7 +317,7 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "card") {
+  if (iconName === "study-unit") {
     return (
       '<svg class="' +
       classes +

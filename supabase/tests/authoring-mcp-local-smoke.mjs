@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
+import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+
 const projectUrl = String(
   process.env.SUPABASE_URL || process.env.API_URL || "http://127.0.0.1:54321"
 ).replace(/\/+$/u, "");
@@ -118,8 +120,7 @@ if (!accessToken) {
   const created = await tool("criarCurso", {
     requestId: randomUUID(),
     title: "Curso OAuth local",
-    goal: "Validar a autoria canônica pelo MCP",
-    brief: "Contexto privado do smoke."
+    objective: "Validar a autoria canônica pelo MCP"
   });
   assert.match(String(created.courseId || ""), /^[0-9a-f-]{36}$/iu);
   assert.equal(created.revision, 1);
@@ -131,22 +132,113 @@ if (!accessToken) {
   assert.equal(read.courseId, created.courseId);
   assert.equal(read.revision, 1);
 
+  const compositionRows = flattenCourseDocument({
+    contract: "aralearn.course.v1",
+    courses: [{
+      id: created.courseId,
+      title: "Curso OAuth local",
+      goal: "Validar a autoria canônica pelo MCP",
+      modules: [{
+        id: "module-mcp-smoke",
+        title: "Módulo MCP",
+        guide: {
+          goal: "Validar a escrita MCP.",
+          include: ["Curso"],
+          exclude: [],
+          notation: [],
+          avoid: []
+        },
+        lessons: [{
+          id: "lesson-mcp-smoke",
+          title: "Lição MCP",
+          guide: {
+            goal: "Validar a leitura MCP.",
+            include: ["Curso"],
+            exclude: [],
+            notation: [],
+            avoid: []
+          },
+          topics: [],
+          microsequences: [{
+            id: "microsequence-mcp-smoke",
+            title: "Microssequência MCP",
+            goal: "Paginar Unidades pelo contrato corrente.",
+            role: "explain",
+            dependsOn: [],
+            covers: [],
+            checks: [],
+            errors: [],
+            studyUnits: [1, 2].map((position) => ({
+              id: `study-unit-mcp-smoke-${position}`,
+              position,
+              title: `Unidade MCP ${position}`,
+              role: "theory",
+              content: [{
+                id: `content-mcp-smoke-${position}`,
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: `Conteúdo MCP ${position}.` }
+              }],
+              response: null,
+              feedback: [],
+              topics: [],
+              sources: []
+            }))
+          }]
+        }]
+      }]
+    }]
+  }).rows;
+  assert.equal(
+    compositionRows.some(({ entityType }) => entityType === "study_unit"),
+    true
+  );
+
   const changed = await tool("alterarCurso", {
     requestId: randomUUID(),
     courseId: created.courseId,
     expectedRevision: read.revision,
-    operation: "update_metadata",
-    title: "Curso OAuth local atualizado",
-    authoringState: {
-      version: 1,
-      parts: [{ partId: "part-mcp-smoke", status: "planned" }],
-      decisions: [],
-      mandate: null
-    }
+    operation: "commit_course_composition",
+    upserts: compositionRows,
+    deletes: []
   });
   assert.equal(changed.revision, 2);
+  assert.equal(changed.upsertedCount, 5);
 
-  const own = await tool("listarCursos", { query: "OAuth local atualizado" });
+  const firstPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "study_units",
+    expectedRevision: changed.revision,
+    scope: { kind: "course" },
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536
+  });
+  assert.equal(
+    firstPage.contract,
+    "aralearn.course-study-unit-inspection-page.v1"
+  );
+  assert.equal(firstPage.totalCount, 2);
+  assert.equal(firstPage.items[0].studyUnit.id, "study-unit-mcp-smoke-1");
+  assert.deepEqual(firstPage.nextCursor, {
+    studyUnitId: "study-unit-mcp-smoke-1"
+  });
+
+  const secondPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "study_units",
+    expectedRevision: changed.revision,
+    scope: { kind: "course" },
+    cursor: firstPage.nextCursor,
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536
+  });
+  assert.equal(secondPage.items[0].studyUnit.id, "study-unit-mcp-smoke-2");
+  assert.equal(secondPage.hasPrevious, true);
+  assert.equal(secondPage.hasMore, false);
+
+  const own = await tool("listarCursos", { query: "OAuth local" });
   assert.equal(
     own.items.some(({ courseId }) => courseId === created.courseId),
     true

@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -119,7 +119,7 @@
                     "reconhece que pessoas, sistemas, bases de dados e documentos podem ser ativos no contexto de segurança"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms01-c01",
                       "position": 1,
@@ -335,7 +335,7 @@
                     "não confunde alteração indevida com falta de acesso"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms02-c01",
                       "position": 1,
@@ -579,7 +579,7 @@
                     "relaciona não repúdio a evidência técnica válida, sem detalhamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms03-c01",
                       "position": 1,
@@ -833,7 +833,7 @@
                     "compreende que risco pode ser reduzido, mas nem sempre eliminado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms04-c01",
                       "position": 1,
@@ -1119,7 +1119,7 @@
                     "identifica backup como corretivo quando usado para restaurar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms05-c01",
                       "position": 1,
@@ -1371,7 +1371,7 @@
                     "reconhece política como controle administrativo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms06-c01",
                       "position": 1,
@@ -1613,7 +1613,7 @@
                     "reconhece que o tema será aprofundado neste tópico"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms07-c01",
                       "position": 1,
@@ -1804,7 +1804,7 @@
                     "distingue alternativas por contraste conceitual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l01-ms08-c01",
                       "position": 1,
@@ -2257,7 +2257,7 @@
                     "evita a ideia de eliminação total de risco"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms01-c01",
                       "position": 1,
@@ -2494,7 +2494,7 @@
                     "distingue padrão de procedimento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms02-c01",
                       "position": 1,
@@ -2858,7 +2858,7 @@
                     "identifica detalhe operacional excessivo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms03-c01",
                       "position": 1,
@@ -3083,7 +3083,7 @@
                     "distingue proprietário de custodiante"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms04-c01",
                       "position": 1,
@@ -3353,7 +3353,7 @@
                     "evita canal inadequado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms05-c01",
                       "position": 1,
@@ -3593,7 +3593,7 @@
                     "percebe que log não autoriza acesso"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms06-c01",
                       "position": 1,
@@ -3953,7 +3953,7 @@
                     "entende que conscientização não substitui controle técnico"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms07-c01",
                       "position": 1,
@@ -4235,7 +4235,7 @@
                     "reconhece risco residual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms08-c01",
                       "position": 1,
@@ -4520,7 +4520,7 @@
                     "reconhece continuidade como retomada de processo crítico"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms09-c01",
                       "position": 1,
@@ -4813,7 +4813,7 @@
                     "reconhece alternativa verdadeira que não responde ao comando"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l02-ms10-c01",
                       "position": 1,
@@ -5358,7 +5358,7 @@
                     "reconhece que IP ou domínio não substituem `porta` e `protocolo` em regras de rede"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms01-c01",
                       "position": 1,
@@ -5795,7 +5795,7 @@
                     "entende que Wi‑Fi é meio de acesso sem fio, não sinônimo de Internet"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms02-c01",
                       "position": 1,
@@ -6138,7 +6138,7 @@
                     "identifica onde um controle pode ser aplicado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms03-c01",
                       "position": 1,
@@ -6468,7 +6468,7 @@
                     "diferencia controle preventivo de monitoramento posterior"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms04-c01",
                       "position": 1,
@@ -6806,7 +6806,7 @@
                     "escolhe proxy ou VPN conforme a finalidade do cenário"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms05-c01",
                       "position": 1,
@@ -7125,7 +7125,7 @@
                     "entende que rede de convidados deve ser separada da rede interna"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms06-c01",
                       "position": 1,
@@ -7449,7 +7449,7 @@
                     "não trata ocultação de `SSID` ou filtragem por `MAC` como proteção robusta isolada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms07-c01",
                       "position": 1,
@@ -7780,7 +7780,7 @@
                     "reconhece VPN como proteção complementar, não solução universal"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms08-c01",
                       "position": 1,
@@ -8064,7 +8064,7 @@
                     "não confunde monitoramento com prevenção automática"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms09-c01",
                       "position": 1,
@@ -8307,7 +8307,7 @@
                     "interpreta situações contextualizadas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l03-ms10-c01",
                       "position": 1,
@@ -8818,7 +8818,7 @@
                     "separa controle preventivo, detectivo e corretivo em exemplos simples"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms01-c01",
                       "position": 1,
@@ -9193,7 +9193,7 @@
                     "associa impacto aos pilares de segurança"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms02-c01",
                       "position": 1,
@@ -9543,7 +9543,7 @@
                     "associa proteção a verificação de origem, treinamento, MFA e canal oficial"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms03-c01",
                       "position": 1,
@@ -10021,7 +10021,7 @@
                     "associa keylogger a roubo de credenciais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms04-c01",
                       "position": 1,
@@ -10436,7 +10436,7 @@
                     "reconhece que HTTPS reduz exposição de conteúdo capturado, mas não resolve qualquer ataque"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms05-c01",
                       "position": 1,
@@ -10842,7 +10842,7 @@
                     "reconhece configuração incorreta como vulnerabilidade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms06-c01",
                       "position": 1,
@@ -11300,7 +11300,7 @@
                     "reconhece botnet como conjunto controlado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms07-c01",
                       "position": 1,
@@ -11871,7 +11871,7 @@
                     "associa antimalware a detecção/bloqueio, sem garantia absoluta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms08-c01",
                       "position": 1,
@@ -12290,7 +12290,7 @@
                     "identifica o detalhe que altera a classificação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms09-c01",
                       "position": 1,
@@ -12697,7 +12697,7 @@
                     "relaciona os conceitos à criptografia e à certificação digital sem antecipar definições"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l04-ms10-c01",
                       "position": 1,
@@ -13226,7 +13226,7 @@
                     "Não confunde criptografia com hash."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms01-c01",
                       "position": 1,
@@ -13494,7 +13494,7 @@
                     "Não confunde AES com hash."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms02-c01",
                       "position": 1,
@@ -13775,7 +13775,7 @@
                     "Não inverte os papéis das chaves."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms03-c01",
                       "position": 1,
@@ -14174,7 +14174,7 @@
                     "Reconhece SHA-256 como família SHA-2."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms04-c01",
                       "position": 1,
@@ -14501,7 +14501,7 @@
                     "Diferencia assinatura digital de imagem escaneada."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms05-c01",
                       "position": 1,
@@ -14833,7 +14833,7 @@
                     "Distingue validade e revogação."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms06-c01",
                       "position": 1,
@@ -15162,7 +15162,7 @@
                     "Reconhece proteção da chave privada em token/smartcard."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms07-c01",
                       "position": 1,
@@ -15636,7 +15636,7 @@
                     "Reconhece limites dos mecanismos."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l05-ms08-c01",
                       "position": 1,
@@ -16289,7 +16289,7 @@
                     "reconhece tratamento como qualquer operação com dados pessoais, não apenas armazenamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms01-c01",
                       "position": 1,
@@ -16687,7 +16687,7 @@
                     "reconhece filiação a sindicato e vida sexual como categorias de dado pessoal sensível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms02-c01",
                       "position": 1,
@@ -17069,7 +17069,7 @@
                     "não confunde `ANPD` com encarregado interno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms03-c01",
                       "position": 1,
@@ -17463,7 +17463,7 @@
                     "reconhece as bases legais pelo nome e por situação típica"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms04-c01",
                       "position": 1,
@@ -17933,7 +17933,7 @@
                     "reconhece que compartilhamento deve ser transparente quando cabível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms05-c01",
                       "position": 1,
@@ -18309,7 +18309,7 @@
                     "reconhece privacidade desde a concepção e por padrão em nível conceitual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms06-c01",
                       "position": 1,
@@ -18726,7 +18726,7 @@
                     "não reduz conformidade a ter política escrita"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms07-c01",
                       "position": 1,
@@ -19128,7 +19128,7 @@
                     "não depende de memorização isolada sem conceito"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l06-ms08-c01",
                       "position": 1,
@@ -19629,7 +19629,7 @@
                     "Reconhece que logs apoiam auditoria, investigação e resposta."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms01-c01",
                       "position": 1,
@@ -19995,7 +19995,7 @@
                     "Identifica limitações de visibilidade."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms02-c01",
                       "position": 1,
@@ -20314,7 +20314,7 @@
                     "Distingue `IPS` de `IDS`."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms03-c01",
                       "position": 1,
@@ -20644,7 +20644,7 @@
                     "Reconhece impacto em `IDS`, `IPS` e `SIEM`."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms04-c01",
                       "position": 1,
@@ -21060,7 +21060,7 @@
                     "Reconhece que alerta precisa de análise."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms05-c01",
                       "position": 1,
@@ -21521,7 +21521,7 @@
                     "Entende que `SIEM` não substitui decisão humana."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms06-c01",
                       "position": 1,
@@ -21841,7 +21841,7 @@
                     "Reconhece que `SIEM` correlaciona eventos de várias ferramentas."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms07-c01",
                       "position": 1,
@@ -22173,7 +22173,7 @@
                     "Identifica afirmações absolutas."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l07-ms08-c01",
                       "position": 1,
@@ -22774,7 +22774,7 @@
                     "diferencia estrutura orientadora de controle técnico"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms01-c01",
                       "position": 1,
@@ -23048,7 +23048,7 @@
                     "diferencia prevenção, detecção, resposta e recuperação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms02-c01",
                       "position": 1,
@@ -23448,7 +23448,7 @@
                     "classifica proteção de dados como PR.DS"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms03-c01",
                       "position": 1,
@@ -23840,7 +23840,7 @@
                     "distingue melhorias de resposta e recuperação conforme contexto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms04-c01",
                       "position": 1,
@@ -24230,7 +24230,7 @@
                     "não trata maior Tier como obrigação universal sem contexto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms05-c01",
                       "position": 1,
@@ -24562,7 +24562,7 @@
                     "associa restauração de backup a Recover"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms06-c01",
                       "position": 1,
@@ -25006,7 +25006,7 @@
                     "identifica alternativa mais precisa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms07-c01",
                       "position": 1,
@@ -25276,7 +25276,7 @@
                     "identifica a razão do erro em alternativa plausível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms08-c01",
                       "position": 1,
@@ -25818,7 +25818,7 @@
                     "evita alternativas absolutas quando o tema exige contexto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-si-l08-ms09-c01",
                       "position": 1,
@@ -26521,7 +26521,7 @@
                     "distingue conceitos e aplica mecanismos de arquitetura e interfaces"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms01-c01",
                       "position": 1,
@@ -26838,7 +26838,7 @@
                     "distingue conceitos e aplica mecanismos de processos e threads"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms02-c01",
                       "position": 1,
@@ -27145,7 +27145,7 @@
                     "distingue conceitos e aplica mecanismos de escalonamento da cpu"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms03-c01",
                       "position": 1,
@@ -27564,7 +27564,7 @@
                     "distingue conceitos e aplica mecanismos de concorrência, sincronização e deadlock"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms04-c01",
                       "position": 1,
@@ -27973,7 +27973,7 @@
                     "distingue conceitos e aplica mecanismos de endereçamento, paginação e segmentação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms05-c01",
                       "position": 1,
@@ -28284,7 +28284,7 @@
                     "distingue conceitos e aplica mecanismos de substituição de páginas e thrashing"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms06-c01",
                       "position": 1,
@@ -28587,7 +28587,7 @@
                     "distingue conceitos e aplica mecanismos de entrada e saída"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms07-c01",
                       "position": 1,
@@ -28905,7 +28905,7 @@
                     "distingue conceitos e aplica mecanismos de arquivos, diretórios e persistência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms08-c01",
                       "position": 1,
@@ -29247,7 +29247,7 @@
                     "distingue conceitos e aplica mecanismos de revisão integrada dos recursos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms09-c01",
                       "position": 1,
@@ -29835,7 +29835,7 @@
                     "aplica boot Linux e systemd em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms01-c01",
                       "position": 1,
@@ -30165,7 +30165,7 @@
                     "aplica FHS e navegação em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms02-c01",
                       "position": 1,
@@ -30477,7 +30477,7 @@
                     "aplica usuários, grupos, sudo e PAM em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms03-c01",
                       "position": 1,
@@ -30807,7 +30807,7 @@
                     "aplica permissões, ACL e atributos em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms04-c01",
                       "position": 1,
@@ -31122,7 +31122,7 @@
                     "aplica processos, jobs e sinais em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms05-c01",
                       "position": 1,
@@ -31474,7 +31474,7 @@
                     "aplica serviços, logs e agendamento em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms06-c01",
                       "position": 1,
@@ -31810,7 +31810,7 @@
                     "aplica discos, sistemas de arquivos e LVM em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms07-c01",
                       "position": 1,
@@ -32152,7 +32152,7 @@
                     "aplica rede e diagnóstico em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms08-c01",
                       "position": 1,
@@ -32500,7 +32500,7 @@
                     "aplica pacotes Red Hat/CentOS e Debian em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms09-c01",
                       "position": 1,
@@ -32992,7 +32992,7 @@
                     "aplica instalação Windows Server 2019 e 2022 em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms01-c01",
                       "position": 1,
@@ -33279,7 +33279,7 @@
                     "aplica Server Core e Desktop Experience em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms02-c01",
                       "position": 1,
@@ -33606,7 +33606,7 @@
                     "aplica Server Manager, roles e features em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms03-c01",
                       "position": 1,
@@ -33942,7 +33942,7 @@
                     "aplica processos, serviços, eventos e desempenho em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms04-c01",
                       "position": 1,
@@ -34275,7 +34275,7 @@
                     "aplica identidades e políticas locais em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms05-c01",
                       "position": 1,
@@ -34599,7 +34599,7 @@
                     "aplica NTFS, ReFS e compartilhamentos em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms06-c01",
                       "position": 1,
@@ -34931,7 +34931,7 @@
                     "aplica discos, Storage Spaces, backup e recuperação em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms07-c01",
                       "position": 1,
@@ -35287,7 +35287,7 @@
                     "aplica DNS, DHCP e rede em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms08-c01",
                       "position": 1,
@@ -35617,7 +35617,7 @@
                     "aplica atualização, firewall, remoting e troubleshooting em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms09-c01",
                       "position": 1,
@@ -36205,7 +36205,7 @@
                     "aplica modelo LDAP e DIT em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms01-c01",
                       "position": 1,
@@ -36549,7 +36549,7 @@
                     "aplica operações, filtros e LDIF em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms02-c01",
                       "position": 1,
@@ -36866,7 +36866,7 @@
                     "aplica segurança LDAP em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms03-c01",
                       "position": 1,
@@ -37242,7 +37242,7 @@
                     "aplica florestas, árvores, domínios, OUs e sites em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms04-c01",
                       "position": 1,
@@ -37654,7 +37654,7 @@
                     "aplica controladores, DNS e replicação em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms05-c01",
                       "position": 1,
@@ -38063,7 +38063,7 @@
                     "aplica objetos, grupos e delegação em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms06-c01",
                       "position": 1,
@@ -38428,7 +38428,7 @@
                     "aplica GPO, trusts e FSMO em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms07-c01",
                       "position": 1,
@@ -38814,7 +38814,7 @@
                     "aplica backup, recuperação e interoperabilidade Linux em cenário administrativo delimitado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p04-ms08-c01",
                       "position": 1,
@@ -39307,7 +39307,7 @@
                     "distingue elementos sintáticos e estados de execução"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms01-c01",
                       "position": 1,
@@ -39640,7 +39640,7 @@
                     "segue o tipo e a propriedade ao longo do pipeline"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms02-c01",
                       "position": 1,
@@ -39989,7 +39989,7 @@
                     "distingue comando, provider drive e módulo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms03-c01",
                       "position": 1,
@@ -40359,7 +40359,7 @@
                     "separa tratamento de erro de etapas de remoting"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms04-c01",
                       "position": 1,
@@ -40706,7 +40706,7 @@
                     "prevê o efeito de quoting e ordem de redirecionamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms05-c01",
                       "position": 1,
@@ -41002,7 +41002,7 @@
                     "usa operador e status compatíveis com o caso"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms06-c01",
                       "position": 1,
@@ -41329,7 +41329,7 @@
                     "preserva estado, erro, limpeza e representação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms07-c01",
                       "position": 1,
@@ -41829,7 +41829,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms01-c01",
                       "position": 1,
@@ -42244,7 +42244,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms02-c01",
                       "position": 1,
@@ -42585,7 +42585,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms03-c01",
                       "position": 1,
@@ -42883,7 +42883,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms04-c01",
                       "position": 1,
@@ -43239,7 +43239,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms05-c01",
                       "position": 1,
@@ -43586,7 +43586,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms06-c01",
                       "position": 1,
@@ -43940,7 +43940,7 @@
                     "distingue a operação, o estado e a camada afetada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms07-c01",
                       "position": 1,
@@ -44444,7 +44444,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms01-c01",
                       "position": 1,
@@ -44819,7 +44819,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms02-c01",
                       "position": 1,
@@ -45153,7 +45153,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms03-c01",
                       "position": 1,
@@ -45526,7 +45526,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms04-c01",
                       "position": 1,
@@ -45839,7 +45839,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms05-c01",
                       "position": 1,
@@ -46176,7 +46176,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms06-c01",
                       "position": 1,
@@ -46443,7 +46443,7 @@
                     "distingue objeto, camada, estado e limite operacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms07-c01",
                       "position": 1,
@@ -46984,7 +46984,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms01-c01",
                       "position": 1,
@@ -47359,7 +47359,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms02-c01",
                       "position": 1,
@@ -47666,7 +47666,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms03-c01",
                       "position": 1,
@@ -48022,7 +48022,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms04-c01",
                       "position": 1,
@@ -48369,7 +48369,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms05-c01",
                       "position": 1,
@@ -48698,7 +48698,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms06-c01",
                       "position": 1,
@@ -49027,7 +49027,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms07-c01",
                       "position": 1,
@@ -49397,7 +49397,7 @@
                     "distingue objeto, camada, estado desejado e evidência observada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms08-c01",
                       "position": 1,
@@ -50072,7 +50072,7 @@
                     "distingue meio guiado e não guiado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l01-ms01-c01",
                       "position": 1,
@@ -50480,7 +50480,7 @@
                     "separa alcance de meio de transmissão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l01-ms02-c01",
                       "position": 1,
@@ -50951,7 +50951,7 @@
                     "distingue malha parcial e completa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l01-ms03-c01",
                       "position": 1,
@@ -51696,7 +51696,7 @@
                     "justifica pelo dado decisivo do cenário"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l01-ms04-c01",
                       "position": 1,
@@ -52205,7 +52205,7 @@
                     "separa topologia de função do equipamento"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l01-ms05-c01",
                       "position": 1,
@@ -52758,7 +52758,7 @@
                     "não atribui filtragem ou aprendizado ao hub"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l02-ms01-c01",
                       "position": 1,
@@ -53136,7 +53136,7 @@
                     "separa colisão de broadcast"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l02-ms02-c01",
                       "position": 1,
@@ -53669,7 +53669,7 @@
                     "não reduz roteador a repetidor"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l02-ms03-c01",
                       "position": 1,
@@ -54134,7 +54134,7 @@
                     "distingue acesso e trunk"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l02-ms04-c01",
                       "position": 1,
@@ -54676,7 +54676,7 @@
                     "escolhe dispositivo e segmentação coerentes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l02-ms05-c01",
                       "position": 1,
@@ -55220,7 +55220,7 @@
                     "separa Rede de Transporte"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l03-ms01-c01",
                       "position": 1,
@@ -55699,7 +55699,7 @@
                     "não confunde encapsulamento com criptografia"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l03-ms02-c01",
                       "position": 1,
@@ -56183,7 +56183,7 @@
                     "distingue enlace local de encaminhamento entre redes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l03-ms03-c01",
                       "position": 1,
@@ -56685,7 +56685,7 @@
                     "não força equivalência com protocolos TCP/IP"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l03-ms04-c01",
                       "position": 1,
@@ -57145,7 +57145,7 @@
                     "interpreta taxas como limites teóricos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l03-ms05-c01",
                       "position": 1,
@@ -57810,7 +57810,7 @@
                     "distingue entrega no enlace de encaminhamento entre redes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l04-ms01-c01",
                       "position": 1,
@@ -58253,7 +58253,7 @@
                     "distingue endereço, prefixo e gateway"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l04-ms02-c01",
                       "position": 1,
@@ -58654,7 +58654,7 @@
                     "compara o prefixo antes de decidir"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l04-ms03-c01",
                       "position": 1,
@@ -59090,7 +59090,7 @@
                     "valida e abrevia representações IPv6"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l04-ms04-c01",
                       "position": 1,
@@ -59487,7 +59487,7 @@
                     "escolhe a rota mais específica correspondente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l04-ms05-c01",
                       "position": 1,
@@ -59999,7 +59999,7 @@
                     "seleciona o modo geral e preserva as funções das camadas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l04-ms06-c01",
                       "position": 1,
@@ -60562,7 +60562,7 @@
                     "seleciona o transporte coerente com o requisito"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l05-ms01-tcp-udp-c01",
                       "position": 1,
@@ -61022,7 +61022,7 @@
                     "identifica fluxos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l05-ms02-portas-c01",
                       "position": 1,
@@ -61450,7 +61450,7 @@
                     "seleciona DNS ou DHCP pela função"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l05-ms03-dns-dhcp-c01",
                       "position": 1,
@@ -61896,7 +61896,7 @@
                     "seleciona protocolo pela operação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l05-ms04-ftp-ssh-rdp-c01",
                       "position": 1,
@@ -62364,7 +62364,7 @@
                     "seleciona protocolo pela etapa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l05-ms05-correio-c01",
                       "position": 1,
@@ -62814,7 +62814,7 @@
                     "distingue semântica e proteção"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l05-ms06-web-tls-revisao-c01",
                       "position": 1,
@@ -63353,7 +63353,7 @@
                     "reconhece necessidades de observação e alerta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l06-ms01-modelo-gerencia-c01",
                       "position": 1,
@@ -64159,7 +64159,7 @@
                     "distingue Trap de Inform"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l06-ms02-snmp-c01",
                       "position": 1,
@@ -64880,7 +64880,7 @@
                     "seleciona grupo pela função"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l06-ms03-rmon-c01",
                       "position": 1,
@@ -65631,7 +65631,7 @@
                     "integra gerente, agente, MIB e probe"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l06-ms04-contraste-revisao-c01",
                       "position": 1,
@@ -66487,7 +66487,7 @@
                     "Distinguir amostragem, quantização, codificação e compressão em nível conceitual."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l07-ms01-telefonia-digital-c01",
                       "position": 1,
@@ -67288,7 +67288,7 @@
                     "Reconhecer voz empacotada em redes IP e separar técnica, mídia e terminal."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l07-ms02-voip-c01",
                       "position": 1,
@@ -68099,7 +68099,7 @@
                     "Relacionar terminais, controle de chamadas, infraestrutura IP e gateways em um serviço de telefonia."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l07-ms03-telefonia-ip-c01",
                       "position": 1,
@@ -68935,7 +68935,7 @@
                     "Reconhecer integração de voz, vídeo, presença, mensagens e colaboração e revisar os contrastes da lição."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l07-ms04-comunicacoes-unificadas-c01",
                       "position": 1,
@@ -69905,7 +69905,7 @@
                     "Distinguir coordenação de sessão, transporte de mídia e requisitos de tempo real em videoconferência."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l08-ms01-videoconferencia-c01",
                       "position": 1,
@@ -70477,7 +70477,7 @@
                     "Reconhecer SIP como sinalização de sessão e relacionar métodos básicos às respectivas funções."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l08-ms02-sip-c01",
                       "position": 1,
@@ -71036,7 +71036,7 @@
                     "Reconhecer H.323 como recomendação de sistema multimídia e distinguir seus componentes de codecs e protocolos isolados."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l08-ms03-h323-c01",
                       "position": 1,
@@ -71608,7 +71608,7 @@
                     "Diagnosticar atraso, variação de atraso, perda e capacidade e reconhecer mecanismos conceituais de classificação e priorização."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l08-ms04-qos-c01",
                       "position": 1,
@@ -72154,7 +72154,7 @@
                     "Selecionar protocolo, componente ou mecanismo coerente em cenários integrados de videoconferência."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "dataprev-redes-l08-ms05-revisao-integrada-c01",
                       "position": 1,

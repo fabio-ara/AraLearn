@@ -20,7 +20,7 @@ function parseStudyUnitJson(source) {
     throw new AuthoringApiError(
       422,
       "invalid_study_unit_json",
-      "cardJson precisa conter um objeto JSON válido."
+      "studyUnitJson precisa conter um objeto JSON válido."
     );
   }
 }
@@ -29,7 +29,7 @@ function resourceLibraryResult(args) {
   const {
     operation,
     packages = [],
-    cardJson = null,
+    studyUnitJson = null,
     query = "",
     intent = "",
     ...facets
@@ -50,15 +50,17 @@ function resourceLibraryResult(args) {
       );
     }
     result = RESOURCE_CATALOG.contracts(packages);
-  } else if (operation === "validate_card") {
-    result = RESOURCE_CATALOG.validateCard(parseStudyUnitJson(cardJson));
+  } else if (operation === "validate_study_unit") {
+    result = RESOURCE_CATALOG.validateStudyUnit(parseStudyUnitJson(studyUnitJson));
   } else if (operation === "audit_representation") {
     result = RESOURCE_CATALOG.auditRepresentation({
-      card: parseStudyUnitJson(cardJson),
+      studyUnit: parseStudyUnitJson(studyUnitJson),
       intent: { ...facets, query: intent || query }
     });
-  } else if (operation === "preview_card") {
-    result = RESOURCE_CATALOG.previewDescriptor(parseStudyUnitJson(cardJson));
+  } else if (operation === "preview_study_unit") {
+    result = RESOURCE_CATALOG.previewStudyUnitDescriptor(
+      parseStudyUnitJson(studyUnitJson)
+    );
   } else {
     throw new AuthoringApiError(
       422,

@@ -1,4 +1,4 @@
-import { validateCardEnvelope } from "../kernel/cardEnvelope.js";
+import { validateStudyUnitEnvelope } from "../kernel/studyUnitEnvelope.js";
 import { createPackageRegistry } from "../kernel/packageRegistry.js";
 import { RESOURCE_PACKAGE_DEFINITIONS } from "../packages/generated.js";
 import {
@@ -253,14 +253,14 @@ function normalizedIntent(raw = {}) {
   if (slot && !new Set(["content", "response", "feedback"]).has(slot)) {
     throw new RangeError("slot desconhecido.");
   }
-  const cardRole = String(raw.cardRole || "").trim();
-  if (cardRole && !new Set(["theory", "practice"]).has(cardRole)) {
-    throw new RangeError("cardRole precisa ser theory ou practice.");
+  const studyUnitRole = String(raw.studyUnitRole || "").trim();
+  if (studyUnitRole && !new Set(["theory", "practice"]).has(studyUnitRole)) {
+    throw new RangeError("studyUnitRole precisa ser theory ou practice.");
   }
   return {
     query: String(raw.query || "").trim(),
     slot,
-    cardRole,
+    studyUnitRole,
     disciplineIds: validatedFacetIds("disciplineIds", raw.disciplineIds),
     structureIds: validatedFacetIds("structureIds", raw.structureIds),
     taskOperationIds: validatedFacetIds("taskOperationIds", raw.taskOperationIds),
@@ -274,7 +274,7 @@ function normalizedIntent(raw = {}) {
 
 function effectiveSlot(intent) {
   if (intent.slot) return intent.slot;
-  return intent.cardRole === "theory" ? "content" : "";
+  return intent.studyUnitRole === "theory" ? "content" : "";
 }
 
 function rankedCandidates(profiles, rawIntent) {
@@ -315,11 +315,11 @@ function coverage(candidates, intent) {
   };
 }
 
-function allCardInstances(card) {
+function allStudyUnitInstances(studyUnit) {
   return [
-    ...list(card?.content).map((instance, index) => ({ instance, slot: "content", index })),
-    ...(card?.response ? [{ instance: card.response, slot: "response", index: 0 }] : []),
-    ...list(card?.feedback).map((instance, index) => ({ instance, slot: "feedback", index }))
+    ...list(studyUnit?.content).map((instance, index) => ({ instance, slot: "content", index })),
+    ...(studyUnit?.response ? [{ instance: studyUnit.response, slot: "response", index: 0 }] : []),
+    ...list(studyUnit?.feedback).map((instance, index) => ({ instance, slot: "feedback", index }))
   ];
 }
 
@@ -444,14 +444,14 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function validateCard(card) {
-    const result = validateCardEnvelope(card, registry, "$.card");
+  function validateStudyUnit(studyUnit) {
+    const result = validateStudyUnitEnvelope(studyUnit, registry, "$.studyUnit");
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
       valid: result.valid,
       errors: [...result.errors],
-      composition: allCardInstances(card).map(({ instance, slot, index }) => ({
+      composition: allStudyUnitInstances(studyUnit).map(({ instance, slot, index }) => ({
         slot,
         index,
         instanceId: String(instance?.id || ""),
@@ -461,13 +461,13 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function auditRepresentation({ card, intent = {} } = {}) {
-    const structural = validateCard(card);
+  function auditRepresentation({ studyUnit, intent = {} } = {}) {
+    const structural = validateStudyUnit(studyUnit);
     const normalizedAuditIntent = normalizedIntent({ ...intent, limit: 32 });
-    const contentProfiles = list(card?.content).map((instance) => (
+    const contentProfiles = list(studyUnit?.content).map((instance) => (
       getProfile(instance?.package, instance?.version)
     )).filter(Boolean);
-    const selections = allCardInstances(card).map(({ instance, slot, index }) => {
+    const selections = allStudyUnitInstances(studyUnit).map(({ instance, slot, index }) => {
       const identity = {
         slot,
         index,
@@ -521,9 +521,9 @@ export function createResourceCatalog(registry) {
               : missingModes.length
                 ? "A operação de resposta não corresponde à modalidade de prática solicitada."
                 : !compatible
-                  ? "A resposta não está declarada como compatível com as representações de conteúdo do card."
+                  ? "A resposta não está declarada como compatível com as representações de conteúdo da Unidade de estudo."
                   : hasContent
-                    ? "A operação de resposta é compatível com ao menos uma representação de conteúdo do card."
+                    ? "A operação de resposta é compatível com ao menos uma representação de conteúdo da Unidade de estudo."
                     : "A operação de resposta é válida, mas não há conteúdo representacional para confirmar compatibilidade.",
           matched: [
             ...compatibleContent.map(({ packageId }) => `compatibility:${packageId}`),
@@ -567,13 +567,13 @@ export function createResourceCatalog(registry) {
       : "substitute";
     const warnings = [];
     if (!structural.valid) {
-      warnings.push("O card é estruturalmente inválido; corrija os contratos antes de avaliar o encaixe representacional.");
+      warnings.push("A Unidade de estudo é estruturalmente inválida; corrija os contratos antes de avaliar o encaixe representacional.");
     }
-    if (list(card?.content).length > 2) {
-      warnings.push("O card coordena mais de duas representações de conteúdo; confirme se a coordenação é parte da tarefa.");
+    if (list(studyUnit?.content).length > 2) {
+      warnings.push("A Unidade de estudo coordena mais de duas representações de conteúdo; confirme se a coordenação é parte da tarefa.");
     }
-    if (JSON.stringify(card || {}).length > 24_000) {
-      warnings.push("O card é denso para inspeção móvel; avalie recorte ou decomposição.");
+    if (JSON.stringify(studyUnit || {}).length > 24_000) {
+      warnings.push("A Unidade de estudo é densa para inspeção móvel; avalie recorte ou decomposição.");
     }
     selections.filter(({ fit }) => fit === "substitute").forEach(({ packageId }) => {
       const profile = getProfile(packageId);
@@ -581,7 +581,7 @@ export function createResourceCatalog(registry) {
     });
     let accessibleText = "";
     if (structural.valid) {
-      accessibleText = allCardInstances(card).map(({ instance, slot }) => (
+      accessibleText = allStudyUnitInstances(studyUnit).map(({ instance, slot }) => (
         registry.accessibleText(instance, slot)
       )).filter(Boolean).join(" ");
     }
@@ -600,8 +600,8 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function previewDescriptor(card) {
-    const structural = validateCard(card);
+  function previewStudyUnitDescriptor(studyUnit) {
+    const structural = validateStudyUnit(studyUnit);
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
@@ -799,17 +799,17 @@ export function createResourceCatalog(registry) {
       };
     }
 
-    function availabilityErrors(card) {
-      return allCardInstances(card).flatMap(({ instance, slot, index }) => {
+    function availabilityErrors(studyUnit) {
+      return allStudyUnitInstances(studyUnit).flatMap(({ instance, slot, index }) => {
         const packageId = String(instance?.package || "");
         const version = String(instance?.version || "");
         const profile = restrictedProfile(packageId, version);
         if (!profile) {
-          return [`$.card.${slot}[${index}]: ${packageId}@${version} não pertence ao ResourceSet efetivo.`];
+          return [`$.studyUnit.${slot}[${index}]: ${packageId}@${version} não pertence ao ResourceSet efetivo.`];
         }
         if (!authorizeComposition) return [];
         const result = authorizeComposition({
-          cardRole: String(card?.role || ""),
+          studyUnitRole: String(studyUnit?.role || ""),
           packageRef: { packageId, version },
           profile,
           slot
@@ -821,20 +821,20 @@ export function createResourceCatalog(registry) {
       });
     }
 
-    function restrictedValidateCard(card) {
-      const result = validateCard(card);
-      const errors = [...result.errors, ...availabilityErrors(card)];
+    function restrictedValidateStudyUnit(studyUnit) {
+      const result = validateStudyUnit(studyUnit);
+      const errors = [...result.errors, ...availabilityErrors(studyUnit)];
       return { ...result, valid: errors.length === 0, errors };
     }
 
     function restrictedAuditRepresentation(args = {}) {
       const result = auditRepresentation(args);
-      const structural = restrictedValidateCard(args.card);
+      const structural = restrictedValidateStudyUnit(args.studyUnit);
       const selections = result.selections.map((selection) => {
         if (!authorizeComposition) return selection;
         const profile = restrictedProfile(selection.packageId, selection.version);
         const authorization = profile ? authorizeComposition({
-          cardRole: String(args.card?.role || ""),
+          studyUnitRole: String(args.studyUnit?.role || ""),
           fit: selection.fit,
           limitation: selection.reason,
           packageRef: {
@@ -875,9 +875,9 @@ export function createResourceCatalog(registry) {
       return { ...result, structural, overallFit, selections, warnings };
     }
 
-    function restrictedPreviewDescriptor(card) {
-      const result = previewDescriptor(card);
-      return { ...result, structural: restrictedValidateCard(card) };
+    function restrictedPreviewStudyUnitDescriptor(studyUnit) {
+      const result = previewStudyUnitDescriptor(studyUnit);
+      return { ...result, structural: restrictedValidateStudyUnit(studyUnit) };
     }
 
     return Object.freeze({
@@ -890,9 +890,9 @@ export function createResourceCatalog(registry) {
       assessCandidate: restrictedAssessCandidate,
       inspect: restrictedInspect,
       contracts: restrictedContracts,
-      validateCard: restrictedValidateCard,
+      validateStudyUnit: restrictedValidateStudyUnit,
       auditRepresentation: restrictedAuditRepresentation,
-      previewDescriptor: restrictedPreviewDescriptor
+      previewStudyUnitDescriptor: restrictedPreviewStudyUnitDescriptor
     });
   }
 
@@ -908,9 +908,9 @@ export function createResourceCatalog(registry) {
     assessCandidate,
     inspect,
     contracts,
-    validateCard,
+    validateStudyUnit,
     auditRepresentation,
-    previewDescriptor,
+    previewStudyUnitDescriptor,
     restrict
   });
 }

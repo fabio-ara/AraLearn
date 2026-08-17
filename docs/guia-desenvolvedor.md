@@ -42,7 +42,7 @@ Leia antes de alterar:
 - [Arquitetura](arquitetura.md);
 - [Persistência e sincronização](persistencia-relacional.md);
 - [Contratos públicos](aralearn-contract.md);
-- [Packages de card](recursos-de-card.md);
+- [Componentes didáticos e packages](componentes-didaticos.md);
 - [Supabase](supabase.md);
 - [Sistema visual](sistema-visual.md).
 
@@ -164,7 +164,7 @@ Não use um normalizador para esconder documento inválido. Normalização resol
 
 ## 6. Adicionar ou revisar package
 
-Um package nasce de uma necessidade de representação, não de uma variação estética. Siga o processo de [Packages de card](recursos-de-card.md): justificativa, convenção acadêmica, contrato de alto nível, renderer, acessibilidade, edição e práticas internas.
+Um package nasce de uma necessidade de representação, não de uma variação estética. Siga o processo de [Componentes didáticos e packages](componentes-didaticos.md): justificativa, convenção acadêmica, contrato de alto nível, renderer, acessibilidade, edição e práticas internas.
 
 Comandos principais:
 

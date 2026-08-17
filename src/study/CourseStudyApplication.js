@@ -1,7 +1,10 @@
 import { getCorrectExerciseOptionIds } from "../core/exerciseOptions.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
-import { getPackageFeedbackEntry, getPackageResponseEntry } from "../render/renderPackageCard.js";
-import { renderCardCommentOverlay } from "../ui/renderCardCommentOverlay.js";
+import {
+  getPackageStudyUnitFeedbackEntry,
+  getPackageStudyUnitResponseEntry
+} from "../render/renderPackageStudyUnit.js";
+import { renderStudyUnitCommentOverlay } from "../ui/renderStudyUnitCommentOverlay.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import {
@@ -190,14 +193,14 @@ export function createCourseStudyApplication({
       state.selection.lessonId,
       state.selection.microsequenceId
     );
-    const studyUnits = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+    const studyUnits = Array.isArray(microsequence?.studyUnits) ? microsequence.studyUnits : [];
     const studyUnit = studyUnits.find((unit) => unit.id === state.selection.studyUnitId) ||
       studyUnits[state.selection.studyUnitIndex] || studyUnits[0] || null;
     return { course, moduleValue, lesson, microsequence, studyUnits, studyUnit };
   }
 
   function currentResponseEntry(studyUnit = context().studyUnit) {
-    return getPackageResponseEntry(studyUnit, studyUnitPathKey(state.selection));
+    return getPackageStudyUnitResponseEntry(studyUnit, studyUnitPathKey(state.selection));
   }
 
   function ensureResponseState(entry = currentResponseEntry()) {
@@ -238,7 +241,7 @@ export function createCourseStudyApplication({
     return { selector: active.tagName.toLowerCase(), attributes };
   }
 
-  function packageCardOptions() {
+  function packageStudyUnitOptions() {
     const entry = currentResponseEntry();
     const responseState = ensureResponseState(entry);
     return {
@@ -251,7 +254,7 @@ export function createCourseStudyApplication({
     };
   }
 
-  function resetCardInteraction() {
+  function resetStudyUnitInteraction() {
     const entry = currentResponseEntry();
     if (entry && state.responseByBlockKey[entry.blockKey]) {
       state.responseByBlockKey[entry.blockKey].feedback = null;
@@ -270,7 +273,7 @@ export function createCourseStudyApplication({
     );
     if (!selection) return false;
     state.selection = selection;
-    resetCardInteraction();
+    resetStudyUnitInteraction();
     return true;
   }
 
@@ -343,7 +346,7 @@ export function createCourseStudyApplication({
     };
     state.view = "microsequence";
     state.microsequenceMode = "play";
-    resetCardInteraction();
+    resetStudyUnitInteraction();
     render({ preserveFocus: false });
     return true;
   }
@@ -474,14 +477,14 @@ export function createCourseStudyApplication({
     return exercise.feedback === "correct";
   }
 
-  async function stepCard(delta) {
+  async function stepStudyUnit(delta) {
     const current = context();
     if (!current.lesson) return false;
     if (delta > 0 && !validateResponse({ rerender: false })) {
       render();
       return false;
     }
-    if (delta > 0 && getPackageFeedbackEntry(current.studyUnit) && !state.feedbackOpen) {
+    if (delta > 0 && getPackageStudyUnitFeedbackEntry(current.studyUnit) && !state.feedbackOpen) {
       state.feedbackOpen = true;
       render();
       return true;
@@ -673,12 +676,12 @@ export function createCourseStudyApplication({
         Number(node.getAttribute("data-study-unit-index") || 0),
         "play"
       )));
-    root.querySelector("[data-action='previous-study-unit']")?.addEventListener("click", () => void stepCard(-1));
+    root.querySelector("[data-action='previous-study-unit']")?.addEventListener("click", () => void stepStudyUnit(-1));
     root.querySelector("[data-action='next-study-unit']")?.addEventListener("click", (event) => {
-      runForwardStudyInteraction(event, () => void stepCard(1));
+      runForwardStudyInteraction(event, () => void stepStudyUnit(1));
     });
     root.querySelector("[data-action='continue-feedback']")?.addEventListener("click", (event) => {
-      runForwardStudyInteraction(event, () => void stepCard(1));
+      runForwardStudyInteraction(event, () => void stepStudyUnit(1));
     });
     root.querySelector("[data-action='open-observation']")?.addEventListener("click", openComment);
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
@@ -809,10 +812,10 @@ export function createCourseStudyApplication({
       render();
     });
 
-    root.querySelector("[data-field='card-comment']")?.addEventListener("input", (event) => {
+    root.querySelector("[data-field='study-unit-comment']")?.addEventListener("input", (event) => {
       state.commentDraft.body = event.currentTarget.value;
     });
-    root.querySelectorAll("[data-field='card-comment-category']").forEach((node) =>
+    root.querySelectorAll("[data-field='study-unit-comment-category']").forEach((node) =>
       node.addEventListener("change", () => { state.commentDraft.category = node.value; }));
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => {
       state.commentOpen = false;
@@ -866,11 +869,11 @@ export function createCourseStudyApplication({
       reviewHasMore: repository.hasMoreReviewItems?.() === true,
       runtimeStatus,
       coursePermissionsById: byCourseId,
-      packageCardOptions: packageCardOptions(),
+      packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
       hasObservation: Boolean(reference && repository.loadCommentForPath(reference)),
       markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference))
-    }) + (state.commentOpen ? renderCardCommentOverlay({
+    }) + (state.commentOpen ? renderStudyUnitCommentOverlay({
       draft: state.commentDraft,
       exists: state.commentExists,
       error: state.commentError,
@@ -923,7 +926,7 @@ export function createCourseStudyApplication({
       state.selection = retained.selection;
       state.view = retained.view;
       if (JSON.stringify(previousStudyUnit) !== JSON.stringify(context().studyUnit)) {
-        resetCardInteraction();
+        resetStudyUnitInteraction();
       }
       render();
     },
@@ -957,7 +960,7 @@ export function createCourseStudyApplication({
         state.connectionOffline =
           repository.loadRuntimeStatus?.(state.selection.courseId)?.offline === true;
         if (JSON.stringify(previousStudyUnit) !== JSON.stringify(context().studyUnit)) {
-          resetCardInteraction();
+          resetStudyUnitInteraction();
           state.commentOpen = false;
           state.commentSaving = false;
           state.commentError = "";

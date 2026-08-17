@@ -68,6 +68,45 @@ function normalizedRelative(filePath) {
 const forbiddenModule = /(?:lessonEditorApp|HomeTrailsController|homeTrailProjection|contextualAuthoringSync|integratedCourseSync|relationalSchema|RelationalProjectRepository|TrailPersonalStateRepository)/u;
 const forbiddenRuntimeSymbol = /\b(?:courseKey|workspaceId|trailItemId|homeTrails|accessLevel|LearningSpaces|moduleKey|lessonKey|microsequenceKey|cardKey|completedCardKeys|completedCardIds|cursorCardId|editorProgress)\b/u;
 const forbiddenPublishedSurface = /(?:remote-(?:library|workspace)|learning-spaces|authoring-workspace|workspace-authoring|home-trails|aralearn:open-library|\b(?:Workspace|Trilhas?|Coleções?)\b)/iu;
+const forbiddenStudyUnitSemanticPath = /(?:cardEnvelope|renderPackageCard|renderCardCommentOverlay)\.js$/u;
+const forbiddenStudyUnitSemanticSource = new RegExp([
+  "aralearn\\.library\\.v1",
+  "(?:\\.|\\?\\.)cards\\b",
+  "\\bcards\\s*:",
+  "\\bentityType\\s*[:=]\\s*[\"']card[\"']",
+  "\\b(?:cardId|cardIds|cardIndex|cardCount|cardJson|cardResponse)\\b",
+  "\\b(?:validateCard(?:Envelope|Relations|EntityContent)?|normalizeCardEnvelope|renderCardEnvelope|cloneCardEnvelope|prepareCardForSemantics)\\b",
+  "\\b(?:renderPackageCard\\w*|getPackageCard\\w*|readPackageCardText|packageCardOptions|resetCardInteraction|stepCard|renderCardCommentOverlay)\\b",
+  "(?:renderUiIcon\\(|detailIcon\\s*:)\\s*[\"']card[\"']",
+  "data-(?:card-(?:id|index|authoring-focus|answer-dock)|field=[\"']card-comment)",
+  "toggle-card-assistance-resource"
+].join("|"), "u");
+
+function studyUnitSemanticResidue(source) {
+  return source.match(forbiddenStudyUnitSemanticSource)?.[0] || "";
+}
+
+test("o scanner semântico distingue contrato de Unidade de estudo de classes visuais genéricas", () => {
+  for (const source of [
+    "microsequence.cards",
+    "const value = { cards: [] };",
+    'const row = { entityType: "card" };',
+    "const cardId = input.cardId;",
+    "validateCardEntityContent(entityType, entity);",
+    'renderUiIcon("card");',
+    'button.dataset.action = "toggle-card-assistance-resource";',
+    'const contract = "aralearn.library.v1";'
+  ]) {
+    assert.notEqual(studyUnitSemanticResidue(source), "", source);
+  }
+  for (const source of [
+    '<article class="clean-card card-title runtime-card-sheet resource-test-card"></article>',
+    'const selector = ".card-sheet-content";',
+    'const cardinality = reference.cardinality;'
+  ]) {
+    assert.equal(studyUnitSemanticResidue(source), "", source);
+  }
+});
 
 test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", async () => {
   const graph = await importGraph(mainPath);
@@ -136,12 +175,22 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   }
   for (const relativePath of relativeModules) {
     assert.doesNotMatch(relativePath, forbiddenModule, `${relativePath} pertence ao runtime substituído.`);
+    assert.doesNotMatch(
+      relativePath,
+      forbiddenStudyUnitSemanticPath,
+      `${relativePath} conserva arquivo semântico substituído de Unidade de estudo.`
+    );
   }
   for (const [filePath, source] of graph) {
     assert.doesNotMatch(
       source,
       forbiddenRuntimeSymbol,
       `${normalizedRelative(filePath)} conserva identidade ou recipiente substituído.`
+    );
+    assert.equal(
+      studyUnitSemanticResidue(source),
+      "",
+      `${normalizedRelative(filePath)} conserva símbolo semântico substituído de Unidade de estudo.`
     );
   }
   for (const filePath of [stylesPath, courseAuthoringStylesPath, oauthConsentPath]) {
@@ -176,6 +225,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   for (const asset of stagedSourceAssets) {
     const source = await readFile(path.join(pagesRoot, asset.slice(2)), "utf8");
     assert.doesNotMatch(source, forbiddenRuntimeSymbol, `${asset} conserva símbolo substituído.`);
+    assert.equal(
+      studyUnitSemanticResidue(source),
+      "",
+      `${asset} conserva símbolo semântico substituído de Unidade de estudo.`
+    );
   }
   for (const asset of ["./styles.css", "./course-authoring.css", "./src/ui/OAuthAuthorizationConsent.js"]) {
     assert.equal(assets.includes(asset), true, `${asset} ausente do artefato web.`);

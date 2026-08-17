@@ -247,6 +247,45 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
   assert.equal(calls[4].body.materializationCommand.operation, "start");
 });
 
+test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", async () => {
+  const calls = [];
+  const { client } = clientWithFetch(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return jsonResponse({ ok: true, data: { items: [] } });
+  });
+
+  await client.loadAuthoringOutline(COURSE_ID);
+  await client.loadAuthoringStudyUnits(COURSE_ID, {
+    expectedRevision: 9,
+    scope: { kind: "module", id: "module-a" },
+    anchorStudyUnitId: "unit-a",
+    direction: "backward",
+    limit: 12,
+    maxBytes: 262144
+  });
+
+  assert.deepEqual(calls.map(({ body }) => body.view), ["outline", "study_units"]);
+  assert.deepEqual(calls[1].body, {
+    courseId: COURSE_ID,
+    view: "study_units",
+    expectedRevision: 9,
+    scope: { kind: "module", id: "module-a" },
+    anchorStudyUnitId: "unit-a",
+    cursor: null,
+    direction: "backward",
+    limit: 12,
+    maxBytes: 262144
+  });
+  assert.throws(
+    () => client.loadAuthoringStudyUnits(COURSE_ID, {
+      expectedRevision: 9,
+      anchorStudyUnitId: "unit-a",
+      cursor: { studyUnitId: "unit-b" }
+    }),
+    /Paginação da inspeção inválida/u
+  );
+});
+
 test("cliente bloqueia controles no cabeçalho antes de abrir a rede", () => {
   let calls = 0;
   const { client } = clientWithFetch(async () => {

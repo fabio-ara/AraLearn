@@ -77,7 +77,7 @@ Git.
 | `protocolo-avaliacao-artefato.md` | reformular | manter neste caminho como protocolo de avaliação, sem apresentar intenção como resultado |
 | `quadro-teorico.md` | reformular | manter neste caminho e atualizar somente com construtos e relações justificáveis |
 | `README.md` | reformular | manter neste caminho apenas como mapa de percursos, sem repetir capítulos |
-| `recursos-de-card.md` | reformular | manter neste caminho após validar a fronteira entre núcleo, pacotes e interface de autoria |
+| `componentes-didaticos.md` | conservar | contrato corrente da fronteira entre núcleo, packages e interface de autoria |
 | `referencias.md` | gerado | reconstruir de `referencias.bib` com `npm run docs:references` |
 | `revisao-de-literatura.md` | reformular | manter neste caminho como síntese narrativa com protocolo e registro prospectivos |
 | `roteiro-aceitacao-humana-autoria.md` | reformular | manter neste caminho como roteiro reutilizável, sem dependência de uma tarefa numerada |

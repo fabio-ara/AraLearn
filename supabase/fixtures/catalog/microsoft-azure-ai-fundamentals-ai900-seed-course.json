@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -140,7 +140,7 @@
                     "Identifica Foundry como camada atual de implementação leve"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms01-c01-ai900-base-ai901-rota",
                       "position": 1,
@@ -629,7 +629,7 @@
                     "Reconhece predição, percepção, linguagem, conversação, busca ou geração"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms02-c01-workload-definicao",
                       "position": 1,
@@ -1337,7 +1337,7 @@
                     "Distingue serviço por entrada, saída e necessidade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms03-c01-servico-como-oferta",
                       "position": 1,
@@ -2176,7 +2176,7 @@
                     "Distingue portal/studio de API"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms04-c01-resource",
                       "position": 1,
@@ -2749,7 +2749,7 @@
                     "Observa requisito de billing separado ou chave única"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms05-c01-orientacao-diagnostico",
                       "position": 1,
@@ -3391,7 +3391,7 @@
                     "Entende que a próxima parte aprofunda Responsible AI"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p01-ms06-c01-mapa-revisao",
                       "position": 1,
@@ -3791,7 +3791,7 @@
                     "reconhece Responsible AI como habilidade medida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms01-principios-responsible-ai-c01",
                       "position": 1,
@@ -4343,7 +4343,7 @@
                     "usa métricas por subgrupo sem tratar métrica como solução automática"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms02-harms-e-fairness-c01",
                       "position": 1,
@@ -4896,7 +4896,7 @@
                     "reconhece Prompt Shields, groundedness e protected material"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms03-content-safety-e-moderacao-c01",
                       "position": 1,
@@ -5577,7 +5577,7 @@
                     "aplica responsabilidade compartilhada a IA"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms04-modelo-responsabilidade-compartilhada-c01",
                       "position": 1,
@@ -6156,7 +6156,7 @@
                     "reconhece groundedness, jailbreak e phased delivery"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms05-transparency-notes-e-avaliacoes-c01",
                       "position": 1,
@@ -6652,7 +6652,7 @@
                     "diferencia filtros de segurança"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p02-ms06-treino-de-distratores-eticos-c01",
                       "position": 1,
@@ -7406,7 +7406,7 @@
                     "reconhece modelo como relação aprendida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms01-dados-features-labels-c01",
                       "position": 1,
@@ -8059,7 +8059,7 @@
                     "reconhece clustering sem label"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms02-supervisionado-vs-nao-supervisionado-c01",
                       "position": 1,
@@ -8624,7 +8624,7 @@
                     "associa métricas de erro à regressão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms03-regressao-c01",
                       "position": 1,
@@ -9205,7 +9205,7 @@
                     "reconhece métricas de classificação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms04-classificacao-binaria-e-multiclasse-c01",
                       "position": 1,
@@ -9832,7 +9832,7 @@
                     "associa silhouette a clustering"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms05-clustering-c01",
                       "position": 1,
@@ -10401,7 +10401,7 @@
                     "não confunde arquitetura com serviço Azure"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p03-ms06-deep-learning-e-loss-c01",
                       "position": 1,
@@ -11124,7 +11124,7 @@
                     "rejeita serviços cognitivos prontos quando o enunciado exige treino próprio"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms04-01-azure-ml-workspace-c01",
                       "position": 1,
@@ -11699,7 +11699,7 @@
                     "identifica decisões humanas restantes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms04-02-automl-fluxo-c01",
                       "position": 1,
@@ -12340,7 +12340,7 @@
                     "identifica overfitting em linguagem introdutória"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms04-03-avaliacao-validacao-c01",
                       "position": 1,
@@ -13021,7 +13021,7 @@
                     "entende baixo custo com risco de preempção"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms04-04-compute-jobs-c01",
                       "position": 1,
@@ -13652,7 +13652,7 @@
                     "reconhece A/B testing como roteamento controlado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms04-05-modelos-endpoints-c01",
                       "position": 1,
@@ -14347,7 +14347,7 @@
                     "entende data drift como mudança dos dados novos em relação ao treino"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms04-06-mlops-governanca-c01",
                       "position": 1,
@@ -15101,7 +15101,7 @@
                     "decide entre custo separado e acesso agrupado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms01-c01",
                       "position": 1,
@@ -15725,7 +15725,7 @@
                     "escolhe superfície de acesso adequada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms02-c01",
                       "position": 1,
@@ -16320,7 +16320,7 @@
                     "distingue experimentar, administrar e integrar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms03-c01",
                       "position": 1,
@@ -16930,7 +16930,7 @@
                     "distingue project, deployment, tool e agent em nível introdutório"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms04-c01",
                       "position": 1,
@@ -17517,7 +17517,7 @@
                     "distingue SKU, SDK, TPS e RBAC"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms05-c01",
                       "position": 1,
@@ -18139,7 +18139,7 @@
                     "prepara a Parte 06"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p05-ms06-c01",
                       "position": 1,
@@ -19038,7 +19038,7 @@
                     "não confunde metadado com dado visual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms01-imagem-como-pixels-c01",
                       "position": 1,
@@ -19647,7 +19647,7 @@
                     "diferencia classificação de tarefas próximas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms02-filtros-cnn-e-classificacao-c01",
                       "position": 1,
@@ -20290,7 +20290,7 @@
                     "interpreta confidence"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms03-image-analysis-tags-captions-smart-crop-c01",
                       "position": 1,
@@ -20888,7 +20888,7 @@
                     "considera alternativas atuais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms04-classificacao-customizada-e-alternativas-atuais-c01",
                       "position": 1,
@@ -21556,7 +21556,7 @@
                     "evita exposição de credenciais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms05-workflow-serverless-de-visao-c01",
                       "position": 1,
@@ -22212,7 +22212,7 @@
                     "prepara transição para OCR Face e object detection"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p06-ms06-cenarios-de-prova-vision-c01",
                       "position": 1,
@@ -22924,7 +22924,7 @@
                     "Reconhece que detecção retorna localização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms01-c01",
                       "position": 1,
@@ -23582,7 +23582,7 @@
                     "Reconhece limites de detecção"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms02-c01",
                       "position": 1,
@@ -24166,7 +24166,7 @@
                     "Reconhece estrutura de resultado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms03-c01",
                       "position": 1,
@@ -24785,7 +24785,7 @@
                     "Reconhece cautela responsável"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms04-c01",
                       "position": 1,
@@ -25413,7 +25413,7 @@
                     "Evita uso sensível indevido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms05-c01",
                       "position": 1,
@@ -26072,7 +26072,7 @@
                     "Distingue Face detection de object detection"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p07-ms06-c01",
                       "position": 1,
@@ -26837,7 +26837,7 @@
                     "reconhece campos tipados"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms01-c01",
                       "position": 1,
@@ -27389,7 +27389,7 @@
                     "usa classifier para lote misto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms02-c01",
                       "position": 1,
@@ -28026,7 +28026,7 @@
                     "reconhece containers e autorização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms03-c01",
                       "position": 1,
@@ -28583,7 +28583,7 @@
                     "escolhe Markdown ou JSON pelo destino"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms04-c01",
                       "position": 1,
@@ -29223,7 +29223,7 @@
                     "reconhece grounding para auditoria"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms05-c01",
                       "position": 1,
@@ -29758,7 +29758,7 @@
                     "prepara ponte para Azure AI Language"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p08-ms06-c01",
                       "position": 1,
@@ -30701,7 +30701,7 @@
                     "reconhece key e endpoint"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms09-01-c01",
                       "position": 1,
@@ -31333,7 +31333,7 @@
                     "reconhece ambiguidade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms09-02-c01",
                       "position": 1,
@@ -31918,7 +31918,7 @@
                     "distingue entity linking"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms09-03-c01",
                       "position": 1,
@@ -32522,7 +32522,7 @@
                     "evita confundir com Content Safety"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms09-04-c01",
                       "position": 1,
@@ -33105,7 +33105,7 @@
                     "reconhece limites de saúde textual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms09-05-c01",
                       "position": 1,
@@ -33745,7 +33745,7 @@
                     "mantém CLU e question answering como fronteira"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ms09-06-c01",
                       "position": 1,
@@ -34513,7 +34513,7 @@
                     "identifica agente moderno por modelo, instruções e ferramentas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p10-ms01-conversational-ai-c01",
                       "position": 1,
@@ -35118,7 +35118,7 @@
                     "distingue CQA de CLU e busca genérica"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p10-ms02-question-answering-c01",
                       "position": 1,
@@ -35833,7 +35833,7 @@
                     "reconhece caminho moderno sem apagar padrões AI-900"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p10-ms03-bot-service-c01",
                       "position": 1,
@@ -36411,7 +36411,7 @@
                     "entende que CLU não executa ações diretamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p10-ms04-clu-c01",
                       "position": 1,
@@ -37176,7 +37176,7 @@
                     "não usa orchestration para FAQ única"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p10-ms05-orchestration-c01",
                       "position": 1,
@@ -37793,7 +37793,7 @@
                     "inclui governança"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p10-ms06-foundry-agent-bridge-c01",
                       "position": 1,
@@ -38733,7 +38733,7 @@
                     "Reconhece que análise textual vem depois da transcrição"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p11-ms01-c01",
                       "position": 1,
@@ -39323,7 +39323,7 @@
                     "Distingue voz padrão de voz customizada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p11-ms02-c01",
                       "position": 1,
@@ -39885,7 +39885,7 @@
                     "Distingue identificação de idioma de tradução"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p11-ms03-c01",
                       "position": 1,
@@ -40564,7 +40564,7 @@
                     "Reconhece riscos de privacidade e biometria"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p11-ms04-c01",
                       "position": 1,
@@ -41155,7 +41155,7 @@
                     "Distingue cloud, container e cloud soberana"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p11-ms05-c01",
                       "position": 1,
@@ -41848,7 +41848,7 @@
                     "Explica a etapa áudio → texto → análise textual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p11-ms06-c01",
                       "position": 1,
@@ -42842,7 +42842,7 @@
                     "Identifica que AI Search pode fundamentar agentes e chatbots com dados corporativos."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p12-ms01-knowledge-mining-search-c01",
                       "position": 1,
@@ -43445,7 +43445,7 @@
                     "Reconhece que Blob indexer pode extrair conteúdo e metadados."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p12-ms02-index-indexer-datasource-c01",
                       "position": 1,
@@ -44059,7 +44059,7 @@
                     "Diferencia `knowledge store` de `knowledge base`."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p12-ms03-skillsets-ai-enrichment-knowledge-store-c01",
                       "position": 1,
@@ -44659,7 +44659,7 @@
                     "Sabe que semantic ranking reordena resultados por relevância semântica."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p12-ms04-consultas-relevancia-vetores-c01",
                       "position": 1,
@@ -45276,7 +45276,7 @@
                     "Aponta segurança e permissões como parte do desenho de RAG."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p12-ms05-rag-grounding-seguranca-c01",
                       "position": 1,
@@ -45868,7 +45868,7 @@
                     "Decide entre AI Search, Language, Document Intelligence, Content Understanding e Foundry Agent em cenários integrados."
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "p12-ms06-agentic-retrieval-revisao-c01",
                       "position": 1,

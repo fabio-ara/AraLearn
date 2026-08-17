@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -116,7 +116,7 @@
                     "evita a conclusão temos Copilot logo temos IA corporativa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-framework-nao-chatbot-card-01",
                       "position": 1,
@@ -332,7 +332,7 @@
                     "reconhece etapa ausente em proposta de IA"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-sequencia-de-decisao-card-01",
                       "position": 1,
@@ -654,7 +654,7 @@
                     "distingue maturidade política reunião e solução implantada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-fases-implantacao-card-01",
                       "position": 1,
@@ -890,7 +890,7 @@
                     "reconhece quando deve pedir fonte dono custo ou controle"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-papel-do-aluno-nas-reunioes-card-01",
                       "position": 1,
@@ -1132,7 +1132,7 @@
                     "identifica ganho esperado e risco associado em cenários de IA"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-valor-e-risco-card-01",
                       "position": 1,
@@ -1368,7 +1368,7 @@
                     "escolhe prioridade de piloto com justificativa objetiva no feedback"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-mapa-valor-risco-card-01",
                       "position": 1,
@@ -1736,7 +1736,7 @@
                     "distingue instrução de resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-ia-prompt-modelo-card-01",
                       "position": 1,
@@ -1942,7 +1942,7 @@
                     "escolhe fórmula correta sem valores absolutos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-token-e-custo-basico-card-01",
                       "position": 1,
@@ -2142,7 +2142,7 @@
                     "reconhece aumento de risco quando há ação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-chatbot-agente-card-01",
                       "position": 1,
@@ -2374,7 +2374,7 @@
                     "identifica controle necessário"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-agente-ferramentas-card-01",
                       "position": 1,
@@ -2622,7 +2622,7 @@
                     "reconhece que RAG não corrige fonte ruim"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-rag-em-linguagem-simples-card-01",
                       "position": 1,
@@ -2839,7 +2839,7 @@
                     "diferencia busca por significado e busca por palavra exata"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-chunk-embedding-indice-card-01",
                       "position": 1,
@@ -3100,7 +3100,7 @@
                     "escolhe correção institucional adequada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-rag-erros-provaveis-card-01",
                       "position": 1,
@@ -3378,7 +3378,7 @@
                     "escolhe camada adequada para cenário"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-camadas-de-uso-card-01",
                       "position": 1,
@@ -3669,7 +3669,7 @@
                     "escolhe controle mínimo para cada público"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-classificacao-por-publico-card-01",
                       "position": 1,
@@ -3918,7 +3918,7 @@
                     "identifica quando LGPD entra na discussão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-dados-gerais-e-individuais-card-01",
                       "position": 1,
@@ -4154,7 +4154,7 @@
                     "rejeita uso indevido de dado sensível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-risco-por-dado-card-01",
                       "position": 1,
@@ -4437,7 +4437,7 @@
                     "distingue agente informativo consultivo e transacional"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-consultar-ou-executar-card-01",
                       "position": 1,
@@ -4701,7 +4701,7 @@
                     "escolhe controle mínimo para ação de baixo médio e alto impacto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-acao-com-controles-card-01",
                       "position": 1,
@@ -4995,7 +4995,7 @@
                     "rejeita a ideia de que ele substitui framework"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-m365-copilot-card-01",
                       "position": 1,
@@ -5204,7 +5204,7 @@
                     "identifica quando Copilot Studio é suficiente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-agent-builder-copilot-studio-card-01",
                       "position": 1,
@@ -5391,7 +5391,7 @@
                     "identifica risco de uso inadequado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-copilot-studio-limites-card-01",
                       "position": 1,
@@ -5647,7 +5647,7 @@
                     "diferencia plataforma técnica de chatbot simples"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-foundry-visao-geral-card-01",
                       "position": 1,
@@ -5908,7 +5908,7 @@
                     "explica no feedback o critério de decisão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-foundry-casos-adequados-card-01",
                       "position": 1,
@@ -6160,7 +6160,7 @@
                     "reconhece que permissão é parte do design de IA"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-entra-rbac-dlp-purview-card-01",
                       "position": 1,
@@ -6465,7 +6465,7 @@
                     "rejeita a ideia de que substitui validação humana e governança"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-content-safety-card-01",
                       "position": 1,
@@ -6727,7 +6727,7 @@
                     "rejeita fonte desatualizada ou sem responsável"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-fonte-oficial-card-01",
                       "position": 1,
@@ -6969,7 +6969,7 @@
                     "identifica lacuna em solicitação genérica"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-pacote-minimo-area-card-01",
                       "position": 1,
@@ -7222,7 +7222,7 @@
                     "reconhece quando RAG documental não basta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-documento-dado-sistema-card-01",
                       "position": 1,
@@ -7459,7 +7459,7 @@
                     "identifica risco de dado desatualizado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-rag-ou-api-card-01",
                       "position": 1,
@@ -7730,7 +7730,7 @@
                     "escolhe ação corretiva"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-qualidade-base-card-01",
                       "position": 1,
@@ -7971,7 +7971,7 @@
                     "identifica etapa ausente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-ciclo-atualizacao-fontes-card-01",
                       "position": 1,
@@ -8274,7 +8274,7 @@
                     "reconhece quando envolver jurídico/LGPD"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-lgpd-dados-card-01",
                       "position": 1,
@@ -8509,7 +8509,7 @@
                     "decide se uma pergunta pode ser respondida genericamente ou exige autenticação e controle"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-resposta-geral-ou-individual-card-01",
                       "position": 1,
@@ -8756,7 +8756,7 @@
                     "reconhece controles mínimos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-chatbot-publico-card-01",
                       "position": 1,
@@ -8967,7 +8967,7 @@
                     "rejeita publicação sem validação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-controles-publicos-card-01",
                       "position": 1,
@@ -9231,7 +9231,7 @@
                     "identifica utilidade para investigar erro"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-logs-traces-auditoria-card-01",
                       "position": 1,
@@ -9469,7 +9469,7 @@
                     "reconhece quem deve ser acionado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-incidente-e-suspensao-card-01",
                       "position": 1,
@@ -9781,7 +9781,7 @@
                     "rejeita cálculo apenas por licença"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-custo-nao-e-so-licenca-card-01",
                       "position": 1,
@@ -10027,7 +10027,7 @@
                     "reconhece que valores reais dependem de contrato"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-formulas-custo-card-01",
                       "position": 1,
@@ -10271,7 +10271,7 @@
                     "não escolhe por preferência abstrata"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-comparativo-ferramentas-card-01",
                       "position": 1,
@@ -10512,7 +10512,7 @@
                     "identifica quando uma arquitetura mista é necessária"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-decisao-ferramenta-card-01",
                       "position": 1,
@@ -10799,7 +10799,7 @@
                     "rejeita piloto com risco excessivo ou fonte ruim"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-piloto-bom-card-01",
                       "position": 1,
@@ -11010,7 +11010,7 @@
                     "escolhe primeiro piloto e justifica no feedback"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-carteira-casos-card-01",
                       "position": 1,
@@ -11429,7 +11429,7 @@
                     "evita extremos de autonomia total ou gargalo total"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-governanca-federada-card-01",
                       "position": 1,
@@ -11738,7 +11738,7 @@
                     "escolhe responsável correto para fonte risco plataforma custo e publicação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-quem-valida-o-que-card-01",
                       "position": 1,
@@ -12004,7 +12004,7 @@
                     "identifica etapa ausente em proposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-ciclo-vida-agente-card-01",
                       "position": 1,
@@ -12267,7 +12267,7 @@
                     "identifica teste ausente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-validacao-e-testes-card-01",
                       "position": 1,
@@ -12529,7 +12529,7 @@
                     "reconhece pergunta incompleta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-perguntas-por-tema-card-01",
                       "position": 1,
@@ -12772,7 +12772,7 @@
                     "evita resposta aberta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-cenarios-de-reuniao-card-01",
                       "position": 1,
@@ -13035,7 +13035,7 @@
                     "entende limites de cada formação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-trilha-senai-card-01",
                       "position": 1,
@@ -13317,7 +13317,7 @@
                     "identifica lacunas antes de aprovar proposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "micro-prontidao-para-reuniao-card-01",
                       "position": 1,
