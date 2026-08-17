@@ -31,29 +31,20 @@ try {
   Invoke-CheckedCommand 'Testes JavaScript' 'npm.cmd' @('test')
   Invoke-CheckedCommand 'Análise estática' 'npm.cmd' @('run', 'lint')
   Invoke-CheckedCommand 'Exemplo público' 'npm.cmd' @('run', 'validate:example')
-  Invoke-CheckedCommand 'Corte relacional' 'npm.cmd' @('run', 'validate:cutover')
-  Invoke-CheckedCommand 'Catálogo oficial' 'npm.cmd' @('run', 'catalog:validate')
+  Invoke-CheckedCommand 'Runtime de Curso' 'npm.cmd' @('run', 'validate:course-runtime')
 
   $deno = Resolve-AraLearnDenoCommand
   Invoke-CheckedCommand 'Testes Deno do gateway MCP' $deno @(
     'test', '--config', 'supabase/functions/deno.json',
     'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
   )
-  Invoke-CheckedCommand 'Testes Deno da entrega de revisões' $deno @(
-    'test', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/tests/aralearn-course-revisions.test.ts'
-  )
   Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-authoring-mcp/index.ts'
   )
-  Invoke-CheckedCommand 'Verificação Deno da Action de autoria' $deno @(
+  Invoke-CheckedCommand 'Verificação Deno da API de Cursos' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-authoring-action/index.ts'
-  )
-  Invoke-CheckedCommand 'Verificação Deno da entrega de revisões' $deno @(
-    'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-course-revisions/index.ts'
+    'supabase/functions/aralearn-course-api/index.ts'
   )
 
   if ($Scope -in @('Web', 'Full')) {

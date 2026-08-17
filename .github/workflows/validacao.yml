@@ -42,11 +42,8 @@ jobs:
       - name: Analisar código
         run: npm run lint
 
-      - name: Validar corte relacional
-        run: npm run validate:cutover
-
-      - name: Validar fixtures do catálogo
-        run: npm run catalog:validate
+      - name: Validar runtime de Curso
+        run: npm run validate:course-runtime
 
       - name: Instalar Chromium para testes de interface
         run: npx playwright install chromium
@@ -93,10 +90,8 @@ jobs:
       - name: Testar e conferir a Edge Function
         run: |
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
-          deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-course-revisions.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
-          deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-action/index.ts
-          deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-revisions/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-api/index.ts
 
       - name: Iniciar stack Supabase
         run: npx --yes supabase@2.109.1 start
@@ -204,10 +199,7 @@ jobs:
       - name: Conferir o lint do banco
         run: npx --yes supabase@2.109.1 db lint --local --level warning --fail-on warning
 
-      - name: Executar testes pgTAP
-        run: npx --yes supabase@2.109.1 test db
-
-      - name: Testar concorrência real dos pedidos de workspace
+      - name: Testar concorrência real dos pedidos de Curso
         shell: bash
         run: |
           command -v psql
@@ -215,39 +207,49 @@ jobs:
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
           export ARALEARN_TEST_DATABASE_URL="$DB_URL"
-          node --test ./tests/runtime/workspace-postgres-concurrency.test.js
+          node --test ./tests/runtime/course-postgres-concurrency.test.js
 
-      # A jornada conserva um owner técnico da stack local. A fixture seguinte
-      # usa essa autoridade para conceder somente o papel editorial necessário.
-      - name: Testar jornada real da Custom GPT Action
+      - name: Servir e testar a API, o PostgREST e o RLS de Curso
         shell: bash
         run: |
           set -a
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
-          npm run test:authoring:action:local
-
-      - name: Publicar fixture oficial temporária para smoke
-        shell: bash
-        run: |
-          set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
-          set +a
-          export ARALEARN_SUPABASE_URL="$API_URL"
-          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
-          publisher="$(
-            node ./supabase/tests/prepare-local-catalog-publisher.mjs
-          )"
-          publisher_id="$(jq -erR 'select(test("^[0-9a-f-]{36}$"))' <<<"$publisher")"
-          export ARALEARN_CATALOG_OWNER_ID="$publisher_id"
-          node ./scripts/publishCatalogFixtures.mjs --publish --course fundamentos-ia-analise-dados-seed-course.json
-
-      - name: Testar Auth, PostgREST, RPCs e RLS
-        shell: bash
-        run: |
-          set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
-          set +a
+          npx --yes supabase@2.109.1 functions serve aralearn-course-api --no-verify-jwt > /tmp/aralearn-course-api.log 2>&1 &
+          COURSE_API_PID=$!
+          cleanup_course_api() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "::group::Log da API de Curso"
+              tail -n 400 /tmp/aralearn-course-api.log \
+                | sed -E 's/(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+/[credencial JWT omitida]/g'
+              echo "::endgroup::"
+            fi
+            kill "$COURSE_API_PID" 2>/dev/null || true
+            exit "$status"
+          }
+          trap cleanup_course_api EXIT
+          COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/app/listarCursos'
+          COURSE_API_READY=false
+          for attempt in $(seq 1 60); do
+            status_code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --request OPTIONS \
+              --header 'Origin: http://127.0.0.1:4182' \
+              --header 'Access-Control-Request-Method: POST' \
+              "$COURSE_API_URL" || true)"
+            if [ "$status_code" = 204 ]; then
+              COURSE_API_READY=true
+              break
+            fi
+            if ! kill -0 "$COURSE_API_PID" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          if [ "$COURSE_API_READY" != true ]; then
+            echo "A API de Curso não ficou pronta após 60 tentativas." >&2
+            exit 1
+          fi
           npm run test:supabase:smoke
 
       - name: Testar confirmação e recuperação por e-mail

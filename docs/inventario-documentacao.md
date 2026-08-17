@@ -14,10 +14,9 @@ conteúdo atual de uma página está correto. A implementação e o comportament
 observado continuam sendo confrontados pelas matrizes e pelos testes
 apropriados.
 
-A linha de base possuía 57 páginas. Nesta etapa, três registros transitórios
-foram retirados e três páginas permanentes foram acrescentadas; por isso, a
-tabela corrente contém 57 páginas. As três retiradas e seus destinos são
-registrados abaixo, para que o corte editorial também permaneça verificável.
+A tabela acompanha apenas as páginas correntes. Retiradas editoriais e seus
+destinos são registradas abaixo; o conteúdo anterior permanece recuperável no
+Git.
 
 ## Estados editoriais
 
@@ -37,13 +36,12 @@ registrados abaixo, para que o corte editorial também permaneça verificável.
 | --- | --- | --- |
 | `analytics-instrucionais.md` | reformular | manter neste caminho, com métricas de autoria e pesquisa ligadas a dados observáveis |
 | `aralearn-contract.md` | reformular | manter neste caminho após estabilizar entidades, vocabulário e contratos públicos |
-| `arquitetura.md` | reformular | manter neste caminho como explicação da arquitetura efetivamente usada |
+| `arquitetura.md` | conservar | explica Curso vivo, lista fina, composição paginada, estado pessoal, acesso direto e gates da promoção |
 | `assistencia-por-ia.md` | reformular | manter neste caminho e alinhar a assistência à autoria e à pesquisa realmente acessíveis |
 | `auditoria-academica-dos-resources.md` | reformular | manter neste caminho após a revisão terminológica e metodológica dos recursos de card |
 | `auditoria-de-conformidade-instrucional.md` | reformular | manter neste caminho como método estável de auditoria, reparo e nova verificação |
 | `auditoria-front-end.md` | reformular | manter neste caminho como método reproduzível, sem resultados transitórios de uma versão |
-| `autoria-do-catalogo.md` | fundir | incorporar procedimentos em `guia-professor-autor.md` e decisões em `arquitetura.md` |
-| `autoria-mcp.md` | reformular | manter neste caminho como explicação e operação da interface MCP vigente |
+| `autoria-mcp.md` | conservar | explica as seis ferramentas, o recurso de invariantes, OAuth e o Curso compartilhado com a interface |
 | `contribuicao-originalidade.md` | reformular | manter neste caminho, distinguindo contribuição demonstrada de hipótese e intenção |
 | `criar-cursos-pelo-chat.md` | reformular | manter neste caminho como guia simples da autoria conversacional vigente |
 | `desenho-instrucional-parametrizado.md` | reformular | manter neste caminho após validar parâmetros semânticos, escopos e herança |
@@ -52,19 +50,18 @@ registrados abaixo, para que o corte editorial também permaneça verificável.
 | `downloads/authoring/aralearn-chatgpt-knowledge-resources.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
 | `downloads/authoring/aralearn-chatgpt-system-prompt.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
 | `downloads/authoring/README.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
-| `estado-atual-e-roadmap.md` | reformular | manter neste caminho como matriz de existência, conexão, acesso, uso, funcionamento, necessidade e alinhamento |
+| `estado-atual-e-roadmap.md` | conservar | matriz corrente e gates de importação, reset, migração e promoção |
 | `estado-de-estudo-nao-punitivo.md` | conservar | manter neste caminho e revisar apenas quando o comportamento de Estudo mudar |
 | `experimentos-instrucionais-parametrizados.md` | reformular | manter neste caminho após definir a arquitetura mínima de variantes comparáveis |
 | `fluxos-prompts-e-contratos.md` | reformular | manter neste caminho, limitado aos fluxos e contratos realmente executados |
 | `fundamentacao-pedagogica-dos-resources.md` | reformular | manter neste caminho após a revisão acadêmica da nomenclatura e das representações |
 | `fundamentos-pesquisa-e-governanca.md` | reformular | manter neste caminho, separando rigor científico de governança institucional desnecessária |
 | `glossario-construtos.md` | reformular | manter neste caminho como vocabulário científico controlado |
-| `glossario-tecnico.md` | reformular | manter neste caminho após a auditoria integral da nomenclatura do produto e do código |
-| `guia-administracao-workspace.md` | fundir | levar compartilhamento simples a `guia-professor-autor.md` e administração técnica a `implantacao.md` |
+| `glossario-tecnico.md` | conservar | mecanismos do runtime canônico e termos futuros explicitamente não implementados |
 | `guia-desenvolvedor.md` | reformular | manter neste caminho com o fluxo técnico vigente e verificável |
-| `guia-estudante.md` | conservar | manter neste caminho como percurso didático de uso de Estudo |
+| `guia-estudante.md` | conservar | percurso atual de Estudo, revisão, observação, retomada e reset por Curso |
 | `guia-pesquisador.md` | reformular | manter neste caminho com autoria, experimentos, dados e análise que existirem de fato |
-| `guia-professor-autor.md` | reformular | manter neste caminho como percurso manual e visual de autoria |
+| `guia-professor-autor.md` | conservar | percurso atual de criação, planejamento básico, inspeção, MCP, perfil e acesso |
 | `implantacao.md` | reformular | manter neste caminho com requisitos e limites de implantação atuais |
 | `integrations/android-share-import.md` | conservar | manter neste caminho enquanto a integração Android permanecer suportada |
 | `integrations/codex-cli.md` | remover | transferir memória operacional útil ao manual privado e preservar o texto público no histórico do Git |
@@ -74,8 +71,7 @@ registrados abaixo, para que o corte editorial também permaneça verificável.
 | `modelo-didatico.md` | reformular | manter neste caminho após validar hierarquia, Parte, parâmetros e terminologia didática |
 | `observacoes-pedagogicas.md` | reformular | manter neste caminho com as duas origens de observação e o ciclo de reparo verificável |
 | `origens-do-aralearn.md` | conservar | manter neste caminho como narrativa biográfica delimitada, sem função probatória |
-| `persistencia-relacional.md` | reformular | manter neste caminho conforme o modelo relacional e o uso de Storage forem simplificados |
-| `plano-de-controle-e-artefatos.md` | fundir | incorporar decisões vigentes em `arquitetura.md` e `persistencia-relacional.md` |
+| `persistencia-relacional.md` | conservar | modelo canônico de PostgreSQL, IndexedDB, avatar privado, CAS, recibos e reconciliação |
 | `principios-editoriais.md` | conservar | manter neste caminho como norma editorial da documentação pública |
 | `privacidade.md` | reformular | manter neste caminho conforme propriedade, compartilhamento, pesquisa e retenção forem validados |
 | `protocolo-avaliacao-artefato.md` | reformular | manter neste caminho como protocolo de avaliação, sem apresentar intenção como resultado |
@@ -88,10 +84,9 @@ registrados abaixo, para que o corte editorial também permaneça verificável.
 | `sistema-visual.md` | conservar | manter neste caminho como referência visual e atualizar junto da interface |
 | `solucao-de-problemas.md` | reformular | manter neste caminho somente com sintomas e procedimentos ainda reproduzíveis |
 | `supabase.md` | reformular | manter neste caminho conforme banco, Storage, autenticação e funções efetivamente usados |
-| `uso-do-app.md` | reformular | manter neste caminho como guia do comportamento real, sem antecipar recursos |
+| `uso-do-app.md` | conservar | guia do runtime canônico e limites ainda não implementados |
 | `vocabulario-controlado.md` | gerado | reconstruir de `evidence/terminologia-canonica.v1.json` com `npm run audit:terminology -- --render` |
 | `visao-do-produto.md` | reformular | manter neste caminho como intenção corrente, separada do estado implementado |
-| `workspaces-educacionais.md` | fundir | incorporar colaboração necessária em `guia-professor-autor.md` e arquitetura vigente em `arquitetura.md` |
 
 ## Decisões de retirada desta etapa
 
@@ -100,6 +95,10 @@ registrados abaixo, para que o corte editorial também permaneça verificável.
 | `checkpoint-autoria-109.md` | remover | resultados estáveis foram incorporados ao estado corrente e à evidência integrada; o checkpoint permanece no Git |
 | `checklist-ux-autoria-integrada.md` | fundir | critérios reutilizáveis foram incorporados ao roteiro de aceitação humana |
 | `conformidade-documentacao-autoria.md` | fundir | rastreabilidade vigente foi incorporada à matriz de conformidade técnica |
+| `autoria-do-catalogo.md` | remover | o runtime corrente não possui fluxo editorial público; história preservada no Git |
+| `guia-administracao-workspace.md` | remover | acesso direto foi incorporado a `guia-professor-autor.md`; história preservada no Git |
+| `plano-de-controle-e-artefatos.md` | remover | decisões vigentes foram incorporadas a `arquitetura.md` e `persistencia-relacional.md`; história preservada no Git |
+| `workspaces-educacionais.md` | remover | propriedade e acesso direto foram incorporados aos guias e à arquitetura; história preservada no Git |
 
 ## Regra de manutenção
 

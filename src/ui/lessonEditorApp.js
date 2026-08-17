@@ -6368,7 +6368,7 @@ export function createLessonEditorApp({
   }
   render({ preserveState: false });
   void refreshHomeTrails({ preserveSelection: false });
-  void loadCardAssistanceLocalState(state.selection.courseKey).then(() => {
+  void loadCardAssistanceLocalState(state.selection?.courseKey || "").then(() => {
     if (globalThis.navigator?.onLine !== false) {
       return attemptAllContextualAuthoringSync();
     }
@@ -6405,7 +6405,14 @@ export function createLessonEditorApp({
       setProject(composedProject);
       if (!applySelectionByKeys(composedProject, state.selection)) selectFirstPath(composedProject);
       render({ preserveState: false });
-      void loadCardAssistanceLocalState(state.selection.courseKey);
+      void loadCardAssistanceLocalState(state.selection?.courseKey || "");
+    },
+    openCourses() {
+      state.view = "courses";
+      state.homeTab = "courses";
+      state.homeSelectedCourseKey = "";
+      render({ preserveState: false });
+      return true;
     },
     openCourse(courseIdentity) {
       const courseKey = storage.resolveCourseContractKey?.(courseIdentity) || String(courseIdentity || "");

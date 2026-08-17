@@ -1,359 +1,495 @@
 # Supabase no AraLearn
 
-O **Supabase** é a plataforma que reúne o banco de dados, a autenticação, o
-armazenamento de arquivos e as funções de servidor usadas pelo AraLearn. Esses
-serviços remotos tratam identidade, autorização, concorrência entre dispositivos
-e distribuição controlada de conteúdo.
+## O que o Supabase faz no produto
 
-O projeto versionado fica em `supabase/` e reúne a configuração local, as
-alterações ordenadas do banco, os testes, as funções de servidor e os dados
-mínimos de desenvolvimento. A aplicação web e o aplicativo Android acessam as
-mesmas operações remotas; não existe uma implementação de dados paralela no
-Android. Em produção, o caminho mantido pelo projeto usa o Supabase gerenciado.
-O ambiente local é descartável e serve a desenvolvimento e testes, não a uma
-instalação auto-hospedada.
+O Supabase reúne quatro serviços usados pelo AraLearn:
 
-Este documento explica o papel de cada componente e o procedimento seguro para operá-lo. O roteiro completo de publicação está em [Implantação](implantacao.md).
+- **Auth**, que comprova a identidade da conta e mantém a sessão;
+- **PostgreSQL**, que conserva Cursos, composição, acesso e estado pessoal;
+- **Storage**, que guarda avatares privados;
+- **Edge Functions**, que oferecem a API autoral e o servidor MCP.
 
-## Vocabulário de entrada
+Web e Android usam o mesmo backend. O aplicativo não possui um segundo modelo
+remoto específico para o APK. O stack local é descartável e existe para
+desenvolvimento e testes; o roteiro de publicação controlada está em
+[Implantação](implantacao.md).
 
-- **PostgreSQL**: sistema gerenciador de banco de dados relacional usado pelo
-  Supabase;
-- **Structured Query Language (SQL)**: linguagem usada para definir e consultar
-  dados relacionais;
-- **Auth**: serviço que comprova a identidade e mantém a sessão de uma conta;
-- **Storage**: serviço de armazenamento de objetos, como os documentos integrais
-  de curso;
-- **Edge Function**: função executada no servidor quando uma operação precisa
-  conservar segredo ou aplicar autorização antes de devolver dados;
-- **Application Programming Interface (API)** por **Hypertext Transfer Protocol
-  (HTTP)**: conjunto de operações remotas acessadas pelo protocolo da web;
-- **SHA-256**: função que produz um resumo criptográfico do conteúdo, usado para
-  identificar bytes sem depender do nome do arquivo.
+## Vocabulário necessário
 
-O [glossário técnico](glossario-tecnico.md) aprofunda esses conceitos e as
-siglas usadas nas seções seguintes.
+**PostgreSQL** é um sistema gerenciador de banco de dados relacional. Ele
+conserva dados em tabelas e aplica relações, restrições e transações.
 
-## 1. Modelo de responsabilidade
+**Structured Query Language** (SQL) é a linguagem usada para definir e
+consultar esse banco.
 
-Integrar esses serviços numa plataforma não torna todos os dados iguais. No
-AraLearn, cada componente resolve um problema distinto:
+**Remote Procedure Call** (RPC) é uma função do banco chamada pela API. No
+AraLearn, uma RPC representa uma consulta ou mudança completa do domínio; ela
+não entrega SQL arbitrário ao cliente.
 
-| Serviço | Problema resolvido | Conteúdo que recebe |
-|---|---|---|
-| PostgreSQL | relações mutáveis, autorização e transações concorrentes | contas, permissões, seleções, trilhas, estado pessoal, workspaces e descritores de artefatos |
-| Auth | comprovação da identidade da conta | credenciais, sessões e fluxos de recuperação |
-| Storage | objetos grandes e imutáveis | revisões de curso endereçadas por SHA-256 |
-| Edge Functions | operações que precisam de segredo ou protocolo de servidor | autoria externa, entrega autorizada de revisões e integração com o aplicativo |
+**Row Level Security** (RLS) é a regra que decide quais linhas uma identidade
+pode ler ou alterar. Quando nenhuma política autoriza a operação, o acesso é
+negado.
 
-O banco não guarda uma cópia completa de cada curso para cada estudante. O Storage não decide quem pode ler um objeto. A função de entrega consulta o plano de controle relacional, autoriza a conta e só então entrega o artefato. Essa separação reduz duplicação e permite revogar acesso sem reescrever o objeto.
+**Edge Function** é uma função executada no servidor. Ela adapta HTTP ou MCP ao
+mesmo domínio de Curso sem duplicar o modelo de dados.
 
-## 2. Migrations: o esquema como código versionado
+**Compare-and-swap** (CAS) é a exigência de que uma alteração informe a revisão
+que leu. Se outra mudança avançou a revisão, a escrita falha com conflito.
 
-Uma **migration** é uma alteração ordenada e versionada do esquema ou do comportamento do banco. Ela pode criar tabelas, índices, políticas de segurança, funções transacionais e verificações. O histórico em `supabase/migrations/` é a fonte reproduzível do banco; alterações manuais no SQL Editor não são equivalentes porque não podem ser reaplicadas nem confrontadas automaticamente em outro ambiente.
+**Idempotência** é a propriedade pela qual repetir o mesmo pedido identificado
+devolve o mesmo resultado, sem aplicar a mudança duas vezes.
 
-### Problema e alternativas
+O [glossário técnico](glossario-tecnico.md) apresenta os demais termos.
 
-Um banco remoto pode ser alterado manualmente, reconstruído por um arquivo SQL único ou evoluído por migrations incrementais. A edição manual é rápida no primeiro uso, mas cria divergência invisível. Um arquivo único descreve o estado final, porém não explica como bancos já existentes devem chegar a ele sem perda de dados.
+## Modelo canônico de dados
 
-### Decisão
-
-O AraLearn usa migrations incrementais, imutáveis depois de aplicadas. O manifesto público do banco informa a revisão de esquema exigida pelo aplicativo. A implantação aplica primeiro o banco, depois as Edge Functions e, por último, o site ou o APK.
-
-### Funcionamento
-
-As migrations recentes separam, entre outras responsabilidades:
-
-- artefatos no Storage e seu plano de controle (`20260728010000_storage_artifact_control_plane.sql` e `20260728030000_finalize_catalog_artifact_cutover.sql`);
-- workspaces compostos e concorrência por revisão (`20260729010000_authoring_workspaces_v4.sql` e `20260729070000_authoring_workspace_hardening.sql`);
-- trilhas e estado pessoal (`20260807210000_unified_trails.sql` e `20260807220000_trail_personal_state.sql`);
-- continuidade da autoria (`20260809010000_authoring_continuity.sql`);
-- biblioteca de packages e manifesto plano do runtime (`20260812120000_package_library_contract.sql` a `20260812164000_flat_runtime_manifest.sql`).
-
-O nome numérico estabelece a ordem. O comando `db reset` deve ser usado apenas no stack local: ele recria o banco, aplica todas as migrations e executa `supabase/seed.sql`. No projeto remoto, o roteiro faz primeiro um `db push --dry-run` e nunca executa reset, seed, `db pull` ou `migration repair` automaticamente.
-
-### Consequências e limites
-
-Migrations tornam o estado auditável e repetível, mas não substituem backup nem ensaio de restauração. Uma migration aplicada deve ser corrigida por outra migration; editar o arquivo antigo falsifica a história já executada. O mecanismo e seus comandos são documentados oficialmente pelo [Supabase](https://supabase.com/docs/guides/deployment/database-migrations).
-
-## 3. RLS e autoridade efetiva
-
-**Row Level Security** (RLS) é o mecanismo do PostgreSQL que decide, linha a linha, se uma operação pode ler ou alterar dados. Quando RLS está habilitado e nenhuma política permite a operação, o comportamento é negar por padrão. A definição formal está na documentação de [segurança por linha do PostgreSQL](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
-
-### Problema e alternativas
-
-Confiar apenas na interface esconderia botões, mas não impediria chamadas diretas à API. Concentrar toda autorização em uma chave administrativa dentro do cliente exporia poder irrestrito. Duplicar regras em cada tela também criaria decisões inconsistentes.
-
-### Decisão e funcionamento
-
-O JWT do Supabase Auth identifica a conta. Políticas RLS e funções do banco derivam a autoridade a partir de relações persistidas: propriedade, participação em workspace, papel editorial, vínculo com um curso e estado corrente do objeto. O cliente recebe capacidades por `current_user_capabilities`, mas essa projeção serve à interface; o servidor revalida a autorização em toda escrita.
-
-Operações comuns não recebem chave administrativa. A chave protegida é usada somente em Edge Functions e rotinas operacionais que precisam atravessar RLS de modo controlado. Tabelas expostas pelo Data API permanecem com RLS habilitado, conforme recomenda a documentação de [segurança de dados do Supabase](https://supabase.com/docs/guides/database/secure-data).
-
-### Consequências e evidência
-
-Ocultar um controle deixa de ser uma medida de segurança; é apenas uma adaptação de UX. Os testes SQL e o smoke hospedado criam contas diferentes e verificam isolamento. RLS, entretanto, não protege um segredo já enviado ao navegador nem corrige uma função `security definer` mal projetada; por isso essas funções têm superfície fechada, validação própria e testes específicos.
-
-## 4. RPCs: comandos transacionais de domínio
-
-Uma **RPC** é uma função do banco chamada remotamente pela API. No AraLearn ela não é um atalho genérico para SQL: representa um comando ou uma consulta de domínio que precisa combinar validação, autorização e transação.
-
-### Por que não escrever tabelas diretamente
-
-Uma operação como mover um curso entre coleções altera mais de uma relação e precisa conferir a revisão esperada. Se o navegador atualizasse cada tabela separadamente, uma falha intermediária deixaria estado parcial. A RPC executa a unidade de trabalho inteira no PostgreSQL, onde transações e bloqueios podem preservar os invariantes.
-
-### Famílias de operação
-
-| Responsabilidade | RPCs representativas |
-|---|---|
-| seleção e réplica pessoal | `select_catalog_course`, `unselect_catalog_course`, `bootstrap_replica`, `pull_sync_changes`, `apply_sync_batch` |
-| trilhas | `list_trail_items_v1`, `mutate_trails_v1`, `get_trail_workspace_course_v1` |
-| estado pessoal | `load_trail_personal_state_v1`, `mutate_trail_personal_state_v1` |
-| catálogo editorial | `list_catalog_collections`, `create_catalog_collection_v5`, `update_catalog_collection_v5`, `retire_catalog_collection_v5`, `move_catalog_course_v5` |
-| workspaces de autoria | `create_authoring_workspace_v5`, `get_authoring_workspace_v5`, `commit_authoring_workspace_changes_v5`, `delete_authoring_workspace_v5` |
-| continuidade e auditoria | `get_authoring_workspace_continuity_v1`, `update_authoring_workspace_continuity_v1`, `manage_authoring_workspace_finding_v1`, `list_authoring_workspace_observations_for_actor_v1` |
-| governança de workspace educacional | `get_current_educational_workspace_v1`, `manage_current_educational_workspace_v1` |
-| revisão e publicação | `submit_private_course_for_catalog_review_v5`, `claim_catalog_review_v5`, `decide_catalog_review_v5`, `publish_authoring_workspace_course_v5` |
-| artefatos e coleta | `register_authoring_artifact_v5`, `get_course_revision_artifact_v4`, `claim_unreferenced_artifacts_v4`, `complete_artifact_gc_v4` |
-
-Os nomes completos e as assinaturas normativas estão nas migrations e no manifesto do runtime. A lista acima ensina as responsabilidades; não deve ser usada para deduzir parâmetros.
-
-## 5. Concorrência, CAS e idempotência
-
-**Compare-and-swap** (CAS) significa aceitar uma alteração somente se a revisão corrente ainda for a revisão que o cliente leu. **Idempotência** significa que repetir a mesma solicitação identificada produz o mesmo efeito observável, sem duplicar a mutação.
-
-O AraLearn usa ambos porque dispositivos, navegadores e integrações podem trabalhar sobre o mesmo objeto e repetir chamadas após timeout. Uma escrita carrega `expectedRevision` e um identificador de requisição ou mutação. A função bloqueia ou compara a linha corrente, valida a alteração recomposta e grava a nova revisão numa transação. Se a revisão já mudou, retorna conflito explícito; se a solicitação idempotente já foi confirmada, recupera o recibo anterior.
-
-CAS evita sobrescrever trabalho alheio sem aviso, mas não resolve semanticamente dois textos incompatíveis. O chamador precisa reler o estado e decidir se refaz, combina ou abandona a mudança. Idempotência evita duplicação; não transforma uma requisição inválida em válida. As garantias dependem das transações e dos níveis de isolamento do [PostgreSQL](https://www.postgresql.org/docs/current/transaction-iso.html).
-
-## 6. Autenticação e callback
-
-O AraLearn oferece cadastro, confirmação, reenvio de confirmação, recuperação e troca de senha, login, renovação, sessão persistida, saída e exclusão da própria conta. Não há catálogo anônimo.
-
-O fluxo usa **Proof Key for Code Exchange** (PKCE): o navegador gera um
-verificador secreto, envia apenas seu desafio ao servidor e recebe no retorno
-um código de uso único. A troca do código só funciona no dispositivo que
-conserva o verificador. Um `auth_state` aleatório, de uso único e válido por até
-quinze minutos, vincula o retorno à tentativa original. O Service Worker não
-guarda navegações com parâmetros de autenticação. O mecanismo é definido na
-[RFC 7636](https://www.rfc-editor.org/rfc/rfc7636).
-
-Cadastre no painel apenas os destinos usados pela instalação:
+Um Curso é um único objeto vivo. Não existe uma identidade diferente para
+planejamento, materialização e Estudo.
 
 ```text
-http://localhost:<porta>/
-https://<domínio-da-aplicação>/<caminho>/
-aralearn://auth/callback
+auth.users
+   │
+   ├── person_profiles ── referência ──> Storage/person-avatars
+   │
+   ├── courses (proprietário)
+   │      ├── course_entities (composição didática)
+   │      ├── course_access (acesso direto ao Estudo)
+   │      ├── course_events (eventos canônicos)
+   │      └── course_change_receipts (repetição segura)
+   │
+   └── course_personal_states (estado da pessoa em cada Curso)
 ```
 
-O esquema customizado atende ao APK atual, mas não comprova ao Android que o AraLearn é seu único proprietário. PKCE impede a troca do código por outro aplicativo, embora um interceptor ainda possa causar negação de serviço. Uma distribuição ampla deve usar Android App Link HTTPS verificado, com `assetlinks.json` no domínio controlado.
+### Tabelas e responsabilidades
 
-No stack local, o Mailpit em `http://127.0.0.1:54324` recebe mensagens de confirmação e recuperação. Os testes exercitam o fluxo completo; não inicie o stack local excluindo esse serviço.
+| Relação | Responsabilidade | Observação de segurança |
+|---|---|---|
+| `public.courses` | identidade, proprietário, título, objetivo, orientações, revisão e estado autoral | somente o proprietário edita |
+| `private.course_entities` | módulos, lições, tópicos, microssequências e unidades de estudo | leitura e escrita passam por RPCs validadas |
+| `public.course_access` | vínculo direto entre Curso e pessoa autorizada a estudar | não concede Autoria |
+| `public.course_personal_states` | continuidade, conclusões, marcações **Rever** e observações da própria pessoa | isolado por pessoa |
+| `public.person_profiles` | nome de apresentação e chave do avatar | e-mail não é copiado para esta tabela |
+| `private.course_events` | sequência canônica de mudanças com resumo limitado | não é uma cópia completa do Curso |
+| `private.course_change_receipts` | resultado temporário de pedidos idempotentes | tem prazo de expiração |
 
-## 7. Storage e artefatos endereçados por conteúdo
+As tabelas `private` não são uma API para o navegador. As tabelas `public`
+expostas pelo Data API têm RLS forçada, privilégios mínimos e, quando
+necessário, são acessadas somente por funções. A documentação do Supabase
+explica por que tabelas expostas precisam de [RLS
+habilitada](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
-Uma revisão publicada de curso é um objeto imutável. Seu endereço lógico inclui o SHA-256 do conteúdo canônico. O banco guarda descritor, tamanho, estado, vínculos e autorização; o Storage guarda os bytes.
+`course_personal_states` não persiste uma segunda contagem de Unidades
+concluídas. A lista calcula a interseção entre o estado pessoal e as Unidades
+vivas; isso impede que a exclusão autoral de uma Unidade deixe uma métrica
+derivada desatualizada.
 
-### Decisão
+## Composição didática paginada
 
-Objetos grandes não são repetidos em colunas relacionais nem distribuídos diretamente por URL pública. Antes do upload, a Edge Function pré-registra o descritor. Depois do envio, o servidor confere hash e tamanho e conclui a publicação transacionalmente. O estudante baixa por `aralearn-course-revisions`; a função verifica o acesso, entrega o objeto e o cliente valida novamente contrato, tamanho e SHA-256 antes de ativá-lo.
+A composição não é guardada como um grande documento repetido a cada edição.
+Cada entidade possui tipo, identificador, pai, posição, conteúdo e versão. O
+banco valida a hierarquia e impede posições duplicadas entre irmãos. Versão,
+criação e atualização pertencem a cada linha: enviar novamente conteúdo,
+posição e pai idênticos não altera esses metadados técnicos.
 
-Uploads grandes usam o protocolo TUS, recomendado pelo Supabase para transferências retomáveis acima de 6 MiB. O limite atual do domínio é 32 MiB por documento composto ou artefato. A documentação primária está em [uploads retomáveis do Supabase Storage](https://supabase.com/docs/guides/storage/uploads/resumable-uploads).
+Os tipos correntes são:
 
-### Coleta de lixo
+- `module`;
+- `lesson`;
+- `topic`;
+- `microsequence`;
+- `card`.
 
-Remover uma publicação não apaga imediatamente o objeto. Primeiro o plano de controle registra um tombstone. Uma rotina lista artefatos sem referência com idade mínima, os reivindica, remove do Storage e registra a conclusão. Essa janela impede que uma corrida entre publicação e coleta apague um objeto ainda em uso.
+O nome técnico `card` ainda faz parte do contrato corrente; a discussão
+acadêmica de nomenclatura não deve ser resolvida por um alias silencioso no
+banco.
 
-As políticas do bucket são parte da segurança; um bucket privado por si só não substitui RLS e autorização da função. Consulte o modelo de [controle de acesso do Supabase Storage](https://supabase.com/docs/guides/storage/security/access-control).
+Listas e composição são paginadas por cursores estáveis. Na Autoria, o
+navegador busca primeiro o cabeçalho fino e depois recompõe a hierarquia a
+partir das páginas de entidades. O cabeçalho não repete o `outline`, evitando
+duas consultas e dois JSONs para a mesma tela. Um consumidor autoral de serviço
+pode pedir um `outline` compacto quando realmente precisa dele.
 
-## 8. Edge Functions e protocolos externos
+Limites de tamanho e quantidade existem no banco, na API e no MCP. Assim, uma
+resposta grande demais não depende somente da memória disponível numa Edge
+Function ou no modelo de linguagem.
 
-Uma **Edge Function** é código de servidor distribuído e executado pelo Supabase. No AraLearn, ela existe quando a operação precisa conservar segredo, validar um protocolo externo ou entregar bytes mediante autorização. A plataforma documenta seu modelo de execução em [Supabase Edge Functions](https://supabase.com/docs/guides/functions).
+## Duas superfícies, uma autoridade
 
-| Função | Responsabilidade |
+### Estudo
+
+As RPCs autenticadas de Estudo aceitam Curso próprio ou compartilhado:
+
+| RPC | Resultado |
 |---|---|
-| `aralearn-authoring-mcp` | superfície MCP de autoria, autenticada por OAuth 2.1 |
-| `aralearn-authoring-action` | adaptador da Action e rota restrita usada pelo aplicativo |
-| `aralearn-course-revisions` | entrega autorizada e verificada de artefatos privados |
+| `list_courses_v1` | página de cabeçalhos acessíveis |
+| `get_course_v1` | cabeçalho fino, sem orientações e estado autoral |
+| `list_course_entities_v1` | página da composição sob uma revisão esperada |
+| `list_course_review_items_v1` | fila **Rever** paginada sem baixar todos os Cursos |
+| `load_course_personal_state_v1` | estado pessoal remoto |
+| `mutate_course_personal_state_v1` | alteração pessoal com CAS e idempotência |
 
-MCP, Action e aplicativo reutilizam o mesmo registro de operações e o mesmo executor de domínio. Os adaptadores traduzem autenticação e envelopes; não criam regras de autoria paralelas. `verify_jwt` fica desabilitado na configuração das funções porque cada entrada executa a verificação completa apropriada ao próprio protocolo.
+### Autoria no navegador
 
-As secret keys hospedadas chegam por `SUPABASE_SECRET_KEYS`; `ARALEARN_SUPABASE_SECRET_KEY_NAME` seleciona o nome quando houver mais de uma. Não copie secret key hospedada para `SUPABASE_SERVICE_ROLE_KEY`: no ambiente local essa variável pertence à chave efêmera emitida pela CLI.
+A Autoria usa wrappers que aceitam somente Cursos pertencentes à pessoa:
 
-### Origem, CORS e CSP
+| RPC | Resultado |
+|---|---|
+| `list_owned_courses_v1` | página de Cursos próprios |
+| `get_owned_course_v1` | planejamento e estado autoral, sem composição duplicada |
+| `list_owned_course_entities_v1` | composição paginada de Curso próprio |
 
-Uma **origem** é a combinação de esquema, host e porta que identifica de onde
-uma página foi carregada. **Cross-Origin Resource Sharing** (CORS) é o protocolo
-de cabeçalhos HTTP pelo qual um servidor informa ao navegador quais outras
-origens podem ler uma resposta. **Content Security Policy** (CSP) é a política
-enviada com a própria página para limitar, entre outras capacidades, os
-destinos de rede aos quais ela pode se conectar.
+Um link profundo para Curso apenas compartilhado é recusado pela superfície de
+Autoria. Isso impede que títulos ou links autorais de conteúdo compartilhado
+sejam entregues por engano.
 
-Sem essas barreiras, a alternativa mais simples seria aceitar qualquer origem
-no servidor e permitir qualquer destino HTTPS na página. Isso reduziria a
-configuração inicial, mas ampliaria a superfície para páginas não autorizadas
-tentarem usar as APIs e para um script comprometido exfiltrar dados. O AraLearn
-mantém listas explícitas nos dois lados: as funções autorizam somente as
-origens cadastradas, e a diretiva `connect-src` da CSP inclui somente o projeto
-Supabase e provedores de assistência autorizados.
+### API e MCP de Autoria
 
-Inclua a origem do site, a do servidor local quando necessária e
-`https://appassets.androidplatform.net` para o WebView. Nunca use `*`. CORS
-decide se o servidor aceita a origem; CSP restringe o que a página pode tentar.
-Um não substitui o outro, e nenhum deles substitui Auth, RLS ou validação de
-capacidade no servidor. A definição normativa de CORS integra o padrão
-[Fetch](https://fetch.spec.whatwg.org/#http-cors-protocol), e a CSP é definida
-pela recomendação [Content Security Policy Level 3](https://www.w3.org/TR/CSP3/).
+A Edge Function `aralearn-course-api` oferece o mesmo executor autoral à
+interface. A Edge Function `aralearn-authoring-mcp` adapta esse executor ao
+**Model Context Protocol** (MCP) com OAuth 2.1.
 
-## 9. Configuração pública e segredos
+As ferramentas canônicas são:
 
-O servidor de desenvolvimento e os builds leem somente:
+- `listarCursos`;
+- `lerCurso`;
+- `criarCurso`;
+- `alterarCurso`;
+- `gerirPessoas`;
+- `consultarComponentesDidaticos`.
+
+O service role não recebe as consultas genéricas que aceitam Cursos
+compartilhados. Ele recebe somente as variantes `*_for_actor_v1` restritas ao
+proprietário e as operações necessárias a perfil e acesso. Desse modo, o MCP
+autoral não depende de um filtro opcional feito depois que dados já chegaram à
+função.
+
+`verify_jwt = false` no arquivo de configuração não significa ausência de
+autenticação. Cada função verifica o protocolo apropriado na própria entrada:
+token de sessão na API e OAuth no MCP. A opção da plataforma apenas evita uma
+segunda verificação incompatível antes desse código.
+
+## Escrita de Curso
+
+Criar um Curso produz um objeto privado vazio. Alterar metadados ou composição
+usa uma única operação transacional:
+
+1. autentica a pessoa;
+2. confirma que ela é proprietária;
+3. compara a revisão esperada;
+4. valida o estado autoral e as entidades;
+5. aplica inserções, alterações e remoções;
+6. calcula quais valores realmente diferem;
+7. avança a revisão e registra evento somente quando algo mudou;
+8. registra o recibo técnico mesmo para uma repetição válida sem mudança;
+9. devolve o estado confirmado.
+
+O estado autoral tem exatamente quatro campos no contrato v1:
+
+```json
+{
+  "version": 1,
+  "parts": [],
+  "decisions": [],
+  "mandate": null
+}
+```
+
+`parts` admite até 64 itens, `decisions` até 512, e o objeto completo até 1
+MiB. Chaves adicionais e o objeto vazio são recusados. Esses limites são
+idênticos no PostgreSQL, na API e no schema MCP.
+
+Receipts reutilizam o fluxo canônico de mudança de Curso. Perfil e acesso não
+criam um segundo ledger. Recibos expirados são removidos também pelo par exato
+ator–pedido antes de uma nova inserção, mesmo quando a limpeza global por lote
+não alcançou aquela linha.
+
+Um pedido que apresenta os mesmos metadados ou as mesmas entidades é um
+**no-op** (operação sem efeito). Ele não avança a revisão do Curso, não aumenta
+a versão da entidade e não cria atividade autoral falsa. Repetir o mesmo
+`requestId` devolve o resultado selado com `idempotent=true`.
+
+### Tipos de mudança dos eventos
+
+`private.course_events.operation` representa três famílias de conteúdo:
+criação, metadados e composição. O campo `summary.changeKind` conserva a
+distinção analítica mais precisa. Eventos novos de composição informam
+`createdCount`, `updatedCount` e `deletedCount` calculados sobre diferenças
+reais; eventos novos de metadados informam os nomes efetivamente alterados em
+`changedFields`, além das contagens zeradas de entidades.
+
+O corte reclassifica os 36 eventos existentes por este mapa temporário:
+
+| Operação histórica | Operação canônica | `changeKind` | Quantidade atestada |
+|---|---|---|---:|
+| `create` | `create_course` | `course_initialized` | 6 |
+| `create_structure` | `replace_course_composition` | `didactic_structure_materialized` | 4 |
+| `replace_catalog_document` | `replace_course_composition` | `course_composition_replaced` | 4 |
+| `save_card` | `replace_course_composition` | `study_unit_updated` | 1 |
+| `save_microsequence_cards` | `replace_course_composition` | `didactic_microsequence_study_units_updated` | 16 |
+| `update_brief` | `update_course_metadata` | `authoring_guidance_updated` | 4 |
+| `update_metadata` | `update_course_metadata` | `course_metadata_updated` | 1 |
+
+Os nomes da primeira coluna existem somente dentro da migration e de seus
+testes de corte. O mapa é `TEMP`, desaparece no commit e não é contrato do
+runtime. A validação compara identidade, Curso, revisão, ator, instante,
+contagens e a distribuição completa antes de aceitar a transação.
+
+## Perfil, acesso e avatar
+
+### Perfil
+
+`public.person_profiles` contém:
+
+- `user_id`;
+- `display_name`, que pode permanecer nulo até o onboarding;
+- `avatar_object_key`;
+- `created_at` e `updated_at`.
+
+Um trigger cria o perfil junto com uma nova conta, sem inferir nome do e-mail.
+A API expõe leitura e alteração do próprio perfil pelo mesmo `gerirPessoas`
+usado no MCP e na interface.
+
+### Acesso direto ao Estudo
+
+O proprietário localiza uma conta somente pelo e-mail exato. A RPC converte o
+e-mail em identificador dentro da transação e não o conserva no vínculo, no
+evento nem no recibo. Conceder e revogar exigem `confirmed=true` e um
+identificador de pedido.
+
+Revogar apaga apenas `course_access`. O estado pessoal remoto da pessoa
+favorecida continua existente. Na próxima validação online, o cliente que
+receber acesso negado purga as listas, o cabeçalho e as entidades daquele Curso
+do cache local.
+
+### Avatar privado
+
+O bucket `person-avatars`:
+
+- não é público;
+- aceita JPEG, PNG e WebP;
+- limita cada objeto a 512 KiB;
+- usa caminho imutável `<userId>/<uuid>.<ext>`;
+- permite upload e exclusão somente na pasta da própria pessoa;
+- permite leitura somente à própria pessoa ou numa relação direta
+  proprietário–pessoa favorecida.
+
+Pessoas favorecidas pelo mesmo Curso não veem os avatares umas das outras. O
+upload é feito diretamente pelo cliente autenticado, com `x-upsert: false`.
+Não há Edge Function nem URL assinada criada apenas para esse arquivo pequeno.
+As políticas seguem o modelo de [controle de acesso do Supabase
+Storage](https://supabase.com/docs/guides/storage/security/access-control).
+
+## Exclusão da própria conta
+
+`delete_my_account_v1` exige a confirmação literal `EXCLUIR MINHA CONTA`. Essa
+RPC é oferecida somente ao usuário autenticado e não é uma ferramenta MCP.
+
+Antes da RPC, o cliente lista e remove os próprios objetos em
+`person-avatars`. O banco recusa a exclusão enquanto algum desses objetos
+existir. A função retira concessões emitidas pela pessoa para que a referência
+de autoria da concessão não bloqueie a exclusão e, então, apaga a conta do Auth.
+As chaves estrangeiras aplicam as cascatas declaradas.
+
+Quando a conta excluída era alvo de uma concessão ou revogação, o histórico
+conserva a operação e o instante, mas deixa de conservar seu UUID: o evento
+passa a indicar `targetAccountDeleted`, e o recibo substitui a pessoa por
+`accountDeleted`. O estado pessoal dessa conta é removido pelo cascade. Isso
+preserva a métrica operacional sem manter uma associação pessoal desnecessária.
+
+O servidor não afirma apagar instantaneamente logs ou backups administrados
+pelo provedor. Essa retenção deve ser verificada na política da implantação.
+
+## Autorização e privilégios
+
+As regras de segurança são deliberadamente estreitas:
+
+- `anon` conhece apenas o manifesto público do runtime;
+- `authenticated` executa as RPCs de Estudo, wrappers de Autoria própria e
+  exclusão da própria conta;
+- `service_role` executa somente operações de Curso próprio por ator, escrita,
+  perfil e acesso necessárias às Edge Functions;
+- `supabase_auth_admin` recebe apenas o hook de token do MCP;
+- tabelas privadas não concedem leitura direta a esses papéis.
+
+A migration revoga primeiro o `EXECUTE` amplo e concede uma lista explícita de
+assinaturas. Funções `security definer` fixam `search_path`, validam o ator e
+não confiam em identificadores apresentados pelo cliente sem nova checagem.
+
+RLS protege linhas, não um segredo já enviado ao navegador. Ela também não
+corrige uma função privilegiada incorreta. Por isso, os testes verificam em
+conjunto privilégios, políticas e comportamento entre contas distintas. Veja a
+documentação do PostgreSQL sobre [segurança por
+linha](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
+
+## Manifesto do runtime
+
+`supabase/runtime-manifest.json` descreve o contrato que site, Edge Functions e
+banco precisam compartilhar. A revisão corrente é `20260817150000`, contrato
+v1. Entre as capacidades observáveis estão:
+
+- identidade única e viva de Curso;
+- composição paginada;
+- acesso direto e restrito ao Estudo;
+- estado pessoal;
+- CAS e idempotência;
+- MCP autoral somente por OAuth;
+- perfil humano;
+- avatar privado;
+- exclusão da própria conta.
+
+`scripts/validateCourseRuntime.mjs` compara o JSON versionado, as migrations e
+os contratos fonte. Uma versão do site não deve ser publicada contra um banco
+que anuncie outra revisão.
+
+## Por que este desenho é compatível com recursos limitados
+
+O desenho reduz trabalho e armazenamento sem criar infraestrutura paralela:
+
+- listas devolvem projeções finas, sem `brief`, estado autoral ou composição;
+- composição e fila **Rever** são paginadas;
+- o navegador de Autoria não pede `outline` e depois as mesmas entidades;
+- estado pessoal permanece compacto por pessoa e Curso;
+- recibos expiram e são limpos em lotes;
+- avatar tem limite pequeno e upload direto;
+- API e MCP reutilizam as mesmas RPCs e o mesmo executor;
+- não existe backend separado para perfil, compartilhamento ou observabilidade.
+
+As cotas comerciais do Supabase podem mudar. Antes de uma implantação, confira
+as [cotas do plano](https://supabase.com/pricing), o [compute e o
+disco](https://supabase.com/docs/guides/platform/compute-and-disk) e os [limites
+de Edge Functions](https://supabase.com/docs/guides/functions/limits).
+
+## Ambiente local reproduzível
+
+Pré-requisitos:
+
+- Node.js e npm;
+- Docker Desktop ou runtime compatível;
+- Deno;
+- Supabase CLI na versão fixada pelo projeto.
+
+Inicialize e reconstrua somente o stack local descartável:
+
+```powershell
+npm.cmd ci
+npx.cmd --yes supabase@2.109.1 start
+npx.cmd --yes supabase@2.109.1 db reset
+```
+
+Valide primeiro o contrato estático e, quando a mudança exigir a jornada
+integrada, o stack local:
+
+```powershell
+npm.cmd run validate:course-runtime
+pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
+```
+
+O validador local executa Deno, lint do banco, smoke de API/PostgREST/RLS,
+e-mails de Auth e OAuth do MCP. Ao terminar:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 stop --no-backup
+```
+
+Para abrir o aplicativo, obtenha `API_URL` e a publishable key no
+`supabase status`, defina somente as variáveis públicas e execute
+`npm.cmd run dev`.
+
+## Configuração pública e segredos
+
+O cliente usa:
 
 ```text
 ARALEARN_SUPABASE_URL
 ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
 
-A URL e a publishable key são identificadores públicos; sua segurança depende de RLS e das autorizações do servidor. Senha do banco, secret key, chave de assinatura e keystore são segredos e nunca entram no build.
+URL e publishable key podem integrar o artefato público porque a autorização
+depende de Auth, RLS e funções. Senha do banco, secret key, chaves de assinatura
+e credenciais de release nunca entram no site ou APK.
 
-Durante `npm.cmd run dev`, `/runtime-config.js` é gerado em memória. Nos builds, o arquivo é gerado dentro do artefato. `public/runtime-config.js` permanece vazio no repositório. A preparação rejeita chaves administrativas e exige HTTPS fora de `localhost`, `127.0.0.1` e do endereço especial do emulador Android.
+Durante o desenvolvimento, `/runtime-config.js` é gerado em memória. No build,
+o arquivo é criado dentro do artefato. A Content Security Policy limita
+`connect-src` às origens configuradas. CORS aceita apenas origens explícitas;
+nenhum dos dois substitui autenticação ou RLS. As definições normativas estão
+no padrão [Fetch](https://fetch.spec.whatwg.org/#http-cors-protocol) e em
+[Content Security Policy Level
+3](https://www.w3.org/TR/CSP3/).
 
-A mesma etapa gera a diretiva `connect-src` da CSP com a origem exata do projeto. Não existe `connect-src https:` nem coringa de host local. Scripts permanecem restritos a `'self'`.
+## Aplicação no projeto remoto
 
-## 10. Ambiente local reproduzível
+Publicar migrations, Edge Functions ou dados é uma operação remota de impacto.
+Use o roteiro detalhado de [Implantação](implantacao.md). O script seguro começa
+em modo de verificação:
 
-### Pré-requisitos
-
-- Node.js e npm;
-- Supabase CLI 2.109.1;
-- Docker Desktop ou runtime compatível;
-- Deno para validar as Edge Functions;
-- Java 17 e Android SDK somente para o APK.
-
-Use a versão fixada sem instalação global:
-
-```powershell
-npm.cmd ci
-npx.cmd --yes supabase@2.109.1 start
-npx.cmd --yes supabase@2.109.1 db reset
-pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
-```
-
-O validador verifica as três Edge Functions, lint do banco, pgTAP, RLS, PostgREST, Auth, publicação temporária, entrega de revisões e MCP. Ao terminar:
-
-```powershell
-npx.cmd --yes supabase@2.109.1 stop --no-backup
-```
-
-Para abrir o aplicativo, obtenha a URL e a publishable key mostradas por `supabase status`, defina as duas variáveis públicas e execute `npm.cmd run dev`.
-
-## 11. Vinculação e aplicação no projeto remoto
-
-Crie o projeto no painel e guarde credenciais administrativas em um gerenciador de segredos. Faça primeiro a simulação protegida:
-
-```powershell
-npx.cmd --yes supabase@2.109.1 login
-pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
-  -ProjectUrl https://abc123abc123abc123ab.supabase.co
-```
-
-O script vincula o projeto, mostra o histórico e executa `db push --linked --dry-run`. Interrompa se houver migration desconhecida ou divergência. Para aplicar:
+O projeto hospedado que já contém os oito Cursos é uma exceção operacional:
+a migration de identidade precisa receber sua staging na mesma conexão e não
+pode ser aplicada isoladamente por `db push`. O importador transitório descrito
+abaixo executa esse corte. Uma instalação vazia continua usando o fluxo comum.
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
-  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
-  -Mode Apply
+  -ProjectUrl https://<project-ref>.supabase.co
 ```
 
-O terminal exige `APLICAR` e recebe a senha pelo prompt da CLI. Em seguida:
+Ele vincula o projeto, compara o histórico e executa `db push --dry-run`. A
+aplicação exige `-Mode Apply` e a confirmação literal `APLICAR`. Edge Functions
+só são implantadas quando `-DeployAuthoringFunctions` é informado.
 
-```powershell
-npx.cmd --yes supabase@2.109.1 migration list --linked
-npx.cmd --yes supabase@2.109.1 db lint --linked --level warning --fail-on warning
-```
+Depois da aplicação, verifique migration, lint, manifesto e jornadas hospedadas.
+Um erro de schema cache normalmente indica que cliente e banco estão em
+revisões diferentes; limpar IndexedDB não atualiza migrations remotas.
 
-Um erro `PGRST202` ou “schema cache” em uma RPC costuma indicar que aplicação e migrations estão em revisões diferentes. Limpar IndexedDB não corrige o servidor. Compare o histórico, aplique somente migrations pendentes e repita lint e smoke.
+### Atestação privada do corte de identidade
 
-Para implantar também as funções:
+`scripts/courseCutover/` lê e valida a origem, produz a staging e executa
+staging + migration na mesma conexão e na mesma transação. Sem `--apply`, o
+comando não escreve no banco.
 
-```powershell
-pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
-  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
-  -Mode Apply `
-  -DeployAuthoringFunctions `
-  -PublicAppUrl https://aplicacao.exemplo.org/ `
-  -AllowedOrigin "https://aplicacao.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
-```
+Antes de qualquer aplicação, o runner grava fora do repositório público uma
+atestação privada sem conteúdo, token, senha ou chave. Ela contém somente hash
+do snapshot, hash das resoluções semânticas, hash da migration e, para cada
+Curso, identidade, hashes de manifesto/documento/linhas/estado técnico e
+contagens. O diretório padrão é
+`../AraLearn_private/evidence/course-cutover/`; um caminho dentro do
+repositório público é recusado.
 
-Ao chamar `pwsh -File`, mantenha a lista de origens na mesma linha e separada por vírgulas. O roteiro preserva as origens obrigatórias do site, do desenvolvimento local e do Android.
+Depois do commit, o runner relê os Cursos, recompõe cada documento e confere
+novamente `documentHash`, `rowHash`, `entityStateHash` e contagens. Só então
+grava a atestação `verified`. Os manifestos não viram tabela nem campo de
+runtime: são evidência privada de uma operação única.
 
-## 12. Sincronização, retenção e custo
-
-O feed incremental conserva mudanças pessoais leves. Conteúdo pedagógico não passa por `apply_sync_batch`; revisões são artefatos imutáveis. Cada mutação sincronizável possui identidade e sequência causal. Repetição após timeout devolve o resultado idempotente; uma rejeição determinística reverte apenas aquela operação.
-
-Retenção é a política que determina por quanto tempo histórico e recibos permanecem disponíveis. Os valores correntes são:
-
-- dispositivo considerado ativo por 90 dias;
-- mudanças do feed conservadas por pelo menos 30 dias, respeitado o watermark seguro;
-- recibos de mutação do dispositivo conservados por 90 dias;
-- até 200 eventos recentes por workspace;
-- observações transitórias por 14 dias e estados temporários de governança por 7 dias;
-- artefatos sem referência elegíveis à coleta somente após a janela de segurança configurada.
-
-`compact_sync_history` calcula o menor ponto que ainda pode ser necessário aos dispositivos ativos. A rotina diária usa advisory lock para impedir duas compactações concorrentes. Retenção reduz armazenamento, mas um dispositivo ausente além da janela pode precisar de novo bootstrap; não se promete replay ilimitado.
-
-### Orçamento do plano gratuito
-
-Os limites do provedor mudam. Na consulta realizada em 14 de agosto de 2026, o plano gratuito informava 500 MB de banco, 1 GB de Storage, 5 GB de egress, 5 GB de cached egress e 500 mil invocações mensais de funções. As Edge Functions informavam 256 MB de memória, 150 segundos de duração e 2 segundos de CPU por requisição. Antes de planejar uma implantação, confirme separadamente as [cotas comerciais](https://supabase.com/pricing), as [características de compute e disco](https://supabase.com/docs/guides/platform/compute-and-disk) e os [limites das Edge Functions](https://supabase.com/docs/guides/functions/limits).
-
-As decisões de artefato imutável, seleção leve, continuidade compacta e coleta de lixo existem para manter o consumo proporcional a revisões distintas, não ao número de estudantes.
+Entidades que vieram da raiz relacional preservam `version`, `created_at` e
+`updated_at`. Para os dois Cursos existentes somente como publicação, a origem
+não oferece metadados por entidade; o importador declara `basis=course_record`,
+usa versão `1` e os instantes da própria publicação. A atestação diferencia
+esse default de uma preservação que a origem não permite provar.
 
 ## Publicação inicial das fixtures oficiais
 
-As fixtures em `supabase/fixtures/catalog/` são exemplos e material de validação; não são seed remoto nem entram no site ou APK. Para publicar uma fixture oficial, primeiro valide contrato e catálogo:
+Os arquivos em `supabase/fixtures/catalog/` são material de desenvolvimento e
+validação. Eles não são seed remoto, não entram automaticamente no site ou APK
+e não devem ser copiados diretamente para tabelas ou buckets.
 
-```powershell
-npm.cmd run validate:example
-npm.cmd run catalog:validate
-```
+Quando uma fixture precisar se tornar um Curso real, valide primeiro seu
+contrato local e use a mesma criação e o mesmo commit de composição oferecidos
+pela Autoria e pelo MCP. Esse caminho preserva proprietário, revisão, evento,
+recibo e validação estrutural. O corte atual não mantém uma promoção remota
+paralela que contorne essas regras.
 
-Depois use o fluxo administrativo de autoria e publicação. A publicação deve produzir o JSON canônico, calcular SHA-256, pré-registrar o descritor, enviar o objeto, conferir hash e tamanho e concluir a revisão. Não copie a fixture diretamente para uma tabela ou bucket, pois isso contornaria autorização, proveniência e coleta de lixo.
+## Evidência e limites da verificação
 
-Uma publicação oficial precisa estar vinculada a uma coleção ativa e possuir alias distribuído. O aplicativo descobre seus metadados no catálogo e baixa a revisão somente quando a conta a seleciona.
+As afirmações deste documento podem ser confrontadas em:
 
-## 13. Web e Android
+- `supabase/migrations/20260817140000_course_identity_cutover.sql`;
+- `supabase/migrations/20260817150000_course_profiles_access.sql`;
+- `supabase/functions/_shared/aralearn-authoring/`;
+- `supabase/runtime-manifest.json`;
+- `tests/runtime/course-identity-cutover-pglite.test.js`;
+- `tests/runtime/course-api-client.test.js`;
+- `tests/runtime/course-mcp-tools.test.js`;
+- `supabase/tests/course-runtime-local-smoke.mjs`.
 
-Web e APK recebem a mesma URL de projeto e publishable key. O build Android exige HTTPS e inclui a configuração no artefato. Chaves de assinatura ficam apenas no processo local:
-
-- `ARALEARN_ANDROID_KEYSTORE_PATH`;
-- `ARALEARN_ANDROID_KEYSTORE_PASSWORD`;
-- `ARALEARN_ANDROID_KEY_ALIAS`;
-- `ARALEARN_ANDROID_KEY_PASSWORD`.
-
-`verifyDeploymentArtifacts.ps1` examina configuração, CSP, ausência de segredos, ausência de catálogo embarcado e, no Android, os recursos dentro do APK. Ele não prova migrations, RLS, SMTP ou disponibilidade remota; esses pontos exigem lint, smoke e teste funcional.
-
-## 14. Verificação hospedada
-
-Depois de aplicar migrations, configurar Auth, implantar funções e publicar ao menos um curso, execute o procedimento de [smoke no projeto hospedado](implantacao.md#9-smoke-no-projeto-hospedado). O teste cria duas contas temporárias, verifica isolamento, RPCs, artefatos e limpeza.
-
-Antes de liberar a instalação, comprove ainda:
-
-1. cadastro, confirmação, recuperação e troca de senha;
-2. seleção de curso e materialização verificada;
-3. estudo sem rede e retomada após reinício;
-4. reconexão, envio da fila local e continuidade em outro dispositivo;
-5. conflito CAS e repetição idempotente;
-6. autoria, revisão, publicação e retirada conforme a capacidade da conta;
-7. ausência de segredo em site e APK;
-8. restauração a partir de backup ensaiada.
-
-## 15. Fontes de evidência
-
-As afirmações deste documento podem ser confrontadas em quatro camadas:
-
-- esquema e regras: `supabase/migrations/` e `supabase/tests/`;
-- protocolos de servidor: `supabase/functions/`;
-- implantação: `scripts/deploySupabase.ps1`, `scripts/validateLocalSupabase.ps1` e `scripts/verifyDeploymentArtifacts.ps1`;
-- compatibilidade do cliente: manifesto público do runtime e testes de integração.
-
-Um teste aprovado demonstra o cenário codificado, não disponibilidade permanente do provedor, segurança absoluta ou restauração bem-sucedida de um backup que nunca foi ensaiado.
+Um teste aprovado demonstra o cenário codificado. Ele não prova disponibilidade
+permanente do provedor, segurança absoluta ou restauração de um backup que
+nunca foi ensaiado.

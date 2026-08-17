@@ -1,0 +1,447 @@
+import {
+  createEmptyProgressDocument,
+  validateProgressDocument
+} from "../storage/progressStore.js";
+import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
+import { findCourse } from "./CourseStudyNavigation.js";
+
+const PROJECT_CONTRACT = "aralearn.library.v1";
+const MAX_LIST_PAGES = 100;
+const REVIEW_PAGE_SIZE = 20;
+const REVIEW_PAGE_CACHE_KEY = "course.v1.review-page";
+
+function clone(value) {
+  return value == null ? value : structuredClone(value);
+}
+
+function courseIdFromReference(reference) {
+  const value = Array.isArray(reference)
+    ? reference[0]
+    : Array.isArray(reference?.entityPath)
+      ? reference.entityPath[0]
+      : reference?.courseId;
+  return String(value || "").trim().toLowerCase();
+}
+
+function mergeProgress(progressValues) {
+  const result = createEmptyProgressDocument();
+  for (const progress of progressValues) {
+    Object.assign(result.lessons, validateProgressDocument(progress).lessons);
+  }
+  return result;
+}
+
+function descriptorCourse(descriptor) {
+  return {
+    id: String(descriptor?.courseId || "").trim().toLowerCase(),
+    title: String(descriptor?.title || "Curso").trim() || "Curso",
+    goal: String(descriptor?.goal || "").trim(),
+    modules: []
+  };
+}
+
+function networkFailure(error) {
+  const statusValue = error?.status ?? error?.response?.status;
+  const status = statusValue == null ? null : Number(statusValue);
+  const code = String(error?.code || "").toUpperCase();
+  return status === 0 || status === 408 || status === 429 || status >= 500 ||
+    new Set(["REQUEST_TIMEOUT", "NETWORK_ERROR", "FETCH_FAILED", "ETIMEDOUT",
+      "ECONNRESET", "ECONNREFUSED", "ENETUNREACH", "EAI_AGAIN"]).has(code) ||
+    error?.name === "AbortError" ||
+    (error?.name === "TypeError" && /fetch|network|load failed/iu.test(String(error.message || "")));
+}
+
+function courseAccessRevoked(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  return error?.authRequired !== true && status !== 401 && (
+    status === 403 || status === 404 || code === "42501" || code === "PT404"
+  );
+}
+
+export class CourseStudyRepository {
+  constructor({ bridge, api, cache, clock = () => new Date() } = {}) {
+    if (!bridge || typeof bridge.listAccessibleCourses !== "function" ||
+        typeof bridge.loadCourse !== "function") {
+      throw new TypeError("Ponte canônica de Estudo obrigatória.");
+    }
+    if (!api || typeof api.loadPersonalState !== "function" ||
+        typeof api.mutatePersonalState !== "function") {
+      throw new TypeError("API canônica de Cursos obrigatória.");
+    }
+    if (!cache) throw new TypeError("Cache canônico de Cursos obrigatório.");
+    this.bridge = bridge;
+    this.api = api;
+    this.cache = cache;
+    this.clock = clock;
+    this.project = { contract: PROJECT_CONTRACT, courses: [] };
+    this.personalByCourseId = new Map();
+    this.loadedCourseById = new Map();
+    this.courseList = [];
+    this.reviewItems = [];
+    this.reviewHasMore = false;
+    this.reviewCursor = null;
+    this.listRuntimeStatus = { offline: false, stale: false, readOnly: false };
+  }
+
+  async initialize() {
+    await this.refreshCourses();
+    return this.loadProject();
+  }
+
+  async #listAllCourses() {
+    const items = [];
+    const cursors = new Set();
+    let cursor = null;
+    let offline = false;
+    let stale = false;
+    for (let pageIndex = 0; pageIndex < MAX_LIST_PAGES; pageIndex += 1) {
+      const page = await this.bridge.listAccessibleCourses({ limit: 50, cursor });
+      if (!Array.isArray(page?.items)) throw new TypeError("A lista de Cursos é inválida.");
+      items.push(...page.items);
+      offline ||= page.offline === true;
+      stale ||= page.stale === true;
+      if (page.hasMore !== true) return { items, offline, stale };
+      if (!page.nextCursor) throw new TypeError("A lista de Cursos omitiu o cursor seguinte.");
+      const cursorKey = JSON.stringify(page.nextCursor);
+      if (cursors.has(cursorKey)) throw new TypeError("A lista de Cursos repetiu o cursor.");
+      cursors.add(cursorKey);
+      cursor = page.nextCursor;
+    }
+    throw new TypeError("A lista de Cursos excedeu o limite seguro de páginas.");
+  }
+
+  async #reviewPage(cursor = null) {
+    if (typeof this.api.listCourseReviewItems !== "function") {
+      return { items: [], hasMore: false, nextCursor: null };
+    }
+    const page = await this.api.listCourseReviewItems({ limit: REVIEW_PAGE_SIZE, cursor });
+    if (!Array.isArray(page?.items)) throw new TypeError("A página de itens para rever é inválida.");
+    if (page.hasMore === true && !page.nextCursor) {
+      throw new TypeError("A página de itens para rever omitiu o cursor.");
+    }
+    if (cursor && page.hasMore === true &&
+        JSON.stringify(cursor) === JSON.stringify(page.nextCursor)) {
+      throw new TypeError("A página de itens para rever repetiu o cursor.");
+    }
+    return {
+      items: clone(page.items),
+      hasMore: page.hasMore === true,
+      nextCursor: page.hasMore === true ? clone(page.nextCursor) : null
+    };
+  }
+
+  #cacheReviewPage() {
+    return this.cache.putCache(REVIEW_PAGE_CACHE_KEY, {
+      items: clone(this.reviewItems),
+      hasMore: this.reviewHasMore,
+      nextCursor: clone(this.reviewCursor)
+    });
+  }
+
+  #rebuildProject() {
+    this.project = {
+      contract: PROJECT_CONTRACT,
+      courses: this.courseList.map((descriptor) => {
+        const loaded = this.loadedCourseById.get(descriptor.courseId);
+        return clone(loaded?.revision === descriptor.revision
+          ? loaded.course
+          : descriptorCourse(descriptor));
+      })
+    };
+  }
+
+  async #purgeRevokedCourses(courseIds) {
+    const revoked = [...new Set(courseIds)];
+    for (const courseId of revoked) {
+      const personal = this.personalByCourseId.get(courseId);
+      if (personal) await personal.clearLocal();
+      this.personalByCourseId.delete(courseId);
+      this.loadedCourseById.delete(courseId);
+      this.courseList = this.courseList.filter((item) => item.courseId !== courseId);
+      this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
+      await this.bridge.clearCourse(courseId);
+    }
+    if (revoked.length) {
+      await this.#cacheReviewPage();
+      this.#rebuildProject();
+    }
+  }
+
+  async refreshCourses() {
+    const listed = await this.#listAllCourses();
+    this.listRuntimeStatus = {
+      offline: listed.offline === true,
+      stale: listed.stale === true,
+      readOnly: listed.offline === true
+    };
+    const list = listed.items;
+    const retained = new Set();
+    for (const descriptor of list) {
+      retained.add(descriptor.courseId);
+      const loaded = this.loadedCourseById.get(descriptor.courseId);
+      if (!listed.offline && loaded && loaded.revision !== descriptor.revision) {
+        this.loadedCourseById.delete(descriptor.courseId);
+      } else if (!listed.offline && loaded) {
+        loaded.offline = false;
+        loaded.stale = false;
+        loaded.readOnly = false;
+      }
+    }
+    for (const [courseId, personal] of this.personalByCourseId) {
+      if (retained.has(courseId)) continue;
+      if (listed.offline) continue;
+      await personal.clearLocal();
+      await this.bridge.clearCourse(courseId);
+      this.personalByCourseId.delete(courseId);
+      this.loadedCourseById.delete(courseId);
+    }
+    for (const courseId of this.loadedCourseById.keys()) {
+      if (!retained.has(courseId) && !listed.offline) this.loadedCourseById.delete(courseId);
+    }
+    this.courseList = clone(list);
+    try {
+      const page = await this.#reviewPage();
+      this.reviewItems = page.items;
+      this.reviewHasMore = page.hasMore;
+      this.reviewCursor = page.nextCursor;
+      await this.#cacheReviewPage();
+    } catch (error) {
+      if (!networkFailure(error)) throw error;
+      const cached = await this.cache.getCache(REVIEW_PAGE_CACHE_KEY);
+      this.reviewItems = Array.isArray(cached?.items) ? clone(cached.items) : [];
+      this.reviewHasMore = cached?.hasMore === true;
+      this.reviewCursor = this.reviewHasMore ? clone(cached?.nextCursor) : null;
+    }
+    this.reviewItems = this.reviewItems.filter((item) => retained.has(item?.courseId));
+    if (!listed.offline) {
+      await this.#cacheReviewPage();
+    }
+    this.#rebuildProject();
+    return this.loadProject();
+  }
+
+  async loadCourse(courseIdentity) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    if (!descriptor) throw new Error("O Curso solicitado não está acessível.");
+    let loaded = this.loadedCourseById.get(courseId);
+    if (!loaded || loaded.revision !== descriptor.revision) {
+      const result = await this.bridge.loadCourse(courseId, {
+        verifiedRevision: descriptor.revision
+      });
+      const course = result.document?.courses?.[0];
+      if (!course || course.id !== courseId) {
+        throw new TypeError("O documento carregado não corresponde ao Curso listado.");
+      }
+      loaded = {
+        revision: descriptor.revision,
+        course: clone(course),
+        offline: result.offline === true,
+        stale: result.stale === true,
+        readOnly: result.readOnly === true || result.offline === true
+      };
+      this.loadedCourseById.set(courseId, loaded);
+    }
+    let personal = this.personalByCourseId.get(courseId);
+    if (!personal) {
+      personal = new CoursePersonalStateRepository({
+        courseId,
+        api: this.api,
+        cache: this.cache,
+        course: loaded.course,
+        clock: this.clock
+      });
+      await personal.initialize();
+      this.personalByCourseId.set(courseId, personal);
+    } else {
+      personal.setCourse(loaded.course);
+    }
+    this.#rebuildProject();
+    return clone(loaded.course);
+  }
+
+  loadProject() {
+    return clone(this.project);
+  }
+
+  saveProject() {
+    throw new Error("O Estudo não altera o conteúdo canônico do Curso.");
+  }
+
+  resolveCourseContractKey(courseIdentity) {
+    const requested = String(courseIdentity || "").trim().toLowerCase();
+    return this.courseList.some(({ courseId }) => courseId === requested) ? requested : "";
+  }
+
+  loadCourseSummaries() {
+    return this.courseList.map((item) => ({
+      courseId: item.courseId,
+      title: item.title,
+      revision: item.revision,
+      ownership: item.ownership,
+      canEdit: item.ownership === "owned" && item.canEdit === true,
+      moduleCount: Number(item.moduleCount || 0),
+      lessonCount: Number(item.lessonCount || 0),
+      microsequenceCount: Number(item.microsequenceCount || 0),
+      studyUnitCount: Number(item.studyUnitCount || 0),
+      completedStudyUnitCount: Number(item.completedStudyUnitCount || 0),
+      updatedAt: item.updatedAt
+    }));
+  }
+
+  loadRuntimeStatus(courseIdentity = "") {
+    const courseId = String(courseIdentity || "").trim().toLowerCase();
+    const loaded = this.loadedCourseById.get(courseId);
+    return clone({
+      offline: this.listRuntimeStatus.offline || loaded?.offline === true,
+      stale: this.listRuntimeStatus.stale || loaded?.stale === true,
+      readOnly: this.listRuntimeStatus.readOnly || loaded?.readOnly === true
+    });
+  }
+
+  #personal(reference) {
+    const courseId = courseIdFromReference(reference);
+    const personal = this.personalByCourseId.get(courseId);
+    if (!personal) throw new Error("O Curso do estado pessoal não está carregado.");
+    return personal;
+  }
+
+  loadProgress() {
+    return mergeProgress([...this.personalByCourseId.values()].map((personal) =>
+      personal.loadProgress()));
+  }
+
+  clearCourseProgress(courseIdentity) {
+    return this.#personal({ courseId: courseIdentity }).clearProgress()
+      .then(() => {
+        const summary = this.courseList.find(({ courseId }) => courseId === courseIdentity);
+        if (summary) summary.completedStudyUnitCount = 0;
+        return this.loadProgress();
+      });
+  }
+
+  async clearProgressScope({
+    courseId,
+    moduleId = "",
+    lessonId = "",
+    microsequenceId = "",
+    studyUnitId = ""
+  } = {}) {
+    const normalizedCourseId = this.resolveCourseContractKey(courseId);
+    if (!normalizedCourseId) throw new Error("O Curso do progresso não está acessível.");
+    const course = findCourse(this.project, normalizedCourseId);
+    if (!course?.modules?.length) throw new Error("Carregue o Curso antes de zerar o progresso.");
+    const personal = this.#personal({ courseId: normalizedCourseId });
+    await personal.clearProgressScope({
+      courseId: normalizedCourseId,
+      moduleId,
+      lessonId,
+      microsequenceId,
+      studyUnitId
+    });
+    const completedStudyUnitCount = Object.values(personal.loadProgress().lessons)
+      .reduce((total, entry) => total + entry.completedStudyUnitIds.length, 0);
+    const summary = this.courseList.find((item) => item.courseId === normalizedCourseId);
+    if (summary) summary.completedStudyUnitCount = completedStudyUnitCount;
+    return this.loadProgress();
+  }
+
+  isStudyUnitCompleted(reference) {
+    return this.#personal(reference).isStudyUnitCompleted(reference);
+  }
+
+  setStudyUnitCompleted(reference, completed = true) {
+    return this.#personal(reference).setStudyUnitCompleted(reference, completed);
+  }
+
+  isStudyUnitMarkedForReview(reference) {
+    return this.#personal(reference).isStudyUnitMarkedForReview(reference);
+  }
+
+  setStudyUnitReviewMark(reference, marked) {
+    return this.#personal(reference).setStudyUnitReviewMark(reference, marked);
+  }
+
+  loadReviewItems() {
+    const locallyLoaded = new Set(this.personalByCourseId.keys());
+    return [
+      ...this.reviewItems.filter((item) => !locallyLoaded.has(item.courseId)),
+      ...[...this.personalByCourseId.values()].flatMap((personal) =>
+        personal.loadReviewItems())
+    ].sort((left, right) =>
+      String(right.reviewMarkedAt).localeCompare(String(left.reviewMarkedAt)));
+  }
+
+  hasMoreReviewItems() {
+    return this.reviewHasMore;
+  }
+
+  async loadMoreReviewItems() {
+    if (!this.reviewHasMore || !this.reviewCursor) return this.loadReviewItems();
+    const page = await this.#reviewPage(this.reviewCursor);
+    const seen = new Set(this.reviewItems.map((item) => JSON.stringify(item.entityPath)));
+    for (const item of page.items) {
+      const key = JSON.stringify(item.entityPath);
+      if (!seen.has(key)) this.reviewItems.push(item);
+      seen.add(key);
+    }
+    this.reviewHasMore = page.hasMore;
+    this.reviewCursor = page.nextCursor;
+    await this.#cacheReviewPage();
+    return this.loadReviewItems();
+  }
+
+  loadCommentForPath(reference) {
+    return this.#personal(reference).loadCommentForPath(reference);
+  }
+
+  saveCommentForPath(reference, draft) {
+    return this.#personal(reference).saveCommentForPath(reference, draft);
+  }
+
+  deleteCommentForPath(reference) {
+    return this.#personal(reference).deleteCommentForPath(reference);
+  }
+
+  async refreshPersonalState() {
+    const revokedCourseIds = [];
+    for (const [courseId, personal] of this.personalByCourseId) {
+      try {
+        await personal.refresh();
+        const completedStudyUnitCount = Object.values(personal.loadProgress().lessons)
+          .reduce((total, entry) => total + entry.completedStudyUnitIds.length, 0);
+        const summary = this.courseList.find((item) => item.courseId === courseId);
+        if (summary) summary.completedStudyUnitCount = completedStudyUnitCount;
+      } catch (error) {
+        if (!courseAccessRevoked(error)) throw error;
+        revokedCourseIds.push(courseId);
+      }
+    }
+    await this.#purgeRevokedCourses(revokedCourseIds);
+    this.#rebuildProject();
+    return this.loadProject();
+  }
+
+  async flush() {
+    const snapshots = [];
+    const revokedCourseIds = [];
+    for (const [courseId, personal] of this.personalByCourseId) {
+      try {
+        snapshots.push(await personal.flush());
+      } catch (error) {
+        if (!courseAccessRevoked(error)) throw error;
+        revokedCourseIds.push(courseId);
+      }
+    }
+    await this.#purgeRevokedCourses(revokedCourseIds);
+    return snapshots;
+  }
+
+  async close() {
+    await this.flush();
+    this.personalByCourseId.clear();
+  }
+}
+
+export { PROJECT_CONTRACT as COURSE_STUDY_PROJECT_CONTRACT };

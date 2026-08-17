@@ -1,166 +1,146 @@
 # Guia do estudante
 
-Este guia apresenta o percurso mínimo para escolher um curso, estudar, praticar
-e retomar. Não é necessário conhecer a arquitetura do AraLearn. Para operações
-de conta, autoria e sincronização em maior detalhe, consulte [Uso do
-aplicativo](uso-do-app.md).
+Este guia ensina o percurso de Estudo implementado no código corrente. O Curso
+pode pertencer à própria pessoa ou ter sido compartilhado diretamente pelo
+proprietário; a experiência de estudo é a mesma nos dois casos.
 
 ## Compreender a tela inicial
 
-Dois espaços organizam o conteúdo:
+A Home de **Estudo** mostra diretamente os Cursos acessíveis. Cada cartão
+apresenta:
 
-- **Coleções** é o catálogo compartilhado de cursos oficiais;
-- **Trilhas** é a seleção da conta, organizada em grupos pessoais, e também
-  mostra projetos aos quais a pessoa tem acesso.
+- título e objetivo;
+- progresso em Unidades concluídas;
+- quantidade de Módulos e Lições;
+- um ícone que distingue Curso próprio de Curso compartilhado;
+- o botão de abrir.
 
-Essa separação preserva a decisão do estudante. Pesquisar ou abrir um curso no
-catálogo não o inclui silenciosamente em Trilhas. Grupos pessoais organizam a
-seleção sem mudar o curso nem afetar outras pessoas.
+A lista começa por descritores pequenos. A composição completa de um Curso é
+carregada quando ele é aberto. Por isso, um Curso novo pode exigir conexão na
+primeira abertura mesmo que a Home já mostre seu nome.
+
+Acima da lista pode aparecer **Rever**, com as Unidades marcadas. O botão de
+Autoria leva à atividade autoral, mas Cursos compartilhados não aparecem lá:
+acesso direto concede Estudo, não edição.
 
 ## Preparar o dispositivo
 
-**Pré-condição:** tenha uma conta confirmada e conexão disponível.
+1. Entre na conta correta.
+2. Com conexão disponível, abra cada Curso que pretende usar offline.
+3. Aguarde o conteúdo aparecer antes de sair da rede.
+4. Abra **Conta e aparência** para escolher tema, conferir o perfil ou sair.
 
-**Passos:**
-
-1. Entre com e-mail e senha.
-2. Aguarde o término da preparação inicial.
-3. Abra o painel pelo botão de áreas e escolha **Coleções**.
-4. Localize o curso e use **Adicionar a Trilhas**.
-5. Aguarde o download antes de testar sem rede.
-
-**Resultado esperado:** o curso aparece em Trilhas e possui uma réplica neste
-dispositivo.
-
-**Sem conexão:** um curso nunca baixado não pode ser aberto offline.
-
-**Recuperação:** se a preparação parar, volte a uma rede estável e use
-**Sincronizar**. Não apague os dados como primeira tentativa.
-
-## Organizar os cursos
-
-**Pré-condição:** o curso deve aparecer em Trilhas.
-
-**Passos:** crie ou renomeie um grupo pelas **Ações do grupo**; para mover um
-curso, selecione-o, abra **Ações do curso** e escolha o grupo de destino.
-
-**Resultado esperado:** grupos e cursos permanecem em ordem alfabética. Excluir um grupo
-não exclui cursos; os itens restantes passam para **Outros**.
-
-**Sem conexão:** a última organização confirmada continua visível. Operações que
-precisam do servidor podem aguardar a reconexão.
-
-**Recuperação:** sincronize antes de repetir uma ação. Se um grupo foi excluído,
-procure seus cursos em **Outros**; a exclusão do grupo não os remove.
+O AraLearn mantém no IndexedDB a lista conhecida, os Cursos abertos e o estado
+pessoal. Limpar dados do navegador, reinstalar o aplicativo ou excluir o
+armazenamento do site pode remover a réplica ainda não sincronizada.
 
 ## Iniciar ou retomar uma sessão de estudo
 
-**Pré-condição:** o curso deve estar em Trilhas e, para uso offline, já baixado.
+1. Na Home, escolha **Abrir Curso**.
+2. Abra um Módulo.
+3. Abra uma Lição.
+4. Abra uma Microssequência didática.
+5. Examine a lista de Unidades ou comece pela primeira.
 
-**Passos:**
+Os cartões de navegação mostram progresso em cada nível. Dentro da Unidade, a
+barra superior informa o contexto, a barra fina mostra a posição na
+Microssequência e a contagem indica a Unidade corrente.
 
-1. Selecione grupo e curso.
-2. Use **Abrir curso** ou **Play**.
-3. Percorra módulo, lição e microssequência.
-4. Abra o card indicado pela continuação.
-
-**Resultado esperado:** o AraLearn conduz ao ponto funcional de retomada. Esse ponto
-responde somente “onde continuar?”; não representa nota, frequência ou domínio.
-
-**Sem conexão:** a navegação usa a réplica local.
-
-**Recuperação:** se a continuação parecer inadequada, navegue manualmente até a
-lição ou zere a etapa que decidiu refazer. Zerar uma etapa reabre também as
-posteriores da mesma lição.
+Ao avançar, a Unidade é marcada como concluída. O cursor da Lição permite
+retomar o ponto alcançado. Se a conexão estiver ausente, a alteração fica
+pendente e é enviada quando possível.
 
 ## Responder a uma prática
 
-**Pré-condição:** leia o enunciado e identifique a ação solicitada. Dependendo do
-card, será necessário selecionar, preencher, digitar, ordenar ou relacionar.
+A forma de resposta depende do componente didático. O runtime corrente inclui,
+entre outras, seleção de alternativa, preenchimento de lacuna e ordenação.
 
-**Passos:**
+1. Leia a explicação e a tarefa inteira.
+2. Informe a resposta no próprio componente.
+3. Use **Continuar**.
+4. Se a resposta estiver incompleta, complete os campos indicados.
+5. Quando houver feedback, leia-o e use **Continuar** novamente.
 
-1. Interaja com o conteúdo do próprio recurso.
-2. Pressione **Play** para confirmar.
-3. Leia o feedback exibido.
-4. Pressione **Play** novamente para avançar.
-
-**Resultado esperado:** a tentativa recebe retorno sem produzir nota ou histórico de
-erros. Quando existir **Ver resposta**, a solução só é revelada por essa ação.
-
-**Sem conexão:** confirmação, feedback contido no card e avanço funcionam
-localmente.
-
-**Recuperação:** uma resposta pode ser limpa ou refeita. Se o controle não
-responder, reabra o card; a falta de rede não deveria bloquear esse toque.
+Uma resposta incorreta não produz nota global nem bloqueio do Curso. A
+interface oferece nova tentativa ou exibição da resposta quando o contrato do
+componente prevê essas ações.
 
 ## Marcar para rever
 
-**Pré-condição:** esteja no card que deseja reencontrar.
+Na Unidade, use o ícone **Marcar para rever**. O estado pressionado indica que a
+marca está ativa.
 
-**Passos:** toque em **Rever**. Na tela inicial do curso, abra **Cards para
-rever** para voltar ao alvo. Toque novamente para retirar a marca.
+As Unidades marcadas aparecem na seção **Rever** da Home. Cada item conserva o
+caminho exato até Curso, Módulo, Lição, Microssequência e Unidade. Abrir o item
+carrega o Curso se necessário e leva diretamente ao alvo. Toque novamente no
+ícone para retirar a marca.
 
-**Resultado esperado:** a decisão permanece pessoal e não é apresentada a outras pessoas
-como dificuldade ou erro.
-
-**Sem conexão:** a marca é gravada no dispositivo e sincronizada depois.
-
-**Recuperação:** se a marca estiver diferente em outro dispositivo, sincronize
-os dois antes de refazê-la.
+Marcar para rever é uma decisão pessoal. Ela não altera o conteúdo e não é
+visível como marca de outra pessoa.
 
 ## Registrar uma observação
 
-**Pré-condição:** abra o card sobre o qual deseja escrever.
+Use o ícone **Observação** na Unidade. Escolha uma categoria:
 
-**Passos:**
+- Dúvida;
+- Possível erro;
+- Confuso;
+- Sugestão;
+- Observação.
 
-1. Abra o ícone de observação.
-2. Escolha **Dúvida**, **Possível erro**, **Confuso**, **Sugestão** ou
-   **Observação**.
-3. Escreva até 1.000 caracteres e salve.
+Escreva até 1.000 caracteres e salve. O ícone passa a indicar que existe uma
+observação. Abra novamente para alterar ou retirar o texto.
 
-**Resultado esperado:** há uma observação corrente por pessoa e card. Uma nova gravação
-substitui a anterior; retirar apaga o registro. Em curso associado a um
-workspace, a equipe autorizada pode responder.
-
-**Sem conexão:** a observação própria fica guardada; respostas compartilhadas
-chegam depois da sincronização.
-
-**Recuperação:** se o card tiver sido retirado, o texto não é encaminhado a
-outro card apenas porque o título parece semelhante.
-
-Uma observação registra o que a pessoa decidiu comunicar, não uma medição de
-aprendizagem. Veja [Observações pedagógicas](observacoes-pedagogicas.md).
+A observação fica ancorada à Unidade e faz parte do estado pessoal. Nesta
+revisão, ela persiste local e remotamente, mas ainda não existe a nova fila
+autoral que reúna observação, decisão, correção e verificação. Portanto, não se
+deve interpretar o salvamento como garantia de que o conteúdo já entrou em
+auditoria.
 
 ## Interromper com segurança
 
-O ponto corrente, a conclusão estrutural, **Rever** e a observação são gravados
-primeiro no dispositivo. É possível fechar o aplicativo e voltar depois. Se
-houver conexão, o AraLearn tenta aproximar esse estado do servidor sem exigir
-que o estudante compare versões.
+É seguro voltar pelos níveis ou fechar o aplicativo depois que a ação aparece
+na interface. Sem conexão, o estado pode continuar pendente no dispositivo.
+Evite limpar dados, trocar de navegador ou desinstalar antes de reconectar se
+houver progresso ou observações recentes importantes.
 
-Antes de sair da conta ou limpar dados do aplicativo, sincronize alterações que
-ainda não deseja perder. Fechar um card e encerrar a sessão são operações
-diferentes: fechar preserva a conta aberta; **Sair** encerra a autenticação.
+Conflitos entre dois dispositivos são resolvidos pelo repositório de estado
+pessoal com revisão remota e reconciliação determinística. Se o Curso deixar de
+estar acessível, a sincronização falha fechada em vez de continuar escrevendo
+sem autorização.
+
+## Zerar o progresso de um Curso
+
+Quando um Curso possui progresso, a Home mostra **Zerar progresso do Curso**.
+Essa ação:
+
+1. pede confirmação com o título do Curso;
+2. limpa somente o progresso daquele Curso;
+3. não remove o Curso;
+4. não apaga progresso de outros Cursos;
+5. não altera o conteúdo canônico.
+
+Marcas e observações são estados distintos; não presuma que “zerar progresso”
+seja uma exclusão geral dos dados pessoais.
 
 ## Quando editar
 
-Estudar não exige editar. Os modos **Editar** e **IA** aparecem somente quando a
-conta possui capacidade de autoria sobre o conteúdo.
-
-- **Editar** apresenta campos textuais e protege a estrutura do recurso;
-- **IA** permite selecionar um alvo, conversar sobre uma mudança e examinar a
-  versão produzida.
-
-A assistência de linguagem pode errar. Leia a mudança, continue a conversa se
-necessário e use desfazer quando o resultado não corresponder ao pedido. Uma
-correção feita pelo estudante é uma ação de autoria voluntária, não requisito
-para concluir o curso.
+Estudo não altera título, estrutura ou conteúdo do Curso. Se o Curso for seu,
+abra **Autoria** para inspecionar ou editar. Se for compartilhado, registre uma
+observação situada e converse com o proprietário pelos canais disponíveis.
 
 ## Limites do estado de estudo
 
-O AraLearn conserva apenas o necessário para continuidade e manifestação
-voluntária. Não registra quantidade de tentativas, acertos, erros, abertura ou
-tempo no card para classificar a pessoa. A fundamentação dessa escolha está em
-[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
+O AraLearn conserva o necessário para continuidade: progresso, cursor, marcas
+e observações. Esses registros não devem ser tratados automaticamente como:
+
+- atenção;
+- engajamento;
+- domínio do conteúdo;
+- resultado de aprendizagem;
+- desempenho comparável entre pessoas.
+
+Qualquer uso em pesquisa precisa definir construto, unidade de análise,
+instrumento, procedimento, ausências e limites de interpretação. Veja
+[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) e o
+[glossário de construtos](glossario-construtos.md).

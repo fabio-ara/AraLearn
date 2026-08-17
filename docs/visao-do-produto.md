@@ -4,7 +4,7 @@ O AraLearn é um ambiente móvel de estudo e autoria de cursos. Seu propósito �
 transformar um conjunto extenso de assuntos em um percurso que explique,
 exemplifique, proponha práticas e possa ser retomado depois de uma interrupção.
 O produto não substitui o trabalho intelectual do estudante nem promete que a
-mera exposição a cards produza aprendizagem. Ele organiza condições para que o
+mera exposição a Unidades de estudo produza aprendizagem. Ele organiza condições para que o
 estudo seja compreensível, praticável e revisável.
 
 Este documento apresenta o problema tratado, as escolhas centrais do produto e
@@ -35,25 +35,27 @@ produzido pela forma de apresentação. Essa distinção fundamenta a busca por
 segmentação, explicitação de relações e remoção de elementos que não contribuem
 para a tarefa ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). A
 segmentação, entretanto, não autoriza resumir a teoria até torná-la incompleta:
-se um assunto exige mais etapas, o curso deve usar mais cards.
+se um assunto exige mais etapas, o Curso deve usar mais Unidades.
 
 ## Unidade de organização do estudo
 
 O conteúdo segue uma hierarquia estável:
 
 ```text
-curso -> módulo -> lição -> microssequência -> card
+Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
 ```
 
 Cada nível resolve um problema distinto:
 
-- **curso** delimita a finalidade e o campo de conhecimento;
-- **módulo** reúne uma região coerente do programa;
-- **lição** organiza uma progressão que pode ser estudada como unidade;
-- **microssequência** combina teoria e prática em torno de uma finalidade local;
-- **card** apresenta uma contribuição delimitada para essa microssequência.
+- **Curso** delimita a finalidade e o campo de conhecimento;
+- **Módulo** reúne uma região coerente do programa;
+- **Lição** organiza uma progressão que pode ser estudada como unidade;
+- **Microssequência didática** combina teoria e prática em torno de uma
+  finalidade local;
+- **Unidade de estudo** apresenta uma contribuição delimitada para essa
+  Microssequência.
 
-A microssequência evita dois extremos. Um card completamente isolado pode não
+A Microssequência evita dois extremos. Uma Unidade completamente isolada pode não
 oferecer contexto suficiente; uma lição apresentada como bloco único pode
 concentrar relações demais. A divisão intermediária mantém um contexto próximo
 e permite alternar explicação, exemplo, prática e feedback. Estudos sobre
@@ -83,18 +85,18 @@ O AraLearn não fixa uma quantidade universal de exercícios por assunto. O
 planejamento deve primeiro identificar o que o estudante precisará fazer:
 recordar, distinguir, relacionar, ordenar, calcular, interpretar uma
 representação ou produzir uma resposta, por exemplo. Depois, seleciona-se a
-quantidade e a variedade de práticas necessárias para cobrir esses gestos.
+quantidade e a variedade de práticas necessárias para cobrir essas operações.
 
 Prática de recuperação e feedback formativo possuem suporte consistente na
 literatura, mas seus efeitos dependem da tarefa, do intervalo, do conteúdo e da
 qualidade do retorno ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Shute (2008)](referencias.md#ref-shute2008feedback)). Por isso, o produto não reduz prática a contagem de itens
 nem trata qualquer resposta como prova de domínio.
 
-## Recursos de representação
+## Componentes e representações
 
-Um card pode conter texto ou um recurso especializado, como fórmula, matriz,
+Uma Unidade pode conter texto ou um componente especializado, como fórmula, matriz,
 grafo, diagrama de conjuntos, fluxograma, tabela, código ou representação
-linguística. Um recurso só se justifica quando sua estrutura ajuda a perceber
+linguística. Um componente só se justifica quando sua estrutura ajuda a perceber
 algo que seria menos claro em prosa genérica.
 
 A escolha da representação ocorre depois da intenção pedagógica. O mesmo
@@ -106,29 +108,28 @@ adivinhar por que duas formas aparecem juntas ([Ainsworth (2006)](referencias.md
 rótulos próximos aos elementos que explicam também reduz a integração mental
 desnecessária ([Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
 
-Os recursos são pacotes independentes do núcleo do leitor. Essa separação
+Os componentes são pacotes independentes do núcleo de execução. Essa separação
 permite acrescentar uma representação ou corrigir seu contrato e seu
 renderizador sem reescrever a progressão, a persistência e os controles comuns
-dos cards. A independência arquitetural não dispensa curadoria acadêmica: cada
+das Unidades. A independência arquitetural não dispensa curadoria acadêmica: cada
 pacote continua responsável por convenções da área, legibilidade móvel,
 interação de prática, edição textual e validação.
 
 ## Estudo, autoria e assistência computacional
 
-O mesmo curso pode ser observado em dois contextos complementares:
+O mesmo Curso pode ser observado em dois contextos complementares:
 
-- no **Estudo**, a pessoa lê, pratica, recebe feedback, marca um card para rever
+- no **Estudo**, a pessoa lê, pratica, recebe feedback, marca uma Unidade para rever
   e registra uma observação;
-- na **Autoria**, uma pessoa autorizada corrige textos, reorganiza a estrutura,
-  acompanha Mapa/Desenho/Auditoria e coordena um projeto compartilhado. A
-  conversa de planejamento permanece num GPT ou cliente MCP externo; não existe
-  chat autoral interno no aplicativo.
+- na **Autoria**, a pessoa proprietária cria e inspeciona o Curso, edita o
+  planejamento básico e concede acesso direto para Estudo. A conversa de
+  planejamento permanece num cliente MCP externo; não existe chat autoral
+  interno no aplicativo.
 
-Uma correção local não precisa transportar o curso inteiro. A interface permite
-selecionar o card, a microssequência, a lição ou instâncias específicas de
-recursos, conforme a operação autorizada. O contexto enviado a um serviço de
-linguagem é montado para esse alvo e a resposta precisa satisfazer contratos
-estruturais antes de ser gravada.
+Uma alteração não precisa transportar todos os Cursos. A lista inicial é fina
+e a composição é lida em páginas sob uma revisão fixa. O contexto enviado a um
+serviço de linguagem é montado para o Curso e o alvo pertinentes, e a resposta
+precisa satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
 é, portanto, uma ferramenta de autoria sob responsabilidade humana, não uma
@@ -140,7 +141,7 @@ reforçam supervisão, transparência e adequação ao contexto ([UNESCO (2023)]
 ## Continuidade entre dispositivo e servidor
 
 O AraLearn foi concebido para contextos em que a conexão pode desaparecer. O
-dispositivo mantém uma réplica local dos cursos escolhidos e do estado
+dispositivo mantém uma réplica local dos Cursos já abertos e do estado
 funcional necessário para estudar. Depois do primeiro download, leitura,
 prática e retomada dependem primeiro dessa réplica; mudanças pendentes podem ser
 sincronizadas quando a rede retorna.
@@ -148,22 +149,22 @@ sincronizadas quando a rede retorna.
 Essa escolha separa duas responsabilidades:
 
 - o **servidor** conserva a fonte compartilhada, autentica a conta, aplica
-  permissões e recebe sincronizações;
+  propriedade e acessos e recebe sincronizações;
 - o **dispositivo** oferece resposta imediata e continuidade temporária quando
   o servidor não pode ser alcançado.
 
 Uma réplica não é uma segunda autoridade. Ela não concede permissões e pode
-mostrar o último estado remoto confirmado enquanto estiver sem rede. Convites,
-alterações de papel, publicação e assistência externa exigem conexão porque
-dependem de outra pessoa ou serviço e precisam ser validados no momento da
-operação. Os fundamentos técnicos dessa decisão estão em
+mostrar o último estado remoto confirmado enquanto estiver sem rede. Conceder
+ou revogar acesso, alterar conteúdo e usar assistência externa exigem conexão
+porque dependem do servidor e precisam ser validados no momento da operação.
+Os fundamentos técnicos dessa decisão estão em
 [Arquitetura](arquitetura.md) e [Persistência relacional](persistencia-relacional.md).
 
 ## Estado de estudo sem vigilância comportamental
 
 O produto conserva o necessário para responder a perguntas funcionais, como
-“em que card continuar?” e “qual card a própria pessoa marcou para rever?”. Ele
-não registra abertura de card, permanência, número de tentativas, acertos,
+“em que Unidade continuar?” e “qual Unidade a própria pessoa marcou para
+rever?”. Ele não registra abertura de Unidade, permanência, número de tentativas, acertos,
 erros ou último resultado para inferir atenção, esforço ou domínio.
 
 Dados de interação são ambíguos fora do contexto em que foram produzidos. A
@@ -173,21 +174,17 @@ podem ser úteis no futuro ([Pardo e Siemens (2014)](referencias.md#ref-pardo201
 dessa regra no produto está em [Estado de estudo não
 punitivo](estado-de-estudo-nao-punitivo.md).
 
-## Organização pessoal, catálogo e colaboração
+## Propriedade e acesso direto
 
-**Estudo** reúne em **Trilhas** aquilo que a pessoa escolheu estudar.
-**Autoria** reúne **Workspaces** acessíveis e **Coleções**, o catálogo
-compartilhado. Abrir um curso no catálogo ou uma prévia de workspace não o
-adiciona automaticamente a Trilhas: a seleção é uma decisão explícita. Grupos
-pessoais organizam Trilhas sem alterar curso, workspace ou catálogo.
+Todo Curso nasce privado e possui uma pessoa proprietária. Estudo lista Cursos
+próprios e aqueles aos quais a pessoa recebeu acesso. Autoria lista somente
+Cursos próprios.
 
-Um **workspace educacional** reúne uma composição de curso, participantes e
-permissões locais. A mesma pessoa pode assumir responsabilidades diferentes em
-espaços diferentes. O papel organiza acesso e prestação de responsabilidade;
-não mede aprendizagem e não prova que a colaboração seja pedagogicamente
-eficaz. Esse pressuposto precisa ser avaliado em uso, distinguindo mecanismo de
-coordenação de resultado educacional. Consulte [Workspaces
-educacionais](workspaces-educacionais.md).
+O proprietário pode conceder ou revogar acesso diretamente a outra conta. A
+concessão significa Estudo: não cria grupo, sequência curricular, organização
+ou autoridade de edição. Organização pessoal e eventual disponibilização
+pública são problemas separados e não devem ser usados para esconder regras de
+autorização.
 
 ## Público e condições de uso
 
@@ -200,9 +197,9 @@ mas não autorizam supor que qualquer interface móvel produza autorregulação
 ([Lai et al. (2022)](referencias.md#ref-lai2022mobile); [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated)).
 
 O AraLearn também atende autores, professores, revisores e pesquisadores que
-precisam examinar como um curso foi planejado, representado, corrigido e usado.
-Esses públicos compartilham o mesmo artefato, mas recebem ações diferentes de
-acordo com suas responsabilidades.
+precisam examinar como um Curso foi planejado, representado, corrigido e usado.
+Esses públicos observam o mesmo Curso vivo, mas recebem ações diferentes de
+acordo com propriedade e acesso.
 
 ## Limites e compromissos verificáveis
 
@@ -210,7 +207,7 @@ O produto assume os seguintes compromissos de projeto:
 
 - conteúdo novo deve ser estudável à medida que é materializado, sem um estado
   burocrático de rascunho oculto ao leitor autorizado;
-- a seleção de um recurso visual deve decorrer de uma necessidade de
+- a seleção de um componente visual deve decorrer de uma necessidade de
   representação, não de variedade decorativa;
 - uma resposta de IA nunca dispensa validação estrutural e revisão humana;
 - estados funcionais de retomada não devem ser reinterpretados como medidas de

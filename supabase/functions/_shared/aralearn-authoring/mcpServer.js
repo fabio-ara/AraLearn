@@ -1,22 +1,22 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import {
-  AUTHORING_SERVER_INSTRUCTIONS,
-  listAuthoringKnowledgeResources,
-  readAuthoringKnowledgeResource
-} from "./authoringKnowledge.js";
-import { executeAuthoringTool } from "./authoringToolExecutor.js";
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+  listCourseAuthoringKnowledgeResources,
+  readCourseAuthoringKnowledgeResource
+} from "./courseKnowledge.js";
+import { executeCourseTool } from "./courseToolExecutor.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
 import {
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal
-} from "./workspaceMcpTools.js";
+} from "./courseMcpTools.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.19" });
-const MCP_BODY_LIMIT = 32 * 1024 * 1024;
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.20" });
+const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_OAUTH_SCOPES = Object.freeze(["openid"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
@@ -167,7 +167,7 @@ async function readMcpEnvelope(request) {
       throw new AuthoringApiError(
         413,
         "mcp_message_too_large",
-        "A mensagem MCP excede o limite de 32 MiB."
+        "A mensagem MCP excede o limite de 1 MiB."
       );
     }
     chunks.push(value);
@@ -226,18 +226,13 @@ function toolSuccess(requestId, value) {
 function toolFailure(
   requestId,
   error,
-  challenge = null,
-  { toolName = null, rawArguments = null } = {}
+  challenge = null
 ) {
   const normalized = asAuthoringApiError(error);
   const structuredContent = {
     ok: false,
     requestId,
-    error: toolErrorData(normalized, {
-      toolName,
-      rawArguments,
-      requestId
-    })
+    error: toolErrorData(normalized, { requestId })
   };
   return {
     content: [{ type: "text", text: `${normalized.code}: ${normalized.message}` }],
@@ -256,7 +251,7 @@ async function executeTool({
   rawArguments,
   deadlineAt
 }) {
-  const result = await executeAuthoringTool({
+  const result = await executeCourseTool({
     adapter,
     principal,
     name,
@@ -298,7 +293,7 @@ async function dispatchMcpRequest(envelope, context) {
           resources: { subscribe: false, listChanged: false }
         },
         serverInfo: SERVER_INFO,
-        instructions: AUTHORING_SERVER_INSTRUCTIONS
+        instructions: COURSE_AUTHORING_SERVER_INSTRUCTIONS
       }
     };
   }
@@ -331,14 +326,14 @@ async function dispatchMcpRequest(envelope, context) {
     return {
       jsonrpc: JSON_RPC_VERSION,
       id,
-      result: { resources: listAuthoringKnowledgeResources() }
+      result: { resources: listCourseAuthoringKnowledgeResources() }
     };
   }
   if (method === "resources/read") {
     if (typeof params.uri !== "string" || Object.keys(params).some((field) => field !== "uri")) {
       return jsonRpcError(id, -32602, "resources/read exige somente uri.");
     }
-    const resource = readAuthoringKnowledgeResource(params.uri);
+    const resource = readCourseAuthoringKnowledgeResource(params.uri);
     if (!resource) {
       return jsonRpcError(id, -32002, "Conhecimento de autoria inexistente.", {
         uri: params.uri
@@ -375,10 +370,7 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(requestId, denied, context.oauthChallenge, {
-          toolName: params.name,
-          rawArguments
-        })
+        result: toolFailure(requestId, denied, context.oauthChallenge)
       };
     }
     try {
@@ -398,10 +390,7 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(requestId, normalized, challenge, {
-          toolName: params.name,
-          rawArguments
-        })
+        result: toolFailure(requestId, normalized, challenge)
       };
     }
   }

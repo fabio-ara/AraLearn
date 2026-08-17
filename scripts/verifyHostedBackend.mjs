@@ -5,12 +5,6 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
 const REQUEST_TIMEOUT_MS = 20_000;
-const REQUIRED_BROWSER_ORIGINS = Object.freeze([
-  "https://fabio-ara.github.io",
-  "https://appassets.androidplatform.net"
-]);
-const CORS_PROBE_COURSE_ID = "00000000-0000-4000-8000-000000000000";
-const CORS_PROBE_REVISION_HASH = "0".repeat(64);
 
 function requiredText(value, label) {
   const normalized = typeof value === "string" ? value.trim() : "";
@@ -89,10 +83,21 @@ export function compareRuntimeManifest(expected, actual) {
       `O banco informa contrato v${actual.contractVersion || "desconhecido"}; a aplicação exige v${expected.contractVersion}.`
     );
   }
-  const actualFeatures = new Set(Array.isArray(actual.features) ? actual.features : []);
+  const actualFeatureList = Array.isArray(actual.features) ? actual.features : [];
+  if (actualFeatureList.some((feature) => typeof feature !== "string" || !feature) ||
+      new Set(actualFeatureList).size !== actualFeatureList.length) {
+    throw new Error("O banco devolveu uma lista de recursos inválida.");
+  }
+  const actualFeatures = new Set(actualFeatureList);
+  const expectedFeatures = new Set(expected.requiredFeatures);
   const missingFeatures = expected.requiredFeatures.filter((feature) => !actualFeatures.has(feature));
-  if (missingFeatures.length) {
-    throw new Error(`O banco não anuncia os recursos exigidos: ${missingFeatures.join(", ")}.`);
+  const unexpectedFeatures = actualFeatureList.filter((feature) => !expectedFeatures.has(feature));
+  if (missingFeatures.length || unexpectedFeatures.length) {
+    const details = [
+      missingFeatures.length ? `ausentes: ${missingFeatures.join(", ")}` : "",
+      unexpectedFeatures.length ? `inesperados: ${unexpectedFeatures.join(", ")}` : ""
+    ].filter(Boolean).join("; ");
+    throw new Error(`O manifesto remoto diverge do runtime corrente (${details}).`);
   }
   return {
     schemaRevision: expected.schemaRevision,
@@ -101,66 +106,10 @@ export function compareRuntimeManifest(expected, actual) {
   };
 }
 
-export async function verifyCourseRevisionCors({
-  projectUrl,
-  publishableKey,
-  browserOrigin = REQUIRED_BROWSER_ORIGINS[0],
-  fetchImpl = globalThis.fetch
-}) {
-  const normalizedOrigin = requiredText(browserOrigin, "a origem pública do navegador").replace(/\/+$/, "");
-  const parsedOrigin = new URL(normalizedOrigin);
-  if (
-    parsedOrigin.protocol !== "https:" ||
-    parsedOrigin.username ||
-    parsedOrigin.password ||
-    parsedOrigin.pathname !== "/" ||
-    parsedOrigin.search ||
-    parsedOrigin.hash
-  ) {
-    throw new Error("A origem pública do navegador deve ser uma origem HTTPS exata.");
-  }
-  const response = await fetchImpl(
-    `${projectUrl}/functions/v1/aralearn-course-revisions/${CORS_PROBE_COURSE_ID}/${CORS_PROBE_REVISION_HASH}`,
-    {
-      method: "OPTIONS",
-      headers: {
-        apikey: publishableKey,
-        Origin: normalizedOrigin,
-        "Access-Control-Request-Method": "GET",
-        "Access-Control-Request-Headers": "apikey, authorization"
-      },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-    }
-  );
-  const allowedOrigin = response.headers?.get?.("access-control-allow-origin");
-  const allowedMethods = String(response.headers?.get?.("access-control-allow-methods") || "")
-    .toUpperCase()
-    .split(",")
-    .map((value) => value.trim());
-  const allowedHeaders = String(response.headers?.get?.("access-control-allow-headers") || "")
-    .toLowerCase()
-    .split(",")
-    .map((value) => value.trim());
-  if (
-    !response.ok ||
-    allowedOrigin !== normalizedOrigin ||
-    !allowedMethods.includes("GET") ||
-    !allowedHeaders.includes("apikey") ||
-    !allowedHeaders.includes("authorization")
-  ) {
-    throw new Error(
-      `A Edge Function de revisões não permite que ${normalizedOrigin} baixe cursos. ` +
-      "Implante aralearn-course-revisions com o CORS esperado antes de publicar."
-    );
-  }
-  return true;
-}
-
 export async function verifyHostedBackend({
   projectUrl,
   publishableKey,
   manifestPath = DEFAULT_MANIFEST_PATH,
-  browserOrigins = REQUIRED_BROWSER_ORIGINS,
   fetchImpl = globalThis.fetch
 }) {
   if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
@@ -188,20 +137,7 @@ export async function verifyHostedBackend({
         : `A verificação do banco falhou (HTTP ${response.status}).`
     );
   }
-  const manifest = compareRuntimeManifest(expected, payload);
-  if (!Array.isArray(browserOrigins) || browserOrigins.length === 0) {
-    throw new Error("Informe ao menos uma origem de navegador para verificar o CORS.");
-  }
-  const verifiedOrigins = [];
-  for (const browserOrigin of [...new Set(browserOrigins)]) {
-    await verifyCourseRevisionCors({
-      ...publicConfiguration,
-      browserOrigin,
-      fetchImpl
-    });
-    verifiedOrigins.push(browserOrigin);
-  }
-  return { ...manifest, courseRevisionCors: true, courseRevisionCorsOrigins: verifiedOrigins };
+  return compareRuntimeManifest(expected, payload);
 }
 
 async function main() {
@@ -210,8 +146,7 @@ async function main() {
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY
   });
   process.stdout.write(
-    `Backend compatível: revisão ${result.schemaRevision}, biblioteca v${result.contractVersion}, ` +
-    `CORS de revisões aprovado para ${result.courseRevisionCorsOrigins.length} origens.\n`
+    `Backend compatível: revisão ${result.schemaRevision}, biblioteca v${result.contractVersion}.\n`
   );
 }
 

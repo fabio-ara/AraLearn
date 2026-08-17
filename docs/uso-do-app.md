@@ -1,732 +1,253 @@
 # Uso do aplicativo
 
-Este guia ensina as operações disponíveis na interface do AraLearn. Ele começa
-pelas ideias necessárias para compreender o aplicativo e, em seguida,
-apresenta cada tarefa com condições, procedimento, resultado esperado,
-comportamento sem conexão e forma de recuperação.
+Este guia descreve o runtime canônico da revisão corrente. O site e o APK da
+última release podem continuar na versão anterior até a migração e a promoção
+hospedadas.
 
 ## Antes de usar: cinco conceitos
 
 ### Conta
 
-A conta identifica a pessoa perante o servidor. Ela separa seleções de cursos,
-estado de estudo, observações e permissões. Entrar em outro dispositivo não
-transforma os dois aparelhos em uma única memória: cada um conserva sua réplica
-e os aproxima pela sincronização.
+A conta autentica uma pessoa. O perfil humano mínimo contém nome e foto
+opcionais; ele não é perfil social.
 
-### Coleções
+### Curso vivo
 
-**Coleções** é o catálogo compartilhado. Ele contém publicações oficiais que
-podem ser pesquisadas e adicionadas à área pessoal. Ela fica em **Autoria** por
-ser também a superfície de distribuição editorial. Abrir um item no catálogo
-não o adiciona à conta.
+Curso é o objeto concreto compartilhado entre Estudo, Autoria e MCP. Ele pode
+ser alterado sem trocar de identidade e não precisa passar por um estágio de
+publicação para ser estudado.
 
-### Trilhas
+### Estudo
 
-**Trilhas** reúne os cursos selecionados para estudo. Os grupos de Trilhas são
-pessoais: servem para organização e não alteram o conteúdo de um curso, um
-workspace ou uma Coleção. Workspaces acessíveis aparecem em **Autoria**, não
-como um segundo tipo de item de estudo.
+Estudo lê Cursos próprios e Cursos com acesso direto. Ele altera somente o
+estado pessoal: progresso, marcas para rever e observações.
+
+### Autoria
+
+Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
+planejamento e composição e gerir acesso. O MCP autoral possui a mesma
+restrição de propriedade.
 
 ### Réplica local
 
-Uma réplica local é a informação guardada no dispositivo para que a tela possa
-responder sem consultar o servidor a cada toque. No AraLearn, a réplica permite
-reabrir cursos já baixados, avançar no estudo e conservar alterações pendentes
-quando a conexão falha.
-
-Ela não é uma nova fonte de autoridade. Estar presente no dispositivo não
-concede permissão para editar, convidar pessoas ou publicar. Essas operações
-precisam ser confirmadas pelo servidor.
-
-### Sincronização
-
-Sincronizar significa comparar o estado local com o remoto e enviar ou receber
-o que for necessário. O aplicativo tenta fazer isso automaticamente. O botão
-**Sincronizar** solicita uma tentativa imediata; ele não é um botão de salvar.
+IndexedDB conserva lista conhecida, Cursos abertos e estado pessoal. A réplica
+permite retomada, mas PostgreSQL continua sendo a autoridade para propriedade,
+acesso e estado compartilhado.
 
 ## Criar uma conta
 
-**Pré-condição:** tenha acesso ao endereço de e-mail informado e esteja
-conectado.
-
-**Passos:**
-
-1. Na tela de acesso, escolha **Criar conta**.
-2. Informe e-mail e uma senha com pelo menos oito caracteres.
-3. Confirme a criação.
-4. Se não houver uma sessão imediata, abra a mensagem de confirmação recebida
-   por e-mail. Verifique também a pasta de spam.
+1. Na tela de acesso, use **Criar conta**.
+2. Informe e-mail e senha com pelo menos oito caracteres.
+3. Envie o formulário.
+4. Se a configuração exigir confirmação, abra a mensagem recebida.
 5. Volte ao aplicativo e entre.
 
-**Resultado esperado:** a preparação inicial identifica a conta, carrega
-Trilhas e baixa o conteúdo necessário. Espere essa preparação terminar antes
-de depender do modo offline.
-
-**Sem conexão:** não é possível criar ou confirmar a conta.
-
-**Recuperação:** use **Reenviar confirmação** na tela de criação. A ação
-exige um e-mail válido no campo correspondente.
+Não reutilize credencial administrativa do Supabase. Cada pessoa deve operar
+com sua própria conta para que autorização e autoria sejam auditáveis.
 
 ## Entrar
 
-**Pré-condição:** a conta precisa estar confirmada. A primeira entrada no
-dispositivo requer conexão.
+1. Informe e-mail e senha.
+2. Use **Entrar**.
+3. Aguarde as etapas Dispositivo, Conta e Cursos.
 
-**Passos:** informe e-mail e senha e escolha **Entrar**.
-
-**Resultado esperado:** a tela de acesso é substituída pela página inicial de
-Trilhas.
-
-**Sem conexão:** uma sessão válida já existente pode usar a réplica disponível,
-mas uma primeira entrada ou a renovação de uma sessão expirada exige o servidor.
-
-**Recuperação:** confirme o endereço, tente novamente em uma conexão estável ou
-use **Recuperar senha**.
+Se a preparação local falhar, a tela oferece tentar novamente ou limpar os
+dados do dispositivo. A limpeza descarta alterações offline ainda não enviadas
+e pede confirmação explícita.
 
 ## Recuperar a senha
 
-**Pré-condição:** esteja conectado e informe o e-mail da conta.
+1. Use **Recuperar senha**.
+2. Informe o e-mail.
+3. Abra o link recebido no mesmo contexto autorizado.
+4. Defina e repita a nova senha.
 
-**Passos:**
+Links em fluxo implícito inseguro são recusados; solicite um novo link quando o
+aplicativo informar esse problema.
 
-1. Escolha **Recuperar senha**.
-2. Informe o e-mail e escolha **Enviar recuperação**.
-3. Abra o link recebido.
-4. Informe e repita a nova senha, com pelo menos oito caracteres.
-5. Escolha **Salvar nova senha**.
+## Alterar o perfil
 
-**Resultado esperado:** a nova credencial substitui a anterior. Por segurança,
-a mensagem de solicitação não confirma se um endereço está cadastrado.
+Abra **Conta e aparência**.
 
-**Sem conexão:** o pedido, o recebimento do link e a troca da credencial
-dependem do serviço de autenticação.
+- Digite um nome de 1 a 120 caracteres e salve.
+- Para a foto, escolha JPEG, PNG ou WebP de até 512 KiB.
+- Use remover para retirar a foto corrente.
 
-**Recuperação:** se a mensagem não chegar, verifique a pasta de spam, confirme
-o endereço informado e solicite um novo envio. Criar outra conta não recupera
-os dados da identidade anterior.
+A foto é privada. O aplicativo envia o objeto primeiro, registra sua chave no
+perfil e então tenta apagar a foto anterior. Se a última limpeza falhar, a tela
+informa que ficou pendente.
 
 ## Alterar a aparência
 
-**Pré-condição:** nenhuma conexão é necessária.
-
-**Passos:**
-
-1. Abra **Conta e aparência**, no canto superior direito.
-2. No grupo **Aparência**, escolha **Tema do sistema**, **Tema claro** ou
-   **Tema escuro**.
-
-**Resultado esperado:** a interface muda imediatamente. **Tema do sistema**
-acompanha a preferência do dispositivo; as outras opções a substituem apenas
-no AraLearn.
-
-**Sem conexão:** a troca é local e não deve aguardar uma resposta da rede.
-
-**Recuperação:** se o tema não mudar, recarregue o aplicativo; não é necessário
-apagar os cursos.
+Em **Conta e aparência**, escolha tema do sistema, claro ou escuro. A mudança é
+local ao dispositivo e não altera nenhum Curso.
 
 ## Alternar entre Estudo e Autoria
 
-**Pré-condição:** entre numa conta que tenha ao menos permissão de leitura sobre
-um workspace para usar a Autoria.
+Na Home, use o seletor **Estudo / Autoria**.
 
-**Passos:** use **Estudo** para voltar às Trilhas ou **Autoria** para abrir
-Workspaces e Coleções.
+- Estudo mostra todos os Cursos acessíveis.
+- Autoria mostra somente Cursos próprios.
 
-**Resultado esperado:** apenas uma atividade ocupa a tela no celular. No
-desktop, o espaço adicional organiza a mesma navegação sem criar funções
-exclusivas. Trocar de atividade não copia o curso, não publica conteúdo e não
-perde o ponto corrente do leitor.
+Um Curso compartilhado não desapareceu quando não aparece na Autoria: a
+concessão significa prática, não edição.
 
-**Sem conexão:** Estudo usa os cursos já baixados. Autoria mostra a última
-projeção local conhecida e identifica aquilo que aguarda sincronização; ela não
-inventa permissão nem estado remoto.
+## Abrir e percorrer um Curso
 
-**Recuperação:** se o workspace esperado não aparecer, restabeleça a conexão e
-sincronize. Não adicione o curso a Trilhas apenas para torná-lo editável.
+1. Em Estudo, use **Abrir Curso**.
+2. Escolha um Módulo.
+3. Escolha uma Lição.
+4. Escolha uma Microssequência didática.
+5. Abra uma Unidade de estudo.
 
-## Acompanhar um workspace no Mapa
+Na primeira abertura, o cliente baixa a composição em páginas, verifica que
+todas pertencem à mesma revisão, recompõe o documento e o valida. Depois disso,
+o Curso fica disponível no cache local.
 
-**Pré-condição:** abra **Autoria → Workspaces** e escolha um workspace.
+## Responder e avançar
 
-**Passos:** em **Mapa**, abra uma Parte e depois uma microssequência.
+Quando houver resposta:
 
-**Resultado esperado:** os estados indicam planejamento, análise, conteúdo
-materializado e achado pendente sem usar quantidade de cards como medida
-principal. Partes coordenam o trabalho; não são tratadas como unidades
-pedagógicas. O estado vem do workspace corrente, e não do histórico do chat ou
-de ter visitado a tela antes.
+1. interaja com o componente;
+2. use **Continuar**;
+3. corrija campos incompletos, se necessário;
+4. leia o feedback;
+5. use **Continuar** novamente.
 
-**Sem conexão:** a árvore e os estados já sincronizados continuam consultáveis,
-marcados como cópia local quando pertinente.
+Ao avançar, a Unidade é registrada como concluída. A resposta momentânea do
+componente não é convertida automaticamente em nota, ranking ou medida de
+aprendizagem.
 
-**Recuperação:** diante de conflito, releia o workspace. O aplicativo não
-combina silenciosamente revisões concorrentes.
+## Marcar para rever
 
-## Consultar ou ajustar o Desenho
+Use o ícone de revisão na Unidade. A Home passa a mostrar **Rever**, com links
+diretos aos alvos marcados. Use novamente o ícone para retirar a marca.
 
-**Pré-condição:** selecione uma microssequência e abra **Desenho**.
+## Registrar uma observação
 
-**Passos:**
-
-1. Leia o valor efetivo e sua origem em linguagem comum.
-2. Para um parâmetro editável, abra o controle e escolha um valor permitido ou
-   use o stepper.
-3. Use **Auto** para retirar o override local e voltar à resolução vigente.
-
-**Resultado esperado:** a tela mostra somente parâmetros aplicáveis. Um valor
-bloqueado por pesquisa permanece visível e não editável. Não é preciso conhecer
-schema, revisão, snapshot ou identificador de definição.
-
-**Sem conexão:** um override permitido pode ficar como alteração pendente. Se
-Auto for escolhido antes do envio, a intenção anterior é cancelada em vez de
-ser aplicada mais tarde. Na reconexão, capacidade, lock e revisão são
-revalidados.
-
-**Recuperação:** conflito tem precedência sobre “pendente”. Releia, descarte a
-intenção local ou tente novamente a partir do estado corrente; não há merge
-automático.
-
-## Consultar ou restringir Resources
-
-**Pré-condição:** na tela **Desenho**, abra **Resources** quando o controle
-estiver disponível.
-
-**Passos:**
-
-1. Quando houver mais de um conjunto efetivo, escolha explicitamente qual
-   deseja inspecionar; o aplicativo não os mistura.
-2. Pesquise ou filtre progressivamente por família e facetas.
-3. Marque ou desmarque representações sem configurar cada card.
-4. Escolha o escopo disponível: microssequência, lição, curso ou um conjunto de
-   microssequências.
-5. Aplique e confira o resumo de êxitos, conflitos ou falhas parciais.
-
-**Resultado esperado:** a primeira camada mostra apenas um resumo, como
-**Auto · catálogo completo** ou o nome do conjunto e sua quantidade. Páginas e
-filtros não apagam itens ainda não visíveis nem desfazem uma desmarcação. A
-limitação de uma representação ausente permanece explícita; disponibilidade
-não obriga o GPT a usar todos os resources.
-
-**Sem conexão:** o resumo efetivo já sincronizado permanece visível em
-**Desenho**. Abrir ou editar a seleção completa exige conexão, porque o
-aplicativo precisa reler todos os membros, a autoridade e os locks antes de
-gravar. A interface falha fechada quando não consegue preservar o conjunto.
-
-**Recuperação:** em aplicação parcial, revise os alvos indicados e tente somente
-os pendentes. Um conflito não é apresentado como sucesso global.
-
-## Preparar um experimento instrucional
-
-**Pré-condição:** abra **Desenho** num workspace em que sua conta tenha a
-capacidade de pesquisa. A ação **Experimentos** aparece mesmo antes de escolher
-uma microssequência, pois o escopo pode ser curso, lição ou micro.
-
-**Passos:**
-
-1. Escolha uma publicação aprovada como base e delimite o escopo.
-2. Selecione um fator; use **Adicionar outro fator** somente quando o protocolo
-   realmente exigir mais de um.
-3. Defina ao menos duas condições e informe todos os valores em cada uma. O
-   aplicativo não cria combinações automáticas.
-4. Marque invariantes e escolha a regra de atribuição. Para `ResourceSet`,
-   confira o conjunto permitido e sua contagem; permitido não significa usado.
-5. Revise instrumentos/outcomes por referência e valide o protocolo.
-6. Gere as variantes, materialize e audite cada workspace filho.
-7. No diff, examine mudanças requeridas, derivadas e não previstas. Corrija,
-   aceite explicitamente ou invalide as inesperadas.
-8. Congele cada revisão e, em outra ação, inicie a coleta.
-
-**Resultado esperado:** protocolo, condição, locks, materialização, auditoria e
-artefato congelado formam uma linhagem reconstituível. Atribuição é executada
-no servidor e fixa uma revisão; a UI não sorteia nem troca condição.
-
-**Sem conexão:** o último estado já sincronizado pode servir de referência,
-mas protocolo, condição, freeze, início e assignment ficam indisponíveis. Um
-participante já atribuído continua estudando offline o curso sincronizado; novo
-enrollment ou assignment requer rede.
-
-**Recuperação:** conflito ou revogação exige releitura; não há merge silencioso
-nem outbox experimental. Uma variante congelada não é editada: informe o
-motivo, confirme a preservação das atribuições existentes e escolha **Criar
-revisão corrigida**. Novos ingressos aguardam o novo ciclo de geração,
-auditoria, decisão e freeze. Consulte [Experimentos instrucionais
-parametrizados](experimentos-instrucionais-parametrizados.md).
-
-## Consultar Resultados
-
-**Pré-condição:** abra um workspace sincronizado. O recorte experimental exige
-capacidade de pesquisa; o resumo do workspace respeita a capacidade de leitura.
-
-**Passos:** abra **Resultados**, escolha **Workspace** ou um experimento e leia
-uma pergunta por seção. Gráfico e tabela mostram a mesma base numérica. Abra
-**Definição e proveniência** para consultar linhas e dicionário versionados. Use
-os botões de exportação para baixar desenho, processo, atribuições ou outcomes;
-uma exportação experimental conserva pseudônimos locais, não contas.
-
-**Resultado esperado:** desenho, processo autoral, conclusão estrutural
-explícita e experimento permanecem separados. Ausência aparece como ausência;
-não existe score único, ranking ou inferência automática de atenção, esforço,
-domínio, aprendizagem ou causalidade.
-
-**Sem conexão:** o último overview sincronizado pode ser lido como desatualizado.
-Paginar linhas ou exportar exige rede e um pin corrente, para não misturar
-revisões.
-
-**Recuperação:** se o dataset mudar durante a paginação, releia desde a primeira
-página. Não combine arquivos de pins diferentes. Consulte [Analytics
-instrucionais](analytics-instrucionais.md) e o [Dicionário de métricas e
-datasets](dicionario-metricas-datasets.md).
-
-## Consultar e decidir achados da Auditoria
-
-**Pré-condição:** abra um workspace com uma rodada de auditoria registrada.
-
-**Passos:** use **Conteúdo** para abrir o leitor atual. Em **Auditoria**, escolha
-o workspace, uma Parte ou a microssequência corrente; leia o resumo em camadas,
-abra um achado e consulte evidência, critério e origem. Use **Abrir conteúdo**
-para conferir o alvo. Se o achado veio do resumo geral, use **Abrir rodada da
-Parte** ou da microssequência para confirmar que ela terminou. Quando tiver
-autoridade, escolha **Aprovar para reparo**
-ou **Rejeitar**. Depois de decidir os achados, **Preparar reparos** autoriza o
-GPT externo a operar somente os aprovados. Um achado reparado oferece
-**Solicitar reauditoria da Parte**; se a microssequência ainda não pertencer a
-uma Parte, a ação solicita a reauditoria do workspace.
-Em **Proveniência**, listas extensas aparecem como quantidade exibida de um
-total registrado; a interface não apresenta a amostra truncada como lista completa.
-Em uma rodada de Parte, a lista progressiva de microssequências abre exatamente
-a rodada filha usada naquela composição. Uma rodada completa que já não
-corresponde ao estado corrente permanece consultável como histórico, sem ações.
-
-**Resultado esperado:** o primeiro nível distingue `Conforme`, `Com achado` e
-`Não verificada`; ausência de rodada nunca aparece como aprovação. Não há nota
-de qualidade. Uma rodada ainda em revisão aparece como pendente e só recebe o
-estado concluído depois do registro explícito de conclusão. O detalhe mostra
-somente evidência pública, não raciocínio
-privado. O leitor preserva curso, módulo, lição, microssequência, card e, quando
-possível, o resource exato. O retorno reabre o mesmo achado, filtro e posição.
-Um workspace compartilhado pode ser lido sem ser adicionado silenciosamente a
-Trilhas. Alvo removido é mostrado como indisponível, não redirecionado por
-semelhança. Reparo continua separado da auditoria e a reauditoria relê o estado
-corrente de forma independente.
-
-Achados rejeitados ou já resolvidos permanecem no histórico da rodada, mas não
-mantêm o recorte com o rótulo de pendência. Uma nova auditoria não substitui um
-mandato de reparo que ainda contenha outro achado em andamento.
-
-**Sem conexão:** conteúdo, resumo e evidências já sincronizados continuam
-legíveis; decisões, preparação de reparos e pedido de reauditoria ficam
-desabilitados até reconectar. Listas truncadas informam que o resumo é parcial
-em vez de afirmar que não há pendências; páginas já lidas da rodada permanecem
-somente para consulta.
-
-**Recuperação:** se o workspace mudar em outra aba, releia antes de decidir; o
-aplicativo não combina decisões concorrentes silenciosamente. Se o alvo deixou
-de existir, volte ao detalhe do achado; se ele foi movido, **Abrir conteúdo** usa
-o caminho corrente, não o endereço antigo da rodada. Ao voltar a Estudo, uma prévia
-transitória do workspace é removida e a seleção anterior de Trilhas é
-restaurada.
-
-## Encontrar um curso no catálogo
-
-**Pré-condição:** a consulta a Coleções requer conexão.
-
-**Passos:**
-
-1. Abra **Autoria**.
-2. Selecione **Coleções**.
-3. Use **Pesquisar cursos em Coleções** para restringir a lista.
-4. Examine título e descrição do resultado.
-
-**Resultado esperado:** Coleções é carregada quando a aba é aberta. A pesquisa
-não altera Trilhas.
-
-**Sem conexão:** a consulta pode mostrar uma falha ou o último contexto já
-presente, mas não deve ser tratada como catálogo atualizado.
-
-**Recuperação:** restabeleça a conexão, abra Coleções novamente e refaça a
-pesquisa. Não retire cursos de Trilhas para tentar atualizar o catálogo.
-
-## Adicionar um curso a Trilhas
-
-**Pré-condição:** localize uma publicação em Coleções e mantenha conexão
-até a confirmação.
-
-**Passos:** use a ação **Adicionar a Trilhas** no item escolhido.
-
-**Resultado esperado:** o curso passa a integrar a seleção da conta e o
-dispositivo baixa seu conteúdo. Abrir, visualizar ou pressionar **Play** não
-substitui essa ação explícita.
-
-**Sem conexão:** uma nova seleção não pode ser confirmada. Um curso já
-adicionado e baixado continua estudável.
-
-**Recuperação:** sincronize e verifique Trilhas antes de repetir o comando.
-Isso evita interpretar uma confirmação remota seguida de falha de tela como se
-a operação não tivesse ocorrido.
-
-## Organizar Trilhas em grupos pessoais
-
-**Pré-condição:** a conta precisa estar aberta. Mudanças ainda não enviadas
-podem aguardar conexão.
-
-**Passos:** escolha a operação desejada entre as alternativas a seguir.
-
-**Como criar um grupo:**
-
-1. Na tela inicial, abra **Ações do grupo**.
-2. Escolha a criação de grupo.
-3. Informe o nome e salve.
-
-**Como renomear:** selecione o grupo, abra suas ações, altere o nome e salve.
-
-**Como mover um curso:**
-
-1. Selecione o curso.
-2. Abra **Ações do curso**.
-3. Escolha **Mover para outro grupo**.
-4. Selecione o destino, inclusive **Outros**.
-
-**Como excluir um grupo:** abra as ações do grupo e confirme a exclusão.
-
-**Resultado esperado:** grupos e cursos aparecem em ordem alfabética, com
-números em ordem natural. Excluir um grupo não remove seus cursos nem o estado
-de estudo; os itens restantes aparecem em **Outros**.
-
-**Sem conexão:** a interface preserva a última projeção completa de Trilhas. As
-ações que dependem de validação remota podem ficar indisponíveis; alterações
-locais aceitas aguardam sincronização.
-
-**Recuperação:** depois de reconectar, sincronize antes de repetir uma ação. Se
-um grupo for excluído, procure seus cursos em **Outros**; eles não precisam ser
-adicionados novamente.
-
-## Retirar um curso oficial de Trilhas
-
-**Pré-condição:** selecione um curso proveniente de Coleções.
-
-**Passos:** abra **Ações do curso**, escolha **Retirar de Trilhas** e
-confirme quando solicitado.
-
-**Resultado esperado:** somente a seleção dessa conta é removida. A publicação
-continua em Coleções e permanece disponível para outras pessoas.
-
-**Sem conexão:** aguarde a confirmação do servidor antes de considerar a
-retirada concluída.
-
-**Recuperação:** se a tela falhar depois da confirmação, sincronize antes de
-repetir. Uma conta com
-capacidade editorial pode ver outra ação, **Retirar de Coleções**, cujo efeito é
-global e não deve ser confundido com a retirada pessoal.
-
-## Abrir e percorrer um curso
-
-**Pré-condição:** o curso deve estar em Trilhas; para uso offline, ele
-precisa ter sido baixado anteriormente.
-
-**Passos:**
-
-1. Selecione o grupo e o curso na página inicial.
-2. Use **Abrir curso** ou **Play**.
-3. Percorra módulo, lição e microssequência.
-4. Abra o card indicado.
-
-**Resultado esperado:** a hierarquia segue curso, módulo, lição,
-microssequência e card. Quando um módulo oferece um único caminho de
-continuação, **Play** pode levar diretamente ao ponto correspondente.
-
-**Sem conexão:** a abertura usa a réplica local. Uma publicação nunca baixada
-não pode ser reconstruída apenas pelo nome exibido em Trilhas.
-
-**Recuperação:** se somente esse curso falhar, sincronize-o quando houver rede;
-se os demais abrirem, não limpe toda a réplica. Consulte [Solução de
-problemas](solucao-de-problemas.md).
-
-## Ler e explorar um diagrama complexo
-
-**Pré-condição:** abra um card que apresente um diagrama de dados, software ou
-sistemas.
-
-**Passos:**
-
-1. Use a composição vertical para reconhecer a estrutura.
-2. Use os ícones de diminuir e aumentar no canto superior direito do quadro ou,
-   no celular, aproxime e afaste dois dedos sobre o desenho. Arraste o conteúdo
-   ampliado para percorrer os dois eixos.
-3. Se houver uma lacuna, responda diretamente no ponto correspondente do
-   diagrama; cada lacuna abre somente suas próprias alternativas.
-4. Para usar toda a tela, acione o botão de expansão identificado pelo ícone.
-5. Em tela cheia, continue usando pinça e arraste ou os ícones de diminuir e
-   aumentar, à esquerda. Use o ícone de retorno, à direita, ao terminar.
-
-**Resultado esperado:** o diagrama permanece em um quadro de tamanho estável e
-pode ser ampliado sem criar um painel adicional. A prática continua no próprio
-desenho no card e em tela cheia.
-
-**Sem conexão:** zoom, movimentação, tela cheia e resposta funcionam com o
-resource já baixado. Escala e posição são temporárias e não entram no progresso
-nem na sincronização.
-
-**Recuperação:** se perder uma parte do desenho durante a exploração, diminua o
-zoom até o limite; o enquadramento global responsivo é retomado automaticamente.
-Grafos matemáticos e fluxogramas ainda podem apresentar navegação própria,
-diferente deste modo.
-
-## Responder e avançar em um card
-
-**Pré-condição:** leia o enunciado e interaja com os campos da prática.
-
-**Passos:**
-
-1. Preencha, selecione ou digite diretamente no campo indicado. Uma atividade
-   de correspondência usa lacunas independentes no próprio texto ou tabela.
-2. Numa ordenação, use as setas por ícone ao lado de cada expressão para
-   movê-la uma posição à esquerda ou à direita; os trechos permanecem nos
-   parágrafos ou células em que são lidos.
-3. Pressione **Play**.
-4. Quando houver resposta avaliável, o primeiro toque confirma a tentativa e
-   mostra o feedback.
-5. Leia o retorno. Pressione **Play** novamente para avançar.
-6. Quando o recurso oferecer **Ver resposta**, use-o somente se decidir revelar
-   a solução; uma resposta correta não deve ser exposta antes disso.
-
-**Resultado esperado:** a confirmação e a navegação respondem localmente; não
-dependem de uma gravação remota. Errar, limpar, tentar novamente ou revelar a
-resposta não gera nota nem contagem de tentativas.
-
-**Sem conexão:** a prática, o feedback já contido no card e o avanço continuam
-funcionando.
-
-**Recuperação:** se o botão não responder, aguarde apenas uma animação em curso e toque uma
-vez. Se a interface permanecer parada, volte ao card e reabra-o; consulte
-[Solução de problemas](solucao-de-problemas.md) antes de apagar dados.
-
-## Interromper e retomar
-
-**Pré-condição:** nenhuma ação especial é necessária.
-
-**Passos:** saia do card ou feche o aplicativo. Ao voltar, abra o mesmo
-curso e use sua continuação.
-
-**Resultado esperado:** o ponto corrente e a conclusão estrutural são gravados
-primeiro no dispositivo. Eles ajudam a reencontrar o percurso, mas não são nota
-nem medida de atenção.
-
-**Sem conexão:** a retomada funciona com a réplica. A sincronização posterior
-leva o estado funcional à conta.
-
-**Recuperação:** se uma etapa for zerada, os cards posteriores da mesma lição são reabertos.
-Essa regra impede que a interface trate como concluída uma etapa posterior a
-outra que a própria pessoa decidiu reiniciar.
-
-## Marcar um card para rever
-
-**Pré-condição:** abra o card que deseja revisitar.
-
-**Passos:** toque no marcador **Rever**. Para retornar depois, abra a lista
-**Cards para rever** no curso selecionado e escolha o alvo. Toque novamente no
-marcador para removê-lo.
-
-**Resultado esperado:** a marca pertence à própria conta e aponta para a
-identidade do card. Ela não significa erro, dificuldade nem prioridade imposta
-por outra pessoa.
-
-**Sem conexão:** a marca é gravada localmente e pode ser enviada depois.
-
-**Recuperação:** se outro dispositivo ainda mostrar a marca anterior,
-sincronize os dois antes de refazer a ação.
-
-## Registrar uma observação pedagógica
-
-**Pré-condição:** abra o card e identifique o que deseja comunicar.
-
-**Passos:**
-
-1. Abra o ícone de observação.
-2. Escolha **Dúvida**, **Possível erro**, **Confuso**, **Sugestão** ou
-   **Observação**.
+1. Na Unidade, use **Observação**.
+2. Escolha Dúvida, Possível erro, Confuso, Sugestão ou Observação.
 3. Escreva até 1.000 caracteres.
 4. Salve.
 
-**Resultado esperado:** existe uma observação corrente da pessoa por card.
-Salvar novamente substitui categoria e texto; retirar apaga o registro. Em um
-workspace associado de modo inequívoco, pessoas responsáveis podem responder e
-alterar seu estado. O contador indica presença, não pontuação.
+Abra novamente para editar ou retirar. A observação é pessoal e ancorada à
+Unidade. A nova fila de triagem e correção autoral ainda não está implementada;
+salvar não significa que houve reparo.
 
-**Sem conexão:** o texto próprio permanece no dispositivo e aguarda envio. A
-triagem compartilhada e novas respostas exigem rede.
+## Zerar o progresso
 
-**Recuperação:** se o card tiver sido removido, a observação permanece identificável, mas o
-aplicativo não abre outro card por semelhança. Veja [Observações
-pedagógicas](observacoes-pedagogicas.md).
+Quando houver progresso, o cartão do Curso na Home mostra o ícone de zerar.
+Confirme a pergunta que inclui o título do Curso. A ação limpa somente o
+progresso daquele Curso; não remove conteúdo nem outros Cursos.
 
-## Editar texto manualmente
+## Criar um Curso
 
-**Pré-condição:** a conta deve possuir capacidade de autoria sobre o alvo.
-
-**Passos:**
-
-1. Entre no modo **Editar**.
-2. Selecione o card ou a instância de recurso pelo contorno.
-3. Toque no rótulo textual desejado e edite-o no próprio resource. O contorno e
-   o cursor de digitação identificam o texto ativo sem abrir outra tela.
+1. Abra Autoria.
+2. Use **Criar Curso**.
+3. Informe título, objetivo e orientações opcionais.
 4. Salve.
 
-**Resultado esperado:** títulos, parágrafos, rótulos, células e outros textos
-autorizados podem mudar sem redimensionar o card. Identidades, tipos de recurso,
-relações, ordem e respostas estruturais permanecem protegidos; a edição comum
-não apresenta formulário auxiliar, campo técnico nem JSON do card.
+O Curso nasce privado. A lista usa paginação; se ele não aparecer após falha de
+rede, atualize quando a conexão retornar antes de repetir a criação com uma
+nova intenção.
 
-Cada texto autorizado recebe uma pista discreta no próprio rótulo. Ao tocar ou
-clicar, somente esse rótulo ganha o foco forte e o cursor de digitação aparece
-no ponto escolhido. Quando o mesmo rótulo é mostrado mais de uma vez — por
-exemplo, o nome de um estado na linha e nos destinos de uma tabela de transição
-— todas as ocorrências são espelhos sincronizados do mesmo texto.
+## Consultar e editar o planejamento
 
-**Sem conexão:** em conteúdo de workspace já carregado e autorizado, uma edição
-textual pode ser guardada na fila local. Mover, excluir ou publicar continua
-dependendo do servidor.
+Abra o Curso e escolha **Planejamento**. A tela mostra objetivo, orientações,
+quantidade de Partes e quantidade de decisões.
 
-**Recuperação:** se o mesmo texto mudou remotamente, o AraLearn preserva a
-versão local e apresenta as escolhas **Manter meu texto** ou **Descartar
-alterações locais**. Não há sobrescrita silenciosa.
+O ícone de edição permite alterar título, objetivo e orientações. O campo
+avançado de estado estruturado usa JSON e ainda não é a interface final para
+Partes ou parâmetros pedagógicos. Não o altere manualmente sem conhecer o
+contrato.
 
-## Solicitar uma alteração à assistência de linguagem
+## Consultar Estrutura e Conteúdo
 
-**Pré-condição:** configure um provedor, mantenha conexão e possua permissão
-para o escopo selecionado.
+**Estrutura** pagina Módulos, Lições e Microssequências. **Conteúdo** pagina
+Unidades já materializadas. Essas áreas são, nesta revisão, superfícies de
+inspeção. A edição contextual e a rolagem vertical contínua ainda não foram
+conectadas ao runtime canônico.
 
-**Passos:**
+## Conceder acesso
 
-1. Entre no modo **IA**.
-2. Selecione recursos, o card ou o contêiner autorizado.
-3. Escreva uma alteração específica no campo **Pedido para a IA**.
-4. Envie e examine o resultado e a explicação.
-5. Continue a conversa se precisar ajustar o resultado.
-6. Use **Desfazer**, **Refazer** ou restaure uma versão quando necessário.
+1. Em Autoria, abra um Curso próprio.
+2. Escolha **Pessoas**.
+3. Use acrescentar.
+4. Informe o e-mail exato de uma conta existente.
+5. Confirme.
 
-**Resultado esperado:** o serviço recebe contexto de leitura e apenas os alvos
-graváveis do escopo. A resposta é validada antes da gravação. Uma explicação
-sem mudança pode integrar a conversa sem criar uma versão fictícia; uma saída
-inválida não deve alterar parcialmente o conteúdo.
+A pessoa passa a ver o Curso em Estudo. A concessão não cria organização, não
+duplica Curso e não permite edição. O serviço não oferece pesquisa de diretório
+nem inclui o e-mail nos eventos de Curso.
 
-**Sem conexão:** provedores remotos não podem ser chamados. A conversa não é
-usada como armazenamento permanente; as versões do conteúdo, e não o diálogo
-completo, sustentam desfazer e refazer durante a sessão.
+## Revogar acesso
 
-**Recuperação:** se o resultado for inadequado, descreva o problema na mesma conversa ou
-desfaça. Reduza o alvo quando o pedido mistura alterações independentes.
+Em **Pessoas**, use retirar ao lado do nome e confirme. O servidor impede novas
+leituras. Uma réplica já baixada pode permanecer fisicamente no dispositivo da
+pessoa até a limpeza local; revogação não recolhe bytes já entregues.
 
-## Configurar autoria conversacional externa
+## Usar Autoria conversacional
 
-Nesta tarefa, **OAuth** é o fluxo de autorização pelo qual a pessoa concede a
-uma ferramenta acesso limitado à própria conta sem entregar sua senha. **Model
-Context Protocol (MCP)** é o protocolo pelo qual essa ferramenta consulta as
-operações disponíveis e envia pedidos estruturados ao AraLearn. O
-**identificador do GPT** é o código da ferramenta conversacional já configurada
-que será vinculada à autorização.
+Conecte um cliente MCP com OAuth individual. A experiência esperada é:
 
-**Pré-condição:** esta tarefa é destinada a quem construirá ou reorganizará
-cursos por uma ferramenta conversacional compatível. Requer conexão e uma
-conta autenticada.
+1. descrever a intenção;
+2. permitir que o cliente localize e leia o Curso;
+3. revisar a proposta quando houver decisão de conteúdo;
+4. autorizar a mutação;
+5. receber síntese breve e link visual;
+6. conferir o resultado na Autoria e em Estudo.
 
-**Passos:**
+A pessoa não precisa escolher a ferramenta técnica. O cliente deve reler o
+Curso antes de escrever e usar a revisão recebida. Veja
+[Autoria por MCP](autoria-mcp.md).
 
-1. Obtenha o pacote versionado da integração na distribuição do AraLearn.
-2. Importe instruções, knowledge e o esquema da Action no serviço externo;
-   crie as credenciais OAuth e vincule o identificador salvo quando o cliente
-   exigir essa associação.
-3. Para um cliente MCP, use nome, endpoint e método de autenticação descritos no
-   pacote e no guia de instalação.
+## Trabalhar sem conexão
 
-**Resultado esperado:** a ferramenta externa autentica a própria conta por
-OAuth e recebe somente as operações permitidas. O aplicativo não cria um chat
-interno de Autoria: linguagem natural permanece no cliente externo, enquanto o
-workspace persiste o estado canônico e a interface o apresenta.
+Conteúdo já carregado pode ser estudado offline. Progresso, marcas e observações
+entram numa fila por Curso. Quando a conexão retorna, o repositório compara a
+revisão remota, reconcilia as operações locais e tenta novamente de forma
+limitada.
 
-**Sem conexão:** materiais de configuração já baixados podem ser consultados;
-registrar credenciais, autorizar a conta e operar o servidor exige rede.
-
-**Recuperação:** se falhar, não substitua OAuth por uma chave pessoal estática.
-Confirme o endereço da instalação, a conta usada no consentimento e o
-identificador do GPT. Consulte
-[Criar cursos pelo chat](criar-cursos-pelo-chat.md).
-
-## Sincronizar manualmente
-
-**Pré-condição:** restabeleça a conexão.
-
-**Passos:** abra o painel e escolha **Sincronizar**.
-
-**Resultado esperado:** o aplicativo tenta enviar operações pendentes, atualizar
-Trilhas e baixar revisões necessárias. Durante a operação, controles podem
-ficar temporariamente indisponíveis para impedir comandos repetidos.
-
-**Sem conexão:** o comando não envia dados, mas a réplica continua atendendo às
-operações locais já materializadas.
-
-**Recuperação:** se falhar, continue estudando com o estado local e tente novamente depois.
-Uma falha de uma publicação não deve impedir os demais cursos de abrir.
-
-## Receber a atualização de um curso
-
-**Pré-condição:** o curso oficial precisa estar selecionado e a rede
-disponível.
-
-**Passos:** sincronize. O dispositivo baixa e valida a nova composição antes de
-substituir a réplica anterior.
-
-**Resultado esperado:** se o download ou a validação falhar, a versão local já
-utilizável permanece preservada. Progresso, marcas e observações continuam
-ligados às entidades que conservaram suas identidades.
-
-**Sem conexão:** a revisão já validada permanece disponível, mas o dispositivo
-não descobre uma revisão remota nova.
-
-**Recuperação:** dados ligados a uma entidade retirada deixam de encontrar um alvo
-ativo. O aplicativo não os redireciona para um título semelhante.
+Não limpe dados, desinstale nem troque de navegador antes da sincronização se
+houver alterações importantes. A Home pode mostrar Cursos conhecidos sem
+garantir que uma composição nunca aberta esteja disponível offline.
 
 ## Sair
 
-**Pré-condição:** se houver alterações pendentes importantes, sincronize
-quando possível.
-
-**Passos:** abra o painel, abra **Conta** e escolha **Sair**.
-
-**Resultado esperado:** a sessão é encerrada e a porta de acesso volta a ser
-exibida. Sair não equivale a excluir a conta. A réplica local pode permanecer
-no dispositivo para a próxima sessão da mesma conta, mas deixa de estar aberta
-na interface.
-
-**Sem conexão:** a sessão local pode ser encerrada, mas alterações pendentes não
-são enviadas; o aplicativo pede confirmação quando as identifica.
-
-**Recuperação:** se a gravação local não puder terminar, use **Tentar gravar
-novamente** antes de fechar a página.
+Em **Conta e aparência**, use **Sair**. Se uma saída for interrompida, a tela de
+recuperação oferece repetir. Sair não apaga automaticamente o cache do Curso;
+a política de limpeza local deve ser considerada em dispositivo compartilhado.
 
 ## Excluir a conta
 
-**Pré-condição:** entenda que a operação é destrutiva e requer conexão.
-Sincronize ou exporte o que precisar conservar.
+1. Abra **Conta e aparência**.
+2. Use **Excluir conta**.
+3. Digite exatamente `EXCLUIR MINHA CONTA`.
 
-**Passos:** abra o painel, abra **Conta**, escolha **Excluir conta** e
-confirme.
+A interface remove os avatares privados antes de chamar a exclusão. O banco
+recusa a operação enquanto houver objeto de avatar. A exclusão remove a conta,
+os Cursos próprios e os dados relacionados por cascade; é irreversível e não
+deve ser usada como forma de sair.
 
-**Resultado esperado:** os dados pessoais associados à conta e a cópia local
-correspondente são removidos conforme as relações do banco. Publicações
-oficiais do catálogo não são apagadas por uma exclusão pessoal.
+## O que ainda não está disponível
 
-**Sem conexão:** a exclusão não é executada, porque depende de autorização e
-remoção no servidor.
+O runtime canônico desta revisão não apresenta como concluídos:
 
-**Recuperação:** se a confirmação não chegar, não presuma conclusão. Entre novamente, confira
-o estado e consulte [Solução de problemas](solucao-de-problemas.md).
+- edição contextual completa de Unidades;
+- planejamento visual por Partes;
+- parâmetros semânticos por escopo;
+- proveniência e ancoragem completas;
+- fila autoral de observações, auditoria e correção;
+- variantes experimentais;
+- analytics de Autoria;
+- disponibilização pública.
+
+Consulte o [estado corrente](estado-atual-e-roadmap.md) antes de planejar uma
+atividade que dependa dessas capacidades.
 
 ## O que o aplicativo não interpreta
 
-O AraLearn não registra tentativas, acertos, erros, abertura ou permanência no
-card para transformar esses sinais em nota, atenção ou domínio. O ponto de
-continuação, a conclusão estrutural, **Rever** e a observação respondem a
-necessidades funcionais diferentes. A justificativa e os limites estão em
-[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) e
-[Privacidade](privacidade.md).
+Progresso, cliques, rolagem, tempo, marcas e observações são eventos ou estados
+observáveis. Eles não medem diretamente atenção, engajamento, compreensão ou
+aprendizagem. Uma pesquisa precisa declarar construto, medida, algoritmo,
+denominador, ausências e limites.

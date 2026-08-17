@@ -141,7 +141,7 @@ export function buildStudyModuleNavigationState(
   }
 
   const lesson = lessons[0];
-  const reference = { courseKey, moduleKey, lessonKey: lesson.id };
+  const reference = { courseId: courseKey, moduleKey, lessonKey: lesson.id };
   const lessonCards = collectLessonCards(lesson);
   const entry = firstPendingLessonEntry(progressState, reference, lessonCards);
 
@@ -169,7 +169,11 @@ export function buildLessonNavigationState(projectDocument, progressState, { cou
   }
 
   const lessonCards = collectLessonCards(lesson);
-  const progressCursor = getLessonProgressCursor(progressState, { courseKey, moduleKey, lessonKey }, lessonCards.length);
+  const progressCursor = getLessonProgressCursor(
+    progressState,
+    { courseId: courseKey, moduleKey, lessonKey },
+    lessonCards.length
+  );
   const currentEntry = lessonCards[progressCursor] || lessonCards[0] || null;
   const firstMicrosequence = currentEntry
     ? findMicrosequence(projectDocument, courseKey, moduleKey, lessonKey, currentEntry.microsequenceKey)

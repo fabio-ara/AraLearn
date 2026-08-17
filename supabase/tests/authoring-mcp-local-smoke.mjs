@@ -93,29 +93,66 @@ if (!accessToken) {
     return result.structuredContent.data;
   }
 
-  let workspaceId = null;
-  let workspaceRevision = null;
-  try {
-    const created = await tool("criarWorkspaceDeAutoria", {
-      requestId: randomUUID(),
-      title: "Workspace OAuth local"
-    });
-    workspaceId = created.workspaceId;
-    workspaceRevision = created.revision;
-    const own = await tool("lerWorkspaceDeAutoria", {
-      workspaceId,
-      view: "outline"
-    });
-    assert.equal(own.workspaceId, workspaceId);
-  } finally {
-    if (workspaceId) {
-      await tool("excluirDoWorkspace", {
-        operation: "delete_workspace",
-        requestId: randomUUID(),
-        workspaceId,
-        expectedRevision: workspaceRevision
-      });
+  const initialized = await call("initialize", {
+    protocolVersion,
+    capabilities: {},
+    clientInfo: { name: "aralearn-local-smoke", version: "1" }
+  });
+  assert.equal(initialized.protocolVersion, protocolVersion);
+
+  const listed = await call("tools/list");
+  const toolNames = listed.tools.map(({ name }) => name);
+  assert.deepEqual(toolNames, [
+    "listarCursos",
+    "lerCurso",
+    "criarCurso",
+    "alterarCurso",
+    "gerirPessoas",
+    "consultarComponentesDidaticos"
+  ]);
+  assert.equal(
+    toolNames.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o|publica(?:ç|c)[aã]o/iu.test(name)),
+    false
+  );
+
+  const created = await tool("criarCurso", {
+    requestId: randomUUID(),
+    title: "Curso OAuth local",
+    goal: "Validar a autoria canônica pelo MCP",
+    brief: "Contexto privado do smoke."
+  });
+  assert.match(String(created.courseId || ""), /^[0-9a-f-]{36}$/iu);
+  assert.equal(created.revision, 1);
+
+  const read = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "outline"
+  });
+  assert.equal(read.courseId, created.courseId);
+  assert.equal(read.revision, 1);
+
+  const changed = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: read.revision,
+    operation: "update_metadata",
+    title: "Curso OAuth local atualizado",
+    authoringState: {
+      version: 1,
+      parts: [{ partId: "part-mcp-smoke", status: "planned" }],
+      decisions: [],
+      mandate: null
     }
-  }
-  console.log("Smoke MCP local: metadata e fluxo OAuth mutável aprovados.");
+  });
+  assert.equal(changed.revision, 2);
+
+  const own = await tool("listarCursos", { query: "OAuth local atualizado" });
+  assert.equal(
+    own.items.some(({ courseId }) => courseId === created.courseId),
+    true
+  );
+  const profile = await tool("gerirPessoas", { operation: "read_profile" });
+  assert.match(String(profile.userId || ""), /^[0-9a-f-]{36}$/iu);
+
+  console.log("Smoke MCP local: OAuth e Curso vivo aprovados.");
 }

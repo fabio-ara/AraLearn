@@ -2,21 +2,26 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  buildLessonProgressKey,
+  buildLessonProgressPath,
   createEmptyProgressDocument,
-  getLessonProgressCursor,
   readLessonProgressEntry,
-  removeLessonProgressEntries,
-  truncateLessonProgressFromCardKeys,
-  validateProgressDocument,
-  writeLessonProgressEntry
+  validateProgressDocument
 } from "../../src/storage/progressStore.js";
 
 const REFERENCE = Object.freeze({
-  courseKey: "course-a",
-  moduleKey: "module-a",
-  lessonKey: "lesson-a"
+  courseId: "course-a",
+  moduleId: "module-a",
+  lessonId: "lesson-a"
 });
+
+function progressEntry(overrides = {}) {
+  return {
+    cursorStudyUnitId: "unit-c",
+    completedStudyUnitIds: ["unit-a", "unit-c"],
+    updatedAt: "2026-08-17T12:00:00.000Z",
+    ...overrides
+  };
+}
 
 test("o contrato de progresso rejeita documentos parciais ou adulterados", () => {
   assert.throws(
@@ -30,84 +35,68 @@ test("o contrato de progresso rejeita documentos parciais ou adulterados", () =>
   assert.throws(
     () => validateProgressDocument({
       version: 1,
-      lessons: {
-        "::lesson-a": { cursor: 0, completedCardKeys: [] }
-      }
+      lessons: { "::lesson-a": progressEntry() }
     }),
-    /chave de lição inválida/u
+    /caminho de Lição inválido/u
   );
   assert.throws(
     () => validateProgressDocument({
       version: 1,
       lessons: {
-        "course-a::module-a::lesson-a": { cursor: "0", completedCardKeys: [] }
+        "course-a::module-a::lesson-a": progressEntry({ cursor: 0 })
       }
     }),
-    /cursor deve ser um inteiro não negativo/u
+    /cursor não pertence ao contrato/u
   );
 });
 
-test("as operações de progresso exigem referência completa e estruturada", () => {
-  assert.equal(buildLessonProgressKey(REFERENCE), "course-a::module-a::lesson-a");
-  assert.throws(() => buildLessonProgressKey("lesson-a"), /reference deve ser um objeto/u);
+test("as operações de progresso exigem referência canônica completa", () => {
+  assert.equal(buildLessonProgressPath(REFERENCE), "course-a::module-a::lesson-a");
+  assert.throws(() => buildLessonProgressPath("lesson-a"), /reference deve ser um objeto/u);
   assert.throws(
-    () => buildLessonProgressKey({ lessonKey: "lesson-a" }),
-    /reference\.courseKey deve ser uma string não vazia/u
+    () => buildLessonProgressPath({ lessonId: "lesson-a" }),
+    /reference\.courseId deve ser uma string não vazia/u
   );
 });
 
-test("gravação, leitura e remoção preservam a visão de progresso em memória", () => {
-  const cards = [{ id: "card-a" }, { id: "card-b" }, { id: "card-c" }];
-  const written = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 1);
-  const entry = readLessonProgressEntry(written, REFERENCE);
+test("leitura preserva conclusões não contíguas por identidade de Unidade de estudo", () => {
+  const document = validateProgressDocument({
+    version: 1,
+    lessons: {
+      "course-a::module-a::lesson-a": progressEntry()
+    }
+  });
 
-  assert.equal(entry.cursor, 1);
-  assert.deepEqual(entry.completedCardKeys, ["card-a", "card-b"]);
-  assert.ok(Number.isFinite(Date.parse(entry.updatedAt)));
-  assert.equal(getLessonProgressCursor(written, REFERENCE, 1), 0);
-
-  assert.deepEqual(removeLessonProgressEntries(written, [REFERENCE]), createEmptyProgressDocument());
+  assert.deepEqual(readLessonProgressEntry(document, REFERENCE), progressEntry());
+  assert.equal(readLessonProgressEntry(document, {
+    ...REFERENCE,
+    lessonId: "lesson-b"
+  }), null);
 });
 
-test("reinício de card corta o progresso sequencial do alvo em diante", () => {
-  const cards = [{ id: "card-a" }, { id: "card-b" }, { id: "card-c" }];
-  const completed = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 2);
-  const reset = truncateLessonProgressFromCardKeys(completed, REFERENCE, ["card-b"]);
-
-  assert.deepEqual(readLessonProgressEntry(reset, REFERENCE).completedCardKeys, ["card-a"]);
-  assert.equal(readLessonProgressEntry(reset, REFERENCE).cursor, 0);
-
-  const persistedAgain = writeLessonProgressEntry(reset, REFERENCE, cards, 0);
-  assert.deepEqual(
-    readLessonProgressEntry(persistedAgain, REFERENCE).completedCardKeys,
-    ["card-a"],
-    "uma gravação anterior ao corte não pode recompor o card reiniciado"
+test("a entrada exige cursor concluído, identidades únicas e ao menos uma conclusão", () => {
+  const document = (entry) => ({
+    version: 1,
+    lessons: { "course-a::module-a::lesson-a": entry }
+  });
+  assert.throws(
+    () => validateProgressDocument(document(progressEntry({
+      cursorStudyUnitId: "unit-b"
+    }))),
+    /deve identificar uma Unidade de estudo concluída/u
   );
-});
-
-test("reinício de microssequência corta desde seu primeiro card concluído na lição", () => {
-  const cards = [
-    { id: "card-a" },
-    { id: "card-b" },
-    { id: "card-c" },
-    { id: "card-d" },
-    { id: "card-e" }
-  ];
-  const completed = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 4);
-  const reset = truncateLessonProgressFromCardKeys(
-    completed,
-    REFERENCE,
-    ["card-d", "card-c"]
+  assert.throws(
+    () => validateProgressDocument(document(progressEntry({
+      completedStudyUnitIds: ["unit-a", "unit-a"]
+    }))),
+    /não pode conter ids duplicados/u
   );
-
-  assert.deepEqual(readLessonProgressEntry(reset, REFERENCE).completedCardKeys, ["card-a", "card-b"]);
-  assert.equal(readLessonProgressEntry(reset, REFERENCE).cursor, 1);
-});
-
-test("reinício do primeiro card remove a entrada de progresso da lição", () => {
-  const cards = [{ id: "card-a" }, { id: "card-b" }];
-  const completed = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 1);
-  const reset = truncateLessonProgressFromCardKeys(completed, REFERENCE, ["card-a"]);
-
-  assert.equal(readLessonProgressEntry(reset, REFERENCE), null);
+  assert.throws(
+    () => validateProgressDocument(document(progressEntry({
+      cursorStudyUnitId: "unit-a",
+      completedStudyUnitIds: []
+    }))),
+    /não pode ficar vazia/u
+  );
+  assert.deepEqual(createEmptyProgressDocument(), { version: 1, lessons: {} });
 });

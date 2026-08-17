@@ -1,198 +1,156 @@
 # AraLearn
 
-AraLearn é uma plataforma de aprendizagem para estudar, criar e revisar cursos
-formados por pequenas sequências de explicação e prática. O aplicativo foi
-projetado para o uso cotidiano em celulares, inclusive quando a conexão com a
-internet é instável.
+AraLearn é uma plataforma móvel de aprendizagem para estudar, criar e revisar
+**Cursos vivos**: o conteúdo pode ser usado enquanto continua sendo planejado,
+produzido e corrigido. O mesmo Curso aparece em Estudo, na Autoria visual e nas
+ferramentas de autoria conversacional; não existe uma cópia “publicada” que
+precise ser mantida em paralelo.
 
-Um curso não é tratado como uma coleção aleatória de perguntas. O conteúdo é
-organizado em uma progressão explícita:
+O conteúdo segue uma progressão explícita:
 
 ```text
-curso → módulo → lição → microssequência → card
+Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
 ```
 
-A **microssequência** é a menor unidade didática completa. Ela apresenta um
-avanço conceitual delimitado, oferece as explicações necessárias e inclui
-práticas coerentes com aquilo que foi ensinado. Um **card** é uma etapa dessa
-microssequência: pode conter texto, fórmulas, diagramas, código, tabelas ou
-outras representações, além de uma forma de resposta quando houver prática.
+A **Microssequência didática** organiza um avanço conceitual delimitado. Cada
+**Unidade de estudo** é uma etapa renderizável dessa sequência e pode combinar
+texto, fórmulas, diagramas, código, tabelas e uma forma de resposta. *Flashcard*
+fica reservado ao caso específico de uma unidade organizada como pista e
+resposta para prática de recuperação; não nomeia todo o conteúdo do AraLearn.
 
 ## O problema educacional
 
-Materiais de estudo frequentemente impõem ao estudante dois trabalhos ao
-mesmo tempo: compreender o assunto e descobrir como o material foi organizado.
-Resumos excessivamente condensados, conceitos sem preparação, diagramas
-ambíguos e exercícios desconectados da teoria aumentam esse esforço sem
-necessariamente melhorar a aprendizagem.
+Materiais de estudo frequentemente impõem dois trabalhos ao mesmo tempo:
+compreender o assunto e descobrir como o material foi organizado. Resumos
+excessivamente condensados, conceitos sem preparação, diagramas ambíguos e
+exercícios desconectados da explicação aumentam esse esforço sem demonstrar
+melhor aprendizagem.
 
-O AraLearn adota quatro compromissos para reduzir esse atrito:
+O AraLearn adota quatro compromissos:
 
-1. **não pressupor conhecimentos que ainda não foram ensinados**;
-2. **distribuir a explicação em avanços conceituais manejáveis**, sem confundir
+1. não pressupor conhecimentos que ainda não foram ensinados;
+2. distribuir a explicação em avanços conceituais manejáveis, sem confundir
    segmentação com superficialidade;
-3. **praticar o conhecimento que a sequência efetivamente desenvolveu**, com
-   variedade determinada pela finalidade da prática;
-4. **usar a representação própria do objeto estudado**, quando um diagrama,
-   uma fórmula ou outra notação comunicar melhor do que texto corrido.
+3. praticar o conhecimento desenvolvido pela sequência, com variedade
+   determinada pela finalidade da tarefa;
+4. usar a representação própria do objeto estudado quando ela comunicar
+   melhor do que texto corrido.
 
-Esses compromissos orientam a geração de cursos, os contratos de conteúdo, a
-interface de estudo e os critérios de auditoria. Eles não são apresentados
-como prova de eficácia: os fundamentos teóricos, as hipóteses e o protocolo de
-avaliação são distinguidos na [documentação pedagógica](docs/modelo-didatico.md).
+Esses compromissos orientam contratos, interface e auditorias; não são, por si
+sós, prova de eficácia. A [documentação pedagógica](docs/modelo-didatico.md)
+separa fundamentação, hipótese, implementação e resultado empírico.
 
 ## Como se estuda
 
-Depois de entrar, a pessoa escolhe entre duas atividades do mesmo produto:
+Depois de entrar, a pessoa vê diretamente os Cursos que possui e aqueles aos
+quais recebeu acesso. A lista inicial é fina: traz identidade, título, objetivo,
+contagens e progresso. A composição completa é buscada somente quando o Curso é
+aberto e fica armazenada no dispositivo para retomada.
 
-- **Estudo** organiza em **Trilhas** os cursos escolhidos pela própria pessoa e
-  abre o leitor;
-- **Autoria** reúne **Workspaces**, onde o curso é planejado e construído, e
-  **Coleções**, o catálogo editorial compartilhado.
+Estudo percorre Curso, Módulo, Lição, Microssequência didática e Unidade de
+estudo. O controle principal confirma a resposta quando necessário, mostra o
+feedback e depois avança. A pessoa também pode marcar uma unidade para rever ou
+registrar uma observação situada, como dúvida, possível erro ou trecho confuso.
 
-Essa divisão não cria duas versões do curso. O mesmo conteúdo e as mesmas
-identidades são usados no celular, no desktop e no APK. Estudo permanece livre
-de controles editoriais; Coleções não é duplicada nos dois lados.
-
-Adicionar um curso a Trilhas não duplica todo o curso no banco remoto. A ação
-cria um vínculo pessoal, e o dispositivo mantém a réplica necessária para o
-estudo. Depois do primeiro carregamento, o conteúdo pode ser retomado sem
-conexão. O tema visual, a navegação entre cards, as respostas já disponíveis e
-o registro local do progresso não aguardam uma requisição de rede.
-
-Durante o estudo, o botão principal tem uma função estável: confirmar uma
-resposta quando o card exige resposta, mostrar o feedback e, no toque
-seguinte, avançar. A pessoa também pode marcar um card para rever ou registrar
-uma observação pedagógica, como dúvida, possível erro ou trecho confuso.
-
-O AraLearn registra apenas o estado funcional necessário para retomar o
-percurso. Ele não converte tempo de tela, quantidade de tentativas ou padrões
-de acerto em nota, ranking ou vigilância. O funcionamento detalhado está no
-[guia de uso](docs/uso-do-app.md) e no [guia do estudante](docs/guia-estudante.md).
+Progresso, marcas de revisão e observações formam um **estado pessoal** separado
+do conteúdo canônico. Uma pessoa com acesso pode estudar e conservar seu
+próprio estado, mas não recebe autoridade para editar o Curso. O [guia do
+estudante](docs/guia-estudante.md) ensina o percurso completo.
 
 ## Como se cria e revisa conteúdo
 
-A autoria ocorre sobre o mesmo conteúdo que será estudado. Textos visíveis
-podem ser editados diretamente; objetos selecionados podem receber assistência
-de um modelo de linguagem; mudanças estruturais mais amplas podem ser feitas
-por uma integração de autoria.
+Autoria lista somente os Cursos pertencentes à pessoa autenticada. Um Curso
+novo nasce privado, com título, objetivo e orientações, e pode ser usado sem
+passar por estados de rascunho, aprovação ou publicação.
 
-No aplicativo, **Autoria** começa por Workspaces e Coleções. Dentro de um
-workspace, cinco destinos compactos apresentam uma superfície por vez:
-**Mapa** acompanha Partes e microssequências, **Desenho** mostra os valores
-efetivos e permite controles estruturados ou Auto, **Conteúdo** reutiliza o
-leitor, **Auditoria** localiza achados e seus alvos e **Resultados** apresenta
-os recortes autorizados sem colapsá-los num score.
-Não há chat, formulário pedagógico extenso, edição de JSON nem exigência de
-identificadores técnicos nessa camada.
+Ao abrir um Curso, a interface oferece quatro destinos compactos:
 
-Essa integração trabalha por etapas. Primeiro planeja a progressão; depois
-materializa partes do curso; em seguida audita o conteúdo e as representações;
-por fim repara apenas os problemas confirmados. Uma parte materializada já pode
-ser lida e estudada, mesmo que o restante do curso ainda esteja em construção.
+- **Planejamento:** objetivo, orientações e o estado estruturado corrente;
+- **Estrutura:** Módulos, Lições e Microssequências didáticas;
+- **Conteúdo:** Unidades de estudo já materializadas;
+- **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
 
-O modelo não recebe liberdade irrestrita sobre o banco. Toda operação passa
-por contratos de dados, validação e autorização. Quando precisa escolher uma
-representação, consulta primeiro um catálogo que descreve a finalidade de cada
-tipo de recurso e somente depois obtém o contrato específico dos recursos
-selecionados. Essa separação permite acrescentar novas representações sem
-refazer o núcleo que organiza cards e cursos.
+As ferramentas de autoria por **Model Context Protocol (MCP)** leem e alteram
+esse mesmo Curso. Elas listam Cursos próprios, leem a composição paginada,
+criam e alteram Cursos, gerem perfil e acesso e consultam a biblioteca de
+componentes didáticos. A revisão de estado e as chaves de repetição segura
+impedem que duas edições silenciosamente se sobrescrevam ou que uma chamada
+repetida duplique uma operação.
 
-Para quem quer apenas criar um curso, o percurso começa em [Criar cursos pelo
-chat](docs/criar-cursos-pelo-chat.md). A explicação técnica de **Model Context
-Protocol (MCP)** — o protocolo usado por clientes externos para descobrir e
-chamar as ferramentas de autoria — aparece somente no [capítulo de autoria por
-MCP](docs/autoria-mcp.md).
+Planejamento avançado por Partes, inspeção vertical contínua, proveniência,
+anotações autorais, correção, variantes e analytics de pesquisa pertencem à
+evolução da Autoria. A documentação não os apresenta como concluídos antes de
+existirem de ponta a ponta na interface, no MCP, na persistência e nos testes.
 
-Workspaces administrados por pessoas com capacidade de pesquisa também podem
-derivar variantes de uma base aprovada, fixar condições parametrizadas e
-congelar a revisão exata atribuída a cada participante. Protocolo, condição e
-atribuição permanecem sob controle do servidor; não são escolhidos pelo modelo
-de linguagem. O fluxo e seus limites estão em [Experimentos instrucionais
-parametrizados](docs/experimentos-instrucionais-parametrizados.md).
-O destino **Resultados** separa desenho, processo, conclusão estrutural e
-experimento em datasets versionados, com denominadores, ausências e limites
-explícitos; veja [Analytics instrucionais](docs/analytics-instrucionais.md).
+Comece pelo [guia do professor e autor](docs/guia-professor-autor.md). A
+explicação do protocolo está em [Autoria por MCP](docs/autoria-mcp.md).
 
 ## Representações acadêmicas
 
-O catálogo de recursos inclui texto, código, tabelas, fórmulas, matrizes,
-gráficos estatísticos, plano cartesiano, árvores, grafos, diagramas de
-conjuntos, processos, modelos de software e outras estruturas. Esses recursos
-não existem para ornamentar cards. Cada um deve preservar uma convenção
-reconhecível na área, admitir conteúdo complexo sem sobreposição e oferecer
-interação dentro do próprio objeto quando houver lacuna ou digitação.
+O AraLearn compõe Unidades de estudo com **componentes didáticos**. Há
+componentes para texto, código, tabelas, fórmulas, matrizes, gráficos,
+diagramas, processos e formas de resposta. Eles não são decoração: cada um
+deve preservar uma convenção reconhecível na área e uma finalidade
+instrucional explícita.
 
-O **kernel** do AraLearn conhece apenas as regras comuns de composição de um
-card. Cada **package de recurso** reúne, de forma independente, o contrato, a
-validação, a apresentação, os campos editáveis, as possibilidades de prática e
-a descrição acadêmica de uma representação. Essa arquitetura é detalhada em
-[Recursos de card](docs/recursos-de-card.md).
-
-O curso **AraLearn: Catálogo de recursos** está disponível no catálogo oficial
-para experimentar essas representações dentro do fluxo normal do aplicativo.
+O **núcleo de execução de componentes** conhece composição, ciclo de vida,
+acessibilidade e protocolos comuns. Cada **pacote de componente** mantém seu
+contrato, validação, apresentação, campos editáveis, possibilidades de prática
+e descrição acadêmica. A arquitetura é detalhada em
+[Componentes didáticos](docs/recursos-de-card.md).
 
 ## Funcionamento sem conexão e sincronização
 
-O navegador e o aplicativo Android usam **IndexedDB**, o banco de dados local
-padronizado para aplicações web, para conservar cursos selecionados e mudanças
-que ainda precisam ser enviadas. IndexedDB foi escolhido porque suporta dados
-estruturados e transações no dispositivo; armazenamento simples de pares de
-texto não oferece as mesmas garantias para uma árvore de curso e suas filas de
-sincronização.
+O navegador e o aplicativo Android usam **IndexedDB** para manter a lista fina,
+os Cursos já abertos e o estado pessoal. Assim, conteúdo carregado anteriormente
+pode ser retomado sem rede. Alterações pessoais feitas offline formam uma fila
+por Curso e são enviadas quando a conexão retorna.
 
-Quando a rede volta, o aplicativo envia as operações pendentes de cada fluxo e
-recebe apenas as novidades necessárias. Identificadores de operação e controle
-de revisão impedem que uma repetição silenciosa duplique uma mudança. O banco
-remoto guarda estado relacional e metadados; publicações integrais e imutáveis
-ficam no armazenamento de objetos. A justificativa, as alternativas e os
-limites desse desenho são ensinados em [Persistência relacional e
-sincronização](docs/persistencia-relacional.md).
+No servidor, PostgreSQL conserva o Curso vivo, suas entidades normalizadas,
+acessos diretos, eventos mínimos e estados pessoais. O Storage de objetos é
+usado nesta etapa apenas para fotos privadas de perfil; o conteúdo do Curso não
+depende de um artefato integral ou imutável. Concorrência otimista e
+idempotência delimitada protegem as mutações sem introduzir um workflow
+editorial.
+
+A justificativa, as alternativas e os limites estão em
+[Persistência relacional e sincronização](docs/persistencia-relacional.md).
 
 ## Aplicação web e Android
 
-A mesma aplicação é entregue em dois formatos:
-
-- [aplicação web](https://fabio-ara.github.io/AraLearn/);
-- [APK Android da versão mais recente](https://github.com/fabio-ara/AraLearn/releases/latest).
-
-O conteúdo operacional não é incorporado ao APK: ele é obtido conforme a
-conta e mantido localmente para uso posterior. O leitor conserva uma largura
-confortável também no desktop; a Autoria usa composição responsiva própria,
-com uma superfície por vez no celular e um rail no desktop, sem retirar função
-da versão móvel.
+A mesma aplicação é entregue na web e como APK Android nas releases do
+repositório. A interface de Estudo mantém largura confortável também no
+desktop; a Autoria usa o mesmo princípio mobile-first, com navegação
+iconográfica entre áreas.
 
 ## Estado e limites
 
-O produto já oferece autenticação, catálogo, Trilhas, estudo offline,
-sincronização, edição contextual, observações pedagógicas, workspaces de
-autoria, revisão editorial e integrações de autoria. Ainda são necessários
-estudos com participantes para avaliar aprendizagem, compreensão dos papéis,
-qualidade da autoria assistida e adequação em diferentes áreas do
-conhecimento.
+O código desta revisão implementa a identidade única de Curso vivo, a lista
+paginada com carregamento sob demanda, o estado pessoal, a Autoria restrita ao
+proprietário, o acesso direto para Estudo e o perfil humano mínimo com nome e
+foto privada.
 
-Essa distinção é importante: teste automatizado demonstra que determinada
-operação respeita um contrato; não demonstra, sozinho, que pessoas aprendem
-mais. O [estado do produto](docs/estado-atual-e-roadmap.md) separa capacidade
-implementada, trabalho de engenharia e questão de pesquisa.
+Esse corte ainda não está promovido ao serviço hospedado. Antes da promoção, o
+importador precisa converter e validar todos os Cursos reais, os componentes
+didáticos bloqueadores precisam ter equivalência semântica, o banco local deve
+ser reconstruído e a migração remota deve passar pelos mesmos gates. Portanto,
+a aplicação pública e o APK da última release podem refletir a arquitetura
+anterior até a publicação de uma nova versão.
+
+Testes de software demonstram contratos e comportamentos observados; não
+demonstram, sozinhos, aprendizagem, compreensão da interface ou validade de
+construto. O [estado do produto](docs/estado-atual-e-roadmap.md) separa o que
+existe, está conectado, é acessível, funciona e ainda depende de validação.
 
 ## Documentação
 
-A documentação é material de aprendizagem sobre o produto. Ela não exige que
-o leitor conheça previamente educação, bancos de dados ou integração de
-modelos de linguagem. Cada capítulo introduz os conceitos usados, apresenta o
-problema, compara alternativas, justifica a decisão do AraLearn e indica suas
-consequências.
+A documentação é material de aprendizagem sobre o produto. Ela introduz os
+termos técnicos necessários, explica o problema, compara alternativas, justifica
+a decisão e explicita consequências e limites.
 
-Comece pelo [mapa da documentação](docs/README.md). Há percursos próprios para:
-
-- usar o aplicativo;
-- compreender o modelo pedagógico e sua literatura;
-- estudar a arquitetura, a persistência e a segurança;
-- criar, revisar e publicar cursos;
-- desenvolver, testar e implantar o sistema;
-- avaliar o artefato sem confundir hipótese, propriedade implementada e
-  resultado empírico.
+Comece pelo [mapa da documentação](docs/README.md). Há percursos para usar o
+aplicativo, compreender o modelo pedagógico, estudar a engenharia, realizar
+Autoria, avaliar o produto e operar sua implantação.
 
 ## Desenvolvimento local
 
@@ -204,20 +162,10 @@ npm install
 npm run dev
 ```
 
-Validação principal:
-
-```bash
-npm test
-npm run lint
-npm run test:e2e
-npm run pages:build
-npm run android:debug
-```
-
-O [guia do desenvolvedor](docs/guia-desenvolvedor.md) explica o que cada etapa
-verifica, como o projeto é organizado e por que os testes são divididos dessa
-forma. Para contribuir, consulte também [CONTRIBUTING.md](CONTRIBUTING.md).
+Comece pela validação mais próxima da mudança e amplie somente quando o risco
+for transversal. O [guia do desenvolvedor](docs/guia-desenvolvedor.md) explica
+testes, build web, Supabase local e Android.
 
 ## Licença
 
-O código-fonte é distribuído nos termos descritos em [LICENSE.md](LICENSE.md).
+O código-fonte é distribuído nos termos de [LICENSE.md](LICENSE.md).

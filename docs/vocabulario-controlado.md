@@ -486,7 +486,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** Antes de uma alteração composta, uma Versão de estado permite identificar exatamente qual estado do curso foi analisado e qual resultou da mudança.
 - **Risco de ambiguidade:** Sem esta delimitação, “Versão de estado” pode ser confundido com revisão autoral, versão de contrato, checkpoint, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Revisão”: colide em português com a atividade editorial de reconsiderar conteúdo e não comunica o controle monotônico de concorrência.; “Número de versão”: descreve a forma do valor, mas não sua função de identificar o estado-base de uma mutação..
-- **Impacto da migração:** Corte limpo coordenado em #118, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas domain, database, mcp, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** O runtime canônico já usa uma única revisão monotônica do Curso como condição de escrita; a troca final de símbolos técnicos e a remoção de resíduos fora do grafo executável continuam no gate de corte limpo, sem alias, fallback ou dupla escrita.
 
 ### Evidência, anotação e proveniência
 
@@ -714,7 +714,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** O que antes aparecia como Workspace passa a ser tratado como o próprio Curso em autoria, sem uma caixa-preta organizacional adicional.
 - **Risco de ambiguidade:** Sem esta delimitação, “Curso em autoria” pode ser confundido com organização, tenant, projeto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Workspace”: será retirado porque introduz uma caixa organizacional adicional sem explicar que o objeto concreto é o próprio curso em autoria.; “Projeto”: não foi adotado porque pode abranger tarefas e artefatos externos que não pertencem ao estado vivo de um curso..
-- **Impacto da migração:** Corte limpo coordenado em #117, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** O runtime canônico já entra diretamente pelo Curso em Estudo, Autoria, banco e MCP; o gate pendente remove somente resíduos físicos fora do grafo executável, sem conservar recipiente, alias, fallback ou dupla escrita.
 
 #### Biblioteca pessoal — `personal-library`
 
@@ -724,7 +724,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** A Biblioteca pessoal lista os cursos que pertencem à pessoa ou aos quais ela recebeu acesso, sem determinar uma sequência de estudo.
 - **Risco de ambiguidade:** Sem esta delimitação, “Biblioteca pessoal” pode ser confundido com sequência curricular, permissão, coleção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Trilha”: implica sequência planejada de estudo, enquanto Biblioteca pessoal reúne cursos acessíveis sem impor ordem curricular..
-- **Impacto da migração:** Corte limpo coordenado em #117, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** A Home canônica já lista diretamente Cursos próprios e compartilhados, sem entidade organizacional intermediária; símbolos e arquivos físicos substituídos permanecem no gate de remoção final, fora do runtime.
 
 #### Catálogo público de cursos — `public-course-catalog`
 
@@ -734,7 +734,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** O Catálogo público de cursos lista somente cursos disponibilizados explicitamente ao público, sem controlar propriedade ou acesso privado.
 - **Risco de ambiguidade:** Sem esta delimitação, “Catálogo público de cursos” pode ser confundido com biblioteca pessoal, permissão, propriedade, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Coleção”: também pode ser agrupamento privado ou curatorial; Catálogo público explicita indexação e disponibilidade pública sem conceder acesso privado..
-- **Impacto da migração:** Corte limpo coordenado em #117, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** O runtime canônico não oferece catálogo público nem usa organização editorial para conceder acesso; qualquer disponibilização pública futura será uma capacidade nova, enquanto os resíduos do modelo retirado seguem para remoção final.
 
 #### Disponibilização pública — `public-release`
 
@@ -826,7 +826,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** Ao compartilhar um curso com outra pessoa, o registro de acesso identifica diretamente a Pessoa com acesso e suas permissões.
 - **Risco de ambiguidade:** Sem esta delimitação, “Pessoa com acesso” pode ser confundido com proprietário, autor, membro de organização, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Membro”: pressupõe grupo ou organização; Pessoa com acesso expressa a concessão direta ao curso e suas permissões delimitadas..
-- **Impacto da migração:** Corte limpo coordenado em #119, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, security, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** O runtime canônico já persiste uma relação direta Curso–pessoa para Estudo e a mostra em Pessoas; a retirada de nomes e arquivos físicos substituídos continua no gate final, sem camada de compatibilidade.
 
 #### Papel de acesso — `access-role`
 
@@ -836,7 +836,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** Um Papel de acesso agrupa permissões estritamente necessárias, sem representar cargo ou hierarquia institucional.
 - **Risco de ambiguidade:** Sem esta delimitação, “Papel de acesso” pode ser confundido com permissão efetiva, identidade, cargo institucional, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Perfil de acesso”: pode ser confundido com perfil humano ou conjunto estático da conta; Papel de acesso agrupa responsabilidades no alvo..
-- **Impacto da migração:** Corte limpo coordenado em #119, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas domain, database, security, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** O modelo canônico não persiste nem expõe papel para compartilhar Curso: proprietário edita e a relação direta concede Estudo. Estruturas físicas antigas ficam fora do runtime e serão removidas no corte final.
 
 #### Permissão efetiva — `effective-capability`
 
@@ -846,7 +846,7 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Exemplo no AraLearn:** A interface habilita uma ação somente quando a Permissão efetiva calculada autoriza aquela pessoa naquele curso.
 - **Risco de ambiguidade:** Sem esta delimitação, “Permissão efetiva” pode ser confundido com papel de acesso, feature flag, propriedade, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Permissão”: pode designar a concessão armazenada; Permissão efetiva é o resultado revalidado para operação, alvo e estado concretos..
-- **Impacto da migração:** Corte limpo coordenado em #119, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas domain, database, mcp, security, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** A autorização canônica deriva diretamente de propriedade ou acesso a Estudo e é revalidada no ponto de uso; matrizes e símbolos substituídos não participam do runtime e seguem para remoção física final.
 
 ### Arquitetura de software
 

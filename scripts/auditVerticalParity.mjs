@@ -1,10 +1,7 @@
 import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import {
-  AUTHORING_APPLICATION_ONLY_TOOLS,
-  AUTHORING_WORKSPACE_MCP_TOOLS
-} from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
+import { COURSE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultRepositoryRoot = path.resolve(path.dirname(scriptPath), "..");
@@ -73,17 +70,18 @@ async function readJson(absolutePath) {
 async function edgeFunctionNames(repositoryRoot) {
   const directory = path.join(repositoryRoot, "supabase", "functions");
   const entries = await readdir(directory, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && entry.name !== "tests")
-    .map((entry) => entry.name)
-    .sort();
+  const names = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith("_") || entry.name === "tests") continue;
+    if (await pathExists(path.join(directory, entry.name, "index.ts"))) names.push(entry.name);
+  }
+  return names.sort();
 }
 
 async function currentRuntimeInventory(repositoryRoot) {
   const manifest = await readJson(path.join(repositoryRoot, "supabase", "runtime-manifest.json"));
   return {
-    mcpTools: AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => definition.name).sort(),
-    applicationTools: AUTHORING_APPLICATION_ONLY_TOOLS.map((definition) => definition.name).sort(),
+    mcpTools: COURSE_MCP_TOOLS.map((definition) => definition.name).sort(),
     edgeFunctions: await edgeFunctionNames(repositoryRoot),
     manifestFeatures: list(manifest.requiredFeatures).map(String).sort(),
     databaseObjects: null
@@ -170,7 +168,6 @@ async function checkTestFiles(caseRecord, context) {
   }
   const testedObjects = [
     ...list(caseRecord.objects?.mcpTools),
-    ...list(caseRecord.objects?.applicationTools),
     ...list(caseRecord.objects?.edgeFunctions)
   ];
   for (const objectName of testedObjects) {
@@ -243,15 +240,16 @@ function databaseClaims(cases, findings) {
 }
 
 function databaseOwners(value, { primaryClaims, internalClaims }) {
-  let owners = primaryClaims.filter(({ exact, patterns }) => exact.has(value)
-      || patterns.some(({ expression }) => expression.test(value)));
-  if (owners.length === 0) {
-    owners = internalClaims.filter(({ exact, patterns }) => exact.has(value)
-      || patterns.some(({ expression }) => expression.test(value)));
+  const primaryOwners = primaryClaims.filter(({ exact, patterns }) => exact.has(value)
+    || patterns.some(({ expression }) => expression.test(value)));
+  if (primaryOwners.length > 0) return primaryOwners;
+  const parent = databaseRelationParent(value);
+  if (parent) {
+    const parentOwners = databaseOwners(parent, { primaryClaims, internalClaims });
+    if (parentOwners.length > 0) return parentOwners;
   }
-  const parent = owners.length === 0 ? databaseRelationParent(value) : null;
-  if (parent) return databaseOwners(parent, { primaryClaims, internalClaims });
-  return owners;
+  return internalClaims.filter(({ exact, patterns }) => exact.has(value)
+    || patterns.some(({ expression }) => expression.test(value)));
 }
 
 function validateDatabaseStructure(objects, findings, label) {
@@ -443,6 +441,12 @@ function validateCaseShape(caseRecord, ids, findings) {
   if (typeof caseRecord.justification !== "string" || !caseRecord.justification.trim()) {
     findings.push(`${caseRecord.id}: justificativa ausente.`);
   }
+  if (Object.hasOwn(caseRecord.objects || {}, "applicationTools") ||
+      Object.hasOwn(caseRecord.objects || {}, "applicationToolPatterns")) {
+    findings.push(
+      `${caseRecord.id}: applicationTools foi abolido; aplicativo e MCP usam as mesmas operações de Curso.`
+    );
+  }
   return true;
 }
 
@@ -490,18 +494,12 @@ export async function auditVerticalParity({
       findings.push(`${caseRecord.id}: superfície persistente sem backend ou armazenamento local associado.`);
     }
     const mcpNames = list(caseRecord.objects?.mcpTools);
-    const applicationNames = list(caseRecord.objects?.applicationTools);
-    if ((mcpNames.length || applicationNames.length) && list(caseRecord.routes).length === 0) {
+    if (mcpNames.length && list(caseRecord.routes).length === 0) {
       findings.push(`${caseRecord.id}: operação de ferramenta sem rota associada.`);
     }
-    const definitions = [
-      ...mcpNames.map((name) => AUTHORING_WORKSPACE_MCP_TOOLS.find(
-        (definition) => definition.name === name
-      )),
-      ...applicationNames.map((name) => AUTHORING_APPLICATION_ONLY_TOOLS.find(
-        (definition) => definition.name === name
-      ))
-    ].filter(Boolean);
+    const definitions = mcpNames.map((name) => COURSE_MCP_TOOLS.find(
+      (definition) => definition.name === name
+    )).filter(Boolean);
     if (definitions.some((definition) => definition.annotations?.readOnlyHint !== true)
         && list(caseRecord.visibleEffects).length === 0) {
       findings.push(`${caseRecord.id}: operação mutável sem efeito observável na interface.`);
@@ -528,12 +526,6 @@ export async function auditVerticalParity({
     label: "ferramenta MCP",
     actual: inventory.mcpTools,
     claims: objectClaims(cases, "mcpTools", "mcpToolPatterns", findings),
-    findings
-  });
-  verifyCoverage({
-    label: "action exclusiva do aplicativo",
-    actual: inventory.applicationTools,
-    claims: objectClaims(cases, "applicationTools", "applicationToolPatterns", findings),
     findings
   });
   verifyCoverage({

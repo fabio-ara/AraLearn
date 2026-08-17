@@ -1,6 +1,6 @@
 {
   "contract": "aralearn.vertical-parity.v1",
-  "purpose": "Registro de desenvolvimento que liga cada capacidade corrente às superfícies, transportes, persistência e provas que a tornam utilizável.",
+  "purpose": "Registro de desenvolvimento que liga cada capacidade corrente de Curso às superfícies, transportes, persistência e provas que a tornam utilizável.",
   "policy": {
     "finalStage": "#130",
     "compatibilityInFinalState": false,
@@ -12,340 +12,224 @@
   },
   "cases": [
     {
-      "id": "study-course-use",
-      "intent": "Encontrar um curso acessível, abri-lo e conservar o estado necessário ao estudo.",
+      "id": "study-course-experience",
+      "intent": "Encontrar um Curso acessível, percorrer sua hierarquia, estudar suas unidades e conservar progresso, marcações de revisão e observações pessoais.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
-        "mcpTools": [
-          "listarCursosDaBibliotecaPessoal",
-          "retirarCursoDasTrilhas",
-          "consultarCatalogo",
-          "lerConteudoDoCurso"
-        ],
-        "edgeFunctions": ["aralearn-course-revisions"],
-        "manifestFeaturePatterns": [
-          "^(?:lean-shared-catalog|artifact-offline-replica|granular-sync|text-language-metadata|storage-artifact-control-plane|single-current-course-revision|course-revision-sync-compaction|automatic-sync-history-maintenance|default-catalog-collection|stable-trail-item-identity-v1|atomic-trail-groups-v1|alphabetic-trails-v1|trail-personal-state-v1|atomic-trail-personal-state-v1|stable-entity-personal-state-v1|unified-trails-clean-cutover-v1)$"
+        "manifestFeatures": [
+          "course-personal-state-v1"
         ],
         "databasePatterns": [
-          "^(?:table|view):public\\.(?:courses|study_paths|study_path_items|trail_personal_states|user_course_selections)$",
-          "^table:private\\.(?:course_revision_.+|course_revisions|personal_course_clone_map|personal_library_receipts_v5|sync_.+|trail_.+)$",
-          "^function:public\\.(?:apply_sync_batch|bootstrap_replica|compact_sync_history|get_course_document_artifact_v4|get_course_revision_artifact_v4|get_trail_workspace_course_v1|list_trail_items_for_actor_v1|list_trail_items_v1|load_trail_personal_state_v1|mutate_trail_personal_state_v1|mutate_trails_v1|pull_course_revision_changes|pull_sync_changes|remove_course_from_personal_library_v5|select_catalog_course|unselect_catalog_course|user_can_read_course|user_can_study_course)\\(.*\\)$"
+          "^table:(?:public\\.course_personal_states|private\\.course_personal_state_receipts)$",
+          "^function:private\\.(?:valid_course_personal_state_v1|list_course_review_items_for_actor_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_course_review_items_v1|load_course_personal_state_v1|mutate_course_personal_state_v1)\\(.*\\)$"
         ]
       },
       "ui": [
         { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-course\"" },
-        { "path": "src/ui/renderLessonScreen.js", "token": "data-action=\"open-card-comment\"" }
+        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-review-item\"" },
+        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"open-observation\"" }
       ],
       "visibleEffects": [
-        { "path": "src/ui/renderHomeScreen.js", "token": "Retirar de Trilhas" }
+        { "path": "src/study/CourseStudyApplication.js", "token": "renderCourseStudyScreen" },
+        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"reset-course-progress\"" }
       ],
       "persistence": [
-        { "path": "src/persistence/IndexedDbRelationalStore.js", "token": "SYNCED_PERSONAL_STORE_NAMES" },
-        { "path": "src/supabase/RemoteCourseCatalog.js", "token": "class RemoteCourseCatalog" }
+        { "path": "src/persistence/CoursePersonalStateRepository.js", "token": "class CoursePersonalStateRepository" },
+        { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "tools/call" }
+        { "path": "src/supabase/CourseApiClient.js", "token": "load_course_personal_state_v1" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "mutate_course_personal_state_v1" }
       ],
       "tests": [
-        "tests/runtime/authoring-tool-registry-v5.test.js",
-        "tests/runtime/study-card-progression.test.js",
-        "tests/runtime/trail-personal-state-repository.test.js",
-        "supabase/functions/tests/aralearn-course-revisions.test.ts"
+        "tests/runtime/course-study-repository.test.js",
+        "tests/runtime/course-personal-state-repository.test.js",
+        "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "O estado de estudo é uma capacidade visível. Sincronização, CAS e idempotência permanecem internos ao mesmo caso de uso e não precisam de telas próprias."
+      "justification": "O estado pessoal só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência são mecanismos internos dessa mesma capacidade, não produtos separados."
     },
     {
-      "id": "authoring-course-materialization",
-      "intent": "Planejar, materializar, inspecionar e alterar o curso corrente pela interface ou pelo protocolo de ferramentas.",
+      "id": "course-authoring-experience",
+      "intent": "Criar, localizar, planejar, inspecionar e alterar o mesmo Curso vivo pela Autoria visual ou pelo MCP.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
         "mcpTools": [
-          "prepararAutoriaAraLearn",
-          "listarWorkspacesDeAutoria",
-          "criarWorkspaceDeAutoria",
-          "lerWorkspaceDeAutoria",
-          "listarCardsDaMicrossequencia",
-          "listarAlteracoesRecentesDoWorkspace",
-          "importarCursoNoWorkspace",
-          "criarEstruturaNoWorkspace",
-          "salvarCardsNaMicrossequencia",
-          "atualizarMetadadosDaEntidade",
-          "salvarCardNoWorkspace",
-          "reorganizarWorkspace",
-          "excluirDoWorkspace",
-          "gerirContinuidadeDaAutoria"
+          "listarCursos",
+          "lerCurso",
+          "criarCurso",
+          "alterarCurso"
         ],
-        "manifestFeaturePatterns": [
-          "^(?:private-authoring|atomic-resource-authoring|atomic-card-assistance|composed-authoring-workspaces|workspace-publication-bindings|unchanged-publication-short-circuit|bounded-authoring-events|microtheory-review-projection|workspace-event-cursor-pagination|workspace-microsequence-card-pagination|compact-authoring-brief|workspace-card-metadata|structured-authoring-errors|workspace-contextual-current-state-v1|workspace-course-state-projection-v1|plans-derived-from-current-content-v1|workspace-delete-cas-v1|atomic-private-course-removal-v1|single-active-course-composition-v1|workspace-course-paged-composition-v1|resumable-authoring-continuity-v1|package-card-list-projection-v1|catalog-authoring-root-reuse-v1|strict-catalog-root-reuse-v1|current-catalog-root-resolution-v1|discard-unpublished-catalog-materialization-v1|flat-runtime-manifest-v1|authoring-product-state-projection-v1)$"
+        "manifestFeatures": [
+          "single-live-course-identity-v1",
+          "paged-live-course-composition-v1",
+          "course-cas-idempotency-v1"
         ],
         "databasePatterns": [
-          "^table:private\\.(?:authoring_course_workspace_reservations|authoring_materialization_states|authoring_workspace_entities|authoring_workspace_events|authoring_workspace_requests|authoring_workspaces)$",
-          "^function:public\\.(?:commit_authoring_workspace_changes_v5|commit_authoring_workspace_changes_without_continuity_v1|create_authoring_workspace_v5|delete_authoring_workspace_v5|finalize_reserved_authoring_workspace_v1|get_aralearn_runtime_manifest|get_authoring_workspace_before_experiments_v1|get_authoring_workspace_continuity_before_audit_runs_v1|get_authoring_workspace_continuity_v1|get_authoring_workspace_product_states_v1|get_authoring_workspace_v5|list_authoring_workspace_events_v5|list_authoring_workspace_microsequence_cards_v5|list_authoring_workspaces_v5|replay_authoring_workspace_request_v5|resume_or_reserve_authoring_workspace_v1|update_authoring_workspace_brief_v5|update_authoring_workspace_continuity_before_audit_runs_v1|update_authoring_workspace_continuity_v1)\\(.*\\)$"
+          "^table:(?:public\\.courses|private\\.course_entities|private\\.course_events|private\\.course_change_receipts)$",
+          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_changes_for_actor_v1|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
         ]
       },
       "ui": [
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"open-workspace\"" },
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"open-content\"" }
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-action=\"open-course\"" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-create" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-action=\"open-planning-edit\"" }
       ],
       "visibleEffects": [
-        { "path": "src/ui/AuthoringWorkspaceSurface.js", "token": "loadWorkspace" },
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "renderAuthoringWorkspace" }
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPlanningSection" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadCourseDocument" }
       ],
       "persistence": [
-        { "path": "src/persistence/WorkspaceDesignOfflineStore.js", "token": "CACHE_CONTRACT" },
-        { "path": "src/supabase/AuthoringWorkspaceClient.js", "token": "class AuthoringWorkspaceClient" }
+        { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" },
+        { "path": "src/supabase/CourseController.js", "token": "updateCourse" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "tools/call" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "mapAuthoringMcpToolCall" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "executeCourseRoute" }
       ],
       "tests": [
-        "tests/runtime/authoring-tool-registry-v5.test.js",
-        "tests/runtime/authoring-workspace-client.test.js",
-        "tests/runtime/authoring-mcp-journey.test.js"
+        "tests/runtime/course-mcp-tools.test.js",
+        "tests/runtime/course-authoring-surface.test.js",
+        "tests/runtime/course-controller.test.js"
       ],
-      "justification": "Uma mutação feita por ferramenta só é completa quando o curso relido aparece na mesma superfície visual usada pela autoria manual."
+      "justification": "A interface e o MCP operam a mesma identidade, versão e composição. Uma mutação por ferramenta só é completa quando a releitura a torna visível na Autoria."
     },
     {
-      "id": "authoring-design-and-representation",
-      "intent": "Tornar análise instrucional, parâmetros, representações e auditorias observáveis e editáveis no curso corrente.",
+      "id": "person-profile-and-course-access",
+      "intent": "Manter um perfil humano mínimo e conceder ou revogar acesso direto ao Estudo de um Curso, sem papéis institucionais intermediários.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
-      "objects": {
-        "mcpTools": ["consultarBibliotecaDeResources", "gerirDesenhoInstrucional"],
-        "manifestFeaturePatterns": [
-          "^(?:canonical-resource-registry|package-library-v1|package-contract-discovery-v1|catalog-package-artifact-cutover-v1|parameterized-authoring-design-v1|authoring-blueprint-artifact-receipt-v1|authoring-design-conformance-audit-v1|task-operation-terminology-v1)$"
-        ],
-        "databasePatterns": [
-          "^(?:table|view):private\\.(?:authoring_(?:audit_.+|design_.+|effective_design_.+|instructional_.+|manifest_.+|materialization_manifests|microsequence_design_.+|pedagogical_.+|resource_set_.+|resource_sets)|current_authoring_design_parameter_assignments_v1)$",
-          "^function:public\\.(?:get_authoring_audit_run_v1|get_authoring_design_state_v1|get_authoring_effective_design_snapshot_v1|get_authoring_instructional_analysis_v1|get_authoring_materialization_manifest_v1|get_authoring_pedagogical_blueprint_artifact_v1|get_authoring_resource_set_v1|list_authoring_audit_cards_v1|list_authoring_audit_runs_v1|list_authoring_design_parameter_assignments_v1|list_authoring_design_parameter_definitions_v1|list_authoring_part_audit_components_v1|manage_authoring_design_parameter_assignment_v1|preview_authoring_effective_design_v1|record_authoring_semantic_audit_v1|register_authoring_audit_run_v1|register_authoring_materialization_manifest_v1|resolve_authoring_effective_design_v1|save_authoring_instructional_analysis_v1|save_authoring_pedagogical_blueprint_v1|save_authoring_resource_set_v1)\\(.*\\)$"
-        ]
-      },
-      "ui": [
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"edit-parameter\"" },
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"open-resources\"" },
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "class=\"authoring-audit" }
-      ],
-      "visibleEffects": [
-        { "path": "src/ui/AuthoringWorkspaceSurface.js", "token": "loadDesign" },
-        { "path": "src/ui/AuthoringWorkspaceSurface.js", "token": "loadAudit" }
-      ],
-      "persistence": [
-        { "path": "src/persistence/WorkspaceDesignOfflineStore.js", "token": "QUEUE_CONTRACT" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/authoringDesignService.js", "token": "executeWorkspaceDesignAction" }
-      ],
-      "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "tools/call" }
-      ],
-      "tests": [
-        "tests/runtime/authoring-tool-registry-v5.test.js",
-        "tests/runtime/authoring-design-service.test.js",
-        "tests/runtime/instructional-conformance-audit.test.js"
-      ],
-      "justification": "Os registros técnicos só têm sentido quando o autor consegue ver o valor efetivo, sua origem, os achados e o conteúdo resultante."
-    },
-    {
-      "id": "authoring-observation-and-collaboration",
-      "intent": "Ler e registrar observações situadas e tornar seu efeito disponível à revisão do curso.",
-      "classification": "ui",
-      "status": "current",
-      "terminologyReview": "#116",
-      "objects": {
-        "mcpTools": ["gerirWorkspaceEducacional"],
-        "manifestFeaturePatterns": [
-          "^(?:educational-workspace-membership-v1|educational-workspace-invitations-v1|workspace-capability-enforcement-v1|workspace-member-course-access-v1|workspace-entity-observations-v1|package-observation-targets-v1|situated-trail-observations-v1|workspace-trail-observations-v1)$"
-        ],
-        "databasePatterns": [
-          "^table:private\\.(?:authoring_workspace_observation_.+|authoring_workspace_observations|educational_workspace_.+)$",
-          "^function:public\\.(?:get_current_educational_workspace_v1|get_educational_workspace_for_actor_v1|list_authoring_workspace_observations_for_actor_v1|list_current_educational_workspace_comments_v1|list_educational_workspace_comments_for_actor_v1|manage_authoring_workspace_finding_before_audit_runs_v1|manage_authoring_workspace_finding_v1|manage_authoring_workspace_observation_for_actor_v1|manage_current_educational_workspace_comment_v1|manage_current_educational_workspace_v1|manage_educational_workspace_comment_for_actor_v1|manage_educational_workspace_for_actor_v1)\\(.*\\)$"
-        ]
-      },
-      "ui": [
-        { "path": "src/ui/renderLessonScreen.js", "token": "data-action=\"open-context-observation\"" },
-        { "path": "src/ui/LearningSpacesPanel.js", "token": "submit-observation" }
-      ],
-      "visibleEffects": [
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"open-finding-detail\"" }
-      ],
-      "persistence": [
-        { "path": "src/supabase/AuthoringWorkspaceClient.js", "token": "listAuthoringFindings" }
-      ],
-      "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "tools/call" }
-      ],
-      "tests": [
-        "tests/runtime/authoring-tool-registry-v5.test.js",
-        "tests/runtime/educational-workspace-comments-api.test.js",
-        "tests/runtime/contextual-observations-render.test.js"
-      ],
-      "justification": "Uma observação não é um log isolado: precisa ter alvo visível, persistência e retorno ao fluxo de revisão."
-    },
-    {
-      "id": "authoring-research-experiments-and-analytics",
-      "intent": "Configurar comparações, acompanhar coleta e inspecionar ou exportar dados de autoria com rastreabilidade.",
-      "classification": "ui",
-      "status": "current",
-      "terminologyReview": "#116",
-      "objects": {
-        "applicationTools": [
-          "gerirExperimentoInstrucional",
-          "ingressarEmExperimentoInstrucional",
-          "consultarAnalyticsInstrucional"
-        ],
-        "databasePatterns": [
-          "^(?:table|view):private\\.authoring_(?:analytics_.+|experiment_.+|experiments|research_.+)$",
-          "^function:public\\.(?:assign_authoring_experiment_participant_v1|get_authoring_analytics_overview_v1|get_authoring_experiment_context_v1|get_authoring_experiment_v1|get_authoring_experiment_variant_evidence_progress_v1|list_authoring_analytics_dataset_v1|list_authoring_experiment_options_v1|list_authoring_experiments_v1|manage_authoring_experiment_enrollment_v1|manage_authoring_experiment_v1|prepare_authoring_experiment_variant_evidence_v1|record_authoring_experiment_diff_classification_v1|record_authoring_experiment_outcome_v1|register_authoring_experiment_variant_evidence_v1)\\(.*\\)$"
-        ]
-      },
-      "ui": [
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"open-experiments\"" },
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"export-analytics\"" }
-      ],
-      "visibleEffects": [
-        { "path": "src/ui/AuthoringWorkspaceSurface.js", "token": "loadExperiment" },
-        { "path": "src/ui/AuthoringWorkspaceSurface.js", "token": "loadAnalytics" }
-      ],
-      "persistence": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/authoringExperimentService.js", "token": "executeWorkspaceExperimentAction" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/authoringAnalyticsService.js", "token": "executeAuthoringAnalyticsAction" }
-      ],
-      "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/actionServer.js", "token": "authoringApplicationToolDefinition" }
-      ],
-      "tests": [
-        "tests/runtime/authoring-experiment-service.test.js",
-        "tests/runtime/authoring-analytics-service.test.js",
-        "tests/runtime/authoring-action.test.js"
-      ],
-      "justification": "As actions exclusivas do aplicativo representam operações compostas, mas seus dados, estados e exportações precisam permanecer diretamente observáveis."
-    },
-    {
-      "id": "catalog-editorial-workflow-removal",
-      "intent": "Inventariar o fluxo editorial e de catálogo corrente somente até sua substituição pelo modelo simples de propriedade e acesso direto.",
-      "classification": "remove",
-      "status": "scheduled-removal",
-      "removeBy": "#130",
       "objects": {
         "mcpTools": [
-          "editarCatalogo",
-          "retirarDoCatalogo",
-          "publicarCursoDoWorkspace",
-          "submeterCursoParaRevisaoEditorial",
-          "listarRevisoesEditoriais",
-          "lerRevisaoEditorial",
-          "criarWorkspaceDeRevisaoEditorial",
-          "decidirRevisaoEditorial",
-          "retirarCursoDaRevisaoEditorial"
+          "gerirPessoas"
         ],
-        "manifestFeaturePatterns": [
-          "^(?:pre-registered-publication-artifacts|global-catalog-course-search|catalog-review-submissions|catalog-management|personal-library-course-removal|atomic-catalog-course-removal-v1|alphabetic-catalog-v1)$"
+        "manifestFeatures": [
+          "direct-course-access-v1",
+          "study-only-course-access-v1",
+          "person-profile-v1",
+          "private-person-avatar-v1",
+          "self-account-deletion-v1"
         ],
         "databasePatterns": [
-          "^table:public\\.(?:catalog_collection_courses|catalog_collections)$",
-          "^table:private\\.(?:authoring_workspace_publications|catalog_management_receipts_v5|catalog_review_submissions)$",
-          "^function:public\\.(?:claim_catalog_review_v5|create_catalog_collection_v5|decide_catalog_review_v5|get_catalog_course_admin|get_catalog_review_artifact_v5|link_catalog_review_workspace_v5|list_authoring_catalog_collections_v4|list_authoring_catalog_courses_v4|list_catalog_collections|list_catalog_collections_admin|list_catalog_courses_admin|list_catalog_reviews_v5|move_catalog_course_v5|publish_authoring_workspace_course_v5|remove_catalog_course_v5|replace_catalog_authoring_document_v1|resolve_catalog_artifact_publisher_v4|retire_catalog_collection_v5|reuse_unchanged_authoring_publication_v5|search_authoring_catalog_courses_v5|submit_private_course_for_catalog_review_v5|update_catalog_collection_v5|withdraw_catalog_review_v5)\\(.*\\)$"
+          "^table:(?:public\\.person_profiles|public\\.course_access)$",
+          "^function:private\\.(?:course_ownership_v1|require_course_access_v1|can_read_person_v1|touch_person_profile_v1|create_person_profile_v1)\\(.*\\)$",
+          "^function:public\\.(?:get_person_profile_for_actor_v1|update_person_profile_for_actor_v1|list_course_access_for_actor_v1|manage_course_access_for_actor_v1|delete_my_account_v1)\\(.*\\)$",
+          "^bucket:storage\\.person-avatars$"
         ]
       },
       "ui": [
-        { "path": "src/ui/renderAuthoringWorkspace.js", "token": "data-authoring-action=\"open-collections\"" }
+        { "path": "public/main.js", "token": "data-profile-form" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPeopleSection" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-action=\"open-grant\"" }
       ],
       "visibleEffects": [
-        { "path": "src/ui/LearningSpacesPanel.js", "token": "learning-spaces-catalog-primary-action" }
+        { "path": "public/main.js", "token": "updatePersonProfile" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "revokeCourseAccess" }
       ],
       "persistence": [
-        { "path": "src/supabase/LearningSpaces.js", "token": "class LearningSpaces" }
+        { "path": "src/supabase/CourseApiClient.js", "token": "person-avatars" },
+        { "path": "supabase/migrations/20260817150000_course_profiles_access.sql", "token": "create table public.person_profiles" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "tools/call" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "gerirPessoas" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "manageCourseAccess" }
       ],
       "tests": [
-        "tests/runtime/authoring-tool-registry-v5.test.js",
-        "tests/runtime/catalog-control-plane.test.js",
-        "tests/runtime/catalog-review-pglite.test.js"
+        "tests/runtime/course-mcp-tools.test.js",
+        "tests/runtime/course-api-client.test.js",
+        "tests/runtime/course-authoring-surface.test.js",
+        "tests/runtime/course-controller.test.js"
       ],
-      "justification": "A cobertura impede que o fluxo antigo evolua à parte do produto; ela não autoriza preservação, alias, fallback ou compatibilidade após #130."
+      "justification": "Propriedade e compartilhamento são relações diretas. Perfil, avatar privado, acesso ao Estudo e exclusão da própria conta permanecem observáveis e não introduzem organizações, roles ou capabilities de produto."
     },
     {
-      "id": "assistant-protocol-transport",
-      "intent": "Expor as operações registradas por transportes autenticados sem criar uma segunda realidade de produto.",
+      "id": "didactic-component-runtime",
+      "intent": "Descobrir contratos de componentes didáticos progressivamente e renderizar no Estudo exatamente as composições validadas.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#116",
+      "objects": {
+        "mcpTools": [
+          "consultarComponentesDidaticos"
+        ],
+        "manifestFeatures": [
+          "package-library-v1",
+          "package-contract-discovery-v1"
+        ],
+        "databasePatterns": [
+          "^function:public\\.get_aralearn_runtime_manifest\\(\\)$"
+        ]
+      },
+      "ui": [
+        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageCardBlocksWithDock" }
+      ],
+      "visibleEffects": [
+        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageFeedback" }
+      ],
+      "persistence": [
+        { "path": "src/resources/packages/generated.js", "token": "RESOURCE_PACKAGE_DEFINITIONS" }
+      ],
+      "routes": [
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "mapResourceLibrary" }
+      ],
+      "tests": [
+        "tests/runtime/course-mcp-tools.test.js",
+        "tests/runtime/package-study-rendering-regressions.test.js"
+      ],
+      "justification": "O catálogo modular só entrega valor se o contrato descoberto pelo MCP for o mesmo que o runtime valida e renderiza; a ferramenta não cria uma taxonomia paralela."
+    },
+    {
+      "id": "course-shared-transports",
+      "intent": "Expor as operações canônicas de Curso ao aplicativo e ao MCP autenticado sem duplicar domínio, estado ou ferramenta.",
       "classification": "mcp",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
-        "edgeFunctions": ["aralearn-authoring-action", "aralearn-authoring-mcp"],
-        "manifestFeaturePatterns": [
-          "^(?:account-derived-authoring-capabilities|oauth-only-authoring-mcp|confidential-gpt-action-oauth|gpt-action-oauth-linking|gpt-action-oauth-relinking|gpt-action-oauth-stable-callback)$"
+        "edgeFunctions": [
+          "aralearn-course-api",
+          "aralearn-authoring-mcp"
+        ],
+        "manifestFeatures": [
+          "flat-runtime-manifest-v1",
+          "oauth-only-authoring-mcp"
         ],
         "databasePatterns": [
-          "^table:private\\.(?:app_admins|app_role_.+|authoring_action_oauth_.+|authoring_user_rate_windows)$",
-          "^function:public\\.(?:approve_authoring_action_oauth_authorization_v4|aralearn_mcp_access_token_hook|create_authoring_action_oauth_authorization_v4|create_authoring_action_oauth_client_setup_v4|current_user_capabilities|delete_own_account|deny_authoring_action_oauth_authorization_v4|exchange_authoring_action_oauth_code_v4|exchange_authoring_action_oauth_refresh_v4|get_authoring_action_oauth_authorization_v4|is_app_admin|link_authoring_action_oauth_client_v4|list_app_role_assignments|resolve_authoring_action_oauth_principal_v4|resolve_authoring_oauth_principal|set_app_role)\\(.*\\)$"
+          "^function:private\\.(?:request_role|require_service_role)\\(\\)$",
+          "^function:public\\.aralearn_mcp_access_token_hook\\(.*\\)$"
         ]
       },
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "dispatchMcpRequest" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/actionServer.js", "token": "createAuthoringActionHandler" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "createCourseApiHandler" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "createAuthoringMcpHandler" }
       ],
       "tests": [
-        "tests/runtime/authoring-mcp.test.js",
-        "tests/runtime/authoring-action.test.js",
-        "tests/runtime/authoring-oauth-adapter.test.js",
-        "supabase/functions/tests/aralearn-authoring-mcp.test.ts"
+        "tests/runtime/course-api-server.test.js",
+        "tests/runtime/course-mcp-server.test.js",
+        "tests/runtime/hosted-backend-verifier.test.js"
       ],
-      "justification": "O transporte não possui estado de produto próprio; autenticação, limites e idempotência servem aos casos de uso visíveis registrados acima."
+      "justification": "Os dois transportes adaptam o mesmo registry e executor de Curso. Não existe Action, ferramenta exclusiva do aplicativo nem segundo motor de autoria."
     },
     {
-      "id": "internal-artifact-lifecycle",
-      "intent": "Conservar integridade referencial e recolher artefatos sem expor controles técnicos como produto.",
-      "classification": "internal",
-      "status": "current",
-      "objects": {
-        "manifestFeaturePatterns": ["^storage-only-course-content$"],
-        "databasePatterns": [
-          "^table:private\\.(?:artifact_gc_tombstones|artifact_refs)$",
-          "^function:public\\.(?:claim_unreferenced_artifacts_v4|complete_artifact_gc_v4|list_unreferenced_artifacts_v4|register_authoring_artifact_v5)\\(.*\\)$",
-          "^bucket:storage\\.(?:aralearn-authoring-artifacts|aralearn-course-revisions)$"
-        ]
-      },
-      "tests": [
-        "tests/runtime/artifact-garbage-collector.test.js",
-        "tests/runtime/authoring-artifact-store.test.js"
-      ],
-      "justification": "FKs, índices, RLS, CAS, recibos de idempotência e coleta de artefatos pertencem aos casos que protegem; não recebem interface independente."
-    },
-    {
-      "id": "internal-relational-mechanics",
-      "intent": "Classificar funções privadas auxiliares que implementam validação, locks, RLS, CAS, recibos, projeções e manutenção para os casos de uso registrados.",
-      "classification": "internal",
-      "status": "current",
-      "objects": {
-        "databaseInternalPatterns": [
-          "^function:private\\.(?:anonymize|assert|audit|authoring|authorize|begin|bump|camel|can|canonical|capture|catalog|cleanup|clear|clone|close|compact|complete|consolidate|copy|course|current|detach|discard|educational|enforce|ensure|generate|grant|guard|has|insert|issue|jsonb|link|list|local|lock|maintain|manage|merge|mutate|normalize|official|patch|preserve|prevent|protect|prune|register|reject|release|remap|request|require|resolve|revoke|safe|selection|shape|snake|stamp|store|supersede|sync|touch|trail|try|user|valid|validate|workspace)_[a-z0-9_]+\\(.*\\)$"
-        ]
-      },
-      "tests": [
-        "tests/runtime/relational-durability.test.js",
-        "tests/runtime/workspace-postgres-concurrency.test.js"
-      ],
-      "justification": "Essas funções não constituem funcionalidades autônomas. O inventário do banco as expande uma a uma e rejeita qualquer família nova que não seja classificada deliberadamente."
-    },
-    {
-      "id": "temporary-schema-cutover",
-      "intent": "Rastrear estruturas de transição que devem desaparecer por completo antes da entrega final.",
-      "classification": "migration-temporary",
-      "status": "temporary",
+      "id": "pre-course-database-removal",
+      "intent": "Isolar os objetos físicos do modelo substituído que ainda aguardam remoção definitiva em #130.",
+      "classification": "remove",
+      "status": "scheduled-removal",
       "removeBy": "#130",
       "objects": {
-        "databasePatterns": [
-          "^table:private\\.(?:aralearn_desired_learning_.+|aralearn_planned_learning_cards|package_library_cutover_audit)$",
-          "^function:public\\.discard_unpublished_catalog_materialization_v1\\(.*\\)$"
+        "databaseInternalPatterns": [
+          "^(?:table|view|materialized_view|function|bucket|index|constraint|trigger|policy|rls):.+$"
         ]
       },
-      "tests": ["tests/runtime/relational-durability.test.js"],
-      "justification": "Migração é uma ponte descartável. O estado final não admite tabelas paralelas, aliases, fallback nem leitura de contratos abolidos."
+      "tests": [
+        "tests/runtime/vertical-parity-audit.test.js"
+      ],
+      "justification": "O seletor residual só recebe objetos sem vínculo com um caso corrente. Assim, o inventário conserva visibilidade do legado físico sem sobrepor Curso, estado pessoal, perfil, acesso, componentes didáticos ou OAuth."
     }
   ]
 }

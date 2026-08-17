@@ -172,10 +172,15 @@ try {
   Invoke-AraLearnSupabase db lint --linked --level warning --fail-on warning
 
   if ($DeployAuthoringFunctions) {
-    Write-Host 'Implantando MCP, Action e entrega de revisões...'
+    Write-Host 'Implantando MCP e API de Cursos...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
-    Invoke-AraLearnSupabase functions deploy aralearn-authoring-action --project-ref $resolvedProjectRef --no-verify-jwt
-    Invoke-AraLearnSupabase functions deploy aralearn-course-revisions --project-ref $resolvedProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-course-api --project-ref $resolvedProjectRef --no-verify-jwt
+    Remove-AraLearnSupabaseFunctionIfPresent `
+      -FunctionName 'aralearn-course-revisions' `
+      -ResolvedProjectRef $resolvedProjectRef
+    Remove-AraLearnSupabaseFunctionIfPresent `
+      -FunctionName 'aralearn-authoring-action' `
+      -ResolvedProjectRef $resolvedProjectRef
     Remove-AraLearnSupabaseFunctionIfPresent `
       -FunctionName 'aralearn-authoring-api' `
       -ResolvedProjectRef $resolvedProjectRef
@@ -189,13 +194,17 @@ try {
     $origins = $applicationOrigins -join ','
     Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
     Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
-    Invoke-AraLearnSupabase secrets set "ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
-    $actionOrigins = (@(
-      'https://chatgpt.com',
-      'https://chat.openai.com'
-    ) + $applicationOrigins | Select-Object -Unique) -join ','
-    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=$actionOrigins" --project-ref $resolvedProjectRef
-    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_COURSE_API_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
+    Remove-AraLearnSupabaseSecretIfPresent `
+      -SecretName 'ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS' `
+      -ResolvedProjectRef $resolvedProjectRef
+    Remove-AraLearnSupabaseSecretIfPresent `
+      -SecretName 'ARALEARN_AUTHORING_ACTION_PUBLIC_APP_URL' `
+      -ResolvedProjectRef $resolvedProjectRef
+    Remove-AraLearnSupabaseSecretIfPresent `
+      -SecretName 'ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS' `
+      -ResolvedProjectRef $resolvedProjectRef
   }
 
   Write-Host 'Implantação concluída.'

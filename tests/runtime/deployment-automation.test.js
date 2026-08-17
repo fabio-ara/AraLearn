@@ -10,7 +10,12 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const scripts = {
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
-  postgrestSmoke: path.join(repositoryRoot, "supabase", "tests", "postgrest-smoke.mjs"),
+  courseRuntimeSmoke: path.join(
+    repositoryRoot,
+    "supabase",
+    "tests",
+    "course-runtime-local-smoke.mjs"
+  ),
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
   validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1"),
   validateLocalSupabase: path.join(repositoryRoot, "scripts", "validateLocalSupabase.ps1")
@@ -213,16 +218,18 @@ test("executor de implantação verifica cada comando nativo antes de avançar",
   assert.doesNotMatch(source, /\b(?:npm\.cmd|gradlew\.bat)[^\r\n]*;[^\r\n]*/u);
 });
 
-test("implantação publica somente MCP OAuth e entrega de revisões", () => {
+test("implantação publica somente MCP OAuth e API de Curso", () => {
   const source = fs.readFileSync(path.join(repositoryRoot, "scripts", "deploySupabase.ps1"), "utf8");
   assert.match(source, /DeployAuthoringFunctions/u);
   assert.match(source, /functions deploy aralearn-authoring-mcp/u);
-  assert.match(source, /functions deploy aralearn-course-revisions/u);
+  assert.match(source, /functions deploy aralearn-course-api/u);
+  assert.doesNotMatch(source, /functions deploy aralearn-course-revisions/u);
   assert.match(
     source,
     /functions list[\s\S]+--output json[\s\S]+functions delete \$FunctionName[\s\S]+--yes/u
   );
   assert.match(source, /-FunctionName 'aralearn-authoring-api'/u);
+  assert.match(source, /-FunctionName 'aralearn-course-revisions'/u);
   assert.match(
     source,
     /secrets list[\s\S]+--output json[\s\S]+secrets unset \$SecretName[\s\S]+--yes/u
@@ -236,7 +243,8 @@ test("implantação publica somente MCP OAuth e entrega de revisões", () => {
     source,
     /@\(\$RequiredApplicationOrigins\)\s*\+\s*@\(\$AllowedOrigin\)/u
   );
-  assert.match(source, /ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS=\$origins/u);
+  assert.match(source, /ARALEARN_COURSE_API_ALLOWED_ORIGINS=\$origins/u);
+  assert.match(source, /-SecretName 'ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS'/u);
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
 });
@@ -247,18 +255,27 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /--local/u);
   assert.match(source, /auth-email-smoke\.mjs/u);
   assert.match(source, /test:authoring:mcp:local/u);
+  assert.match(source, /aralearn-course-api/u);
+  assert.match(source, /test:supabase:smoke/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
-  assert.doesNotMatch(source, /--linked|db\s+reset|SUPABASE_DB_PASSWORD/u);
+  assert.doesNotMatch(
+    source,
+    /--linked|db\s+reset|SUPABASE_DB_PASSWORD|publishCatalogFixtures|test['", ]+db/u
+  );
 });
 
-test("smoke hospedado usa o resolvedor administrativo sem enviar a chave como Bearer", () => {
-  const source = fs.readFileSync(scripts.postgrestSmoke, "utf8");
+test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave como Bearer", () => {
+  const source = fs.readFileSync(scripts.courseRuntimeSmoke, "utf8");
   assert.match(source, /resolveSupabaseAdministrativeEnvironment/u);
   assert.match(source, /supabaseServerHeaders/u);
   assert.match(source, /\.\.\.process\.env/u);
+  assert.match(source, /aralearn-course-api/u);
+  assert.match(source, /list_courses_v1/u);
+  assert.match(source, /list_owned_courses_v1/u);
+  assert.match(source, /mutate_course_personal_state_v1/u);
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
 });
 

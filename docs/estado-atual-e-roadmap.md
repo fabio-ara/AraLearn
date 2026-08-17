@@ -1,218 +1,129 @@
 # Estado corrente do produto
 
-Esta página é a fonte única para saber o que o AraLearn oferece **agora**. Ela
-não é um roadmap, uma lista de desejos nem a história do desenvolvimento. O
-trabalho futuro pertence às issues; estados anteriores permanecem no Git, nas
-issues encerradas e nas evidências datadas.
-
-**Data de corte da leitura do código:** 17 de agosto de 2026. **Data da última
-regressão integrada registrada:** 16 de agosto de 2026, no commit
-`cb777d0d7f5fc5c2c77be0839cc59564dd8a8e51`. Mudanças posteriores ainda precisam
-de nova regressão integral. Por isso, “funciona” abaixo significa somente que a
-capacidade passou nas condições e na data indicadas, não que esteja validada
-para qualquer conteúdo, pessoa ou implantação.
-
-Os nomes **Estudo**, **Autoria**, *workspace*, *microssequência*, *card*,
-*resource*, *finding* e outros termos em uso no código são identificadores do
-modelo corrente. Sua presença nesta página não os aprova como vocabulário final.
-A revisão terminológica avaliará cada conceito nas áreas acadêmicas pertinentes
-e fará um corte limpo em código, interface, dados e documentação.
+Esta página separa capacidade implementada, ligação entre camadas, acesso,
+evidência e intenção. A fotografia técnica é de **2026-08-17** e descreve o
+código da revisão corrente. O serviço hospedado e a última release pública
+ainda não receberam este corte.
 
 ## Como ler a matriz
 
-As colunas respondem a perguntas diferentes:
+- **Existe:** há implementação identificável?
+- **Conectado:** interface, domínio, persistência e serviço realmente se ligam?
+- **Acessível:** uma pessoa autorizada alcança a capacidade?
+- **Uso verificado:** há uso humano ou somente fixtures e automação?
+- **Funciona:** qual evidência sustenta a afirmação?
+- **Necessário:** corresponde a um problema atual do produto?
+- **Alinhamento:** a solução corresponde à intenção corrente?
+- **Limites e destino:** o que ainda não se pode concluir?
 
-- **Existe:** há código, contrato ou estrutura persistente para o caso de uso?
-- **Conectado:** as camadas necessárias participam de um fluxo executável?
-- **Acessível:** uma pessoa alcança a capacidade pelo aplicativo e/ou ela é
-  oferecida a um cliente autorizado pelo Model Context Protocol (MCP)?
-- **Uso verificado:** há registro de uso real, além de fixture, teste ou smoke?
-- **Funciona:** qual comportamento foi exercitado e qual é a evidência datada?
-- **Necessário:** o problema atendido faz parte da intenção atual do produto?
-- **Alinhamento:** a solução corrente corresponde a essa intenção?
-- **Limites e destino:** o que a evidência não demonstra e qual disposição de
-  produto já foi decidida?
-
-“Parcial” não significa “quase pronto”: pode indicar uma ligação incompleta, uma
-superfície inacessível ou uma solução tecnicamente ampla para o problema errado.
-Teste automatizado não conta como uso real nem como evidência de aprendizagem.
+“Parcial” pode significar uma fatia vertical incompleta, não “quase pronto”.
+Teste de software não é evidência de aprendizagem nem de compreensão humana.
 
 ## Matriz por caso de uso
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Estudar um curso e retomar o ponto alcançado | Sim: leitor, hierarquia didática, progresso, modo offline e fila local | Sim: curso e progresso passam por domínio, IndexedDB e sincronização remota quando disponível | Aplicativo: sim. MCP: não se aplica ao ato de estudar | Uso corrente foi relatado, mas não há protocolo ou conjunto de dados que permita auditá-lo | **Evidência técnica de 16/08/2026:** jornada Playwright com curso de 1.052 cards e suíte integrada; não mede aprendizagem | Sim | Alto: **Estudo** é a referência visual e comportamental atual | Preservar o comportamento durante a refatoração; revalidar em celular, desktop e Android e estudar usabilidade com pessoas |
-| Manter um único curso vivo entre estudo e produção | Parcial: a composição corrente pode ser estudada antes de publicação, mas também existem revisões e artefatos publicados | Sim para o curso privado corrente: estrutura planejada aparece em Trilhas e cards materializados tornam-se estudáveis; publicação abre outro caminho | Aplicativo: **Autoria** altera a composição e **Estudo** abre sua projeção por Trilhas. MCP: opera o estado autoral | Não registrado em uso longitudinal real | **Evidência técnica de 16/08/2026:** projeção do estado corrente, retorno ao leitor e jornada Action foram testados; não houve ensaio humano prolongado de mudanças durante a produção | Sim | Parcial: já existe estudo sem publicação, mas *workspace*, Trilha, revisão corrente e publicação escondem essa unidade sob vários conceitos | Tornar o curso privado, vivo e mutável o objeto concreto de entrada; remover publicação imutável e os estados paralelos do modelo final |
-| Inspecionar e editar manualmente a produção no celular | Sim: superfícies de Mapa, Desenho, Conteúdo, Auditoria e Resultados | Sim para os fluxos cobertos: a interface chama o cliente autoral e o backend relacional | Aplicativo: sim. MCP: lê e altera parte do mesmo estado por ferramentas próprias | Não houve aceitação registrada com pessoa leiga | **Evidência técnica de 16/08/2026:** 143 cenários E2E e capturas em 360, 390, 412 e 1.280 px; isso verifica geometria e ações, não compreensão | Sim | Baixo a parcial: existe cobertura ampla, mas a experiência corrente é mais complexa e textual que **Estudo** | Reconstruir a entrada em torno de cursos concretos, navegação didática e rolagem vertical de cards; nenhuma tela sem função de produto permanece |
-| Planejar, materializar e retomar a produção por Parte | Sim: plano, execuções, Partes, contexto causal, tentativas e cards materializados | Sim: contratos, serviço autoral, PostgreSQL e MCP formam um fluxo | Aplicativo: visualização parcial do andamento. MCP: sim, com operações próprias | Somente fixtures, jornadas automatizadas e smokes | **Evidência técnica de 16/08/2026:** testes de domínio, PGlite, PostgreSQL local e jornada MCP/Action; limites reais de modelos e cursos completos ainda não foram medidos | Sim: Parte reduz o número de iterações necessárias para produzir um curso | Parcial: o conceito é necessário, mas “parte” também nomeia entidades estruturais em trechos do código e seus defaults ainda não são controláveis de modo simples | Conservar uma unidade de lote de produção com tamanho padrão configurável; eliminar a ambiguidade nominal e expor progresso e mudança de plano no aplicativo |
-| Usar assistência autoral por conversa e MCP | Sim: servidor MCP, Action, OAuth, catálogo progressivo, continuidade e executor compartilhado | Sim: clientes autorizados atravessam Edge Function, serviço e persistência | Aplicativo: mostra projeções do estado, mas não todas as operações compostas. MCP: sim | Não há corpus de sessões reais de autoria analisado | **Evidência técnica de 16/08/2026:** smokes OAuth local e hospedado e jornada Action passaram; uma resposta era limitada a 96 KiB | Sim | Parcial: a separação entre conversa e estado persistido é correta, mas quantidade de ferramentas, contratos e conceitos impõe carga excessiva | Manter uma experiência conversacional orientada por intenção; a pessoa não escolhe ferramentas. Renomear e reduzir contratos após ensaios com limites reais de contexto e processamento |
-| Parametrizar propriedades pedagógicas e representações | Sim: análise, parâmetros por escopo, valores efetivos, locks, conjuntos e manifestos | Sim: domínio, PostgreSQL, réplica parcial no IndexedDB, aplicativo e MCP | Aplicativo: sim, em **Desenho** e **Resources**. MCP: sim | Não houve investigação educacional real com esses controles | **Evidência técnica de 16/08/2026:** testes de resolução, autorização, interface e pacote de 500 microssequências; não validam os construtos | Sim | Parcial: escopo, herança e seleção são problemas reais; parte do modelo corrente cristaliza cedo demais modos, artefatos imutáveis e governança | Redefinir parâmetros como propriedades semânticas observáveis, separar limites editoriais e testar controles Auto/manual. Manter somente estruturas necessárias à pesquisa e à produção |
-| Escolher representações modulares para os cards | Sim: 32 packages declarados, catálogo, contratos, validadores e renderizadores | Sim: navegador e Edge usam runtime sincronizado; MCP descobre e inspeciona contratos | Aplicativo: catálogo e cards são visíveis. MCP: sim | Uso acadêmico real das 32 representações não foi verificado | **Evidência técnica anterior a 17/08/2026:** corpus, schemas e paridade de runtime têm testes; a fixture do catálogo precisou ser regenerada depois de mudanças recentes | Sim | Parcial: modularidade é útil, mas a fronteira entre package, kernel, MCP e planejamento e o próprio termo *resource* ainda precisam de fundamentação | Auditar exemplos, carga de contexto e dependências; manter apenas módulos com valor instrucional demonstrável e adotar nomenclatura academicamente defensável |
-| Registrar fontes, proveniência e ancoragem do conteúdo | Parcial: contratos possuem referências, hashes, evidências e alguns campos de origem | Parcial: os registros não formam uma cadeia simples e completa entre fonte, trecho planejado, card e reparo | Aplicativo: fragmentário. MCP: fragmentário | Não | Não há evidência integrada datada que reconstrua uma fonte interna ou externa até o conteúdo exibido e sua revisão | Sim | Baixo: o autor especialista ainda não recebe visibilidade suficiente das fontes e ancoragens | Projetar uma cadeia rastreável e econômica; fontes e ancoragens precisam ser visíveis e editáveis na produção e legíveis pelo MCP |
-| Comentar um card, auditar, reparar e verificar | Parcial: observações de estudo, notas situadas, findings, rodadas de auditoria, reparo e reauditoria | Parcial: existem fluxos separados, mas comentário de estudante, observação do autor e conversa não convergem numa fila autoral simples | Aplicativo: ações distintas existem em **Estudo** e **Autoria**. MCP: acessa auditoria e reparo, com lacunas na entrada unificada | Não há uso real registrado do ciclo completo | **Evidência técnica de 16/08/2026:** testes de finding, alvo, currentness e reauditoria passaram; não há demonstração longitudinal de comentário até correção confirmada | Sim | Parcial a baixo | Unificar as entradas por origem e assunto, preservar o vínculo com o card e mostrar o estado da resolução; somente fatos observáveis alimentam analytics |
-| Possuir privadamente um curso e conceder acesso direto | Parcial: propriedade, membership, convites, papéis e capabilities existem | Sim no modelo de *workspace* e publicação corrente | Aplicativo: sim por Coleções, Trilhas, conta e *workspaces*. MCP: sim conforme capability | Somente smokes e fixtures | **Evidência técnica de 16/08/2026:** testes de autorização, RLS, convites e OAuth; não há estudo de compreensão da governança | Sim | Baixo: seis papéis, tipos de *workspace* e publicação misturam acesso, organização e processo | Substituir por proprietário único e concessão explícita de acesso ao curso. Coleções e Trilhas só sobrevivem se demonstrarem outra função concreta; não haverá aliases nem adaptadores do modelo removido |
-| Produzir variantes comparáveis e analisar métricas de autoria | Sim: condições, variantes, locks, freeze, atribuição, outcomes, datasets e visualização de Resultados | Sim nas jornadas e no schema correntes | Aplicativo: sim para parte do fluxo. MCP: sim por operações especializadas | Não houve estudo educacional real | **Evidência técnica de 16/08/2026:** jornada PGlite, pgTAP, gráfico/tabela e exportação passaram; as 68 relações privadas da fixture indicam custo estrutural relevante | Sim: variantes e dados brutos são centrais à pesquisa educacional | Baixo a parcial: o problema é correto, mas a arquitetura e as medidas atuais não foram aceitas como modelo mínimo nem validadas cientificamente | Reconstruir a partir das perguntas de pesquisa; conservar dados brutos, proveniência, denominadores e exportação, sem inferir causalidade nem manter workflow institucional desnecessário |
-| Fixar, revisar editorialmente e publicar uma revisão imutável | Sim: revisões, submissão, revisão editorial, targets, hashes e Storage | Sim | Aplicativo: sim. MCP/Action: sim | Somente jornadas automatizadas | **Evidência técnica de 16/08/2026:** jornada Action local percorreu publicação e revisão editorial | Não, no modelo atual desejado | Baixo | Remover do produto final a distinção entre rascunho e publicado e os workflows associados. Se compartilhamento público surgir depois, será uma decisão explícita e separada |
-| Operar dentro do orçamento do Supabase Free Plan | Parcial: há limites locais de payload, retenção e coleta de objetos | Parcial: banco, Storage e Edge Functions remotos estão ativos, mas a telemetria de egress e bytes do Storage não foi obtida | Aplicativo e MCP usam o backend; não há superfície simples de orçamento para quem pesquisa | Há uma medição pontual do projeto vinculado, sem série temporal | **Evidência operacional de 17/08/2026:** o [baseline de infraestrutura](evidence/baseline-infraestrutura-2026-08-17.json) registra uso, limites oficiais e lacunas; a stack local tem divergência de versão PostgreSQL e Vector instável | Sim | Parcial | Medir crescimento e egress antes do corte; corrigir paridade local; cada estrutura persistente precisa de consumidor, finalidade de pesquisa e orçamento. Tabela vazia não é removida só por estar vazia |
+| listar Cursos sem baixar toda a composição | Sim | Sim: RPC paginada → cliente → controlador → Home | Pessoa autenticada; Cursos próprios e compartilhados em Estudo | Automação e navegador local | Lista fina, busca, cursor e cache têm testes focais | Sim, reduz rede e carga móvel | Alto | Medir egress e latência com cardinalidade real; serviço hospedado ainda não migrado |
+| abrir e estudar um Curso vivo | Sim | Sim: descritor → composição paginada → documento validado → IndexedDB → renderer | Proprietário ou pessoa com acesso | Jornada local em viewport móvel; ainda sem nova aceitação humana | Navegação Curso → Módulo → Lição → Microssequência → Unidade, prática, feedback e retomada foram exercitados | Sim | Alto; preserva Estudo como referência | Revalidar no APK e depois da migração hospedada; eficácia educacional não foi medida |
+| manter progresso, revisão e observações pessoais | Sim | Sim: interface → repositório local → fila → RPC → PostgreSQL | Cada pessoa somente sobre seu próprio estado em Curso acessível | Automação local | Validação, revisão, idempotência, reconciliação e reset por Curso têm testes focais | Sim | Alto | Observações ainda não chegam a uma fila autoral de correção; revogação e dispositivo offline exigem testes de campo |
+| criar um Curso privado | Sim | Sim: formulário e MCP → API de Curso → RPC transacional | Somente pessoa autenticada; torna-se proprietária | Automação e interface local | Criação idempotente produz raiz vazia com título, objetivo, orientações e revisão | Sim | Alto | Não há criação pública nem estágio editorial; criação hospedada aguarda o corte |
+| inspecionar o próprio Curso na Autoria | Sim | Sim: lista owner-only → cabeçalho/hierarquia/entidades paginadas → quatro áreas visuais | Somente proprietário | Automação e inspeção local | Planejamento, Estrutura, Conteúdo e Pessoas carregam o estado canônico | Sim | Parcial | Estrutura e Conteúdo ainda são listas; inspeção vertical contínua e edição contextual ampla pertencem à próxima fatia |
+| editar metadados e estado básico de planejamento | Sim | Sim: interface e MCP usam revisão e a mesma mutação canônica | Somente proprietário | Automação local | Título, objetivo, orientações e estado estruturado são atualizados com concorrência otimista | Sim | Parcial | O editor estruturado ainda expõe JSON; Partes e parâmetros semânticos precisam de controles próprios antes de uso por pessoa leiga |
+| editar a composição do Curso pelo MCP | Sim | Sim: ferramenta → roteador → RPC → entidades e eventos | Somente proprietário autenticado por OAuth | Smokes e testes locais | Upserts e exclusões são atômicos, limitados a 200 itens e protegidos por revisão e idempotência | Sim | Alto como infraestrutura mínima | O fluxo completo de planejar, produzir Parte, auditar e corrigir ainda não foi reconstituído sobre as novas ferramentas |
+| compartilhar um Curso para Estudo | Sim | Sim: Pessoas/MCP → serviço → vínculo direto → lista de Estudo | Proprietário concede por e-mail exato; favorecido recebe somente Estudo | Automação local | Concessão e revogação são idempotentes, confirmadas e registram evento sem e-mail | Sim | Alto | Sem convite pendente ou pesquisa de diretório; precisa de ensaio humano e promoção hospedada |
+| manter nome e foto de perfil | Sim | Sim: Conta → API → perfil; foto → bucket privado → chave no perfil | Própria pessoa; proprietário e favorecido veem perfis relacionados diretamente | Automação e interface local | Nome, envio, substituição, remoção e leitura autorizada possuem validações focais | Sim | Alto | Limite de 512 KiB e formatos precisam de mensagem clara em dispositivos reais; serviço hospedado ainda não migrado |
+| excluir a própria conta | Sim | Sim: confirmação → remoção de avatar → RPC → cascade da conta | Somente a própria pessoa autenticada | Automação local | A operação exige frase exata e recusa enquanto houver avatar privado | Sim | Alto | Ação é irreversível e exige aceitação humana antes da release |
+| consultar componentes didáticos no MCP | Sim | Sim: índice gerado compartilhado entre browser e Edge | Proprietário autenticado | Testes de catálogo e contratos | Descoberta progressiva, inspeção e validação existem | Sim | Parcial | Há formatos reais antigos ainda sem equivalente semântico; isso bloqueia a importação, não autoriza conversão aproximada |
+| planejar e produzir por Parte de autoria | Parcial | Estado básico possui `parts`, mas o ciclo completo ainda não foi ligado ao novo serviço | Contagem visível; edição específica não | Não | Somente contrato estrutural mínimo | Sim | Parcial | Implementar dimensão configurável, progresso e retomada sem transformar Parte em nível didático |
+| rastrear fontes e proveniência até a Unidade | Parcial | Campos históricos sobrevivem no conteúdo, mas não há cadeia canônica completa | Fragmentário | Não | Importador verifica que fontes não se perdem, mas isso não é uma interface de proveniência | Sim | Baixo | Projetar e validar fonte → âncora → conteúdo → correção de ponta a ponta |
+| reunir observações, auditoria e correção | Parcial | Estado pessoal existe; fluxo autoral unificado ainda não | Observação em Estudo existe; triagem autoral nova não | Não | Persistência de entrada funciona; resolução não | Sim | Baixo | Unificar origem, assunto, alvo, decisão, correção e verificação antes de produzir métricas |
+| criar variantes e analytics de pesquisa | Não no runtime canônico | Não | Não | Não | Infraestrutura anterior não é considerada capacidade corrente | Sim como objetivo de pesquisa | Ainda em desenho | Reconstruir sobre perguntas e dados brutos; nenhuma estrutura sobrevivente é legitimada apenas por existir |
+| operar dentro do Supabase Free Plan | Parcial | Limites, paginação, payloads e Storage pequeno estão conectados | Não há painel de orçamento | Medição pontual, sem série | O desenho reduz transferências desnecessárias, mas não prova sustentabilidade | Sim | Parcial | Medir banco, egress, Storage, invocações e crescimento antes e depois da promoção |
 
-## Três mapas do comportamento corrente
+## Mapa do Curso vivo
 
-Os diagramas mostram o sistema encontrado, inclusive suas separações. Eles não
-antecipam a arquitetura da substituição.
+**Descrição textual:** um Curso possui uma raiz, uma composição e vários
+estados pessoais. Proprietário, Autoria, Estudo e MCP não criam identidades
+paralelas.
 
-### Estudo, curso e Autoria
+```mermaid
+flowchart TD
+    C[Curso vivo] --> H[Composição didática]
+    C --> P[Planejamento básico]
+    C --> O[Proprietário]
+    C --> A[Acessos diretos de Estudo]
+    C --> S1[Estado pessoal A]
+    C --> S2[Estado pessoal B]
+    AU[Autoria visual] <--> C
+    MCP[Cliente MCP] <--> C
+    E[Estudo] <--> C
+```
 
-**Descrição textual:** a Autoria modifica uma composição corrente dentro de um workspace; sua projeção em Trilhas permite estudar cards materializados antes de publicação e o IndexedDB conserva a cópia local; em paralelo, uma etapa opcional de publicação fixa outra revisão, acrescentando estados e conceitos ao mesmo curso.
+## Mapa de carregamento
+
+**Descrição textual:** a Home obtém páginas pequenas; abrir um Curso busca sua
+revisão e suas entidades; somente o documento integral validado entra no cache
+e no renderer.
 
 ```mermaid
 flowchart LR
-    A[Autoria] <--> W[Composição corrente<br/>no workspace]
-    W -->|projeção em Trilhas| I[Curso no IndexedDB]
-    I <--> E[Estudo]
-    W -->|publicar ou atualizar| R[Revisão distribuída<br/>separada]
+    L[Lista fina paginada] --> O[Abrir Curso]
+    O --> R[Fixar revisão]
+    R --> P[Entidades paginadas]
+    P --> V[Compor e validar]
+    V --> I[IndexedDB]
+    I --> T[Tela de Estudo ou Autoria]
 ```
 
-O acesso antes de publicação já existe. A divergência está na quantidade de
-objetos intermediários e no segundo caminho imutável, não na impossibilidade de
-estudar o conteúdo corrente.
+## Evidência visual corrente
 
-### Planejamento, Parte, conteúdo e retorno humano
+A referência móvel de Estudo permanece a captura em 390 × 844 pixels:
 
-**Descrição textual:** o planejamento divide a produção em Partes; cada Parte materializa vários cards; cards podem receber observações no Estudo e findings na Autoria; triagem, auditoria e reparo produzem uma nova revisão, mas as duas entradas humanas ainda chegam por caminhos distintos.
+![Unidade de estudo em tela móvel, com conteúdo central e controles
+iconográficos.](screenshots/study/study-card-390-light.png)
 
-```mermaid
-flowchart LR
-    P[Planejamento] --> B[Parte de produção]
-    B --> C[Vários cards]
-    C --> O[Observação no Estudo]
-    C --> F[Finding na Autoria]
-    O --> T[Triagem e auditoria]
-    F --> T
-    T --> X[Reparo]
-    X --> C
-```
+As capturas antigas de Autoria não representam a superfície canônica desta
+revisão. Novas capturas devem ser produzidas depois que a inspeção vertical e a
+navegação autoral estiverem integradas; conservar imagem desatualizada como
+documentação corrente criaria uma segunda fonte de verdade.
 
-Parte é necessária como lote de produção: não é sinônimo de módulo, lição,
-microssequência ou card. O código corrente ainda usa “parte” também para alguns
-elementos estruturais, o que precisa desaparecer na revisão terminológica.
+## Gates de migração e promoção
 
-### Aplicativo, persistência local, Supabase e MCP
+O corte não está hospedado. Os gates restantes são:
 
-**Descrição textual:** o aplicativo lê e grava dados locais no IndexedDB. Os
-fluxos de Estudo e sincronização chamam RPCs pelo PostgREST; os fluxos de
-Autoria assistida e de artefatos passam por Edge Functions. Um cliente MCP
-autorizado também chega ao domínio autoral pelas Edge Functions, sem passar
-pela interface. As operações locais pendentes voltam ao PostgREST quando há
-conexão. PostgreSQL guarda relações e estado compartilhado; Storage recebe
-somente os artefatos que passam pela camada autoral apropriada.
+1. fornecer equivalência semântica aos componentes antigos ainda bloqueados e
+   decidir explicitamente os poucos dados que não possuem contrato suficiente;
+2. obter preflight integral do importador sobre os oito Cursos reais;
+3. reconstruir o banco local e executar testes de migration, autorização,
+   concorrência e navegador contra o schema resultante;
+4. confirmar ausência de mutações pendentes em dispositivos conhecidos;
+5. executar importação e migration hospedadas numa única transação com
+   verificação de drift;
+6. publicar funções, site e APK somente depois da verificação hospedada.
 
-```mermaid
-flowchart LR
-    U[Pessoa] <--> APP[Aplicativo]
-    APP <--> IDB[IndexedDB]
-    APP <--> REST[PostgREST / RPC]
-    APP <--> EDGE[Edge Functions<br/>Autoria e artefatos]
-    MCP[Cliente MCP autorizado] <--> EDGE
-    IDB -. operações pendentes .-> REST
-    REST <--> PG[PostgreSQL]
-    EDGE <--> PG[PostgreSQL]
-    EDGE <--> ST[Storage]
-```
+O importador é ferramenta transitória de desenvolvimento. Ele não entra no
+runtime e será removido depois do corte. Não há leitura dupla, alias, fallback
+ou sincronização paralela. Objetos físicos já isolados do modelo substituído
+serão apagados na etapa final; até lá, sua presença no schema não significa que
+sejam acessíveis ou necessários.
 
-Nem o aplicativo nem o cliente MCP recebem acesso administrativo direto ao
-banco. PostgREST expõe apenas as operações permitidas; as Edge Functions
-autenticam e autorizam seus próprios casos de uso. IndexedDB sustenta leitura e
-intenção local; PostgreSQL permanece a autoridade para relações, autorização e
-estado compartilhado; Storage conserva objetos grandes quando há justificativa
-para não armazená-los em linhas.
+## Próximas fatias funcionais
 
-## Evidência visual móvel do estado encontrado
+A ordem seguinte preserva paridade vertical: uma fatia só é concluída quando
+possui comportamento compreensível, interface, MCP quando aplicável,
+persistência, autorização e teste.
 
-As capturas abaixo são baselines do runtime corrente, não propostas para a
-nova Autoria. Ambas usam viewport de 390 × 844 pixels, tema claro e dados
-determinísticos de teste. A captura de Estudo é regenerada pelo cenário opt-in
-`gera capturas canônicas do percurso móvel de Estudo`; a de Autoria vem da
-fixture canônica do fluxo integral.
+1. planejamento vivo e produção configurável por Partes;
+2. inspeção móvel vertical da composição;
+3. parâmetros semânticos e regras de componentes;
+4. fontes, âncoras e proveniência;
+5. observações autorais e estudantis reunidas;
+6. auditoria, correção e verificação;
+7. variantes comparáveis;
+8. dados brutos, métricas e visualização de pesquisa;
+9. assistência de pesquisa;
+10. remoção física final, validação completa e release.
 
-| Estudo | Autoria corrente |
-| --- | --- |
-| ![Leitor móvel de Estudo exibindo um card teórico, progresso e quatro controles iconográficos.](screenshots/study/study-card-390-light.png) | ![Mapa móvel da Autoria corrente exibindo o curso, duas microssequências e cinco destinos fixos na barra inferior.](screenshots/authoring/authoring-map-390-light.png) |
-
-O contraste visual confirma duas afirmações diferentes. Estudo concentra uma
-tarefa e o conteúdo visível; a Autoria já preserva largura móvel e controles
-iconográficos, mas distribui o curso entre cinco áreas abstratas e não oferece
-na tela inicial a inspeção contínua dos cards. Essa observação orienta a
-reconcepção, mas não demonstra por si só qual alternativa será mais
-compreensível: isso exige protótipo e avaliação humana.
-
-### Protótipo de compreensão — não implementado
-
-O protótipo abaixo testa somente uma hipótese para a próxima etapa: apresentar
-um curso vivo como objeto concreto, mostrar suas Partes planejadas e concluídas
-e manter planejamento e andamento acessíveis por poucos controles. Ele não
-define schema, não comprova usabilidade e não representa uma funcionalidade já
-disponível. A composição reúne as versões móvel e desktop para permitir a
-comparação antes de qualquer mudança funcional.
-
-![Protótipo móvel e desktop de um curso vivo, com lista de Partes, estado de materialização e acesso compacto ao planejamento.](screenshots/authoring/prototype-course-part-v1.png)
-
-A versão vetorial regenerável está em
-[`prototype-course-part-v1.svg`](screenshots/authoring/prototype-course-part-v1.svg).
-As decisões de vocabulário, navegação e interação continuam sujeitas à revisão
-terminológica e aos testes posteriores; a evidência desta etapa é apenas que a
-relação **Curso → Partes → conteúdo produzido** pode ser mostrada sem expor
-*workspace*, revisão, lock ou identificadores internos.
-
-## Evidências e lacunas transversais
-
-A [evidência integrada legível por máquina](evidence/authoring-integrated-validation-2026-08-16.json)
-registra os comandos e números de 16 de agosto de 2026. Naquela execução:
-
-- `npm test` aprovou 1.164 testes, com um ensaio de PostgreSQL real ignorado por
-  ausência das dependências exigidas;
-- `npm run test:e2e` aprovou 143 cenários, com uma captura opt-in ignorada;
-- em 17/08/2026, o cenário opt-in focado gerou duas capturas móveis de Estudo
-  em 5,9 segundos, inclusive a imagem exibida nesta página, sem repetir a suíte
-  E2E;
-- a stack Supabase local aplicou as migrations e aprovou 330 testes pgTAP;
-- os smokes OAuth do MCP local e hospedado passaram;
-- o curso grande exercitado tinha 175 microssequências e 1.052 cards;
-- a fixture relacional de experimento ocupou 3.817.472 bytes em 68 relações
-  privadas, incluindo índices e TOAST;
-- o orçamento serializado de desenho para 500 microssequências somou 7.042.790
-  bytes, sem medir páginas e índices reais do PostgreSQL.
-
-Esses resultados não demonstram aceitação por pessoa leiga, adequação das
-medidas, validade de construto, eficácia educacional, sustentabilidade no
-Supabase Free Plan ou operação prolongada com cursos reais. A
-[matriz de conformidade técnica](matriz-conformidade-tecnica.md) localiza código
-e testes; o [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md)
-define observações que automação não pode substituir.
-
-Os principais sinais de complexidade desproporcional são:
-
-- dois estados operacionais para aquilo que a intenção descreve como um curso
-  vivo;
-- governança por *workspaces*, seis papéis, capabilities, submissão e publicação
-  para um problema imediato de propriedade privada e acesso direto;
-- dezenas de relações privadas de Autoria antes de uso educacional real;
-- conceitos iguais ou próximos nomeados de maneiras distintas entre interface,
-  domínio, MCP e banco, e o termo “parte” usado para duas funções;
-- backend de experimentos, analytics e publicação mais amplo que as tarefas que
-  uma pessoa consegue compreender e executar pela interface;
-- proveniência e observações, embora essenciais, ainda fragmentadas entre
-  contratos e fluxos.
-
-## Regra do próximo estado publicado
-
-Quando um modelo for substituído, o estado final não conservará nomenclatura,
-UI, rota, alias, adapter, leitura, escrita ou fallback do modelo anterior. Isso
-inclui nomes de arquivos, funções, tabelas, campos, ferramentas MCP, testes e
-documentos. Dados que precisem sobreviver serão transformados uma única vez;
-essa transformação não se tornará uma camada permanente de compatibilidade.
-
-A história permanece recuperável no Git, nas issues encerradas e nas evidências
-datadas. O código ativo e a documentação corrente descrevem somente o produto
-vigente. Um corte só pode ser declarado completo depois de busca textual,
-inspeção de schema, testes de integração e verificação visual confirmarem que o
-modelo removido não continua executável nem ensinável por acidente.
+Backend novo sem uma forma de uso ou inspeção na interface e, quando pertinente,
+no MCP não satisfaz uma fatia. Da mesma forma, uma tela sem persistência e
+autorização reais não conta como capacidade concluída.

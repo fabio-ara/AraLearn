@@ -74,7 +74,7 @@ function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
   const key = escapePackageAttribute(blockKey);
   if (feedback === "correct") return `<div class="inline-feedback ok" data-complete-feedback-block-key="${key}"><p class="tiny">Correto.</p></div>`;
-  if (feedback === "incomplete") return `<div class="inline-feedback warn" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
+  if (feedback === "incomplete") return `<div class="inline-feedback warn" role="alert" aria-live="assertive" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
   return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 

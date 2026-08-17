@@ -137,7 +137,7 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
 
 O script vincula o projeto, compara o histórico e executa `db push --dry-run`. Interrompa diante de migration desconhecida, histórico divergente ou objeto não reconhecido. O roteiro não executa reset, seed, `db pull` ou `migration repair` remoto.
 
-Depois da revisão, aplique:
+Em uma instalação vazia, depois da revisão, aplique:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -153,6 +153,74 @@ npx.cmd --yes supabase@2.109.1 db lint --linked --level warning --fail-on warnin
 ```
 
 As fixtures em `supabase/fixtures/catalog/` não são seed remoto e não entram no aplicativo. O procedimento correto está em [publicação inicial das fixtures oficiais](supabase.md#publicação-inicial-das-fixtures-oficiais).
+
+### Corte único do projeto que já contém Cursos
+
+Não aplique `20260817140000_course_identity_cutover.sql` nem
+`20260817150000_course_profiles_access.sql` por `db push` no projeto hospedado
+que contém os oito Cursos anteriores. O corte de identidade precisa receber a
+staging validada e as duas migrations precisam ser confirmadas na mesma sessão
+e na mesma transação. O comando transitório é:
+
+```powershell
+node .\scripts\courseCutover\runCourseIdentityCutover.mjs --help
+```
+
+Sem `--apply`, o runner lê, converte e valida, mas não escreve no banco. Com
+`--apply`, ele executa esta sequência fail-closed:
+
+1. lê o snapshot e as resoluções semânticas privadas;
+2. valida documentos, topologia, sobreposições, contagens e metadados técnicos;
+3. grava a atestação privada `prepared`;
+4. relê a origem e aborta se o hash mudou;
+5. envia staging + as migrations `1400` e `1500` por uma única conexão e uma
+   única transação PostgreSQL;
+6. registra as duas versões em `supabase_migrations.schema_migrations` dentro
+   dessa transação;
+7. relê o modelo canônico, recompõe cada Curso e compara os hashes;
+8. grava a atestação privada `verified`.
+
+Senha do banco, publishable key e token da sessão humana entram somente por
+variáveis efêmeras ou pelo objeto JSON de `--secrets-stdin`; nunca são
+argumentos, logs ou arquivos de evidência. Resoluções semânticas também precisam
+ficar fora do repositório público.
+
+As atestações ficam, por padrão, em
+`../AraLearn_private/evidence/course-cutover/`. Cada Curso registra somente
+`courseId`, `manifestHash`, `documentHash`, `rowHash`, `entityStateHash` e
+contagens. O relatório inclui ainda os hashes do snapshot, das resoluções e do
+conjunto das duas migrations; não inclui conteúdo, credenciais nem uma segunda
+cópia do banco. O runner recusa gravá-lo dentro do repositório público.
+
+A transação limita espera de lock a 15 segundos e cada instrução a 10 minutos;
+o processo cliente tem 12 minutos. Lock indisponível, instrução demorada,
+processo excedido, drift ou divergência pós-aplicação encerram o comando com
+falha. O ensaio PostgreSQL focal mantém uma escrita-prova dentro da transação e
+confirma que lock timeout, statement timeout e término do processo não deixam
+essa escrita confirmada.
+
+Falhas durante a transação provocam rollback. A recomposição final acontece
+depois do commit; se ela divergir, as migrations já foram aplicadas, mas API,
+site e APK permanecem bloqueados até inspeção e correção explícitas. O relatório
+`verified` não é produzido nesse caso.
+
+Depois de um `verified`, confira imediatamente o ledger e o plano remoto:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 migration list --linked
+npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
+```
+
+As versões `20260817140000` e `20260817150000` precisam constar como aplicadas
+e o dry-run não pode tentar reaplicá-las. Nunca execute `db push` em modo Apply
+antes do runner nesse projeto. Só depois dessas provas o roteiro geral pode
+publicar as funções e os clientes.
+
+No staging, entidades com raiz relacional levam sua versão e seus próprios
+instantes. Os dois Cursos disponíveis somente como publicação não permitem
+recuperar metadados históricos por entidade: usam versão `1` e os instantes do
+registro do Curso, com a base `course_record` explicitamente atestada. Não se
+deve descrever esse default como preservação de uma informação inexistente.
 
 ## 3. Configurar contas, e-mail e retorno de autenticação
 
@@ -324,19 +392,19 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -AllowedOrigin "https://intranet.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
 
-O roteiro publica `aralearn-authoring-mcp`, `aralearn-authoring-action` e `aralearn-course-revisions`. Informe origens na mesma linha, separadas por vírgulas; não use `*`. O script conserva as origens obrigatórias, inclusive `https://appassets.androidplatform.net`.
+O roteiro publica somente `aralearn-authoring-mcp` e
+`aralearn-course-api`. Também remove as funções remotas aposentadas de Action
+e revisões, além dos segredos exclusivos desses transportes. Informe origens
+na mesma linha, separadas por vírgulas; não use `*`. O script conserva as
+origens obrigatórias, inclusive `https://appassets.androidplatform.net`.
 
-MCP e Action compartilham registro e executor, mas têm adaptações de autenticação diferentes. A integração MCP usa OAuth 2.1 com PKCE; a Action usa seus endpoints confidenciais porque o construtor correspondente não oferece o PKCE requerido pelo servidor MCP. Permissões não são confiadas a claims arbitrários: o banco deriva capacidades da conta, do alvo e do estado.
-
-Cadastre e confirme a conta do primeiro responsável. Depois:
-
-```powershell
-pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
-  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
-  -OwnerEmail responsavel@exemplo.org
-```
-
-O script pede a credencial administrativa de modo protegido e apenas atribui o papel `owner`. Papéis posteriores são administrados por `npm.cmd run authoring:access -- <comando>` com `grant-role`, `revoke-role` e `list-roles`.
+O MCP usa OAuth 2.1 com PKCE; a API de Cursos usa a sessão autenticada do
+AraLearn. Ambos aplicam a mesma identidade persistida de Curso. Não existe
+bootstrap de papel global: ao criar um Curso, a conta autenticada torna-se sua
+proprietária em `courses.owner_id` e somente ela pode editar. Acesso direto
+concedido na seção **Pessoas** da Autoria — ou pelas ferramentas MCP
+correspondentes — permite apenas Estudo; não concede coautoria nem papel
+administrativo.
 
 No Supabase, habilite OAuth 2.1 Server, Dynamic Client Registration, uma chave JWT assimétrica, tela de consentimento e o hook `public.aralearn_mcp_access_token_hook`. Confirme os metadados de autorização e de recurso protegido. O [guia de autoria MCP](autoria-mcp.md) contém os valores específicos do cliente.
 

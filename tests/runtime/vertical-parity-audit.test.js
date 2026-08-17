@@ -7,6 +7,7 @@ import {
   auditVerticalParity,
   buildExactDatabaseInventory
 } from "../../scripts/auditVerticalParity.mjs";
+import { COURSE_MCP_TOOLS } from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -32,6 +33,100 @@ async function registeredDatabaseObjects() {
 
 test("o registro corrente cobre UI, ferramentas, Edge, manifesto e testes", async () => {
   assert.deepEqual(await auditVerticalParity({ repositoryRoot }), []);
+});
+
+test("o registro usa somente as seis ferramentas canônicas de Curso", async () => {
+  const current = await registry();
+  const registered = current.cases.flatMap((caseRecord) =>
+    caseRecord.objects?.mcpTools || []
+  ).toSorted();
+  assert.deepEqual(
+    registered,
+    COURSE_MCP_TOOLS.map(({ name }) => name).toSorted()
+  );
+  assert.equal(current.cases.some((caseRecord) =>
+    Object.hasOwn(caseRecord.objects || {}, "applicationTools") ||
+    Object.hasOwn(caseRecord.objects || {}, "applicationToolPatterns")
+  ), false);
+});
+
+test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", async () => {
+  const changedRegistry = await registry();
+  changedRegistry.cases[0].objects.applicationTools = ["operacaoParalela"];
+  const findings = await auditVerticalParity({
+    repositoryRoot,
+    registry: changedRegistry
+  });
+  assert.ok(findings.includes(
+    "study-course-experience: applicationTools foi abolido; aplicativo e MCP usam as mesmas operações de Curso."
+  ));
+});
+
+test("o inventário pós-corte separa os cinco casos correntes do legado físico", async () => {
+  const current = await registry();
+  const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
+  const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
+  const currentCaseIds = current.cases
+    .filter(({ status }) => status === "current")
+    .map(({ id }) => id);
+  assert.deepEqual(
+    new Set(inventory.objects.map(({ caseId }) => caseId)),
+    new Set([...currentCaseIds, "pre-course-database-removal"])
+  );
+  assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
+  assert.equal(
+    assignments.get("table:public.course_personal_states"),
+    "study-course-experience"
+  );
+  assert.equal(
+    assignments.get("table:public.person_profiles"),
+    "person-profile-and-course-access"
+  );
+  assert.equal(
+    assignments.get("function:public.get_aralearn_runtime_manifest()"),
+    "didactic-component-runtime"
+  );
+  assert.equal(
+    assignments.get("function:public.aralearn_mcp_access_token_hook(event jsonb)"),
+    "course-shared-transports"
+  );
+  assert.equal(
+    assignments.get("table:private.authoring_action_oauth_clients"),
+    "pre-course-database-removal"
+  );
+  assert.equal(
+    assignments.get("table:private.package_library_cutover_audit"),
+    "pre-course-database-removal"
+  );
+  const removal = current.cases.find(({ id }) => id === "pre-course-database-removal");
+  assert.equal(Object.hasOwn(removal.objects, "databasePatterns"), false);
+  assert.deepEqual(removal.objects.databaseInternalPatterns, [
+    "^(?:table|view|materialized_view|function|bucket|index|constraint|trigger|policy|rls):.+$"
+  ]);
+});
+
+test("o workflow compara o inventário completo logo após reconstruir o banco", async () => {
+  const workflow = await readFile(
+    path.join(repositoryRoot, ".github/workflows/validacao.yml"),
+    "utf8"
+  );
+  const resetIndex = workflow.indexOf("npx --yes supabase@2.109.1 db reset");
+  const parityIndex = workflow.indexOf("- name: Conferir paridade vertical no banco real");
+  const lintIndex = workflow.indexOf("- name: Conferir o lint do banco");
+  assert.ok(resetIndex >= 0 && parityIndex > resetIndex && lintIndex > parityIndex);
+  for (const token of [
+    "c.relkind in ('r', 'p', 'v', 'm')",
+    "pg_get_function_identity_arguments(p.oid)",
+    "from pg_index x",
+    "from pg_constraint k",
+    "from pg_trigger t",
+    "from pg_policy p",
+    "c.relforcerowsecurity",
+    "from storage.buckets",
+    "--database-inventory -"
+  ]) {
+    assert.ok(workflow.includes(token), `consulta ausente no workflow: ${token}`);
+  }
 });
 
 test("o audit rejeita um objeto de backend órfão", async () => {
@@ -89,12 +184,22 @@ test("índice, restrição, trigger, policy e estado RLS novos exigem revisão e
   }
 });
 
-test("a regeneração sugere o caso estrutural pela relação sem dispensar o inventário exato", () => {
+test("o catch-all interno não toma estruturas filhas de um caso primário", () => {
   const syntheticRegistry = {
-    cases: [{
-      id: "course-use",
-      objects: { databasePatterns: ["^table:public\\.courses$"] }
-    }]
+    cases: [
+      {
+        id: "course-use",
+        objects: { databasePatterns: ["^table:public\\.courses$"] }
+      },
+      {
+        id: "legacy-removal",
+        objects: {
+          databaseInternalPatterns: [
+            "^(?:table|view|materialized_view|function|bucket|index|constraint|trigger|policy|rls):.+$"
+          ]
+        }
+      }
+    ]
   };
   const databaseObjects = [
     "table:public.courses",

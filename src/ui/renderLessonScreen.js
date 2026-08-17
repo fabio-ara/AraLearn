@@ -145,7 +145,7 @@ function countCardsInMicrosequence(microsequence) {
 
 function countCompletedCardsInLesson(course, moduleValue, lesson, progress) {
   const entry = readLessonProgressEntry(progress, {
-    courseKey: entityId(course),
+    courseId: entityId(course),
     moduleKey: entityId(moduleValue),
     lessonKey: entityId(lesson)
   });
@@ -154,7 +154,7 @@ function countCompletedCardsInLesson(course, moduleValue, lesson, progress) {
 
 function countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress) {
   const entry = readLessonProgressEntry(progress, {
-    courseKey: entityId(course),
+    courseId: entityId(course),
     moduleKey: entityId(moduleValue),
     lessonKey: entityId(lesson)
   });
@@ -1098,7 +1098,7 @@ function renderMicrosequenceOverview({
   const assistanceState = editorSupport.bottomUpAssistance || {};
   const selectedIds = new Set(assistanceState.selectedIds || []);
   const lessonProgress = readLessonProgressEntry(progress, {
-    courseKey: entityId(course),
+    courseId: entityId(course),
     moduleKey: entityId(moduleValue),
     lessonKey: entityId(lesson)
   });

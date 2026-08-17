@@ -1,6 +1,6 @@
 import { createAuthoringMcpHandler } from "../_shared/aralearn-authoring/mcpServer.js";
 import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
-import { SupabaseAuthoringAdapter } from "../_shared/aralearn-authoring/supabaseAdapter.js";
+import { CourseSupabaseAdapter } from "../_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import {
   readSupabaseServerEnvironment,
   resolveMcpOAuthEndpoints
@@ -13,20 +13,19 @@ const serverEnvironment = readSupabaseServerEnvironment((name: string) => Deno.e
 // válido para um recurso e uma metadata que anunciasse outro.
 const { authorizationServer, resourceUrl } = resolveMcpOAuthEndpoints(serverEnvironment);
 
-const adapter = new SupabaseAuthoringAdapter({
+const publicAppUrl = String(
+  Deno.env.get("ARALEARN_PUBLIC_APP_URL")
+    || (serverEnvironment.local
+      ? "http://127.0.0.1:4182"
+      : "https://fabio-ara.github.io/AraLearn/")
+).trim();
+
+const adapter = new CourseSupabaseAdapter({
   supabaseUrl: serverEnvironment.supabaseUrl,
   oauthIssuer: authorizationServer,
   serverApiKey: serverEnvironment.serverApiKey,
   publishableKey: serverEnvironment.publishableKey,
-  scheduleBackground(task: Promise<unknown>) {
-    const runtime = Reflect.get(globalThis, "EdgeRuntime") as {
-      waitUntil?: (promise: Promise<unknown>) => void;
-    } | undefined;
-    if (typeof runtime?.waitUntil !== "function") {
-      throw new Error("EdgeRuntime.waitUntil indisponível.");
-    }
-    runtime.waitUntil(task);
-  }
+  publicAppUrl
 });
 
 const defaultOrigins = [
@@ -42,7 +41,6 @@ const handler = createAuthoringMcpHandler({
   authorizationServer,
   allowedOrigins: parseAllowedOrigins(
     Deno.env.get("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS")
-      || Deno.env.get("ARALEARN_AUTHORING_ALLOWED_ORIGINS")
       || defaultOrigins
   )
 });

@@ -9,14 +9,8 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 const CACHE_REVISION_PLACEHOLDER = "__ARALEARN_CACHE_REVISION__";
-
-const runtimeStaticAssets = [
-  "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
-  "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
-  "docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md",
-  "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md",
-  "docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml"
-];
+const FORBIDDEN_PUBLISHED_SURFACE = /(?:remote-(?:library|workspace)|learning-spaces|authoring-workspace|workspace-authoring|home-trails|aralearn:open-library|\b(?:Workspace|Trilhas?|Coleções?)\b)/iu;
+const FORBIDDEN_CANONICAL_IDENTITY = /\b(?:moduleKey|lessonKey|microsequenceKey|cardKey|completedCardKeys|completedCardIds|cursorCardId|editorProgress)\b/u;
 
 function fail(message) {
   throw new Error(message);
@@ -179,18 +173,6 @@ async function copyRuntimeJavaScript(runtimeRoot) {
   }
 }
 
-async function copyRuntimeStaticAssets(publicDestination) {
-  for (const relativePath of runtimeStaticAssets) {
-    const sourcePath = path.join(repositoryRoot, relativePath);
-    try {
-      await fs.access(sourcePath);
-    } catch {
-      fail(`Material público do assistente ausente: ${relativePath}`);
-    }
-    await copyFile(sourcePath, path.join(publicDestination, relativePath));
-  }
-}
-
 async function rewritePagesMainImport(runtimeRoot) {
   const mainPath = path.join(runtimeRoot, "main.js");
   const source = await fs.readFile(mainPath, "utf8");
@@ -349,6 +331,27 @@ async function validateArtifact(runtimeRoot) {
     fail(`Curso ou catálogo operacional presente no artefato: ${packagedCourseFiles.join(", ")}.`);
   }
 
+  const publishedContracts = artifactFiles.filter((filePath) => {
+    const relativePath = normalizeArtifactPath(path.relative(runtimeRoot, filePath));
+    return ["styles.css", "course-authoring.css"].includes(path.posix.basename(relativePath))
+      || relativePath.endsWith("/src/ui/OAuthAuthorizationConsent.js")
+      || relativePath === "src/ui/OAuthAuthorizationConsent.js";
+  });
+  for (const filePath of publishedContracts) {
+    const source = await fs.readFile(filePath, "utf8");
+    if (FORBIDDEN_PUBLISHED_SURFACE.test(source)) {
+      fail(`Superfície ou cópia substituída presente no runtime: ${normalizeArtifactPath(path.relative(runtimeRoot, filePath))}.`);
+    }
+  }
+
+  for (const filePath of artifactFiles.filter((candidate) =>
+    path.extname(candidate).toLowerCase() === ".js")) {
+    const source = await fs.readFile(filePath, "utf8");
+    if (FORBIDDEN_CANONICAL_IDENTITY.test(source)) {
+      fail(`Identidade didática substituída presente no runtime: ${normalizeArtifactPath(path.relative(runtimeRoot, filePath))}.`);
+    }
+  }
+
 }
 
 async function stageRuntime({ target, outputPath }) {
@@ -358,7 +361,6 @@ async function stageRuntime({ target, outputPath }) {
   await fs.rm(outputPath, { recursive: true, force: true });
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
-  await copyRuntimeStaticAssets(publicDestination);
   await writeRuntimeConfig(publicDestination, target);
   await writeExactContentSecurityPolicy(publicDestination, target);
   await copyRuntimeJavaScript(runtimeRoot);

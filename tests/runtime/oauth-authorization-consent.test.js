@@ -10,10 +10,10 @@ import {
 
 test("consentimento explicita a autoridade de autoria efetivamente concedida", () => {
   assert.deepEqual(OAUTH_AUTHORING_PERMISSION_LABELS, [
-    "Ler os cursos acessíveis pela sua conta",
-    "Criar, editar, reorganizar e excluir rascunhos de workspace",
-    "Publicar versões completas ou parciais na sua biblioteca privada",
-    "Publicar no catálogo somente se sua conta já tiver permissão editorial"
+    "Ler seus Cursos, planejamento e conteúdo na Autoria",
+    "Criar Cursos privados e alterar metadados, planejamento e conteúdo",
+    "Ler e atualizar seu perfil e gerir acesso direto para Estudo após confirmação",
+    "Consultar contratos e validar os componentes didáticos instalados"
   ]);
 });
 

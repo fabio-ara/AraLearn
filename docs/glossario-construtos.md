@@ -646,18 +646,21 @@ limite precedem a coleta de dados ([Pardo e Siemens (2014)](referencias.md#ref-p
 - **Definição:** tupla explícita de valores para todos os fatores de um
   protocolo, aplicada ao escopo congelado e sob os mesmos invariantes
   declarados.
-- **Não equivale a:** grupo de pessoas, variante visual, assignment, estado do
-  workspace ou combinação fatorial gerada implicitamente.
+- **Não equivale a:** grupo de pessoas, variante visual, atribuição de
+  participante, estado corrente do Curso ou combinação fatorial gerada
+  implicitamente.
 - **Evidência necessária:** condição versionada, locks emitidos pelo servidor,
   materialização auditada e vínculo inequívoco com a variante entregue.
 
 ### Variante instrucional
 
 - **Tipo:** termo operacional.
-- **Definição:** revisão imutável de um artefato derivado da base comum para uma
-  condição, acompanhada por hashes, snapshots, manifesto, auditoria e diff.
-- **Não equivale a:** workspace editável, branch sem freeze, condição em si ou
-  garantia de que somente o fator pretendido mudou.
+- **Definição:** Curso derivado de uma base comum para uma condição explícita,
+  com identidade, parâmetros e relação de origem rastreáveis. A comparação
+  precisa identificar qual revisão de cada Curso foi efetivamente analisada,
+  sem tornar o Curso vivo permanentemente imutável.
+- **Não equivale a:** cópia sem proveniência, branch de código, condição em si
+  ou garantia de que somente o fator pretendido mudou.
 - **Evidência necessária:** diff factual, classificação das diferenças, decisão
   humana e freeze da revisão exata antes da atribuição.
 
@@ -667,7 +670,7 @@ limite precedem a coleta de dados ([Pardo e Siemens (2014)](referencias.md#ref-p
 - **Definição:** vínculo append-only entre enrollment consentido e uma revisão
   congelada de variante, produzido por regra manual, pseudoaleatória
   reproduzível ou balanceamento simples declarado.
-- **Não equivale a:** consentimento, membership do workspace, exposição efetiva,
+- **Não equivale a:** consentimento, acesso direto ao Curso, exposição efetiva,
   adesão à atividade ou randomização estatisticamente suficiente.
 - **Evidência necessária:** unidade de atribuição, algoritmo e versão, ocultação
   adequada, perdas, desvios e análise coerente com o procedimento real.

@@ -1,0 +1,189 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { parse } from "espree";
+
+const execute = promisify(execFile);
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const mainPath = path.join(repositoryRoot, "public", "main.js");
+const stylesPath = path.join(repositoryRoot, "public", "styles.css");
+const courseAuthoringStylesPath = path.join(repositoryRoot, "public", "course-authoring.css");
+const oauthConsentPath = path.join(repositoryRoot, "src", "ui", "OAuthAuthorizationConsent.js");
+const sourceRoot = path.join(repositoryRoot, "src");
+const pagesRoot = path.join(repositoryRoot, ".pages");
+
+function moduleSpecifiers(source) {
+  const tree = parse(source, { ecmaVersion: "latest", sourceType: "module" });
+  const result = [];
+  const pending = [tree];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node || typeof node !== "object") continue;
+    if (
+      ["ImportDeclaration", "ExportNamedDeclaration", "ExportAllDeclaration"].includes(node.type) &&
+      typeof node.source?.value === "string"
+    ) {
+      result.push(node.source.value);
+    } else if (node.type === "ImportExpression" && typeof node.source?.value === "string") {
+      result.push(node.source.value);
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) pending.push(...value);
+      else if (value && typeof value === "object") pending.push(value);
+    }
+  }
+  return [...new Set(result)];
+}
+
+async function importGraph(entryPath) {
+  const pending = [entryPath];
+  const graph = new Map();
+  while (pending.length) {
+    const filePath = path.resolve(pending.pop());
+    if (graph.has(filePath)) continue;
+    const source = await readFile(filePath, "utf8");
+    graph.set(filePath, source);
+    for (const specifier of moduleSpecifiers(source)) {
+      if (!specifier.startsWith(".")) continue;
+      const dependency = path.resolve(path.dirname(filePath), specifier);
+      assert.equal(
+        dependency === mainPath || dependency.startsWith(`${sourceRoot}${path.sep}`),
+        true,
+        `Import fora do runtime permitido: ${specifier}`
+      );
+      pending.push(dependency);
+    }
+  }
+  return graph;
+}
+
+function normalizedRelative(filePath) {
+  return path.relative(repositoryRoot, filePath).split(path.sep).join("/");
+}
+
+const forbiddenModule = /(?:lessonEditorApp|HomeTrailsController|homeTrailProjection|contextualAuthoringSync|integratedCourseSync|relationalSchema|RelationalProjectRepository|TrailPersonalStateRepository)/u;
+const forbiddenRuntimeSymbol = /\b(?:courseKey|workspaceId|trailItemId|homeTrails|accessLevel|LearningSpaces|moduleKey|lessonKey|microsequenceKey|cardKey|completedCardKeys|completedCardIds|cursorCardId|editorProgress)\b/u;
+const forbiddenPublishedSurface = /(?:remote-(?:library|workspace)|learning-spaces|authoring-workspace|workspace-authoring|home-trails|aralearn:open-library|\b(?:Workspace|Trilhas?|Coleções?)\b)/iu;
+
+test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", async () => {
+  const graph = await importGraph(mainPath);
+  const mainSource = graph.get(mainPath);
+  assert.match(mainSource, /class="account-settings-overlay"/u);
+  assert.doesNotMatch(mainSource, forbiddenPublishedSurface);
+  for (const visibleAccountContract of [
+    "data-profile-form",
+    "data-profile-avatar-file",
+    "controller.uploadAvatar",
+    "controller.updatePersonProfile",
+    "data-settings-delete-account",
+    "controller.deleteMyAccount"
+  ]) {
+    assert.match(
+      mainSource,
+      new RegExp(visibleAccountContract.replace(".", "\\."), "u"),
+      `A operação de conta ${visibleAccountContract} não possui consumo humano visível.`
+    );
+  }
+  for (const continuityContract of [
+    "await editorApp?.replaceProject(nextProject)",
+    "authoringSurface?.opened",
+    "authoringSurface.refresh()"
+  ]) {
+    assert.match(
+      mainSource,
+      new RegExp(continuityContract.replace(/[?.()]/gu, "\\$&"), "u"),
+      `A continuidade entre chat, Autoria e Estudo perdeu ${continuityContract}.`
+    );
+  }
+  assert.equal(
+    (mainSource.match(/refreshVisibleApplication\(\)/gu) || []).length >= 2,
+    true,
+    "Retorno ao aplicativo e reconexão devem atualizar a superfície que está visível."
+  );
+  assert.match(
+    mainSource,
+    /visibilitychange[\s\S]*?document\.visibilityState === "hidden"[\s\S]*?else void refreshVisibleApplication\(\)/u,
+    "Retornar ao aplicativo deve buscar alterações pessoais remotas."
+  );
+  assert.match(
+    mainSource,
+    /addEventListener\("online"[\s\S]*?void refreshVisibleApplication\(\)/u,
+    "A reconexão deve buscar alterações pessoais remotas."
+  );
+  assert.match(
+    mainSource,
+    /addEventListener\("offline"[\s\S]*?editorApp\?\.setOfflineStatus\?\.\(true\)/u,
+    "A perda de conexão deve atualizar o aviso do Estudo sem iniciar uma leitura remota."
+  );
+  const offlineListener = mainSource.match(
+    /addEventListener\("offline"[\s\S]*?\}, \{ signal: lifecycleAbortController\.signal \}\);/u
+  )?.[0] || "";
+  assert.doesNotMatch(offlineListener, /refreshVisibleApplication|refreshStudy/u);
+  const relativeModules = [...graph.keys()].map(normalizedRelative);
+  for (const required of [
+    "src/persistence/AuthSessionStore.js",
+    "src/persistence/CourseLocalStore.js",
+    "src/study/CourseStudyApplication.js",
+    "src/study/CourseStudyRepository.js",
+    "src/supabase/CourseApiClient.js",
+    "src/supabase/CourseController.js"
+  ]) {
+    assert.equal(relativeModules.includes(required), true, `${required} ausente do grafo.`);
+  }
+  for (const relativePath of relativeModules) {
+    assert.doesNotMatch(relativePath, forbiddenModule, `${relativePath} pertence ao runtime substituído.`);
+  }
+  for (const [filePath, source] of graph) {
+    assert.doesNotMatch(
+      source,
+      forbiddenRuntimeSymbol,
+      `${normalizedRelative(filePath)} conserva identidade ou recipiente substituído.`
+    );
+  }
+  for (const filePath of [stylesPath, courseAuthoringStylesPath, oauthConsentPath]) {
+    const source = await readFile(filePath, "utf8");
+    assert.doesNotMatch(
+      source,
+      forbiddenPublishedSurface,
+      `${normalizedRelative(filePath)} conserva uma superfície ou cópia do produto substituído.`
+    );
+  }
+
+  await execute(process.execPath, [
+    path.join(repositoryRoot, "scripts", "stageWebRuntime.mjs"),
+    "--target", "pages",
+    "--output", pagesRoot
+  ], { cwd: repositoryRoot });
+  const manifest = JSON.parse(await readFile(path.join(pagesRoot, "asset-manifest.json"), "utf8"));
+  const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+  assert.equal(assets.some((asset) => forbiddenModule.test(asset)), false);
+  assert.equal(
+    assets.some((asset) => asset.startsWith("./docs/downloads/authoring/")),
+    false,
+    "Pacotes de Action/Workspace retirados não podem ser publicados como runtime."
+  );
+
+  const expectedSourceAssets = relativeModules
+    .filter((relativePath) => relativePath.startsWith("src/"))
+    .map((relativePath) => `./${relativePath}`)
+    .sort();
+  const stagedSourceAssets = assets.filter((asset) => asset.startsWith("./src/")).sort();
+  assert.deepEqual(stagedSourceAssets, expectedSourceAssets);
+  for (const asset of stagedSourceAssets) {
+    const source = await readFile(path.join(pagesRoot, asset.slice(2)), "utf8");
+    assert.doesNotMatch(source, forbiddenRuntimeSymbol, `${asset} conserva símbolo substituído.`);
+  }
+  for (const asset of ["./styles.css", "./course-authoring.css", "./src/ui/OAuthAuthorizationConsent.js"]) {
+    assert.equal(assets.includes(asset), true, `${asset} ausente do artefato web.`);
+    const source = await readFile(path.join(pagesRoot, asset.slice(2)), "utf8");
+    assert.doesNotMatch(
+      source,
+      forbiddenPublishedSurface,
+      `${asset} conserva uma superfície ou cópia do produto substituído.`
+    );
+  }
+});
