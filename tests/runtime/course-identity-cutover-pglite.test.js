@@ -100,6 +100,20 @@ function memoryCache() {
       if (value == null) values.delete(key);
       else values.set(key, structuredClone(value));
     },
+    async updateCaches(keys, updater) {
+      const current = Object.fromEntries(keys.map((key) => [
+        key,
+        structuredClone(values.get(key) ?? null)
+      ]));
+      const next = updater(structuredClone(current));
+      for (const key of keys) {
+        const value = Object.hasOwn(next, key) ? next[key] : current[key];
+        if (value == null) values.delete(key);
+        else values.set(key, structuredClone(value));
+        next[key] = value;
+      }
+      return structuredClone(next);
+    },
     async deleteCachePrefix(prefix) {
       for (const key of values.keys()) if (key.startsWith(prefix)) values.delete(key);
     }
@@ -619,6 +633,76 @@ async function applyMigration(database) {
 async function applyProfileAccessMigration(database) {
   await database.exec(await fs.readFile(profileAccessMigrationUrl, "utf8"));
 }
+
+test("ponte #124 preserva notes/receipts e mantém audit, #122 e tabela desconhecida fail-closed", async (t) => {
+  const bridge = await legacyDatabase();
+  const audit = await legacyDatabase();
+  const experiment = await legacyDatabase();
+  const unknown = await legacyDatabase();
+  t.after(() => Promise.all([
+    bridge.close(), audit.close(), experiment.close(), unknown.close()
+  ]));
+  for (const database of [bridge, audit]) {
+    await database.exec(`
+      create table private.authoring_workspace_observations(
+        id uuid primary key,
+        workspace_id uuid not null,
+        kind text not null
+      );
+      create table private.authoring_workspace_observation_receipts(
+        actor_id uuid not null,
+        request_id text not null,
+        workspace_id uuid not null,
+        primary key(actor_id,request_id)
+      );
+    `);
+  }
+  await bridge.query(
+    "insert into private.authoring_workspace_observations values($1,$2,'note')",
+    ["70000000-0000-4000-8000-000000000001", WORKSPACES[0]]
+  );
+  await bridge.query(
+    "insert into private.authoring_workspace_observation_receipts values($1,'request.bridge.01',$2)",
+    [OWNER, WORKSPACES[0]]
+  );
+  await applyMigration(bridge);
+  assert.equal(await scalar(bridge, `
+    select count(*)::integer value from private.authoring_workspace_observations
+    where kind='note'
+  `), 1);
+  assert.equal(await scalar(bridge, `
+    select count(*)::integer value
+    from private.authoring_workspace_observation_receipts
+  `), 1);
+
+  await audit.query(
+    "insert into private.authoring_workspace_observations values($1,$2,'audit_finding')",
+    ["70000000-0000-4000-8000-000000000002", WORKSPACES[0]]
+  );
+  await assert.rejects(applyMigration(audit), /#125|Achados de auditoria/u);
+  await audit.exec("rollback");
+  assert.equal(await scalar(audit, `
+    select count(*)::integer value from private.authoring_workspace_observations
+    where kind='audit_finding'
+  `), 1);
+
+  await experiment.exec("insert into private.authoring_experiments values(1)");
+  await assert.rejects(applyMigration(experiment), /experimental|#122/iu);
+  await experiment.exec("rollback");
+
+  await unknown.exec(`
+    create table private.unknown_workspace_state(
+      id bigint primary key,
+      workspace_id uuid not null
+    );
+  `);
+  await unknown.query(
+    "insert into private.unknown_workspace_state values(1,$1)",
+    [WORKSPACES[0]]
+  );
+  await assert.rejects(applyMigration(unknown), /workspace-scoped sem conversor/u);
+  await unknown.exec("rollback");
+});
 
 test("migra a topologia 4/2/2, preserva UUID e isola todos os nomes legacy", async () => {
   const database = await legacyDatabase();
@@ -1427,22 +1511,32 @@ test("estado pessoal valida instantes ISO-Z sem depender da sessão", async () =
   await database.close();
 });
 
-test("estado JS atravessa a RPC e edição preserva evidência órfã sem inflar o Estudo", async () => {
+test("estado JS v2 atravessa a fronteira e preserva evidência órfã sem inflar o Estudo", async () => {
   const database = await legacyDatabase();
   await applyMigration(database);
   await actor(database, OWNER);
   const requestIds = [
     "51000000-0000-4000-8000-000000000010",
-    "51000000-0000-4000-8000-000000000011",
-    "51000000-0000-4000-8000-000000000012"
+    "51000000-0000-4000-8000-000000000011"
   ];
   const repository = new CoursePersonalStateRepository({
     courseId: COURSES[0],
     api: {
       async loadPersonalState(courseId) {
-        return scalar(database, `
+        const legacy = await scalar(database, `
           select public.load_course_personal_state_v1($1) as value
         `, [courseId]);
+        return legacy == null ? null : {
+          contract: "aralearn.course-personal-state.v2",
+          courseId: legacy.courseId,
+          revision: legacy.revision,
+          state: {
+            version: 2,
+            progress: legacy.state.progress,
+            reviewMarks: legacy.state.reviewMarks
+          },
+          updatedAt: legacy.updatedAt
+        };
       },
       async mutatePersonalState({
         courseId, expectedRevision, operations, requestId
@@ -1460,7 +1554,10 @@ test("estado JS atravessa a RPC e edição preserva evidência órfã sem inflar
         id: "module-a",
         lessons: [{
           id: "lesson-a",
-          microsequences: [{ id: "micro-a", cards: [{ id: "card-a", title: "Unidade A" }] }]
+          microsequences: [{
+            id: "micro-a",
+            studyUnits: [{ id: "card-a", title: "Unidade A" }]
+          }]
         }]
       }]
     },
@@ -1477,15 +1574,17 @@ test("estado JS atravessa a RPC e edição preserva evidência órfã sem inflar
   await repository.initialize();
   await repository.setStudyUnitCompleted(reference, true);
   await repository.setStudyUnitReviewMark(reference, true);
-  await repository.saveCommentForPath(reference, {
-    category: "possible_error",
-    body: "Conferir o vínculo entre a explicação e a fonte."
-  });
+  await repository.refresh();
 
   const persistedBeforeEdit = await scalar(database, `
-    select state as value from public.course_personal_states
+    select jsonb_build_object(
+      'version',2,
+      'progress',state->'progress',
+      'reviewMarks',state->'reviewMarks'
+    ) as value from public.course_personal_states
     where user_id=$1 and course_id=$2
   `, [OWNER, COURSES[0]]);
+  assert.equal(persistedBeforeEdit.version, 2);
   assert.deepEqual(persistedBeforeEdit.progress.lessons["lesson-a"], {
     cursorStudyUnitId: "card-a",
     completedStudyUnitIds: ["card-a"]
@@ -1510,13 +1609,16 @@ test("estado JS atravessa a RPC e edição preserva evidência órfã sem inflar
   assert.equal(list.items.find(({ courseId }) =>
     courseId === COURSES[0]).completedStudyUnitCount, 0);
   const persistedAfterEdit = await scalar(database, `
-    select state as value from public.course_personal_states
+    select jsonb_build_object(
+      'version',2,
+      'progress',state->'progress',
+      'reviewMarks',state->'reviewMarks'
+    ) as value from public.course_personal_states
     where user_id=$1 and course_id=$2
   `, [OWNER, COURSES[0]]);
   assert.deepEqual(persistedAfterEdit, persistedBeforeEdit);
   assert.equal(persistedAfterEdit.reviewMarks["card-a"],
     "2026-08-17T12:00:00.000Z");
-  assert.equal(persistedAfterEdit.observations["card-a"].category, "possible_error");
   const reviewQueue = await scalar(database, `
     select public.list_course_review_items_v1(50,null,null,null) as value
   `);

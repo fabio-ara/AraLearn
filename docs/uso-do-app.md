@@ -19,16 +19,17 @@ publicação para ser estudado.
 
 ### Estudo
 
-Estudo lê Cursos próprios e Cursos com acesso direto. Ele altera somente o
-estado pessoal: progresso, marcas para rever e observações.
+Estudo lê Cursos próprios e Cursos com acesso direto. Ele altera o próprio
+estado pessoal — progresso e marcas para rever — e permite criar Anotações
+ancoradas próprias em Unidades de estudo.
 
 ### Autoria
 
 Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
 e editar planejamento e Partes, configurar Parâmetros, manter Fontes e Âncoras,
-percorrer a composição em uma sequência vertical, copiar um pedido de
-materialização para o chat conectado e gerir acesso. O MCP autoral possui a
-mesma restrição de propriedade e opera o mesmo estado persistido.
+percorrer a composição em uma sequência vertical, triar Observações, copiar um
+pedido de materialização para o chat conectado e gerir acesso. O MCP autoral
+possui a mesma restrição de propriedade e opera o mesmo estado persistido.
 
 ### Réplica local
 
@@ -133,13 +134,15 @@ diretos aos alvos marcados. Use novamente o ícone para retirar a marca.
 ## Registrar uma observação
 
 1. Na Unidade, use **Observação**.
-2. Escolha Dúvida, Possível erro, Confuso, Sugestão ou Observação.
-3. Escreva até 1.000 caracteres.
+2. Escolha Dúvida, Possível erro, Trecho confuso, Sugestão ou Sem categoria.
+3. Escreva até 2.000 escalares Unicode e 16 KiB em UTF-8.
 4. Salve.
 
-Abra novamente para editar ou retirar. A observação é pessoal e ancorada à
-Unidade. A nova fila de triagem e correção autoral ainda não está implementada;
-salvar não significa que houve reparo.
+É possível criar várias observações na mesma Unidade. Abra um item para editar
+ou retirar e consulte categoria, estado, sincronização e eventual resposta. A
+Anotação ancorada usa persistência própria, separada do estado pessoal v2, e
+chega à caixa de entrada do proprietário. Colegas não a recebem. Salvar,
+responder ou resolver não significa que houve correção ou verificação.
 
 ## Zerar o progresso
 
@@ -272,6 +275,19 @@ revisão, escopo, âncora ou cursor, direção e limites. Ela a identifica como
 offline ou desatualizada e não inventa uma página aproximada. Revogação de autoridade
 purga esse cache na próxima validação online.
 
+## Triar Observações na Autoria
+
+Abra **Observações**, a sétima área do Curso, para consultar a caixa de entrada
+única. Use sínteses e filtros e siga o link profundo até o alvo ou detalhe. No
+detalhe, as capacidades disponíveis permitem considerar, responder, resolver,
+reabrir, retirar, revisar o registro ou corrigir seus assuntos.
+
+Uma anotação autoral pode ser criada no Curso, Módulo, Lição, Tópico ou
+Microssequência. Para uma Unidade, use **Anotar** na **Inspeção**. A
+classificação automática escolhe assunto somente quando o alvo é exatamente um
+Tópico; toda seleção diferente é uma correção humana explícita, nunca inferência
+pela prosa.
+
 ## Conceder acesso
 
 1. Em Autoria, abra um Curso próprio.
@@ -309,10 +325,14 @@ alteração do plano e uma alteração da composição são comandos separados. 
 
 ## Trabalhar sem conexão
 
-Conteúdo já carregado pode ser estudado offline. Progresso, marcas e observações
-entram numa fila por Curso. Quando a conexão retorna, o repositório compara a
-revisão remota, reconcilia as operações locais e tenta novamente de forma
-limitada.
+Conteúdo já carregado pode ser estudado offline. Progresso e marcas usam a fila
+do estado pessoal; observações usam uma outbox separada, com cache próprio.
+Quando a conexão retorna, cada repositório compara sua versão remota, reconcilia
+as operações locais e tenta novamente de forma limitada. Duas abas trocam
+somente a versão aplicável àquela conta e IDs de anotações e releem o IndexedDB;
+texto bruto não passa por essa mensagem e um rascunho aberto não é sobrescrito.
+No Estudo, a versão é privada e monotônica por pessoa/Curso: atividade de outra
+pessoa não muda o contador nem aparece como conflito ou sinal indireto.
 
 Não limpe dados, desinstale nem troque de navegador antes da sincronização se
 houver alterações importantes. A Home pode mostrar Cursos conhecidos sem
@@ -340,8 +360,7 @@ deve ser usada como forma de sair.
 O runtime canônico desta revisão não apresenta como concluídos:
 
 - edição contextual completa de Unidades;
-- observações autorais reunidas e Anotação ancorada da #124;
-- achados, correção, revisão e verificação da #125;
+- achados de auditoria, correção, revisão e verificação independente;
 - variantes experimentais;
 - analytics de Autoria;
 - disponibilização pública.

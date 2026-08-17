@@ -454,9 +454,31 @@ begin
 end;
 $reject_unconverted_course_experiment_state$;
 
+-- Achados possuem subgrafo próprio de auditoria e só ganham conversor em #125.
+-- Notas comuns podem atravessar intactas para a autoridade de observações de
+-- #124, mas um achado ativo precisa impedir este corte em vez de ser achatado.
+do $reject_unconverted_authoring_audit_findings$
+declare
+  v_has_audit_finding boolean := false;
+begin
+  if to_regclass('private.authoring_workspace_observations') is not null then
+    execute 'select exists(
+      select 1 from private.authoring_workspace_observations
+      where kind = ''audit_finding''
+    )' into v_has_audit_finding;
+  end if;
+  if v_has_audit_finding then
+    raise exception 'Achados de auditoria exigem o conversor de #125 ou exportação antes do corte de Curso.'
+      using errcode = '55000';
+  end if;
+end;
+$reject_unconverted_authoring_audit_findings$;
+
 -- Catch any other private table directly scoped by an active workspace. Only
--- the five explicitly converted/retired sources and trail identity may carry
--- rows into this cutover.
+-- the explicitly converted/retired sources, trail identity and the two
+-- observation relations staged for the next canonical migration may carry
+-- rows into this cutover. The observation tables stay private and revoked;
+-- #124 converts notes, while the explicit preflight above rejects findings.
 do $reject_unclassified_workspace_scoped_state$
 declare
   v_relation record;
@@ -480,6 +502,8 @@ begin
         'authoring_workspace_events',
         'authoring_workspace_requests',
         'authoring_workspace_publications',
+        'authoring_workspace_observations',
+        'authoring_workspace_observation_receipts',
         'educational_workspace_members',
         'trail_items'
       )

@@ -1,5 +1,12 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 import { normalizeCourseAuthoringPlanCommand } from "../domain/courseAuthoringPlan.js";
+import {
+  normalizeCourseAnchoredAnnotationChange,
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseAnchoredAnnotationPage,
+  normalizeCourseAnchoredAnnotationQuery,
+  normalizeCourseAnchoredAnnotationReadOptions
+} from "../domain/courseAnchoredAnnotations.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
   normalizeCourseSourceAttributionApplication,
@@ -407,6 +414,133 @@ function storageObjectPath(objectKey) {
   return normalized.split("/").map(encodeURIComponent).join("/");
 }
 
+function defaultAnchoredAnnotationQuery(mode = "inbox") {
+  return {
+    mode,
+    origins: [],
+    channels: [],
+    states: [],
+    categories: [],
+    includeUncategorized: true,
+    subjectIds: [],
+    hierarchy: null,
+    annotationId: null
+  };
+}
+
+function anchoredAnnotationReadOptions(value = {}) {
+  const source = exactObject(value, new Set([
+    "expectedCourseRevision", "annotationSetVersion", "query", "cursor", "limit"
+  ]), "Leitura de observações");
+  return normalizeCourseAnchoredAnnotationReadOptions({
+    expectedCourseRevision: source.expectedCourseRevision,
+    annotationSetVersion: source.annotationSetVersion ?? null,
+    query: source.query ?? defaultAnchoredAnnotationQuery(),
+    cursor: source.cursor ?? null,
+    limit: source.limit ?? 12
+  });
+}
+
+function anchoredAnnotationMutation(value = {}) {
+  const source = exactObject(value, new Set([
+    "requestId", "courseId", "expectedCourseRevision", "command"
+  ]), "Alteração de observação");
+  const command = normalizeCourseAnchoredAnnotationCommand(source.command);
+  const requiresCourseRevision = new Set([
+    "create_anchored_annotation",
+    "correct_anchored_annotation_subjects"
+  ]).has(command.type);
+  const expectedCourseRevision = source.expectedCourseRevision ?? null;
+  if (requiresCourseRevision) {
+    positiveInteger(expectedCourseRevision, "Versão do Curso");
+  } else if (expectedCourseRevision !== null) {
+    throw new TypeError("Este comando usa somente a versão da observação.");
+  }
+  return {
+    requestId: requestIdentity(source.requestId ?? createUuid()),
+    courseId: uuid(source.courseId, "Curso"),
+    expectedCourseRevision,
+    command
+  };
+}
+
+function boundAnchoredAnnotationPage(value, { courseId, options }) {
+  const page = normalizeCourseAnchoredAnnotationPage(value);
+  if (page.courseId !== courseId ||
+      page.courseRevision !== options.expectedCourseRevision ||
+      options.annotationSetVersion !== null &&
+        page.annotationSetVersion !== options.annotationSetVersion ||
+      JSON.stringify(normalizeCourseAnchoredAnnotationQuery(page.query)) !==
+        JSON.stringify(options.query) ||
+      page.items.some((annotation) => annotation.courseId !== courseId)) {
+    throw new TypeError("A leitura de observações não corresponde ao pedido.");
+  }
+  return page;
+}
+
+function boundAnchoredAnnotationChange(value, mutation, {
+  expectedOrigin = null,
+  expectedChannel = null
+} = {}) {
+  const change = normalizeCourseAnchoredAnnotationChange(value);
+  const annotation = change.annotation;
+  if (change.courseId !== mutation.courseId || change.requestId !== mutation.requestId ||
+      mutation.expectedCourseRevision !== null && (
+        change.idempotent
+          ? change.courseRevision < mutation.expectedCourseRevision
+          : change.courseRevision !== mutation.expectedCourseRevision
+      ) ||
+      annotation !== null && (
+        annotation.courseId !== mutation.courseId ||
+        annotation.annotationId !== mutation.command.annotationId
+      ) ||
+      mutation.command.type === "create_anchored_annotation" && annotation !== null && (
+        annotation.target.kind !== mutation.command.target.kind ||
+        annotation.target.id !== mutation.command.target.id ||
+        expectedOrigin !== null && annotation.provenance.origin !== expectedOrigin ||
+        expectedChannel !== null && annotation.provenance.channel !== expectedChannel
+      )) {
+    throw new TypeError("A confirmação da observação não corresponde ao comando.");
+  }
+  return change;
+}
+
+function personalStateEnvelope(value, courseId) {
+  if (value === null) return null;
+  const envelope = exactObject(value, new Set([
+    "contract", "courseId", "revision", "state", "updatedAt"
+  ]), "Estado pessoal remoto");
+  const state = exactObject(envelope.state, new Set([
+    "version", "progress", "reviewMarks"
+  ]), "Estado pessoal remoto");
+  if (Object.keys(envelope).length !== 5 || Object.keys(state).length !== 3 ||
+      envelope.contract !== "aralearn.course-personal-state.v2" ||
+      uuid(envelope.courseId, "Curso do estado pessoal") !== courseId ||
+      positiveInteger(envelope.revision, "Revisão do estado pessoal") !== envelope.revision ||
+      state.version !== 2 || !state.progress || typeof state.progress !== "object" ||
+      Array.isArray(state.progress) || !state.reviewMarks ||
+      typeof state.reviewMarks !== "object" || Array.isArray(state.reviewMarks)) {
+    throw new TypeError("Estado pessoal remoto inválido.");
+  }
+  timestamp(envelope.updatedAt, "Atualização do estado pessoal");
+  return structuredClone(envelope);
+}
+
+function personalStateMutationResult(value, courseId, expectedRevision) {
+  const result = exactObject(value, new Set([
+    "courseId", "revision", "updatedAt", "idempotent"
+  ]), "Confirmação do estado pessoal");
+  if (Object.keys(result).length !== 4 ||
+      uuid(result.courseId, "Curso confirmado") !== courseId ||
+      !Number.isSafeInteger(result.revision) || result.revision <= expectedRevision ||
+      (!result.idempotent && result.revision !== expectedRevision + 1) ||
+      typeof result.idempotent !== "boolean") {
+    throw new TypeError("Confirmação do estado pessoal inválida.");
+  }
+  timestamp(result.updatedAt, "Atualização confirmada do estado pessoal");
+  return structuredClone(result);
+}
+
 export class CourseApiClient {
   constructor({ projectUrl, publishableKey, authClient, fetchImpl = globalThis.fetch } = {}) {
     if (!authClient || typeof authClient.getAccessToken !== "function") {
@@ -518,28 +652,106 @@ export class CourseApiClient {
     return result;
   }
 
-  loadPersonalState(courseId) {
-    return this.rpc("load_course_personal_state_v1", {
-      p_course_id: uuid(courseId, "Curso")
+  async getMyCourseAnchoredAnnotations(courseId, value = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const options = anchoredAnnotationReadOptions(value);
+    const query = options.query;
+    if (query.mode !== "target" || query.hierarchy?.target.kind !== "study_unit" ||
+        query.hierarchy.includeDescendants || query.annotationId !== null ||
+        query.origins.length || query.channels.length || query.states.length ||
+        query.categories.length || query.subjectIds.length || !query.includeUncategorized) {
+      throw new TypeError("A leitura de Estudo aceita somente a observação da Unidade atual.");
+    }
+    const result = await this.rpc("get_my_course_anchored_annotations_v1", {
+      p_course_id: normalizedCourseId,
+      p_expected_course_revision: options.expectedCourseRevision,
+      p_annotation_set_version: options.annotationSetVersion,
+      p_target_kind: query.hierarchy.target.kind,
+      p_target_id: query.hierarchy.target.id,
+      p_cursor: options.cursor,
+      p_limit: options.limit
+    });
+    return boundAnchoredAnnotationPage(result, {
+      courseId: normalizedCourseId,
+      options
     });
   }
 
-  mutatePersonalState({ courseId, expectedRevision, operations, requestId = createUuid() }) {
+  async executeMyCourseAnchoredAnnotationCommand(value = {}) {
+    const mutation = anchoredAnnotationMutation(value);
+    if (!new Set([
+      "create_anchored_annotation",
+      "revise_anchored_annotation",
+      "withdraw_anchored_annotation"
+    ]).has(mutation.command.type) ||
+        mutation.command.type === "create_anchored_annotation" &&
+          mutation.command.target.kind !== "study_unit") {
+      throw new TypeError("O comando de observação não pertence à experiência de Estudo.");
+    }
+    const result = await this.rpc("execute_my_course_anchored_annotation_command_v1", {
+      p_course_id: mutation.courseId,
+      p_expected_course_revision: mutation.expectedCourseRevision,
+      p_command: mutation.command,
+      p_request_id: mutation.requestId
+    });
+    return boundAnchoredAnnotationChange(result, mutation, {
+      expectedOrigin: "learner",
+      expectedChannel: "study_interface"
+    });
+  }
+
+  async loadPersonalState(courseId) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const result = await this.rpc("load_course_personal_state_v2", {
+      p_course_id: normalizedCourseId
+    });
+    return personalStateEnvelope(result, normalizedCourseId);
+  }
+
+  async mutatePersonalState({ courseId, expectedRevision, operations, requestId = createUuid() }) {
     if (!Array.isArray(operations) || operations.length < 1 || operations.length > 512) {
       throw new TypeError("Operações do estado pessoal inválidas.");
     }
     const normalizedOperations = structuredClone(operations);
+    for (const operation of normalizedOperations) {
+      const kind = operation?.kind;
+      const allowed = new Set(kind === "set"
+        ? ["kind", "collection", "path", "value"]
+        : ["kind", "collection", "path"]);
+      if (!operation || typeof operation !== "object" || Array.isArray(operation) ||
+          Object.keys(operation).some((field) => !allowed.has(field)) ||
+          Object.keys(operation).length !== allowed.size ||
+          !new Set(["set", "delete"]).has(kind) ||
+          !new Set(["progress.lessons", "reviewMarks"]).has(operation.collection) ||
+          typeof operation.path !== "string" || operation.path !== operation.path.trim() ||
+          !operation.path || [...operation.path].length > 240 ||
+          new TextEncoder().encode(operation.path).byteLength > 960 ||
+          hasControlCharacter(operation.path)) {
+        throw new TypeError("Operações do estado pessoal inválidas.");
+      }
+    }
     if (new TextEncoder().encode(JSON.stringify(normalizedOperations)).byteLength > 65_536) {
       throw new TypeError("Operações do estado pessoal excedem o limite.");
     }
-    return this.rpc("mutate_course_personal_state_v1", {
-      p_course_id: uuid(courseId, "Curso"),
-      p_expected_revision: positiveInteger(expectedRevision, "Versão do estado pessoal", {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const normalizedExpectedRevision = positiveInteger(
+      expectedRevision,
+      "Versão do estado pessoal",
+      {
         minimum: 0
-      }),
+      }
+    );
+    const result = await this.rpc("mutate_course_personal_state_v2", {
+      p_course_id: normalizedCourseId,
+      p_expected_revision: normalizedExpectedRevision,
       p_operations: normalizedOperations,
       p_request_id: uuid(requestId, "Identidade da alteração")
     });
+    return personalStateMutationResult(
+      result,
+      normalizedCourseId,
+      normalizedExpectedRevision
+    );
   }
 
   async executeCourseAction(name, argumentsValue = {}) {
@@ -616,6 +828,39 @@ export class CourseApiClient {
       throw new TypeError("A leitura de Fontes não corresponde ao pedido.");
     }
     return result;
+  }
+
+  async loadCourseAnchoredAnnotations(courseId, value = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const options = anchoredAnnotationReadOptions(value);
+    const query = options.query;
+    const result = await this.executeCourseAction("lerCurso", {
+      courseId: normalizedCourseId,
+      view: "anchored_annotations",
+      expectedRevision: options.expectedCourseRevision,
+      annotationSetVersion: options.annotationSetVersion,
+      mode: query.mode,
+      origins: query.origins,
+      channels: query.channels,
+      states: query.states,
+      categories: query.categories,
+      includeUncategorized: query.includeUncategorized,
+      subjectIds: query.subjectIds,
+      ...(query.hierarchy === null
+        ? {}
+        : {
+            targetKind: query.hierarchy.target.kind,
+            targetId: query.hierarchy.target.id,
+            includeDescendants: query.hierarchy.includeDescendants
+          }),
+      ...(query.annotationId === null ? {} : { annotationId: query.annotationId }),
+      cursor: options.cursor,
+      limit: options.limit
+    });
+    return boundAnchoredAnnotationPage(result, {
+      courseId: normalizedCourseId,
+      options
+    });
   }
 
   loadAuthoringOutline(courseId) {
@@ -751,6 +996,23 @@ export class CourseApiClient {
       throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
     }
     return result;
+  }
+
+  async mutateCourseAnchoredAnnotations(value = {}) {
+    const mutation = anchoredAnnotationMutation(value);
+    const result = await this.executeCourseAction("alterarCurso", {
+      requestId: mutation.requestId,
+      courseId: mutation.courseId,
+      ...(mutation.expectedCourseRevision === null
+        ? {}
+        : { expectedRevision: mutation.expectedCourseRevision }),
+      operation: "update_anchored_annotations",
+      annotationCommand: mutation.command
+    });
+    return boundAnchoredAnnotationChange(result, mutation, {
+      expectedOrigin: "author",
+      expectedChannel: "authoring_interface"
+    });
   }
 
   advanceAuthoringPartMaterialization({

@@ -186,7 +186,7 @@ try {
     ["list_courses_v1", { p_query: null, p_limit: 1, p_before_updated_at: null, p_before_id: null }],
     ["list_owned_courses_v1", { p_query: null, p_limit: 1, p_before_updated_at: null, p_before_id: null }],
     ["get_course_v1", { p_course_id: crypto.randomUUID() }],
-    ["load_course_personal_state_v1", { p_course_id: crypto.randomUUID() }],
+    ["load_course_personal_state_v2", { p_course_id: crypto.randomUUID() }],
   ]) {
     assertDenied(
       await request(`/rest/v1/rpc/${name}`, { method: "POST", body }),
@@ -1172,12 +1172,12 @@ try {
     p_request_id: personalRequestId,
   };
   const learnerState = await rpc(
-    "mutate_course_personal_state_v1",
+    "mutate_course_personal_state_v2",
     personalArguments,
     learnerToken,
   );
   const replayedLearnerState = await rpc(
-    "mutate_course_personal_state_v1",
+    "mutate_course_personal_state_v2",
     personalArguments,
     learnerToken,
   );
@@ -1185,17 +1185,163 @@ try {
   assert.equal(learnerState.idempotent, false);
   assert.equal(replayedLearnerState.idempotent, true);
   assert.equal(
-    await rpc("load_course_personal_state_v1", { p_course_id: courseId }, ownerToken),
+    await rpc("load_course_personal_state_v2", { p_course_id: courseId }, ownerToken),
     null,
   );
   const loadedLearnerState = await rpc(
-    "load_course_personal_state_v1",
+    "load_course_personal_state_v2",
     { p_course_id: courseId },
     learnerToken,
   );
+  assert.equal(loadedLearnerState.contract, "aralearn.course-personal-state.v2");
+  assert.equal(loadedLearnerState.state.version, 2);
+  assert.equal(Object.hasOwn(loadedLearnerState.state, "observations"), false);
   assert.equal(
     loadedLearnerState.state.reviewMarks["module-smoke"],
     "2026-08-17T12:00:00Z",
+  );
+
+  const learnerAnnotationId = crypto.randomUUID();
+  const learnerAnnotationRequestId = crypto.randomUUID();
+  const learnerAnnotation = await rpc(
+    "execute_my_course_anchored_annotation_command_v1",
+    {
+      p_course_id: courseId,
+      p_expected_course_revision: removedStudyUnit.data.revision,
+      p_command: {
+        type: "create_anchored_annotation",
+        annotationId: learnerAnnotationId,
+        target: { kind: "study_unit", id: "study-unit-smoke-2" },
+        rawText: "A formulação desta Unidade parece ambígua.",
+        category: "confusing",
+        capturedAt: null,
+        briefSummary: null,
+      },
+      p_request_id: learnerAnnotationRequestId,
+    },
+    learnerToken,
+  );
+  assert.equal(learnerAnnotation.annotation.annotationId, learnerAnnotationId);
+  assert.equal(learnerAnnotation.annotation.provenance.origin, "learner");
+  assert.equal(learnerAnnotation.annotation.provenance.channel, "study_interface");
+
+  const ownerAnnotations = await courseAction("lerCurso", {
+    courseId,
+    view: "anchored_annotations",
+    expectedRevision: removedStudyUnit.data.revision,
+    annotationSetVersion: null,
+    mode: "target",
+    states: ["open"],
+    targetKind: "study_unit",
+    targetId: "study-unit-smoke-2",
+    includeDescendants: false,
+    cursor: null,
+    limit: 12,
+  }, ownerToken);
+  assert.equal(
+    ownerAnnotations.data.contract,
+    "aralearn.course-anchored-annotation-page.v1",
+  );
+  const protectedLearnerAnnotation = ownerAnnotations.data.items.find(
+    ({ annotationId }) => annotationId === learnerAnnotationId,
+  );
+  assert.equal(protectedLearnerAnnotation.contributor.kind, "protected_person");
+  assert.match(protectedLearnerAnnotation.contributor.ref, /^person-[0-9a-f]{16}$/u);
+  assert.equal(protectedLearnerAnnotation.contributor.ref.includes(learner.id), false);
+  assert.equal("email" in protectedLearnerAnnotation.contributor, false);
+  assert.equal(protectedLearnerAnnotation.rawText, learnerAnnotation.annotation.rawText);
+
+  const answeredAnnotation = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "respond_to_anchored_annotation",
+      annotationId: learnerAnnotationId,
+      expectedAnnotationVersion: protectedLearnerAnnotation.annotationVersion,
+      ownerResponse: "Revisei a formulação e registrei a explicação.",
+    },
+  }, ownerToken);
+  assert.equal(answeredAnnotation.data.annotation.ownerResponse.text,
+    "Revisei a formulação e registrei a explicação.");
+
+  const authorAnnotationId = crypto.randomUUID();
+  const authorAnnotation = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: removedStudyUnit.data.revision,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "create_anchored_annotation",
+      annotationId: authorAnnotationId,
+      target: { kind: "study_unit", id: "study-unit-smoke-2" },
+      rawText: "Verificar esta passagem na próxima revisão.",
+      category: "suggestion",
+      capturedAt: null,
+      briefSummary: null,
+    },
+  }, ownerToken);
+  assert.equal(authorAnnotation.data.annotation.provenance.origin, "author");
+  assert.equal(
+    authorAnnotation.data.annotation.provenance.channel,
+    "authoring_interface",
+  );
+
+  const foreignAnnotationProbes = [];
+  for (const [annotationId, expectedAnnotationVersion] of [
+    [crypto.randomUUID(), 1],
+    [authorAnnotationId, 999],
+    [authorAnnotationId, authorAnnotation.data.annotation.annotationVersion],
+  ]) {
+    foreignAnnotationProbes.push(await request(
+      "/rest/v1/rpc/execute_my_course_anchored_annotation_command_v1",
+      {
+        method: "POST",
+        token: learnerToken,
+        body: {
+          p_course_id: courseId,
+          p_expected_course_revision: null,
+          p_command: {
+            type: "revise_anchored_annotation",
+            annotationId,
+            expectedAnnotationVersion,
+            rawText: "Tentativa sem autoridade.",
+            category: null,
+            briefSummary: null,
+          },
+          p_request_id: crypto.randomUUID(),
+        },
+      },
+    ));
+  }
+  assert.deepEqual(
+    foreignAnnotationProbes.map(({ response }) => response.status),
+    [404, 404, 404],
+  );
+  assert.deepEqual(
+    foreignAnnotationProbes.map(({ payload: value }) => value),
+    [
+      foreignAnnotationProbes[0].payload,
+      foreignAnnotationProbes[0].payload,
+      foreignAnnotationProbes[0].payload,
+    ],
+  );
+  assert.equal(
+    foreignAnnotationProbes[0].payload?.code,
+    "course_anchored_annotation_not_found",
+  );
+  const unchangedAuthorAnnotation = await courseAction("lerCurso", {
+    courseId,
+    view: "anchored_annotations",
+    expectedRevision: removedStudyUnit.data.revision,
+    annotationSetVersion: null,
+    mode: "detail",
+    annotationId: authorAnnotationId,
+    limit: 1,
+  }, ownerToken);
+  assert.equal(
+    unchangedAuthorAnnotation.data.items[0].annotationVersion,
+    authorAnnotation.data.annotation.annotationVersion,
   );
 
   const revoked = await courseAction("gerirPessoas", {
@@ -1232,16 +1378,34 @@ try {
   );
   assert.equal(revokedCitations.payload?.code, "PT404");
   assertDenied(
-    await request("/rest/v1/rpc/load_course_personal_state_v1", {
+    await request("/rest/v1/rpc/load_course_personal_state_v2", {
       method: "POST",
       token: learnerToken,
       body: { p_course_id: courseId },
     }),
     "revogação retira acesso sem misturar o estado pessoal",
   );
+  const revokedAnnotations = await request(
+    "/rest/v1/rpc/get_my_course_anchored_annotations_v1",
+    {
+      method: "POST",
+      token: learnerToken,
+      body: {
+        p_course_id: courseId,
+        p_expected_course_revision: removedStudyUnit.data.revision,
+        p_annotation_set_version: null,
+        p_target_kind: "study_unit",
+        p_target_id: "study-unit-smoke-2",
+        p_cursor: null,
+        p_limit: 12,
+      },
+    },
+  );
+  assertDenied(revokedAnnotations, "revogação retira leitura de observações");
+  assert.equal(revokedAnnotations.payload?.code, "PT404");
 
   console.log(
-    "Smoke local de Curso: Fontes, proveniência, citações redigidas, RLS e estado pessoal aprovados.",
+    "Smoke local de Curso: Fontes, observações situadas, citações, RLS e estado pessoal aprovados.",
   );
 } finally {
   await removeLocalUser(learner?.id);

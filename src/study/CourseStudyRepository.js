@@ -3,6 +3,7 @@ import {
   validateProgressDocument
 } from "../storage/progressStore.js";
 import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
+import { CourseAnnotationRepository } from "../persistence/CourseAnnotationRepository.js";
 import { normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
 import { findCourse } from "./CourseStudyNavigation.js";
 
@@ -83,6 +84,11 @@ function courseAccessRevoked(error) {
   if (courseRevisionConflict(error)) return false;
   const status = Number(error?.status || error?.response?.status || 0);
   const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  if (new Set([
+    "ANNOTATION_NOT_FOUND", "ANCHORED_ANNOTATION_NOT_FOUND", "ANNOTATION_TARGET_NOT_FOUND",
+    "COURSE_ANCHORED_ANNOTATION_NOT_FOUND", "COURSE_ANCHORED_ANNOTATION_TARGET_NOT_FOUND",
+    "TARGET_NOT_FOUND"
+  ]).has(code)) return false;
   return error?.authRequired !== true && status !== 401 && (
     status === 403 || status === 404 || code === "42501" || code === "PT404"
   );
@@ -105,6 +111,7 @@ export class CourseStudyRepository {
     this.clock = clock;
     this.project = { contract: COURSE_DOCUMENT_CONTRACT, courses: [] };
     this.personalByCourseId = new Map();
+    this.annotationsByCourseId = new Map();
     this.loadedCourseById = new Map();
     this.courseList = [];
     this.reviewItems = [];
@@ -185,7 +192,13 @@ export class CourseStudyRepository {
     for (const courseId of revoked) {
       const personal = this.personalByCourseId.get(courseId);
       if (personal) await personal.clearLocal();
+      const annotations = this.annotationsByCourseId.get(courseId);
+      if (annotations) {
+        await annotations.clearLocal();
+        annotations.close();
+      }
       this.personalByCourseId.delete(courseId);
+      this.annotationsByCourseId.delete(courseId);
       this.loadedCourseById.delete(courseId);
       this.courseList = this.courseList.filter((item) => item.courseId !== courseId);
       this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
@@ -221,6 +234,12 @@ export class CourseStudyRepository {
       if (retained.has(courseId)) continue;
       if (listed.offline) continue;
       await personal.clearLocal();
+      const annotations = this.annotationsByCourseId.get(courseId);
+      if (annotations) {
+        await annotations.clearLocal();
+        annotations.close();
+        this.annotationsByCourseId.delete(courseId);
+      }
       await this.bridge.clearCourse(courseId);
       this.personalByCourseId.delete(courseId);
       this.loadedCourseById.delete(courseId);
@@ -285,6 +304,21 @@ export class CourseStudyRepository {
       this.personalByCourseId.set(courseId, personal);
     } else {
       personal.setCourse(loaded.course);
+    }
+    let annotations = this.annotationsByCourseId.get(courseId);
+    if (!annotations && typeof this.api.getMyCourseAnchoredAnnotations === "function" &&
+        typeof this.api.executeMyCourseAnchoredAnnotationCommand === "function") {
+      annotations = new CourseAnnotationRepository({
+        courseId,
+        courseRevision: loaded.revision,
+        api: this.api,
+        cache: this.cache,
+        clock: this.clock
+      });
+      await annotations.initialize();
+      this.annotationsByCourseId.set(courseId, annotations);
+    } else if (annotations) {
+      annotations.setCourseRevision(loaded.revision);
     }
     this.#rebuildProject();
     return clone(loaded.course);
@@ -374,6 +408,13 @@ export class CourseStudyRepository {
     return personal;
   }
 
+  #annotations(reference) {
+    const courseId = courseIdFromReference(reference);
+    const annotations = this.annotationsByCourseId.get(courseId);
+    if (!annotations) throw new Error("As observações deste Curso não estão disponíveis.");
+    return annotations;
+  }
+
   loadProgress() {
     return mergeProgress([...this.personalByCourseId.values()].map((personal) =>
       personal.loadProgress()));
@@ -459,16 +500,48 @@ export class CourseStudyRepository {
     return this.loadReviewItems();
   }
 
-  loadCommentForPath(reference) {
-    return this.#personal(reference).loadCommentForPath(reference);
+  loadAnnotationsForPath(reference) {
+    const annotations = this.annotationsByCourseId.get(courseIdFromReference(reference));
+    return annotations ? annotations.loadForTarget(reference) : [];
   }
 
-  saveCommentForPath(reference, draft) {
-    return this.#personal(reference).saveCommentForPath(reference, draft);
+  async #runAnnotationOperation(reference, operation) {
+    const id = courseIdFromReference(reference);
+    try {
+      return await operation(this.#annotations(reference));
+    } catch (error) {
+      if (courseAccessRevoked(error)) await this.#purgeRevokedCourses([id]);
+      throw error;
+    }
   }
 
-  deleteCommentForPath(reference) {
-    return this.#personal(reference).deleteCommentForPath(reference);
+  refreshAnnotationsForPath(reference) {
+    return this.#runAnnotationOperation(reference, (annotations) =>
+      annotations.refreshTarget(reference));
+  }
+
+  createAnnotationForPath(reference, draft) {
+    return this.#runAnnotationOperation(reference, (annotations) =>
+      annotations.createForTarget(reference, draft));
+  }
+
+  reviseAnnotation(reference, annotationId, draft) {
+    return this.#runAnnotationOperation(reference, (annotations) =>
+      annotations.revise(annotationId, draft));
+  }
+
+  withdrawAnnotation(reference, annotationId) {
+    return this.#runAnnotationOperation(reference, (annotations) =>
+      annotations.withdraw(annotationId));
+  }
+
+  discardFailedAnnotation(reference, annotationId) {
+    return this.#runAnnotationOperation(reference, (annotations) =>
+      annotations.discardFailed(annotationId));
+  }
+
+  subscribeToAnnotations(reference, listener) {
+    return this.#annotations(reference).subscribe(listener);
   }
 
   async refreshPersonalState() {
@@ -480,6 +553,14 @@ export class CourseStudyRepository {
           .reduce((total, entry) => total + entry.completedStudyUnitIds.length, 0);
         const summary = this.courseList.find((item) => item.courseId === courseId);
         if (summary) summary.completedStudyUnitCount = completedStudyUnitCount;
+      } catch (error) {
+        if (!courseAccessRevoked(error)) throw error;
+        revokedCourseIds.push(courseId);
+      }
+    }
+    for (const [courseId, annotations] of this.annotationsByCourseId) {
+      try {
+        await annotations.flush();
       } catch (error) {
         if (!courseAccessRevoked(error)) throw error;
         revokedCourseIds.push(courseId);
@@ -501,12 +582,22 @@ export class CourseStudyRepository {
         revokedCourseIds.push(courseId);
       }
     }
+    for (const [courseId, annotations] of this.annotationsByCourseId) {
+      try {
+        snapshots.push(await annotations.flush());
+      } catch (error) {
+        if (!courseAccessRevoked(error)) throw error;
+        revokedCourseIds.push(courseId);
+      }
+    }
     await this.#purgeRevokedCourses(revokedCourseIds);
     return snapshots;
   }
 
   async close() {
     await this.flush();
+    for (const annotations of this.annotationsByCourseId.values()) annotations.close();
+    this.annotationsByCourseId.clear();
     this.personalByCourseId.clear();
   }
 }

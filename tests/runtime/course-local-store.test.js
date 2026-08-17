@@ -59,3 +59,36 @@ test("notifica quando outra versão substitui a conexão", async () => {
   assert.match(invalidation.message, /substituído/u);
   await assert.rejects(() => store.getCache("course.v1.list:start"), /substituído/u);
 });
+
+test("atualiza uma chave em transação única sem perder escrita concorrente", async () => {
+  const store = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
+  await store.putCache("annotation:outbox", { commands: [] });
+
+  await Promise.all([
+    store.updateCache("annotation:outbox", (current) => ({
+      commands: [...current.commands, { id: "a" }]
+    })),
+    store.updateCache("annotation:outbox", (current) => ({
+      commands: [...current.commands, { id: "b" }]
+    }))
+  ]);
+
+  assert.deepEqual((await store.getCache("annotation:outbox")).commands.map(({ id }) => id), ["a", "b"]);
+  store.close();
+});
+
+test("move valores entre chaves atomicamente", async () => {
+  const store = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
+  await store.putCache("personal:v1", { observation: "texto" });
+  const result = await store.updateCaches(["personal:v1", "annotation:handoff"], (records) => ({
+    "personal:v1": null,
+    "annotation:handoff": { source: records["personal:v1"] }
+  }));
+
+  assert.equal(result["personal:v1"], null);
+  assert.deepEqual(await store.getCache("annotation:handoff"), {
+    source: { observation: "texto" }
+  });
+  assert.equal(await store.getCache("personal:v1"), null);
+  store.close();
+});

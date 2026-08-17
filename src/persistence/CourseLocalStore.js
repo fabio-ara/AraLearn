@@ -104,6 +104,66 @@ export class CourseLocalStore {
     await transactionPromise(transaction);
   }
 
+  async updateCache(key, updater) {
+    if (typeof updater !== "function") throw new TypeError("Atualizador de cache inválido.");
+    const normalizedKey = cacheKey(key);
+    const { transaction, store } = this.#store("readwrite");
+    const row = await requestPromise(store.get(normalizedKey));
+    let next;
+    try {
+      next = updater(row ? structuredClone(row.value) : null);
+      if (next && typeof next.then === "function") {
+        throw new TypeError("O atualizador de cache precisa ser síncrono.");
+      }
+      if (next == null) store.delete(normalizedKey);
+      else store.put({ key: normalizedKey, value: structuredClone(next) });
+    } catch (error) {
+      transaction.abort();
+      throw error;
+    }
+    await transactionPromise(transaction);
+    return next == null ? null : structuredClone(next);
+  }
+
+  async updateCaches(keys, updater) {
+    if (!Array.isArray(keys) || keys.length === 0 || keys.length > 64 ||
+        typeof updater !== "function") {
+      throw new TypeError("Atualização atômica de cache inválida.");
+    }
+    const normalizedKeys = keys.map(cacheKey);
+    if (new Set(normalizedKeys).size !== normalizedKeys.length) {
+      throw new TypeError("A atualização atômica repete uma chave de cache.");
+    }
+    const { transaction, store } = this.#store("readwrite");
+    const rows = await Promise.all(normalizedKeys.map((key) => requestPromise(store.get(key))));
+    const current = Object.fromEntries(normalizedKeys.map((key, index) => [
+      key,
+      rows[index] ? structuredClone(rows[index].value) : null
+    ]));
+    let next;
+    try {
+      next = updater(structuredClone(current));
+      if (next && typeof next.then === "function") {
+        throw new TypeError("O atualizador de cache precisa ser síncrono.");
+      }
+      if (!next || typeof next !== "object" || Array.isArray(next) ||
+          Object.keys(next).some((key) => !normalizedKeys.includes(key))) {
+        throw new TypeError("O atualizador devolveu um conjunto de cache inválido.");
+      }
+      for (const key of normalizedKeys) {
+        const value = Object.hasOwn(next, key) ? next[key] : current[key];
+        if (value == null) store.delete(key);
+        else store.put({ key, value: structuredClone(value) });
+        next[key] = value;
+      }
+    } catch (error) {
+      transaction.abort();
+      throw error;
+    }
+    await transactionPromise(transaction);
+    return structuredClone(next);
+  }
+
   async deleteCachePrefix(prefix) {
     const normalizedPrefix = cacheKey(prefix);
     const { transaction, store } = this.#store("readwrite");

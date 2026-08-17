@@ -27,6 +27,14 @@ import {
   normalizeSourceAttributionApplications
 } from "../aralearn/runtime/domain/courseSources.js";
 import {
+  CourseAnchoredAnnotationsError,
+  normalizeCourseAnchoredAnnotationChange,
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseAnchoredAnnotationPage,
+  normalizeCourseAnchoredAnnotationQuery,
+  normalizeCourseAnchoredAnnotationReadOptions
+} from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
+import {
   RESOURCE_CATALOG,
   RESOURCE_PACKAGE_REGISTRY
 } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
@@ -75,6 +83,7 @@ const AUTHORING_PART_STATES = new Set([
 ]);
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COMPONENT_CATALOG_OPTIONS = Object.freeze(
   RESOURCE_PACKAGE_REGISTRY.listCatalog()
     .map((manifest) => Object.freeze({
@@ -924,8 +933,20 @@ function databaseError(status, body) {
   if (status === 403 || code === "42501") {
     return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
   }
+  if (new Set([
+    "course_anchored_annotation_not_found",
+    "course_anchored_annotation_target_not_found"
+  ]).has(code)) {
+    return new AuthoringApiError(
+      404,
+      code,
+      code === "course_anchored_annotation_not_found"
+        ? "A observação situada não existe."
+        : "O alvo situado não existe neste Curso."
+    );
+  }
   if (code === "PT404") {
-    return new AuthoringApiError(404, "not_found", "O recurso solicitado não foi encontrado.");
+    return new AuthoringApiError(404, "PT404", "O recurso solicitado não foi encontrado.");
   }
   if (code === "40001") {
     return new AuthoringApiError(
@@ -966,6 +987,19 @@ function responseTooLarge() {
     "course_response_too_large",
     "A resposta do serviço de Cursos excedeu o limite seguro."
   );
+}
+
+function courseAnchoredAnnotationsResponseFailure(error) {
+  if (error instanceof AuthoringApiError && new Set([
+    "payload_too_large", "course_response_too_large"
+  ]).has(error.code)) {
+    return new AuthoringApiError(
+      413,
+      "course_anchored_annotations_response_too_large",
+      "A resposta de observações excedeu 256 KiB. Use uma página menor."
+    );
+  }
+  return error;
 }
 
 async function readBoundedResponseText(response, limitBytes) {
@@ -1069,6 +1103,28 @@ function normalizeCourseSourcesInputValue(normalize) {
   }
 }
 
+function normalizeCourseAnchoredAnnotationsDatabaseValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAnchoredAnnotationsError)) throw error;
+    throw new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O Supabase devolveu um contrato de observações inválido."
+    );
+  }
+}
+
+function normalizeCourseAnchoredAnnotationsInputValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAnchoredAnnotationsError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
 function validateComponentCatalogProjection(value) {
   const catalog = value?.componentCatalog;
   const options = Array.isArray(catalog?.options) ? catalog.options : [];
@@ -1113,6 +1169,12 @@ function authoringChannel(principal) {
   if (principal?.authenticationKind === "application") return "application";
   if (principal?.authenticationKind === "oauth") return "mcp";
   throw new AuthoringApiError(401, "authentication_required", "A origem da Autoria é inválida.");
+}
+
+function anchoredAnnotationChannel(principal) {
+  if (principal?.authenticationKind === "application") return "authoring_interface";
+  if (principal?.authenticationKind === "oauth") return "authoring_chat";
+  throw new AuthoringApiError(401, "authentication_required", "O canal da observação é inválido.");
 }
 
 function editableInstructionalPlan(value) {
@@ -1464,6 +1526,75 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  async getCourseAnchoredAnnotations({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    annotationSetVersion = null,
+    query,
+    cursor = null,
+    limit = 12,
+    deadlineAt = null
+  }) {
+    const options = normalizeCourseAnchoredAnnotationsInputValue(() =>
+      normalizeCourseAnchoredAnnotationReadOptions({
+        expectedCourseRevision,
+        annotationSetVersion,
+        query,
+        cursor,
+        limit
+      })
+    );
+    let result;
+    try {
+      result = first(await this.rpc(
+        "get_owned_course_anchored_annotations_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_expected_course_revision: options.expectedCourseRevision,
+          p_annotation_set_version: options.annotationSetVersion,
+          p_mode: options.query.mode,
+          p_origins: options.query.origins,
+          p_channels: options.query.channels,
+          p_states: options.query.states,
+          p_categories: options.query.categories,
+          p_include_uncategorized: options.query.includeUncategorized,
+          p_subject_ids: options.query.subjectIds,
+          p_target_kind: options.query.hierarchy?.target.kind ?? null,
+          p_target_id: options.query.hierarchy?.target.id ?? null,
+          p_include_descendants: options.query.hierarchy?.includeDescendants ?? false,
+          p_annotation_id: options.query.annotationId,
+          p_cursor: options.cursor,
+          p_limit: options.limit
+        },
+        {
+          deadlineAt,
+          responseLimitBytes: COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES
+        }
+      ));
+    } catch (error) {
+      throw courseAnchoredAnnotationsResponseFailure(error);
+    }
+    const normalized = normalizeCourseAnchoredAnnotationsDatabaseValue(() =>
+      normalizeCourseAnchoredAnnotationPage(result)
+    );
+    if (normalized.courseId !== courseId ||
+        normalized.courseRevision !== options.expectedCourseRevision ||
+        options.annotationSetVersion !== null &&
+          normalized.annotationSetVersion !== options.annotationSetVersion ||
+        JSON.stringify(normalizeCourseAnchoredAnnotationQuery(normalized.query)) !==
+          JSON.stringify(options.query) ||
+        normalized.items.some((annotation) => annotation.courseId !== courseId)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A leitura de observações não corresponde ao Curso e à consulta solicitados."
+      );
+    }
+    return normalized;
+  }
+
   async getCourseAuthoringPartMaterialization({
     principal,
     courseId,
@@ -1695,6 +1826,82 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "A confirmação de Fontes não corresponde ao comando solicitado."
+      );
+    }
+    return normalized;
+  }
+
+  async executeCourseAnchoredAnnotationCommand({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision,
+    command,
+    deadlineAt = null
+  }) {
+    const normalizedCommand = normalizeCourseAnchoredAnnotationsInputValue(() =>
+      normalizeCourseAnchoredAnnotationCommand(command)
+    );
+    const requiresCourseRevision = new Set([
+      "create_anchored_annotation",
+      "correct_anchored_annotation_subjects"
+    ]).has(normalizedCommand.type);
+    if (requiresCourseRevision !== (expectedCourseRevision !== null)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_course_anchored_annotation_command",
+        requiresCourseRevision
+          ? "O comando exige a revisão corrente do Curso."
+          : "O comando usa somente a versão da observação."
+      );
+    }
+    const channel = anchoredAnnotationChannel(principal);
+    let result;
+    try {
+      result = first(await this.rpc(
+        "execute_course_anchored_annotation_command_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_expected_course_revision: expectedCourseRevision,
+          p_command: normalizedCommand,
+          p_channel: channel,
+          p_request_id: requestId
+        },
+        {
+          deadlineAt,
+          timeoutMs: 40_000,
+          responseLimitBytes: COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES
+        }
+      ));
+    } catch (error) {
+      throw courseAnchoredAnnotationsResponseFailure(error);
+    }
+    const normalized = normalizeCourseAnchoredAnnotationsDatabaseValue(() =>
+      normalizeCourseAnchoredAnnotationChange(result)
+    );
+    const annotation = normalized.annotation;
+    if (normalized.courseId !== courseId || normalized.requestId !== requestId ||
+        expectedCourseRevision !== null && (
+          normalized.idempotent
+            ? normalized.courseRevision < expectedCourseRevision
+            : normalized.courseRevision !== expectedCourseRevision
+        ) ||
+        annotation !== null && (
+          annotation.courseId !== courseId ||
+          annotation.annotationId !== normalizedCommand.annotationId
+        ) ||
+        normalizedCommand.type === "create_anchored_annotation" &&
+          annotation !== null && (
+            annotation.target.kind !== normalizedCommand.target.kind ||
+            annotation.target.id !== normalizedCommand.target.id ||
+            annotation.provenance.origin !== "author" ||
+            annotation.provenance.channel !== channel
+          )) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação da observação não corresponde ao comando solicitado."
       );
     }
     return normalized;

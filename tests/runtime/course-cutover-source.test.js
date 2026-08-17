@@ -18,12 +18,12 @@ import { canonicalSha256 } from "../../scripts/courseCutover/courseCutoverImport
 import { runCourseIdentityCutover } from
   "../../scripts/courseCutover/runCourseIdentityCutover.mjs";
 
-test("ajuda descreve as seis migrations da transação hospedada", async () => {
+test("ajuda descreve as sete migrations da transação hospedada", async () => {
   const source = await fs.readFile(new URL(
     "../../scripts/courseCutover/runCourseIdentityCutover.mjs",
     import.meta.url
   ), "utf8");
-  assert.match(source, /migrations 1400\/1500\/1600\/1700\/1800\/1900 em uma transação/u);
+  assert.match(source, /migrations 1400\/1500\/1600\/1700\/1800\/1900\/2000 em uma transação/u);
 });
 
 test("snapshot SQL lê somente a árvore e os quatro descritores correntes", () => {
@@ -201,6 +201,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     courseDesignMigrationSql: "course-design-migration",
     courseSourcesMigrationSql: "course-sources-migration",
+    courseAnnotationsMigrationSql: "course-annotations-migration",
     readSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -217,7 +218,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     [
       "migration", "profile-migration", "authoring-plan-migration",
       "study-unit-inspection-migration", "course-design-migration",
-      "course-sources-migration"
+      "course-sources-migration", "course-annotations-migration"
     ].join("\n"),
     "utf8"
   ).digest("hex"));
@@ -232,6 +233,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     courseDesignMigrationSql: "course-design-migration",
     courseSourcesMigrationSql: "course-sources-migration",
+    courseAnnotationsMigrationSql: "course-annotations-migration",
     readSnapshot: async () => (++reads === 1 ? firstSnapshot : { marker: "drift" }),
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -250,6 +252,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     courseDesignMigrationSql: "course-design-migration",
     courseSourcesMigrationSql: "course-sources-migration",
+    courseAnnotationsMigrationSql: "course-annotations-migration",
     readSnapshot: async () => firstSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -320,6 +323,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration-without-content",
     courseDesignMigrationSql: "course-design-migration-without-content",
     courseSourcesMigrationSql: "course-sources-migration-without-content",
+    courseAnnotationsMigrationSql: "course-annotations-migration-without-content",
     readSnapshot: async () => snapshot,
     createArtifactLoader,
     prepare: async () => preparation,

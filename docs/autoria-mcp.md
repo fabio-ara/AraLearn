@@ -111,6 +111,8 @@ Lê uma destas projeções:
   planejado×aplicado;
 - `course_sources`: catálogo de Fontes, detalhe versionado de uma Fonte ou
   histórico de atribuições de um alvo;
+- `anchored_annotations`: caixa de entrada, anotações de um alvo ou detalhe de
+  uma Anotação ancorada;
 - `part_materialization`: uma tentativa persistida, seu contexto e fatos
   limitados, as etapas com versão e a próxima etapa pendente;
 - `study_units`: Unidades de estudo em ordem curricular, com contexto, Parte e
@@ -162,6 +164,19 @@ nulos os que não pertencem ao modo. Cada vínculo de alvo tem
 `{sourceId, sourceRevision, relation, anchors}`; cada referência de Âncora tem
 `{anchorId, anchorRevision}`. Campos adicionais não são extensão tolerada.
 
+`anchored_annotations` escolhe `inbox`, `target` ou `detail`. A caixa de entrada
+aceita filtros por origem, canal, estado, categoria, ausência de categoria,
+assuntos e hierarquia com descendentes; o modo alvo exige identidade exata e o
+detalhe exige `annotationId`. A página admite no máximo 24 itens, cursor opaco
+de até 240 caracteres e resposta de até 256 KiB. Cada item usa
+`aralearn.course-anchored-annotation.v1` e inclui caminho observado e corrente,
+certeza da revisão observada, classificação automática e humana separadas,
+capacidades e links profundos. O contribuidor owner-only é protegido por papel
+no formato `contributor={kind:'protected_person',role,ref,label}`. `ref` é o
+pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUID,
+nunca UUID ou e-mail e não reversível pelo contrato. A interface mostra somente o `label` pseudônimo protegido, nunca
+`ref`, UUID ou e-mail.
+
 ### `criarCurso`
 
 Cria atomicamente um Curso privado vazio e seu plano instrucional inicial.
@@ -179,7 +194,7 @@ autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui cinco operações fechadas:
+Possui seis operações fechadas:
 
 - `update_instructional_plan`: aplica um comando semântico ao plano — atualizar
   campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
@@ -191,13 +206,17 @@ Possui cinco operações fechadas:
 - `update_course_sources`: cria ou revisa uma Fonte, aposenta Fonte ou Âncora,
   salva Âncora ou substitui o conjunto ordenado de Fontes de um item do plano
   ou de uma Unidade;
+- `update_anchored_annotations`: cria ou revisa Anotação ancorada, retira,
+  considera, responde, resolve, reabre ou corrige assuntos;
 - `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
 - `advance_part_materialization`: inicia uma tentativa, registra uma etapa
   delimitada ou finaliza a tentativa de uma Parte.
 
-Todas exigem `courseId`, `requestId` e a revisão esperada do Curso. Alterar o
-plano exige também sua versão. Um comando carrega intenção e identidades
-estáveis; o servidor calcula e persiste o alvo inteiro na mesma transação.
+Todas exigem `courseId` e `requestId`. Operações de conteúdo exigem a revisão
+esperada do Curso; em Anotações ancoradas ela aparece somente ao criar ou
+corrigir assuntos. Alterar o plano exige também sua versão. Um comando carrega
+intenção e identidades estáveis; o servidor calcula e persiste o alvo inteiro
+na mesma transação.
 O alvo do plano aceita até 192 vínculos de Microssequência no total e 512 KiB;
 esse limite mantém sua leitura enriquecida abaixo do orçamento do transporte.
 
@@ -210,6 +229,24 @@ vínculo novo declara `informed_by`, `supported_by`, `adapted_from` ou
 migração e nunca opção de escrita. Uma identidade legada não resolvida é
 resolvida in-place, preservando literalmente o identificador; o cliente não a
 normaliza nem cria substituto.
+
+`update_anchored_annotations` aceita os oito comandos fechados
+`create_anchored_annotation`, `revise_anchored_annotation`,
+`withdraw_anchored_annotation`, `consider_anchored_annotation`,
+`respond_to_anchored_annotation`, `resolve_anchored_annotation`,
+`reopen_anchored_annotation` e `correct_anchored_annotation_subjects`. Criar
+exige `confirmed: true` depois de confirmação humana e `briefSummary` não nulo
+nem vazio; o servidor remove `confirmed` antes de chamar o domínio. Texto bruto
+tem 2.000 escalares/16 KiB, síntese 500/4 KiB e resposta 2.000/16 KiB.
+
+Há várias anotações por ator e alvo. Estados são apenas
+`open|considered|resolved|withdrawn`. Classificação automática exata ocorre
+somente em alvo Tópico; a correção de assuntos é um fato humano separado.
+Criar e corrigir assuntos exigem também a revisão esperada do Curso. Revisar,
+responder e mudar estado usam a versão esperada da anotação e o contador global
+do conjunto, pois MCP é owner-only, sem avançar a revisão de conteúdo apenas
+pela triagem. A projeção de Estudo usa outro contador privado por pessoa; ele
+não cria ferramenta nem estado MCP adicional.
 
 O recibo de Fonte contém exatamente `contract`, `courseId`, `courseRevision`,
 `requestId`, `idempotent`, `changed` e `change`. `change` é nulo no no-op; caso
@@ -302,8 +339,14 @@ temporário:
 
 - pedido repetido com o mesmo conteúdo recupera o resultado;
 - o mesmo identificador com outro conteúdo é recusado;
-- recibos de Curso e acesso expiram em até 14 dias;
+- recibos de Curso, acesso e Anotações ancoradas expiram em até 14 dias;
 - o recibo não é histórico de conversa nem cópia do Curso.
+
+Para Anotações, essa expiração é autoritativa: o recibo deixa de admitir replay
+no prazo. A remoção física ocorre oportunisticamente durante leituras/mutações
+do Curso, em um lote de até 128 tombstones e 256 recibos expirados por toque;
+Curso inativo pode conservar lixo físico porque não há cron nem garantia de
+hard delete na janela.
 
 Diante de conflito de revisão, não aumente o número e tente novamente às cegas.
 Releia, compare a intenção com o estado novo e proponha a reconciliação.
@@ -324,8 +367,10 @@ invariantes. O Curso conserva dados mutáveis:
   append-only a itens do plano e Unidades;
 - Partes operacionais, seus vínculos e tentativas de materialização;
 - composição didática;
-- futuramente, observações autorais reunidas, achados de auditoria e
-  configuração de pesquisa quando essas fatias forem implementadas.
+- Anotações ancoradas autorais e estudantis, com contador global owner-only e
+  contador privado por pessoa na projeção de Estudo;
+- futuramente, achados de auditoria e configuração de pesquisa quando essas
+  fatias forem implementadas.
 
 Essa separação evita que mudar o planejamento exija editar o prompt de sistema
 ou reconstruir uma base fixa. Também evita persistir conversa integral ou

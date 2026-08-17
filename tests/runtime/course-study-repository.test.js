@@ -102,6 +102,24 @@ function cache() {
       if (value == null) values.delete(key);
       else values.set(key, structuredClone(value));
     },
+    async updateCache(key, updater) {
+      const next = updater(structuredClone(values.get(key) ?? null));
+      if (next == null) values.delete(key);
+      else values.set(key, structuredClone(next));
+      return structuredClone(next);
+    },
+    async updateCaches(keys, updater) {
+      const current = Object.fromEntries(keys.map((key) => [
+        key,
+        structuredClone(values.get(key) ?? null)
+      ]));
+      const next = updater(current);
+      for (const key of keys) {
+        if (next[key] == null) values.delete(key);
+        else values.set(key, structuredClone(next[key]));
+      }
+      return structuredClone(next);
+    },
     async deleteCachePrefix(prefix) {
       for (const key of values.keys()) if (key.startsWith(prefix)) values.delete(key);
     }
@@ -168,13 +186,13 @@ test("compõe a tela de Estudo de Cursos e isola estado pessoal por courseId", a
     async loadPersonalState(courseId) { return remoteStates.get(courseId) || null; },
     async mutatePersonalState({ courseId, expectedRevision, operations }) {
       const current = remoteStates.get(courseId) || {
-        contract: "aralearn.course-personal-state.v1",
+        contract: "aralearn.course-personal-state.v2",
         courseId,
         revision: 0,
         state: {
-          version: 1,
+          version: 2,
           progress: { version: 3, lessons: {} },
-          reviewMarks: {}, observations: {}
+          reviewMarks: {}
         }
       };
       assert.equal(current.revision, expectedRevision);
@@ -354,7 +372,7 @@ test("carrega a fila Rever por páginas somente quando solicitado", async () => 
   assert.equal(repository.hasMoreReviewItems(), false);
 });
 
-test("atualiza progresso, Rever e observação alterados em outro dispositivo", async () => {
+test("atualiza progresso e Rever alterados em outro dispositivo", async () => {
   const courseValue = course(COURSE_A, "a");
   let remoteState = null;
   const repository = new CourseStudyRepository({
@@ -402,12 +420,12 @@ test("atualiza progresso, Rever e observação alterados em outro dispositivo", 
     studyUnitId: "unit-a"
   };
   remoteState = {
-    contract: "aralearn.course-personal-state.v1",
+    contract: "aralearn.course-personal-state.v2",
     courseId: COURSE_A,
     revision: 1,
     updatedAt: "2026-08-17T12:30:00.000Z",
     state: {
-      version: 1,
+      version: 2,
       progress: {
         version: 3,
         lessons: {
@@ -417,14 +435,7 @@ test("atualiza progresso, Rever e observação alterados em outro dispositivo", 
           }
         }
       },
-      reviewMarks: { "unit-a": "2026-08-17T12:20:00.000Z" },
-      observations: {
-        "unit-a": {
-          category: "possible_error",
-          body: "A formulação remota precisa de revisão.",
-          updatedAt: "2026-08-17T12:25:00.000Z"
-        }
-      }
+      reviewMarks: { "unit-a": "2026-08-17T12:20:00.000Z" }
     }
   };
 
@@ -435,10 +446,6 @@ test("atualiza progresso, Rever e observação alterados em outro dispositivo", 
   assert.equal(repository.loadCourseSummaries()[0].completedStudyUnitCount, 1);
   assert.equal(repository.isStudyUnitMarkedForReview(reference), true);
   assert.equal(repository.loadReviewItems()[0].studyUnitId, "unit-a");
-  assert.equal(
-    repository.loadCommentForPath(reference).body,
-    "A formulação remota precisa de revisão."
-  );
 });
 
 test("retira somente o Curso cujo acesso foi revogado durante o refresh pessoal", async () => {
@@ -702,4 +709,73 @@ test("citações são buscadas somente por Unidade carregada e vinculadas à rev
   assert.deepEqual(repository.loadProject().courses, []);
   assert.deepEqual(repository.loadCourseSummaries(), []);
   assert.deepEqual(clearedCourses, [COURSE_A]);
+});
+
+test("revogação nas observações purga o Curso, mas anotação ausente não", async () => {
+  const courseValue = course(COURSE_A, "a");
+  const cleared = [];
+  let failureCode = "ANNOTATION_NOT_FOUND";
+  const repository = new CourseStudyRepository({
+    bridge: {
+      async listAccessibleCourses() {
+        return {
+          items: [{
+            courseId: COURSE_A,
+            title: courseValue.title,
+            goal: courseValue.goal,
+            revision: 1,
+            studyUnitCount: 1,
+            completedStudyUnitCount: 0
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async loadCourse() {
+        return { document: { contract: "aralearn.course.v1", courses: [courseValue] } };
+      },
+      async clearCourse(courseId) { cleared.push(courseId); }
+    },
+    api: {
+      async listCourseReviewItems() {
+        return { items: [], hasMore: false, nextCursor: null };
+      },
+      async loadPersonalState() { return null; },
+      async mutatePersonalState() { throw new Error("Não usado."); },
+      async getMyCourseAnchoredAnnotations() {
+        const error = new Error(failureCode === "PT404"
+          ? "Curso inacessível."
+          : "Observação ausente.");
+        error.status = failureCode === "PT404" ? 400 : 404;
+        error.code = failureCode;
+        throw error;
+      },
+      async executeMyCourseAnchoredAnnotationCommand() { throw new Error("Não usado."); }
+    },
+    cache: cache()
+  });
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+  const target = {
+    courseId: COURSE_A,
+    moduleId: "module-a",
+    lessonId: "lesson-a",
+    microsequenceId: "micro-a",
+    studyUnitId: "unit-a"
+  };
+
+  await assert.rejects(
+    repository.refreshAnnotationsForPath(target),
+    /Observação ausente/u
+  );
+  assert.equal(repository.loadProject().courses.length, 1);
+  assert.deepEqual(cleared, []);
+
+  failureCode = "PT404";
+  await assert.rejects(
+    repository.refreshAnnotationsForPath(target),
+    /Curso inacessível/u
+  );
+  assert.equal(repository.loadProject().courses.length, 0);
+  assert.deepEqual(cleared, [COURSE_A]);
 });

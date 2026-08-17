@@ -122,7 +122,7 @@ O mesmo Curso pode ser observado em dois contextos complementares:
 - no **Estudo**, a pessoa lê, pratica, recebe feedback, marca uma Unidade para rever
   e registra uma observação;
 - na **Autoria**, a pessoa proprietária cria e inspeciona o Curso, edita o
-  planejamento básico e concede acesso direto para Estudo. A conversa de
+  planejamento, tria Anotações ancoradas e concede acesso direto para Estudo. A conversa de
   planejamento permanece num cliente MCP externo; não existe chat autoral
   interno no aplicativo.
 

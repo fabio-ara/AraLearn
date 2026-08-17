@@ -19,7 +19,7 @@ o mesmo documento de maneiras incompatíveis.
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
 
-O sistema separa sete responsabilidades:
+O sistema separa oito responsabilidades:
 
 | Contrato | Responsabilidade |
 |---|---|
@@ -30,6 +30,7 @@ O sistema separa sete responsabilidades:
 | `aralearn.course-sources.v1` | catálogo privado, revisões, Âncoras e atribuições de Fontes na Autoria |
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
 | `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
+| `aralearn.course-anchored-annotation-page.v1`, `aralearn.course-anchored-annotation.v1` e `aralearn.course-anchored-annotation-change.v1` | página, item protegido e recibo de Anotações ancoradas |
 
 Essa separação evita um esquema monolítico: acrescentar uma representação não
 exige alterar o núcleo, e consultar o catálogo não exige enviar todos os
@@ -184,6 +185,55 @@ atribuição para cada Unidade incluída ou substituída, mesmo vazia, na mesma
 transação das entidades. Uma etapa de materialização só pode aplicar Fontes e
 Âncoras seladas a partir dos itens do plano e confirma conteúdo, atribuições,
 evento e recibo atomicamente.
+
+### Anotações ancoradas fora do conteúdo e do estado pessoal
+
+Uma Anotação ancorada liga uma manifestação a Curso, Módulo, Lição, Tópico,
+Microssequência didática ou Unidade de estudo. Há N registros por ator e alvo;
+os estados são somente `open`, `considered`, `resolved` e `withdrawn`. Origem e
+canal formam pares coerentes entre pessoa autora, estudante, auditoria humana,
+auditoria automática e legado desconhecido. As superfícies correntes criam
+apenas origens autorais ou estudantis.
+
+Texto bruto aceita 2.000 escalares Unicode e 16 KiB em UTF-8; síntese breve,
+500/4 KiB; resposta do proprietário, 2.000/16 KiB. A classificação automática
+usa `exact_topic_target` somente quando o alvo é exatamente um Tópico. Os demais
+alvos usam `target_scope_unclassified`, o legado pode usar
+`legacy_unclassified` e uma escolha humana posterior usa
+`human_topic_selection` sem substituir o fato automático.
+
+Leituras `inbox`, `target` e `detail` usam até 24 itens, cursor opaco de até 240
+caracteres e resposta de até 256 KiB. O item informa caminho observado e
+corrente, certeza da revisão observada, classificação, capacidades e link
+profundo. Ao proprietário, `contributor` é um `protected_person` com papel e
+pseudônimo aleatório persistido `person-` + 16 hex, não derivado do UUID ou do
+Curso. A interface mostra apenas seu `label`
+pseudônimo protegido, nunca `ref`, UUID ou e-mail. Cada estudante recebe
+somente os próprios registros.
+
+O estado pessoal v2 continua limitado a `progress` e `reviewMarks`.
+`courses.annotation_set_version` é o contador global entregue ao proprietário;
+Estudo recebe no mesmo campo de DTO um contador monotônico privado por pessoa e
+Curso. A versão privada contém somente coordenação, sem texto ou autoridade de
+domínio, e não muda por atividade alheia. Ela permanece até excluir a pessoa ou
+o Curso para manter monotonicidade do cache e não entra no TTL de conteúdo,
+tombstone ou recibo. Nenhum contador avança a revisão de
+conteúdo em revisão de texto, resposta ou mudança de estado. Criação e correção
+de assuntos também confrontam a revisão do Curso. O servidor limita 128 linhas
+correntes por ator/Curso/alvo, 512 por ator/Curso e 256 versões ou eventos em
+operações ordinárias; retirada e exclusão de conta permanecem possíveis no
+teto.
+
+Retirada redige texto, síntese e resposta imediatamente. Tombstones e recibos
+expiram logicamente em até 14 dias: deixam de ser legíveis, pagináveis, contar
+quota ou admitir replay. A limpeza física é oportunista durante
+leituras/mutações do Curso e processa por toque um lote de até 128 tombstones e
+256 recibos expirados; Curso inativo pode conservar lixo físico porque não há
+cron nem prazo de hard delete.
+Eventos
+guardam hashes e metadados pequenos, nunca o texto anterior. Categoria,
+resposta, resolução e timestamps não autorizam inferência de aprendizagem,
+dificuldade, atenção, qualidade ou eficácia.
 
 ## 5. Perfil unitário do mesmo contrato
 

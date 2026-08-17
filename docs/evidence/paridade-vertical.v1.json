@@ -13,24 +13,23 @@
   "cases": [
     {
       "id": "study-course-experience",
-      "intent": "Encontrar um Curso acessível, percorrer sua hierarquia, estudar suas unidades e conservar progresso, marcações de revisão e observações pessoais.",
+      "intent": "Encontrar um Curso acessível, percorrer sua hierarquia, estudar suas unidades e conservar progresso e marcações pessoais de revisão.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
         "manifestFeatures": [
-          "course-personal-state-v1"
+          "course-personal-state-v2"
         ],
         "databasePatterns": [
           "^table:(?:public\\.course_personal_states|private\\.course_personal_state_receipts)$",
-          "^function:private\\.(?:valid_course_personal_state_v1|list_course_review_items_for_actor_v1)\\(.*\\)$",
-          "^function:public\\.(?:list_course_review_items_v1|load_course_personal_state_v1|mutate_course_personal_state_v1)\\(.*\\)$"
+          "^function:private\\.(?:valid_course_personal_state_v2|list_course_review_items_for_actor_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_course_review_items_v1|load_course_personal_state_v2|mutate_course_personal_state_v2)\\(.*\\)$"
         ]
       },
       "ui": [
         { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-course\"" },
-        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-review-item\"" },
-        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"open-observation\"" }
+        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-review-item\"" }
       ],
       "visibleEffects": [
         { "path": "src/study/CourseStudyApplication.js", "token": "renderCourseStudyScreen" },
@@ -41,15 +40,15 @@
         { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "load_course_personal_state_v1" },
-        { "path": "src/supabase/CourseApiClient.js", "token": "mutate_course_personal_state_v1" }
+        { "path": "src/supabase/CourseApiClient.js", "token": "load_course_personal_state_v2" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "mutate_course_personal_state_v2" }
       ],
       "tests": [
         "tests/runtime/course-study-repository.test.js",
         "tests/runtime/course-personal-state-repository.test.js",
         "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "O estado pessoal só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência são mecanismos internos dessa mesma capacidade, não produtos separados."
+      "justification": "O estado pessoal mínimo só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência de progresso e Rever são mecanismos internos dessa mesma capacidade, não produtos separados."
     },
     {
       "id": "course-authoring-experience",
@@ -160,6 +159,51 @@
         "tests/e2e/course-study-cutover.spec.js"
       ],
       "justification": "Catálogo, Âncora, atribuição append-only e projeção redigida são uma única cadeia observável. A relação só é completa quando a mesma autoridade sustenta o planejamento, a composição atômica, a materialização e a citação lazy no Estudo."
+    },
+    {
+      "id": "course-anchored-annotations",
+      "intent": "Registrar retorno humano situado em um alvo exato, reencontrá-lo no Estudo e triá-lo na Autoria sem expor identidade protegida nem convertê-lo em medida de aprendizagem.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#124",
+      "objects": {
+        "manifestFeatures": [
+          "course-anchored-annotations-v1",
+          "course-annotation-subject-classification-v1"
+        ],
+        "databasePatterns": [
+          "^table:private\\.course_anchored_annotation(?:s|_events|_receipts|_viewer_versions)$",
+          "^constraint:public\\.courses/courses_annotation_set_version_v1\\[check\\]$",
+          "^function:private\\.(?:bump_course_annotation_viewer_version_v1|cleanup_course_anchored_annotations_v1|course_anchored_annotation_.+_v1|course_annotation_.+_v1|execute_course_anchored_annotation_command_core_v1|get_course_anchored_annotations_core_v1|preserve_course_annotation_event_v1|raise_course_anchored_annotation_.+_v1|record_course_annotation_event_v1|redact_course_annotations_before_account_deletion_v1|valid_course_annotation_.+_v1)\\(.*\\)$",
+          "^function:public\\.(?:execute_course_anchored_annotation_command_for_actor_v1|execute_my_course_anchored_annotation_command_v1|get_my_course_anchored_annotations_v1|get_owned_course_anchored_annotations_for_actor_v1)\\(.*\\)$"
+        ]
+      },
+      "ui": [
+        { "path": "src/ui/CourseObservationsPanel.js", "token": "data-course-observations-filters" },
+        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"open-observation\"" }
+      ],
+      "visibleEffects": [
+        { "path": "src/ui/CourseObservationsPanel.js", "token": "data-observations-action=\"open-target\"" },
+        { "path": "src/ui/renderStudyUnitObservationSheet.js", "token": "data-observation-composer" }
+      ],
+      "persistence": [
+        { "path": "src/persistence/CourseAnnotationRepository.js", "token": "class CourseAnnotationRepository" },
+        { "path": "src/supabase/CourseController.js", "token": "loadCourseAnchoredAnnotations" },
+        { "path": "src/supabase/CourseController.js", "token": "mutateCourseAnchoredAnnotations" }
+      ],
+      "routes": [
+        { "path": "src/supabase/CourseApiClient.js", "token": "getMyCourseAnchoredAnnotations" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "executeMyCourseAnchoredAnnotationCommand" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "anchored_annotations" }
+      ],
+      "tests": [
+        "tests/runtime/course-anchored-annotations-pglite.test.js",
+        "tests/runtime/course-annotation-repository.test.js",
+        "tests/runtime/course-observations-panel.test.js",
+        "tests/e2e/course-authoring-cutover.spec.js",
+        "tests/e2e/course-study-cutover.spec.js"
+      ],
+      "justification": "Inbox, alvo, texto bruto, proveniência protegida, classificação de assunto e ciclo de triagem formam uma única capacidade. O contador privado por pessoa apenas invalida o cache próprio sem revelar a atividade de outras pessoas. O registro só é completo quando a pessoa que o criou o reencontra no Estudo e a pessoa proprietária o trata no alvo exato pela Autoria ou pelo mesmo MCP de seis ferramentas."
     },
     {
       "id": "person-profile-and-course-access",

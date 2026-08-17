@@ -52,10 +52,13 @@ estudo. O controle principal confirma a resposta quando necessário, mostra o
 feedback e depois avança. A pessoa também pode marcar uma unidade para rever ou
 registrar uma observação situada, como dúvida, possível erro ou trecho confuso.
 
-Progresso, marcas de revisão e observações formam um **estado pessoal** separado
-do conteúdo canônico. Uma pessoa com acesso pode estudar e conservar seu
-próprio estado, mas não recebe autoridade para editar o Curso. O [guia do
-estudante](docs/guia-estudante.md) ensina o percurso completo.
+Progresso e marcas de revisão formam o **estado pessoal v2**, separado do
+conteúdo canônico. Observações são **Anotações ancoradas** próprias, também
+separadas do conteúdo: podem existir várias na mesma Unidade e chegam à caixa
+de entrada do proprietário sem revelar registros de outros estudantes. Uma
+pessoa com acesso pode estudar e conservar seus próprios dados, mas não recebe
+autoridade para editar o Curso. O [guia do estudante](docs/guia-estudante.md)
+ensina o percurso completo.
 
 Quando uma Unidade possui atribuições públicas, o botão **Fontes** busca as
 citações somente ao ser aberto. O Estudo nunca recebe o catálogo privado: uma
@@ -68,7 +71,7 @@ Autoria lista somente os Cursos pertencentes à pessoa autenticada. Um Curso
 novo nasce privado, com título e objetivo, e pode ser usado sem
 passar por estados de rascunho, aprovação ou publicação.
 
-Ao abrir um Curso, a interface oferece seis destinos compactos:
+Ao abrir um Curso, a interface oferece sete destinos compactos:
 
 - **Planejamento:** título, objetivo, público, escopo, resultados
   pretendidos, unidades de análise, requisitos de evidência e Partes de autoria;
@@ -79,6 +82,8 @@ Ao abrir um Curso, a interface oferece seis destinos compactos:
   ordenadas a itens do plano ou Unidades de estudo;
 - **Estrutura:** hierarquia compacta de Módulos, Lições e Microssequências;
 - **Inspeção:** sequência vertical paginada das Unidades materializadas;
+- **Observações:** caixa de entrada única das Anotações ancoradas do Curso, com
+  filtros, sínteses, respostas e links profundos até o alvo;
 - **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
 
 As ferramentas de autoria por **Model Context Protocol (MCP)** leem e alteram
@@ -109,9 +114,10 @@ inventa metadados para completá-las.
 
 A Inspeção percorre o Curso inteiro ou um recorte por Parte, Unidades sem Parte,
 Módulo, Lição ou Microssequência, mantém no navegador uma janela limitada e
-conserva localmente a Unidade corrente. Respostas ficam desativadas nessa leitura. Edição
-contextual, anotações autorais, correção, variantes e analytics
-de pesquisa pertencem às próximas fatias.
+conserva localmente a Unidade corrente. Respostas ficam desativadas nessa
+leitura. Dela, a pessoa autora pode anotar o alvo exato; edição contextual,
+achados de auditoria, correção verificada, variantes e analytics de pesquisa
+pertencem a fatias posteriores.
 
 Comece pelo [guia do professor e autor](docs/guia-professor-autor.md). A
 explicação do protocolo está em [Autoria por MCP](docs/autoria-mcp.md).
@@ -133,16 +139,17 @@ e descrição acadêmica. A arquitetura é detalhada em
 ## Funcionamento sem conexão e sincronização
 
 O navegador e o aplicativo Android usam **IndexedDB** para manter a lista fina,
-os Cursos já abertos e o estado pessoal. Assim, conteúdo carregado anteriormente
-pode ser retomado sem rede. Alterações pessoais feitas offline formam uma fila
-por Curso e são enviadas quando a conexão retorna.
+os Cursos já abertos, o estado pessoal v2 e o cache das Anotações ancoradas.
+Assim, conteúdo carregado anteriormente pode ser retomado sem rede. Progresso e
+**Rever** usam sua fila por Curso; comandos de observação usam uma outbox
+separada e são enviados quando a conexão retorna.
 
 No servidor, PostgreSQL conserva o Curso vivo, suas entidades normalizadas,
-acessos diretos, eventos mínimos e estados pessoais. O Storage de objetos é
-usado nesta etapa apenas para fotos privadas de perfil; o conteúdo do Curso não
-depende de um artefato integral ou imutável. Concorrência otimista e
-idempotência delimitada protegem as mutações sem introduzir um workflow
-editorial.
+Anotações ancoradas, acessos diretos, eventos mínimos e estados pessoais. O
+Storage de objetos é usado nesta etapa apenas para fotos privadas de perfil; o
+conteúdo do Curso não depende de um artefato integral ou imutável. Concorrência
+otimista, versões específicas e idempotência delimitada protegem as mutações
+sem introduzir um workflow editorial.
 
 A justificativa, as alternativas e os limites estão em
 [Persistência relacional e sincronização](docs/persistencia-relacional.md).
@@ -158,19 +165,22 @@ iconográfica entre áreas.
 
 O código desta revisão implementa a identidade única de Curso vivo, a lista e
 a composição paginadas, a Inspeção vertical owner-only, Fontes e proveniência
-por alvo, o estado pessoal, a Autoria restrita ao proprietário, o acesso direto
-para Estudo e o perfil humano mínimo com nome e foto privada.
+por alvo, Anotações ancoradas estudantis e autorais, o estado pessoal v2, a
+Autoria restrita ao proprietário, o acesso direto para Estudo e o perfil humano
+mínimo com nome e foto privada.
 
 O corte é limpo: `StudyUnit.sources` não existe mais no conteúdo. Composição e
 materialização confirmam as atribuições separadas na mesma transação das
-Unidades, e a migration `1900` preserva referências anteriores como legado
-oculto e não resolvido até resolução in-place. Isso não antecipa Observações e
-Anotação ancorada da #124 nem auditoria, correção e verificação da #125.
+Unidades, a migration `1900` preserva referências anteriores como legado oculto
+e não resolvido até resolução in-place e a migration `2000` introduz Anotação
+ancorada e estado pessoal v2 sem leitura ou escrita dupla do formato anterior.
+Achados de auditoria, correção, revisão e verificação independente continuam
+fora desta fatia.
 
 Esse corte ainda não está promovido ao serviço hospedado. Antes da promoção, o
 importador precisa converter e validar todos os Cursos reais, os componentes
 didáticos bloqueadores precisam ter equivalência semântica, o banco local deve
-ser reconstruído e as migrations `1400` a `1900` devem passar juntas pelos
+ser reconstruído e as migrations `1400` a `2000` devem passar juntas pelos
 mesmos gates. Os limites de paginação e payload tornam o consumo mensurável,
 mas ainda não provam sustentabilidade no Supabase Free Plan. Portanto,
 a aplicação pública e o APK da última release podem refletir a arquitetura

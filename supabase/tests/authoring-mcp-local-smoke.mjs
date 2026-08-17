@@ -520,6 +520,74 @@ if (!accessToken) {
   );
   assert.equal(resolvedCeiling.effectiveAssignment.value, 3);
 
+  const annotationId = randomUUID();
+  const annotationRequestId = randomUUID();
+  const annotationCommand = {
+    type: "create_anchored_annotation",
+    annotationId,
+    target: { kind: "study_unit", id: "study-unit-mcp-smoke-1" },
+    rawText: "  A passagem precisa distinguir os dois mecanismos.\nPreservar este contexto.  ",
+    category: "confusing",
+    capturedAt: null,
+    briefSummary: "Distinguir os dois mecanismos",
+    confirmed: true
+  };
+  const unconfirmedAnnotation = await rejectedTool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: designChange.courseRevision,
+    operation: "update_anchored_annotations",
+    annotationCommand: { ...annotationCommand, confirmed: false }
+  });
+  assert.equal(
+    unconfirmedAnnotation.code,
+    "anchored_annotation_confirmation_required"
+  );
+  const createdAnnotation = await tool("alterarCurso", {
+    requestId: annotationRequestId,
+    courseId: created.courseId,
+    expectedRevision: designChange.courseRevision,
+    operation: "update_anchored_annotations",
+    annotationCommand
+  });
+  assert.equal(createdAnnotation.courseRevision, designChange.courseRevision);
+  assert.equal(createdAnnotation.annotation.annotationId, annotationId);
+  assert.equal(createdAnnotation.annotation.provenance.origin, "author");
+  assert.equal(createdAnnotation.annotation.provenance.channel, "authoring_chat");
+  assert.equal(createdAnnotation.annotation.rawText, annotationCommand.rawText);
+  const replayedAnnotation = await tool("alterarCurso", {
+    requestId: annotationRequestId,
+    courseId: created.courseId,
+    expectedRevision: designChange.courseRevision,
+    operation: "update_anchored_annotations",
+    annotationCommand
+  });
+  assert.equal(replayedAnnotation.idempotent, true);
+  assert.equal(replayedAnnotation.annotationSetVersion,
+    createdAnnotation.annotationSetVersion);
+
+  const annotationPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "anchored_annotations",
+    expectedRevision: designChange.courseRevision,
+    annotationSetVersion: null,
+    mode: "target",
+    states: ["open"],
+    targetKind: "study_unit",
+    targetId: "study-unit-mcp-smoke-1",
+    includeDescendants: false,
+    limit: 12
+  });
+  assert.equal(
+    annotationPage.contract,
+    "aralearn.course-anchored-annotation-page.v1"
+  );
+  assert.equal(annotationPage.summary.byChannel.authoring_chat, 1);
+  assert.equal(
+    annotationPage.items.find(({ annotationId: id }) => id === annotationId)?.rawText,
+    annotationCommand.rawText
+  );
+
   const own = await tool("listarCursos", { query: "OAuth local" });
   assert.equal(
     own.items.some(({ courseId }) => courseId === created.courseId),
@@ -528,5 +596,7 @@ if (!accessToken) {
   const profile = await tool("gerirPessoas", { operation: "read_profile" });
   assert.match(String(profile.userId || ""), /^[0-9a-f-]{36}$/iu);
 
-  console.log("Smoke MCP local: OAuth, Fonte verificada e proveniência atômica aprovados.");
+  console.log(
+    "Smoke MCP local: OAuth, Fonte verificada, proveniência e observação ancorada aprovados."
+  );
 }

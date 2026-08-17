@@ -1,19 +1,25 @@
-import { normalizePedagogicalCommentDraft } from "../domain/pedagogicalComment.js";
 import {
   createEmptyProgressDocument,
   validateProgressDocument
 } from "../storage/progressStore.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 
-export const COURSE_PERSONAL_STATE_VERSION = 1;
+export const COURSE_PERSONAL_STATE_VERSION = 2;
 export const COURSE_PERSONAL_STATE_CACHE_CONTRACT =
+  "aralearn.course-personal-state-cache.v2";
+export const COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT =
   "aralearn.course-personal-state-cache.v1";
+export const COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT =
+  "aralearn.course-anchored-annotation-handoff.v1";
 
 const MAX_STATE_BYTES = 524_288;
 const MAX_OPERATIONS = 512;
 const MAX_OPERATION_BYTES = 65_536;
-const COLLECTIONS = new Set(["progress.lessons", "reviewMarks", "observations"]);
-const ISO_INSTANT = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u;
+const COLLECTIONS = new Set(["progress.lessons", "reviewMarks"]);
+const LEGACY_OBSERVATION_CATEGORIES = new Set([
+  "question", "possible_error", "confusing", "suggestion", "observation"
+]);
+const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -45,7 +51,8 @@ function hasControlCharacters(value) {
 
 function entityId(value, label) {
   if (typeof value !== "string" || !value || value !== value.trim() ||
-      value.length > 240 || hasControlCharacters(value)) {
+      [...value].length > 240 || new TextEncoder().encode(value).byteLength > 960 ||
+      hasControlCharacters(value)) {
     throw failure(`${label} inválido.`);
   }
   return value;
@@ -60,7 +67,16 @@ function nonNegativeInteger(value, label) {
 }
 
 function instant(value, label) {
-  if (typeof value !== "string" || !ISO_INSTANT.test(value) ||
+  const match = typeof value === "string" ? RFC3339_INSTANT.exec(value) : null;
+  const year = Number(match?.[1]);
+  const month = Number(match?.[2]);
+  const day = Number(match?.[3]);
+  const daysInMonth = month >= 1 && month <= 12
+    ? [31, year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28,
+      31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    : 0;
+  if (!match || year < 1 || day < 1 || day > daysInMonth ||
+      Number(match[4]) > 23 || Number(match[5]) > 59 || Number(match[6]) > 59 ||
       !Number.isFinite(Date.parse(value))) {
     throw failure(`${label} inválido.`);
   }
@@ -78,8 +94,7 @@ function emptyState() {
   return {
     version: COURSE_PERSONAL_STATE_VERSION,
     progress: { version: 3, lessons: {} },
-    reviewMarks: {},
-    observations: {}
+    reviewMarks: {}
   };
 }
 
@@ -112,15 +127,19 @@ function normalizeLessonState(value, label) {
   };
 }
 
-function normalizeObservation(value, label) {
+function normalizeLegacyObservation(value, label) {
   if (!plainObject(value)) throw failure(`${label} inválida.`);
   const allowed = new Set(["category", "body", "updatedAt"]);
   const unknown = Object.keys(value).find((field) => !allowed.has(field));
   if (unknown) throw failure(`${label}.${unknown} não pertence ao contrato.`);
-  const draft = normalizePedagogicalCommentDraft(value);
+  const category = String(value.category || "");
+  const body = typeof value.body === "string" ? value.body.trim() : "";
+  if (!LEGACY_OBSERVATION_CATEGORIES.has(category) || !body || body.length > 1_000) {
+    throw failure(`${label} inválida.`);
+  }
   return {
-    category: draft.category,
-    body: draft.body,
+    category,
+    body,
     updatedAt: instant(value.updatedAt, `${label}.updatedAt`)
   };
 }
@@ -137,7 +156,7 @@ function normalizeMap(value, label, maximum, normalizeValue) {
 
 export function validateCoursePersonalState(value) {
   if (!plainObject(value)) throw failure("Estado pessoal inválido.");
-  const allowed = new Set(["version", "progress", "reviewMarks", "observations"]);
+  const allowed = new Set(["version", "progress", "reviewMarks"]);
   const unknown = Object.keys(value).find((field) => !allowed.has(field));
   if (unknown || value.version !== COURSE_PERSONAL_STATE_VERSION ||
       !plainObject(value.progress) || value.progress.version !== 3 ||
@@ -166,23 +185,9 @@ export function validateCoursePersonalState(value) {
   const normalized = {
     version: COURSE_PERSONAL_STATE_VERSION,
     progress: { version: 3, lessons },
-    reviewMarks: normalizeMap(value.reviewMarks, "Estado pessoal.reviewMarks", 100_000, instant),
-    observations: normalizeMap(
-      value.observations,
-      "Estado pessoal.observations",
-      10_000,
-      normalizeObservation
-    )
+    reviewMarks: normalizeMap(value.reviewMarks, "Estado pessoal.reviewMarks", 100_000, instant)
   };
-  const writeBudget = clone(normalized);
-  writeBudget.observations = Object.fromEntries(
-    Object.entries(normalized.observations).map(([path, observation]) => [path, {
-      category: observation.category,
-      body: observation.body,
-      updatedAt: observation.updatedAt
-    }])
-  );
-  if (new TextEncoder().encode(JSON.stringify(writeBudget)).byteLength > MAX_STATE_BYTES) {
+  if (new TextEncoder().encode(JSON.stringify(normalized)).byteLength > MAX_STATE_BYTES) {
     throw failure("Estado pessoal excede 512 KiB.", "course_personal_state_too_large");
   }
   return normalized;
@@ -208,9 +213,7 @@ function normalizeOperation(value, index = 0) {
   if (operation.kind === "set") {
     operation.value = operation.collection === "progress.lessons"
       ? normalizeLessonState(value.value, `Operação ${index + 1}.value`)
-      : operation.collection === "reviewMarks"
-        ? instant(value.value, `Operação ${index + 1}.value`)
-        : normalizeObservation(value.value, `Operação ${index + 1}.value`, { writable: true });
+      : instant(value.value, `Operação ${index + 1}.value`);
   }
   return operation;
 }
@@ -250,6 +253,171 @@ function mergeOperations(current, additions) {
     merged.set(operationKey(operation), operation);
   }
   return [...merged.values()];
+}
+
+function normalizeLegacyState(value) {
+  if (!plainObject(value) || value.version !== 1 || !plainObject(value.progress) ||
+      value.progress.version !== 3 || !plainObject(value.progress.lessons)) {
+    throw failure("Estado pessoal v1 inválido.", "course_personal_state_legacy_migration_failed");
+  }
+  const unknown = Object.keys(value).find((field) =>
+    !new Set(["version", "progress", "reviewMarks", "observations"]).has(field));
+  if (unknown) {
+    throw failure("Estado pessoal v1 contém campos desconhecidos.",
+      "course_personal_state_legacy_migration_failed");
+  }
+  return {
+    version: 1,
+    progress: {
+      version: 3,
+      lessons: normalizeMap(
+        value.progress.lessons,
+        "Estado pessoal v1.progress.lessons",
+        10_000,
+        normalizeLessonState
+      )
+    },
+    reviewMarks: normalizeMap(
+      value.reviewMarks,
+      "Estado pessoal v1.reviewMarks",
+      100_000,
+      instant
+    ),
+    observations: normalizeMap(
+      value.observations,
+      "Estado pessoal v1.observations",
+      10_000,
+      normalizeLegacyObservation
+    )
+  };
+}
+
+function normalizeLegacyOperation(value, index = 0) {
+  if (!plainObject(value) || !new Set(["set", "delete"]).has(value.kind) ||
+      !new Set([...COLLECTIONS, "observations"]).has(value.collection)) {
+    throw failure(`Operação v1 ${index + 1} inválida.`,
+      "course_personal_state_legacy_migration_failed");
+  }
+  if (value.collection !== "observations") return normalizeOperation(value, index);
+  const operation = {
+    kind: value.kind,
+    collection: "observations",
+    path: entityId(value.path, `Operação v1 ${index + 1}.path`)
+  };
+  if (value.kind === "set") {
+    operation.value = normalizeLegacyObservation(value.value, `Operação v1 ${index + 1}.value`);
+  }
+  return operation;
+}
+
+function normalizeLegacyOperations(values) {
+  if (!Array.isArray(values) || values.length > MAX_OPERATIONS) {
+    throw failure("Operações v1 inválidas.", "course_personal_state_legacy_migration_failed");
+  }
+  return values.map(normalizeLegacyOperation);
+}
+
+function normalizeLegacyCache(value, courseId) {
+  if (!plainObject(value) || value.contract !== COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT ||
+      requiredUuid(value.courseId, "Curso no cache v1") !== courseId) {
+    throw failure("Cache pessoal v1 inválido.", "course_personal_state_legacy_migration_failed");
+  }
+  const pending = value.pending == null ? null : {
+    requestId: requiredUuid(value.pending.requestId, "Pendência v1.requestId"),
+    baseRevision: nonNegativeInteger(value.pending.baseRevision, "Pendência v1.baseRevision"),
+    operations: normalizeLegacyOperations(value.pending.operations),
+    createdAt: instant(value.pending.createdAt, "Pendência v1.createdAt")
+  };
+  return {
+    courseId,
+    revision: nonNegativeInteger(value.revision, "Revisão v1 em cache"),
+    state: normalizeLegacyState(value.state),
+    pending,
+    queuedOperations: normalizeLegacyOperations(value.queuedOperations || []),
+    updatedAt: instant(value.updatedAt, "Atualização v1 em cache")
+  };
+}
+
+function legacyObservationIntents(record) {
+  const operationTimes = new Map();
+  for (const operation of record.pending?.operations || []) {
+    if (operation.collection === "observations") {
+      operationTimes.set(operation.path, record.pending.createdAt);
+    }
+  }
+  for (const operation of record.queuedOperations) {
+    if (operation.collection === "observations") {
+      operationTimes.set(operation.path, record.updatedAt);
+    }
+  }
+  const targets = new Set([
+    ...Object.keys(record.state.observations),
+    ...operationTimes.keys()
+  ]);
+  return [...targets].sort().map((targetStudyUnitId) => {
+    const observation = record.state.observations[targetStudyUnitId];
+    return observation ? {
+      kind: "upsert",
+      targetStudyUnitId,
+      category: observation.category === "observation" ? null : observation.category,
+      text: observation.body,
+      updatedAt: observation.updatedAt
+    } : {
+      kind: "withdraw",
+      targetStudyUnitId,
+      updatedAt: operationTimes.get(targetStudyUnitId) || record.updatedAt
+    };
+  });
+}
+
+function mergeAnnotationHandoff(value, courseId, additions, updatedAt) {
+  if (value != null && (!plainObject(value) ||
+      value.contract !== COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT ||
+      value.courseId !== courseId || !Array.isArray(value.intents))) {
+    throw failure("Handoff de observações v1 inválido.",
+      "course_personal_state_legacy_migration_failed");
+  }
+  const intents = new Map((value?.intents || []).map((intent) => [
+    entityId(intent.targetStudyUnitId, "Alvo do handoff"),
+    clone(intent)
+  ]));
+  for (const intent of additions) intents.set(intent.targetStudyUnitId, clone(intent));
+  return {
+    contract: COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
+    courseId,
+    intents: [...intents.values()],
+    updatedAt
+  };
+}
+
+function migrateLegacyCache(value, courseId, existingHandoff) {
+  const legacy = normalizeLegacyCache(value, courseId);
+  const personalOperations = mergeOperations([], [
+    ...(legacy.pending?.operations || []),
+    ...legacy.queuedOperations
+  ].filter((operation) => COLLECTIONS.has(operation.collection)));
+  return {
+    record: {
+      contract: COURSE_PERSONAL_STATE_CACHE_CONTRACT,
+      courseId,
+      revision: legacy.revision,
+      state: validateCoursePersonalState({
+        version: COURSE_PERSONAL_STATE_VERSION,
+        progress: legacy.state.progress,
+        reviewMarks: legacy.state.reviewMarks
+      }),
+      pending: null,
+      queuedOperations: personalOperations,
+      needsRemoteRebase: personalOperations.length > 0,
+      updatedAt: legacy.updatedAt
+    },
+    handoff: mergeAnnotationHandoff(
+      existingHandoff,
+      courseId,
+      legacyObservationIntents(legacy),
+      legacy.updatedAt
+    )
+  };
 }
 
 function mapDiff(name, previous, next) {
@@ -396,7 +564,7 @@ function conflict(error) {
 
 function remoteEnvelope(value, courseId) {
   if (value == null) return { courseId, revision: 0, state: emptyState(), updatedAt: null };
-  if (!plainObject(value) || value.contract !== "aralearn.course-personal-state.v1" ||
+  if (!plainObject(value) || value.contract !== "aralearn.course-personal-state.v2" ||
       requiredUuid(value.courseId, "Curso remoto") !== courseId) {
     throw failure("Resposta remota do estado pessoal inválida.");
   }
@@ -426,6 +594,14 @@ function cacheKey(courseId) {
   return `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`;
 }
 
+function legacyCacheKey(courseId) {
+  return `${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${courseId}`;
+}
+
+export function courseAnnotationHandoffCacheKey(courseId) {
+  return `${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${requiredUuid(courseId, "Curso")}`;
+}
+
 export class CoursePersonalStateRepository {
   #queue = Promise.resolve();
   #record = null;
@@ -448,6 +624,7 @@ export class CoursePersonalStateRepository {
     }
     if (!cache || typeof cache.getCache !== "function" ||
         typeof cache.putCache !== "function" ||
+        typeof cache.updateCaches !== "function" ||
         typeof cache.deleteCachePrefix !== "function") {
       throw new TypeError("Cache canônico obrigatório para o estado pessoal.");
     }
@@ -491,6 +668,7 @@ export class CoursePersonalStateRepository {
       state: validateCoursePersonalState(value.state),
       pending,
       queuedOperations: normalizeOperations(value.queuedOperations || []),
+      needsRemoteRebase: value.needsRemoteRebase === true,
       updatedAt: instant(value.updatedAt, "Atualização em cache")
     };
   }
@@ -500,7 +678,30 @@ export class CoursePersonalStateRepository {
       if (refresh) await this.refresh();
       return this.snapshot();
     }
-    const cached = await this.cache.getCache(cacheKey(this.courseId));
+    let cached = await this.cache.getCache(cacheKey(this.courseId));
+    if (!cached) {
+      const migrationKeys = [
+        legacyCacheKey(this.courseId),
+        cacheKey(this.courseId),
+        courseAnnotationHandoffCacheKey(this.courseId)
+      ];
+      const migrate = (records) => {
+        const legacy = records[legacyCacheKey(this.courseId)];
+        if (!legacy) return records;
+        const result = migrateLegacyCache(
+          legacy,
+          this.courseId,
+          records[courseAnnotationHandoffCacheKey(this.courseId)]
+        );
+        return {
+          [legacyCacheKey(this.courseId)]: null,
+          [cacheKey(this.courseId)]: result.record,
+          [courseAnnotationHandoffCacheKey(this.courseId)]: result.handoff
+        };
+      };
+      const migrated = await this.cache.updateCaches(migrationKeys, migrate);
+      cached = migrated[cacheKey(this.courseId)];
+    }
     if (cached) {
       try {
         this.#record = this.#normalizeCache(cached);
@@ -515,6 +716,7 @@ export class CoursePersonalStateRepository {
       state: emptyState(),
       pending: null,
       queuedOperations: [],
+      needsRemoteRebase: false,
       updatedAt: nowIso(this.clock)
     };
     this.#initialized = true;
@@ -528,7 +730,9 @@ export class CoursePersonalStateRepository {
       courseId: this.courseId,
       revision: this.#record.revision,
       state: this.#record.state,
-      pending: Boolean(this.#record.pending || this.#record.queuedOperations.length)
+      pending: Boolean(
+        this.#record.pending || this.#record.queuedOperations.length || this.#record.needsRemoteRebase
+      )
     });
   }
 
@@ -682,31 +886,6 @@ export class CoursePersonalStateRepository {
     }).sort((left, right) => right.reviewMarkedAt.localeCompare(left.reviewMarkedAt));
   }
 
-  loadCommentForPath(reference) {
-    this.#assertInitialized();
-    const path = studyUnitLocation(reference, this.#indexedLessons).studyUnitId;
-    const value = this.#record.state.observations[path];
-    return value ? clone(value) : null;
-  }
-
-  saveCommentForPath(reference, draft) {
-    const path = studyUnitLocation(reference, this.#indexedLessons).studyUnitId;
-    const normalized = normalizePedagogicalCommentDraft(draft);
-    const value = { ...normalized, updatedAt: nowIso(this.clock) };
-    return this.#mutate([
-      { kind: "set", collection: "observations", path, value }
-    ]).then(() => clone(value));
-  }
-
-  deleteCommentForPath(reference) {
-    const path = studyUnitLocation(reference, this.#indexedLessons).studyUnitId;
-    const previous = this.#record.state.observations[path];
-    if (!previous) return Promise.resolve(null);
-    return this.#mutate([
-      { kind: "delete", collection: "observations", path }
-    ]).then(() => clone(previous));
-  }
-
   refresh() {
     this.#assertInitialized();
     return this.#enqueue(async () => {
@@ -718,6 +897,21 @@ export class CoursePersonalStateRepository {
         if (authorityFailure(error)) throw error;
         if (retryable(error)) return this.snapshot();
         throw error;
+      }
+      if (this.#record.needsRemoteRebase) {
+        this.#record.revision = remote.revision;
+        this.#record.state = applyOperations(remote.state, this.#record.queuedOperations);
+        if (this.#record.queuedOperations.length) {
+          this.#record.pending = {
+            requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração migrada"),
+            baseRevision: remote.revision,
+            operations: this.#record.queuedOperations,
+            createdAt: nowIso(this.clock)
+          };
+        }
+        this.#record.queuedOperations = [];
+        this.#record.needsRemoteRebase = false;
+        await this.#persist();
       }
       if (this.#record.pending) {
         await this.#flushUnlocked();
@@ -736,7 +930,13 @@ export class CoursePersonalStateRepository {
   }
 
   async clearLocal() {
-    await this.cache.putCache(cacheKey(this.courseId), null);
+    await Promise.all([
+      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
+      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${this.courseId}`),
+      this.cache.deleteCachePrefix(`${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${this.courseId}`),
+      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
+      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`)
+    ]);
     this.#record = null;
     this.#initialized = false;
     return true;
@@ -756,6 +956,10 @@ export class CoursePersonalStateRepository {
   async #clearAuthority() {
     await Promise.all([
       this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
+      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${this.courseId}`),
+      this.cache.deleteCachePrefix(`${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${this.courseId}`),
+      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
+      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`),
       this.cache.deleteCachePrefix(`course.v1.header:${this.courseId}`),
       this.cache.deleteCachePrefix(`course.v1.entities:${this.courseId}:`),
       this.cache.deleteCachePrefix("course.v1.list:")
@@ -769,7 +973,7 @@ export class CoursePersonalStateRepository {
     const normalized = normalizeOperations(operations);
     if (!normalized.length) return Promise.resolve(this.snapshot());
     this.#record.state = applyOperations(this.#record.state, normalized);
-    if (this.#record.pending) {
+    if (this.#record.pending || this.#record.needsRemoteRebase) {
       this.#record.queuedOperations = mergeOperations(
         this.#record.queuedOperations,
         normalized
@@ -790,6 +994,35 @@ export class CoursePersonalStateRepository {
   }
 
   async #flushUnlocked() {
+    if (this.#record?.needsRemoteRebase) {
+      let remote;
+      try {
+        remote = remoteEnvelope(await this.api.loadPersonalState(this.courseId), this.courseId);
+      } catch (error) {
+        if (authorityFailure(error)) {
+          await this.#clearAuthority();
+          throw error;
+        }
+        if (retryable(error)) {
+          await this.#persist();
+          return this.snapshot();
+        }
+        throw error;
+      }
+      this.#record.revision = remote.revision;
+      this.#record.state = applyOperations(remote.state, this.#record.queuedOperations);
+      if (this.#record.queuedOperations.length) {
+        this.#record.pending = {
+          requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração migrada"),
+          baseRevision: remote.revision,
+          operations: this.#record.queuedOperations,
+          createdAt: nowIso(this.clock)
+        };
+      }
+      this.#record.queuedOperations = [];
+      this.#record.needsRemoteRebase = false;
+      await this.#persist();
+    }
     let consecutiveConflicts = 0;
     while (this.#record?.pending) {
       const pending = this.#record.pending;

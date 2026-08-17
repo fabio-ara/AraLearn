@@ -1,12 +1,11 @@
 {
-  "schemaRevision": "20260817190000",
+  "schemaRevision": "20260817200000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
     "single-live-course-identity-v1",
     "paged-live-course-composition-v1",
     "direct-course-access-v1",
-    "course-personal-state-v1",
     "course-cas-idempotency-v1",
     "oauth-only-authoring-mcp",
     "package-library-v1",
@@ -22,6 +21,9 @@
     "course-authoring-guidance-v1",
     "course-component-policy-v1",
     "course-sources-v1",
-    "course-source-provenance-v1"
+    "course-source-provenance-v1",
+    "course-anchored-annotations-v1",
+    "course-annotation-subject-classification-v1",
+    "course-personal-state-v2"
   ]
 }

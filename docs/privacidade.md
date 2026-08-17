@@ -29,8 +29,12 @@ transforma a pessoa em coautora e não permite que ela abra o Curso na Autoria.
 
 **Estado pessoal de Estudo** é o conjunto de informações da própria pessoa
 necessário para continuar sua atividade: ponto de retomada, unidades
-concluídas, marcações **Rever** e observações. Esse estado não é o conteúdo do
-Curso e não é compartilhado entre estudantes.
+concluídas e marcações **Rever**. O documento v2 não contém observações, não é o
+conteúdo do Curso e não é compartilhado entre estudantes.
+
+**Anotação ancorada** é o registro protegido de uma Observação ligada a um alvo
+do Curso. Ela usa persistência própria porque precisa chegar à caixa de entrada
+do proprietário sem revelar a estudantes os registros de colegas.
 
 **Réplica local** é a cópia mantida no dispositivo para abertura rápida e uso
 sem conexão. Ela não substitui uma cópia de segurança: uma alteração ainda não
@@ -46,7 +50,8 @@ sincronizada pode existir somente naquele dispositivo.
 | identificar o Curso | proprietário, título, objetivo, orientações e composição didática | PostgreSQL |
 | documentar Fontes e proveniência | revisões de Fonte, metadados, URL, Âncoras, trecho privado de verificação e atribuições por alvo | PostgreSQL privado; arquivos externos não são copiados para o Storage |
 | autorizar o Estudo | Curso, pessoa favorecida, concedente e momento da concessão | PostgreSQL |
-| retomar o Estudo | posição, conclusões, marcações **Rever** e observações pessoais | PostgreSQL e réplica local |
+| retomar o Estudo | posição, conclusões e marcações **Rever** | PostgreSQL e réplica local |
+| registrar e triar Observações | alvo, origem/canal, texto corrente, categoria, estado, classificação, resposta, versões e metadados mínimos | PostgreSQL privado; cache e outbox próprios no dispositivo |
 | aplicar alterações com segurança | revisão esperada, identificador do pedido, evento e recibo técnico temporário | PostgreSQL privado |
 
 ### Identidade humana mínima
@@ -117,7 +122,8 @@ possui tratamento de dados próprio quando o link é aberto.
 Conceder ou revogar exige confirmação humana explícita. Revogar remove o acesso
 ao conteúdo, mas preserva no servidor o estado pessoal daquela pessoa. Na
 próxima validação com conexão, uma resposta de acesso negado elimina do
-dispositivo o cabeçalho, as entidades e as listas em cache daquele Curso. Isso
+dispositivo o cabeçalho, as entidades, as listas, o cache e a outbox de
+anotações daquele Curso. Isso
 impede que uma cópia antiga continue aparecendo como autorizada. Se o acesso
 for concedido novamente, o estado pessoal remoto pode voltar a ser usado.
 
@@ -131,6 +137,49 @@ tentativa ou uma inferência de atenção.
 A fila **Rever** é montada no servidor a partir das marcações da própria pessoa
 e chega ao cliente em páginas pequenas. O aplicativo não precisa baixar todos
 os Cursos para descobrir quais unidades foram marcadas.
+
+### Anotações ancoradas e identidade protegida
+
+Cada estudante lê somente as próprias anotações. O proprietário lê todas as
+anotações do Curso para triagem; coestudantes nunca leem registros uns dos
+outros. No DTO owner-only, a identidade protegida é
+`contributor={kind:'protected_person',role,ref,label}`. `ref` é o pseudônimo
+aleatório persistido `person-` seguido de 16 dígitos hexadecimais; não é
+derivado de Curso/UUID, não é UUID ou e-mail e não é reversível pelo contrato.
+Conhecer o UUID do roster não permite correlacioná-lo. A interface mostra
+somente o `label` pseudônimo protegido, por exemplo “Estudante 7A3F”; não mostra
+`ref`, UUID ou e-mail.
+
+O contador global do conjunto é entregue somente ao proprietário. Estudo usa
+um contador monotônico privado por pessoa e Curso, junto do `protected_ref`
+aleatório persistido: atividade de terceiros não o altera nem pode ser inferida pela
+paginação, pelo cache ou pela coordenação entre abas. Essa relação possui RLS
+forçada e nenhum grant direto; ela coordena a projeção self-only, não guarda
+texto e não cria outra autoridade de domínio. Para preservar monotonicidade do
+cache, a linha fica até a exclusão da pessoa ou do Curso e não participa do TTL
+de conteúdo, tombstone ou recibo.
+
+Enquanto o estado é aberto, considerado ou resolvido e o Curso existe, o
+servidor conserva texto corrente, síntese e resposta necessários à função.
+Eventos de revisão guardam hashes e metadados limitados, não versões anteriores
+do texto bruto. Retirar redige imediatamente texto, síntese e resposta e cria
+um tombstone. Tombstone e recibo expiram logicamente em até 14 dias: deixam de
+ser legíveis, pagináveis, contar quota ou admitir replay. A limpeza física da
+linha e dos eventos é oportunista quando o Curso é lido ou alterado e processa
+por toque um lote de até 128 tombstones e 256 recibos expirados. Um Curso
+inativo pode conservar lixo físico porque não existe cron nem promessa de hard
+delete em até 14 dias.
+
+Excluir a conta retira e redige imediatamente suas contribuições, que seguem a
+mesma janela de limpeza. Excluir o Curso remove suas anotações por cascade.
+Registros ativos ou resolvidos não expiram automaticamente por idade: a
+instituição precisa declarar sua política de retenção operacional.
+
+O AraLearn não cria cópia de pesquisa por padrão. Qualquer reutilização exige
+protocolo explícito, minimização, governança e nova autorização aplicável.
+Quantidade, ausência, categoria, estado, resposta, resolução e timestamps não
+medem aprendizagem, dificuldade, atenção, qualidade ou eficácia pedagógica; o
+instante capturado é uma pista de contexto, não duração de sessão.
 
 ### Autoria, eventos e recibos
 
@@ -167,6 +216,7 @@ O navegador e o aplicativo Android mantêm:
 - sessão autenticada;
 - cache de listas, cabeçalhos e páginas de composição de Cursos;
 - estado pessoal e alterações que aguardam sincronização;
+- cache, outbox e handoff transitório de Anotações ancoradas;
 - arquivos estáticos necessários ao funcionamento da interface.
 
 O IndexedDB permite transações e sobrevive ao fechamento da página. Limpar os
@@ -218,8 +268,10 @@ O cliente remove primeiro os objetos privados de avatar. O banco recusa apagar
 a conta enquanto ainda houver um desses objetos. Depois, a conta do Auth é
 excluída e as relações dependentes seguem as regras de integridade do banco:
 perfil, Cursos próprios, composição, acessos e estados vinculados a Cursos
-removidos deixam de existir. A réplica local é limpa somente depois da resposta
-de sucesso do servidor.
+removidos deixam de existir. Contribuições em Cursos alheios são retiradas e
+redigidas imediatamente e expiram logicamente na janela de 14 dias; a limpeza
+física é oportunista. A réplica local é limpa somente depois da resposta de
+sucesso do servidor.
 
 A operação exige conexão e não oferece restauração automática. Logs técnicos,
 backups e retenções do provedor de infraestrutura podem seguir prazos próprios;

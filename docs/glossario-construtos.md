@@ -389,14 +389,18 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   aparece como **Observação**.
 - **Definição:** anotação com corpo e alvo endereçável, autoria, motivação e
   estado. Pode registrar dúvida, possível erro, confusão ou sugestão ligada a
-  uma unidade específica
+  Curso, Módulo, Lição, Tópico, Microssequência ou Unidade; podem coexistir
+  várias no mesmo alvo
   ([W3C (2017)](https://www.w3.org/TR/annotation-model/)).
 - **Manifestação possível:** texto registrado, alvo reencontrável, autoria e
   decisão de ação.
 - **Não equivale a:** achado de auditoria, mensagem de chat sem alvo,
-  diagnóstico de dificuldade, domínio ou qualidade docente.
+  diagnóstico de dificuldade, domínio ou qualidade docente. Categoria, estado,
+  resposta e resolução tampouco são medidas desses construtos.
 - **Evidência necessária:** corpo, alvo e contexto; ausência de observação não
-  significa compreensão.
+  significa compreensão. Classificação automática só identifica o próprio
+  Tópico quando ele é o alvo exato; outros assuntos exigem seleção humana
+  explícita, não inferência pela prosa.
 
 ## Resultados compostos de qualidade
 

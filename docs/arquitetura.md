@@ -1,8 +1,8 @@
 # Arquitetura do AraLearn
 
 Este capítulo explica a arquitetura implementada no código corrente. Ele não
-descreve como concluídas as camadas futuras de observações autorais reunidas,
-auditoria, variantes ou analytics de pesquisa.
+descreve como concluídas as camadas futuras de achados de auditoria, correção
+verificada, variantes ou analytics de pesquisa.
 
 ## Vocabulário necessário
 
@@ -48,9 +48,14 @@ a composição inteira de todos os Cursos.
 revisão fixada. Pode ser limitada ao Curso, a uma Parte, às Unidades sem Parte
 ou a um recorte curricular e não recompõe o documento integral.
 
-**Estado pessoal.** Progresso, marcas para rever e observações de uma pessoa em
-um Curso. Ele não altera o conteúdo canônico e não é compartilhado com outra
-pessoa que estude o mesmo Curso.
+**Estado pessoal.** Documento v2 com somente progresso e marcas para rever de
+uma pessoa em um Curso. Ele não altera o conteúdo canônico e não é compartilhado
+com outra pessoa que estude o mesmo Curso.
+
+**Anotação ancorada.** Registro protegido de uma Observação ligado a Curso,
+Módulo, Lição, Tópico, Microssequência didática ou Unidade de estudo. Várias
+anotações podem coexistir no mesmo alvo; elas possuem persistência, versões e
+sincronização separadas do estado pessoal e do conteúdo canônico.
 
 **Concorrência otimista.** Uma alteração informa a revisão que leu. O servidor
 só a aceita se essa revisão ainda for corrente; caso contrário, o cliente
@@ -339,7 +344,7 @@ material na mesma transação reconcilia os IDs de Unidades, seu pai e alvo e os
 
 ### Problema
 
-Progresso e observações pertencem à experiência de uma pessoa. Se forem
+Progresso e marcações **Rever** pertencem à continuidade de uma pessoa. Se forem
 misturados ao conteúdo, cada avanço de estudante alterará a revisão autoral e
 poderá vazar para outras pessoas.
 
@@ -349,12 +354,13 @@ poderá vazar para outras pessoas.
 Curso. Ele contém:
 
 - cursores e Unidades concluídas por Lição;
-- marcas de revisão por Unidade;
-- observações por alvo, com categoria, texto e instante de atualização.
+- marcas de revisão por Unidade.
 
-O IndexedDB mantém a réplica local e uma mutação pendente por Curso. A RPC
-`mutate_course_personal_state_v1` valida acesso, revisão, limites e chave de
-pedido. Recibos expiram em sete dias e existem apenas para repetição segura.
+O IndexedDB mantém a réplica local e uma mutação pendente por Curso. As RPCs
+`load_course_personal_state_v2` e `mutate_course_personal_state_v2` validam
+acesso, revisão, limites e chave de pedido. O runtime não lê nem grava o contrato
+v1; recibos v1 remanescentes são cercados por versão de protocolo e só existem
+até sua expiração original.
 
 ### Consequências
 
@@ -362,8 +368,8 @@ pedido. Recibos expiram em sete dias e existem apenas para repetição segura.
 - uma concessão de acesso basta para Estudo, sem papel editorial;
 - revogar acesso impede novas leituras, mas o tratamento de dados locais já
   baixados continua dependente da política do dispositivo;
-- observações pessoais já persistem, mas sua fila autoral unificada e seu ciclo
-  de correção ainda não estão implementados.
+- Anotações ancoradas usam tabelas, API, cache e outbox próprios; não ampliam o
+  estado pessoal v2.
 
 ## Decisão 7 — propriedade e acesso direto
 
@@ -483,8 +489,63 @@ evento e recibo pertencem à mesma transação.
   ator, canal ou histórico;
 - a atribuição por alvo não equivale a uma cadeia de alegações no padrão W3C
   nem prova autoria científica;
-- observações ancoradas pertencem à #124; achados, correções e verificação
-  independente pertencem à #125.
+- Anotações ancoradas são uma relação própria; achados, correções e verificação
+  independente permanecem uma fatia posterior.
+
+## Decisão 12 — Observações como Anotações ancoradas protegidas
+
+### Problema
+
+Uma observação precisa conservar contexto, chegar ao proprietário e continuar
+privada entre estudantes. Misturá-la ao Curso avançaria a revisão de conteúdo;
+misturá-la ao estado pessoal impediria a caixa de entrada compartilhada e
+obrigaria um único registro por Unidade.
+
+### Decisão e funcionamento
+
+`private.course_anchored_annotations` conserva a linha corrente;
+`private.course_anchored_annotation_events` guarda eventos append-only com
+hashes e metadados limitados, sem texto anterior; e
+`private.course_anchored_annotation_receipts` oferece idempotência por até 14
+dias. `private.course_anchored_annotation_viewer_versions` guarda Curso, pessoa,
+contador monotônico da projeção privada e `protected_ref` aleatório persistido,
+com RLS forçada e sem grants diretos; é coordenação e pseudonimização, não
+autoridade textual ou histórico novo.
+`courses.annotation_set_version` é o contador global entregue ao proprietário.
+Estudo recebe apenas o contador privado da própria pessoa, de modo que atividade
+alheia não se torna observável. Nenhum dos dois transforma triagem em mudança
+de conteúdo. A linha privada dura até excluir a pessoa ou o Curso para manter a
+monotonicidade do cache; não entra no TTL de texto, tombstone ou recibo. Há N
+anotações por pessoa e alvo, nos estados
+`open|considered|resolved|withdrawn`, com origem e canal validados.
+
+A classificação automática só associa assunto quando o alvo é exatamente um
+Tópico (`exact_topic_target`). Outros alvos permanecem
+`target_scope_unclassified`; uma seleção posterior do proprietário é registrada
+separadamente como `human_topic_selection`, sem apagar o fato automático.
+
+O proprietário lê a caixa de entrada inteira. Cada estudante lê somente os
+próprios registros. O DTO owner-only usa contribuidor protegido: papel e
+pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUID e
+nunca UUID ou e-mail. Assim, conhecer o roster não permite correlacionar `ref`.
+A interface mostra
+somente o `label` pseudônimo protegido, não `ref` nem identidade direta. Estudo
+possui cache e outbox offline próprios e coordena abas por IDs,
+nunca por texto bruto. Perda de autoridade purga cache, outbox e handoff.
+
+### Consequências
+
+- **Observações** é a sétima área da Autoria, com sínteses, filtros e links
+  profundos; Anotar uma Unidade parte da Inspeção;
+- o MCP continua com seis ferramentas: `lerCurso` lê
+  `anchored_annotations` e `alterarCurso` executa
+  `update_anchored_annotations`;
+- retirada redige texto, síntese e resposta imediatamente; após 14 dias o
+  tombstone expira logicamente; a limpeza física processa por toque um lote de
+  até 128 tombstones e 256 recibos expirados, mas Curso inativo pode conservar
+  lixo físico porque não há cron; Curso e conta aplicam as respectivas regras;
+- categoria, quantidade, estado, resposta, resolução e timestamps não são
+  medidas de aprendizagem, dificuldade, atenção, qualidade ou eficácia.
 
 ## Organização do código
 
@@ -494,16 +555,19 @@ evento e recibo pertencem à mesma transação.
 | plano instrucional e comandos de Parte | `src/domain/courseAuthoringPlan.js` |
 | parâmetros, orientação e política de componentes | `src/domain/courseDesignParameters.js` |
 | Fontes, Âncoras e atribuições | `src/domain/courseSources.js` |
+| Anotações ancoradas | `src/domain/courseAnchoredAnnotations.js` |
 | cache local | `src/persistence/CourseLocalStore.js` |
 | estado pessoal e fila | `src/persistence/CoursePersonalStateRepository.js` |
+| cache e outbox de anotações | `src/persistence/CourseAnnotationRepository.js` |
 | acesso HTTP/RPC | `src/supabase/CourseApiClient.js` |
 | cache, paginação e revisão | `src/supabase/CourseController.js` |
 | aplicação de Estudo | `src/study/` |
 | Autoria visual | `src/ui/CourseAuthoringSurface.js` |
 | sequência vertical de Inspeção | `src/ui/CourseInspectionSequence.js` |
 | catálogo visual de Fontes | `src/ui/CourseSourcesPanel.js` |
+| caixa de entrada de Observações | `src/ui/CourseObservationsPanel.js` |
 | API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000` a `20260817190000` |
+| banco canônico | migrations `20260817140000` a `20260817200000` |
 | importador transitório | `scripts/courseCutover/` |
 
 ## Gates antes da promoção hospedada
@@ -520,9 +584,9 @@ está concluída. A promoção exige, nesta ordem:
 4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
    substituído;
 5. executar o importador e as migrations `1400`, `1500`, `1600`, `1700`,
-   `1800` e `1900`, nessa ordem, na mesma transação hospedada, abortando diante
-   de drift; o runner declara e hasheia as seis antes de `--apply` e não usa
-   `db push` separado para `1700`, `1800` ou `1900`;
+   `1800`, `1900` e `2000`, nessa ordem, na mesma transação hospedada,
+   abortando diante de drift; o runner declara e hasheia as sete antes de
+   `--apply` e não usa `db push` separado para as migrations do corte;
 6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
 
 O importador é transitório e não entra no runtime. Não há leitura dupla,
@@ -538,10 +602,25 @@ O preflight da `1900` bloqueia materializações em andamento e referências
 legadas malformadas. A atestação `prepared` e a verificação pós-corte incluem
 `sourceReferenceHash`, hash canônico da ordem de
 `{studyUnitId, sourceOrdinal, sourceId}`, junto com os hashes e contagens já
-selados. O inventário vertical pós-`1900` possui 2.010 objetos: 416 ligados aos
-seis casos correntes — 84 deles em `course-source-provenance` — e 1.594
-isolados para remoção na #130. Nenhum total
-anterior serve como prova desse schema.
+selados.
+
+O preflight da `2000` aceita somente as pontes legadas de observações e recibos
+previstas pelo contrato; linhas `audit_finding` falham fechadas até decisão
+explícita da fatia de auditoria, assim como qualquer dado inesperado. Notas
+autorais e observações pessoais legadas são convertidas uma vez e removidas dos
+documentos pessoais após prova por hash. `trail_observation_threads` permanece
+apenas como ponte temporária de correção sem texto bruto, não como fonte ativa.
+
+O contrato congelado tem SHA-256
+`209D7E7684AB7BDD615243938AD849B4F498EB509D557CA398080812CBC716E6`, idêntico
+no domínio e no espelho Edge.
+O inventário vertical regenerado pós-`2000` possui 2.096 objetos: 501 ligados a
+sete casos correntes — 84 de Anotações ancoradas, 272 de Autoria, 84 de Fontes,
+26 de Estudo, 31 de pessoas/acesso, um de componentes e três de transportes — e
+1.595 isolados como legado físico. Entre os legados permanece
+`private.valid_course_personal_state_v1`, cercado para remoção posterior; RPCs,
+constraint e feature v1 não integram o runtime. Nenhum total anterior serve
+como prova desse schema.
 
 ## Propriedades demonstradas e questões abertas
 
@@ -554,13 +633,14 @@ anterior serve como prova desse schema.
 | parâmetros, itens do plano por alvo, orientação original e política são resolvidos pelo mesmo contrato na UI e no MCP | implementado localmente | domínio, relação muitos-para-muitos da migration `1800`, API/MCP, área Parâmetros e testes focais |
 | materialização sela enunciados, versões e subconjuntos por alvo e cerca fatos declarados | implementado localmente | migration `1800`, hash do contexto, validação interna e regressão DNS/DHCP; o banco reconcilia materialmente somente IDs de Unidades, pai/alvo e `componentRefs` |
 | Fontes e Âncoras preservam revisões e atribuições por alvo fora do conteúdo | implementado localmente | domínio compartilhado, migration `1900`, API/MCP, sexta área de Autoria e testes focais |
+| Anotações ancoradas reúnem manifestações autorais e estudantis sem ampliar o estado pessoal | implementado localmente | domínio compartilhado, migration `2000`, RPC/API/MCP, sétima área, folha no Estudo e testes focais |
 | Estudo recebe somente citações visíveis e sob demanda | implementado localmente | RPC redigida, cache lazy e casos de ocultação, URL e revogação; não há edição de Fontes no Estudo |
 | composição e materialização confirmam proveniência junto com conteúdo | implementado localmente | aplicação completa por Unidade, contexto v2, transações e rollback focal |
 | UI e MCP inspecionam as mesmas Unidades por escopo e revisão | implementado localmente | migration `1700`, RPC owner-only, `lerCurso study_units`, cache e testes focais |
 | a Inspeção limita página, payload e janela visual | implementado localmente | 12/24 itens, hard cap de 1,75 MiB, cache limitado e no máximo 36 artigos |
 | remover ou reorganizar Parte não apaga conteúdo produzido | implementado localmente | relações separadas, transações e testes de domínio/banco |
 | progresso de Parte reflete somente fatos persistidos | implementado localmente | projeção relacional de vínculos, entidades, tentativas e etapas |
-| estado pessoal não altera o Curso | implementado localmente | schema, RPC e repositório local |
+| estado pessoal v2 contém somente progresso e Rever e não altera o Curso | implementado localmente | schema, RPC v2 e repositório local; anotações usam contador global owner-only e contador privado no Estudo |
 | perfil e avatar respeitam relação direta | implementado localmente | RLS, bucket privado e interface de Conta |
 | o corte preserva todos os dados reais | ainda não demonstrado | importação hospedada bloqueada por componentes sem equivalente |
 | a interface é compreensível por pessoas leigas | ainda não demonstrado | exige aceitação humana em celular e desktop |

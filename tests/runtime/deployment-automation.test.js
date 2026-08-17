@@ -28,6 +28,7 @@ const scripts = {
     "tests",
     "course-runtime-local-smoke.mjs"
   ),
+  courseRuntimeValidator: path.join(repositoryRoot, "scripts", "validateCourseRuntime.mjs"),
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
   validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1"),
   validateLocalSupabase: path.join(repositoryRoot, "scripts", "validateLocalSupabase.ps1")
@@ -321,14 +322,47 @@ test("smoke real de Curso cobre proveniência redigida sem enviar a chave como B
   assert.match(source, /steps\[0\]\.status,\s*"pending"/u);
   assert.match(source, /list_courses_v1/u);
   assert.match(source, /list_owned_courses_v1/u);
-  assert.match(source, /mutate_course_personal_state_v1/u);
+  assert.match(source, /mutate_course_personal_state_v2/u);
+  assert.match(source, /aralearn\.course-personal-state\.v2/u);
+  assert.doesNotMatch(source, /(?:load|mutate)_course_personal_state_v1/u);
+  assert.match(source, /execute_my_course_anchored_annotation_command_v1/u);
+  assert.match(source, /view:\s*"anchored_annotations"/u);
+  assert.match(source, /provenance\.channel,\s*"authoring_interface"/u);
+  assert.match(source, /contributor\.kind,\s*"protected_person"/u);
+  assert.match(source, /foreignAnnotationProbes/u);
+  assert.match(source, /course_anchored_annotation_not_found/u);
   assert.doesNotMatch(source, /aralearn\.library\.v1/u);
   assert.doesNotMatch(source, /\bcards\s*:/u);
   assert.doesNotMatch(source, /\bsources\s*:/u);
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
 });
 
-test("smokes MCP exercitam Fonte, Âncora e composição de proveniência atômica", () => {
+test("validator canônico cerca RPCs e observações pessoais removidos", () => {
+  const source = fs.readFileSync(scripts.courseRuntimeValidator, "utf8");
+  for (const removed of [
+    "load_course_personal_state_v1",
+    "mutate_course_personal_state_v1",
+    "saveCommentForPath",
+    "deleteCommentForPath",
+    "loadCommentForPath"
+  ]) {
+    assert.match(source, new RegExp(removed, "u"));
+  }
+  assert.match(source, /LEGACY_PERSONAL_OBSERVATIONS_ACCESS/u);
+  assert.match(source, /legacyPersonalObservationsStayInHandoffConverter/u);
+  assert.match(source, /accesses\.length === 2/u);
+  assert.match(source, /src\/ui\/CourseObservationsPanel\.js/u);
+  assert.match(source, /src\/ui\/renderStudyUnitObservationSheet\.js/u);
+  const manifest = JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
+    "utf8"
+  ));
+  assert.equal(manifest.schemaRevision, "20260817200000");
+  assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
+});
+
+test("smokes MCP exercitam proveniência e Observações ancoradas pelo contrato de seis tools", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     assert.match(source, /aralearn\.course\.v1/u);
@@ -351,6 +385,13 @@ test("smokes MCP exercitam Fonte, Âncora e composição de proveniência atômi
     assert.match(source, /rejectedAttribution/u);
     assert.match(source, /afterRejectedAttribution\.courseRevision/u);
     assert.match(source, /targetVersion,\s*2/u);
+    assert.match(source, /view:\s*"anchored_annotations"/u);
+    assert.match(source, /operation:\s*"update_anchored_annotations"/u);
+    assert.match(source, /type:\s*"create_anchored_annotation"/u);
+    assert.match(source, /anchored_annotation_confirmation_required/u);
+    assert.match(source, /provenance\.channel,\s*"authoring_chat"/u);
+    assert.match(source, /aralearn\.course-anchored-annotation-page\.v1/u);
+    assert.match(source, /replayedAnnotation\.idempotent,\s*true/u);
     assert.doesNotMatch(source, /aralearn\.library\.v1/u);
     assert.doesNotMatch(source, /\bcards\s*:/u);
     assert.doesNotMatch(source, /\bsources\s*:/u);

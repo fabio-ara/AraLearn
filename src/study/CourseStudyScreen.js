@@ -289,7 +289,7 @@ function renderStudyUnit({
   studyUnitIndex,
   packageStudyUnitOptions,
   feedbackOpen,
-  hasObservation,
+  observationCount,
   markedForReview,
   runtimeStatus,
   citationsOpen,
@@ -350,9 +350,15 @@ function renderStudyUnit({
     '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
     ` aria-expanded="${String(citationsOpen)}" title="Fontes" aria-label="Fontes">` +
     renderUiIcon("study", "home-tab-icon") + "</button>" +
-    '<button class="icon-ghost study-comment-btn' + (hasObservation ? " has-comment" : "") +
-    '" type="button" data-action="open-observation" title="Observação" aria-label="Observação">' +
-    renderUiIcon("prompt", "home-tab-icon") + "</button>" +
+    '<button class="icon-ghost study-observation-btn' +
+    (observationCount > 0 ? " has-observations" : "") +
+    '" type="button" data-action="open-observation" title="Observações" aria-label="Observações' +
+    (observationCount > 0 ? `, ${observationCount}` : "") + '">' +
+    renderUiIcon("prompt", "home-tab-icon") +
+    (observationCount > 0
+      ? '<span class="study-observation-dock-count" aria-hidden="true">' +
+        String(observationCount) + "</span>"
+      : "") + "</button>" +
     '<button class="icon-ghost study-review-btn' + (markedForReview ? " is-marked" : "") +
     '" type="button" data-action="toggle-review" aria-pressed="' + String(markedForReview) +
     '" title="Marcar para rever" aria-label="Marcar para rever">' +
@@ -384,7 +390,7 @@ export function renderCourseStudyScreen({
   coursePermissionsById,
   packageStudyUnitOptions = {},
   feedbackOpen = false,
-  hasObservation = false,
+  observationCount = 0,
   markedForReview = false,
   citationsOpen = false,
   citationsLoading = false,
@@ -422,7 +428,7 @@ export function renderCourseStudyScreen({
     studyUnitIndex: selection.studyUnitIndex,
     packageStudyUnitOptions,
     feedbackOpen,
-    hasObservation,
+    observationCount,
     markedForReview,
     runtimeStatus,
     citationsOpen,

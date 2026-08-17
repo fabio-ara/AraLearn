@@ -62,13 +62,29 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário pós-corte separa os seis casos correntes do legado físico", async () => {
+test("o inventário pós-corte separa os sete casos correntes do legado físico", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
+  const counts = Object.fromEntries(current.cases.map(({ id }) => [
+    id,
+    inventory.objects.filter(({ caseId }) => caseId === id).length
+  ]));
+  assert.equal(inventory.objects.length, 2_096);
+  assert.deepEqual(counts, {
+    "study-course-experience": 26,
+    "course-authoring-experience": 272,
+    "course-source-provenance": 84,
+    "course-anchored-annotations": 84,
+    "person-profile-and-course-access": 31,
+    "didactic-component-runtime": 1,
+    "course-shared-transports": 3,
+    "pre-course-database-removal": 1_595
+  });
   const currentCaseIds = current.cases
     .filter(({ status }) => status === "current")
     .map(({ id }) => id);
+  assert.equal(currentCaseIds.length, 7);
   assert.deepEqual(
     new Set(inventory.objects.map(({ caseId }) => caseId)),
     new Set([...currentCaseIds, "pre-course-database-removal"])
@@ -77,6 +93,10 @@ test("o inventário pós-corte separa os seis casos correntes do legado físico"
   assert.equal(
     assignments.get("table:private.course_source_revisions"),
     "course-source-provenance"
+  );
+  assert.equal(
+    assignments.get("table:private.course_anchored_annotations"),
+    "course-anchored-annotations"
   );
   assert.equal(
     assignments.get("table:public.course_personal_states"),

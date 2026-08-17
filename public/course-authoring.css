@@ -2383,6 +2383,414 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+/* A inbox contextual completa a navegação autoral sem comprimir ações no cabeçalho. */
+.course-authoring-sections.has-seven {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.course-authoring-sections.has-seven a {
+  min-width: 0;
+  overflow: hidden;
+  gap: 4px;
+  padding-inline: 4px;
+  font-size: var(--type-xs);
+}
+
+.course-authoring-sections.has-seven a span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-authoring-surface[data-section="observations"] {
+  width: min(100%, 920px);
+}
+
+.course-observations-host,
+.course-observations-panel,
+.course-observations-list,
+.course-observation-card,
+.course-observation-detail {
+  width: 100%;
+  min-width: 0;
+}
+
+.course-observations-panel {
+  display: grid;
+  gap: 11px;
+}
+
+.course-observations-panel > .course-authoring-section-heading :is(a, button),
+.course-observations-filter-actions button,
+.course-observations-load-more,
+.course-observation-detail-link,
+.course-observation-target-link,
+.course-observation-state-actions button,
+.course-observation-detail form button {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.course-observations-panel > .course-authoring-section-heading button {
+  width: var(--tap);
+  padding: 0;
+}
+
+.course-observations-filters {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.course-observation-author-composer {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.course-observation-author-composer > summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  padding: 8px 11px;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.course-observation-author-composer > form {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 0 11px 11px;
+}
+
+.course-observation-author-composer label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.course-observation-author-composer :is(select, textarea) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--tap);
+  padding: 8px 9px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--input-surface);
+  font: inherit;
+}
+
+.course-observation-author-composer textarea {
+  min-height: 112px;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.course-observation-author-composer button {
+  min-height: var(--tap);
+}
+
+.course-observation-character-count {
+  justify-self: end;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.course-observations-filters > summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  padding: 8px 11px;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.course-observations-filters > form {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 11px 11px;
+}
+
+.course-observations-filter-grid {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.course-observations-filter-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.course-observations-filter-grid select,
+.course-observation-detail form :is(select, textarea) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--tap);
+  padding: 8px 9px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--input-surface);
+  font: inherit;
+}
+
+.course-observations-filter-check {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--type-xs);
+}
+
+.course-observations-filter-check input {
+  width: 20px;
+  height: 20px;
+}
+
+.course-observations-filter-actions {
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  gap: 7px;
+}
+
+.course-observations-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.course-observations-summary > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+}
+
+.course-observations-summary :is(dt, dd) {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-xs);
+}
+
+.course-observations-summary dt {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.course-observations-list,
+.course-observation-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.course-observation-card,
+.course-observation-detail > :is(section, form) {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.course-observation-card.is-selected {
+  border-color: var(--action-primary);
+}
+
+.course-observation-card > header {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.course-observation-card > header > strong {
+  overflow-wrap: anywhere;
+  font-size: var(--type-xs);
+}
+
+.course-observation-badges,
+.course-observation-state-actions {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.course-observation-badges span {
+  max-width: 100%;
+  padding: 3px 7px;
+  overflow-wrap: anywhere;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.course-observation-card :is(p),
+.course-observation-detail :is(h3, p) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.course-observation-path {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.course-observation-summary {
+  font-weight: 750;
+}
+
+.course-observation-raw,
+.course-observation-owner-response p {
+  white-space: pre-wrap;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.course-observation-withdrawn {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.course-observation-detail-link {
+  justify-self: start;
+}
+
+.course-observation-target-link,
+.course-observations-load-more {
+  justify-self: stretch;
+}
+
+.course-observation-detail form {
+  min-width: 0;
+}
+
+.course-observation-detail form label,
+.course-observation-detail form fieldset {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.course-observation-detail form textarea {
+  min-height: 120px;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.course-observation-subjects fieldset label {
+  min-height: var(--tap);
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  padding: 5px 0;
+}
+
+.course-observation-subjects input {
+  width: 20px;
+  height: 20px;
+}
+
+.course-inspection-item-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  border-block: 1px solid var(--border-subtle);
+  padding-block: 5px;
+}
+
+.course-inspection-item-actions button {
+  min-width: 0;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--action-primary-hover);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.course-authoring-inspection > .study-observation-overlay {
+  position: fixed;
+}
+
+@media (max-width: 560px) {
+  .course-authoring-sections.has-seven a span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .course-observations-filter-grid,
+  .course-observations-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .course-authoring-sections.has-seven a {
+    padding-inline: 2px;
+  }
+
+  .course-observation-card,
+  .course-observation-detail > :is(section, form) {
+    padding-inline: 9px;
+  }
+}
+
 .course-authoring-sections.has-six a {
   gap: 4px;
   padding-inline: 5px;

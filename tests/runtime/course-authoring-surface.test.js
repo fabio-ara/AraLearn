@@ -2262,7 +2262,7 @@ test("renderer escapa conteúdo e CSS mantém enquadramento mobile-first sem rol
   assert.doesNotMatch(css, /overflow-y/iu);
 });
 
-test("Curso próprio expõe Fontes como sexta área sem embutir dados no envelope", () => {
+test("Curso próprio expõe Observações como sétima área sem embutir dados no envelope", () => {
   const course = {
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -2282,8 +2282,9 @@ test("Curso próprio expõe Fontes como sexta área sem embutir dados no envelop
     sourceTarget: null
   });
 
-  assert.match(markup, /class="course-authoring-sections has-six"/u);
+  assert.match(markup, /class="course-authoring-sections has-seven"/u);
   assert.match(markup, /<span>Fontes<\/span>/u);
+  assert.match(markup, /<span>Observações<\/span>/u);
   assert.match(markup, /data-course-sources-host/u);
   assert.doesNotMatch(markup, /studyUnit\.sources/u);
 });

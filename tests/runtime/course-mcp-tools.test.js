@@ -417,6 +417,7 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     "update_instructional_plan",
     "update_course_design",
     "update_course_sources",
+    "update_anchored_annotations",
     "commit_course_composition",
     "advance_part_materialization"
   ]);
@@ -446,13 +447,20 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     schema.properties.designCommand.oneOf[5].properties.policy.properties.catalogVersion.const,
     "1-3e5629f8"
   );
-  assert.equal(schema.allOf.length, 5);
-  assert.ok(schema.allOf[0].then.required.includes("designCommand"));
-  assert.ok(schema.allOf[1].then.required.includes("sourceCommand"));
-  assert.ok(schema.allOf[2].then.required.includes("planCommand"));
-  assert.equal(schema.allOf[3].then.anyOf.length, 2);
-  assert.ok(schema.allOf[3].then.required.includes("sourceAttributionApplications"));
-  assert.ok(schema.allOf[4].then.required.includes("materializationCommand"));
+  assert.equal(schema.allOf.length, 6);
+  const operationBranch = (operation) => schema.allOf.find((branch) =>
+    branch.if?.properties?.operation?.const === operation
+  );
+  assert.ok(operationBranch("update_course_design").then.required.includes("designCommand"));
+  assert.ok(operationBranch("update_course_sources").then.required.includes("sourceCommand"));
+  assert.ok(operationBranch("update_anchored_annotations").then.required
+    .includes("annotationCommand"));
+  assert.ok(operationBranch("update_instructional_plan").then.required.includes("planCommand"));
+  assert.equal(operationBranch("commit_course_composition").then.anyOf.length, 2);
+  assert.ok(operationBranch("commit_course_composition").then.required
+    .includes("sourceAttributionApplications"));
+  assert.ok(operationBranch("advance_part_materialization").then.required
+    .includes("materializationCommand"));
   assert.ok(schema.properties.planCommand.properties.type.enum.includes("split_part"));
   assert.ok(schema.properties.planCommand.properties.type.enum.includes("assign_microsequence"));
   assert.equal(schema.properties.planCommand.properties.microsequenceIds.maxItems, 64);
@@ -565,9 +573,62 @@ test("schema MCP anuncia leitura retomável somente com as duas identidades", ()
     2_048
   );
   assert.equal(sourceCommand.oneOf[2].properties.anchorId.maxLength, 240);
-  assert.deepEqual(schema.allOf[2].then.properties.scope, schema.properties.scope.anyOf[1]);
-  assert.ok(schema.allOf[2].then.not.anyOf
+  const designBranch = schema.allOf.find((branch) =>
+    branch.if?.properties?.view?.const === "course_design"
+  );
+  assert.deepEqual(designBranch.then.properties.scope, schema.properties.scope.anyOf[1]);
+  assert.ok(designBranch.then.not.anyOf
     .some(({ required }) => required.includes("expectedRevision")));
+});
+
+test("schema MCP discrimina os três modos de observações sem cruzá-los com Fontes", () => {
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").inputSchema;
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const base = {
+    courseId: COURSE_ID,
+    view: "anchored_annotations",
+    expectedRevision: 7
+  };
+  assert.equal(validate({ ...base, mode: "inbox" }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...base,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    includeDescendants: false
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...base,
+    mode: "detail",
+    annotationId: "60000000-0000-4000-8000-000000000006"
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...base,
+    view: "course_sources",
+    mode: "inbox"
+  }), false);
+  assert.equal(validate({ ...base, mode: "catalog" }), false);
+  assert.equal(validate({ ...base, mode: "inbox", includeDescendants: true }), false);
+  assert.equal(validate({
+    ...base,
+    mode: "target",
+    targetKind: "course",
+    targetId: "course-not-a-uuid"
+  }), false);
+  assert.equal(schema.properties.subjectIds.maxItems, 16);
+  assert.equal(validate({
+    ...base,
+    mode: "inbox",
+    subjectIds: Array.from({ length: 17 }, (_, index) => `topic-${index}`)
+  }), false);
+  assert.equal(validate({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 7,
+    mode: "target",
+    targetKind: "course",
+    targetId: COURSE_ID
+  }), false);
 });
 
 test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => {
@@ -883,4 +944,224 @@ test("valida envelope de saída e limita payload", () => {
     () => validateAuthoringMcpToolOutput("listarCursos", { ok: false, data: null }),
     /contrato/u
   );
+});
+
+test("MCP lê a inbox situada e preserva filtros e cursor sem aliases", () => {
+  const operation = mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "anchored_annotations",
+    expectedRevision: 7,
+    annotationSetVersion: 11,
+    mode: "target",
+    origins: ["author", "learner"],
+    channels: ["authoring_chat", "study_interface"],
+    states: ["open"],
+    categories: ["possible_error"],
+    includeUncategorized: false,
+    subjectIds: ["topic-a"],
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    includeDescendants: false,
+    cursor: "Y3Vyc29yLTE=",
+    limit: 12
+  });
+  const url = new URL(`https://aralearn.invalid${operation.path}`);
+  assert.equal(url.pathname, `/v1/courses/${COURSE_ID}/anchored-annotations`);
+  assert.equal(url.searchParams.get("expectedRevision"), "7");
+  assert.equal(url.searchParams.get("annotationSetVersion"), "11");
+  assert.deepEqual(url.searchParams.getAll("origin"), ["author", "learner"]);
+  assert.deepEqual(url.searchParams.getAll("channel"), [
+    "authoring_chat", "study_interface"
+  ]);
+  assert.equal(url.searchParams.get("targetKind"), "study_unit");
+  assert.equal(url.searchParams.get("targetId"), "unit-a");
+  assert.equal(url.searchParams.get("cursor"), "Y3Vyc29yLTE=");
+  assert.equal(Object.hasOwn(operation, "body"), true);
+  assert.equal(operation.body, null);
+});
+
+test("MCP recusa query de observações que ultrapassa o request-target de 8 KiB", () => {
+  const subjectIds = Array.from({ length: 16 }, (_, index) => {
+    const prefix = `s${index}-`;
+    return `${prefix}${"é".repeat(240 - [...prefix].length)}`;
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "anchored_annotations",
+      expectedRevision: 7,
+      mode: "inbox",
+      subjectIds
+    }),
+    (error) => error.code === "course_anchored_annotations_query_too_large"
+  );
+});
+
+test("MCP confirma somente a criação e nunca transporta a conversa", () => {
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  const rawText = "  O exemplo contradiz a definição.\nConfira o segundo passo.  ";
+  const create = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "create_anchored_annotation",
+      annotationId,
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText,
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: "Possível contradição no exemplo",
+      confirmed: true
+    }
+  });
+  assert.equal(
+    create.path,
+    `/v1/courses/${COURSE_ID}/anchored-annotations/changes`
+  );
+  assert.equal(create.body.command.rawText, rawText);
+  assert.equal(Object.hasOwn(create.body.command, "confirmed"), false);
+  assert.equal(create.body.expectedCourseRevision, 7);
+
+  assert.throws(
+    () => mapAuthoringMcpToolCall("alterarCurso", {
+      requestId: REQUEST_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 7,
+      operation: "update_anchored_annotations",
+      annotationCommand: {
+        type: "create_anchored_annotation",
+        annotationId,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText,
+        category: null,
+        capturedAt: null,
+        briefSummary: "Possível contradição no exemplo"
+      }
+    }),
+    (error) => error.code === "anchored_annotation_confirmation_required"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("alterarCurso", {
+      requestId: REQUEST_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 7,
+      operation: "update_anchored_annotations",
+      annotationCommand: {
+        type: "create_anchored_annotation",
+        annotationId,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText,
+        category: null,
+        capturedAt: null,
+        briefSummary: "Possível contradição no exemplo",
+        confirmed: true,
+        transcript: "conversa completa"
+      }
+    }),
+    (error) => error.code === "invalid_course_anchored_annotation_command"
+  );
+});
+
+test("MCP separa CAS do Curso da versão da observação", () => {
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  const revised = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "revise_anchored_annotation",
+      annotationId,
+      expectedAnnotationVersion: 2,
+      rawText: "Texto revisto",
+      category: "confusing",
+      briefSummary: null
+    }
+  });
+  assert.equal(revised.body.expectedCourseRevision, null);
+  assert.equal(revised.body.command.expectedAnnotationVersion, 2);
+  assert.throws(
+    () => mapAuthoringMcpToolCall("alterarCurso", {
+      requestId: REQUEST_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 7,
+      operation: "update_anchored_annotations",
+      annotationCommand: revised.body.command
+    }),
+    (error) => error.code === "invalid_tool_argument"
+  );
+
+  const corrected = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "correct_anchored_annotation_subjects",
+      annotationId,
+      expectedAnnotationVersion: 2,
+      subjectIds: ["topic-a"]
+    }
+  });
+  assert.equal(corrected.body.expectedCourseRevision, 7);
+});
+
+test("schema MCP condiciona revisão do Curso sem aumentar o registro de tools", () => {
+  assert.equal(COURSE_MCP_TOOLS.length, 6);
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
+    .inputSchema;
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  const create = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "create_anchored_annotation",
+      annotationId,
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Possível erro",
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: "Possível erro na Unidade",
+      confirmed: true
+    }
+  };
+  assert.equal(validate(create), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...create, expectedRevision: undefined }), false);
+  assert.equal(validate({
+    ...create,
+    annotationCommand: { ...create.annotationCommand, capturedAt: "ontem" }
+  }), false);
+  assert.equal(validate({
+    ...create,
+    annotationCommand: {
+      ...create.annotationCommand,
+      capturedAt: "0000-08-17T12:00:00Z"
+    }
+  }), false);
+  assert.equal(validate({
+    ...create,
+    annotationCommand: {
+      ...create.annotationCommand,
+      capturedAt: "2026-08-17T12:00:00-03:00"
+    }
+  }), true, JSON.stringify(validate.errors));
+  const revise = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "revise_anchored_annotation",
+      annotationId,
+      expectedAnnotationVersion: 1,
+      rawText: "Texto revisto",
+      category: null,
+      briefSummary: null
+    }
+  };
+  assert.equal(validate(revise), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...revise, expectedRevision: 7 }), false);
 });

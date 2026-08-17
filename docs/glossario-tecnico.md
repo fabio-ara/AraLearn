@@ -154,10 +154,11 @@ estático existe.
 ## Persistência e carregamento
 
 **PostgreSQL.** Banco relacional que é autoridade remota para Curso,
-propriedade, acesso, estado pessoal e perfil.
+propriedade, acesso, Anotações ancoradas, estado pessoal e perfil.
 
 **IndexedDB.** Banco transacional local do navegador. Mantém sessão, páginas em
-cache, documentos compostos e mutações pessoais pendentes.
+cache, documentos compostos, mutações de estado pessoal e cache/outbox de
+Anotações ancoradas.
 
 **Storage de objetos.** Serviço que armazena bytes por chave. O runtime desta
 revisão o usa somente para fotos privadas de perfil.
@@ -166,8 +167,8 @@ revisão o usa somente para fotos privadas de perfil.
 fonte independente de verdade.
 
 **Réplica local.** Cache suficientemente completo para continuar uma tarefa
-sem rede. A réplica de Curso permite leitura; a réplica de estado pessoal
-também conserva intenção de escrita.
+sem rede. A réplica de Curso permite leitura; estado pessoal e Anotações
+ancoradas conservam intenções de escrita em filas separadas.
 
 **Lista fina.** Página de descritores sem a composição integral. Contém somente
 o necessário para localizar, ordenar e desenhar a Home.
@@ -200,12 +201,28 @@ itens distantes são representados por espaçadores. A Inspeção mantém no má
 quando o Curso é aberto. Não significa que qualquer dado local seja descartado
 depois do uso.
 
-**Fila offline.** Operações pessoais ainda não confirmadas pelo servidor. A
-fila é específica do estado pessoal; não existe uma fila universal de Autoria.
+**Fila offline.** Operações ainda não confirmadas pelo servidor. Estado pessoal
+e Anotações ancoradas possuem filas específicas e separadas; não existe uma
+outbox universal de Autoria.
 
-**Estado pessoal de Curso.** Documento por pessoa e Curso com progresso,
-marcas para rever e observações. Sua alteração não incrementa a revisão
-autoral.
+**Estado pessoal de Curso.** Documento v2 por pessoa e Curso com somente
+progresso e marcas para rever. Sua alteração não incrementa a revisão autoral.
+
+**Anotação ancorada.** Registro protegido de uma Observação ligado a um alvo
+identificável do Curso. Há N por ator e alvo; persistência, versões, cache e
+outbox são separados do conteúdo e do estado pessoal.
+
+**Versão do conjunto de anotações.** Contador monotônico que cerca leituras e
+mutações sem transformar triagem em revisão de conteúdo. Para o proprietário é
+global ao Curso; no Estudo é privado por pessoa e cobre somente a própria
+projeção, para não revelar atividade alheia. O contador privado coordena cache e
+paginação, mas não guarda texto nem vira autoridade de domínio.
+
+**Pessoa protegida.** Forma do contribuidor entregue ao proprietário: papel e
+pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUID,
+sem UUID ou e-mail e não reversível pelo contrato. A interface mostra somente o
+rótulo pseudônimo protegido; não expõe
+`ref`, UUID ou e-mail.
 
 ## Concorrência e sincronização
 
@@ -351,9 +368,6 @@ revisão ativa in-place.
 ## Termos ainda não implementados de ponta a ponta
 
 As definições abaixo delimitam a direção sem alegar capacidade corrente.
-
-**Observação autoral.** Retorno situado que integra o fluxo compartilhado de
-Autoria. É distinta da observação pessoal já persistida em Estudo.
 
 **Auditoria instrucional.** Verificação explícita de regras e evidências sobre
 uma revisão de Curso.

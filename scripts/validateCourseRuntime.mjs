@@ -10,7 +10,6 @@ const REQUIRED_FEATURES = Object.freeze([
   "single-live-course-identity-v1",
   "paged-live-course-composition-v1",
   "direct-course-access-v1",
-  "course-personal-state-v1",
   "course-cas-idempotency-v1",
   "oauth-only-authoring-mcp",
   "package-library-v1",
@@ -26,17 +25,22 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-guidance-v1",
   "course-component-policy-v1",
   "course-sources-v1",
-  "course-source-provenance-v1"
+  "course-source-provenance-v1",
+  "course-anchored-annotations-v1",
+  "course-annotation-subject-classification-v1",
+  "course-personal-state-v2"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
   "public/main.js",
+  "src/domain/courseAnchoredAnnotations.js",
   "src/domain/courseAuthoringPlan.js",
   "src/domain/courseDesignParameters.js",
   "src/domain/courseEntities.js",
   "src/domain/courseSources.js",
   "src/persistence/AuthSessionStore.js",
   "src/persistence/CourseLocalStore.js",
+  "src/persistence/CourseAnnotationRepository.js",
   "src/persistence/CoursePersonalStateRepository.js",
   "src/study/CourseStudyBridge.js",
   "src/study/CourseStudyApplication.js",
@@ -48,9 +52,11 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "src/ui/CourseAuthoringSurface.js",
   "src/ui/CourseDesignPanel.js",
   "src/ui/CourseInspectionSequence.js",
+  "src/ui/CourseObservationsPanel.js",
   "src/ui/CourseSourcesPanel.js",
   "src/ui/courseAuthoringRoute.js",
   "src/ui/courseAuthoringViewModel.js",
+  "src/ui/renderStudyUnitObservationSheet.js",
   "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
   "supabase/functions/_shared/aralearn-authoring/courseAuthoringState.js",
   "supabase/functions/_shared/aralearn-authoring/courseKnowledge.js",
@@ -87,8 +93,18 @@ const FORBIDDEN_RUNTIME_SYMBOLS = Object.freeze([
   "workspace_source_unauthorized",
   "salvarCardsNaMicrossequencia",
   "authoringGuidance",
-  "componentOptions"
+  "componentOptions",
+  "load_course_personal_state_v1",
+  "mutate_course_personal_state_v1",
+  "saveCommentForPath",
+  "deleteCommentForPath",
+  "loadCommentForPath"
 ]);
+
+const COURSE_PERSONAL_STATE_REPOSITORY =
+  "src/persistence/CoursePersonalStateRepository.js";
+const LEGACY_PERSONAL_OBSERVATIONS_ACCESS =
+  /\b(?:state|personalState)(?:\?\.|\.)observations\b/u;
 
 const STUDY_UNIT_SOURCE_CONTRACT_FILES = new Set([
   "src/resources/kernel/studyUnitEnvelope.js",
@@ -192,9 +208,19 @@ function equalArray(actual, expected) {
     actual.every((value, index) => value === expected[index]);
 }
 
+function legacyPersonalObservationsStayInHandoffConverter(source) {
+  const start = source.indexOf("function legacyObservationIntents(");
+  const end = source.indexOf("\nfunction mergeAnnotationHandoff(", start);
+  const accesses = [...source.matchAll(
+    /\b(?:state|personalState)(?:\?\.|\.)observations\b/gu
+  )];
+  return start >= 0 && end > start && accesses.length === 2 &&
+    accesses.every((match) => match.index > start && match.index < end);
+}
+
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260817190000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260817200000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -216,6 +242,9 @@ async function validateManifest() {
   const sourcesMigration = await read(
     "supabase/migrations/20260817190000_course_sources_provenance.sql"
   );
+  const annotationsMigration = await read(
+    "supabase/migrations/20260817200000_course_anchored_annotations.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
@@ -231,7 +260,12 @@ async function validateManifest() {
       !designMigration.includes("$advance_course_design_runtime_manifest$") ||
       !designMigration.includes("'schemaRevision','20260817180000'") ||
       !sourcesMigration.includes("$advance_course_sources_runtime_manifest$") ||
-      !sourcesMigration.includes("'schemaRevision','20260817190000'")) {
+      !sourcesMigration.includes("'schemaRevision','20260817190000'") ||
+      !annotationsMigration.includes("$advance_course_anchored_annotations_manifest$") ||
+      !annotationsMigration.includes("'schemaRevision','20260817200000'") ||
+      !annotationsMigration.includes(
+        "where existing.value<>'course-personal-state-v1'"
+      )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
   for (const feature of REQUIRED_FEATURES) {
@@ -240,7 +274,8 @@ async function validateManifest() {
         !authoringPlanMigration.includes(`'${feature}'`) &&
         !inspectionMigration.includes(`'${feature}'`) &&
         !designMigration.includes(`'${feature}'`) &&
-        !sourcesMigration.includes(`'${feature}'`)) {
+        !sourcesMigration.includes(`'${feature}'`) &&
+        !annotationsMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -283,6 +318,15 @@ async function validateRuntimeFiles() {
   if (!browserCourseSources || browserCourseSources !== edgeCourseSources) {
     fail("O domínio de Fontes diverge entre navegador e Edge.");
   }
+  const browserAnchoredAnnotations = entries.find(({ relativePath }) =>
+    relativePath === "src/domain/courseAnchoredAnnotations.js")?.source;
+  const edgeAnchoredAnnotations = edgeGraph.get(path.join(
+    repositoryRoot,
+    "supabase/functions/_shared/aralearn/runtime/domain/courseAnchoredAnnotations.js"
+  ));
+  if (!browserAnchoredAnnotations || browserAnchoredAnnotations !== edgeAnchoredAnnotations) {
+    fail("O domínio de observações ancoradas diverge entre navegador e Edge.");
+  }
   for (const [filePath, source] of edgeGraph) {
     const runtimePath = relativePath(filePath);
     if (WILDCARD_SCOPE_AUTHORIZATION.test(source)) {
@@ -303,6 +347,12 @@ async function validateRuntimeFiles() {
     }
     if (/\b(?:studyUnit|study_unit|cloned)(?:\?\.|\.)sources\b/u.test(source)) {
       fail(`${relativePath} ainda lê StudyUnit.sources.`);
+    }
+    if (LEGACY_PERSONAL_OBSERVATIONS_ACCESS.test(source) && (
+      relativePath !== COURSE_PERSONAL_STATE_REPOSITORY ||
+      !legacyPersonalObservationsStayInHandoffConverter(source)
+    )) {
+      fail(`${relativePath} ainda lê state.observations do contrato pessoal removido.`);
     }
     for (const { pattern, label } of FORBIDDEN_COURSE_SOURCE_ALIASES) {
       if (pattern.test(source)) fail(`${relativePath} ainda usa ${label}.`);

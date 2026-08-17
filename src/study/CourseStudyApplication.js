@@ -4,7 +4,12 @@ import {
   getPackageStudyUnitFeedbackEntry,
   getPackageStudyUnitResponseEntry
 } from "../render/renderPackageStudyUnit.js";
-import { renderStudyUnitCommentOverlay } from "../ui/renderStudyUnitCommentOverlay.js";
+import {
+  formatObservationTextBudget,
+  isObservationTextOverLimit,
+  renderStudyUnitObservationSheet,
+  validateStudyUnitObservationText
+} from "../ui/renderStudyUnitObservationSheet.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import {
@@ -87,6 +92,11 @@ function runForwardStudyInteraction(event, action) {
 function courseAccessWasRevoked(error) {
   const status = Number(error?.status || error?.response?.status || 0);
   const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  if (new Set([
+    "ANNOTATION_NOT_FOUND", "ANCHORED_ANNOTATION_NOT_FOUND", "ANNOTATION_TARGET_NOT_FOUND",
+    "COURSE_ANCHORED_ANNOTATION_NOT_FOUND", "COURSE_ANCHORED_ANNOTATION_TARGET_NOT_FOUND",
+    "TARGET_NOT_FOUND"
+  ]).has(code)) return false;
   return status === 403 || status === 404 || code === "42501" || code === "PT404";
 }
 
@@ -107,6 +117,9 @@ export function createCourseStudyApplication({
   }
 
   let citationsEpoch = 0;
+  let observationsEpoch = 0;
+  let observationSignalVersion = 0;
+  let unsubscribeAnnotations = null;
   const state = {
     project: clone(initialProject),
     view: "courses",
@@ -116,11 +129,15 @@ export function createCourseStudyApplication({
     activeGapPrompt: null,
     pendingStudyFocus: null,
     feedbackOpen: false,
-    commentOpen: false,
-    commentDraft: { category: "observation", body: "" },
-    commentExists: false,
-    commentError: "",
-    commentSaving: false,
+    observationSheetOpen: false,
+    observationItems: [],
+    observationDraft: { category: null, rawText: "" },
+    observationDraftTouched: false,
+    observationEditingId: null,
+    observationError: "",
+    observationSaving: false,
+    observationLoading: false,
+    observationStale: false,
     citationsOpen: false,
     citationsLoading: false,
     citations: null,
@@ -273,6 +290,21 @@ export function createCourseStudyApplication({
     state.citationsError = "";
   }
 
+  function resetObservationSheet() {
+    ++observationsEpoch;
+    unsubscribeAnnotations?.();
+    unsubscribeAnnotations = null;
+    state.observationSheetOpen = false;
+    state.observationItems = [];
+    state.observationDraft = { category: null, rawText: "" };
+    state.observationDraftTouched = false;
+    state.observationEditingId = null;
+    state.observationError = "";
+    state.observationSaving = false;
+    state.observationLoading = false;
+    state.observationStale = false;
+  }
+
   function resetStudyUnitInteraction() {
     const entry = currentResponseEntry();
     if (entry && state.responseByBlockKey[entry.blockKey]) {
@@ -282,9 +314,10 @@ export function createCourseStudyApplication({
     state.pendingStudyFocus = null;
     state.feedbackOpen = false;
     resetCitations();
+    resetObservationSheet();
   }
 
-  function reconcileProjectAfterCitationRevocation() {
+  function reconcileProjectAfterRevocation() {
     const nextProject = repository.loadProject?.();
     if (!nextProject || !Array.isArray(nextProject.courses)) return false;
     const retained = retainContext(nextProject, state.selection, state.view);
@@ -292,9 +325,6 @@ export function createCourseStudyApplication({
     state.selection = retained.selection;
     state.view = retained.view;
     resetStudyUnitInteraction();
-    state.commentOpen = false;
-    state.commentSaving = false;
-    state.commentError = "";
     render({ preserveFocus: false });
     return true;
   }
@@ -323,7 +353,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       if (epoch !== citationsEpoch) return false;
-      if (courseAccessWasRevoked(error) && reconcileProjectAfterCitationRevocation()) {
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) {
         return false;
       }
       const code = String(error?.code || "").toLowerCase();
@@ -483,8 +513,8 @@ export function createCourseStudyApplication({
   }
 
   function goBack() {
-    if (state.commentOpen) {
-      state.commentOpen = false;
+    if (state.observationSheetOpen) {
+      resetObservationSheet();
       render();
       return true;
     }
@@ -584,54 +614,168 @@ export function createCourseStudyApplication({
     return openLessonStudyUnit(next);
   }
 
-  function openComment() {
-    const value = repository.loadCommentForPath(canonicalReference(state.selection));
-    state.commentDraft = value || { category: "observation", body: "" };
-    state.commentExists = Boolean(value);
-    state.commentError = "";
-    state.commentOpen = true;
+  async function openObservations() {
+    const reference = canonicalReference(state.selection);
+    const epoch = ++observationsEpoch;
+    state.observationItems = repository.loadAnnotationsForPath?.(reference) || [];
+    state.observationDraft = { category: null, rawText: "" };
+    state.observationDraftTouched = false;
+    state.observationEditingId = null;
+    state.observationError = "";
+    state.observationStale = false;
+    state.observationSheetOpen = true;
+    unsubscribeAnnotations?.();
+    unsubscribeAnnotations = typeof repository.subscribeToAnnotations === "function"
+      ? repository.subscribeToAnnotations(reference, ({ stale }) => {
+          if (!state.observationSheetOpen || epoch !== observationsEpoch) return;
+          if (stale) observationSignalVersion += 1;
+          const activeElement = root.ownerDocument?.activeElement;
+          const protectsDraft = state.observationDraftTouched ||
+            Boolean(state.observationEditingId) ||
+            Boolean(activeElement?.closest?.("[data-observation-composer]"));
+          if (stale && protectsDraft) {
+            state.observationStale = true;
+            render();
+            return;
+          }
+          if (stale) {
+            void refreshOpenObservations(reference, epoch);
+            return;
+          }
+          state.observationItems = repository.loadAnnotationsForPath(reference);
+          render();
+        })
+      : null;
+    render();
+    if (typeof repository.refreshAnnotationsForPath !== "function") {
+      state.observationError = "As observações ainda não estão disponíveis.";
+      render();
+      return;
+    }
+    await refreshOpenObservations(reference, epoch);
+  }
+
+  async function refreshOpenObservations(reference, epoch) {
+    if (state.observationLoading) {
+      state.observationStale = true;
+      return false;
+    }
+    const signalAtStart = observationSignalVersion;
+    state.observationLoading = true;
+    render();
+    try {
+      const items = await repository.refreshAnnotationsForPath(reference);
+      if (epoch !== observationsEpoch || !state.observationSheetOpen) return false;
+      state.observationItems = items;
+      state.observationStale = observationSignalVersion !== signalAtStart;
+      return true;
+    } catch (error) {
+      if (epoch !== observationsEpoch) return false;
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
+      state.observationError = error instanceof Error
+        ? error.message
+        : "Não foi possível atualizar as observações.";
+      return false;
+    } finally {
+      if (epoch === observationsEpoch) {
+        state.observationLoading = false;
+        const shouldRetry = state.observationStale && !state.observationDraftTouched &&
+          !state.observationEditingId;
+        render();
+        if (shouldRetry) {
+          state.observationStale = false;
+          queueMicrotask(() => void refreshOpenObservations(reference, epoch));
+        }
+      }
+    }
+  }
+
+  function editObservation(annotationId) {
+    const item = state.observationItems.find((candidate) =>
+      candidate.annotationId === annotationId);
+    if (!item || item.state === "withdrawn" || item.capabilities?.canRevise !== true) return;
+    state.observationEditingId = annotationId;
+    state.observationDraft = { category: item.category ?? null, rawText: item.rawText || "" };
+    state.observationDraftTouched = true;
+    state.observationError = "";
     render();
   }
 
-  async function saveComment() {
-    if (state.commentSaving) return;
-    state.commentSaving = true;
-    state.commentError = "";
+  async function saveObservation() {
+    if (state.observationSaving) return;
+    const textIssue = validateStudyUnitObservationText(state.observationDraft.rawText);
+    if (textIssue) {
+      state.observationError = textIssue;
+      render();
+      return;
+    }
+    const reference = canonicalReference(state.selection);
+    state.observationSaving = true;
+    state.observationError = "";
     render();
     try {
-      const value = await repository.saveCommentForPath(
-        canonicalReference(state.selection),
-        state.commentDraft
-      );
-      state.commentDraft = value;
-      state.commentExists = true;
-      state.commentOpen = false;
+      if (state.observationEditingId) {
+        await repository.reviseAnnotation(
+          reference,
+          state.observationEditingId,
+          state.observationDraft
+        );
+      } else {
+        await repository.createAnnotationForPath(reference, state.observationDraft);
+      }
+      state.observationItems = repository.loadAnnotationsForPath(reference);
+      state.observationDraft = { category: null, rawText: "" };
+      state.observationDraftTouched = false;
+      state.observationEditingId = null;
+      state.observationStale = false;
     } catch (error) {
-      state.commentError = error instanceof Error ? error.message : "Não foi possível salvar.";
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
+      state.observationError = error instanceof Error ? error.message : "Não foi possível salvar.";
     } finally {
-      state.commentSaving = false;
+      state.observationSaving = false;
       render();
     }
   }
 
-  async function deleteComment() {
-    if (state.commentSaving) return;
-    state.commentSaving = true;
-    state.commentError = "";
+  async function withdrawObservation(annotationId) {
+    if (state.observationSaving) return;
+    const reference = canonicalReference(state.selection);
+    state.observationSaving = true;
+    state.observationError = "";
     render();
     try {
-      await repository.deleteCommentForPath(canonicalReference(state.selection));
-      state.commentOpen = false;
-      state.commentExists = false;
-      state.commentDraft = { category: "observation", body: "" };
+      await repository.withdrawAnnotation(reference, annotationId);
+      state.observationItems = repository.loadAnnotationsForPath(reference);
+      if (state.observationEditingId === annotationId) {
+        state.observationEditingId = null;
+        state.observationDraft = { category: null, rawText: "" };
+        state.observationDraftTouched = false;
+      }
     } catch (error) {
-      state.commentError = error instanceof Error
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
+      state.observationError = error instanceof Error
         ? error.message
         : "Não foi possível retirar a observação.";
     } finally {
-      state.commentSaving = false;
+      state.observationSaving = false;
       render();
     }
+  }
+
+  async function discardFailedObservation(annotationId) {
+    const reference = canonicalReference(state.selection);
+    try {
+      await repository.discardFailedAnnotation(reference, annotationId);
+      state.observationItems = repository.loadAnnotationsForPath(reference);
+      state.observationError = "";
+    } catch (error) {
+      state.observationItems = repository.loadAnnotationsForPath?.(reference) || [];
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
+      state.observationError = error instanceof Error
+        ? error.message
+        : "Não foi possível descartar a alteração com falha.";
+    }
+    render();
   }
 
   function toggleReview() {
@@ -760,7 +904,10 @@ export function createCourseStudyApplication({
     root.querySelector("[data-action='continue-feedback']")?.addEventListener("click", (event) => {
       runForwardStudyInteraction(event, () => void stepStudyUnit(1));
     });
-    root.querySelector("[data-action='open-observation']")?.addEventListener("click", openComment);
+    root.querySelector("[data-action='open-observation']")?.addEventListener(
+      "click",
+      () => void openObservations()
+    );
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
     root.querySelectorAll("[data-action='toggle-citations']").forEach((node) =>
       node.addEventListener("click", () => void toggleCitations()));
@@ -899,17 +1046,48 @@ export function createCourseStudyApplication({
       render();
     });
 
-    root.querySelector("[data-field='study-unit-comment']")?.addEventListener("input", (event) => {
-      state.commentDraft.body = event.currentTarget.value;
+    root.querySelector("[data-field='study-unit-observation']")?.addEventListener("input", (event) => {
+      state.observationDraft.rawText = event.currentTarget.value;
+      state.observationDraftTouched = true;
+      const counter = root.querySelector("#study-observation-counter");
+      if (counter) {
+        counter.textContent = formatObservationTextBudget(state.observationDraft.rawText);
+        counter.classList?.toggle(
+          "is-over-limit",
+          isObservationTextOverLimit(state.observationDraft.rawText)
+        );
+      }
     });
-    root.querySelectorAll("[data-field='study-unit-comment-category']").forEach((node) =>
-      node.addEventListener("change", () => { state.commentDraft.category = node.value; }));
-    root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => {
-      state.commentOpen = false;
-      render();
+    root.querySelectorAll("[data-field='study-unit-observation-category']").forEach((node) =>
+      node.addEventListener("change", () => {
+        state.observationDraft.category = node.value || null;
+        state.observationDraftTouched = true;
+      }));
+    root.querySelector("[data-observation-composer]")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void saveObservation();
     });
-    root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => void saveComment());
-    root.querySelector("[data-action='comment-delete']")?.addEventListener("click", () => void deleteComment());
+    root.querySelectorAll("[data-observation-action]").forEach((node) =>
+      node.addEventListener("click", () => {
+        const action = node.dataset.observationAction;
+        const annotationId = node.dataset.observationId;
+        if (action === "close") {
+          resetObservationSheet();
+          render();
+        } else if (action === "edit") {
+          editObservation(annotationId);
+        } else if (action === "withdraw") {
+          void withdrawObservation(annotationId);
+        } else if (action === "discard-failed") {
+          void discardFailedObservation(annotationId);
+        } else if (action === "cancel-edit") {
+          state.observationEditingId = null;
+          state.observationDraft = { category: null, rawText: "" };
+          state.observationDraftTouched = false;
+          state.observationError = "";
+          render();
+        }
+      }));
     bindGapInputs(root);
   }
 
@@ -936,6 +1114,9 @@ export function createCourseStudyApplication({
       }];
     }));
     const reference = state.selection.studyUnitId ? canonicalReference(state.selection) : null;
+    const observationItems = reference
+      ? repository.loadAnnotationsForPath?.(reference) || []
+      : [];
     const repositoryRuntimeStatus =
       repository.loadRuntimeStatus?.(state.selection.courseId) || {};
     const runtimeStatus = state.connectionOffline
@@ -958,17 +1139,20 @@ export function createCourseStudyApplication({
       coursePermissionsById: byCourseId,
       packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
-      hasObservation: Boolean(reference && repository.loadCommentForPath(reference)),
+      observationCount: observationItems.filter(({ state: value }) => value !== "withdrawn").length,
       markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference)),
       citationsOpen: state.citationsOpen,
       citationsLoading: state.citationsLoading,
       citations: state.citations,
       citationsError: state.citationsError
-    }) + (state.commentOpen ? renderStudyUnitCommentOverlay({
-      draft: state.commentDraft,
-      exists: state.commentExists,
-      error: state.commentError,
-      saving: state.commentSaving
+    }) + (state.observationSheetOpen ? renderStudyUnitObservationSheet({
+      items: state.observationItems,
+      draft: state.observationDraft,
+      editingId: state.observationEditingId,
+      error: state.observationError,
+      saving: state.observationSaving,
+      loading: state.observationLoading,
+      stale: state.observationStale
     }) : "") + "</div>";
     onViewChange(state.view);
     syncAccountControl();
@@ -1054,9 +1238,6 @@ export function createCourseStudyApplication({
           repository.loadRuntimeStatus?.(state.selection.courseId)?.offline === true;
         if (JSON.stringify(previousStudyUnit) !== JSON.stringify(context().studyUnit)) {
           resetStudyUnitInteraction();
-          state.commentOpen = false;
-          state.commentSaving = false;
-          state.commentError = "";
         }
         state.pendingStudyFocus ||= preservedFocus;
         render();

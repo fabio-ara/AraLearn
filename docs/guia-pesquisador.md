@@ -177,8 +177,17 @@ outro dado, responda:
 6. qual risco de vigilância, coerção ou interpretação indevida introduz.
 
 Parâmetros, orientações e fatos de materialização pertencem ao Curso e à
-Autoria. Progresso, revisão e observações pessoais pertencem à pessoa. Não una
-esses conjuntos só porque compartilham um `courseId`.
+Autoria. O estado pessoal v2 contém somente progresso e **Rever**. Anotações
+ancoradas são manifestações protegidas em uma relação separada, visíveis à
+própria pessoa e ao proprietário para triagem. Não una esses conjuntos só
+porque compartilham um `courseId`.
+
+Anotações não são copiadas para pesquisa por padrão. Quantidade, ausência,
+categoria, estado, resposta, resolução e timestamps não medem aprendizagem,
+dificuldade, atenção, qualidade ou eficácia; `capturedAt` é uma pista de
+contexto, não duração. Qualquer cópia analítica exige protocolo explícito,
+minimizado e governado, com finalidade, retenção, acesso e inferências proibidas
+documentadas.
 
 ## Estratégia de investigação
 

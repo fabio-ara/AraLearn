@@ -1935,6 +1935,150 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_actor_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_actor_role_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_annotation_course_v1[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_annotation_version_v1[unique]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_course_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_hash_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_metadata_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_pkey[primary_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_type_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_version_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_actor_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_course_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_expiry_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_hash_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_operation_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_pkey[primary_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_request_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_result_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_actor_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_course_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_pkey[primary_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_ref_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_value_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotation_viewer_versions/course_annotation_viewer_protected_ref_v1[unique]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_actor_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_category_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_classification_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_course_id_fkey[foreign_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_course_identity_v1[unique]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_observed_revision_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_pkey[primary_key]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_provenance_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_state_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_target_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_text_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_version_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "constraint:private.course_authoring_guidance_interpretations/course_authoring_guidance_interpretat_guidance_revision_id_fkey[foreign_key]",
       "caseId": "course-authoring-experience"
     },
@@ -2456,6 +2600,10 @@
     },
     {
       "object": "constraint:private.course_personal_state_receipts/course_personal_state_receipts_pkey[primary_key]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_state_receipts/course_personal_state_receipts_protocol_v2[check]",
       "caseId": "study-course-experience"
     },
     {
@@ -3147,12 +3295,16 @@
       "caseId": "study-course-experience"
     },
     {
-      "object": "constraint:public.course_personal_states/course_personal_states_state_v1[check]",
+      "object": "constraint:public.course_personal_states/course_personal_states_state_v2[check]",
       "caseId": "study-course-experience"
     },
     {
       "object": "constraint:public.course_personal_states/course_personal_states_user_id_fkey[foreign_key]",
       "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:public.courses/courses_annotation_set_version_v1[check]",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "constraint:public.courses/courses_goal_v1[check]",
@@ -3639,6 +3791,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.bump_course_annotation_viewer_version_v1(p_course_id uuid, p_actor_id uuid)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "function:private.camel_active_rows(p_table regclass, p_course_id uuid, p_store_name text)",
       "caseId": "pre-course-database-removal"
     },
@@ -3685,6 +3841,10 @@
     {
       "object": "function:private.cleanup_archived_course_publication_v5()",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.cleanup_course_anchored_annotations_v1(p_course_id uuid)",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "function:private.cleanup_inactive_course_selections_v1()",
@@ -3757,6 +3917,26 @@
     {
       "object": "function:private.copy_authoring_experiment_workspace_table_v1(p_table text, p_source_workspace_id uuid, p_target_workspace_id uuid, p_workspace_course_id text, p_scope_microsequence_ids text[])",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.course_anchored_annotation_item_v1(p_annotation private.course_anchored_annotations, p_viewer_id uuid, p_viewer_is_owner boolean)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.course_anchored_annotation_matches_v1(p_annotation private.course_anchored_annotations, p_mode text, p_origins text[], p_channels text[], p_states text[], p_categories text[], p_include_uncategorized boolean, p_subject_ids text[], p_target_kind text, p_target_id text, p_include_descendants boolean, p_annotation_id uuid)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.course_annotation_hash_v1(p_value jsonb)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.course_annotation_target_snapshot_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.course_annotation_urlencode_v1(p_value text)",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "function:private.course_authoring_guidance_for_scope_v1(p_course_id uuid, p_scope_path jsonb)",
@@ -3979,8 +4159,16 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.execute_course_anchored_annotation_command_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_origin text, p_channel text, p_request_id text, p_actor_is_owner boolean)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "function:private.generate_authoring_experiment_variants_v1(p_actor_id uuid, p_workspace_id uuid, p_experiment_id uuid, p_expected_workspace_revision bigint, p_participant_continuity text)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.get_course_anchored_annotations_core_v1(p_viewer_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_annotation_set_version bigint, p_mode text, p_origins text[], p_channels text[], p_states text[], p_categories text[], p_include_uncategorized boolean, p_subject_ids text[], p_target_kind text, p_target_id text, p_include_descendants boolean, p_annotation_id uuid, p_cursor text, p_limit integer, p_viewer_is_owner boolean)",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "function:private.get_course_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_include_outline boolean)",
@@ -4159,6 +4347,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.preserve_course_annotation_event_v1()",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "function:private.preserve_learning_materialization_receipt()",
       "caseId": "pre-course-database-removal"
     },
@@ -4195,8 +4387,24 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.raise_course_anchored_annotation_not_found_v1()",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.raise_course_anchored_annotation_target_not_found_v1()",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "function:private.recent_course_design_applications_v1(p_course_id uuid, p_scope_kind text, p_scope_ref text)",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.record_course_annotation_event_v1(p_annotation private.course_anchored_annotations, p_event_type text, p_actor_id uuid, p_actor_role text, p_metadata jsonb)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.redact_course_annotations_before_account_deletion_v1()",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "function:private.register_artifact_v4(p_artifact jsonb)",
@@ -4391,6 +4599,22 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.valid_course_annotation_path_v1(p_value jsonb)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.valid_course_annotation_rfc3339_v1(p_value text, p_nullable boolean)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.valid_course_annotation_subject_refs_v1(p_value jsonb)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.valid_course_annotation_text_v1(p_value text, p_maximum_characters integer, p_maximum_bytes integer, p_nullable boolean)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "function:private.valid_course_component_policy_v1(p_policy jsonb)",
       "caseId": "course-authoring-experience"
     },
@@ -4416,6 +4640,10 @@
     },
     {
       "object": "function:private.valid_course_personal_state_v1(p_state jsonb)",
+      "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.valid_course_personal_state_v2(p_state jsonb)",
       "caseId": "study-course-experience"
     },
     {
@@ -4559,8 +4787,16 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:public.execute_course_anchored_annotation_command_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "function:public.execute_course_source_command_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "function:public.execute_my_course_anchored_annotation_command_v1(p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_request_id text)",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "function:public.finalize_reserved_authoring_workspace_v1(p_owner_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text, p_title text, p_source_course_id uuid, p_source_revision_hash text, p_source_submission_id uuid, p_brief text, p_rows jsonb)",
@@ -4673,6 +4909,14 @@
     {
       "object": "function:public.get_educational_workspace_for_actor_v1(p_actor_id uuid, p_workspace_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:public.get_my_course_anchored_annotations_v1(p_course_id uuid, p_expected_course_revision bigint, p_annotation_set_version bigint, p_target_kind text, p_target_id text, p_cursor text, p_limit integer)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:public.get_owned_course_anchored_annotations_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_annotation_set_version bigint, p_mode text, p_origins text[], p_channels text[], p_states text[], p_categories text[], p_include_uncategorized boolean, p_subject_ids text[], p_target_kind text, p_target_id text, p_include_descendants boolean, p_annotation_id uuid, p_cursor text, p_limit integer)",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "function:public.get_owned_course_authoring_part_materialization_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_materialization_id uuid)",
@@ -4863,7 +5107,7 @@
       "caseId": "pre-course-database-removal"
     },
     {
-      "object": "function:public.load_course_personal_state_v1(p_course_id uuid)",
+      "object": "function:public.load_course_personal_state_v2(p_course_id uuid)",
       "caseId": "study-course-experience"
     },
     {
@@ -4919,7 +5163,7 @@
       "caseId": "pre-course-database-removal"
     },
     {
-      "object": "function:public.mutate_course_personal_state_v1(p_course_id uuid, p_expected_revision bigint, p_operations jsonb, p_request_id uuid)",
+      "object": "function:public.mutate_course_personal_state_v2(p_course_id uuid, p_expected_revision bigint, p_operations jsonb, p_request_id uuid)",
       "caseId": "study-course-experience"
     },
     {
@@ -5781,6 +6025,70 @@
     {
       "object": "index:private.catalog_review_submissions/catalog_review_submissions_queue_v5_idx",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_events/course_anchored_annotation_events_annotation_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_events/course_anchored_annotation_events_annotation_version_v1",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_events/course_anchored_annotation_events_course_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_events/course_anchored_annotation_events_pkey",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_expiry_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_receipts/course_anchored_annotation_receipts_pkey",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_actor_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_viewer_versions/course_anchored_annotation_viewer_versions_pkey",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotation_viewer_versions/course_annotation_viewer_protected_ref_v1",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_actor_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_cleanup_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_course_identity_v1",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_inbox_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_pkey",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_subjects_v1_idx",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "index:private.course_anchored_annotations/course_anchored_annotations_target_v1_idx",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "index:private.course_authoring_guidance_interpretations/course_authoring_guidance_interpretations_current_v1_idx",
@@ -6759,6 +7067,22 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "rls:private.course_anchored_annotation_events=forced",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "rls:private.course_anchored_annotation_receipts=forced",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "rls:private.course_anchored_annotation_viewer_versions=forced",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "rls:private.course_anchored_annotations=forced",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "rls:private.course_authoring_guidance_interpretations=disabled",
       "caseId": "course-authoring-experience"
     },
@@ -7299,6 +7623,22 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "table:private.course_anchored_annotation_events",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "table:private.course_anchored_annotation_receipts",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "table:private.course_anchored_annotation_viewer_versions",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "table:private.course_anchored_annotations",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "table:private.course_authoring_guidance_interpretations",
       "caseId": "course-authoring-experience"
     },
@@ -7833,6 +8173,10 @@
     {
       "object": "trigger:private.catalog_review_submissions/catalog_review_submission_supersede_changes_v1",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "trigger:private.course_anchored_annotation_events/preserve_course_annotation_event_v1",
+      "caseId": "course-anchored-annotations"
     },
     {
       "object": "trigger:private.course_authoring_guidance_interpretations/course_authoring_guidance_interpretations_append_only_v1",

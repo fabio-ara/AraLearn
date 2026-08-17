@@ -1,10 +1,26 @@
 import { AuthoringApiError } from "./errors.js";
 import { COURSE_COMPONENT_CATALOG_VERSION } from
   "../aralearn/runtime/domain/courseDesignParameters.js";
+import {
+  COURSE_ANCHORED_ANNOTATION_CATEGORIES,
+  COURSE_ANCHORED_ANNOTATION_CHANNELS,
+  COURSE_ANCHORED_ANNOTATION_ORIGINS,
+  COURSE_ANCHORED_ANNOTATION_STATES,
+  COURSE_ANCHORED_ANNOTATION_TARGET_KINDS,
+  CourseAnchoredAnnotationsError,
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseAnchoredAnnotationQuery,
+  normalizeCourseAnchoredAnnotationReadOptions
+} from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const COMPONENT_REF_PATTERN = /^[a-z][a-z0-9._-]{2,119}@[0-9]+\.[0-9]+\.[0-9]+$/u;
+const RFC3339_PATTERN =
+  "^(?!0000-)\\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])" +
+  "T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?" +
+  "(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$";
+const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 const objectSchema = (properties, required = Object.keys(properties)) => ({
   type: "object",
@@ -37,6 +53,95 @@ const legacySourceIdSchema = stringSchema({
   maxLength: 2_048,
   pattern: "^[^\\u0000-\\u001F\\u007F-\\u009F]+$"
 });
+
+const anchoredAnnotationOpaqueIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 240,
+  pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+});
+const anchoredAnnotationLayoutTextSchema = stringSchema({
+  minLength: 1,
+  maxLength: 2_000,
+  pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
+});
+const anchoredAnnotationCategorySchema = {
+  anyOf: [
+    stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_CATEGORIES] }),
+    { type: "null" }
+  ]
+};
+const anchoredAnnotationTargetSchema = {
+  ...objectSchema({
+    kind: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS] }),
+    id: anchoredAnnotationOpaqueIdSchema
+  }),
+  allOf: [{
+    if: { properties: { kind: { const: "course" } }, required: ["kind"] },
+    then: { properties: { id: uuidSchema } }
+  }]
+};
+const anchoredAnnotationCommandSchema = {
+  oneOf: [
+    objectSchema({
+      type: { const: "create_anchored_annotation" },
+      annotationId: uuidSchema,
+      target: anchoredAnnotationTargetSchema,
+      rawText: anchoredAnnotationLayoutTextSchema,
+      category: anchoredAnnotationCategorySchema,
+      capturedAt: { anyOf: [stringSchema({ pattern: RFC3339_PATTERN }), { type: "null" }] },
+      briefSummary: stringSchema({
+        minLength: 1,
+        maxLength: 500,
+        pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
+      }),
+      confirmed: { type: "boolean", const: true }
+    }),
+    objectSchema({
+      type: { const: "revise_anchored_annotation" },
+      annotationId: uuidSchema,
+      expectedAnnotationVersion: { type: "integer", minimum: 1 },
+      rawText: anchoredAnnotationLayoutTextSchema,
+      category: anchoredAnnotationCategorySchema,
+      briefSummary: {
+        anyOf: [
+          stringSchema({
+            minLength: 1,
+            maxLength: 500,
+            pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
+          }),
+          { type: "null" }
+        ]
+      }
+    }),
+    ...[
+      "withdraw_anchored_annotation",
+      "consider_anchored_annotation",
+      "resolve_anchored_annotation",
+      "reopen_anchored_annotation"
+    ].map((type) => objectSchema({
+      type: { const: type },
+      annotationId: uuidSchema,
+      expectedAnnotationVersion: { type: "integer", minimum: 1 }
+    })),
+    objectSchema({
+      type: { const: "respond_to_anchored_annotation" },
+      annotationId: uuidSchema,
+      expectedAnnotationVersion: { type: "integer", minimum: 1 },
+      ownerResponse: anchoredAnnotationLayoutTextSchema
+    }),
+    objectSchema({
+      type: { const: "correct_anchored_annotation_subjects" },
+      annotationId: uuidSchema,
+      expectedAnnotationVersion: { type: "integer", minimum: 1 },
+      subjectIds: {
+        type: "array",
+        maxItems: 64,
+        uniqueItems: true,
+        items: anchoredAnnotationOpaqueIdSchema
+      }
+    })
+  ]
+};
 
 const sourceAnchorLinkSchema = objectSchema({
   anchorId: courseSourceOpaqueIdSchema,
@@ -685,13 +790,14 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, course_design para parâmetros e regras de componentes, course_sources para o catálogo privado e a proveniência por alvo, study_units para inspecionar Unidades de estudo, part_materialization para retomar uma materialização, outline para a hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Consulte anchored_annotations e suas pendências antes de planejar auditoria ou reparo; a leitura devolve os deep links literais dos alvos. Use instructional_plan para planejar por Partes, course_design para parâmetros e regras de componentes, course_sources para proveniência, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
       view: stringSchema({ enum: [
         "summary", "outline", "instructional_plan", "course_design",
-        "course_sources", "part_materialization", "study_units", "entities"
+        "course_sources", "anchored_annotations", "part_materialization",
+        "study_units", "entities"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
@@ -709,10 +815,38 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       anchorStudyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
       direction: stringSchema({ enum: ["forward", "backward"] }),
       maxBytes: { type: "integer", minimum: 65_536, maximum: 1_500_000 },
-      mode: stringSchema({ enum: ["catalog", "source", "target"] }),
+      mode: stringSchema({ enum: ["catalog", "source", "target", "inbox", "detail"] }),
       sourceId: legacySourceIdSchema,
-      targetKind: stringSchema({ enum: ["plan_item", "study_unit"] }),
-      targetId: courseSourceOpaqueIdSchema
+      targetKind: stringSchema({ enum: [
+        "plan_item", ...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS
+      ] }),
+      targetId: courseSourceOpaqueIdSchema,
+      annotationSetVersion: {
+        anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }]
+      },
+      origins: {
+        type: "array", maxItems: 5, uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_ORIGINS] })
+      },
+      channels: {
+        type: "array", maxItems: 6, uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_CHANNELS] })
+      },
+      states: {
+        type: "array", maxItems: 4, uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_STATES] })
+      },
+      categories: {
+        type: "array", maxItems: 4, uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_CATEGORIES] })
+      },
+      includeUncategorized: { type: "boolean" },
+      subjectIds: {
+        type: "array", maxItems: 16, uniqueItems: true,
+        items: anchoredAnnotationOpaqueIdSchema
+      },
+      includeDescendants: { type: "boolean" },
+      annotationId: uuidSchema
       }, ["courseId"]),
       allOf: [{
         if: {
@@ -746,6 +880,8 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             "direction", "maxBytes"
           ]),
           properties: {
+            mode: { enum: ["catalog", "source", "target"] },
+            targetKind: { enum: ["plan_item", "study_unit"] },
             limit: { maximum: 24 },
             cursor: {
               anyOf: [
@@ -783,7 +919,69 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             then: { ...forbidFields(["sourceId", "targetKind", "targetId"]) }
           }]
         },
-        else: forbidFields(["mode", "sourceId", "targetKind", "targetId"])
+        else: forbidFields(["sourceId"])
+      }, {
+        if: {
+          properties: { view: { const: "anchored_annotations" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "scope", "anchorStudyUnitId",
+            "direction", "maxBytes", "sourceId"
+          ]),
+          properties: {
+            mode: { enum: ["inbox", "target", "detail"] },
+            targetKind: { enum: [...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS] },
+            limit: { maximum: 24 },
+            cursor: {
+              anyOf: [
+                stringSchema({ minLength: 1, maxLength: 240,
+                  pattern: "^[A-Za-z0-9+/_-]+={0,2}$" }),
+                { type: "null" }
+              ]
+            }
+          },
+          allOf: [{
+            if: { properties: { mode: { const: "target" } }, required: ["mode"] },
+            then: { required: ["targetKind", "targetId"] }
+          }, {
+            if: { properties: { mode: { const: "detail" } }, required: ["mode"] },
+            then: {
+              required: ["annotationId"],
+              ...forbidFields(["targetKind", "targetId", "includeDescendants"])
+            },
+            else: forbidFields(["annotationId"])
+          }, {
+            if: { required: ["targetKind"] },
+            then: { required: ["targetId"] }
+          }, {
+            if: { required: ["targetId"] },
+            then: { required: ["targetKind"] }
+          }, {
+            if: { required: ["includeDescendants"] },
+            then: { required: ["targetKind", "targetId"] }
+          }, {
+            if: {
+              properties: { targetKind: { const: "course" } },
+              required: ["targetKind"]
+            },
+            then: { properties: { targetId: uuidSchema } }
+          }]
+        },
+        else: forbidFields([
+          "annotationSetVersion", "origins", "channels", "states", "categories",
+          "includeUncategorized", "subjectIds", "includeDescendants", "annotationId"
+        ])
+      }, {
+        if: {
+          properties: {
+            view: { enum: ["course_sources", "anchored_annotations"] }
+          },
+          required: ["view"]
+        },
+        else: forbidFields(["mode", "targetKind", "targetId"])
       }, {
         if: {
           properties: { view: { const: "course_design" } },
@@ -862,7 +1060,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o plano instrucional vivo, Fontes e proveniência, os parâmetros e regras de Autoria, a composição ou uma materialização retomável de Parte. Releia a vista correspondente antes e use as versões correntes; cada alteração é limitada e idempotente.",
+    description: "Altera o Curso vivo e suas Anotações ancoradas. Para criar uma observação, confirme o alvo exato e a síntese breve, preserve rawText literalmente e não envie a conversa completa. Releia a vista correspondente antes e use somente as versões exigidas pela operação; cada alteração é limitada e idempotente.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -873,12 +1071,14 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         "update_instructional_plan",
         "update_course_design",
         "update_course_sources",
+        "update_anchored_annotations",
         "commit_course_composition",
         "advance_part_materialization"
       ] }),
       planCommand: authoringPlanCommandSchema,
       designCommand: courseDesignCommandSchema,
       sourceCommand: sourceCommandSchema,
+      annotationCommand: anchoredAnnotationCommandSchema,
       materializationCommand: materializationCommandSchema,
       upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
       sourceAttributionApplications: sourceAttributionApplicationsSchema,
@@ -892,18 +1092,19 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           entityId: stringSchema({ minLength: 1, maxLength: 240 })
         })
       }
-      }, ["requestId", "courseId", "expectedRevision", "operation"]),
+      }, ["requestId", "courseId", "operation"]),
       allOf: [{
         if: {
           properties: { operation: { const: "update_course_design" } },
           required: ["operation"]
         },
         then: {
-          required: ["designCommand"],
+          required: ["expectedRevision", "designCommand"],
           not: { anyOf: [
             { required: ["expectedPlanVersion"] },
             { required: ["planCommand"] },
             { required: ["sourceCommand"] },
+            { required: ["annotationCommand"] },
             { required: ["materializationCommand"] },
             { required: ["upserts"] },
             { required: ["deletes"] },
@@ -916,12 +1117,43 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           required: ["operation"]
         },
         then: {
-          required: ["sourceCommand"],
+          required: ["expectedRevision", "sourceCommand"],
           ...forbidFields([
             "expectedPlanVersion", "planCommand", "designCommand",
-            "materializationCommand", "upserts", "deletes",
+            "annotationCommand", "materializationCommand", "upserts", "deletes",
             "sourceAttributionApplications"
           ])
+        }
+      }, {
+        if: {
+          properties: { operation: { const: "update_anchored_annotations" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["annotationCommand"],
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand", "sourceCommand",
+            "materializationCommand", "upserts", "deletes",
+            "sourceAttributionApplications"
+          ]),
+          allOf: [{
+            if: {
+              properties: {
+                annotationCommand: {
+                  properties: {
+                    type: { enum: [
+                      "create_anchored_annotation",
+                      "correct_anchored_annotation_subjects"
+                    ] }
+                  },
+                  required: ["type"]
+                }
+              },
+              required: ["annotationCommand"]
+            },
+            then: { required: ["expectedRevision"] },
+            else: forbidFields(["expectedRevision"])
+          }]
         }
       }, {
         if: {
@@ -929,9 +1161,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           required: ["operation"]
         },
         then: {
-          required: ["expectedPlanVersion", "planCommand"],
+          required: ["expectedRevision", "expectedPlanVersion", "planCommand"],
           ...forbidFields([
-            "designCommand", "sourceCommand", "materializationCommand", "upserts",
+            "designCommand", "sourceCommand", "annotationCommand",
+            "materializationCommand", "upserts",
             "deletes", "sourceAttributionApplications"
           ])
         }
@@ -941,10 +1174,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           required: ["operation"]
         },
         then: {
-          required: ["sourceAttributionApplications"],
+          required: ["expectedRevision", "sourceAttributionApplications"],
           ...forbidFields([
             "expectedPlanVersion", "planCommand", "designCommand",
-            "sourceCommand", "materializationCommand"
+            "sourceCommand", "annotationCommand", "materializationCommand"
           ]),
           anyOf: [{
             required: ["upserts"],
@@ -960,9 +1193,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           required: ["operation"]
         },
         then: {
-          required: ["materializationCommand"],
+          required: ["expectedRevision", "materializationCommand"],
           ...forbidFields([
             "expectedPlanVersion", "planCommand", "designCommand", "sourceCommand",
+            "annotationCommand",
             "upserts", "deletes", "sourceAttributionApplications"
           ])
         }
@@ -1112,14 +1346,38 @@ function boundedJsonObject(value, field, maximumBytes) {
   return normalized;
 }
 
+function normalizeCourseAnchoredAnnotationDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAnchoredAnnotationsError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
 function route(method, path, requestId = null, body = null) {
   return { kind: "route", method, path, requestId, body };
+}
+
+function boundedAnchoredAnnotationsReadRoute(path) {
+  if (new TextEncoder().encode(path).byteLength >
+      ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES) {
+    fail(
+      "course_anchored_annotations_query_too_large",
+      "Os filtros de observação excedem o limite transportável de 8 KiB."
+    );
+  }
+  return route("GET", path);
 }
 
 function searchParams(entries) {
   const params = new URLSearchParams();
   Object.entries(entries).forEach(([key, value]) => {
-    if (value != null && value !== "") params.set(key, String(value));
+    if (Array.isArray(value)) {
+      value.forEach((item) => params.append(key, String(item)));
+    } else if (value != null && value !== "") {
+      params.set(key, String(value));
+    }
   });
   const source = params.toString();
   return source ? `?${source}` : "";
@@ -1144,20 +1402,98 @@ function mapRead(raw) {
   exactFields(raw, new Set([
     "courseId", "view", "authoringPartId", "materializationId",
     "expectedRevision", "limit", "cursor", "scope", "anchorStudyUnitId",
-    "direction", "maxBytes", "mode", "sourceId", "targetKind", "targetId"
+    "direction", "maxBytes", "mode", "sourceId", "targetKind", "targetId",
+    "annotationSetVersion", "origins", "channels", "states", "categories",
+    "includeUncategorized", "subjectIds", "includeDescendants", "annotationId"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
   if (!new Set([
     "summary", "outline", "instructional_plan", "course_design",
-    "course_sources", "part_materialization", "study_units", "entities"
+    "course_sources", "anchored_annotations", "part_materialization",
+    "study_units", "entities"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
   }
-  if (view !== "course_sources" && [
+  if (!["course_sources", "anchored_annotations"].includes(view) && [
     raw.mode, raw.sourceId, raw.targetKind, raw.targetId
   ].some((value) => value != null)) {
-    fail("invalid_tool_argument", "A leitura recebeu campos de Fonte incompatíveis.");
+    fail("invalid_tool_argument", "A leitura recebeu campos contextuais incompatíveis.");
+  }
+  if (view !== "course_sources" && raw.sourceId != null) {
+    fail("invalid_tool_argument", "sourceId pertence somente à leitura de Fontes.");
+  }
+  const annotationFields = [
+    raw.annotationSetVersion, raw.origins, raw.channels, raw.states, raw.categories,
+    raw.includeUncategorized, raw.subjectIds, raw.includeDescendants, raw.annotationId
+  ];
+  if (view !== "anchored_annotations" && annotationFields.some((value) => value != null)) {
+    fail("invalid_tool_argument", "A leitura recebeu filtros de observação incompatíveis.");
+  }
+  if (view === "anchored_annotations") {
+    if (raw.authoringPartId != null || raw.materializationId != null || raw.scope != null ||
+        raw.anchorStudyUnitId != null || raw.direction != null || raw.maxBytes != null ||
+        raw.sourceId != null) {
+      fail("invalid_tool_argument", "A leitura de observações recebeu campos incompatíveis.");
+    }
+    const hierarchyPresent = raw.targetKind != null || raw.targetId != null;
+    if (hierarchyPresent && (raw.targetKind == null || raw.targetId == null) ||
+        !hierarchyPresent && raw.includeDescendants != null) {
+      fail("invalid_tool_argument", "O filtro hierárquico de observações está incompleto.");
+    }
+    const query = normalizeCourseAnchoredAnnotationDomain(() =>
+      normalizeCourseAnchoredAnnotationQuery({
+        mode: raw.mode == null
+          ? "inbox"
+          : requiredText(raw.mode, "mode", { maximum: 16 }),
+        origins: raw.origins ?? [],
+        channels: raw.channels ?? [],
+        states: raw.states ?? [],
+        categories: raw.categories ?? [],
+        includeUncategorized: raw.includeUncategorized ?? true,
+        subjectIds: raw.subjectIds ?? [],
+        hierarchy: hierarchyPresent
+          ? {
+              target: {
+                kind: requiredText(raw.targetKind, "targetKind", { maximum: 32 }),
+                id: requiredCourseSourceText(raw.targetId, "targetId", 240)
+              },
+              includeDescendants: raw.includeDescendants ?? false
+            }
+          : null,
+        annotationId: raw.annotationId == null
+          ? null
+          : requiredUuid(raw.annotationId, "annotationId")
+      })
+    );
+    const options = normalizeCourseAnchoredAnnotationDomain(() =>
+      normalizeCourseAnchoredAnnotationReadOptions({
+        expectedCourseRevision: raw.expectedRevision,
+        annotationSetVersion: raw.annotationSetVersion ?? null,
+        query,
+        cursor: raw.cursor ?? null,
+        limit: raw.limit ?? 12
+      })
+    );
+    return boundedAnchoredAnnotationsReadRoute(
+      `/v1/courses/${courseId}/anchored-annotations${searchParams({
+        expectedRevision: options.expectedCourseRevision,
+        annotationSetVersion: options.annotationSetVersion,
+        mode: query.mode,
+        origin: query.origins,
+        channel: query.channels,
+        state: query.states,
+        category: query.categories,
+        includeUncategorized: query.includeUncategorized,
+        subjectId: query.subjectIds,
+        targetKind: query.hierarchy?.target.kind,
+        targetId: query.hierarchy?.target.id,
+        includeDescendants: query.hierarchy?.includeDescendants,
+        annotationId: query.annotationId,
+        cursor: options.cursor,
+        limit: options.limit
+      })}`
+    );
   }
   if (view === "course_design") {
     if (raw.authoringPartId != null || raw.materializationId != null ||
@@ -1380,11 +1716,12 @@ function mapCreate(raw) {
   });
 }
 
-function mapChange(raw) {
+function mapChange(raw, { requireAnnotationConfirmation = true } = {}) {
   exactFields(raw, new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
     "operation", "planCommand", "designCommand", "materializationCommand",
-    "sourceCommand", "upserts", "deletes", "sourceAttributionApplications"
+    "sourceCommand", "annotationCommand", "upserts", "deletes",
+    "sourceAttributionApplications"
   ]));
   const requestId = requiredRequestId(raw.requestId);
   const courseId = requiredUuid(raw.courseId, "courseId");
@@ -1393,29 +1730,30 @@ function mapChange(raw) {
     "update_instructional_plan",
     "update_course_design",
     "update_course_sources",
+    "update_anchored_annotations",
     "commit_course_composition",
     "advance_part_materialization"
   ]).has(operation)) {
     fail("invalid_tool_argument", "operation é inválida.", { field: "operation" });
   }
-  const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
   if (operation === "update_instructional_plan") {
     if (raw.designCommand != null || raw.sourceCommand != null ||
-        raw.materializationCommand != null || raw.upserts != null ||
+        raw.annotationCommand != null || raw.materializationCommand != null || raw.upserts != null ||
         raw.deletes != null || raw.sourceAttributionApplications != null) {
       fail("invalid_tool_argument", "O comando do plano recebeu campos incompatíveis.");
     }
     const command = boundedJsonObject(raw.planCommand, "planCommand", 192 * 1024);
     return route("POST", `/v1/courses/${courseId}/instructional-plan/changes`, requestId, {
       requestId,
-      expectedCourseRevision: expectedRevision,
+      expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
       expectedPlanVersion: positiveInteger(raw.expectedPlanVersion, "expectedPlanVersion"),
       command
     });
   }
   if (operation === "update_course_design") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||
-        raw.sourceCommand != null || raw.materializationCommand != null ||
+        raw.sourceCommand != null || raw.annotationCommand != null ||
+        raw.materializationCommand != null ||
         raw.upserts != null || raw.deletes != null ||
         raw.sourceAttributionApplications != null) {
       fail("invalid_tool_argument", "O comando dos parâmetros recebeu campos incompatíveis.");
@@ -1423,13 +1761,14 @@ function mapChange(raw) {
     const command = boundedJsonObject(raw.designCommand, "designCommand", 32 * 1024);
     return route("POST", `/v1/courses/${courseId}/course-design/changes`, requestId, {
       requestId,
-      expectedCourseRevision: expectedRevision,
+      expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
       command
     });
   }
   if (operation === "update_course_sources") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||
-        raw.designCommand != null || raw.materializationCommand != null ||
+        raw.designCommand != null || raw.annotationCommand != null ||
+        raw.materializationCommand != null ||
         raw.upserts != null || raw.deletes != null ||
         raw.sourceAttributionApplications != null) {
       fail("invalid_tool_argument", "O comando de Fontes recebeu campos incompatíveis.");
@@ -1437,13 +1776,67 @@ function mapChange(raw) {
     const command = boundedJsonObject(raw.sourceCommand, "sourceCommand", 192 * 1024);
     return route("POST", `/v1/courses/${courseId}/sources/changes`, requestId, {
       requestId,
-      expectedCourseRevision: expectedRevision,
+      expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
       command
     });
   }
-  if (operation === "commit_course_composition") {
+  if (operation === "update_anchored_annotations") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||
         raw.designCommand != null || raw.sourceCommand != null ||
+        raw.materializationCommand != null || raw.upserts != null ||
+        raw.deletes != null || raw.sourceAttributionApplications != null) {
+      fail("invalid_tool_argument", "O comando de observação recebeu campos incompatíveis.");
+    }
+    const supplied = boundedJsonObject(
+      raw.annotationCommand,
+      "annotationCommand",
+      32 * 1024
+    );
+    if (supplied.type === "create_anchored_annotation") {
+      if (requireAnnotationConfirmation && (
+        supplied.confirmed !== true || typeof supplied.briefSummary !== "string" ||
+        !supplied.briefSummary.trim()
+      )) {
+        fail(
+          "anchored_annotation_confirmation_required",
+          "Confirme o alvo e informe uma síntese breve antes de registrar a observação."
+        );
+      }
+      if (!requireAnnotationConfirmation && Object.hasOwn(supplied, "confirmed")) {
+        fail("invalid_tool_argument", "confirmed não pertence ao comando da interface.");
+      }
+    } else if (Object.hasOwn(supplied, "confirmed")) {
+      fail("invalid_tool_argument", "confirmed pertence somente à criação de observação.");
+    }
+    const commandInput = { ...supplied };
+    delete commandInput.confirmed;
+    const command = normalizeCourseAnchoredAnnotationDomain(() =>
+      normalizeCourseAnchoredAnnotationCommand(commandInput)
+    );
+    const requiresCourseRevision = new Set([
+      "create_anchored_annotation",
+      "correct_anchored_annotation_subjects"
+    ]).has(command.type);
+    let expectedCourseRevision = null;
+    if (requiresCourseRevision) {
+      expectedCourseRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
+    } else if (raw.expectedRevision != null) {
+      fail(
+        "invalid_tool_argument",
+        "expectedRevision não pertence a este comando de observação.",
+        { field: "expectedRevision" }
+      );
+    }
+    return route(
+      "POST",
+      `/v1/courses/${courseId}/anchored-annotations/changes`,
+      requestId,
+      { requestId, expectedCourseRevision, command }
+    );
+  }
+  if (operation === "commit_course_composition") {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.designCommand != null || raw.sourceCommand != null || raw.annotationCommand != null ||
         raw.materializationCommand != null) {
       fail("invalid_tool_argument", "A composição recebeu campos incompatíveis.");
     }
@@ -1466,14 +1859,15 @@ function mapChange(raw) {
     }
     return route("POST", `/v1/courses/${courseId}/composition`, requestId, {
       requestId,
-      expectedRevision,
+      expectedRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
       upserts,
       deletes,
       sourceAttributionApplications
     });
   }
   if (raw.expectedPlanVersion != null || raw.planCommand != null ||
-      raw.designCommand != null || raw.sourceCommand != null || raw.upserts != null ||
+      raw.designCommand != null || raw.sourceCommand != null || raw.annotationCommand != null ||
+      raw.upserts != null ||
       raw.deletes != null || raw.sourceAttributionApplications != null) {
     fail("invalid_tool_argument", "A materialização recebeu campos incompatíveis.");
   }
@@ -1526,7 +1920,7 @@ function mapChange(raw) {
     requestId,
     {
       requestId,
-      expectedCourseRevision: expectedRevision,
+      expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
       operation: command.operation,
       expectedMaterializationVersion: command.expectedMaterializationVersion,
       payload: Object.fromEntries(Object.entries(command).filter(([field]) => !new Set([
@@ -1673,7 +2067,11 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
 }
 
 export function mapAuthoringApplicationToolCall(name, rawArguments) {
-  return mapAuthoringMcpToolCall(name, rawArguments);
+  const raw = object(rawArguments ?? {}, "arguments");
+  if (name === "alterarCurso") {
+    return mapChange(raw, { requireAnnotationConfirmation: false });
+  }
+  return mapAuthoringMcpToolCall(name, raw);
 }
 
 function validateOutput(name, envelope) {

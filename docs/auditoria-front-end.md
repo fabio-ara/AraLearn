@@ -59,13 +59,19 @@ fixa uma revisão, lê páginas de entidades, recusa mistura entre revisões,
 recompõe `aralearn.course.v1` e só então substitui o cache válido.
 
 O percurso de Estudo apresenta uma Unidade por vez. Resposta e feedback são
-locais ao ciclo corrente; avançar não espera a persistência remota. Progresso,
-marcas para rever e observações pertencem à pessoa e não incrementam a revisão
-autoral do Curso.
+locais ao ciclo corrente; avançar não espera a persistência remota. Progresso e
+marcas para rever formam o estado pessoal v2. Anotações ancoradas próprias usam
+persistência separada; nenhum desses fluxos incrementa a revisão autoral do
+Curso apenas por continuidade ou triagem.
 
-Sem rede, conteúdo íntegro já carregado pode continuar em Estudo. A fila offline
-é específica do estado pessoal. Alteração autoral não simula sucesso quando o
-servidor ou a revisão corrente não estão disponíveis.
+Sem rede, conteúdo íntegro já carregado pode continuar em Estudo. Estado pessoal
+e Anotações ancoradas possuem filas offline separadas. Alteração autoral fora
+desse contrato não simula sucesso quando o servidor ou a revisão corrente não
+estão disponíveis.
+
+O proprietário coordena a caixa de entrada pela versão global. Estudo coordena
+cache, paginação e duas abas por uma versão monotônica privada da própria
+projeção; atividade de terceiros não muda esse valor nem se torna observável.
 
 ## 4. Autoria
 
@@ -180,13 +186,14 @@ visual.
 
 | Jornada | Evidência principal |
 | --- | --- |
-| Estudo, progresso, revisão e observação | testes de `CourseStudy*` e estado pessoal |
-| Autoria, rota e quatro seções | testes de surface, route e view model |
+| Estudo, progresso e revisão | testes de `CourseStudy*` e estado pessoal v2 |
+| Observação self-only, offline e duas abas | testes da folha de Unidade e de `CourseAnnotationRepository` |
+| Autoria, rota e sete áreas | testes de surface, route, painel de Observações e view model |
 | Inspeção, janela, cache, offline e posição | `course-inspection-sequence.test.js` e testes de controller |
 | UI ↔ MCP e owner-only | testes de MCP, Router, Adapter e API |
 | constraints e concorrência | `course-postgres-concurrency.test.js` após reset real |
 | packages no renderer fiel | `package-study-rendering-regressions.test.js` |
-| promoção 1400 → 1800 | testes do importador e manifesto do runtime |
+| promoção 1400 → 2000 | testes do importador e manifesto do runtime |
 
 Testes automatizados não demonstram que pessoas leigas compreendem a navegação,
 que a carga cognitiva é baixa em uso prolongado ou que o Free Plan suportará a

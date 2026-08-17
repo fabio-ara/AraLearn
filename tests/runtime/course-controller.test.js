@@ -4,8 +4,15 @@ import { IDBFactory } from "fake-indexeddb";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import { CourseLocalStore } from "../../src/persistence/CourseLocalStore.js";
-import { COURSE_PERSONAL_STATE_CACHE_CONTRACT } from
-  "../../src/persistence/CoursePersonalStateRepository.js";
+import {
+  COURSE_ANNOTATION_CACHE_CONTRACT,
+  COURSE_ANNOTATION_OUTBOX_CONTRACT
+} from "../../src/persistence/CourseAnnotationRepository.js";
+import {
+  COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
+  COURSE_PERSONAL_STATE_CACHE_CONTRACT,
+  COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT
+} from "../../src/persistence/CoursePersonalStateRepository.js";
 import {
   ACCESSIBLE_COURSE_IDS_CACHE_KEY,
   ACCESSIBLE_COURSE_IDS_CONTRACT,
@@ -198,6 +205,98 @@ test("não converte acesso revogado em fallback local", async () => {
   );
   assert.equal(store.values.has(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`), false);
   assert.equal(store.values.has("course.v1.review-page"), false);
+});
+
+test("inbox não confunde observação ausente com revogação e purga todo cache privado real", async () => {
+  const store = new MemoryStateStore();
+  const privateKeys = [
+    `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`,
+    `${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${COURSE_ID}`,
+    `${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${COURSE_ID}`,
+    `${COURSE_ANNOTATION_CACHE_CONTRACT}:${COURSE_ID}`,
+    `${COURSE_ANNOTATION_OUTBOX_CONTRACT}:${COURSE_ID}`,
+    `course-authoring.v1.header:${COURSE_ID}`
+  ];
+  for (const key of privateKeys) await store.putCache(key, { private: true });
+  let failure = Object.assign(new Error("observação ausente"), {
+    status: 404,
+    code: "course_anchored_annotation_not_found"
+  });
+  const controller = new CourseController({
+    store,
+    ownerOnly: true,
+    api: {
+      async listCourses() { return courseListPage([]); },
+      async getCourse() { throw new Error("não usado"); },
+      async loadCourseAnchoredAnnotations() { throw failure; }
+    }
+  });
+
+  await assert.rejects(
+    () => controller.loadCourseAnchoredAnnotations(COURSE_ID, {
+      expectedCourseRevision: 7
+    }),
+    (error) => error.code === "course_anchored_annotation_not_found"
+  );
+  assert.equal(privateKeys.every((key) => store.values.has(key)), true);
+
+  failure = Object.assign(new Error("Curso revogado"), { status: 404, code: "PT404" });
+  await assert.rejects(
+    () => controller.loadCourseAnchoredAnnotations(COURSE_ID, {
+      expectedCourseRevision: 7
+    }),
+    (error) => error.code === "PT404"
+  );
+  assert.equal(privateKeys.some((key) => store.values.has(key)), false);
+});
+
+test("mutação owner liga o replay à revisão original sem rejeitar avanço corrente", async () => {
+  let courseRevision = 8;
+  const requestId = "request-annotation-controller-1";
+  const api = {
+    async listCourses() { return courseListPage([]); },
+    async getCourse() { throw new Error("não usado"); },
+    async mutateCourseAnchoredAnnotations() {
+      return {
+        contract: "aralearn.course-anchored-annotation-change.v1",
+        courseId: COURSE_ID,
+        courseRevision,
+        annotationSetVersion: 3,
+        requestId,
+        idempotent: true,
+        changed: false,
+        annotation: null
+      };
+    }
+  };
+  const controller = new CourseController({
+    store: new MemoryStateStore(),
+    ownerOnly: true,
+    api
+  });
+  const mutation = {
+    requestId,
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command: {
+      type: "create_anchored_annotation",
+      annotationId: "60000000-0000-4000-8000-000000000006",
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Possível erro nesta Unidade.",
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: null
+    }
+  };
+
+  const replay = await controller.mutateCourseAnchoredAnnotations(mutation);
+  assert.equal(replay.courseRevision, 8);
+
+  courseRevision = 6;
+  await assert.rejects(
+    () => controller.mutateCourseAnchoredAnnotations(mutation),
+    /não corresponde ao comando/u
+  );
 });
 
 test("não usa página parcial como cache de outra paginação", async () => {

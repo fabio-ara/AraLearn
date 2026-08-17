@@ -45,6 +45,10 @@ const DEFAULT_COURSE_SOURCES_MIGRATION = path.join(
   REPOSITORY_ROOT,
   "supabase/migrations/20260817190000_course_sources_provenance.sql"
 );
+const DEFAULT_COURSE_ANNOTATIONS_MIGRATION = path.join(
+  REPOSITORY_ROOT,
+  "supabase/migrations/20260817200000_course_anchored_annotations.sql"
+);
 const DEFAULT_POOLER_URL = path.join(REPOSITORY_ROOT, "supabase/.temp/pooler-url");
 const DEFAULT_PROJECT_REF = path.join(REPOSITORY_ROOT, "supabase/.temp/project-ref");
 const DEFAULT_ATTESTATION_DIRECTORY = path.resolve(
@@ -317,6 +321,7 @@ export async function runCourseIdentityCutover({
   studyUnitInspectionMigrationSql,
   courseDesignMigrationSql,
   courseSourcesMigrationSql,
+  courseAnnotationsMigrationSql,
   readSnapshot = readCourseCutoverSnapshot,
   createArtifactLoader = createRevisionArtifactLoader,
   prepare = prepareCourseCutover,
@@ -334,7 +339,8 @@ export async function runCourseIdentityCutover({
       typeof authoringPlanMigrationSql !== "string" ||
       typeof studyUnitInspectionMigrationSql !== "string" ||
       typeof courseDesignMigrationSql !== "string" ||
-      typeof courseSourcesMigrationSql !== "string") {
+      typeof courseSourcesMigrationSql !== "string" ||
+      typeof courseAnnotationsMigrationSql !== "string") {
     fail("invalid_cutover_execution", "Sessões ou migrations do corte estão ausentes.");
   }
   const snapshotSession = {
@@ -359,7 +365,7 @@ export async function runCourseIdentityCutover({
       migrationHash: sha256Text(
         `${migrationSql}\n${profileAccessMigrationSql}\n${authoringPlanMigrationSql}` +
           `\n${studyUnitInspectionMigrationSql}\n${courseDesignMigrationSql}` +
-          `\n${courseSourcesMigrationSql}`
+          `\n${courseSourcesMigrationSql}\n${courseAnnotationsMigrationSql}`
       )
     };
     await writeAttestation({
@@ -383,7 +389,8 @@ export async function runCourseIdentityCutover({
       authoringPlanMigrationSql,
       studyUnitInspectionMigrationSql,
       courseDesignMigrationSql,
-      courseSourcesMigrationSql
+      courseSourcesMigrationSql,
+      courseAnnotationsMigrationSql
     );
     await executeSql(sql, {
       ...sessions.database,
@@ -417,7 +424,7 @@ function helpText() {
     "Uso: node scripts/courseCutover/runCourseIdentityCutover.mjs [opções]",
     "",
     "Sem --apply, não escreve no banco; valida e grava atestação privada.",
-    "  --apply                 executa TEMP + COPY + migrations 1400/1500/1600/1700/1800/1900 em uma transação",
+    "  --apply                 executa TEMP + COPY + migrations 1400/1500/1600/1700/1800/1900/2000 em uma transação",
     "  --secrets-stdin         lê as sessões efêmeras de um objeto JSON no stdin",
     "  --resolutions ARQUIVO   lê decisões semânticas de arquivo fora do repositório",
     "  --help                  mostra esta ajuda",
@@ -460,6 +467,10 @@ export async function main(argv = process.argv.slice(2)) {
     DEFAULT_COURSE_SOURCES_MIGRATION,
     4 * 1024 * 1024
   );
+  const courseAnnotationsMigrationSql = await readLimitedFile(
+    DEFAULT_COURSE_ANNOTATIONS_MIGRATION,
+    4 * 1024 * 1024
+  );
   const result = await runCourseIdentityCutover({
     apply: argumentsValue.apply,
     sessions,
@@ -469,7 +480,8 @@ export async function main(argv = process.argv.slice(2)) {
     authoringPlanMigrationSql,
     studyUnitInspectionMigrationSql,
     courseDesignMigrationSql,
-    courseSourcesMigrationSql
+    courseSourcesMigrationSql,
+    courseAnnotationsMigrationSql
   });
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

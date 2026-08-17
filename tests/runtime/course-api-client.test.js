@@ -150,6 +150,103 @@ test("fila Rever é paginada por RPC browser-only e normalizada estritamente", a
   );
 });
 
+test("estado pessoal usa somente os RPCs e o envelope v2", async () => {
+  const calls = [];
+  const state = {
+    contract: "aralearn.course-personal-state.v2",
+    courseId: COURSE_ID,
+    revision: 1,
+    state: {
+      version: 2,
+      progress: { version: 3, lessons: {} },
+      reviewMarks: {}
+    },
+    updatedAt: "2026-08-17T12:00:00.000Z"
+  };
+  let legacy = false;
+  const { client } = clientWithFetch(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return url.endsWith("/load_course_personal_state_v2")
+      ? jsonResponse(legacy
+          ? {
+              ...state,
+              contract: "aralearn.course-personal-state.v1",
+              state: { ...state.state, version: 1, observations: {} }
+            }
+          : state)
+      : jsonResponse({
+          courseId: COURSE_ID,
+          revision: 2,
+          updatedAt: "2026-08-17T12:01:00.000Z",
+          idempotent: false
+        });
+  });
+
+  assert.deepEqual(await client.loadPersonalState(COURSE_ID), state);
+  await client.mutatePersonalState({
+    courseId: COURSE_ID,
+    expectedRevision: 1,
+    requestId: "40000000-0000-4000-8000-000000000004",
+    operations: [{
+      kind: "set",
+      collection: "reviewMarks",
+      path: "module-a",
+      value: "2026-08-17T12:00:00.000Z"
+    }]
+  });
+  assert.deepEqual(calls.map(({ url }) => url.split("/").at(-1)), [
+    "load_course_personal_state_v2",
+    "mutate_course_personal_state_v2"
+  ]);
+  assert.equal(JSON.stringify(calls).includes("personal_state_v1"), false);
+  const astralPath = "😀".repeat(240);
+  await client.mutatePersonalState({
+    courseId: COURSE_ID,
+    expectedRevision: 1,
+    requestId: "60000000-0000-4000-8000-000000000006",
+    operations: [{
+      kind: "delete",
+      collection: "reviewMarks",
+      path: astralPath
+    }]
+  });
+  assert.equal(calls.at(-1).body.p_operations[0].path, astralPath);
+  const callCount = calls.length;
+  await assert.rejects(
+    () => client.mutatePersonalState({
+      courseId: COURSE_ID,
+      expectedRevision: 1,
+      requestId: "70000000-0000-4000-8000-000000000007",
+      operations: [{
+        kind: "delete",
+        collection: "reviewMarks",
+        path: "😀".repeat(241)
+      }]
+    }),
+    /Operações do estado pessoal inválidas/u
+  );
+  assert.equal(calls.length, callCount);
+  legacy = true;
+  await assert.rejects(
+    () => client.loadPersonalState(COURSE_ID),
+    /Estado pessoal remoto inválido/u
+  );
+  await assert.rejects(
+    () => client.mutatePersonalState({
+      courseId: COURSE_ID,
+      expectedRevision: 1,
+      requestId: "50000000-0000-4000-8000-000000000005",
+      operations: [{
+        kind: "set",
+        collection: "observations",
+        path: "unit-a",
+        value: { text: "alias legado" }
+      }]
+    }),
+    /Operações do estado pessoal inválidas/u
+  );
+});
+
 test("invalida a sessão somente diante de falha de autenticação", async () => {
   const authFailure = clientWithFetch(async () => jsonResponse({
     code: "PGRST301",
@@ -802,4 +899,323 @@ test("exclusão da conta remove avatares próprios antes do RPC destrutivo", asy
     prefixes: [`${USER_ID}/${AVATAR_ID}.webp`]
   });
   assert.deepEqual(calls[2].body, { p_confirmation: "EXCLUIR MINHA CONTA" });
+});
+
+function anchoredAnnotationFixture({
+  annotationId = "60000000-0000-4000-8000-000000000006",
+  origin = "author",
+  channel = "authoring_interface",
+  contributorKind = "self",
+  contributorLabel = "Você",
+  rawText = "Possível erro na Unidade",
+  targetId = "unit-a"
+} = {}) {
+  return {
+    contract: "aralearn.course-anchored-annotation.v1",
+    annotationId,
+    annotationVersion: 1,
+    courseId: COURSE_ID,
+    provenance: { origin, channel },
+    contributor: {
+      kind: contributorKind,
+      role: origin,
+      ref: contributorKind === "self" ? "self" : null,
+      label: contributorLabel
+    },
+    target: {
+      kind: "study_unit",
+      id: targetId,
+      observedPath: [
+        { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
+        { kind: "study_unit", id: targetId, label: "Unidade", version: 2 }
+      ],
+      currentAvailable: true,
+      currentPath: [
+        { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
+        { kind: "study_unit", id: targetId, label: "Unidade", version: 2 }
+      ],
+      deepLink: "https://app.invalid/#/literal-target"
+    },
+    observedRevision: { certainty: "known", courseRevision: 7, targetVersion: 2 },
+    rawText,
+    category: "possible_error",
+    briefSummary: null,
+    subjectClassification: {
+      status: "unclassified",
+      automatic: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 7,
+        subjects: []
+      },
+      effective: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 7,
+        subjects: []
+      },
+      correctedAt: null
+    },
+    state: "open",
+    ownerResponse: null,
+    timestamps: {
+      capturedAt: "2026-08-17T12:00:00.000Z",
+      createdAt: "2026-08-17T12:00:00.000Z",
+      updatedAt: "2026-08-17T12:00:00.000Z",
+      firstConsideredAt: null,
+      respondedAt: null,
+      resolvedAt: null,
+      withdrawnAt: null
+    },
+    capabilities: {
+      canRevise: true,
+      canWithdraw: true,
+      canConsider: origin === "author",
+      canRespond: origin === "learner",
+      canResolve: true,
+      canReopen: false,
+      canCorrectSubjects: true
+    },
+    deepLink: "https://app.invalid/#/literal-annotation"
+  };
+}
+
+function anchoredAnnotationPage(query, item) {
+  return {
+    contract: "aralearn.course-anchored-annotation-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    annotationSetVersion: 4,
+    query,
+    summary: {
+      matchingTotal: 1,
+      byOrigin: { [item.provenance.origin]: 1 },
+      byChannel: { [item.provenance.channel]: 1 },
+      byState: { open: 1 },
+      unclassifiedTotal: 1
+    },
+    items: [item],
+    hasMore: false,
+    nextCursor: null
+  };
+}
+
+test("observações owner e Study usam contratos ligados e não aceitam spoof de canal", async () => {
+  const ownerQuery = {
+    mode: "inbox",
+    origins: ["author"],
+    channels: ["authoring_interface"],
+    states: ["open"],
+    categories: [],
+    includeUncategorized: true,
+    subjectIds: [],
+    hierarchy: null,
+    annotationId: null
+  };
+  const studyQuery = {
+    mode: "target",
+    origins: [],
+    channels: [],
+    states: [],
+    categories: [],
+    includeUncategorized: true,
+    subjectIds: [],
+    hierarchy: {
+      target: { kind: "study_unit", id: "unit-a" },
+      includeDescendants: false
+    },
+    annotationId: null
+  };
+  const ownerItem = anchoredAnnotationFixture();
+  const studyItem = anchoredAnnotationFixture({
+    origin: "learner",
+    channel: "study_interface"
+  });
+  const calls = [];
+  const { client } = clientWithFetch(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (url.endsWith("/app/lerCurso")) {
+      return jsonResponse({ ok: true, data: anchoredAnnotationPage(
+        Object.fromEntries(Object.entries(ownerQuery).reverse()),
+        ownerItem
+      ) });
+    }
+    if (url.endsWith("/app/alterarCurso")) {
+      return jsonResponse({ ok: true, data: {
+        contract: "aralearn.course-anchored-annotation-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 8,
+        annotationSetVersion: 5,
+        requestId: "request-annotation-owner-1",
+        idempotent: false,
+        changed: true,
+        annotation: { ...ownerItem, annotationVersion: 2, rawText: "Texto revisto" }
+      } });
+    }
+    if (url.endsWith("/rpc/get_my_course_anchored_annotations_v1")) {
+      return jsonResponse(anchoredAnnotationPage(studyQuery, studyItem));
+    }
+    if (url.endsWith("/rpc/execute_my_course_anchored_annotation_command_v1")) {
+      return jsonResponse({
+        contract: "aralearn.course-anchored-annotation-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        annotationSetVersion: 5,
+        requestId: "request-annotation-study-1",
+        idempotent: false,
+        changed: true,
+        annotation: studyItem
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  assert.deepEqual(await client.loadCourseAnchoredAnnotations(COURSE_ID, {
+    expectedCourseRevision: 7,
+    annotationSetVersion: null,
+    query: ownerQuery,
+    cursor: null,
+    limit: 12
+  }), anchoredAnnotationPage(ownerQuery, ownerItem));
+  assert.equal(calls[0].body.annotationSetVersion, null);
+  assert.equal(calls[0].body.view, "anchored_annotations");
+
+  const revised = await client.mutateCourseAnchoredAnnotations({
+    requestId: "request-annotation-owner-1",
+    courseId: COURSE_ID,
+    expectedCourseRevision: null,
+    command: {
+      type: "revise_anchored_annotation",
+      annotationId: ownerItem.annotationId,
+      expectedAnnotationVersion: 1,
+      rawText: "Texto revisto",
+      category: "possible_error",
+      briefSummary: null
+    }
+  });
+  assert.equal(revised.courseRevision, 8);
+  assert.equal(Object.hasOwn(calls[1].body, "expectedRevision"), false);
+  assert.equal(calls[1].body.annotationCommand.rawText, "Texto revisto");
+
+  assert.deepEqual(await client.getMyCourseAnchoredAnnotations(COURSE_ID, {
+    expectedCourseRevision: 7,
+    annotationSetVersion: null,
+    query: studyQuery,
+    cursor: null,
+    limit: 12
+  }), anchoredAnnotationPage(studyQuery, studyItem));
+  assert.deepEqual(calls[2].body, {
+    p_course_id: COURSE_ID,
+    p_expected_course_revision: 7,
+    p_annotation_set_version: null,
+    p_target_kind: "study_unit",
+    p_target_id: "unit-a",
+    p_cursor: null,
+    p_limit: 12
+  });
+
+  await client.executeMyCourseAnchoredAnnotationCommand({
+    requestId: "request-annotation-study-1",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command: {
+      type: "create_anchored_annotation",
+      annotationId: studyItem.annotationId,
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Possível erro na Unidade",
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: null
+    }
+  });
+  assert.equal(Object.hasOwn(calls[3].body, "origin"), false);
+  assert.equal(Object.hasOwn(calls[3].body, "channel"), false);
+  assert.equal(calls[3].body.p_expected_course_revision, 7);
+  await assert.rejects(
+    () => client.executeMyCourseAnchoredAnnotationCommand({
+      requestId: "request-annotation-study-2",
+      courseId: COURSE_ID,
+      expectedCourseRevision: 7,
+      command: {
+        type: "create_anchored_annotation",
+        annotationId: studyItem.annotationId,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText: "Texto",
+        category: null,
+        capturedAt: null,
+        briefSummary: null
+      },
+      channel: "authoring_chat"
+    }),
+    /Alteração de observação inválid/u
+  );
+});
+
+test("retry após resposta perdida aceita receipt idempotente na revisão corrente", async () => {
+  const calls = [];
+  let attempt = 0;
+  let targetId = "unit-a";
+  let courseRevision = 9;
+  const { client } = clientWithFetch(async (_url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push(body);
+    attempt += 1;
+    if (attempt === 1) throw new TypeError("Failed to fetch");
+    return jsonResponse({ ok: true, data: {
+      contract: "aralearn.course-anchored-annotation-change.v1",
+      courseId: COURSE_ID,
+      courseRevision,
+      annotationSetVersion: 6,
+      requestId: body.requestId,
+      idempotent: true,
+      changed: false,
+      annotation: anchoredAnnotationFixture({
+        rawText: "Possível erro na Unidade",
+        targetId
+      })
+    } });
+  });
+  const mutation = {
+    requestId: "request-annotation-replay-1",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command: {
+      type: "create_anchored_annotation",
+      annotationId: "60000000-0000-4000-8000-000000000006",
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Possível erro na Unidade",
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: null
+    }
+  };
+
+  await assert.rejects(
+    () => client.mutateCourseAnchoredAnnotations(mutation),
+    /Failed to fetch/u
+  );
+  const replay = await client.mutateCourseAnchoredAnnotations(mutation);
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.courseRevision, 9);
+  assert.deepEqual(calls[0], calls[1]);
+
+  targetId = "unit-b";
+  await assert.rejects(
+    () => client.mutateCourseAnchoredAnnotations({
+      ...mutation,
+      requestId: "request-annotation-replay-2"
+    }),
+    /não corresponde ao comando/u
+  );
+
+  targetId = "unit-a";
+  courseRevision = 6;
+  await assert.rejects(
+    () => client.mutateCourseAnchoredAnnotations({
+      ...mutation,
+      requestId: "request-annotation-replay-3"
+    }),
+    /não corresponde ao comando/u
+  );
 });

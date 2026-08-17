@@ -79,6 +79,20 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "executeCourseSourceCommand",
     courseId: COURSE_ID
   });
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/anchored-annotations`
+  ), {
+    name: "getCourseAnchoredAnnotations",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/anchored-annotations/changes`
+  ), {
+    name: "executeCourseAnchoredAnnotationCommand",
+    courseId: COURSE_ID
+  });
   assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/composition`), {
     name: "commitCourseComposition",
     courseId: COURSE_ID
@@ -122,6 +136,202 @@ test("roteia somente endpoints canônicos de Curso", () => {
   assert.throws(
     () => routeCourseRequest("GET", "/v1/authoring/workspaces"),
     (error) => error.status === 404
+  );
+});
+
+test("observações chegam ao Adapter com query canônica e sem autoridade do cliente", async () => {
+  const calls = [];
+  const adapter = {
+    async getCourseAnchoredAnnotations(value) {
+      calls.push({ operation: "read", value });
+      return { contract: "read-ok" };
+    },
+    async executeCourseAnchoredAnnotationCommand(value) {
+      calls.push({ operation: "write", value });
+      return { contract: "write-ok" };
+    }
+  };
+  const read = request(
+    `/v1/courses/${COURSE_ID}/anchored-annotations?` +
+      "expectedRevision=7&annotationSetVersion=4&mode=target&" +
+      "origin=author&origin=learner&channel=authoring_chat&state=open&" +
+      "category=possible_error&includeUncategorized=false&subjectId=topic-a&" +
+      "targetKind=study_unit&targetId=unit-a&includeDescendants=false&" +
+      "cursor=Y3Vyc29yLTE%3D&limit=12"
+  );
+  const readResult = await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(readResult.data, { contract: "read-ok" });
+  assert.deepEqual(calls[0].value.query, {
+    mode: "target",
+    origins: ["author", "learner"],
+    channels: ["authoring_chat"],
+    states: ["open"],
+    categories: ["possible_error"],
+    includeUncategorized: false,
+    subjectIds: ["topic-a"],
+    hierarchy: {
+      target: { kind: "study_unit", id: "unit-a" },
+      includeDescendants: false
+    },
+    annotationId: null
+  });
+  assert.equal(calls[0].value.expectedCourseRevision, 7);
+  assert.equal(calls[0].value.annotationSetVersion, 4);
+  assert.equal(calls[0].value.cursor, "Y3Vyc29yLTE=");
+  assert.equal(calls[0].value.limit, 12);
+  for (const invalidQuery of [
+    "expectedRevision=7&annotationSetVersion=&mode=inbox",
+    "expectedRevision=7&mode="
+  ]) {
+    const invalidRead = request(
+      `/v1/courses/${COURSE_ID}/anchored-annotations?${invalidQuery}`
+    );
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: invalidRead,
+        route: routeCourseRequest("GET", new URL(invalidRead.url).pathname),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.code === "invalid_course_anchored_annotation_read_options" ||
+        error.code === "invalid_course_anchored_annotation_query"
+    );
+  }
+  const oversizedParams = new URLSearchParams({
+    expectedRevision: "7",
+    mode: "inbox"
+  });
+  for (let index = 0; index < 16; index += 1) {
+    const prefix = `s${index}-`;
+    oversizedParams.append(
+      "subjectId",
+      `${prefix}${"é".repeat(240 - [...prefix].length)}`
+    );
+  }
+  const oversizedRead = request(
+    `/v1/courses/${COURSE_ID}/anchored-annotations?${oversizedParams}`
+  );
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: oversizedRead,
+      route: routeCourseRequest("GET", new URL(oversizedRead.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.status === 414 &&
+      error.code === "course_anchored_annotations_query_too_large"
+  );
+
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  const writePath = `/v1/courses/${COURSE_ID}/anchored-annotations/changes`;
+  const write = request(writePath, {
+    method: "POST",
+    requestId: "request-annotation-router-1",
+    body: {
+      requestId: "request-annotation-router-1",
+      expectedCourseRevision: 7,
+      command: {
+        type: "create_anchored_annotation",
+        annotationId,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText: "  Texto bruto exato.  ",
+        category: null,
+        capturedAt: null,
+        briefSummary: null
+      }
+    }
+  });
+  await executeCourseRoute({
+    request: write,
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[1].value.expectedCourseRevision, 7);
+  assert.equal(calls[1].value.command.rawText, "  Texto bruto exato.  ");
+  assert.equal(Object.hasOwn(calls[1].value.command, "origin"), false);
+  assert.equal(Object.hasOwn(calls[1].value.command, "channel"), false);
+
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(writePath, {
+        method: "POST",
+        requestId: "request-annotation-router-course",
+        body: {
+          requestId: "request-annotation-router-course",
+          expectedCourseRevision: 7,
+          command: {
+            ...JSON.parse(JSON.stringify(calls[1].value.command)),
+            target: { kind: "course", id: PLAN_ID }
+          }
+        }
+      }),
+      route: routeCourseRequest("POST", writePath),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_anchored_annotation_command"
+  );
+
+  const reviseBody = {
+    requestId: "request-annotation-router-2",
+    expectedCourseRevision: null,
+    command: {
+      type: "revise_anchored_annotation",
+      annotationId,
+      expectedAnnotationVersion: 1,
+      rawText: "Texto revisto",
+      category: "confusing",
+      briefSummary: null
+    }
+  };
+  await executeCourseRoute({
+    request: request(writePath, {
+      method: "POST",
+      requestId: reviseBody.requestId,
+      body: reviseBody
+    }),
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[2].value.expectedCourseRevision, null);
+  assert.equal(calls[2].value.command.expectedAnnotationVersion, 1);
+
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(writePath, {
+        method: "POST",
+        requestId: reviseBody.requestId,
+        body: { ...reviseBody, expectedCourseRevision: 7 }
+      }),
+      route: routeCourseRequest("POST", writePath),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_anchored_annotation_command"
+  );
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(writePath, {
+        method: "POST",
+        requestId: "request-annotation-router-3",
+        body: {
+          ...reviseBody,
+          requestId: "request-annotation-router-3",
+          origin: "author"
+        }
+      }),
+      route: routeCourseRequest("POST", writePath),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "unknown_course_command_field"
   );
 });
 

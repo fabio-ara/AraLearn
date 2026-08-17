@@ -18,9 +18,37 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
     const progress = { version: 1, lessons: {} };
     const state = {
-      completed: [], observations: {}, review: new Map(), loadedCourses: [], failDelete: false,
+      completed: [], annotations: {}, annotationListeners: new Map(), annotationIndex: 0,
+      review: new Map(), loadedCourses: [], failWithdraw: false,
+      annotationsRevoked: false, annotationNotFound: false,
       externalProject: null, remotePersonal: null, refreshes: 0, revoked: false,
       citationReads: [], citationRevision: 4, citationsRevoked: false
+    };
+    const annotationItems = (reference) => state.annotations[reference.studyUnitId] || [];
+    const annotation = (reference, draft, overrides = {}) => {
+      state.annotationIndex += 1;
+      return {
+        annotationId: `annotation-${state.annotationIndex}`,
+        annotationVersion: 1,
+        provenance: { origin: "learner", channel: "study_interface" },
+        contributor: { kind: "self", role: "learner", ref: "self", label: "Você" },
+        target: { kind: "study_unit", id: reference.studyUnitId },
+        rawText: draft.rawText,
+        category: draft.category,
+        briefSummary: null,
+        state: "open",
+        ownerResponse: null,
+        timestamps: { updatedAt: "2026-08-17T12:00:00.000Z" },
+        capabilities: { canRevise: true, canWithdraw: true },
+        syncStatus: "synced",
+        ...overrides
+      };
+    };
+    state.replaceAnnotations = (studyUnitId, items, { stale = true } = {}) => {
+      state.annotations[studyUnitId] = structuredClone(items);
+      for (const listener of state.annotationListeners.get(studyUnitId) || []) {
+        listener({ stale, annotationIds: items.map(({ annotationId }) => annotationId) });
+      }
     };
     globalThis.__courseStudyProbe = state;
     const initialProject = {
@@ -95,15 +123,57 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
           }]
         };
       },
-      loadCommentForPath: (reference) => state.observations[reference.studyUnitId] || null,
-      saveCommentForPath: async (reference, draft) => {
-        const value = { ...structuredClone(draft), updatedAt: "2026-08-17T12:00:00.000Z" };
-        state.observations[reference.studyUnitId] = value;
-        return value;
+      loadAnnotationsForPath: (reference) => structuredClone(annotationItems(reference)),
+      refreshAnnotationsForPath: async (reference) => {
+        if (state.annotationsRevoked) {
+          activeProject = { contract: activeProject.contract, courses: [] };
+          throw Object.assign(new Error("Curso não encontrado."), {
+            status: 404,
+            code: "PT404"
+          });
+        }
+        if (state.annotationNotFound) {
+          throw Object.assign(new Error("Observação não encontrada."), {
+            status: 404,
+            code: "COURSE_ANCHORED_ANNOTATION_NOT_FOUND"
+          });
+        }
+        return structuredClone(annotationItems(reference));
       },
-      deleteCommentForPath: async (reference) => {
-        if (state.failDelete) throw new Error("Sem conexão para retirar a observação.");
-        delete state.observations[reference.studyUnitId];
+      createAnnotationForPath: async (reference, draft) => {
+        const value = annotation(reference, structuredClone(draft));
+        state.annotations[reference.studyUnitId] = [...annotationItems(reference), value];
+        return structuredClone(value);
+      },
+      reviseAnnotation: async (reference, annotationId, draft) => {
+        const items = annotationItems(reference);
+        const index = items.findIndex((item) => item.annotationId === annotationId);
+        items[index] = {
+          ...items[index],
+          annotationVersion: items[index].annotationVersion + 1,
+          rawText: draft.rawText,
+          category: draft.category
+        };
+        return structuredClone(items[index]);
+      },
+      withdrawAnnotation: async (reference, annotationId) => {
+        if (state.failWithdraw) throw new Error("Sem conexão para retirar a observação.");
+        const items = annotationItems(reference);
+        const index = items.findIndex((item) => item.annotationId === annotationId);
+        items[index] = {
+          ...items[index],
+          annotationVersion: items[index].annotationVersion + 1,
+          rawText: null,
+          state: "withdrawn",
+          capabilities: { canRevise: false, canWithdraw: false }
+        };
+      },
+      discardFailedAnnotation: async () => true,
+      subscribeToAnnotations: (reference, listener) => {
+        const listeners = state.annotationListeners.get(reference.studyUnitId) || new Set();
+        listeners.add(listener);
+        state.annotationListeners.set(reference.studyUnitId, listeners);
+        return () => listeners.delete(listener);
       },
       loadReviewItems: () => [...state.review.values()].map((value) => structuredClone(value)),
       isStudyUnitMarkedForReview: (reference) => state.review.has(reference.studyUnitId),
@@ -149,7 +219,6 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
           );
           for (const path of Object.keys(progress.lessons)) delete progress.lessons[path];
           Object.assign(progress.lessons, structuredClone(state.remotePersonal.progressLessons));
-          state.observations = structuredClone(state.remotePersonal.observations);
           state.review.clear();
           for (const [studyUnitId, item] of state.remotePersonal.review) {
             state.review.set(studyUnitId, structuredClone(item));
@@ -213,12 +282,15 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   );
   await expect(page.getByRole("button", { name: "Marcar para rever" })).toBeEnabled();
   await page.getByRole("button", { name: "Marcar para rever" }).click();
-  await page.getByRole("button", { name: "Observação" }).click();
+  await page.getByRole("button", { name: /^Observações/u }).click();
   await page.getByRole("textbox", { name: "Observação" }).fill("Guardada durante a desconexão.");
-  await page.getByRole("button", { name: "Salvar" }).click();
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  await expect(page.getByText("Guardada durante a desconexão.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar" }).click();
   expect(await page.evaluate(() => ({
     review: globalThis.__courseStudyProbe.review.size,
-    observations: Object.keys(globalThis.__courseStudyProbe.observations).length
+    observations: Object.values(globalThis.__courseStudyProbe.annotations)
+      .reduce((total, items) => total + items.length, 0)
   }))).toEqual({ review: 1, observations: 1 });
 
   const refreshContext = await page.evaluate(() => {
@@ -238,13 +310,6 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
           completedStudyUnitIds: [reference.studyUnitId]
         }
       },
-      observations: {
-        [reference.studyUnitId]: {
-          category: "possible_error",
-          body: "Observação recebida de outro dispositivo.",
-          updatedAt: "2026-08-17T12:30:00.000Z"
-        }
-      },
       review: [[reference.studyUnitId, {
         title: "Unidade remota",
         context: "Curso · Lição",
@@ -252,6 +317,15 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
         reviewMarkedAt: "2026-08-17T12:20:00.000Z"
       }]]
     };
+    const remote = structuredClone(probe.annotations[reference.studyUnitId][0]);
+    remote.rawText = "Observação recebida de outro dispositivo.";
+    remote.category = "possible_error";
+    remote.annotationVersion += 1;
+    remote.ownerResponse = {
+      text: "Retorno privado da autoria.",
+      updatedAt: "2026-08-17T12:30:00.000Z"
+    };
+    probe.replaceAnnotations(reference.studyUnitId, [remote], { stale: false });
     const style = document.createElement("style");
     style.textContent = ".screen-content{height:120px!important;overflow:auto!important}" +
       ".study-reader-screen{min-height:800px!important}";
@@ -263,15 +337,17 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   });
   await page.evaluate(() => globalThis.__courseStudyApp.refreshPersonalState());
   await expect(page.getByRole("status")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Observação" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^Observações/u })).toBeFocused();
   await expect(page.getByRole("button", { name: "Marcar para rever" }))
     .toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => page.evaluate(() =>
     document.querySelector(".screen-content").scrollTop)).toBe(refreshContext.scrollTop);
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.refreshes)).toBe(1);
-  await page.getByRole("button", { name: "Observação" }).click();
-  await expect(page.getByRole("textbox", { name: "Observação" }))
-    .toHaveValue("Observação recebida de outro dispositivo.");
+  await page.getByRole("button", { name: /^Observações/u }).click();
+  await expect(page.getByText("Observação recebida de outro dispositivo.", { exact: true }))
+    .toBeVisible();
+  await expect(page.getByText("Retorno privado da autoria.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Observação" })).toHaveValue("");
   await page.getByRole("button", { name: "Fechar" }).click();
   await page.evaluate(() => globalThis.__courseStudyApp.openCourses());
   await expect(page.getByLabel("Progresso: 1 de 2")).toBeVisible();
@@ -284,18 +360,45 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.completed.length)).toBe(1);
 
-  await page.getByRole("button", { name: "Observação" }).click();
+  await page.getByRole("button", { name: /^Observações/u }).click();
   await page.getByRole("textbox", { name: "Observação" }).fill("Conferir a formulação.");
-  await page.getByRole("button", { name: "Salvar" }).click();
-  expect(await page.evaluate(() => Object.keys(globalThis.__courseStudyProbe.observations).length)).toBe(2);
-  await page.getByRole("button", { name: "Observação" }).click();
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  await page.getByRole("textbox", { name: "Observação" }).fill("Segunda observação no mesmo alvo.");
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  expect(await page.evaluate(() => Object.values(globalThis.__courseStudyProbe.annotations)
+    .reduce((total, items) => total + items.length, 0))).toBe(3);
+  await page.getByRole("button", { name: "Editar observação" }).first().click();
+  await page.getByRole("textbox", { name: "Observação" }).fill("Formulação revisada.");
+  await page.getByRole("button", { name: "Salvar edição" }).click();
+  await expect(page.getByText("Formulação revisada.", { exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "Observação" }).fill("Rascunho local preservado.");
-  await page.evaluate(() => { globalThis.__courseStudyProbe.failDelete = true; });
-  await page.getByRole("button", { name: "Retirar observação" }).click();
+  await page.evaluate(() => {
+    const probe = globalThis.__courseStudyProbe;
+    const target = "card-fixture-minimal-complete";
+    const items = structuredClone(probe.annotations[target]);
+    items.push({
+      ...structuredClone(items[0]),
+      annotationId: "annotation-remote-session",
+      annotationVersion: 1,
+      rawText: "Chegou de outra sessão.",
+      category: "question"
+    });
+    probe.replaceAnnotations(target, items, { stale: true });
+    probe.failWithdraw = true;
+  });
+  await expect(page.getByText("Há mudanças em outra sessão.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Retirar observação" }).first().click();
   await expect(page.getByRole("alert")).toHaveText("Sem conexão para retirar a observação.");
   await expect(page.getByRole("textbox", { name: "Observação" }))
     .toHaveValue("Rascunho local preservado.");
-  expect(await page.evaluate(() => Object.keys(globalThis.__courseStudyProbe.observations).length)).toBe(2);
+  expect(await page.evaluate(() => Object.values(globalThis.__courseStudyProbe.annotations)
+    .reduce((total, items) => total + items.length, 0))).toBe(4);
+  await page.getByRole("button", { name: "Fechar" }).click();
+  await page.evaluate(() => { globalThis.__courseStudyProbe.failWithdraw = false; });
+  await page.getByRole("button", { name: /^Observações/u }).click();
+  await expect(page.getByText("Chegou de outra sessão.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Retirar observação" }).first().click();
+  await expect(page.getByText("Conteúdo retirado.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar" }).click();
 
   await page.getByRole("button", { name: "Marcar para rever" }).click();
@@ -353,13 +456,90 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
 
   await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
   await page.getByRole("button", { name: "Abrir unidade" }).first().click();
-  await page.evaluate(() => { globalThis.__courseStudyProbe.citationsRevoked = true; });
-  await page.locator("[data-action='toggle-citations']").click();
+  await page.evaluate(() => { globalThis.__courseStudyProbe.annotationNotFound = true; });
+  await page.getByRole("button", { name: /^Observações/u }).click();
+  await expect(page.getByRole("alert")).toHaveText("Observação não encontrada.");
+  await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar" }).click();
+  await page.evaluate(() => {
+    globalThis.__courseStudyProbe.annotationNotFound = false;
+    globalThis.__courseStudyProbe.annotationsRevoked = true;
+  });
+  await page.getByRole("button", { name: /^Observações/u }).click();
   await expect(page.getByText("Nenhum Curso acessível.")).toBeVisible();
-  await expect(page.locator(".comment-sheet")).toHaveCount(0);
+  await expect(page.locator(".study-observation-sheet")).toHaveCount(0);
   await expect(page.locator(".study-citations-panel")).toHaveCount(0);
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toHaveCount(0);
   await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toHaveCount(0);
+});
+
+test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280", async ({ page }) => {
+  await page.route("**/main.js", (route) => route.fulfill({
+    status: 200,
+    contentType: "text/javascript",
+    body: ""
+  }));
+  await page.goto("/");
+  await page.evaluate(async (documentValue) => {
+    document.body.innerHTML = '<main id="study-root"></main>';
+    const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
+    const course = documentValue.courses[0];
+    createCourseStudyApplication({
+      root: document.querySelector("#study-root"),
+      initialProject: documentValue,
+      repository: {
+        loadProject: () => structuredClone(documentValue),
+        loadProgress: () => ({ version: 1, lessons: {} }),
+        loadReviewItems: () => [],
+        loadCourseSummaries: () => [{
+          courseId: course.id,
+          canEdit: true,
+          moduleCount: course.modules.length,
+          lessonCount: course.modules.reduce((total, moduleValue) =>
+            total + moduleValue.lessons.length, 0),
+          studyUnitCount: 2,
+          completedStudyUnitCount: 0
+        }],
+        loadAnnotationsForPath: () => [],
+        refreshAnnotationsForPath: async () => [],
+        subscribeToAnnotations: () => () => {},
+        isStudyUnitMarkedForReview: () => false,
+        flush: async () => undefined
+      }
+    });
+  }, project);
+  await page.getByRole("button", { name: "Abrir Curso" }).click();
+  await page.getByRole("button", { name: "Abrir módulo" }).click();
+  await page.getByRole("button", { name: "Abrir lição" }).click();
+  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
+  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+
+  for (const width of [360, 390, 430, 1280]) {
+    await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
+    await page.getByRole("button", { name: /^Observações/u }).click();
+    await expect(page.getByRole("dialog", { name: "Observações", exact: true }))
+      .toBeVisible();
+    await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
+    await expect(page.locator("#study-observation-counter"))
+      .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
+    const geometry = await page.locator(".study-observation-sheet").evaluate((sheet) => {
+      const rect = sheet.getBoundingClientRect();
+      const controls = [...sheet.querySelectorAll("button, textarea, .study-observation-category-chip")]
+        .filter((node) => {
+          const nodeRect = node.getBoundingClientRect();
+          return nodeRect.width > 0 && nodeRect.height > 0;
+        });
+      return {
+        documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+        sheetFits: rect.left >= -1 && rect.right <= window.innerWidth + 1 &&
+          sheet.scrollWidth <= sheet.clientWidth + 1,
+        minimumTouch: Math.min(...controls.map((node) => node.getBoundingClientRect().height))
+      };
+    });
+    expect(geometry).toMatchObject({ documentFits: true, sheetFits: true });
+    expect(geometry.minimumTouch).toBeGreaterThanOrEqual(43);
+    await page.getByRole("button", { name: "Fechar" }).click();
+  }
 });
 
 test("lista fina carrega o Curso somente quando o progresso é zerado", async ({ page }) => {
@@ -402,7 +582,7 @@ test("lista fina carrega o Curso somente quando o progresso é zerado", async ({
           completedStudyUnitCount: 1
         }],
         clearCourseProgress: async () => { probe.clears += 1; },
-        loadCommentForPath: () => null,
+        loadAnnotationsForPath: () => [],
         isStudyUnitMarkedForReview: () => false,
         flush: async () => undefined
       }
@@ -584,7 +764,7 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
           studyUnitCount: 7,
           completedStudyUnitCount: completed.length
         }],
-        loadCommentForPath: () => null,
+        loadAnnotationsForPath: () => [],
         isStudyUnitMarkedForReview: () => false,
         setStudyUnitCompleted: async (reference) => { completed.push(structuredClone(reference)); },
         flush: async () => undefined

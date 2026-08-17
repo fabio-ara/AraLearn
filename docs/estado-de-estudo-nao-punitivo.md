@@ -3,9 +3,9 @@
 ## Problema que o estado de estudo resolve
 
 Para interromper uma lição no metrô e retomá-la depois, o aplicativo precisa
-lembrar algumas decisões: qual card já avançou, onde continuar, o que a pessoa
-marcou para rever e qual observação escreveu. Esse registro funcional não
-precisa se transformar em vigilância do comportamento.
+lembrar algumas decisões: qual Unidade já avançou, onde continuar e o que a
+pessoa marcou para rever. Esse registro funcional não precisa se transformar
+em vigilância do comportamento.
 
 O AraLearn chama de **estado de estudo** o conjunto mínimo de dados que permite
 essa continuidade. Ele não é um boletim, um histórico de navegação nem um
@@ -34,7 +34,11 @@ pergunta explícita, limites de inferência e governança proporcionais ao risco
 | ponto de continuação | reabrir a lição no card correspondente | um card corrente por lição e item de **Trilhas** | tempo, atenção, dificuldade ou domínio |
 | conclusão estrutural | evitar que uma etapa já avançada reapareça como inédita | conjunto de identidades de cards por lição | acerto, qualidade da resposta, nota ou aprendizagem |
 | marca **Rever** | formar a lista pessoal de cards escolhidos para revisão | presença ou ausência da marca por card | erro, déficit, prioridade docente ou risco |
-| observação | reencontrar o texto que a própria pessoa registrou | categoria e texto correntes por card | compreensão, mesmo quando não há observação |
+
+O estado pessoal v2 contém somente `progress` e `reviewMarks`. Observações são
+Anotações ancoradas em registros próprios, com autorização, versões e outbox
+separadas; essa separação permite ao proprietário triar o que foi enviado sem
+converter a continuidade de estudo em dado compartilhado.
 
 A data de atualização existe para conciliar cópias e indicar a atualidade do
 estado. Ela não é convertida em sessão, frequência, tempo de estudo ou jornada
@@ -85,27 +89,30 @@ os dois antes de alternar novamente a marca.
 
 ## Registrar uma observação
 
-**Pré-condição:** estar em um card e possuir permissão de comentário quando o
-curso pertencer a um workspace.
+**Pré-condição:** estar numa Unidade de estudo de um Curso acessível.
 
-**Passos:** abra o ícone de observação, escolha o tipo, escreva e salve.
+**Passos:** abra **Observação**, escolha uma categoria ou **Sem categoria**,
+escreva e salve. Podem existir várias anotações próprias na mesma Unidade.
 
-**Resultado esperado:** o estado pessoal conserva uma observação corrente por
-card. Em um workspace inequivocamente associado, participantes autorizados
-podem triar esse registro sem receber seu histórico de navegação.
+**Resultado esperado:** o repositório de Anotações ancoradas conserva o novo
+registro. A pessoa estudante vê somente os próprios registros; o proprietário
+pode triá-los na caixa de entrada do Curso sem receber histórico de navegação.
 
-**Sem conexão:** o texto é preservado localmente e aguarda envio.
+**Sem conexão:** o comando entra numa outbox própria e o texto continua
+disponível no dispositivo. Progresso e **Rever** não compartilham essa fila.
 
-**Recuperação:** consulte [Observações pedagógicas nos
-cards](observacoes-pedagogicas.md) para sincronização, resposta e vínculo de
-correção.
+**Recuperação:** consulte [Observações e Anotações
+ancoradas](observacoes-pedagogicas.md) para sincronização, resposta, retirada e
+limites.
 
 ## Identidades estáveis e reorganização do curso
 
 Um caminho baseado apenas em posição seria frágil: inserir um card no começo
-da lição deslocaria todos os seguintes. Por isso, continuidade, **Rever** e
-observações usam identidades próprias de lição e card. Mover ou renomear um
-objeto preserva o vínculo quando sua identidade permanece a mesma.
+da lição deslocaria todos os seguintes. Por isso, continuidade e **Rever** usam
+identidades próprias de Lição e Unidade. Anotações também conservam a identidade
+de seu alvo e registram separadamente o caminho observado e o caminho corrente.
+Mover ou renomear um objeto preserva o vínculo quando sua identidade permanece
+a mesma.
 
 Se o objeto for retirado, o AraLearn não transfere automaticamente o estado para
 outro card “parecido”. Uma aproximação textual poderia associar uma dúvida ou
@@ -120,11 +127,18 @@ precisam sobreviver ao fechamento da página. Diferentemente de uma variável em
 memória, ele permite reabrir o estudo sem recarregar tudo do servidor.
 
 O Supabase conserva a contraparte vinculada à conta para que outro dispositivo
-possa receber a continuidade. A sincronização envia mudanças por parte do
-estado, em vez de substituir todo o documento a cada toque. Uma identidade de
-mutação permite reconhecer a repetição da mesma tentativa quando a resposta da
-rede se perde. Um número de revisão impede que uma cópia antiga sobrescreva
-silenciosamente uma mudança mais recente.
+possa receber a continuidade. A sincronização do estado pessoal envia mudanças
+por parte de `progress` ou `reviewMarks`, em vez de substituir todo o documento
+a cada toque. Anotações usam cache e outbox próprios. Uma identidade de mutação
+permite reconhecer a repetição da mesma tentativa quando a resposta da rede se
+perde. Versões impedem que uma cópia antiga sobrescreva silenciosamente uma
+mudança mais recente.
+
+Para Anotações, a versão recebida no Estudo é monotônica e privada por pessoa e
+Curso. Somente mudanças que afetam a própria projeção avançam esse contador;
+atividade de colegas não aparece como versão, conflito, invalidação de cache ou
+mensagem entre abas. O contador guarda coordenação, não texto nem autoridade de
+domínio.
 
 Esses mecanismos resolvem consistência e retomada; não autorizam coleta de
 novos sinais. Contadores internos de tentativas de rede, por exemplo, descrevem
@@ -132,14 +146,15 @@ a entrega de uma operação, não o comportamento de estudo.
 
 ## Quem pode acessar
 
-O estado de continuidade, **Rever** e as observações próprias pertencem à conta.
-Papéis de revisão de um workspace recebem as observações vinculadas ao espaço,
-conforme sua autorização, mas não recebem tempo, tentativas, respostas anteriores
-ou uma classificação individual de desempenho.
+O estado de continuidade e **Rever** pertence à conta e só pode ser lido pela
+própria pessoa. Cada estudante também lê somente suas Anotações ancoradas; o
+proprietário do Curso recebe a caixa de entrada necessária à triagem, mas não
+tempo, tentativas, respostas anteriores ou classificação individual de
+desempenho. Estudantes nunca recebem anotações de colegas.
 
-Uma síntese de observações pode ajudar a localizar cards com registros abertos.
-Ela descreve a fila de trabalho, não mede estudantes, turmas, aprendizagem ou
-qualidade docente.
+Uma síntese da caixa de entrada pode ajudar o proprietário a localizar alvos
+com registros abertos. Ela descreve a fila de trabalho, não mede estudantes,
+turmas, aprendizagem ou qualidade docente.
 
 ## Regra para admitir um novo indicador
 

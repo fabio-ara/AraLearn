@@ -562,6 +562,10 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     "../../supabase/migrations/20260817190000_course_sources_provenance.sql",
     import.meta.url
   ), "utf8");
+  const courseAnnotationsMigration = fs.readFileSync(new URL(
+    "../../supabase/migrations/20260817200000_course_anchored_annotations.sql",
+    import.meta.url
+  ), "utf8");
   const sql = buildCourseCutoverSql(
     result,
     migration,
@@ -569,7 +573,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     authoringPlanMigration,
     studyUnitInspectionMigration,
     courseDesignMigration,
-    courseSourcesMigration
+    courseSourcesMigration,
+    courseAnnotationsMigration
   );
   assert.match(sql, /^\\set ON_ERROR_STOP on\nbegin;/u);
   const copyPosition = sql.indexOf("copy course_content_import_v1(");
@@ -607,6 +612,10 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     sql,
     /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817190000[\s\S]*course_sources_provenance/u
   );
+  assert.match(
+    sql,
+    /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817200000[\s\S]*course_anchored_annotations/u
+  );
   assert.ok(
     sql.indexOf("create table public.person_profiles") >
       sql.indexOf("create table public.courses") &&
@@ -617,6 +626,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     sql.indexOf("create table private.course_design_parameter_definitions") <
       sql.indexOf("create table private.course_source_revisions") &&
     sql.indexOf("create table private.course_source_revisions") <
+      sql.indexOf("create table private.course_anchored_annotations") &&
+    sql.indexOf("create table private.course_anchored_annotations") <
       sql.lastIndexOf("commit;")
   );
 
@@ -645,7 +656,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration,
       courseDesignMigration,
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_staging_schema_drift"
   );
@@ -657,7 +669,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration,
       courseDesignMigration,
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -672,7 +685,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration,
       courseDesignMigration,
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -684,7 +698,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration,
       courseDesignMigration,
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -696,7 +711,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration.replace(/^commit;\s*$/mu, ""),
       studyUnitInspectionMigration,
       courseDesignMigration,
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -708,7 +724,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration.replace(/^commit;\s*$/mu, ""),
       courseDesignMigration,
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -720,7 +737,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration,
       courseDesignMigration.replace(/^commit;\s*$/mu, ""),
-      courseSourcesMigration
+      courseSourcesMigration,
+      courseAnnotationsMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -732,7 +750,21 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       authoringPlanMigration,
       studyUnitInspectionMigration,
       courseDesignMigration,
-      courseSourcesMigration.replace(/^commit;\s*$/mu, "")
+      courseSourcesMigration.replace(/^commit;\s*$/mu, ""),
+      courseAnnotationsMigration
+    ),
+    (error) => error.code === "migration_transaction_drift"
+  );
+  assert.throws(
+    () => buildCourseCutoverSql(
+      result,
+      migration,
+      profileAccessMigration,
+      authoringPlanMigration,
+      studyUnitInspectionMigration,
+      courseDesignMigration,
+      courseSourcesMigration,
+      courseAnnotationsMigration.replace(/^commit;\s*$/mu, "")
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -752,6 +784,7 @@ test("recusa staging ou manifesto alterados depois da atestação", async () => 
   assert.throws(
     () => buildCourseCutoverSql(
       changedManifest,
+      "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n",

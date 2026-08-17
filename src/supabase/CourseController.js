@@ -1,13 +1,27 @@
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
 import {
+  normalizeCourseAnchoredAnnotationChange,
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseAnchoredAnnotationPage,
+  normalizeCourseAnchoredAnnotationQuery,
+  normalizeCourseAnchoredAnnotationReadOptions
+} from "../domain/courseAnchoredAnnotations.js";
+import {
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcesRead,
   normalizeCourseStudyCitationsRead
 } from "../domain/courseSources.js";
-import { COURSE_PERSONAL_STATE_CACHE_CONTRACT } from
-  "../persistence/CoursePersonalStateRepository.js";
+import {
+  COURSE_ANNOTATION_CACHE_CONTRACT,
+  COURSE_ANNOTATION_OUTBOX_CONTRACT
+} from "../persistence/CourseAnnotationRepository.js";
+import {
+  COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
+  COURSE_PERSONAL_STATE_CACHE_CONTRACT,
+  COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT
+} from "../persistence/CoursePersonalStateRepository.js";
 
 const CACHE_PREFIX = "course.v1";
 const MAX_ENTITY_PAGES = 100;
@@ -20,7 +34,6 @@ const AUTHORING_INSPECTION_POSITION_CONTRACT =
   "aralearn.course-authoring-inspection-position.v1";
 const AUTHORING_INSPECTION_CACHE_MAX_PAGES = 4;
 const AUTHORING_INSPECTION_CACHE_MAX_BYTES = 8 * 1024 * 1024;
-
 function stableCursor(cursor) {
   if (!cursor) return "start";
   return encodeURIComponent(JSON.stringify(cursor));
@@ -157,6 +170,35 @@ function courseSourcesReadOptions(courseId, options = {}) {
   };
 }
 
+function courseAnchoredAnnotationReadOptions(courseId, value = {}) {
+  const allowed = new Set([
+    "expectedCourseRevision", "annotationSetVersion", "query", "cursor", "limit"
+  ]);
+  const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).some((field) => !allowed.has(field)) ||
+      !UUID_PATTERN.test(normalizedCourseId)) {
+    throw new TypeError("Leitura de observações inválida.");
+  }
+  return normalizeCourseAnchoredAnnotationReadOptions({
+    expectedCourseRevision: value.expectedCourseRevision,
+    annotationSetVersion: value.annotationSetVersion ?? null,
+    query: value.query ?? {
+      mode: "inbox",
+      origins: [],
+      channels: [],
+      states: [],
+      categories: [],
+      includeUncategorized: true,
+      subjectIds: [],
+      hierarchy: null,
+      annotationId: null
+    },
+    cursor: value.cursor ?? null,
+    limit: value.limit ?? 12
+  });
+}
+
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source"
     ? command.sourceId
@@ -199,6 +241,14 @@ function accessWasRevoked(error) {
   const status = Number(error?.status || error?.response?.status || 0);
   const code = String(error?.code || error?.response?.code || "").toUpperCase();
   return error?.authRequired === true || status === 401 || status === 403 || status === 404 ||
+    code === "42501" || code === "PT404";
+}
+
+function annotationAccessWasRevoked(error) {
+  if (courseRevisionConflict(error)) return false;
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  return error?.authRequired === true || status === 401 || status === 403 ||
     code === "42501" || code === "PT404";
 }
 
@@ -463,7 +513,11 @@ export class CourseController {
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionPositionKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`),
+      this.store.deleteCachePrefix(`${COURSE_ANNOTATION_CACHE_CONTRACT}:${courseId}`),
+      this.store.deleteCachePrefix(`${COURSE_ANNOTATION_OUTBOX_CONTRACT}:${courseId}`),
+      this.store.deleteCachePrefix(`${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${courseId}`),
       this.store.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`),
+      this.store.deleteCachePrefix(`${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${courseId}`),
       this.store.deleteCachePrefix(REVIEW_PAGE_CACHE_KEY)
     ]);
   }
@@ -887,6 +941,34 @@ export class CourseController {
     }
   }
 
+  async loadCourseAnchoredAnnotations(courseId, value = {}) {
+    if (!this.ownerOnly || typeof this.api.loadCourseAnchoredAnnotations !== "function") {
+      throw new TypeError("A API de Autoria não oferece a inbox de observações.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    const options = courseAnchoredAnnotationReadOptions(normalizedCourseId, value);
+    try {
+      const page = normalizeCourseAnchoredAnnotationPage(
+        await this.api.loadCourseAnchoredAnnotations(normalizedCourseId, options)
+      );
+      if (page.courseId !== normalizedCourseId ||
+          page.courseRevision !== options.expectedCourseRevision ||
+          options.annotationSetVersion !== null &&
+            page.annotationSetVersion !== options.annotationSetVersion ||
+          JSON.stringify(normalizeCourseAnchoredAnnotationQuery(page.query)) !==
+            JSON.stringify(options.query) ||
+          page.items.some((annotation) => annotation.courseId !== normalizedCourseId)) {
+        throw new TypeError("A leitura de observações não corresponde ao pedido.");
+      }
+      return page;
+    } catch (error) {
+      if (annotationAccessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      throw error;
+    }
+  }
+
   loadAuthoringOutline(courseId) {
     if (typeof this.api.loadAuthoringOutline !== "function") {
       throw new TypeError("A API de Cursos não oferece a estrutura autoral.");
@@ -1148,6 +1230,72 @@ export class CourseController {
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
     ]);
     return result;
+  }
+
+  async mutateCourseAnchoredAnnotations(value = {}) {
+    if (!this.ownerOnly || typeof this.api.mutateCourseAnchoredAnnotations !== "function") {
+      throw new TypeError("A API de Autoria não oferece alterações de observação.");
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value) ||
+        Object.keys(value).some((field) => !new Set([
+          "requestId", "courseId", "expectedCourseRevision", "command"
+        ]).has(field))) {
+      throw new TypeError("Alteração de observação inválida.");
+    }
+    const requestId = String(value.requestId || "");
+    const courseId = String(value.courseId || "").trim().toLowerCase();
+    const command = normalizeCourseAnchoredAnnotationCommand(value.command);
+    const requiresCourseRevision = new Set([
+      "create_anchored_annotation",
+      "correct_anchored_annotation_subjects"
+    ]).has(command.type);
+    const expectedCourseRevision = value.expectedCourseRevision ?? null;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
+        !UUID_PATTERN.test(courseId) ||
+        requiresCourseRevision && (
+          !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1
+        ) ||
+        !requiresCourseRevision && expectedCourseRevision !== null) {
+      throw new TypeError("Alteração de observação inválida.");
+    }
+    try {
+      const result = normalizeCourseAnchoredAnnotationChange(
+        await this.api.mutateCourseAnchoredAnnotations({
+          requestId,
+          courseId,
+          expectedCourseRevision,
+          command
+        })
+      );
+      if (result.courseId !== courseId || result.requestId !== requestId ||
+          expectedCourseRevision !== null && (
+            result.idempotent
+              ? result.courseRevision < expectedCourseRevision
+              : result.courseRevision !== expectedCourseRevision
+          ) ||
+          result.annotation !== null && (
+            result.annotation.courseId !== courseId ||
+            result.annotation.annotationId !== command.annotationId
+          ) ||
+          command.type === "create_anchored_annotation" && result.annotation !== null && (
+            result.annotation.target.kind !== command.target.kind ||
+            result.annotation.target.id !== command.target.id ||
+            result.annotation.provenance.origin !== "author" ||
+            result.annotation.provenance.channel !== "authoring_interface"
+          )) {
+        throw new TypeError("A confirmação da observação não corresponde ao comando.");
+      }
+      await Promise.all([
+        this.store.deleteCachePrefix(`${COURSE_ANNOTATION_CACHE_CONTRACT}:${courseId}`),
+        this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
+      ]);
+      return result;
+    } catch (error) {
+      if (annotationAccessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      }
+      throw error;
+    }
   }
 
   async advanceAuthoringPartMaterialization(values = {}) {

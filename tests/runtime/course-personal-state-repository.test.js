@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
   CoursePersonalStateRepository,
   COURSE_PERSONAL_STATE_CACHE_CONTRACT,
+  COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT,
+  courseAnnotationHandoffCacheKey,
   validateCoursePersonalState
 } from "../../src/persistence/CoursePersonalStateRepository.js";
 
@@ -51,6 +54,17 @@ function memoryCache() {
       if (value == null) values.delete(key);
       else values.set(key, structuredClone(value));
     },
+    async updateCaches(keys, updater) {
+      const records = Object.fromEntries(keys.map((key) => [
+        key, structuredClone(values.get(key) ?? null)
+      ]));
+      const next = updater(records);
+      for (const key of keys) {
+        if (next[key] == null) values.delete(key);
+        else values.set(key, structuredClone(next[key]));
+      }
+      return structuredClone(next);
+    },
     async deleteCachePrefix(prefix) {
       for (const key of values.keys()) if (key.startsWith(prefix)) values.delete(key);
     }
@@ -66,7 +80,7 @@ function remote() {
     async loadPersonalState(courseId) {
       assert.equal(courseId, COURSE_ID);
       return state == null ? null : {
-        contract: "aralearn.course-personal-state.v1",
+        contract: "aralearn.course-personal-state.v2",
         courseId,
         revision,
         state: structuredClone(state),
@@ -79,10 +93,9 @@ function remote() {
       assert.equal(input.expectedRevision, revision);
       revision += 1;
       state ??= {
-        version: 1,
+        version: 2,
         progress: { version: 3, lessons: {} },
-        reviewMarks: {},
-        observations: {}
+        reviewMarks: {}
       };
       for (const operation of input.operations) {
         const target = operation.collection === "progress.lessons"
@@ -101,23 +114,125 @@ function remote() {
 }
 
 test("aplica o orçamento canônico de 512 KiB ao estado pessoal", () => {
-  const observations = Object.fromEntries(Array.from({ length: 600 }, (_, index) => [
+  const reviewMarks = Object.fromEntries(Array.from({ length: 20_000 }, (_, index) => [
     `unit-${index}`,
-    {
-      category: "observation",
-      body: `Observação ${index} ${"x".repeat(900)}`,
-      updatedAt: "2026-08-17T12:00:00.000Z"
-    }
+    "2026-08-17T12:00:00.000Z"
   ]));
   assert.throws(() => validateCoursePersonalState({
-    version: 1,
+    version: 2,
     progress: { version: 3, lessons: {} },
-    reviewMarks: {},
-    observations
+    reviewMarks
   }), /excede 512 KiB/u);
 });
 
-test("persiste progresso e observação pela identidade direta do Curso", async () => {
+test("identidades pessoais contam 240 escalares Unicode e até 960 bytes", () => {
+  const instant = "2026-08-17T12:00:00.000Z";
+  assert.doesNotThrow(() => validateCoursePersonalState({
+    version: 2,
+    progress: { version: 3, lessons: {} },
+    reviewMarks: { ["😀".repeat(240)]: instant }
+  }));
+  assert.throws(() => validateCoursePersonalState({
+    version: 2,
+    progress: { version: 3, lessons: {} },
+    reviewMarks: { ["😀".repeat(241)]: instant }
+  }), /inválido/u);
+});
+
+test("instantes pessoais aceitam RFC3339 do PostgreSQL e normalizam para Z", () => {
+  const normalized = validateCoursePersonalState({
+    version: 2,
+    progress: { version: 3, lessons: {} },
+    reviewMarks: {
+      "unit-a": "2026-08-17T21:41:49.123456+00:00",
+      "unit-b": "2026-08-17T18:41:49-03:00"
+    }
+  });
+  assert.equal(normalized.reviewMarks["unit-a"], "2026-08-17T21:41:49.123Z");
+  assert.equal(normalized.reviewMarks["unit-b"], "2026-08-17T21:41:49.000Z");
+  for (const invalid of [
+    "0000-08-17T21:41:49+00:00",
+    "2026-02-30T21:41:49+00:00",
+    "2026-08-17T25:00:00+00:00"
+  ]) {
+    assert.throws(() => validateCoursePersonalState({
+      version: 2,
+      progress: { version: 3, lessons: {} },
+      reviewMarks: { "unit-a": invalid }
+    }), /inválido/u);
+  }
+});
+
+test("extrai cache v1 e intents finais set/delete para handoff atômico", async () => {
+  const cache = memoryCache();
+  const legacyKey = `${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${COURSE_ID}`;
+  await cache.putCache(legacyKey, {
+    contract: COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT,
+    courseId: COURSE_ID,
+    revision: 0,
+    state: {
+      version: 1,
+      progress: { version: 3, lessons: {} },
+      reviewMarks: {},
+      observations: {
+        "unit-a": {
+          category: "observation",
+          body: "Texto legado final.",
+          updatedAt: "2026-08-17T12:00:00.000Z"
+        }
+      }
+    },
+    pending: {
+      requestId: REQUEST_ID,
+      baseRevision: 0,
+      operations: [{
+        kind: "set",
+        collection: "observations",
+        path: "unit-a",
+        value: {
+          category: "observation",
+          body: "Texto legado final.",
+          updatedAt: "2026-08-17T12:00:00.000Z"
+        }
+      }],
+      createdAt: "2026-08-17T12:00:00.000Z"
+    },
+    queuedOperations: [{
+      kind: "delete",
+      collection: "observations",
+      path: "unit-b"
+    }],
+    updatedAt: "2026-08-17T12:01:00.000Z"
+  });
+  const repository = new CoursePersonalStateRepository({
+    courseId: COURSE_ID,
+    api: remote(),
+    cache,
+    course: course(),
+    clock: () => "2026-08-17T12:01:00.000Z",
+    uuidFactory: () => REQUEST_ID
+  });
+  await repository.initialize({ refresh: false });
+
+  assert.equal(await cache.getCache(legacyKey), null);
+  assert.equal(repository.loadCanonicalState().version, 2);
+  assert.equal(Object.hasOwn(repository.loadCanonicalState(), "observations"), false);
+  const handoff = await cache.getCache(courseAnnotationHandoffCacheKey(COURSE_ID));
+  assert.equal(handoff.contract, COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT);
+  assert.deepEqual(handoff.intents, [{
+    kind: "upsert",
+    targetStudyUnitId: "unit-a",
+    category: null,
+    text: "Texto legado final.",
+    updatedAt: "2026-08-17T12:00:00.000Z"
+  }, {
+    kind: "withdraw",
+    targetStudyUnitId: "unit-b",
+    updatedAt: "2026-08-17T12:01:00.000Z"
+  }]);
+});
+
+test("persiste somente progresso e marca de revisão pela identidade direta do Curso", async () => {
   const api = remote();
   const cache = memoryCache();
   const repository = new CoursePersonalStateRepository({
@@ -131,23 +246,20 @@ test("persiste progresso e observação pela identidade direta do Curso", async 
   await repository.initialize();
 
   await repository.setStudyUnitCompleted(reference(), true);
-  await repository.saveCommentForPath(reference(), {
-    category: "possible_error",
-    body: "  Verificar esta afirmação.  "
-  });
+  await repository.setStudyUnitReviewMark(reference(), true);
 
   assert.equal(repository.isStudyUnitCompleted(reference()), true);
-  const observation = repository.loadCommentForPath(reference());
-  assert.equal(observation.body, "Verificar esta afirmação.");
-  assert.deepEqual(Object.keys(observation).sort(), ["body", "category", "updatedAt"]);
+  assert.equal(repository.isStudyUnitMarkedForReview(reference()), true);
+  assert.equal(typeof repository.saveCommentForPath, "undefined");
+  assert.equal(typeof repository.loadCommentForPath, "undefined");
   assert.throws(() => validateCoursePersonalState({
-    version: 1,
+    version: 2,
     progress: { version: 3, lessons: {} },
     reviewMarks: {},
     observations: {
-      "unit-a": { ...observation, status: "open" }
+      "unit-a": { body: "Não pertence ao estado pessoal." }
     }
-  }), /status não pertence ao contrato/u);
+  }), /não segue o contrato atual/u);
   assert.equal(api.calls.every((call) => call.courseId === COURSE_ID), true);
   assert.equal(JSON.stringify(api.calls).includes("trail"), false);
   assert.equal(JSON.stringify(api.calls).includes("workspace"), false);
@@ -249,10 +361,9 @@ test("rebasa uma alteração offline sobre o estado confirmado por outro disposi
   const cache = memoryCache();
   const calls = [];
   const remoteState = {
-    version: 1,
+    version: 2,
     progress: { version: 3, lessons: {} },
-    reviewMarks: { "unit-b": "2026-08-17T12:01:00.000Z" },
-    observations: {}
+    reviewMarks: { "unit-b": "2026-08-17T12:01:00.000Z" }
   };
   let revision = 1;
   let firstMutation = true;
@@ -264,7 +375,7 @@ test("rebasa uma alteração offline sobre o estado confirmado por outro disposi
   const api = {
     async loadPersonalState() {
       return {
-        contract: "aralearn.course-personal-state.v1",
+        contract: "aralearn.course-personal-state.v2",
         courseId: COURSE_ID,
         revision,
         state: structuredClone(remoteState),
@@ -374,7 +485,7 @@ test("não mascara erro de programação como indisponibilidade de rede", async 
 
 test("projeta progresso não contíguo e preserva estado órfão após edição do Curso", async () => {
   const state = {
-    version: 1,
+    version: 2,
     progress: {
       version: 3,
       lessons: {
@@ -384,20 +495,13 @@ test("projeta progresso não contíguo e preserva estado órfão após edição 
         }
       }
     },
-    reviewMarks: { "unit-removed": "2026-08-17T12:00:00.000Z" },
-    observations: {
-      "unit-removed": {
-        category: "possible_error",
-        body: "Preservar para o histórico de revisão.",
-        updatedAt: "2026-08-17T12:00:00.000Z"
-      }
-    }
+    reviewMarks: { "unit-removed": "2026-08-17T12:00:00.000Z" }
   };
   let revision = 1;
   const api = {
     async loadPersonalState() {
       return {
-        contract: "aralearn.course-personal-state.v1",
+        contract: "aralearn.course-personal-state.v2",
         courseId: COURSE_ID,
         revision,
         state: structuredClone(state),
@@ -456,8 +560,7 @@ test("projeta progresso não contíguo e preserva estado órfão após edição 
   });
   assert.equal(repository.loadCanonicalState().reviewMarks["unit-removed"],
     "2026-08-17T12:00:00.000Z");
-  assert.equal(repository.loadCanonicalState().observations["unit-removed"].body,
-    "Preservar para o histórico de revisão.");
+  assert.equal(Object.hasOwn(repository.loadCanonicalState(), "observations"), false);
   await repository.clearProgress();
   assert.deepEqual(repository.loadCanonicalState().progress.lessons, {
     "lesson-a": {

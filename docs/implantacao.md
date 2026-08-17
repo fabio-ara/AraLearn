@@ -161,9 +161,10 @@ Não aplique `20260817140000_course_identity_cutover.sql` nem
 `20260817160000_course_authoring_plan.sql` nem
 `20260817170000_course_study_unit_inspection.sql` nem
 `20260817180000_course_design_parameters.sql` nem
-`20260817190000_course_sources_provenance.sql` por `db push` no projeto hospedado
+`20260817190000_course_sources_provenance.sql` nem
+`20260817200000_course_anchored_annotations.sql` por `db push` no projeto hospedado
 que contém os oito Cursos anteriores. O corte de identidade precisa receber a
-staging validada e as seis migrations precisam ser confirmadas na mesma sessão
+staging validada e as sete migrations precisam ser confirmadas na mesma sessão
 e na mesma transação. O comando transitório é:
 
 ```powershell
@@ -177,9 +178,9 @@ Sem `--apply`, o runner lê, converte e valida, mas não escreve no banco. Com
 2. valida documentos, topologia, sobreposições, contagens e metadados técnicos;
 3. grava a atestação privada `prepared`;
 4. relê a origem e aborta se o hash mudou;
-5. envia staging + as migrations `1400`, `1500`, `1600`, `1700`, `1800` e
-   `1900` por uma única conexão e uma única transação PostgreSQL;
-6. registra as seis versões em `supabase_migrations.schema_migrations` dentro
+5. envia staging + as migrations `1400`, `1500`, `1600`, `1700`, `1800`,
+   `1900` e `2000` por uma única conexão e uma única transação PostgreSQL;
+6. registra as sete versões em `supabase_migrations.schema_migrations` dentro
    dessa transação;
 7. relê o modelo canônico, recompõe cada Curso e compara os hashes;
 8. grava a atestação privada `verified`.
@@ -195,7 +196,7 @@ As atestações ficam, por padrão, em
 `sourceReferenceHash` e contagens. `sourceReferenceHash` sela a ordem das tuplas
 `{studyUnitId, sourceOrdinal, sourceId}` e preserva a identidade literal. O
 relatório inclui ainda os hashes do snapshot, das resoluções e do conjunto das
-seis migrations; não inclui conteúdo, credenciais nem uma segunda
+sete migrations; não inclui conteúdo, credenciais nem uma segunda
 cópia do banco. O runner recusa gravá-lo dentro do repositório público.
 
 A transação limita espera de lock a 15 segundos e cada instrução a 10 minutos;
@@ -219,6 +220,16 @@ legadas malformadas. A migration retira `StudyUnit.sources`, cria revisões
 confere contagem e hash. Não há leitura dupla nem preenchimento inferido de
 título, URL ou Âncora.
 
+O preflight da `2000` admite somente as pontes legadas previstas de observação
+e recibo. Linhas `audit_finding` ou qualquer dado inesperado falham fechadas até
+decisão explícita. A migration converte notas autorais e observações pessoais
+uma vez, comprova a transferência por hash, limpa ambos os documentos pessoais
+legados e instala personal-state v2 com somente progresso e **Rever**. Também
+instala o contador privado por pessoa/Curso usado pela projeção self-only; ele
+contém chaves, versão e `protected_ref` aleatório persistido, com RLS forçada e
+sem grants, e não substitui a autoridade textual. A ponte de threads sem texto bruto permanece isolada, não
+como fonte ativa.
+
 Falhas durante a transação provocam rollback. A recomposição final acontece
 depois do commit; se ela divergir, as migrations já foram aplicadas, mas API,
 site e APK permanecem bloqueados até inspeção e correção explícitas. O relatório
@@ -232,22 +243,31 @@ npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
 ```
 
 As versões `20260817140000`, `20260817150000`, `20260817160000`,
-`20260817170000`, `20260817180000` e `20260817190000` precisam
+`20260817170000`, `20260817180000`, `20260817190000` e
+`20260817200000` precisam
 constar como aplicadas e o dry-run não pode tentar reaplicá-las. Nunca execute
 `db push` em modo Apply antes do runner nesse projeto: a `1600` converte o
 estado autoral monolítico criado pela `1400`, e a `1700` conclui o corte para
 `aralearn.course.v1`, `microsequence.studyUnits`, discriminador exclusivo
 `study_unit` e Inspeção owner-only; a `1800` remove a orientação escalar do
 plano e instala parâmetros, revisões de orientação e política de componentes;
-a `1900` instala Fontes, Âncoras, atribuições e o corte limpo do conteúdo.
-Não existe janela intermediária nem passo separado de `db push` para a `1700`,
-a `1800` ou a `1900`. Só depois dessas provas o roteiro geral
+a `1900` instala Fontes, Âncoras, atribuições e o corte limpo do conteúdo; a
+`2000` instala Anotações ancoradas, versão privada da projeção de Estudo e
+personal-state v2.
+Não existe janela intermediária nem passo separado de `db push` para as
+migrations desse corte. Só depois dessas provas o roteiro geral
 pode publicar as funções e os clientes.
 
 Depois do corte, regenere e revise o inventário vertical contra o schema
-pós-`1900`. O resultado esperado é 2.010 objetos: 416 ligados aos seis casos
-correntes e 1.594 isolados para remoção na #130. Divergência bloqueia a
-aceitação; nenhum total produzido antes dessa migration serve como substituto.
+pós-`2000`. O inventário aprovado tem 2.096 objetos: 501 ligados aos sete casos
+correntes — 84 Anotações ancoradas, 272 Autoria, 84 Fontes, 26 Estudo, 31
+pessoas/acesso, um componentes e três transportes — e 1.595 no legado físico.
+Os doze objetos da versão privada são uma tabela, seu estado RLS forçado, seis
+constraints, três índices e um helper privado. `protected_ref` acrescenta o
+check, a unique e o índice unique; a coluna não é objeto inventariado.
+`private.valid_course_personal_state_v1` permanece como objeto isolado até a
+remoção final. Divergência bloqueia a aceitação; nenhum total produzido antes
+dessa migration serve como substituto.
 
 No staging, entidades com raiz relacional levam sua versão e seus próprios
 instantes. Os dois Cursos disponíveis somente como publicação não permitem
@@ -502,7 +522,7 @@ Antes de abrir a instalação, demonstre:
 
 1. cadastro, confirmação, recuperação, login e saída;
 2. seleção e materialização de curso;
-3. progresso, comentário, marcação de revisão e Fontes de Estudo carregadas
+3. progresso, Observação, marcação de revisão e Fontes de Estudo carregadas
    somente ao abrir, com ocultação e link conforme visibilidade;
 4. fechamento e reabertura sem rede;
 5. reconexão e esvaziamento idempotente da fila;
@@ -522,10 +542,12 @@ Antes de abrir a instalação, demonstre:
 13. atualização do site e do APK sem perda de estado local;
 14. conflito CAS com resposta explícita e retry preservando intenção e
     `requestId`;
-15. limites de página, cache e resposta sob orçamento do Free Plan;
-16. concorrência e constraints após reset em PostgreSQL real;
-17. inventário vertical pós-`1900` com 2.010 objetos: 416 correntes e 1.594
-    isolados para remoção na #130;
-18. restauração de backup ensaiada.
+15. owner no contador global e duas contas de Estudo em contadores privados,
+    sem atividade alheia observável por página, conflito, cache ou duas abas;
+16. limites de página, cache e resposta sob orçamento do Free Plan;
+17. concorrência e constraints após reset em PostgreSQL real;
+18. inventário vertical pós-`2000` com 2.096 objetos: 501 correntes e 1.595 no
+    legado físico, na distribuição aprovada;
+19. restauração de backup ensaiada.
 
 Defina responsáveis por backup, restauração, SMTP, domínio, certificados, atualização do Supabase, logs e incidentes. Testes automatizados reduzem risco conhecido; não substituem monitoramento nem um plano operacional exercitado.

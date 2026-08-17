@@ -22,6 +22,135 @@ function json(value, status = 200) {
   });
 }
 
+const ANNOTATION_ID = "80000000-0000-4000-8000-000000000008";
+
+function anchoredAnnotation({
+  channel = "authoring_interface",
+  targetId = "unit-a",
+  contributorKind = "protected_person"
+} = {}) {
+  const path = [
+    { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
+    { kind: "study_unit", id: targetId, label: "Unidade", version: 2 }
+  ];
+  return {
+    contract: "aralearn.course-anchored-annotation.v1",
+    annotationId: ANNOTATION_ID,
+    annotationVersion: 1,
+    courseId: COURSE_ID,
+    provenance: { origin: "author", channel },
+    contributor: {
+      kind: contributorKind,
+      role: "author",
+      ref: contributorKind === "self" ? "self" : "person-0123456789abcdef",
+      label: contributorKind === "self" ? "Você" : "Pessoa autora"
+    },
+    target: {
+      kind: "study_unit",
+      id: targetId,
+      observedPath: path,
+      currentAvailable: true,
+      currentPath: path,
+      deepLink: "https://sql.example/alvo-literal"
+    },
+    observedRevision: { certainty: "known", courseRevision: 7, targetVersion: 2 },
+    rawText: "Possível erro nesta Unidade.",
+    category: "possible_error",
+    briefSummary: "Possível erro na Unidade",
+    subjectClassification: {
+      status: "unclassified",
+      automatic: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 7,
+        subjects: []
+      },
+      effective: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 7,
+        subjects: []
+      },
+      correctedAt: null
+    },
+    state: "open",
+    ownerResponse: null,
+    timestamps: {
+      capturedAt: null,
+      createdAt: "2026-08-17T12:00:00.000Z",
+      updatedAt: "2026-08-17T12:00:00.000Z",
+      firstConsideredAt: null,
+      respondedAt: null,
+      resolvedAt: null,
+      withdrawnAt: null
+    },
+    capabilities: {
+      canRevise: true,
+      canWithdraw: true,
+      canConsider: true,
+      canRespond: false,
+      canResolve: true,
+      canReopen: false,
+      canCorrectSubjects: true
+    },
+    deepLink: "https://sql.example/observacao-literal"
+  };
+}
+
+function anchoredQuery({ mode = "inbox", targetId = null } = {}) {
+  return {
+    mode,
+    origins: [],
+    channels: [],
+    states: ["open"],
+    categories: [],
+    includeUncategorized: true,
+    subjectIds: [],
+    hierarchy: targetId === null ? null : {
+      target: { kind: "study_unit", id: targetId },
+      includeDescendants: false
+    },
+    annotationId: null
+  };
+}
+
+function anchoredPage(query, item = anchoredAnnotation()) {
+  return {
+    contract: "aralearn.course-anchored-annotation-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    annotationSetVersion: 4,
+    query,
+    summary: {
+      matchingTotal: 1,
+      byOrigin: { author: 1 },
+      byChannel: { [item.provenance.channel]: 1 },
+      byState: { open: 1 },
+      unclassifiedTotal: 1
+    },
+    items: [item],
+    hasMore: false,
+    nextCursor: null
+  };
+}
+
+function anchoredChange(item, {
+  requestId = "request-annotation-adapter-1",
+  courseRevision = 7,
+  idempotent = false
+} = {}) {
+  return {
+    contract: "aralearn.course-anchored-annotation-change.v1",
+    courseId: COURSE_ID,
+    courseRevision,
+    annotationSetVersion: 5,
+    requestId,
+    idempotent,
+    changed: !idempotent,
+    annotation: item
+  };
+}
+
 function adapter(fetchImpl, options = {}) {
   return new CourseSupabaseAdapter({
     supabaseUrl: "https://project.example",
@@ -33,6 +162,230 @@ function adapter(fetchImpl, options = {}) {
     ...options
   });
 }
+
+test("observações owner preservam projeção protegida, links literais e parâmetros ligados", async () => {
+  const query = anchoredQuery({ mode: "target", targetId: "unit-a" });
+  const item = anchoredAnnotation();
+  let request = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /get_owned_course_anchored_annotations_for_actor_v1$/u);
+    request = JSON.parse(init.body);
+    return json(anchoredPage(
+      Object.fromEntries(Object.entries(query).reverse()),
+      item
+    ));
+  });
+
+  const result = await value.getCourseAnchoredAnnotations({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    annotationSetVersion: null,
+    query,
+    cursor: null,
+    limit: 12
+  });
+
+  assert.deepEqual(request, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_course_revision: 7,
+    p_annotation_set_version: null,
+    p_mode: "target",
+    p_origins: [],
+    p_channels: [],
+    p_states: ["open"],
+    p_categories: [],
+    p_include_uncategorized: true,
+    p_subject_ids: [],
+    p_target_kind: "study_unit",
+    p_target_id: "unit-a",
+    p_include_descendants: false,
+    p_annotation_id: null,
+    p_cursor: null,
+    p_limit: 12
+  });
+  assert.equal(result.items[0].contributor.kind, "protected_person");
+  assert.equal(result.items[0].contributor.ref, "person-0123456789abcdef");
+  assert.equal(result.items[0].target.deepLink, "https://sql.example/alvo-literal");
+  assert.equal(result.items[0].deepLink, "https://sql.example/observacao-literal");
+});
+
+test("observações owner limitam cada resposta a 262144 bytes", async () => {
+  const value = adapter(async () => new Response("{}", {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Length": "262145"
+    }
+  }));
+  await assert.rejects(
+    () => value.getCourseAnchoredAnnotations({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      expectedCourseRevision: 7,
+      annotationSetVersion: null,
+      query: anchoredQuery(),
+      cursor: null,
+      limit: 12
+    }),
+    (error) => error.status === 413 &&
+      error.code === "course_anchored_annotations_response_too_large"
+  );
+  await assert.rejects(
+    () => value.executeCourseAnchoredAnnotationCommand({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId: "request-annotation-large-1",
+      expectedCourseRevision: 7,
+      command: {
+        type: "create_anchored_annotation",
+        annotationId: ANNOTATION_ID,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText: "Texto",
+        category: null,
+        capturedAt: null,
+        briefSummary: null
+      }
+    }),
+    (error) => error.status === 413 &&
+      error.code === "course_anchored_annotations_response_too_large"
+  );
+});
+
+test("observação ou alvo ausente não apagam o sinal distinto de acesso revogado", async () => {
+  for (const code of [
+    "course_anchored_annotation_not_found",
+    "course_anchored_annotation_target_not_found",
+    "PT404"
+  ]) {
+    const value = adapter(async () => json({ code, message: "ausente" }, 400));
+    await assert.rejects(
+      () => value.getCourseAnchoredAnnotations({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        expectedCourseRevision: 7,
+        annotationSetVersion: null,
+        query: anchoredQuery(),
+        cursor: null,
+        limit: 12
+      }),
+      (error) => error.status === 404 && error.code === code
+    );
+  }
+});
+
+test("canal autoral deriva somente da principal e criação liga alvo confirmado", async () => {
+  for (const [authenticationKind, expectedChannel, suffix] of [
+    ["application", "authoring_interface", "app"],
+    ["oauth", "authoring_chat", "chat"]
+  ]) {
+    let request = null;
+    const requestId = `request-annotation-${suffix}-1`;
+    const value = adapter(async (url, init) => {
+      assert.match(url, /execute_course_anchored_annotation_command_for_actor_v1$/u);
+      request = JSON.parse(init.body);
+      return json(anchoredChange(anchoredAnnotation({
+        channel: expectedChannel,
+        contributorKind: "self"
+      }), { requestId }));
+    });
+    const command = {
+      type: "create_anchored_annotation",
+      annotationId: ANNOTATION_ID,
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Possível erro nesta Unidade.",
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: "Possível erro na Unidade"
+    };
+
+    const result = await value.executeCourseAnchoredAnnotationCommand({
+      principal: { actorId: USER_ID, authenticationKind },
+      courseId: COURSE_ID,
+      requestId,
+      expectedCourseRevision: 7,
+      command
+    });
+    assert.equal(result.annotation.provenance.channel, expectedChannel);
+    assert.equal(request.p_channel, expectedChannel);
+    assert.deepEqual(request.p_command, command);
+    assert.equal(Object.hasOwn(request.p_command, "channel"), false);
+    assert.equal(Object.hasOwn(request.p_command, "origin"), false);
+  }
+
+  const mismatched = adapter(async () => json(anchoredChange(
+    anchoredAnnotation({ targetId: "unit-b", contributorKind: "self" }),
+    { requestId: "request-annotation-target-1" }
+  )));
+  await assert.rejects(
+    () => mismatched.executeCourseAnchoredAnnotationCommand({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId: "request-annotation-target-1",
+      expectedCourseRevision: 7,
+      command: {
+        type: "create_anchored_annotation",
+        annotationId: ANNOTATION_ID,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText: "Possível erro nesta Unidade.",
+        category: "possible_error",
+        capturedAt: null,
+        briefSummary: null
+      }
+    }),
+    (error) => error.code === "course_service_unavailable"
+  );
+});
+
+test("replay idempotente aceita revisão corrente sem relaxar identidade e alvo", async () => {
+  const requestId = "request-annotation-replay-1";
+  const value = adapter(async () => json(anchoredChange(
+    anchoredAnnotation({ contributorKind: "self" }),
+    { requestId, courseRevision: 8, idempotent: true }
+  )));
+  const result = await value.executeCourseAnchoredAnnotationCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId,
+    expectedCourseRevision: 7,
+    command: {
+      type: "create_anchored_annotation",
+      annotationId: ANNOTATION_ID,
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Possível erro nesta Unidade.",
+      category: "possible_error",
+      capturedAt: null,
+      briefSummary: null
+    }
+  });
+  assert.equal(result.idempotent, true);
+  assert.equal(result.courseRevision, 8);
+  assert.equal(result.annotation.annotationId, ANNOTATION_ID);
+
+  const regressed = adapter(async () => json(anchoredChange(
+    anchoredAnnotation({ contributorKind: "self" }),
+    { requestId, courseRevision: 6, idempotent: true }
+  )));
+  await assert.rejects(
+    () => regressed.executeCourseAnchoredAnnotationCommand({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId,
+      expectedCourseRevision: 7,
+      command: {
+        type: "create_anchored_annotation",
+        annotationId: ANNOTATION_ID,
+        target: { kind: "study_unit", id: "unit-a" },
+        rawText: "Possível erro nesta Unidade.",
+        category: "possible_error",
+        capturedAt: null,
+        briefSummary: null
+      }
+    }),
+    (error) => error.code === "course_service_unavailable"
+  );
+});
 
 function componentCatalog() {
   return {

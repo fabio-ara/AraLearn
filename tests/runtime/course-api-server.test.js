@@ -319,6 +319,96 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
   assert.equal(spoofed.status, 422);
 });
 
+test("aplicativo expõe observações sem confirmação MCP nem campos de autoridade", async () => {
+  const calls = [];
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:read", "authoring:write"] };
+      },
+      async getCourseAnchoredAnnotations(value) {
+        calls.push(["read", value]);
+        return { contract: "read-ok" };
+      },
+      async executeCourseAnchoredAnnotationCommand(value) {
+        calls.push(["write", value]);
+        return { contract: "write-ok" };
+      }
+    }
+  });
+
+  const read = await handler(request("/app/lerCurso", {
+    body: {
+      courseId: COURSE_ID,
+      view: "anchored_annotations",
+      expectedRevision: 7,
+      annotationSetVersion: null,
+      mode: "target",
+      states: ["open"],
+      targetKind: "study_unit",
+      targetId: "unit-a",
+      includeDescendants: false,
+      cursor: null,
+      limit: 12
+    }
+  }));
+  assert.equal(read.status, 200);
+  assert.deepEqual(calls[0][1].query.hierarchy, {
+    target: { kind: "study_unit", id: "unit-a" },
+    includeDescendants: false
+  });
+  assert.equal(calls[0][1].annotationSetVersion, null);
+
+  const createBody = {
+    requestId: "request-annotation-app-1",
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "create_anchored_annotation",
+      annotationId,
+      target: { kind: "study_unit", id: "unit-a" },
+      rawText: "Texto bruto exato.",
+      category: null,
+      capturedAt: null,
+      briefSummary: null
+    }
+  };
+  const create = await handler(request("/app/alterarCurso", { body: createBody }));
+  assert.equal(create.status, 200);
+  assert.equal(calls[1][1].expectedCourseRevision, 7);
+  assert.equal(Object.hasOwn(calls[1][1].command, "confirmed"), false);
+
+  const revise = await handler(request("/app/alterarCurso", {
+    body: {
+      requestId: "request-annotation-app-2",
+      courseId: COURSE_ID,
+      operation: "update_anchored_annotations",
+      annotationCommand: {
+        type: "revise_anchored_annotation",
+        annotationId,
+        expectedAnnotationVersion: 1,
+        rawText: "Texto revisto.",
+        category: "confusing",
+        briefSummary: null
+      }
+    }
+  }));
+  assert.equal(revise.status, 200);
+  assert.equal(calls[2][1].expectedCourseRevision, null);
+
+  const spoofed = await handler(request("/app/alterarCurso", {
+    body: {
+      ...createBody,
+      requestId: "request-annotation-app-3",
+      annotationCommand: { ...createBody.annotationCommand, channel: "authoring_chat" }
+    }
+  }));
+  assert.equal(spoofed.status, 422);
+});
+
 test("orienta reler o Curso e usar novo requestId após conflito de versão", async () => {
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),

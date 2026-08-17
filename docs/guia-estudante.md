@@ -103,25 +103,27 @@ Use o ícone **Observação** na Unidade. Escolha uma categoria:
 
 - Dúvida;
 - Possível erro;
-- Confuso;
+- Trecho confuso;
 - Sugestão;
-- Observação.
+- Sem categoria.
 
-Escreva até 1.000 caracteres e salve. O ícone passa a indicar que existe uma
-observação. Abra novamente para alterar ou retirar o texto.
+Escreva até 2.000 escalares Unicode, respeitando também o limite de 16 KiB em
+UTF-8, e salve. É possível criar várias observações próprias na mesma Unidade.
+A folha mostra categoria, estado, sincronização e eventual resposta do
+proprietário; abra um item para revisar ou retirar.
 
-A observação fica ancorada à Unidade e faz parte do estado pessoal. Nesta
-revisão, ela persiste local e remotamente, mas ainda não existe a nova fila
-autoral que reúna observação, decisão, correção e verificação. Portanto, não se
-deve interpretar o salvamento como garantia de que o conteúdo já entrou em
-auditoria.
+A observação fica ancorada à Unidade, mas não faz parte do estado pessoal v2,
+que contém somente progresso e **Rever**. Ela usa persistência e fila próprias,
+e o proprietário pode recebê-la na caixa de entrada da Autoria. Colegas nunca
+veem as anotações uns dos outros. Salvar, receber resposta ou chegar ao estado
+**Resolvida** não significa que o conteúdo foi corrigido ou verificado.
 
 ## Interromper com segurança
 
 É seguro voltar pelos níveis ou fechar o aplicativo depois que a ação aparece
 na interface. Sem conexão, o estado pode continuar pendente no dispositivo.
 Evite limpar dados, trocar de navegador ou desinstalar antes de reconectar se
-houver progresso ou observações recentes importantes.
+houver progresso, marcas ou comandos de observação recentes importantes.
 
 Conflitos entre dois dispositivos são resolvidos pelo repositório de estado
 pessoal com revisão remota e reconciliação determinística. Se o Curso deixar de
@@ -139,8 +141,8 @@ Essa ação:
 4. não apaga progresso de outros Cursos;
 5. não altera o conteúdo canônico.
 
-Marcas e observações são estados distintos; não presuma que “zerar progresso”
-seja uma exclusão geral dos dados pessoais.
+Marcas e Anotações ancoradas são registros distintos; não presuma que “zerar
+progresso” seja uma exclusão geral dos dados pessoais.
 
 ## Quando editar
 
@@ -150,8 +152,10 @@ observação situada e converse com o proprietário pelos canais disponíveis.
 
 ## Limites do estado de estudo
 
-O AraLearn conserva o necessário para continuidade: progresso, cursor, marcas
-e observações. Esses registros não devem ser tratados automaticamente como:
+O estado pessoal conserva o necessário para continuidade: progresso, cursor e
+marcas. As Anotações ancoradas conservam apenas o que foi declarado e o contexto
+operacional da triagem. Nenhum desses registros deve ser tratado
+automaticamente como:
 
 - atenção;
 - engajamento;

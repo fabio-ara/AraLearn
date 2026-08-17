@@ -44,7 +44,7 @@ async function expectNoHorizontalOverflow(page) {
   const section = await page.locator(".course-authoring-surface").getAttribute("data-section");
   const maximum = section === "inspection"
     ? page.viewportSize().width
-    : section === "sources" ? 900.5
+    : ["sources", "observations"].includes(section) ? 920.5
       : section === "parameters" ? 720.5 : 430.5;
   expect(frameWidth).toBeLessThanOrEqual(maximum);
 }
@@ -215,7 +215,15 @@ async function mountCourseAuthoring(page, {
             lessons: [{
               id: "lesson-a",
               title: "Relações e evidências",
-              topics: [],
+              topics: [{
+                id: "topic-a",
+                title: "Relações",
+                summary: "Relações entre entidades."
+              }, {
+                id: "topic-b",
+                title: "Evidências",
+                summary: "Evidências e limites."
+              }],
               microsequences: [{
                 id: "microsequence-a",
                 title: "Comparação orientada",
@@ -332,6 +340,8 @@ async function mountCourseAuthoring(page, {
       headerReads: 0,
       outlineReads: 0,
       inspectionReads: [],
+      annotationReads: [],
+      annotationMutations: [],
       positionLoads: 0,
       positionSaves: [],
       peopleReads: 0,
@@ -349,7 +359,7 @@ async function mountCourseAuthoring(page, {
     const counts = {
       moduleCount: 1,
       lessonCount: 1,
-      topicCount: 0,
+      topicCount: 2,
       microsequenceCount: 1,
       studyUnitCount: 60
     };
@@ -642,6 +652,191 @@ async function mountCourseAuthoring(page, {
       };
     };
     let inspectionPosition = null;
+    let annotationSetVersion = 1;
+    const annotationPath = (courseId, target) => {
+      const course = courseDetail(courseId);
+      const path = [{ kind: "course", id: courseId, label: course.title, version: course.revision }];
+      if (target.kind === "course") return path;
+      path.push({ kind: "module", id: "module-a", label: "Base conceitual", version: 1 });
+      if (target.kind === "module") return path;
+      path.push({ kind: "lesson", id: "lesson-a", label: "Relações e evidências", version: 1 });
+      if (target.kind === "lesson") return path;
+      if (target.kind === "topic") {
+        path.push({
+          kind: "topic",
+          id: target.id,
+          label: target.id === "topic-b" ? "Evidências" : "Relações",
+          version: 1
+        });
+        return path;
+      }
+      if (target.kind === "didactic_microsequence") {
+        path.push({
+          kind: "didactic_microsequence",
+          id: target.id,
+          label: "Comparação orientada",
+          version: 1
+        });
+        return path;
+      }
+      path.push({
+        kind: "didactic_microsequence",
+        id: "microsequence-a",
+        label: "Comparação orientada",
+        version: 1
+      }, {
+        kind: "study_unit",
+        id: target.id,
+        label: studyUnits.find(({ id }) => id === target.id)?.title || "Unidade de estudo",
+        version: 1
+      });
+      return path;
+    };
+    const annotationTargetLink = (courseId, target) => {
+      const base = `#/authoring/courses/${courseId}?section=inspection`;
+      if (target.kind === "course") return base;
+      const params = ["moduleId=module-a"];
+      if (target.kind === "module") return `${base}&${params.join("&")}`;
+      params.push("lessonId=lesson-a");
+      if (target.kind === "lesson" || target.kind === "topic") {
+        return `${base}&${params.join("&")}`;
+      }
+      params.push(`didacticMicrosequenceId=${target.kind === "didactic_microsequence"
+        ? target.id : "microsequence-a"}`);
+      if (target.kind === "study_unit") params.push(`studyUnitId=${target.id}`);
+      return `${base}&${params.join("&")}`;
+    };
+    const classification = (subjects = []) => ({
+      status: subjects.length ? "classified" : "unclassified",
+      automatic: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 5,
+        subjects: []
+      },
+      effective: subjects.length ? {
+        method: "human_topic_selection",
+        methodVersion: 1,
+        taxonomyRevision: 5,
+        subjects
+      } : {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 5,
+        subjects: []
+      },
+      correctedAt: subjects.length ? "2026-08-17T13:30:00.000Z" : null
+    });
+    const annotationItem = ({
+      courseId,
+      annotationId,
+      target,
+      rawText,
+      category = null,
+      origin = "learner",
+      channel = "study_interface"
+    }) => {
+      const path = annotationPath(courseId, target);
+      return {
+        contract: "aralearn.course-anchored-annotation.v1",
+        annotationId,
+        annotationVersion: 1,
+        courseId,
+        provenance: { origin, channel },
+        contributor: origin === "author"
+          ? { kind: "self", role: "author", ref: "self", label: "Você" }
+          : { kind: "protected_person", role: "learner",
+            ref: "person-0123456789abcdef", label: "Estudante 7" },
+        target: {
+          kind: target.kind,
+          id: target.id,
+          observedPath: structuredClone(path),
+          currentAvailable: true,
+          currentPath: structuredClone(path),
+          deepLink: annotationTargetLink(courseId, target)
+        },
+        observedRevision: {
+          certainty: "known",
+          courseRevision: courseDetail(courseId).revision,
+          targetVersion: target.kind === "course" ? courseDetail(courseId).revision : 1
+        },
+        rawText,
+        category,
+        briefSummary: null,
+        subjectClassification: classification(),
+        state: "open",
+        ownerResponse: null,
+        timestamps: {
+          capturedAt: "2026-08-17T12:00:00.000Z",
+          createdAt: "2026-08-17T12:00:00.000Z",
+          updatedAt: "2026-08-17T12:00:00.000Z",
+          firstConsideredAt: null,
+          respondedAt: null,
+          resolvedAt: null,
+          withdrawnAt: null
+        },
+        capabilities: {
+          canRevise: origin === "author",
+          canWithdraw: origin === "author",
+          canConsider: true,
+          canRespond: true,
+          canResolve: true,
+          canReopen: false,
+          canCorrectSubjects: true
+        },
+        deepLink: `#/authoring/courses/${courseId}?section=observations&annotationId=${annotationId}`
+      };
+    };
+    const annotations = courses.some(({ courseId }) => courseId === courseIds[0]) ? [annotationItem({
+      courseId: courseIds[0],
+      annotationId: "81000000-0000-4000-8000-000000000081",
+      target: { kind: "study_unit", id: "study-unit-01" },
+      rawText: "A relação entre os conjuntos precisa de mais contexto.",
+      category: "confusing"
+    })] : [];
+    const annotationMatches = (item, query) => {
+      if (query.mode === "detail") return item.annotationId === query.annotationId;
+      if (query.origins.length && !query.origins.includes(item.provenance.origin)) return false;
+      if (query.channels.length && !query.channels.includes(item.provenance.channel)) return false;
+      if (query.states.length && !query.states.includes(item.state)) return false;
+      if (query.categories.length && !query.categories.includes(item.category) &&
+          !(item.category === null && query.includeUncategorized)) return false;
+      if (!query.categories.length && !query.includeUncategorized && item.category === null) return false;
+      if (query.subjectIds.length && !item.subjectClassification.effective.subjects.some(({ topicId }) =>
+        query.subjectIds.includes(topicId))) return false;
+      if (query.hierarchy) {
+        const exact = item.target.kind === query.hierarchy.target.kind &&
+          item.target.id === query.hierarchy.target.id;
+        const descendant = item.target.currentPath.some(({ kind, id }) =>
+          kind === query.hierarchy.target.kind && id === query.hierarchy.target.id);
+        if (!exact && !(query.hierarchy.includeDescendants && descendant)) return false;
+      }
+      return true;
+    };
+    const annotationPage = (courseId, options) => {
+      const items = annotations.filter((item) => item.courseId === courseId &&
+        annotationMatches(item, options.query));
+      const countBy = (field) => Object.fromEntries([...new Set(items.map((item) => field(item)))]
+        .map((value) => [value, items.filter((item) => field(item) === value).length]));
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId,
+        courseRevision: courseDetail(courseId).revision,
+        annotationSetVersion,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: items.length,
+          byOrigin: countBy((item) => item.provenance.origin),
+          byChannel: countBy((item) => item.provenance.channel),
+          byState: countBy((item) => item.state),
+          unclassifiedTotal: items.filter((item) =>
+            item.subjectClassification.status === "unclassified").length
+        },
+        items: structuredClone(items),
+        hasMore: false,
+        nextCursor: null
+      };
+    };
     const controller = {
       async listCourses({ query = "" } = {}) {
         probe.listReads += 1;
@@ -665,6 +860,83 @@ async function mountCourseAuthoring(page, {
       async loadAuthoringOutline(courseId) {
         probe.outlineReads += 1;
         return outlineFor(courseId);
+      },
+      async loadCourseAnchoredAnnotations(courseId, options) {
+        probe.annotationReads.push({ courseId, options: structuredClone(options) });
+        return annotationPage(courseId, options);
+      },
+      async mutateCourseAnchoredAnnotations(input) {
+        probe.annotationMutations.push(structuredClone(input));
+        const { command } = input;
+        const index = annotations.findIndex(({ annotationId }) =>
+          annotationId === command.annotationId);
+        let item;
+        if (command.type === "create_anchored_annotation") {
+          item = annotationItem({
+            courseId: input.courseId,
+            annotationId: command.annotationId,
+            target: command.target,
+            rawText: command.rawText,
+            category: command.category,
+            origin: "author",
+            channel: "authoring_interface"
+          });
+          item.timestamps.capturedAt = command.capturedAt;
+          annotations.push(item);
+        } else {
+          item = structuredClone(annotations[index]);
+          item.annotationVersion += 1;
+          item.timestamps.updatedAt = "2026-08-17T13:30:00.000Z";
+          if (command.type === "revise_anchored_annotation") {
+            item.rawText = command.rawText;
+            item.category = command.category;
+            item.briefSummary = command.briefSummary;
+          } else if (command.type === "withdraw_anchored_annotation") {
+            item.rawText = null;
+            item.ownerResponse = null;
+            item.state = "withdrawn";
+            item.timestamps.withdrawnAt = "2026-08-17T13:30:00.000Z";
+            item.capabilities = Object.fromEntries(Object.keys(item.capabilities)
+              .map((key) => [key, false]));
+          } else if (command.type === "consider_anchored_annotation") {
+            item.state = "considered";
+            item.timestamps.firstConsideredAt ||= "2026-08-17T13:30:00.000Z";
+          } else if (command.type === "resolve_anchored_annotation") {
+            item.state = "resolved";
+            item.timestamps.resolvedAt = "2026-08-17T13:30:00.000Z";
+            item.capabilities.canResolve = false;
+            item.capabilities.canReopen = true;
+          } else if (command.type === "reopen_anchored_annotation") {
+            item.state = "open";
+            item.timestamps.resolvedAt = null;
+            item.capabilities.canResolve = true;
+            item.capabilities.canReopen = false;
+          } else if (command.type === "respond_to_anchored_annotation") {
+            item.ownerResponse = {
+              text: command.ownerResponse,
+              updatedAt: "2026-08-17T13:30:00.000Z"
+            };
+            item.timestamps.respondedAt = "2026-08-17T13:30:00.000Z";
+          } else if (command.type === "correct_anchored_annotation_subjects") {
+            item.subjectClassification = classification(command.subjectIds.map((topicId) => ({
+              topicId,
+              label: topicId === "topic-b" ? "Evidências" : "Relações",
+              topicVersion: 1
+            })));
+          }
+          annotations[index] = item;
+        }
+        annotationSetVersion += 1;
+        return {
+          contract: "aralearn.course-anchored-annotation-change.v1",
+          courseId: input.courseId,
+          courseRevision: courseDetail(input.courseId).revision,
+          annotationSetVersion,
+          requestId: input.requestId,
+          idempotent: false,
+          changed: true,
+          annotation: structuredClone(item)
+        };
       },
       async loadAuthoringStudyUnits(courseId, options) {
         probe.inspectionReads.push(structuredClone(options));
@@ -1474,6 +1746,127 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
       anchors: [{ anchorId: "anchor-source-01", anchorRevision: 1 }]
     }]
   });
+  expect(clientErrors).toEqual([]);
+});
+
+for (const width of [360, 390, 430, 1280]) {
+  test(`Observações mantêm inbox, filtros e sétima rota sem overflow em ${width} px`, async ({
+    page
+  }, testInfo) => {
+    const clientErrors = captureClientErrors(page);
+    await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
+    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=observations`;
+    await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+    await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
+      "data-section",
+      "observations"
+    );
+    await expect(page.locator(".course-authoring-sections a")).toHaveCount(7);
+    await expect(page.getByRole("heading", { name: "Observações", exact: true })).toBeVisible();
+    await expect(page.getByText("Inbox única do Curso", { exact: true })).toBeVisible();
+    await expect(page.getByText(
+      "A relação entre os conjuntos precisa de mais contexto.",
+      { exact: true }
+    )).toBeVisible();
+    await page.getByText("Filtros e origens", { exact: true }).click();
+    await expect(page.getByLabel("Assunto").locator("option")).toContainText([
+      "Todos", "Evidências", "Relações"
+    ]);
+    await expect(page.locator(
+      '.course-observations-filters select[name="hierarchy"] option'
+    ).filter({ hasText: "Base conceitual" }).first()).toBeAttached();
+    await expectNoHorizontalOverflow(page);
+    const undersized = await page.locator(
+      ".course-observations-panel :is(button, select, summary, a)"
+    ).evaluateAll((nodes) => nodes.filter((node) => {
+      const style = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return style.display !== "none" && rect.width > 0 && rect.height > 0 && rect.height < 43;
+    }).map((node) => ({ tag: node.tagName, text: node.textContent.trim(), height: node.getBoundingClientRect().height })));
+    expect(undersized).toEqual([]);
+
+    await page.screenshot({
+      path: testInfo.outputPath(`course-observations-${width}.png`),
+      animations: "disabled"
+    });
+    expect(clientErrors).toEqual([]);
+  });
+}
+
+test("Observações em 390 px criam por contexto, filtram e abrem deep link corrigível", async ({
+  page
+}) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=observations`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+  await page.getByText("Nova observação autoral", { exact: true }).click();
+  await page.locator('.course-observation-author-composer select[name="target"]')
+    .selectOption({ label: "Base conceitual · Módulo" });
+  await page.locator('.course-observation-author-composer select[name="category"]')
+    .selectOption("suggestion");
+  await page.locator(".course-observation-author-composer textarea")
+    .fill("Observação autoral situada no Módulo.");
+  await expect(page.locator("#course-author-observation-count"))
+    .toHaveText("37/2.000 caracteres · 40 B/16 KiB");
+  await page.getByRole("button", { name: "Adicionar observação" }).click();
+  await expect(page.getByText("Observação autoral situada no Módulo.", { exact: true }))
+    .toBeVisible();
+
+  const creation = await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.annotationMutations[0]);
+  expect(creation.expectedCourseRevision).toBe(5);
+  expect(creation.command.target).toEqual({ kind: "module", id: "module-a" });
+  expect(creation.command.type).toBe("create_anchored_annotation");
+
+  await page.getByText("Filtros e origens", { exact: true }).click();
+  await page.getByLabel("Origem").selectOption("author");
+  await page.getByRole("button", { name: "Aplicar filtros" }).click();
+  await expect(page.locator(".course-observation-card")).toHaveCount(1);
+  await page.getByRole("link", { name: "Ver detalhe" }).click();
+  await expect(page).toHaveURL(new RegExp(
+    `#\\/authoring\\/courses\\/${COURSE_IDS[0]}\\?section=observations&annotationId=`
+  ));
+  await expect(page.getByText("Detalhe contextual", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Abrir Módulo" })).toBeVisible();
+  await expect(page.getByText("Relações", { exact: true })).toBeVisible();
+  await expect(page.getByText("Evidências", { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  expect(clientErrors).toEqual([]);
+});
+
+test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo", async ({ page }) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=inspection`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+  expect(await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(0);
+
+  await page.getByRole("button", { name: "Observações", exact: true }).first().click();
+  await expect(page.getByRole("dialog", { name: "Observações da Unidade" })).toBeVisible();
+  await expect(page.getByText(
+    "A relação entre os conjuntos precisa de mais contexto.",
+    { exact: true }
+  )).toBeVisible();
+  expect(await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(1);
+  await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
+  await expect(page.locator("#study-observation-counter"))
+    .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  await expect(page.getByText("😀a", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Observações · 2", exact: true }).first())
+    .toBeVisible();
+
+  const mutation = await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.annotationMutations[0]);
+  expect(mutation.expectedCourseRevision).toBe(5);
+  expect(mutation.command.target).toEqual({ kind: "study_unit", id: "study-unit-01" });
+  await expect.poll(() => page.evaluate(() =>
+    document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   expect(clientErrors).toEqual([]);
 });
 

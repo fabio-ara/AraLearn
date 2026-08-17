@@ -3906,7 +3906,7 @@ input:-webkit-autofill:focus {
   border-radius: 14px;
 }
 
-.study-comment-btn,
+.study-observation-btn,
 .study-review-btn,
 .study-continue-btn {
   width: 48px;
@@ -3916,14 +3916,14 @@ input:-webkit-autofill:focus {
   border-radius: 14px;
 }
 
-.study-comment-btn {
+.study-observation-btn {
   box-shadow: none;
   position: relative;
   padding: 0;
   font-size: 1rem;
 }
 
-.study-comment-btn.has-comment {
+.study-observation-btn.has-observations {
   position: relative;
   color: var(--action-primary);
 }
@@ -4026,7 +4026,7 @@ input:-webkit-autofill:focus {
   font-family: inherit;
 }
 
-.comment-textarea {
+.study-observation-textarea {
   min-height: 28dvh;
 }
 
@@ -4052,7 +4052,7 @@ input:-webkit-autofill:focus {
   line-height: 1.4;
 }
 
-.comment-category-list {
+.study-observation-category-list {
   display: flex;
   gap: 6px;
   min-width: 0;
@@ -4061,9 +4061,9 @@ input:-webkit-autofill:focus {
   scrollbar-width: thin;
 }
 
-.comment-category-chip {
+.study-observation-category-chip {
   flex: 0 0 auto;
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid var(--border-default);
   border-radius: 999px;
   background: var(--surface-raised);
@@ -4071,7 +4071,7 @@ input:-webkit-autofill:focus {
   cursor: pointer;
 }
 
-.comment-category-chip input {
+.study-observation-category-chip input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -4079,22 +4079,22 @@ input:-webkit-autofill:focus {
   pointer-events: none;
 }
 
-.comment-category-chip span {
+.study-observation-category-chip span {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
+  min-height: 42px;
   padding: 0 12px;
   font-size: var(--type-xs);
   font-weight: 700;
 }
 
-.comment-category-chip.is-selected {
+.study-observation-category-chip.is-selected {
   border-color: var(--action-primary);
   background: var(--action-primary-subtle);
   color: var(--action-primary);
 }
 
-.comment-category-chip:focus-within {
+.study-observation-category-chip:focus-within {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -4106,6 +4106,254 @@ input:-webkit-autofill:focus {
   height: 42px;
   min-height: 42px;
   color: var(--status-danger);
+}
+
+/* Observações pessoais: lista plural, estado de sincronização e composição no mesmo sheet. */
+.study-observation-sheet {
+  max-height: min(86dvh, 760px);
+  overflow: hidden;
+}
+
+.study-observation-sheet > .editor-head {
+  flex: 0 0 auto;
+}
+
+.study-observation-count {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-grid;
+  place-items: center;
+  justify-self: center;
+  border-radius: 999px;
+  color: var(--action-primary-hover);
+  background: var(--action-soft);
+  font-size: var(--type-xs);
+  font-weight: 800;
+}
+
+.study-observation-body {
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1px 2px max(4px, var(--safe-bottom));
+}
+
+.study-observation-list,
+.study-observation-composer {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.study-observation-item {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+}
+
+.study-observation-item.is-editing {
+  border-color: var(--action-primary);
+}
+
+.study-observation-item > header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+}
+
+.study-observation-badges {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.study-observation-badges span {
+  max-width: 100%;
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  font-size: 0.67rem;
+  font-weight: 750;
+}
+
+.study-observation-badges span[data-sync="pending"] {
+  color: var(--status-warning);
+}
+
+.study-observation-badges span[data-sync="failed"] {
+  color: var(--status-danger);
+}
+
+.study-observation-badges span[data-sync="synced"] {
+  color: var(--status-success);
+}
+
+.study-observation-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.study-observation-item-actions button {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+}
+
+.study-observation-contributor {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-xs);
+}
+
+.study-observation-contributor span {
+  color: var(--text-secondary);
+}
+
+.study-observation-text,
+.study-observation-withdrawn,
+.study-observation-owner-response p,
+.study-observation-empty,
+.study-observation-loading,
+.study-observation-stale {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.study-observation-text,
+.study-observation-owner-response p {
+  white-space: pre-wrap;
+}
+
+.study-observation-withdrawn,
+.study-observation-empty,
+.study-observation-loading {
+  color: var(--text-tertiary);
+}
+
+.study-observation-stale {
+  padding: 8px 9px;
+  border-radius: var(--radius-control);
+  color: var(--status-warning);
+  background: var(--surface-sunken);
+}
+
+.study-observation-owner-response {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border-left: 2px solid var(--action-primary);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: var(--surface-raised);
+}
+
+.study-observation-owner-response strong {
+  font-size: var(--type-xs);
+}
+
+.study-observation-composer {
+  padding-top: 9px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.study-observation-composer h3 {
+  margin: 0;
+  font-size: var(--type-sm);
+}
+
+.study-observation-composer .study-observation-textarea {
+  min-height: 120px;
+  max-height: 34dvh;
+}
+
+.study-observation-counter {
+  justify-self: end;
+  color: var(--text-tertiary);
+  font-size: var(--type-xs);
+}
+
+.study-observation-counter.is-over-limit {
+  color: var(--status-danger);
+  font-weight: 750;
+}
+
+.study-observation-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 7px;
+}
+
+.study-observation-composer-actions button {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+
+.study-observation-dock-count {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  padding-inline: 3px;
+  border-radius: 999px;
+  color: var(--text-on-action);
+  background: var(--action-primary);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+@media (max-width: 390px) {
+  .study-observation-overlay {
+    padding-inline: max(4px, var(--safe-left));
+  }
+
+  .study-observation-sheet {
+    width: 100%;
+    max-height: calc(100dvh - max(10px, var(--safe-top)) - max(8px, var(--safe-bottom)));
+    border-radius: 16px 16px 0 0;
+    padding-inline: 7px;
+  }
+
+  .study-observation-item > header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .study-observation-item-actions {
+    justify-content: end;
+  }
 }
 
 .microsequence-generator-screen {

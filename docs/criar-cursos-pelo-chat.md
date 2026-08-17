@@ -17,13 +17,14 @@ Com uma conta autorizada, o cliente pode:
   Unidades;
 - incluir, alterar ou excluir entidades didáticas em lotes delimitados;
 - iniciar, retomar e concluir a materialização de uma Parte;
+- ler, criar e triar Anotações ancoradas;
 - consultar e validar contratos de componentes;
 - gerir perfil e acesso direto ao Estudo.
 
-Observações autorais reunidas e Anotação ancorada pertencem à #124; achados,
-correções e verificação pertencem à #125. Variantes experimentais e analytics
-educacionais completos também são posteriores. A conversa pode discuti-los,
-mas não deve afirmar que os persistiu sem uma operação correspondente.
+Achados de auditoria, correções e verificação independente permanecem
+posteriores. Variantes experimentais e analytics educacionais completos também
+não estão disponíveis. A conversa pode discuti-los, mas não deve afirmar que os
+persistiu sem uma operação correspondente.
 
 ## Antes da primeira conversa
 
@@ -197,6 +198,18 @@ Respostas ficam inertes na Inspeção. A tela examina o conteúdo real, mas não
 um segundo editor de Unidade.
 
 ## Revisar, corrigir e continuar
+
+Para trabalhar com Observações, use `lerCurso` na vista
+`anchored_annotations`, nos modos caixa de entrada, alvo ou detalhe. A mutação
+continua dentro de `alterarCurso`, pela operação
+`update_anchored_annotations`; o MCP mantém exatamente seis ferramentas.
+
+Antes de criar, confirme com a pessoa o alvo exato e uma síntese breve. O
+comando exige `confirmed: true` e `briefSummary` não vazio, preserva o texto
+declarado e não envia a conversa inteira. Responder ou resolver descreve
+triagem, não uma correção do Curso. A classificação automática só associa
+assunto quando o alvo é exatamente um Tópico; qualquer seleção diferente é uma
+correção humana separada.
 
 Peça uma revisão com critério explícito, por exemplo cobertura do objetivo,
 formas de explicação, oportunidades de prática ou adequação representacional.

@@ -75,6 +75,22 @@ function marker(processValue, expected) {
   });
 }
 
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function waitForDatabaseCondition(sql, {
+  intervalMilliseconds = 50,
+  timeoutMilliseconds = 4_000
+} = {}) {
+  const deadline = Date.now() + timeoutMilliseconds;
+  while (Date.now() < deadline) {
+    if (await result(psql(sql)) === "1") return;
+    await delay(intervalMilliseconds);
+  }
+  throw new Error("A condição concorrencial do PostgreSQL não ocorreu dentro do prazo.");
+}
+
 async function createUser(userId, email) {
   await result(psql(`
     insert into auth.users(
@@ -180,6 +196,105 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
     assert.equal(read, "aralearn.course-design.v1|4|1-3e5629f8|3");
   } finally {
     await cleanupUser(ownerId, email);
+  }
+});
+
+test("PostgreSQL mantém a ordem pessoa antes de Curso entre anotação e exclusão de conta", {
+  skip: postgresGate
+}, async () => {
+  const ownerId = "00000000-0000-4000-8000-000000001240";
+  const learnerId = "00000000-0000-4000-8000-000000001241";
+  const courseId = "10000000-0000-4000-8000-000000001240";
+  const annotationId = "20000000-0000-4000-8000-000000001240";
+  const ownerEmail = "annotation-lock-owner@aralearn.invalid";
+  const learnerEmail = "annotation-lock-learner@aralearn.invalid";
+  await createUser(ownerId, ownerEmail);
+  await createUser(learnerId, learnerEmail);
+  try {
+    await result(psql(`
+      insert into public.courses(id,owner_id,title,goal)
+      values('${courseId}','${ownerId}','Curso de locks','Excluir conta sem deadlock');
+      insert into private.course_entities(
+        course_id,entity_type,entity_id,parent_type,parent_id,position,content
+      ) values
+        ('${courseId}','module','module-lock',null,null,0,
+          '{"title":"Módulo"}'::jsonb),
+        ('${courseId}','lesson','lesson-lock','module','module-lock',0,
+          '{"title":"Lição"}'::jsonb),
+        ('${courseId}','microsequence','micro-lock','lesson','lesson-lock',0,
+          '{"title":"Microssequência","dependsOn":[]}'::jsonb),
+        ('${courseId}','study_unit','unit-lock','microsequence','micro-lock',1,
+          '{"title":"Unidade","topics":[]}'::jsonb);
+      insert into public.course_access(course_id,user_id,granted_by)
+      values('${courseId}','${learnerId}','${ownerId}');
+      begin;
+      select set_config('request.jwt.claim.sub','${learnerId}',true);
+      select set_config('request.jwt.claim.role','authenticated',true);
+      select public.execute_my_course_anchored_annotation_command_v1(
+        '${courseId}',1,jsonb_build_object(
+          'type','create_anchored_annotation',
+          'annotationId','${annotationId}',
+          'target',jsonb_build_object('kind','study_unit','id','unit-lock'),
+          'rawText','Texto inicial','category',null,
+          'capturedAt',null,'briefSummary',null
+        ),'annotation-lock-create'
+      );
+      commit;
+    `));
+
+    const courseBlocker = psql([
+      `begin;
+       select 1 from public.courses where id='${courseId}' for update;`,
+      "select 'annotation-course-locked';",
+      "select pg_sleep(6); commit;"
+    ]);
+    await marker(courseBlocker, "annotation-course-locked");
+
+    const mutation = psql(`
+      set application_name='aralearn-annotation-mutation-lock-probe';
+      begin;
+      set local deadlock_timeout='250ms';
+      select set_config('request.jwt.claim.sub','${learnerId}',true);
+      select set_config('request.jwt.claim.role','authenticated',true);
+      select public.execute_my_course_anchored_annotation_command_v1(
+        '${courseId}',null,jsonb_build_object(
+          'type','revise_anchored_annotation',
+          'annotationId','${annotationId}',
+          'expectedAnnotationVersion',1,
+          'rawText','Texto revisto','category',null,'briefSummary',null
+        ),'annotation-lock-revise'
+      );
+      commit;
+    `);
+    await waitForDatabaseCondition(`
+      select (count(*) = 1)::integer
+      from pg_stat_activity
+      where application_name='aralearn-annotation-mutation-lock-probe'
+        and state='active'
+        and wait_event_type='Lock';
+    `);
+    const accountDeletion = psql(`
+      begin;
+      set local deadlock_timeout='250ms';
+      delete from auth.users where id='${learnerId}';
+      commit;
+    `);
+
+    await Promise.all([
+      result(courseBlocker), result(mutation), result(accountDeletion)
+    ]);
+    assert.equal(await result(psql(`
+      select state || '|' || version || '|' || (actor_id is null)::text || '|' ||
+        (raw_text is null)::text
+      from private.course_anchored_annotations where id='${annotationId}';
+    `)), "withdrawn|3|true|true");
+    assert.equal(await result(psql(`
+      select count(*) from private.course_anchored_annotation_events
+      where annotation_id='${annotationId}';
+    `)), "3");
+  } finally {
+    await cleanupUser(learnerId, learnerEmail);
+    await cleanupUser(ownerId, ownerEmail);
   }
 });
 
@@ -413,7 +528,7 @@ test("PostgreSQL aceita apenas uma alteração concorrente do estado pessoal", {
       begin;
       select set_config('request.jwt.claim.sub','${ownerId}',true);
       select set_config('request.jwt.claim.role','authenticated',true);
-      select public.mutate_course_personal_state_v1(
+      select public.mutate_course_personal_state_v2(
         '${courseId}',0,
         jsonb_build_array(jsonb_build_object(
           'kind','set','collection','reviewMarks','path','unit-${suffix}',

@@ -2,7 +2,7 @@
 
 Este capítulo explica onde o runtime canônico guarda cada dado e por quê. A
 decisão central é conservar um único Curso vivo no servidor, uma réplica local
-para continuidade e um estado pessoal separado por pessoa.
+  para continuidade, um estado pessoal mínimo e Anotações ancoradas separadas.
 
 ## Conceitos fundamentais
 
@@ -12,8 +12,8 @@ para continuidade e um estado pessoal separado por pessoa.
 transações. O PostgreSQL do Supabase é a autoridade para Curso, propriedade,
 acesso e estado compartilhado.
 
-**IndexedDB** é o banco transacional do navegador. Ele mantém sessão, cache e
-operações pessoais pendentes no dispositivo.
+**IndexedDB** é o banco transacional do navegador. Ele mantém sessão, cache,
+estado pessoal e outbox de Anotações ancoradas no dispositivo.
 
 **Storage de objetos** guarda bytes por chave. Nesta etapa, recebe somente
 fotos privadas de perfil; não é a fonte do conteúdo de Curso.
@@ -24,9 +24,9 @@ a autoridade do servidor para acesso ou concorrência.
 ## Modelo mental
 
 **Descrição textual:** o Curso possui raiz, plano instrucional, desenho por
-escopo, Fontes, atribuições e entidades no PostgreSQL; o dispositivo conserva
-descritores e Cursos já abertos; cada pessoa mantém um estado pessoal local e
-remoto; fotos ficam no Storage privado.
+escopo, Fontes, atribuições, entidades e Anotações ancoradas no PostgreSQL; o
+dispositivo conserva descritores e Cursos já abertos; cada pessoa mantém estado
+pessoal e cache de anotações locais; fotos ficam no Storage privado.
 
 ```mermaid
 flowchart TD
@@ -36,13 +36,16 @@ flowchart TD
     PG --> F[Fontes, Âncoras e atribuições]
     PG --> MT[Tentativas e etapas de materialização]
     PG --> E[Entidades didáticas]
+    PG --> AN[Anotações, eventos, recibos e versões privadas]
     PG --> A[Acesso direto]
     PG --> P[Estado pessoal]
     IDB[(IndexedDB)] --> L[Listas e Cursos em cache]
     IDB --> Q[Estado pessoal e pendência]
+    IDB --> AO[Cache e outbox de anotações]
     ST[(Storage)] --> AV[Avatares privados]
     C <--> L
     P <--> Q
+    AN <--> AO
 ```
 
 ## O que fica no PostgreSQL
@@ -56,6 +59,8 @@ flowchart TD
 - título;
 - objetivo;
 - revisão corrente;
+- versão global do conjunto de Anotações ancoradas para a visão do
+  proprietário;
 - datas de criação e atualização.
 
 Não existe coluna de arquivamento ou exclusão lógica no Curso canônico. Nenhum
@@ -196,8 +201,8 @@ tentativa owner-only com até 64 etapas e resposta de no máximo 1,25 MiB. A
 projeção informa `nextPendingStep` somente quando a tentativa pode continuar.
 O plano leve não repete esses dados. Um índice por Curso, Parte e atualização
 sustenta a busca da tentativa mais recente. Quota e retenção histórica seguem
-como gate operacional separado antes da promoção hospedada; a #124 trata de
-observações e Anotação ancorada, não redefine retroativamente esta retenção.
+como gate operacional separado antes da promoção hospedada. Anotações possuem
+retenção própria e não redefinem retroativamente a retenção da materialização.
 Esta etapa não apaga fatos automaticamente.
 
 O status mostrado na interface é derivado dessas relações, dos vínculos e das
@@ -236,21 +241,95 @@ permissões: a presença da linha significa acesso a Estudo.
 
 ### Estado pessoal
 
-`public.course_personal_states` possui uma linha por pessoa e Curso:
+`public.course_personal_states` possui uma linha v2 por pessoa e Curso:
 
 ```text
 progress.lessons  → cursor e Unidades concluídas
 reviewMarks       → instante da marca por Unidade
-observations      → categoria, texto e atualização por Unidade
 ```
 
-O documento é limitado a 512 KiB, 10 mil Lições, 100 mil conclusões, 100 mil
-marcas e 10 mil observações. Esses tetos são limites de segurança, não metas de
-desenho instrucional.
+O documento é limitado a 512 KiB, 10 mil Lições, 100 mil conclusões e 100 mil
+marcas. Esses tetos são limites de segurança, não metas de desenho
+instrucional. O runtime usa somente as RPCs v2; RPCs e constraint v1 foram
+removidos. A relação física `private.valid_course_personal_state_v1` permanece
+isolada no legado até a remoção final, sem ser lida ou reutilizada pelo v2.
 
 A quantidade concluída mostrada na lista não é uma coluna duplicada. A consulta
 intersecta as identidades guardadas no estado com as Unidades ainda vivas no
 Curso. Assim, remover uma Unidade não deixa um contador persistido incorreto.
+
+### Anotações ancoradas
+
+Quatro relações privadas implementam o ciclo sem misturar texto ao estado
+pessoal ou à composição:
+
+- `private.course_anchored_annotations`: linha corrente e tombstone;
+- `private.course_anchored_annotation_events`: eventos append-only com hashes e
+  metadados pequenos, sem versões anteriores do texto bruto;
+- `private.course_anchored_annotation_receipts`: repetição segura por até 14
+  dias;
+- `private.course_anchored_annotation_viewer_versions`: Curso, pessoa, contador
+  monotônico da projeção self-only e `protected_ref` aleatório persistido, sem
+  texto ou classificação.
+
+O contador global em `public.courses` cerca a visão do proprietário. A página e
+a mudança do Estudo usam no mesmo campo do DTO o contador privado da pessoa;
+atividade de terceiros não o altera nem pode ser inferida por ele. A relação de
+viewers é mecanismo de coordenação, não autoridade textual ou histórico de
+domínio, e possui RLS forçada sem grants diretos. A linha privada permanece até
+a exclusão da pessoa ou do Curso para preservar monotonicidade do cache; não
+expira junto com texto, tombstone ou receipt.
+
+Cada anotação liga uma origem e canal coerentes a Curso, Módulo, Lição, Tópico,
+Microssequência ou Unidade. Há N registros por pessoa e alvo, e os estados são
+`open|considered|resolved|withdrawn`. Texto aceita 2.000 escalares Unicode e 16
+KiB em UTF-8; síntese breve aceita 500/4 KiB; resposta do proprietário aceita
+2.000/16 KiB. LF, CR e tabulação são preservados e outros controles falham
+fechados.
+
+Os demais limites estruturais também são simultâneos em escalares e bytes:
+
+| Elemento | Limite |
+| --- | --- |
+| identidade opaca de alvo ou Tópico | 240 escalares e 960 bytes |
+| rótulo de caminho ou Tópico | 300 escalares e 1.200 bytes |
+| rótulo protegido de contribuidor | 120 escalares e 480 bytes |
+| link profundo | 2.048 escalares e 8 KiB |
+| caminho observado ou corrente | de 1 a 5 entradas |
+| correção humana de assuntos | até 64 Tópicos distintos |
+| filtro de assuntos | até 16 Tópicos distintos |
+| comando normalizado | 32 KiB |
+| consulta e opções de leitura | 16 KiB cada |
+| DTO de mudança | 64 KiB |
+| página | 24 itens e 256 KiB |
+
+`requestId` possui de 8 a 128 caracteres ASCII no alfabeto fechado do
+contrato. Cursor possui até 240 caracteres opacos e é confrontado com revisão,
+versão aplicável, consulta, limite e leitor.
+
+A classificação automática só produz assunto para alvo Tópico, pelo método
+`exact_topic_target`. Outros alvos permanecem `target_scope_unclassified` e
+migrados podem usar `legacy_unclassified`; a correção humana efetiva usa
+`human_topic_selection` sem apagar a classificação automática original.
+
+O servidor admite até 128 linhas correntes, inclusive tombstones, por ator,
+Curso e alvo, 512 por ator e Curso e 256 versões/eventos por anotação em
+operações ordinárias. Retirada e exclusão de conta não são bloqueadas pelo teto
+de versões. Leituras `inbox|target|detail` usam página máxima 24, cursor de até
+240 caracteres e resposta de até 256 KiB.
+
+Retirada redige texto, síntese e resposta imediatamente. Tombstone e receipt
+expiram logicamente em até 14 dias e então deixam de ser legíveis, pagináveis,
+contar quota ou admitir replay. A deleção física é oportunista quando o Curso é
+lido ou alterado e processa por toque um lote de até 128 tombstones e 256
+recibos expirados; Curso inativo pode conservar lixo físico, pois não existe
+cron nem garantia de hard delete em
+14 dias. Exclusão da conta aplica a mesma regra às contribuições e excluir o
+Curso aplica cascade. Registros abertos, considerados ou resolvidos não expiram
+apenas por idade. O DTO owner-only contém papel e pseudônimo protegido, nunca UUID ou
+e-mail. O `ref` aleatório persistido não é derivado de Curso/UUID, então o
+roster não permite correlacioná-lo. A UI mostra somente o `label` pseudônimo
+protegido, nunca `ref` ou identidade direta.
 
 ### Eventos e recibos
 
@@ -267,10 +346,12 @@ sela o recibo idempotente, mas não muda revisão, datas ou versão de entidade 
 não produz evento. Isso evita transformar repetição de transporte em atividade
 autoral ou dado de pesquisa.
 
-Dois conjuntos de recibos temporários permitem repetição segura:
+Três conjuntos de recibos temporários permitem repetição segura:
 
 - estado pessoal: UUID, hash e revisão resultante, até sete dias;
-- Curso e acesso: pedido, operação, hash e resultado pequeno, até 14 dias.
+- Curso e acesso: pedido, operação, hash e resultado pequeno, até 14 dias;
+- Anotações ancoradas: ator, pedido, hash, versões e resultado mínimo, com
+  expiração lógica em até 14 dias e limpeza física oportunista.
 
 Eles não formam histórico de conversa, fila geral ou segunda fonte de estado.
 
@@ -317,7 +398,9 @@ Cada conta possui `aralearn-course-v1-<user-id>`, com uma store genérica
 - páginas da Inspeção por revisão e pedido completo;
 - posição local da Inspeção por Curso;
 - documento composto validado;
-- estado pessoal e sua pendência.
+- estado pessoal e sua pendência;
+- páginas, índice e outbox de Anotações ancoradas;
+- handoff transitório das observações retiradas do estado pessoal legado.
 
 Separar o banco por pessoa reduz vazamento acidental entre sessões no mesmo
 dispositivo. Uma mudança de versão fecha a conexão anterior e pede nova
@@ -444,17 +527,33 @@ Se o estado continuar mudando, informa conflito em vez de repetir sem limite.
 Essa estratégia preserva operações locais por chave; ela não afirma resolver
 semanticamente qualquer edição futura de texto compartilhado.
 
+## Sincronização de Anotações ancoradas
+
+Anotações usam um repositório próprio. A outbox aceita até 128 comandos e 256
+KiB por Curso; o cache aceita até 2 MiB, 48 alvos e 128 anotações por alvo, em
+páginas de 24 e no máximo 128 páginas por alvo. O agregado continua limitado a
+128 itens e cada cursor precisa ser novo e não repetido. Uma operação local
+aparece de imediato como pendente e é reconciliada pela versão global para o
+proprietário ou pela versão privada self-only no Estudo.
+
+Abas da mesma conta coordenam atualização por `BroadcastChannel`. A mensagem
+contém apenas Curso, versão aplicável àquela conta e até 128 IDs, nunca texto
+bruto. A aba
+receptora relê o IndexedDB compartilhado e atualiza a visão quando possível,
+sem substituir um rascunho aberto.
+
 ### Perda de autoridade
 
-Se o acesso foi revogado, o repositório apaga do cache o estado pessoal e as
-páginas do Curso atingido e encerra a sincronização. Falha fechada impede novas
-escritas sem autorização.
+Se o acesso foi revogado, os repositórios apagam do cache o estado pessoal, as
+páginas do Curso, o cache, a outbox e o handoff de anotações e encerram a
+sincronização. Falha fechada impede novas escritas sem autorização.
 
 ## Por que não existe uma outbox universal
 
 Uma fila única para todo o produto aumentaria acoplamento entre operações com
-semânticas diferentes. Nesta etapa, somente estado pessoal possui fila offline
-durável. Alterações autorais exigem servidor disponível e revisão corrente.
+semânticas diferentes. Estado pessoal e Anotações ancoradas possuem filas
+offline duráveis e separadas. As demais alterações autorais exigem servidor
+disponível e revisão corrente.
 
 Isso é uma decisão de escopo: não prova que nenhuma operação autoral futura
 possa precisar de fila, mas exige justificar cada caso em vez de introduzir uma
@@ -465,8 +564,10 @@ infraestrutura universal antecipada.
 - tabelas privadas não são acessadas diretamente pelo navegador;
 - RPCs públicas têm `EXECUTE` concedido por função e papel exatos;
 - funções de serviço exigem service role e identidade explícita do ator;
-- RLS protege Curso, entidades, Fontes, atribuições, acesso, estado pessoal,
-  perfil e Storage;
+- RLS protege Curso, entidades, Fontes, atribuições, Anotações ancoradas,
+  acesso, estado pessoal, perfil e Storage;
+- estudante lê somente as próprias anotações; proprietário lê a caixa de
+  entrada completa por DTO com identidade protegida e pseudônima;
 - a RPC de Estudo projeta somente citações visíveis e não expõe catálogo,
   histórico ou trechos privados;
 - Curso compartilhado não revela orientações privadas na busca;
@@ -488,6 +589,7 @@ de:
 - egress por abertura e atualização;
 - tamanho de índices e tabelas após migração;
 - crescimento de estados pessoais e eventos;
+- crescimento de Anotações ancoradas, eventos e tombstones;
 - invocações e duração de Edge Functions;
 - ocupação de avatares;
 - crescimento append-only de revisões, Âncoras e atribuições de Fontes.
@@ -502,6 +604,12 @@ vínculos novos por alvo e oito identidades de Âncora por revisão limitam cada
 catálogo mantém apenas metadados e URLs e o Estudo lê por Unidade somente ao
 abrir o painel. Isso limita o custo por pedido; não mede banco, egress ou
 invocações em uso real.
+
+Para Anotações ancoradas, página e resposta são limitadas a 24 itens e 256 KiB;
+as quotas são 128 por ator/Curso/alvo, 512 por ator/Curso e 256 versões ou
+eventos por anotação em operações ordinárias. O cache de 2 MiB e a outbox de
+256 KiB cercam o dispositivo. Esses caps tornam o crescimento observável, mas
+não demonstram custo sustentável nem legitimam retenção indefinida.
 
 Limite implementado não é evidência de sustentabilidade. A promoção deve
 registrar baseline e repetir a medição com dados reais.
@@ -521,21 +629,27 @@ Ainda não estão demonstrados:
 - comportamento prolongado com vários dispositivos;
 - orçamento real do Free Plan;
 - migração e Edge Functions hospedadas;
-- reprodução do inventário vertical pós-`1900` com 2.010 objetos, dos quais 416
-  correntes e 1.594 isolados para remoção na #130;
 - APK assinado do novo corte.
 
 A atestação privada do corte inclui `sourceReferenceHash`, calculado sobre as
 tuplas ordenadas `{studyUnitId, sourceOrdinal, sourceId}`. O mesmo valor precisa
-coincidir entre origem, artefato preparado e verificação pós-`1900`, ao lado de
-`documentHash`, `rowHash`, `entityStateHash` e contagens. O inventário final
-liga 416 objetos a seis casos correntes — 272 de Autoria, 84 de proveniência,
-25 de Estudo, 31 de pessoas/acesso, um de componentes e três de transportes —
-e mantém 1.594 no legado da #130.
+coincidir entre origem, artefato preparado e verificação pós-`2000`, ao lado de
+`documentHash`, `rowHash`, `entityStateHash` e contagens. O inventário
+regenerado pós-reset contém 2.096 objetos. Liga 501 a sete casos correntes — 84
+de Anotações ancoradas, 272 de Autoria, 84 de Fontes, 26 de Estudo, 31 de
+pessoas/acesso, um de componentes e três de transportes — e mantém 1.595 no
+legado físico. O acréscimo legado é
+`private.valid_course_personal_state_v1`, isolado para remoção posterior; o
+runtime usa somente personal-state v2.
 
-Este marco não reúne observações pessoais e autorais nem cria Anotação
-ancorada; essa fronteira é da #124. Também não implementa achado, correção,
-revisão ou verificação independente, reservados à #125.
+Os doze objetos correntes da versão privada são uma tabela, seu estado RLS
+forçado, seis constraints, três índices e um helper privado. O delta do
+`protected_ref` corresponde ao check, à unique e ao índice unique; a coluna não
+é contada como objeto.
+
+Este marco reúne observações pessoais e autorais como Anotações ancoradas. Não
+implementa achado de auditoria, correção, revisão ou verificação independente,
+que permanecem numa fatia posterior.
 
 O importador hospedado permanece bloqueado até que componentes antigos sem
 equivalência recebam uma decisão semântica. Ele é transitório e não se torna

@@ -17,6 +17,11 @@ import {
   normalizeCourseSourceCommand,
   normalizeSourceAttributionApplications
 } from "../aralearn/runtime/domain/courseSources.js";
+import {
+  CourseAnchoredAnnotationsError,
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseAnchoredAnnotationReadOptions
+} from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
@@ -42,6 +47,7 @@ const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a
 const KNOWN_COMPONENT_REFS = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
   ({ id, version }) => `${id}@${version}`
 );
+const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 function fail(code, message, details = null, status = 422) {
   throw new AuthoringApiError(status, code, message, details);
@@ -158,6 +164,15 @@ function normalizeCoursePlanDomain(normalize) {
     return normalize();
   } catch (error) {
     if (!(error instanceof CourseAuthoringPlanError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+function normalizeCourseAnchoredAnnotationsDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAnchoredAnnotationsError)) throw error;
     throw new AuthoringApiError(422, error.code, error.message, error.details);
   }
 }
@@ -368,6 +383,101 @@ function courseSourcesQuery(request) {
   };
 }
 
+function courseAnchoredAnnotationsQuery(request, courseId) {
+  const url = new URL(request.url);
+  if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
+      ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES) {
+    fail(
+      "course_anchored_annotations_query_too_large",
+      "Os filtros de observação excedem o limite transportável de 8 KiB.",
+      null,
+      414
+    );
+  }
+  const fields = [...url.searchParams.keys()];
+  const listFields = new Set(["origin", "channel", "state", "category", "subjectId"]);
+  const allowed = new Set([
+    "expectedRevision", "annotationSetVersion", "mode", ...listFields,
+    "includeUncategorized", "targetKind", "targetId", "includeDescendants",
+    "annotationId", "cursor", "limit"
+  ]);
+  const unknown = fields.find((field) => !allowed.has(field));
+  const duplicatedScalar = [...new Set(fields)].find((field) =>
+    !listFields.has(field) && url.searchParams.getAll(field).length > 1
+  );
+  if (unknown || duplicatedScalar) {
+    fail(
+      "invalid_course_anchored_annotation_query",
+      "A leitura de observações recebeu filtros incompatíveis.",
+      { field: unknown || duplicatedScalar }
+    );
+  }
+  const boolean = (field, defaultValue) => {
+    const value = url.searchParams.get(field);
+    if (value == null) return defaultValue;
+    if (value === "true") return true;
+    if (value === "false") return false;
+    fail(
+      "invalid_course_anchored_annotation_query",
+      `${field} é inválido.`,
+      { field }
+    );
+  };
+  const targetKind = url.searchParams.get("targetKind");
+  const targetId = url.searchParams.get("targetId");
+  const hierarchyPresent = targetKind !== null || targetId !== null;
+  if (hierarchyPresent && (targetKind === null || targetId === null) ||
+      !hierarchyPresent && url.searchParams.has("includeDescendants")) {
+    fail(
+      "invalid_course_anchored_annotation_query",
+      "O filtro hierárquico está incompleto.",
+      { field: "target" }
+    );
+  }
+  const rawAnnotationSetVersion = url.searchParams.get("annotationSetVersion");
+  const annotationSetVersion = rawAnnotationSetVersion === null
+    ? null
+    : rawAnnotationSetVersion === ""
+      ? Number.NaN
+      : Number(rawAnnotationSetVersion);
+  const query = {
+    mode: url.searchParams.has("mode") ? url.searchParams.get("mode") : "inbox",
+    origins: url.searchParams.getAll("origin"),
+    channels: url.searchParams.getAll("channel"),
+    states: url.searchParams.getAll("state"),
+    categories: url.searchParams.getAll("category"),
+    includeUncategorized: boolean("includeUncategorized", true),
+    subjectIds: url.searchParams.getAll("subjectId"),
+    hierarchy: hierarchyPresent
+      ? {
+          target: { kind: targetKind, id: targetId },
+          includeDescendants: boolean("includeDescendants", false)
+        }
+      : null,
+    annotationId: url.searchParams.get("annotationId")
+  };
+  const options = normalizeCourseAnchoredAnnotationsDomain(() =>
+    normalizeCourseAnchoredAnnotationReadOptions({
+      expectedCourseRevision: Number(url.searchParams.get("expectedRevision")),
+      annotationSetVersion,
+      query,
+      cursor: url.searchParams.get("cursor"),
+      limit: url.searchParams.has("limit")
+        ? Number(url.searchParams.get("limit"))
+        : 12
+    })
+  );
+  if (options.query.hierarchy?.target.kind === "course" &&
+      options.query.hierarchy.target.id !== courseId) {
+    fail(
+      "invalid_course_anchored_annotation_query",
+      "O filtro hierárquico não identifica este Curso.",
+      { field: "targetId" }
+    );
+  }
+  return options;
+}
+
 function validateEntityIdentity(value, index) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     fail("invalid_course_entity", "A identidade da entidade é inválida.", { index });
@@ -521,6 +631,47 @@ function validateCourseSourceChange(body, request) {
     command: normalizeCourseSourcesDomain(() => normalizeCourseSourceCommand(
       jsonObject(body.command, "command", 192 * 1024)
     ))
+  };
+}
+
+function validateCourseAnchoredAnnotationChange(body, request, courseId) {
+  exactFields(body, new Set([
+    "requestId", "expectedCourseRevision", "command"
+  ]));
+  const command = normalizeCourseAnchoredAnnotationsDomain(() =>
+    normalizeCourseAnchoredAnnotationCommand(
+      jsonObject(body.command, "command", 32 * 1024)
+    )
+  );
+  const requiresCourseRevision = new Set([
+    "create_anchored_annotation",
+    "correct_anchored_annotation_subjects"
+  ]).has(command.type);
+  if (command.type === "create_anchored_annotation" &&
+      command.target.kind === "course" && command.target.id !== courseId) {
+    fail(
+      "invalid_course_anchored_annotation_command",
+      "O alvo da observação não identifica este Curso.",
+      { field: "command.target.id" }
+    );
+  }
+  let expectedCourseRevision = null;
+  if (requiresCourseRevision) {
+    expectedCourseRevision = positiveInteger(
+      body.expectedCourseRevision,
+      "expectedCourseRevision"
+    );
+  } else if (body.expectedCourseRevision !== null) {
+    fail(
+      "invalid_course_anchored_annotation_command",
+      "Este comando usa somente a versão da observação.",
+      { field: "expectedCourseRevision" }
+    );
+  }
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedCourseRevision,
+    command
   };
 }
 
@@ -955,6 +1106,19 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseAnchoredAnnotations") {
+    assertPrincipal(principal);
+    const options = courseAnchoredAnnotationsQuery(request, route.courseId);
+    return {
+      requestId: null,
+      data: await adapter.getCourseAnchoredAnnotations({
+        principal,
+        courseId: route.courseId,
+        ...options,
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "getCourseAuthoringPartMaterialization") {
     assertPrincipal(principal);
     return {
@@ -1085,6 +1249,23 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: value.requestId,
       data: await adapter.executeCourseSourceCommand({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "executeCourseAnchoredAnnotationCommand") {
+    assertPrincipal(principal, { write: true });
+    const value = validateCourseAnchoredAnnotationChange(
+      await readCourseJsonBody(request),
+      request,
+      route.courseId
+    );
+    return {
+      requestId: value.requestId,
+      data: await adapter.executeCourseAnchoredAnnotationCommand({
         principal,
         courseId: route.courseId,
         ...value,

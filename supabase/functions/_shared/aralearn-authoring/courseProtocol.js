@@ -96,6 +96,24 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(courseSources[1])
     };
   }
+  const anchoredAnnotationChange = path.match(
+    /^\/v1\/courses\/([^/]+)\/anchored-annotations\/changes$/u
+  );
+  if (anchoredAnnotationChange && verb === "POST") {
+    return {
+      name: "executeCourseAnchoredAnnotationCommand",
+      courseId: courseUuid(anchoredAnnotationChange[1])
+    };
+  }
+  const anchoredAnnotations = path.match(
+    /^\/v1\/courses\/([^/]+)\/anchored-annotations$/u
+  );
+  if (anchoredAnnotations && verb === "GET") {
+    return {
+      name: "getCourseAnchoredAnnotations",
+      courseId: courseUuid(anchoredAnnotations[1])
+    };
+  }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };

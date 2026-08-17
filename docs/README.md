@@ -22,7 +22,7 @@ científica nem representa endosso institucional.
 3. [Guia do estudante](guia-estudante.md) — primeiro percurso, retomada,
    revisão, observações e citações redigidas;
 4. [Guia do professor e autor](guia-professor-autor.md) — criação privada,
-   planejamento, Fontes, inspeção e acesso direto;
+   planejamento, Fontes, inspeção, caixa de Observações e acesso direto;
 5. [Solução de problemas](solucao-de-problemas.md) — diagnóstico por sintoma e
    recuperação segura.
 
@@ -43,8 +43,8 @@ implementada de intenção ainda em desenvolvimento.
    — quando uma representação é justificável;
 6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) — retomada
    e dados que não devem ser confundidos com aprendizagem;
-7. [Observações pedagógicas](observacoes-pedagogicas.md) — retorno situado sem
-   vigilância comportamental.
+7. [Observações e Anotações ancoradas](observacoes-pedagogicas.md) — retorno
+   situado, triagem protegida, offline e limites de inferência.
 
 O [glossário de construtos](glossario-construtos.md) delimita termos
 educacionais e metodológicos. O [vocabulário controlado](vocabulario-controlado.md)

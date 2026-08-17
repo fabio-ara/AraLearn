@@ -135,6 +135,73 @@ function inspectionItem(index) {
   };
 }
 
+function anchoredAnnotation(index) {
+  const annotationId = `60000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+  return {
+    contract: "aralearn.course-anchored-annotation.v1",
+    annotationId,
+    annotationVersion: 1,
+    courseId: COURSE_ID,
+    provenance: { origin: "learner", channel: "study_interface" },
+    contributor: { kind: "self", role: "learner", ref: "self", label: "Você" },
+    target: {
+      kind: "study_unit",
+      id: "unit-01",
+      observedPath: [
+        { kind: "course", id: COURSE_ID, label: "Curso", version: REVISION },
+        { kind: "study_unit", id: "unit-01", label: "Unidade 1", version: 1 }
+      ],
+      currentAvailable: true,
+      currentPath: [
+        { kind: "course", id: COURSE_ID, label: "Curso", version: REVISION },
+        { kind: "study_unit", id: "unit-01", label: "Unidade 1", version: 1 }
+      ],
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-01`
+    },
+    observedRevision: { certainty: "known", courseRevision: REVISION, targetVersion: 1 },
+    rawText: `Observação da página ${index}.`,
+    category: null,
+    briefSummary: null,
+    subjectClassification: {
+      status: "unclassified",
+      automatic: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: REVISION,
+        subjects: []
+      },
+      effective: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: REVISION,
+        subjects: []
+      },
+      correctedAt: null
+    },
+    state: "open",
+    ownerResponse: null,
+    timestamps: {
+      capturedAt: "2026-08-17T14:00:00.000Z",
+      createdAt: "2026-08-17T14:00:00.000Z",
+      updatedAt: "2026-08-17T14:00:00.000Z",
+      firstConsideredAt: null,
+      respondedAt: null,
+      resolvedAt: null,
+      withdrawnAt: null
+    },
+    capabilities: {
+      canRevise: false,
+      canWithdraw: false,
+      canConsider: true,
+      canRespond: true,
+      canResolve: true,
+      canReopen: false,
+      canCorrectSubjects: true
+    },
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${annotationId}`
+  };
+}
+
 function pageFor(options, totalCount = 60) {
   const all = Array.from({ length: totalCount }, (_, index) => inspectionItem(index + 1));
   const cursorIndex = options.cursor
@@ -458,5 +525,243 @@ test("Inspeção abre atribuição completa da versão exata da Unidade", async 
     targetVersion: 1,
     targetLabel: "Unidade 1"
   }]);
+  sequence.destroy();
+});
+
+test("Inspeção evita N+1 decorativo e conta somente ao abrir o composer contextual", async () => {
+  const root = new FakeRoot();
+  const annotationCalls = [];
+  const controller = controllerFixture({
+    async loadCourseAnchoredAnnotations(courseId, options) {
+      annotationCalls.push({ courseId, options: structuredClone(options) });
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: COURSE_ID,
+        courseRevision: REVISION,
+        annotationSetVersion: 3,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: 0,
+          byOrigin: {},
+          byChannel: {},
+          byState: {},
+          unclassifiedTotal: 0
+        },
+        items: [],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async mutateCourseAnchoredAnnotations() {
+      throw new Error("Não deve alterar neste teste.");
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+  await sequence.open();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
+  assert.match(root.innerHTML, /<span>Observações<\/span>/u);
+  assert.equal(annotationCalls.length, 0);
+
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-observations]"
+          ? { dataset: { studyUnitId: "unit-01" } }
+          : null;
+      }
+    }
+  });
+  assert.match(root.innerHTML, /Observações da Unidade/u);
+  assert.match(root.innerHTML, /data-observation-composer/u);
+  assert.match(root.innerHTML, /Nova observação/u);
+  assert.match(root.innerHTML, /Observações · 0/u);
+  assert.equal(annotationCalls.length, 1);
+  assert.equal(annotationCalls[0].options.limit, 24);
+  assert.equal(annotationCalls[0].options.query.mode, "target");
+  assert.deepEqual(annotationCalls[0].options.query.states, []);
+
+  const counter = { textContent: "" };
+  root.querySelector = (selector) => selector === "#study-observation-counter" ? counter : null;
+  root.listeners.get("input")({
+    target: {
+      value: "😀a",
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; }
+    }
+  });
+  assert.equal(counter.textContent, "2/2.000 caracteres · 5 B/16 KiB");
+  sequence.destroy();
+});
+
+test("Inspeção agrega sete páginas byte-limited antes de renderizar o contexto", async () => {
+  const root = new FakeRoot();
+  const cursors = [];
+  const controller = controllerFixture({
+    async loadCourseAnchoredAnnotations(_courseId, options) {
+      cursors.push(options.cursor);
+      const index = options.cursor === null ? 0 : Number(options.cursor.replace("cursor", ""));
+      const hasMore = index < 6;
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: COURSE_ID,
+        courseRevision: REVISION,
+        annotationSetVersion: 3,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: 7,
+          byOrigin: { learner: 7 },
+          byChannel: { study_interface: 7 },
+          byState: { open: 7 },
+          unclassifiedTotal: 7
+        },
+        items: [anchoredAnnotation(index + 1)],
+        hasMore,
+        nextCursor: hasMore ? `cursor${index + 1}` : null
+      };
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+  await sequence.open();
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-observations]"
+          ? { dataset: { studyUnitId: "unit-01" } }
+          : null;
+      }
+    }
+  });
+
+  assert.deepEqual(cursors, [null, "cursor1", "cursor2", "cursor3", "cursor4", "cursor5", "cursor6"]);
+  assert.match(root.innerHTML, /Observações · 7/u);
+  assert.match(root.innerHTML, /Observação da página 7\./u);
+  sequence.destroy();
+});
+
+test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", async () => {
+  const root = new FakeRoot();
+  const cursors = [];
+  const controller = controllerFixture({
+    async loadCourseAnchoredAnnotations(_courseId, options) {
+      cursors.push(options.cursor);
+      const index = options.cursor === null ? 0 : Number(options.cursor.replace("cursor", ""));
+      const annotation = anchoredAnnotation(index + 1);
+      annotation.contributor = {
+        kind: "protected_person",
+        role: "learner",
+        ref: "person-0123456789abcdef",
+        label: index < 128 ? "Estudante A" : "Estudante B"
+      };
+      const hasMore = index < 128;
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: COURSE_ID,
+        courseRevision: REVISION,
+        annotationSetVersion: 3,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: 129,
+          byOrigin: { learner: 129 },
+          byChannel: { study_interface: 129 },
+          byState: { open: 129 },
+          unclassifiedTotal: 129
+        },
+        items: [annotation],
+        hasMore,
+        nextCursor: hasMore ? `cursor${index + 1}` : null
+      };
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+  await sequence.open();
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-observations]"
+          ? { dataset: { studyUnitId: "unit-01" } }
+          : null;
+      }
+    }
+  });
+
+  assert.equal(cursors.length, 128);
+  assert.equal(cursors.at(-1), "cursor127");
+  assert.match(root.innerHTML, /Observações · 129/u);
+  assert.match(root.innerHTML, /Exibindo 128 de 129 observações correspondentes; 129 ativas/u);
+  assert.match(root.innerHTML, /Abrir todas na área Observações/u);
+  assert.match(root.innerHTML, /section=observations/u);
+  assert.match(root.innerHTML, /Observação da página 128\./u);
+  assert.doesNotMatch(root.innerHTML, /Estudante B/u);
+  sequence.destroy();
+});
+
+test("Inspeção recusa cursor repetido sem renderizar inbox parcial", async () => {
+  const root = new FakeRoot();
+  let reads = 0;
+  const controller = controllerFixture({
+    async loadCourseAnchoredAnnotations(_courseId, options) {
+      reads += 1;
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: COURSE_ID,
+        courseRevision: REVISION,
+        annotationSetVersion: 3,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: 3,
+          byOrigin: { learner: 3 },
+          byChannel: { study_interface: 3 },
+          byState: { open: 3 },
+          unclassifiedTotal: 3
+        },
+        items: [anchoredAnnotation(reads)],
+        hasMore: true,
+        nextCursor: "cursor-repetido"
+      };
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+  await sequence.open();
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-observations]"
+          ? { dataset: { studyUnitId: "unit-01" } }
+          : null;
+      }
+    }
+  });
+
+  assert.equal(reads, 2);
+  assert.match(root.innerHTML, /não avançou de forma válida/u);
+  assert.doesNotMatch(root.innerHTML, /Observação da página 1\./u);
   sequence.destroy();
 });

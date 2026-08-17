@@ -59,7 +59,7 @@ Isso indica uso da réplica local. Ela permite retomar conteúdo já aberto, mas
 não prova que a lista, o acesso ou a composição estão atualizados. Reconecte e
 aguarde a atualização antes de tomar uma decisão de Autoria.
 
-## Progresso, marca ou observação aguardam envio
+## Progresso ou marca aguardam envio
 
 O estado pessoal entra numa fila por Curso. Mantenha o aplicativo instalado e
 os dados locais preservados até a conexão retornar. O repositório tenta
@@ -72,12 +72,23 @@ Se a fila continuar pendente:
 3. tente sincronizar com conexão estável;
 4. registre o tipo da operação e a mensagem, sem copiar o conteúdo privado.
 
+## Uma observação aguarda envio
+
+Anotações usam uma outbox própria, separada do estado pessoal. Reabra a Unidade,
+confirme o indicador de sincronização e reconecte. Em duas abas, a atualização
+leva apenas a versão privada daquela conta e IDs; cada aba relê o IndexedDB e
+preserva um rascunho aberto. Atividade de outra pessoa não muda essa versão nem
+deve aparecer como conflito. Se o item ficar **em conflito** ou **falhou**, não
+crie uma cópia às
+cegas: releia o estado remoto e revise o comando. Perda de acesso purga cache e
+outbox porque o dispositivo não pode continuar entregando dados sem autoridade.
+
 ## Uma observação foi salva, mas não houve correção
 
-Na revisão corrente, a observação do Estudo é pessoal e ancorada à Unidade. A
-fila autoral de triagem, auditoria, reparo e nova verificação ainda não está
-implementada. Salvar uma observação não significa que ela já chegou a um fluxo
-de correção.
+A observação do Estudo é uma Anotação ancorada própria e chega à caixa de
+entrada do proprietário. Ali ela pode ser considerada, respondida ou resolvida.
+Esses estados descrevem triagem: salvar, responder ou resolver não altera o
+Curso e não demonstra correção ou verificação independente.
 
 ## Uma prática não permite avançar
 

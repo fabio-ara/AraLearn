@@ -1,191 +1,232 @@
-# Observações pedagógicas nos cards
+# Observações e Anotações ancoradas
 
 ## Problema educacional
 
-Uma dúvida ou percepção de erro costuma surgir enquanto a pessoa lê ou resolve
-um card. Se o registro exigir sair da lição, localizar outra tela e reconstruir
-o contexto, parte da informação situada se perde e a interrupção pode dificultar
-a retomada. O AraLearn oferece uma observação curta no próprio card para
-preservar alvo e contexto.
+Uma dúvida, sugestão ou percepção de erro costuma surgir no ponto exato em que
+uma pessoa estuda ou inspeciona o Curso. Se o registro exigir sair desse
+contexto e reconstruí-lo depois, informação útil se perde. O AraLearn chama o
+controle de interface de **Observação** e o objeto do domínio de **Anotação
+ancorada**.
 
-Uma observação não é uma nota sobre o estudante. Ela registra somente o que a
-pessoa decidiu declarar naquele card. Presença, ausência, categoria e quantidade
-de observações não demonstram compreensão, dificuldade, atenção ou domínio.
+Uma Anotação ancorada é um registro protegido, ligado a um alvo identificável
+do Curso. Ela não é parte do conteúdo canônico, não concede autoria e não
+altera automaticamente o Curso. Podem existir **várias** anotações da mesma
+pessoa no mesmo alvo; salvar uma nova não substitui as anteriores.
 
-## Tipos de observação
+## Alvos, origens e canais
 
-O ícone de observação apresenta cinco categorias:
+Uma anotação aponta para exatamente um destes alvos:
 
-| Tipo | Quando usar |
+- Curso;
+- Módulo;
+- Lição;
+- Tópico;
+- Microssequência didática;
+- Unidade de estudo.
+
+A origem registra quem ou o que produziu a manifestação; o canal registra por
+onde ela entrou. O contrato fechado admite:
+
+| Origem | Canais coerentes |
 | --- | --- |
-| **Dúvida** | há uma pergunta que precisa de esclarecimento |
-| **Possível erro** | uma informação parece incorreta ou incompatível com outra fonte |
-| **Confuso** | a redação, o exemplo, a prática ou a representação é difícil de interpretar |
-| **Sugestão** | existe uma proposta concreta de melhoria |
-| **Observação** | o registro não corresponde aos tipos anteriores |
+| pessoa autora (`author`) | `authoring_interface`, `authoring_chat` ou `unknown_legacy` migrado |
+| estudante (`learner`) | `study_interface` ou `unknown_legacy` migrado |
+| auditoria humana (`human_audit`) | `audit_interface` ou `unknown_legacy` migrado |
+| auditoria automática (`automatic_audit`) | `audit_automation` ou `unknown_legacy` migrado |
+| legado sem origem verificável (`unknown_legacy`) | `unknown_legacy` |
 
-A categoria organiza a triagem; ela não confirma que o diagnóstico está
-correto. “Possível erro”, por exemplo, pede verificação e não autoriza uma
-correção automática.
+Registros migrados podem conservar um canal legado desconhecido quando a
+origem é conhecida. As superfícies correntes criam apenas anotações de pessoa
+autora ou estudante; as origens de auditoria existem no contrato para a fatia
+de ingestão correspondente, não significam que auditoria ou reparo já estejam
+implementados.
 
-## Registrar ou atualizar uma observação
+## Categorias e estados
 
-**Pré-condição:** estar em um card. A conta precisa ter permissão de comentário
-quando o curso pertence a um workspace.
+Categoria é opcional. Na interface, **Sem categoria** representa valor nulo;
+as demais opções são:
 
-**Passos:**
+| Categoria | Uso esperado |
+| --- | --- |
+| **Dúvida** (`question`) | há uma pergunta que precisa de esclarecimento |
+| **Possível erro** (`possible_error`) | algo parece incorreto e precisa ser verificado |
+| **Trecho confuso** (`confusing`) | texto, exemplo, prática ou representação é difícil de interpretar |
+| **Sugestão** (`suggestion`) | existe uma proposta concreta de melhoria |
 
-1. Toque no ícone de observação.
-2. Escolha a categoria que melhor descreve sua finalidade.
-3. Escreva um texto específico, com até 1.000 caracteres. Indique o que foi
-   entendido, onde surgiu o problema e, quando pertinente, o resultado esperado.
-4. Salve.
-
-**Resultado esperado:** o dispositivo conserva uma observação corrente para
-aquela pessoa e aquele card. Salvar novamente substitui categoria e texto
-correntes; não cria uma pilha de versões do comentário.
-
-**Sem conexão:** a observação é gravada primeiro no dispositivo. Ela fica
-disponível no card e aguarda sincronização.
-
-**Recuperação:** se houver aviso de envio pendente, mantenha os dados do
-aplicativo e sincronize quando a conexão voltar. Não limpe o armazenamento
-local antes do envio, pois a edição pode existir somente naquele dispositivo.
-
-### Exemplo de registro útil
-
-> Possível erro — O enunciado afirma que UDP confirma a entrega. No card
-> anterior, a ausência dessa confirmação foi apresentada como diferença em
-> relação ao TCP. Verificar se o termo pretendido era “não confirma”.
-
-O exemplo identifica a afirmação, explicita o conflito e evita atribuir intenção
-ao autor.
-
-## Retirar uma observação
-
-**Pré-condição:** existir uma observação própria no card.
-
-**Passos:** abra a folha de observação e use a ação de retirada.
-
-**Resultado esperado:** a observação corrente deixa de aparecer. A retirada
-remove o registro pessoal; não apaga uma alteração de curso que já tenha sido
-feita por outra pessoa.
-
-**Sem conexão:** a retirada entra na fila local e será sincronizada depois.
-
-**Recuperação:** se outro dispositivo ainda mostrar o texto anterior, sincronize
-ambos. Evite recriar a observação até confirmar o estado remoto.
-
-## Vínculo com um workspace
-
-Quando um curso se relaciona de forma inequívoca com um único workspace do qual
-a conta participa, a observação recebe esse contexto. Se a mesma identidade de
-curso puder pertencer a mais de um workspace, o AraLearn não escolhe um deles
-por aproximação: o registro permanece pessoal para não expor o comentário no
-projeto errado.
-
-Mover ou renomear o card preserva o vínculo quando sua identidade permanece a
-mesma. Se o alvo for retirado, a triagem informa que ele está indisponível; o
-aplicativo não redireciona silenciosamente para outro card semelhante.
-
-## Triar observações em um workspace
-
-**Pré-condição:** estar conectado e ter papel de proprietário, administrador,
-professor/autor ou revisor no workspace.
-
-**Passos:**
-
-1. Abra o item correspondente em **Trilhas** e consulte suas observações.
-2. Filtre por categoria ou estado quando isso ajudar a localizar o registro.
-3. Leia o card e a observação antes de responder.
-4. Escolha uma ação coerente: responder, considerar, resolver sem alteração ou
-   executar uma correção de autoria.
-5. Se houve correção, confirme que ela foi gravada antes de vinculá-la à
-   observação.
-
-**Resultado esperado:** a pessoa que registrou a observação pode receber a
-resposta e o estado corrente no mesmo contexto do card. Estudantes não recebem
-acesso aos registros de colegas.
-
-**Sem conexão:** a triagem compartilhada não é disponibilizada pela réplica de
-**Trilhas**. Observações próprias e retornos já sincronizados continuam
-visíveis localmente.
-
-**Recuperação:** se o alvo não existir mais, mantenha o registro no contexto de
-triagem e verifique a mudança estrutural; não associe o comentário a outro card
-por semelhança textual. Se o papel tiver sido alterado, sincronize e confirme a
-permissão antes de repetir a escrita.
-
-## Estados da triagem
+A categoria organiza a triagem. **Possível erro** não confirma um erro e não
+autoriza correção automática.
 
 | Estado | Significado operacional |
 | --- | --- |
-| **Aberta** | o registro ainda aguarda tratamento |
-| **Considerada** | o registro foi lido ou recebeu resposta, mas não foi encerrado |
-| **Resolvida** | houve encaminhamento sem correção de curso vinculada |
-| **Incorporada** | uma correção concluída foi vinculada ao registro |
+| **Aberta** (`open`) | ainda aguarda tratamento |
+| **Considerada** (`considered`) | foi examinada ou recebeu resposta, mas continua em acompanhamento |
+| **Resolvida** (`resolved`) | o tratamento foi encerrado |
+| **Retirada** (`withdrawn`) | quem pode retirar o registro solicitou sua remoção |
 
-O estado descreve o tratamento do registro, não a validade de uma afirmação nem
-a aprendizagem da pessoa. Uma resposta não modifica o curso. “Incorporada” só
-é apropriada depois de uma mudança efetivamente gravada e verificada.
+Não existe estado “incorporada”. Uma resposta ou resolução não prova que o
+Curso mudou; correção e verificação independente possuem contrato próprio.
 
-## Corrigir a partir de uma observação
+## Classificação de assunto sem inferência semântica
 
-**Pré-condição:** ter permissão de autoria, compreender o problema e conseguir
-localizar o alvo exato.
+A classificação automática é deliberadamente exata e limitada:
 
-**Passos:**
+- se o alvo é exatamente um **Tópico**, esse Tópico é o único assunto
+  automático, com método `exact_topic_target`;
+- Curso, Módulo, Lição, Microssequência e Unidade permanecem sem assunto
+  inferido, com método `target_scope_unclassified`;
+- registros migrados sem classificação verificável usam
+  `legacy_unclassified`.
 
-1. Leia o card, a observação e o contexto pedagógico da microssequência.
-2. Determine se o problema é factual, textual, representacional, interativo ou
-   de planejamento.
-3. Corrija o menor conjunto de objetos capaz de resolver a causa sem quebrar a
-   progressão didática.
-4. Valide estrutura, renderização e comportamento da prática.
-5. Vincule a correção concluída e responda em linguagem compreensível.
+O sistema não deduz Tópicos pela prosa, pela posição curricular ou por
+similaridade. O proprietário pode corrigir os assuntos em uma ação humana
+separada, registrada como `human_topic_selection`; essa seleção efetiva não
+apaga o fato automático original.
 
-**Resultado esperado:** curso e triagem permanecem relacionados sem confundir a
-manifestação original com a decisão autoral.
+## Registrar no Estudo
 
-**Sem conexão:** a edição textual de um workspace previamente carregado pode
-ser preservada localmente, mas consulta compartilhada, vínculo de correção e
-mudanças estruturais dependem de rede.
+1. Na Unidade corrente, abra **Observação**.
+2. Escolha uma categoria ou deixe **Sem categoria**.
+3. Escreva um texto específico e salve.
 
-**Recuperação:** diante de conflito no mesmo texto, releia a revisão remota e
-escolha qual redação deve prevalecer. Não marque a observação como incorporada
-enquanto a mudança estiver apenas na fila local ou tiver falhado.
+O texto admite no máximo 2.000 escalares Unicode e 16 KiB em UTF-8. Quebras de
+linha, retorno de carro e tabulação são preservados; outros caracteres de
+controle são recusados. A folha mostra todas as anotações próprias daquela
+Unidade, com categoria, estado, sincronização e eventual resposta do
+proprietário. É possível criar outras, revisar texto e categoria ou retirar um
+registro conforme as capacidades recebidas do servidor.
 
-## Interpretação pedagógica responsável
+Uma pessoa estudante lê somente as próprias anotações. Colegas nunca recebem
+os registros uns dos outros. A pessoa proprietária vê todas as anotações do
+Curso porque é responsável pela triagem. Nessa leitura, a identidade de quem
+contribuiu é o objeto
+`contributor={kind:'protected_person',role,ref,label}`. `ref` é um pseudônimo
+aleatório persistido no formato `person-` seguido de 16 dígitos hexadecimais;
+não é derivado de Curso/UUID, não contém UUID ou e-mail e não é reversível pelo
+contrato. Nem mesmo conhecer o UUID do roster permite correlacioná-lo. A
+interface mostra apenas o `label` pseudônimo protegido, por exemplo “Estudante
+7A3F”; nunca mostra `ref`, UUID ou e-mail.
 
-Feedback educacional envolve informação que precisa ser interpretada e
-transformada em ação por pessoas situadas; retorno específico e utilizável é
-mais informativo do que um marcador genérico ([Shute (2008)](referencias.md#ref-shute2008feedback); [Nicol e Macfarlane-Dick (2006)](referencias.md#ref-nicol2006formative)). A literatura também chama atenção para a participação do
-estudante na produção e no uso do feedback ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Nicol e Kushwah (2024)](referencias.md#ref-nicol2024feedbackagency); [Wood (2021)](referencias.md#ref-wood2021dialogic)).
+### Sem conexão e em duas abas
 
-Esses trabalhos fundamentam o desenho de hipóteses, não comprovam a eficácia
-desta funcionalidade. A implementação deve ser avaliada por tarefas de uso,
-entrevistas e análise qualitativa de registros autorizados. São interpretações
-indevidas:
+Comandos feitos offline entram numa outbox específica de anotações, separada do
+estado pessoal. Ela admite até 128 comandos e 256 KiB por Curso. O cache local
+admite até 2 MiB, 48 alvos e 128 anotações por alvo; páginas têm até 24 itens e
+no máximo 128 páginas são mantidas por alvo, ainda respeitando 128 itens
+agregados. Cada cursor precisa ser novo e não pode se repetir durante a carga.
 
-- “não comentou, portanto compreendeu”;
-- “comentou muito, portanto tem dificuldade”;
-- “marcou possível erro, portanto o curso está errado”;
-- “a turma produziu poucos registros, portanto a docência foi eficaz”;
-- “a observação foi resolvida, portanto houve aprendizagem”.
+Duas abas da mesma conta coordenam atualização por `BroadcastChannel`, mas a
+mensagem leva somente identidade do Curso, versão da projeção privada daquela
+pessoa e até 128 IDs de anotação — nunca texto bruto. A outra aba relê o
+IndexedDB compartilhado e tenta atualizar a visão sem sobrescrever um rascunho
+aberto. Perda de acesso ou outra perda de autoridade elimina cache, outbox e
+entrega local daquele Curso.
 
-O AraLearn não transforma categorias, estados, quantidades ou datas em nota,
-ranking ou perfil de risco.
+Uma indicação **pendente**, **sincronizando**, **sincronizada**, **em conflito**
+ou **falhou** descreve entrega, não tratamento pedagógico. Preserve os dados do
+aplicativo até a sincronização se houver comandos importantes ainda pendentes.
 
-## Dados conservados
+## Triar na Autoria
 
-Para cada pessoa e card, mantém-se o estado corrente necessário à função:
-identidades do item e do card, categoria, texto e data de atualização. Quando
-há workspace, podem existir também resposta, estado de triagem e referência a
-uma correção concluída. O conteúdo integral do card não é copiado para o
-registro, e as versões anteriores do texto da observação não formam um
-histórico de conversa.
+**Observações** é a sétima área da Autoria. Ela apresenta uma única caixa de
+entrada do Curso. O resumo informa total correspondente, contagens por origem,
+canal e estado e total sem classificação; os filtros cobrem origem, canal,
+estado, categoria, ausência de categoria, assunto e hierarquia, com opção de
+incluir descendentes. Cada resultado oferece links profundos para o alvo e para
+a tela de detalhe.
 
-Essa minimização reduz duplicação e limita inferências indevidas, mas não torna
-o texto anônimo: participantes autorizados do workspace podem lê-lo de acordo
-com seu papel. A pessoa deve evitar inserir senhas, chaves, documentos pessoais
-ou dados de terceiros.
+A pessoa proprietária pode criar uma anotação autoral no Curso, Módulo, Lição,
+Tópico ou Microssequência. Para anotar uma Unidade, parte da **Inspeção**, que
+conserva o alvo exato. No detalhe, as capacidades retornadas pelo servidor
+determinam se é possível considerar, responder, resolver, reabrir, retirar,
+revisar texto/categoria ou corrigir assuntos.
+
+Uma resposta do proprietário admite no máximo 2.000 escalares Unicode e 16 KiB.
+A síntese breve usada por fluxos conversacionais admite 500 escalares e 4 KiB.
+Nenhuma dessas ações modifica a composição do Curso por si só.
+
+## Autoria por MCP
+
+O MCP continua expondo exatamente seis ferramentas públicas. Não existe uma
+sétima ferramenta exclusiva para observações:
+
+- `lerCurso` usa a vista `anchored_annotations` para caixa de entrada, alvo ou
+  detalhe;
+- `alterarCurso` usa a operação `update_anchored_annotations` para criar,
+  revisar, retirar, considerar, responder, resolver, reabrir ou corrigir
+  assuntos.
+
+Uma criação pelo MCP exige confirmação humana explícita (`confirmed: true`) e
+uma síntese breve não vazia. O servidor usa a confirmação como guarda de
+entrada e não a grava como dado do domínio. Veja [Autoria por
+MCP](autoria-mcp.md) para o protocolo completo.
+
+## Paginação, versões e quotas
+
+Leituras de caixa de entrada, alvo e detalhe usam páginas de no máximo 24 itens,
+cursor opaco de até 240 caracteres e resposta de até 256 KiB. O DTO de item é
+`aralearn.course-anchored-annotation.v1` e informa caminho observado e corrente,
+certeza sobre a revisão observada, classificação, capacidades e links
+profundos.
+
+O servidor admite, incluindo tombstones de retirada:
+
+- até 128 anotações correntes por pessoa, Curso e alvo;
+- até 512 anotações correntes por pessoa e Curso;
+- até 256 versões ou eventos por anotação em operações ordinárias.
+
+Retirada e exclusão de conta permanecem disponíveis mesmo quando o teto de
+versões foi alcançado. O preflight de quota também conta o ator nulo do legado,
+para que a migração não contorne limites por ausência de identidade.
+
+O proprietário recebe o contador global monotônico do conjunto de anotações.
+No Estudo, `annotationSetVersion` é o contador monotônico privado da projeção
+da própria pessoa: atividade alheia não o altera nem pode ser percebida por
+ele. Esse contador contém somente coordenação, não texto nem nova autoridade de
+domínio. Sua linha permanece até a exclusão da pessoa ou do Curso para preservar
+monotonicidade do cache; ela não participa do TTL de texto, tombstone ou
+recibo. Criar e corrigir assuntos também exigem a revisão esperada do Curso;
+revisar texto, mudar estado ou responder usam a versão aplicável ao leitor sem
+avançar artificialmente a revisão geral do conteúdo.
+
+## Privacidade, retenção e retirada
+
+Enquanto uma anotação está aberta, considerada ou resolvida e o Curso existe,
+o servidor conserva texto corrente, síntese breve e resposta necessários à
+função. Eventos de revisão são append-only, mas guardam hashes e metadados
+limitados, não as versões anteriores do texto bruto.
+
+Retirar uma anotação redige imediatamente texto, síntese e resposta e cria um
+tombstone. Tombstone e recibo técnico expiram logicamente em até 14 dias; então
+deixam de ser legíveis, pagináveis, contar quota ou admitir repetição. A limpeza
+física da linha e dos eventos é oportunista quando o Curso é lido ou alterado e
+processa por toque um lote de até 128 tombstones e 256 recibos expirados; Curso
+inativo pode continuar fisicamente sujo porque não há cron nem promessa de hard
+delete nessa janela. A exclusão da conta retira e redige imediatamente suas
+contribuições, sujeitas à mesma
+expiração. Excluir o Curso remove os registros por cascade.
+Anotações ativas ou resolvidas não são apagadas automaticamente por idade:
+quem opera uma instalação precisa declarar sua política institucional de
+retenção.
+
+Cópias para pesquisa não são criadas por padrão. Qualquer uso exige protocolo
+explícito, minimizado e governado; anotações não viram automaticamente
+resultado, métrica ou conjunto de treinamento.
+
+## Interpretação responsável
+
+Feedback situado pode apoiar ação, mas a literatura não comprova a eficácia
+desta implementação ([Shute (2008)](referencias.md#ref-shute2008feedback);
+[Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)). São
+inferências indevidas:
+
+- “não anotou, portanto compreendeu”;
+- “anotou muito, portanto tem dificuldade”;
+- “marcou possível erro, portanto o Curso está errado”;
+- “a ausência de registros demonstra qualidade docente”;
+- “recebeu resposta ou foi resolvida, portanto houve aprendizagem”.
+
+Quantidade, ausência, categoria, estado, resposta, resolução e timestamps não
+medem atenção, dificuldade, aprendizagem, qualidade ou eficácia pedagógica. O
+instante capturado é somente uma pista de contexto, nunca duração de sessão. O
+AraLearn não usa esses sinais para nota, ranking, perfil de risco ou inferência
+automática.

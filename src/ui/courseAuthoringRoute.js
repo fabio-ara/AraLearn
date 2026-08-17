@@ -1,5 +1,5 @@
 export const COURSE_AUTHORING_SECTIONS = Object.freeze([
-  "planning", "parameters", "sources", "structure", "inspection", "people"
+  "planning", "parameters", "sources", "structure", "inspection", "observations", "people"
 ]);
 
 const COURSE_AUTHORING_ROUTE_PREFIX = "#/authoring/courses/";
@@ -14,11 +14,12 @@ const TARGET_DEFINITIONS = Object.freeze([
     query: "didacticMicrosequenceId",
     kind: "didactic_microsequence"
   }),
-  Object.freeze({ option: "studyUnitId", query: "studyUnitId", kind: "study_unit" })
+  Object.freeze({ option: "studyUnitId", query: "studyUnitId", kind: "study_unit" }),
+  Object.freeze({ option: "annotationId", query: "annotationId", kind: "anchored_annotation", uuid: true })
 ]);
 const BUILD_OPTION_FIELDS = new Set([
   "section", "authoringPartId", "moduleId", "lessonId", "didacticMicrosequenceId",
-  "studyUnitId", "unassigned"
+  "studyUnitId", "annotationId", "unassigned"
 ]);
 
 export function isCanonicalCourseId(value) {
@@ -60,6 +61,7 @@ function normalizedTargetOptions(options) {
 
 function targetAllowedForSection(target, section) {
   if (!target) return true;
+  if (target.kind === "anchored_annotation") return section === "observations";
   if (section === "inspection") return true;
   return section === "parameters" && [
     "module", "lesson", "didactic_microsequence"

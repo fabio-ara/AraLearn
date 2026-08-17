@@ -12,7 +12,9 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const LETTERED_COURSE_ID = "abcdefab-cdef-4abc-8def-abcdefabcdef";
 
 test("rota canônica preserva courseId, seção real e um único alvo compatível", () => {
-  for (const section of ["planning", "parameters", "sources", "structure", "inspection", "people"]) {
+  for (const section of [
+    "planning", "parameters", "sources", "structure", "inspection", "observations", "people"
+  ]) {
     const hash = buildCourseAuthoringRoute(COURSE_ID, { section });
     assert.equal(hash, `#/authoring/courses/${COURSE_ID}?section=${section}`);
     assert.deepEqual(parseCourseAuthoringRoute(hash), { courseId: COURSE_ID, section, target: null });
@@ -43,6 +45,14 @@ test("rota canônica preserva courseId, seção real e um único alvo compatíve
     section: "inspection",
     target: { kind: "unassigned", id: null }
   });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "observations",
+    annotationId: LETTERED_COURSE_ID
+  })), {
+    courseId: COURSE_ID,
+    section: "observations",
+    target: { kind: "anchored_annotation", id: LETTERED_COURSE_ID }
+  });
   for (const [option, id, kind] of targets.slice(1, 4)) {
     const hash = buildCourseAuthoringRoute(COURSE_ID, {
       section: "parameters",
@@ -65,6 +75,8 @@ test("parser rejeita UUID não canônico, parâmetros extras e outros caminhos",
     `#/authoring/courses/${COURSE_ID}?section=content`,
     `#/authoring/courses/${COURSE_ID}?section=parameters&studyUnitId=a`,
     `#/authoring/courses/${COURSE_ID}?section=parameters&authoringPartId=${LETTERED_COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=inspection&annotationId=${LETTERED_COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&studyUnitId=a`,
     `#/authoring/courses/${COURSE_ID}?section=inspection&moduleId=a&lessonId=b`,
     `#/authoring/courses/${COURSE_ID}?moduleId=a&section=inspection`,
     `#/authoring/courses/${COURSE_ID}/inspection?section=inspection`,

@@ -5,10 +5,11 @@ pelas ferramentas conversacionais. Nesta revisão, ela permite criar Cursos,
 editar o plano instrucional e as Partes em linguagem natural, consultar a
 configuração do desenho e a cobertura de cada Microssequência, manter Fontes e
 Âncoras, atribuí-las a itens do plano ou Unidades, consultar a hierarquia,
-inspecionar Unidades em sequência vertical, levar um pedido de materialização
-ao chat conectado e gerir acesso direto. Edição contextual de Unidades,
-observações autorais reunidas, auditoria, correção, variantes e analytics ainda
-não devem ser tratadas como disponíveis.
+inspecionar Unidades em sequência vertical, reunir Anotações ancoradas numa
+caixa de entrada, levar um pedido de materialização ao chat conectado e gerir
+acesso direto. Edição contextual de Unidades, achados de auditoria, correção
+verificada, variantes e analytics ainda não devem ser tratados como
+disponíveis.
 
 ## Abrir a Autoria
 
@@ -39,9 +40,9 @@ pedido, causada por falha de rede, recupera o resultado em vez de criar outro
 Curso. Ela também cria um plano vazio com faixa preferencial inicial de 7–12
 Partes. Essa faixa é configurável e não constitui lei pedagógica.
 
-## Compreender as seis áreas
+## Compreender as sete áreas
 
-Ao abrir um Curso, a barra iconográfica oferece seis destinos.
+Ao abrir um Curso, a barra iconográfica oferece sete destinos.
 
 ### Planejamento
 
@@ -169,6 +170,31 @@ mudou, relê a nova revisão antes de continuar. Respostas aparecem somente para
 preservar a representação, mas ficam desativadas: Inspeção não é Estudo nem
 editor contextual.
 
+### Observações
+
+Apresenta uma única caixa de entrada com todas as Anotações ancoradas do Curso.
+Sínteses e filtros ajudam a recortar origem, canal, estado, categoria, ausência
+de categoria, assunto e posição hierárquica, com inclusão opcional de
+descendentes. Cada item oferece links profundos para o alvo e para seu detalhe.
+
+É possível criar uma anotação autoral no Curso, Módulo, Lição, Tópico ou
+Microssequência. Para uma Unidade de estudo, use **Anotar** a partir da
+**Inspeção**, preservando a identidade exata do alvo. Podem existir várias
+anotações da mesma pessoa no mesmo alvo.
+
+No detalhe, as capacidades recebidas do servidor determinam as ações
+disponíveis: revisar texto ou categoria, considerar, responder, resolver,
+reabrir, retirar e corrigir assuntos. Apenas Tópico recebe classificação
+automática exata; nos demais alvos, assuntos permanecem sem inferência até uma
+seleção humana separada. Responder ou resolver não altera o Curso e não equivale
+a uma correção verificada.
+
+O proprietário vê todas as anotações necessárias à triagem. Cada estudante vê
+somente as próprias e nunca as de colegas. O DTO identifica a contribuição por
+papel, `ref` aleatório persistido e `label` protegido. `ref` não é derivado do
+UUID ou do Curso. A interface mostra apenas o rótulo
+pseudônimo, por exemplo “Estudante 7A3F”, sem expor `ref`, UUID ou e-mail.
+
 ### Pessoas
 
 Mostra o proprietário e cada pessoa que recebeu **Acesso ao Estudo**. Nome e
@@ -227,7 +253,8 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 1. listar os Cursos próprios;
 2. escolher o Curso pelo título e confirmar sua identidade;
 3. ler o plano instrucional, o desenho efetivo, a hierarquia, a vista
-   `course_sources`, a vista `study_units` ou páginas de entidades;
+   `course_sources`, `anchored_annotations`, `study_units` ou páginas de
+   entidades;
 4. formular a alteração;
 5. usar a revisão do Curso e a versão específica lidas como condições da
    escrita;
@@ -241,6 +268,11 @@ proveniência, confirmar etapas de materialização, alterar a composição por 
 operação separada, gerir perfil e acesso e consultar componentes didáticos.
 Interface e MCP usam as mesmas relações, regras de domínio, transações e
 projeções; não há um desenho reservado ao chat.
+
+No MCP, Observações não criam uma ferramenta extra: `lerCurso` usa
+`anchored_annotations` e `alterarCurso` usa `update_anchored_annotations`.
+Criar exige confirmação humana e síntese breve não vazia; o texto da conversa
+não é persistido como anotação.
 
 Para revisar conteúdo, prefira `lerCurso` com `view: "study_units"`. Escolha o
 mesmo escopo disponível na interface e use a revisão devolvida, a âncora para
@@ -314,8 +346,7 @@ Não trate as seguintes ações como implementadas no runtime canônico:
 
 - editar cada Unidade diretamente;
 - transformar observação de estudante em correção verificada;
-- registrar observações autorais no ciclo unificado da #124;
-- produzir achados, correções ou verificação independente da #125;
+- produzir achados de auditoria, correções ou verificação independente;
 - criar condições e variantes comparáveis;
 - consultar analytics de Autoria;
 - disponibilizar Curso publicamente.
