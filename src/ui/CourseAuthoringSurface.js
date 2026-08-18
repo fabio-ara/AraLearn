@@ -1412,7 +1412,21 @@ export function createCourseAuthoringSurface({
   function mountVariantsPanel() {
     if (state.view !== "course" || state.section !== "variants" || !state.course) return;
     const host = root.querySelector?.("[data-course-variants-host]"); if (!host) return;
-    try { variantsPanel = createCourseVariantsPanel({ root: host, controller, course: state.course, onCourseRevisionChange: acceptSourcesCourseRevision, confirmValue }); void variantsPanel.open(); }
+    try {
+      variantsPanel = createCourseVariantsPanel({
+        root: host,
+        controller,
+        course: state.course,
+        onCourseRevisionChange: acceptSourcesCourseRevision,
+        onOpenCourse: (targetCourseId) => {
+          if (typeof targetCourseId === "string" && targetCourseId) {
+            void navigate(buildCourseAuthoringRoute(targetCourseId, { section: "structure" }));
+          }
+        },
+        confirmValue
+      });
+      void variantsPanel.open();
+    }
     catch (error) { host.innerHTML = statusPanel({ kind: "error", title: "Variantes indisponíveis", message: writeFailureMessage(error) }); }
   }
 

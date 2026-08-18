@@ -3017,6 +3017,39 @@
   white-space: nowrap;
 }
 
+/* O Curso próprio tem oito áreas; no celular a grade mantém ícones acessíveis
+   e, no desktop, distribui cada área sem criar uma segunda navegação. */
+.course-authoring-sections.has-standard a {
+  gap: 4px;
+  padding-inline: 5px;
+  font-size: var(--type-xs);
+}
+
+@media (min-width: 900px) {
+  .course-authoring-sections.has-standard {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .course-authoring-sections.has-standard a span {
+    min-width: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .course-authoring-sections.has-standard a span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 @media (min-width: 900px) {
   .course-authoring-sections.has-seven a[data-section="observations"] span {
     line-height: 1.08;
@@ -3031,6 +3064,133 @@
 
 .course-authoring-surface[data-section="observations"] .course-authoring-frame {
   width: 100%;
+}
+
+/* Variantes compara Cursos independentes sem transformar o painel em planilha. */
+.course-authoring-surface[data-section="variants"] {
+  width: min(100%, 920px);
+}
+
+.course-variants-host,
+.course-variants,
+.course-variants-list {
+  min-width: 0;
+  width: 100%;
+}
+
+.course-variants-list {
+  display: grid;
+  gap: 10px;
+}
+
+.course-variants .course-authoring-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.course-variants .course-authoring-card h3,
+.course-variants .course-authoring-card p {
+  margin: 0;
+}
+
+.course-variants .course-authoring-card p + p,
+.course-variants .course-authoring-card ul + p {
+  margin-top: 6px;
+}
+
+.course-variants .course-authoring-card p,
+.course-variants-differences small {
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  overflow-wrap: anywhere;
+}
+
+.course-variants-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.course-variants .course-authoring-card button,
+.course-variants form > button {
+  min-height: var(--tap);
+  padding: 8px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--action-primary-hover);
+  background: var(--surface-raised);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.course-variants form > button {
+  border-color: var(--action-primary);
+  color: var(--text-on-action);
+  background: var(--action-primary);
+}
+
+.course-variants-differences {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-left: 19px;
+}
+
+.course-variants-differences li {
+  overflow-wrap: anywhere;
+}
+
+.course-variants-policy {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.course-variants-policy summary {
+  cursor: pointer;
+  color: var(--action-primary-hover);
+  font-weight: 750;
+}
+
+.course-variants-policy .course-design-component-option {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.course-variants-policy .course-design-component-option > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.course-variants-policy .course-design-component-option small {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+@media (max-width: 560px) {
+  .course-variants .course-authoring-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .course-variants-actions,
+  .course-variants .course-authoring-card > button {
+    justify-content: stretch;
+  }
+
+  .course-variants-actions button,
+  .course-variants .course-authoring-card > button {
+    flex: 1 1 132px;
+  }
 }
 
 .course-observations-host,

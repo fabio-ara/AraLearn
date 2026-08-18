@@ -12,7 +12,7 @@ class Root {
 }
 
 test("painel de variantes enumera conjuntos e abre uma comparação vinculada ao Curso", async () => {
-  const calls = [];
+  const calls = []; const openedCourses = [];
   const controller = {
     async listCourseVariantComparisons(courseId, revision) {
       calls.push(["list", courseId, revision]);
@@ -32,12 +32,34 @@ test("painel de variantes enumera conjuntos e abre uma comparação vinculada ao
     }
   };
   const root = new Root();
-  const panel = createCourseVariantsPanel({ root, controller, course: { courseId: COURSE_ID, title: "Origem", goal: "Objetivo", revision: 4 } });
+  const panel = createCourseVariantsPanel({ root, controller, course: { courseId: COURSE_ID, title: "Origem", goal: "Objetivo", revision: 4 }, onOpenCourse: (courseId) => openedCourses.push(courseId) });
   await panel.open();
   assert.match(root.innerHTML, /Planejamento compartilhado/u);
   root.listeners.get("click")({ target: { closest: () => ({ dataset: { courseVariantsAction: "open", setId: SET_ID } }) } });
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(calls, [["list", COURSE_ID, 4], ["open", COURSE_ID, SET_ID, 4]]);
   assert.match(root.innerHTML, /Comparação/u);
+  assert.match(root.innerHTML, /Abrir origem/u);
+  root.listeners.get("click")({ target: { closest: () => ({ dataset: { courseVariantsAction: "visit", courseId: "40000000-0000-4000-8000-000000000004" } }) } });
+  assert.deepEqual(openedCourses, ["40000000-0000-4000-8000-000000000004"]);
+  panel.destroy();
+});
+
+test("painel reutiliza o catálogo real ao oferecer restrição de componentes", async () => {
+  const root = new Root();
+  const controller = {
+    async listCourseVariantComparisons() {
+      return { contract: "aralearn.course-variant-comparison-list.v1", sourceCourseId: COURSE_ID, sourceCourseRevision: 4, items: [] };
+    },
+    async loadCourseDesign() {
+      return { componentCatalog: { version: "1-3e5629f8", options: [{ ref: "aralearn.resource.text@1.0.0", label: "Texto", purpose: "Apresenta conteúdo." }] } };
+    }
+  };
+  const panel = createCourseVariantsPanel({ root, controller, course: { courseId: COURSE_ID, title: "Origem", goal: "Objetivo", revision: 4 } });
+  await panel.open();
+  root.listeners.get("click")({ target: { closest: () => ({ dataset: { courseVariantsAction: "create" } }) } });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(root.innerHTML, /Restringir aos componentes selecionados/u);
+  assert.match(root.innerHTML, /aralearn\.resource\.text@1\.0\.0/u);
   panel.destroy();
 });
