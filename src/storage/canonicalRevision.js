@@ -1,3 +1,5 @@
+import { publishedRevisionHashSource } from "../core/publishedRevisionCompatibility.js";
+
 function serialize(value, ancestors, path) {
   if (value === null) return "null";
   if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
@@ -35,7 +37,7 @@ export async function canonicalRevisionHash(value) {
   if (!globalThis.crypto?.subtle) throw new Error("Web Crypto não está disponível.");
   const digest = await globalThis.crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(canonicalRevisionString(value))
+    new TextEncoder().encode(canonicalRevisionString(publishedRevisionHashSource(value)))
   );
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
