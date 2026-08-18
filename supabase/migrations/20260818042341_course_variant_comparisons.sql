@@ -152,6 +152,7 @@ declare
   v_parameter_id text;
   v_parameter_value jsonb;
   v_parameter_targets text[] := array[]::text[];
+  v_attribution record;
 begin
   if p_actor_id is null
      or p_source_course_id is null
@@ -307,6 +308,77 @@ begin
   ) current_value
   where current_value.action = 'set';
 
+  -- Fonte e Âncora são fatos de proveniência, não materializações. As revisões
+  -- são copiadas sem Storage; os vínculos são recompostos contra o alvo novo.
+  insert into private.course_source_revisions(
+    course_id,source_id,revision,status,kind,title,citation_text,url,
+    edition_or_version,study_visibility,actor_id
+  )
+  select v_target_course_id,source.source_id,source.revision,source.status,
+    source.kind,source.title,source.citation_text,source.url,
+    source.edition_or_version,source.study_visibility,
+    case when source.status = 'unresolved_legacy' then null else p_actor_id end
+  from private.course_source_revisions source
+  where source.course_id = p_source_course_id;
+
+  insert into private.course_source_anchor_revisions(
+    course_id,anchor_id,revision,source_id,source_revision,status,selector,
+    verification_excerpt,actor_id
+  )
+  select v_target_course_id,anchor.anchor_id,anchor.revision,anchor.source_id,
+    anchor.source_revision,anchor.status,anchor.selector,
+    anchor.verification_excerpt,p_actor_id
+  from private.course_source_anchor_revisions anchor
+  where anchor.course_id = p_source_course_id;
+
+  if exists(
+    select 1
+    from private.course_source_attributions attribution
+    cross join lateral private.course_source_links_v1(
+      p_source_course_id,attribution.id
+    ) links
+    join lateral jsonb_array_elements(links) link(value) on true
+    join lateral (
+      select source.status
+      from private.course_source_revisions source
+      where source.course_id = p_source_course_id
+        and source.source_id = link.value->>'sourceId'
+        and source.revision = (link.value->>'sourceRevision')::bigint
+    ) source on true
+    where attribution.course_id = p_source_course_id
+      and source.status = 'unresolved_legacy'
+  ) then
+    raise exception 'A variante exige Fonte legada ainda não resolvida.'
+      using errcode = '55000';
+  end if;
+
+  for v_attribution in
+    select 'plan_item'::text as target_kind,
+      target_item.id::text as target_id,
+      private.course_effective_source_links_v1(
+        p_source_course_id,'plan_item',source_item.id::text
+      ) as links
+    from private.course_instructional_plan_items source_item
+    join private.course_instructional_plan_items target_item
+      on target_item.course_id = v_target_course_id
+     and target_item.item_kind = source_item.item_kind
+     and target_item.position = source_item.position
+    where source_item.course_id = p_source_course_id
+    union all
+    select 'study_unit'::text,source_unit.entity_id,
+      private.course_effective_source_links_v1(
+        p_source_course_id,'study_unit',source_unit.entity_id
+      )
+    from private.course_entities source_unit
+    where source_unit.course_id = p_source_course_id
+      and source_unit.entity_type = 'study_unit'
+  loop
+    perform private.apply_course_source_attribution_v1(
+      v_target_course_id,v_attribution.target_kind,v_attribution.target_id,
+      1,v_attribution.links,p_actor_id,false,null
+    );
+  end loop;
+
   for v_difference in select value from jsonb_array_elements(p_parameter_differences)
   loop
     if jsonb_typeof(v_difference) <> 'object'
@@ -406,7 +478,7 @@ alter table private.course_change_receipts
     'create_course','commit_course_composition','commit_instructional_plan',
     'advance_authoring_part_materialization','apply_course_design_command',
     'execute_course_source_command','grant_access','revoke_access',
-    'update_audit_cycle','create_course_variants'
+    'update_audit_cycle','create_course_variants','detach_course_variant'
   ));
 
 create function public.create_course_variants_for_actor_v1(
@@ -619,6 +691,205 @@ grant execute on function public.create_course_variants_for_actor_v1(
   uuid,uuid,bigint,jsonb,text
 ) to service_role;
 
+create function public.get_owned_course_variant_comparison_for_actor_v1(
+  p_actor_id uuid,
+  p_source_course_id uuid,
+  p_expected_course_revision bigint,
+  p_comparison_set_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private, auth
+as $function$
+declare
+  v_source_course public.courses%rowtype;
+  v_comparison_set private.course_variant_comparison_sets%rowtype;
+  v_members jsonb;
+begin
+  perform private.require_service_role();
+  perform private.require_course_access_v1(
+    p_source_course_id,p_actor_id,true
+  );
+  if p_expected_course_revision is null or p_expected_course_revision < 1
+     or p_comparison_set_id is null then
+    raise exception 'Leitura de variantes comparáveis inválida.'
+      using errcode = '22023';
+  end if;
+  select * into strict v_source_course
+  from public.courses course
+  where course.id = p_source_course_id
+  for share;
+  if v_source_course.revision <> p_expected_course_revision then
+    raise sqlstate 'PGRST' using
+      message = jsonb_build_object(
+        'code','40001',
+        'message','O Curso mudou; releia antes de comparar variantes.',
+        'details',null,'hint',null
+      )::text,
+      detail = jsonb_build_object('status',409,'headers',jsonb_build_object())::text;
+  end if;
+  select * into strict v_comparison_set
+  from private.course_variant_comparison_sets comparison_set
+  where comparison_set.id = p_comparison_set_id
+    and comparison_set.owner_id = p_actor_id
+    and comparison_set.source_course_id = p_source_course_id;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'courseId',course.id,'label',member.label,
+    'title',course.title,'goal',course.goal,
+    'attachedCourseRevision',member.attached_course_revision,
+    'currentCourseRevision',course.revision,
+    'changedSinceAttached',course.revision <> member.attached_course_revision,
+    'detachedAt',member.detached_at,
+    'parameterDifferences',member.declared_parameter_differences,
+    'componentPolicyDifference',member.declared_component_policy_difference,
+    'materialization',jsonb_build_object(
+      'partCount',(select count(*)::integer
+        from private.course_authoring_parts part
+        where part.course_id = course.id and part.retired_at is null),
+      'completedCount',(select count(*)::integer
+        from private.course_authoring_part_materializations materialization
+        where materialization.course_id = course.id
+          and materialization.status = 'completed'),
+      'runningCount',(select count(*)::integer
+        from private.course_authoring_part_materializations materialization
+        where materialization.course_id = course.id
+          and materialization.status = 'running'),
+      'latestUpdatedAt',(select max(materialization.updated_at)
+        from private.course_authoring_part_materializations materialization
+        where materialization.course_id = course.id)
+    )
+  ) order by member.label),'[]'::jsonb) into v_members
+  from private.course_variant_comparison_members member
+  join public.courses course on course.id = member.course_id
+  where member.comparison_set_id = v_comparison_set.id;
+
+  return jsonb_build_object(
+    'contract','aralearn.course-variant-comparison.v1',
+    'comparisonSetId',v_comparison_set.id,
+    'source',jsonb_build_object(
+      'courseId',v_source_course.id,'title',v_source_course.title,
+      'goal',v_source_course.goal,'currentCourseRevision',v_source_course.revision,
+      'checkpointCourseRevision',v_comparison_set.source_course_revision,
+      'changedSinceCheckpoint',v_source_course.revision <> v_comparison_set.source_course_revision,
+      'checkpointId',v_comparison_set.checkpoint_id,
+      'checkpointHash',(select checkpoint.snapshot_hash
+        from private.course_variant_plan_checkpoints checkpoint
+        where checkpoint.id = v_comparison_set.checkpoint_id)
+    ),
+    'members',v_members
+  );
+end;
+$function$;
+
+revoke all on function public.get_owned_course_variant_comparison_for_actor_v1(
+  uuid,uuid,bigint,uuid
+) from public, anon, authenticated;
+grant execute on function public.get_owned_course_variant_comparison_for_actor_v1(
+  uuid,uuid,bigint,uuid
+) to service_role;
+
+create function public.detach_course_variant_for_actor_v1(
+  p_actor_id uuid,
+  p_source_course_id uuid,
+  p_comparison_set_id uuid,
+  p_course_id uuid,
+  p_request_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private, auth, extensions
+as $function$
+declare
+  v_comparison_set private.course_variant_comparison_sets%rowtype;
+  v_member private.course_variant_comparison_members%rowtype;
+  v_receipt private.course_change_receipts%rowtype;
+  v_request_hash text;
+  v_result jsonb;
+  v_changed boolean := false;
+begin
+  perform private.require_service_role();
+  perform private.require_course_access_v1(
+    p_source_course_id,p_actor_id,true
+  );
+  if p_comparison_set_id is null or p_course_id is null
+     or p_request_id is null
+     or p_request_id !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$' then
+    raise exception 'Desvinculação de variante inválida.' using errcode = '22023';
+  end if;
+  v_request_hash := encode(extensions.digest(convert_to(jsonb_build_object(
+    'operation','detach_course_variant','actorId',p_actor_id,
+    'sourceCourseId',p_source_course_id,
+    'comparisonSetId',p_comparison_set_id,'courseId',p_course_id
+  )::text,'UTF8'),'sha256'),'hex');
+  perform pg_advisory_xact_lock(hashtextextended(
+    'course-variant-request:' || p_actor_id::text || ':' || p_request_id,0
+  ));
+  delete from private.course_change_receipts receipt
+  where receipt.actor_id = p_actor_id and receipt.request_id = p_request_id
+    and receipt.expires_at <= statement_timestamp();
+  select * into v_receipt
+  from private.course_change_receipts receipt
+  where receipt.actor_id = p_actor_id and receipt.request_id = p_request_id;
+  if found then
+    if v_receipt.operation <> 'detach_course_variant'
+       or v_receipt.course_id <> p_source_course_id
+       or v_receipt.request_hash <> v_request_hash then
+      raise exception 'requestId reutilizado com comando incompatível.'
+        using errcode = '23514';
+    end if;
+    return (v_receipt.result-'idempotent') || jsonb_build_object(
+      'idempotent',true
+    );
+  end if;
+  select * into strict v_comparison_set
+  from private.course_variant_comparison_sets comparison_set
+  where comparison_set.id = p_comparison_set_id
+    and comparison_set.owner_id = p_actor_id
+    and comparison_set.source_course_id = p_source_course_id
+  for update;
+  select * into strict v_member
+  from private.course_variant_comparison_members member
+  where member.comparison_set_id = v_comparison_set.id
+    and member.course_id = p_course_id
+  for update;
+  if v_member.detached_at is null then
+    update private.course_variant_comparison_members member
+    set detached_at = statement_timestamp()
+    where member.comparison_set_id = v_comparison_set.id
+      and member.course_id = p_course_id
+    returning * into v_member;
+    update private.course_variant_comparison_sets comparison_set
+    set version = version + 1,updated_at = statement_timestamp()
+    where comparison_set.id = v_comparison_set.id;
+    v_changed := true;
+  end if;
+  v_result := jsonb_build_object(
+    'contract','aralearn.course-variant-comparison-change.v1',
+    'comparisonSetId',v_comparison_set.id,
+    'sourceCourseId',p_source_course_id,'courseId',p_course_id,
+    'detachedAt',v_member.detached_at,
+    'changed',v_changed,'idempotent',false
+  );
+  insert into private.course_change_receipts(
+    actor_id,request_id,operation,course_id,request_hash,result
+  ) values(
+    p_actor_id,p_request_id,'detach_course_variant',p_source_course_id,
+    v_request_hash,v_result
+  );
+  return v_result;
+end;
+$function$;
+
+revoke all on function public.detach_course_variant_for_actor_v1(
+  uuid,uuid,uuid,uuid,text
+) from public, anon, authenticated;
+grant execute on function public.detach_course_variant_for_actor_v1(
+  uuid,uuid,uuid,uuid,text
+) to service_role;
+
 comment on table private.course_variant_plan_checkpoints is
   'Checkpoint deduplicado de planejamento para comparar variantes; não é uma verdade imutável do Curso vivo.';
 comment on table private.course_variant_comparison_sets is
@@ -633,7 +904,9 @@ begin
      or to_regclass('private.course_variant_comparison_members') is null
      or to_regprocedure('private.course_variant_plan_checkpoint_snapshot_v1(uuid)') is null
      or to_regprocedure('private.clone_course_variant_from_source_v1(uuid,uuid,text,text,jsonb,jsonb)') is null
-     or to_regprocedure('public.create_course_variants_for_actor_v1(uuid,uuid,bigint,jsonb,text)') is null then
+     or to_regprocedure('public.create_course_variants_for_actor_v1(uuid,uuid,bigint,jsonb,text)') is null
+     or to_regprocedure('public.get_owned_course_variant_comparison_for_actor_v1(uuid,uuid,bigint,uuid)') is null
+     or to_regprocedure('public.detach_course_variant_for_actor_v1(uuid,uuid,uuid,uuid,text)') is null then
     raise exception 'Autoridade de variantes comparáveis está incompleta.'
       using errcode = '55000';
   end if;
@@ -676,6 +949,14 @@ begin
      ) or has_function_privilege(
        'authenticated',
        'public.create_course_variants_for_actor_v1(uuid,uuid,bigint,jsonb,text)',
+       'execute'
+     ) or not has_function_privilege(
+       'service_role',
+       'public.get_owned_course_variant_comparison_for_actor_v1(uuid,uuid,bigint,uuid)',
+       'execute'
+     ) or not has_function_privilege(
+       'service_role',
+       'public.detach_course_variant_for_actor_v1(uuid,uuid,uuid,uuid,text)',
        'execute'
      ) then
     raise exception 'Privilégio da RPC de variantes comparáveis é inválido.'
