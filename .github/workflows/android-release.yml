@@ -159,12 +159,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'A assinatura do APK é inválida.' }
           $certificate = [regex]::Match(
             $signature,
-            '(?im)^Signer #1 certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
+            '(?im)^Signer[^\r\n]* certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
           )
+          if (-not $certificate.Success) {
+            Write-Host $signature
+            throw 'O apksigner não informou o SHA-256 do certificado do signer em formato reconhecido.'
+          }
           $actual = $certificate.Groups[1].Value.Replace(':', '').ToLowerInvariant()
           $expected = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
-          if (-not $certificate.Success -or $actual -cne $expected) {
-            throw 'O APK não usa o certificado histórico necessário para atualizar instalações existentes.'
+          Write-Host "Certificado SHA-256 do APK: $actual"
+          if ($actual -cne $expected) {
+            throw "O APK não usa o certificado histórico necessário para atualizar instalações existentes. Esperado: $expected; encontrado: $actual."
           }
 
       - name: Preparar asset da release
