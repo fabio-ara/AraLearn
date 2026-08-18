@@ -21,6 +21,13 @@ test("variantes exigem contraste intencional e rótulos distintos", () => {
   assert.throws(() => normalizeCourseVariantCommand(noContrast), /diferença intencional/u);
   const duplicate = base(); duplicate.variants[1].label = "A";
   assert.throws(() => normalizeCourseVariantCommand(duplicate), /rótulos/u);
+  const repeatedParameter = base();
+  repeatedParameter.variants[1].parameterDifferences.push(
+    structuredClone(repeatedParameter.variants[1].parameterDifferences[0])
+  );
+  assert.throws(() => normalizeCourseVariantCommand(repeatedParameter), /mesmo parâmetro/u);
+  const policyArray = base(); policyArray.variants[1].componentPolicyDifference = [];
+  assert.throws(() => normalizeCourseVariantCommand(policyArray), /objeto/u);
 });
 
 test("desvincular preserva o Curso e só aceita as identidades explícitas", () => {

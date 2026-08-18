@@ -18,7 +18,8 @@ async function databaseWithVariantAuthorities() {
   const tablesStart = migration.indexOf("create table private.course_variant_plan_checkpoints");
   const indexesStart = migration.indexOf("create index course_variant_sets_owner_recent_v1_idx", tablesStart);
   const guardStart = migration.indexOf("create function private.reject_course_variant_history_change_v1()");
-  assert.ok(tablesStart >= 0 && indexesStart > tablesStart && guardStart > indexesStart);
+  const cloneStart = migration.indexOf("create function private.clone_course_variant_from_source_v1(", guardStart);
+  assert.ok(tablesStart >= 0 && indexesStart > tablesStart && guardStart > indexesStart && cloneStart > guardStart);
 
   const database = new PGlite();
   await database.exec(`
@@ -36,7 +37,7 @@ async function databaseWithVariantAuthorities() {
     returns uuid language sql volatile as $$select 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid$$;
   `);
   await database.exec(migration.slice(tablesStart, indexesStart));
-  await database.exec(migration.slice(guardStart));
+  await database.exec(migration.slice(guardStart, cloneStart));
   return database;
 }
 

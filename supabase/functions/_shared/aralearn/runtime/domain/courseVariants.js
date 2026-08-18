@@ -53,7 +53,15 @@ export function normalizeCourseVariantCommand(value) {
     if (labels.has(label)) fail("invalid_course_variant", "Os rótulos das variantes precisam ser distintos.");
     labels.add(label);
     if (!Array.isArray(entry.parameterDifferences) || entry.parameterDifferences.length > 16) fail("invalid_course_variant", "As diferenças de parâmetros excedem o limite.");
-    return { label, title: text(entry.title, 300, "O título"), goal: text(entry.goal, 2000, "O objetivo"), parameterDifferences: entry.parameterDifferences.map(difference), componentPolicyDifference: entry.componentPolicyDifference === null ? null : json(entry.componentPolicyDifference, 8192, "A diferença de resources") };
+    const parameterDifferences = entry.parameterDifferences.map(difference);
+    const parameterTargets = new Set();
+    for (const parameterDifference of parameterDifferences) {
+      const target = `${parameterDifference.scopeKind}\u0000${parameterDifference.scopeId}\u0000${parameterDifference.parameterId}`;
+      if (parameterTargets.has(target)) fail("invalid_course_variant", "Uma variante não pode declarar o mesmo parâmetro duas vezes.");
+      parameterTargets.add(target);
+    }
+    if (entry.componentPolicyDifference !== null && (!entry.componentPolicyDifference || typeof entry.componentPolicyDifference !== "object" || Array.isArray(entry.componentPolicyDifference))) fail("invalid_course_variant", "A diferença de resources precisa ser um objeto.");
+    return { label, title: text(entry.title, 300, "O título"), goal: text(entry.goal, 2000, "O objetivo"), parameterDifferences, componentPolicyDifference: entry.componentPolicyDifference === null ? null : json(entry.componentPolicyDifference, 8192, "A diferença de resources") };
   });
   if (!variants.some((entry) => entry.parameterDifferences.length || entry.componentPolicyDifference !== null)) fail("invalid_course_variant", "Declare ao menos uma diferença intencional.");
   return { type: value.type, comparisonSetId: uuid(value.comparisonSetId, "A identidade do conjunto"), expectedCourseRevision: value.expectedCourseRevision, variants };
