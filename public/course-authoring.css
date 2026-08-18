@@ -3027,13 +3027,15 @@
 
 @media (min-width: 900px) {
   .course-authoring-sections.has-standard {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .course-authoring-sections.has-standard a span {
     min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-align: center;
+    line-height: 1.08;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -3068,6 +3070,10 @@
 
 /* Variantes compara Cursos independentes sem transformar o painel em planilha. */
 .course-authoring-surface[data-section="variants"] {
+  width: min(100%, 920px);
+}
+
+.course-authoring-surface[data-section="variants"] .course-authoring-frame {
   width: min(100%, 920px);
 }
 

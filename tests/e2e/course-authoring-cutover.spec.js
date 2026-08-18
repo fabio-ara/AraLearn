@@ -44,7 +44,7 @@ async function expectNoHorizontalOverflow(page) {
   const section = await page.locator(".course-authoring-surface").getAttribute("data-section");
   const maximum = section === "inspection"
     ? page.viewportSize().width
-    : ["sources", "observations"].includes(section) ? 920.5
+    : ["sources", "observations", "variants"].includes(section) ? 920.5
       : section === "parameters" ? 720.5 : 430.5;
   expect(frameWidth).toBeLessThanOrEqual(maximum);
 }
@@ -352,6 +352,8 @@ async function mountCourseAuthoring(page, {
       designMutations: [],
       sourceReads: [],
       sourceMutations: [],
+      variantReads: [],
+      variantMutations: [],
       materializationReads: [],
       createCalls: [],
       planMutations: [],
@@ -1490,6 +1492,76 @@ async function mountCourseAuthoring(page, {
           change: { changeId, type: command.type, scope: changeScope }
         };
       },
+      async listCourseVariantComparisons(courseId, expectedCourseRevision) {
+        probe.variantReads.push({ type: "list", courseId, expectedCourseRevision });
+        return {
+          contract: "aralearn.course-variant-comparison-list.v1",
+          sourceCourseId: courseId,
+          sourceCourseRevision: expectedCourseRevision,
+          items: [{
+            comparisonSetId: "8b000000-0000-4000-8000-00000000001b",
+            checkpointId: "8c000000-0000-4000-8000-00000000001c",
+            checkpointHash: "c".repeat(64),
+            checkpointCourseRevision: expectedCourseRevision,
+            memberCount: 2,
+            attachedCount: 2,
+            detachedCount: 0,
+            createdAt: "2026-08-18T12:00:00.000Z",
+            updatedAt: "2026-08-18T12:00:00.000Z"
+          }]
+        };
+      },
+      async loadCourseVariantComparison(courseId, options) {
+        probe.variantReads.push({ type: "comparison", courseId, options: structuredClone(options) });
+        return {
+          contract: "aralearn.course-variant-comparison.v1",
+          comparisonSetId: options.comparisonSetId,
+          source: {
+            courseId,
+            title: courseDetail(courseId).title,
+            goal: courseDetail(courseId).goal,
+            currentCourseRevision: options.expectedCourseRevision,
+            checkpointCourseRevision: options.expectedCourseRevision,
+            changedSinceCheckpoint: false,
+            checkpointId: "8c000000-0000-4000-8000-00000000001c",
+            checkpointHash: "c".repeat(64)
+          },
+          members: [courseIds[1], courseIds[2]].map((variantCourseId, index) => ({
+            courseId: variantCourseId,
+            label: index === 0 ? "A" : "B",
+            title: courseDetail(variantCourseId).title,
+            goal: courseDetail(variantCourseId).goal,
+            attachedCourseRevision: courseDetail(variantCourseId).revision,
+            currentCourseRevision: courseDetail(variantCourseId).revision,
+            changedSinceAttached: false,
+            detachedAt: null,
+            parameterDifferences: index === 0 ? [] : [{
+              scopeKind: "course",
+              scopeId: "course",
+              parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+              value: 1,
+              rationale: "Comparar uma condição de menor densidade."
+            }],
+            componentPolicyDifference: index === 0 ? null : {
+              catalogVersion: "1-3e5629f8",
+              availability: "allow_only",
+              allowedRefs: [componentOptions[0].ref],
+              excludedRefs: [],
+              preferredRefs: []
+            },
+            materialization: {
+              partCount: 1,
+              completedCount: index,
+              runningCount: 0,
+              latestUpdatedAt: null
+            }
+          }))
+        };
+      },
+      async mutateCourseVariants(request) {
+        probe.variantMutations.push(structuredClone(request));
+        return { courseId: request.courseId, courseRevision: 5, requestId: request.requestId, idempotent: false, changed: true };
+      },
       async loadPartMaterialization(courseId, authoringPartId, materializationId) {
         probe.materializationReads.push({
           courseId,
@@ -1707,6 +1779,93 @@ test.describe("Autoria canônica mobile-first", () => {
       expect(clientErrors).toEqual([]);
     });
   }
+
+  for (const width of [360, 390, 430, 1280]) {
+    test(`Variantes compara Cursos concretos sem overflow em ${width} px`, async ({
+      page
+    }, testInfo) => {
+      const clientErrors = captureClientErrors(page);
+      await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
+      const variantsHash = `#/authoring/courses/${COURSE_IDS[0]}?section=variants`;
+      await mountCourseAuthoring(page, { cardinality: "many", hash: variantsHash });
+
+      await expect(page.getByRole("heading", { name: "Variantes", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Variantes", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Comparar", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Comparação", exact: true })).toBeVisible();
+      await expect(page.getByText("Novas unidades de análise por Unidade expositiva:", {
+        exact: false
+      })).toBeVisible();
+      await expect(page.getByText("1 componente(s) permitido(s).", { exact: true })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+
+      await page.screenshot({
+        path: testInfo.outputPath(`course-variants-comparison-${width}.png`),
+        fullPage: true,
+        animations: "disabled"
+      });
+
+      await page.getByRole("button", { name: "Abrir Curso", exact: true }).first().click();
+      await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
+        "data-section", "structure"
+      );
+      await expect(page.getByRole("heading", { name: "Estrutura", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.variantReads))
+        .toHaveLength(2);
+      await expectNoHorizontalOverflow(page);
+
+      await page.screenshot({
+        path: testInfo.outputPath(`course-variants-${width}.png`),
+        fullPage: true,
+        animations: "disabled"
+      });
+      expect(clientErrors).toEqual([]);
+    });
+  }
+
+  test("Variantes cria uma alternativa com parâmetro e política canônicos", async ({ page }) => {
+    const clientErrors = captureClientErrors(page);
+    await page.setViewportSize({ width: 390, height: 820 });
+    const variantsHash = `#/authoring/courses/${COURSE_IDS[0]}?section=variants`;
+    await mountCourseAuthoring(page, { cardinality: "many", hash: variantsHash });
+
+    await page.getByRole("button", { name: "Criar variantes", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Criar variantes", exact: true })).toBeVisible();
+    await page.getByLabel("Por que essa diferença é intencional?").fill(
+      "Comparar uma condição de menor densidade declarada."
+    );
+    await page.locator(".course-variants-policy summary").click();
+    await page.locator('input[name="policy-enabled-1"]').check();
+    await page.locator('input[name="policy-allowed-1"]').first().check();
+    await page.getByRole("button", { name: "Criar e comparar", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Comparação", exact: true })).toBeVisible();
+
+    const mutation = await page.evaluate(() =>
+      globalThis.__courseAuthoringHarness.probe.variantMutations.at(-1)
+    );
+    expect(mutation.command).toMatchObject({
+      type: "create_comparison_variants",
+      expectedCourseRevision: 5,
+      variants: [{ parameterDifferences: [], componentPolicyDifference: null }, {
+        parameterDifferences: [{
+          scopeKind: "course",
+          scopeId: "course",
+          parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+          value: 1,
+          rationale: "Comparar uma condição de menor densidade declarada."
+        }],
+        componentPolicyDifference: {
+          catalogVersion: "1-3e5629f8",
+          availability: "allow_only",
+          allowedRefs: ["aralearn.resource.component_01@1.0.0"],
+          excludedRefs: [],
+          preferredRefs: []
+        }
+      }]
+    });
+    await expectNoHorizontalOverflow(page);
+    expect(clientErrors).toEqual([]);
+  });
 
   for (const width of [360, 390, 430, 1280]) {
     test(`Fontes pagina 60 registros e preserva detalhe legível em ${width} px`, async ({
