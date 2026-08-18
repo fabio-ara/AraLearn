@@ -20,7 +20,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   esperada do projeto e, no fluxo automático, só é publicada depois da
   validação bem-sucedida da revisão ainda corrente na `main`;
 - o job do Supabase local limpa resíduos do runner e repete apenas a
-  inicialização que pode sofrer colisão transitória de porta.
+  inicialização que pode sofrer colisão transitória de porta;
+- os workflows usam as gerações correntes de checkout, Node e Java compatíveis
+  com o runtime Node 24 dos runners do GitHub.
 
 ### Removed
 

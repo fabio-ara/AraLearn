@@ -529,6 +529,19 @@ test("Pages delega o retry transitório ao verificador testado", () => {
   assert.doesNotMatch(source, /Start-Sleep|\$attempts/u);
 });
 
+test("workflows usam Actions mantidas sobre o runtime atual do GitHub", () => {
+  const androidSource = fs.readFileSync(scripts.androidWorkflow, "utf8");
+  const pagesSource = fs.readFileSync(scripts.pagesWorkflow, "utf8");
+  const validationSource = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  for (const source of [androidSource, pagesSource, validationSource]) {
+    assert.match(source, /actions\/checkout@v7/u);
+    assert.match(source, /actions\/setup-node@v7/u);
+    assert.doesNotMatch(source, /actions\/(?:checkout|setup-node|setup-java)@v4/u);
+  }
+  assert.match(androidSource, /actions\/setup-java@v5/u);
+  assert.match(validationSource, /actions\/setup-java@v5/u);
+});
+
 test("verificação reprova identidade ou certificado incompatíveis com atualização in-place", {
   skip: !powerShellAvailable
 }, () => {
