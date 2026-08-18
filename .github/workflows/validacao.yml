@@ -11,6 +11,10 @@ on:
       - release/**
   workflow_dispatch:
 
+concurrency:
+  group: validacao-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validacao:
     name: Testar e validar
@@ -98,7 +102,23 @@ jobs:
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-revisions/index.ts
 
       - name: Iniciar stack Supabase
-        run: npx --yes supabase@2.109.1 start
+        shell: bash
+        run: |
+          npx --yes supabase@2.109.1 stop --no-backup || true
+          for attempt in 1 2 3; do
+            if npx --yes supabase@2.109.1 start; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "A stack Supabase não iniciou após $attempt tentativas." >&2
+              exit 1
+            fi
+            echo "::warning::Falha transitória ao iniciar Supabase (tentativa $attempt/3); limpando a stack local."
+            ss -ltnp '( sport = :54322 )' || true
+            docker ps --format 'table {{.ID}}\t{{.Names}}\t{{.Ports}}' || true
+            npx --yes supabase@2.109.1 stop --no-backup || true
+            sleep $((attempt * 3))
+          done
 
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset

@@ -19,8 +19,20 @@ $repositoryRoot = Resolve-AraLearnRepositoryRoot -ScriptRoot $PSScriptRoot
 $issues = [Collections.Generic.List[object]]::new()
 $reports = [Collections.Generic.List[object]]::new()
 $expectedAndroidApplicationId = 'com.aralearn.app'
-$expectedAndroidVersionCode = '165'
-$expectedAndroidVersionName = '0.0.19'
+$packageManifestPath = Join-Path $repositoryRoot 'package.json'
+$androidBuildScriptPath = Join-Path $repositoryRoot 'android/app/build.gradle.kts'
+$packageManifest = Get-Content -Raw -Encoding UTF8 $packageManifestPath | ConvertFrom-Json
+$androidBuildScript = Get-Content -Raw -Encoding UTF8 $androidBuildScriptPath
+$androidVersionCodeMatch = [regex]::Match($androidBuildScript, 'versionCode\s*=\s*(\d+)')
+$androidVersionNameMatch = [regex]::Match($androidBuildScript, 'versionName\s*=\s*"([^"]+)"')
+if (-not $androidVersionCodeMatch.Success -or -not $androidVersionNameMatch.Success) {
+  throw 'Não foi possível determinar versionCode/versionName do Android.'
+}
+$expectedAndroidVersionCode = $androidVersionCodeMatch.Groups[1].Value
+$expectedAndroidVersionName = $androidVersionNameMatch.Groups[1].Value
+if ([string]$packageManifest.version -cne $expectedAndroidVersionName) {
+  throw "package.json ($($packageManifest.version)) e Android ($expectedAndroidVersionName) estão divergentes."
+}
 $expectedAndroidCertificateSha256 = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
 $requiredRuntimeModules = @(
   'src/assist/cardassistancescope.js',
@@ -287,7 +299,7 @@ function Test-ReleaseApkIdentity {
   $signature = $signatureLines -join "`n"
   $certificate = [regex]::Match(
     $signature,
-    '(?im)^Signer #1 certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
+    '(?im)^(?:V\d+\s+)?Signer(?:\s+#\d+)?:?\s+certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
   )
   $actualCertificate = $certificate.Groups[1].Value.Replace(':', '').ToLowerInvariant()
   if (-not $certificate.Success -or $actualCertificate -cne $expectedAndroidCertificateSha256) {
