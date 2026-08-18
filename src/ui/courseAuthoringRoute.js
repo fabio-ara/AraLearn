@@ -1,5 +1,5 @@
 export const COURSE_AUTHORING_SECTIONS = Object.freeze([
-  "planning", "parameters", "sources", "structure", "inspection", "observations", "people"
+  "planning", "parameters", "sources", "structure", "inspection", "observations", "variants", "people"
 ]);
 
 const COURSE_AUTHORING_ROUTE_PREFIX = "#/authoring/courses/";

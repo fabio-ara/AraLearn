@@ -5,6 +5,7 @@ import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
 import { createCourseAuditPanel } from "./CourseAuditPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
+import { createCourseVariantsPanel } from "./CourseVariantsPanel.js";
 import {
   buildCourseAuthoringRoute,
   isCourseAuthoringRouteCandidate,
@@ -367,6 +368,7 @@ function renderSectionNavigation(course, section) {
     { key: "structure", label: "Estrutura", icon: "module" },
     { key: "inspection", label: "Inspeção", icon: "preview" },
     { key: "observations", label: "Auditoria e correções", icon: "prompt" },
+    { key: "variants", label: "Variantes", icon: "tags" },
     { key: "people", label: "Pessoas", icon: "account-add" }
   ];
   return `<nav class="course-authoring-sections ${definitions.length === 7 ? "has-seven" : "has-standard"}"` +
@@ -989,6 +991,9 @@ function renderCourseSection(state) {
   if (state.section === "observations" && state.course) {
     return '<div class="course-audit-host" data-course-audit-host></div>';
   }
+  if (state.section === "variants" && state.course) {
+    return '<div class="course-variants-host" data-course-variants-host></div>';
+  }
   if (state.loading && !state.outline) {
     return '<p class="course-authoring-loading" role="status">Carregando Curso…</p>';
   }
@@ -1192,6 +1197,7 @@ export function createCourseAuthoringSurface({
   let hashListening = false;
   let inspectionSequence = null;
   let auditPanel = null;
+  let variantsPanel = null;
   let sourcesPanel = null;
   let targetSourcesPanel = null;
   const knownCourses = new Map();
@@ -1260,6 +1266,7 @@ export function createCourseAuthoringSurface({
     auditPanel?.destroy?.();
     auditPanel = null;
   }
+  function destroyVariantsPanel() { variantsPanel?.destroy?.(); variantsPanel = null; }
 
   function destroySourcesPanels() {
     sourcesPanel?.destroy?.();
@@ -1402,16 +1409,24 @@ export function createCourseAuthoringSurface({
       });
     }
   }
+  function mountVariantsPanel() {
+    if (state.view !== "course" || state.section !== "variants" || !state.course) return;
+    const host = root.querySelector?.("[data-course-variants-host]"); if (!host) return;
+    try { variantsPanel = createCourseVariantsPanel({ root: host, controller, course: state.course, onCourseRevisionChange: acceptSourcesCourseRevision, confirmValue }); void variantsPanel.open(); }
+    catch (error) { host.innerHTML = statusPanel({ kind: "error", title: "Variantes indisponíveis", message: writeFailureMessage(error) }); }
+  }
 
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
     destroyInspectionSequence();
     destroyAuditPanel();
+    destroyVariantsPanel();
     destroySourcesPanels();
     root.innerHTML = renderCourseAuthoringSurface(state);
     root.setAttribute?.("aria-busy", String(state.loading));
     mountInspectionSequence();
     mountAuditPanel();
+    mountVariantsPanel();
     mountSourcesPanels();
     if (focus && typeof root.querySelector === "function") {
       globalThis.queueMicrotask?.(() => root.querySelector(focus)?.focus());
