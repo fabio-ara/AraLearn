@@ -11,9 +11,6 @@ on:
       - release/**
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   validacao:
     name: Testar e validar
@@ -38,30 +35,6 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci
-
-      - name: Aplicar proteção local-first na branch
-        if: github.event_name == 'pull_request' && github.head_ref == 'fix/android-release-v2-signer-parser'
-        shell: pwsh
-        run: |
-          git fetch origin fix/android-release-v2-signer-parser
-          git checkout -B fix/android-release-v2-signer-parser origin/fix/android-release-v2-signer-parser
-          @'
-          from pathlib import Path
-          sync = Path('src/sync/RelationalSyncEngine.js')
-          source = sync.read_text(encoding='utf-8')
-          old = '        await this.store.removeOfficialCourseReplica(entry.courseId);\n        this.#unavailableCourseRevisions.push({'
-          new = '        // Preserve a última réplica oficial válida: uma revisão incompatível não pode apagar conteúdo já estudável.\n        this.#unavailableCourseRevisions.push({'
-          if old in source:
-              sync.write_text(source.replace(old, new, 1), encoding='utf-8')
-          elif new not in source:
-              raise SystemExit('Tratamento de revisão incompatível esperado não encontrado.')
-          '@ | python -
-          git config user.name "AraLearn Stability Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add src/sync/RelationalSyncEngine.js
-          if (git diff --cached --quiet) { exit 0 }
-          git commit -m "Preserva réplica local diante de revisão incompatível"
-          git push origin HEAD:fix/android-release-v2-signer-parser
 
       - name: Executar testes
         run: npm test
