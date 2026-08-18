@@ -2,6 +2,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
+const REQUEST_ATTEMPTS = 5;
+const RETRY_BASE_DELAY_MS = 1_000;
+const RETRY_MAX_DELAY_MS = 8_000;
 const MAX_ASSET_COUNT = 5_000;
 const MAX_TEXT_ASSET_BYTES = 8 * 1024 * 1024;
 const MAX_TOTAL_TEXT_BYTES = 96 * 1024 * 1024;
@@ -22,6 +25,7 @@ const REQUIRED_ASSETS = Object.freeze([
   "./assets/brand/aralearn-mark.png"
 ]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".json", ".mjs", ".svg", ".txt", ".xml"]);
+const RETRYABLE_HTTP_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504]);
 const MIME_TYPES = Object.freeze({
   ".css": ["text/css"],
   ".html": ["text/html"],
@@ -82,19 +86,37 @@ function assertMime(response, assetPath) {
   }
 }
 
-async function request(url, { fetchImpl, redirect = "error" } = {}) {
-  let response;
-  try {
-    response = await fetchImpl(url, {
-      method: "GET",
-      redirect,
-      headers: { Accept: "*/*" },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-    });
-  } catch {
-    throw new Error(`Não foi possível consultar ${new URL(url).pathname}.`);
+function wait(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+function retryDelay(attempt) {
+  return Math.min(RETRY_BASE_DELAY_MS * (2 ** (attempt - 1)), RETRY_MAX_DELAY_MS);
+}
+
+async function request(url, { fetchImpl, redirect = "error", waitImpl = wait } = {}) {
+  for (let attempt = 1; attempt <= REQUEST_ATTEMPTS; attempt += 1) {
+    let response;
+    try {
+      response = await fetchImpl(url, {
+        method: "GET",
+        redirect,
+        headers: { Accept: "*/*" },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      });
+    } catch (error) {
+      if (attempt === REQUEST_ATTEMPTS) {
+        throw new Error(`Não foi possível consultar ${new URL(url).pathname}.`, { cause: error });
+      }
+      await waitImpl(retryDelay(attempt));
+      continue;
+    }
+    if (!RETRYABLE_HTTP_STATUSES.has(response.status) || attempt === REQUEST_ATTEMPTS) {
+      return response;
+    }
+    await waitImpl(retryDelay(attempt));
   }
-  return response;
+  throw new Error(`Não foi possível consultar ${new URL(url).pathname}.`);
 }
 
 async function readSuccessfulText(response, assetPath) {
@@ -306,12 +328,12 @@ function validateAssetManifest(source, siteUrl) {
   return assets;
 }
 
-async function verifyCallback(siteUrl, fetchImpl) {
+async function verifyCallback(siteUrl, fetchImpl, waitImpl) {
   const callbackUrl = new URL(siteUrl);
   for (const [key, value] of Object.entries(CALLBACK_PARAMETERS)) callbackUrl.searchParams.set(key, value);
   let currentUrl = callbackUrl;
   for (let hop = 0; hop < 5; hop += 1) {
-    const response = await request(currentUrl, { fetchImpl, redirect: "manual" });
+    const response = await request(currentUrl, { fetchImpl, redirect: "manual", waitImpl });
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers?.get?.("location");
       if (!location) throw new Error("O callback de autenticação redireciona sem informar o destino.");
@@ -339,11 +361,12 @@ async function verifyCallback(siteUrl, fetchImpl) {
 
 export async function verifyPublishedSite({
   siteUrl,
-  fetchImpl = globalThis.fetch
+  fetchImpl = globalThis.fetch,
+  waitImpl = wait
 }) {
   if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
   const baseUrl = normalizeSiteUrl(siteUrl);
-  const indexResponse = await request(baseUrl, { fetchImpl });
+  const indexResponse = await request(baseUrl, { fetchImpl, waitImpl });
   const indexSource = await readSuccessfulText(indexResponse, "index.html");
   assertNoSecrets(indexSource, "index.html");
   if (!/<div\s+id=["']app-root["']/iu.test(indexSource)) {
@@ -351,14 +374,14 @@ export async function verifyPublishedSite({
   }
 
   const runtimeUrl = new URL("./runtime-config.js", baseUrl);
-  const runtimeResponse = await request(runtimeUrl, { fetchImpl });
+  const runtimeResponse = await request(runtimeUrl, { fetchImpl, waitImpl });
   const runtimeSource = await readSuccessfulText(runtimeResponse, "runtime-config.js");
   assertNoSecrets(runtimeSource, "runtime-config.js");
   const runtimeConfig = parsePublicRuntimeConfig(runtimeSource);
   validatePublishedCsp(indexSource, runtimeConfig.projectOrigin, runtimeConfig.assistAllowedOrigins);
 
   const manifestUrl = new URL("./asset-manifest.json", baseUrl);
-  const manifestResponse = await request(manifestUrl, { fetchImpl });
+  const manifestResponse = await request(manifestUrl, { fetchImpl, waitImpl });
   const manifestSource = await readSuccessfulText(manifestResponse, "asset-manifest.json");
   assertNoSecrets(manifestSource, "asset-manifest.json");
   const assets = validateAssetManifest(manifestSource, baseUrl);
@@ -367,7 +390,7 @@ export async function verifyPublishedSite({
   let checkedResources = 3;
   for (const { asset, url } of assets) {
     if (asset === "./runtime-config.js") continue;
-    const response = await request(url, { fetchImpl });
+    const response = await request(url, { fetchImpl, waitImpl });
     if (!response.ok) throw new Error(`${asset} não está disponível (HTTP ${response.status}).`);
     assertMime(response, asset);
     checkedResources += 1;
@@ -381,7 +404,7 @@ export async function verifyPublishedSite({
     if (asset === "./service-worker.js") assertVersionedServiceWorker(source);
   }
 
-  await verifyCallback(baseUrl, fetchImpl);
+  await verifyCallback(baseUrl, fetchImpl, waitImpl);
   return {
     siteUrl: baseUrl.href,
     projectUrl: runtimeConfig.projectOrigin,

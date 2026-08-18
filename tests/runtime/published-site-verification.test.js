@@ -151,18 +151,90 @@ test("recusa chave administrativa, connection string e catálogo empacotado", as
 });
 
 test("recusa recurso ausente ou servido com MIME incorreto", async (context) => {
-  await context.test("recurso ausente", async () => {
-    const { fetchImpl } = createPublishedSiteFetch({
+  await context.test("404 persistente após retries limitados", async () => {
+    const { fetchImpl, calls } = createPublishedSiteFetch({
       overrides: { "/AraLearn/main.js": { status: 404, body: "ausente", type: "text/plain" } }
     });
-    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }), /main\.js.*HTTP 404/);
+    const delays = [];
+    await assert.rejects(
+      () => verifyPublishedSite({
+        siteUrl: BASE_URL,
+        fetchImpl,
+        waitImpl: async (delayMs) => delays.push(delayMs)
+      }),
+      /main\.js.*HTTP 404/
+    );
+    assert.equal(calls.filter(({ url }) => new URL(url).pathname === "/AraLearn/main.js").length, 5);
+    assert.deepEqual(delays, [1_000, 2_000, 4_000, 8_000]);
   });
 
   await context.test("MIME incorreto", async () => {
-    const { fetchImpl } = createPublishedSiteFetch({
+    const { fetchImpl, calls } = createPublishedSiteFetch({
       overrides: { "/AraLearn/styles.css": { body: "body {}", type: "text/plain" } }
     });
-    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }), /styles\.css usa MIME text\/plain/);
+    const delays = [];
+    await assert.rejects(
+      () => verifyPublishedSite({
+        siteUrl: BASE_URL,
+        fetchImpl,
+        waitImpl: async (delayMs) => delays.push(delayMs)
+      }),
+      /styles\.css usa MIME text\/plain/
+    );
+    assert.equal(calls.filter(({ url }) => new URL(url).pathname === "/AraLearn/styles.css").length, 1);
+    assert.deepEqual(delays, []);
+  });
+});
+
+test("repete somente falhas transitórias da publicação", async (context) => {
+  await context.test("HTTP 503 transitório recupera", async () => {
+    const publishedSite = createPublishedSiteFetch();
+    let indexAttempts = 0;
+    const fetchImpl = async (input, options) => {
+      if (new URL(input).href === BASE_URL) {
+        indexAttempts += 1;
+        if (indexAttempts === 1) {
+          return makeResponse(503, "temporariamente indisponível", "text/plain");
+        }
+      }
+      return publishedSite.fetchImpl(input, options);
+    };
+    const delays = [];
+
+    const result = await verifyPublishedSite({
+      siteUrl: BASE_URL,
+      fetchImpl,
+      waitImpl: async (delayMs) => delays.push(delayMs)
+    });
+
+    assert.equal(result.siteUrl, BASE_URL);
+    assert.equal(indexAttempts, 2);
+    assert.deepEqual(delays, [1_000]);
+  });
+
+  await context.test("timeout de rede transitório recupera", async () => {
+    const publishedSite = createPublishedSiteFetch();
+    let indexAttempts = 0;
+    const fetchImpl = async (input, options) => {
+      if (new URL(input).href === BASE_URL) {
+        indexAttempts += 1;
+        if (indexAttempts === 1) {
+          throw new DOMException("tempo esgotado", "TimeoutError");
+        }
+      }
+      return publishedSite.fetchImpl(input, options);
+    };
+    const delays = [];
+
+    const result = await verifyPublishedSite({
+      siteUrl: BASE_URL,
+      fetchImpl,
+      waitImpl: async (delayMs) => delays.push(delayMs)
+    });
+
+    assert.equal(result.siteUrl, BASE_URL);
+    assert.equal(indexAttempts, 2);
+    assert.deepEqual(delays, [1_000]);
   });
 });
 
@@ -172,7 +244,10 @@ test("recusa callback inexistente ou redirecionamento que perde PKCE", async (co
     const { fetchImpl } = createPublishedSiteFetch({
       overrides: { [callbackPath]: { status: 404, body: "ausente", type: "text/html" } }
     });
-    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }), /callback.*HTTP 404/);
+    await assert.rejects(
+      () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, waitImpl: async () => {} }),
+      /callback.*HTTP 404/
+    );
   });
 
   await context.test("parâmetros descartados", async () => {

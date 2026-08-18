@@ -7,13 +7,26 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const packageManifest = JSON.parse(fs.readFileSync(
+  path.join(repositoryRoot, "package.json"),
+  "utf8"
+));
+const androidBuildScript = fs.readFileSync(
+  path.join(repositoryRoot, "android", "app", "build.gradle.kts"),
+  "utf8"
+);
+const currentAndroidVersionCode = androidBuildScript.match(/versionCode\s*=\s*(\d+)/u)?.[1];
+const currentAndroidVersionName = androidBuildScript.match(/versionName\s*=\s*"([^"]+)"/u)?.[1];
 const scripts = {
+  androidWorkflow: path.join(repositoryRoot, ".github", "workflows", "android-release.yml"),
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
   postgrestSmoke: path.join(repositoryRoot, "supabase", "tests", "postgrest-smoke.mjs"),
+  pagesWorkflow: path.join(repositoryRoot, ".github", "workflows", "pages.yml"),
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
   validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1"),
-  validateLocalSupabase: path.join(repositoryRoot, "scripts", "validateLocalSupabase.ps1")
+  validateLocalSupabase: path.join(repositoryRoot, "scripts", "validateLocalSupabase.ps1"),
+  validationWorkflow: path.join(repositoryRoot, ".github", "workflows", "validacao.yml")
 };
 const publishableKey = `sb_publishable_${"A".repeat(24)}`;
 const assistOrigins = [
@@ -139,9 +152,10 @@ function packApk(
 
 function writeAndroidToolMocks(temporaryRoot, {
   applicationId = "com.aralearn.app",
-  versionCode = "165",
-  versionName = "0.0.19",
-  certificate = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296"
+  versionCode = currentAndroidVersionCode,
+  versionName = currentAndroidVersionName,
+  certificate = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296",
+  signatureLine = `V2 Signer: certificate SHA-256 digest: ${certificate}`
 } = {}) {
   const aaptPath = path.join(temporaryRoot, "aapt.cmd");
   const apksignerPath = path.join(temporaryRoot, "apksigner.cmd");
@@ -152,7 +166,7 @@ function writeAndroidToolMocks(temporaryRoot, {
   );
   fs.writeFileSync(
     apksignerPath,
-    `@echo off\r\necho Signer #1 certificate SHA-256 digest: ${certificate}\r\n`,
+    `@echo off\r\necho ${signatureLine}\r\n`,
     "utf8"
   );
   return {
@@ -426,32 +440,106 @@ test("verificador exige APK e runtime atual nos destinos finais", () => {
   assert.match(source, /artifact\.required-authoring-asset/u);
   assert.match(source, /artifact\.static-authoring-api/u);
   assert.match(source, /app-release\.apk/u);
-  assert.match(source, /expectedAndroidVersionCode = '165'/u);
-  assert.match(source, /expectedAndroidVersionName = '0\.0\.19'/u);
+  assert.match(source, /package\.json/u);
+  assert.match(source, /android\/app\/build\.gradle\.kts/u);
+  assert.match(source, /packageManifest\.version/u);
+  assert.doesNotMatch(source, /expectedAndroidVersionCode = '\d+'/u);
+  assert.doesNotMatch(source, /expectedAndroidVersionName = '\d+\.\d+\.\d+'/u);
   assert.match(source, /expectedAndroidApplicationId = 'com\.aralearn\.app'/u);
   assert.match(source, /expectedAndroidCertificateSha256/u);
 });
 
-test("verificação aprova a identidade e o certificado históricos da release Android", {
+test("verificação aprova a identidade atual e as duas saídas conhecidas do apksigner", {
   skip: !powerShellAvailable
 }, () => {
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-release-safe-"));
-  try {
-    const apkPath = packApk(
-      temporaryRoot,
-      writeSafeArtifact,
-      { fileName: "app-release.apk" }
-    );
-    const result = runScript(
-      scripts.verify,
-      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
-      writeAndroidToolMocks(temporaryRoot)
-    );
-    assert.equal(result.status, 0, result.stderr || result.stdout);
-    assert.equal(parseJsonOutput(result).valid, true);
-  } finally {
-    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  for (const [label, signatureLine] of [
+    ["atual", "V2 Signer: certificate SHA-256 digest: "],
+    ["anterior", "Signer #1 certificate SHA-256 digest: "]
+  ]) {
+    const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), `aralearn-apk-${label}-`));
+    try {
+      const apkPath = packApk(
+        temporaryRoot,
+        writeSafeArtifact,
+        { fileName: "app-release.apk" }
+      );
+      const certificate = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296";
+      const result = runScript(
+        scripts.verify,
+        ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+        writeAndroidToolMocks(temporaryRoot, {
+          certificate,
+          signatureLine: `${signatureLine}${certificate}`
+        })
+      );
+      assert.equal(result.status, 0, `${label}: ${result.stderr || result.stdout}`);
+      assert.equal(parseJsonOutput(result).valid, true);
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   }
+});
+
+test("versões publicáveis permanecem alinhadas entre npm e Android", () => {
+  const packageLock = JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, "package-lock.json"),
+    "utf8"
+  ));
+  assert.equal(currentAndroidVersionName, packageManifest.version);
+  assert.equal(packageLock.version, packageManifest.version);
+  assert.equal(packageLock.packages[""].version, packageManifest.version);
+  assert.match(currentAndroidVersionCode, /^\d+$/u);
+});
+
+test("release Android aguarda a validação da main e usa exatamente o SHA aprovado", () => {
+  const source = fs.readFileSync(scripts.androidWorkflow, "utf8");
+  assert.match(source, /workflow_run:/u);
+  assert.match(source, /workflows:\s*\n\s*- Validar repositório/u);
+  assert.match(source, /workflow_run\.conclusion == 'success'/u);
+  assert.match(source, /workflow_run\.event == 'push'/u);
+  assert.match(source, /workflow_run\.head_sha/u);
+  assert.match(source, /github\.ref == 'refs\/heads\/main'/u);
+  assert.match(source, /ref: \$\{\{ env\.ARALEARN_RELEASE_SHA \}\}/u);
+  assert.equal(
+    source.match(/git fetch origin \+refs\/heads\/main:refs\/remotes\/origin\/main --no-tags/gu)?.length,
+    2
+  );
+  assert.match(source, /refs\/remotes\/origin\/main/u);
+  assert.match(source, /steps\.freshness\.outputs\.current == 'true'/u);
+  assert.match(source, /--target \$env:ARALEARN_RELEASE_SHA/u);
+  assert.match(source, /verifyDeploymentArtifacts\.ps1/u);
+  assert.doesNotMatch(source, /certificate SHA-256 digest/u);
+  assert.doesNotMatch(source, /compatibilidade para materialização/u);
+});
+
+test("validação limpa e repete somente a inicialização local do Supabase", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  assert.match(source, /cancel-in-progress: true/u);
+  assert.match(source, /supabase@2\.109\.1 stop --no-backup/u);
+  assert.doesNotMatch(source, /supabase@2\.109\.1 stop --all/u);
+  assert.match(source, /for attempt in 1 2 3/u);
+  assert.match(source, /if npx --yes supabase@2\.109\.1 start/u);
+  assert.match(source, /ss -ltnp '\( sport = :54322 \)'/u);
+  assert.match(source, /sleep \$\(\(attempt \* 3\)\)/u);
+});
+
+test("Pages delega o retry transitório ao verificador testado", () => {
+  const source = fs.readFileSync(scripts.pagesWorkflow, "utf8");
+  assert.match(source, /node \.\/scripts\/verifyPublishedSite\.mjs --url/u);
+  assert.doesNotMatch(source, /Start-Sleep|\$attempts/u);
+});
+
+test("workflows usam Actions mantidas sobre o runtime atual do GitHub", () => {
+  const androidSource = fs.readFileSync(scripts.androidWorkflow, "utf8");
+  const pagesSource = fs.readFileSync(scripts.pagesWorkflow, "utf8");
+  const validationSource = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  for (const source of [androidSource, pagesSource, validationSource]) {
+    assert.match(source, /actions\/checkout@v7/u);
+    assert.match(source, /actions\/setup-node@v7/u);
+    assert.doesNotMatch(source, /actions\/(?:checkout|setup-node|setup-java)@v4/u);
+  }
+  assert.match(androidSource, /actions\/setup-java@v5/u);
+  assert.match(validationSource, /actions\/setup-java@v5/u);
 });
 
 test("verificação reprova identidade ou certificado incompatíveis com atualização in-place", {

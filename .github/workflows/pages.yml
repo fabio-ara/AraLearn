@@ -25,12 +25,12 @@ jobs:
       ARALEARN_ASSIST_ALLOWED_ORIGINS: ${{ vars.ARALEARN_ASSIST_ALLOWED_ORIGINS }}
     steps:
       - name: Baixar repositório
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -96,20 +96,12 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Baixar o verificador publicado
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Conferir o endereço publicado
-        shell: pwsh
-        run: |
-          $attempts = 4
-          for ($attempt = 1; $attempt -le $attempts; $attempt++) {
-            node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"
-            if ($LASTEXITCODE -eq 0) { exit 0 }
-            if ($attempt -eq $attempts) { exit $LASTEXITCODE }
-            Start-Sleep -Seconds (5 * $attempt)
-          }
+        run: node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"

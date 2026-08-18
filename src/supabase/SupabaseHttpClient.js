@@ -1,5 +1,3 @@
-import { normalizePublishedRevisionDocument } from "../core/publishedRevisionCompatibility.js";
-
 export class SupabaseHttpError extends Error {
   constructor(message, { status = 0, code = "", details = null, response = null } = {}) {
     super(message);
@@ -44,12 +42,6 @@ function errorDetails(body, status) {
     code: nested?.code || body.code || body.error_code || "",
     details: nested?.details ?? body.details ?? null
   };
-}
-
-function normalizeSuccessfulResponse(path, body) {
-  return String(path || "").startsWith("/functions/v1/aralearn-course-revisions/")
-    ? normalizePublishedRevisionDocument(body)
-    : body;
 }
 
 export class SupabaseHttpClient {
@@ -145,7 +137,7 @@ export class SupabaseHttpClient {
         response: responseBody
       });
     }
-    return normalizeSuccessfulResponse(path, responseBody);
+    return responseBody;
   }
 
   rpc(functionName, parameters = {}, options = {}) {

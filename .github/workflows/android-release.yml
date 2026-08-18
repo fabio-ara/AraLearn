@@ -1,16 +1,13 @@
 name: Publicar Android
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Validar repositório
     branches:
       - main
-    paths:
-      - package.json
-      - android/app/build.gradle.kts
-      - src/**
-      - public/**
-      - scripts/**
-      - .github/workflows/android-release.yml
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -23,8 +20,13 @@ concurrency:
 jobs:
   release:
     name: Gerar e publicar APK
+    if: >-
+      ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.event == 'push') }}
     runs-on: windows-latest
     env:
+      ARALEARN_RELEASE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
       ARALEARN_ASSIST_ALLOWED_ORIGINS: ${{ vars.ARALEARN_ASSIST_ALLOWED_ORIGINS }}
@@ -35,17 +37,34 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Baixar repositório
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
+          ref: ${{ env.ARALEARN_RELEASE_SHA }}
           fetch-depth: 0
 
+      - name: Conferir ponta corrente da main
+        id: freshness
+        shell: pwsh
+        run: |
+          & git fetch origin +refs/heads/main:refs/remotes/origin/main --no-tags
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível atualizar a referência da main.' }
+          $mainSha = (& git rev-parse refs/remotes/origin/main).Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $mainSha) {
+            throw 'Não foi possível determinar a ponta corrente da main.'
+          }
+          $current = $mainSha -ceq $env:ARALEARN_RELEASE_SHA
+          "current=$($current.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if (-not $current) {
+            Write-Host "A revisão validada $env:ARALEARN_RELEASE_SHA foi superada por $mainSha; nenhuma release será criada."
+          }
+
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Preparar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -54,6 +73,7 @@ jobs:
         run: npm ci
 
       - name: Ler identidade da release
+        if: steps.freshness.outputs.current == 'true'
         id: identity
         shell: pwsh
         run: |
@@ -128,49 +148,11 @@ jobs:
       - name: Conferir identidade e certificado do APK
         if: steps.identity.outputs.publish == 'true'
         shell: pwsh
-        run: |
-          $apk = Resolve-Path 'android/app/build/outputs/apk/release/app-release.apk'
-          $buildTools = Get-ChildItem -LiteralPath (Join-Path $env:ANDROID_HOME 'build-tools') -Directory |
-            Sort-Object { try { [version]$_.Name } catch { [version]'0.0' } } -Descending |
-            Select-Object -First 1
-          if (-not $buildTools) { throw 'Android build-tools não encontrado.' }
-          $aapt = Join-Path $buildTools.FullName 'aapt.exe'
-          $apksigner = Join-Path $buildTools.FullName 'apksigner.bat'
-          if (-not (Test-Path $aapt) -or -not (Test-Path $apksigner)) {
-            throw 'aapt/apksigner não encontrados.'
-          }
-          $badging = (& $aapt dump badging $apk) -join "`n"
-          if ($LASTEXITCODE -ne 0) { throw 'aapt não conseguiu ler o APK.' }
-          $package = [regex]::Match(
-            $badging,
-            "package:\s+name='([^']+)'[^\r\n]*versionCode='([^']+)'[^\r\n]*versionName='([^']+)'"
-          )
-          if (-not $package.Success) { throw 'Identidade do APK não pôde ser determinada.' }
-          if ($package.Groups[1].Value -cne 'com.aralearn.app') {
-            throw "applicationId inesperado: $($package.Groups[1].Value)."
-          }
-          if ($package.Groups[2].Value -cne '${{ steps.identity.outputs.version_code }}') {
-            throw "versionCode inesperado: $($package.Groups[2].Value)."
-          }
-          if ($package.Groups[3].Value -cne '${{ steps.identity.outputs.version }}') {
-            throw "versionName inesperado: $($package.Groups[3].Value)."
-          }
-          $signature = (& $apksigner verify --verbose --print-certs $apk) -join "`n"
-          if ($LASTEXITCODE -ne 0) { throw 'A assinatura do APK é inválida.' }
-          $certificate = [regex]::Match(
-            $signature,
-            '(?im)^(?:V\d+\s+)?Signer[^\r\n]*:?\s*certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
-          )
-          if (-not $certificate.Success) {
-            Write-Host $signature
-            throw 'O apksigner não informou o SHA-256 do certificado do signer em formato reconhecido.'
-          }
-          $actual = $certificate.Groups[1].Value.Replace(':', '').ToLowerInvariant()
-          $expected = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
-          Write-Host "Certificado SHA-256 do APK: $actual"
-          if ($actual -cne $expected) {
-            throw "O APK não usa o certificado histórico necessário para atualizar instalações existentes. Esperado: $expected; encontrado: $actual."
-          }
+        run: >-
+          pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1
+          -Target Android
+          -ArtifactPath ./android/app/build/outputs/apk/release/app-release.apk
+          -RequireRuntimeConfig
 
       - name: Preparar asset da release
         if: steps.identity.outputs.publish == 'true'
@@ -185,21 +167,33 @@ jobs:
         if: steps.identity.outputs.publish == 'true'
         shell: pwsh
         run: |
+          & git fetch origin +refs/heads/main:refs/remotes/origin/main --no-tags
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível reconferir a referência da main.' }
+          $mainSha = (& git rev-parse refs/remotes/origin/main).Trim()
+          if ($mainSha -cne $env:ARALEARN_RELEASE_SHA) {
+            Write-Host "A main avançou para $mainSha durante o build; nenhuma release será criada para $env:ARALEARN_RELEASE_SHA."
+            exit 0
+          }
           @"
           ## AraLearn ${{ steps.identity.outputs.version }}
 
           - Android versionCode ${{ steps.identity.outputs.version_code }}.
-          - Inclui a correção de materialização das revisões publicadas.
+          - Dataprev: Analista de Processamento e AI-900 estão disponíveis no contrato canônico atual.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `
             --repo $env:GITHUB_REPOSITORY `
-            --target $env:GITHUB_SHA `
+            --target $env:ARALEARN_RELEASE_SHA `
             --title 'AraLearn ${{ steps.identity.outputs.version }}' `
             --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar a GitHub Release.' }
 
       - name: Release já existente
-        if: steps.identity.outputs.publish != 'true'
+        if: steps.freshness.outputs.current == 'true' && steps.identity.outputs.publish != 'true'
         shell: pwsh
         run: Write-Host 'A release ${{ steps.identity.outputs.tag }} já existe; nenhuma publicação foi repetida.'
+
+      - name: Revisão superada
+        if: steps.freshness.outputs.current != 'true'
+        shell: pwsh
+        run: Write-Host 'A main avançou antes da publicação; o workflow da revisão mais nova cuidará da release.'
