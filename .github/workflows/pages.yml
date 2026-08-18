@@ -104,4 +104,12 @@ jobs:
           node-version: 22
 
       - name: Conferir o endereço publicado
-        run: node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"
+        shell: pwsh
+        run: |
+          $attempts = 4
+          for ($attempt = 1; $attempt -le $attempts; $attempt++) {
+            node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -eq $attempts) { exit $LASTEXITCODE }
+            Start-Sleep -Seconds (5 * $attempt)
+          }

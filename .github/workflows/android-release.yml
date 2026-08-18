@@ -159,7 +159,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'A assinatura do APK é inválida.' }
           $certificate = [regex]::Match(
             $signature,
-            '(?im)^Signer[^\r\n]* certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
+            '(?im)^(?:V\d+\s+)?Signer[^\r\n]*:?\s*certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$'
           )
           if (-not $certificate.Success) {
             Write-Host $signature
@@ -189,7 +189,7 @@ jobs:
           ## AraLearn ${{ steps.identity.outputs.version }}
 
           - Android versionCode ${{ steps.identity.outputs.version_code }}.
-          - Inclui a compatibilidade para materialização de revisões publicadas legadas.
+          - Inclui a correção de materialização das revisões publicadas.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `
