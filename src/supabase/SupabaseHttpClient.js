@@ -1,4 +1,4 @@
-import { normalizePublishedRevisionDocument } from "../sync/publishedRevisionCompatibility.js";
+import { normalizePublishedRevisionDocument } from "../core/publishedRevisionCompatibility.js";
 
 export class SupabaseHttpError extends Error {
   constructor(message, { status = 0, code = "", details = null, response = null } = {}) {
