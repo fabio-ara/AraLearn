@@ -1,0 +1,80 @@
+name: Aplicar correções autônomas de estabilidade
+
+on:
+  push:
+    branches:
+      - fix/android-release-v2-signer-parser
+    paths:
+      - .github/workflows/autonomous-stability-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/android-release-v2-signer-parser
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Aplicar correções
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+
+          android = Path('.github/workflows/android-release.yml')
+          source = android.read_text(encoding='utf-8')
+          old = r"(?im)^Signer[^\r\n]* certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$"
+          new = r"(?im)^(?:V\d+\s+)?Signer[^\r\n]*:?\s*certificate SHA-256 digest:\s*([a-f0-9:]+)\s*$"
+          if old not in source:
+              raise SystemExit('Regex Android esperado não encontrado.')
+          android.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          pages = Path('.github/workflows/pages.yml')
+          source = pages.read_text(encoding='utf-8')
+          old = '      - name: Conferir o endereço publicado\n        run: node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"\n'
+          new = '''      - name: Conferir o endereço publicado\n        shell: pwsh\n        run: |\n          $attempts = 4\n          for ($attempt = 1; $attempt -le $attempts; $attempt++) {\n            node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"\n            if ($LASTEXITCODE -eq 0) { exit 0 }\n            if ($attempt -eq $attempts) { exit $LASTEXITCODE }\n            Start-Sleep -Seconds (5 * $attempt)\n          }\n'''
+          if old not in source:
+              raise SystemExit('Etapa de verificação do Pages esperada não encontrada.')
+          pages.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          sync = Path('src/sync/RelationalSyncEngine.js')
+          source = sync.read_text(encoding='utf-8')
+          old = '        await this.store.removeOfficialCourseReplica(entry.courseId);\n        this.#unavailableCourseRevisions.push({'
+          new = '        // Preserve a última réplica oficial válida: uma revisão incompatível não pode apagar conteúdo já estudável.\n        this.#unavailableCourseRevisions.push({'
+          if old not in source:
+              raise SystemExit('Tratamento de revisão incompatível esperado não encontrado.')
+          sync.write_text(source.replace(old, new, 1), encoding='utf-8')
+          '@ | python -
+
+      - name: Validar código
+        run: |
+          npm test
+          npm run lint
+
+      - name: Calcular revisões canônicas das fixtures
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .autonomous | Out-Null
+          npm run catalog:validate *>&1 | Tee-Object -FilePath .autonomous/catalog-validate.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Remover workflow temporário e publicar alterações na branch
+        shell: pwsh
+        run: |
+          Remove-Item .github/workflows/autonomous-stability-fix.yml
+          git config user.name "AraLearn Stability Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/workflows/android-release.yml .github/workflows/pages.yml src/sync/RelationalSyncEngine.js .autonomous/catalog-validate.txt .github/workflows/autonomous-stability-fix.yml
+          git commit -m "Corrige estabilidade de publicação e réplica local"
+          git push origin HEAD:fix/android-release-v2-signer-parser
