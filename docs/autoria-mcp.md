@@ -32,9 +32,10 @@ invariantes de operação: Curso vivo, leitura antes de escrita, estado dinâmic
 persistido, Parte como agrupamento operacional, descoberta progressiva de
 componentes, materialização por etapas retomáveis e síntese breve do resultado.
 
-Plano, parâmetros, orientações, política de componentes, fontes e observações
-não devem ser copiados para esse recurso nem fixados no prompt do cliente. Eles pertencem
-ao Curso e precisam poder mudar sem reconstruir o assistente.
+Plano, parâmetros, orientações, política de componentes, fontes, observações,
+rodadas, achados e correções não devem ser copiados para esse recurso nem
+fixados no prompt do cliente. Eles pertencem ao Curso e precisam poder mudar
+sem reconstruir o assistente.
 
 ## Componentes e fluxo de uma alteração
 
@@ -113,6 +114,8 @@ Lê uma destas projeções:
   histórico de atribuições de um alvo;
 - `anchored_annotations`: caixa de entrada, anotações de um alvo ou detalhe de
   uma Anotação ancorada;
+- `audit_cycle`: contexto focal, achados, rodadas ou detalhe de um achado ou de
+  uma rodada de auditoria;
 - `part_materialization`: uma tentativa persistida, seu contexto e fatos
   limitados, as etapas com versão e a próxima etapa pendente;
 - `study_units`: Unidades de estudo em ordem curricular, com contexto, Parte e
@@ -177,6 +180,22 @@ pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUI
 nunca UUID ou e-mail e não reversível pelo contrato. A interface mostra somente o `label` pseudônimo protegido, nunca
 `ref`, UUID ou e-mail.
 
+`audit_cycle` escolhe `context`, `findings`, `runs` ou `detail`. `findings` e
+`runs` são paginados, aceitam `targetStudyUnitId` opcional e usam cursor opaco;
+`runs` enumera também rodadas limpas, sem achados. A página distingue a lista
+`runs` do detalhe `runDetail`. No modo `detail`, o cliente informa exatamente
+um entre `findingId` e `auditRunId`; o detalhe da rodada entrega todos os checks
+e suas evidências, e não apenas os achados derivados. A página admite até 24
+itens, cursor de até 240 caracteres e resposta de até 240 KiB.
+
+O contexto focal reúne a Unidade corrente, Microssequência, plano, desenho,
+Fontes/Âncoras e até 12 Observações selecionadas. Uma referência a Observação
+guarda somente identidade e versão. Enquanto uma retirada ainda existe como
+tombstone, ela aparece `available: false` e sem link profundo. Depois do hard
+delete previsto pelo ciclo de limpeza das Anotações, o cascade remove apenas o
+vínculo e o identificador da projeção; nenhum texto, pseudônimo ou dado pessoal
+foi copiado para rodada, achado ou correção.
+
 ### `criarCurso`
 
 Cria atomicamente um Curso privado vazio e seu plano instrucional inicial.
@@ -194,7 +213,7 @@ autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui seis operações fechadas:
+Possui sete operações fechadas:
 
 - `update_instructional_plan`: aplica um comando semântico ao plano — atualizar
   campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
@@ -208,6 +227,8 @@ Possui seis operações fechadas:
   ou de uma Unidade;
 - `update_anchored_annotations`: cria ou revisa Anotação ancorada, retira,
   considera, responde, resolve, reabre ou corrige assuntos;
+- `update_audit_cycle`: registra rodada, propõe ou rejeita correção, decide
+  achado, aplica correção, verifica achado ou executa rollback;
 - `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
 - `advance_part_materialization`: inicia uma tentativa, registra uma etapa
   delimitada ou finaliza a tentativa de uma Parte.
@@ -247,6 +268,38 @@ responder e mudar estado usam a versão esperada da anotação e o contador glob
 do conjunto, pois MCP é owner-only, sem avançar a revisão de conteúdo apenas
 pela triagem. A projeção de Estudo usa outro contador privado por pessoa; ele
 não cria ferramenta nem estado MCP adicional.
+
+`update_audit_cycle` aceita sete comandos fechados: `record_audit`,
+`propose_authoring_correction`, `reject_authoring_correction`,
+`decide_finding`, `apply_authoring_correction`, `verify_finding` e
+`rollback_authoring_correction`. O envelope do ciclo aceita no máximo 192 KiB.
+`auditCommand.confirmed: true` é obrigatório apenas para aplicar ou executar
+rollback; os outros cinco comandos recusam esse campo. O servidor retira a
+confirmação antes de chamar o domínio.
+
+Uma rodada registra exatamente três checks humanos nas dimensões pedagógica, factual e
+editorial; o servidor acrescenta o check estrutural determinístico, sob máximo
+de 32 checks. Cada resultado é
+`passed|failed|uncertain|not_applicable|not_checked`, com até 16 achados na
+rodada. Rodada imutável, versões append-only de achado e correção e a junção com
+Anotações são autoridades privadas distintas.
+
+A correção v1 só substitui conteúdo e o conjunto completo de Fontes da Unidade
+focal existente. Ela preserva `topics` legítimos e não cria, apaga, move,
+reposiciona ou muda o pai de uma entidade. No-op é recusado. Aplicação conserva
+checkpoint `before|after`, com até 48 KiB por snapshot e 96 KiB no conjunto, e
+avança o achado para `awaiting_verification`; rollback exige que o estado
+aplicado ainda corresponda ao checkpoint. Ambos reutilizam
+`course_change_receipts`, com resultado de até 64 KiB, e são as únicas operações
+do ciclo que criam `course_events`.
+
+Verificação registra outra rodada e informa `resolved|still_open`. Resolver
+exige que o critério focal tenha passado; `still_open` reabre. Evidência factual
+positiva ou resolução factual exige Fonte e Âncora ativas na revisão exata:
+`supported_by` sustenta afirmações e `quoted_from` só vale para
+`quotation_fidelity`. `suggestedAnnotationActions` com `resolve|reopen` é mera
+sugestão; executá-la requer outro comando explícito de
+`update_anchored_annotations` com a versão corrente.
 
 O recibo de Fonte contém exatamente `contract`, `courseId`, `courseRevision`,
 `requestId`, `idempotent`, `changed` e `change`. `change` é nulo no no-op; caso
@@ -369,8 +422,9 @@ invariantes. O Curso conserva dados mutáveis:
 - composição didática;
 - Anotações ancoradas autorais e estudantis, com contador global owner-only e
   contador privado por pessoa na projeção de Estudo;
-- futuramente, achados de auditoria e configuração de pesquisa quando essas
-  fatias forem implementadas.
+- rodadas imutáveis, versões de achados, vínculos protegidos com Observações e
+  correções versionadas;
+- futuramente, configuração de pesquisa quando essa fatia for implementada.
 
 Essa separação evita que mudar o planejamento exija editar o prompt de sistema
 ou reconstruir uma base fixa. Também evita persistir conversa integral ou
@@ -397,6 +451,8 @@ Erros previsíveis incluem:
 - revisão desatualizada;
 - `requestId` reutilizado com outro comando;
 - Fonte, revisão, Âncora, relação ou alvo inválido;
+- rodada, achado, correção, critério focal ou evidência inválida;
+- confirmação indevida num comando não destrutivo do ciclo de auditoria;
 - entidade, plano, Parte ou etapa de materialização inválida;
 - e-mail sem conta correspondente;
 - confirmação ausente;
@@ -415,6 +471,12 @@ contrato não envia arquivos de referência ao Storage. Esses limites reduzem
 transferência, mas o crescimento append-only e o consumo real de banco, egress
 e funções ainda precisam ser medidos antes de afirmar sustentabilidade no Free
 Plan.
+
+O ciclo de auditoria limita páginas e resultados de mudança a 240 KiB, comandos
+a 192 KiB, 256 rodadas por Curso com reserva para correções aplicadas, 1.024
+identidades de achado, 64 correções por Curso e oito por achado. Históricos
+projetados também são limitados. Auditoria e correção são online-only: não há
+store, cache autoritativo nem outbox delas no IndexedDB.
 
 ## Configuração
 

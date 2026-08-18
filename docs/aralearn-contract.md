@@ -19,7 +19,8 @@ o mesmo documento de maneiras incompatíveis.
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
 
-O sistema separa oito responsabilidades:
+O sistema separa responsabilidades de conteúdo, proveniência, observação e
+auditoria:
 
 | Contrato | Responsabilidade |
 |---|---|
@@ -31,6 +32,9 @@ O sistema separa oito responsabilidades:
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
 | `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
 | `aralearn.course-anchored-annotation-page.v1`, `aralearn.course-anchored-annotation.v1` e `aralearn.course-anchored-annotation-change.v1` | página, item protegido e recibo de Anotações ancoradas |
+| `aralearn.course-audit-context.v1` | contexto focal corrente que pode ser auditado |
+| `aralearn.course-instructional-audit-run.v1`, `aralearn.course-audit-finding.v1` e `aralearn.course-authoring-correction.v1` | rodada imutável, achado versionado e checkpoint de correção |
+| `aralearn.course-audit-cycle-page.v1` e `aralearn.course-audit-cycle-change.v1` | leitura paginada/detalhada e recibo estrito do ciclo |
 
 Essa separação evita um esquema monolítico: acrescentar uma representação não
 exige alterar o núcleo, e consultar o catálogo não exige enviar todos os
@@ -234,6 +238,48 @@ Eventos
 guardam hashes e metadados pequenos, nunca o texto anterior. Categoria,
 resposta, resolução e timestamps não autorizam inferência de aprendizagem,
 dificuldade, atenção, qualidade ou eficácia.
+
+### Auditoria e correções fora do conteúdo
+
+O ciclo de auditoria também não entra em `aralearn.course.v1`. Um contexto
+owner-only fixa a Unidade corrente, sua Microssequência, plano, parâmetros,
+intenção representacional, Fontes/Âncoras e até 12 Anotações selecionadas. A
+rodada registra checks públicos nas dimensões estrutural, pedagógica, factual e
+editorial; o servidor acrescenta a conformidade estrutural aos três checks
+humanos.
+
+Rodadas são imutáveis e permanecem enumeráveis quando não geram achado. A
+leitura `audit_cycle` usa `context|findings|runs|detail`; achados e rodadas são
+paginados e aceitam filtro opcional pela Unidade. `detail` exige exatamente um
+entre `findingId` e `auditRunId`, e o detalhe da rodada expõe todos os checks e
+evidências; a página separa a lista `runs` de `runDetail`. Achados e correções
+preservam versões append-only. Um
+achado nasce apenas de check `failed|uncertain`; aplicar uma correção o move
+para `awaiting_verification`, e outra rodada o leva a `resolved` ou novamente a
+`open`. A correção v1 só altera o conteúdo próprio e as atribuições de Fontes
+de uma Unidade existente, preserva `topics` legítimos e não cria, apaga, move,
+reposiciona ou muda o pai. O checkpoint `before|after` permite conferir a
+aplicação e, enquanto o estado aplicado continuar exato, executar rollback sem
+apagar a história.
+
+Uma conclusão factual positiva exige Fonte e Âncora atuais e ativas. A relação
+`supported_by` sustenta afirmações; `quoted_from` é aceita somente pelo critério
+de fidelidade de citação. Vincular uma Observação conserva a origem situada,
+mas não a transforma em prova factual. Ações `resolve|reopen` devolvidas para
+essas Observações são sugestões: outro comando explícito precisa executá-las.
+
+A junção conserva apenas identidade e versão da Anotação. Retirada ainda
+presente como tombstone é projetada indisponível e sem link; o hard delete
+remove somente o vínculo e seu ID por cascade. Texto, pseudônimo e pessoa não
+são copiados, e rodada, achado e correção permanecem.
+
+Leituras do ciclo são limitadas a 24 itens, cursor de 240 caracteres e 240 KiB.
+Comandos aceitam até 192 KiB; snapshots, 48 KiB; checkpoints, 96 KiB; recibos,
+64 KiB. Há até 12 Observações selecionadas, 16 achados por rodada, 32 checks,
+256 rodadas com reserva, 1.024 identidades de achado, 64 correções por Curso e
+oito por achado. Auditoria não possui réplica nem outbox no IndexedDB. O
+contrato completo e seus limites estão em
+[Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md).
 
 ## 5. Perfil unitário do mesmo contrato
 

@@ -7,6 +7,13 @@ import {
   normalizeCourseAnchoredAnnotationQuery,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
+import {
+  normalizeCourseAuditCycleChange,
+  normalizeCourseAuditCycleCommand,
+  normalizeCourseAuditCyclePage,
+  normalizeCourseAuditCycleQuery,
+  normalizeCourseAuditCycleReadOptions
+} from "../domain/courseAuditCycle.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
   normalizeCourseSourceAttributionApplication,
@@ -505,6 +512,84 @@ function boundAnchoredAnnotationChange(value, mutation, {
   return change;
 }
 
+function defaultAuditCycleQuery() {
+  return {
+    mode: "findings",
+    targetStudyUnitId: null,
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: [],
+    dimensions: [],
+    severities: [],
+    annotationIds: []
+  };
+}
+
+function auditCycleReadOptions(value = {}) {
+  const source = exactObject(value, new Set([
+    "expectedCourseRevision", "auditSetVersion", "query", "cursor", "limit"
+  ]), "Leitura de auditoria");
+  return normalizeCourseAuditCycleReadOptions({
+    expectedCourseRevision: source.expectedCourseRevision,
+    auditSetVersion: source.auditSetVersion ?? null,
+    query: source.query ?? defaultAuditCycleQuery(),
+    cursor: source.cursor ?? null,
+    limit: source.limit ?? 12
+  });
+}
+
+function auditCycleMutation(value = {}) {
+  const source = exactObject(value, new Set([
+    "requestId", "courseId", "expectedCourseRevision", "command"
+  ]), "Alteração de auditoria");
+  return {
+    requestId: requestIdentity(source.requestId ?? createUuid()),
+    courseId: uuid(source.courseId, "Curso"),
+    expectedCourseRevision: positiveInteger(
+      source.expectedCourseRevision,
+      "Versão do Curso"
+    ),
+    command: normalizeCourseAuditCycleCommand(source.command)
+  };
+}
+
+function boundAuditCyclePage(value, { courseId, options }) {
+  const page = normalizeCourseAuditCyclePage(value);
+  if (page.courseId !== courseId ||
+      page.courseRevision !== options.expectedCourseRevision ||
+      options.auditSetVersion !== null &&
+        page.auditSetVersion !== options.auditSetVersion ||
+      JSON.stringify(normalizeCourseAuditCycleQuery(page.query)) !==
+        JSON.stringify(options.query)) {
+    throw new TypeError("A leitura de auditoria não corresponde ao pedido.");
+  }
+  return page;
+}
+
+function boundAuditCycleChange(value, mutation) {
+  const change = normalizeCourseAuditCycleChange(value);
+  const changesCourseContent = new Set([
+    "apply_authoring_correction",
+    "rollback_authoring_correction"
+  ]).has(mutation.command.type);
+  const expectedRevision = mutation.expectedCourseRevision +
+    (changesCourseContent && change.changed && !change.idempotent ? 1 : 0);
+  if (change.courseId !== mutation.courseId ||
+      change.requestId !== mutation.requestId ||
+      change.change !== null && change.change.type !== mutation.command.type ||
+      (change.idempotent
+        ? change.courseRevision < mutation.expectedCourseRevision
+        : change.courseRevision !== expectedRevision) ||
+      mutation.command.findingId != null && change.finding != null &&
+        change.finding.findingId !== mutation.command.findingId ||
+      mutation.command.correctionId != null && change.correction != null &&
+        change.correction.correctionId !== mutation.command.correctionId) {
+    throw new TypeError("A confirmação da auditoria não corresponde ao comando.");
+  }
+  return change;
+}
+
 function personalStateEnvelope(value, courseId) {
   if (value === null) return null;
   const envelope = exactObject(value, new Set([
@@ -863,6 +948,49 @@ export class CourseApiClient {
     });
   }
 
+  async loadCourseAuditCycle(courseId, value = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const options = auditCycleReadOptions(value);
+    const query = options.query;
+    const argumentsValue = {
+      courseId: normalizedCourseId,
+      view: "audit_cycle",
+      expectedRevision: options.expectedCourseRevision,
+      auditSetVersion: options.auditSetVersion,
+      mode: query.mode,
+      limit: options.limit
+    };
+    if (query.mode === "context") {
+      argumentsValue.targetStudyUnitId = query.targetStudyUnitId;
+      argumentsValue.annotationIds = query.annotationIds;
+    } else if (query.mode === "findings") {
+      if (query.targetStudyUnitId !== null) {
+        argumentsValue.targetStudyUnitId = query.targetStudyUnitId;
+      }
+      argumentsValue.states = query.states;
+      argumentsValue.dimensions = query.dimensions;
+      argumentsValue.severities = query.severities;
+      argumentsValue.cursor = options.cursor;
+    } else if (query.mode === "runs") {
+      if (query.targetStudyUnitId !== null) {
+        argumentsValue.targetStudyUnitId = query.targetStudyUnitId;
+      }
+      argumentsValue.cursor = options.cursor;
+    } else if (query.findingId !== null) {
+      argumentsValue.findingId = query.findingId;
+      if (query.correctionId !== null) {
+        argumentsValue.correctionId = query.correctionId;
+      }
+    } else {
+      argumentsValue.auditRunId = query.auditRunId;
+    }
+    const result = await this.executeCourseAction("lerCurso", argumentsValue);
+    return boundAuditCyclePage(result, {
+      courseId: normalizedCourseId,
+      options
+    });
+  }
+
   loadAuthoringOutline(courseId) {
     return this.executeCourseAction("lerCurso", {
       courseId: uuid(courseId, "Curso"),
@@ -1013,6 +1141,18 @@ export class CourseApiClient {
       expectedOrigin: "author",
       expectedChannel: "authoring_interface"
     });
+  }
+
+  async mutateCourseAuditCycle(value = {}) {
+    const mutation = auditCycleMutation(value);
+    const result = await this.executeCourseAction("alterarCurso", {
+      requestId: mutation.requestId,
+      courseId: mutation.courseId,
+      expectedRevision: mutation.expectedCourseRevision,
+      operation: "update_audit_cycle",
+      auditCommand: mutation.command
+    });
+    return boundAuditCycleChange(result, mutation);
   }
 
   advanceAuthoringPartMaterialization({

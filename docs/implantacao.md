@@ -162,9 +162,10 @@ Não aplique `20260817140000_course_identity_cutover.sql` nem
 `20260817170000_course_study_unit_inspection.sql` nem
 `20260817180000_course_design_parameters.sql` nem
 `20260817190000_course_sources_provenance.sql` nem
-`20260817200000_course_anchored_annotations.sql` por `db push` no projeto hospedado
+`20260817200000_course_anchored_annotations.sql` nem
+`20260817210000_course_audit_corrections.sql` por `db push` no projeto hospedado
 que contém os oito Cursos anteriores. O corte de identidade precisa receber a
-staging validada e as sete migrations precisam ser confirmadas na mesma sessão
+staging validada e as oito migrations precisam ser confirmadas na mesma sessão
 e na mesma transação. O comando transitório é:
 
 ```powershell
@@ -179,8 +180,8 @@ Sem `--apply`, o runner lê, converte e valida, mas não escreve no banco. Com
 3. grava a atestação privada `prepared`;
 4. relê a origem e aborta se o hash mudou;
 5. envia staging + as migrations `1400`, `1500`, `1600`, `1700`, `1800`,
-   `1900` e `2000` por uma única conexão e uma única transação PostgreSQL;
-6. registra as sete versões em `supabase_migrations.schema_migrations` dentro
+   `1900`, `2000` e `2100` por uma única conexão e uma única transação PostgreSQL;
+6. registra as oito versões em `supabase_migrations.schema_migrations` dentro
    dessa transação;
 7. relê o modelo canônico, recompõe cada Curso e compara os hashes;
 8. grava a atestação privada `verified`.
@@ -196,7 +197,7 @@ As atestações ficam, por padrão, em
 `sourceReferenceHash` e contagens. `sourceReferenceHash` sela a ordem das tuplas
 `{studyUnitId, sourceOrdinal, sourceId}` e preserva a identidade literal. O
 relatório inclui ainda os hashes do snapshot, das resoluções e do conjunto das
-sete migrations; não inclui conteúdo, credenciais nem uma segunda
+oito migrations; não inclui conteúdo, credenciais nem uma segunda
 cópia do banco. O runner recusa gravá-lo dentro do repositório público.
 
 A transação limita espera de lock a 15 segundos e cada instrução a 10 minutos;
@@ -221,14 +222,24 @@ confere contagem e hash. Não há leitura dupla nem preenchimento inferido de
 título, URL ou Âncora.
 
 O preflight da `2000` admite somente as pontes legadas previstas de observação
-e recibo. Linhas `audit_finding` ou qualquer dado inesperado falham fechadas até
-decisão explícita. A migration converte notas autorais e observações pessoais
+e recibo; qualquer dado inesperado falha fechado. A migration converte notas
+autorais e observações pessoais
 uma vez, comprova a transferência por hash, limpa ambos os documentos pessoais
 legados e instala personal-state v2 com somente progresso e **Rever**. Também
 instala o contador privado por pessoa/Curso usado pela projeção self-only; ele
 contém chaves, versão e `protected_ref` aleatório persistido, com RLS forçada e
 sem grants, e não substitui a autoridade textual. A ponte de threads sem texto bruto permanece isolada, não
 como fonte ativa.
+
+O preflight da `2100` usa um envelope fixo de 26 contagens e não converte nem
+retoma achados ou reparos antigos. Todos os bloqueadores precisam ser zero;
+somente a contagem bruta de `observation_threads` pode ser diferente de zero,
+desde que suas referências a correções também sejam zero. Qualquer campo
+ausente, contagem inesperada ou vínculo legado aborta a transação.
+
+Antes de promover, domínio do ciclo de auditoria e espelho Edge precisam
+conservar o mesmo SHA-256
+`6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9`.
 
 Falhas durante a transação provocam rollback. A recomposição final acontece
 depois do commit; se ela divergir, as migrations já foram aplicadas, mas API,
@@ -243,8 +254,8 @@ npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
 ```
 
 As versões `20260817140000`, `20260817150000`, `20260817160000`,
-`20260817170000`, `20260817180000`, `20260817190000` e
-`20260817200000` precisam
+`20260817170000`, `20260817180000`, `20260817190000`,
+`20260817200000` e `20260817210000` precisam
 constar como aplicadas e o dry-run não pode tentar reaplicá-las. Nunca execute
 `db push` em modo Apply antes do runner nesse projeto: a `1600` converte o
 estado autoral monolítico criado pela `1400`, e a `1700` conclui o corte para
@@ -253,15 +264,17 @@ estado autoral monolítico criado pela `1400`, e a `1700` conclui o corte para
 plano e instala parâmetros, revisões de orientação e política de componentes;
 a `1900` instala Fontes, Âncoras, atribuições e o corte limpo do conteúdo; a
 `2000` instala Anotações ancoradas, versão privada da projeção de Estudo e
-personal-state v2.
+personal-state v2; a `2100` instala rodadas imutáveis, versões de achados,
+junções protegidas e correções verificáveis.
 Não existe janela intermediária nem passo separado de `db push` para as
 migrations desse corte. Só depois dessas provas o roteiro geral
 pode publicar as funções e os clientes.
 
 Depois do corte, regenere e revise o inventário vertical contra o schema
-pós-`2000`. O inventário aprovado tem 2.096 objetos: 501 ligados aos sete casos
-correntes — 84 Anotações ancoradas, 272 Autoria, 84 Fontes, 26 Estudo, 31
-pessoas/acesso, um componentes e três transportes — e 1.595 no legado físico.
+pós-`2100`. O inventário aprovado tem 2.186 objetos: 591 ligados aos oito casos
+correntes — 90 Auditoria e correções, 272 Autoria, 84 Anotações ancoradas, 84
+Fontes, 26 Estudo, 31 pessoas/acesso, três transportes e um componentes — e
+1.595 no legado físico.
 Os doze objetos da versão privada são uma tabela, seu estado RLS forçado, seis
 constraints, três índices e um helper privado. `protected_ref` acrescenta o
 check, a unique e o índice unique; a coluna não é objeto inventariado.
@@ -463,7 +476,10 @@ No Supabase, habilite OAuth 2.1 Server, Dynamic Client Registration, uma chave J
 
 ## 9. Smoke no projeto hospedado
 
-Execute o smoke somente depois de migrations, Auth, funções e ao menos um curso oficial. O ensaio cria duas contas temporárias, comprova isolamento, chama RPCs, materializa conteúdo e tenta limpar os dados. Use janela de manutenção.
+Execute o smoke somente depois de migrations, Auth, funções e ao menos um curso
+oficial. O ensaio cria duas contas temporárias, comprova isolamento, chama RPCs,
+materializa conteúdo, percorre auditoria/correção/verificação e tenta limpar os
+dados. Use janela de manutenção.
 
 Informe a secret key apenas num prompt protegido:
 
@@ -544,10 +560,18 @@ Antes de abrir a instalação, demonstre:
     `requestId`;
 15. owner no contador global e duas contas de Estudo em contadores privados,
     sem atividade alheia observável por página, conflito, cache ou duas abas;
-16. limites de página, cache e resposta sob orçamento do Free Plan;
-17. concorrência e constraints após reset em PostgreSQL real;
-18. inventário vertical pós-`2000` com 2.096 objetos: 501 correntes e 1.595 no
+16. sétima área **Auditoria e correções** em 360, 390 e 430 px e desktop, com
+    abas Observações/Achados, rodada limpa enumerável e detalhe completo por
+    `auditRunId`;
+17. correção focal aplicada sob confirmação, nova rodada de verificação,
+    evidência factual exata e rollback a partir do checkpoint;
+18. Anotação retirada projetada indisponível antes da limpeza e cascade físico
+    removendo somente a junção e seu ID, sem texto ou pessoa no achado;
+19. auditoria online-only e limites de página, comando, histórico, checkpoint e
+    resposta sob orçamento do Free Plan;
+20. concorrência e constraints após reset em PostgreSQL real;
+21. inventário vertical pós-`2100` com 2.186 objetos: 591 correntes e 1.595 no
     legado físico, na distribuição aprovada;
-19. restauração de backup ensaiada.
+22. restauração de backup ensaiada.
 
 Defina responsáveis por backup, restauração, SMTP, domínio, certificados, atualização do Supabase, logs e incidentes. Testes automatizados reduzem risco conhecido; não substituem monitoramento nem um plano operacional exercitado.

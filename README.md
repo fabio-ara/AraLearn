@@ -82,16 +82,19 @@ Ao abrir um Curso, a interface oferece sete destinos compactos:
   ordenadas a itens do plano ou Unidades de estudo;
 - **Estrutura:** hierarquia compacta de Módulos, Lições e Microssequências;
 - **Inspeção:** sequência vertical paginada das Unidades materializadas;
-- **Observações:** caixa de entrada única das Anotações ancoradas do Curso, com
-  filtros, sínteses, respostas e links profundos até o alvo;
+- **Auditoria e correções:** no mesmo destino das Observações, reúne a caixa de
+  entrada das Anotações ancoradas e o ciclo versionado de achado, proposta,
+  aplicação, verificação e rollback;
 - **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
 
 As ferramentas de autoria por **Model Context Protocol (MCP)** leem e alteram
 esse mesmo Curso. Elas listam Cursos próprios, leem a composição paginada,
-criam e alteram Cursos, consultam e vinculam Fontes, gerem perfil e acesso e
-consultam a biblioteca de componentes didáticos. A revisão de estado e as
-chaves de repetição segura impedem que duas edições silenciosamente se
-sobrescrevam ou que uma chamada repetida duplique uma operação.
+criam e alteram Cursos, consultam e vinculam Fontes, operam auditoria e
+correções, gerem perfil e acesso e consultam a biblioteca de componentes
+didáticos. O MCP continua com seis ferramentas: as capacidades novas entram em
+`lerCurso` e `alterarCurso`. A revisão de estado e as chaves de repetição
+segura impedem que duas edições silenciosamente se sobrescrevam ou que uma
+chamada repetida duplique uma operação.
 
 O planejamento por Partes já é persistido e editável em linguagem natural. A
 faixa inicial de 7–12 Partes é uma sugestão configurável, não uma lei
@@ -115,9 +118,10 @@ inventa metadados para completá-las.
 A Inspeção percorre o Curso inteiro ou um recorte por Parte, Unidades sem Parte,
 Módulo, Lição ou Microssequência, mantém no navegador uma janela limitada e
 conserva localmente a Unidade corrente. Respostas ficam desativadas nessa
-leitura. Dela, a pessoa autora pode anotar o alvo exato; edição contextual,
-achados de auditoria, correção verificada, variantes e analytics de pesquisa
-pertencem a fatias posteriores.
+leitura. Dela, a pessoa autora pode anotar ou auditar a Unidade exata. A
+correção v1 altera somente campos editáveis e a proveniência dessa Unidade,
+preserva um checkpoint e exige verificação posterior; variantes e analytics de
+pesquisa pertencem a fatias posteriores.
 
 Comece pelo [guia do professor e autor](docs/guia-professor-autor.md). A
 explicação do protocolo está em [Autoria por MCP](docs/autoria-mcp.md).
@@ -144,6 +148,10 @@ Assim, conteúdo carregado anteriormente pode ser retomado sem rede. Progresso e
 **Rever** usam sua fila por Curso; comandos de observação usam uma outbox
 separada e são enviados quando a conexão retorna.
 
+Auditoria, achados e correções são online-only: não possuem store, cache
+autoritativo ou outbox no IndexedDB. Isso não altera o funcionamento offline
+das Observações.
+
 No servidor, PostgreSQL conserva o Curso vivo, suas entidades normalizadas,
 Anotações ancoradas, acessos diretos, eventos mínimos e estados pessoais. O
 Storage de objetos é usado nesta etapa apenas para fotos privadas de perfil; o
@@ -165,22 +173,24 @@ iconográfica entre áreas.
 
 O código desta revisão implementa a identidade única de Curso vivo, a lista e
 a composição paginadas, a Inspeção vertical owner-only, Fontes e proveniência
-por alvo, Anotações ancoradas estudantis e autorais, o estado pessoal v2, a
-Autoria restrita ao proprietário, o acesso direto para Estudo e o perfil humano
-mínimo com nome e foto privada.
+por alvo, Anotações ancoradas estudantis e autorais, o ciclo owner-only e
+online de auditoria, correção e verificação, o estado pessoal v2, a Autoria
+restrita ao proprietário, o acesso direto para Estudo e o perfil humano mínimo
+com nome e foto privada.
 
 O corte é limpo: `StudyUnit.sources` não existe mais no conteúdo. Composição e
 materialização confirmam as atribuições separadas na mesma transação das
 Unidades, a migration `1900` preserva referências anteriores como legado oculto
-e não resolvido até resolução in-place e a migration `2000` introduz Anotação
-ancorada e estado pessoal v2 sem leitura ou escrita dupla do formato anterior.
-Achados de auditoria, correção, revisão e verificação independente continuam
-fora desta fatia.
+e não resolvido até resolução in-place, a migration `2000` introduz Anotação
+ancorada e estado pessoal v2 sem leitura ou escrita dupla e a migration `2100`
+instala o ciclo mínimo novo sem reativar a auditoria substituída.
+Runs antigos, mandatos, findings e artefatos de desenho substituídos não entram
+como fonte, fallback ou compatibilidade.
 
 Esse corte ainda não está promovido ao serviço hospedado. Antes da promoção, o
 importador precisa converter e validar todos os Cursos reais, os componentes
 didáticos bloqueadores precisam ter equivalência semântica, o banco local deve
-ser reconstruído e as migrations `1400` a `2000` devem passar juntas pelos
+ser reconstruído e as migrations `1400` a `2100` devem passar juntas pelos
 mesmos gates. Os limites de paginação e payload tornam o consumo mensurável,
 mas ainda não provam sustentabilidade no Supabase Free Plan. Portanto,
 a aplicação pública e o APK da última release podem refletir a arquitetura

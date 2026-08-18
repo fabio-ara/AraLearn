@@ -22,6 +22,11 @@ import {
   normalizeCourseAnchoredAnnotationCommand,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
+import {
+  CourseAuditCycleError,
+  normalizeCourseAuditCycleCommand,
+  normalizeCourseAuditCycleReadOptions
+} from "../aralearn/runtime/domain/courseAuditCycle.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
@@ -48,6 +53,7 @@ const KNOWN_COMPONENT_REFS = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
   ({ id, version }) => `${id}@${version}`
 );
 const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
+const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 function fail(code, message, details = null, status = 422) {
   throw new AuthoringApiError(status, code, message, details);
@@ -173,6 +179,15 @@ function normalizeCourseAnchoredAnnotationsDomain(normalize) {
     return normalize();
   } catch (error) {
     if (!(error instanceof CourseAnchoredAnnotationsError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+function normalizeCourseAuditCycleDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuditCycleError)) throw error;
     throw new AuthoringApiError(422, error.code, error.message, error.details);
   }
 }
@@ -478,6 +493,62 @@ function courseAnchoredAnnotationsQuery(request, courseId) {
   return options;
 }
 
+function courseAuditCycleQuery(request) {
+  const url = new URL(request.url);
+  if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
+      AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES) {
+    fail(
+      "course_audit_cycle_query_too_large",
+      "Os filtros de auditoria excedem o limite transportável de 8 KiB.",
+      null,
+      414
+    );
+  }
+  const fields = [...url.searchParams.keys()];
+  const listFields = new Set(["state", "dimension", "severity", "annotationId"]);
+  const allowed = new Set([
+    "expectedRevision", "auditSetVersion", "mode", "targetStudyUnitId",
+    "findingId", "correctionId", "auditRunId", ...listFields, "cursor", "limit"
+  ]);
+  const unknown = fields.find((field) => !allowed.has(field));
+  const duplicatedScalar = [...new Set(fields)].find((field) =>
+    !listFields.has(field) && url.searchParams.getAll(field).length > 1
+  );
+  if (unknown || duplicatedScalar) {
+    fail(
+      "invalid_course_audit_cycle_query",
+      "A leitura de auditoria recebeu filtros incompatíveis.",
+      { field: unknown || duplicatedScalar }
+    );
+  }
+  const rawAuditSetVersion = url.searchParams.get("auditSetVersion");
+  return normalizeCourseAuditCycleDomain(() => normalizeCourseAuditCycleReadOptions({
+    expectedCourseRevision: Number(url.searchParams.get("expectedRevision")),
+    auditSetVersion: rawAuditSetVersion === null
+      ? null
+      : rawAuditSetVersion === ""
+        ? Number.NaN
+        : Number(rawAuditSetVersion),
+    query: {
+      mode: url.searchParams.has("mode")
+        ? url.searchParams.get("mode")
+        : "findings",
+      targetStudyUnitId: url.searchParams.get("targetStudyUnitId"),
+      findingId: url.searchParams.get("findingId"),
+      correctionId: url.searchParams.get("correctionId"),
+      auditRunId: url.searchParams.get("auditRunId"),
+      states: url.searchParams.getAll("state"),
+      dimensions: url.searchParams.getAll("dimension"),
+      severities: url.searchParams.getAll("severity"),
+      annotationIds: url.searchParams.getAll("annotationId")
+    },
+    cursor: url.searchParams.get("cursor"),
+    limit: url.searchParams.has("limit")
+      ? Number(url.searchParams.get("limit"))
+      : 12
+  }));
+}
+
 function validateEntityIdentity(value, index) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     fail("invalid_course_entity", "A identidade da entidade é inválida.", { index });
@@ -672,6 +743,22 @@ function validateCourseAnchoredAnnotationChange(body, request, courseId) {
     requestId: requestIdFrom(request, body),
     expectedCourseRevision,
     command
+  };
+}
+
+function validateCourseAuditCycleChange(body, request) {
+  exactFields(body, new Set([
+    "requestId", "expectedCourseRevision", "command"
+  ]));
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedCourseRevision: positiveInteger(
+      body.expectedCourseRevision,
+      "expectedCourseRevision"
+    ),
+    command: normalizeCourseAuditCycleDomain(() => normalizeCourseAuditCycleCommand(
+      jsonObject(body.command, "command", 192 * 1024)
+    ))
   };
 }
 
@@ -1119,6 +1206,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseAuditCycle") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseAuditCycle({
+        principal,
+        courseId: route.courseId,
+        ...courseAuditCycleQuery(request),
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "getCourseAuthoringPartMaterialization") {
     assertPrincipal(principal);
     return {
@@ -1266,6 +1365,22 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: value.requestId,
       data: await adapter.executeCourseAnchoredAnnotationCommand({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "executeCourseAuditCycleCommand") {
+    assertPrincipal(principal, { write: true });
+    const value = validateCourseAuditCycleChange(
+      await readCourseJsonBody(request),
+      request
+    );
+    return {
+      requestId: value.requestId,
+      data: await adapter.executeCourseAuditCycleCommand({
         principal,
         courseId: route.courseId,
         ...value,

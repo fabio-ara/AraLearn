@@ -114,6 +114,22 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(anchoredAnnotations[1])
     };
   }
+  const auditCycleChange = path.match(
+    /^\/v1\/courses\/([^/]+)\/audit-cycle\/changes$/u
+  );
+  if (auditCycleChange && verb === "POST") {
+    return {
+      name: "executeCourseAuditCycleCommand",
+      courseId: courseUuid(auditCycleChange[1])
+    };
+  }
+  const auditCycle = path.match(/^\/v1\/courses\/([^/]+)\/audit-cycle$/u);
+  if (auditCycle && verb === "GET") {
+    return {
+      name: "getCourseAuditCycle",
+      courseId: courseUuid(auditCycle[1])
+    };
+  }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };

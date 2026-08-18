@@ -1102,6 +1102,146 @@ test("Controller compartilha citações redigidas e reserva catálogo completo a
   );
 });
 
+test("ciclo de auditoria é owner-only, remoto e invalida conteúdo somente ao aplicar", async () => {
+  const store = new MemoryStateStore();
+  const findingId = "60000000-0000-5000-8000-000000000006";
+  const correctionId = "70000000-0000-5000-8000-000000000007";
+  const query = {
+    mode: "findings",
+    targetStudyUnitId: null,
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: [],
+    dimensions: [],
+    severities: [],
+    annotationIds: []
+  };
+  const page = {
+    contract: "aralearn.course-audit-cycle-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    auditSetVersion: 4,
+    query,
+    summary: {
+      matchingTotal: 0,
+      byState: { open: 0, awaiting_verification: 0, resolved: 0, dismissed: 0 },
+      byDimension: {
+        structural_conformance: 0,
+        pedagogical_quality: 0,
+        factual_quality: 0,
+        editorial_quality: 0
+      },
+      bySeverity: { low: 0, medium: 0, high: 0, critical: 0 }
+    },
+    context: null,
+    items: [],
+    runs: [],
+    detail: null,
+    runDetail: null,
+    hasMore: false,
+    nextCursor: null
+  };
+  const requestId = "request-audit-controller-1";
+  const command = {
+    type: "apply_authoring_correction",
+    findingId,
+    expectedFindingVersion: 2,
+    correctionId,
+    expectedCorrectionVersion: 1
+  };
+  const change = {
+    contract: "aralearn.course-audit-cycle-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 8,
+    auditSetVersion: 5,
+    requestId,
+    idempotent: false,
+    changed: true,
+    change: {
+      type: command.type,
+      auditRunId: null,
+      findingRefs: [{ findingId, findingVersion: 3 }],
+      correctionRef: { correctionId, correctionVersion: 2 }
+    },
+    finding: null,
+    correction: null,
+    suggestedAnnotationActions: []
+  };
+  const calls = [];
+  let offline = false;
+  const api = {
+    async listCourses() { return courseListPage([]); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseAuditCycle(courseId, options) {
+      calls.push(["read", courseId, structuredClone(options)]);
+      if (offline) throw networkFailure();
+      return page;
+    },
+    async mutateCourseAuditCycle(value) {
+      calls.push(["write", structuredClone(value)]);
+      return change;
+    }
+  };
+  const owner = new CourseController({ api, store, ownerOnly: true });
+  const shared = new CourseController({ api, store });
+  const options = {
+    expectedCourseRevision: 7,
+    auditSetVersion: 4,
+    query,
+    cursor: null,
+    limit: 12
+  };
+  assert.deepEqual(await owner.loadCourseAuditCycle(COURSE_ID, options), page);
+  assert.deepEqual(await owner.loadCourseAuditCycle(COURSE_ID, options), page);
+  assert.equal(calls.filter(([kind]) => kind === "read").length, 2);
+  assert.deepEqual([...store.values.keys()], []);
+  await assert.rejects(
+    () => shared.loadCourseAuditCycle(COURSE_ID, options),
+    /não oferece auditoria/u
+  );
+
+  offline = true;
+  await assert.rejects(() => owner.loadCourseAuditCycle(COURSE_ID, options), /offline/u);
+  assert.deepEqual([...store.values.keys()], []);
+  offline = false;
+
+  for (const key of [
+    `course-authoring.v1.list::start`,
+    `course-authoring.v1.header:${COURSE_ID}`,
+    `course-authoring.v1.entities:${COURSE_ID}:7:start`,
+    `course-authoring.v1.course-sources:${COURSE_ID}:catalog`,
+    `course-authoring.v1.study-unit-inspection:${COURSE_ID}`
+  ]) {
+    await store.putCache(key, { sensitive: true });
+  }
+  await store.putCache("unrelated", { keep: true });
+  assert.deepEqual(await owner.mutateCourseAuditCycle({
+    requestId,
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command
+  }), change);
+  assert.deepEqual(calls.at(-1), ["write", {
+    requestId,
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command
+  }]);
+  assert.equal([...store.values.keys()].some((key) => key.includes(COURSE_ID)), false);
+  assert.equal(store.values.has("course-authoring.v1.list::start"), false);
+  assert.equal(store.values.has("unrelated"), true);
+  await assert.rejects(
+    () => shared.mutateCourseAuditCycle({
+      requestId,
+      courseId: COURSE_ID,
+      expectedCourseRevision: 7,
+      command
+    }),
+    /não oferece alterações de auditoria/u
+  );
+});
+
 test("Controller preserva caches no conflito de citações e purga somente a revogação real", async () => {
   const store = new MemoryStateStore();
   let failure = "stale";

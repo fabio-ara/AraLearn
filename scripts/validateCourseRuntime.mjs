@@ -28,12 +28,16 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-source-provenance-v1",
   "course-anchored-annotations-v1",
   "course-annotation-subject-classification-v1",
-  "course-personal-state-v2"
+  "course-personal-state-v2",
+  "course-audit-cycle-v1",
+  "course-authoring-corrections-v1",
+  "course-audit-annotation-links-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
   "public/main.js",
   "src/domain/courseAnchoredAnnotations.js",
+  "src/domain/courseAuditCycle.js",
   "src/domain/courseAuthoringPlan.js",
   "src/domain/courseDesignParameters.js",
   "src/domain/courseEntities.js",
@@ -109,6 +113,11 @@ const LEGACY_PERSONAL_OBSERVATIONS_ACCESS =
 const STUDY_UNIT_SOURCE_CONTRACT_FILES = new Set([
   "src/resources/kernel/studyUnitEnvelope.js",
   "supabase/functions/_shared/aralearn/runtime/resources/kernel/studyUnitEnvelope.js"
+]);
+
+const COURSE_AUDIT_AUTHORING_GUIDANCE_CONTRACT_FILES = new Set([
+  "src/domain/courseAuditCycle.js",
+  "supabase/functions/_shared/aralearn/runtime/domain/courseAuditCycle.js"
 ]);
 
 const FORBIDDEN_COURSE_SOURCE_ALIASES = Object.freeze([
@@ -220,7 +229,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260817200000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260817210000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -245,6 +254,9 @@ async function validateManifest() {
   const annotationsMigration = await read(
     "supabase/migrations/20260817200000_course_anchored_annotations.sql"
   );
+  const auditMigration = await read(
+    "supabase/migrations/20260817210000_course_audit_corrections.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
@@ -265,7 +277,9 @@ async function validateManifest() {
       !annotationsMigration.includes("'schemaRevision','20260817200000'") ||
       !annotationsMigration.includes(
         "where existing.value<>'course-personal-state-v1'"
-      )) {
+      ) ||
+      !auditMigration.includes("$advance_course_audit_corrections_manifest$") ||
+      !auditMigration.includes("'schemaRevision','20260817210000'")) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
   for (const feature of REQUIRED_FEATURES) {
@@ -275,7 +289,8 @@ async function validateManifest() {
         !inspectionMigration.includes(`'${feature}'`) &&
         !designMigration.includes(`'${feature}'`) &&
         !sourcesMigration.includes(`'${feature}'`) &&
-        !annotationsMigration.includes(`'${feature}'`)) {
+        !annotationsMigration.includes(`'${feature}'`) &&
+        !auditMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -327,6 +342,15 @@ async function validateRuntimeFiles() {
   if (!browserAnchoredAnnotations || browserAnchoredAnnotations !== edgeAnchoredAnnotations) {
     fail("O domínio de observações ancoradas diverge entre navegador e Edge.");
   }
+  const browserCourseAuditCycle = entries.find(({ relativePath }) =>
+    relativePath === "src/domain/courseAuditCycle.js")?.source;
+  const edgeCourseAuditCycle = edgeGraph.get(path.join(
+    repositoryRoot,
+    "supabase/functions/_shared/aralearn/runtime/domain/courseAuditCycle.js"
+  ));
+  if (!browserCourseAuditCycle || browserCourseAuditCycle !== edgeCourseAuditCycle) {
+    fail("O domínio do ciclo de auditoria diverge entre navegador e Edge.");
+  }
   for (const [filePath, source] of edgeGraph) {
     const runtimePath = relativePath(filePath);
     if (WILDCARD_SCOPE_AUTHORIZATION.test(source)) {
@@ -338,6 +362,10 @@ async function validateRuntimeFiles() {
   }
   for (const { relativePath, source } of entries) {
     for (const symbol of FORBIDDEN_RUNTIME_SYMBOLS) {
+      if (symbol === "authoringGuidance" &&
+          COURSE_AUDIT_AUTHORING_GUIDANCE_CONTRACT_FILES.has(relativePath)) {
+        continue;
+      }
       if (source.includes(symbol)) {
         fail(`${relativePath} ainda usa o símbolo substituído ${symbol}.`);
       }

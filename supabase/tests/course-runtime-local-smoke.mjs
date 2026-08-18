@@ -169,6 +169,51 @@ function itemForCourse(list, courseId) {
   return list?.items?.find((item) => item.courseId === courseId) || null;
 }
 
+const AUDIT_CRITERIA = Object.freeze({
+  pedagogical_quality: Object.freeze({
+    code: "pedagogical_alignment",
+    version: "1",
+    statement: "A Unidade concretiza a intenção pedagógica declarada.",
+  }),
+  factual_quality: Object.freeze({
+    code: "claim_support",
+    version: "1",
+    statement: "As afirmações factuais possuem suporte exato em Fonte e Âncora ativas.",
+  }),
+  editorial_quality: Object.freeze({
+    code: "editorial_clarity",
+    version: "1",
+    statement: "A formulação é clara, precisa e adequada ao contexto da Unidade.",
+  }),
+});
+
+function auditCheck(dimension, result, {
+  checkId = crypto.randomUUID(),
+  sourceLinks = [],
+} = {}) {
+  const adequacy = {
+    passed: "sufficient",
+    failed: "insufficient",
+    uncertain: "uncertain",
+    not_applicable: "not_applicable",
+    not_checked: "not_assessed",
+  }[result];
+  assert(adequacy, `Resultado de auditoria desconhecido: ${result}`);
+  return {
+    checkId,
+    dimension,
+    criterion: AUDIT_CRITERIA[dimension],
+    result,
+    publicEvidence: result === "not_checked"
+      ? "Dimensão não reavaliada nesta rodada focal."
+      : `Resultado público da dimensão ${dimension} no smoke local.`,
+    adequacy,
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks,
+  };
+}
+
 const suffix = `${Date.now()}-${process.pid}`;
 const password = `AraLearn-course-smoke-${suffix}-A9!`;
 const ownerEmail = `course-owner-${suffix}@aralearn.local`;
@@ -741,7 +786,9 @@ try {
       ...change,
       content: {
         ...change.content,
-        title: `Unidade materializada ${index + 1}`,
+        title: index === 1
+          ? "Texto explicado materializado 2"
+          : `Unidade materializada ${index + 1}`,
         content: change.content.content.map((component) => ({
           ...component,
           data: {
@@ -1344,6 +1391,550 @@ try {
     authorAnnotation.data.annotation.annotationVersion,
   );
 
+  let auditCourseRevision = removedStudyUnit.data.revision;
+  const auditTargetStudyUnitId = "study-unit-smoke-2";
+  const loadAuditContext = async (annotationIds = [learnerAnnotationId]) => (await courseAction("lerCurso", {
+    courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "context",
+    targetStudyUnitId: auditTargetStudyUnitId,
+    annotationIds,
+    limit: 1,
+  }, ownerToken)).data;
+  const loadAuditDetail = async (findingId, correctionId = null) => {
+    const result = await courseAction("lerCurso", {
+      courseId,
+      view: "audit_cycle",
+      expectedRevision: auditCourseRevision,
+      auditSetVersion: null,
+      mode: "detail",
+      findingId,
+      ...(correctionId === null ? {} : { correctionId }),
+      limit: 1,
+    }, ownerToken);
+    return result.data;
+  };
+  const mutateAudit = async (auditCommand, {
+    requestId = crypto.randomUUID(),
+    expectedRevision = auditCourseRevision,
+  } = {}) => (await courseAction("alterarCurso", {
+    requestId,
+    courseId,
+    expectedRevision,
+    operation: "update_audit_cycle",
+    auditCommand,
+  }, ownerToken)).data;
+
+  const initialAuditContextPage = await loadAuditContext();
+  assert.equal(
+    initialAuditContextPage.contract,
+    "aralearn.course-audit-cycle-page.v1",
+  );
+  assert.equal(
+    initialAuditContextPage.context.contract,
+    "aralearn.course-audit-context.v1",
+  );
+  assert.equal(
+    initialAuditContextPage.context.target.studyUnitId,
+    auditTargetStudyUnitId,
+  );
+  assert.deepEqual(initialAuditContextPage.context.target.sourceLinks, []);
+  const linkedAuditAnnotation = initialAuditContextPage.context.annotations.find(
+    ({ annotationId }) => annotationId === learnerAnnotationId,
+  );
+  assert.equal(linkedAuditAnnotation.state, "considered");
+  assert.equal(
+    linkedAuditAnnotation.annotationVersion,
+    answeredAnnotation.data.annotation.annotationVersion,
+  );
+
+  const originAuditRunId = crypto.randomUUID();
+  const factualCheckId = crypto.randomUUID();
+  const editorialCheckId = crypto.randomUUID();
+  const factualFindingId = crypto.randomUUID();
+  const editorialFindingId = crypto.randomUUID();
+  const recordAuditCommand = {
+    type: "record_audit",
+    auditRunId: originAuditRunId,
+    targetStudyUnitId: auditTargetStudyUnitId,
+    contextHash: initialAuditContextPage.context.contextHash,
+    origin: "human_audit",
+    method: { id: "aralearn-local-smoke-review", version: "1" },
+    checks: [
+      auditCheck("pedagogical_quality", "not_checked"),
+      auditCheck("factual_quality", "failed", { checkId: factualCheckId }),
+      auditCheck("editorial_quality", "failed", { checkId: editorialCheckId }),
+    ],
+    findings: [{
+      findingId: factualFindingId,
+      checkId: factualCheckId,
+      code: "missing_source_anchor",
+      severity: "high",
+      annotationRefs: [{
+        annotationId: learnerAnnotationId,
+        annotationVersion: linkedAuditAnnotation.annotationVersion,
+      }],
+    }, {
+      findingId: editorialFindingId,
+      checkId: editorialCheckId,
+      code: "ambiguous_formulation",
+      severity: "medium",
+      annotationRefs: [{
+        annotationId: learnerAnnotationId,
+        annotationVersion: linkedAuditAnnotation.annotationVersion,
+      }],
+    }],
+  };
+  const recordAuditRequestId = crypto.randomUUID();
+  const recordedAudit = await mutateAudit(recordAuditCommand, {
+    requestId: recordAuditRequestId,
+  });
+  assert.equal(recordedAudit.courseRevision, auditCourseRevision);
+  assert.equal(recordedAudit.idempotent, false);
+  assert.equal(recordedAudit.change.type, "record_audit");
+  assert.equal(recordedAudit.change.auditRunId, originAuditRunId);
+  assert.deepEqual(
+    recordedAudit.change.findingRefs.map(({ findingId }) => findingId).sort(),
+    [factualFindingId, editorialFindingId].sort(),
+  );
+  const replayedAudit = await mutateAudit(recordAuditCommand, {
+    requestId: recordAuditRequestId,
+  });
+  assert.equal(replayedAudit.idempotent, true);
+  assert.equal(replayedAudit.courseRevision, recordedAudit.courseRevision);
+  assert.equal(replayedAudit.auditSetVersion, recordedAudit.auditSetVersion);
+  assert.deepEqual(replayedAudit.change, recordedAudit.change);
+
+  const cleanAuditContextPage = await loadAuditContext([]);
+  const cleanAuditRunId = crypto.randomUUID();
+  const cleanAudit = await mutateAudit({
+    type: "record_audit",
+    auditRunId: cleanAuditRunId,
+    targetStudyUnitId: auditTargetStudyUnitId,
+    contextHash: cleanAuditContextPage.context.contextHash,
+    origin: "human_audit",
+    method: { id: "aralearn-local-smoke-clean-review", version: "1" },
+    checks: [
+      auditCheck("pedagogical_quality", "not_checked"),
+      auditCheck("factual_quality", "not_checked"),
+      auditCheck("editorial_quality", "not_checked"),
+    ],
+    findings: [],
+  });
+  assert.equal(cleanAudit.change.auditRunId, cleanAuditRunId);
+  const auditRunsPage = (await courseAction("lerCurso", {
+    courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "runs",
+    targetStudyUnitId: auditTargetStudyUnitId,
+    limit: 24,
+  }, ownerToken)).data;
+  const cleanAuditSummary = auditRunsPage.runs.find(
+    ({ auditRunId }) => auditRunId === cleanAuditRunId,
+  );
+  assert.equal(cleanAuditSummary.findingsCreated, 0);
+  assert.match(cleanAuditSummary.deepLink, new RegExp(`auditRunId=${cleanAuditRunId}$`, "u"));
+  const cleanAuditDetail = (await courseAction("lerCurso", {
+    courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "detail",
+    auditRunId: cleanAuditRunId,
+    limit: 1,
+  }, ownerToken)).data;
+  assert.equal(cleanAuditDetail.runDetail.auditRunId, cleanAuditRunId);
+  assert.equal(cleanAuditDetail.runDetail.metrics.findingsCreated, 0);
+  assert.equal(cleanAuditDetail.runDetail.target.path.at(-1).id, auditTargetStudyUnitId);
+
+  const initialEditorialDetail = await loadAuditDetail(editorialFindingId);
+  assert.equal(initialEditorialDetail.detail.finding.status, "open");
+  assert.equal(
+    initialEditorialDetail.detail.finding.annotationRefs[0].annotationId,
+    learnerAnnotationId,
+  );
+  const rejectedCorrectionId = crypto.randomUUID();
+  const rejectedAfterContent = structuredClone(
+    initialAuditContextPage.context.target.content,
+  );
+  rejectedAfterContent.title = "Formulação descartada pelo smoke";
+  const proposedForRejection = await mutateAudit({
+    type: "propose_authoring_correction",
+    correctionId: rejectedCorrectionId,
+    findingId: editorialFindingId,
+    expectedFindingVersion:
+      initialEditorialDetail.detail.finding.findingVersion,
+    expectedCorrectionVersion: 0,
+    afterContent: rejectedAfterContent,
+    afterSourceLinks: initialAuditContextPage.context.target.sourceLinks,
+    rationale: "Exercitar a rejeição explícita sem alterar o Curso.",
+  });
+  assert.equal(proposedForRejection.correction.status, "proposed");
+  assert.deepEqual(
+    proposedForRejection.correction.checkpoint.after.content.topics,
+    initialAuditContextPage.context.target.content.topics,
+  );
+  assert.deepEqual(
+    proposedForRejection.correction.checkpoint.after.sourceLinks,
+    initialAuditContextPage.context.target.sourceLinks,
+  );
+  const rejectedCorrection = await mutateAudit({
+    type: "reject_authoring_correction",
+    findingId: editorialFindingId,
+    expectedFindingVersion: proposedForRejection.finding.findingVersion,
+    correctionId: rejectedCorrectionId,
+    expectedCorrectionVersion:
+      proposedForRejection.correction.correctionVersion,
+  });
+  assert.equal(rejectedCorrection.courseRevision, auditCourseRevision);
+  assert.equal(rejectedCorrection.finding.status, "open");
+  assert.equal(rejectedCorrection.correction.status, "rejected");
+  const contextAfterRejection = await loadAuditContext();
+  assert.deepEqual(
+    contextAfterRejection.context.target.content,
+    initialAuditContextPage.context.target.content,
+  );
+  assert.deepEqual(
+    contextAfterRejection.context.target.sourceLinks,
+    initialAuditContextPage.context.target.sourceLinks,
+  );
+
+  const editorialCorrectionId = crypto.randomUUID();
+  const editorialAfterContent = structuredClone(
+    initialAuditContextPage.context.target.content,
+  );
+  editorialAfterContent.title = "Segunda Unidade editorialmente clara";
+  const proposedEditorialCorrection = await mutateAudit({
+    type: "propose_authoring_correction",
+    correctionId: editorialCorrectionId,
+    findingId: editorialFindingId,
+    expectedFindingVersion: rejectedCorrection.finding.findingVersion,
+    expectedCorrectionVersion: 0,
+    afterContent: editorialAfterContent,
+    afterSourceLinks: initialAuditContextPage.context.target.sourceLinks,
+    rationale: "Aplicar a correção editorial focal e verificá-la.",
+  });
+  assert.deepEqual(
+    proposedEditorialCorrection.correction.checkpoint.before.content.topics,
+    proposedEditorialCorrection.correction.checkpoint.after.content.topics,
+  );
+  assert.deepEqual(
+    proposedEditorialCorrection.correction.checkpoint.before.sourceLinks,
+    proposedEditorialCorrection.correction.checkpoint.after.sourceLinks,
+  );
+
+  const applyEditorialCommand = {
+    type: "apply_authoring_correction",
+    findingId: editorialFindingId,
+    expectedFindingVersion:
+      proposedEditorialCorrection.finding.findingVersion,
+    correctionId: editorialCorrectionId,
+    expectedCorrectionVersion:
+      proposedEditorialCorrection.correction.correctionVersion,
+  };
+  const applyEditorialRequestId = crypto.randomUUID();
+  const appliedEditorialCorrection = await mutateAudit(applyEditorialCommand, {
+    requestId: applyEditorialRequestId,
+  });
+  assert.equal(appliedEditorialCorrection.courseRevision, auditCourseRevision + 1);
+  assert.equal(appliedEditorialCorrection.finding.status, "awaiting_verification");
+  assert.equal(appliedEditorialCorrection.correction.status, "applied");
+  assert.equal(
+    appliedEditorialCorrection.correction.application.courseRevision,
+    appliedEditorialCorrection.courseRevision,
+  );
+  const replayedEditorialApplication = await mutateAudit(applyEditorialCommand, {
+    requestId: applyEditorialRequestId,
+    expectedRevision: auditCourseRevision,
+  });
+  assert.equal(replayedEditorialApplication.idempotent, true);
+  assert.equal(
+    replayedEditorialApplication.courseRevision,
+    appliedEditorialCorrection.courseRevision,
+  );
+  assert.equal(
+    replayedEditorialApplication.correction.correctionVersion,
+    appliedEditorialCorrection.correction.correctionVersion,
+  );
+  const staleEditorialApplication = await request(
+    "/functions/v1/aralearn-course-api/app/alterarCurso",
+    {
+      method: "POST",
+      token: ownerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        requestId: crypto.randomUUID(),
+        courseId,
+        expectedRevision: auditCourseRevision,
+        operation: "update_audit_cycle",
+        auditCommand: applyEditorialCommand,
+      },
+    },
+  );
+  assert.equal(
+    staleEditorialApplication.response.status,
+    409,
+    failureMessage("CAS stale da aplicação editorial", staleEditorialApplication),
+  );
+  assert.equal(staleEditorialApplication.payload?.error?.code, "stale_course_state");
+  auditCourseRevision = appliedEditorialCorrection.courseRevision;
+
+  const editorialVerificationContext = await loadAuditContext();
+  assert.equal(
+    editorialVerificationContext.context.target.content.title,
+    editorialAfterContent.title,
+  );
+  const verifiedEditorialStillOpen = await mutateAudit({
+    type: "verify_finding",
+    auditRunId: crypto.randomUUID(),
+    findingId: editorialFindingId,
+    expectedFindingVersion: appliedEditorialCorrection.finding.findingVersion,
+    correctionId: editorialCorrectionId,
+    expectedCorrectionVersion:
+      appliedEditorialCorrection.correction.correctionVersion,
+    contextHash: editorialVerificationContext.context.contextHash,
+    origin: "human_audit",
+    method: { id: "aralearn-local-smoke-verification", version: "1" },
+    checks: [
+      auditCheck("pedagogical_quality", "not_checked"),
+      auditCheck("factual_quality", "not_checked"),
+      auditCheck("editorial_quality", "failed"),
+    ],
+    outcome: "still_open",
+  });
+  assert.equal(verifiedEditorialStillOpen.courseRevision, auditCourseRevision);
+  assert.equal(verifiedEditorialStillOpen.finding.status, "open");
+  assert.equal(verifiedEditorialStillOpen.correction.status, "verified");
+  assert.equal(
+    verifiedEditorialStillOpen.correction.verification.outcome,
+    "still_open",
+  );
+  assert.deepEqual(verifiedEditorialStillOpen.suggestedAnnotationActions, [{
+    annotationId: learnerAnnotationId,
+    annotationVersion: linkedAuditAnnotation.annotationVersion,
+    action: "reopen",
+  }]);
+  const annotationAfterStillOpen = await courseAction("lerCurso", {
+    courseId,
+    view: "anchored_annotations",
+    expectedRevision: auditCourseRevision,
+    annotationSetVersion: null,
+    mode: "detail",
+    annotationId: learnerAnnotationId,
+    limit: 1,
+  }, ownerToken);
+  assert.equal(annotationAfterStillOpen.data.items[0].state, "considered");
+  assert.equal(
+    annotationAfterStillOpen.data.items[0].annotationVersion,
+    linkedAuditAnnotation.annotationVersion,
+  );
+
+  const factualContextBeforeCorrection = await loadAuditContext();
+  const factualDetail = await loadAuditDetail(factualFindingId);
+  const factualCorrectionId = crypto.randomUUID();
+  const factualAfterContent = structuredClone(
+    factualContextBeforeCorrection.context.target.content,
+  );
+  factualAfterContent.content[0].data.text =
+    "Conteúdo factual corrigido e sustentado pela Fonte exata do smoke.";
+  const proposedFactualCorrection = await mutateAudit({
+    type: "propose_authoring_correction",
+    correctionId: factualCorrectionId,
+    findingId: factualFindingId,
+    expectedFindingVersion: factualDetail.detail.finding.findingVersion,
+    expectedCorrectionVersion: 0,
+    afterContent: factualAfterContent,
+    afterSourceLinks: [sourceLink],
+    rationale: "Corrigir a afirmação e registrar suporte factual exato.",
+  });
+  assert.deepEqual(
+    proposedFactualCorrection.correction.checkpoint.before.content.topics,
+    proposedFactualCorrection.correction.checkpoint.after.content.topics,
+  );
+  assert.deepEqual(
+    proposedFactualCorrection.correction.checkpoint.before.sourceLinks,
+    factualContextBeforeCorrection.context.target.sourceLinks,
+  );
+  assert.deepEqual(
+    proposedFactualCorrection.correction.checkpoint.after.sourceLinks,
+    [sourceLink],
+  );
+  const appliedFactualCorrection = await mutateAudit({
+    type: "apply_authoring_correction",
+    findingId: factualFindingId,
+    expectedFindingVersion: proposedFactualCorrection.finding.findingVersion,
+    correctionId: factualCorrectionId,
+    expectedCorrectionVersion:
+      proposedFactualCorrection.correction.correctionVersion,
+  });
+  assert.equal(appliedFactualCorrection.courseRevision, auditCourseRevision + 1);
+  assert.equal(appliedFactualCorrection.finding.status, "awaiting_verification");
+  auditCourseRevision = appliedFactualCorrection.courseRevision;
+
+  const factualVerificationContext = await loadAuditContext();
+  assert.deepEqual(
+    factualVerificationContext.context.target.content,
+    proposedFactualCorrection.correction.checkpoint.after.content,
+  );
+  assert.deepEqual(factualVerificationContext.context.target.sourceLinks, [sourceLink]);
+  const verifiedFactualCorrection = await mutateAudit({
+    type: "verify_finding",
+    auditRunId: crypto.randomUUID(),
+    findingId: factualFindingId,
+    expectedFindingVersion: appliedFactualCorrection.finding.findingVersion,
+    correctionId: factualCorrectionId,
+    expectedCorrectionVersion:
+      appliedFactualCorrection.correction.correctionVersion,
+    contextHash: factualVerificationContext.context.contextHash,
+    origin: "human_audit",
+    method: { id: "aralearn-local-smoke-verification", version: "1" },
+    checks: [
+      auditCheck("pedagogical_quality", "not_checked"),
+      auditCheck("factual_quality", "passed", { sourceLinks: [sourceLink] }),
+      auditCheck("editorial_quality", "not_checked"),
+    ],
+    outcome: "resolved",
+  });
+  assert.equal(verifiedFactualCorrection.finding.status, "resolved");
+  assert.equal(verifiedFactualCorrection.correction.status, "verified");
+  assert.equal(
+    verifiedFactualCorrection.correction.verification.outcome,
+    "resolved",
+  );
+  assert.deepEqual(verifiedFactualCorrection.suggestedAnnotationActions, [{
+    annotationId: learnerAnnotationId,
+    annotationVersion: linkedAuditAnnotation.annotationVersion,
+    action: "resolve",
+  }]);
+  const annotationBeforeExplicitResolution = await courseAction("lerCurso", {
+    courseId,
+    view: "anchored_annotations",
+    expectedRevision: auditCourseRevision,
+    annotationSetVersion: null,
+    mode: "detail",
+    annotationId: learnerAnnotationId,
+    limit: 1,
+  }, ownerToken);
+  assert.equal(annotationBeforeExplicitResolution.data.items[0].state, "considered");
+  const explicitlyResolvedAnnotation = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "resolve_anchored_annotation",
+      annotationId: learnerAnnotationId,
+      expectedAnnotationVersion:
+        annotationBeforeExplicitResolution.data.items[0].annotationVersion,
+    },
+  }, ownerToken);
+  assert.equal(explicitlyResolvedAnnotation.data.courseRevision, auditCourseRevision);
+  assert.equal(explicitlyResolvedAnnotation.data.annotation.state, "resolved");
+
+  const rollbackFactualCommand = {
+    type: "rollback_authoring_correction",
+    findingId: factualFindingId,
+    expectedFindingVersion: verifiedFactualCorrection.finding.findingVersion,
+    correctionId: factualCorrectionId,
+    expectedCorrectionVersion:
+      verifiedFactualCorrection.correction.correctionVersion,
+  };
+  const rollbackFactualRequestId = crypto.randomUUID();
+  const rolledBackFactualCorrection = await mutateAudit(
+    rollbackFactualCommand,
+    { requestId: rollbackFactualRequestId },
+  );
+  assert.equal(
+    rolledBackFactualCorrection.courseRevision,
+    auditCourseRevision + 1,
+  );
+  assert.equal(rolledBackFactualCorrection.finding.status, "open");
+  assert.equal(rolledBackFactualCorrection.correction.status, "rolled_back");
+  assert.equal(
+    rolledBackFactualCorrection.correction.rollback.courseRevision,
+    rolledBackFactualCorrection.courseRevision,
+  );
+  assert.deepEqual(
+    rolledBackFactualCorrection.suggestedAnnotationActions,
+    [{
+      annotationId: learnerAnnotationId,
+      annotationVersion:
+        explicitlyResolvedAnnotation.data.annotation.annotationVersion,
+      action: "reopen",
+    }],
+    "A sugestão precisa usar a versão corrente da observação.",
+  );
+  const replayedFactualRollback = await mutateAudit(rollbackFactualCommand, {
+    requestId: rollbackFactualRequestId,
+    expectedRevision: auditCourseRevision,
+  });
+  assert.equal(replayedFactualRollback.idempotent, true);
+  assert.equal(
+    replayedFactualRollback.courseRevision,
+    rolledBackFactualCorrection.courseRevision,
+  );
+  const staleFactualRollback = await request(
+    "/functions/v1/aralearn-course-api/app/alterarCurso",
+    {
+      method: "POST",
+      token: ownerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        requestId: crypto.randomUUID(),
+        courseId,
+        expectedRevision: auditCourseRevision,
+        operation: "update_audit_cycle",
+        auditCommand: rollbackFactualCommand,
+      },
+    },
+  );
+  assert.equal(
+    staleFactualRollback.response.status,
+    409,
+    failureMessage("CAS stale do rollback factual", staleFactualRollback),
+  );
+  assert.equal(staleFactualRollback.payload?.error?.code, "stale_course_state");
+  auditCourseRevision = rolledBackFactualCorrection.courseRevision;
+
+  const contextAfterRollback = await loadAuditContext();
+  assert.deepEqual(
+    contextAfterRollback.context.target.content,
+    proposedFactualCorrection.correction.checkpoint.before.content,
+  );
+  assert.deepEqual(
+    contextAfterRollback.context.target.sourceLinks,
+    proposedFactualCorrection.correction.checkpoint.before.sourceLinks,
+  );
+  const annotationAfterRollback = await courseAction("lerCurso", {
+    courseId,
+    view: "anchored_annotations",
+    expectedRevision: auditCourseRevision,
+    annotationSetVersion: null,
+    mode: "detail",
+    annotationId: learnerAnnotationId,
+    limit: 1,
+  }, ownerToken);
+  assert.equal(annotationAfterRollback.data.items[0].state, "resolved");
+  assert.equal(
+    annotationAfterRollback.data.items[0].annotationVersion,
+    explicitlyResolvedAnnotation.data.annotation.annotationVersion,
+  );
+  const explicitlyReopenedAnnotation = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "reopen_anchored_annotation",
+      annotationId: learnerAnnotationId,
+      expectedAnnotationVersion:
+        annotationAfterRollback.data.items[0].annotationVersion,
+    },
+  }, ownerToken);
+  assert.equal(explicitlyReopenedAnnotation.data.annotation.state, "open");
+
   const revoked = await courseAction("gerirPessoas", {
     operation: "revoke_access",
     requestId: crypto.randomUUID(),
@@ -1366,7 +1957,7 @@ try {
       token: learnerToken,
       body: {
         p_course_id: courseId,
-        p_expected_revision: removedStudyUnit.data.revision,
+        p_expected_revision: auditCourseRevision,
         p_study_unit_id: "study-unit-smoke-2",
       },
     },
@@ -1392,7 +1983,7 @@ try {
       token: learnerToken,
       body: {
         p_course_id: courseId,
-        p_expected_course_revision: removedStudyUnit.data.revision,
+        p_expected_course_revision: auditCourseRevision,
         p_annotation_set_version: null,
         p_target_kind: "study_unit",
         p_target_id: "study-unit-smoke-2",

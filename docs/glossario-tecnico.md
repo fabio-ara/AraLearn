@@ -154,11 +154,13 @@ estático existe.
 ## Persistência e carregamento
 
 **PostgreSQL.** Banco relacional que é autoridade remota para Curso,
-propriedade, acesso, Anotações ancoradas, estado pessoal e perfil.
+propriedade, acesso, Anotações ancoradas, auditoria/correções, estado pessoal e
+perfil.
 
 **IndexedDB.** Banco transacional local do navegador. Mantém sessão, páginas em
 cache, documentos compostos, mutações de estado pessoal e cache/outbox de
-Anotações ancoradas.
+Anotações ancoradas. Auditoria e correções são online-only e não possuem store,
+cache autoritativo ou outbox local.
 
 **Storage de objetos.** Serviço que armazena bytes por chave. O runtime desta
 revisão o usa somente para fotos privadas de perfil.
@@ -254,7 +256,8 @@ chave lógica durante a transação. Serializa pedidos concorrentes sem criar um
 tabela de locks de produto.
 
 **Evento de Curso.** Registro append-only pequeno de uma mudança com consumidor
-de auditoria ou pesquisa. Não replica o conteúdo e não registra e-mail.
+de histórico ou pesquisa. Não replica o conteúdo e não registra e-mail. No
+ciclo de auditoria, somente aplicar ou reverter uma correção cria evento.
 
 **Atividade recente de autoria.** Projeção limitada de eventos persistidos de
 plano e materialização. Informa espécie, revisão, canal, Parte/tentativa e
@@ -365,15 +368,57 @@ aplicação por alvo; não afirma uma cadeia W3C completa nem autoria científic
 ordem, sem metadados ou Âncora inventados e oculta no Estudo até receber uma
 revisão ativa in-place.
 
+## Auditoria e correções implementadas
+
+**Auditoria instrucional focal.** Verificação owner-only de uma Unidade e de um
+contexto derivado pelo servidor nas dimensões estrutural, pedagógica, factual e
+editorial. Diagnostica; não autoriza nem executa correção por si só.
+
+**Rodada de auditoria (`audit run`).** Registro imutável dos checks e evidências
+de uma execução. Continua enumerável quando todos os checks passam e nenhum
+achado é criado.
+
+**Check de auditoria.** Aplicação de um critério público com resultado
+`passed|failed|uncertain|not_applicable|not_checked`. A interface fornece três
+checks humanos; o servidor acrescenta o estrutural determinístico.
+
+**Evidência factual.** Referência a uma revisão e Âncora ativas e exatas. Para
+afirmação factual positiva, `supported_by` sustenta o conteúdo;
+`quoted_from` só comprova `quotation_fidelity`.
+
+**Achado de auditoria.** Identidade estável de uma divergência ou incerteza
+focal, com versões append-only e estado
+`open|awaiting_verification|resolved|dismissed`. Um achado não é uma Observação
+nem uma mutação do Curso.
+
+**Versão do conjunto de auditoria (`audit_set_version`).** Contador monotônico
+que cerca páginas e comandos owner-only do ciclo. Não substitui a revisão do
+Curso nem transforma uma leitura em alteração de conteúdo.
+
+**Junção achado–Anotação.** Relação que guarda somente identidade e versão da
+Anotação, sem copiar texto, pseudônimo ou pessoa. Antes da limpeza, uma Anotação
+retirada é tombstone projetado como indisponível e sem link; o hard delete
+remove a junção por cascade e faz o ID desaparecer das projeções futuras, sem
+apagar achado, rodada ou correção.
+
+**Correção autoral.** Proposta versionada para substituir somente o conteúdo e
+as atribuições exatas de Fontes da Unidade focal existente. Não cria, exclui,
+move, reposiciona nem muda pai de entidade e preserva `topics` legítimos.
+
+**Checkpoint de correção.** Par `before|after` que permite conferir aplicação e
+rollback sob CAS. Cada snapshot tem limite próprio; checkpoint não é uma cópia
+integral do Curso.
+
+**Verificação de achado.** Nova rodada ligada ao achado e à correção aplicada.
+`resolved` exige que o critério focal passe; `still_open` reabre o achado.
+
+**Rollback de correção.** Restauração confirmada do snapshot `before`, permitida
+somente enquanto a Unidade ainda corresponde ao estado `after`. Reutiliza o
+recibo de mudança do Curso e não apaga o histórico.
+
 ## Termos ainda não implementados de ponta a ponta
 
 As definições abaixo delimitam a direção sem alegar capacidade corrente.
-
-**Auditoria instrucional.** Verificação explícita de regras e evidências sobre
-uma revisão de Curso.
-
-**Correção autoral.** Alteração que responde a uma decisão e pode ser
-reauditada.
 
 **Variante experimental.** Curso derivado de uma base comum sob condição
 declarada. A arquitetura mínima ainda não está decidida.

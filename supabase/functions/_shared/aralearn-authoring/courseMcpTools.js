@@ -12,6 +12,18 @@ import {
   normalizeCourseAnchoredAnnotationQuery,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
+import {
+  COURSE_AUDIT_ADEQUACY,
+  COURSE_AUDIT_DIMENSIONS,
+  COURSE_AUDIT_FINDING_STATES,
+  COURSE_AUDIT_HUMAN_DIMENSIONS,
+  COURSE_AUDIT_ORIGINS,
+  COURSE_AUDIT_RESULTS,
+  COURSE_AUDIT_SEVERITIES,
+  CourseAuditCycleError,
+  normalizeCourseAuditCycleCommand,
+  normalizeCourseAuditCycleReadOptions
+} from "../aralearn/runtime/domain/courseAuditCycle.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -21,6 +33,7 @@ const RFC3339_PATTERN =
   "T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?" +
   "(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$";
 const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
+const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 const objectSchema = (properties, required = Object.keys(properties)) => ({
   type: "object",
@@ -267,6 +280,129 @@ const sourceCommandSchema = {
       targetId: courseSourceOpaqueIdSchema,
       expectedTargetVersion: { type: "integer", minimum: 1 },
       sourceLinks: sourceLinksSchema
+    })
+  ]
+};
+
+const auditCodeSchema = stringSchema({
+  minLength: 3,
+  maxLength: 120,
+  pattern: "^[a-z][a-z0-9._:-]{2,119}$"
+});
+const auditLayoutTextSchema = (maximum) => stringSchema({
+  minLength: 1,
+  maxLength: maximum,
+  pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
+});
+const auditMethodSchema = objectSchema({
+  id: stringSchema({ minLength: 1, maxLength: 200, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN }),
+  version: stringSchema({ minLength: 1, maxLength: 80, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN })
+});
+const auditCheckSchema = objectSchema({
+  checkId: uuidSchema,
+  dimension: stringSchema({ enum: [...COURSE_AUDIT_HUMAN_DIMENSIONS] }),
+  criterion: objectSchema({
+    code: auditCodeSchema,
+    version: stringSchema({
+      minLength: 1, maxLength: 80, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+    }),
+    statement: auditLayoutTextSchema(1_000)
+  }),
+  result: stringSchema({ enum: [...COURSE_AUDIT_RESULTS] }),
+  publicEvidence: auditLayoutTextSchema(2_000),
+  adequacy: stringSchema({ enum: [...COURSE_AUDIT_ADEQUACY] }),
+  planItemRefs: {
+    type: "array", maxItems: 16, uniqueItems: true,
+    items: objectSchema({
+      planItemId: uuidSchema,
+      version: { type: "integer", minimum: 1 }
+    })
+  },
+  parameterRefs: {
+    type: "array", maxItems: 8, uniqueItems: true,
+    items: objectSchema({
+      parameterId: stringSchema({
+        minLength: 1, maxLength: 160, pattern: "^[a-z][a-z0-9_]{0,159}$"
+      }),
+      changeId: {
+        anyOf: [stringSchema({ pattern: "^[1-9][0-9]{0,18}$" }), { type: "null" }]
+      }
+    })
+  },
+  sourceLinks: sourceLinksSchema
+});
+const auditChecksSchema = {
+  type: "array", minItems: 3, maxItems: 31, uniqueItems: true,
+  items: auditCheckSchema
+};
+const auditFindingInputSchema = objectSchema({
+  findingId: uuidSchema,
+  checkId: uuidSchema,
+  code: auditCodeSchema,
+  severity: stringSchema({ enum: [...COURSE_AUDIT_SEVERITIES] }),
+  annotationRefs: {
+    type: "array", maxItems: 12, uniqueItems: true,
+    items: objectSchema({
+      annotationId: uuidSchema,
+      annotationVersion: { type: "integer", minimum: 1 }
+    })
+  }
+});
+const auditCommandRefsSchema = {
+  findingId: uuidSchema,
+  expectedFindingVersion: { type: "integer", minimum: 1 },
+  correctionId: uuidSchema,
+  expectedCorrectionVersion: { type: "integer", minimum: 1 }
+};
+const auditCommandSchema = {
+  oneOf: [
+    objectSchema({
+      type: { const: "record_audit" },
+      auditRunId: uuidSchema,
+      targetStudyUnitId: anchoredAnnotationOpaqueIdSchema,
+      contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
+      origin: stringSchema({ enum: [...COURSE_AUDIT_ORIGINS] }),
+      method: auditMethodSchema,
+      checks: auditChecksSchema,
+      findings: {
+        type: "array", maxItems: 15, uniqueItems: true,
+        items: auditFindingInputSchema
+      }
+    }),
+    objectSchema({
+      type: { const: "propose_authoring_correction" },
+      correctionId: uuidSchema,
+      findingId: uuidSchema,
+      expectedFindingVersion: { type: "integer", minimum: 1 },
+      expectedCorrectionVersion: { type: "integer", minimum: 0 },
+      afterContent: { type: "object" },
+      afterSourceLinks: sourceLinksSchema,
+      rationale: auditLayoutTextSchema(2_000)
+    }),
+    objectSchema({
+      type: { const: "reject_authoring_correction" },
+      ...auditCommandRefsSchema
+    }),
+    ...["apply_authoring_correction", "rollback_authoring_correction"].map((type) => objectSchema({
+      type: { const: type },
+      ...auditCommandRefsSchema,
+      confirmed: { type: "boolean", const: true }
+    })),
+    objectSchema({
+      type: { const: "decide_finding" },
+      findingId: uuidSchema,
+      expectedFindingVersion: { type: "integer", minimum: 1 },
+      decision: stringSchema({ enum: ["dismiss", "reopen"] })
+    }),
+    objectSchema({
+      type: { const: "verify_finding" },
+      auditRunId: uuidSchema,
+      ...auditCommandRefsSchema,
+      contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
+      origin: stringSchema({ enum: [...COURSE_AUDIT_ORIGINS] }),
+      method: auditMethodSchema,
+      checks: auditChecksSchema,
+      outcome: stringSchema({ enum: ["resolved", "still_open"] })
     })
   ]
 };
@@ -790,14 +926,14 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Consulte anchored_annotations e suas pendências antes de planejar auditoria ou reparo; a leitura devolve os deep links literais dos alvos. Use instructional_plan para planejar por Partes, course_design para parâmetros e regras de componentes, course_sources para proveniência, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Use audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos. Consulte anchored_annotations para manifestações humanas, instructional_plan para Partes, course_design para parâmetros, course_sources para proveniência, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
       view: stringSchema({ enum: [
         "summary", "outline", "instructional_plan", "course_design",
         "course_sources", "anchored_annotations", "part_materialization",
-        "study_units", "entities"
+        "study_units", "entities", "audit_cycle"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
@@ -815,13 +951,18 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       anchorStudyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
       direction: stringSchema({ enum: ["forward", "backward"] }),
       maxBytes: { type: "integer", minimum: 65_536, maximum: 1_500_000 },
-      mode: stringSchema({ enum: ["catalog", "source", "target", "inbox", "detail"] }),
+      mode: stringSchema({ enum: [
+        "catalog", "source", "target", "inbox", "detail", "context", "findings", "runs"
+      ] }),
       sourceId: legacySourceIdSchema,
       targetKind: stringSchema({ enum: [
         "plan_item", ...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS
       ] }),
       targetId: courseSourceOpaqueIdSchema,
       annotationSetVersion: {
+        anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }]
+      },
+      auditSetVersion: {
         anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }]
       },
       origins: {
@@ -834,7 +975,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       },
       states: {
         type: "array", maxItems: 4, uniqueItems: true,
-        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_STATES] })
+        items: stringSchema({ enum: [...new Set([
+          ...COURSE_ANCHORED_ANNOTATION_STATES,
+          ...COURSE_AUDIT_FINDING_STATES
+        ])] })
       },
       categories: {
         type: "array", maxItems: 4, uniqueItems: true,
@@ -846,7 +990,22 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         items: anchoredAnnotationOpaqueIdSchema
       },
       includeDescendants: { type: "boolean" },
-      annotationId: uuidSchema
+      annotationId: uuidSchema,
+      targetStudyUnitId: anchoredAnnotationOpaqueIdSchema,
+      findingId: uuidSchema,
+      correctionId: uuidSchema,
+      auditRunId: uuidSchema,
+      dimensions: {
+        type: "array", maxItems: 4, uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_AUDIT_DIMENSIONS] })
+      },
+      severities: {
+        type: "array", maxItems: 4, uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_AUDIT_SEVERITIES] })
+      },
+      annotationIds: {
+        type: "array", maxItems: 12, uniqueItems: true, items: uuidSchema
+      }
       }, ["courseId"]),
       allOf: [{
         if: {
@@ -934,6 +1093,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           properties: {
             mode: { enum: ["inbox", "target", "detail"] },
             targetKind: { enum: [...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS] },
+            states: {
+              type: "array", maxItems: 4, uniqueItems: true,
+              items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_STATES] })
+            },
             limit: { maximum: 24 },
             cursor: {
               anyOf: [
@@ -971,17 +1134,92 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           }]
         },
         else: forbidFields([
-          "annotationSetVersion", "origins", "channels", "states", "categories",
+          "annotationSetVersion", "origins", "channels", "categories",
           "includeUncategorized", "subjectIds", "includeDescendants", "annotationId"
         ])
       }, {
         if: {
+          properties: { view: { const: "audit_cycle" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision", "mode"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "scope", "anchorStudyUnitId",
+            "direction", "maxBytes", "sourceId", "targetKind", "targetId",
+            "annotationSetVersion", "origins", "channels", "categories",
+            "includeUncategorized", "subjectIds", "includeDescendants", "annotationId"
+          ]),
           properties: {
-            view: { enum: ["course_sources", "anchored_annotations"] }
+            mode: { enum: ["context", "findings", "runs", "detail"] },
+            states: {
+              type: "array", maxItems: 4, uniqueItems: true,
+              items: stringSchema({ enum: [...COURSE_AUDIT_FINDING_STATES] })
+            },
+            limit: { maximum: 24 },
+            cursor: {
+              anyOf: [
+                stringSchema({ minLength: 1, maxLength: 240,
+                  pattern: "^[A-Za-z0-9+/_-]+={0,2}$" }),
+                { type: "null" }
+              ]
+            }
+          },
+          allOf: [{
+            if: { properties: { mode: { const: "context" } }, required: ["mode"] },
+            then: {
+              required: ["targetStudyUnitId"],
+              ...forbidFields([
+                "findingId", "correctionId", "auditRunId", "states", "dimensions", "severities",
+                "cursor"
+              ])
+            }
+          }, {
+            if: { properties: { mode: { const: "findings" } }, required: ["mode"] },
+            then: { ...forbidFields([
+              "findingId", "correctionId", "auditRunId", "annotationIds"
+            ]) }
+          }, {
+            if: { properties: { mode: { const: "runs" } }, required: ["mode"] },
+            then: { ...forbidFields([
+              "findingId", "correctionId", "auditRunId", "states", "dimensions",
+              "severities", "annotationIds"
+            ]) }
+          }, {
+            if: { properties: { mode: { const: "detail" } }, required: ["mode"] },
+            then: {
+              ...forbidFields([
+                "targetStudyUnitId", "states", "dimensions", "severities",
+                "annotationIds", "cursor"
+              ]),
+              oneOf: [{
+                required: ["findingId"],
+                ...forbidFields(["auditRunId"])
+              }, {
+                required: ["auditRunId"],
+                ...forbidFields(["findingId", "correctionId"])
+              }]
+            }
+          }]
+        },
+        else: forbidFields([
+          "auditSetVersion", "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
+          "dimensions", "severities", "annotationIds"
+        ])
+      }, {
+        if: {
+          properties: {
+            view: { enum: ["course_sources", "anchored_annotations", "audit_cycle"] }
           },
           required: ["view"]
         },
         else: forbidFields(["mode", "targetKind", "targetId"])
+      }, {
+        if: {
+          properties: { view: { enum: ["anchored_annotations", "audit_cycle"] } },
+          required: ["view"]
+        },
+        else: forbidFields(["states"])
       }, {
         if: {
           properties: { view: { const: "course_design" } },
@@ -1060,7 +1298,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso vivo e suas Anotações ancoradas. Para criar uma observação, confirme o alvo exato e a síntese breve, preserve rawText literalmente e não envie a conversa completa. Releia a vista correspondente antes e use somente as versões exigidas pela operação; cada alteração é limitada e idempotente.",
+    description: "Altera o Curso vivo, suas Anotações ancoradas e o ciclo de auditoria. Releia a vista correspondente, envie checks e evidências públicos sem raciocínio privado, proponha antes de aplicar e verifique depois da aplicação. Aplicar ou desfazer uma correção exige confirmed=true após confirmação humana explícita. Use somente as versões exigidas; cada alteração é limitada e idempotente.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -1072,6 +1310,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         "update_course_design",
         "update_course_sources",
         "update_anchored_annotations",
+        "update_audit_cycle",
         "commit_course_composition",
         "advance_part_materialization"
       ] }),
@@ -1079,6 +1318,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       designCommand: courseDesignCommandSchema,
       sourceCommand: sourceCommandSchema,
       annotationCommand: anchoredAnnotationCommandSchema,
+      auditCommand: auditCommandSchema,
       materializationCommand: materializationCommandSchema,
       upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
       sourceAttributionApplications: sourceAttributionApplicationsSchema,
@@ -1155,6 +1395,20 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             else: forbidFields(["expectedRevision"])
           }]
         }
+      }, {
+        if: {
+          properties: { operation: { const: "update_audit_cycle" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["expectedRevision", "auditCommand"],
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand", "sourceCommand",
+            "annotationCommand", "materializationCommand", "upserts", "deletes",
+            "sourceAttributionApplications"
+          ])
+        },
+        else: forbidFields(["auditCommand"])
       }, {
         if: {
           properties: { operation: { const: "update_instructional_plan" } },
@@ -1355,6 +1609,15 @@ function normalizeCourseAnchoredAnnotationDomain(normalize) {
   }
 }
 
+function normalizeCourseAuditCycleDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuditCycleError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
 function route(method, path, requestId = null, body = null) {
   return { kind: "route", method, path, requestId, body };
 }
@@ -1365,6 +1628,17 @@ function boundedAnchoredAnnotationsReadRoute(path) {
     fail(
       "course_anchored_annotations_query_too_large",
       "Os filtros de observação excedem o limite transportável de 8 KiB."
+    );
+  }
+  return route("GET", path);
+}
+
+function boundedAuditCycleReadRoute(path) {
+  if (new TextEncoder().encode(path).byteLength >
+      AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES) {
+    fail(
+      "course_audit_cycle_query_too_large",
+      "Os filtros de auditoria excedem o limite transportável de 8 KiB."
     );
   }
   return route("GET", path);
@@ -1404,18 +1678,20 @@ function mapRead(raw) {
     "expectedRevision", "limit", "cursor", "scope", "anchorStudyUnitId",
     "direction", "maxBytes", "mode", "sourceId", "targetKind", "targetId",
     "annotationSetVersion", "origins", "channels", "states", "categories",
-    "includeUncategorized", "subjectIds", "includeDescendants", "annotationId"
+    "includeUncategorized", "subjectIds", "includeDescendants", "annotationId",
+    "auditSetVersion", "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
+    "dimensions", "severities", "annotationIds"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
   if (!new Set([
     "summary", "outline", "instructional_plan", "course_design",
     "course_sources", "anchored_annotations", "part_materialization",
-    "study_units", "entities"
+    "study_units", "entities", "audit_cycle"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
   }
-  if (!["course_sources", "anchored_annotations"].includes(view) && [
+  if (!["course_sources", "anchored_annotations", "audit_cycle"].includes(view) && [
     raw.mode, raw.sourceId, raw.targetKind, raw.targetId
   ].some((value) => value != null)) {
     fail("invalid_tool_argument", "A leitura recebeu campos contextuais incompatíveis.");
@@ -1424,11 +1700,21 @@ function mapRead(raw) {
     fail("invalid_tool_argument", "sourceId pertence somente à leitura de Fontes.");
   }
   const annotationFields = [
-    raw.annotationSetVersion, raw.origins, raw.channels, raw.states, raw.categories,
+    raw.annotationSetVersion, raw.origins, raw.channels, raw.categories,
     raw.includeUncategorized, raw.subjectIds, raw.includeDescendants, raw.annotationId
   ];
   if (view !== "anchored_annotations" && annotationFields.some((value) => value != null)) {
     fail("invalid_tool_argument", "A leitura recebeu filtros de observação incompatíveis.");
+  }
+  if (!["anchored_annotations", "audit_cycle"].includes(view) && raw.states != null) {
+    fail("invalid_tool_argument", "A leitura recebeu estados incompatíveis.");
+  }
+  const auditFields = [
+    raw.auditSetVersion, raw.targetStudyUnitId, raw.findingId, raw.correctionId, raw.auditRunId,
+    raw.dimensions, raw.severities, raw.annotationIds
+  ];
+  if (view !== "audit_cycle" && auditFields.some((value) => value != null)) {
+    fail("invalid_tool_argument", "A leitura recebeu filtros de auditoria incompatíveis.");
   }
   if (view === "anchored_annotations") {
     if (raw.authoringPartId != null || raw.materializationId != null || raw.scope != null ||
@@ -1490,6 +1776,53 @@ function mapRead(raw) {
         targetId: query.hierarchy?.target.id,
         includeDescendants: query.hierarchy?.includeDescendants,
         annotationId: query.annotationId,
+        cursor: options.cursor,
+        limit: options.limit
+      })}`
+    );
+  }
+  if (view === "audit_cycle") {
+    if (raw.authoringPartId != null || raw.materializationId != null || raw.scope != null ||
+        raw.anchorStudyUnitId != null || raw.direction != null || raw.maxBytes != null ||
+        raw.sourceId != null || raw.targetKind != null || raw.targetId != null ||
+        annotationFields.some((value) => value != null)) {
+      fail("invalid_tool_argument", "A leitura de auditoria recebeu campos incompatíveis.");
+    }
+    const options = normalizeCourseAuditCycleDomain(() =>
+      normalizeCourseAuditCycleReadOptions({
+        expectedCourseRevision: raw.expectedRevision,
+        auditSetVersion: raw.auditSetVersion ?? null,
+        query: {
+          mode: raw.mode == null
+            ? "findings"
+            : requiredText(raw.mode, "mode", { maximum: 16 }),
+          targetStudyUnitId: raw.targetStudyUnitId ?? null,
+          findingId: raw.findingId ?? null,
+          correctionId: raw.correctionId ?? null,
+          auditRunId: raw.auditRunId ?? null,
+          states: raw.states ?? [],
+          dimensions: raw.dimensions ?? [],
+          severities: raw.severities ?? [],
+          annotationIds: raw.annotationIds ?? []
+        },
+        cursor: raw.cursor ?? null,
+        limit: raw.limit ?? 12
+      })
+    );
+    const query = options.query;
+    return boundedAuditCycleReadRoute(
+      `/v1/courses/${courseId}/audit-cycle${searchParams({
+        expectedRevision: options.expectedCourseRevision,
+        auditSetVersion: options.auditSetVersion,
+        mode: query.mode,
+        targetStudyUnitId: query.targetStudyUnitId,
+        findingId: query.findingId,
+        correctionId: query.correctionId,
+        auditRunId: query.auditRunId,
+        state: query.states,
+        dimension: query.dimensions,
+        severity: query.severities,
+        annotationId: query.annotationIds,
         cursor: options.cursor,
         limit: options.limit
       })}`
@@ -1716,11 +2049,14 @@ function mapCreate(raw) {
   });
 }
 
-function mapChange(raw, { requireAnnotationConfirmation = true } = {}) {
+function mapChange(raw, {
+  requireAnnotationConfirmation = true,
+  requireAuditConfirmation = true
+} = {}) {
   exactFields(raw, new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
     "operation", "planCommand", "designCommand", "materializationCommand",
-    "sourceCommand", "annotationCommand", "upserts", "deletes",
+    "sourceCommand", "annotationCommand", "auditCommand", "upserts", "deletes",
     "sourceAttributionApplications"
   ]));
   const requestId = requiredRequestId(raw.requestId);
@@ -1731,10 +2067,54 @@ function mapChange(raw, { requireAnnotationConfirmation = true } = {}) {
     "update_course_design",
     "update_course_sources",
     "update_anchored_annotations",
+    "update_audit_cycle",
     "commit_course_composition",
     "advance_part_materialization"
   ]).has(operation)) {
     fail("invalid_tool_argument", "operation é inválida.", { field: "operation" });
+  }
+  if (operation !== "update_audit_cycle" && raw.auditCommand != null) {
+    fail("invalid_tool_argument", "auditCommand pertence somente ao ciclo de auditoria.");
+  }
+  if (operation === "update_audit_cycle") {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.designCommand != null || raw.sourceCommand != null ||
+        raw.annotationCommand != null || raw.materializationCommand != null ||
+        raw.upserts != null || raw.deletes != null ||
+        raw.sourceAttributionApplications != null) {
+      fail("invalid_tool_argument", "O comando de auditoria recebeu campos incompatíveis.");
+    }
+    const supplied = boundedJsonObject(raw.auditCommand, "auditCommand", 192 * 1024);
+    const requiresConfirmation = new Set([
+      "apply_authoring_correction", "rollback_authoring_correction"
+    ]).has(supplied.type);
+    if (requiresConfirmation && requireAuditConfirmation && supplied.confirmed !== true) {
+      fail(
+        "authoring_correction_confirmation_required",
+        "Confirme explicitamente antes de aplicar ou desfazer uma correção autoral."
+      );
+    }
+    if ((!requiresConfirmation || !requireAuditConfirmation) &&
+        Object.hasOwn(supplied, "confirmed")) {
+      fail(
+        "invalid_tool_argument",
+        requireAuditConfirmation
+          ? "confirmed pertence somente à aplicação ou ao rollback da correção."
+          : "confirmed não pertence ao comando da interface."
+      );
+    }
+    const commandInput = { ...supplied };
+    delete commandInput.confirmed;
+    const command = normalizeCourseAuditCycleDomain(() =>
+      normalizeCourseAuditCycleCommand(
+        commandInput
+      )
+    );
+    return route("POST", `/v1/courses/${courseId}/audit-cycle/changes`, requestId, {
+      requestId,
+      expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
+      command
+    });
   }
   if (operation === "update_instructional_plan") {
     if (raw.designCommand != null || raw.sourceCommand != null ||
@@ -2069,7 +2449,10 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
 export function mapAuthoringApplicationToolCall(name, rawArguments) {
   const raw = object(rawArguments ?? {}, "arguments");
   if (name === "alterarCurso") {
-    return mapChange(raw, { requireAnnotationConfirmation: false });
+    return mapChange(raw, {
+      requireAnnotationConfirmation: false,
+      requireAuditConfirmation: false
+    });
   }
   return mapAuthoringMcpToolCall(name, raw);
 }

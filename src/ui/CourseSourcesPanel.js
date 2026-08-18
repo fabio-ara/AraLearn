@@ -9,6 +9,8 @@ import {
 
 const CATALOG_PAGE_LIMIT = 10;
 const HISTORY_PAGE_LIMIT = 1;
+const PINNED_HISTORY_PAGE_LIMIT = 24;
+const PINNED_HISTORY_MAX_PAGES = 8;
 const SOURCE_KINDS = Object.freeze({
   web_page: "Página web",
   article: "Artigo",
@@ -52,6 +54,25 @@ function escapeHtml(value) {
 function formValueWithinLimit(value, maximum) {
   return value.length <= maximum * 2 && [...value].length <= maximum &&
     new TextEncoder().encode(value).byteLength <= maximum * 4;
+}
+
+function containsControlCharacters(value) {
+  return [...value].some((character) => {
+    const code = character.codePointAt(0);
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
+}
+
+function validLiteralSourceId(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 4_096 &&
+    [...value].length <= 2_048 && new TextEncoder().encode(value).byteLength <= 8_192 &&
+    !containsControlCharacters(value);
+}
+
+function validAnchorId(value) {
+  return typeof value === "string" && value.length > 0 && value === value.trim() &&
+    value.length <= 480 && [...value].length <= 240 &&
+    new TextEncoder().encode(value).byteLength <= 960 && !containsControlCharacters(value);
 }
 
 function optionalFormValue(form, name, label = null, maximum = null) {
@@ -291,9 +312,15 @@ function selectorLabel(selector) {
 
 function renderAnchor(anchor, sourceRevision, state) {
   const editable = sourceRevision === state.detail?.items?.[0]?.revision && anchor.status === "active";
-  return '<article class="course-source-anchor">' +
+  const deepLinked = state.initialAnchorMatch?.sourceRevision === sourceRevision &&
+    state.initialAnchorMatch?.anchorId === anchor.anchorId &&
+    state.initialAnchorMatch?.anchorRevision === anchor.revision;
+  return `<article class="course-source-anchor${deepLinked ? " is-deep-linked" : ""}"` +
+    (deepLinked ? ' data-source-deep-linked-anchor tabindex="-1"' : "") + ">" +
     `<div><strong>${escapeHtml(selectorLabel(anchor.selector))}</strong>` +
-    `<span>Âncora v${anchor.revision} · ${anchor.status === "active" ? "ativa" : "aposentada"}</span></div>` +
+    `<span>Âncora v${anchor.revision} · ${anchor.status === "active" ? "ativa" : "aposentada"}</span>` +
+    (deepLinked ? '<span class="course-source-deep-link-label">Âncora indicada</span>' : "") +
+    "</div>" +
     (anchor.verificationExcerpt
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
@@ -306,7 +333,8 @@ function renderAnchor(anchor, sourceRevision, state) {
 function renderSourceRevision(source, index, state) {
   const current = index === 0;
   const url = safeHttpUrl(source.url);
-  return '<article class="course-source-revision">' +
+  const deepLinked = state.initialAnchorMatch?.sourceRevision === source.revision;
+  return `<article class="course-source-revision${deepLinked ? " is-deep-linked" : ""}">` +
     '<header><div>' + sourceStatusMarkup(source) +
     `<h3>${escapeHtml(sourceTitle(source))}</h3><p>${escapeHtml(source.sourceId)} · revisão ${source.revision}</p></div>` +
     (current && source.status !== "retired" ? '<div class="course-source-compact-actions">' +
@@ -523,6 +551,12 @@ function assertDependencies(root, controller, options) {
        !Number.isSafeInteger(options.targetVersion) || options.targetVersion < 1)) {
     throw new TypeError("Alvo de Fontes inválido.");
   }
+  if (options.initialSourceId !== null &&
+      (options.mode !== "catalog" || !validLiteralSourceId(options.initialSourceId)) ||
+      options.initialAnchorId !== null &&
+      (options.initialSourceId === null || !validAnchorId(options.initialAnchorId))) {
+    throw new TypeError("Deep link de Fonte inválido.");
+  }
 }
 
 export function createCourseSourcesPanel({
@@ -535,12 +569,17 @@ export function createCourseSourcesPanel({
   targetId = null,
   targetVersion = null,
   targetLabel = "",
+  initialSourceId = null,
+  initialAnchorId = null,
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
   onCourseRevisionChange = () => {},
   onTargetSaved = () => {},
   onClose = () => {}
 } = {}) {
-  const options = { courseId, courseRevision, mode, targetKind, targetId, targetVersion };
+  const options = {
+    courseId, courseRevision, mode, targetKind, targetId, targetVersion,
+    initialSourceId, initialAnchorId
+  };
   assertDependencies(root, controller, options);
   let epoch = 0;
   const state = {
@@ -551,7 +590,10 @@ export function createCourseSourcesPanel({
     catalog: null,
     catalogLoading: false,
     catalogFailure: "",
-    selectedSourceId: "",
+    selectedSourceId: initialSourceId ?? "",
+    initialSourceId,
+    initialAnchorId,
+    initialAnchorMatch: null,
     detail: null,
     detailLoading: false,
     detailFailure: "",
@@ -641,7 +683,8 @@ export function createCourseSourcesPanel({
     target = false,
     requiredRevision = null,
     contextualTarget = false,
-    currentTarget = false
+    currentTarget = false,
+    pageLimit = HISTORY_PAGE_LIMIT
   } = {}) {
     const requestEpoch = epoch;
     const targetLoading = currentTarget
@@ -663,6 +706,7 @@ export function createCourseSourcesPanel({
         await controller.loadCourseSources(state.courseId, readOptions("source", {
           sourceId,
           cursor,
+          limit: pageLimit,
           ...targetContext
         })),
         {
@@ -701,6 +745,70 @@ export function createCourseSourcesPanel({
         render();
       }
     }
+  }
+
+  function initialLinkFailure(message) {
+    state.detail = null;
+    state.detailLoading = false;
+    state.detailFailure = message;
+    state.initialAnchorMatch = null;
+    render();
+    return false;
+  }
+
+  function focusInitialAnchor() {
+    if (!state.initialAnchorMatch) return;
+    globalThis.queueMicrotask?.(() => {
+      const anchor = root.querySelector?.("[data-source-deep-linked-anchor]");
+      anchor?.focus?.({ preventScroll: true });
+      anchor?.scrollIntoView?.({ block: "center", inline: "nearest" });
+    });
+  }
+
+  async function loadInitialDetail() {
+    const sourceId = state.initialSourceId;
+    const anchorId = state.initialAnchorId;
+    if (sourceId === null) return false;
+    let cursor = null;
+    let append = false;
+    const seenCursors = new Set();
+    for (let pageIndex = 0; pageIndex < PINNED_HISTORY_MAX_PAGES; pageIndex += 1) {
+      const page = await loadDetail(sourceId, {
+        cursor,
+        append,
+        pageLimit: PINNED_HISTORY_PAGE_LIMIT
+      });
+      if (!page) return false;
+      if (!page.items.length) {
+        return initialLinkFailure("not_found: a Fonte indicada não possui uma revisão disponível.");
+      }
+      if (anchorId === null) return true;
+      const source = state.detail?.items.find((item) =>
+        item.anchors.some((anchor) => anchor.anchorId === anchorId));
+      const anchor = source?.anchors.find((item) => item.anchorId === anchorId);
+      if (source && anchor) {
+        state.initialAnchorMatch = {
+          sourceRevision: source.revision,
+          anchorId: anchor.anchorId,
+          anchorRevision: anchor.revision
+        };
+        render();
+        focusInitialAnchor();
+        return true;
+      }
+      if (page.nextCursor === null) {
+        return initialLinkFailure("not_found: a Âncora indicada não existe no histórico da Fonte.");
+      }
+      if (seenCursors.has(page.nextCursor)) {
+        return initialLinkFailure("A paginação da Fonte repetiu o cursor; o deep link foi fechado por segurança.");
+      }
+      seenCursors.add(page.nextCursor);
+      cursor = page.nextCursor;
+      append = true;
+    }
+    return initialLinkFailure(
+      "A Âncora indicada excede o limite seguro de 192 revisões; refine o vínculo antes de continuar."
+    );
   }
 
   async function loadTarget() {
@@ -1006,11 +1114,17 @@ export function createCourseSourcesPanel({
       state.selectedSourceId = "";
       state.detail = null;
       state.detailFailure = "";
+      state.initialSourceId = null;
+      state.initialAnchorId = null;
+      state.initialAnchorMatch = null;
       state.sourceEditor = null;
       state.anchorEditor = null;
       render();
+      if (!state.catalog) void loadCatalog();
     } else if (action === "retry-detail" && state.selectedSourceId) {
-      void loadDetail(state.selectedSourceId);
+      void (state.initialSourceId === state.selectedSourceId
+        ? loadInitialDetail()
+        : loadDetail(state.selectedSourceId));
     } else if (action === "load-more-revisions" && state.detail?.nextCursor && !state.detailLoading) {
       void loadDetail(state.selectedSourceId, { cursor: state.detail.nextCursor, append: true });
     } else if (action === "edit-source") {
@@ -1120,6 +1234,7 @@ export function createCourseSourcesPanel({
       const [catalog, target] = await Promise.all([loadCatalog(), loadTarget()]);
       return catalog && target;
     }
+    if (state.initialSourceId !== null) return loadInitialDetail();
     return loadCatalog();
   }
 

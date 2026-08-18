@@ -93,6 +93,20 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "executeCourseAnchoredAnnotationCommand",
     courseId: COURSE_ID
   });
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/audit-cycle`
+  ), {
+    name: "getCourseAuditCycle",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/audit-cycle/changes`
+  ), {
+    name: "executeCourseAuditCycleCommand",
+    courseId: COURSE_ID
+  });
   assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/composition`), {
     name: "commitCourseComposition",
     courseId: COURSE_ID
@@ -333,6 +347,145 @@ test("observações chegam ao Adapter com query canônica e sem autoridade do cl
     }),
     (error) => error.code === "unknown_course_command_field"
   );
+});
+
+test("ciclo de auditoria chega ao Adapter com query exata e somente checks humanos", async () => {
+  const calls = [];
+  const adapter = {
+    async getCourseAuditCycle(value) {
+      calls.push({ operation: "read", value });
+      return { contract: "audit-read-ok" };
+    },
+    async executeCourseAuditCycleCommand(value) {
+      calls.push({ operation: "write", value });
+      return { contract: "audit-write-ok" };
+    }
+  };
+  const read = request(
+    `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&auditSetVersion=4&` +
+      "mode=findings&state=open&dimension=factual_quality&severity=high&" +
+      "targetStudyUnitId=unit-a&cursor=Y3Vyc29yLTE%3D&limit=12"
+  );
+  const result = await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(result.data, { contract: "audit-read-ok" });
+  assert.deepEqual(calls[0].value.query, {
+    mode: "findings",
+    targetStudyUnitId: "unit-a",
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: ["open"],
+    dimensions: ["factual_quality"],
+    severities: ["high"],
+    annotationIds: []
+  });
+  assert.equal(calls[0].value.expectedCourseRevision, 7);
+  assert.equal(calls[0].value.auditSetVersion, 4);
+  assert.equal(calls[0].value.cursor, "Y3Vyc29yLTE=");
+
+  const runsRead = request(
+    `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&mode=runs&` +
+      "targetStudyUnitId=unit-a&cursor=Y3Vyc29yLTI%3D&limit=6"
+  );
+  await executeCourseRoute({
+    request: runsRead,
+    route: routeCourseRequest("GET", new URL(runsRead.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(calls[1].value.query, {
+    mode: "runs",
+    targetStudyUnitId: "unit-a",
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: [],
+    dimensions: [],
+    severities: [],
+    annotationIds: []
+  });
+  assert.equal(calls[1].value.cursor, "Y3Vyc29yLTI=");
+
+  const auditCheck = (dimension, index, checkResult = "not_checked") => ({
+    checkId: `50000000-0000-5000-8000-00000000000${index}`,
+    dimension,
+    criterion: {
+      code: `${dimension}.review`,
+      version: "1",
+      statement: `Critério público de ${dimension}.`
+    },
+    result: checkResult,
+    publicEvidence: `Evidência pública de ${dimension}.`,
+    adequacy: checkResult === "failed" ? "insufficient" : "not_assessed",
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks: []
+  });
+  const command = {
+    type: "record_audit",
+    auditRunId: "60000000-0000-5000-8000-000000000006",
+    targetStudyUnitId: "unit-a",
+    contextHash: "a".repeat(64),
+    origin: "human_audit",
+    method: { id: "manual-review", version: "1" },
+    checks: [
+      auditCheck("pedagogical_quality", 1),
+      auditCheck("factual_quality", 2, "failed"),
+      auditCheck("editorial_quality", 3)
+    ],
+    findings: []
+  };
+  const writePath = `/v1/courses/${COURSE_ID}/audit-cycle/changes`;
+  const write = request(writePath, {
+    method: "POST",
+    requestId: "request-audit-router-0001",
+    body: {
+      requestId: "request-audit-router-0001",
+      expectedCourseRevision: 7,
+      command
+    }
+  });
+  await executeCourseRoute({
+    request: write,
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[2].value.expectedCourseRevision, 7);
+  assert.deepEqual(calls[2].value.command, command);
+  assert.equal(calls[2].value.command.checks.some(
+    ({ dimension }) => dimension === "structural_conformance"
+  ), false);
+
+  await assert.rejects(() => executeCourseRoute({
+    request: request(writePath, {
+      method: "POST",
+      requestId: "request-audit-router-0002",
+      body: {
+        requestId: "request-audit-router-0002",
+        expectedCourseRevision: 7,
+        command: {
+          ...command,
+          checks: [
+            ...command.checks,
+            {
+              ...auditCheck("structural_conformance", 4),
+              result: "passed",
+              adequacy: "sufficient"
+            }
+          ]
+        }
+      }
+    }),
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  }), (error) => error.code === "invalid_course_audit_checks");
 });
 
 test("lista com paginação completa e lê outline", async () => {

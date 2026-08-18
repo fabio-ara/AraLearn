@@ -35,6 +35,15 @@ import {
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import {
+  CourseAuditCycleError,
+  normalizeCourseAuditCycleChange,
+  normalizeCourseAuditCycleCommand,
+  normalizeCourseAuditCyclePage,
+  normalizeCourseAuditCycleQuery,
+  normalizeCourseAuditCycleReadOptions,
+  normalizeCourseAuditCycleServerCommand
+} from "../aralearn/runtime/domain/courseAuditCycle.js";
+import {
   RESOURCE_CATALOG,
   RESOURCE_PACKAGE_REGISTRY
 } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
@@ -84,6 +93,8 @@ const AUTHORING_PART_STATES = new Set([
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COURSE_AUDIT_CYCLE_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COURSE_AUDIT_CYCLE_DTO_LIMIT_BYTES = 240 * 1024;
 const COMPONENT_CATALOG_OPTIONS = Object.freeze(
   RESOURCE_PACKAGE_REGISTRY.listCatalog()
     .map((manifest) => Object.freeze({
@@ -891,6 +902,15 @@ function normalizeMaterializationChange(value, {
 function requiredUrl(value, label) {
   const source = String(value || "").trim().replace(/\/+$/u, "");
   if (!source) throw new Error(`${label} ausente.`);
+  let parsed;
+  try {
+    parsed = new URL(source);
+  } catch {
+    throw new Error(`${label} inválida.`);
+  }
+  if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error(`${label} inválida.`);
+  }
   return source;
 }
 
@@ -1002,6 +1022,26 @@ function courseAnchoredAnnotationsResponseFailure(error) {
   return error;
 }
 
+function courseAuditCycleResponseFailure(error) {
+  if (error instanceof AuthoringApiError && new Set([
+    "payload_too_large", "course_response_too_large"
+  ]).has(error.code)) {
+    return new AuthoringApiError(
+      413,
+      "course_audit_cycle_response_too_large",
+      "A resposta de auditoria excedeu 256 KiB. Use uma página menor."
+    );
+  }
+  return error;
+}
+
+function courseAuditReplayProbeAllowed(error, commandType) {
+  if (!(error instanceof AuthoringApiError)) return false;
+  if (new Set(["stale_course_state", "PT404"]).has(error.code)) return true;
+  return new Set(["record_audit", "verify_finding"]).has(commandType) &&
+    error.code === "audit_context_changed";
+}
+
 async function readBoundedResponseText(response, limitBytes) {
   const declared = Number(response.headers.get("content-length") || 0);
   if (Number.isFinite(declared) && declared > limitBytes) {
@@ -1066,6 +1106,315 @@ function withInspectionDeepLinks(value, publicAppUrl) {
     };
   });
   return result;
+}
+
+function auditCourseHref(publicAppUrl, courseId, parameters) {
+  try {
+    const query = Object.entries(parameters)
+      .filter(([, value]) => value != null)
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join("&");
+    const href = `${publicAppUrl}/#/authoring/courses/${encodeURIComponent(courseId)}` +
+      `?${query}`;
+    return [...href].length <= 2_048 && new TextEncoder().encode(href).byteLength <= 8_192
+      ? href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function withCourseAuditDeepLinks(value, publicAppUrl) {
+  if (!jsonRecord(value)) return value;
+  const result = structuredClone(value);
+  const encoder = new TextEncoder();
+  const injectedLinks = [];
+  const injectLink = (target, key, href, priority = 0) => {
+    target[key] = href;
+    if (href !== null) injectedLinks.push({ target, key, href, priority });
+  };
+  const courseId = String(result.courseId || "").trim();
+  if (!courseId) return result;
+  const attachFinding = (finding) => {
+    if (!jsonRecord(finding)) return finding;
+    const findingId = String(finding.findingId || "").trim();
+    const studyUnitId = String(finding.target?.studyUnitId || "").trim();
+    if (!findingId || !studyUnitId) return finding;
+    if (Array.isArray(finding.annotationRefs)) {
+      finding.annotationRefs = finding.annotationRefs.map((reference) => {
+        if (!jsonRecord(reference)) return reference;
+        const annotationId = String(reference.annotationId || "").trim();
+        injectLink(reference, "deepLink", reference.available && annotationId
+          ? auditCourseHref(publicAppUrl, courseId, {
+              section: "observations",
+              annotationId
+            })
+          : null, 1);
+        return reference;
+      });
+    }
+    finding.deepLinks = {
+      detail: null,
+      target: null
+    };
+    injectLink(finding.deepLinks, "detail", auditCourseHref(publicAppUrl, courseId, {
+      section: "observations",
+      findingId
+    }), 3);
+    injectLink(finding.deepLinks, "target", finding.target?.currentAvailable
+      ? auditCourseHref(publicAppUrl, courseId, {
+          section: "inspection",
+          studyUnitId
+        })
+      : null, 2);
+    return finding;
+  };
+  const attachCorrection = (correction, fallbackFindingId = null) => {
+    if (!jsonRecord(correction)) return correction;
+    const findingId = String(correction.findingId || fallbackFindingId || "").trim();
+    const correctionId = String(correction.correctionId || "").trim();
+    if (!findingId || !correctionId) return correction;
+    injectLink(correction, "deepLink", auditCourseHref(publicAppUrl, courseId, {
+      section: "observations",
+      findingId,
+      correctionId
+    }), 2);
+    return correction;
+  };
+  const context = result.context;
+  if (jsonRecord(context)) {
+    if (Array.isArray(context.sources)) {
+      context.sources = context.sources.map((source) => {
+        if (!jsonRecord(source)) return source;
+        const sourceId = typeof source.sourceId === "string" ? source.sourceId : "";
+        if (!sourceId) return source;
+        injectLink(source, "deepLink", auditCourseHref(publicAppUrl, courseId, {
+          section: "sources",
+          sourceId
+        }), 2);
+        if (Array.isArray(source.anchors)) {
+          source.anchors = source.anchors.map((anchor) => {
+            if (!jsonRecord(anchor)) return anchor;
+            const anchorId = String(anchor.anchorId || "").trim();
+            if (anchorId) {
+              injectLink(anchor, "deepLink", auditCourseHref(publicAppUrl, courseId, {
+                section: "sources",
+                sourceId,
+                anchorId
+              }), 0);
+            }
+            return anchor;
+          });
+        }
+        return source;
+      });
+    }
+    if (Array.isArray(context.annotations)) {
+      context.annotations = context.annotations.map((annotation) => {
+        if (!jsonRecord(annotation)) return annotation;
+        const annotationId = String(annotation.annotationId || "").trim();
+        if (annotationId) {
+          injectLink(annotation, "deepLink", auditCourseHref(publicAppUrl, courseId, {
+            section: "observations",
+            annotationId
+          }), 1);
+        }
+        return annotation;
+      });
+    }
+  }
+  if (Array.isArray(result.items)) result.items = result.items.map(attachFinding);
+  if (Array.isArray(result.runs)) {
+    result.runs = result.runs.map((run) => {
+      if (!jsonRecord(run)) return run;
+      const auditRunId = String(run.auditRunId || "").trim();
+      injectLink(run, "deepLink", auditRunId
+        ? auditCourseHref(publicAppUrl, courseId, {
+            section: "observations",
+            auditRunId
+          })
+        : null, 3);
+      return run;
+    });
+  }
+  if (jsonRecord(result.detail)) {
+    result.detail.finding = attachFinding(result.detail.finding);
+    const detailFindingId = result.detail.finding?.findingId ?? null;
+    if (Array.isArray(result.detail.corrections)) {
+      result.detail.corrections = result.detail.corrections.map((correction) =>
+        attachCorrection(correction, detailFindingId)
+      );
+    }
+    if (Object.hasOwn(result.detail, "selectedCorrection")) {
+      result.detail.selectedCorrection = attachCorrection(
+        result.detail.selectedCorrection,
+        detailFindingId
+      );
+    }
+  }
+  if (Object.hasOwn(result, "finding")) {
+    result.finding = attachFinding(result.finding);
+  }
+  if (Object.hasOwn(result, "correction")) {
+    result.correction = attachCorrection(result.correction);
+  }
+  let resultBytes = encoder.encode(JSON.stringify(result)).byteLength;
+  if (resultBytes > COURSE_AUDIT_CYCLE_DTO_LIMIT_BYTES) {
+    injectedLinks.sort((left, right) => (
+      left.priority - right.priority ||
+      encoder.encode(right.href).byteLength - encoder.encode(left.href).byteLength
+    ));
+    for (const link of injectedLinks) {
+      link.target[link.key] = null;
+      resultBytes = encoder.encode(JSON.stringify(result)).byteLength;
+      if (resultBytes <= COURSE_AUDIT_CYCLE_DTO_LIMIT_BYTES) break;
+    }
+  }
+  return result;
+}
+
+function normalizeCourseAuditCycleDatabaseValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuditCycleError)) throw error;
+    throw new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O Supabase devolveu um contrato de auditoria inválido."
+    );
+  }
+}
+
+function normalizeCourseAuditCycleInputValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuditCycleError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+async function deterministicAuditUuid(auditRunId, label) {
+  const bytes = new Uint8Array(await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${auditRunId}\u0000${label}`)
+  ));
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const source = [...bytes.slice(0, 16)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+  return [
+    source.slice(0, 8),
+    source.slice(8, 12),
+    source.slice(12, 16),
+    source.slice(16, 20),
+    source.slice(20)
+  ].join("-");
+}
+
+function auditPublicEvidence(audit) {
+  const fragments = [
+    ...(Array.isArray(audit?.structural?.errors)
+      ? audit.structural.errors.map((error) => `Contrato: ${String(error)}`)
+      : []),
+    ...(Array.isArray(audit?.warnings) ? audit.warnings.map(String) : []),
+    ...(Array.isArray(audit?.selections)
+      ? audit.selections
+        .filter(({ fit }) => fit === "substitute")
+        .map((selection) => {
+          const identity = `${selection.slot}:${selection.instanceId}`;
+          return `${identity} — ${String(selection.reason || "encaixe insuficiente")}`;
+        })
+      : [])
+  ].filter((fragment) => fragment.trim());
+  const fallback = audit?.overallFit === "canonical"
+    ? "Os componentes satisfazem seus contratos e o encaixe representacional é canônico."
+    : "Os componentes satisfazem seus contratos com limitações representacionais explícitas.";
+  return [...(fragments.join("\n") || fallback)].slice(0, 2_000).join("");
+}
+
+async function deterministicRepresentationFacts(context, auditRunId) {
+  const target = context?.target;
+  const studyUnit = {
+    id: target?.studyUnitId,
+    position: target?.position,
+    ...(jsonRecord(target?.content) ? structuredClone(target.content) : {})
+  };
+  const audit = RESOURCE_CATALOG.auditRepresentation({
+    studyUnit,
+    intent: context?.intent
+  });
+  const result = !audit.structural.valid
+    ? "failed"
+    : audit.overallFit === "substitute"
+      ? "uncertain"
+      : "passed";
+  const checkId = await deterministicAuditUuid(
+    auditRunId,
+    "aralearn.course-audit.structural-check.v1"
+  );
+  const check = {
+    checkId,
+    dimension: "structural_conformance",
+    criterion: {
+      code: "resource_representation_contract",
+      version: String(audit.catalogVersion),
+      statement: "A Unidade de estudo satisfaz os contratos dos componentes e sua representação corresponde à intenção persistida."
+    },
+    result,
+    publicEvidence: auditPublicEvidence(audit),
+    adequacy: result === "passed"
+      ? "sufficient"
+      : result === "failed"
+        ? "insufficient"
+        : "uncertain",
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks: []
+  };
+  if (result === "passed") return { check, finding: null };
+  return {
+    check,
+    finding: {
+      findingId: await deterministicAuditUuid(
+        auditRunId,
+        "aralearn.course-audit.structural-finding.v1"
+      ),
+      checkId,
+      code: "resource_representation_contract",
+      severity: result === "failed" ? "high" : "medium",
+      annotationRefs: []
+    }
+  };
+}
+
+function validateCorrectionCandidate(context, command) {
+  const target = context?.target;
+  const candidate = {
+    id: target?.studyUnitId,
+    position: target?.position,
+    ...(jsonRecord(command.afterContent) ? structuredClone(command.afterContent) : {})
+  };
+  const entity = validateCourseEntityContent("study_unit", candidate);
+  const catalog = entity.valid
+    ? RESOURCE_CATALOG.validateStudyUnit(entity.normalized)
+    : null;
+  if (!entity.valid || !catalog?.valid) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_course_audit_candidate",
+      "A correção proposta não forma uma Unidade de estudo válida.",
+      {
+        errors: [
+          ...(Array.isArray(entity.errors) ? entity.errors : []),
+          ...(Array.isArray(catalog?.errors) ? catalog.errors : [])
+        ].slice(0, 20)
+      }
+    );
+  }
+  return { ...command, afterContent: structuredClone(command.afterContent) };
 }
 
 function normalizeCourseDesignDatabaseValue(normalize) {
@@ -1595,6 +1944,153 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  async getCourseAuditCycle({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    auditSetVersion = null,
+    query,
+    cursor = null,
+    limit = 12,
+    deadlineAt = null
+  }) {
+    const options = normalizeCourseAuditCycleInputValue(() =>
+      normalizeCourseAuditCycleReadOptions({
+        expectedCourseRevision,
+        auditSetVersion,
+        query,
+        cursor,
+        limit
+      })
+    );
+    let result;
+    try {
+      result = first(await this.rpc(
+        "get_owned_course_audit_cycle_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_expected_course_revision: options.expectedCourseRevision,
+          p_audit_set_version: options.auditSetVersion,
+          p_query: options.query,
+          p_cursor: options.cursor,
+          p_limit: options.limit
+        },
+        {
+          deadlineAt,
+          responseLimitBytes: COURSE_AUDIT_CYCLE_RESPONSE_LIMIT_BYTES
+        }
+      ));
+    } catch (error) {
+      throw courseAuditCycleResponseFailure(error);
+    }
+    const normalized = normalizeCourseAuditCycleDatabaseValue(() =>
+      normalizeCourseAuditCyclePage(
+        withCourseAuditDeepLinks(result, this.publicAppUrl)
+      )
+    );
+    if (normalized.courseId !== courseId ||
+        normalized.courseRevision !== options.expectedCourseRevision ||
+        options.auditSetVersion !== null &&
+          normalized.auditSetVersion !== options.auditSetVersion ||
+        JSON.stringify(normalizeCourseAuditCycleQuery(normalized.query)) !==
+          JSON.stringify(options.query)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A leitura de auditoria não corresponde ao Curso e à consulta solicitados."
+      );
+    }
+    return normalized;
+  }
+
+  async #auditContextForCommand({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    command,
+    deadlineAt
+  }) {
+    if (command.type === "record_audit") {
+      const annotationIds = [...new Set(command.findings.flatMap((finding) =>
+        finding.annotationRefs.map(({ annotationId }) => annotationId)
+      ))];
+      const page = await this.getCourseAuditCycle({
+        principal,
+        courseId,
+        expectedCourseRevision,
+        query: {
+          mode: "context",
+          targetStudyUnitId: command.targetStudyUnitId,
+          findingId: null,
+          correctionId: null,
+          auditRunId: null,
+          states: [],
+          dimensions: [],
+          severities: [],
+          annotationIds
+        },
+        limit: 1,
+        deadlineAt
+      });
+      return page.context;
+    }
+    const correctionId = command.type === "propose_authoring_correction" &&
+      command.expectedCorrectionVersion === 0
+      ? null
+      : command.correctionId ?? null;
+    const detailPage = await this.getCourseAuditCycle({
+      principal,
+      courseId,
+      expectedCourseRevision,
+      query: {
+        mode: "detail",
+        targetStudyUnitId: null,
+        findingId: command.findingId,
+        correctionId,
+        auditRunId: null,
+        states: [],
+        dimensions: [],
+        severities: [],
+        annotationIds: []
+      },
+      limit: 1,
+      deadlineAt
+    });
+    const finding = detailPage.detail?.finding;
+    const targetStudyUnitId = finding?.target?.studyUnitId;
+    if (!targetStudyUnitId) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O achado não contém um alvo de correção válido."
+      );
+    }
+    const annotationIds = Array.isArray(finding.annotationRefs)
+      ? finding.annotationRefs.map(({ annotationId }) => annotationId)
+      : [];
+    const contextPage = await this.getCourseAuditCycle({
+      principal,
+      courseId,
+      expectedCourseRevision,
+      auditSetVersion: detailPage.auditSetVersion,
+      query: {
+        mode: "context",
+        targetStudyUnitId,
+        findingId: null,
+        correctionId: null,
+        auditRunId: null,
+        states: [],
+        dimensions: [],
+        severities: [],
+        annotationIds
+      },
+      limit: 1,
+      deadlineAt
+    });
+    return contextPage.context;
+  }
+
   async getCourseAuthoringPartMaterialization({
     principal,
     courseId,
@@ -1902,6 +2398,124 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "A confirmação da observação não corresponde ao comando solicitado."
+      );
+    }
+    return normalized;
+  }
+
+  async executeCourseAuditCycleCommand({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision,
+    command,
+    deadlineAt = null
+  }) {
+    const publicCommand = normalizeCourseAuditCycleInputValue(() =>
+      normalizeCourseAuditCycleCommand(command)
+    );
+    let serverCommand = publicCommand;
+    let replayProbeError = null;
+    try {
+      if (new Set(["record_audit", "verify_finding"]).has(publicCommand.type)) {
+        const context = await this.#auditContextForCommand({
+          principal,
+          courseId,
+          expectedCourseRevision,
+          command: publicCommand,
+          deadlineAt
+        });
+        if (context?.contextHash !== publicCommand.contextHash) {
+          throw new AuthoringApiError(
+            409,
+            "audit_context_changed",
+            "O contexto da auditoria mudou; releia antes de registrar o resultado."
+          );
+        }
+        const deterministic = await deterministicRepresentationFacts(
+          context,
+          publicCommand.auditRunId
+        );
+        serverCommand = {
+          ...publicCommand,
+          checks: [deterministic.check, ...publicCommand.checks],
+          ...(publicCommand.type === "record_audit"
+            ? {
+                findings: [
+                  ...(deterministic.finding === null ? [] : [deterministic.finding]),
+                  ...publicCommand.findings
+                ]
+              }
+            : {})
+        };
+      } else if (publicCommand.type === "propose_authoring_correction") {
+        const context = await this.#auditContextForCommand({
+          principal,
+          courseId,
+          expectedCourseRevision,
+          command: publicCommand,
+          deadlineAt
+        });
+        serverCommand = validateCorrectionCandidate(context, publicCommand);
+      }
+    } catch (error) {
+      if (!courseAuditReplayProbeAllowed(error, publicCommand.type)) throw error;
+      replayProbeError = error;
+      serverCommand = { ...publicCommand, __replayOnly: true };
+    }
+    if (replayProbeError === null) {
+      serverCommand = normalizeCourseAuditCycleInputValue(() =>
+        normalizeCourseAuditCycleServerCommand(serverCommand)
+      );
+    }
+    let result;
+    try {
+      result = first(await this.rpc(
+        "execute_course_audit_cycle_command_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_expected_course_revision: expectedCourseRevision,
+          p_command: serverCommand,
+          p_channel: authoringChannel(principal),
+          p_request_id: requestId
+        },
+        {
+          deadlineAt,
+          timeoutMs: 40_000,
+          responseLimitBytes: COURSE_AUDIT_CYCLE_RESPONSE_LIMIT_BYTES
+        }
+      ));
+    } catch (error) {
+      if (replayProbeError !== null) throw replayProbeError;
+      throw courseAuditCycleResponseFailure(error);
+    }
+    const normalized = normalizeCourseAuditCycleDatabaseValue(() =>
+      normalizeCourseAuditCycleChange(
+        withCourseAuditDeepLinks(result, this.publicAppUrl)
+      )
+    );
+    const confirmedCommand = replayProbeError === null ? serverCommand : publicCommand;
+    const changesCourseContent = new Set([
+      "apply_authoring_correction",
+      "rollback_authoring_correction"
+    ]).has(confirmedCommand.type);
+    const expectedResultRevision = expectedCourseRevision +
+      (changesCourseContent && normalized.changed && !normalized.idempotent ? 1 : 0);
+    if (normalized.courseId !== courseId || normalized.requestId !== requestId ||
+        normalized.change !== null && normalized.change.type !== confirmedCommand.type ||
+        (normalized.idempotent
+          ? normalized.courseRevision < expectedCourseRevision
+          : normalized.courseRevision !== expectedResultRevision) ||
+        confirmedCommand.findingId != null && normalized.finding != null &&
+          normalized.finding.findingId !== confirmedCommand.findingId ||
+        confirmedCommand.correctionId != null && normalized.correction != null &&
+          normalized.correction.correctionId !== confirmedCommand.correctionId ||
+        replayProbeError !== null && !normalized.idempotent) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação da auditoria não corresponde ao comando solicitado."
       );
     }
     return normalized;

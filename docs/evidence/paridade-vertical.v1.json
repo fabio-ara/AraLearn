@@ -206,6 +206,54 @@
       "justification": "Inbox, alvo, texto bruto, proveniência protegida, classificação de assunto e ciclo de triagem formam uma única capacidade. O contador privado por pessoa apenas invalida o cache próprio sem revelar a atividade de outras pessoas. O registro só é completo quando a pessoa que o criou o reencontra no Estudo e a pessoa proprietária o trata no alvo exato pela Autoria ou pelo mesmo MCP de seis ferramentas."
     },
     {
+      "id": "course-audit-corrections",
+      "intent": "Auditar uma Unidade de estudo nas quatro dimensões instrucionais, transformar um achado em correção autoral focal e verificar ou reabrir o resultado sem confundir observação humana com prova de conformidade.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#125",
+      "objects": {
+        "manifestFeatures": [
+          "course-audit-cycle-v1",
+          "course-authoring-corrections-v1",
+          "course-audit-annotation-links-v1"
+        ],
+        "databasePatterns": [
+          "^table:private\\.course_(?:instructional_audit_runs|audit_findings|audit_finding_annotations|authoring_corrections)$",
+          "^constraint:public\\.courses/courses_audit_set_version_v1\\[check\\]$",
+          "^function:private\\.(?:apply_course_audit_source_snapshot_v1|course_audit_.+_v1|execute_course_audit_cycle_command_core_v1|get_course_audit_cycle_v1|guard_course_audit_.+_v1|valid_course_audit_.+_v1)\\(.*\\)$",
+          "^function:public\\.(?:execute_course_audit_cycle_command_for_actor_v1|get_owned_course_audit_cycle_for_actor_v1)\\(.*\\)$"
+        ]
+      },
+      "ui": [
+        { "path": "src/ui/CourseAuditPanel.js", "token": "course-audit-panel" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "Auditoria e correções" }
+      ],
+      "visibleEffects": [
+        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"show-runs\"" },
+        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"apply-correction\"" },
+        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"open-verification\"" },
+        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"rollback-correction\"" }
+      ],
+      "persistence": [
+        { "path": "src/supabase/CourseController.js", "token": "loadCourseAuditCycle" },
+        { "path": "src/supabase/CourseController.js", "token": "mutateCourseAuditCycle" },
+        { "path": "supabase/migrations/20260817210000_course_audit_corrections.sql", "token": "course_instructional_audit_runs" }
+      ],
+      "routes": [
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "audit_cycle" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuditCycle" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js", "token": "executeCourseAuditCycleCommand" }
+      ],
+      "tests": [
+        "tests/runtime/course-audit-cycle.test.js",
+        "tests/runtime/course-audit-corrections-pglite.test.js",
+        "tests/runtime/course-audit-panel.test.js",
+        "tests/runtime/course-mcp-tools.test.js",
+        "tests/e2e/course-audit-panel.spec.js"
+      ],
+      "justification": "Rodadas imutáveis, achados versionados, vínculos redigíveis com Observações e checkpoints focais de correção formam um único ciclo verificável. A correção só altera a Unidade em transação com CAS e checkpoint; a verificação posterior preserva evidência e pode sugerir, mas nunca executar silenciosamente, ações no ciclo independente de Observações. Rodadas limpas continuam enumeráveis e auditáveis pela mesma leitura paginada."
+    },
+    {
       "id": "person-profile-and-course-access",
       "intent": "Manter um perfil humano mínimo e conceder ou revogar acesso direto ao Estudo de um Curso, sem papéis institucionais intermediários.",
       "classification": "ui",

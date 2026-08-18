@@ -27,6 +27,8 @@ const COURSE_SOURCES_MIGRATION_VERSION = "20260817190000";
 const COURSE_SOURCES_MIGRATION_NAME = "course_sources_provenance";
 const COURSE_ANNOTATIONS_MIGRATION_VERSION = "20260817200000";
 const COURSE_ANNOTATIONS_MIGRATION_NAME = "course_anchored_annotations";
+const COURSE_AUDIT_MIGRATION_VERSION = "20260817210000";
+const COURSE_AUDIT_MIGRATION_NAME = "course_audit_corrections";
 
 export const COURSE_CUTOVER_STAGING_SCHEMA = Object.freeze([
   Object.freeze({ name: "course_id", sql: "uuid not null" }),
@@ -52,6 +54,39 @@ export const COURSE_CUTOVER_STAGING_SCHEMA = Object.freeze([
 export const COURSE_CUTOVER_TRANSACTION_GUARDS = Object.freeze([
   "set local lock_timeout = '15s';",
   "set local statement_timeout = '10min';"
+]);
+
+export const COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS = Object.freeze([
+  "audit_findings",
+  "audit_runs",
+  "audit_run_microsequences",
+  "audit_run_completions",
+  "audit_run_components",
+  "audit_requests",
+  "audit_events",
+  "active_audit_mandates",
+  "observation_threads",
+  "observation_thread_corrections",
+  "instructional_analyses",
+  "design_parameter_assignments",
+  "resource_sets",
+  "resource_set_members",
+  "effective_design_snapshots",
+  "effective_design_snapshot_values",
+  "effective_design_snapshot_resource_sets",
+  "pedagogical_blueprints",
+  "pedagogical_blueprint_bindings",
+  "microsequence_design_bindings",
+  "materialization_states",
+  "materialization_manifests",
+  "manifest_coverage",
+  "manifest_metrics",
+  "manifest_resource_selections",
+  "manifest_materialized_resources"
+]);
+
+const COURSE_CUTOVER_LEGACY_AUDIT_ALLOWED_NONZERO = new Set([
+  "observation_threads"
 ]);
 
 const PREPARATION_SEALS = new WeakMap();
@@ -164,6 +199,56 @@ function hasControl(value) {
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function postgresJsonbKeyOrder(left, right) {
+  const leftBytes = Buffer.from(left, "utf8");
+  const rightBytes = Buffer.from(right, "utf8");
+  return leftBytes.byteLength - rightBytes.byteLength || Buffer.compare(leftBytes, rightBytes);
+}
+
+function postgresJsonbObjectText(entries) {
+  return `{${entries
+    .sort(([left], [right]) => postgresJsonbKeyOrder(left, right))
+    .map(([key, value]) => `${JSON.stringify(key)}: ${value}`)
+    .join(", ")}}`;
+}
+
+export function courseCutoverLegacyAuditHash(value) {
+  const countText = postgresJsonbObjectText(Object.entries(value?.counts || {})
+    .map(([key, count]) => [key, JSON.stringify(count)]));
+  const envelopeText = postgresJsonbObjectText([
+    ["contract", JSON.stringify(value?.contract)],
+    ["counts", countText]
+  ]);
+  return sha256Bytes(Buffer.from(envelopeText, "utf8"));
+}
+
+export function assertCourseCutoverLegacyAudit(value, hash) {
+  const countFields = new Set(COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS);
+  if (!isObject(value) ||
+      value.contract !==
+        "aralearn.legacy-authoring-audit-cutover-preflight.v1" ||
+      !isObject(value.counts) ||
+      Object.keys(value).length !== 2 ||
+      !Object.hasOwn(value, "contract") || !Object.hasOwn(value, "counts") ||
+      Object.keys(value.counts).length !== countFields.size ||
+      Object.keys(value.counts).some((field) => !countFields.has(field)) ||
+      Object.values(value.counts).some((count) =>
+        !Number.isSafeInteger(count) || count < 0) ||
+      COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS.some((field) =>
+        !Object.hasOwn(value.counts, field)) ||
+      COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS.some((field) =>
+        !COURSE_CUTOVER_LEGACY_AUDIT_ALLOWED_NONZERO.has(field) &&
+        value.counts[field] !== 0) ||
+      !/^[0-9a-f]{64}$/u.test(hash || "") ||
+      courseCutoverLegacyAuditHash(value) !== hash) {
+    fail(
+      "legacy_authoring_audit_cutover_blocked",
+      "O corte encontrou auditoria ou correção legada sem equivalência canônica; exporte a evidência antes de prosseguir."
+    );
+  }
+  return value;
 }
 
 function entityVersion(value, label) {
@@ -1043,6 +1128,7 @@ function validateTopology(snapshot) {
       !Array.isArray(snapshot.topology)) {
     fail("invalid_cutover_snapshot", "Snapshot de origem possui contrato inválido.");
   }
+  assertCourseCutoverLegacyAudit(snapshot.legacyAudit, snapshot.legacyAuditHash);
   const totals = { root_only: 0, root_and_publication: 0, publication_only: 0 };
   const ids = new Set();
   let artifactCount = 0;
@@ -1581,7 +1667,8 @@ export function buildCourseCutoverSql(
   studyUnitInspectionMigrationSql,
   courseDesignMigrationSql,
   courseSourcesMigrationSql,
-  courseAnnotationsMigrationSql
+  courseAnnotationsMigrationSql,
+  courseAuditMigrationSql
 ) {
   if (!isObject(preparation) || !Array.isArray(preparation.rows) ||
       !preparation.rows.length || typeof migrationSql !== "string" ||
@@ -1590,7 +1677,8 @@ export function buildCourseCutoverSql(
       typeof studyUnitInspectionMigrationSql !== "string" ||
       typeof courseDesignMigrationSql !== "string" ||
       typeof courseSourcesMigrationSql !== "string" ||
-      typeof courseAnnotationsMigrationSql !== "string") {
+      typeof courseAnnotationsMigrationSql !== "string" ||
+      typeof courseAuditMigrationSql !== "string") {
     fail(
       "invalid_cutover_execution",
       "Linhas ou migrations do corte estão ausentes."
@@ -1642,6 +1730,13 @@ export function buildCourseCutoverSql(
   const courseAnnotationsExecutionBody = withoutTransactionGuards(
     courseAnnotationsTransaction.body
   );
+  const courseAuditTransaction = transactionBody(
+    courseAuditMigrationSql,
+    "a migration de auditoria e correções"
+  );
+  const courseAuditExecutionBody = withoutTransactionGuards(
+    courseAuditTransaction.body
+  );
   const guardPositions = COURSE_CUTOVER_TRANSACTION_GUARDS.map((guard) =>
     migrationSql.indexOf(guard));
   if (COURSE_CUTOVER_TRANSACTION_GUARDS.some((guard) =>
@@ -1692,6 +1787,7 @@ export function buildCourseCutoverSql(
     courseDesignExecutionBody,
     courseSourcesExecutionBody,
     courseAnnotationsExecutionBody,
+    courseAuditExecutionBody,
     "insert into supabase_migrations.schema_migrations(version,statements,name)",
     `values (${sqlText(CUTOVER_MIGRATION_VERSION)},` +
       `array[${sqlText(identityTransaction.body)}]::text[],` +
@@ -1720,6 +1816,10 @@ export function buildCourseCutoverSql(
     `values (${sqlText(COURSE_ANNOTATIONS_MIGRATION_VERSION)},` +
       `array[${sqlText(courseAnnotationsTransaction.body)}]::text[],` +
       `${sqlText(COURSE_ANNOTATIONS_MIGRATION_NAME)});`,
+    "insert into supabase_migrations.schema_migrations(version,statements,name)",
+    `values (${sqlText(COURSE_AUDIT_MIGRATION_VERSION)},` +
+      `array[${sqlText(courseAuditTransaction.body)}]::text[],` +
+      `${sqlText(COURSE_AUDIT_MIGRATION_NAME)});`,
     "commit;",
     ""
   ].join("\n");

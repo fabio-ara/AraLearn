@@ -36,6 +36,10 @@ conteúdo do Curso e não é compartilhado entre estudantes.
 do Curso. Ela usa persistência própria porque precisa chegar à caixa de entrada
 do proprietário sem revelar a estudantes os registros de colegas.
 
+**Auditoria e correção** formam um ciclo privado do proprietário sobre uma
+Unidade focal. Rodadas, achados, vínculos com Observações e correções possuem
+autoridades separadas e nunca são projetados para estudantes.
+
 **Réplica local** é a cópia mantida no dispositivo para abertura rápida e uso
 sem conexão. Ela não substitui uma cópia de segurança: uma alteração ainda não
 sincronizada pode existir somente naquele dispositivo.
@@ -52,6 +56,7 @@ sincronizada pode existir somente naquele dispositivo.
 | autorizar o Estudo | Curso, pessoa favorecida, concedente e momento da concessão | PostgreSQL |
 | retomar o Estudo | posição, conclusões e marcações **Rever** | PostgreSQL e réplica local |
 | registrar e triar Observações | alvo, origem/canal, texto corrente, categoria, estado, classificação, resposta, versões e metadados mínimos | PostgreSQL privado; cache e outbox próprios no dispositivo |
+| auditar e corrigir uma Unidade | critério, resultado, evidência, IDs/versões de Observações selecionadas, versões de achado e correção e checkpoint focal | PostgreSQL privado e owner-only; nenhum cache ou outbox no dispositivo |
 | aplicar alterações com segurança | revisão esperada, identificador do pedido, evento e recibo técnico temporário | PostgreSQL privado |
 
 ### Identidade humana mínima
@@ -181,6 +186,40 @@ Quantidade, ausência, categoria, estado, resposta, resolução e timestamps nã
 medem aprendizagem, dificuldade, atenção, qualidade ou eficácia pedagógica; o
 instante capturado é uma pista de contexto, não duração de sessão.
 
+### Privacidade de auditoria, achados e correções
+
+Somente o proprietário do Curso lê ou altera o ciclo. As relações privadas de
+rodadas, versões de achado, junção achado–Anotação e versões de correção usam
+RLS forçada e não possuem grants diretos. Estudantes não recebem contador,
+lista, deep link, evidência ou estado desse ciclo.
+
+A junção guarda apenas a identidade e a versão da Anotação selecionada. Não
+copia texto, síntese, resposta, pseudônimo, papel ou identidade pessoal. Se a
+Anotação for retirada, enquanto o tombstone ainda existir a projeção do achado
+indica `available: false` e `deepLink: null`. Quando a limpeza física apagar a
+Anotação, `ON DELETE CASCADE` remove somente a junção: o vínculo e o ID deixam
+as projeções futuras, mas rodada, achado e correção continuam preservados.
+
+Uma sugestão de resolver ou reabrir a Anotação não produz mudança implícita.
+Ela exige outra ação humana ou comando de Anotações com a versão corrente. Isso
+preserva a autoridade e a retenção próprias da Observação.
+
+Evidência factual positiva referencia somente Fonte e Âncora ativas na revisão
+exata. O ciclo não copia o arquivo da Fonte nem transforma `quoted_from` em
+prova geral: essa relação só verifica fidelidade de citação; afirmações exigem
+`supported_by`.
+
+Correções guardam snapshots focais `before|after` do conteúdo e das atribuições
+de Fontes da Unidade, não uma cópia integral do Curso ou da conversa. Somente
+aplicação e rollback criam evento de Curso e reutilizam o recibo técnico já
+existente. Registrar auditoria, decidir, propor, rejeitar ou verificar não cria
+atividade de conteúdo.
+
+Auditoria e correções são online-only. O IndexedDB não contém store, cache
+autoritativo, réplica ou outbox delas. As rotas profundas continuam sujeitas à
+sessão e à propriedade; possuir um `findingId`, `auditRunId` ou `correctionId`
+não concede acesso.
+
 ### Autoria, eventos e recibos
 
 Uma alteração de Curso informa a revisão que foi lida. O servidor só grava a
@@ -218,6 +257,8 @@ O navegador e o aplicativo Android mantêm:
 - estado pessoal e alterações que aguardam sincronização;
 - cache, outbox e handoff transitório de Anotações ancoradas;
 - arquivos estáticos necessários ao funcionamento da interface.
+
+Rodadas, achados, correções, checkpoints e seus vínculos não entram nessa lista.
 
 O IndexedDB permite transações e sobrevive ao fechamento da página. Limpar os
 dados do aplicativo pode apagar uma alteração que ainda não chegou ao servidor.

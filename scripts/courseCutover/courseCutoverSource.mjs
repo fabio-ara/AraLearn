@@ -3,10 +3,81 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { CourseCutoverImportError } from "./courseCutoverImporter.mjs";
+import {
+  assertCourseCutoverLegacyAudit,
+  CourseCutoverImportError
+} from "./courseCutoverImporter.mjs";
 
 export const COURSE_CUTOVER_SOURCE_SQL = String.raw`
-with recursive mapping as (
+with recursive legacy_audit_counts(name,value) as (
+  select 'audit_findings',count(*)
+  from private.authoring_workspace_observations where kind='audit_finding'
+  union all select 'audit_runs',count(*) from private.authoring_audit_runs
+  union all select 'audit_run_microsequences',count(*)
+  from private.authoring_audit_run_microsequences
+  union all select 'audit_run_completions',count(*)
+  from private.authoring_audit_run_completions
+  union all select 'audit_run_components',count(*)
+  from private.authoring_audit_run_components
+  union all select 'audit_requests',count(*)
+  from private.authoring_workspace_requests where operation in(
+    'create_finding','decide_finding','link_finding_correction','verify_finding',
+    'delete_finding','run_authoring_audit','record_authoring_semantic_audit'
+  )
+  union all select 'audit_events',count(*)
+  from private.authoring_workspace_events where operation in(
+    'create_finding','decide_finding','link_finding_correction','verify_finding',
+    'delete_finding','run_authoring_audit','record_authoring_semantic_audit'
+  )
+  union all select 'active_audit_mandates',count(*)
+  from private.authoring_workspaces
+  where authoring_state#>>'{mandate,kind}' in('audit','repair_findings')
+  union all select 'observation_threads',count(*)
+  from private.trail_observation_threads
+  union all select 'observation_thread_corrections',count(*)
+  from private.trail_observation_threads
+  where correction_request_id is not null
+     or correction_entity_path is not null
+     or correction_linked_at is not null
+     or correction_resulting_revision is not null
+  union all select 'instructional_analyses',count(*)
+  from private.authoring_instructional_analyses
+  union all select 'design_parameter_assignments',count(*)
+  from private.authoring_design_parameter_assignments
+  union all select 'resource_sets',count(*) from private.authoring_resource_sets
+  union all select 'resource_set_members',count(*)
+  from private.authoring_resource_set_members
+  union all select 'effective_design_snapshots',count(*)
+  from private.authoring_effective_design_snapshots
+  union all select 'effective_design_snapshot_values',count(*)
+  from private.authoring_effective_design_snapshot_values
+  union all select 'effective_design_snapshot_resource_sets',count(*)
+  from private.authoring_effective_design_snapshot_resource_sets
+  union all select 'pedagogical_blueprints',count(*)
+  from private.authoring_pedagogical_blueprints
+  union all select 'pedagogical_blueprint_bindings',count(*)
+  from private.authoring_pedagogical_blueprint_bindings
+  union all select 'microsequence_design_bindings',count(*)
+  from private.authoring_microsequence_design_bindings
+  union all select 'materialization_states',count(*)
+  from private.authoring_materialization_states
+  union all select 'materialization_manifests',count(*)
+  from private.authoring_materialization_manifests
+  union all select 'manifest_coverage',count(*)
+  from private.authoring_manifest_coverage
+  union all select 'manifest_metrics',count(*)
+  from private.authoring_manifest_metrics
+  union all select 'manifest_resource_selections',count(*)
+  from private.authoring_manifest_resource_selections
+  union all select 'manifest_materialized_resources',count(*)
+  from private.authoring_manifest_materialized_resources
+), legacy_audit as (
+  select jsonb_build_object(
+    'contract','aralearn.legacy-authoring-audit-cutover-preflight.v1',
+    'counts',jsonb_object_agg(name,value)
+  ) value
+  from legacy_audit_counts
+), mapping as (
   select
     item.id as course_id,
     item.workspace_id,
@@ -93,6 +164,12 @@ with recursive mapping as (
 )
 select jsonb_build_object(
   'contract', 'aralearn.course-cutover-source.v1',
+  'legacyAudit', (select value from legacy_audit),
+  'legacyAuditHash', (
+    select encode(
+      extensions.digest(convert_to(value::text,'UTF8'),'sha256'),'hex'
+    ) from legacy_audit
+  ),
   'topology', coalesce(jsonb_agg(jsonb_build_object(
     'courseId', source.course_id,
     'sourceKind', source.source_kind,
@@ -377,6 +454,7 @@ export function parseCourseCutoverSnapshot(output) {
       !Array.isArray(value?.topology)) {
     throw cutoverError("invalid_database_snapshot", "Contrato do snapshot PostgreSQL é inválido.");
   }
+  assertCourseCutoverLegacyAudit(value.legacyAudit, value.legacyAuditHash);
   return value;
 }
 

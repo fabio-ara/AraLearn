@@ -53,6 +53,48 @@ test("rota canônica preserva courseId, seção real e um único alvo compatíve
     section: "observations",
     target: { kind: "anchored_annotation", id: LETTERED_COURSE_ID }
   });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "observations",
+    findingId: LETTERED_COURSE_ID
+  })), {
+    courseId: COURSE_ID,
+    section: "observations",
+    target: { kind: "audit_finding", id: LETTERED_COURSE_ID }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "observations",
+    findingId: LETTERED_COURSE_ID,
+    correctionId: COURSE_ID
+  })), {
+    courseId: COURSE_ID,
+    section: "observations",
+    target: {
+      kind: "audit_finding",
+      id: LETTERED_COURSE_ID,
+      correctionId: COURSE_ID
+    }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "observations",
+    auditRunId: LETTERED_COURSE_ID
+  })), {
+    courseId: COURSE_ID,
+    section: "observations",
+    target: { kind: "audit_run", id: LETTERED_COURSE_ID }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "sources",
+    sourceId: "  fonte/literal-á  ",
+    anchorId: "ancora:1"
+  })), {
+    courseId: COURSE_ID,
+    section: "sources",
+    target: {
+      kind: "course_source",
+      id: "  fonte/literal-á  ",
+      anchorId: "ancora:1"
+    }
+  });
   for (const [option, id, kind] of targets.slice(1, 4)) {
     const hash = buildCourseAuthoringRoute(COURSE_ID, {
       section: "parameters",
@@ -77,6 +119,17 @@ test("parser rejeita UUID não canônico, parâmetros extras e outros caminhos",
     `#/authoring/courses/${COURSE_ID}?section=parameters&authoringPartId=${LETTERED_COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=inspection&annotationId=${LETTERED_COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=observations&studyUnitId=a`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&correctionId=${LETTERED_COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${LETTERED_COURSE_ID}&findingId=${COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${LETTERED_COURSE_ID}&annotationId=${COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&auditRunId=${LETTERED_COURSE_ID}&findingId=${COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&auditRunId=${LETTERED_COURSE_ID}&annotationId=${COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&auditRunId=${LETTERED_COURSE_ID}&correctionId=${COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=inspection&auditRunId=${LETTERED_COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${LETTERED_COURSE_ID}&correctionId=INVALID`,
+    `#/authoring/courses/${COURSE_ID}?section=sources&anchorId=ancora-1`,
+    `#/authoring/courses/${COURSE_ID}?section=sources&sourceId=fonte-1&correctionId=${LETTERED_COURSE_ID}`,
+    `#/authoring/courses/${COURSE_ID}?section=sources&sourceId=fonte-1&anchorId=%20ancora`,
     `#/authoring/courses/${COURSE_ID}?section=inspection&moduleId=a&lessonId=b`,
     `#/authoring/courses/${COURSE_ID}?moduleId=a&section=inspection`,
     `#/authoring/courses/${COURSE_ID}/inspection?section=inspection`,
@@ -117,6 +170,61 @@ test("construtor de rota falha cedo para identidade ou seção inválida", () =>
   assert.throws(
     () => buildCourseAuthoringRoute(COURSE_ID, { section: "inspection", mode: "edit" }),
     /Opções inválidas/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "observations",
+      correctionId: LETTERED_COURSE_ID
+    }),
+    /correção exige um achado canônico/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "sources",
+      anchorId: "ancora-1"
+    }),
+    /âncora exige uma Fonte literal/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "observations",
+      annotationId: LETTERED_COURSE_ID,
+      findingId: COURSE_ID
+    }),
+    /somente um alvo/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "observations",
+      auditRunId: LETTERED_COURSE_ID,
+      findingId: COURSE_ID
+    }),
+    /somente um alvo/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "observations",
+      auditRunId: LETTERED_COURSE_ID,
+      annotationId: COURSE_ID
+    }),
+    /somente um alvo/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "observations",
+      auditRunId: LETTERED_COURSE_ID,
+      correctionId: COURSE_ID
+    }),
+    /correção exige um achado canônico/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "observations",
+      findingId: LETTERED_COURSE_ID,
+      correctionId: COURSE_ID,
+      anchorId: "ancora-1"
+    }),
+    /não aceita correção e âncora/u
   );
   assert.throws(
     () => buildCourseAuthoringRoute(COURSE_ID, { section: "notes" }),

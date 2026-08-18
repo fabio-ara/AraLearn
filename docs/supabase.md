@@ -6,7 +6,7 @@ O Supabase reúne quatro serviços usados pelo AraLearn:
 
 - **Auth**, que comprova a identidade da conta e mantém a sessão;
 - **PostgreSQL**, que conserva Cursos, composição, Fontes, acesso e estado
-  pessoal e Anotações ancoradas;
+  pessoal, Anotações ancoradas e auditoria/correções;
 - **Storage**, que guarda avatares privados;
 - **Edge Functions**, que oferecem a API autoral e o servidor MCP.
 
@@ -59,7 +59,11 @@ auth.users
    │      │             ├── vínculos com Microssequências didáticas
    │      │             └── materializações e etapas
    │      ├── course_source_* (Fontes, Âncoras e atribuições)
-   │      ├── course_anchored_annotation_* (linha, eventos, recibos e versões privadas)
+    │      ├── course_anchored_annotation_* (linha, eventos, recibos e versões privadas)
+    │      ├── course_instructional_audit_runs (rodadas imutáveis)
+    │      ├── course_audit_findings (versões append-only)
+    │      ├── course_audit_finding_annotations (junção protegida)
+    │      ├── course_authoring_corrections (versões e checkpoints)
    │      ├── course_entities (composição didática)
    │      ├── course_access (acesso direto ao Estudo)
    │      ├── course_events (eventos canônicos)
@@ -72,7 +76,7 @@ auth.users
 
 | Relação | Responsabilidade | Observação de segurança |
 |---|---|---|
-| `public.courses` | identidade, proprietário, título, objetivo, revisão, versão global do conjunto de anotações e datas | somente o proprietário edita conteúdo; a versão global de anotações é independente da revisão |
+| `public.courses` | identidade, proprietário, título, objetivo, revisão, versões globais dos conjuntos de anotações e auditoria e datas | somente o proprietário edita conteúdo; os contadores de projeção são independentes da revisão |
 | `private.course_instructional_plans` | público, escopo, faixa preferencial e versão do plano | uma linha por Curso; título, objetivo e orientação não são duplicados |
 | `private.course_instructional_plan_items` | resultados pretendidos, unidades de análise e requisitos de evidência ordenados | leitura e escrita passam pelo contrato do plano |
 | `private.course_design_target_plan_items` | atribuição muitos-para-muitos de unidades de análise e requisitos de evidência a Microssequências | FKs compostas prendem item e alvo ao mesmo Curso; sem grants diretos |
@@ -94,6 +98,10 @@ auth.users
 | `private.course_anchored_annotation_events` | hashes e metadados append-only de revisões e estados | não conserva versões anteriores do texto bruto |
 | `private.course_anchored_annotation_receipts` | repetição segura dos comandos de observação | expira logicamente em até 14 dias; limpeza física oportunista |
 | `private.course_anchored_annotation_viewer_versions` | contador monotônico da projeção self-only e `protected_ref` aleatório persistido por pessoa e Curso | sem texto; RLS forçada, sem grants e sem autoridade textual |
+| `private.course_instructional_audit_runs` | rodadas imutáveis com checks e evidências | owner-only; inclui rodadas limpas e usa RLS forçada sem grants diretos |
+| `private.course_audit_findings` | versões append-only de achados | decisão e estado não reescrevem versões anteriores |
+| `private.course_audit_finding_annotations` | identidades e versões exatas de Anotações ligadas ao achado | não copia texto/pessoa; cascade da Anotação remove somente o vínculo |
+| `private.course_authoring_corrections` | versões de proposta, decisão, checkpoint, verificação e rollback | correção focal; RLS forçada sem grants diretos |
 | `private.course_entities` | módulos, lições, tópicos, microssequências e unidades de estudo | leitura e escrita passam por RPCs validadas |
 | `public.course_access` | vínculo direto entre Curso e pessoa autorizada a estudar | não concede Autoria |
 | `public.course_personal_states` | continuidade, conclusões e marcações **Rever** da própria pessoa | documento v2 isolado por pessoa; não contém observações |
@@ -177,10 +185,16 @@ recibos v1 permanece cercada somente até a expiração existente, e
 `private.valid_course_personal_state_v1` fica isolada para remoção posterior.
 
 O preflight da `2000` admite apenas pontes legadas previstas de observação e
-recibo. Linhas `audit_finding` falham fechadas até decisão explícita da fatia de
-auditoria; qualquer workspace inesperado também aborta. A relação
+recibo; qualquer workspace inesperado aborta. A relação
 `trail_observation_threads` permanece temporariamente apenas como ponte de
 correção sem texto bruto, não como fonte ativa.
+
+A migration `2100` instala o ciclo novo sem converter ou retomar achados e
+reparos anteriores. Seu preflight é fail-closed sobre um envelope fixo de 26
+contagens: todos os bloqueadores precisam ser zero. Somente a contagem bruta de
+`observation_threads` pode ser diferente de zero, e ainda assim suas
+referências a correções precisam ser zero. O contrato anterior não é reativado
+por alias, fallback ou compatibilidade.
 
 Listas e composição são paginadas por cursores estáveis. Na Autoria, o
 navegador busca primeiro o cabeçalho fino e depois recompõe a hierarquia a
@@ -280,6 +294,41 @@ incluem tombstones: 128 por ator/Curso/alvo, 512 por ator/Curso e 256 versões o
 eventos em operações ordinárias; retirada e exclusão de conta continuam
 permitidas no teto.
 
+O ciclo de auditoria usa somente as RPCs service-role owner-only
+`get_owned_course_audit_cycle_for_actor_v1` e
+`execute_course_audit_cycle_command_for_actor_v1`. A leitura expõe os modos
+`context|findings|runs|detail`. Achados e rodadas são paginados, aceitam
+`targetStudyUnitId` opcional e usam cursor opaco; `runs` enumera também rodadas
+limpas. O modo `detail` exige exatamente um entre `findingId` e `auditRunId`, e
+o detalhe de rodada inclui todos os checks e evidências. A página distingue a
+lista `runs` de `runDetail`.
+
+A mudança aceita sete comandos: `record_audit`,
+`propose_authoring_correction`, `reject_authoring_correction`,
+`decide_finding`, `apply_authoring_correction`, `verify_finding` e
+`rollback_authoring_correction`. `auditCommand.confirmed: true` é obrigatório
+somente nos dois comandos que mudam o Curso, aplicação e rollback; os outros
+cinco o recusam. O adaptador remove a confirmação antes do domínio.
+
+O contexto deriva a Unidade focal, Microssequência, plano, desenho,
+Fontes/Âncoras e até 12 Observações selecionadas. A interface fornece três
+checks humanos, e o servidor acrescenta o check estrutural determinístico sob
+máximo de 32. Rodada imutável, versões append-only de achado, junção e versões
+append-only de correção permanecem quatro autoridades distintas.
+
+A junção guarda só identidade e versão. Uma Anotação retirada ainda existente
+como tombstone é projetada `available: false`, `deepLink: null`; quando a
+limpeza física a apaga, `ON DELETE CASCADE` remove apenas a junção e o ID deixa
+as projeções futuras. Rodada, achado e correção permanecem, sem texto,
+pseudônimo ou pessoa copiados.
+
+Auditoria/correção é online-only, sem store, cache autoritativo ou outbox no
+IndexedDB. Página e resultado de mudança têm até 240 KiB, página até 24 itens,
+cursor até 240 caracteres e comando até 192 KiB. Há até 16 achados por rodada,
+256 rodadas por Curso com reserva para correções aplicadas, 1.024 identidades
+de achado, 64 correções por Curso e oito por achado; históricos projetados são
+delimitados. Snapshot, checkpoint e recibo têm 48, 96 e 64 KiB.
+
 A RPC de Estudo é outra projeção, não uma permissão sobre o catálogo. Ela omite
 Fontes `hidden` e `unresolved_legacy`; `citation` devolve URL nula e
 `citation_and_link` pode devolvê-la. Trecho de verificação, ator, canal,
@@ -328,7 +377,7 @@ segunda verificação incompatível antes desse código.
 
 Criar um Curso recebe título e objetivo, cria a raiz privada vazia e cria seu
 plano normalizado na mesma transação. A escrita posterior se divide em cinco
-famílias explícitas:
+famílias explícitas de conteúdo e uma família de auditoria:
 
 1. **plano instrucional:** recebe comando semântico, revisão esperada do Curso
    e versão esperada do plano; calcula e valida o estado-alvo antes do commit;
@@ -341,7 +390,9 @@ famílias explícitas:
    aplicação completa de Fontes de cada Unidade alterada, sob a revisão
    esperada, sem reescrever o plano;
 5. **materialização de Parte:** inicia tentativa, registra uma etapa ou finaliza
-   a tentativa sob revisão e versões esperadas.
+   a tentativa sob revisão e versões esperadas;
+6. **auditoria e correção:** registra rodada ou decisão, propõe/rejeita/aplica
+   correção, verifica numa nova rodada ou executa rollback.
 
 Todas autenticam a pessoa, confirmam propriedade, procuram repetição segura,
 aplicam CAS, validam limites, calculam diferenças, avançam a revisão somente
@@ -350,6 +401,21 @@ da Parte e entre 1 e 64 etapas. Registrar uma etapa admite até 64 mudanças de
 entidade no total e confirma conteúdo, vínculo, atribuições, fatos e progresso
 numa única transação. Contexto e fatos possuem limites pequenos no banco e na
 Edge Function.
+
+Na sexta família, somente aplicação e rollback avançam a revisão do Curso,
+criam `course_events` e reutilizam `course_change_receipts`; as outras operações
+avançam apenas a projeção de auditoria quando mudam seu estado. A correção v1
+só substitui conteúdo e atribuições exatas de Fontes da Unidade focal, preserva
+`topics` legítimos e não cria, exclui, move, reposiciona ou muda pai. No-op é
+recusado. Aplicação e rollback confrontam checkpoint `before|after` e estado
+corrente na mesma transação.
+
+Verificação registra outra rodada e exige `resolved|still_open`. Resolver só é
+válido quando o critério focal passou; `still_open` reabre. Resultado factual
+positivo e resolução factual exigem Fonte e Âncora ativas na revisão exata:
+`supported_by` sustenta afirmação e `quoted_from` só vale para
+`quotation_fidelity`. Ações sugeridas sobre Observações não são executadas pela
+RPC de auditoria e exigem comando explícito e versionado de Anotações.
 
 Ao iniciar uma materialização, o servidor deriva e sela o desenho efetivo para
 as Microssequências-alvo. O cliente não fornece esse contexto. Catálogos de
@@ -394,7 +460,8 @@ isso, ele não cria recibo, evento, tentativa ou progresso.
 ### Tipos de mudança dos eventos
 
 `private.course_events.operation` distingue criação, metadados históricos do
-corte, composição, plano instrucional, materialização e acesso. Eventos de
+corte, composição, plano instrucional, materialização, aplicação/rollback de
+correção e acesso. Eventos de
 plano informam `activityKind=plan_changed`, canal, tipo de comando e contagens.
 Eventos de materialização distinguem início, etapa registrada e finalização e
 referenciam Parte e tentativa. Eventos de composição informam `createdCount`,
@@ -512,7 +579,7 @@ linha](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 ## Manifesto do runtime
 
 `supabase/runtime-manifest.json` descreve o contrato que site, Edge Functions e
-banco precisam compartilhar. A revisão local deste corte é `20260817200000`,
+banco precisam compartilhar. A revisão local deste corte é `20260817210000`,
 contrato v1. Entre as capacidades observáveis estão:
 
 - identidade única e viva de Curso;
@@ -525,6 +592,8 @@ contrato v1. Entre as capacidades observáveis estão:
   Estudo;
 - acesso direto e restrito ao Estudo;
 - Anotações ancoradas e classificação de assunto sem inferência semântica;
+- ciclo owner-only de auditoria, correção, verificação e vínculos protegidos com
+  Anotações;
 - estado pessoal v2 com somente progresso e **Rever**;
 - CAS e idempotência;
 - MCP autoral somente por OAuth;
@@ -532,9 +601,10 @@ contrato v1. Entre as capacidades observáveis estão:
 - avatar privado;
 - exclusão da própria conta.
 
-As flags deste trecho são `course-anchored-annotations-v1`,
-`course-annotation-subject-classification-v1` e `course-personal-state-v2`;
-site e funções não devem inferir capacidade somente pela presença de tabelas.
+As três flags novas deste trecho são `course-audit-cycle-v1`,
+`course-authoring-corrections-v1` e `course-audit-annotation-links-v1`. As flags
+de Anotações e estado pessoal continuam ativas; site e funções não devem inferir
+capacidade somente pela presença de tabelas.
 
 `scripts/validateCourseRuntime.mjs` compara o JSON versionado, as migrations e
 os contratos fonte. Uma versão do site não deve ser publicada contra um banco
@@ -562,6 +632,9 @@ O desenho reduz trabalho e armazenamento sem criar infraestrutura paralela:
 - páginas de anotações têm até 24 itens/256 KiB; quotas de 128 por alvo e 512
   por ator/Curso limitam linhas correntes, e eventos anteriores não repetem
   texto bruto;
+- páginas de auditoria têm até 24 itens/240 KiB, e comandos, rodadas, achados,
+  correções, snapshots, checkpoints, recibos e históricos possuem caps
+  explícitos;
 - recibos expiram logicamente e a limpeza física processa oportunisticamente
   por toque até 128 tombstones e 256 recibos expirados;
 - avatar tem limite pequeno e upload direto;
@@ -644,9 +717,10 @@ em modo de verificação:
 O projeto hospedado que já contém os oito Cursos é uma exceção operacional: a
 staging e as migrations `20260817140000`, `20260817150000`,
 `20260817160000`, `20260817170000`, `20260817180000`,
-`20260817190000` e `20260817200000` precisam usar a mesma conexão e transação e não podem ser
-aplicadas isoladamente por `db push`. O importador transitório descrito abaixo
-executa esse corte. Uma instalação vazia continua usando o fluxo comum.
+`20260817190000`, `20260817200000` e `20260817210000` precisam usar a mesma
+conexão e transação e não podem ser aplicadas isoladamente por `db push`. O
+importador transitório descrito abaixo executa esse corte. Uma instalação vazia
+continua usando o fluxo comum.
 
 A `1800` falha antes de alterar o schema se encontrar qualquer materialização
 ou etapa anterior ao novo contexto. Seu preflight bloqueia essas tabelas e as
@@ -658,13 +732,19 @@ referência legada malformada. Ela remove `StudyUnit.sources`, cria revisões
 `unresolved_legacy` e baselines de atribuição na ordem original, e confere
 contagem, identidade, ordem e hash antes de confirmar.
 
-A `2000` falha antes do corte diante de achado de auditoria ou outro dado legado
-fora das pontes explícitas de observação/recibo. Ela converte as observações,
+A `2000` falha antes do corte diante de dado legado fora das pontes explícitas
+de observação/recibo. Ela converte as observações,
 limpa os documentos pessoais depois de prova por hash, instala o estado pessoal
-v2 e cerca a ponte de recibos v1 até sua expiração. O contrato de domínio
-congelado possui SHA-256
-`209D7E7684AB7BDD615243938AD849B4F498EB509D557CA398080812CBC716E6`, idêntico
-no browser e na Edge.
+v2 e cerca a ponte de recibos v1 até sua expiração.
+
+A `2100` instala as quatro autoridades novas e falha fechada antes do corte se
+qualquer um dos 26 campos do envelope legado violar a regra: todos os
+bloqueadores são zero, exceto a contagem bruta permitida de
+`observation_threads`, cujas referências a correções também precisam ser zero.
+Não há retomada, conversão ou compatibilidade com achado ou reparo antigo. O
+domínio congelado do ciclo de auditoria possui SHA-256
+`6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9` no browser
+e na Edge.
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -683,7 +763,7 @@ revisões diferentes; limpar IndexedDB não atualiza migrations remotas.
 
 `scripts/courseCutover/` lê e valida a origem, produz a staging e executa
 staging + migrations `1400` → `1500` → `1600` → `1700` → `1800` → `1900` →
-`2000` na mesma conexão e na mesma transação, e registra as sete versões no
+`2000` → `2100` na mesma conexão e na mesma transação, e registra as oito versões no
 ledger. Sem `--apply`, o comando não escreve no banco. Não há `db push`
 separado das migrations desse corte.
 
@@ -703,10 +783,11 @@ novamente `documentHash`, `rowHash`, `entityStateHash`,
 `sourceReferenceHash` e contagens. Só então grava a atestação `verified`. Os manifestos não viram tabela nem campo de
 runtime: são evidência privada de uma operação única.
 
-O inventário vertical regenerado pós-`2000` possui 2.096 objetos: 501 ligados a
-sete casos correntes e 1.595 isolados como legado físico. A distribuição
-corrente é 84 de Anotações ancoradas, 272 de Autoria, 84 de Fontes, 26 de
-Estudo, 31 de pessoas/acesso, um de componentes e três de transportes.
+O inventário vertical regenerado pós-`2100` possui 2.186 objetos: 591 ligados a
+oito casos correntes e 1.595 isolados como legado físico. A distribuição
+corrente é 90 de Auditoria e correções, 272 de Autoria, 84 de Anotações
+ancoradas, 84 de Fontes, 26 de Estudo, 31 de pessoas/acesso, três de transportes
+e um de componentes.
 Os doze objetos da versão privada são uma tabela, seu estado RLS forçado, seis
 constraints, três índices e um helper privado. O `protected_ref` acrescenta
 check, unique e índice unique; a coluna não é objeto inventariado.
@@ -744,6 +825,7 @@ As afirmações deste documento podem ser confrontadas em:
 - `supabase/migrations/20260817180000_course_design_parameters.sql`;
 - `supabase/migrations/20260817190000_course_sources_provenance.sql`;
 - `supabase/migrations/20260817200000_course_anchored_annotations.sql`;
+- `supabase/migrations/20260817210000_course_audit_corrections.sql`;
 - `supabase/functions/_shared/aralearn-authoring/`;
 - `supabase/runtime-manifest.json`;
 - `tests/runtime/course-identity-cutover-pglite.test.js`;
@@ -753,6 +835,9 @@ As afirmações deste documento podem ser confrontadas em:
 - `tests/runtime/course-anchored-annotations-pglite.test.js`;
 - `tests/runtime/course-annotation-repository.test.js`;
 - `tests/runtime/course-observations-panel.test.js`;
+- `tests/runtime/course-audit-cycle.test.js`;
+- `tests/runtime/course-audit-panel.test.js`;
+- `tests/runtime/course-audit-corrections-pglite.test.js`;
 - `tests/runtime/study-unit-observation-sheet.test.js`;
 - `tests/runtime/course-cutover-source.test.js`;
 - `tests/runtime/course-api-client.test.js`;
@@ -765,5 +850,6 @@ Um teste aprovado demonstra o cenário codificado. Ele não prova disponibilidad
 permanente do provedor, segurança absoluta ou restauração de um backup que
 nunca foi ensaiado.
 
-Anotações ancoradas não incluem achados de auditoria, correções, revisões ou
-verificações independentes. Esses contratos permanecem uma fatia posterior.
+Anotações ancoradas e auditoria conservam autoridades distintas. O ciclo liga
+somente identidade/versão e nunca transforma triagem ou ação sugerida numa
+mutação implícita da outra capacidade.

@@ -263,6 +263,95 @@ test("histórico da Fonte preserva a consulta literal e carrega uma revisão por
   }]);
 });
 
+test("deep link abre Fonte literal e localiza a Âncora sem cair no catálogo", async () => {
+  const sourceId = "  fonte/literal-á  ";
+  const calls = [];
+  const root = new FakeRoot();
+  const panel = createCourseSourcesPanel({
+    root,
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    initialSourceId: sourceId,
+    initialAnchorId: "anchor-pinned",
+    controller: {
+      async loadCourseSources(courseId, options) {
+        calls.push(structuredClone(options));
+        assert.equal(courseId, COURSE_ID);
+        const pinned = options.cursor === "older-page";
+        const value = source(1, {
+          sourceId,
+          revision: pinned ? 2 : 3,
+          title: pinned ? "Fonte pinada" : "Fonte corrente"
+        });
+        const page = sourcePage(value, {
+          revision: options.expectedRevision,
+          nextCursor: pinned ? null : "older-page"
+        });
+        page.items[0].anchors = [anchor({
+          anchorId: pinned ? "anchor-pinned" : "anchor-current",
+          sourceRevision: value.revision
+        })];
+        return page;
+      },
+      async mutateCourseSources() {
+        throw new Error("Não deve salvar.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  assert.deepEqual(calls.map(({ mode, sourceId: calledSourceId, cursor, limit }) => ({
+    mode, sourceId: calledSourceId, cursor, limit
+  })), [{
+    mode: "source", sourceId, cursor: null, limit: 24
+  }, {
+    mode: "source", sourceId, cursor: "older-page", limit: 24
+  }]);
+  assert.match(root.innerHTML, /Fonte pinada/u);
+  assert.match(root.innerHTML, /data-source-deep-linked-anchor/u);
+  assert.match(root.innerHTML, /Âncora indicada/u);
+});
+
+test("deep link de Fonte ausente termina em not_found sem catálogo silencioso", async () => {
+  const calls = [];
+  const root = new FakeRoot();
+  const panel = createCourseSourcesPanel({
+    root,
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    initialSourceId: "fonte-ausente",
+    initialAnchorId: "anchor-ausente",
+    controller: {
+      async loadCourseSources(courseId, options) {
+        calls.push({ courseId, options: structuredClone(options) });
+        return sourcePage(source(1, { sourceId: "fonte-ausente" }), {
+          revision: options.expectedRevision,
+          nextCursor: null
+        });
+      },
+      async mutateCourseSources() {
+        throw new Error("Não deve salvar.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.mode, "source");
+  assert.match(root.innerHTML, /not_found: a Âncora indicada não existe/u);
+  assert.doesNotMatch(root.innerHTML, /Nova fonte/u);
+  assert.throws(() => createCourseSourcesPanel({
+    root: new FakeRoot(),
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    initialAnchorId: "anchor-sem-fonte",
+    controller: {
+      loadCourseSources() {},
+      mutateCourseSources() {}
+    }
+  }), /Deep link de Fonte inválido/u);
+});
+
 test("retry ambíguo conserva exatamente requestId e comando sem formulário JSON", async () => {
   const writes = [];
   let currentRevision = 5;

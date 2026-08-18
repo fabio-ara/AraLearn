@@ -8,6 +8,13 @@ import {
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
 import {
+  normalizeCourseAuditCycleChange,
+  normalizeCourseAuditCycleCommand,
+  normalizeCourseAuditCyclePage,
+  normalizeCourseAuditCycleQuery,
+  normalizeCourseAuditCycleReadOptions
+} from "../domain/courseAuditCycle.js";
+import {
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcesRead,
@@ -193,6 +200,35 @@ function courseAnchoredAnnotationReadOptions(courseId, value = {}) {
       subjectIds: [],
       hierarchy: null,
       annotationId: null
+    },
+    cursor: value.cursor ?? null,
+    limit: value.limit ?? 12
+  });
+}
+
+function courseAuditCycleReadOptions(courseId, value = {}) {
+  const allowed = new Set([
+    "expectedCourseRevision", "auditSetVersion", "query", "cursor", "limit"
+  ]);
+  const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).some((field) => !allowed.has(field)) ||
+      !UUID_PATTERN.test(normalizedCourseId)) {
+    throw new TypeError("Leitura de auditoria inválida.");
+  }
+  return normalizeCourseAuditCycleReadOptions({
+    expectedCourseRevision: value.expectedCourseRevision,
+    auditSetVersion: value.auditSetVersion ?? null,
+    query: value.query ?? {
+      mode: "findings",
+      targetStudyUnitId: null,
+      findingId: null,
+      correctionId: null,
+      auditRunId: null,
+      states: [],
+      dimensions: [],
+      severities: [],
+      annotationIds: []
     },
     cursor: value.cursor ?? null,
     limit: value.limit ?? 12
@@ -969,6 +1005,33 @@ export class CourseController {
     }
   }
 
+  async loadCourseAuditCycle(courseId, value = {}) {
+    if (!this.ownerOnly || typeof this.api.loadCourseAuditCycle !== "function") {
+      throw new TypeError("A API de Autoria não oferece auditoria e correções.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    const options = courseAuditCycleReadOptions(normalizedCourseId, value);
+    try {
+      const page = normalizeCourseAuditCyclePage(
+        await this.api.loadCourseAuditCycle(normalizedCourseId, options)
+      );
+      if (page.courseId !== normalizedCourseId ||
+          page.courseRevision !== options.expectedCourseRevision ||
+          options.auditSetVersion !== null &&
+            page.auditSetVersion !== options.auditSetVersion ||
+          JSON.stringify(normalizeCourseAuditCycleQuery(page.query)) !==
+            JSON.stringify(options.query)) {
+        throw new TypeError("A leitura de auditoria não corresponde ao pedido.");
+      }
+      return page;
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      throw error;
+    }
+  }
+
   loadAuthoringOutline(courseId) {
     if (typeof this.api.loadAuthoringOutline !== "function") {
       throw new TypeError("A API de Cursos não oferece a estrutura autoral.");
@@ -1292,6 +1355,72 @@ export class CourseController {
       return result;
     } catch (error) {
       if (annotationAccessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      }
+      throw error;
+    }
+  }
+
+  async mutateCourseAuditCycle(value = {}) {
+    if (!this.ownerOnly || typeof this.api.mutateCourseAuditCycle !== "function") {
+      throw new TypeError("A API de Autoria não oferece alterações de auditoria.");
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value) ||
+        Object.keys(value).some((field) => !new Set([
+          "requestId", "courseId", "expectedCourseRevision", "command"
+        ]).has(field))) {
+      throw new TypeError("Alteração de auditoria inválida.");
+    }
+    const requestId = String(value.requestId || "");
+    const courseId = String(value.courseId || "").trim().toLowerCase();
+    const expectedCourseRevision = Number(value.expectedCourseRevision);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
+        !UUID_PATTERN.test(courseId) ||
+        !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1) {
+      throw new TypeError("Alteração de auditoria inválida.");
+    }
+    const command = normalizeCourseAuditCycleCommand(value.command);
+    try {
+      const result = normalizeCourseAuditCycleChange(
+        await this.api.mutateCourseAuditCycle({
+          requestId,
+          courseId,
+          expectedCourseRevision,
+          command
+        })
+      );
+      const changesCourseContent = new Set([
+        "apply_authoring_correction",
+        "rollback_authoring_correction"
+      ]).has(command.type);
+      const expectedResultRevision = expectedCourseRevision +
+        (changesCourseContent && result.changed && !result.idempotent ? 1 : 0);
+      if (result.courseId !== courseId || result.requestId !== requestId ||
+          result.change !== null && result.change.type !== command.type ||
+          (result.idempotent
+            ? result.courseRevision < expectedCourseRevision
+            : result.courseRevision !== expectedResultRevision) ||
+          command.findingId != null && result.finding != null &&
+            result.finding.findingId !== command.findingId ||
+          command.correctionId != null && result.correction != null &&
+            result.correction.correctionId !== command.correctionId) {
+        throw new TypeError("A confirmação da auditoria não corresponde ao comando.");
+      }
+      if (changesCourseContent && result.changed) {
+        await Promise.all([
+          this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+          this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+          this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+          this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+          this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
+          this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+          this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
+          this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
+        ]);
+      }
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) {
         await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
       }
       throw error;

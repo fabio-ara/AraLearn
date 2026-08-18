@@ -14,20 +14,34 @@ import {
   parseCourseCutoverSnapshot,
   runPsql
 } from "../../scripts/courseCutover/courseCutoverSource.mjs";
-import { canonicalSha256 } from "../../scripts/courseCutover/courseCutoverImporter.mjs";
+import {
+  COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS,
+  canonicalSha256,
+  courseCutoverLegacyAuditHash
+} from "../../scripts/courseCutover/courseCutoverImporter.mjs";
 import { runCourseIdentityCutover } from
   "../../scripts/courseCutover/runCourseIdentityCutover.mjs";
 
-test("ajuda descreve as sete migrations da transação hospedada", async () => {
+const legacyAudit = Object.freeze({
+  contract: "aralearn.legacy-authoring-audit-cutover-preflight.v1",
+  counts: Object.freeze(Object.fromEntries(
+    COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS.map((field) => [field, 0])
+  ))
+});
+const legacyAuditHash = "4e2cacb9568006b3d0b55d2efe9ace2c8902f28e932a0156499cdcff045738f3";
+
+test("ajuda descreve as oito migrations da transação hospedada", async () => {
   const source = await fs.readFile(new URL(
     "../../scripts/courseCutover/runCourseIdentityCutover.mjs",
     import.meta.url
   ), "utf8");
-  assert.match(source, /migrations 1400\/1500\/1600\/1700\/1800\/1900\/2000 em uma transação/u);
+  assert.match(source, /migrations 1400\/1500\/1600\/1700\/1800\/1900\/2000\/2100 em uma transação/u);
 });
 
-test("snapshot SQL lê somente a árvore e os quatro descritores correntes", () => {
-  assert.match(COURSE_CUTOVER_SOURCE_SQL, /with recursive mapping/iu);
+test("snapshot SQL lê a árvore, os descritores e o preflight legado", () => {
+  assert.match(COURSE_CUTOVER_SOURCE_SQL, /with recursive legacy_audit_counts/iu);
+  assert.match(COURSE_CUTOVER_SOURCE_SQL, /legacy-authoring-audit-cutover-preflight/u);
+  assert.match(COURSE_CUTOVER_SOURCE_SQL, /observation_thread_corrections/u);
   assert.match(COURSE_CUTOVER_SOURCE_SQL, /private\.authoring_workspace_entities/iu);
   assert.match(COURSE_CUTOVER_SOURCE_SQL, /private\.artifact_refs/iu);
   assert.match(COURSE_CUTOVER_SOURCE_SQL, /publication\.revision_artifact_hash/iu);
@@ -51,8 +65,41 @@ test("snapshot SQL lê somente a árvore e os quatro descritores correntes", () 
 });
 
 test("parser aceita um único snapshot e rejeita ruído", () => {
-  const value = { contract: "aralearn.course-cutover-source.v1", topology: [] };
+  const value = {
+    contract: "aralearn.course-cutover-source.v1",
+    legacyAudit,
+    legacyAuditHash,
+    topology: []
+  };
   assert.deepEqual(parseCourseCutoverSnapshot(JSON.stringify(value)), value);
+  const withHistoricalThreads = structuredClone(value);
+  withHistoricalThreads.legacyAudit.counts.observation_threads = 3;
+  withHistoricalThreads.legacyAuditHash = courseCutoverLegacyAuditHash(
+    withHistoricalThreads.legacyAudit
+  );
+  assert.deepEqual(
+    parseCourseCutoverSnapshot(JSON.stringify(withHistoricalThreads)),
+    withHistoricalThreads
+  );
+  const withFinding = structuredClone(value);
+  withFinding.legacyAudit.counts.audit_findings = 1;
+  assert.throws(
+    () => parseCourseCutoverSnapshot(JSON.stringify(withFinding)),
+    (error) => error.code === "legacy_authoring_audit_cutover_blocked"
+  );
+  const incomplete = structuredClone(value);
+  delete incomplete.legacyAudit.counts.audit_runs;
+  assert.throws(
+    () => parseCourseCutoverSnapshot(JSON.stringify(incomplete)),
+    (error) => error.code === "legacy_authoring_audit_cutover_blocked"
+  );
+  assert.throws(
+    () => parseCourseCutoverSnapshot(JSON.stringify({
+      ...value,
+      legacyAuditHash: "a".repeat(64)
+    })),
+    (error) => error.code === "legacy_authoring_audit_cutover_blocked"
+  );
   assert.throws(
     () => parseCourseCutoverSnapshot(`aviso\n${JSON.stringify(value)}`),
     (error) => error.code === "invalid_database_snapshot"
@@ -154,6 +201,10 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
   const firstSnapshot = { marker: "first" };
   const makePreparation = (snapshot) => ({
     snapshotHash: canonicalSha256(snapshot),
+    sourceSnapshot: {
+      legacyAudit,
+      legacyAuditHash
+    },
     prepared: [{
       entry: { courseId: "10000000-0000-4000-8000-000000000001" },
       manifest: {
@@ -202,6 +253,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     courseDesignMigrationSql: "course-design-migration",
     courseSourcesMigrationSql: "course-sources-migration",
     courseAnnotationsMigrationSql: "course-annotations-migration",
+    courseAuditMigrationSql: "course-audit-migration",
     readSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -213,12 +265,14 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
   assert.equal(executions, 0);
   assert.equal(readOptions.at(-1).processTimeoutMs, 90_000);
   assert.equal(attestations.at(-1).phase, "prepared");
+  assert.equal(attestations.at(-1).legacyAuditHash, legacyAuditHash);
   assert.equal(attestations.at(-1).courses[0].entityStateHash, "4".repeat(64));
   assert.equal(attestations.at(-1).migrationHash, createHash("sha256").update(
     [
       "migration", "profile-migration", "authoring-plan-migration",
       "study-unit-inspection-migration", "course-design-migration",
-      "course-sources-migration", "course-annotations-migration"
+      "course-sources-migration", "course-annotations-migration",
+      "course-audit-migration"
     ].join("\n"),
     "utf8"
   ).digest("hex"));
@@ -234,6 +288,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     courseDesignMigrationSql: "course-design-migration",
     courseSourcesMigrationSql: "course-sources-migration",
     courseAnnotationsMigrationSql: "course-annotations-migration",
+    courseAuditMigrationSql: "course-audit-migration",
     readSnapshot: async () => (++reads === 1 ? firstSnapshot : { marker: "drift" }),
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -253,6 +308,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     courseDesignMigrationSql: "course-design-migration",
     courseSourcesMigrationSql: "course-sources-migration",
     courseAnnotationsMigrationSql: "course-annotations-migration",
+    courseAuditMigrationSql: "course-audit-migration",
     readSnapshot: async () => firstSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -290,6 +346,10 @@ test("runner grava atestação mínima somente fora do repositório público", a
   const snapshot = { contract: "snapshot-for-attestation" };
   const preparation = {
     snapshotHash: canonicalSha256(snapshot),
+    sourceSnapshot: {
+      legacyAudit,
+      legacyAuditHash
+    },
     prepared: [{
       entry: { courseId: "10000000-0000-4000-8000-000000000001" },
       manifest: {
@@ -324,6 +384,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
     courseDesignMigrationSql: "course-design-migration-without-content",
     courseSourcesMigrationSql: "course-sources-migration-without-content",
     courseAnnotationsMigrationSql: "course-annotations-migration-without-content",
+    courseAuditMigrationSql: "course-audit-migration-without-content",
     readSnapshot: async () => snapshot,
     createArtifactLoader,
     prepare: async () => preparation,
@@ -339,8 +400,8 @@ test("runner grava atestação mínima somente fora do repositório público", a
       path.join(attestationDirectory, files[0]), "utf8"
     ));
     assert.deepEqual(Object.keys(report).sort(), [
-      "contract", "courses", "generatedAt", "migrationHash", "phase",
-      "resolutionsHash", "snapshotHash"
+      "contract", "courses", "generatedAt", "legacyAuditCounts",
+      "legacyAuditHash", "migrationHash", "phase", "resolutionsHash", "snapshotHash"
     ]);
     assert.deepEqual(Object.keys(report.courses[0]).sort(), [
       "counts", "courseId", "documentHash", "entityStateHash", "manifestHash",

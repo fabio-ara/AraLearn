@@ -56,5 +56,8 @@ test("conhecimento contém somente invariantes estáveis", () => {
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não os fixe no prompt/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /targetPlanItems/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /somente as unidades de análise/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /audit_cycle em mode context/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /raciocínio privada/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Aplicar uma correção não prova/iu);
   assert.doesNotMatch(value.text, /workspace|trilha|coleção|publica(?:ção|do)/iu);
 });

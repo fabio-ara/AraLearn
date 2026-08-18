@@ -22,7 +22,7 @@ científica nem representa endosso institucional.
 3. [Guia do estudante](guia-estudante.md) — primeiro percurso, retomada,
    revisão, observações e citações redigidas;
 4. [Guia do professor e autor](guia-professor-autor.md) — criação privada,
-   planejamento, Fontes, inspeção, caixa de Observações e acesso direto;
+   planejamento, Fontes, inspeção, Auditoria e correções e acesso direto;
 5. [Solução de problemas](solucao-de-problemas.md) — diagnóstico por sintoma e
    recuperação segura.
 
@@ -89,11 +89,16 @@ Comece pelo comportamento já implementado:
 6. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
    — parâmetros, orientação natural, herança e política de componentes.
 
-Os capítulos de auditoria, experimentos e analytics descrevem problemas,
-fundamentos ou trabalho em evolução. Nenhum deve ser lido como prova de que
-toda a capacidade está disponível no runtime corrente:
+O ciclo implementado de revisão possui um capítulo próprio:
 
-- [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md);
+7. [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md)
+   — contexto focal, achados, checkpoints, verificação, rollback e relação
+   explícita com Observações.
+
+Os capítulos de experimentos e analytics descrevem problemas, fundamentos ou
+trabalho em evolução. Nenhum deve ser lido como prova de que toda a capacidade
+está disponível no runtime corrente:
+
 - [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md);
 - [Analytics instrucionais](analytics-instrucionais.md);
 - [Dicionário de métricas e datasets](dicionario-metricas-datasets.md);

@@ -2,7 +2,7 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { createUuid } from "../domain/identifiers.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
-import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
+import { createCourseAuditPanel } from "./CourseAuditPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import {
@@ -366,7 +366,7 @@ function renderSectionNavigation(course, section) {
       : []),
     { key: "structure", label: "Estrutura", icon: "module" },
     { key: "inspection", label: "Inspeção", icon: "preview" },
-    { key: "observations", label: "Observações", icon: "prompt" },
+    { key: "observations", label: "Auditoria e correções", icon: "prompt" },
     { key: "people", label: "Pessoas", icon: "account-add" }
   ];
   return `<nav class="course-authoring-sections ${definitions.length === 7 ? "has-seven" : "has-standard"}"` +
@@ -987,7 +987,7 @@ function renderCourseSection(state) {
     return '<div class="course-inspection-host" data-course-inspection-host></div>';
   }
   if (state.section === "observations" && state.course) {
-    return '<div class="course-observations-host" data-course-observations-host></div>';
+    return '<div class="course-audit-host" data-course-audit-host></div>';
   }
   if (state.loading && !state.outline) {
     return '<p class="course-authoring-loading" role="status">Carregando Curso…</p>';
@@ -1191,7 +1191,7 @@ export function createCourseAuthoringSurface({
   let materializationEpoch = 0;
   let hashListening = false;
   let inspectionSequence = null;
-  let observationsPanel = null;
+  let auditPanel = null;
   let sourcesPanel = null;
   let targetSourcesPanel = null;
   const knownCourses = new Map();
@@ -1256,9 +1256,9 @@ export function createCourseAuthoringSurface({
     inspectionSequence = null;
   }
 
-  function destroyObservationsPanel() {
-    observationsPanel?.destroy?.();
-    observationsPanel = null;
+  function destroyAuditPanel() {
+    auditPanel?.destroy?.();
+    auditPanel = null;
   }
 
   function destroySourcesPanels() {
@@ -1300,7 +1300,16 @@ export function createCourseAuthoringSurface({
       const host = root.querySelector?.("[data-course-sources-host]");
       if (host) {
         try {
-          sourcesPanel = createCourseSourcesPanel({ root: host, mode: "catalog", ...shared });
+          const sourceTarget = state.routeTarget?.kind === "course_source"
+            ? state.routeTarget
+            : null;
+          sourcesPanel = createCourseSourcesPanel({
+            root: host,
+            mode: "catalog",
+            initialSourceId: sourceTarget?.id ?? null,
+            initialAnchorId: sourceTarget?.anchorId ?? null,
+            ...shared
+          });
           void sourcesPanel.open();
         } catch (error) {
           host.innerHTML = statusPanel({
@@ -1368,24 +1377,27 @@ export function createCourseAuthoringSurface({
     }
   }
 
-  function mountObservationsPanel() {
+  function mountAuditPanel() {
     if (state.view !== "course" || state.section !== "observations" || !state.course) return;
-    const host = root.querySelector?.("[data-course-observations-host]");
+    const host = root.querySelector?.("[data-course-audit-host]");
     if (!host) return;
     try {
-      observationsPanel = createCourseObservationsPanel({
+      auditPanel = createCourseAuditPanel({
         root: host,
         controller,
         course: state.course,
         routeTarget: state.routeTarget,
         onNavigate: (hash) => navigate(hash),
+        onCourseRevisionChange: acceptSourcesCourseRevision,
+        navigatorValue,
+        windowValue,
         confirmValue
       });
-      void observationsPanel.open();
+      void auditPanel.open();
     } catch (error) {
       host.innerHTML = statusPanel({
         kind: "error",
-        title: "Observações indisponíveis",
+        title: "Auditoria indisponível",
         message: writeFailureMessage(error)
       });
     }
@@ -1394,12 +1406,12 @@ export function createCourseAuthoringSurface({
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
     destroyInspectionSequence();
-    destroyObservationsPanel();
+    destroyAuditPanel();
     destroySourcesPanels();
     root.innerHTML = renderCourseAuthoringSurface(state);
     root.setAttribute?.("aria-busy", String(state.loading));
     mountInspectionSequence();
-    mountObservationsPanel();
+    mountAuditPanel();
     mountSourcesPanels();
     if (focus && typeof root.querySelector === "function") {
       globalThis.queueMicrotask?.(() => root.querySelector(focus)?.focus());
@@ -1897,7 +1909,7 @@ export function createCourseAuthoringSurface({
     state.opened = false;
     state.loading = false;
     destroyInspectionSequence();
-    destroyObservationsPanel();
+    destroyAuditPanel();
     if (hashListening && typeof windowValue?.removeEventListener === "function") {
       windowValue.removeEventListener("hashchange", handleHashChange);
       hashListening = false;
@@ -1920,8 +1932,8 @@ export function createCourseAuthoringSurface({
 
   async function refresh() {
     const route = parseCourseAuthoringRoute(locationValue.hash || "");
-    if (route?.section === "observations" && observationsPanel) {
-      return observationsPanel.refresh();
+    if (route?.section === "observations" && auditPanel) {
+      return auditPanel.refresh();
     }
     if (route?.section === "inspection" && inspectionSequence && state.course) {
       const sequence = inspectionSequence;

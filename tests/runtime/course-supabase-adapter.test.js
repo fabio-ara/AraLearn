@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { AuthoringApiError } from
+  "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
   "../../src/domain/courseDesignParameters.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
@@ -14,6 +17,10 @@ const PART_ID = "40000000-0000-4000-8000-000000000004";
 const MATERIALIZATION_ID = "50000000-0000-4000-8000-000000000005";
 const STEP_ID = "60000000-0000-4000-8000-000000000006";
 const PLAN_ITEM_ID = "70000000-0000-4000-8000-000000000007";
+const AUDIT_RUN_ID = "11111111-1111-5111-8111-111111111111";
+const AUDIT_FINDING_ID = "22222222-2222-5222-8222-222222222222";
+const AUDIT_CORRECTION_ID = "33333333-3333-5333-8333-333333333333";
+const AUDIT_ANNOTATION_ID = "44444444-4444-5444-8444-444444444444";
 
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -162,6 +169,809 @@ function adapter(fetchImpl, options = {}) {
     ...options
   });
 }
+
+function auditQuery({ mode = "context", sourceCorrection = false } = {}) {
+  return {
+    mode,
+    targetStudyUnitId: mode === "context" ? "unit-a" : null,
+    findingId: mode === "detail" ? AUDIT_FINDING_ID : null,
+    correctionId: mode === "detail" && sourceCorrection ? AUDIT_CORRECTION_ID : null,
+    auditRunId: null,
+    states: [],
+    dimensions: [],
+    severities: [],
+    annotationIds: mode === "context" ? [AUDIT_ANNOTATION_ID] : []
+  };
+}
+
+function auditSummary({ matchingTotal = 0 } = {}) {
+  return {
+    matchingTotal,
+    byState: { open: matchingTotal, awaiting_verification: 0, resolved: 0, dismissed: 0 },
+    byDimension: {
+      structural_conformance: 0,
+      pedagogical_quality: 0,
+      factual_quality: matchingTotal,
+      editorial_quality: 0
+    },
+    bySeverity: { low: 0, medium: 0, high: matchingTotal, critical: 0 }
+  };
+}
+
+function auditPath() {
+  return [
+    { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
+    { kind: "module", id: "module-a", label: "Módulo", version: 1 },
+    { kind: "lesson", id: "lesson-a", label: "Lição", version: 1 },
+    { kind: "didactic_microsequence", id: "micro-a", label: "Micro", version: 1 },
+    { kind: "study_unit", id: "unit-a", label: "Unidade", version: 2 }
+  ];
+}
+
+test("configuração de serviço recusa schemes executáveis nos deep links", () => {
+  assert.throws(() => adapter(async () => json({}), {
+    publicAppUrl: "javascript:alert(1)"
+  }), /URL pública do AraLearn inválida/u);
+  assert.throws(() => adapter(async () => json({}), {
+    supabaseUrl: "data:text/plain,segredo"
+  }), /SUPABASE_URL inválida/u);
+  assert.doesNotThrow(() => adapter(async () => json({}), {
+    supabaseUrl: "http://127.0.0.1:54321",
+    publicAppUrl: "http://127.0.0.1:4173/AraLearn/"
+  }));
+});
+
+function auditCheck(dimension = "factual_quality", result = "failed", checkId =
+  "55555555-5555-5555-8555-555555555555") {
+  const adequacy = {
+    passed: "sufficient",
+    failed: "insufficient",
+    uncertain: "uncertain",
+    not_applicable: "not_applicable",
+    not_checked: "not_assessed"
+  }[result];
+  return {
+    checkId,
+    dimension,
+    criterion: {
+      code: dimension === "factual_quality" ? "claim_support" : `${dimension}.review`,
+      version: "1",
+      statement: `Critério público de ${dimension}.`
+    },
+    result,
+    publicEvidence: `Evidência pública de ${dimension}.`,
+    adequacy,
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks: []
+  };
+}
+
+function auditContextPage({
+  query = auditQuery(),
+  sourceId = "  fonte-literal-á  ",
+  targetContent = studyUnitUpsert().content
+} = {}) {
+  const anchorId = "anchor-a";
+  const sourceLinks = [{
+    sourceId,
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId, anchorRevision: 1 }]
+  }];
+  return {
+    contract: "aralearn.course-audit-cycle-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    auditSetVersion: 4,
+    query,
+    summary: auditSummary(),
+    context: {
+      contract: "aralearn.course-audit-context.v1",
+      contextHash: "a".repeat(64),
+      target: {
+        studyUnitId: "unit-a",
+        version: 2,
+        hash: "b".repeat(64),
+        position: 1,
+        path: auditPath(),
+        content: structuredClone(targetContent),
+        sourceLinks
+      },
+      didacticMicrosequence: {
+        id: "micro-a",
+        version: 1,
+        hash: "c".repeat(64),
+        content: { title: "Micro" }
+      },
+      plan: {
+        planId: PLAN_ID,
+        version: 1,
+        audience: "",
+        instructionalScope: "",
+        authoringGuidance: "",
+        items: []
+      },
+      design: {
+        parameters: [],
+        guidance: [],
+        componentPolicy: {
+          changeId: null,
+          policy: {
+            availability: "all",
+            allowedRefs: [],
+            excludedRefs: [],
+            preferredRefs: []
+          },
+          origin: "system_default",
+          reason: "Política padrão.",
+          sourceScope: null,
+          inherited: false
+        }
+      },
+      intent: {
+        query: "explicação",
+        slot: "content",
+        studyUnitRole: "theory",
+        disciplineIds: [],
+        structureIds: [],
+        taskOperationIds: [],
+        practiceModeIds: [],
+        knowledgeObjects: [],
+        mustPreserve: [],
+        notationIsLearningObject: false
+      },
+      sources: [{
+        sourceId,
+        sourceRevision: 1,
+        status: "active",
+        kind: "document",
+        title: "Fonte focal",
+        citationText: null,
+        url: null,
+        editionOrVersion: null,
+        studyVisibility: "hidden",
+        relation: "supported_by",
+        sourceHash: "d".repeat(64),
+        anchors: [{
+          anchorId,
+          anchorRevision: 1,
+          status: "active",
+          selector: { kind: "text_quote", exact: "Conteúdo", prefix: null, suffix: null },
+          verificationExcerpt: "Conteúdo",
+          anchorHash: "e".repeat(64),
+          deepLink: null
+        }],
+        deepLink: null
+      }],
+      annotations: query.annotationIds.length ? [{
+        annotationId: AUDIT_ANNOTATION_ID,
+        annotationVersion: 2,
+        state: "open",
+        category: "possible_error",
+        rawText: "Possível erro.",
+        briefSummary: "Erro focal",
+        target: { kind: "study_unit", id: "unit-a" },
+        deepLink: null
+      }] : [],
+      facts: {
+        courseRevision: 7,
+        targetVersion: 2,
+        targetHash: "b".repeat(64),
+        sourceLinksHash: "f".repeat(64),
+        planVersion: 1
+      }
+    },
+    items: [],
+    runs: [],
+    detail: null,
+    runDetail: null,
+    hasMore: false,
+    nextCursor: null
+  };
+}
+
+function auditFinding({ currentAvailable = true } = {}) {
+  return {
+    contract: "aralearn.course-audit-finding.v1",
+    findingId: AUDIT_FINDING_ID,
+    findingVersion: 2,
+    courseId: COURSE_ID,
+    status: "open",
+    origin: "human_audit",
+    code: "missing_source_anchor",
+    severity: "high",
+    target: {
+      studyUnitId: "unit-a",
+      observedVersion: 2,
+      observedHash: "b".repeat(64),
+      currentAvailable,
+      currentVersion: currentAvailable ? 2 : null,
+      currentHash: currentAvailable ? "b".repeat(64) : null,
+      path: auditPath()
+    },
+    auditRun: {
+      auditRunId: AUDIT_RUN_ID,
+      runKind: "audit",
+      courseRevision: 7,
+      createdAt: "2026-08-17T12:00:00.000Z"
+    },
+    check: auditCheck(),
+    annotationRefs: [{
+      annotationId: AUDIT_ANNOTATION_ID,
+      annotationVersion: 2,
+      available: true,
+      deepLink: null
+    }],
+    correctionRef: {
+      correctionId: AUDIT_CORRECTION_ID,
+      correctionVersion: 1,
+      status: "proposed"
+    },
+    timestamps: {
+      createdAt: "2026-08-17T12:00:00.000Z",
+      updatedAt: "2026-08-17T12:01:00.000Z",
+      resolvedAt: null,
+      dismissedAt: null
+    },
+    capabilities: {
+      canDismiss: true,
+      canReopen: false,
+      canProposeCorrection: true,
+      canVerify: false
+    },
+    deepLinks: { detail: null, target: null }
+  };
+}
+
+function auditCorrection() {
+  const content = structuredClone(studyUnitUpsert().content);
+  return {
+    contract: "aralearn.course-authoring-correction.v1",
+    correctionId: AUDIT_CORRECTION_ID,
+    correctionVersion: 1,
+    courseId: COURSE_ID,
+    findingId: AUDIT_FINDING_ID,
+    status: "proposed",
+    target: { studyUnitId: "unit-a", baseVersion: 2, baseHash: "b".repeat(64) },
+    checkpoint: {
+      before: { content, sourceLinks: [], hash: "1".repeat(64) },
+      after: {
+        content: { ...content, title: "Unidade corrigida" },
+        sourceLinks: [],
+        hash: "2".repeat(64)
+      }
+    },
+    rationale: "Corrigir o achado focal.",
+    application: null,
+    verification: null,
+    rollback: null,
+    timestamps: {
+      createdAt: "2026-08-17T12:02:00.000Z",
+      updatedAt: "2026-08-17T12:02:00.000Z"
+    },
+    capabilities: {
+      canAdjust: true,
+      canReject: true,
+      canApply: true,
+      canVerify: false,
+      canRollback: false
+    },
+    deepLink: null
+  };
+}
+
+function auditDetailPage({ currentAvailable = true } = {}) {
+  const finding = auditFinding({ currentAvailable });
+  const correction = auditCorrection();
+  return {
+    contract: "aralearn.course-audit-cycle-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    auditSetVersion: 4,
+    query: auditQuery({ mode: "detail", sourceCorrection: true }),
+    summary: auditSummary({ matchingTotal: 1 }),
+    context: null,
+    items: [],
+    runs: [],
+    detail: {
+      finding,
+      findingHistory: [],
+      auditRuns: [],
+      corrections: [{
+        correctionId: correction.correctionId,
+        correctionVersion: correction.correctionVersion,
+        status: correction.status,
+        rationale: correction.rationale,
+        updatedAt: correction.timestamps.updatedAt,
+        deepLink: null
+      }],
+      selectedCorrection: correction,
+      selectedCorrectionHistory: []
+    },
+    runDetail: null,
+    hasMore: false,
+    nextCursor: null
+  };
+}
+
+function deterministicAuditId(auditRunId, label) {
+  const bytes = createHash("sha256").update(`${auditRunId}\0${label}`, "utf8").digest();
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const source = bytes.subarray(0, 16).toString("hex");
+  return `${source.slice(0, 8)}-${source.slice(8, 12)}-${source.slice(12, 16)}-` +
+    `${source.slice(16, 20)}-${source.slice(20)}`;
+}
+
+test("auditoria owner vincula RPC/query e prepara deep links canônicos e limitados", async () => {
+  const requests = [];
+  let resultPage = auditContextPage();
+  const value = adapter(async (url, init) => {
+    assert.match(url, /get_owned_course_audit_cycle_for_actor_v1$/u);
+    requests.push(JSON.parse(init.body));
+    return json(resultPage);
+  });
+  const query = auditQuery();
+  const result = await value.getCourseAuditCycle({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    auditSetVersion: null,
+    query,
+    cursor: null,
+    limit: 1
+  });
+  assert.deepEqual(requests[0], {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_course_revision: 7,
+    p_audit_set_version: null,
+    p_query: query,
+    p_cursor: null,
+    p_limit: 1
+  });
+  const encodedSource = "%20%20fonte-literal-%C3%A1%20%20";
+  assert.equal(result.context.sources[0].sourceId, "  fonte-literal-á  ");
+  assert.equal(result.context.sources[0].deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+    `?section=sources&sourceId=${encodedSource}`);
+  assert.equal(result.context.sources[0].anchors[0].deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+    `?section=sources&sourceId=${encodedSource}&anchorId=anchor-a`);
+  assert.equal(result.context.annotations[0].deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+    `?section=observations&annotationId=${AUDIT_ANNOTATION_ID}`);
+  assert.doesNotMatch(result.context.sources[0].deepLink, /\+/u);
+
+  const longSourceId = "界".repeat(2_048);
+  resultPage = auditContextPage({ sourceId: longSourceId });
+  const bounded = await value.getCourseAuditCycle({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    query,
+    limit: 1
+  });
+  assert.equal(bounded.context.sources[0].sourceId, longSourceId);
+  assert.equal(bounded.context.sources[0].deepLink, null);
+  assert.equal(bounded.context.sources[0].anchors[0].deepLink, null);
+
+  const runsQuery = {
+    mode: "runs",
+    targetStudyUnitId: "unit-a",
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: [],
+    dimensions: [],
+    severities: [],
+    annotationIds: []
+  };
+  resultPage = {
+    ...auditContextPage(),
+    query: runsQuery,
+    context: null,
+    runs: [{
+      auditRunId: AUDIT_RUN_ID,
+      runKind: "audit",
+      origin: "human_audit",
+      method: { id: "manual-review", version: "1" },
+      courseRevision: 7,
+      target: { studyUnitId: "unit-a", version: 2, hash: "b".repeat(64) },
+      resultCounts: {
+        passed: 1, failed: 1, uncertain: 0, not_applicable: 0, not_checked: 2
+      },
+      findingsCreated: 1,
+      createdAt: "2026-08-17T12:00:00.000Z",
+      deepLink: null
+    }]
+  };
+  const runs = await value.getCourseAuditCycle({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    query: runsQuery,
+    limit: 12
+  });
+  assert.equal(runs.runs[0].deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+    `?section=observations&auditRunId=${AUDIT_RUN_ID}`);
+});
+
+test("detalhe de auditoria liga finding, correção e observação sem link morto do alvo", async () => {
+  let resultPage = auditDetailPage();
+  const value = adapter(async () => json(resultPage));
+  const options = {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    auditSetVersion: 4,
+    query: auditQuery({ mode: "detail", sourceCorrection: true }),
+    limit: 1
+  };
+  const result = await value.getCourseAuditCycle(options);
+  const base = `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}`;
+  assert.equal(result.detail.finding.deepLinks.detail,
+    `${base}?section=observations&findingId=${AUDIT_FINDING_ID}`);
+  assert.equal(result.detail.finding.deepLinks.target,
+    `${base}?section=inspection&studyUnitId=unit-a`);
+  assert.equal(result.detail.finding.annotationRefs[0].deepLink,
+    `${base}?section=observations&annotationId=${AUDIT_ANNOTATION_ID}`);
+  assert.equal(result.detail.corrections[0].deepLink,
+    `${base}?section=observations&findingId=${AUDIT_FINDING_ID}` +
+    `&correctionId=${AUDIT_CORRECTION_ID}`);
+  assert.equal(result.detail.selectedCorrection.deepLink,
+    result.detail.corrections[0].deepLink);
+
+  resultPage = auditDetailPage({ currentAvailable: false });
+  const unavailable = await value.getCourseAuditCycle(options);
+  assert.equal(unavailable.detail.finding.deepLinks.detail,
+    `${base}?section=observations&findingId=${AUDIT_FINDING_ID}`);
+  assert.equal(unavailable.detail.finding.deepLinks.target, null);
+});
+
+test("links opcionais não tornam um detalhe SQL válido ilegível na fronteira de 240 KiB", async () => {
+  const resultPage = auditDetailPage();
+  const denseRationale = "界".repeat(2_000);
+  const denseText = "界".repeat(12_000);
+  for (const snapshot of [
+    resultPage.detail.selectedCorrection.checkpoint.before,
+    resultPage.detail.selectedCorrection.checkpoint.after
+  ]) {
+    snapshot.content.content[0].data.text = denseText;
+  }
+  resultPage.detail.selectedCorrection.rationale = denseRationale;
+  resultPage.detail.corrections = Array.from({ length: 8 }, (_, index) => ({
+    correctionId: index === 0
+      ? AUDIT_CORRECTION_ID
+      : `33333333-3333-5333-8333-${String(index + 1).padStart(12, "0")}`,
+    correctionVersion: 1,
+    status: "proposed",
+    rationale: denseRationale,
+    updatedAt: "2026-08-17T12:02:00.000Z",
+    deepLink: null
+  }));
+  resultPage.detail.selectedCorrectionHistory = Array.from(
+    { length: 16 },
+    (_, index) => ({
+      correctionId: AUDIT_CORRECTION_ID,
+      correctionVersion: index + 1,
+      status: "proposed",
+      rationale: denseRationale,
+      createdAt: "2026-08-17T12:02:00.000Z"
+    })
+  );
+  const rawBytes = Buffer.byteLength(JSON.stringify(resultPage), "utf8");
+  assert.ok(rawBytes > 210_000, String(rawBytes));
+  assert.ok(rawBytes <= 240 * 1024);
+
+  const longPublicUrl = `https://app.example/${"a".repeat(1_750)}`;
+  const value = adapter(async () => json(resultPage), { publicAppUrl: longPublicUrl });
+  const result = await value.getCourseAuditCycle({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    auditSetVersion: 4,
+    query: auditQuery({ mode: "detail", sourceCorrection: true }),
+    limit: 1
+  });
+  assert.ok(Buffer.byteLength(JSON.stringify(result), "utf8") <= 240 * 1024);
+  assert.match(result.detail.finding.deepLinks.detail, /findingId=/u);
+  assert.equal(
+    result.detail.corrections.some(({ deepLink }) => deepLink === null),
+    true
+  );
+});
+
+test("registro de auditoria deriva check estrutural e ids estáveis antes do RPC", async () => {
+  const writes = [];
+  let writeCount = 0;
+  const invalidContext = auditContextPage({ targetContent: { title: "Unidade inválida" } });
+  invalidContext.query.annotationIds = [];
+  invalidContext.context.annotations = [];
+  const requestId = "request-audit-adapter-0001";
+  const value = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body);
+    if (url.endsWith("/get_owned_course_audit_cycle_for_actor_v1")) {
+      return json(invalidContext);
+    }
+    assert.match(url, /execute_course_audit_cycle_command_for_actor_v1$/u);
+    writeCount += 1;
+    writes.push(payload);
+    return json({
+      contract: "aralearn.course-audit-cycle-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      auditSetVersion: 5,
+      requestId,
+      idempotent: writeCount > 1,
+      changed: true,
+      change: {
+        type: "record_audit",
+        auditRunId: AUDIT_RUN_ID,
+        findingRefs: payload.p_command.findings.map(({ findingId }) => ({
+          findingId,
+          findingVersion: 1
+        })),
+        correctionRef: null
+      },
+      finding: null,
+      correction: null,
+      suggestedAnnotationActions: []
+    });
+  });
+  const humanChecks = [
+    auditCheck("pedagogical_quality", "not_checked",
+      "66666666-6666-5666-8666-666666666661"),
+    auditCheck("factual_quality", "failed",
+      "66666666-6666-5666-8666-666666666662"),
+    auditCheck("editorial_quality", "not_checked",
+      "66666666-6666-5666-8666-666666666663")
+  ];
+  const command = {
+    type: "record_audit",
+    auditRunId: AUDIT_RUN_ID,
+    targetStudyUnitId: "unit-a",
+    contextHash: "a".repeat(64),
+    origin: "human_audit",
+    method: { id: "manual-review", version: "1" },
+    checks: humanChecks,
+    findings: []
+  };
+  const mutation = {
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
+    courseId: COURSE_ID,
+    requestId,
+    expectedCourseRevision: 7,
+    command
+  };
+  await value.executeCourseAuditCycleCommand(mutation);
+  await value.executeCourseAuditCycleCommand(mutation);
+  assert.equal(writes.length, 2);
+  assert.deepEqual(writes[0].p_command, writes[1].p_command);
+  assert.deepEqual(writes[0].p_command.checks.slice(1), humanChecks);
+  assert.equal(writes[0].p_command.checks[0].dimension, "structural_conformance");
+  assert.equal(writes[0].p_command.checks[0].result, "failed");
+  assert.equal(writes[0].p_command.checks[0].checkId, deterministicAuditId(
+    AUDIT_RUN_ID,
+    "aralearn.course-audit.structural-check.v1"
+  ));
+  assert.equal(writes[0].p_command.findings[0].findingId, deterministicAuditId(
+    AUDIT_RUN_ID,
+    "aralearn.course-audit.structural-finding.v1"
+  ));
+  assert.equal(writes[0].p_actor_id, USER_ID);
+  assert.equal(writes[0].p_channel, "mcp");
+  assert.equal(writes[0].p_expected_course_revision, 7);
+});
+
+test("retry alcança o receipt antes do enriquecimento nos três comandos contextuais", async () => {
+  const humanChecks = [
+    auditCheck("pedagogical_quality", "not_checked",
+      "66666666-6666-5666-8666-666666666661"),
+    auditCheck("factual_quality", "failed",
+      "66666666-6666-5666-8666-666666666662"),
+    auditCheck("editorial_quality", "not_checked",
+      "66666666-6666-5666-8666-666666666663")
+  ];
+  const commands = [{
+    type: "record_audit",
+    auditRunId: AUDIT_RUN_ID,
+    targetStudyUnitId: "unit-a",
+    contextHash: "a".repeat(64),
+    origin: "human_audit",
+    method: { id: "manual-review", version: "1" },
+    checks: humanChecks,
+    findings: []
+  }, {
+    type: "propose_authoring_correction",
+    correctionId: AUDIT_CORRECTION_ID,
+    findingId: AUDIT_FINDING_ID,
+    expectedFindingVersion: 2,
+    expectedCorrectionVersion: 0,
+    afterContent: {
+      ...structuredClone(studyUnitUpsert().content),
+      title: "Unidade corrigida"
+    },
+    afterSourceLinks: [],
+    rationale: "Corrigir o achado focal."
+  }, {
+    type: "verify_finding",
+    auditRunId: AUDIT_RUN_ID,
+    findingId: AUDIT_FINDING_ID,
+    expectedFindingVersion: 3,
+    correctionId: AUDIT_CORRECTION_ID,
+    expectedCorrectionVersion: 2,
+    contextHash: "a".repeat(64),
+    origin: "human_audit",
+    method: { id: "manual-review", version: "1" },
+    checks: humanChecks,
+    outcome: "still_open"
+  }];
+
+  for (const [index, command] of commands.entries()) {
+    const writes = [];
+    let firstAttempt = true;
+    const requestId = `request-audit-replay-${index + 1}`;
+    const value = adapter(async (url, init) => {
+      assert.match(url, /execute_course_audit_cycle_command_for_actor_v1$/u);
+      const payload = JSON.parse(init.body);
+      writes.push(payload);
+      if (writes.length === 1) throw new Error("resposta perdida após o commit");
+      return json({
+        contract: "aralearn.course-audit-cycle-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        auditSetVersion: 5,
+        requestId,
+        idempotent: true,
+        changed: true,
+        change: {
+          type: command.type,
+          auditRunId: command.auditRunId ?? null,
+          findingRefs: command.type === "record_audit" ? [] : [{
+            findingId: AUDIT_FINDING_ID,
+            findingVersion: command.expectedFindingVersion + 1
+          }],
+          correctionRef: command.correctionId == null ? null : {
+            correctionId: AUDIT_CORRECTION_ID,
+            correctionVersion: Math.max(1, command.expectedCorrectionVersion + 1)
+          }
+        },
+        finding: null,
+        correction: null,
+        suggestedAnnotationActions: []
+      });
+    });
+    value.getCourseAuditCycle = async ({ query }) => {
+      if (!firstAttempt) {
+        throw new AuthoringApiError(
+          409,
+          "stale_course_state",
+          "O Curso mudou; releia o estado e tente novamente."
+        );
+      }
+      if (query.mode === "detail") {
+        return {
+          auditSetVersion: 4,
+          detail: {
+            finding: {
+              target: { studyUnitId: "unit-a" },
+              annotationRefs: []
+            }
+          }
+        };
+      }
+      return auditContextPage();
+    };
+    const mutation = {
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId,
+      expectedCourseRevision: 7,
+      command
+    };
+    await assert.rejects(() => value.executeCourseAuditCycleCommand(mutation));
+    firstAttempt = false;
+    const replay = await value.executeCourseAuditCycleCommand(mutation);
+    assert.equal(replay.idempotent, true);
+    assert.equal(writes.length, 2);
+    assert.equal(writes[1].p_command.__replayOnly, true);
+    assert.equal(writes[1].p_command.type, command.type);
+    if (new Set(["record_audit", "verify_finding"]).has(command.type)) {
+      assert.equal(writes[0].p_command.checks.length, 4);
+      assert.equal(writes[1].p_command.checks.length, 3);
+    }
+  }
+});
+
+test("proposta reidrata e valida somente a StudyUnit existente antes do RPC", async () => {
+  const writes = [];
+  const value = adapter(async (url, init) => {
+    assert.match(url, /execute_course_audit_cycle_command_for_actor_v1$/u);
+    const payload = JSON.parse(init.body);
+    writes.push(payload);
+    return json({
+      contract: "aralearn.course-audit-cycle-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      auditSetVersion: 5,
+      requestId: "request-audit-correction-1",
+      idempotent: false,
+      changed: true,
+      change: {
+        type: "propose_authoring_correction",
+        auditRunId: null,
+        findingRefs: [{ findingId: AUDIT_FINDING_ID, findingVersion: 2 }],
+        correctionRef: { correctionId: AUDIT_CORRECTION_ID, correctionVersion: 1 }
+      },
+      finding: null,
+      correction: null,
+      suggestedAnnotationActions: []
+    });
+  });
+  const reads = [];
+  value.getCourseAuditCycle = async ({ query }) => {
+    reads.push(query);
+    if (query.mode === "detail") {
+      return {
+        auditSetVersion: 4,
+        detail: {
+          finding: {
+            target: { studyUnitId: "unit-a" },
+            annotationRefs: []
+          }
+        }
+      };
+    }
+    return {
+      context: {
+        target: {
+          studyUnitId: "unit-a",
+          position: 1,
+          content: structuredClone(studyUnitUpsert().content)
+        }
+      }
+    };
+  };
+  const command = {
+    type: "propose_authoring_correction",
+    correctionId: AUDIT_CORRECTION_ID,
+    findingId: AUDIT_FINDING_ID,
+    expectedFindingVersion: 2,
+    expectedCorrectionVersion: 0,
+    afterContent: {
+      ...structuredClone(studyUnitUpsert().content),
+      title: "Unidade corrigida"
+    },
+    afterSourceLinks: [],
+    rationale: "Corrigir o achado focal."
+  };
+  await value.executeCourseAuditCycleCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-audit-correction-1",
+    expectedCourseRevision: 7,
+    command
+  });
+  assert.deepEqual(reads.map(({ mode }) => mode), ["detail", "context"]);
+  assert.deepEqual(writes[0].p_command.afterContent, command.afterContent);
+  assert.equal(writes[0].p_command.afterContent.title, "Unidade corrigida");
+  assert.deepEqual(writes[0].p_command.afterContent.topics, []);
+  assert.equal(Object.hasOwn(writes[0].p_command.afterContent, "id"), false);
+  assert.equal(Object.hasOwn(writes[0].p_command.afterContent, "position"), false);
+  assert.equal(writes[0].p_channel, "application");
+
+  await assert.rejects(() => value.executeCourseAuditCycleCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-audit-correction-2",
+    expectedCourseRevision: 7,
+    command: { ...command, afterContent: { title: "Incompleta" } }
+  }), (error) => error.code === "invalid_course_audit_candidate");
+  assert.equal(writes.length, 1);
+});
 
 test("observações owner preservam projeção protegida, links literais e parâmetros ligados", async () => {
   const query = anchoredQuery({ mode: "target", targetId: "unit-a" });

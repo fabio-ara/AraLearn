@@ -319,6 +319,12 @@ function renderDetail(state, item) {
       ? `<a class="course-authoring-primary course-observation-target-link" href="${escapeHtml(item.target.deepLink)}"` +
         ` data-observations-action="open-target">${escapeHtml(targetLinkLabel(item.target.kind))}</a>`
       : '<p class="course-authoring-notice">O contexto original não está mais disponível.</p>') +
+    (state.embedded && item.target.kind === "study_unit" && item.state !== "withdrawn"
+      ? `<button type="button" class="course-authoring-primary course-observation-audit-target"` +
+        ` data-observations-action="audit-target" data-study-unit-id="${escapeHtml(item.target.id)}"` +
+        ` data-annotation-id="${escapeHtml(item.annotationId)}" data-annotation-version="${item.annotationVersion}">` +
+        "Auditar esta Unidade</button>"
+      : "") +
     (actionButtons ? `<div class="course-observation-state-actions">${actionButtons}</div>` : "") +
     (item.capabilities.canRevise
       ? '<form class="course-observation-edit-form" data-observation-edit-form><h3>Editar observação</h3>' +
@@ -345,10 +351,15 @@ function renderDetail(state, item) {
 function renderPanel(state) {
   const detailMode = state.query.mode === "detail";
   const item = detailMode ? state.items[0] || null : null;
-  return '<section class="course-authoring-section course-observations-panel"' +
-    ' aria-labelledby="course-authoring-section-title">' +
+  const element = state.embedded ? "div" : "section";
+  const titleId = state.embedded
+    ? "course-audit-observations-title"
+    : "course-authoring-section-title";
+  const titleTag = state.embedded ? "h3" : "h2";
+  return `<${element} class="${state.embedded ? "" : "course-authoring-section "}course-observations-panel"` +
+    ` aria-labelledby="${titleId}">` +
     '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Observações</h2>' +
+    `<${titleTag} id="${titleId}">Observações</${titleTag}>` +
     `<p>${detailMode ? "Detalhe contextual" : "Inbox única do Curso"}</p></div>` +
     (detailMode
       ? `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
@@ -376,7 +387,7 @@ function renderPanel(state) {
           (state.hasMore
             ? '<button type="button" class="course-observations-load-more" data-observations-action="load-more"' +
               `${state.loading ? " disabled" : ""}>Carregar mais</button>`
-            : "")) + "</section>";
+            : "")) + `</${element}>`;
 }
 
 export function createCourseObservationsPanel({
@@ -384,7 +395,9 @@ export function createCourseObservationsPanel({
   controller,
   course,
   routeTarget = null,
+  embedded = false,
   onNavigate = () => {},
+  onAuditTarget = () => {},
   clock = () => new Date(),
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false)
 } = {}) {
@@ -394,12 +407,14 @@ export function createCourseObservationsPanel({
       typeof controller?.loadAuthoringOutline !== "function" ||
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
-      routeTarget && routeTarget.kind !== "anchored_annotation") {
+      routeTarget && routeTarget.kind !== "anchored_annotation" || typeof embedded !== "boolean" ||
+      typeof onAuditTarget !== "function") {
     throw new TypeError("Dependências da inbox de observações são inválidas.");
   }
   const state = {
     courseId: course.courseId,
     courseRevision: course.revision,
+    embedded,
     query: defaultQuery(routeTarget?.id || null),
     annotationSetVersion: null,
     items: [],
@@ -669,6 +684,17 @@ export function createCourseObservationsPanel({
     if (["open-detail", "open-target", "back-inbox"].includes(action)) {
       event.preventDefault();
       onNavigate(node.getAttribute("href"));
+    } else if (action === "audit-target") {
+      const studyUnitId = String(node.dataset.studyUnitId || "");
+      const annotationId = String(node.dataset.annotationId || "");
+      const annotationVersion = Number(node.dataset.annotationVersion);
+      if (studyUnitId) onAuditTarget({
+        studyUnitId,
+        annotationId: annotationId || null,
+        annotationVersion: Number.isSafeInteger(annotationVersion) && annotationVersion > 0
+          ? annotationVersion
+          : null
+      });
     } else if (action === "reload") {
       void read();
     } else if (action === "load-more" && state.hasMore && !state.loading) {

@@ -331,6 +331,32 @@ test("smoke real de Curso cobre proveniência redigida sem enviar a chave como B
   assert.match(source, /contributor\.kind,\s*"protected_person"/u);
   assert.match(source, /foreignAnnotationProbes/u);
   assert.match(source, /course_anchored_annotation_not_found/u);
+  assert.match(source, /view:\s*"audit_cycle"/u);
+  assert.match(source, /operation:\s*"update_audit_cycle"/u);
+  assert.match(source, /mode:\s*"runs"/u);
+  assert.match(source, /cleanAuditSummary\.findingsCreated,\s*0/u);
+  assert.match(source, /runDetail\.target\.path/u);
+  assert.match(source, /aralearn\.course-audit-cycle-page\.v1/u);
+  assert.match(source, /aralearn\.course-audit-context\.v1/u);
+  for (const command of [
+    "record_audit",
+    "propose_authoring_correction",
+    "reject_authoring_correction",
+    "apply_authoring_correction",
+    "verify_finding",
+    "rollback_authoring_correction"
+  ]) {
+    assert.match(source, new RegExp(`type:\\s*"${command}"`, "u"));
+  }
+  assert.match(source, /suggestedAnnotationActions/u);
+  assert.match(source, /type:\s*"resolve_anchored_annotation"/u);
+  assert.match(source, /type:\s*"reopen_anchored_annotation"/u);
+  assert.match(source, /sourceLinks:\s*\[sourceLink\]/u);
+  assert.match(source, /checkpoint\.before\.content\.topics/u);
+  assert.match(source, /replayedEditorialApplication\.idempotent,\s*true/u);
+  assert.match(source, /replayedFactualRollback\.idempotent,\s*true/u);
+  assert.match(source, /staleEditorialApplication[\s\S]+stale_course_state/u);
+  assert.match(source, /staleFactualRollback[\s\S]+stale_course_state/u);
   assert.doesNotMatch(source, /aralearn\.library\.v1/u);
   assert.doesNotMatch(source, /\bcards\s*:/u);
   assert.doesNotMatch(source, /\bsources\s*:/u);
@@ -357,14 +383,28 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260817200000");
+  assert.equal(manifest.schemaRevision, "20260817210000");
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-corrections-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-audit-annotation-links-v1"), true);
 });
 
-test("smokes MCP exercitam proveniência e Observações ancoradas pelo contrato de seis tools", () => {
+test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de seis tools", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
+    for (const toolName of [
+      "listarCursos",
+      "lerCurso",
+      "criarCurso",
+      "alterarCurso",
+      "gerirPessoas",
+      "consultarComponentesDidaticos"
+    ]) {
+      assert.match(source, new RegExp(`"${toolName}"`, "u"));
+    }
+    assert.doesNotMatch(source, /auditarCurso|corrigirCurso|verificarCurso/u);
     assert.match(source, /aralearn\.course\.v1/u);
     assert.match(source, /studyUnits/u);
     assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
@@ -392,6 +432,21 @@ test("smokes MCP exercitam proveniência e Observações ancoradas pelo contrato
     assert.match(source, /provenance\.channel,\s*"authoring_chat"/u);
     assert.match(source, /aralearn\.course-anchored-annotation-page\.v1/u);
     assert.match(source, /replayedAnnotation\.idempotent,\s*true/u);
+    assert.match(source, /view:\s*"audit_cycle"/u);
+    assert.match(source, /operation:\s*"update_audit_cycle"/u);
+    assert.match(source, /mode:\s*"runs"/u);
+    assert.match(source, /runDetail\.target\.path/u);
+    assert.match(source, /aralearn\.course-audit-cycle-page\.v1/u);
+    assert.match(source, /aralearn\.course-audit-context\.v1/u);
+    assert.match(source, /type:\s*"record_audit"/u);
+    assert.match(source, /type:\s*"propose_authoring_correction"/u);
+    assert.match(source, /type:\s*"apply_authoring_correction"/u);
+    assert.match(source, /type:\s*"rollback_authoring_correction"/u);
+    assert.match(source, /confirmed:\s*false/u);
+    assert.match(source, /confirmed:\s*true/u);
+    assert.match(source, /authoring_correction_confirmation_required/u);
+    assert.match(source, /checkpoint\.before\.content\.topics/u);
+    assert.match(source, /checkpoint\.before\.sourceLinks/u);
     assert.doesNotMatch(source, /aralearn\.library\.v1/u);
     assert.doesNotMatch(source, /\bcards\s*:/u);
     assert.doesNotMatch(source, /\bsources\s*:/u);

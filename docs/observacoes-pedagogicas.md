@@ -37,9 +37,9 @@ onde ela entrou. O contrato fechado admite:
 
 Registros migrados podem conservar um canal legado desconhecido quando a
 origem é conhecida. As superfícies correntes criam apenas anotações de pessoa
-autora ou estudante; as origens de auditoria existem no contrato para a fatia
-de ingestão correspondente, não significam que auditoria ou reparo já estejam
-implementados.
+autora ou estudante. As origens de auditoria continuam no contrato fechado de
+Anotações, mas o ciclo de auditoria não cria nem muda uma Anotação
+implicitamente.
 
 ## Categorias e estados
 
@@ -64,7 +64,7 @@ autoriza correção automática.
 | **Retirada** (`withdrawn`) | quem pode retirar o registro solicitou sua remoção |
 
 Não existe estado “incorporada”. Uma resposta ou resolução não prova que o
-Curso mudou; correção e verificação independente possuem contrato próprio.
+Curso mudou; correção e verificação pertencem ao ciclo owner-only próprio.
 
 ## Classificação de assunto sem inferência semântica
 
@@ -127,7 +127,8 @@ aplicativo até a sincronização se houver comandos importantes ainda pendentes
 
 ## Triar na Autoria
 
-**Observações** é a sétima área da Autoria. Ela apresenta uma única caixa de
+**Auditoria e correções** é a sétima área funcional da Autoria e conserva
+`section=observations`. Sua aba **Observações** apresenta uma única caixa de
 entrada do Curso. O resumo informa total correspondente, contagens por origem,
 canal e estado e total sem classificação; os filtros cobrem origem, canal,
 estado, categoria, ausência de categoria, assunto e hierarquia, com opção de
@@ -159,6 +160,12 @@ Uma criação pelo MCP exige confirmação humana explícita (`confirmed: true`)
 uma síntese breve não vazia. O servidor usa a confirmação como guarda de
 entrada e não a grava como dado do domínio. Veja [Autoria por
 MCP](autoria-mcp.md) para o protocolo completo.
+
+O ciclo de auditoria também não cria ferramenta paralela: usa
+`lerCurso audit_cycle` e `alterarCurso update_audit_cycle` dentro das mesmas
+seis ferramentas. Uma ação sugerida `resolve|reopen` sobre uma Observação não é
+executada ali; requer outro comando explícito de Anotações com a versão
+corrente.
 
 ## Paginação, versões e quotas
 
@@ -207,6 +214,11 @@ expiração. Excluir o Curso remove os registros por cascade.
 Anotações ativas ou resolvidas não são apagadas automaticamente por idade:
 quem opera uma instalação precisa declarar sua política institucional de
 retenção.
+
+Quando um achado referencia uma Anotação, a junção guarda apenas identidade e
+versão, sem texto, pseudônimo ou pessoa. Antes da limpeza física, uma retirada é
+projetada no achado como indisponível e sem link. Depois do hard delete, o
+cascade remove somente a junção e seu ID; rodada, achado e correção permanecem.
 
 Cópias para pesquisa não são criadas por padrão. Qualquer uso exige protocolo
 explícito, minimizado e governado; anotações não viram automaticamente

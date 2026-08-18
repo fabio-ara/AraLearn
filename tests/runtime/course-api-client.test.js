@@ -1152,6 +1152,290 @@ test("observações owner e Study usam contratos ligados e não aceitam spoof de
   );
 });
 
+test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estrutural", async () => {
+  const calls = [];
+  const findingId = "60000000-0000-5000-8000-000000000006";
+  const auditRunId = "50000000-0000-5000-8000-000000000005";
+  const query = {
+    mode: "findings",
+    targetStudyUnitId: "unit-a",
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: ["open"],
+    dimensions: ["factual_quality"],
+    severities: ["high"],
+    annotationIds: []
+  };
+  const page = {
+    contract: "aralearn.course-audit-cycle-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    auditSetVersion: 4,
+    query,
+    summary: {
+      matchingTotal: 0,
+      byState: { open: 0, awaiting_verification: 0, resolved: 0, dismissed: 0 },
+      byDimension: {
+        structural_conformance: 0,
+        pedagogical_quality: 0,
+        factual_quality: 0,
+        editorial_quality: 0
+      },
+      bySeverity: { low: 0, medium: 0, high: 0, critical: 0 }
+    },
+    context: null,
+    items: [],
+    runs: [],
+    detail: null,
+    runDetail: null,
+    hasMore: false,
+    nextCursor: null
+  };
+  const requestId = "request-audit-client-0001";
+  const { client } = clientWithFetch(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (url.endsWith("/app/lerCurso")) {
+      if (body.mode === "detail" && body.auditRunId === auditRunId) {
+        const check = (dimension, result, index) => ({
+          checkId: `50000000-0000-5000-8000-${String(index).padStart(12, "0")}`,
+          dimension,
+          criterion: {
+            code: `${dimension}.review`,
+            version: "1",
+            statement: `Critério público de ${dimension}.`
+          },
+          result,
+          publicEvidence: `Evidência pública de ${dimension}.`,
+          adequacy: result === "passed" ? "sufficient" : "not_assessed",
+          planItemRefs: [],
+          parameterRefs: [],
+          sourceLinks: []
+        });
+        const checks = [
+          check("structural_conformance", "passed", 1),
+          check("pedagogical_quality", "not_checked", 2),
+          check("factual_quality", "not_checked", 3),
+          check("editorial_quality", "not_checked", 4)
+        ];
+        return jsonResponse({ ok: true, data: {
+          ...page,
+          query: {
+            mode: "detail",
+            targetStudyUnitId: null,
+            findingId: null,
+            correctionId: null,
+            auditRunId,
+            states: [],
+            dimensions: [],
+            severities: [],
+            annotationIds: []
+          },
+          runDetail: {
+            contract: "aralearn.course-instructional-audit-run.v1",
+            auditRunId,
+            runKind: "audit",
+            origin: "human_audit",
+            method: { id: "manual-review", version: "1" },
+            courseRevision: 7,
+            contextHash: "b".repeat(64),
+            target: {
+              studyUnitId: "unit-a",
+              version: 2,
+              hash: "a".repeat(64),
+              path: [
+                { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
+                { kind: "module", id: "module-a", label: "Módulo", version: 1 },
+                { kind: "lesson", id: "lesson-a", label: "Lição", version: 1 },
+                { kind: "didactic_microsequence", id: "micro-a", label: "Micro", version: 1 },
+                { kind: "study_unit", id: "unit-a", label: "Unidade", version: 2 }
+              ]
+            },
+            checks,
+            metrics: {
+              checksTotal: 4,
+              byResult: {
+                passed: 1, failed: 0, uncertain: 0, not_applicable: 0, not_checked: 3
+              },
+              findingsCreated: 0
+            },
+            createdAt: "2026-08-17T12:00:00.000Z"
+          }
+        } });
+      }
+      if (body.mode === "runs") {
+        return jsonResponse({ ok: true, data: {
+          ...page,
+          query: {
+            mode: "runs",
+            targetStudyUnitId: "unit-a",
+            findingId: null,
+            correctionId: null,
+            auditRunId: null,
+            states: [],
+            dimensions: [],
+            severities: [],
+            annotationIds: []
+          },
+          runs: [{
+            auditRunId,
+            runKind: "audit",
+            origin: "human_audit",
+            method: { id: "manual-review", version: "1" },
+            courseRevision: 7,
+            target: { studyUnitId: "unit-a", version: 2, hash: "a".repeat(64) },
+            resultCounts: {
+              passed: 1, failed: 0, uncertain: 0, not_applicable: 0, not_checked: 3
+            },
+            findingsCreated: 0,
+            createdAt: "2026-08-17T12:00:00.000Z",
+            deepLink: "https://app.example/#/authoring/courses/" + COURSE_ID +
+              `?section=observations&auditRunId=${auditRunId}`
+          }]
+        } });
+      }
+      return jsonResponse({ ok: true, data: page });
+    }
+    if (url.endsWith("/app/alterarCurso")) {
+      return jsonResponse({ ok: true, data: {
+        contract: "aralearn.course-audit-cycle-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        auditSetVersion: 5,
+        requestId,
+        idempotent: false,
+        changed: false,
+        change: null,
+        finding: null,
+        correction: null,
+        suggestedAnnotationActions: []
+      } });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  assert.deepEqual(await client.loadCourseAuditCycle(COURSE_ID, {
+    expectedCourseRevision: 7,
+    auditSetVersion: 4,
+    query,
+    cursor: "YWZ0ZXI=",
+    limit: 12
+  }), page);
+  assert.deepEqual(calls[0].body, {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    auditSetVersion: 4,
+    mode: "findings",
+    limit: 12,
+    targetStudyUnitId: "unit-a",
+    states: ["open"],
+    dimensions: ["factual_quality"],
+    severities: ["high"],
+    cursor: "YWZ0ZXI="
+  });
+
+  const changed = await client.mutateCourseAuditCycle({
+    requestId,
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command: {
+      type: "decide_finding",
+      findingId,
+      expectedFindingVersion: 2,
+      decision: "dismiss"
+    }
+  });
+  assert.equal(changed.changed, false);
+  assert.deepEqual(calls[1].body, {
+    requestId,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "decide_finding",
+      findingId,
+      expectedFindingVersion: 2,
+      decision: "dismiss"
+    }
+  });
+
+  const runs = await client.loadCourseAuditCycle(COURSE_ID, {
+    expectedCourseRevision: 7,
+    auditSetVersion: 4,
+    query: {
+      mode: "runs",
+      targetStudyUnitId: "unit-a",
+      findingId: null,
+      correctionId: null,
+      auditRunId: null,
+      states: [],
+      dimensions: [],
+      severities: [],
+      annotationIds: []
+    },
+    cursor: "cnVuLTI=",
+    limit: 6
+  });
+  assert.equal(runs.runs[0].findingsCreated, 0);
+  assert.deepEqual(calls[2].body, {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    auditSetVersion: 4,
+    mode: "runs",
+    limit: 6,
+    targetStudyUnitId: "unit-a",
+    cursor: "cnVuLTI="
+  });
+
+  const runDetail = await client.loadCourseAuditCycle(COURSE_ID, {
+    expectedCourseRevision: 7,
+    auditSetVersion: 4,
+    query: {
+      mode: "detail",
+      targetStudyUnitId: null,
+      findingId: null,
+      correctionId: null,
+      auditRunId,
+      states: [],
+      dimensions: [],
+      severities: [],
+      annotationIds: []
+    },
+    cursor: null,
+    limit: 1
+  });
+  assert.equal(runDetail.runDetail.target.path.at(-1).id, "unit-a");
+  assert.deepEqual(calls[3].body, {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    auditSetVersion: 4,
+    mode: "detail",
+    limit: 1,
+    auditRunId
+  });
+
+  await assert.rejects(() => client.mutateCourseAuditCycle({
+    requestId: "request-audit-client-0002",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    command: {
+      type: "record_audit",
+      auditRunId: "70000000-0000-5000-8000-000000000007",
+      targetStudyUnitId: "unit-a",
+      contextHash: "a".repeat(64),
+      origin: "human_audit",
+      method: { id: "manual-review", version: "1" },
+      checks: [],
+      findings: []
+    }
+  }), /checks/u);
+  assert.equal(calls.length, 4);
+});
+
 test("retry após resposta perdida aceita receipt idempotente na revisão corrente", async () => {
   const calls = [];
   let attempt = 0;

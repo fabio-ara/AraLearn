@@ -2,7 +2,8 @@
 
 Este capítulo explica onde o runtime canônico guarda cada dado e por quê. A
 decisão central é conservar um único Curso vivo no servidor, uma réplica local
-  para continuidade, um estado pessoal mínimo e Anotações ancoradas separadas.
+para continuidade, um estado pessoal mínimo, Anotações ancoradas separadas e um
+ciclo owner-only de auditoria/correção que permanece exclusivamente remoto.
 
 ## Conceitos fundamentais
 
@@ -13,7 +14,8 @@ transações. O PostgreSQL do Supabase é a autoridade para Curso, propriedade,
 acesso e estado compartilhado.
 
 **IndexedDB** é o banco transacional do navegador. Ele mantém sessão, cache,
-estado pessoal e outbox de Anotações ancoradas no dispositivo.
+estado pessoal e outbox de Anotações ancoradas no dispositivo. Não mantém
+autoridade, cache ou outbox de auditoria e correções.
 
 **Storage de objetos** guarda bytes por chave. Nesta etapa, recebe somente
 fotos privadas de perfil; não é a fonte do conteúdo de Curso.
@@ -24,7 +26,8 @@ a autoridade do servidor para acesso ou concorrência.
 ## Modelo mental
 
 **Descrição textual:** o Curso possui raiz, plano instrucional, desenho por
-escopo, Fontes, atribuições, entidades e Anotações ancoradas no PostgreSQL; o
+escopo, Fontes, atribuições, entidades, Anotações ancoradas e auditoria no
+PostgreSQL; o
 dispositivo conserva descritores e Cursos já abertos; cada pessoa mantém estado
 pessoal e cache de anotações locais; fotos ficam no Storage privado.
 
@@ -37,6 +40,7 @@ flowchart TD
     PG --> MT[Tentativas e etapas de materialização]
     PG --> E[Entidades didáticas]
     PG --> AN[Anotações, eventos, recibos e versões privadas]
+    PG --> AU[Rodadas, achados, junções e correções]
     PG --> A[Acesso direto]
     PG --> P[Estado pessoal]
     IDB[(IndexedDB)] --> L[Listas e Cursos em cache]
@@ -61,6 +65,7 @@ flowchart TD
 - revisão corrente;
 - versão global do conjunto de Anotações ancoradas para a visão do
   proprietário;
+- versão global do conjunto de auditoria owner-only;
 - datas de criação e atualização.
 
 Não existe coluna de arquivamento ou exclusão lógica no Curso canônico. Nenhum
@@ -331,13 +336,70 @@ e-mail. O `ref` aleatório persistido não é derivado de Curso/UUID, então o
 roster não permite correlacioná-lo. A UI mostra somente o `label` pseudônimo
 protegido, nunca `ref` ou identidade direta.
 
+### Auditoria, achados e correções
+
+Quatro relações privadas separam as autoridades do ciclo:
+
+- `private.course_instructional_audit_runs`: rodadas imutáveis, inclusive as
+  que terminam sem achado;
+- `private.course_audit_findings`: versões append-only das identidades de
+  achado;
+- `private.course_audit_finding_annotations`: junção entre achado e versão
+  exata de Anotação;
+- `private.course_authoring_corrections`: versões append-only de propostas,
+  decisões, checkpoints, verificação e rollback.
+
+As quatro relações têm RLS forçada, não concedem acesso direto e só são
+alcançadas pelas duas RPCs owner-only de serviço. `courses.audit_set_version`
+cerca páginas e comandos sem substituir a revisão do conteúdo.
+
+O contexto focal é calculado no servidor a partir de uma Unidade existente,
+sua Microssequência, plano, desenho, Fontes/Âncoras e até 12 Observações
+selecionadas. Rodadas guardam três checks humanos, o check estrutural
+determinístico acrescentado pelo servidor e no máximo 32 checks no total. Uma
+rodada cria no máximo 16 achados. Resultado usa
+`passed|failed|uncertain|not_applicable|not_checked`.
+
+Achados mantêm estado `open|awaiting_verification|resolved|dismissed`. A
+correção v1 só substitui o conteúdo e o conjunto completo de Fontes da Unidade
+focal. Preserva `topics` legítimos e não cria, exclui, move, reposiciona ou muda
+o pai. A proposta registra o checkpoint `before|after`; cada snapshot aceita
+até 48 KiB e o par até 96 KiB. A aplicação confronta e usa esse checkpoint.
+No-op falha fechado. Aplicação e rollback usam CAS para impedir que um snapshot
+obsoleto sobrescreva conteúdo corrente.
+
+Verificação cria outra rodada. `resolved` exige que o critério focal passe;
+`still_open` reabre. Resultado factual positivo e resolução factual exigem
+Fonte e Âncora ativas na revisão exata. `supported_by` sustenta afirmações;
+`quoted_from` só vale para `quotation_fidelity`.
+
+A junção não copia texto, pseudônimo ou identidade pessoal. Enquanto a
+Anotação retirada existe como tombstone, a projeção mantém a referência com
+`available: false` e `deepLink: null`. Quando a limpeza física remove a
+Anotação, a chave estrangeira `ON DELETE CASCADE` apaga somente a junção; o
+vínculo e seu ID deixam as projeções futuras, mas rodada, achado e correção
+permanecem.
+
+Leituras owner-only expõem `context|findings|runs|detail`. Achados e rodadas são
+paginados e aceitam filtro opcional pela Unidade. `runs` enumera execuções
+limpas; `detail` exige exatamente um entre achado e rodada, e o detalhe da
+rodada inclui todos os checks e evidências. Página e resultado de mudança têm
+até 240 KiB, página até 24 itens e cursor até 240 caracteres; comando tem até
+192 KiB.
+
+O Curso admite até 256 rodadas, com reserva para correções aplicadas, 1.024
+identidades de achado, 64 correções no total e oito por achado. Históricos
+projetados são delimitados. Essas quotas cercam custo e transferência; não são
+meta de uso ou política pedagógica.
+
 ### Eventos e recibos
 
 `private.course_events` registra somente eventos pequenos que já possuem
 consumidor de interface, auditoria ou pesquisa: criação, mudança de plano,
 avanço de materialização, alteração de composição, mudança de Fonte, Âncora ou
-atribuição, concessão e revogação de acesso. O resumo não replica o Curso nem
-contém e-mail.
+atribuição, aplicação ou rollback de correção e concessão ou revogação de
+acesso. Registrar rodada, decidir achado, propor/rejeitar ou verificar não cria
+evento porque não muda o Curso. O resumo não replica o Curso nem contém e-mail.
 
 Eventos de conteúdo usam `changeKind` para distinguir a natureza observada da
 mudança e contagens de entidades efetivamente criadas, alteradas ou removidas.
@@ -349,7 +411,9 @@ autoral ou dado de pesquisa.
 Três conjuntos de recibos temporários permitem repetição segura:
 
 - estado pessoal: UUID, hash e revisão resultante, até sete dias;
-- Curso e acesso: pedido, operação, hash e resultado pequeno, até 14 dias;
+- Curso, acesso, aplicação e rollback de correção: pedido, operação, hash e
+  resultado pequeno, até 14 dias; o ciclo reutiliza
+  `private.course_change_receipts` e limita o resultado a 64 KiB;
 - Anotações ancoradas: ator, pedido, hash, versões e resultado mínimo, com
   expiração lógica em até 14 dias e limpeza física oportunista.
 
@@ -401,6 +465,9 @@ Cada conta possui `aralearn-course-v1-<user-id>`, com uma store genérica
 - estado pessoal e sua pendência;
 - páginas, índice e outbox de Anotações ancoradas;
 - handoff transitório das observações retiradas do estado pessoal legado.
+
+Não existe chave, store, cache autoritativo, réplica ou outbox para rodadas,
+achados ou correções. O painel de auditoria exige conexão e relê o servidor.
 
 Separar o banco por pessoa reduz vazamento acidental entre sessões no mesmo
 dispositivo. Uma mudança de versão fecha a conexão anterior e pede nova
@@ -565,9 +632,12 @@ infraestrutura universal antecipada.
 - RPCs públicas têm `EXECUTE` concedido por função e papel exatos;
 - funções de serviço exigem service role e identidade explícita do ator;
 - RLS protege Curso, entidades, Fontes, atribuições, Anotações ancoradas,
-  acesso, estado pessoal, perfil e Storage;
+  auditoria/correções, acesso, estado pessoal, perfil e Storage;
 - estudante lê somente as próprias anotações; proprietário lê a caixa de
   entrada completa por DTO com identidade protegida e pseudônima;
+- as quatro autoridades privadas do ciclo usam RLS forçada, sem grants diretos;
+  a junção achado–Anotação não copia texto ou pessoa e seu cascade não apaga o
+  achado;
 - a RPC de Estudo projeta somente citações visíveis e não expõe catálogo,
   histórico ou trechos privados;
 - Curso compartilhado não revela orientações privadas na busca;
@@ -590,6 +660,7 @@ de:
 - tamanho de índices e tabelas após migração;
 - crescimento de estados pessoais e eventos;
 - crescimento de Anotações ancoradas, eventos e tombstones;
+- crescimento de rodadas, versões de achados, correções e checkpoints;
 - invocações e duração de Edge Functions;
 - ocupação de avatares;
 - crescimento append-only de revisões, Âncoras e atribuições de Fontes.
@@ -611,17 +682,25 @@ eventos por anotação em operações ordinárias. O cache de 2 MiB e a outbox d
 256 KiB cercam o dispositivo. Esses caps tornam o crescimento observável, mas
 não demonstram custo sustentável nem legitimam retenção indefinida.
 
+Para auditoria, páginas e resultados têm até 240 KiB, comandos 192 KiB, página
+24 itens, cursor 240 caracteres, 12 Observações selecionadas, 16 achados por
+rodada e 32 checks após a inclusão estrutural. O Curso admite 256 rodadas com
+reserva para correções aplicadas, 1.024 identidades de achado, 64 correções no
+total e oito por achado. Snapshot, checkpoint e recibo têm, respectivamente,
+48, 96 e 64 KiB. Esses caps não substituem medição longitudinal.
+
 Limite implementado não é evidência de sustentabilidade. A promoção deve
 registrar baseline e repetir a medição com dados reais.
 
 ## Evidência e pontos não demonstrados
 
 Testes locais cobrem composição, plano, comandos de Parte, Fontes, Âncoras,
-atribuições, projeção redigida de Estudo, materialização, paginação, cache,
-revisão, idempotência, conflito multi-dispositivo, autorização e migrations em
-PGlite. O ensaio focal em PostgreSQL real cobre concorrência e o contrato final
-da Unidade após reset. Jornada de navegador exercita o corte local; promoção
-hospedada e nova aceitação humana ainda são gates.
+atribuições, projeção redigida de Estudo, materialização, auditoria, rodadas
+limpas, correção focal, verificação, rollback, privacidade da junção, paginação,
+cache, revisão, idempotência, conflito multi-dispositivo, autorização e
+migrations em PGlite. O ensaio focal em PostgreSQL real cobre concorrência e o
+contrato final da Unidade após reset. Jornada de navegador exercita o corte
+local; promoção hospedada e nova aceitação humana ainda são gates.
 
 Ainda não estão demonstrados:
 
@@ -633,12 +712,12 @@ Ainda não estão demonstrados:
 
 A atestação privada do corte inclui `sourceReferenceHash`, calculado sobre as
 tuplas ordenadas `{studyUnitId, sourceOrdinal, sourceId}`. O mesmo valor precisa
-coincidir entre origem, artefato preparado e verificação pós-`2000`, ao lado de
+coincidir entre origem, artefato preparado e verificação pós-`2100`, ao lado de
 `documentHash`, `rowHash`, `entityStateHash` e contagens. O inventário
-regenerado pós-reset contém 2.096 objetos. Liga 501 a sete casos correntes — 84
-de Anotações ancoradas, 272 de Autoria, 84 de Fontes, 26 de Estudo, 31 de
-pessoas/acesso, um de componentes e três de transportes — e mantém 1.595 no
-legado físico. O acréscimo legado é
+regenerado pós-reset contém 2.186 objetos. Liga 591 a oito casos correntes — 90
+de Auditoria e correções, 272 de Autoria, 84 de Anotações ancoradas, 84 de
+Fontes, 26 de Estudo, 31 de pessoas/acesso, três de transportes e um de
+componentes — e mantém 1.595 no legado físico. Entre os legados permanece
 `private.valid_course_personal_state_v1`, isolado para remoção posterior; o
 runtime usa somente personal-state v2.
 
@@ -647,9 +726,9 @@ forçado, seis constraints, três índices e um helper privado. O delta do
 `protected_ref` corresponde ao check, à unique e ao índice unique; a coluna não
 é contada como objeto.
 
-Este marco reúne observações pessoais e autorais como Anotações ancoradas. Não
-implementa achado de auditoria, correção, revisão ou verificação independente,
-que permanecem numa fatia posterior.
+Este marco também reúne auditoria, correção e verificação sob autoridades
+privadas próprias. Ele não converte estados legados nem transforma triagem de
+Observação em correção implícita.
 
 O importador hospedado permanece bloqueado até que componentes antigos sem
 equivalência recebam uma decisão semântica. Ele é transitório e não se torna

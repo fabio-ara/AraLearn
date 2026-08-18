@@ -6,6 +6,7 @@ import {
   COURSE_MCP_TOOLS,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal,
+  mapAuthoringApplicationToolCall,
   mapAuthoringMcpToolCall,
   validateAuthoringMcpToolOutput
 } from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
@@ -15,6 +16,51 @@ const PART_ID = "20000000-0000-4000-8000-000000000002";
 const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
 const STEP_ID = "40000000-0000-4000-8000-000000000004";
 const REQUEST_ID = "request-course-0001";
+const AUDIT_RUN_ID = "50000000-0000-5000-8000-000000000005";
+const FINDING_ID = "60000000-0000-5000-8000-000000000006";
+const CORRECTION_ID = "70000000-0000-5000-8000-000000000007";
+
+function auditCheck(dimension, index, result = "not_checked") {
+  const adequacy = {
+    passed: "sufficient",
+    failed: "insufficient",
+    uncertain: "uncertain",
+    not_applicable: "not_applicable",
+    not_checked: "not_assessed"
+  }[result];
+  return {
+    checkId: `80000000-0000-5000-8000-00000000000${index}`,
+    dimension,
+    criterion: {
+      code: `${dimension}.review`,
+      version: "1",
+      statement: `Critério público de ${dimension}.`
+    },
+    result,
+    publicEvidence: `Evidência pública de ${dimension}.`,
+    adequacy,
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks: []
+  };
+}
+
+function recordAuditCommand() {
+  return {
+    type: "record_audit",
+    auditRunId: AUDIT_RUN_ID,
+    targetStudyUnitId: "unit-a",
+    contextHash: "a".repeat(64),
+    origin: "human_audit",
+    method: { id: "manual-review", version: "1" },
+    checks: [
+      auditCheck("pedagogical_quality", 1),
+      auditCheck("factual_quality", 2, "failed"),
+      auditCheck("editorial_quality", 3)
+    ],
+    findings: []
+  };
+}
 
 test("registro expõe somente ferramentas centradas no Curso e nos componentes", () => {
   assert.deepEqual(COURSE_MCP_TOOLS.map(({ name }) => name), [
@@ -415,11 +461,12 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
   assert.deepEqual(schema.properties.operation.enum, [
     "update_instructional_plan",
-    "update_course_design",
-    "update_course_sources",
-    "update_anchored_annotations",
-    "commit_course_composition",
-    "advance_part_materialization"
+      "update_course_design",
+      "update_course_sources",
+      "update_anchored_annotations",
+      "update_audit_cycle",
+      "commit_course_composition",
+      "advance_part_materialization"
   ]);
   assert.equal(schema.properties.planCommand.additionalProperties, false);
   assert.equal(Object.hasOwn(schema.properties.planCommand.properties, "authoringGuidance"), false);
@@ -447,7 +494,7 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     schema.properties.designCommand.oneOf[5].properties.policy.properties.catalogVersion.const,
     "1-3e5629f8"
   );
-  assert.equal(schema.allOf.length, 6);
+  assert.equal(schema.allOf.length, 7);
   const operationBranch = (operation) => schema.allOf.find((branch) =>
     branch.if?.properties?.operation?.const === operation
   );
@@ -455,6 +502,8 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   assert.ok(operationBranch("update_course_sources").then.required.includes("sourceCommand"));
   assert.ok(operationBranch("update_anchored_annotations").then.required
     .includes("annotationCommand"));
+  assert.ok(operationBranch("update_audit_cycle").then.required
+    .includes("auditCommand"));
   assert.ok(operationBranch("update_instructional_plan").then.required.includes("planCommand"));
   assert.equal(operationBranch("commit_course_composition").then.anyOf.length, 2);
   assert.ok(operationBranch("commit_course_composition").then.required
@@ -629,6 +678,272 @@ test("schema MCP discrimina os três modos de observações sem cruzá-los com F
     targetKind: "course",
     targetId: COURSE_ID
   }), false);
+});
+
+test("MCP lê e altera o ciclo de auditoria sem criar ferramenta nem rota paralela", () => {
+  const annotationId = "90000000-0000-5000-8000-000000000009";
+  assert.deepEqual(mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    auditSetVersion: 3,
+    mode: "context",
+    targetStudyUnitId: "unit-a",
+    annotationIds: [annotationId],
+    limit: 1
+  }), {
+    kind: "route",
+    method: "GET",
+    path: `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&auditSetVersion=3` +
+      `&mode=context&targetStudyUnitId=unit-a&annotationId=${annotationId}&limit=1`,
+    requestId: null,
+    body: null
+  });
+  assert.equal(mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    mode: "findings",
+    targetStudyUnitId: "unit-a",
+    states: ["open"],
+    dimensions: ["factual_quality"],
+    severities: ["high"],
+    cursor: "YWZ0ZXI=",
+    limit: 12
+  }).path, `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&mode=findings` +
+    "&targetStudyUnitId=unit-a&state=open&dimension=factual_quality&severity=high" +
+    "&cursor=YWZ0ZXI%3D&limit=12");
+  assert.equal(mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    mode: "runs",
+    targetStudyUnitId: "unit-a",
+    cursor: "YWZ0ZXI=",
+    limit: 12
+  }).path, `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&mode=runs` +
+    "&targetStudyUnitId=unit-a&cursor=YWZ0ZXI%3D&limit=12");
+  assert.equal(mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    mode: "detail",
+    findingId: FINDING_ID,
+    correctionId: CORRECTION_ID
+  }).path, `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&mode=detail` +
+    `&findingId=${FINDING_ID}&correctionId=${CORRECTION_ID}&limit=12`);
+  assert.equal(mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    mode: "detail",
+    auditRunId: AUDIT_RUN_ID
+  }).path, `/v1/courses/${COURSE_ID}/audit-cycle?expectedRevision=7&mode=detail` +
+    `&auditRunId=${AUDIT_RUN_ID}&limit=12`);
+
+  const mapped = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle",
+    auditCommand: recordAuditCommand()
+  });
+  assert.equal(mapped.path, `/v1/courses/${COURSE_ID}/audit-cycle/changes`);
+  assert.deepEqual(mapped.body.command, recordAuditCommand());
+
+  const applyCommand = {
+    type: "apply_authoring_correction",
+    findingId: FINDING_ID,
+    expectedFindingVersion: 2,
+    correctionId: CORRECTION_ID,
+    expectedCorrectionVersion: 1
+  };
+  assert.throws(() => mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle",
+    auditCommand: applyCommand
+  }), (error) => error.code === "authoring_correction_confirmation_required");
+  const confirmedApply = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle",
+    auditCommand: { ...applyCommand, confirmed: true }
+  });
+  assert.deepEqual(confirmedApply.body.command, applyCommand);
+  assert.equal(Object.hasOwn(confirmedApply.body.command, "confirmed"), false);
+  assert.deepEqual(mapAuthoringApplicationToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle",
+    auditCommand: applyCommand
+  }).body.command, applyCommand);
+
+  assert.throws(() => mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      ...recordAuditCommand(),
+      checks: [
+        ...recordAuditCommand().checks,
+        auditCheck("structural_conformance", 4, "passed")
+      ]
+    }
+  }), (error) => error.code === "invalid_course_audit_checks");
+});
+
+test("schema MCP fecha modos e os sete comandos públicos do ciclo de auditoria", () => {
+  const tools = Object.fromEntries(COURSE_MCP_TOOLS.map((tool) => [tool.name, tool]));
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const validateRead = ajv.compile(tools.lerCurso.inputSchema);
+  const validateChange = ajv.compile(tools.alterarCurso.inputSchema);
+  const context = {
+    courseId: COURSE_ID,
+    view: "audit_cycle",
+    expectedRevision: 7,
+    mode: "context",
+    targetStudyUnitId: "unit-a"
+  };
+  assert.equal(validateRead(context), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({ ...context, states: ["open"] }), false);
+  assert.equal(validateRead({
+    ...context,
+    mode: "detail",
+    targetStudyUnitId: undefined,
+    findingId: FINDING_ID,
+    correctionId: CORRECTION_ID
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({ ...context, mode: "findings", targetStudyUnitId: undefined }), true);
+  assert.equal(validateRead({ ...context, mode: "findings" }), true,
+    JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({ ...context, mode: "findings", correctionId: CORRECTION_ID }), false);
+  assert.equal(validateRead({ ...context, mode: "runs" }), true,
+    JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({ ...context, mode: "runs", states: ["open"] }), false);
+  assert.equal(validateRead({
+    ...context,
+    mode: "detail",
+    targetStudyUnitId: undefined,
+    auditRunId: AUDIT_RUN_ID
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    ...context,
+    mode: "detail",
+    targetStudyUnitId: undefined,
+    findingId: FINDING_ID,
+    auditRunId: AUDIT_RUN_ID
+  }), false);
+
+  const base = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_audit_cycle"
+  };
+  assert.equal(validateChange({ ...base, auditCommand: recordAuditCommand() }), true,
+    JSON.stringify(validateChange.errors));
+  const parameterBoundary = recordAuditCommand();
+  parameterBoundary.checks[0].parameterRefs = [{
+    parameterId: `p${"a".repeat(159)}`,
+    changeId: "1"
+  }];
+  assert.equal(validateChange({ ...base, auditCommand: parameterBoundary }), true,
+    JSON.stringify(validateChange.errors));
+  for (const parameterRef of [
+    { parameterId: "Inválido", changeId: "1" },
+    { parameterId: `p${"a".repeat(160)}`, changeId: "1" },
+    { parameterId: "valid_parameter", changeId: "0" }
+  ]) {
+    const invalidParameter = recordAuditCommand();
+    invalidParameter.checks[0].parameterRefs = [parameterRef];
+    assert.equal(validateChange({ ...base, auditCommand: invalidParameter }), false);
+  }
+  const annotationRefs = Array.from({ length: 13 }, (_, index) => ({
+    annotationId: `90000000-0000-5000-8000-${String(index + 1).padStart(12, "0")}`,
+    annotationVersion: 1
+  }));
+  const twelveAnnotations = recordAuditCommand();
+  twelveAnnotations.findings = [{
+    findingId: FINDING_ID,
+    checkId: twelveAnnotations.checks[1].checkId,
+    code: "missing_source_anchor",
+    severity: "high",
+    annotationRefs: annotationRefs.slice(0, 12)
+  }];
+  assert.equal(validateChange({ ...base, auditCommand: twelveAnnotations }), true,
+    JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...base,
+    auditCommand: {
+      ...twelveAnnotations,
+      findings: [{ ...twelveAnnotations.findings[0], annotationRefs }]
+    }
+  }), false);
+  const referenced = (type) => ({
+    type,
+    findingId: FINDING_ID,
+    expectedFindingVersion: 2,
+    correctionId: CORRECTION_ID,
+    expectedCorrectionVersion: 1
+  });
+  assert.equal(validateChange({
+    ...base,
+    auditCommand: referenced("reject_authoring_correction")
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...base,
+    auditCommand: { ...referenced("reject_authoring_correction"), confirmed: true }
+  }), false);
+  for (const type of ["apply_authoring_correction", "rollback_authoring_correction"]) {
+    assert.equal(validateChange({ ...base, auditCommand: referenced(type) }), false, type);
+    assert.equal(validateChange({
+      ...base,
+      auditCommand: { ...referenced(type), confirmed: false }
+    }), false, type);
+    assert.equal(validateChange({
+      ...base,
+      auditCommand: { ...referenced(type), confirmed: true }
+    }), true, `${type}: ${JSON.stringify(validateChange.errors)}`);
+  }
+  assert.equal(validateChange({
+    ...base,
+    auditCommand: {
+      type: "decide_finding",
+      findingId: FINDING_ID,
+      expectedFindingVersion: 2,
+      decision: "dismiss"
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...base,
+    auditCommand: {
+      type: "propose_authoring_correction",
+      correctionId: CORRECTION_ID,
+      findingId: FINDING_ID,
+      expectedFindingVersion: 2,
+      expectedCorrectionVersion: 0,
+      afterContent: { title: "Unidade corrigida" },
+      afterSourceLinks: [],
+      rationale: "Corrigir o achado focal."
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...base,
+    auditCommand: {
+      ...referenced("verify_finding"),
+      auditRunId: AUDIT_RUN_ID,
+      contextHash: "a".repeat(64),
+      origin: "human_audit",
+      method: { id: "manual-review", version: "1" },
+      checks: recordAuditCommand().checks,
+      outcome: "still_open"
+    }
+  }), true, JSON.stringify(validateChange.errors));
 });
 
 test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => {
@@ -997,7 +1312,7 @@ test("MCP recusa query de observações que ultrapassa o request-target de 8 KiB
   );
 });
 
-test("MCP confirma somente a criação e nunca transporta a conversa", () => {
+test("MCP confirma a criação de observação e nunca transporta a conversa", () => {
   const annotationId = "60000000-0000-4000-8000-000000000006";
   const rawText = "  O exemplo contradiz a definição.\nConfira o segundo passo.  ";
   const create = mapAuthoringMcpToolCall("alterarCurso", {

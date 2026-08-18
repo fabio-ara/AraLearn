@@ -230,6 +230,75 @@ test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async ()
   assert.equal(calls[1][1].command.type, "clear_guidance");
 });
 
+test("aplicativo alcança audit_cycle pelas mesmas duas tools do MCP", async () => {
+  const calls = [];
+  const findingId = "60000000-0000-5000-8000-000000000006";
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
+      },
+      async getCourseAuditCycle(value) {
+        calls.push(["read", value]);
+        return { contract: "audit-read-ok" };
+      },
+      async executeCourseAuditCycleCommand(value) {
+        calls.push(["write", value]);
+        return { contract: "audit-write-ok" };
+      }
+    }
+  });
+  const readResponse = await handler(request("/app/lerCurso", {
+    body: {
+      courseId: COURSE_ID,
+      view: "audit_cycle",
+      expectedRevision: 7,
+      mode: "context",
+      targetStudyUnitId: "unit-a",
+      annotationIds: [],
+      limit: 1
+    }
+  }));
+  assert.equal(readResponse.status, 200);
+  assert.equal((await readResponse.json()).data.contract, "audit-read-ok");
+  assert.deepEqual(calls[0][1].query, {
+    mode: "context",
+    targetStudyUnitId: "unit-a",
+    findingId: null,
+    correctionId: null,
+    auditRunId: null,
+    states: [],
+    dimensions: [],
+    severities: [],
+    annotationIds: []
+  });
+
+  const writeResponse = await handler(request("/app/alterarCurso", {
+    body: {
+      requestId: "request-audit-api-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 7,
+      operation: "update_audit_cycle",
+      auditCommand: {
+        type: "decide_finding",
+        findingId,
+        expectedFindingVersion: 2,
+        decision: "dismiss"
+      }
+    }
+  }));
+  assert.equal(writeResponse.status, 200);
+  assert.equal((await writeResponse.json()).data.contract, "audit-write-ok");
+  assert.equal(calls[1][1].expectedCourseRevision, 7);
+  assert.deepEqual(calls[1][1].command, {
+    type: "decide_finding",
+    findingId,
+    expectedFindingVersion: 2,
+    decision: "dismiss"
+  });
+});
+
 test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
   const calls = [];
   const legacySourceId = ` legacy-${"s".repeat(300)} `;

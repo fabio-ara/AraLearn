@@ -1,8 +1,8 @@
 # Arquitetura do AraLearn
 
-Este capítulo explica a arquitetura implementada no código corrente. Ele não
-descreve como concluídas as camadas futuras de achados de auditoria, correção
-verificada, variantes ou analytics de pesquisa.
+Este capítulo explica a arquitetura implementada no código corrente. O ciclo
+owner-only de auditoria, correção e verificação já pertence ao runtime local;
+variantes e analytics de pesquisa permanecem posteriores.
 
 ## Vocabulário necessário
 
@@ -57,6 +57,17 @@ Módulo, Lição, Tópico, Microssequência didática ou Unidade de estudo. Vár
 anotações podem coexistir no mesmo alvo; elas possuem persistência, versões e
 sincronização separadas do estado pessoal e do conteúdo canônico.
 
+**Rodada de auditoria.** Registro imutável de checks públicos sobre uma Unidade
+e um contexto focal versionado. Ela não autoriza correção nem mede
+aprendizagem.
+
+**Achado de auditoria.** Divergência ou incerteza localizada, ligada a um check
+falho ou incerto. Suas decisões e transições são versões append-only.
+
+**Correção autoral.** Proposta versionada que preserva os snapshots anterior e
+posterior do conteúdo e da proveniência de uma Unidade existente. Aplicação,
+verificação e rollback são fatos distintos.
+
 **Concorrência otimista.** Uma alteração informa a revisão que leu. O servidor
 só a aceita se essa revisão ainda for corrente; caso contrário, o cliente
 precisa reler e reconciliar o estado.
@@ -85,6 +96,7 @@ flowchart LR
     E <--> R
     R <--> D[(PostgreSQL)]
     D --> F[Fontes e atribuições]
+    D --> Q[Auditoria, achados e correções]
     F --> S
     A <--> V[(Storage de avatar)]
 ```
@@ -489,8 +501,9 @@ evento e recibo pertencem à mesma transação.
   ator, canal ou histórico;
 - a atribuição por alvo não equivale a uma cadeia de alegações no padrão W3C
   nem prova autoria científica;
-- Anotações ancoradas são uma relação própria; achados, correções e verificação
-  independente permanecem uma fatia posterior.
+- Anotações ancoradas continuam sendo uma relação própria; achados, correções e
+  verificação independente pertencem ao ciclo de auditoria, sem transformar a
+  atribuição numa alegação científica.
 
 ## Decisão 12 — Observações como Anotações ancoradas protegidas
 
@@ -535,8 +548,9 @@ nunca por texto bruto. Perda de autoridade purga cache, outbox e handoff.
 
 ### Consequências
 
-- **Observações** é a sétima área da Autoria, com sínteses, filtros e links
-  profundos; Anotar uma Unidade parte da Inspeção;
+- `section=observations` é a sétima área da Autoria, agora apresentada como
+  **Auditoria e correções**, com abas de Observações e Achados; Anotar uma
+  Unidade parte da Inspeção;
 - o MCP continua com seis ferramentas: `lerCurso` lê
   `anchored_annotations` e `alterarCurso` executa
   `update_anchored_annotations`;
@@ -547,6 +561,59 @@ nunca por texto bruto. Perda de autoridade purga cache, outbox e handoff.
 - categoria, quantidade, estado, resposta, resolução e timestamps não são
   medidas de aprendizagem, dificuldade, atenção, qualidade ou eficácia.
 
+## Decisão 13 — auditoria focal com correção verificável
+
+### Problema
+
+Uma Observação situa uma dúvida ou possível erro, mas não conserva o critério,
+a evidência nem o estado exato que uma correção precisa confrontar. Tratar a
+triagem como reparo também permitiria declarar resolução sem reler o conteúdo.
+
+### Decisão e funcionamento
+
+O Curso recebe quatro autoridades privadas: rodadas imutáveis, versões
+append-only de achados, a junção achado–Anotação e versões append-only de
+correções. Um contexto focal derivado pelo servidor reúne a Unidade corrente,
+Microssequência, plano, parâmetros, intenção representacional, Fontes/Âncoras e
+Observações selecionadas. A interface fornece três checks humanos e o servidor
+acrescenta a conformidade estrutural.
+
+Rodadas são enumeradas em páginas próprias, inclusive quando não criaram
+achado; seu detalhe preserva todos os checks e evidências. Achados e rodadas
+aceitam filtro opcional por Unidade. O detalhe escolhe exatamente uma
+identidade: achado ou rodada. Essa separação impede que “rodada limpa” fique
+invisível e evita carregar todo o histórico num único relatório.
+
+A correção v1 só altera conteúdo e atribuições de Fontes de uma Unidade
+existente. O checkpoint conserva `before|after`; aplicação exige o alvo ainda
+corrente e avança a revisão do Curso. O achado fica aguardando verificação até
+uma nova rodada confirmar `resolved|still_open`. Rollback restaura o checkpoint
+anterior somente quando o snapshot aplicado ainda corresponde ao alvo.
+
+O ciclo reutiliza `course_change_receipts`; somente aplicação e rollback geram
+`course_events`, porque são as operações que mudam o Curso. As quatro relações
+usam RLS forçada, não têm grants diretos e são acessadas por duas RPCs
+service-role owner-only.
+
+A junção conserva apenas IDs e versões. Anotação retirada é projetada como
+indisponível e sem link enquanto o tombstone existe; sua limpeza física remove
+o vínculo por cascade. Nenhum texto, pseudônimo ou identidade pessoal é copiado
+para o achado. Sugestões de resolver ou reabrir Observações exigem outro comando
+explícito e nunca são executadas pelo ciclo.
+
+### Consequências
+
+- a sétima área continua em `section=observations`, agora com o rótulo
+  **Auditoria e correções** e abas de Observações e Achados;
+- MCP mantém seis ferramentas: `lerCurso audit_cycle` e `alterarCurso
+  update_audit_cycle` carregam a capacidade nova;
+- auditoria e correção são online-only, sem store, cache autoritativo ou outbox
+  no IndexedDB;
+- conclusão factual positiva exige Fonte e Âncora ativas; `supported_by`
+  sustenta afirmações e `quoted_from` só verifica fidelidade de citação;
+- o preflight falha diante de resíduos de auditoria, correção, desenho ou
+  materialização substituídos, em vez de convertê-los.
+
 ## Organização do código
 
 | Responsabilidade | Local principal |
@@ -556,6 +623,7 @@ nunca por texto bruto. Perda de autoridade purga cache, outbox e handoff.
 | parâmetros, orientação e política de componentes | `src/domain/courseDesignParameters.js` |
 | Fontes, Âncoras e atribuições | `src/domain/courseSources.js` |
 | Anotações ancoradas | `src/domain/courseAnchoredAnnotations.js` |
+| auditoria, achados e correções | `src/domain/courseAuditCycle.js` |
 | cache local | `src/persistence/CourseLocalStore.js` |
 | estado pessoal e fila | `src/persistence/CoursePersonalStateRepository.js` |
 | cache e outbox de anotações | `src/persistence/CourseAnnotationRepository.js` |
@@ -566,8 +634,9 @@ nunca por texto bruto. Perda de autoridade purga cache, outbox e handoff.
 | sequência vertical de Inspeção | `src/ui/CourseInspectionSequence.js` |
 | catálogo visual de Fontes | `src/ui/CourseSourcesPanel.js` |
 | caixa de entrada de Observações | `src/ui/CourseObservationsPanel.js` |
+| ciclo visual de auditoria | `src/ui/CourseAuditPanel.js` |
 | API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000` a `20260817200000` |
+| banco canônico | migrations `20260817140000` a `20260817210000` |
 | importador transitório | `scripts/courseCutover/` |
 
 ## Gates antes da promoção hospedada
@@ -584,8 +653,8 @@ está concluída. A promoção exige, nesta ordem:
 4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
    substituído;
 5. executar o importador e as migrations `1400`, `1500`, `1600`, `1700`,
-   `1800`, `1900` e `2000`, nessa ordem, na mesma transação hospedada,
-   abortando diante de drift; o runner declara e hasheia as sete antes de
+   `1800`, `1900`, `2000` e `2100`, nessa ordem, na mesma transação hospedada,
+   abortando diante de drift; o runner declara e hasheia as oito antes de
    `--apply` e não usa `db push` separado para as migrations do corte;
 6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
 
@@ -605,22 +674,24 @@ legadas malformadas. A atestação `prepared` e a verificação pós-corte inclu
 selados.
 
 O preflight da `2000` aceita somente as pontes legadas de observações e recibos
-previstas pelo contrato; linhas `audit_finding` falham fechadas até decisão
-explícita da fatia de auditoria, assim como qualquer dado inesperado. Notas
-autorais e observações pessoais legadas são convertidas uma vez e removidas dos
-documentos pessoais após prova por hash. `trail_observation_threads` permanece
-apenas como ponte temporária de correção sem texto bruto, não como fonte ativa.
+previstas pelo contrato. Notas autorais e observações pessoais legadas são
+convertidas uma vez e removidas dos documentos pessoais após prova por hash.
+`trail_observation_threads` permanece apenas como ponte temporária de correção
+sem texto bruto, não como fonte ativa.
 
-O contrato congelado tem SHA-256
-`209D7E7684AB7BDD615243938AD849B4F498EB509D557CA398080812CBC716E6`, idêntico
-no domínio e no espelho Edge.
-O inventário vertical regenerado pós-`2000` possui 2.096 objetos: 501 ligados a
-sete casos correntes — 84 de Anotações ancoradas, 272 de Autoria, 84 de Fontes,
-26 de Estudo, 31 de pessoas/acesso, um de componentes e três de transportes — e
-1.595 isolados como legado físico. Entre os legados permanece
-`private.valid_course_personal_state_v1`, cercado para remoção posterior; RPCs,
-constraint e feature v1 não integram o runtime. Nenhum total anterior serve
-como prova desse schema.
+O preflight da `2100` é fail-closed sobre um envelope fixo de 26 contagens. Todos
+os bloqueadores precisam ser zero; somente a contagem bruta de
+`observation_threads` pode ser diferente de zero, desde que suas referências a
+correções também sejam zero. Nenhum achado, reparo, checkpoint ou vínculo legado
+é convertido, retomado ou tratado como estado válido do ciclo novo.
+
+O domínio congelado do ciclo de auditoria e seu espelho Edge têm SHA-256
+`6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9`, idêntico
+no domínio e no espelho Edge. O inventário regenerado pós-`2100` contém 2.186
+objetos: 591 ligados aos oito casos correntes — 90 Auditoria e correções, 272
+Autoria, 84 Anotações ancoradas, 84 Fontes, 26 Estudo, 31 pessoas/acesso, três
+transportes e um componentes — e 1.595 isolados como legado físico. Totais de
+schemas anteriores não servem como evidência desse corte.
 
 ## Propriedades demonstradas e questões abertas
 
@@ -634,6 +705,7 @@ como prova desse schema.
 | materialização sela enunciados, versões e subconjuntos por alvo e cerca fatos declarados | implementado localmente | migration `1800`, hash do contexto, validação interna e regressão DNS/DHCP; o banco reconcilia materialmente somente IDs de Unidades, pai/alvo e `componentRefs` |
 | Fontes e Âncoras preservam revisões e atribuições por alvo fora do conteúdo | implementado localmente | domínio compartilhado, migration `1900`, API/MCP, sexta área de Autoria e testes focais |
 | Anotações ancoradas reúnem manifestações autorais e estudantis sem ampliar o estado pessoal | implementado localmente | domínio compartilhado, migration `2000`, RPC/API/MCP, sétima área, folha no Estudo e testes focais |
+| auditoria focal enumera rodadas limpas, separa achado, correção e verificação e não transforma Observações em autoridade | implementado localmente | domínio compartilhado, migration `2100`, RPC/API/MCP, painel em `section=observations` e testes focais |
 | Estudo recebe somente citações visíveis e sob demanda | implementado localmente | RPC redigida, cache lazy e casos de ocultação, URL e revogação; não há edição de Fontes no Estudo |
 | composição e materialização confirmam proveniência junto com conteúdo | implementado localmente | aplicação completa por Unidade, contexto v2, transações e rollback focal |
 | UI e MCP inspecionam as mesmas Unidades por escopo e revisão | implementado localmente | migration `1700`, RPC owner-only, `lerCurso study_units`, cache e testes focais |
@@ -644,5 +716,5 @@ como prova desse schema.
 | perfil e avatar respeitam relação direta | implementado localmente | RLS, bucket privado e interface de Conta |
 | o corte preserva todos os dados reais | ainda não demonstrado | importação hospedada bloqueada por componentes sem equivalente |
 | a interface é compreensível por pessoas leigas | ainda não demonstrado | exige aceitação humana em celular e desktop |
-| o modelo cabe no Free Plan em uso prolongado | ainda não demonstrado | Fontes usam metadados/URLs, páginas de 24, leitura lazy, 32 vínculos por alvo e oito identidades de Âncora por revisão, mas faltam séries de banco, egress, Storage, funções e crescimento append-only |
+| o modelo cabe no Free Plan em uso prolongado | ainda não demonstrado | Fontes usam metadados/URLs; páginas, vínculos, rodadas, achados, correções, histórico e checkpoints têm limites explícitos, mas faltam séries de banco, egress, Storage, funções e crescimento append-only |
 | o desenho melhora aprendizagem | não demonstrado | exige estudo educacional com instrumentos e análise adequados |

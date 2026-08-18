@@ -88,7 +88,45 @@ outbox porque o dispositivo não pode continuar entregando dados sem autoridade.
 A observação do Estudo é uma Anotação ancorada própria e chega à caixa de
 entrada do proprietário. Ali ela pode ser considerada, respondida ou resolvida.
 Esses estados descrevem triagem: salvar, responder ou resolver não altera o
-Curso e não demonstra correção ou verificação independente.
+Curso. Para corrigir, o proprietário precisa abrir **Auditoria e correções**,
+registrar ou decidir um achado, revisar a proposta focal e confirmar sua
+aplicação. Outra rodada ainda precisa verificar o critério.
+
+## Auditoria ou correção não funciona sem conexão
+
+Esse comportamento é intencional. Rodadas, achados, correções, verificação e
+rollback são online-only e não possuem cache autoritativo nem outbox no
+IndexedDB. Reconecte, releia a Unidade/achado e só então execute a ação. Não
+trate a última tela renderizada como estado corrente.
+
+## Uma rodada limpa ou suas evidências não aparecem
+
+Na aba **Achados**, consulte a lista de rodadas, não somente a lista de achados.
+Rodadas sem achado continuam enumeráveis. Abra a rodada pelo link com
+`auditRunId` para ver todos os checks e evidências. Se usou filtro, confira a
+Unidade focal e reinicie a paginação depois de mudança de versão.
+
+## Não consigo aplicar ou reverter uma correção
+
+Aplicação e rollback exigem confirmação explícita. Também são protegidos por
+revisão, versões e checkpoint: se a Unidade, seu conteúdo ou suas Fontes
+mudaram desde a leitura, releia e reconcilie em vez de forçar o número. A
+correção v1 não pode criar, excluir, mover, reposicionar ou trocar o pai de uma
+entidade e um no-op é recusado.
+
+## Um check factual foi recusado
+
+Conclusão factual positiva exige Fonte e Âncora ativas na revisão exata.
+**Sustenta** é a relação apropriada para afirmações; **Citado de** só vale para
+fidelidade de citação. Reabra Fontes, confira revisão, Âncora e relação e então
+registre uma nova rodada.
+
+## Uma Observação ligada ao achado ficou indisponível ou sumiu
+
+Ao retirar a Anotação, o tombstone é mostrado como indisponível e sem link.
+Depois da limpeza física, somente a junção e o ID deixam o achado; texto/pessoa
+nunca foram copiados e rodada, achado e correção permanecem. Isso não é perda
+do histórico de auditoria.
 
 ## Uma prática não permite avançar
 

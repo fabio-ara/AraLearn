@@ -6,10 +6,10 @@ editar o plano instrucional e as Partes em linguagem natural, consultar a
 configuração do desenho e a cobertura de cada Microssequência, manter Fontes e
 Âncoras, atribuí-las a itens do plano ou Unidades, consultar a hierarquia,
 inspecionar Unidades em sequência vertical, reunir Anotações ancoradas numa
-caixa de entrada, levar um pedido de materialização ao chat conectado e gerir
-acesso direto. Edição contextual de Unidades, achados de auditoria, correção
-verificada, variantes e analytics ainda não devem ser tratados como
-disponíveis.
+caixa de entrada, auditar uma Unidade, acompanhar achados e correções
+verificáveis, levar um pedido de materialização ao chat conectado e gerir
+acesso direto. Edição livre de Unidades, variantes e analytics ainda não devem
+ser tratados como disponíveis.
 
 ## Abrir a Autoria
 
@@ -170,7 +170,14 @@ mudou, relê a nova revisão antes de continuar. Respostas aparecem somente para
 preservar a representação, mas ficam desativadas: Inspeção não é Estudo nem
 editor contextual.
 
-### Observações
+### Auditoria e correções
+
+É a sétima área funcional e conserva a rota `section=observations`. A aba
+**Observações** mantém a caixa de entrada; a aba **Achados** reúne rodadas,
+achados, propostas, aplicação, verificação e rollback. Não existe uma oitava
+área ou um Curso paralelo para a auditoria.
+
+#### Observações
 
 Apresenta uma única caixa de entrada com todas as Anotações ancoradas do Curso.
 Sínteses e filtros ajudam a recortar origem, canal, estado, categoria, ausência
@@ -194,6 +201,56 @@ somente as próprias e nunca as de colegas. O DTO identifica a contribuição po
 papel, `ref` aleatório persistido e `label` protegido. `ref` não é derivado do
 UUID ou do Curso. A interface mostra apenas o rótulo
 pseudônimo, por exemplo “Estudante 7A3F”, sem expor `ref`, UUID ou e-mail.
+
+#### Achados
+
+Escolha uma Unidade focal e carregue seu contexto antes de auditar. O contexto
+é derivado pelo servidor e reúne Unidade, Microssequência, plano, desenho,
+Fontes/Âncoras e até 12 Observações selecionadas. A auditoria trabalha nas
+dimensões estrutural, pedagógica, factual e editorial. Três checks humanos
+são enviados, e o servidor acrescenta a conformidade estrutural determinística.
+
+Cada rodada é imutável e aparece no histórico mesmo quando terminou limpa, sem
+achados. A lista pode ser filtrada pela Unidade; abrir uma rodada mostra todos
+os checks e suas evidências. Um achado pode estar aberto, aguardando
+verificação, resolvido ou dispensado. Decidi-lo não muda automaticamente o
+conteúdo.
+
+Uma correção v1 pode modificar somente o conteúdo e o conjunto completo de
+Fontes da Unidade focal existente. Ela preserva `topics` legítimos e não cria,
+apaga, move, reposiciona ou muda o pai de entidades. A proposta registra o
+checkpoint `before|after`; revise-a e confirme explicitamente a aplicação, que
+confronta e usa esse checkpoint. Aplicação e rollback são as únicas ações do
+ciclo que mudam o Curso e criam atividade.
+
+Depois da aplicação, execute uma nova auditoria para verificar. O achado só
+pode ser marcado resolvido quando o critério focal passou; se continuar aberto,
+o estado volta a refletir isso. Em critérios factuais, uma conclusão positiva
+exige Fonte e Âncora ativas e exatas. **Sustenta** vale para afirmações;
+**Citado de** só vale para fidelidade da citação.
+
+Um rollback exige nova confirmação e só é aceito enquanto a Unidade ainda
+corresponder ao snapshot aplicado. Ele restaura o estado anterior sem apagar a
+rodada, o achado, a correção ou sua verificação.
+
+Achados ligam Observações apenas por identidade e versão. Enquanto uma
+Observação retirada conserva seu tombstone, o vínculo aparece indisponível e
+sem link. Depois da limpeza física, o vínculo e o ID desaparecem da projeção;
+texto, pseudônimo e pessoa nunca são copiados. Sugestões de resolver ou reabrir
+uma Observação são somente sugestões: a triagem exige outra ação explícita com
+a versão corrente da Anotação.
+
+Os links profundos válidos usam a mesma área:
+
+- `section=observations&annotationId=...` abre uma Observação;
+- `section=observations&findingId=...` abre um achado e aceita
+  `correctionId=...` opcional;
+- `section=observations&auditRunId=...` abre uma rodada.
+
+Combinações incompatíveis são recusadas. Fontes e Âncoras seguem para
+`section=sources`; a Unidade focal segue para a Inspeção. Auditoria e correção
+são online-only, sem cache ou fila de mutação no dispositivo; Observações
+continuam com cache e outbox próprios.
 
 ### Pessoas
 
@@ -253,8 +310,8 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 1. listar os Cursos próprios;
 2. escolher o Curso pelo título e confirmar sua identidade;
 3. ler o plano instrucional, o desenho efetivo, a hierarquia, a vista
-   `course_sources`, `anchored_annotations`, `study_units` ou páginas de
-   entidades;
+   `course_sources`, `anchored_annotations`, `audit_cycle`, `study_units` ou
+   páginas de entidades;
 4. formular a alteração;
 5. usar a revisão do Curso e a versão específica lidas como condições da
    escrita;
@@ -265,7 +322,8 @@ definir ou limpar parâmetros e orientações, gerir a política de componentes,
 atribuir itens do plano a cada Microssequência,
 criar, revisar e aposentar Fontes e Âncoras, substituir atribuições de
 proveniência, confirmar etapas de materialização, alterar a composição por uma
-operação separada, gerir perfil e acesso e consultar componentes didáticos.
+operação separada, operar auditoria e correção, gerir perfil e acesso e
+consultar componentes didáticos.
 Interface e MCP usam as mesmas relações, regras de domínio, transações e
 projeções; não há um desenho reservado ao chat.
 
@@ -273,6 +331,15 @@ No MCP, Observações não criam uma ferramenta extra: `lerCurso` usa
 `anchored_annotations` e `alterarCurso` usa `update_anchored_annotations`.
 Criar exige confirmação humana e síntese breve não vazia; o texto da conversa
 não é persistido como anotação.
+
+Auditoria também não cria ferramenta extra: `lerCurso` usa `audit_cycle` nos
+modos `context|findings|runs|detail`, e `alterarCurso` usa
+`update_audit_cycle`. Achados e rodadas são paginados, aceitam filtro opcional
+pela Unidade, e rodadas limpas continuam enumeráveis. O detalhe recebe
+exatamente um `findingId` ou `auditRunId`. Aplicar e executar rollback exigem
+`auditCommand.confirmed: true`; registrar rodada, propor ou rejeitar correção,
+decidir e verificar recusam a confirmação. O MCP permanece com seis
+ferramentas.
 
 Para revisar conteúdo, prefira `lerCurso` com `view: "study_units"`. Escolha o
 mesmo escopo disponível na interface e use a revisão devolvida, a âncora para
@@ -345,8 +412,7 @@ plano implicitamente.
 Não trate as seguintes ações como implementadas no runtime canônico:
 
 - editar cada Unidade diretamente;
-- transformar observação de estudante em correção verificada;
-- produzir achados de auditoria, correções ou verificação independente;
+- transformar uma Observação em correção ou mudança de estado implícita;
 - criar condições e variantes comparáveis;
 - consultar analytics de Autoria;
 - disponibilizar Curso publicamente.
@@ -362,12 +428,16 @@ Depois de alterar um Curso:
 1. releia o Curso na Autoria;
 2. use a Inspeção e o link profundo da Unidade afetada;
 3. confira na atribuição a revisão e as Âncoras exatas das Fontes;
-4. abra-o em Estudo;
-5. percorra a hierarquia até a mesma Unidade;
-6. confira conteúdo, resposta, feedback, navegação e a projeção redigida de
+4. abra a rodada e confira todos os checks e evidências;
+5. se houve correção, verifique o checkpoint e execute outra rodada antes de
+   declarar o achado resolvido;
+6. abra-o em Estudo;
+7. percorra a hierarquia até a mesma Unidade;
+8. confira conteúdo, resposta, feedback, navegação e a projeção redigida de
    Fontes;
-7. teste em 360, 390 e 430 px e desktop;
-8. registre qualquer divergência como observação precisa.
+9. teste em 360, 390 e 430 px e desktop;
+10. registre qualquer divergência como observação ou achado preciso, conforme
+    a autoridade necessária.
 
 A síntese deve distinguir o que mudou para quem estuda, o que mudou por trás,
 por que foi necessário, qual complexidade entrou ou saiu, como foi verificado e

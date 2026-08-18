@@ -27,8 +27,9 @@ ancoradas próprias em Unidades de estudo.
 
 Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
 e editar planejamento e Partes, configurar Parâmetros, manter Fontes e Âncoras,
-percorrer a composição em uma sequência vertical, triar Observações, copiar um
-pedido de materialização para o chat conectado e gerir acesso. O MCP autoral
+percorrer a composição em uma sequência vertical, triar Observações, auditar e
+acompanhar correções verificáveis, copiar um pedido de materialização para o
+chat conectado e gerir acesso. O MCP autoral
 possui a mesma restrição de propriedade e opera o mesmo estado persistido.
 
 ### Réplica local
@@ -275,18 +276,49 @@ revisão, escopo, âncora ou cursor, direção e limites. Ela a identifica como
 offline ou desatualizada e não inventa uma página aproximada. Revogação de autoridade
 purga esse cache na próxima validação online.
 
-## Triar Observações na Autoria
+## Usar Auditoria e correções na Autoria
 
-Abra **Observações**, a sétima área do Curso, para consultar a caixa de entrada
-única. Use sínteses e filtros e siga o link profundo até o alvo ou detalhe. No
-detalhe, as capacidades disponíveis permitem considerar, responder, resolver,
-reabrir, retirar, revisar o registro ou corrigir seus assuntos.
+Abra **Auditoria e correções**, a sétima área funcional do Curso, que conserva
+`section=observations`. A aba **Observações** mostra a caixa de entrada única.
+Use sínteses e filtros e siga o link profundo até o alvo ou detalhe. No detalhe,
+as capacidades disponíveis permitem considerar, responder, resolver, reabrir,
+retirar, revisar o registro ou corrigir seus assuntos.
 
 Uma anotação autoral pode ser criada no Curso, Módulo, Lição, Tópico ou
 Microssequência. Para uma Unidade, use **Anotar** na **Inspeção**. A
 classificação automática escolhe assunto somente quando o alvo é exatamente um
 Tópico; toda seleção diferente é uma correção humana explícita, nunca inferência
 pela prosa.
+
+Na aba **Achados**, escolha uma Unidade focal e carregue o contexto. Registre a
+auditoria estrutural, pedagógica, factual e editorial sem editar o conteúdo na
+mesma ação. Cada rodada permanece listada, inclusive quando terminou limpa e
+não criou achado; abrir a rodada mostra todos os checks e suas evidências.
+
+Se um achado justificar reparo, examine a proposta focal. A correção pode mudar
+somente conteúdo e Fontes da Unidade existente; não cria, apaga, move,
+reposiciona nem troca o pai. A proposta registra um checkpoint `before|after`;
+a aplicação exige confirmação, confronta-o e o usa. O achado passa a aguardar
+outra rodada, que precisa aprovar o critério focal antes de marcá-lo resolvido.
+Se o critério continuar aberto, a verificação registra isso. Rollback também
+exige confirmação e só restaura enquanto o estado aplicado ainda é corrente.
+
+Em achado factual, conclusão positiva exige Fonte e Âncora ativas e exatas:
+**Sustenta** vale para afirmação, e **Citado de** apenas para fidelidade de
+citação. Uma ação sugerida de resolver ou reabrir Observação não executa nada;
+use a ação explícita da aba Observações com a versão corrente.
+
+Os links profundos aceitos são:
+
+- `section=observations&annotationId=...` para Observação;
+- `section=observations&findingId=...` e `correctionId=...` opcional para
+  achado/correção;
+- `section=observations&auditRunId=...` para rodada.
+
+Essas identidades são mutuamente exclusivas. Fonte ou Âncora abre
+`section=sources`; a Unidade abre a Inspeção. Uma Observação retirada aparece
+indisponível e sem link enquanto o tombstone existe. Depois da limpeza física,
+o vínculo e o ID desaparecem do achado sem apagar rodada, achado ou correção.
 
 ## Conceder acesso
 
@@ -312,7 +344,7 @@ Conecte um cliente MCP com OAuth individual. A experiência esperada é:
 
 1. descrever a intenção;
 2. permitir que o cliente localize e leia o Curso, seu plano e as Fontes
-   pertinentes;
+   pertinentes e, numa auditoria, a Unidade, o achado ou a rodada pertinentes;
 3. revisar a proposta quando houver decisão de conteúdo;
 4. autorizar a mutação;
 5. receber síntese breve e link visual;
@@ -333,6 +365,10 @@ somente a versão aplicável àquela conta e IDs de anotações e releem o Index
 texto bruto não passa por essa mensagem e um rascunho aberto não é sobrescrito.
 No Estudo, a versão é privada e monotônica por pessoa/Curso: atividade de outra
 pessoa não muda o contador nem aparece como conflito ou sinal indireto.
+
+Auditoria, achados e correções exigem conexão. Não possuem store, cache
+autoritativo ou outbox no IndexedDB; uma aba offline não pode aplicar, verificar
+ou reverter correção.
 
 Não limpe dados, desinstale nem troque de navegador antes da sincronização se
 houver alterações importantes. A Home pode mostrar Cursos conhecidos sem
@@ -360,7 +396,6 @@ deve ser usada como forma de sair.
 O runtime canônico desta revisão não apresenta como concluídos:
 
 - edição contextual completa de Unidades;
-- achados de auditoria, correção, revisão e verificação independente;
 - variantes experimentais;
 - analytics de Autoria;
 - disponibilização pública.

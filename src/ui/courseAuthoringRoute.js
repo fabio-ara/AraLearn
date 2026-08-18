@@ -15,11 +15,15 @@ const TARGET_DEFINITIONS = Object.freeze([
     kind: "didactic_microsequence"
   }),
   Object.freeze({ option: "studyUnitId", query: "studyUnitId", kind: "study_unit" }),
-  Object.freeze({ option: "annotationId", query: "annotationId", kind: "anchored_annotation", uuid: true })
+  Object.freeze({ option: "annotationId", query: "annotationId", kind: "anchored_annotation", uuid: true }),
+  Object.freeze({ option: "findingId", query: "findingId", kind: "audit_finding", uuid: true }),
+  Object.freeze({ option: "auditRunId", query: "auditRunId", kind: "audit_run", uuid: true }),
+  Object.freeze({ option: "sourceId", query: "sourceId", kind: "course_source", source: true })
 ]);
 const BUILD_OPTION_FIELDS = new Set([
   "section", "authoringPartId", "moduleId", "lessonId", "didacticMicrosequenceId",
-  "studyUnitId", "annotationId", "unassigned"
+  "studyUnitId", "annotationId", "findingId", "correctionId", "auditRunId", "sourceId", "anchorId",
+  "unassigned"
 ]);
 
 export function isCanonicalCourseId(value) {
@@ -38,12 +42,24 @@ function canonicalEntityId(value) {
     value === value.trim() && /\S/u.test(value) && !containsControlCharacters(value);
 }
 
+function canonicalSourceId(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 4_096 &&
+    [...value].length <= 2_048 && new TextEncoder().encode(value).byteLength <= 8_192 &&
+    !containsControlCharacters(value);
+}
+
+function targetIdIsCanonical(definition, value) {
+  if (definition.uuid) return isCanonicalCourseId(value);
+  if (definition.source) return canonicalSourceId(value);
+  return canonicalEntityId(value);
+}
+
 function normalizedTargetOptions(options) {
   const selected = [];
   for (const definition of TARGET_DEFINITIONS) {
     const value = options?.[definition.option];
     if (value == null || value === "") continue;
-    if (definition.uuid ? !isCanonicalCourseId(value) : !canonicalEntityId(value)) {
+    if (!targetIdIsCanonical(definition, value)) {
       throw new TypeError("Alvo inválido para a rota de Inspeção.");
     }
     selected.push({ ...definition, id: value });
@@ -56,12 +72,33 @@ function normalizedTargetOptions(options) {
   if (selected.length > 1) {
     throw new TypeError("A rota de Inspeção aceita somente um alvo.");
   }
-  return selected[0] || null;
+  const target = selected[0] || null;
+  const correctionId = options?.correctionId;
+  const anchorId = options?.anchorId;
+  if (correctionId != null && correctionId !== "" && anchorId != null && anchorId !== "") {
+    throw new TypeError("A rota não aceita correção e âncora ao mesmo tempo.");
+  }
+  if (correctionId != null && correctionId !== "") {
+    if (!isCanonicalCourseId(correctionId) || target?.kind !== "audit_finding") {
+      throw new TypeError("A correção exige um achado canônico na mesma rota.");
+    }
+    return { ...target, correctionId };
+  }
+  if (anchorId != null && anchorId !== "") {
+    if (!canonicalEntityId(anchorId) || target?.kind !== "course_source") {
+      throw new TypeError("A âncora exige uma Fonte literal na mesma rota.");
+    }
+    return { ...target, anchorId };
+  }
+  return target;
 }
 
 function targetAllowedForSection(target, section) {
   if (!target) return true;
   if (target.kind === "anchored_annotation") return section === "observations";
+  if (target.kind === "audit_finding") return section === "observations";
+  if (target.kind === "audit_run") return section === "observations";
+  if (target.kind === "course_source") return section === "sources";
   if (section === "inspection") return true;
   return section === "parameters" && [
     "module", "lesson", "didactic_microsequence"
@@ -85,7 +122,12 @@ export function buildCourseAuthoringRoute(courseId, options = {}) {
     throw new TypeError("O alvo não pertence à seção escolhida.");
   }
   const suffix = target
-    ? `&${target.query}=${target.kind === "unassigned" ? "true" : encodeURIComponent(target.id)}`
+    ? `&${target.query}=${target.kind === "unassigned" ? "true" : encodeURIComponent(target.id)}` +
+      (target.kind === "audit_finding" && target.correctionId
+        ? `&correctionId=${encodeURIComponent(target.correctionId)}`
+        : target.kind === "course_source" && target.anchorId
+          ? `&anchorId=${encodeURIComponent(target.anchorId)}`
+        : "")
     : "";
   return `${COURSE_AUTHORING_ROUTE_PREFIX}${courseId}?section=${section}${suffix}`;
 }
@@ -100,13 +142,13 @@ export function parseCourseAuthoringRoute(hashValue) {
   const courseId = remainder.slice(0, separator);
   if (!isCanonicalCourseId(courseId)) return null;
   const rawParameters = remainder.slice(separator + 1).split("&");
-  if (rawParameters.length < 1 || rawParameters.length > 2) return null;
+  if (rawParameters.length < 1 || rawParameters.length > 3) return null;
   const sectionMatch = /^section=([a-z]+)$/u.exec(rawParameters[0]);
   const section = sectionMatch?.[1] || "";
   if (!COURSE_AUTHORING_SECTIONS.includes(section)) return null;
 
   let target = null;
-  if (rawParameters.length === 2) {
+  if (rawParameters.length >= 2) {
     const separatorIndex = rawParameters[1].indexOf("=");
     if (separatorIndex <= 0 || rawParameters[1].indexOf("=", separatorIndex + 1) >= 0) return null;
     const query = rawParameters[1].slice(0, separatorIndex);
@@ -124,14 +166,35 @@ export function parseCourseAuthoringRoute(hashValue) {
         return null;
       }
       if (encodeURIComponent(id) !== encoded ||
-          (definition.uuid ? !isCanonicalCourseId(id) : !canonicalEntityId(id))) {
+          !targetIdIsCanonical(definition, id)) {
         return null;
       }
-      target = Object.freeze({ kind: definition.kind, id });
+      target = { kind: definition.kind, id };
     }
     if (!targetAllowedForSection(target, section)) return null;
   }
-  return Object.freeze({ courseId, section, target });
+  if (rawParameters.length === 3) {
+    const expectedQuery = target?.kind === "audit_finding"
+      ? "correctionId"
+      : target?.kind === "course_source"
+        ? "anchorId"
+        : null;
+    if (!expectedQuery) return null;
+    const childMatch = new RegExp(`^${expectedQuery}=([^=]+)$`, "u").exec(rawParameters[2]);
+    if (!childMatch) return null;
+    let childId;
+    try {
+      childId = decodeURIComponent(childMatch[1]);
+    } catch {
+      return null;
+    }
+    const childIsCanonical = target.kind === "audit_finding"
+      ? isCanonicalCourseId(childId)
+      : canonicalEntityId(childId);
+    if (encodeURIComponent(childId) !== childMatch[1] || !childIsCanonical) return null;
+    target[target.kind === "audit_finding" ? "correctionId" : "anchorId"] = childId;
+  }
+  return Object.freeze({ courseId, section, target: target ? Object.freeze(target) : null });
 }
 
 export function isCourseAuthoringRouteCandidate(hashValue) {

@@ -36,10 +36,10 @@ Git.
 | --- | --- | --- |
 | `analytics-instrucionais.md` | reformular | manter neste caminho, com métricas de autoria e pesquisa ligadas a dados observáveis |
 | `aralearn-contract.md` | reformular | manter neste caminho após estabilizar entidades, vocabulário e contratos públicos |
-| `arquitetura.md` | conservar | explica Curso vivo, lista fina, composição paginada, estado pessoal, acesso direto e gates da promoção |
+| `arquitetura.md` | conservar | explica Curso vivo, composição paginada, auditoria/correções, estado pessoal, acesso direto e gates da promoção |
 | `assistencia-por-ia.md` | reformular | manter neste caminho e alinhar a assistência à autoria e à pesquisa realmente acessíveis |
 | `auditoria-academica-dos-resources.md` | reformular | manter neste caminho após a revisão terminológica e metodológica dos recursos de card |
-| `auditoria-de-conformidade-instrucional.md` | reformular | manter neste caminho como método estável de auditoria, reparo e nova verificação |
+| `auditoria-de-conformidade-instrucional.md` | conservar | contrato corrente de contexto, rodada, achado, correção, verificação, rollback e privacidade |
 | `auditoria-front-end.md` | reformular | manter neste caminho como método reproduzível, sem resultados transitórios de uma versão |
 | `autoria-mcp.md` | conservar | explica as seis ferramentas, o recurso de invariantes, OAuth e o Curso compartilhado com a interface |
 | `contribuicao-originalidade.md` | reformular | manter neste caminho, distinguindo contribuição demonstrada de hipótese e intenção |
@@ -61,7 +61,7 @@ Git.
 | `guia-desenvolvedor.md` | reformular | manter neste caminho com o fluxo técnico vigente e verificável |
 | `guia-estudante.md` | conservar | percurso atual de Estudo, revisão, observação, retomada e reset por Curso |
 | `guia-pesquisador.md` | reformular | manter neste caminho com autoria, experimentos, dados e análise que existirem de fato |
-| `guia-professor-autor.md` | conservar | percurso atual de criação, planejamento, Fontes, inspeção, Observações, MCP, perfil e acesso |
+| `guia-professor-autor.md` | conservar | percurso atual de criação, planejamento, Fontes, inspeção, Auditoria e correções, MCP, perfil e acesso |
 | `implantacao.md` | reformular | manter neste caminho com requisitos e limites de implantação atuais |
 | `integrations/android-share-import.md` | conservar | manter neste caminho enquanto a integração Android permanecer suportada |
 | `integrations/codex-cli.md` | remover | transferir memória operacional útil ao manual privado e preservar o texto público no histórico do Git |
@@ -69,9 +69,9 @@ Git.
 | `matriz-conformidade-tecnica.md` | reformular | manter neste caminho como ligação entre afirmações e evidências executáveis atuais |
 | `matriz-rastreabilidade-pedagogica.md` | reformular | manter neste caminho como ligação entre fundamento, decisão, implementação e avaliação |
 | `modelo-didatico.md` | reformular | manter neste caminho após validar hierarquia, Parte, parâmetros e terminologia didática |
-| `observacoes-pedagogicas.md` | conservar | contrato de Anotação ancorada, origens/canais, triagem, offline, privacidade e limites de inferência; não antecipar reparo |
+| `observacoes-pedagogicas.md` | conservar | contrato de Anotação ancorada, triagem/offline/privacidade e fronteira explícita com auditoria/correções |
 | `origens-do-aralearn.md` | conservar | manter neste caminho como narrativa biográfica delimitada, sem função probatória |
-| `persistencia-relacional.md` | conservar | modelo canônico de PostgreSQL, IndexedDB, Anotações ancoradas, avatar privado, CAS, recibos e reconciliação |
+| `persistencia-relacional.md` | conservar | modelo canônico de PostgreSQL, IndexedDB, Anotações, auditoria/correções, avatar, CAS, recibos e reconciliação |
 | `principios-editoriais.md` | conservar | manter neste caminho como norma editorial da documentação pública |
 | `privacidade.md` | reformular | manter neste caminho conforme propriedade, compartilhamento, pesquisa e retenção forem validados |
 | `protocolo-avaliacao-artefato.md` | reformular | manter neste caminho como protocolo de avaliação, sem apresentar intenção como resultado |

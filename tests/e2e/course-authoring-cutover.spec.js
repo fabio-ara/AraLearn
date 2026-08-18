@@ -342,6 +342,8 @@ async function mountCourseAuthoring(page, {
       inspectionReads: [],
       annotationReads: [],
       annotationMutations: [],
+      auditReads: [],
+      auditMutations: [],
       positionLoads: 0,
       positionSaves: [],
       peopleReads: 0,
@@ -837,6 +839,97 @@ async function mountCourseAuthoring(page, {
         nextCursor: null
       };
     };
+    const auditRunId = "85000000-0000-4000-8000-000000000005";
+    const auditRunChecks = () => [
+      "structural_conformance", "pedagogical_quality", "factual_quality", "editorial_quality"
+    ].map((dimension, index) => ({
+      checkId: `86000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      dimension,
+      criterion: {
+        code: `automatic.${dimension}`,
+        version: "1",
+        statement: `Critério preservado de ${dimension}.`
+      },
+      result: "passed",
+      publicEvidence: `Evidência preservada de ${dimension}.`,
+      adequacy: "sufficient",
+      planItemRefs: [],
+      parameterRefs: [],
+      sourceLinks: dimension === "factual_quality" ? [{
+        sourceId: "source-01",
+        sourceRevision: 1,
+        relation: "supported_by",
+        anchors: [{ anchorId: "anchor-source-01", anchorRevision: 1 }]
+      }] : []
+    }));
+    const auditRunPage = (courseId, options) => ({
+      contract: "aralearn.course-audit-cycle-page.v1",
+      courseId,
+      courseRevision: options.expectedCourseRevision,
+      auditSetVersion: options.auditSetVersion ?? 1,
+      query: structuredClone(options.query),
+      summary: {
+        matchingTotal: 0,
+        byState: { open: 0, awaiting_verification: 0, resolved: 0, dismissed: 0 },
+        byDimension: {
+          structural_conformance: 0,
+          pedagogical_quality: 0,
+          factual_quality: 0,
+          editorial_quality: 0
+        },
+        bySeverity: { low: 0, medium: 0, high: 0, critical: 0 }
+      },
+      context: null,
+      items: [],
+      runs: [],
+      detail: null,
+      runDetail: {
+        contract: "aralearn.course-instructional-audit-run.v1",
+        auditRunId,
+        runKind: "audit",
+        origin: "automatic_audit",
+        method: { id: "aralearn.automatic-course-audit", version: "1" },
+        courseRevision: options.expectedCourseRevision,
+        contextHash: "c".repeat(64),
+        target: {
+          studyUnitId: "study-unit-01",
+          version: 1,
+          hash: "a".repeat(64),
+          path: [
+            { kind: "course", id: courseId, label: "Fundamentos de relações", version: 5 },
+            { kind: "module", id: "module-a", label: "Base conceitual", version: 1 },
+            { kind: "lesson", id: "lesson-a", label: "Relações e evidências", version: 1 },
+            {
+              kind: "didactic_microsequence",
+              id: "microsequence-a",
+              label: "Comparação orientada",
+              version: 1
+            },
+            {
+              kind: "study_unit",
+              id: "study-unit-01",
+              label: "Exemplo guiado com diagrama",
+              version: 1
+            }
+          ]
+        },
+        checks: auditRunChecks(),
+        metrics: {
+          checksTotal: 4,
+          byResult: {
+            passed: 4,
+            failed: 0,
+            uncertain: 0,
+            not_applicable: 0,
+            not_checked: 0
+          },
+          findingsCreated: 0
+        },
+        createdAt: "2026-08-17T13:00:00Z"
+      },
+      hasMore: false,
+      nextCursor: null
+    });
     const controller = {
       async listCourses({ query = "" } = {}) {
         probe.listReads += 1;
@@ -937,6 +1030,17 @@ async function mountCourseAuthoring(page, {
           changed: true,
           annotation: structuredClone(item)
         };
+      },
+      async loadCourseAuditCycle(courseId, options) {
+        probe.auditReads.push({ courseId, options: structuredClone(options) });
+        if (options.query.mode === "detail" && options.query.auditRunId === auditRunId) {
+          return auditRunPage(courseId, options);
+        }
+        throw new Error("A fixture de Auditoria só é lida pelos cenários dedicados.");
+      },
+      async mutateCourseAuditCycle(input) {
+        probe.auditMutations.push(structuredClone(input));
+        throw new Error("A fixture de Auditoria só é alterada pelos cenários dedicados.");
       },
       async loadAuthoringStudyUnits(courseId, options) {
         probe.inspectionReads.push(structuredClone(options));
@@ -1788,6 +1892,53 @@ for (const width of [360, 390, 430, 1280]) {
 
     await page.screenshot({
       path: testInfo.outputPath(`course-observations-${width}.png`),
+      animations: "disabled"
+    });
+    expect(clientErrors).toEqual([]);
+  });
+}
+
+for (const width of [360, 390, 430, 1280]) {
+  test(`Surface encaminha auditRunId estrito à 7ª área em ${width} px`, async ({
+    page
+  }, testInfo) => {
+    const clientErrors = captureClientErrors(page);
+    await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
+    const auditRunId = "85000000-0000-4000-8000-000000000005";
+    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=observations&auditRunId=${auditRunId}`;
+    await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+    await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
+      "data-section",
+      "observations"
+    );
+    await expect(page.locator(".course-authoring-sections a")).toHaveCount(7);
+    const auditArea = page.locator('.course-authoring-sections a[data-section="observations"]');
+    await expect(auditArea).toHaveAttribute("aria-label", "Auditoria e correções");
+    if (width >= 900) {
+      expect(await auditArea.locator("span").evaluate((node) =>
+        node.scrollWidth <= node.clientWidth)).toBe(true);
+    }
+    await expect(page.locator(`[data-audit-run-detail-id="${auditRunId}"]`)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Auditoria ·/u })).toBeVisible();
+    const auditReads = await page.evaluate(() =>
+      globalThis.__courseAuthoringHarness.probe.auditReads);
+    expect(auditReads).toHaveLength(1);
+    expect(auditReads[0].options.query).toEqual({
+      mode: "detail",
+      targetStudyUnitId: null,
+      findingId: null,
+      correctionId: null,
+      auditRunId,
+      states: [],
+      dimensions: [],
+      severities: [],
+      annotationIds: []
+    });
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`course-audit-run-surface-${width}.png`),
+      fullPage: true,
       animations: "disabled"
     });
     expect(clientErrors).toEqual([]);

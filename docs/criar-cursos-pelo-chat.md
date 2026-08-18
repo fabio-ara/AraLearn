@@ -18,13 +18,14 @@ Com uma conta autorizada, o cliente pode:
 - incluir, alterar ou excluir entidades didáticas em lotes delimitados;
 - iniciar, retomar e concluir a materialização de uma Parte;
 - ler, criar e triar Anotações ancoradas;
+- auditar uma Unidade, registrar e decidir achados, propor/aplicar uma correção
+  focal, verificar o resultado numa nova rodada e executar rollback;
 - consultar e validar contratos de componentes;
 - gerir perfil e acesso direto ao Estudo.
 
-Achados de auditoria, correções e verificação independente permanecem
-posteriores. Variantes experimentais e analytics educacionais completos também
-não estão disponíveis. A conversa pode discuti-los, mas não deve afirmar que os
-persistiu sem uma operação correspondente.
+Variantes experimentais e analytics educacionais completos não estão
+disponíveis. A conversa pode discuti-los, mas não deve afirmar que os persistiu
+sem uma operação correspondente.
 
 ## Antes da primeira conversa
 
@@ -192,7 +193,9 @@ Depois de uma alteração:
    projeção redigida de Fontes;
 5. confirme que Fonte oculta ou não resolvida não aparece e que **Citação** não
    entrega link;
-6. separe defeitos técnicos de decisões pedagógicas.
+6. abra **Auditoria e correções** para acompanhar Observações, rodadas, achados
+   e correções sem criar uma oitava área;
+7. separe defeitos técnicos de decisões pedagógicas.
 
 Respostas ficam inertes na Inspeção. A tela examina o conteúdo real, mas não é
 um segundo editor de Unidade.
@@ -218,6 +221,42 @@ declarados como aplicados e propor a menor mudança suficiente. Para formas,
 oportunidades e variações, essa comparação é ponto de partida para revisão do
 conteúdo, não observação independente de que a declaração seja verdadeira.
 
+Para persistir essa revisão, use `lerCurso` com `view: "audit_cycle"`. O modo
+`context` prepara uma Unidade focal; `findings` e `runs` são paginados e aceitam
+filtro opcional pela Unidade; `runs` enumera inclusive rodadas sem achados. O
+modo `detail` recebe exatamente um entre `findingId` e `auditRunId`; o detalhe
+da rodada expõe todos os checks e evidências.
+
+Registre a auditoria sem misturar reparo. A pessoa ou o cliente fornece checks
+pedagógicos, factuais e editoriais; o servidor acrescenta o check estrutural.
+Um resultado factual positivo precisa de Fonte e Âncora ativas e exatas:
+`supported_by` sustenta uma afirmação, enquanto `quoted_from` só comprova o
+critério `quotation_fidelity`.
+
+Depois, se um achado aberto justificar mudança, proponha uma correção somente
+para o conteúdo e as atribuições de Fontes da Unidade focal existente. Ela não
+pode criar, excluir, mover, reposicionar ou trocar o pai de entidades e precisa
+preservar `topics` legítimos. Mostre o efeito à pessoa e só envie
+`auditCommand.confirmed: true` ao aplicar. A aplicação conserva checkpoint
+`before|after` e deixa o achado aguardando verificação.
+
+Verifique sempre numa nova rodada. `resolved` exige que o critério focal tenha
+passado; `still_open` reabre o achado. Rollback também exige confirmação e só
+restaura o checkpoint quando o estado aplicado ainda é corrente. Os demais
+cinco comandos do ciclo recusam `confirmed`.
+
+Vínculos com Observações não copiam texto, pseudônimo ou pessoa. Uma Observação
+retirada aparece indisponível e sem link enquanto o tombstone existe; depois da
+limpeza física, o vínculo e seu ID simplesmente deixam a projeção. Uma
+`suggestedAnnotationAction` de resolver ou reabrir não executa a triagem: exige
+outro comando explícito de Anotações com a versão corrente.
+
+Na interface, use `section=observations&annotationId=...` para uma Observação,
+`section=observations&findingId=...` com `correctionId` opcional para um achado
+e `section=observations&auditRunId=...` para uma rodada. Fonte ou Âncora abre
+`section=sources`; a Unidade abre a Inspeção. Combinações incompatíveis e links
+profundos acima do limite são recusados.
+
 Quando houver decisão pedagógica real, a pessoa confirma o valor ou a
 orientação. Uma automação não sobrescreve silenciosamente uma decisão explícita.
 
@@ -229,8 +268,9 @@ Uma nova sessão deve:
 2. localizar o Curso;
 3. ler o plano, o desenho no escopo e a tentativa pertinente;
 4. ler o catálogo ou as atribuições de Fontes pertinentes;
-5. explicar em poucas linhas o estado recuperado;
-6. só então propor a próxima operação.
+5. se houver revisão em curso, ler achado, rodada e correção pertinentes;
+6. explicar em poucas linhas o estado recuperado;
+7. só então propor a próxima operação.
 
 O estado recuperável está no Curso. Prompt, conversa e raciocínio não viram uma
 cópia oculta do planejamento.
@@ -248,6 +288,10 @@ cópia oculta do planejamento.
   um package excluído.
 - **Fonte ou Âncora inválida:** releia a revisão, o alvo e o conjunto completo;
   não retire a Âncora nem normalize a identidade legada para contornar o erro.
+- **Evidência factual recusada:** use Fonte e Âncora ativas na revisão exata e
+  confira se a relação corresponde ao critério.
+- **Correção ou rollback obsoleto:** releia a Unidade e o checkpoint; não force
+  uma revisão ou substitua o alvo por aproximação.
 - **Entidade inválida:** confira pai, posição, identidade e contrato antes de
   reenviar.
 - **Resultado ausente na interface:** releia o Curso e confirme ambiente,

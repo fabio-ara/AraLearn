@@ -23,6 +23,48 @@ const edgeUrl = `${projectUrl}/functions/v1/aralearn-authoring-mcp`;
 const protocolVersion = "2025-11-25";
 let rpcId = 0;
 
+const AUDIT_CRITERIA = Object.freeze({
+  pedagogical_quality: Object.freeze({
+    code: "pedagogical_alignment",
+    version: "1",
+    statement: "A Unidade concretiza a intenção pedagógica declarada."
+  }),
+  factual_quality: Object.freeze({
+    code: "claim_support",
+    version: "1",
+    statement: "As afirmações factuais possuem suporte exato em Fonte e Âncora ativas."
+  }),
+  editorial_quality: Object.freeze({
+    code: "editorial_clarity",
+    version: "1",
+    statement: "A formulação é clara, precisa e adequada ao contexto da Unidade."
+  })
+});
+
+function auditCheck(dimension, result, { checkId = randomUUID(), sourceLinks = [] } = {}) {
+  const adequacy = {
+    passed: "sufficient",
+    failed: "insufficient",
+    uncertain: "uncertain",
+    not_applicable: "not_applicable",
+    not_checked: "not_assessed"
+  }[result];
+  assert(adequacy, `Resultado de auditoria desconhecido: ${result}`);
+  return {
+    checkId,
+    dimension,
+    criterion: AUDIT_CRITERIA[dimension],
+    result,
+    publicEvidence: result === "not_checked"
+      ? "Dimensão não reavaliada nesta rodada focal."
+      : `Resultado público da dimensão ${dimension} no smoke MCP hospedado.`,
+    adequacy,
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks
+  };
+}
+
 async function readJson(response, label) {
   const source = await response.text();
   try {
@@ -564,8 +606,226 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
     annotationPage.items.find(({ annotationId: id }) => id === annotationId)?.rawText,
     annotationCommand.rawText
   );
+
+  let auditCourseRevision = designChange.courseRevision;
+  const auditContextPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "context",
+    targetStudyUnitId: "study-unit-hosted-smoke-1",
+    annotationIds: [annotationId],
+    limit: 1
+  });
+  assert.equal(
+    auditContextPage.contract,
+    "aralearn.course-audit-cycle-page.v1"
+  );
+  assert.equal(
+    auditContextPage.context.contract,
+    "aralearn.course-audit-context.v1"
+  );
+  const auditAnnotation = auditContextPage.context.annotations.find(
+    ({ annotationId: id }) => id === annotationId
+  );
+  assert.equal(auditAnnotation.annotationVersion,
+    createdAnnotation.annotation.annotationVersion);
+  const auditRunId = randomUUID();
+  const auditFindingId = randomUUID();
+  const auditCheckId = randomUUID();
+  const recordedAudit = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: auditCourseRevision,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "record_audit",
+      auditRunId,
+      targetStudyUnitId: "study-unit-hosted-smoke-1",
+      contextHash: auditContextPage.context.contextHash,
+      origin: "human_audit",
+      method: { id: "aralearn-mcp-hosted-smoke-review", version: "1" },
+      checks: [
+        auditCheck("pedagogical_quality", "not_checked"),
+        auditCheck("factual_quality", "not_checked"),
+        auditCheck("editorial_quality", "failed", { checkId: auditCheckId })
+      ],
+      findings: [{
+        findingId: auditFindingId,
+        checkId: auditCheckId,
+        code: "ambiguous_formulation",
+        severity: "medium",
+        annotationRefs: [{
+          annotationId,
+          annotationVersion: auditAnnotation.annotationVersion
+        }]
+      }]
+    }
+  });
+  assert.equal(recordedAudit.courseRevision, auditCourseRevision);
+  assert.equal(recordedAudit.change.type, "record_audit");
+
+  const auditRunsPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "runs",
+    targetStudyUnitId: "study-unit-hosted-smoke-1",
+    limit: 12
+  });
+  assert.equal(
+    auditRunsPage.runs.find(({ auditRunId: id }) => id === auditRunId)?.auditRunId,
+    auditRunId
+  );
+  const auditRunDetail = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "detail",
+    auditRunId,
+    limit: 1
+  });
+  assert.equal(auditRunDetail.runDetail.auditRunId, auditRunId);
+  assert.equal(auditRunDetail.runDetail.target.path.at(-1).id,
+    "study-unit-hosted-smoke-1");
+
+  const auditFindingPage = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "audit_cycle",
+    expectedRevision: auditCourseRevision,
+    auditSetVersion: null,
+    mode: "detail",
+    findingId: auditFindingId,
+    limit: 1
+  });
+  const auditCorrectionId = randomUUID();
+  const auditAfterContent = structuredClone(auditContextPage.context.target.content);
+  auditAfterContent.title = "Unidade hospedada 1 corrigida pela auditoria";
+  const proposedAuditCorrection = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: auditCourseRevision,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "propose_authoring_correction",
+      correctionId: auditCorrectionId,
+      findingId: auditFindingId,
+      expectedFindingVersion:
+        auditFindingPage.detail.finding.findingVersion,
+      expectedCorrectionVersion: 0,
+      afterContent: auditAfterContent,
+      afterSourceLinks: auditContextPage.context.target.sourceLinks,
+      rationale: "Exercitar confirmação, aplicação e rollback pelo MCP hospedado."
+    }
+  });
+  assert.deepEqual(
+    proposedAuditCorrection.correction.checkpoint.before.content.topics,
+    proposedAuditCorrection.correction.checkpoint.after.content.topics
+  );
+  assert.deepEqual(
+    proposedAuditCorrection.correction.checkpoint.before.sourceLinks,
+    proposedAuditCorrection.correction.checkpoint.after.sourceLinks
+  );
+  const unconfirmedAuditApplication = await rejectedTool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: auditCourseRevision,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "apply_authoring_correction",
+      findingId: auditFindingId,
+      expectedFindingVersion:
+        proposedAuditCorrection.finding.findingVersion,
+      correctionId: auditCorrectionId,
+      expectedCorrectionVersion:
+        proposedAuditCorrection.correction.correctionVersion,
+      confirmed: false
+    }
+  });
+  assert.equal(
+    unconfirmedAuditApplication.code,
+    "authoring_correction_confirmation_required"
+  );
+  const appliedAuditCorrection = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: auditCourseRevision,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "apply_authoring_correction",
+      findingId: auditFindingId,
+      expectedFindingVersion:
+        proposedAuditCorrection.finding.findingVersion,
+      correctionId: auditCorrectionId,
+      expectedCorrectionVersion:
+        proposedAuditCorrection.correction.correctionVersion,
+      confirmed: true
+    }
+  });
+  assert.equal(appliedAuditCorrection.courseRevision, auditCourseRevision + 1);
+  assert.equal(appliedAuditCorrection.correction.status, "applied");
+  auditCourseRevision = appliedAuditCorrection.courseRevision;
+
+  const unconfirmedAuditRollback = await rejectedTool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: auditCourseRevision,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "rollback_authoring_correction",
+      findingId: auditFindingId,
+      expectedFindingVersion: appliedAuditCorrection.finding.findingVersion,
+      correctionId: auditCorrectionId,
+      expectedCorrectionVersion:
+        appliedAuditCorrection.correction.correctionVersion,
+      confirmed: false
+    }
+  });
+  assert.equal(
+    unconfirmedAuditRollback.code,
+    "authoring_correction_confirmation_required"
+  );
+  const rolledBackAuditCorrection = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: auditCourseRevision,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "rollback_authoring_correction",
+      findingId: auditFindingId,
+      expectedFindingVersion: appliedAuditCorrection.finding.findingVersion,
+      correctionId: auditCorrectionId,
+      expectedCorrectionVersion:
+        appliedAuditCorrection.correction.correctionVersion,
+      confirmed: true
+    }
+  });
+  assert.equal(rolledBackAuditCorrection.courseRevision, auditCourseRevision + 1);
+  assert.equal(rolledBackAuditCorrection.finding.status, "open");
+  assert.equal(rolledBackAuditCorrection.correction.status, "rolled_back");
+  const auditContextAfterRollback = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "audit_cycle",
+    expectedRevision: rolledBackAuditCorrection.courseRevision,
+    auditSetVersion: null,
+    mode: "context",
+    targetStudyUnitId: "study-unit-hosted-smoke-1",
+    annotationIds: [annotationId],
+    limit: 1
+  });
+  assert.deepEqual(
+    auditContextAfterRollback.context.target.content,
+    proposedAuditCorrection.correction.checkpoint.before.content
+  );
+  assert.deepEqual(
+    auditContextAfterRollback.context.target.sourceLinks,
+    proposedAuditCorrection.correction.checkpoint.before.sourceLinks
+  );
 }
 
 console.log(
-  "Smoke MCP hospedado: OAuth, Fonte, proveniência, Inspeção e observação ancorada aprovados."
+  "Smoke MCP hospedado: OAuth, Fonte, observação e ciclo de auditoria aprovados."
 );
