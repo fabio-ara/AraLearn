@@ -1,3 +1,5 @@
+import { publishedRevisionHashSource } from "../sync/publishedRevisionCompatibility.js";
+
 function serialize(value, ancestors, path) {
   if (value === null) return "null";
   if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
@@ -28,7 +30,7 @@ function serialize(value, ancestors, path) {
 }
 
 export function canonicalRevisionString(value) {
-  return serialize(value, new Set(), "$");
+  return serialize(publishedRevisionHashSource(value), new Set(), "$");
 }
 
 export async function canonicalRevisionHash(value) {
