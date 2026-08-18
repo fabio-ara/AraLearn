@@ -1,4 +1,4 @@
-import { publishedRevisionHashSource } from "../sync/publishedRevisionCompatibility.js";
+import { publishedRevisionHashSource } from "../core/publishedRevisionCompatibility.js";
 
 function serialize(value, ancestors, path) {
   if (value === null) return "null";
