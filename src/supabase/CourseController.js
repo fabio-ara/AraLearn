@@ -15,6 +15,13 @@ import {
   normalizeCourseAuditCycleReadOptions
 } from "../domain/courseAuditCycle.js";
 import {
+  normalizeCourseVariantChange,
+  normalizeCourseVariantCommand,
+  normalizeCourseVariantComparison,
+  normalizeCourseVariantDetachCommand,
+  normalizeCourseVariantRead
+} from "../domain/courseVariants.js";
+import {
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcesRead,
@@ -1032,6 +1039,30 @@ export class CourseController {
     }
   }
 
+  async loadCourseVariantComparison(courseId, value = {}) {
+    if (!this.ownerOnly || typeof this.api.loadCourseVariantComparison !== "function") {
+      throw new TypeError("A API de Autoria não oferece variantes comparáveis.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    const options = normalizeCourseVariantRead(value);
+    try {
+      const comparison = normalizeCourseVariantComparison(
+        await this.api.loadCourseVariantComparison(normalizedCourseId, options)
+      );
+      if (comparison.comparisonSetId !== options.comparisonSetId ||
+          comparison.source.courseId !== normalizedCourseId ||
+          comparison.source.currentCourseRevision !== options.expectedCourseRevision) {
+        throw new TypeError("A comparação de variantes não corresponde ao pedido.");
+      }
+      return comparison;
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      throw error;
+    }
+  }
+
   loadAuthoringOutline(courseId) {
     if (typeof this.api.loadAuthoringOutline !== "function") {
       throw new TypeError("A API de Cursos não oferece a estrutura autoral.");
@@ -1425,6 +1456,42 @@ export class CourseController {
       }
       throw error;
     }
+  }
+
+  async mutateCourseVariants(value = {}) {
+    if (!this.ownerOnly || typeof this.api.mutateCourseVariants !== "function") {
+      throw new TypeError("A API de Autoria não oferece variantes comparáveis.");
+    }
+    const source = value && typeof value === "object" && !Array.isArray(value)
+      ? value : null;
+    const requestId = String(source?.requestId || "");
+    const courseId = String(source?.courseId || "").trim().toLowerCase();
+    const command = source?.command?.type === "create_comparison_variants"
+      ? normalizeCourseVariantCommand(source.command)
+      : normalizeCourseVariantDetachCommand(source?.command);
+    if (!source || Object.keys(source).some((field) => !new Set([
+      "requestId", "courseId", "expectedCourseRevision", "command"
+    ]).has(field)) || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
+        !UUID_PATTERN.test(courseId) ||
+        command.type === "create_comparison_variants" &&
+          source.expectedCourseRevision !== command.expectedCourseRevision ||
+        command.type === "detach_course_variant" &&
+          source.expectedCourseRevision != null) {
+      throw new TypeError("Alteração de variantes inválida.");
+    }
+    const result = normalizeCourseVariantChange(await this.api.mutateCourseVariants({
+      requestId, courseId,
+      ...(command.type === "create_comparison_variants"
+        ? { expectedCourseRevision: command.expectedCourseRevision }
+        : {}),
+      command
+    }));
+    if (result.sourceCourseId !== courseId ||
+        result.comparisonSetId !== command.comparisonSetId ||
+        command.type === "detach_course_variant" && result.courseId !== command.courseId) {
+      throw new TypeError("A confirmação de variantes não corresponde ao comando.");
+    }
+    return result;
   }
 
   async advanceAuthoringPartMaterialization(values = {}) {

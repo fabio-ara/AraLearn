@@ -44,11 +44,20 @@ import {
   normalizeCourseAuditCycleServerCommand
 } from "../aralearn/runtime/domain/courseAuditCycle.js";
 import {
+  CourseVariantError,
+  normalizeCourseVariantChange,
+  normalizeCourseVariantCommand,
+  normalizeCourseVariantComparison,
+  normalizeCourseVariantDetachCommand,
+  normalizeCourseVariantRead
+} from "../aralearn/runtime/domain/courseVariants.js";
+import {
   RESOURCE_CATALOG,
   RESOURCE_PACKAGE_REGISTRY
 } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
+const COURSE_VARIANT_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const MATERIALIZATION_FIELDS = new Set([
   "id", "authoringPartVersion", "channel", "status", "version", "designContext",
@@ -1035,6 +1044,45 @@ function courseAuditCycleResponseFailure(error) {
   return error;
 }
 
+function courseVariantResponseFailure(error) {
+  if (error instanceof AuthoringApiError && new Set([
+    "payload_too_large", "course_response_too_large"
+  ]).has(error.code)) {
+    return new AuthoringApiError(
+      413,
+      "course_variant_response_too_large",
+      "A resposta de variantes excedeu 256 KiB."
+    );
+  }
+  return error;
+}
+
+function normalizeCourseVariantInputValue(callback) {
+  try {
+    return callback();
+  } catch (error) {
+    if (error instanceof CourseVariantError) {
+      throw new AuthoringApiError(422, error.code, error.message);
+    }
+    throw error;
+  }
+}
+
+function normalizeCourseVariantDatabaseValue(callback) {
+  try {
+    return callback();
+  } catch (error) {
+    if (error instanceof CourseVariantError || error instanceof TypeError) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço devolveu uma comparação de variantes inválida."
+      );
+    }
+    throw error;
+  }
+}
+
 function courseAuditReplayProbeAllowed(error, commandType) {
   if (!(error instanceof AuthoringApiError)) return false;
   if (new Set(["stale_course_state", "PT404"]).has(error.code)) return true;
@@ -2004,6 +2052,47 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  async getCourseVariantComparison({
+    principal,
+    courseId,
+    comparisonSetId,
+    expectedCourseRevision,
+    deadlineAt = null
+  }) {
+    const options = normalizeCourseVariantInputValue(() => normalizeCourseVariantRead({
+      comparisonSetId,
+      expectedCourseRevision
+    }));
+    let result;
+    try {
+      result = first(await this.rpc(
+        "get_owned_course_variant_comparison_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_source_course_id: courseId,
+          p_expected_course_revision: options.expectedCourseRevision,
+          p_comparison_set_id: options.comparisonSetId
+        },
+        { deadlineAt, responseLimitBytes: COURSE_VARIANT_RESPONSE_LIMIT_BYTES }
+      ));
+    } catch (error) {
+      throw courseVariantResponseFailure(error);
+    }
+    const normalized = normalizeCourseVariantDatabaseValue(() =>
+      normalizeCourseVariantComparison(result)
+    );
+    if (normalized.comparisonSetId !== options.comparisonSetId ||
+        normalized.source.courseId !== courseId ||
+        normalized.source.currentCourseRevision !== options.expectedCourseRevision) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A comparação de variantes não corresponde ao Curso solicitado."
+      );
+    }
+    return normalized;
+  }
+
   async #auditContextForCommand({
     principal,
     courseId,
@@ -2516,6 +2605,69 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "A confirmação da auditoria não corresponde ao comando solicitado."
+      );
+    }
+    return normalized;
+  }
+
+  async executeCourseVariantCommand({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision = null,
+    command,
+    deadlineAt = null
+  }) {
+    const normalizedCommand = normalizeCourseVariantInputValue(() =>
+      command?.type === "create_comparison_variants"
+        ? normalizeCourseVariantCommand(command)
+        : normalizeCourseVariantDetachCommand(command)
+    );
+    let result;
+    try {
+      if (normalizedCommand.type === "create_comparison_variants") {
+        result = first(await this.rpc(
+          "create_course_variants_for_actor_v1",
+          {
+            p_actor_id: principal.actorId,
+            p_source_course_id: courseId,
+            p_expected_course_revision: expectedCourseRevision,
+            p_command: normalizedCommand,
+            p_request_id: requestId
+          },
+          { deadlineAt, timeoutMs: 60_000, responseLimitBytes: COURSE_VARIANT_RESPONSE_LIMIT_BYTES }
+        ));
+      } else {
+        result = first(await this.rpc(
+          "detach_course_variant_for_actor_v1",
+          {
+            p_actor_id: principal.actorId,
+            p_source_course_id: courseId,
+            p_comparison_set_id: normalizedCommand.comparisonSetId,
+            p_course_id: normalizedCommand.courseId,
+            p_request_id: requestId
+          },
+          { deadlineAt, timeoutMs: 30_000, responseLimitBytes: COURSE_VARIANT_RESPONSE_LIMIT_BYTES }
+        ));
+      }
+    } catch (error) {
+      throw courseVariantResponseFailure(error);
+    }
+    const normalized = normalizeCourseVariantDatabaseValue(() =>
+      normalizeCourseVariantChange(result)
+    );
+    if (normalized.sourceCourseId !== courseId ||
+        normalized.comparisonSetId !== normalizedCommand.comparisonSetId ||
+        normalizedCommand.type === "create_comparison_variants" && (
+          normalized.sourceCourseRevision !== expectedCourseRevision ||
+          normalized.members.length !== normalizedCommand.variants.length
+        ) ||
+        normalizedCommand.type === "detach_course_variant" &&
+          normalized.courseId !== normalizedCommand.courseId) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação de variantes não corresponde ao comando solicitado."
       );
     }
     return normalized;

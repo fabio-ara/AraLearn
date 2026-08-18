@@ -130,6 +130,25 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(auditCycle[1])
     };
   }
+  const variantComparisonChange = path.match(
+    /^\/v1\/courses\/([^/]+)\/variant-comparisons\/changes$/u
+  );
+  if (variantComparisonChange && verb === "POST") {
+    return {
+      name: "executeCourseVariantCommand",
+      courseId: courseUuid(variantComparisonChange[1])
+    };
+  }
+  const variantComparison = path.match(
+    /^\/v1\/courses\/([^/]+)\/variant-comparisons\/([^/]+)$/u
+  );
+  if (variantComparison && verb === "GET") {
+    return {
+      name: "getCourseVariantComparison",
+      courseId: courseUuid(variantComparison[1]),
+      comparisonSetId: courseUuid(variantComparison[2], "comparisonSetId")
+    };
+  }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };

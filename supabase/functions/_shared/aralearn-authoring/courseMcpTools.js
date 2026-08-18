@@ -24,6 +24,12 @@ import {
   normalizeCourseAuditCycleCommand,
   normalizeCourseAuditCycleReadOptions
 } from "../aralearn/runtime/domain/courseAuditCycle.js";
+import {
+  CourseVariantError,
+  normalizeCourseVariantCommand,
+  normalizeCourseVariantDetachCommand,
+  normalizeCourseVariantRead
+} from "../aralearn/runtime/domain/courseVariants.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -933,7 +939,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       view: stringSchema({ enum: [
         "summary", "outline", "instructional_plan", "course_design",
         "course_sources", "anchored_annotations", "part_materialization",
-        "study_units", "entities", "audit_cycle"
+        "study_units", "entities", "audit_cycle", "variant_comparison"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
@@ -1005,7 +1011,8 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       },
       annotationIds: {
         type: "array", maxItems: 12, uniqueItems: true, items: uuidSchema
-      }
+      },
+      comparisonSetId: uuidSchema
       }, ["courseId"]),
       allOf: [{
         if: {
@@ -1027,6 +1034,24 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             ]
           }
         }
+      }, {
+        if: {
+          properties: { view: { const: "variant_comparison" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision", "comparisonSetId"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "limit", "cursor", "scope",
+            "anchorStudyUnitId", "direction", "maxBytes", "mode", "sourceId",
+            "targetKind", "targetId", "annotationSetVersion", "auditSetVersion",
+            "origins", "channels", "states", "categories", "includeUncategorized",
+            "subjectIds", "includeDescendants", "annotationId", "targetStudyUnitId",
+            "findingId", "correctionId", "auditRunId", "dimensions", "severities",
+            "annotationIds"
+          ])
+        },
+        else: forbidFields(["comparisonSetId"])
       }, {
         if: {
           properties: { view: { const: "course_sources" } },
@@ -1209,7 +1234,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       }, {
         if: {
           properties: {
-            view: { enum: ["course_sources", "anchored_annotations", "audit_cycle"] }
+            view: { enum: ["course_sources", "anchored_annotations", "audit_cycle", "variant_comparison"] }
           },
           required: ["view"]
         },
@@ -1310,7 +1335,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         "update_course_design",
         "update_course_sources",
         "update_anchored_annotations",
-        "update_audit_cycle",
+        "update_audit_cycle", "update_course_variants",
         "commit_course_composition",
         "advance_part_materialization"
       ] }),
@@ -1319,6 +1344,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       sourceCommand: sourceCommandSchema,
       annotationCommand: anchoredAnnotationCommandSchema,
       auditCommand: auditCommandSchema,
+      variantCommand: { type: "object" },
       materializationCommand: materializationCommandSchema,
       upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
       sourceAttributionApplications: sourceAttributionApplicationsSchema,
@@ -1351,6 +1377,20 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             { required: ["sourceAttributionApplications"] }
           ] }
         }
+      }, {
+        if: {
+          properties: { operation: { const: "update_course_variants" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["variantCommand"],
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand", "sourceCommand",
+            "annotationCommand", "auditCommand", "materializationCommand", "upserts",
+            "deletes", "sourceAttributionApplications"
+          ])
+        },
+        else: forbidFields(["variantCommand"])
       }, {
         if: {
           properties: { operation: { const: "update_course_sources" } },
@@ -1618,6 +1658,15 @@ function normalizeCourseAuditCycleDomain(normalize) {
   }
 }
 
+function normalizeCourseVariantDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseVariantError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
 function route(method, path, requestId = null, body = null) {
   return { kind: "route", method, path, requestId, body };
 }
@@ -1680,14 +1729,14 @@ function mapRead(raw) {
     "annotationSetVersion", "origins", "channels", "states", "categories",
     "includeUncategorized", "subjectIds", "includeDescendants", "annotationId",
     "auditSetVersion", "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
-    "dimensions", "severities", "annotationIds"
+    "dimensions", "severities", "annotationIds", "comparisonSetId"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
   if (!new Set([
     "summary", "outline", "instructional_plan", "course_design",
     "course_sources", "anchored_annotations", "part_materialization",
-    "study_units", "entities", "audit_cycle"
+    "study_units", "entities", "audit_cycle", "variant_comparison"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
   }
@@ -1715,6 +1764,24 @@ function mapRead(raw) {
   ];
   if (view !== "audit_cycle" && auditFields.some((value) => value != null)) {
     fail("invalid_tool_argument", "A leitura recebeu filtros de auditoria incompatíveis.");
+  }
+  if (view !== "variant_comparison" && raw.comparisonSetId != null) {
+    fail("invalid_tool_argument", "comparisonSetId pertence somente às variantes.");
+  }
+  if (view === "variant_comparison") {
+    if (raw.authoringPartId != null || raw.materializationId != null || raw.limit != null ||
+        raw.cursor != null || raw.scope != null || raw.anchorStudyUnitId != null ||
+        raw.direction != null || raw.maxBytes != null || raw.mode != null ||
+        raw.sourceId != null || raw.targetKind != null || raw.targetId != null ||
+        annotationFields.some((value) => value != null) || auditFields.some((value) => value != null)) {
+      fail("invalid_tool_argument", "A leitura de variantes recebeu campos incompatíveis.");
+    }
+    const options = normalizeCourseVariantDomain(() => normalizeCourseVariantRead({
+      comparisonSetId: raw.comparisonSetId,
+      expectedCourseRevision: raw.expectedRevision
+    }));
+    return route("GET", `/v1/courses/${courseId}/variant-comparisons/${options.comparisonSetId}` +
+      searchParams({ expectedRevision: options.expectedCourseRevision }));
   }
   if (view === "anchored_annotations") {
     if (raw.authoringPartId != null || raw.materializationId != null || raw.scope != null ||
@@ -2057,7 +2124,7 @@ function mapChange(raw, {
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
     "operation", "planCommand", "designCommand", "materializationCommand",
     "sourceCommand", "annotationCommand", "auditCommand", "upserts", "deletes",
-    "sourceAttributionApplications"
+    "sourceAttributionApplications", "variantCommand"
   ]));
   const requestId = requiredRequestId(raw.requestId);
   const courseId = requiredUuid(raw.courseId, "courseId");
@@ -2068,6 +2135,7 @@ function mapChange(raw, {
     "update_course_sources",
     "update_anchored_annotations",
     "update_audit_cycle",
+    "update_course_variants",
     "commit_course_composition",
     "advance_part_materialization"
   ]).has(operation)) {
@@ -2075,6 +2143,39 @@ function mapChange(raw, {
   }
   if (operation !== "update_audit_cycle" && raw.auditCommand != null) {
     fail("invalid_tool_argument", "auditCommand pertence somente ao ciclo de auditoria.");
+  }
+  if (operation !== "update_course_variants" && raw.variantCommand != null) {
+    fail("invalid_tool_argument", "variantCommand pertence somente às variantes.");
+  }
+  if (operation === "update_course_variants") {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.designCommand != null || raw.sourceCommand != null ||
+        raw.annotationCommand != null || raw.auditCommand != null ||
+        raw.materializationCommand != null || raw.upserts != null || raw.deletes != null ||
+        raw.sourceAttributionApplications != null) {
+      fail("invalid_tool_argument", "O comando de variantes recebeu campos incompatíveis.");
+    }
+    const supplied = boundedJsonObject(raw.variantCommand, "variantCommand", 128 * 1024);
+    const command = normalizeCourseVariantDomain(() =>
+      supplied.type === "create_comparison_variants"
+        ? normalizeCourseVariantCommand(supplied)
+        : normalizeCourseVariantDetachCommand(supplied)
+    );
+    if (command.type === "create_comparison_variants") {
+      const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
+      if (expectedRevision !== command.expectedCourseRevision) {
+        fail("invalid_tool_argument", "expectedRevision não corresponde ao comando de variantes.");
+      }
+      return route("POST", `/v1/courses/${courseId}/variant-comparisons/changes`, requestId, {
+        requestId, expectedCourseRevision: expectedRevision, command
+      });
+    }
+    if (raw.expectedRevision != null) {
+      fail("invalid_tool_argument", "expectedRevision não pertence à desvinculação.");
+    }
+    return route("POST", `/v1/courses/${courseId}/variant-comparisons/changes`, requestId, {
+      requestId, command
+    });
   }
   if (operation === "update_audit_cycle") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||

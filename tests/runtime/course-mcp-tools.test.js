@@ -465,6 +465,7 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
       "update_course_sources",
       "update_anchored_annotations",
       "update_audit_cycle",
+      "update_course_variants",
       "commit_course_composition",
       "advance_part_materialization"
   ]);
@@ -494,7 +495,7 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     schema.properties.designCommand.oneOf[5].properties.policy.properties.catalogVersion.const,
     "1-3e5629f8"
   );
-  assert.equal(schema.allOf.length, 7);
+  assert.equal(schema.allOf.length, 8);
   const operationBranch = (operation) => schema.allOf.find((branch) =>
     branch.if?.properties?.operation?.const === operation
   );
@@ -795,6 +796,38 @@ test("MCP lê e altera o ciclo de auditoria sem criar ferramenta nem rota parale
       ]
     }
   }), (error) => error.code === "invalid_course_audit_checks");
+});
+
+test("MCP lê, cria e desvincula variantes pela mesma dupla de ferramentas", () => {
+  const comparisonSetId = "81000000-0000-4000-8000-000000000008";
+  assert.equal(mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "variant_comparison",
+    comparisonSetId,
+    expectedRevision: 7
+  }).path, `/v1/courses/${COURSE_ID}/variant-comparisons/${comparisonSetId}?expectedRevision=7`);
+  const create = {
+    type: "create_comparison_variants", comparisonSetId, expectedCourseRevision: 7,
+    variants: [
+      { label: "A", title: "Curso A", goal: "Objetivo A", parameterDifferences: [], componentPolicyDifference: null },
+      { label: "B", title: "Curso B", goal: "Objetivo B", parameterDifferences: [], componentPolicyDifference: { availability: "all" } }
+    ]
+  };
+  const mapped = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID, courseId: COURSE_ID, expectedRevision: 7,
+    operation: "update_course_variants", variantCommand: create
+  });
+  assert.equal(mapped.path, `/v1/courses/${COURSE_ID}/variant-comparisons/changes`);
+  assert.deepEqual(mapped.body.command, create);
+  const detach = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID, courseId: COURSE_ID,
+    operation: "update_course_variants",
+    variantCommand: {
+      type: "detach_comparison_variant", comparisonSetId,
+      courseId: "82000000-0000-4000-8000-000000000009"
+    }
+  });
+  assert.equal(Object.hasOwn(detach.body, "expectedCourseRevision"), false);
 });
 
 test("schema MCP fecha modos e os sete comandos públicos do ciclo de auditoria", () => {

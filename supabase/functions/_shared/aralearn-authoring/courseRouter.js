@@ -27,6 +27,12 @@ import {
   normalizeCourseAuditCycleCommand,
   normalizeCourseAuditCycleReadOptions
 } from "../aralearn/runtime/domain/courseAuditCycle.js";
+import {
+  CourseVariantError,
+  normalizeCourseVariantCommand,
+  normalizeCourseVariantDetachCommand,
+  normalizeCourseVariantRead
+} from "../aralearn/runtime/domain/courseVariants.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
@@ -54,6 +60,7 @@ const KNOWN_COMPONENT_REFS = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
 );
 const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
+const VARIANT_COMPARISON_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 function fail(code, message, details = null, status = 422) {
   throw new AuthoringApiError(status, code, message, details);
@@ -547,6 +554,53 @@ function courseAuditCycleQuery(request) {
       ? Number(url.searchParams.get("limit"))
       : 12
   }));
+}
+
+function normalizeCourseVariantsDomain(callback) {
+  try {
+    return callback();
+  } catch (error) {
+    if (error instanceof CourseVariantError) {
+      fail(error.code, error.message, null, 422);
+    }
+    throw error;
+  }
+}
+
+function courseVariantComparisonQuery(request, comparisonSetId) {
+  const url = new URL(request.url);
+  if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
+      VARIANT_COMPARISON_REQUEST_TARGET_LIMIT_BYTES ||
+      [...url.searchParams.keys()].some((field) => field !== "expectedRevision") ||
+      url.searchParams.getAll("expectedRevision").length !== 1) {
+    fail("invalid_course_variant_query", "A leitura de variantes é inválida.");
+  }
+  return normalizeCourseVariantsDomain(() => normalizeCourseVariantRead({
+    comparisonSetId,
+    expectedCourseRevision: Number(url.searchParams.get("expectedRevision"))
+  }));
+}
+
+function validateCourseVariantChange(body, request) {
+  exactFields(body, new Set(["requestId", "expectedCourseRevision", "command"]));
+  const command = normalizeCourseVariantsDomain(() => {
+    if (!body.command || typeof body.command !== "object" || Array.isArray(body.command)) {
+      fail("invalid_course_variant_command", "O comando de variantes é inválido.");
+    }
+    return body.command.type === "create_comparison_variants"
+      ? normalizeCourseVariantCommand(body.command)
+      : normalizeCourseVariantDetachCommand(body.command);
+  });
+  const expectedCourseRevision = command.type === "create_comparison_variants"
+    ? positiveInteger(body.expectedCourseRevision, "expectedCourseRevision")
+    : body.expectedCourseRevision === null || body.expectedCourseRevision === undefined
+      ? null
+      : fail("invalid_course_variant_command", "A desvinculação não recebe revisão de Curso.");
+  if (command.type === "create_comparison_variants" &&
+      command.expectedCourseRevision !== expectedCourseRevision) {
+    fail("invalid_course_variant_command", "A revisão do comando não corresponde ao invólucro.");
+  }
+  return { requestId: requestIdFrom(request, body), expectedCourseRevision, command };
 }
 
 function validateEntityIdentity(value, index) {
@@ -1218,6 +1272,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseVariantComparison") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseVariantComparison({
+        principal,
+        courseId: route.courseId,
+        ...courseVariantComparisonQuery(request, route.comparisonSetId),
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "getCourseAuthoringPartMaterialization") {
     assertPrincipal(principal);
     return {
@@ -1385,6 +1451,16 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         courseId: route.courseId,
         ...value,
         deadlineAt
+      })
+    };
+  }
+  if (route.name === "executeCourseVariantCommand") {
+    assertPrincipal(principal, { write: true });
+    const value = validateCourseVariantChange(await readCourseJsonBody(request), request);
+    return {
+      requestId: value.requestId,
+      data: await adapter.executeCourseVariantCommand({
+        principal, courseId: route.courseId, ...value, deadlineAt
       })
     };
   }

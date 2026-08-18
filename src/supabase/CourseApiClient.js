@@ -14,6 +14,13 @@ import {
   normalizeCourseAuditCycleQuery,
   normalizeCourseAuditCycleReadOptions
 } from "../domain/courseAuditCycle.js";
+import {
+  normalizeCourseVariantChange,
+  normalizeCourseVariantCommand,
+  normalizeCourseVariantComparison,
+  normalizeCourseVariantDetachCommand,
+  normalizeCourseVariantRead
+} from "../domain/courseVariants.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
   normalizeCourseSourceAttributionApplication,
@@ -991,6 +998,27 @@ export class CourseApiClient {
     });
   }
 
+  async loadCourseVariantComparison(courseId, value = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const options = normalizeCourseVariantRead(exactObject(
+      value,
+      new Set(["comparisonSetId", "expectedCourseRevision"]),
+      "Leitura de variantes"
+    ));
+    const result = normalizeCourseVariantComparison(await this.executeCourseAction("lerCurso", {
+      courseId: normalizedCourseId,
+      view: "variant_comparison",
+      comparisonSetId: options.comparisonSetId,
+      expectedRevision: options.expectedCourseRevision
+    }));
+    if (result.comparisonSetId !== options.comparisonSetId ||
+        result.source.courseId !== normalizedCourseId ||
+        result.source.currentCourseRevision !== options.expectedCourseRevision) {
+      throw new TypeError("A comparação de variantes não corresponde ao pedido.");
+    }
+    return result;
+  }
+
   loadAuthoringOutline(courseId) {
     return this.executeCourseAction("lerCurso", {
       courseId: uuid(courseId, "Curso"),
@@ -1153,6 +1181,42 @@ export class CourseApiClient {
       auditCommand: mutation.command
     });
     return boundAuditCycleChange(result, mutation);
+  }
+
+  async mutateCourseVariants(value = {}) {
+    const source = exactObject(value, new Set([
+      "requestId", "courseId", "expectedCourseRevision", "command"
+    ]), "Alteração de variantes");
+    const requestId = requestIdentity(source.requestId ?? createUuid());
+    const courseId = uuid(source.courseId, "Curso");
+    const command = source.command?.type === "create_comparison_variants"
+      ? normalizeCourseVariantCommand(source.command)
+      : normalizeCourseVariantDetachCommand(source.command);
+    if (command.type === "create_comparison_variants" &&
+        source.expectedCourseRevision !== command.expectedCourseRevision) {
+      throw new TypeError("A revisão da variante não corresponde ao invólucro.");
+    }
+    if (command.type === "detach_course_variant" &&
+        source.expectedCourseRevision !== undefined && source.expectedCourseRevision !== null) {
+      throw new TypeError("A desvinculação não recebe revisão de Curso.");
+    }
+    const result = normalizeCourseVariantChange(await this.executeCourseAction("alterarCurso", {
+      requestId,
+      courseId,
+      ...(command.type === "create_comparison_variants"
+        ? { expectedRevision: command.expectedCourseRevision }
+        : {}),
+      operation: "update_course_variants",
+      variantCommand: command
+    }));
+    if (result.sourceCourseId !== courseId ||
+        result.comparisonSetId !== command.comparisonSetId ||
+        command.type === "create_comparison_variants" &&
+          result.members.length !== command.variants.length ||
+        command.type === "detach_course_variant" && result.courseId !== command.courseId) {
+      throw new TypeError("A confirmação de variantes não corresponde ao comando.");
+    }
+    return result;
   }
 
   advanceAuthoringPartMaterialization({
