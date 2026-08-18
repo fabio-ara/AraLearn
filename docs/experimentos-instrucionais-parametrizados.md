@@ -1,5 +1,12 @@
 # Experimentos instrucionais parametrizados
 
+> Documento histórico de uma arquitetura isolada no corte de identidade. Ele
+> não descreve uma capacidade corrente do runtime. As variantes comparáveis
+> locais criam Cursos independentes a partir de um checkpoint e diferenças
+> declaradas, sem participantes, atribuição, consentimento, locks globais,
+> freeze, outcomes ou inferência causal. Não reutilize este documento para
+> supor que essas camadas históricas voltaram a operar.
+
 ## Finalidade e limite
 
 O AraLearn permite preparar comparações reproduzíveis entre variantes de um

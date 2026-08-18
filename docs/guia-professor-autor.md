@@ -7,9 +7,9 @@ configuração do desenho e a cobertura de cada Microssequência, manter Fontes 
 Âncoras, atribuí-las a itens do plano ou Unidades, consultar a hierarquia,
 inspecionar Unidades em sequência vertical, reunir Anotações ancoradas numa
 caixa de entrada, auditar uma Unidade, acompanhar achados e correções
-verificáveis, levar um pedido de materialização ao chat conectado e gerir
-acesso direto. Edição livre de Unidades, variantes e analytics ainda não devem
-ser tratados como disponíveis.
+verificáveis, criar e comparar variantes do mesmo planejamento, levar um pedido
+de materialização ao chat conectado e gerir acesso direto. Edição livre de
+Unidades e analytics ainda não devem ser tratados como disponíveis.
 
 ## Abrir a Autoria
 
@@ -40,9 +40,9 @@ pedido, causada por falha de rede, recupera o resultado em vez de criar outro
 Curso. Ela também cria um plano vazio com faixa preferencial inicial de 7–12
 Partes. Essa faixa é configurável e não constitui lei pedagógica.
 
-## Compreender as sete áreas
+## Compreender as oito áreas
 
-Ao abrir um Curso, a barra iconográfica oferece sete destinos.
+Ao abrir um Curso, a barra iconográfica oferece oito destinos.
 
 ### Planejamento
 
@@ -172,10 +172,10 @@ editor contextual.
 
 ### Auditoria e correções
 
-É a sétima área funcional e conserva a rota `section=observations`. A aba
+Conserva a rota `section=observations`. A aba
 **Observações** mantém a caixa de entrada; a aba **Achados** reúne rodadas,
-achados, propostas, aplicação, verificação e rollback. Não existe uma oitava
-área ou um Curso paralelo para a auditoria.
+achados, propostas, aplicação, verificação e rollback. Não existe um Curso
+paralelo para a auditoria.
 
 #### Observações
 
@@ -251,6 +251,24 @@ Combinações incompatíveis são recusadas. Fontes e Âncoras seguem para
 `section=sources`; a Unidade focal segue para a Inspeção. Auditoria e correção
 são online-only, sem cache ou fila de mutação no dispositivo; Observações
 continuam com cache e outbox próprios.
+
+### Variantes
+
+Crie de duas a oito alternativas a partir do planejamento normalizado do
+Curso aberto. A primeira é a referência; cada alternativa declara um parâmetro
+inteiro e uma justificativa. Opcionalmente, ela restringe a disponibilidade a
+componentes conhecidos no catálogo; ajustes completos de política continuam em
+**Parâmetros** do Curso derivado.
+
+O painel mostra o checkpoint comum, as diferenças declaradas, mudanças desde o
+vínculo e o progresso de materialização por Parte. **Abrir Curso** leva à
+estrutura da alternativa concreta; cada Curso permanece independente para
+planejar, materializar e conceder acesso. **Desvincular** remove somente a
+relação comparativa, sem apagar o Curso.
+
+Esta é uma comparação descritiva de Cursos que compartilham planejamento. Ela
+não atribui pessoas, não registra consentimento, não congela globalmente, não
+coleta outcomes e não demonstra efeito educacional ou causalidade.
 
 ### Pessoas
 
@@ -413,7 +431,6 @@ Não trate as seguintes ações como implementadas no runtime canônico:
 
 - editar cada Unidade diretamente;
 - transformar uma Observação em correção ou mudança de estado implícita;
-- criar condições e variantes comparáveis;
 - consultar analytics de Autoria;
 - disponibilizar Curso publicamente.
 
