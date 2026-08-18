@@ -1674,49 +1674,46 @@
       ]
     },
     {
-      "id": "experimental-variant",
+      "id": "course-variant-comparison",
       "family": "research-design",
       "currentTerms": [
         "variante"
       ],
-      "productTerm": "Variante experimental",
-      "technicalSymbol": "experimental_variant",
-      "definition": "Instância comparável derivada de uma base comum e vinculada a uma condição experimental e a parâmetros versionados.",
-      "decision": "restringir",
+      "productTerm": "Variante comparável",
+      "technicalSymbol": "course_variant_comparison",
+      "definition": "Curso independente criado de checkpoint comum de planejamento, com diferenças declaradas de parâmetros e/ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal.",
+      "decision": "manter",
       "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
         "database",
-        "research"
+        "documentation"
       ],
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#126"
-        },
-        {
-          "status": "evidencia-academica",
           "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
-          "supports": "Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o schema técnico do AraLearn garanta um experimento válido."
+          "supports": "A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal."
         }
       ],
       "cutoverIssue": "#126",
       "notSynonyms": [
-        "curso independente",
+        "experimento",
+        "condição experimental",
         "versão de estado",
         "branch Git"
       ],
-      "interfaceTerm": "Variante experimental",
-      "domainTerm": "Variante experimental",
-      "englishEquivalent": "experimental variant",
+      "interfaceTerm": "Variante comparável",
+      "domainTerm": "Variante comparável",
+      "englishEquivalent": "comparable course variant",
       "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.",
-      "ambiguityRisk": "Sem esta delimitação, “Variante experimental” pode ser confundido com curso independente, versão de estado, branch Git, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Sem esta delimitação, “Variante comparável” pode ser confundido com experimento, condição experimental, versão de estado ou branch Git, produzindo promessas causais e de pesquisa que não existem no produto.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
+      "migrationImpact": "A interface, o domínio e o banco criam Cursos independentes de um checkpoint comum e conservam a linhagem; não adicionam participantes, consentimento, freeze, outcomes ou analytics.",
       "alternativesConsidered": [
-        "“Versão experimental”: colide com versionamento do mesmo objeto e não garante vínculo a uma condição de pesquisa.",
-        "“Curso derivado”: registra origem comum, mas não informa que a instância participa de uma comparação controlada."
+        "“Variante experimental”: exige participantes, atribuição, medidas e análise que esta fatia não implementa.",
+        "“Curso derivado”: registra origem comum, mas não torna explícita a comparação das diferenças declaradas."
       ]
     },
     {
@@ -1739,7 +1736,8 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#126"
+          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
+          "supports": "A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal."
         },
         {
           "status": "evidencia-academica",
@@ -1749,17 +1747,17 @@
       ],
       "cutoverIssue": "#126",
       "notSynonyms": [
-        "variante",
+        "variante comparável",
         "teste A/B informal",
         "analytics"
       ],
       "interfaceTerm": "Experimento",
       "domainTerm": "Experimento",
       "englishEquivalent": "experiment",
-      "araLearnExample": "Um experimento compara variantes previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.",
-      "ambiguityRisk": "Sem esta delimitação, “Experimento” pode ser confundido com variante, teste A/B informal, analytics, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "araLearnExample": "Um experimento, se vier a ser implementado, compara condições previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.",
+      "ambiguityRisk": "Sem esta delimitação, “Experimento” pode ser confundido com Variante comparável, teste A/B informal, analytics, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
+      "migrationImpact": "Não há recurso de Experimento no runtime atual; Variante comparável não ativa esta arquitetura.",
       "alternativesRationale": "O AraLearn reserva Experimento ao protocolo com fatores, condições, atribuição, medidas e análise declarados, à luz da literatura de desenho e validade causal; estudo, comparação e teste A/B nomeiam escopos diferentes, e nenhum schema garante validade por si."
     },
     {
@@ -1770,7 +1768,7 @@
       ],
       "productTerm": "Condição experimental",
       "technicalSymbol": "experimental_condition",
-      "definition": "Combinação declarada de níveis de fatores à qual uma variante ou participação é vinculada.",
+      "definition": "Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável.",
       "decision": "restringir",
       "cutoverStatus": "sem-corte",
       "layers": [
@@ -1781,22 +1779,23 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#126"
+          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
+          "supports": "A capacidade local de variantes comparáveis explicita que diferenças declaradas não criam Condição experimental."
         }
       ],
       "cutoverIssue": "#126",
       "notSynonyms": [
-        "variante",
+        "variante comparável",
         "parâmetro isolado",
         "grupo de acesso"
       ],
       "interfaceTerm": "Condição experimental",
       "domainTerm": "Condição experimental",
       "englishEquivalent": "experimental condition",
-      "araLearnExample": "A Condição experimental A aplica menor densidade conceitual; a B aplica maior densidade, mantendo os demais fatores definidos.",
-      "ambiguityRisk": "Sem esta delimitação, “Condição experimental” pode ser confundido com variante, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.",
+      "ambiguityRisk": "Sem esta delimitação, “Condição experimental” pode ser confundida com Variante comparável, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
+      "migrationImpact": "Não há Condição experimental no runtime atual; diferenças declaradas de Variante comparável não a constituem.",
       "alternativesConsidered": [
         "“Grupo experimental”: designa participantes agrupados e não a combinação de níveis de fatores atribuída à variante ou participação.",
         "“Tratamento”: é estreito para desenhos que manipulam interface, parâmetros ou configuração sem uma intervenção tratamental."

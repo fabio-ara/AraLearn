@@ -125,9 +125,9 @@ A imagem abaixo é uma **hipótese visual ainda não implementada** para testar 
 
 | Termo encontrado | Interface | Domínio | Símbolo técnico-alvo | Decisão e etapa | Definição operacional | Base | Não usar como sinônimo |
 |---|---|---|---|---|---|---|---|
-| `variante` | **Variante experimental** | **Variante experimental** | `experimental_variant` | `restringir`; termo vigente; sem corte de renomeação | Instância comparável derivada de uma base comum e vinculada a uma condição experimental e a parâmetros versionados. | `decisao-produto` #126; [evidencia-academica](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) — Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o schema técnico do AraLearn garanta um experimento válido. | `curso independente`, `versão de estado`, `branch Git` |
-| `experimento` | **Experimento** | **Experimento** | `research_experiment` | `restringir`; termo vigente; sem corte de renomeação | Protocolo de pesquisa que compara condições mediante fatores, atribuição, medidas e análise previamente declarados; a estrutura técnica não garante validade causal. | `decisao-produto` #126; [evidencia-academica](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) — Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o schema técnico do AraLearn garanta um experimento válido. | `variante`, `teste A/B informal`, `analytics` |
-| `condição` | **Condição experimental** | **Condição experimental** | `experimental_condition` | `restringir`; termo vigente; sem corte de renomeação | Combinação declarada de níveis de fatores à qual uma variante ou participação é vinculada. | `definicao-propria` #126 | `variante`, `parâmetro isolado`, `grupo de acesso` |
+| `variante` | **Variante comparável** | **Variante comparável** | `course_variant_comparison` | `manter`; termo vigente; sem corte de renomeação | Curso independente criado de checkpoint comum de planejamento, com diferenças declaradas de parâmetros e/ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal. | [decisao-produto](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) — A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal. | `experimento`, `condição experimental`, `versão de estado`, `branch Git` |
+| `experimento` | **Experimento** | **Experimento** | `research_experiment` | `restringir`; termo vigente; sem corte de renomeação | Protocolo de pesquisa que compara condições mediante fatores, atribuição, medidas e análise previamente declarados; a estrutura técnica não garante validade causal. | [decisao-produto](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) — A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal.; [evidencia-academica](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) — Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o schema técnico do AraLearn garanta um experimento válido. | `variante comparável`, `teste A/B informal`, `analytics` |
+| `condição` | **Condição experimental** | **Condição experimental** | `experimental_condition` | `restringir`; termo vigente; sem corte de renomeação | Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável. | [definicao-propria](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) — A capacidade local de variantes comparáveis explicita que diferenças declaradas não criam Condição experimental. | `variante comparável`, `parâmetro isolado`, `grupo de acesso` |
 | `medida` | **Medida observada** | **Medida observada** | `observed_measure` | `restringir`; termo vigente; sem corte de renomeação | Valor obtido por instrumento ou procedimento declarado, antes de qualquer interpretação como indicador de um construto. | [evidencia-academica](https://doi.org/10.1037/0003-066X.50.9.741) | `métrica calculada`, `indicador`, `construto` |
 | `métrica`, `Analytics` | **Métrica calculada** | **Métrica calculada** | `computed_metric` | `substituir`; corte #127; remoção integral até #129 | Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados. | [evidencia-academica](https://doi.org/10.1037/0003-066X.50.9.741); `decisao-produto` #127 | `medida observada`, `indicador`, `atenção`, `aprendizagem` |
 | `indicador` | **Indicador de pesquisa** | **Indicador de pesquisa** | `research_indicator` | `restringir`; termo vigente; sem corte de renomeação | Interpretação declarada de uma ou mais medidas para uma finalidade analítica específica, com inferências permitidas e proibidas. | [padrao-externo](https://www.testingstandards.net/) | `métrica`, `desfecho`, `prova` |
@@ -667,35 +667,35 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 
 ### Desenho e mensuração de pesquisa
 
-#### Variante experimental — `experimental-variant`
+#### Variante comparável — `course-variant-comparison`
 
-- **Equivalente em inglês:** experimental variant.
-- **Termo de domínio:** Variante experimental.
-- **Símbolo técnico-alvo:** `experimental_variant`.
+- **Equivalente em inglês:** comparable course variant.
+- **Termo de domínio:** Variante comparável.
+- **Símbolo técnico-alvo:** `course_variant_comparison`.
 - **Exemplo no AraLearn:** A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.
-- **Risco de ambiguidade:** Sem esta delimitação, “Variante experimental” pode ser confundido com curso independente, versão de estado, branch Git, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
-- **Alternativas consideradas:** “Versão experimental”: colide com versionamento do mesmo objeto e não garante vínculo a uma condição de pesquisa.; “Curso derivado”: registra origem comum, mas não informa que a instância participa de uma comparação controlada..
-- **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+- **Risco de ambiguidade:** Sem esta delimitação, “Variante comparável” pode ser confundido com experimento, condição experimental, versão de estado ou branch Git, produzindo promessas causais e de pesquisa que não existem no produto.
+- **Alternativas consideradas:** “Variante experimental”: exige participantes, atribuição, medidas e análise que esta fatia não implementa.; “Curso derivado”: registra origem comum, mas não torna explícita a comparação das diferenças declaradas..
+- **Impacto da migração:** A interface, o domínio e o banco criam Cursos independentes de um checkpoint comum e conservam a linhagem; não adicionam participantes, consentimento, freeze, outcomes ou analytics.
 
 #### Experimento — `experiment`
 
 - **Equivalente em inglês:** experiment.
 - **Termo de domínio:** Experimento.
 - **Símbolo técnico-alvo:** `research_experiment`.
-- **Exemplo no AraLearn:** Um experimento compara variantes previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.
-- **Risco de ambiguidade:** Sem esta delimitação, “Experimento” pode ser confundido com variante, teste A/B informal, analytics, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
+- **Exemplo no AraLearn:** Um experimento, se vier a ser implementado, compara condições previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.
+- **Risco de ambiguidade:** Sem esta delimitação, “Experimento” pode ser confundido com Variante comparável, teste A/B informal, analytics, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** nenhum candidato plausível após exame — O AraLearn reserva Experimento ao protocolo com fatores, condições, atribuição, medidas e análise declarados, à luz da literatura de desenho e validade causal; estudo, comparação e teste A/B nomeiam escopos diferentes, e nenhum schema garante validade por si.
-- **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+- **Impacto da migração:** Não há recurso de Experimento no runtime atual; Variante comparável não ativa esta arquitetura.
 
 #### Condição experimental — `experimental-condition`
 
 - **Equivalente em inglês:** experimental condition.
 - **Termo de domínio:** Condição experimental.
 - **Símbolo técnico-alvo:** `experimental_condition`.
-- **Exemplo no AraLearn:** A Condição experimental A aplica menor densidade conceitual; a B aplica maior densidade, mantendo os demais fatores definidos.
-- **Risco de ambiguidade:** Sem esta delimitação, “Condição experimental” pode ser confundido com variante, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
+- **Exemplo no AraLearn:** Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.
+- **Risco de ambiguidade:** Sem esta delimitação, “Condição experimental” pode ser confundida com Variante comparável, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Grupo experimental”: designa participantes agrupados e não a combinação de níveis de fatores atribuída à variante ou participação.; “Tratamento”: é estreito para desenhos que manipulam interface, parâmetros ou configuração sem uma intervenção tratamental..
-- **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+- **Impacto da migração:** Não há Condição experimental no runtime atual; diferenças declaradas de Variante comparável não a constituem.
 
 #### Medida observada — `observed-measure`
 

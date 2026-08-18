@@ -420,8 +420,10 @@ recibo de mudança do Curso e não apaga o histórico.
 
 As definições abaixo delimitam a direção sem alegar capacidade corrente.
 
-**Variante experimental.** Curso derivado de uma base comum sob condição
-declarada. A arquitetura mínima ainda não está decidida.
+**Variante comparável.** Curso independente criado de um checkpoint comum de
+planejamento, com diferenças declaradas de parâmetros e/ou política de
+componentes. Não cria condição experimental, participantes, atribuição,
+medidas, desfechos ou inferência causal.
 
 **Dado bruto, medida, métrica, indicador e desfecho.** Níveis distintos do
 processo de pesquisa; nenhum deve ser tratado como sinônimo de analytics.
