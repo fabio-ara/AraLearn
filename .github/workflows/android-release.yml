@@ -73,6 +73,9 @@ jobs:
           $tag = "v$version"
           & gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           $exists = $LASTEXITCODE -eq 0
+          if (-not $exists) {
+            $global:LASTEXITCODE = 0
+          }
           "version=$version" >> $env:GITHUB_OUTPUT
           "version_code=$versionCode" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
