@@ -13,7 +13,7 @@ const LETTERED_COURSE_ID = "abcdefab-cdef-4abc-8def-abcdefabcdef";
 
 test("rota canônica preserva courseId, seção real e um único alvo compatível", () => {
   for (const section of [
-    "planning", "parameters", "sources", "structure", "inspection", "observations", "people"
+    "planning", "parameters", "sources", "structure", "inspection", "observations", "variants", "people"
   ]) {
     const hash = buildCourseAuthoringRoute(COURSE_ID, { section });
     assert.equal(hash, `#/authoring/courses/${COURSE_ID}?section=${section}`);

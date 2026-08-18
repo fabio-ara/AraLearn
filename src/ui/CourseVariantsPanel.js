@@ -26,24 +26,27 @@ function renderList(state) {
     '</section>';
 }
 
+function renderVariantFields(state, index) {
+  const label = String.fromCharCode(65 + index);
+  return '<fieldset><legend>Variante ' + label + '</legend><label>Rótulo<input name="label-' + index + '" maxlength="80" required value="' + label + '"></label>' +
+    `<label>Título<input name="title-${index}" maxlength="300" required value="${escapeHtml(state.course.title)} — ${label}"></label>` +
+    `<label>Objetivo<textarea name="goal-${index}" maxlength="2000" required>${escapeHtml(state.course.goal)}</textarea></label>` +
+    (index === 1 ? '<label>Parâmetro que muda<select name="parameter-id">' + integerParameters.map((definition) =>
+      `<option value="${escapeHtml(definition.id)}">${escapeHtml(definition.label)}</option>`).join("") + '</select></label>' +
+      '<label>Valor desta variante<input name="parameter-value" type="number" min="1" max="64" value="1" required></label>' +
+      '<label>Por que essa diferença é intencional?<textarea name="rationale" maxlength="1000" required></textarea></label>' : "") + '</fieldset>';
+}
+
 function renderCreate(state) {
-  const parameterOptions = integerParameters.map((definition) =>
-    `<option value="${escapeHtml(definition.id)}">${escapeHtml(definition.label)}</option>`).join("");
   return '<section class="course-authoring-section course-variants" aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Criar variantes</h2>' +
     '<p>Os Cursos começam com o mesmo planejamento e uma diferença declarada.</p></div>' +
     '<button type="button" data-course-variants-action="back" aria-label="Voltar" title="Voltar">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></header>' +
     '<form class="course-authoring-write-form" data-course-variants-create>' +
-    '<fieldset><legend>Variante A</legend><label>Rótulo<input name="label-a" maxlength="80" required value="A"></label>' +
-    `<label>Título<input name="title-a" maxlength="300" required value="${escapeHtml(state.course.title)} — A"></label>` +
-    `<label>Objetivo<textarea name="goal-a" maxlength="2000" required>${escapeHtml(state.course.goal)}</textarea></label></fieldset>` +
-    '<fieldset><legend>Variante B</legend><label>Rótulo<input name="label-b" maxlength="80" required value="B"></label>' +
-    `<label>Título<input name="title-b" maxlength="300" required value="${escapeHtml(state.course.title)} — B"></label>` +
-    `<label>Objetivo<textarea name="goal-b" maxlength="2000" required>${escapeHtml(state.course.goal)}</textarea></label>` +
-    '<label>Parâmetro que muda<select name="parameter-id">' + parameterOptions + '</select></label>' +
-    '<label>Valor da variante B<input name="parameter-value" type="number" min="1" max="64" value="1" required></label>' +
-    '<label>Por que essa diferença é intencional?<textarea name="rationale" maxlength="1000" required></textarea></label></fieldset>' +
+    '<label>Quantidade de variantes<select name="variant-count" data-course-variants-count>' + [2,3,4,5,6,7,8].map((count) =>
+      `<option value="${count}"${count === state.variantCount ? " selected" : ""}>${count}</option>`).join("") + '</select></label>' +
+    Array.from({ length: state.variantCount }, (_, index) => renderVariantFields(state, index)).join("") +
     `<button type="submit"${state.busy ? " disabled" : ""}>Criar e comparar</button></form>` +
     (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") + '</section>';
 }
@@ -68,7 +71,7 @@ function renderComparison(state) {
 
 export function createCourseVariantsPanel({ root, controller, course, onCourseRevisionChange = () => undefined, confirmValue = globalThis.confirm } = {}) {
   if (!root || !controller || !course?.courseId || !Number.isSafeInteger(course.revision)) throw new TypeError("Painel de variantes inválido.");
-  const state = { course, list: null, comparison: null, screen: "list", loading: false, busy: false, failure: "" };
+  const state = { course, list: null, comparison: null, screen: "list", variantCount: 2, loading: false, busy: false, failure: "" };
   const render = () => { root.innerHTML = state.screen === "create" ? renderCreate(state) : state.screen === "comparison" && state.comparison ? renderComparison(state) : renderList(state); };
   const refreshList = async () => {
     state.loading = true; state.failure = ""; render();
@@ -92,15 +95,21 @@ export function createCourseVariantsPanel({ root, controller, course, onCourseRe
       void (async () => { state.busy = true; render(); try { await controller.mutateCourseVariants({ requestId: createUuid(), courseId: state.course.courseId, command: { type: "detach_comparison_variant", comparisonSetId: state.comparison.comparisonSetId, courseId: node.dataset.courseId } }); state.comparison = await controller.loadCourseVariantComparison(state.course.courseId, { comparisonSetId: state.comparison.comparisonSetId, expectedCourseRevision: state.course.revision }); } catch (error) { state.failure = errorText(error); } finally { state.busy = false; render(); } })();
     }
   };
+  const onChange = (event) => {
+    if (event.target?.matches?.("[data-course-variants-count]")) {
+      const count = Number(event.target.value);
+      if (Number.isSafeInteger(count) && count >= 2 && count <= 8) { state.variantCount = count; render(); }
+    }
+  };
   const onSubmit = (event) => {
     if (!event.target?.matches?.("[data-course-variants-create]")) return; event.preventDefault();
     const values = new FormData(event.target); const comparisonSetId = createUuid();
-    const command = { type: "create_comparison_variants", comparisonSetId, expectedCourseRevision: state.course.revision, variants: [
-      { label: values.get("label-a"), title: values.get("title-a"), goal: values.get("goal-a"), parameterDifferences: [], componentPolicyDifference: null },
-      { label: values.get("label-b"), title: values.get("title-b"), goal: values.get("goal-b"), parameterDifferences: [{ scopeKind: "course", scopeId: "course", parameterId: values.get("parameter-id"), value: Number(values.get("parameter-value")), rationale: values.get("rationale") }], componentPolicyDifference: null }
-    ] };
+    const command = { type: "create_comparison_variants", comparisonSetId, expectedCourseRevision: state.course.revision, variants: Array.from({ length: state.variantCount }, (_, index) => ({
+      label: values.get(`label-${index}`), title: values.get(`title-${index}`), goal: values.get(`goal-${index}`),
+      parameterDifferences: index === 1 ? [{ scopeKind: "course", scopeId: "course", parameterId: values.get("parameter-id"), value: Number(values.get("parameter-value")), rationale: values.get("rationale") }] : [], componentPolicyDifference: null
+    })) };
     void (async () => { state.busy = true; state.failure = ""; render(); try { await controller.mutateCourseVariants({ requestId: createUuid(), courseId: state.course.courseId, expectedCourseRevision: state.course.revision, command }); state.comparison = await controller.loadCourseVariantComparison(state.course.courseId, { comparisonSetId, expectedCourseRevision: state.course.revision }); state.screen = "comparison"; onCourseRevisionChange(state.course.revision); } catch (error) { state.failure = errorText(error); } finally { state.busy = false; render(); } })();
   };
-  root.addEventListener("click", onClick); root.addEventListener("submit", onSubmit);
-  return { open: refreshList, refresh: refreshList, destroy() { root.removeEventListener("click", onClick); root.removeEventListener("submit", onSubmit); root.innerHTML = ""; } };
+  root.addEventListener("click", onClick); root.addEventListener("change", onChange); root.addEventListener("submit", onSubmit);
+  return { open: refreshList, refresh: refreshList, destroy() { root.removeEventListener("click", onClick); root.removeEventListener("change", onChange); root.removeEventListener("submit", onSubmit); root.innerHTML = ""; } };
 }
