@@ -68,10 +68,104 @@ export function normalizeCourseVariantCommand(value) {
 }
 
 export function normalizeCourseVariantRead(value) {
-  exact(value, ["comparisonSetId", "expectedCourseRevision", "cursor", "limit"], "A leitura de variantes");
-  if (!Number.isSafeInteger(value.expectedCourseRevision) || value.expectedCourseRevision < 1 || !Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 24) fail("invalid_course_variant", "A paginação é inválida.");
-  if (value.cursor !== null && (typeof value.cursor !== "string" || value.cursor.length > 240)) fail("invalid_course_variant", "O cursor é inválido.");
-  return { comparisonSetId: uuid(value.comparisonSetId, "A identidade do conjunto"), expectedCourseRevision: value.expectedCourseRevision, cursor: value.cursor, limit: value.limit };
+  exact(value, ["comparisonSetId", "expectedCourseRevision"], "A leitura de variantes");
+  if (!Number.isSafeInteger(value.expectedCourseRevision) || value.expectedCourseRevision < 1) fail("invalid_course_variant", "A revisão esperada é inválida.");
+  return { comparisonSetId: uuid(value.comparisonSetId, "A identidade do conjunto"), expectedCourseRevision: value.expectedCourseRevision };
+}
+
+function nonnegativeInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value < 0) fail("invalid_course_variant_comparison", `${label} é inválido.`);
+  return value;
+}
+function nullableTimestamp(value, label) {
+  if (value === null) return null;
+  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) fail("invalid_course_variant_comparison", `${label} é inválido.`);
+  return value;
+}
+function comparisonMember(value) {
+  exact(value, [
+    "courseId", "label", "title", "goal", "attachedCourseRevision",
+    "currentCourseRevision", "changedSinceAttached", "detachedAt",
+    "parameterDifferences", "componentPolicyDifference", "materialization"
+  ], "A variante comparável");
+  if (!Number.isSafeInteger(value.attachedCourseRevision) || value.attachedCourseRevision < 1 ||
+      !Number.isSafeInteger(value.currentCourseRevision) || value.currentCourseRevision < 1 ||
+      typeof value.changedSinceAttached !== "boolean" ||
+      !Array.isArray(value.parameterDifferences) ||
+      value.parameterDifferences.length > 16 ||
+      value.componentPolicyDifference !== null && (!value.componentPolicyDifference || typeof value.componentPolicyDifference !== "object" || Array.isArray(value.componentPolicyDifference))) fail("invalid_course_variant_comparison", "A variante comparável é inválida.");
+  exact(value.materialization, ["partCount", "completedCount", "runningCount", "latestUpdatedAt"], "A materialização da variante");
+  return {
+    courseId: uuid(value.courseId, "A identidade do Curso"), label: text(value.label, 80, "O rótulo"),
+    title: text(value.title, 300, "O título"), goal: text(value.goal, 2000, "O objetivo"),
+    attachedCourseRevision: value.attachedCourseRevision,
+    currentCourseRevision: value.currentCourseRevision,
+    changedSinceAttached: value.changedSinceAttached,
+    detachedAt: nullableTimestamp(value.detachedAt, "A data de desvinculação"),
+    parameterDifferences: value.parameterDifferences.map(difference),
+    componentPolicyDifference: value.componentPolicyDifference === null ? null : json(value.componentPolicyDifference, 8192, "A diferença de resources"),
+    materialization: {
+      partCount: nonnegativeInteger(value.materialization.partCount, "A contagem de Partes"),
+      completedCount: nonnegativeInteger(value.materialization.completedCount, "A contagem materializada"),
+      runningCount: nonnegativeInteger(value.materialization.runningCount, "A contagem em andamento"),
+      latestUpdatedAt: nullableTimestamp(value.materialization.latestUpdatedAt, "A atualização de materialização")
+    }
+  };
+}
+
+export function normalizeCourseVariantComparison(value) {
+  exact(value, ["contract", "comparisonSetId", "source", "members"], "A comparação de variantes");
+  if (value.contract !== COURSE_VARIANT_COMPARISON_CONTRACT || !Array.isArray(value.members) || value.members.length < 1 || value.members.length > 8) fail("invalid_course_variant_comparison", "A comparação de variantes é inválida.");
+  exact(value.source, [
+    "courseId", "title", "goal", "currentCourseRevision",
+    "checkpointCourseRevision", "changedSinceCheckpoint", "checkpointId", "checkpointHash"
+  ], "A origem da comparação");
+  if (!Number.isSafeInteger(value.source.currentCourseRevision) || value.source.currentCourseRevision < 1 ||
+      !Number.isSafeInteger(value.source.checkpointCourseRevision) || value.source.checkpointCourseRevision < 1 ||
+      typeof value.source.changedSinceCheckpoint !== "boolean" ||
+      !isCourseVariantHash(value.source.checkpointHash)) fail("invalid_course_variant_comparison", "A origem da comparação é inválida.");
+  return {
+    contract: value.contract,
+    comparisonSetId: uuid(value.comparisonSetId, "A identidade do conjunto"),
+    source: {
+      courseId: uuid(value.source.courseId, "A identidade do Curso de origem"),
+      title: text(value.source.title, 300, "O título de origem"), goal: text(value.source.goal, 2000, "O objetivo de origem"),
+      currentCourseRevision: value.source.currentCourseRevision,
+      checkpointCourseRevision: value.source.checkpointCourseRevision,
+      changedSinceCheckpoint: value.source.changedSinceCheckpoint,
+      checkpointId: uuid(value.source.checkpointId, "A identidade do checkpoint"),
+      checkpointHash: value.source.checkpointHash
+    },
+    members: value.members.map(comparisonMember)
+  };
+}
+
+export function normalizeCourseVariantChange(value) {
+  object(value, "A mudança de variantes");
+  if (value.contract !== "aralearn.course-variant-comparison-change.v1" ||
+      typeof value.idempotent !== "boolean") fail("invalid_course_variant_change", "A mudança de variantes é inválida.");
+  if (Object.hasOwn(value, "members")) {
+    exact(value, ["contract", "comparisonSetId", "sourceCourseId", "sourceCourseRevision", "checkpointId", "checkpointHash", "members", "idempotent"], "A criação de variantes");
+    if (!Number.isSafeInteger(value.sourceCourseRevision) || value.sourceCourseRevision < 1 || !Array.isArray(value.members) || value.members.length < 2 || value.members.length > 8 || !isCourseVariantHash(value.checkpointHash)) fail("invalid_course_variant_change", "A criação de variantes é inválida.");
+    return {
+      contract: value.contract, comparisonSetId: uuid(value.comparisonSetId, "A identidade do conjunto"),
+      sourceCourseId: uuid(value.sourceCourseId, "A identidade do Curso de origem"),
+      sourceCourseRevision: value.sourceCourseRevision, checkpointId: uuid(value.checkpointId, "A identidade do checkpoint"), checkpointHash: value.checkpointHash,
+      members: value.members.map((member) => {
+        exact(member, ["courseId", "label", "title", "goal", "revision"], "O Curso variante criado");
+        if (!Number.isSafeInteger(member.revision) || member.revision < 1) fail("invalid_course_variant_change", "O Curso variante criado é inválido.");
+        return { courseId: uuid(member.courseId, "A identidade do Curso variante"), label: text(member.label, 80, "O rótulo"), title: text(member.title, 300, "O título"), goal: text(member.goal, 2000, "O objetivo"), revision: member.revision };
+      }), idempotent: value.idempotent
+    };
+  }
+  exact(value, ["contract", "comparisonSetId", "sourceCourseId", "courseId", "detachedAt", "changed", "idempotent"], "A desvinculação de variante");
+  if (typeof value.changed !== "boolean") fail("invalid_course_variant_change", "A desvinculação de variante é inválida.");
+  return {
+    contract: value.contract, comparisonSetId: uuid(value.comparisonSetId, "A identidade do conjunto"),
+    sourceCourseId: uuid(value.sourceCourseId, "A identidade do Curso de origem"),
+    courseId: uuid(value.courseId, "A identidade do Curso variante"),
+    detachedAt: nullableTimestamp(value.detachedAt, "A data de desvinculação"), changed: value.changed, idempotent: value.idempotent
+  };
 }
 
 export function normalizeCourseVariantDetachCommand(value) {
