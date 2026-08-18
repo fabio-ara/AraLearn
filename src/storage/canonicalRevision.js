@@ -30,14 +30,14 @@ function serialize(value, ancestors, path) {
 }
 
 export function canonicalRevisionString(value) {
-  return serialize(publishedRevisionHashSource(value), new Set(), "$");
+  return serialize(value, new Set(), "$");
 }
 
 export async function canonicalRevisionHash(value) {
   if (!globalThis.crypto?.subtle) throw new Error("Web Crypto não está disponível.");
   const digest = await globalThis.crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(canonicalRevisionString(value))
+    new TextEncoder().encode(canonicalRevisionString(publishedRevisionHashSource(value)))
   );
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
