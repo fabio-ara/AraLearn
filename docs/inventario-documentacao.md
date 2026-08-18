@@ -52,7 +52,7 @@ Git.
 | `downloads/authoring/README.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
 | `estado-atual-e-roadmap.md` | conservar | matriz corrente e gates de importação, reset, migração e promoção |
 | `estado-de-estudo-nao-punitivo.md` | conservar | manter neste caminho e revisar apenas quando o comportamento de Estudo mudar |
-| `experimentos-instrucionais-parametrizados.md` | reformular | manter neste caminho após definir a arquitetura mínima de variantes comparáveis |
+| `experimentos-instrucionais-parametrizados.md` | histórico | preserva a arquitetura de pesquisa isolada; a capacidade local de variantes comparáveis não a reativa |
 | `fluxos-prompts-e-contratos.md` | reformular | manter neste caminho, limitado aos fluxos e contratos realmente executados |
 | `fundamentacao-pedagogica-dos-resources.md` | reformular | manter neste caminho após a revisão acadêmica da nomenclatura e das representações |
 | `fundamentos-pesquisa-e-governanca.md` | reformular | manter neste caminho, separando rigor científico de governança institucional desnecessária |
