@@ -4,6 +4,7 @@ import {
   normalizeCourseVariantCommand,
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantComparison,
+  normalizeCourseVariantComparisonList,
   normalizeCourseVariantChange
 } from "../../src/domain/courseVariants.js";
 
@@ -88,4 +89,20 @@ test("mudanças de criação e desvinculação preservam os dois contratos disti
   });
   assert.equal(detached.changed, true);
   assert.throws(() => normalizeCourseVariantChange({ ...detached, members: [] }), /criação/u);
+});
+
+test("lista comparativa conserva somente resumos coerentes de conjuntos", () => {
+  const list = normalizeCourseVariantComparisonList({
+    contract: "aralearn.course-variant-comparison-list.v1", sourceCourseId: id,
+    sourceCourseRevision: 3,
+    items: [{
+      comparisonSetId: "22222222-2222-4222-8222-222222222222",
+      checkpointId: "33333333-3333-4333-8333-333333333333", checkpointHash: "c".repeat(64),
+      checkpointCourseRevision: 3, memberCount: 2, attachedCount: 1, detachedCount: 1,
+      createdAt: "2026-08-18T12:00:00Z", updatedAt: "2026-08-18T12:01:00Z"
+    }]
+  });
+  assert.equal(list.items[0].detachedCount, 1);
+  const invalid = structuredClone(list); invalid.items[0].attachedCount = 2;
+  assert.throws(() => normalizeCourseVariantComparisonList(invalid), /contagem/u);
 });

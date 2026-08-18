@@ -149,6 +149,10 @@ export function routeCourseRequest(method, pathname) {
       comparisonSetId: courseUuid(variantComparison[2], "comparisonSetId")
     };
   }
+  const variantComparisons = path.match(/^\/v1\/courses\/([^/]+)\/variant-comparisons$/u);
+  if (variantComparisons && verb === "GET") {
+    return { name: "listCourseVariantComparisons", courseId: courseUuid(variantComparisons[1]) };
+  }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };

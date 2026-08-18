@@ -48,6 +48,7 @@ import {
   normalizeCourseVariantChange,
   normalizeCourseVariantCommand,
   normalizeCourseVariantComparison,
+  normalizeCourseVariantComparisonList,
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantRead
 } from "../aralearn/runtime/domain/courseVariants.js";
@@ -2089,6 +2090,31 @@ export class CourseSupabaseAdapter {
         "course_service_unavailable",
         "A comparação de variantes não corresponde ao Curso solicitado."
       );
+    }
+    return normalized;
+  }
+
+  async listCourseVariantComparisons({ principal, courseId, expectedCourseRevision, deadlineAt = null }) {
+    let result;
+    try {
+      result = first(await this.rpc(
+        "list_owned_course_variant_comparisons_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_source_course_id: courseId,
+          p_expected_course_revision: expectedCourseRevision
+        },
+        { deadlineAt, responseLimitBytes: COURSE_VARIANT_RESPONSE_LIMIT_BYTES }
+      ));
+    } catch (error) {
+      throw courseVariantResponseFailure(error);
+    }
+    const normalized = normalizeCourseVariantDatabaseValue(() =>
+      normalizeCourseVariantComparisonList(result)
+    );
+    if (normalized.sourceCourseId !== courseId ||
+        normalized.sourceCourseRevision !== expectedCourseRevision) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de variantes não corresponde ao Curso solicitado.");
     }
     return normalized;
   }

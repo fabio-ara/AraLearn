@@ -18,6 +18,7 @@ import {
   normalizeCourseVariantChange,
   normalizeCourseVariantCommand,
   normalizeCourseVariantComparison,
+  normalizeCourseVariantComparisonList,
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantRead
 } from "../domain/courseVariants.js";
@@ -1061,6 +1062,24 @@ export class CourseController {
       }
       throw error;
     }
+  }
+
+  async listCourseVariantComparisons(courseId, expectedCourseRevision) {
+    if (!this.ownerOnly || typeof this.api.listCourseVariantComparisons !== "function") {
+      throw new TypeError("A API de Autoria não oferece variantes comparáveis.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    const revision = Number(expectedCourseRevision);
+    if (!UUID_PATTERN.test(normalizedCourseId) || !Number.isSafeInteger(revision) || revision < 1) {
+      throw new TypeError("Leitura de variantes inválida.");
+    }
+    const list = normalizeCourseVariantComparisonList(
+      await this.api.listCourseVariantComparisons(normalizedCourseId, revision)
+    );
+    if (list.sourceCourseId !== normalizedCourseId || list.sourceCourseRevision !== revision) {
+      throw new TypeError("A lista de variantes não corresponde ao Curso solicitado.");
+    }
+    return list;
   }
 
   loadAuthoringOutline(courseId) {

@@ -4,6 +4,7 @@ const SHA256 = /^[a-f0-9]{64}$/u;
 const encoder = new TextEncoder();
 
 export const COURSE_VARIANT_COMPARISON_CONTRACT = "aralearn.course-variant-comparison.v1";
+export const COURSE_VARIANT_COMPARISON_LIST_CONTRACT = "aralearn.course-variant-comparison-list.v1";
 
 export class CourseVariantError extends Error {
   constructor(code, message) { super(message); this.name = "CourseVariantError"; this.code = code; }
@@ -137,6 +138,41 @@ export function normalizeCourseVariantComparison(value) {
       checkpointHash: value.source.checkpointHash
     },
     members: value.members.map(comparisonMember)
+  };
+}
+
+export function normalizeCourseVariantComparisonList(value) {
+  exact(value, ["contract", "sourceCourseId", "sourceCourseRevision", "items"], "A lista de variantes");
+  if (value.contract !== COURSE_VARIANT_COMPARISON_LIST_CONTRACT ||
+      !Number.isSafeInteger(value.sourceCourseRevision) || value.sourceCourseRevision < 1 ||
+      !Array.isArray(value.items)) fail("invalid_course_variant_comparison", "A lista de variantes é inválida.");
+  return {
+    contract: value.contract,
+    sourceCourseId: uuid(value.sourceCourseId, "A identidade do Curso de origem"),
+    sourceCourseRevision: value.sourceCourseRevision,
+    items: value.items.map((item) => {
+      exact(item, [
+        "comparisonSetId", "checkpointId", "checkpointHash", "checkpointCourseRevision",
+        "memberCount", "attachedCount", "detachedCount", "createdAt", "updatedAt"
+      ], "O conjunto de variantes");
+      if (!Number.isSafeInteger(item.checkpointCourseRevision) || item.checkpointCourseRevision < 1 ||
+          !isCourseVariantHash(item.checkpointHash)) fail("invalid_course_variant_comparison", "O conjunto de variantes é inválido.");
+      const memberCount = nonnegativeInteger(item.memberCount, "A contagem de variantes");
+      const attachedCount = nonnegativeInteger(item.attachedCount, "A contagem vinculada");
+      const detachedCount = nonnegativeInteger(item.detachedCount, "A contagem desvinculada");
+      if (memberCount !== attachedCount + detachedCount || memberCount < 2 || memberCount > 8) {
+        fail("invalid_course_variant_comparison", "A contagem do conjunto de variantes é inválida.");
+      }
+      return {
+        comparisonSetId: uuid(item.comparisonSetId, "A identidade do conjunto"),
+        checkpointId: uuid(item.checkpointId, "A identidade do checkpoint"),
+        checkpointHash: item.checkpointHash,
+        checkpointCourseRevision: item.checkpointCourseRevision,
+        memberCount, attachedCount, detachedCount,
+        createdAt: nullableTimestamp(item.createdAt, "A criação do conjunto"),
+        updatedAt: nullableTimestamp(item.updatedAt, "A atualização do conjunto")
+      };
+    })
   };
 }
 

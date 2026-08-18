@@ -581,6 +581,21 @@ function courseVariantComparisonQuery(request, comparisonSetId) {
   }));
 }
 
+function courseVariantComparisonsQuery(request) {
+  const url = new URL(request.url);
+  if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
+      VARIANT_COMPARISON_REQUEST_TARGET_LIMIT_BYTES ||
+      [...url.searchParams.keys()].some((field) => field !== "expectedRevision") ||
+      url.searchParams.getAll("expectedRevision").length !== 1) {
+    fail("invalid_course_variant_query", "A listagem de variantes é inválida.");
+  }
+  const expectedCourseRevision = Number(url.searchParams.get("expectedRevision"));
+  if (!Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1) {
+    fail("invalid_course_variant_query", "A revisão esperada é inválida.");
+  }
+  return { expectedCourseRevision };
+}
+
 function validateCourseVariantChange(body, request) {
   exactFields(body, new Set(["requestId", "expectedCourseRevision", "command"]));
   const command = normalizeCourseVariantsDomain(() => {
@@ -1281,6 +1296,15 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         courseId: route.courseId,
         ...courseVariantComparisonQuery(request, route.comparisonSetId),
         deadlineAt
+      })
+    };
+  }
+  if (route.name === "listCourseVariantComparisons") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.listCourseVariantComparisons({
+        principal, courseId: route.courseId, ...courseVariantComparisonsQuery(request), deadlineAt
       })
     };
   }

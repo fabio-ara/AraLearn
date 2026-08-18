@@ -939,7 +939,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       view: stringSchema({ enum: [
         "summary", "outline", "instructional_plan", "course_design",
         "course_sources", "anchored_annotations", "part_materialization",
-        "study_units", "entities", "audit_cycle", "variant_comparison"
+        "study_units", "entities", "audit_cycle", "variant_comparison", "variant_comparisons"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
@@ -1033,6 +1033,22 @@ export const COURSE_MCP_TOOLS = Object.freeze([
               { required: ["materializationId"] }
             ]
           }
+        }
+      }, {
+        if: {
+          properties: { view: { const: "variant_comparisons" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "limit", "cursor", "scope",
+            "anchorStudyUnitId", "direction", "maxBytes", "mode", "sourceId",
+            "targetKind", "targetId", "comparisonSetId", "annotationSetVersion", "auditSetVersion",
+            "origins", "channels", "states", "categories", "includeUncategorized",
+            "subjectIds", "includeDescendants", "annotationId", "targetStudyUnitId",
+            "findingId", "correctionId", "auditRunId", "dimensions", "severities", "annotationIds"
+          ])
         }
       }, {
         if: {
@@ -1234,7 +1250,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       }, {
         if: {
           properties: {
-            view: { enum: ["course_sources", "anchored_annotations", "audit_cycle", "variant_comparison"] }
+            view: { enum: ["course_sources", "anchored_annotations", "audit_cycle", "variant_comparison", "variant_comparisons"] }
           },
           required: ["view"]
         },
@@ -1736,7 +1752,7 @@ function mapRead(raw) {
   if (!new Set([
     "summary", "outline", "instructional_plan", "course_design",
     "course_sources", "anchored_annotations", "part_materialization",
-    "study_units", "entities", "audit_cycle", "variant_comparison"
+    "study_units", "entities", "audit_cycle", "variant_comparison", "variant_comparisons"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
   }
@@ -1782,6 +1798,17 @@ function mapRead(raw) {
     }));
     return route("GET", `/v1/courses/${courseId}/variant-comparisons/${options.comparisonSetId}` +
       searchParams({ expectedRevision: options.expectedCourseRevision }));
+  }
+  if (view === "variant_comparisons") {
+    if (raw.authoringPartId != null || raw.materializationId != null || raw.limit != null ||
+        raw.cursor != null || raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
+        raw.maxBytes != null || raw.mode != null || raw.sourceId != null || raw.targetKind != null ||
+        raw.targetId != null || raw.comparisonSetId != null || annotationFields.some((value) => value != null) ||
+        auditFields.some((value) => value != null)) {
+      fail("invalid_tool_argument", "A lista de variantes recebeu campos incompatíveis.");
+    }
+    const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
+    return route("GET", `/v1/courses/${courseId}/variant-comparisons` + searchParams({ expectedRevision }));
   }
   if (view === "anchored_annotations") {
     if (raw.authoringPartId != null || raw.materializationId != null || raw.scope != null ||

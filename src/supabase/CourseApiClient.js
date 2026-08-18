@@ -18,6 +18,7 @@ import {
   normalizeCourseVariantChange,
   normalizeCourseVariantCommand,
   normalizeCourseVariantComparison,
+  normalizeCourseVariantComparisonList,
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantRead
 } from "../domain/courseVariants.js";
@@ -1015,6 +1016,20 @@ export class CourseApiClient {
         result.source.courseId !== normalizedCourseId ||
         result.source.currentCourseRevision !== options.expectedCourseRevision) {
       throw new TypeError("A comparação de variantes não corresponde ao pedido.");
+    }
+    return result;
+  }
+
+  async listCourseVariantComparisons(courseId, expectedCourseRevision) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const revision = positiveInteger(expectedCourseRevision, "Versão do Curso");
+    const result = normalizeCourseVariantComparisonList(await this.executeCourseAction("lerCurso", {
+      courseId: normalizedCourseId,
+      view: "variant_comparisons",
+      expectedRevision: revision
+    }));
+    if (result.sourceCourseId !== normalizedCourseId || result.sourceCourseRevision !== revision) {
+      throw new TypeError("A lista de variantes não corresponde ao Curso solicitado.");
     }
     return result;
   }
