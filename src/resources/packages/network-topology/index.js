@@ -115,7 +115,7 @@ export const networkTopologyPackage = Object.freeze({
     label: "Topologia de rede",
     purpose: "Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["trace-packet-path", "locate-network-role", "inspect-segmentation", "compare-link"]),
+    taskOperations: Object.freeze(["trace-packet-path", "locate-network-role", "inspect-segmentation", "compare-link"]),
     academic: academicProfile({
       domains: ["redes de computadores", "segurança de redes", "infraestrutura"],
       knowledgeObjects: ["equipamento de rede", "segmento", "enlace", "caminho de pacote"],

@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -229,7 +229,7 @@
                     "calcula m em caso pequeno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grafo-conjuntos-regra",
                       "position": 1,
@@ -256,8 +256,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-conjuntos-visual",
@@ -323,8 +322,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-identificar-v",
@@ -419,8 +417,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-identificar-a",
@@ -515,8 +512,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-calcular-n",
@@ -611,8 +607,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-calcular-m",
@@ -707,8 +702,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-troca-vertices-arestas",
@@ -803,8 +797,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -827,7 +820,7 @@
                     "reconhece ausência de aresta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-adjacencia-incidencia-regra",
                       "position": 1,
@@ -854,8 +847,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-adjacencia-a-c",
@@ -950,8 +942,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-adjacencia-b-d",
@@ -1046,8 +1037,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-incidencia-ab-b",
@@ -1142,8 +1132,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ausencia-bd",
@@ -1238,8 +1227,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -1262,7 +1250,7 @@
                     "escreve lista de graus em ordem não crescente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grau-regra",
                       "position": 1,
@@ -1289,8 +1277,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tabela-contagem-graus",
@@ -1344,8 +1331,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grau-a",
@@ -1445,8 +1431,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grau-d",
@@ -1546,8 +1531,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-graus",
@@ -1647,8 +1631,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-contar-aresta-que-nao-toca",
@@ -1748,8 +1731,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-lista-sem-ordenar",
@@ -1844,8 +1826,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1976,7 +1957,7 @@
                     "relaciona a contagem por graus com a contagem por arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-soma-graus-aresta-duas-extremidades",
                       "position": 1,
@@ -2003,8 +1984,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-pequeno-graus-visiveis",
@@ -2070,8 +2050,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tabela-contribuicao-arestas",
@@ -2120,8 +2099,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-quanto-ab-acrescenta",
@@ -2174,8 +2152,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-calcular-soma-graus-grafo-pequeno",
@@ -2275,8 +2252,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-soma-graus-igual-arestas",
@@ -2329,8 +2305,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -2355,7 +2330,7 @@
                     "reconhece quando uma soma ímpar não pode ser soma dos graus de um grafo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-teorema-soma-graus-regra",
                       "position": 1,
@@ -2382,8 +2357,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-somar-lista-3221",
@@ -2436,8 +2410,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-calcular-m-lista-3221",
@@ -2490,8 +2463,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-nao-dividir-por-dois",
@@ -2544,8 +2516,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-soma-impar-nao-pode-ser-2m",
@@ -2598,8 +2569,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lacuna-sigma-14",
@@ -2647,8 +2617,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -2672,7 +2641,7 @@
                     "reconhece que a quantidade encontrada deve ser par"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grau-par-impar-regra",
                       "position": 1,
@@ -2699,8 +2668,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tabela-classificar-3221",
@@ -2783,8 +2751,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-contar-impares-3221",
@@ -2837,8 +2804,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-contar-impares-3332",
@@ -2891,8 +2857,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-tres-impares-impossivel",
@@ -2945,8 +2910,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-contar-pares",
@@ -2999,8 +2963,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -3024,7 +2987,7 @@
                     "liga soma par à quantidade par de parcelas ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-argumento-paridade-impares",
                       "position": 1,
@@ -3051,8 +3014,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-melhor-justificativa-impares",
@@ -3105,8 +3067,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-justificativa-insuficiente",
@@ -3159,8 +3120,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-quantidades-compativeis",
@@ -3213,8 +3173,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lacuna-quantidade-par",
@@ -3262,8 +3221,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-justificativa-paridade-impares",
@@ -3316,8 +3274,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3474,7 +3431,7 @@
                     "rejeita lista com quantidade ímpar de graus ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-lista-graus-regra",
                       "position": 1,
@@ -3501,8 +3458,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-n-lista-3221",
@@ -3550,8 +3506,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grau-maximo-n4",
@@ -3599,8 +3554,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-rejeita-grau-4211",
@@ -3653,8 +3607,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-rejeita-soma-3332",
@@ -3707,8 +3660,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-rejeita-soma-1231",
@@ -3761,8 +3713,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-passa-testes-iniciais-2211",
@@ -3815,8 +3766,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -3843,7 +3793,7 @@
                     "identifica impossibilidade por número negativo ou falta de termos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flow-havel-hakimi",
                       "position": 1,
@@ -3920,8 +3870,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tabela-hh-3221",
@@ -3985,8 +3934,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-primeiro-passo-hh-3221",
@@ -4039,8 +3987,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-resta-apos-retirar-3",
@@ -4093,8 +4040,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-decisao-hh-3221",
@@ -4147,8 +4093,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-subtrair-proprio",
@@ -4201,8 +4146,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-nao-reordenar",
@@ -4255,8 +4199,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -4281,7 +4224,7 @@
                     "detecta construção que não realiza a lista pedida"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-provar-com-construcao",
                       "position": 1,
@@ -4308,8 +4251,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-realiza-3221",
@@ -4414,8 +4356,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-escolher-construcao-3221",
@@ -4468,8 +4409,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminho-abcd",
@@ -4569,8 +4509,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-escolher-construcao-2211",
@@ -4623,8 +4562,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-errado-2211",
@@ -4724,8 +4662,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-construcao-invalida",
@@ -4778,8 +4715,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -4804,7 +4740,7 @@
                     "ordena a lista como 2,2,2,1,1"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-n-22211",
                       "position": 1,
@@ -4851,8 +4787,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grau-maximo-22211",
@@ -4905,8 +4840,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-soma-22211",
@@ -4959,8 +4893,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-caminho-abcde-teoria",
@@ -5035,8 +4968,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-caminho-abcde",
@@ -5145,8 +5077,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-justificativa-abcde",
@@ -5199,8 +5130,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-ordem-22211",
@@ -5253,8 +5183,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -5280,7 +5209,7 @@
                     "distingue justificativa por soma ímpar de justificativa por construção"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-tabela-listas-prova",
                       "position": 1,
@@ -5338,8 +5267,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classificar-3221",
@@ -5392,8 +5320,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classificar-3332",
@@ -5446,8 +5373,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classificar-1231",
@@ -5500,8 +5426,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classificar-2211",
@@ -5554,8 +5479,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-resposta-final-listas",
@@ -5608,8 +5532,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-justificativa-incorreta",
@@ -5662,8 +5585,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fechamento-justificativa",
@@ -5691,8 +5613,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5859,7 +5780,7 @@
                     "detecta grafo que não é completo por faltar uma aresta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-completo-regra",
                       "position": 1,
@@ -5888,8 +5809,7 @@
                       ],
                       "topics": [
                         "topic-grafo-completo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-k4-grafo-teorico",
@@ -5972,8 +5892,7 @@
                       ],
                       "topics": [
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-k4-lista-arestas",
@@ -6028,8 +5947,7 @@
                       ],
                       "topics": [
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-k4",
@@ -6142,8 +6060,7 @@
                       "topics": [
                         "topic-grafo-completo",
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-falta-bd-nao-completo",
@@ -6251,8 +6168,7 @@
                       "topics": [
                         "topic-grafo-completo",
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-completo-nao-e-so-conectado",
@@ -6307,8 +6223,7 @@
                       ],
                       "topics": [
                         "topic-grafo-completo"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -6332,7 +6247,7 @@
                     "detecta erro de não dividir por 2"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-formula-kn-regra",
                       "position": 1,
@@ -6361,8 +6276,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-arestas-k4-formula",
@@ -6418,8 +6332,7 @@
                       "topics": [
                         "topic-formula-kn",
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-arestas-k5-formula",
@@ -6474,8 +6387,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-arestas-k6-formula",
@@ -6530,8 +6442,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-lacuna-formula-kn",
@@ -6581,8 +6492,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-sem-dividir-por-dois",
@@ -6637,8 +6547,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-formula-combinacoes-kn",
@@ -6693,8 +6602,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -6721,7 +6629,7 @@
                     "distingue resposta exata de resposta por mínimo acima do alvo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-380-estrategia",
                       "position": 1,
@@ -6750,8 +6658,7 @@
                       ],
                       "topics": [
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-k28-arestas",
@@ -6807,8 +6714,7 @@
                       "topics": [
                         "topic-caso-380",
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-k29-arestas",
@@ -6864,8 +6770,7 @@
                       "topics": [
                         "topic-caso-380",
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-380-exatamente-conclusao",
@@ -6920,8 +6825,7 @@
                       ],
                       "topics": [
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-380-pelo-menos",
@@ -6976,8 +6880,7 @@
                       ],
                       "topics": [
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-k29-exato",
@@ -7032,8 +6935,7 @@
                       ],
                       "topics": [
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-380-fechamento",
@@ -7063,8 +6965,7 @@
                       ],
                       "topics": [
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -7088,7 +6989,7 @@
                     "detecta caminho com 4 vértices como não 2-regular"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-regular-regra",
                       "position": 1,
@@ -7117,8 +7018,7 @@
                       ],
                       "topics": [
                         "topic-grafo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-c4-grafo-teorico",
@@ -7191,8 +7091,7 @@
                       ],
                       "topics": [
                         "topic-grafo-2-regular-c4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-c4-graus",
@@ -7300,8 +7199,7 @@
                       "topics": [
                         "topic-grafo-2-regular-c4",
                         "topic-grafo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-lista-c4-2regular",
@@ -7356,8 +7254,7 @@
                       ],
                       "topics": [
                         "topic-grafo-2-regular-c4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-nao-2regular",
@@ -7460,8 +7357,7 @@
                       "topics": [
                         "topic-grafo-2-regular-c4",
                         "topic-grafo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-k4-3regular-nao-2regular",
@@ -7579,8 +7475,7 @@
                       "topics": [
                         "topic-grafo-regular",
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-regular-muitos-vertices",
@@ -7635,8 +7530,7 @@
                       ],
                       "topics": [
                         "topic-grafo-regular"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -7661,7 +7555,7 @@
                     "resolve o caso 3-regular com 5 vértices"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-kregular-formula",
                       "position": 1,
@@ -7690,8 +7584,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-2regular-4vertices-m",
@@ -7747,8 +7640,7 @@
                       "topics": [
                         "topic-conorientacaoo-regular",
                         "topic-grafo-2-regular-c4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-4regular-6vertices",
@@ -7803,8 +7695,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-3regular-5vertices-kn",
@@ -7859,8 +7750,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-3regular-5vertices-impossivel",
@@ -7915,8 +7805,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-15-arestas",
@@ -7971,8 +7860,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-3regular-5vertices-modelo",
@@ -8002,8 +7890,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -8033,7 +7920,7 @@
                     "decide impossibilidade de 3-regular com 5 vértices"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-construir-k4",
                       "position": 1,
@@ -8088,8 +7975,7 @@
                       "topics": [
                         "topic-k4",
                         "topic-grafo-completo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-formula-kn",
@@ -8144,8 +8030,7 @@
                       ],
                       "topics": [
                         "topic-formula-kn"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-380",
@@ -8200,8 +8085,7 @@
                       ],
                       "topics": [
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-c4-2regular",
@@ -8256,8 +8140,7 @@
                       ],
                       "topics": [
                         "topic-grafo-2-regular-c4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-3regular-5vertices",
@@ -8312,8 +8195,7 @@
                       ],
                       "topics": [
                         "topic-conorientacaoo-regular"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-sintese-completos-regulares",
@@ -8371,8 +8253,7 @@
                         "topic-conorientacaoo-regular",
                         "topic-grafo-2-regular-c4",
                         "topic-k4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-justificativa-adequada",
@@ -8429,8 +8310,7 @@
                         "topic-formula-kn",
                         "topic-conorientacaoo-regular",
                         "topic-caso-380"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 }
@@ -8607,7 +8487,7 @@
                     "identifica AC e BD como arestas do complementar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-complementar-regra",
                       "position": 1,
@@ -8634,8 +8514,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-c4-base",
@@ -8706,8 +8585,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-comparacao-k4-c4",
@@ -8752,8 +8630,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-escolher-complementar-c4",
@@ -8806,8 +8683,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-complementar-c4",
@@ -8902,8 +8778,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-ab-no-complementar",
@@ -8956,8 +8831,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lacuna-complementar-c4",
@@ -9005,8 +8879,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -9030,7 +8903,7 @@
                     "detecta erro de somar em vez de subtrair"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-formula-arestas-complementar",
                       "position": 1,
@@ -9057,8 +8930,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-calculo-m-complementar-c4",
@@ -9111,8 +8983,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grau-complementar-c4",
@@ -9165,8 +9036,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tabela-graus-complementar",
@@ -9220,8 +9090,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-somar-arestas",
@@ -9274,8 +9143,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-grau-n",
@@ -9328,8 +9196,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -9354,7 +9221,7 @@
                     "detecta erro de usar m = n"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-arvore",
                       "position": 1,
@@ -9381,8 +9248,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arvore-pequena",
@@ -9448,8 +9314,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-escolher-definicao-arvore",
@@ -9502,8 +9367,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arvore-cinco-vertices",
@@ -9556,8 +9420,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arvore-cem-vertices",
@@ -9610,8 +9473,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-arvore-cem",
@@ -9664,8 +9526,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fechamento-arvores",
@@ -9693,8 +9554,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arvore-caminho-unico",
@@ -9749,8 +9609,7 @@
                       ],
                       "topics": [
                         "topic-arvore"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -9774,7 +9633,7 @@
                     "aplica alternância de cores em caminho"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-bipartido",
                       "position": 1,
@@ -9801,8 +9660,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-biparticao-caminho-relation-map",
@@ -9883,8 +9741,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-escolher-biparticao-caminho",
@@ -9937,8 +9794,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-verificar-arestas-cruzadas",
@@ -9991,8 +9847,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-biparticao-invalida",
@@ -10045,8 +9900,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminho-22211-bipartido",
@@ -10099,8 +9953,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fechamento-bipartido-caminho",
@@ -10128,8 +9981,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10154,7 +10006,7 @@
                     "escolhe a forma correta da regra"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-regra-ciclo-impar",
                       "position": 1,
@@ -10181,8 +10033,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-triangulo-ciclo-impar",
@@ -10244,8 +10095,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-comprimento-triangulo",
@@ -10341,8 +10191,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-triangulo-nao-bipartido",
@@ -10438,8 +10287,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-afirmacao-ciclo-impar-falsa",
@@ -10492,8 +10340,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-formulacao-correta-bipartido",
@@ -10546,8 +10393,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ciclo-par-nao-impede",
@@ -10652,8 +10498,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10679,7 +10524,7 @@
                     "detecta aresta indevida dentro do mesmo grupo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-kpq",
                       "position": 1,
@@ -10706,8 +10551,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-k23-relation-map",
@@ -10798,8 +10642,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arestas-k23",
@@ -10852,8 +10695,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-contagem-k23",
@@ -10906,8 +10748,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-ab-k23",
@@ -10960,8 +10801,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-formula-kpq",
@@ -11014,8 +10854,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fechamento-k23",
@@ -11043,8 +10882,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -11076,7 +10914,7 @@
                     "retoma bipartição do caminho A-B-C-D-E"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-complementar-prova",
                       "position": 1,
@@ -11128,8 +10966,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-arvore-cem",
@@ -11182,8 +11019,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-afirmacao-bipartido",
@@ -11236,8 +11072,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-exemplo-bipartido-completo",
@@ -11290,8 +11125,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-caminho-bipartido",
@@ -11344,8 +11178,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tabela-sintese-prova",
@@ -11398,8 +11231,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-associar-regra-final",
@@ -11452,8 +11284,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -11592,7 +11423,7 @@
                     "identifica a ideia de preservar ligações"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-iso-ideia",
                       "position": 1,
@@ -11621,8 +11452,7 @@
                       ],
                       "topics": [
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-iso-g1",
@@ -11681,8 +11511,7 @@
                       ],
                       "topics": [
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-iso-g2",
@@ -11770,8 +11599,7 @@
                       ],
                       "topics": [
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-iso-frase-correta",
@@ -11826,8 +11654,7 @@
                       ],
                       "topics": [
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-iso-erro-nomes",
@@ -11882,8 +11709,7 @@
                       ],
                       "topics": [
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-iso-erro-desenho",
@@ -11939,8 +11765,7 @@
                       "topics": [
                         "topic-definicao-isomorfismo",
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -11964,7 +11789,7 @@
                     "detecta vértice sem correspondência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-correspondencia-regra",
                       "position": 1,
@@ -11993,8 +11818,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-correspondencia-mapa-valido",
@@ -12118,8 +11942,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-correspondencia-escolha-valida",
@@ -12174,8 +11997,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-correspondencia-repetida",
@@ -12304,8 +12126,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-correspondencia-sem-imagem",
@@ -12360,8 +12181,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-correspondencia-conorientacaoo",
@@ -12416,8 +12236,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -12442,7 +12261,7 @@
                     "rejeita correspondência que quebra adjacência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-preservar-regra",
                       "position": 1,
@@ -12471,8 +12290,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-preservar-tabela",
@@ -12523,8 +12341,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-preservar-ab",
@@ -12685,8 +12502,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-preservar-nao-adjacencia",
@@ -12855,8 +12671,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-preservar-quebra",
@@ -13017,8 +12832,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-preservar-todas",
@@ -13073,8 +12887,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -13101,7 +12914,7 @@
                     "reconhece que invariantes iguais não bastam para provar isomorfismo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-invariantes-regra",
                       "position": 1,
@@ -13130,8 +12943,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-invariantes-checklist",
@@ -13182,8 +12994,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-invariantes-vertices",
@@ -13239,8 +13050,7 @@
                       "topics": [
                         "topic-invariantes-isomorfismo",
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-invariantes-arestas",
@@ -13295,8 +13105,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-invariantes-graus",
@@ -13351,8 +13160,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-invariantes-igualdade",
@@ -13408,8 +13216,7 @@
                       "topics": [
                         "topic-invariantes-isomorfismo",
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-invariantes-erro-lista",
@@ -13464,8 +13271,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -13489,7 +13295,7 @@
                     "identifica justificativa correta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-naoiso-listas-graus",
                       "position": 1,
@@ -13644,8 +13450,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-naoiso-conclusao-graus",
@@ -13700,8 +13505,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-naoiso-justificativa-graus",
@@ -13756,8 +13560,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-naoiso-arestas",
@@ -13918,8 +13721,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-naoiso-conclusao-arestas",
@@ -13974,8 +13776,7 @@
                       ],
                       "topics": [
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-naoiso-erro-aparencia",
@@ -14031,8 +13832,7 @@
                       "topics": [
                         "topic-definicao-isomorfismo",
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -14056,7 +13856,7 @@
                     "conclui que os grafos são isomorfos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-isoex-g1",
                       "position": 1,
@@ -14123,8 +13923,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-isoex-g2",
@@ -14192,8 +13991,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-isoex-correspondencia",
@@ -14322,8 +14120,7 @@
                       ],
                       "topics": [
                         "topic-correspondencia-um-para-um"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-isoex-verificacao",
@@ -14374,8 +14171,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-isoex-conclusao",
@@ -14431,8 +14227,7 @@
                       "topics": [
                         "topic-preservacao-adjacencias",
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-isoex-correspondencia-invalida",
@@ -14588,8 +14383,7 @@
                       ],
                       "topics": [
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-isoex-fechamento",
@@ -14620,8 +14414,7 @@
                       "topics": [
                         "topic-definicao-isomorfismo",
                         "topic-preservacao-adjacencias"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -14647,7 +14440,7 @@
                     "distingue resposta decorada de critério estrutural"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vf-afirmacao-prova",
                       "position": 1,
@@ -14702,8 +14495,7 @@
                       "topics": [
                         "topic-definicao-vf",
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-melhor-definicao",
@@ -14758,8 +14550,7 @@
                       ],
                       "topics": [
                         "topic-definicao-vf"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-so-vertices",
@@ -14815,8 +14606,7 @@
                       "topics": [
                         "topic-definicao-vf",
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-so-arestas",
@@ -14872,8 +14662,7 @@
                       "topics": [
                         "topic-definicao-vf",
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-desenho-identico",
@@ -14929,8 +14718,7 @@
                       "topics": [
                         "topic-definicao-vf",
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-sintese",
@@ -14986,8 +14774,7 @@
                       "topics": [
                         "topic-definicao-vf",
                         "topic-invariantes-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-fechamento",
@@ -15018,8 +14805,7 @@
                       "topics": [
                         "topic-definicao-vf",
                         "topic-definicao-isomorfismo"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 }
@@ -15231,7 +15017,7 @@
                     "reconhece que matriz simétrica corresponde ao grafo não orientado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-regra-01",
                       "position": 1,
@@ -15258,8 +15044,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-matriz-alvo-02",
@@ -15314,8 +15099,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-matriz-posicao-ab-03",
@@ -15404,8 +15188,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-matriz-posicao-bd-04",
@@ -15494,8 +15277,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-diagonal-zero-05",
@@ -15548,8 +15330,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ab-ba-mesma-aresta-06",
@@ -15602,8 +15383,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -15635,7 +15415,7 @@
                     "lista todas as arestas corretamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-metade-superior-regra-01",
                       "position": 1,
@@ -15662,8 +15442,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-pares-metade-superior-02",
@@ -15727,8 +15506,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arestas-linha-a-03",
@@ -15781,8 +15559,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-existe-bd-04",
@@ -15835,8 +15612,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-completa-05",
@@ -15925,8 +15701,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-com-bd-06",
@@ -16015,8 +15790,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-contagem-duplicada-ba-07",
@@ -16069,8 +15843,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -16095,7 +15868,7 @@
                     "calcula graus simples como conferência"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grafo-extraido-01",
                       "position": 1,
@@ -16170,8 +15943,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-lista-arestas-02",
@@ -16281,8 +16053,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-quantidade-arestas-03",
@@ -16392,8 +16163,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-adjacentes-d-04",
@@ -16503,8 +16273,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-bd-no-grafo-05",
@@ -16614,8 +16383,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-graus-conferencia-06",
@@ -16725,8 +16493,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-tentativa-incorreta-grafo-07",
@@ -16836,8 +16603,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -16863,7 +16629,7 @@
                     "justifica pela presença de ciclo ímpar"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-bipartido-regra-01",
                       "position": 1,
@@ -16890,8 +16656,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-triangulo-destacado-02",
@@ -16979,8 +16744,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arestas-triangulo-03",
@@ -17102,8 +16866,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-comprimento-triangulo-04",
@@ -17225,8 +16988,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-decisao-bipartido-05",
@@ -17348,8 +17110,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-justificativa-bipartido-06",
@@ -17471,8 +17232,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-justificativa-inadequada-07",
@@ -17594,8 +17354,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -17623,7 +17382,7 @@
                     "calcula comprimento como número de arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicoes-sequencias-01",
                       "position": 1,
@@ -17650,8 +17409,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-sintese-sequencias-02",
@@ -17705,8 +17463,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classifica-abcd-03",
@@ -17829,8 +17586,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classifica-abcd-a-04",
@@ -17954,8 +17710,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classifica-abca-05",
@@ -18077,8 +17832,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-comprimento-abcd-06",
@@ -18201,8 +17955,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-contar-vertices-07",
@@ -18325,8 +18078,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -18353,7 +18105,7 @@
                     "seleciona a justificativa baseada em repetição de vértice"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-conexo-definicao-formal",
                       "position": 1,
@@ -18382,8 +18134,7 @@
                       ],
                       "topics": [
                         "topic-conexidade"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-conexo-exemplo-identificacao",
@@ -18485,8 +18236,7 @@
                       ],
                       "topics": [
                         "topic-conexidade"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-desconexo-exemplo-identificacao",
@@ -18583,8 +18333,7 @@
                       ],
                       "topics": [
                         "topic-conexidade"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-definicao-correta-conexo",
@@ -18639,8 +18388,7 @@
                       ],
                       "topics": [
                         "topic-conexidade"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-grau-minimo-dois-ciclo",
@@ -18670,8 +18418,7 @@
                       ],
                       "topics": [
                         "topic-ciclo-por-grau-minimo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-grau-minimo-ciclo",
@@ -18726,8 +18473,7 @@
                       ],
                       "topics": [
                         "topic-ciclo-por-grau-minimo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-justificativa-incorreta-grau-minimo",
@@ -18782,8 +18528,7 @@
                       ],
                       "topics": [
                         "topic-ciclo-por-grau-minimo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-sintese-conexo-ciclo",
@@ -18831,8 +18576,7 @@
                       "topics": [
                         "topic-conexidade",
                         "topic-ciclo-por-grau-minimo"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -18859,7 +18603,7 @@
                     "detecta repetição de aresta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-subgrafo-sequencia-01",
                       "position": 1,
@@ -18886,8 +18630,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-trilha-destacada-02",
@@ -18977,8 +18720,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-porque-trilha-03",
@@ -19102,8 +18844,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminho-destacado-04",
@@ -19192,8 +18933,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-porque-caminho-05",
@@ -19316,8 +19056,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-sequencia-invalida-bd-06",
@@ -19427,8 +19166,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-repeticao-vertice-caminho-07",
@@ -19538,8 +19276,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -19570,7 +19307,7 @@
                     "identifica um caminho válido"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-matriz-arestas-01",
                       "position": 1,
@@ -19658,8 +19395,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-grafo-02",
@@ -19769,8 +19505,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-bipartido-03",
@@ -19880,8 +19615,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-justificativa-04",
@@ -19991,8 +19725,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-trilha-valida-05",
@@ -20102,8 +19835,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-caminho-valido-06",
@@ -20213,8 +19945,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-sintese-final-07",
@@ -20267,8 +19998,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -20409,7 +20139,7 @@
                     "evita duplicar arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-ponderada-regra",
                       "position": 1,
@@ -20436,8 +20166,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-matriz-ponderada-alvo",
@@ -20529,8 +20258,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-interpretar-ab",
@@ -20583,8 +20311,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-interpretar-ad",
@@ -20637,8 +20364,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-interpretar-ef",
@@ -20691,8 +20417,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-zero-peso",
@@ -20745,8 +20470,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -20777,7 +20501,7 @@
                     "associa cada aresta ao peso correto"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-ler-metade-matriz",
                       "position": 1,
@@ -20804,8 +20528,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-metade-superior-pesos",
@@ -20894,8 +20617,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-arestas-completa",
@@ -21021,8 +20743,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-existe-bf",
@@ -21075,8 +20796,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-peso-cd",
@@ -21129,8 +20849,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-detectar-lista-errada",
@@ -21256,8 +20975,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -21284,7 +21002,7 @@
                     "distingue peso de quantidade de arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-regra-peso-total",
                       "position": 1,
@@ -21311,8 +21029,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminhos-candidatos",
@@ -21366,8 +21083,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-peso-acf",
@@ -21420,8 +21136,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-peso-abef",
@@ -21474,8 +21189,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-peso-acde-f",
@@ -21528,8 +21242,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -21555,7 +21268,7 @@
                     "rejeita menor número de arestas como critério suficiente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-caminhos-candidatos-a-f",
                       "position": 1,
@@ -21610,8 +21323,7 @@
                       ],
                       "topics": [
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-calcular-peso-acf",
@@ -21667,8 +21379,7 @@
                       "topics": [
                         "topic-peso-total-caminho",
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-calcular-peso-abef",
@@ -21724,8 +21435,7 @@
                       "topics": [
                         "topic-peso-total-caminho",
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-comparar-acf-abef",
@@ -21780,8 +21490,7 @@
                       ],
                       "topics": [
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-menor-entre-candidatos",
@@ -21836,8 +21545,7 @@
                       ],
                       "topics": [
                         "topic-menor-caminho-a-f"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -21861,7 +21569,7 @@
                     "rejeita A-C-F como resposta final"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-saidas-de-a",
                       "position": 1,
@@ -21890,8 +21598,7 @@
                       ],
                       "topics": [
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ramos-relevantes-a-f",
@@ -21952,8 +21659,7 @@
                       ],
                       "topics": [
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-saidas-a",
@@ -22082,8 +21788,7 @@
                       "topics": [
                         "topic-matriz-ponderada",
                         "topic-arestas-ponderadas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-comparacao-final-ramos",
@@ -22138,8 +21843,7 @@
                       ],
                       "topics": [
                         "topic-menor-caminho-a-f"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-conclusao-comparacao-sistematica",
@@ -22169,8 +21873,7 @@
                       ],
                       "topics": [
                         "topic-menor-caminho-a-f"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -22195,7 +21898,7 @@
                     "rejeita A-C-F por peso 9"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-registrar-caminho-e-peso",
                       "position": 1,
@@ -22224,8 +21927,7 @@
                       ],
                       "topics": [
                         "topic-menor-caminho-a-f"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-soma-caminho-abef",
@@ -22276,8 +21978,7 @@
                       ],
                       "topics": [
                         "topic-peso-total-caminho"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-soma-final-abef",
@@ -22332,8 +22033,7 @@
                       ],
                       "topics": [
                         "topic-peso-total-caminho"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-rejeitar-acf-peso-9",
@@ -22389,8 +22089,7 @@
                       "topics": [
                         "topic-comparacao-caminhos",
                         "topic-menor-caminho-a-f"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-resposta-completa-menor-caminho",
@@ -22445,8 +22144,7 @@
                       ],
                       "topics": [
                         "topic-menor-caminho-a-f"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -22470,7 +22168,7 @@
                     "não decide o menor caminho pela quantidade de arestas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-nuance-existencia",
                       "position": 1,
@@ -22497,8 +22195,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-peso-garante-conexao",
@@ -22551,8 +22248,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-nao-comparar",
@@ -22605,8 +22301,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fechamento-existencia",
@@ -22634,8 +22329,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -22664,7 +22358,7 @@
                     "responde A-B-E-F com peso 8"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-matriz-lista",
                       "position": 1,
@@ -22789,8 +22483,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-peso-acf",
@@ -22843,8 +22536,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-peso-abef",
@@ -22897,8 +22589,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-comparar-candidatos",
@@ -22953,8 +22644,7 @@
                       ],
                       "topics": [
                         "topic-comparacao-caminhos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-distancia-final",
@@ -23007,8 +22697,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-revisao-caminho-minimo",
@@ -23061,8 +22750,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -23229,7 +22917,7 @@
                     "distingue trilha comum de trilha euleriana"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-trilha-euleriana-definicao",
                       "position": 1,
@@ -23258,8 +22946,7 @@
                       ],
                       "topics": [
                         "topic-trilha-euleriana"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-circuito-euleriano-definicao",
@@ -23289,8 +22976,7 @@
                       ],
                       "topics": [
                         "topic-circuito-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-definicao-trilha-euleriana",
@@ -23345,8 +23031,7 @@
                       ],
                       "topics": [
                         "topic-trilha-euleriana"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-definicao-circuito-euleriano",
@@ -23401,8 +23086,7 @@
                       ],
                       "topics": [
                         "topic-circuito-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-todos-vertices",
@@ -23457,8 +23141,7 @@
                       ],
                       "topics": [
                         "topic-trilha-euleriana"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-circuito-aberto",
@@ -23514,8 +23197,7 @@
                       "topics": [
                         "topic-trilha-euleriana",
                         "topic-circuito-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-sintese-trilha-circuito",
@@ -23567,8 +23249,7 @@
                       "topics": [
                         "topic-trilha-euleriana",
                         "topic-circuito-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -23594,7 +23275,7 @@
                     "reconhece circuito euleriano em C4"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-criterio-grafo-euleriano",
                       "position": 1,
@@ -23623,8 +23304,7 @@
                       ],
                       "topics": [
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-grafo-c4",
@@ -23697,8 +23377,7 @@
                       ],
                       "topics": [
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-graus-c4",
@@ -23805,8 +23484,7 @@
                       ],
                       "topics": [
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-classificar-c4-euleriano",
@@ -23914,8 +23592,7 @@
                       "topics": [
                         "topic-grafo-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-circuito-c4",
@@ -24023,8 +23700,7 @@
                       "topics": [
                         "topic-circuito-euleriano",
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-c4-ciclo",
@@ -24132,8 +23808,7 @@
                       "topics": [
                         "topic-grafo-euleriano",
                         "topic-vf-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-fechamento-c4",
@@ -24164,8 +23839,7 @@
                       "topics": [
                         "topic-grafo-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -24190,7 +23864,7 @@
                     "distingue trilha aberta de circuito euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-criterio-semieuleriano",
                       "position": 1,
@@ -24219,8 +23893,7 @@
                       ],
                       "topics": [
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-grafo-p4",
@@ -24288,8 +23961,7 @@
                       ],
                       "topics": [
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-graus-p4",
@@ -24391,8 +24063,7 @@
                       ],
                       "topics": [
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-impares-p4",
@@ -24494,8 +24165,7 @@
                       ],
                       "topics": [
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-classificar-p4",
@@ -24598,8 +24268,7 @@
                       "topics": [
                         "topic-grafo-semieuleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-trilha-aberta-p4",
@@ -24702,8 +24371,7 @@
                       "topics": [
                         "topic-trilha-euleriana",
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-p4-fechado",
@@ -24806,8 +24474,7 @@
                       "topics": [
                         "topic-grafo-semieuleriano",
                         "topic-vf-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -24831,7 +24498,7 @@
                     "explica por que não basta o grafo ser conexo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-criterio-muitos-impares",
                       "position": 1,
@@ -24860,8 +24527,7 @@
                       ],
                       "topics": [
                         "topic-nao-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-grafo-estrela-k13",
@@ -24929,8 +24595,7 @@
                       ],
                       "topics": [
                         "topic-nao-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-graus-estrela",
@@ -25032,8 +24697,7 @@
                       ],
                       "topics": [
                         "topic-nao-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-contar-impares-estrela",
@@ -25135,8 +24799,7 @@
                       ],
                       "topics": [
                         "topic-nao-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-classificar-estrela",
@@ -25239,8 +24902,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-quatro-impares",
@@ -25343,8 +25005,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-conexao-basta",
@@ -25447,8 +25108,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -25474,7 +25134,7 @@
                     "não ignora a condição de conexão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-conexao-importa",
                       "position": 1,
@@ -25504,8 +25164,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-dois-triangulos-desconectados",
@@ -25597,8 +25256,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-desconexo",
@@ -25724,8 +25382,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-graus-dois-triangulos",
@@ -25851,8 +25508,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-conclusao-dois-triangulos",
@@ -25978,8 +25634,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-so-graus-pares",
@@ -26105,8 +25760,7 @@
                       "topics": [
                         "topic-checklist-euler",
                         "topic-vf-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-fechamento-conexao",
@@ -26137,8 +25791,7 @@
                       "topics": [
                         "topic-grafo-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -26165,7 +25818,7 @@
                     "classifica mais de 2 ímpares como não euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flow-checklist-euler",
                       "position": 1,
@@ -26252,8 +25905,7 @@
                       ],
                       "topics": [
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-classificacao-euler",
@@ -26304,8 +25956,7 @@
                       ],
                       "topics": [
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checklist-classificar-c4",
@@ -26361,8 +26012,7 @@
                       "topics": [
                         "topic-checklist-euler",
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checklist-classificar-p4",
@@ -26418,8 +26068,7 @@
                       "topics": [
                         "topic-checklist-euler",
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checklist-classificar-estrela",
@@ -26475,8 +26124,7 @@
                       "topics": [
                         "topic-checklist-euler",
                         "topic-nao-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checklist-classificar-desconexo",
@@ -26532,8 +26180,7 @@
                       "topics": [
                         "topic-checklist-euler",
                         "topic-nao-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-primeiro-passo-checklist",
@@ -26588,8 +26235,7 @@
                       ],
                       "topics": [
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -26618,7 +26264,7 @@
                     "julga como falsa a possibilidade de semieuleriano com quatro ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vf-euler-todos-pares",
                       "position": 1,
@@ -26673,8 +26319,7 @@
                       "topics": [
                         "topic-vf-euler",
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-semieuleriano-no-maximo-dois",
@@ -26730,8 +26375,7 @@
                       "topics": [
                         "topic-vf-euler",
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-trilha-fechada-menor-k",
@@ -26787,8 +26431,7 @@
                       "topics": [
                         "topic-vf-euler",
                         "topic-trilha-euleriana"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-semieuleriano-sempre-euleriano",
@@ -26844,8 +26487,7 @@
                       "topics": [
                         "topic-vf-euler",
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-conexo-impares-euleriano",
@@ -26901,8 +26543,7 @@
                       "topics": [
                         "topic-vf-euler",
                         "topic-grafo-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-quatro-impares-semieuleriano",
@@ -26958,8 +26599,7 @@
                       "topics": [
                         "topic-vf-euler",
                         "topic-grafo-semieuleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-vf-euler",
@@ -27015,8 +26655,7 @@
                       ],
                       "topics": [
                         "topic-vf-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -27044,7 +26683,7 @@
                     "não antecipa eulerização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-def-grafo-euleriano",
                       "position": 1,
@@ -27099,8 +26738,7 @@
                       "topics": [
                         "topic-grafo-euleriano",
                         "topic-circuito-euleriano"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-def-grafo-semieuleriano",
@@ -27156,8 +26794,7 @@
                       "topics": [
                         "topic-grafo-semieuleriano",
                         "topic-trilha-euleriana"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-classificar-c4",
@@ -27213,8 +26850,7 @@
                       "topics": [
                         "topic-grafo-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-classificar-p4",
@@ -27270,8 +26906,7 @@
                       "topics": [
                         "topic-grafo-semieuleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-classificar-estrela",
@@ -27327,8 +26962,7 @@
                       "topics": [
                         "topic-nao-euleriano",
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-dois-impares",
@@ -27384,8 +27018,7 @@
                       "topics": [
                         "topic-grafo-semieuleriano",
                         "topic-vf-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-pares-conexao",
@@ -27442,8 +27075,7 @@
                         "topic-nao-euleriano",
                         "topic-checklist-euler",
                         "topic-vf-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-sintese-final-euler",
@@ -27502,8 +27134,7 @@
                       ],
                       "topics": [
                         "topic-checklist-euler"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 }
@@ -27668,7 +27299,7 @@
                     "rejeita apagar arestas ou tornar completo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-ideia-eulerizacao-definicao",
                       "position": 1,
@@ -27697,8 +27328,7 @@
                       ],
                       "topics": [
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ideia-definicao-correta",
@@ -27753,8 +27383,7 @@
                       ],
                       "topics": [
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ideia-erro-apagar",
@@ -27809,8 +27438,7 @@
                       ],
                       "topics": [
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ideia-erro-completo",
@@ -27865,8 +27493,7 @@
                       ],
                       "topics": [
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ideia-objetivo-operacional",
@@ -27921,8 +27548,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ideia-sintese-acoes",
@@ -27974,8 +27600,7 @@
                       "topics": [
                         "topic-definicao-eulerizacao",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ideia-fechamento",
@@ -28006,8 +27631,7 @@
                       "topics": [
                         "topic-parear-impares",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -28033,7 +27657,7 @@
                     "rejeita somar apenas um lado"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-aresta-regra",
                       "position": 1,
@@ -28062,8 +27686,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-aresta-calculo-graus",
@@ -28118,8 +27741,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-aresta-impar-mais-um",
@@ -28174,8 +27796,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-aresta-par-mais-um",
@@ -28230,8 +27851,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-aresta-erro-um-lado",
@@ -28286,8 +27906,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-aresta-tabela-antes-depois",
@@ -28339,8 +27958,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-aresta-por-que-corrige",
@@ -28395,8 +28013,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -28423,7 +28040,7 @@
                     "conclui que par de ímpares fica par"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-caminho-regra",
                       "position": 1,
@@ -28452,8 +28069,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-grafo-abcd",
@@ -28522,8 +28138,7 @@
                       "topics": [
                         "topic-paridade-duplicacao",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-extremidades",
@@ -28625,8 +28240,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-internos",
@@ -28728,8 +28342,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-acrescimos",
@@ -28831,8 +28444,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-internos-paridade",
@@ -28934,8 +28546,7 @@
                       ],
                       "topics": [
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-caminho-impares-viram-pares",
@@ -29038,8 +28649,7 @@
                       "topics": [
                         "topic-paridade-duplicacao",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -29067,7 +28677,7 @@
                     "conclui que o grafo eulerizado é euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-p4-grafo-original",
                       "position": 1,
@@ -29134,8 +28744,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-p4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-graus-originais",
@@ -29237,8 +28846,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-p4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-impares",
@@ -29341,8 +28949,7 @@
                       "topics": [
                         "topic-eulerizar-p4",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-duplicacao-correta",
@@ -29444,8 +29051,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-p4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-tabela-graus",
@@ -29507,8 +29113,7 @@
                       "topics": [
                         "topic-eulerizar-p4",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-conclusao-euleriano",
@@ -29611,8 +29216,7 @@
                       "topics": [
                         "topic-eulerizar-p4",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-erro-duplicar-ab",
@@ -29714,8 +29318,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-p4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-p4-fechamento",
@@ -29746,8 +29349,7 @@
                       "topics": [
                         "topic-eulerizar-p4",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -29773,7 +29375,7 @@
                     "confere graus finais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-estrela-grafo-original",
                       "position": 1,
@@ -29840,8 +29442,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-estrela"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-graus-originais",
@@ -29943,8 +29544,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-estrela"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-contar-impares",
@@ -30047,8 +29647,7 @@
                       "topics": [
                         "topic-eulerizar-estrela",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-classificacao-original",
@@ -30150,8 +29749,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-estrela"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-duplicacao-possivel",
@@ -30253,8 +29851,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-estrela"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-tabela-graus",
@@ -30316,8 +29913,7 @@
                       "topics": [
                         "topic-eulerizar-estrela",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-final-pares",
@@ -30420,8 +30016,7 @@
                       "topics": [
                         "topic-eulerizar-estrela",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-estrela-erro-so-ab",
@@ -30523,8 +30118,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-estrela"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -30550,7 +30144,7 @@
                     "conclui se o grafo eulerizado admite circuito euleriano"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-checagem-regra",
                       "position": 1,
@@ -30579,8 +30173,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checagem-caso-valido",
@@ -30641,8 +30234,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checagem-2422",
@@ -30697,8 +30289,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checagem-2341",
@@ -30753,8 +30344,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checagem-impar-restante",
@@ -30809,8 +30399,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checagem-conexao",
@@ -30865,8 +30454,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-checagem-flow",
@@ -30938,8 +30526,7 @@
                       "topics": [
                         "topic-checagem-final-eulerizacao",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -30967,7 +30554,7 @@
                     "reconhece a necessidade de checar graus finais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vf-definicao",
                       "position": 1,
@@ -31021,8 +30608,7 @@
                       ],
                       "topics": [
                         "topic-vf-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-apagar",
@@ -31077,8 +30663,7 @@
                       ],
                       "topics": [
                         "topic-vf-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-duplicar-ab",
@@ -31134,8 +30719,7 @@
                       "topics": [
                         "topic-vf-eulerizacao",
                         "topic-paridade-duplicacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-muitos-vertices",
@@ -31191,8 +30775,7 @@
                       "topics": [
                         "topic-vf-eulerizacao",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-checar-pares",
@@ -31248,8 +30831,7 @@
                       "topics": [
                         "topic-vf-eulerizacao",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-completo",
@@ -31305,8 +30887,7 @@
                       "topics": [
                         "topic-vf-eulerizacao",
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-sempre-eulerizar-conexidade",
@@ -31362,8 +30943,7 @@
                       "topics": [
                         "topic-vf-eulerizacao",
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-tabela-comentada",
@@ -31424,8 +31004,7 @@
                       ],
                       "topics": [
                         "topic-vf-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -31453,7 +31032,7 @@
                     "responde V/F com justificativa"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-revisao-definicao",
                       "position": 1,
@@ -31508,8 +31087,7 @@
                       "topics": [
                         "topic-definicao-eulerizacao",
                         "topic-vf-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-p4-impares",
@@ -31565,8 +31143,7 @@
                       "topics": [
                         "topic-eulerizar-p4",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-p4-duplicacao",
@@ -31621,8 +31198,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-p4"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-estrela-duplicacao",
@@ -31677,8 +31253,7 @@
                       ],
                       "topics": [
                         "topic-eulerizar-estrela"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-graus-finais",
@@ -31733,8 +31308,7 @@
                       ],
                       "topics": [
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-efeito-caminho",
@@ -31790,8 +31364,7 @@
                       "topics": [
                         "topic-paridade-duplicacao",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-eulerizacao-conexidade",
@@ -31846,8 +31419,7 @@
                       ],
                       "topics": [
                         "topic-definicao-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-sintese-final",
@@ -31914,8 +31486,7 @@
                       "topics": [
                         "topic-checagem-final-eulerizacao",
                         "topic-parear-impares"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-justificativa-eulerizacao",
@@ -31946,8 +31517,7 @@
                       "topics": [
                         "topic-definicao-eulerizacao",
                         "topic-checagem-final-eulerizacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 }
@@ -32146,7 +31716,7 @@
                     "distingue classificação de eulerização"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-mapa-abertura",
                       "position": 1,
@@ -32173,8 +31743,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-mapa-decisao",
@@ -32251,8 +31820,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ferramenta-kn",
@@ -32305,8 +31873,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ferramenta-lista",
@@ -32359,8 +31926,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ferramenta-menor-caminho",
@@ -32413,8 +31979,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ferramenta-eulerizacao",
@@ -32467,8 +32032,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-ferramenta-sem-peso",
@@ -32521,8 +32085,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-mapa-fechamento",
@@ -32550,8 +32113,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -32580,7 +32142,7 @@
                     "conta vértices ímpares"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-grafo-base-graus",
                       "position": 1,
@@ -32650,8 +32212,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-contar-n-m",
@@ -32756,8 +32317,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grau-c",
@@ -32862,8 +32422,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-graus-ordenada",
@@ -32968,8 +32527,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-soma-graus",
@@ -33022,8 +32580,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arestas-por-soma",
@@ -33076,8 +32633,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-vertices-impares",
@@ -33182,8 +32738,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-lista-sem-ordenar-revisao",
@@ -33288,8 +32843,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -33318,7 +32872,7 @@
                     "distingue possível de impossível"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-listas-abertura",
                       "position": 1,
@@ -33345,8 +32899,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-3332",
@@ -33399,8 +32952,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-lista-1231",
@@ -33453,8 +33005,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-havel-etapa-direta",
@@ -33503,8 +33054,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-proxima-lista-havel",
@@ -33557,8 +33107,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-construcao-3221",
@@ -33663,8 +33212,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminho-22211",
@@ -33773,8 +33321,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-laco-repetida",
@@ -33827,8 +33374,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -33864,7 +33410,7 @@
                     "constrói K2,3"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-k4-arestas",
                       "position": 1,
@@ -33916,8 +33462,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-formula-kn",
@@ -33970,8 +33515,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-kn-380",
@@ -34024,8 +33568,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-regular-3-5",
@@ -34078,8 +33621,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-complementar-c4",
@@ -34132,8 +33674,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arvore-100",
@@ -34186,8 +33727,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-bipartido-ciclo-impar",
@@ -34240,8 +33780,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-k23-relation-map-revisao",
@@ -34366,8 +33905,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -34398,7 +33936,7 @@
                     "distingue trilha de caminho"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-isomorfismo",
                       "position": 1,
@@ -34450,8 +33988,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-correspondencia-um-para-um",
@@ -34565,8 +34102,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-matriz-4x4-arestas",
@@ -34655,8 +34191,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-grafo-da-matriz",
@@ -34766,8 +34301,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-nao-bipartido-triangulo",
@@ -34889,8 +34423,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-trilha-valida",
@@ -35000,8 +34533,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminho-valido",
@@ -35111,8 +34643,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-bd-matriz",
@@ -35201,8 +34732,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -35229,7 +34759,7 @@
                     "responde A-B-E-F"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-matriz-ponderada-ad-zero",
                       "position": 1,
@@ -35354,8 +34884,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-arestas-ponderadas",
@@ -35481,8 +35010,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-peso-acf-revisao",
@@ -35535,8 +35063,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-peso-abef-revisao",
@@ -35589,8 +35116,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-comparar-caminhos-ponderados",
@@ -35645,8 +35171,7 @@
                       ],
                       "topics": [
                         "topic-revisao-representacoes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-distancia-final-af",
@@ -35699,8 +35224,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-caminho-minimo-af",
@@ -35826,8 +35350,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-menos-arestas",
@@ -35880,8 +35403,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -35912,7 +35434,7 @@
                     "confere graus finais"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-definicao-trilha-euleriana-revisao",
                       "position": 1,
@@ -35964,8 +35486,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classifica-c4",
@@ -36018,8 +35539,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classifica-p4",
@@ -36072,8 +35592,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-classifica-k13",
@@ -36126,8 +35645,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-definicao-eulerizacao",
@@ -36180,8 +35698,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-euleriza-p4",
@@ -36234,8 +35751,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-graus-finais-p4",
@@ -36288,8 +35804,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-erro-apagar-arestas",
@@ -36342,8 +35857,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-vf-revisao-trilha-menor-k",
@@ -36398,8 +35912,7 @@
                       ],
                       "topics": [
                         "topic-revisao-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-revisao-semieuleriano-no-maximo",
@@ -36454,8 +35967,7 @@
                       ],
                       "topics": [
                         "topic-revisao-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vf-revisao-eulerizacao-conexa",
@@ -36510,8 +36022,7 @@
                       ],
                       "topics": [
                         "topic-revisao-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-sintese-euler",
@@ -36568,8 +36079,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -36600,7 +36110,7 @@
                     "corrige erros prováveis"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-simulado-listas",
                       "position": 1,
@@ -36652,8 +36162,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-formula-kn",
@@ -36706,8 +36215,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-380",
@@ -36760,8 +36268,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-arvore",
@@ -36814,8 +36321,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-bipartido",
@@ -36868,8 +36374,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-isomorfismo",
@@ -36922,8 +36427,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-matriz-arestas",
@@ -37012,8 +36516,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-menor-caminho",
@@ -37139,8 +36642,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-euler-classificacao",
@@ -37193,8 +36695,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-eulerizacao",
@@ -37247,8 +36748,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-simulado-grau-minimo-ciclo",
@@ -37303,8 +36803,7 @@
                       ],
                       "topics": [
                         "topic-revisao-conexidade-ciclo"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-simulado-trilha-menor-k",
@@ -37359,8 +36858,7 @@
                       ],
                       "topics": [
                         "topic-revisao-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-simulado-semieuleriano-no-maximo",
@@ -37415,8 +36913,7 @@
                       ],
                       "topics": [
                         "topic-revisao-euler"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-gabarito-comentado",
@@ -37515,8 +37012,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fechamento-curso",
@@ -37544,8 +37040,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

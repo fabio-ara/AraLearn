@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -314,7 +314,7 @@
                     "evita a frase simplista Visual Basic morreu"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-tese-central",
                       "position": 1,
@@ -343,8 +343,7 @@
                       ],
                       "topics": [
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-arvore-familia-vb",
@@ -425,8 +424,7 @@
                       ],
                       "topics": [
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-comparacao-vb6-vba-vbnet",
@@ -482,8 +480,7 @@
                       "topics": [
                         "topic-familia-visual-basic",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-linha-tempo-minima",
@@ -546,8 +543,7 @@
                       ],
                       "topics": [
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-formulacao-segura-vb",
@@ -602,8 +598,7 @@
                       ],
                       "topics": [
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identifica-vba",
@@ -659,8 +654,7 @@
                       "topics": [
                         "topic-familia-visual-basic",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identifica-vbnet",
@@ -716,8 +710,7 @@
                       "topics": [
                         "topic-familia-visual-basic",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-tecnologia-unica",
@@ -773,8 +766,7 @@
                       "topics": [
                         "topic-familia-visual-basic",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-visual-basic-morreu",
@@ -830,8 +822,7 @@
                       "topics": [
                         "topic-familia-visual-basic",
                         "topic-perguntas-provaveis"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-contexto-vb6",
@@ -887,8 +878,7 @@
                       "topics": [
                         "topic-familia-visual-basic",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -922,7 +912,7 @@
                     "reconhece propriedade e método em exemplos curtos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-vocab-por-que",
                       "position": 1,
@@ -951,8 +941,7 @@
                       ],
                       "topics": [
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-vocabulario-base",
@@ -1048,8 +1037,7 @@
                       ],
                       "topics": [
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-sub-saudacao",
@@ -1082,8 +1070,7 @@
                       "topics": [
                         "topic-vocabulario-programacao",
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-function-soma",
@@ -1115,8 +1102,7 @@
                       ],
                       "topics": [
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-evento-salvar",
@@ -1149,8 +1135,7 @@
                       "topics": [
                         "topic-vocabulario-programacao",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-procedimento-vs-instrucao",
@@ -1205,8 +1190,7 @@
                       ],
                       "topics": [
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-sub-ou-function",
@@ -1261,8 +1245,7 @@
                       ],
                       "topics": [
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-variavel-e-tipo",
@@ -1318,8 +1301,7 @@
                       "topics": [
                         "topic-vocabulario-programacao",
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-controle-ou-evento",
@@ -1375,8 +1357,7 @@
                       "topics": [
                         "topic-vocabulario-programacao",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-propriedade-ou-metodo",
@@ -1431,8 +1412,7 @@
                       ],
                       "topics": [
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-userform-modulo-classe",
@@ -1488,8 +1468,7 @@
                       "topics": [
                         "topic-vocabulario-programacao",
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-ide-significado",
@@ -1545,8 +1524,7 @@
                       "topics": [
                         "topic-vocabulario-programacao",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -1576,7 +1554,7 @@
                     "identifica VS Code como editor leve"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-ambientes-analogia",
                       "position": 1,
@@ -1605,8 +1583,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-mapa-ambientes",
@@ -1727,8 +1704,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-vbe-studio-code",
@@ -1784,8 +1760,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-dotnet-nao-linguagem",
@@ -1840,8 +1815,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vbe-vscode",
@@ -1896,8 +1870,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vba-vbnet-diferenca",
@@ -1953,8 +1926,7 @@
                       "topics": [
                         "topic-dotnet-e-ambientes",
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-visual-studio-papel",
@@ -2009,8 +1981,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vbe-papel",
@@ -2066,8 +2037,7 @@
                       "topics": [
                         "topic-dotnet-e-ambientes",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-item-plataforma-linguagem",
@@ -2122,8 +2092,7 @@
                       ],
                       "topics": [
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -2152,7 +2121,7 @@
                     "explica o Hello World associado ao clique de um botão"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-hello-finalidade",
                       "position": 1,
@@ -2181,8 +2150,7 @@
                       ],
                       "topics": [
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-vba-hello",
@@ -2214,8 +2182,7 @@
                       ],
                       "topics": [
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-botao-hello",
@@ -2248,8 +2215,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-vbnet-console-hello",
@@ -2282,8 +2248,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-vb6-msgbox",
@@ -2316,8 +2281,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-flow-click-msgbox",
@@ -2374,8 +2338,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-vba-hello",
@@ -2430,8 +2393,7 @@
                       ],
                       "topics": [
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-vbnet-console",
@@ -2487,8 +2449,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-msgbox-faz",
@@ -2544,8 +2505,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-end-sub",
@@ -2601,8 +2561,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-vocabulario-programacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-console-no-vba",
@@ -2657,8 +2616,7 @@
                       ],
                       "topics": [
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-botao-depende-clique",
@@ -2714,8 +2672,7 @@
                       "topics": [
                         "topic-hello-world",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -2745,7 +2702,7 @@
                     "reconhece que drag and drop é recurso do ambiente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-eventos-modelo-mental",
                       "position": 1,
@@ -2774,8 +2731,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-flow-desenvolvimento-visual",
@@ -2841,8 +2797,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-cmdsalvar",
@@ -2875,8 +2830,7 @@
                       "topics": [
                         "topic-eventos",
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-txtnome-change",
@@ -2908,8 +2862,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-eventos",
@@ -2960,8 +2913,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-o-que-cmdsalvar",
@@ -3016,8 +2968,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-o-que-click",
@@ -3072,8 +3023,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-drag-drop-linguagem",
@@ -3128,8 +3078,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-msgbox-no-evento",
@@ -3185,8 +3134,7 @@
                       "topics": [
                         "topic-eventos",
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-evento-nao-e-botao",
@@ -3241,8 +3189,7 @@
                       ],
                       "topics": [
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -3273,7 +3220,7 @@
                     "responde com segurança à pergunta compilada ou interpretada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-classificacao-intro",
                       "position": 1,
@@ -3302,8 +3249,7 @@
                       ],
                       "topics": [
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-classificacao-completa",
@@ -3389,8 +3335,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-mapa-tecnologia-area",
@@ -3473,8 +3418,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-compilada-interpretada-segura",
@@ -3530,8 +3474,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-perguntas-provaveis"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vba-execucao",
@@ -3587,8 +3530,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vbnet-area",
@@ -3644,8 +3586,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vb6-area",
@@ -3701,8 +3642,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-vba-area",
@@ -3758,8 +3698,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-nivel-alto",
@@ -3814,8 +3753,7 @@
                       ],
                       "topics": [
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-paradigma-versoes",
@@ -3870,8 +3808,7 @@
                       ],
                       "topics": [
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-erro-vba-dotnet",
@@ -3926,8 +3863,7 @@
                       ],
                       "topics": [
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tipo-ambiente-dispositivo",
@@ -3983,8 +3919,7 @@
                       "topics": [
                         "topic-classificacao-tecnica",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -4012,7 +3947,7 @@
                     "rejeita nomes genéricos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-convencoes-intro",
                       "position": 1,
@@ -4041,8 +3976,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-convencoes",
@@ -4097,8 +4031,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-nomes-controles",
@@ -4130,8 +4063,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-nomes-variaveis",
@@ -4164,8 +4096,7 @@
                       "topics": [
                         "topic-convencoes-nome",
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-camel",
@@ -4224,8 +4155,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-pascal",
@@ -4284,8 +4214,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-identificar-hungarian",
@@ -4340,8 +4269,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-hungarian-nao-subtipo",
@@ -4396,8 +4324,7 @@
                       ],
                       "topics": [
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-melhor-nome-total",
@@ -4453,8 +4380,7 @@
                       "topics": [
                         "topic-convencoes-nome",
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-prefixo-controle",
@@ -4510,8 +4436,7 @@
                       "topics": [
                         "topic-convencoes-nome",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -4545,7 +4470,7 @@
                     "diferencia comentário útil de comentário redundante"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-boas-praticas-intro",
                       "position": 1,
@@ -4574,8 +4499,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-flow-macro-confiavel",
@@ -4641,8 +4565,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-option-explicit",
@@ -4674,8 +4597,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-erro-totla",
@@ -4707,8 +4629,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-on-error",
@@ -4740,8 +4661,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-code-try-catch-vbnet",
@@ -4774,8 +4694,7 @@
                       "topics": [
                         "topic-boas-praticas",
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-boas-praticas",
@@ -4842,8 +4761,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-option-explicit-funcao",
@@ -4898,8 +4816,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-detecta-totla",
@@ -4954,8 +4871,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-nome-descritivo-pratica",
@@ -5011,8 +4927,7 @@
                       "topics": [
                         "topic-boas-praticas",
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-separar-responsabilidades",
@@ -5067,8 +4982,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tratamento-erro-vba",
@@ -5123,8 +5037,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-try-catch-vbnet",
@@ -5180,8 +5093,7 @@
                       "topics": [
                         "topic-boas-praticas",
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-comentario-util",
@@ -5236,8 +5148,7 @@
                       ],
                       "topics": [
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-documentar-versionar",
@@ -5293,8 +5204,7 @@
                       "topics": [
                         "topic-boas-praticas",
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -5323,7 +5233,7 @@
                     "reconhece que documentação não é só comentário no código"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-organizacao-intro",
                       "position": 1,
@@ -5352,8 +5262,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-arvore-projeto-vba",
@@ -5436,8 +5345,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-organizacao",
@@ -5493,8 +5401,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-mapa-documentacao",
@@ -5615,8 +5522,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-modulo-uso",
@@ -5671,8 +5577,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-userform-uso",
@@ -5728,8 +5633,7 @@
                       "topics": [
                         "topic-organizacao-documentacao",
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-classe-uso",
@@ -5784,8 +5688,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-fonte-vba",
@@ -5840,8 +5743,7 @@
                       ],
                       "topics": [
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-fonte-vbnet",
@@ -5897,8 +5799,7 @@
                       "topics": [
                         "topic-organizacao-documentacao",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-documentacao-nao-so-comentario",
@@ -5954,8 +5855,7 @@
                       "topics": [
                         "topic-organizacao-documentacao",
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 },
@@ -5987,7 +5887,7 @@
                     "organiza os tópicos em ordem de apresentação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flow-roteiro-10-min",
                       "position": 1,
@@ -6072,8 +5972,7 @@
                       ],
                       "topics": [
                         "topic-perguntas-provaveis"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-tabela-perguntas-provaveis",
@@ -6139,8 +6038,7 @@
                       ],
                       "topics": [
                         "topic-perguntas-provaveis"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-morreu",
@@ -6196,8 +6094,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-dotnet",
@@ -6253,8 +6150,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-vbe",
@@ -6310,8 +6206,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-dotnet-e-ambientes"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-vba-substituido",
@@ -6367,8 +6262,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-area-atuacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-execucao",
@@ -6424,8 +6318,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-classificacao-tecnica"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-hello-vba",
@@ -6481,8 +6374,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-hello-world"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-evento",
@@ -6538,8 +6430,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-eventos"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-hungarian",
@@ -6595,8 +6486,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-convencoes-nome"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-option-explicit",
@@ -6652,8 +6542,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-boas-praticas"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-documentacao",
@@ -6709,8 +6598,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-organizacao-documentacao"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-revisao-ordem-apresentacao",
@@ -6765,8 +6653,7 @@
                       ],
                       "topics": [
                         "topic-perguntas-provaveis"
-                      ],
-                      "sources": []
+                      ]
                     },
                     {
                       "id": "card-sintese-final",
@@ -6797,8 +6684,7 @@
                       "topics": [
                         "topic-perguntas-provaveis",
                         "topic-familia-visual-basic"
-                      ],
-                      "sources": []
+                      ]
                     }
                   ]
                 }

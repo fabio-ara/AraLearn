@@ -1,0 +1,479 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { expect, test } from "@playwright/test";
+
+import {
+  COURSE_MCP_APP_RESOURCE_URI,
+  readCourseMcpAppResource
+} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js";
+
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const publishedBaseUrl = "https://fabio-ara.github.io/AraLearn/";
+
+async function mountResource(page, html, {
+  initialize = true,
+  hostCapabilities = { openLinks: {} }
+} = {}) {
+  await page.setContent(`<!doctype html><html><body>
+    <iframe id="mcp-app" title="Recurso MCP" sandbox="allow-scripts allow-same-origin"></iframe>
+    <script>
+      window.__mcpMessages = [];
+      window.addEventListener("message", (event) => {
+        const frame = document.getElementById("mcp-app");
+        const message = event.data;
+        if (event.source !== frame.contentWindow || !message || message.jsonrpc !== "2.0") return;
+        window.__mcpMessages.push(message);
+        if (window.__initializeMcpApp && message.method === "ui/initialize" && message.id !== undefined) {
+          event.source.postMessage({
+            jsonrpc: "2.0",
+            id: message.id,
+            result: {
+              protocolVersion: "2026-01-26",
+              hostCapabilities: window.__mcpHostCapabilities,
+              hostInfo: { name: "AraLearn test host", version: "1" },
+              hostContext: {
+                theme: "light",
+                containerDimensions: { maxWidth: 430, maxHeight: 1200 },
+                safeAreaInsets: { top: 5, right: 6, bottom: 7, left: 8 }
+              }
+            }
+          }, "*");
+        } else if (message.method === "ui/open-link" && message.id !== undefined) {
+          event.source.postMessage({ jsonrpc: "2.0", id: message.id, result: {} }, "*");
+        }
+      });
+    </script>
+  </body></html>`, { waitUntil: "domcontentloaded" });
+  await page.evaluate((value) => { window.__mcpHostCapabilities = value; }, hostCapabilities);
+  await page.evaluate((value) => { window.__initializeMcpApp = value; }, initialize);
+  await page.locator("#mcp-app").evaluate((frame, source) => { frame.srcdoc = source; }, html);
+  await expect.poll(() => page.frames().length).toBe(2);
+  return page.frames().find((frame) => frame !== page.mainFrame());
+}
+
+async function postToResource(page, message) {
+  await page.locator("#mcp-app").evaluate((frame, value) => {
+    frame.contentWindow.postMessage(value, "*");
+  }, message);
+}
+
+function localPublishedPath(url) {
+  const relativePath = decodeURIComponent(url.pathname.slice("/AraLearn/".length));
+  if (!relativePath || relativePath.split("/").includes("..")) return null;
+  if (relativePath.startsWith("src/")) return path.join(repositoryRoot, relativePath);
+  if (relativePath.startsWith("vendor/")) {
+    return path.join(repositoryRoot, "public", relativePath);
+  }
+  return path.join(repositoryRoot, "public", relativePath);
+}
+
+function contentType(filePath) {
+  return path.extname(filePath).toLowerCase() === ".css"
+    ? "text/css; charset=utf-8"
+    : "text/javascript; charset=utf-8";
+}
+
+const setDiagramStudyUnit = Object.freeze({
+  id: "study-unit-mcp-set-diagram",
+  position: 1,
+  title: "Conjuntos em interseção",
+  role: "theory",
+  content: [Object.freeze({
+    id: "set-diagram-mcp",
+    package: "aralearn.resource.set_diagram",
+    version: "1.0.0",
+    data: Object.freeze({
+      prompt: "Compare os conjuntos.",
+      kind: "venn",
+      sets: [
+        { id: "a", symbol: "A", label: "Grupo A" },
+        { id: "b", symbol: "B", label: "Grupo B" }
+      ],
+      regions: [
+        { id: "a-only", setIds: ["a"], items: ["x"] },
+        { id: "both", setIds: ["a", "b"], items: ["y"] }
+      ]
+    })
+  })],
+  response: null,
+  feedback: [],
+  topics: []
+});
+
+test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  const requestedUrls = [];
+  await page.route(`${publishedBaseUrl}**`, async (route) => {
+    const url = new URL(route.request().url());
+    requestedUrls.push(url.href);
+    const filePath = localPublishedPath(url);
+    if (!filePath) {
+      await route.abort();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: contentType(filePath),
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: await fs.readFile(filePath)
+    });
+  });
+
+  const resource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+  const appFrame = await mountResource(page, resource.text);
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/initialize"
+  ))).toBe(true);
+  const initializeRequest = await page.evaluate(() => window.__mcpMessages.find(
+    ({ method }) => method === "ui/initialize"
+  ));
+  expect(initializeRequest.params).toEqual({
+    protocolVersion: "2026-01-26",
+    appInfo: { name: "AraLearn Course Inspector", version: "0.0.23" },
+    appCapabilities: { availableDisplayModes: ["inline"] }
+  });
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/notifications/initialized"
+  ))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.find(
+    ({ method }) => method === "ui/notifications/size-changed"
+  )?.params)).toEqual(expect.objectContaining({
+    width: expect.any(Number),
+    height: expect.any(Number)
+  }));
+  const initialSize = await page.evaluate(() => window.__mcpMessages.find(
+    ({ method }) => method === "ui/notifications/size-changed"
+  ).params);
+  expect(initialSize.width).toBeGreaterThan(0);
+  expect(initialSize.width).toBeLessThanOrEqual(430);
+  expect(initialSize.height).toBeGreaterThan(0);
+  expect(initialSize.height).toBeLessThanOrEqual(1200);
+  await expect(appFrame.locator("html")).toHaveAttribute("data-color-mode", "light");
+  await expect.poll(() => appFrame.evaluate(() =>
+    getComputedStyle(document.documentElement).backgroundColor
+  )).toBe("rgb(247, 248, 250)");
+  await postToResource(page, {
+      jsonrpc: "2.0",
+      method: "ui/notifications/tool-result",
+      params: {
+        structuredContent: {
+          ok: true,
+          data: {
+            contract: "aralearn.instructional-component-library.v1",
+            operation: "preview_study_unit",
+            result: {
+              catalogVersion: "1",
+              structural: { valid: true },
+              studyUnit: setDiagramStudyUnit,
+              accessibleText: "Diagrama de Venn dos grupos A e B.",
+              deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+            }
+          }
+        }
+      }
+  });
+
+  await expect(appFrame.locator('[data-set-diagram-state="ready"]')).toHaveCount(1);
+  await expect(appFrame.locator(".package-set-shape")).toHaveCount(2);
+  expect(requestedUrls).toContain(`${publishedBaseUrl}vendor/venn.esm.js`);
+  expect(requestedUrls.some((url) => url.startsWith("ui://"))).toBe(false);
+  await appFrame.getByRole("link", { name: "Abrir no AraLearn" }).click();
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.find(
+    ({ method }) => method === "ui/open-link"
+  )?.params)).toEqual({
+    url: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+  });
+
+  await postToResource(page, {
+      jsonrpc: "2.0",
+      method: "ui/notifications/host-context-changed",
+      params: { theme: "dark" }
+  });
+  await expect(appFrame.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await expect.poll(() => appFrame.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--surface-canvas").trim()
+  )).toBe("#111418");
+  const darkContrast = await appFrame.evaluate(() => {
+    const components = (value) => (value.match(/[\d.]+/gu) || []).slice(0, 3).map(Number);
+    const luminance = (value) => {
+      const [red, green, blue] = components(value).map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.04045
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    };
+    const ratio = (foreground, background) => {
+      const values = [luminance(foreground), luminance(background)].sort((left, right) => right - left);
+      return (values[0] + 0.05) / (values[1] + 0.05);
+    };
+    const background = getComputedStyle(document.documentElement).backgroundColor;
+    return {
+      context: ratio(getComputedStyle(document.querySelector(".mcp-app-context")).color, background),
+      link: ratio(getComputedStyle(document.querySelector(".mcp-app-link")).color, background)
+    };
+  });
+  expect(darkContrast.context).toBeGreaterThanOrEqual(4.5);
+  expect(darkContrast.link).toBeGreaterThanOrEqual(4.5);
+
+  await postToResource(page, {
+      jsonrpc: "2.0",
+      method: "ui/notifications/host-context-changed",
+      params: {
+        containerDimensions: { maxWidth: 390, maxHeight: 900 },
+        safeAreaInsets: { top: 5, right: 6, bottom: 12, left: 8 }
+      }
+  });
+  await expect(appFrame.locator("html")).toHaveCSS("max-height", "900px");
+  expect(await appFrame.evaluate(() => ({
+    maxWidth: document.documentElement.style.maxWidth,
+    safeLeft: document.documentElement.style.getPropertyValue("--mcp-host-safe-left"),
+    safeBottom: document.documentElement.style.getPropertyValue("--mcp-host-safe-bottom")
+  }))).toEqual({ maxWidth: "390px", safeLeft: "8px", safeBottom: "12px" });
+
+  await postToResource(page, {
+      jsonrpc: "2.0",
+      method: "ui/notifications/tool-result",
+      params: {
+        structuredContent: {
+          ok: true,
+          data: {
+            contract: "aralearn.instructional-component-library.v1",
+            operation: "search",
+            result: {
+              catalogVersion: "1",
+              candidates: [{
+                packageId: "aralearn.resource.set_diagram",
+                label: "Diagrama de conjuntos",
+                fit: "canonical",
+                reason: "Representa relações entre conjuntos."
+              }]
+            }
+          }
+        }
+      }
+  });
+  await expect(appFrame.getByRole("heading", { name: "Biblioteca de componentes didáticos" })).toBeVisible();
+  await expect(appFrame.getByRole("cell", { name: "Diagrama de conjuntos" })).toBeVisible();
+  await expect(appFrame.getByRole("cell", { name: "Canônico" })).toBeVisible();
+
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      structuredContent: {
+        ok: true,
+        data: {
+          contract: "aralearn.course-authoring-analytics.v1",
+          courseRevision: 7,
+          overview: {
+            title: "Fatos por estado",
+            question: "Quais estados aparecem?",
+            series: [{
+              key: "open",
+              label: "Em aberto",
+              value: 2,
+              unit: "count",
+              denominator: 3,
+              missing: false
+            }]
+          },
+          limitations: [],
+          deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=research"
+        }
+      }
+    }
+  });
+  await expect(appFrame.getByRole("cell", { name: "Contagem" })).toBeVisible();
+
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      structuredContent: {
+        ok: true,
+        data: {
+          contract: "aralearn.course-variant-comparison.v1",
+          planning: { courseRevision: 7, planVersion: 2 },
+          members: [{
+            courseId: "10000000-0000-4000-8000-000000000001",
+            label: "Z",
+            currentCourseRevision: 3,
+            materialization: { plannedPartCount: 2, studyUnitCount: 4 },
+            references: { sourceCount: 1, anchorCount: 1, pdfCount: 0 }
+          }, {
+            courseId: "20000000-0000-4000-8000-000000000002",
+            label: "A",
+            currentCourseRevision: 4,
+            materialization: { plannedPartCount: 2, studyUnitCount: 5 },
+            references: { sourceCount: 1, anchorCount: 1, pdfCount: 0 }
+          }],
+          differences: {
+            referenceCourseId: "10000000-0000-4000-8000-000000000001",
+            declared: [], observedExpected: [], accidentalDeviations: [], factual: [], missingData: []
+          }
+        }
+      }
+    }
+  });
+  await expect(appFrame.getByRole("row", { name: /^Z Referência /u })).toBeVisible();
+  await expect(appFrame.getByRole("row", { name: /^A Comparada /u })).toBeVisible();
+
+  const beforeTeardown = await appFrame.locator("#app").innerHTML();
+  await postToResource(page, {
+      jsonrpc: "2.0",
+      id: "teardown-1",
+      method: "ui/resource-teardown",
+      params: { reason: "Teste concluído" }
+  });
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.find(
+    ({ id, result }) => id === "teardown-1" && result
+  ))).toEqual({ jsonrpc: "2.0", id: "teardown-1", result: {} });
+  expect(await page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/notifications/teardown-complete"
+  ))).toBe(false);
+
+  await postToResource(page, {
+      jsonrpc: "2.0",
+      method: "ui/notifications/tool-result",
+      params: {
+        structuredContent: {
+          ok: true,
+          data: {
+            contract: "aralearn.instructional-component-library.v1",
+            operation: "explore",
+            result: { catalogVersion: "2", packageCount: 99 }
+          }
+        }
+      }
+  });
+  await page.waitForTimeout(50);
+  expect(await appFrame.locator("#app").innerHTML()).toBe(beforeTeardown);
+
+  const sizeCount = await page.evaluate(() => window.__mcpMessages.filter(
+    ({ method }) => method === "ui/notifications/size-changed"
+  ).length);
+  await appFrame.evaluate(() => { document.getElementById("app").style.paddingBottom = "400px"; });
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.__mcpMessages.filter(
+    ({ method }) => method === "ui/notifications/size-changed"
+  ).length)).toBe(sizeCount);
+});
+
+test("teardown responde ao id do host mesmo quando coincide com pedido da aplicação", async ({ page }) => {
+  const resource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+  await mountResource(page, resource.text, { initialize: false });
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
+    ({ method, id }) => method === "ui/initialize" && id === 1
+  ))).toBe(true);
+
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "ui/resource-teardown",
+    params: { reason: "Host encerrou a representação" }
+  });
+
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.filter(
+    ({ id, result }) => id === 1 && result && !Object.hasOwn(result, "protocolVersion")
+  ).at(-1))).toEqual({ jsonrpc: "2.0", id: 1, result: {} });
+  expect(await page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/notifications/initialized"
+  ))).toBe(false);
+});
+
+test("o recurso omite o endereço quando o host não oferece abertura de links", async ({ page }) => {
+  const resource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+  const appFrame = await mountResource(page, resource.text, { hostCapabilities: {} });
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/notifications/initialized"
+  ))).toBe(true);
+
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      structuredContent: {
+        ok: true,
+        data: {
+          contract: "aralearn.instructional-component-library.v1",
+          operation: "preview_study_unit",
+          result: {
+            catalogVersion: "1",
+            structural: { valid: true },
+            studyUnit: setDiagramStudyUnit,
+            accessibleText: "Diagrama de conjuntos.",
+            deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+          }
+        }
+      }
+    }
+  });
+
+  await expect(appFrame.getByRole("link", { name: "Abrir no AraLearn" })).toHaveCount(0);
+  expect(await page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/open-link"
+  ))).toBe(false);
+});
+
+test("a política estável usa descrição textual para componente dependente de WebAssembly", async ({ page }) => {
+  const requestedUrls = [];
+  await page.route(`${publishedBaseUrl}**`, async (route) => {
+    const url = new URL(route.request().url());
+    requestedUrls.push(url.href);
+    const filePath = localPublishedPath(url);
+    if (!filePath) {
+      await route.abort();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: contentType(filePath),
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: await fs.readFile(filePath)
+    });
+  });
+  const resource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+  const constrainedHtml = resource.text.replace(
+    "<head>",
+    '<head><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\' https://fabio-ara.github.io; style-src \'unsafe-inline\' https://fabio-ara.github.io; img-src data:; connect-src \'none\'">'
+  );
+  const appFrame = await mountResource(page, constrainedHtml);
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/notifications/initialized"
+  ))).toBe(true);
+
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      structuredContent: {
+        ok: true,
+        data: {
+          contract: "aralearn.instructional-component-library.v1",
+          operation: "preview_study_unit",
+          result: {
+            catalogVersion: "1",
+            structural: { valid: true },
+            studyUnit: {
+              id: "study-unit-flow",
+              content: [{ package: "aralearn.resource.paragraph", version: "1.0.0" }],
+              feedback: [{ package: "aralearn.resource.flow", version: "1.0.0" }],
+              response: null
+            },
+            accessibleText: "Fluxo textual: início, decisão e término.",
+            deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+          }
+        }
+      }
+    }
+  });
+
+  await expect(appFrame.getByText(/política do cliente não permite/u)).toBeVisible();
+  await expect(appFrame.getByText("Fluxo textual: início, decisão e término.")).toBeVisible();
+  expect(requestedUrls.some((url) => url.includes("renderPackageStudyUnit.js"))).toBe(false);
+  expect(requestedUrls.some((url) => url.includes("viz-global.js"))).toBe(false);
+});

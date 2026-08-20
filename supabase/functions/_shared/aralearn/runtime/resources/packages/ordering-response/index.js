@@ -155,9 +155,9 @@ function markerForSlot(data, slotIndex, order, options) {
   });
 }
 
-function readingPosition(card, registry, target, locationsByIdentity) {
-  const instanceIndex = (card.content || []).findIndex(({ id }) => id === target.targetInstanceId);
-  const instance = card.content[instanceIndex];
+function readingPosition(studyUnit, registry, target, locationsByIdentity) {
+  const instanceIndex = (studyUnit.content || []).findIndex(({ id }) => id === target.targetInstanceId);
+  const instance = studyUnit.content[instanceIndex];
   const path = fieldPath(target.targetPath);
   const practiceIndex = (registry.practiceTargets(instance) || [])
     .findIndex((candidate) => candidate.path === path);
@@ -179,7 +179,7 @@ export const orderingResponsePackage = Object.freeze({
     label: "Ordenação",
     purpose: "Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas.",
     slots: Object.freeze(["response"]),
-    cognitiveOperations: Object.freeze(["order", "reconstruct-process", "sequence-causes"]),
+    taskOperations: Object.freeze(["order", "reconstruct-process", "sequence-causes"]),
     responseCompatibility: Object.freeze([]),
     academic: academicProfile({
       domains: ["transversal"],
@@ -277,13 +277,13 @@ export const orderingResponsePackage = Object.freeze({
     });
     return errors;
   },
-  validateCard(card, registry) {
+  validateStudyUnit(studyUnit, registry) {
     const errors = [];
-    const contents = new Map((card.content || []).map((instance) => [instance.id, instance]));
+    const contents = new Map((studyUnit.content || []).map((instance) => [instance.id, instance]));
     const locationsByIdentity = new Map();
     const targetsByField = new Map();
     const visibleAnswers = [];
-    card.response.data.targets.forEach((target, index) => {
+    studyUnit.response.data.targets.forEach((target, index) => {
       const instance = contents.get(target.targetInstanceId);
       if (!instance) {
         errors.push(`Alvo de ordenação ${target.id} aponta para uma instância de conteúdo inexistente.`);
@@ -336,8 +336,8 @@ export const orderingResponsePackage = Object.freeze({
       }
     });
     if (!errors.length) {
-      const positions = card.response.data.targets.map((target) => (
-        readingPosition(card, registry, target, locationsByIdentity)
+      const positions = studyUnit.response.data.targets.map((target) => (
+        readingPosition(studyUnit, registry, target, locationsByIdentity)
       ));
       if (positions.some((position, index) => (
         index > 0 && comparePosition(positions[index - 1], position) > 0
@@ -346,17 +346,17 @@ export const orderingResponsePackage = Object.freeze({
       }
     }
     if (!errors.length) {
-      card.response.data.targets.forEach((target, index) => {
+      studyUnit.response.data.targets.forEach((target, index) => {
         const instance = contents.get(target.targetInstanceId);
-        if (!registry.materializesOrdering(instance, card.response, index)) {
+        if (!registry.materializesOrdering(instance, studyUnit.response, index)) {
           errors.push(`Alvo de ordenação ${target.id} não materializa exatamente um controle visível no renderer do package.`);
         }
       });
     }
     return errors;
   },
-  prepareCardForSemantics(card) {
-    const visible = structuredClone(card);
+  prepareStudyUnitForSemantics(studyUnit) {
+    const visible = structuredClone(studyUnit);
     (visible.content || []).forEach((instance) => {
       groupedTargets(visible.response.data, instance.id).forEach((targets, path) => {
         const source = String(readPath(instance.data, path) ?? "");

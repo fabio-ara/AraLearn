@@ -7,10 +7,10 @@ const SCOPE_LABELS = Object.freeze({
   phone: "Ler seu número de telefone"
 });
 export const OAUTH_AUTHORING_PERMISSION_LABELS = Object.freeze([
-  "Ler os cursos acessíveis pela sua conta",
-  "Criar, editar, reorganizar e excluir rascunhos de workspace",
-  "Publicar versões completas ou parciais na sua biblioteca privada",
-  "Publicar no catálogo somente se sua conta já tiver permissão editorial"
+  "Ler seus Cursos, planejamento e conteúdo na Autoria",
+  "Criar Cursos privados e alterar metadados, planejamento e conteúdo",
+  "Ler e atualizar seu perfil e gerir acesso direto para Estudo após confirmação",
+  "Consultar contratos e validar os componentes didáticos instalados"
 ]);
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
 
@@ -21,12 +21,6 @@ function text(value) {
 export function readOAuthAuthorizationId(locationValue = globalThis.location) {
   const value = new URLSearchParams(text(locationValue?.search).replace(/^\?/u, ""))
     .get("authorization_id");
-  return text(value);
-}
-
-export function readActionOAuthAuthorizationId(locationValue = globalThis.location) {
-  const value = new URLSearchParams(text(locationValue?.search).replace(/^\?/u, ""))
-    .get("action_authorization_id");
   return text(value);
 }
 

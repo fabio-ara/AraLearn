@@ -3,9 +3,9 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
-  renderCardEnvelope,
-  validateCardEnvelope
-} from "../../src/resources/kernel/cardEnvelope.js";
+  renderStudyUnitEnvelope,
+  validateStudyUnitEnvelope
+} from "../../src/resources/kernel/studyUnitEnvelope.js";
 import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
 import {
   RESOURCE_PACKAGE_REGISTRY,
@@ -72,7 +72,7 @@ test("terminal_session declara contrato temporal, metadados acadêmicos e práti
     "diagnose-situation",
     "predict-result",
     "recognize-command"
-  ]) assert.ok(contract.manifest.cognitiveOperations.includes(operation), operation);
+  ]) assert.ok(contract.manifest.taskOperations.includes(operation), operation);
 
   const profile = RESOURCE_CATALOG.getProfile(PACKAGE_ID, VERSION);
   assert.equal(profile.primaryFamilyId, "family.process_state");
@@ -83,15 +83,15 @@ test("terminal_session declara contrato temporal, metadados acadêmicos e práti
   ]);
   assert.equal(profile.specificity, "versatile");
   assert.ok(profile.knowledgeObjects.includes("sessão textual de terminal"));
-  assert.ok(profile.operationIds.includes("operation.identify"));
-  assert.ok(profile.operationIds.includes("operation.trace"));
+  assert.ok(profile.taskOperationIds.includes("task_operation.identify"));
+  assert.ok(profile.taskOperationIds.includes("task_operation.trace"));
   assert.match(profile.limitations.join(" "), /Não executa nem interpreta comandos/u);
   assert.match(profile.accessibility, /lista cronológica/u);
 
   const discovery = RESOURCE_CATALOG.search({
     query: "sessão textual terminal stdout stderr comando resultado",
     structureIds: ["structure.terminal_session"],
-    operationIds: ["operation.trace"],
+    taskOperationIds: ["task_operation.trace"],
     practiceModeIds: ["practice.gap"]
   });
   assert.equal(discovery.coverage.status, "canonical");
@@ -157,12 +157,12 @@ test("fixtures de Linux, Git, SQL e console administrativo validam e preservam a
 
 test("facetas preservam isoladamente interpretação de saída e relação ação-consequência", () => {
   assert.deepEqual(
-    inferAcademicTaxonomy({ cognitiveOperations: ["interpret-output"] }).operationIds,
-    ["operation.identify"]
+    inferAcademicTaxonomy({ taskOperations: ["interpret-output"] }).taskOperationIds,
+    ["task_operation.identify"]
   );
   assert.deepEqual(
-    inferAcademicTaxonomy({ cognitiveOperations: ["relate-action-consequence"] }).operationIds,
-    ["operation.trace"]
+    inferAcademicTaxonomy({ taskOperations: ["relate-action-consequence"] }).taskOperationIds,
+    ["task_operation.trace"]
   );
 });
 
@@ -277,14 +277,13 @@ test("gap de escolha materializa somente dentro da entrada e permanece determin�
     content: [content],
     response,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
 
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: response,
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    studyUnitResponse: response,
     responseBlockKey: "terminal-response-block",
     blockKey: "terminal-response-block",
     responseState: { values: [] }

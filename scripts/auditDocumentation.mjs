@@ -21,7 +21,44 @@ const CONTEXTUAL_CONTENT_EXCEPTIONS = new Set([
 const REQUIRED_TECHNICAL_DOCUMENTS = Object.freeze([
   "docs/glossario-tecnico.md",
   "docs/matriz-conformidade-tecnica.md",
-  "docs/principios-editoriais.md"
+  "docs/principios-editoriais.md",
+  "docs/estado-atual-e-roadmap.md",
+  "docs/inventario-documentacao.md",
+  "docs/origens-do-aralearn.md",
+  "docs/revisao-de-literatura.md"
+]);
+const FORBIDDEN_CURRENT_DOCUMENTS = Object.freeze([
+  "docs/checklist-ux-autoria-integrada.md",
+  "docs/checkpoint-autoria-109.md",
+  "docs/conformidade-documentacao-autoria.md"
+]);
+const REQUIRED_STATE_COLUMNS = Object.freeze([
+  "caso de uso",
+  "existe",
+  "conectado",
+  "acessivel",
+  "uso verificado",
+  "funciona",
+  "necessario",
+  "alinhamento",
+  "limites e destino"
+]);
+const REQUIRED_RESEARCH_LOG_COLUMNS = Object.freeze([
+  "registro_id",
+  "data_hora_utc",
+  "eixo",
+  "base_ou_indice",
+  "consulta_exata",
+  "filtros",
+  "registros_informados",
+  "duplicatas_removidas",
+  "titulos_resumos_avaliados",
+  "textos_em_integra_avaliados",
+  "incluidos",
+  "motivos_exclusao_texto_integral",
+  "versao_criterios",
+  "responsavel",
+  "observacoes"
 ]);
 const REQUIRED_PRODUCT_PRESENTATION_HEADINGS = Object.freeze([
   "o problema educacional",
@@ -41,8 +78,8 @@ const REQUIRED_DOCUMENTATION_ROUTES = Object.freeze([
 ]);
 const BACKSTAGE_DOCUMENTATION = Object.freeze([
   {
-    pattern: /(?<![\p{L}\p{N}_])(?:disserta(?:ção|cao)|tese)(?![\p{L}\p{N}_])/giu,
-    label: "vocabulário de finalidade acadêmica externa ao produto"
+    pattern: /\b(?:feito|criado|escrito|produzido|documentado)\s+(?:especialmente\s+)?para\s+(?:a\s+)?(?:minha|esta|a\s+presente)?\s*(?:disserta(?:ção|cao)|tese)\b/giu,
+    label: "justificativa autorreferente por dissertação ou tese específica"
   },
   {
     pattern: /\bissue\s*#?\d+\b/giu,
@@ -86,7 +123,7 @@ function markdownFiles(root) {
   const files = [];
   const readme = path.join(root, "README.md");
   if (fs.existsSync(readme)) files.push(readme);
-  for (const directory of ["docs", "authoring"]) {
+  for (const directory of ["docs"]) {
     files.push(...walkFiles(path.join(root, directory), (file) => file.endsWith(".md")));
   }
   return [...new Set(files)].sort();
@@ -94,7 +131,7 @@ function markdownFiles(root) {
 
 function neutralityFiles(root, markdown) {
   const files = new Set(markdown);
-  for (const directory of ["docs", "authoring", "public", "src/ui", "supabase/fixtures/catalog", "tests/fixtures/course-catalog"]) {
+  for (const directory of ["docs", "public", "src/ui", "supabase/fixtures/catalog", "tests/fixtures/course-catalog"]) {
     for (const file of walkFiles(path.join(root, directory), (target) => TEXT_EXTENSIONS.has(path.extname(target)))) {
       files.add(file);
     }
@@ -163,10 +200,6 @@ function markdownLinkTargets(indexFile, source) {
     targets.add(path.resolve(path.dirname(indexFile), pathPart));
   }
   return targets;
-}
-
-function isGeneratedKnowledgeBundle(root, file) {
-  return relativePath(root, file).startsWith("docs/downloads/authoring/aralearn-chatgpt-knowledge-");
 }
 
 function isGeneratedDocumentation(root, file) {
@@ -275,6 +308,117 @@ function auditRequiredTechnicalDocuments({ root, docsReadme, errors }) {
   }
 }
 
+function auditForbiddenCurrentDocuments({ root, errors }) {
+  for (const relative of FORBIDDEN_CURRENT_DOCUMENTS) {
+    if (fs.existsSync(path.join(root, ...relative.split("/")))) {
+      errors.push(`${relative}: checkpoint de tarefa não pode ser documentação pública corrente`);
+    }
+  }
+}
+
+function tableCells(line) {
+  return line
+    .trim()
+    .replace(/^\||\|$/gu, "")
+    .split("|")
+    .map((cell) => comparableText(cell).replace(/[^\p{L}\p{N}]+/gu, " ").trim());
+}
+
+function auditCurrentStateMatrix({ root, sources, errors }) {
+  const file = path.join(root, "docs", "estado-atual-e-roadmap.md");
+  const source = sources.get(file) || "";
+  const header = source
+    .split(/\r?\n/gu)
+    .map(tableCells)
+    .find((cells) => REQUIRED_STATE_COLUMNS.every((required) => cells.includes(required)));
+  if (!header) {
+    errors.push(
+      "docs/estado-atual-e-roadmap.md: matriz corrente deve separar caso de uso, existência, conexão, acesso, uso, funcionamento, necessidade, alinhamento e destino"
+    );
+  }
+  if (!/\b20\d{2}-\d{2}-\d{2}\b/u.test(source)) {
+    errors.push("docs/estado-atual-e-roadmap.md: evidência corrente precisa informar data ISO");
+  }
+}
+
+function parseCsvRow(line) {
+  const cells = [];
+  let value = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (character === '"') {
+      if (quoted && line[index + 1] === '"') {
+        value += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (character === "," && !quoted) {
+      cells.push(value);
+      value = "";
+    } else {
+      value += character;
+    }
+  }
+  cells.push(value);
+  return quoted ? null : cells;
+}
+
+function auditResearchLog({ root, errors }) {
+  const relative = "docs/evidence/registro-buscas-bibliograficas.csv";
+  const file = path.join(root, ...relative.split("/"));
+  if (!fs.existsSync(file)) {
+    errors.push(`${relative}: registro prospectivo de buscas ausente`);
+    return;
+  }
+  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/gu).filter((line) => line.trim());
+  const header = parseCsvRow(lines[0] || "");
+  if (!header || REQUIRED_RESEARCH_LOG_COLUMNS.some((column) => !header.includes(column))) {
+    errors.push(`${relative}: cabeçalho não implementa o protocolo bibliográfico mínimo`);
+    return;
+  }
+  const identifiers = new Set();
+  for (const [offset, line] of lines.slice(1).entries()) {
+    const row = parseCsvRow(line);
+    if (!row || row.length !== header.length) {
+      errors.push(`${relative}:${offset + 2}: linha CSV inválida`);
+      continue;
+    }
+    const record = Object.fromEntries(header.map((column, index) => [column, row[index]]));
+    if (!record.registro_id || identifiers.has(record.registro_id)) {
+      errors.push(`${relative}:${offset + 2}: registro_id ausente ou duplicado`);
+    }
+    identifiers.add(record.registro_id);
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:.+Z$/u.test(record.data_hora_utc || "")) {
+      errors.push(`${relative}:${offset + 2}: data_hora_utc deve ser ISO 8601 em UTC`);
+    }
+    for (const required of ["eixo", "base_ou_indice", "consulta_exata", "filtros", "versao_criterios"] ) {
+      if (!String(record[required] || "").trim()) {
+        errors.push(`${relative}:${offset + 2}: ${required} obrigatório`);
+      }
+    }
+  }
+}
+
+function auditVisualAccessibility({ root, markdown, sources, errors }) {
+  for (const file of markdown) {
+    if (isGeneratedDocumentation(root, file)) continue;
+    const source = sources.get(file);
+    for (const image of source.matchAll(/!\[([^\]]*)\]\([^)]+\)/gu)) {
+      if (!image[1].trim()) {
+        errors.push(`${relativePath(root, file)}:${lineNumber(source, image.index)}: visual sem texto alternativo`);
+      }
+    }
+    for (const diagram of source.matchAll(/^```mermaid\s*$/gmu)) {
+      const preceding = source.slice(Math.max(0, diagram.index - 600), diagram.index);
+      if (!/\*\*Descrição textual:\*\*[^\n]+(?:\n[^\n]+)*\s*$/u.test(preceding)) {
+        errors.push(`${relativePath(root, file)}:${lineNumber(source, diagram.index)}: diagrama Mermaid sem descrição textual imediatamente anterior`);
+      }
+    }
+  }
+}
+
 function auditEditorialIndependence({ root, markdown, sources, errors }) {
   for (const file of markdown) {
     if (isGeneratedDocumentation(root, file) || isHistoricalDocumentation(root, file)) continue;
@@ -361,7 +505,6 @@ function auditBibliographicCitations({ root, markdown, sources, errors }) {
 }
 
 function auditHeadingStructure({ root, file, source, errors }) {
-  if (isGeneratedKnowledgeBundle(root, file)) return;
   const headings = headingList(source);
   const firstLevel = headings.filter((heading) => heading.depth === 1);
   if (firstLevel.length !== 1) {
@@ -388,7 +531,7 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
   for (const file of markdown) {
     const source = sources.get(file);
     auditHeadingStructure({ root, file, source, errors });
-    if (relativePath(root, file).startsWith("docs/") && !isGeneratedKnowledgeBundle(root, file)) {
+    if (relativePath(root, file).startsWith("docs/")) {
       const title = headingList(source).find((heading) => heading.depth === 1)?.title;
       if (title) {
         const key = slugText(title);
@@ -429,6 +572,10 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
   const rootReadme = sources.get(path.join(root, "README.md")) || "";
   const docsReadme = sources.get(path.join(root, "docs", "README.md")) || "";
   auditRequiredTechnicalDocuments({ root, docsReadme, errors });
+  auditForbiddenCurrentDocuments({ root, errors });
+  auditCurrentStateMatrix({ root, sources, errors });
+  auditResearchLog({ root, errors });
+  auditVisualAccessibility({ root, markdown, sources, errors });
   auditLegacyFactualClaims({ root, markdown, sources, errors });
   auditEditorialIndependence({ root, markdown, sources, errors });
   auditLearningArchitecture({ rootReadme, docsReadme, errors });
@@ -450,6 +597,6 @@ if (path.resolve(process.argv[1] || "") === path.resolve(scriptPath)) {
     console.error(errors.join("\n"));
     process.exitCode = 1;
   } else {
-    console.log("Documentação pública, materiais de autoria e textos de interface auditados.");
+    console.log("Documentação pública e textos de interface auditados.");
   }
 }

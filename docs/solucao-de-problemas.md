@@ -1,303 +1,257 @@
 # Solução de problemas
 
-## Como diagnosticar sem perder trabalho
+## Diagnosticar sem perder trabalho
 
-O AraLearn combina uma réplica no dispositivo com dados sincronizados no servidor. Essa arquitetura permite estudar e fazer parte das edições sem conexão, mas também significa que um sintoma pode ter três origens diferentes:
+Antes de limpar dados ou reinstalar:
 
-1. a interface não conseguiu ler ou atualizar a réplica local;
-2. a réplica está íntegra, porém há alterações aguardando rede;
-3. o servidor rejeitou a operação por autenticação, permissão, conflito ou conteúdo inválido.
+1. anote a tela, o Curso e a ação que falhou;
+2. verifique se a conexão voltou;
+3. observe mensagens de fila, revisão ou retomada;
+4. tente novamente uma vez;
+5. só use limpeza local depois de avaliar alterações pendentes feitas sem conexão.
 
-Antes de apagar dados, descubra em qual camada está o problema. **Recarregar, autenticar novamente e sincronizar são ações recuperáveis; limpar o armazenamento local não é.** Uma réplica apagada pode conter a única cópia de uma edição ainda não enviada.
+Uma captura de tela ajuda a explicar o estado visual. Console e rede ajudam a
+separar falha da interface, autorização, servidor e sincronização. Não inclua
+tokens, senhas, e-mail completo ou conteúdo privado ao registrar um defeito.
 
-Use esta ordem geral:
+## Não consigo entrar
 
-1. anote a tela, a mensagem e a ação que produziu o problema;
-2. confira se o dispositivo está conectado;
-3. abra o painel pelo ícone de áreas e verifique sessão e sincronização;
-4. tente novamente sem limpar dados;
-5. use uma ação destrutiva somente quando a seção correspondente explicar sua consequência.
-
-## Não consigo entrar na conta
-
-**Pré-condição.** Ter acesso ao endereço de e-mail cadastrado e, para autenticação remota, conexão com a internet.
-
-**Passos.**
-
-1. Confira se o e-mail foi digitado por inteiro e sem espaços.
-2. Verifique se a senha tem ao menos oito caracteres.
-3. Se a conta já existe e a senha foi esquecida, escolha a recuperação de senha na tela de acesso.
-4. Abra o link recebido no mesmo navegador ou dispositivo em que concluirá a redefinição.
-5. Defina a nova senha e tente entrar novamente.
-
-**Resultado esperado.** A sessão é criada e a réplica da conta é aberta ou reconstruída.
-
-**Sem conexão.** Uma nova autenticação e a recuperação de senha não funcionam sem acesso ao servidor. Se a sessão existente ainda for válida e a réplica estiver disponível, não saia da conta apenas para testar a senha.
-
-**Recuperação.** Se o e-mail não chegar, verifique spam, endereço informado e configuração de mensagens da instância. Repetir o cadastro com outro e-mail cria outra identidade e não recupera automaticamente os dados da primeira.
+Confirme e-mail, senha e eventual confirmação da conta. Se necessário, use
+**Recuperar senha** e abra o link no contexto autorizado. Um link expirado ou
+em fluxo inseguro deve ser substituído por um novo; não copie tokens para a
+URL manualmente.
 
 ## O aplicativo não conclui a inicialização
 
-**Pré-condição.** Manter a tela de recuperação aberta e saber se existem edições recentes ainda não sincronizadas.
+A preparação mostra Dispositivo, Conta e Cursos. Use **Tentar novamente**. Se
+a falha local persistir, a interface pode oferecer limpar os dados do
+dispositivo.
 
-**Passos.**
+Essa limpeza remove a cópia local e operações ainda não sincronizadas. Não a confirme
+se houver progresso, marcas ou observações feitas sem conexão que precisam ser
+preservados.
 
-1. Recarregue a página uma vez.
-2. Feche outras abas do AraLearn e abra novamente, pois outra aba pode estar concluindo uma atualização da base local.
-3. Restabeleça a conexão e tente iniciar de novo.
-4. Se a tela informar que a gravação local foi interrompida, use **Tentar gravar novamente**.
-5. Use **Limpar dados deste dispositivo** somente como último recurso e somente se aceitar perder alterações ainda não enviadas.
+## Um Curso não aparece
 
-**Resultado esperado.** O aplicativo abre a réplica existente ou, depois da limpeza autorizada, baixa uma nova réplica do servidor.
+Em **Estudo**, devem aparecer Cursos próprios e com acesso direto. Em
+**Autoria**, aparecem somente Cursos próprios.
 
-**Sem conexão.** Não limpe a réplica esperando que ela seja reconstruída imediatamente: sem servidor, o aplicativo não consegue baixá-la novamente.
+1. confirme que está na conta e no modo corretos;
+2. atualize a lista quando a conexão retornar;
+3. para Curso compartilhado, peça ao proprietário que confira **Pessoas**;
+4. confirme que o acesso foi concedido ao e-mail exato da conta.
 
-**Recuperação.** Dados já sincronizados reaparecem após autenticação e sincronização. Dados que existiam somente na réplica apagada não podem ser restaurados pelo servidor.
+Não existe entrada por Workspace, Trilha, Coleção ou catálogo público.
 
-## Um curso não aparece em Trilhas
+## Um Curso aparece, mas não abre
 
-**Pré-condição.** Estar autenticado e saber se o curso é pessoal, pertence a um workspace ou está disponível em Coleções.
+Na primeira abertura, a composição é baixada em páginas sob uma única revisão.
+Se o Curso mudar durante esse processo, o cliente descarta o conjunto parcial
+e reinicia a leitura.
 
-**Passos.**
-
-1. Abra o painel pelo ícone de áreas.
-2. Entre em **Coleções** e localize o curso.
-3. Use a ação explícita **Adicionar a Trilhas** no card do curso.
-4. Volte a **Trilhas** e, se estiver conectado, sincronize.
-5. Se o curso vinha de um workspace, confirme se sua participação e permissão de leitura continuam ativas.
-
-**Resultado esperado.** O curso passa a integrar a seleção pessoal exibida em Trilhas. Apenas abrir um curso ou usar o botão Play não altera essa seleção.
-
-**Sem conexão.** Só é possível adicionar um curso que já esteja conhecido pela réplica local. Um curso nunca baixado exige conexão inicial.
-
-**Recuperação.** Se uma permissão de workspace foi revogada, o curso concedido exclusivamente por aquele espaço deixa de estar disponível. Cursos próprios não são apagados por essa revogação.
-
-## Um curso aparece, mas não abre
-
-**Pré-condição.** Manter os demais cursos e a réplica local intactos.
-
-**Passos.**
-
-1. Teste outro curso para saber se a falha é geral ou restrita a um item.
-2. Com conexão, abra o painel e sincronize.
-3. Se apenas um curso distribuído continuar falhando, retire-o de Trilhas, adicione-o novamente por Coleções e sincronize.
-4. Registre a mensagem exibida se a nova cópia também não abrir.
-
-**Resultado esperado.** Uma publicação válida volta a abrir sem interferir nos demais cursos.
-
-**Sem conexão.** Um curso precisa ter sido materializado ao menos uma vez no dispositivo para abrir offline. A remoção e a adição de uma publicação exigem conexão se os dados não estiverem na réplica.
-
-**Recuperação.** Uma publicação inválida é isolada. Não limpe toda a base por causa de um único curso; comunique o identificador e a mensagem ao responsável pelo catálogo.
+Tente novamente com conexão estável. Se continuar falhando, registre o Curso,
+a mensagem e se o erro ocorreu antes ou depois de aparecer conteúdo conhecido
+da cópia local.
 
 ## O aplicativo mostra o último estado conhecido
 
-**Pré-condição.** Distinguir “estado desatualizado” de “estado perdido”: verifique se o conteúdo ainda está visível e se o painel indica falta de conexão ou sincronização pendente.
+Isso indica uso da réplica local. Ela permite retomar conteúdo já aberto, mas
+não prova que a lista, o acesso ou a composição estão atualizados. Reconecte e
+aguarde a atualização antes de tomar uma decisão de Autoria.
 
-**Passos.**
+## Progresso ou marca aguardam envio
 
-1. Continue o estudo se o curso e os cards necessários estiverem disponíveis.
-2. Faça marcações **Rever** e observações normalmente.
-3. Quando houver rede, abra o painel e sincronize.
-4. Confira se o indicador de pendência desaparece.
+O estado pessoal entra numa fila por Curso. Mantenha o aplicativo instalado e
+os dados locais preservados até a conexão retornar. O repositório tenta
+reconciliar mudanças de revisão de forma limitada.
 
-**Resultado esperado.** O trabalho local permanece utilizável e, depois da conexão, é reconciliado com o servidor.
+Se a fila continuar pendente:
 
-**Sem conexão.** Convites, mudanças de papel, publicação, catálogo ainda não baixado e provedores remotos de assistência não podem ser atualizados. O estudo já materializado continua local.
+1. abra novamente o Curso;
+2. confirme que o acesso ainda existe;
+3. tente sincronizar com conexão estável;
+4. registre o tipo da operação e a mensagem, sem copiar o conteúdo privado.
 
-**Recuperação.** Se o servidor rejeitar uma alteração porque o alvo foi removido ou a permissão mudou, o aplicativo conserva o aviso em vez de substituir silenciosamente o estado corrente.
+## Uma observação aguarda envio
 
-## Uma alteração pessoal continua aguardando envio
+Anotações usam uma fila de envio própria, separada do estado pessoal. Reabra a
+Unidade, confirme o indicador de sincronização e reconecte. Em duas abas, a atualização
+leva apenas a versão privada daquela conta e IDs; cada aba relê o IndexedDB e
+preserva um rascunho aberto. Atividade de outra pessoa não muda essa versão nem
+deve aparecer como conflito. Se o item ficar **em conflito** ou **falhou**, não
+crie uma cópia às cegas: releia o estado remoto e revise o comando. Perda de
+acesso purga a cópia local e a fila porque o dispositivo não pode continuar
+entregando dados sem autoridade.
 
-**Pré-condição.** Não limpar os dados do dispositivo e manter a sessão da mesma conta.
+## Uma observação foi salva, mas não houve correção
 
-**Passos.**
+A observação do Estudo é uma Anotação ancorada própria e chega à caixa de
+entrada do proprietário. Ali ela pode ser considerada, respondida ou resolvida.
+Esses estados descrevem triagem: salvar, responder ou resolver não altera o
+Curso. Para corrigir, o proprietário precisa abrir **Auditoria e correções**,
+registrar ou decidir um achado, revisar a proposta focal e confirmar sua
+aplicação. Outra rodada ainda precisa verificar o critério.
 
-1. Confirme a conexão.
-2. Abra o painel e acione a sincronização.
-3. Aguarde a conclusão antes de sair da conta.
-4. Se a pendência permanecer, anote o curso e a operação: progresso, **Rever** ou observação.
+## Auditoria ou correção não funciona sem conexão
 
-**Resultado esperado.** A alteração deixa a fila local e passa a integrar o estado remoto da conta.
+Esse comportamento é intencional. Rodadas, achados, correções, verificação e
+reversão exigem conexão e não possuem cópia autoritativa nem fila no IndexedDB.
+Reconecte, releia a Unidade ou o achado e só então execute a ação. Não
+trate a última tela renderizada como estado corrente.
 
-**Sem conexão.** A pendência é esperada; ela já está gravada localmente e não precisa ser repetida.
+## Uma rodada limpa ou suas evidências não aparecem
 
-**Recuperação.** Se o alvo deixou de existir, a operação não pode ser aplicada como se ainda fosse válida. Preserve o aviso e comunique o caso; repetir toques ou recriar a observação sem entender a rejeição pode gerar duplicidade sem resolver a referência.
+Na aba **Achados**, consulte a lista de rodadas, não somente a lista de achados.
+Rodadas sem achado continuam enumeráveis. Abra a rodada pelo link com
+`auditRunId` para ver todas as verificações e evidências. Se usou filtro,
+confira a Unidade focal e reinicie a paginação depois de mudança de versão.
 
-## Uma edição de autoria está pendente ou entrou em conflito
+## Não consigo aplicar ou reverter uma correção
 
-**Pré-condição.** Ter papel que permita autoria no workspace e identificar se a mudança é apenas textual ou altera a estrutura do curso.
+Aplicação e reversão exigem confirmação explícita. Também são protegidas por
+revisão, versões e ponto de controle: se a Unidade, seu conteúdo ou suas Fontes
+mudaram desde a leitura, releia e reconcilie em vez de forçar o número. A
+correção v1 não pode criar, excluir, mover, reposicionar ou trocar o pai de uma
+entidade, e uma operação sem efeito é recusada.
 
-**Passos.**
+## Uma verificação factual foi recusada
 
-1. Não feche a conta nem limpe a réplica.
-2. Restabeleça a conexão e sincronize.
-3. Se o aplicativo informar conflito, compare a revisão local com a revisão corrente do servidor.
-4. Escolha conscientemente entre preservar a edição local para reaplicação ou descartar a versão local em favor da remota.
-5. Sincronize novamente antes de mover ou excluir objetos relacionados.
+Conclusão factual positiva exige Fonte e Âncora ativas na revisão exata.
+**Sustenta** é a relação apropriada para afirmações; **Citado de** só vale para
+fidelidade de citação. Reabra Fontes, confira revisão, Âncora e relação e então
+registre uma nova rodada.
 
-**Resultado esperado.** A edição textual é aceita sobre a revisão esperada ou permanece explicitamente pendente para decisão humana. O aplicativo não deve misturar duas revisões silenciosamente.
+## Uma Observação ligada ao achado ficou indisponível ou sumiu
 
-**Sem conexão.** Edições textuais autorizadas podem entrar na fila local. Operações estruturais, mudanças de permissão e publicação dependem do servidor.
-
-**Recuperação.** Copie para um local seguro qualquer texto que precise ser preservado antes de escolher “descartar local”. Se a permissão foi revogada, peça ao administrador que esclareça o destino do trabalho; recuperar a permissão não é uma operação que o dispositivo possa executar sozinho.
-
-## O botão Play ou a troca de tema demora quando falta conexão
-
-**Pré-condição.** O aplicativo já ter sido carregado e o curso estar disponível na réplica.
-
-**Passos.**
-
-1. Toque uma vez e observe se a interface apresenta feedback imediato.
-2. Verifique se outra caixa de diálogo, prática incompleta ou renderização do card está bloqueando o avanço.
-3. Recarregue a página sem limpar dados.
-4. Quando houver conexão, permita que o aplicativo atualize seus arquivos em cache e teste novamente offline.
-
-**Resultado esperado.** Tema, revelação do feedback e avanço entre cards materializados respondem localmente; a sincronização ocorre separadamente e não deve bloquear o toque.
-
-**Sem conexão.** A ausência de rede, por si só, não deve aumentar a latência dessas ações. Se isso ocorrer de forma reproduzível, trata-se de defeito a ser relatado.
-
-**Recuperação.** Informe dispositivo, navegador, curso, card e duração aproximada, além de dizer se a rede estava ausente ou apenas instável. Não repita o toque rapidamente, pois duas ações de navegação podem tornar o diagnóstico ambíguo.
+Ao retirar a Anotação, o registro de retirada é mostrado como indisponível e sem link.
+Depois da limpeza física, somente a junção e o ID deixam o achado; texto/pessoa
+nunca foram copiados e rodada, achado e correção permanecem. Isso não é perda
+do histórico de auditoria.
 
 ## Uma prática não permite avançar
 
-**Pré-condição.** Identificar o tipo de resposta: escolha, lacuna com alternativas, digitação ou ordenação.
+Confira campos obrigatórios e mensagens próximas ao componente. Se a
+interação parecer preenchida mas continuar bloqueada, registre o tipo de
+componente e a Unidade. O avanço depende do contrato do componente, não de uma
+pontuação global.
 
-**Passos.**
+## Uma edição de Autoria entrou em conflito
 
-1. Complete todos os alvos visíveis do próprio recurso.
-2. Em uma lacuna com alternativas, toque na lacuna e escolha uma opção específica dela.
-3. Para retirar uma resposta, toque novamente na lacuna preenchida.
-4. Em digitação, confira espaços significativos, símbolos, acentos e formato solicitado.
-5. Use o botão Play para validar; não procure outro botão de conferência.
+Outro cliente alterou o Curso depois da leitura. Reabra ou releia o Curso,
+compare a intenção com o estado novo e aplique apenas o que ainda faz sentido.
+Não aumente a revisão à mão e não repita a escrita às cegas.
 
-**Resultado esperado.** O aplicativo informa o resultado sem revelar antecipadamente a resposta. Um novo toque no Play avança quando o estado do card permite.
+## Não consigo salvar uma atribuição de Fontes
 
-**Sem conexão.** A validação dos cards já materializados ocorre localmente.
+Confira se cada Fonte escolhida possui ao menos uma Âncora ativa na revisão
+exata e se o conjunto exibido contém tudo o que deve permanecer no alvo. Salvar
+substitui o conjunto completo; não há modo de acréscimo parcial. Se o Curso ou
+o alvo mudou, releia e reconcilie antes de tentar novamente.
 
-**Recuperação.** Se preencher uma lacuna também preencher as demais, se o alvo aparecer fora do recurso ou se a resposta correta já vier revelada, registre o curso, o card e uma captura: isso indica defeito no contrato ou na materialização, não erro do estudante.
+Uma referência **Legado não resolvido** pode não ter metadados nem Âncora. Para
+resolvê-la, revise a mesma identidade literal; não crie uma Fonte parecida nem
+remova espaços do identificador. Depois de falha de rede sem resposta, repita o
+mesmo pedido com o mesmo `requestId` e comando.
 
-## Uma observação não sincroniza ou não abre o alvo
+## Um PDF de Fonte não foi enviado ou não abre
 
-**Pré-condição.** A observação ainda estar visível no dispositivo e pertencer à mesma conta.
+O PDF precisa pertencer a uma revisão ativa da Fonte, ter cabeçalho válido e no
+máximo 20 MiB. O envio só termina depois que o objeto no Storage privado é
+confirmado pela API de Cursos. Se a rede falhar após o envio, use **Confirmar o
+mesmo PDF** em vez de escolher outro arquivo.
 
-**Passos.**
+Para abrir um anexo, releia a Fonte e solicite um novo endereço assinado. O
+endereço expira e não deve ser guardado como identidade do arquivo. Confira
+também a cota de 64 MiB de conteúdo único por Curso e o limite de oito anexos
+por Fonte.
 
-1. Abra a observação e confira o curso e o tipo registrado.
-2. Restabeleça a conexão e sincronize.
-3. Tente abrir o alvo novamente.
-4. Se o alvo foi removido em uma revisão posterior, preserve o texto e informe a referência ao autor ou revisor.
+## O Estudo não mostra uma Fonte ou um link
 
-**Resultado esperado.** Uma observação válida é enviada e volta a abrir o objeto situado.
+Abra **Fontes** na Unidade: a consulta é sob demanda e não ocorre junto com o
+conteúdo. Fonte oculta ou legada não resolvida é omitida. A visibilidade
+**Citação** mostra identificação e localização, mas não URL; somente **Citação
+e link** pode mostrar o endereço. Se o acesso foi revogado ou o Curso não
+existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
-**Sem conexão.** A criação fica local; a consulta compartilhada e a resposta de revisores dependem do servidor.
+## O MCP não encontra ou não altera o Curso
 
-**Recuperação.** A exclusão do alvo não autoriza o aplicativo a anexar automaticamente a observação a outro card. Esse vínculo exige decisão humana para não mudar o sentido do comentário.
+1. confirme OAuth e conta;
+2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
+3. verifique a descoberta das seis ferramentas;
+4. use `listarCursos` e `lerCurso` antes da mutação;
+5. diante de conflito, releia a revisão;
+6. confira se cliente e interface apontam para o mesmo ambiente.
 
-## Não consigo entrar ou administrar um workspace
+Uma concessão de acesso permite Estudo, não Autoria remota.
 
-**Pré-condição.** Ter conexão, sessão ativa e o convite ou papel correspondente.
+## A alteração do MCP não aparece na interface
 
-**Passos.**
+O MCP e a Autoria usam o mesmo Curso, mas a interface pode conservar uma
+projeção já carregada. Atualize o Curso e confira a nova revisão. Se a leitura
+do servidor contiver a mudança e a tela não, registre console, rede, rota e
+revisão exibida: o defeito está na projeção ou atualização da interface, não
+numa etapa de publicação.
 
-1. Confirme que o convite foi enviado ao mesmo e-mail da conta autenticada.
-2. Verifique se o convite ainda está dentro do prazo de sete dias e não foi revogado.
-3. Aceite o convite com o código completo recebido.
-4. Se já for participante, consulte o papel exibido no workspace.
-5. Para uma ação administrativa, compare esse papel com a tabela de capacidades em [Administração de workspaces](guia-administracao-workspace.md).
+## Uma Variante não mostra a diferença esperada
 
-**Resultado esperado.** A pessoa entra com o papel concedido e vê somente as ações autorizadas.
+Cada variante é um Curso independente e pode mudar depois do ponto comum de
+planejamento. Abra a comparação novamente e confira a revisão lida, as
+diferenças declaradas, os desvios não declarados e os dados ausentes.
+Desvincular remove somente a relação de comparação; não exclui o Curso.
 
-**Sem conexão.** Convites, alterações de papel, remoção de participantes e transferência de propriedade não funcionam offline.
+## Um gráfico de Pesquisa parece contradizer a tabela
 
-**Recuperação.** Um administrador pode emitir novo convite se o anterior expirou. O proprietário não pode simplesmente abandonar um workspace sem antes transferir a propriedade ou encerrar o espaço conforme a política institucional.
+Confirme se gráfico e tabela usam os mesmos conjuntos, filtros e intervalo de
+datas. Abra **Como esta métrica é definida** e verifique unidade, denominador e
+regra de dados ausentes. Pesquisa apresenta fatos da Autoria; uma contagem ou
+diferença entre Variantes não demonstra efeito de aprendizagem.
 
-## A assistência por modelo de linguagem não altera o card
+## Não consigo conceder acesso
 
-**Pré-condição.** Estar em modo de edição, selecionar o card inteiro ou rótulos autorizados e configurar um provedor acessível.
+Somente o proprietário pode gerir **Pessoas**. O destinatário precisa ter uma
+conta localizada pelo e-mail exato, e a confirmação explícita é obrigatória.
+O serviço não pesquisa diretório nem concede papel de edição.
 
-**Passos.**
+## A foto de perfil não é aceita
 
-1. Abra o chat de assistência do card.
-2. Confirme visualmente quais recursos ou textos estão selecionados.
-3. Verifique modelo, endereço do serviço e credencial exigida.
-4. Faça um pedido pequeno, observável e compatível com o alvo selecionado.
-5. Leia a resposta: o assistente pode explicar que não houve mudança quando o pedido não autoriza uma alteração válida.
-6. Se a mudança for aplicada, continue a conversa para refiná-la ou use desfazer/restaurar.
-
-**Resultado esperado.** A resposta é validada e modifica somente os campos textuais autorizados; estrutura e campos fora da seleção permanecem inalterados.
-
-**Sem conexão.** Provedores remotos não respondem. Um provedor local exige que o serviço esteja em execução no endereço configurado.
-
-**Recuperação.** Uma resposta tardia, malformada ou fora do contrato não deve alterar parcialmente o conteúdo. Reduza o escopo, reformule o pedido e tente de novo. Nunca cole uma chave de API em observação, card ou relatório público. Consulte [Assistência por modelo de linguagem](assistencia-por-ia.md).
-
-## A integração externa de autoria não acessa a conta
-
-**Pré-condição.** Usar uma integração compatível, conexão com o servidor e permissão de autoria no workspace ou curso.
-
-**Passos.**
-
-1. Abra a configuração de integrações no AraLearn.
-2. Use o endereço de serviço indicado pela própria instância.
-3. Inicie a autorização e entre na conta que possui a permissão necessária.
-4. Leia o escopo solicitado antes de consentir.
-5. Volte ao cliente externo e tente uma leitura simples antes de iniciar alterações.
-
-**Resultado esperado.** A integração recebe uma autorização vinculada à conta e o servidor aplica as mesmas permissões do workspace.
-
-**Sem conexão.** A autorização e as operações remotas não funcionam offline.
-
-**Recuperação.** Se a conta errada foi autorizada, encerre o fluxo e refaça-o com a identidade correta. Não substitua o processo de autorização por uma chave pessoal estática. Veja [Autoria externa](autoria-mcp.md).
+Use JPEG, PNG ou WebP de até 512 KiB. O objeto fica no bucket privado de
+avatares. Se a foto nova for registrada e a remoção da anterior falhar, a tela
+deve informar a limpeza pendente; não envie repetidamente arquivos maiores.
 
 ## A conta não é excluída
 
-**Pré-condição.** Estar autenticado e conectado, além de compreender que a exclusão concluída não oferece restauração automática.
-
-**Passos.**
-
-1. Sincronize ou exporte o que precisar preservar.
-2. Resolva a propriedade de workspaces que não possam ficar sem responsável.
-3. Escolha **Excluir conta** e confirme.
-4. Se a interface apresentar erro, anote a mensagem e não presuma que a conta foi removida.
-
-**Resultado esperado.** Quando o servidor confirma a exclusão, o aplicativo limpa a réplica local e volta à tela de acesso.
-
-**Sem conexão.** A operação não pode ser concluída.
-
-**Recuperação.** Se houve erro, tente novamente com conexão estável ou procure o responsável pela instância. Se a tela de acesso apareceu sem confirmação clara, tente entrar antes de repetir o pedido: isso distingue falha de sessão de exclusão efetiva.
+A exclusão exige a frase exata `EXCLUIR MINHA CONTA`. O aplicativo envia uma
+única solicitação confirmada à API, que remove os avatares e os PDFs dos Cursos
+próprios. O banco recusa a exclusão enquanto algum desses objetos permanecer.
+Tente novamente com conexão estável. Não use exclusão como forma de sair: ela
+remove Cursos próprios e dados relacionados de modo irreversível.
 
 ## O desenvolvimento local não inicia
 
-**Pré-condição.** Ter instalado o ambiente descrito na documentação de desenvolvimento e trabalhar em uma cópia do repositório, não na instância usada para estudar.
+1. confira versões de Node.js e dependências;
+2. use os scripts existentes em `package.json`;
+3. para os serviços, confirme Supabase CLI e contêineres locais;
+4. verifique se variáveis privadas estão no ambiente local, não no repositório;
+5. leia o primeiro erro real antes de executar uma suíte ampla.
 
-**Passos.**
+Compare `supabase/runtime-manifest.json` com `supabase migration list --local`.
+Uma diferença entre o ambiente local e o hospedado deve ser tratada como
+diferença de versão, não como falha do contrato instalado localmente.
 
-1. Confira as versões de Node.js e das dependências indicadas pelo projeto.
-2. Verifique as variáveis públicas de conexão e a porta escolhida.
-3. Confirme se a porta não está ocupada por outro processo.
-4. Para testes automatizados, use a variável `ARALEARN_E2E_PORT` e uma porta isolada.
-5. Execute primeiro a validação focada no componente alterado e depois a suíte indicada no [Guia do desenvolvedor](guia-desenvolvedor.md).
+## Registrar um defeito útil e seguro
 
-**Resultado esperado.** O servidor local inicia sem encerrar processos alheios e os testes usam uma instância isolada.
+Inclua:
 
-**Sem conexão.** Dependências já instaladas e testes puramente locais podem funcionar; autenticação, sincronização e serviços remotos precisam de substitutos de teste ou rede.
+- ação realizada e resultado esperado;
+- resultado observado;
+- modo Estudo ou Autoria;
+- celular ou computador e largura aproximada;
+- com ou sem conexão;
+- mensagem segura do console ou da rede;
+- se o problema se repete após nova leitura.
 
-**Recuperação.** Não finalize um processo desconhecido apenas para liberar a porta. Escolha outra porta ou identifique primeiro o proprietário do processo.
+Não inclua credenciais, tokens, URL assinada, e-mail integral, dados de outra
+pessoa ou conteúdo de Curso que não possa ser divulgado.
 
-## Como registrar um defeito útil e seguro
-
-**Pré-condição.** Reproduzir o problema ao menos uma vez sem expor conteúdo privado.
-
-**Passos.**
-
-1. Informe versão do AraLearn, navegador ou APK, sistema operacional e largura aproximada da tela.
-2. Descreva pré-condição, passos, resultado observado e resultado esperado.
-3. Diga se o dispositivo estava online, offline ou com conexão instável.
-4. Identifique curso, módulo e card por nomes não sigilosos ou por identificadores técnicos quando puderem ser publicados.
-5. Anexe uma captura recortada, ocultando e-mails, convites, chaves e conteúdo privado.
-6. Registre o defeito no [repositório do projeto](https://github.com/fabio-ara/AraLearn/issues) ou no canal da instituição responsável pela instância.
-
-**Resultado esperado.** Outra pessoa consegue reproduzir o problema e avaliar o risco sem solicitar dados pessoais adicionais.
-
-**Sem conexão.** Guarde a descrição e as capturas no dispositivo; envie quando estiver em uma conexão adequada.
-
-**Recuperação.** Se um segredo foi incluído por engano, revogue-o imediatamente. Remover uma captura ou editar a mensagem não garante que cópias anteriores tenham desaparecido.
+Consulte também [Uso do aplicativo](uso-do-app.md), [Persistência e
+sincronização](persistencia-relacional.md) e [Autoria por MCP](autoria-mcp.md).

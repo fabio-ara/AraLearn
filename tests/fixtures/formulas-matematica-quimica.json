@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -60,7 +60,7 @@
                     "o estudante relaciona a apresentação visual à leitura textual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-formula-matematica",
                       "position": 1,
@@ -120,8 +120,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-formula-quimica",
@@ -171,8 +170,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-formula-escolha",
@@ -242,8 +240,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-formula-composta",
@@ -303,8 +300,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

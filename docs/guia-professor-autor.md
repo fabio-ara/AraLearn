@@ -1,325 +1,330 @@
 # Guia do professor e autor
 
-No AraLearn, autoria compreende decisões pedagógicas, produção de conteúdo,
-revisão e manutenção. O professor ou autor continua responsável por essas
-decisões mesmo quando utiliza assistência de linguagem. Este guia distingue
-correções locais, mudanças estruturais, triagem de observações e publicação.
+Autoria é a interface visual do mesmo Curso vivo usado em Estudo e pelas
+ferramentas conversacionais. Ela permite planejar, produzir, inspecionar,
+documentar Fontes, receber Observações, auditar, corrigir, comparar variantes,
+examinar fatos da produção e conceder acesso.
+
+## Abrir a Autoria
+
+Na tela inicial, use **Autoria**. A lista **Meus cursos** apresenta somente os
+Cursos da conta autenticada. Um Curso compartilhado aparece em Estudo, mas não
+nessa lista, pois o acesso compartilhado permite praticar e conserva a edição
+com o proprietário.
+
+A lista é paginada e pode ser pesquisada por título, objetivo e orientações
+privadas. Cursos já conhecidos pelo dispositivo podem continuar visíveis
+durante uma falha de rede, embora uma composição nunca carregada ainda exija
+conexão.
+
+## Criar um Curso
+
+1. Use **Criar Curso**.
+2. Informe um título claro.
+3. Descreva o objetivo instrucional.
+4. Salve.
+
+O Curso nasce privado e com um plano vazio. Assim que sua composição contém
+Unidades válidas, o proprietário pode abri-lo em Estudo. A criação usa um
+identificador de pedido para que a repetição causada por falha de rede recupere
+o mesmo resultado. O plano sugere inicialmente de 7 a 12 Partes; a pessoa autora
+pode alterar essa faixa conforme o trabalho real.
+
+## Compreender as nove áreas
+
+Ao abrir um Curso, a barra iconográfica oferece nove áreas.
+
+### Planejamento
+
+**Planejamento** reúne objetivo, público, escopo, resultados de aprendizagem
+pretendidos, unidades de análise instrucional, requisitos de evidência, Partes
+de autoria e atividade recente confirmada pelo servidor.
+
+O controle de edição altera título, objetivo, público, escopo e faixa sugerida
+de Partes. As três listas do plano aceitam linguagem natural e oferecem ações
+para acrescentar, editar, reordenar e remover itens.
+
+Uma **Parte de autoria** possui título, intenção operacional e posição na ordem
+de produção. Ela pode ser criada, editada, reordenada, dividida ou unida. As
+Microssequências existentes podem ser vinculadas a uma Parte, movidas entre
+Partes ou deixadas sem Parte. Essas mudanças organizam o trabalho autoral e
+preservam a hierarquia curricular e as Unidades já produzidas.
+
+Os estados **Planejada**, **Em materialização**, **Atenção necessária**,
+**Parcial** e **Materializada** são calculados a partir de vínculos, Unidades e
+etapas registradas. A pessoa autora não escolhe o estado manualmente.
+
+### Parâmetros
+
+**Parâmetros** começa no Curso e permite percorrer Módulo, Lição e
+Microssequência sem carregar toda a composição. Cada decisão mostra o valor
+efetivo, sua origem e o escopo do qual foi herdada.
+
+Quatro parâmetros orientam a produção: quantidade máxima de novos itens de
+análise por Unidade expositiva, formas de explicação, oportunidades distintas
+de prática e dimensões de variação. Eles podem ser definidos no Curso, na Lição
+ou na Microssequência. O Módulo apresenta valores herdados, orientações e
+política de componentes, mas não recebe esses quatro parâmetros.
+
+**Remover definição local** restaura a herança do escopo superior. A origem
+pode ser automática, autoral ou uma condição de pesquisa. Essa origem documenta
+a decisão; sozinha, não transforma o Curso em experimento.
+
+Em **Orientação autoral**, o texto original conserva versão própria. Uma
+interpretação pode organizar resumo, diretrizes, divergências e perguntas sem
+reescrever o texto. A orientação efetiva acumula os registros aplicáveis do
+Curso até o alvo.
+
+Em **Componentes didáticos**, escolha a biblioteca completa ou um subconjunto e
+registre exclusões e preferências. Uma exclusão prevalece; uma preferência ajuda
+a escolher entre candidatos adequados, mas não obriga o uso. A materialização
+registra a política efetivamente aplicada.
+
+Ao chegar a uma Microssequência, **Cobertura planejada desta Microssequência**
+permite atribuir unidades de análise e requisitos de evidência. Um item pode
+servir a vários alvos, e cada alvo pode receber vários itens. Salvar substitui
+as duas listas daquele alvo sem distribuir automaticamente o plano inteiro.
+
+O resumo **Planejado × aplicado** confronta o plano com fatos registrados na
+produção. Uma divergência aponta uma decisão ainda sem correspondência
+declarada; ela não constitui nota de qualidade nem medida de aprendizagem.
+
+### Fontes
+
+**Fontes** apresenta o catálogo privado e versionado do Curso. Uma Fonte possui
+identidade estável, tipo, título, autoria, data, identificador, idioma, citação,
+endereço opcional, edição ou versão, origem, disponibilidade, verificação e
+visibilidade em Estudo. Criar nova revisão preserva o registro anterior;
+aposentar impede novos usos sem apagar o histórico.
+
+Cada revisão pode receber Âncoras por intervalo de páginas, intervalo de tempo,
+fragmento de endereço ou trecho textual exato. O trecho de verificação é
+opcional e permanece privado. A Âncora pertence à revisão exata da Fonte e
+também recebe revisões próprias.
+
+No detalhe da Fonte, **Registrar observação** permite acrescentar uma nota,
+contestar uma interpretação ou solicitar reformulação. O alvo pode ser a Fonte
+inteira ou uma Âncora ativa. As manifestações ficam reunidas no próprio detalhe,
+podem ser paginadas e exportadas e também aparecem na caixa geral de
+Observações. Uma reformulação respondida pela autoria identifica as revisões de
+Fonte e de Âncora consideradas.
+
+Uma revisão ativa aceita até oito PDFs privados, cada um com até 20 MiB. O total
+de conteúdo único por Curso é 64 MiB. Arquivos idênticos dentro do mesmo Curso
+compartilham o armazenamento, embora continuem ligados às revisões adequadas.
+
+**Definir fontes** aparece em itens do Planejamento e em Unidades da Inspeção.
+Salvar substitui o conjunto completo do alvo e preserva a ordem escolhida. Cada
+novo vínculo exige uma Âncora ativa da revisão selecionada e declara como a
+Fonte participa do alvo: informou, sustenta, foi adaptada, foi citada,
+contrasta, exemplifica, inspirou ou ainda precisa de verificação.
+
+No editor de um alvo, **Exportar proveniência** gera um arquivo JSON com a
+identidade e a versão do alvo, as revisões exatas das Fontes, as relações, as
+Âncoras e os metadados dos PDFs. A exportação é recusada quando há alterações
+ainda não salvas e não inclui identidades pessoais dos autores das operações.
+
+Uma referência trazida de conteúdo anterior pode aparecer como pendente de
+identificação. Sua grafia e ordem são preservadas até que a pessoa autora
+comprove os metadados e as Âncoras. Ela permanece oculta em Estudo e não recebe
+título, citação ou endereço inventados.
+
+A visibilidade controla a projeção entregue em Estudo:
+
+- **Não mostrar no Estudo** restringe a Fonte à Autoria;
+- **Mostrar citação** apresenta identificação e localização;
+- **Mostrar citação e link** também pode entregar o endereço HTTPS.
 
-## Antes de editar: diagnosticar a dimensão do problema
-
-Escolha a menor unidade que permita resolver o problema sem perder contexto:
+### Estrutura
 
-| Problema observado | Unidade inicial recomendada |
-| --- | --- |
-| erro de digitação, rótulo ou frase | campo textual ou instância de recurso |
-| representação inadequada ou feedback incoerente | card inteiro |
-| falta de prática para um objetivo já ensinado | microssequência |
-| progressão incompleta entre objetivos | lição |
-| lacuna ampla de programa ou reorganização | workspace de autoria |
+**Estrutura** percorre Módulos, Lições e Microssequências em páginas. A tela
+apresenta identidade, posição, título e resumo de cada entidade. Ela é uma
+leitura compacta da hierarquia do Curso.
 
-Trabalhar no menor escopo reduz alterações acidentais e torna a revisão mais
-clara. Isso não significa corrigir um sintoma isolado quando o problema é
-pedagógico: se um card pressupõe conceitos ainda não ensinados, pode ser
-necessário revisar a microssequência ou a lição.
+### Inspeção
+
+**Inspeção** apresenta as Unidades produzidas em sequência vertical sob uma
+única revisão do Curso. É possível escolher o Curso inteiro, uma Parte, as
+Unidades sem Parte, um Módulo, uma Lição ou uma Microssequência. Links de
+contexto abrem a entidade ou a Unidade exata.
+
+A tela carrega páginas conforme a rolagem e mantém uma janela limitada de
+Unidades. O dispositivo conserva a posição da leitura. Ao retornar depois de
+uma mudança do Curso, a Inspeção relê a revisão e procura a mesma Unidade. Os
+componentes são apresentados como em Estudo, mas suas respostas ficam
+desativadas.
+
+A partir de uma Unidade, use **Anotar**, **Definir fontes** ou **Auditar**. Essas
+ações trabalham sobre a identidade exata da Unidade sem transformar a Inspeção
+em editor livre de composição.
+
+### Auditoria e correções
 
-## Corrigir um texto manualmente
+Esta área reúne as abas **Observações** e **Achados**.
 
-**Pré-condição:** a conta precisa possuir capacidade de escrita sobre o conteúdo.
-
-**Passos:**
-
-1. Abra o curso e navegue até o card.
-2. Ative **Editar**.
-3. Selecione a instância de recurso pelo contorno.
-4. Altere os campos textuais apresentados.
-5. Salve e volte a **Visualizar** para conferir a representação final.
-
-**Resultado esperado:** textos visíveis, como título, parágrafo, rótulo, célula, código
-ou feedback autorizado, são modificados sem expor o documento estrutural do
-card. Tipos, identidades, relações, ordem e critérios de correção continuam
-protegidos.
-
-**Sem conexão:** uma edição textual em curso de workspace já carregado pode ser
-guardada na fila local. Mudanças estruturais e publicação continuam exigindo o
-servidor.
-
-**Recuperação:** se o mesmo texto tiver mudado remotamente, escolha
-explicitamente entre **Manter meu texto** e **Descartar alterações locais**.
-Depois, revise o card em modo de visualização; não confirme apenas pela
-aparência do campo de edição.
-
-## Corrigir com assistência de linguagem
-
-**Pré-condição:** configure um provedor, mantenha conexão e selecione somente os
-alvos que o serviço pode alterar.
-
-**Passos:**
-
-1. Ative **IA**.
-2. Selecione uma ou mais instâncias do recurso, o card ou o contêiner permitido.
-3. Descreva o problema, o resultado esperado e o que deve ser preservado.
-4. Envie o pedido.
-5. Examine tanto a alteração quanto a explicação.
-6. Continue a conversa para ajustar o resultado ou use **Desfazer**.
-
-**Resultado esperado:** o contexto de leitura ajuda o modelo a interpretar o alvo, mas a
-resposta só pode gravar os campos autorizados e precisa satisfazer os contratos
-do curso. Uma mudança semanticamente relevante em uma prática limpa um
-resultado anterior que deixaria de ser confiável.
-
-**Sem conexão:** um provedor remoto não pode responder. O conteúdo anterior
-permanece utilizável.
-
-**Recuperação:** se a resposta for inválida, nenhuma alteração parcial deve ser
-aceita. Reduza o escopo, explicite um critério verificável e tente novamente.
-Se a nova versão estiver formalmente correta mas pedagogicamente pior,
-desfaça-a; validação estrutural não substitui julgamento didático.
-
-Diretrizes de interação humano-IA recomendam comunicar escopo e limitações,
-permitir correção eficiente e apoiar recuperação de erros
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). O uso educacional também exige supervisão humana e
-atenção a vieses, privacidade e adequação contextual ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
-
-## Acrescentar cards ou uma microssequência
-
-**Pré-condição:** a conta precisa possuir capacidade no contêiner e a assistência
-deve estar configurada.
-
-**Passos:**
-
-1. Abra a microssequência ou a lição em modo **IA**.
-2. Selecione o contêiner integral autorizado.
-3. Informe o objetivo pedagógico ausente, o conhecimento já ensinado e os
-   gestos de prática necessários.
-4. Solicite a criação.
-5. Revise ordem, transições, carga informacional e feedback de cada novo card.
-
-**Resultado esperado:** o escopo de microssequência pode acrescentar cards dentro dela;
-o escopo integral de lição pode acrescentar, no máximo, uma microssequência por
-operação. A limitação mantém a intervenção revisável e reserva reorganizações
-maiores ao workspace.
-
-**Sem conexão:** a criação estrutural não é concluída, pois depende da
-assistência configurada e da confirmação do servidor. Preserve o planejamento
-local e retome a operação quando a conexão voltar.
-
-**Recuperação:** se o problema atravessar várias lições ou módulos, interrompa a
-correção local e passe ao planejamento estrutural. Encadear muitas operações
-locais para simular uma reorganização ampla aumenta o risco de incoerência.
-
-## Planejar ou reorganizar um curso
-
-Uma mudança ampla utiliza um workspace: composição mutável que conserva cursos,
-módulos, lições, microssequências e cards como partes identificáveis. O
-workspace permite materializar por etapas, examinar o que já existe e continuar
-em outra sessão sem depender do histórico completo da conversa.
-
-**Pré-condição:** configure uma integração externa de autoria com o pacote
-versionado da distribuição e autorize sua conta. Clientes compatíveis com o
-Model Context Protocol (MCP) solicitam operações estruturadas; a autorização usa
-OAuth, fluxo em que a pessoa concede acesso sem entregar sua senha ao cliente.
-
-**Passos:**
-
-1. Pela conversa externa, crie ou abra o workspace.
-2. Use primeiro o pedido, o brief, as fontes e o planejamento já registrados;
-   complete somente público, finalidade, escopo ou fonte realmente ausentes.
-3. Responda somente às perguntas cuja informação possa mudar materialmente o
-   desenho; o assistente deve indicar qual decisão depende da resposta.
-4. Revise o mapa de curso, lições e microssequências. Aprove ou corrija somente
-   quando o mandato ou uma decisão material exigir.
-5. Divida o trabalho em Partes coerentes, ordenadas e dimensionadas pela
-   cobertura e pela revisão humana, sem cota de cards ou microssequências.
-6. Para cada microssequência, leia o slice corrente e analise condições,
-   exigências do conteúdo, dificuldades previstas e respostas de desenho.
-7. Deixe os parâmetros em Auto sempre que não houver motivo para alterar. Se
-   precisar de outro valor, peça a mudança em linguagem natural; override
-   manual e lock de pesquisa usam a mesma estrutura persistida.
-8. Quando Auto precisar de um conjunto de resources novo, deixe o servidor
-   congelar as versões adequadas por facetas. Depois do snapshot, o assistente
-   escolhe localmente somente dentro desse conjunto e carrega um contrato exato
-   por chamada; você não seleciona package card a card nem informa ids.
-9. Construa toda a Parte autorizada, uma microssequência por vez: blueprint e
-   cards em memória, validação, gravação, releitura e manifesto. Avance sem nova
-   aprovação apenas porque uma microssequência terminou.
-10. Depois de cada Parte, audite conteúdo, pré-requisitos, resources, práticas e
-   feedback.
-11. Verifique também se cada resposta prometida foi materializada, se alguma
-   prática antecede sua base e se o curso depende de um meio indisponível.
-12. Repare somente os achados aprovados e reavalie de forma independente.
-13. No aplicativo, abra **Autoria → Workspaces** para acompanhar Mapa, Desenho,
-    Conteúdo e Auditoria. Ajuste valores somente por controles estruturados;
-    use Auto quando não quiser conservar override.
-14. Em **Desenho → Resources**, consulte ou restrinja o conjunto por facetas e
-    escopo. Não selecione a representação de cada card; o GPT escolhe localmente
-    entre as versões permitidas.
-15. Volte a **Estudo** e abra o mesmo conteúdo em Trilhas para testar a
-    experiência real.
-
-Condições descrevem o cenário; respostas são decisões locais. Não escolha um
-estilo pedagógico global para todo o curso. A síntese é uma hipótese de
-planejamento, não um diagnóstico automático dos estudantes: a responsabilidade
-por decisões materiais e pela aprovação de findings continua sendo da pessoa
-autora.
-
-**Resultado esperado:** o conteúdo já materializado pode ser estudado sem esperar uma
-categoria burocrática de “pronto”. O planejamento corrente indica o que ainda
-falta; a ausência de partes futuras não torna ilegíveis as partes existentes.
-
-**Sem conexão:** a composição já replicada pode ser lida e receber correções
-textuais locais permitidas. O último Mapa/Desenho pode ser consultado e um
-override previamente autorizado pode ficar pendente; planejamento
-conversacional, novo conjunto de Resources, reorganização e publicação dependem
-do servidor.
-
-**Recuperação:** retome pelo estado compacto do workspace, releia a parte atual
-e confirme a revisão antes de continuar. Não use a lembrança da conversa como
-única fonte do planejamento. O estado guarda contexto e decisões aprovadas
-úteis, não raciocínio privado nem o transcript integral da sessão.
-
-O procedimento completo está em [Criar cursos pelo
-chat](criar-cursos-pelo-chat.md).
-
-## Decidir achados da Auditoria
-
-**Pré-condição:** a rodada de auditoria terminou e sua conta pode tomar decisões
-no workspace. Auditoria de conformidade não é revisão factual nem evidência de
-aprendizagem.
-
-**Passos:**
-
-1. Abra **Autoria → Workspace → Auditoria**.
-2. Escolha uma Parte ou microssequência. Leia `Conforme`, `Com achado` e `Não
-   verificada` como estados distintos; não trate ausência de verificação como
-   aprovação.
-3. Abra o achado e examine a evidência pública, o critério, a origem e o alvo
-   real. A gravidade organiza o trabalho; não é nota do curso ou do professor.
-   Em uma Parte, abra a microssequência desejada pela lista progressiva; o app
-   mantém a rodada filha que realmente compôs aquele histórico.
-4. Use **Aprovar para reparo** somente quando o problema e o escopo estiverem
-   corretos. Use **Rejeitar** para falso positivo ou interpretação inadequada.
-5. Depois das decisões, use **Preparar reparos**. Isso grava um mandato limitado
-   aos achados aprovados; não executa reparo dentro do aplicativo.
-6. Peça ao GPT externo conectado por MCP que retome o workspace e cumpra esse
-   mandato. Confira o conteúdo alterado.
-7. Quando o achado estiver reparado, use **Solicitar reauditoria da Parte**. Se
-   o conteúdo ainda não pertencer a uma Parte, solicite a reauditoria do
-   workspace. A nova rodada deve reler o estado corrente de forma independente
-   e pode encontrar outro problema.
-
-**Resultado esperado:** achado rejeitado nunca autoriza reparo; achado aprovado
-continua rastreável até correção e reauditoria; a Parte apresenta cobertura e
-distribuição sem score de qualidade.
-
-**Sem conexão:** resumo, evidência e alvo já sincronizados permanecem
-consultáveis. Decidir, preparar reparos e solicitar reauditoria exige rede,
-autoridade corrente e revisão atual do workspace.
-
-**Recuperação:** em conflito, releia o workspace. Não repita a decisão em cima
-de estado antigo nem substitua um mandato corrente sem concluir ou revisar seu
-escopo. Antes de pedir outra auditoria, conclua os demais achados ainda presentes
-no mandato de reparo preparado.
-
-## Escolher e revisar recursos de representação
-
-Um recurso especializado deve corresponder à operação intelectual exigida. Não
-se escolhe um grafo, uma matriz ou um diagrama apenas para variar a aparência.
-
-Ao revisar um card, pergunte:
-
-1. A representação torna visível uma relação que a prosa esconderia?
-2. Ela segue convenções reconhecíveis na área de conhecimento?
-3. O estudante recebeu contexto suficiente para interpretá-la sem decifrar a
-   interface?
-4. Rótulos, linhas, cores e legendas continuam inequívocos no celular?
-5. A prática ocorre dentro do objeto relevante, e não em uma lacuna genérica no
-   enunciado?
-6. Cada campo interativo é independente e possui resposta própria?
-7. A representação continua legível com conteúdo mais complexo que o exemplo
-   mínimo?
-
-Múltiplas representações podem complementar-se quando suas relações são
-explicitadas; apresentá-las sem coordenação pode acrescentar esforço
-desnecessário ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Consulte [Recursos de
-card](recursos-de-card.md).
-
-## Tratar uma observação pedagógica
-
-**Pré-condição:** a observação deve pertencer a um workspace em que a conta possa
-fazer triagem.
-
-**Passos:**
-
-1. Abra **Autoria**, escolha o workspace e entre em **Auditoria**.
-2. Consulte as observações e filtre quando necessário.
-3. Leia o card exato antes de interpretar o texto.
-4. Responda ou marque a observação como considerada quando ainda houver trabalho.
-5. Se houver correção, execute uma operação de autoria separada.
-6. Depois de verificar a gravação, vincule a correção à observação e marque-a
-   como incorporada.
-
-**Resultado esperado:** resposta, estado e eventual referência ao reparo retornam à
-pessoa que registrou a observação. Responder não altera o curso; mudar o curso
-não encerra automaticamente a observação.
-
-**Sem conexão:** a fila compartilhada requer rede. A pessoa que estuda continua
-vendo seu texto local e o último retorno sincronizado.
-
-**Recuperação:** se o card não existir mais, mantenha o registro como alvo
-indisponível. Não o redirecione por semelhança de título.
-
-Feedback é um processo de interpretação e ação, não apenas informação entregue
-ao estudante ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Wood (2021)](referencias.md#ref-wood2021dialogic)). Isso fundamenta
-a separação entre manifestação, resposta, correção e verificação, mas não prova
-a eficácia desta interface específica.
-
-## Publicar
-
-**Pré-condição:** distribuir uma revisão para acesso restrito ou em Coleções
-exige capacidade de publicação no workspace; entrada no catálogo exige também
-capacidade editorial da aplicação.
-
-**Passos:**
-
-1. Teste o curso em Trilhas.
-2. Confirme que o planejamento, a auditoria e as correções pertinentes estão
-   registrados.
-3. Selecione a composição e a revisão exatas.
-4. Solicite a publicação no destino autorizado.
-5. Verifique a publicação resultante como leitor.
-
-**Resultado esperado:** a revisão distribuída é imutável. Novas correções produzem outra
-revisão da mesma identidade de curso, em vez de alterar silenciosamente o
-artefato já distribuído.
-
-**Sem conexão:** não é possível publicar.
-
-**Recuperação:** se a revisão corrente tiver avançado, releia as mudanças e
-repita a decisão sobre a nova revisão; o servidor não combina concorrência de
-modo silencioso.
-
-## O que não deve ser inferido sobre estudantes
-
-Cursor, conclusão estrutural, **Rever**, observação e data de atualização não
-medem atenção, frequência, dificuldade ou aprendizagem. Não construa ranking ou
-nota a partir desses estados. A distinção entre dado funcional e construto
-educacional está em [Estado de estudo não
-punitivo](estado-de-estudo-nao-punitivo.md).
-
-## Ler Resultados sem criar uma nota única
-
-Abra **Resultados** para confrontar valores efetivos, Resources materializados,
-Partes, findings e conclusão estrutural explícita. O gráfico e a tabela repetem
-a mesma base; use **Definição e proveniência** antes de interpretar. Auto não é
-superior a override, mais variedade de Resources não é melhor por si só e
-ausência de conclusão pode ser apenas dado ainda não sincronizado. Exporte CSV
-ou JSON somente quando precisar conferir o recorte versionado fora do app.
-Veja [Analytics instrucionais](analytics-instrucionais.md).
+**Observações** apresenta a caixa de entrada das Anotações ancoradas. Filtros
+recortam origem, canal, estado, categoria, assunto e posição hierárquica. Uma
+anotação autoral pode ser criada no Curso, Módulo, Lição, Tópico ou
+Microssequência. Para uma Unidade, use **Anotar** na Inspeção. Para Fonte ou
+Âncora, abra o detalhe correspondente em **Fontes**.
+
+No detalhe, as ações permitidas pelo servidor podem editar texto ou categoria,
+registrar consideração, responder, resolver, reabrir, retirar e corrigir
+assuntos. Responder ou resolver organiza a triagem; o conteúdo do Curso muda
+somente por uma operação autoral própria.
+
+O proprietário recebe as anotações necessárias à triagem. Cada estudante
+continua vendo somente as próprias. Na caixa autoral, uma contribuição de
+estudante aparece com rótulo protegido, como “Estudante 7A3F”, sem UUID ou
+e-mail.
+
+**Achados** inicia pela escolha de uma Unidade focal. O contexto reunido pelo
+servidor inclui a Unidade, a Microssequência, o plano, os parâmetros, Fontes,
+Âncoras e até 12 Observações selecionadas. A rodada registra verificações
+estruturais, pedagógicas, factuais e editoriais. Rodadas sem achados também
+permanecem no histórico.
+
+Uma correção pode alterar somente o conteúdo editável e o conjunto completo de
+Fontes da Unidade focal existente. A proposta registra o estado anterior e o
+estado proposto. Aplicar exige confirmação e uma revisão ainda válida do Curso.
+Depois, outra rodada verifica o critério focal antes de o achado ser resolvido.
+A reversão também exige confirmação e só ocorre enquanto a Unidade corresponde
+ao estado aplicado.
+
+Uma conclusão factual positiva exige Fonte e Âncora ativas na revisão exata.
+**Sustenta o conteúdo** vale para afirmações; **Citação direta** comprova apenas
+a fidelidade da citação.
+
+Auditoria e correções exigem conexão. Observações mantêm persistência e fila
+próprias para continuar funcionando sem rede.
+
+### Variantes
+
+**Variantes** cria de dois a oito Cursos independentes a partir do planejamento
+do Curso aberto. Cada variante recebe título, objetivo, rótulo e ao menos uma
+diferença intencional de parâmetro ou política de componentes.
+
+A comparação mostra o ponto comum de planejamento, as diferenças declaradas, as
+alterações observadas depois do vínculo, os parâmetros e políticas efetivos,
+Fontes, Âncoras, PDFs, Partes, Unidades e componentes usados. **Abrir Curso**
+leva à variante concreta. **Desvincular** retira apenas a relação comparativa e
+preserva o Curso.
+
+Esse recurso descreve Cursos relacionados. Ele não distribui participantes,
+registra consentimento, coleta desfechos nem permite inferência causal.
+
+### Pesquisa
+
+**Pesquisa** consulta fatos da atividade do Curso, produção por Partes, decisões
+de desenho, Fontes e atribuições, Observações, auditorias e Variantes. Os filtros
+incluem conjunto de fatos, canal, origem, estado e intervalo de datas.
+
+O gráfico e a tabela representam o mesmo recorte. A tela informa definições,
+dados ausentes e limites antes de oferecer exportação em CSV ou JSON. Os links
+dos fatos levam às áreas correspondentes da Autoria. Contagens e estados
+descrevem registros do processo; a interpretação como medida de aprendizagem,
+qualidade ou efeito exige um protocolo de pesquisa próprio.
+
+### Pessoas
+
+**Pessoas** mostra o proprietário e quem recebeu **Acesso ao Estudo**. Nome e
+foto aparecem quando a relação de acesso permite.
+
+## Conceder ou revogar acesso
+
+Para conceder:
+
+1. abra **Pessoas**;
+2. use **Conceder acesso**;
+3. informe o e-mail exato de uma conta existente;
+4. confira a confirmação e conclua.
+
+O serviço usa o e-mail para localizar a conta, sem pesquisa parcial ou sugestão
+de diretório. A pessoa passa a encontrar o Curso em Estudo e conserva estado
+pessoal próprio. A concessão não transfere propriedade, não permite editar e
+não duplica o Curso.
+
+Para revogar, use a ação ao lado da pessoa e confirme. O servidor bloqueia novas
+leituras e alterações remotas. Uma cópia já baixada pode permanecer fisicamente
+no dispositivo até que ele volte a validar o acesso com conexão.
+
+## Configurar nome e foto
+
+Em **Conta e aparência**, defina o nome de apresentação e, se desejar, escolha
+uma foto JPEG, PNG ou WebP de até 512 KiB. A foto fica em armazenamento privado
+e pode ser lida pela própria pessoa e por contas que possuem uma relação direta
+de Curso com ela.
+
+Ao trocar a foto, o aplicativo registra a nova referência e depois remove o
+objeto anterior. Uma falha nessa limpeza é informada para que a operação possa
+ser repetida.
+
+## Trabalhar com um assistente conectado
+
+Um assistente pode operar o mesmo Curso da interface visual por meio de um
+protocolo aberto, o **Model Context Protocol (MCP)**. Um
+percurso seguro de autoria é:
+
+1. listar os Cursos próprios e confirmar a identidade do Curso desejado;
+2. ler o plano, o desenho e apenas o recorte necessário da composição;
+3. formular e revisar a alteração;
+4. usar a revisão do Curso e a versão do objeto como condições da escrita;
+5. reler o resultado e abrir o link visual devolvido.
+
+Se outra edição mudar o Curso antes da escrita, o servidor recusa a revisão
+antiga. O cliente deve reler o estado, reconciliar a intenção e apresentar a
+nova proposta. A [Autoria por MCP](autoria-mcp.md) documenta as ferramentas,
+operações, paginação e confirmações disponíveis.
+
+## Produzir por Parte com o ChatGPT conectado
+
+Para preparar a produção:
+
+1. descreva a intenção de cada Parte e organize a ordem de trabalho;
+2. vincule as Microssequências que pertencem a cada Parte;
+3. atribua, em **Parâmetros**, as unidades de análise e os requisitos de
+   evidência de cada Microssequência;
+4. resolva, em **Fontes**, o catálogo, as Âncoras e as atribuições pertinentes;
+5. use **Copiar pedido para o ChatGPT** na Parte escolhida;
+6. cole o pedido no cliente conectado e acompanhe as etapas confirmadas pelo
+   servidor.
+
+Copiar o pedido não altera o Curso. Quando o cliente executa a materialização,
+**Ver etapas** apresenta o andamento, a próxima etapa e fatos limitados já
+registrados. A leitura equivalente pelo MCP permite retomar o trabalho sem
+depender da memória da conversa.
+
+Enquanto uma Parte está em produção, mudanças em seus vínculos e em sua ordem
+são recusadas. Título, objetivo e itens independentes do plano continuam
+editáveis. A composição é gravada em lotes atômicos e precisa respeitar
+identidades, pais, posições, contratos de conteúdo e a revisão corrente do
+Curso. A mesma operação que confirma uma etapa associa as Unidades produzidas,
+o desenho aplicado e a proveniência correspondente.
+
+## Limites da interface
+
+A Inspeção não oferece edição livre e direta de toda a estrutura interna de uma
+Unidade. Alterações focais passam pelo ciclo de correção; mudanças estruturais e
+materialização usam as operações autorizadas do MCP. O acesso público e anônimo
+a Cursos também não faz parte do modelo de compartilhamento: a distribuição
+corrente usa contas e concessões diretas para Estudo.
+
+## Verificar uma alteração
+
+Depois de alterar um Curso:
+
+1. releia a área modificada na Autoria;
+2. use a Inspeção para abrir a Unidade afetada;
+3. confira as revisões e Âncoras das Fontes atribuídas;
+4. se houve correção, execute outra rodada e verifique o critério focal;
+5. abra o Curso em Estudo e percorra a mesma Unidade;
+6. confira conteúdo, resposta, retorno, navegação e Fontes visíveis;
+7. verifique a experiência em telas móveis e no computador.
 
 ## Leituras relacionadas
 
-- [Workspaces educacionais](workspaces-educacionais.md)
-- [Observações pedagógicas](observacoes-pedagogicas.md)
-- [Autoria e publicação](autoria-do-catalogo.md)
-- [Assistência por IA](assistencia-por-ia.md)
-- [Fluxos, prompts e contratos](fluxos-prompts-e-contratos.md)
+- [Uso do aplicativo](uso-do-app.md)
+- [Autoria por MCP](autoria-mcp.md)
+- [Arquitetura](arquitetura.md)
+- [Privacidade e tratamento de dados](privacidade.md)
+- [Estado do produto](estado-atual-e-roadmap.md)

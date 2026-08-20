@@ -86,7 +86,7 @@ function gapResponse(instance, mode, id) {
   });
 }
 
-function card({ id, position, title, content = [], response = null }) {
+function studyUnit({ id, position, title, content = [], response = null }) {
   return {
     id,
     position,
@@ -95,19 +95,18 @@ function card({ id, position, title, content = [], response = null }) {
     content,
     response,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 
-function moduleForCards({ id, title, goal, cards, conventions = ["representação legível"] }) {
+function moduleForStudyUnits({ id, title, goal, studyUnits, conventions = ["representação legível"] }) {
   return {
     id: `${id}-module`,
     title,
     guide: {
       goal,
       include: ["representação canônica e interação declarada"],
-      exclude: ["adaptação artificial de outra operação cognitiva"],
+      exclude: ["adaptação artificial de outra operação-alvo da tarefa"],
       notation: conventions,
       avoid: ["usar a forma quando ela não acrescenta significado"]
     },
@@ -129,9 +128,9 @@ function moduleForCards({ id, title, goal, cards, conventions = ["representaçã
         role: "practice",
         dependsOn: [],
         covers: [],
-        checks: ["sem sobreposição", "alvo de prática dentro da representação", "Play como confirmação"],
+        checks: ["sem sobreposição", "alvo de prática dentro da representação", "confirmação da resposta"],
         errors: [],
-        cards
+        studyUnits
       }]
     }]
   };
@@ -140,28 +139,28 @@ function moduleForCards({ id, title, goal, cards, conventions = ["representaçã
 const contentManifests = RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" });
 const contentModules = contentManifests.map((manifest, index) => {
   const prefix = `resource-test-${index + 1}`;
-  const cards = [];
+  const studyUnits = [];
   const exposition = exampleInstance(manifest, `${prefix}-exposition-content`);
-  cards.push(card({ id: `${prefix}-exposition`, position: cards.length + 1, title: "Exposição", content: [exposition] }));
+  studyUnits.push(studyUnit({ id: `${prefix}-exposition`, position: studyUnits.length + 1, title: "Exposição", content: [exposition] }));
 
   for (const mode of ["choice", "text"]) {
     const practiceContent = exampleInstance(manifest, `${prefix}-${mode}-content`);
     const response = gapResponse(practiceContent, mode, `${prefix}-${mode}-response`);
     if (!response) continue;
-    cards.push(card({
+    studyUnits.push(studyUnit({
       id: `${prefix}-${mode}`,
-      position: cards.length + 1,
+      position: studyUnits.length + 1,
       title: mode === "choice" ? "Lacuna com alternativas" : "Lacuna com digitação",
       content: [practiceContent],
       response
     }));
   }
 
-  return moduleForCards({
+  return moduleForStudyUnits({
     id: prefix,
     title: manifest.label,
     goal: `Avaliar ${manifest.id} somente nas modalidades declaradas pelo próprio package.`,
-    cards,
+    studyUnits,
     conventions: manifest.academic.conventions
   });
 });
@@ -250,14 +249,14 @@ const orderingResponse = normalizeInstance({
 });
 
 const responseModules = [
-  moduleForCards({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e feedback por Play.", cards: [card({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
-  moduleForCards({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", cards: [card({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), card({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
-  moduleForCards({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", cards: [card({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] })
+  moduleForStudyUnits({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e retorno após a confirmação.", studyUnits: [studyUnit({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
+  moduleForStudyUnits({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", studyUnits: [studyUnit({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), studyUnit({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
+  moduleForStudyUnits({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", studyUnits: [studyUnit({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] })
 ];
 
 const modules = [...contentModules, ...responseModules];
 const project = {
-  contract: "aralearn.library.v1",
+  contract: "aralearn.course.v1",
   scope: "course",
   courses: [{
     id: "course-resource-test",
@@ -270,8 +269,8 @@ const project = {
 const validation = validateProjectDocument(project);
 if (!validation.ok) throw new Error(`Curso de teste inválido:\n${JSON.stringify(validation.errors, null, 2)}`);
 
-const cardCount = modules.reduce((total, moduleValue) => (
-  total + moduleValue.lessons[0].microsequences[0].cards.length
+const studyUnitCount = modules.reduce((total, moduleValue) => (
+  total + moduleValue.lessons[0].microsequences[0].studyUnits.length
 ), 0);
 fs.writeFileSync(outputPath, `${JSON.stringify(validation.value, null, 2)}\n`, "utf8");
-console.log(`Curso de teste gerado em ${outputPath}: ${modules.length} packages, ${cardCount} cards.`);
+console.log(`Curso de teste gerado em ${outputPath}: ${modules.length} packages, ${studyUnitCount} Unidades de estudo.`);

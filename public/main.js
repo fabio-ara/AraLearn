@@ -1,68 +1,44 @@
-import { createEditorSession } from "../src/editor/contractEditor.js";
-import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
-import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
-import { TrailPersonalStateRepository } from "../src/persistence/TrailPersonalStateRepository.js";
+import { AuthSessionStore } from "../src/persistence/AuthSessionStore.js";
+import { CourseLocalStore } from "../src/persistence/CourseLocalStore.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
-import {
-  classifySyncFailure,
-  RelationalSyncEngine,
-  SupabaseSyncTransport,
-  SYNC_FAILURE_KIND
-} from "../src/sync/RelationalSyncEngine.js";
-import {
-  synchronizationHasPersonalReplicaChanges,
-  synchronizationRequiresFullReplicaRefresh
-} from "../src/sync/replicaRefreshPolicy.js";
-import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
-import { LearningSpaces } from "../src/supabase/LearningSpaces.js";
+import { createCourseStudyApplication } from "../src/study/CourseStudyApplication.js";
+import { CourseStudyBridge } from "../src/study/CourseStudyBridge.js";
+import { CourseStudyRepository } from "../src/study/CourseStudyRepository.js";
+import { CourseApiClient } from "../src/supabase/CourseApiClient.js";
+import { CourseController } from "../src/supabase/CourseController.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
-import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
+import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.js";
+import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
+import { isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
 import {
-  readActionOAuthAuthorizationId,
   readOAuthAuthorizationId,
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
-import { createLearningSpacesPanel } from "../src/ui/LearningSpacesPanel.js";
-import { createAuthoringWorkspaceSurface } from "../src/ui/AuthoringWorkspaceSurface.js";
-import { createExperimentEnrollmentSurface } from "../src/ui/ExperimentEnrollmentSurface.js";
-import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
 let authStore = null;
-let relationalStore = null;
+let courseLocalStore = null;
 let repository = null;
 let authenticationShutdown = null;
 let activeUserId = null;
-let durabilityUnsubscribe = null;
 let lifecycleAbortController = null;
 let localConnectionRefreshPending = false;
 
-const AUTOMATIC_SYNC_INTERVAL_MS = 60_000;
-const AUTOMATIC_SYNC_AFTER_CHANGE_MS = 800;
-
 function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
-}
-
-function synchronizationFailureIsRetryable(error) {
-  return classifySyncFailure(error).kind === SYNC_FAILURE_KIND.RETRYABLE;
 }
 
 function reloadAfterLocalConnectionReplacement() {
   if (localConnectionRefreshPending || authenticationShutdown) return;
   localConnectionRefreshPending = true;
   lifecycleAbortController?.abort();
-  // O navegador precisa concluir a exclusão ou atualização iniciada pela outra
-  // aba antes de abrir novamente o mesmo namespace IndexedDB.
   globalThis.setTimeout(() => globalThis.location.reload(), 250);
 }
 
 function watchLocalConnection(store) {
-  return store.onConnectionInvalidated(() => {
-    reloadAfterLocalConnectionReplacement();
-  });
+  return store.onConnectionInvalidated(() => reloadAfterLocalConnectionReplacement());
 }
 
 async function closeAraLearnLocalConnections() {
@@ -71,49 +47,49 @@ async function closeAraLearnLocalConnections() {
   if (repository) {
     await repository.close();
     repository = null;
-    relationalStore = null;
-  } else if (relationalStore) {
-    relationalStore.close();
-    relationalStore = null;
   }
-  durabilityUnsubscribe?.();
-  durabilityUnsubscribe = null;
-  if (authStore) {
-    authStore.close();
-    authStore = null;
-  }
+  courseLocalStore?.close();
+  courseLocalStore = null;
+  authStore?.close();
+  authStore = null;
 }
 
 async function clearAraLearnLocalState() {
   const userId = activeUserId;
-  await closeAraLearnLocalConnections();
-  if (userId) {
-    await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB, { userId });
+  lifecycleAbortController?.abort();
+  lifecycleAbortController = null;
+  if (repository) {
+    await repository.close();
+    repository = null;
   }
-  await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB);
+  courseLocalStore?.close();
+  courseLocalStore = null;
+  authStore?.close();
+  authStore = null;
+  if (userId) await CourseLocalStore.deleteDatabase(globalThis.indexedDB, { userId });
+  await AuthSessionStore.deleteDatabase(globalThis.indexedDB);
 }
 
-function renderShutdownDurabilityFailure(root, error) {
+function renderShutdownFailure(root, error) {
   root.innerHTML = `
     <main class="auth-shell">
       <section class="auth-card" aria-live="assertive">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
         <p class="auth-recovery-title">A saída foi interrompida.</p>
-        <p class="auth-status" data-kind="error" data-shutdown-durability-error></p>
-        <div class="auth-actions"><button class="auth-icon-button is-primary" type="button" data-shutdown-retry title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "auth-button-icon")}</button></div>
+        <p class="auth-status" data-kind="error" data-shutdown-error></p>
+        <div class="auth-actions"><button class="auth-icon-button is-primary" type="button" data-shutdown-retry title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("save", "auth-button-icon")}</button></div>
       </section>
     </main>
   `;
-  const message = error instanceof Error ? error.message : String(error);
-  root.querySelector("[data-shutdown-durability-error]").textContent =
-    `O AraLearn não conseguiu concluir a gravação local: ${message}. Tente novamente antes de fechar.`;
+  root.querySelector("[data-shutdown-error]").textContent =
+    error instanceof Error ? error.message : String(error);
   root.querySelector("[data-shutdown-retry]")?.addEventListener("click", async (event) => {
     event.currentTarget.disabled = true;
     try {
-      await repository?.retryDurability();
+      await repository?.flush();
       await shutDownAuthenticatedRuntime(root);
     } catch (retryError) {
-      renderShutdownDurabilityFailure(root, retryError);
+      renderShutdownFailure(root, retryError);
     }
   });
 }
@@ -129,10 +105,9 @@ function shutDownAuthenticatedRuntime(root) {
       authenticationShutdown = null;
       root.removeAttribute("aria-busy");
       root.classList.remove("is-signing-out");
-      renderShutdownDurabilityFailure(root, error);
+      renderShutdownFailure(root, error);
       return;
     }
-    // Dá às demais abas tempo para receber a revogação sem apagar nenhuma réplica.
     await wait(150);
     globalThis.location.reload();
   })();
@@ -141,8 +116,7 @@ function shutDownAuthenticatedRuntime(root) {
 
 function authSessionWasRejected(error, authClient) {
   const code = String(error?.code || error?.response?.code || "").toLowerCase();
-  return !authClient.getSession() ||
-    error?.status === 401 ||
+  return !authClient.getSession() || error?.status === 401 ||
     (error?.status === 400 && [
       "invalid_grant",
       "bad_jwt",
@@ -152,29 +126,24 @@ function authSessionWasRejected(error, authClient) {
     ].includes(code));
 }
 
-function startupFailureMessage(error) {
-  void error;
-  return "Não foi possível abrir seus cursos neste dispositivo.";
-}
-
 function renderStartupFailure(root, error) {
+  void error;
   root.innerHTML = `
     <main class="startup-recovery-shell">
       <section class="startup-recovery-card" role="alert">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
-        <p class="startup-recovery-message" data-startup-error-details></p>
+        <p class="startup-recovery-message">Não foi possível abrir seus Cursos neste dispositivo.</p>
         <div class="startup-recovery-actions">
           <button class="icon-pill" type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
-          <button class="icon-pill" type="button" data-action="reset-aralearn-local-state" title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
+          <button class="icon-pill" type="button" data-action="reset-local-state" title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
         </div>
       </section>
     </main>
   `;
-  root.querySelector("[data-startup-error-details]").textContent = startupFailureMessage(error);
   root.querySelector('[data-action="reload-page"]')?.addEventListener("click", () => {
     globalThis.location.reload();
   });
-  root.querySelector('[data-action="reset-aralearn-local-state"]')?.addEventListener("click", async (event) => {
+  root.querySelector('[data-action="reset-local-state"]')?.addEventListener("click", async (event) => {
     if (!globalThis.confirm("Limpar os dados deste dispositivo e descartar alterações offline ainda não enviadas?")) return;
     event.currentTarget.disabled = true;
     try {
@@ -194,19 +163,11 @@ function renderStartupLoading(root) {
           <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
           <div class="startup-loading-content">
             <ol class="startup-loading-steps" aria-label="Etapas da preparação">
-              <li aria-label="Dispositivo" data-startup-loading-step data-threshold="4" data-state="active">
-                <span class="startup-loading-step-icon">${renderUiIcon("save", "startup-loading-icon")}</span>
-              </li>
-              <li aria-label="Conta" data-startup-loading-step data-threshold="36" data-state="waiting">
-                <span class="startup-loading-step-icon">${renderUiIcon("sign-in", "startup-loading-icon")}</span>
-              </li>
-              <li aria-label="Cursos" data-startup-loading-step data-threshold="68" data-state="waiting">
-                <span class="startup-loading-step-icon">${renderUiIcon("card", "startup-loading-icon")}</span>
-              </li>
+              <li aria-label="Dispositivo" data-startup-loading-step data-threshold="4" data-state="active"><span class="startup-loading-step-icon">${renderUiIcon("save", "startup-loading-icon")}</span></li>
+              <li aria-label="Conta" data-startup-loading-step data-threshold="36" data-state="waiting"><span class="startup-loading-step-icon">${renderUiIcon("sign-in", "startup-loading-icon")}</span></li>
+              <li aria-label="Cursos" data-startup-loading-step data-threshold="68" data-state="waiting"><span class="startup-loading-step-icon">${renderUiIcon("study", "startup-loading-icon")}</span></li>
             </ol>
-            <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
-              <span data-startup-loading-fill style="width:4%"></span>
-            </div>
+            <div class="startup-loading-track" role="progressbar" aria-label="Progresso da abertura" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress><span data-startup-loading-fill style="width:4%"></span></div>
             <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
           </div>
         </div>
@@ -215,650 +176,427 @@ function renderStartupLoading(root) {
   `;
 }
 
-function updateStartupLoading(root, { percent, message = "" } = {}) {
-  const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+function updateStartupLoading(root, percent) {
+  const value = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
   const progress = root.querySelector("[data-startup-loading-progress]");
   const fill = root.querySelector("[data-startup-loading-fill]");
-  const percentLabel = root.querySelector("[data-startup-loading-percent]");
-  if (!progress || !fill || !percentLabel) return;
-  progress.setAttribute("aria-valuenow", String(safePercent));
-  if (message) progress.setAttribute("aria-valuetext", message);
-  fill.style.width = `${safePercent}%`;
-  percentLabel.textContent = `${safePercent}%`;
+  const label = root.querySelector("[data-startup-loading-percent]");
+  if (!progress || !fill || !label) return;
+  progress.setAttribute("aria-valuenow", String(value));
+  fill.style.width = `${value}%`;
+  label.textContent = `${value}%`;
   const steps = [...root.querySelectorAll("[data-startup-loading-step]")];
   steps.forEach((step, index) => {
     const threshold = Number(step.dataset.threshold || 0);
     const nextThreshold = Number(steps[index + 1]?.dataset.threshold || 101);
-    const state = safePercent >= 100 || safePercent >= nextThreshold
+    const state = value >= 100 || value >= nextThreshold
       ? "complete"
-      : safePercent >= threshold
-        ? "active"
-        : "waiting";
+      : value >= threshold ? "active" : "waiting";
     step.dataset.state = state;
     if (state === "active") step.setAttribute("aria-current", "step");
     else step.removeAttribute("aria-current");
   });
 }
 
-async function renderAuthenticatedApplication(root, config, authClient, session) {
-  const remoteCatalog = new RemoteCourseCatalog({
+function renderSettings(root, authClient, controller, {
+  onProfileChange = () => {},
+  confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
+  promptValue = globalThis.prompt?.bind(globalThis) || (() => null)
+} = {}) {
+  root.innerHTML = `
+    <section class="account-settings-overlay" data-settings hidden aria-label="Configurações">
+      <div class="account-settings-backdrop" data-settings-close></div>
+      <div class="account-settings-sheet courses-home-screen" role="dialog" aria-modal="true" aria-label="Conta e aparência">
+        <header class="account-settings-header">
+          <div class="account-settings-title-row">
+            <h1 class="account-settings-title">Conta e aparência</h1>
+            <button class="icon-ghost account-settings-close" type="button" data-settings-close title="Fechar" aria-label="Fechar">${renderUiIcon("remove-state", "account-settings-action-icon")}</button>
+          </div>
+        </header>
+        <div class="account-settings-content">
+          <form class="account-profile-form" data-profile-form>
+            <div class="account-profile-avatar">
+              <span class="account-profile-avatar-fallback" data-profile-avatar-fallback>${renderUiIcon("account", "account-profile-avatar-icon")}</span>
+              <img data-profile-avatar-image alt="" hidden>
+              <input data-profile-avatar-file type="file" accept="image/jpeg,image/png,image/webp" hidden>
+              <button class="icon-ghost" type="button" data-profile-avatar-choose title="Escolher foto" aria-label="Escolher foto">${renderUiIcon("edit", "account-settings-action-icon")}</button>
+              <button class="icon-ghost" type="button" data-profile-avatar-remove title="Remover foto" aria-label="Remover foto">${renderUiIcon("trash", "account-settings-action-icon")}</button>
+            </div>
+            <label for="account-profile-display-name">Nome</label>
+            <div class="account-profile-name-row">
+              <input id="account-profile-display-name" data-profile-name maxlength="120" autocomplete="name" required placeholder="Como deseja aparecer">
+              <button class="icon-ghost is-primary" type="submit" data-profile-save title="Salvar perfil" aria-label="Salvar perfil">${renderUiIcon("save", "account-settings-action-icon")}</button>
+            </div>
+          </form>
+          <div class="account-danger-zone">
+            <button class="icon-ghost is-danger" type="button" data-settings-delete-account title="Excluir conta" aria-label="Excluir conta">${renderUiIcon("trash", "account-settings-action-icon")}</button>
+            <span>Excluir conta e dados ativos</span>
+          </div>
+        </div>
+        <p class="account-settings-status" data-settings-status role="status" aria-live="polite"></p>
+        <footer class="account-settings-footer">
+          <div class="account-settings-primary-actions"></div>
+          <div class="theme-choice" role="group" aria-label="Aparência">
+            <button class="theme-choice-button" type="button" data-theme-choice="system" title="Tema do sistema" aria-label="Tema do sistema">${renderUiIcon("theme-system", "theme-choice-icon")}</button>
+            <button class="theme-choice-button" type="button" data-theme-choice="light" title="Tema claro" aria-label="Tema claro">${renderUiIcon("theme-light", "theme-choice-icon")}</button>
+            <button class="theme-choice-button" type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">${renderUiIcon("theme-dark", "theme-choice-icon")}</button>
+          </div>
+          <div class="account-settings-account-actions">
+            <button class="icon-ghost" type="button" data-settings-signout title="Sair" aria-label="Sair">${renderUiIcon("sign-out", "account-settings-action-icon")}</button>
+          </div>
+        </footer>
+      </div>
+    </section>
+  `;
+  const overlay = root.querySelector("[data-settings]");
+  const status = root.querySelector("[data-settings-status]");
+  const profileName = root.querySelector("[data-profile-name]");
+  const profileFile = root.querySelector("[data-profile-avatar-file]");
+  const profileImage = root.querySelector("[data-profile-avatar-image]");
+  const profileFallback = root.querySelector("[data-profile-avatar-fallback]");
+  let profile = null;
+  let avatarUrl = "";
+  let selectedFile = null;
+  let profileLoading = null;
+
+  const replaceAvatarUrl = (nextUrl) => {
+    if (avatarUrl && avatarUrl !== nextUrl) globalThis.URL?.revokeObjectURL?.(avatarUrl);
+    avatarUrl = nextUrl || "";
+    profileImage.hidden = !avatarUrl;
+    profileImage.src = avatarUrl;
+    profileFallback.hidden = Boolean(avatarUrl);
+    onProfileChange({
+      displayName: profile?.displayName || null,
+      avatarUrl
+    });
+  };
+
+  const loadProfile = async ({ force = false } = {}) => {
+    if (profileLoading && !force) return profileLoading;
+    const task = (async () => {
+      status.textContent = "Carregando perfil…";
+      try {
+        profile = await controller.getPersonProfile();
+        profileName.value = profile?.displayName || "";
+        let nextAvatarUrl = "";
+        if (profile?.avatarObjectKey) {
+          try {
+            const blob = await controller.loadAvatar(profile.avatarObjectKey);
+            nextAvatarUrl = globalThis.URL?.createObjectURL?.(blob) || "";
+          } catch {
+            nextAvatarUrl = "";
+          }
+        }
+        replaceAvatarUrl(nextAvatarUrl);
+        status.textContent = "";
+        return profile;
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Não foi possível carregar o perfil.";
+        return null;
+      }
+    })();
+    profileLoading = task;
+    try {
+      return await task;
+    } finally {
+      if (profileLoading === task) profileLoading = null;
+    }
+  };
+  const syncTheme = () => {
+    const preference = globalThis.AraLearnTheme?.getState?.().preference || "system";
+    root.querySelectorAll("[data-theme-choice]").forEach((button) => {
+      const selected = button.dataset.themeChoice === preference;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+  };
+  const close = () => {
+    overlay.hidden = true;
+    status.textContent = "";
+  };
+  root.querySelector("[data-profile-avatar-choose]")?.addEventListener("click", () => {
+    profileFile.click();
+  });
+  profileFile?.addEventListener("change", () => {
+    selectedFile = profileFile.files?.[0] || null;
+    if (!selectedFile) return;
+    replaceAvatarUrl(globalThis.URL?.createObjectURL?.(selectedFile) || "");
+  });
+  root.querySelector("[data-profile-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const displayName = String(profileName.value || "").trim();
+    if (!displayName) {
+      status.textContent = "Informe seu nome.";
+      profileName.focus();
+      return;
+    }
+    const previousAvatarObjectKey = profile?.avatarObjectKey || null;
+    let uploadedObjectKey = null;
+    let profileUpdated = false;
+    let avatarCleanupPending = false;
+    status.textContent = "Salvando perfil…";
+    try {
+      if (selectedFile) {
+        uploadedObjectKey = (await controller.uploadAvatar(selectedFile)).objectKey;
+      }
+      profile = await controller.updatePersonProfile({
+        displayName,
+        ...(uploadedObjectKey ? { avatarObjectKey: uploadedObjectKey } : {})
+      });
+      profileUpdated = true;
+      selectedFile = null;
+      profileFile.value = "";
+      if (uploadedObjectKey && previousAvatarObjectKey &&
+          previousAvatarObjectKey !== uploadedObjectKey) {
+        avatarCleanupPending = !await controller.deleteOwnAvatar(previousAvatarObjectKey)
+          .then(() => true)
+          .catch(() => false);
+      }
+      await loadProfile({ force: true });
+      status.textContent = avatarCleanupPending
+        ? "Perfil salvo; a limpeza da foto anterior ficou pendente."
+        : "Perfil salvo.";
+    } catch (error) {
+      if (uploadedObjectKey && !profileUpdated) {
+        await controller.deleteOwnAvatar(uploadedObjectKey).catch(() => undefined);
+      }
+      await loadProfile({ force: true });
+      status.textContent = error instanceof Error ? error.message : "Não foi possível salvar o perfil.";
+    }
+  });
+  root.querySelector("[data-profile-avatar-remove]")?.addEventListener("click", async () => {
+    if (!profile?.avatarObjectKey ||
+        !confirmValue("Remover sua foto de perfil?")) return;
+    const previousAvatarObjectKey = profile.avatarObjectKey;
+    status.textContent = "Removendo foto…";
+    try {
+      profile = await controller.updatePersonProfile({ avatarObjectKey: null });
+      replaceAvatarUrl("");
+      const removed = await controller.deleteOwnAvatar(previousAvatarObjectKey)
+        .then(() => true)
+        .catch(() => false);
+      status.textContent = removed
+        ? "Foto removida."
+        : "A foto saiu do perfil; a limpeza do objeto ficou pendente.";
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Não foi possível remover a foto.";
+    }
+  });
+  root.querySelector("[data-settings-delete-account]")?.addEventListener("click", async (event) => {
+    const confirmation = promptValue(
+      "Esta ação exclui a conta e os dados ativos. Digite EXCLUIR MINHA CONTA para continuar."
+    );
+    if (confirmation !== "EXCLUIR MINHA CONTA") return;
+    event.currentTarget.disabled = true;
+    status.textContent = "Excluindo conta…";
+    try {
+      await repository?.flush();
+      await controller.deleteMyAccount({ confirmation });
+      await clearAraLearnLocalState();
+      globalThis.location.reload();
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Não foi possível excluir a conta.";
+      event.currentTarget.disabled = false;
+    }
+  });
+  root.querySelectorAll("[data-settings-close]").forEach((button) => {
+    button.addEventListener("click", close);
+  });
+  root.querySelectorAll("[data-theme-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      globalThis.AraLearnTheme?.setPreference?.(button.dataset.themeChoice);
+      syncTheme();
+    });
+  });
+  root.querySelector("[data-settings-signout]")?.addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    status.textContent = "";
+    try {
+      await repository?.flush();
+      await authClient.signOut();
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Não foi possível sair.";
+      event.currentTarget.disabled = false;
+    }
+  });
+  syncTheme();
+  return Object.freeze({
+    loadProfile,
+    open() {
+      syncTheme();
+      overlay.hidden = false;
+      void loadProfile();
+      root.querySelector("[data-settings-close]")?.focus();
+    },
+    close,
+    handleBack() {
+      if (overlay.hidden) return false;
+      close();
+      return true;
+    }
+  });
+}
+
+function clearAuthoringRoute() {
+  if (!isCourseAuthoringRouteCandidate(globalThis.location.hash)) return;
+  globalThis.history.replaceState(
+    globalThis.history.state ?? null,
+    "",
+    `${globalThis.location.pathname}${globalThis.location.search}`
+  );
+}
+
+async function deliverPartMaterializationRequest({ requestText } = {}) {
+  const text = String(requestText || "").trim();
+  if (!text) throw new TypeError("O pedido de materialização está vazio.");
+  if (typeof globalThis.navigator?.clipboard?.writeText !== "function") {
+    throw new Error("Não foi possível copiar o pedido para o ChatGPT.");
+  }
+  await globalThis.navigator.clipboard.writeText(text);
+  return {
+    delivery: "clipboard",
+    message: "Pedido copiado. Cole no ChatGPT para solicitar a materialização."
+  };
+}
+
+async function renderAuthenticatedApplication(root, config, authClient) {
+  const courseApi = new CourseApiClient({
     projectUrl: config.projectUrl,
     publishableKey: config.publishableKey,
     authClient
   });
-  const homeLearningSpaces = new LearningSpaces({
-    catalog: remoteCatalog,
-    authClient,
-    authoringRelationalStore: relationalStore
+  const studyController = new CourseController({ api: courseApi, store: courseLocalStore });
+  const authoringController = new CourseController({
+    api: courseApi,
+    store: courseLocalStore,
+    ownerOnly: true,
+    deliverMaterializationRequest: deliverPartMaterializationRequest
   });
-  const syncEngine = new RelationalSyncEngine({
-    store: relationalStore,
-    transport: new SupabaseSyncTransport(remoteCatalog),
-    onProgress(progress) {
-      updateStartupLoading(root, progress);
-    }
+  const studyBridge = new CourseStudyBridge({ controller: studyController });
+  repository = new CourseStudyRepository({
+    bridge: studyBridge,
+    api: courseApi,
+    cache: courseLocalStore
   });
-  let editorApp = null;
-  let learningPanel = null;
-  let authoringSurface = null;
-  let experimentEnrollmentSurface = null;
-  let authoringReturnContext = null;
-  let automaticSyncTimer = null;
-  let automaticSyncRetryCount = 0;
-  const synchronizationNeedsRetry = (result) => Boolean(
-    result?.retryable || result?.pushed?.retryable ||
-    result?.bootstrap?.status === "retryable_failure" ||
-    result?.pulled?.status === "retryable_failure" ||
-    result?.courseDownloadFailure
-  );
-  const canAttemptAutomaticSync = () =>
-    document.visibilityState !== "hidden" && globalThis.navigator?.onLine !== false;
-  const synchronizeReplica = async ({
-    reloadWhenDomainChanges = true,
-    expectedCourseIds = [],
-    onProgress = null,
-    guaranteeFresh = false
-  } = {}) => {
-    if (repository) await repository.flush();
-    let result = null;
-    let synchronizationError = null;
-    try {
-      result = guaranteeFresh
-        ? await syncEngine.synchronizeFresh({ expectedCourseIds, onProgress })
-        : await syncEngine.synchronize({ expectedCourseIds, onProgress });
-    } catch (error) {
-      synchronizationError = error;
-    }
-    if (repository) {
-      try {
-        const requiresFullRefresh = synchronizationRequiresFullReplicaRefresh(result);
-        const hasPersonalChanges = synchronizationHasPersonalReplicaChanges(result);
-        const refreshed = requiresFullRefresh
-          ? await repository.refreshFromReplica()
-          : hasPersonalChanges
-            ? await repository.refreshPersonalStateFromReplica()
-            : null;
-        if (reloadWhenDomainChanges && refreshed) {
-          if (refreshed.documentChanged) {
-            if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
-            else globalThis.location.reload();
-          }
-        }
-      } catch (refreshError) {
-        if (!synchronizationError) throw refreshError;
-        console.warn("A réplica mudou durante uma sincronização interrompida.", refreshError);
-      }
-    }
-    if (synchronizationError) throw synchronizationError;
-    if (editorApp?.refreshPersonalState) await editorApp.refreshPersonalState();
-    else if (editorApp) await editorApp.refreshTrails?.();
-    return result;
-  };
-  const runAutomaticSync = async () => {
-    globalThis.clearTimeout(automaticSyncTimer);
-    automaticSyncTimer = null;
-    if (!canAttemptAutomaticSync()) return;
-    try {
-      const result = await synchronizeReplica();
-      if (result?.authRequired) return;
-      try {
-        await homeLearningSpaces.synchronizePendingAuthoringChanges?.({
-          online: true,
-          limit: 50
-        });
-      } catch (authoringError) {
-        console.warn("Sincronização do desenho instrucional adiada.", authoringError);
-      }
-      if (synchronizationNeedsRetry(result)) {
-        automaticSyncRetryCount += 1;
-        const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
-        if (canAttemptAutomaticSync()) {
-          automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
-        }
-        return;
-      }
-      automaticSyncRetryCount = 0;
-      automaticSyncTimer = globalThis.setTimeout(
-        () => void runAutomaticSync(),
-        AUTOMATIC_SYNC_INTERVAL_MS
-      );
-    } catch (error) {
-      if (authSessionWasRejected(error, authClient)) {
-        if (authClient.getSession()) await authClient.clearSession();
-        authClient.emit("SESSION_INVALID");
-        return;
-      }
-      const retryable = synchronizationFailureIsRetryable(error);
-      if (retryable && repository) {
-        automaticSyncRetryCount += 1;
-        const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
-        if (canAttemptAutomaticSync()) {
-          automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
-        }
-      }
-      console.warn("Sincronização automática adiada.", error);
-    }
-  };
-  const scheduleAutomaticSync = (delay = AUTOMATIC_SYNC_AFTER_CHANGE_MS) => {
-    automaticSyncRetryCount = 0;
-    globalThis.clearTimeout(automaticSyncTimer);
-    automaticSyncTimer = null;
-    if (canAttemptAutomaticSync()) {
-      automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
-    }
-  };
+  updateStartupLoading(root, 68);
   try {
-    const initialSync = await syncEngine.synchronize();
-    if (initialSync.authRequired) return;
-    if (synchronizationNeedsRetry(initialSync)) {
-      console.warn("Sincronização inicial adiada.", initialSync);
-    }
+    await repository.initialize();
   } catch (error) {
     if (authSessionWasRejected(error, authClient)) {
       if (authClient.getSession()) await authClient.clearSession();
       authClient.emit("SESSION_INVALID");
       return;
     }
-    const recoverable = synchronizationFailureIsRetryable(error);
-    if (!recoverable) throw error;
-    console.warn("A inicialização continuará com a réplica offline.", error);
+    throw error;
   }
-
-  repository = new RelationalProjectRepository({
-    store: relationalStore,
-    userId: session.user?.id || null,
-    onLocalCommit: scheduleAutomaticSync
-  });
-  await repository.initialize();
-  try {
-    const capabilityProjection = await remoteCatalog.listTrailItems({ limit: 1 });
-    repository.setCatalogManagementAllowed(
-      capabilityProjection?.capabilities?.catalogManage === true
-    );
-  } catch {
-    repository.setCatalogManagementAllowed(false);
-  }
+  updateStartupLoading(root, 100);
   const project = repository.loadProject();
-  const editor = createEditorSession(repository);
   root.innerHTML = `
     <div id="aralearn-editor-root"></div>
     <div id="aralearn-authoring-root" hidden></div>
-    <div id="aralearn-experiment-enrollment-root"></div>
-    <div id="aralearn-remote-library-root"></div>
-    <nav class="authoring-reader-return" data-authoring-reader-return aria-label="Retorno à Autoria" hidden>
-      <button class="icon-pill" type="button" data-return-to-authoring title="Voltar à Autoria" aria-label="Voltar à Autoria">${renderUiIcon("arrow-left", "home-tab-icon")}<span>Autoria</span></button>
-    </nav>
-    <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
-      <span class="local-durability-progress" data-local-durability-progress hidden>${renderUiIcon("progress", "local-durability-icon")}</span>
-      <span data-local-durability-message>Salvo neste dispositivo.</span>
-      <button class="icon-ghost" type="button" data-local-durability-retry hidden title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "remote-library-action-icon")}</button>
-      <button class="icon-ghost" type="button" data-local-durability-dismiss hidden title="Fechar aviso" aria-label="Fechar aviso">${renderUiIcon("remove-state", "remote-library-action-icon")}</button>
-    </aside>
+    <div id="aralearn-settings-root"></div>
   `;
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const authoringRoot = root.querySelector("#aralearn-authoring-root");
-  const experimentEnrollmentRoot = root.querySelector("#aralearn-experiment-enrollment-root");
-  const libraryRoot = root.querySelector("#aralearn-remote-library-root");
-  const authoringReaderReturn = root.querySelector("[data-authoring-reader-return]");
-  const durabilityRoot = root.querySelector("[data-local-durability]");
-  const durabilityMessage = root.querySelector("[data-local-durability-message]");
-  const durabilityProgress = root.querySelector("[data-local-durability-progress]");
-  const durabilityRetry = root.querySelector("[data-local-durability-retry]");
-  const durabilityDismiss = root.querySelector("[data-local-durability-dismiss]");
-  let durabilityPendingTimer = null;
-  let dismissedDurabilityError = null;
-  durabilityUnsubscribe = repository.onDurabilityChange((state) => {
-    globalThis.clearTimeout(durabilityPendingTimer);
-    durabilityPendingTimer = null;
-    durabilityRoot.dataset.state = state.status;
-    durabilityRetry.hidden = state.status !== "error";
-    durabilityDismiss.hidden = state.status !== "error";
-    durabilityProgress.hidden = state.status !== "pending";
-    if (state.status === "pending") {
-      durabilityMessage.textContent = "Salvando neste dispositivo…";
-      durabilityMessage.removeAttribute("title");
-      durabilityRoot.hidden = true;
-      durabilityPendingTimer = globalThis.setTimeout(() => {
-        if (durabilityRoot.dataset.state === "pending") durabilityRoot.hidden = false;
-      }, 900);
-    } else if (state.status === "error") {
-      const technicalMessage = state.error?.message || "erro desconhecido";
-      durabilityMessage.textContent = "Não foi possível salvar.";
-      durabilityMessage.title = technicalMessage;
-      durabilityRoot.hidden = dismissedDurabilityError === technicalMessage;
-      console.error("Falha ao salvar localmente.", state.error);
-    } else {
-      durabilityMessage.textContent = "Salvo neste dispositivo.";
-      durabilityMessage.removeAttribute("title");
-      durabilityRoot.hidden = true;
-      dismissedDurabilityError = null;
+  const settingsRoot = root.querySelector("#aralearn-settings-root");
+  let editorApp = null;
+  let authoringSurface = null;
+  const settings = renderSettings(settingsRoot, authClient, authoringController, {
+    onProfileChange(profile) {
+      editorApp?.setAccountProfile?.(profile);
     }
-  });
-  durabilityRetry.addEventListener("click", async () => {
-    dismissedDurabilityError = null;
-    durabilityRetry.disabled = true;
-    try {
-      await repository.retryDurability();
-    } catch {
-      // O estado persistente do repositório mantém a falha visível e repetível.
-    } finally {
-      durabilityRetry.disabled = false;
-    }
-  });
-  durabilityDismiss.addEventListener("click", () => {
-    dismissedDurabilityError = repository.getDurabilityState().error?.message || "erro desconhecido";
-    durabilityRoot.hidden = true;
   });
 
-  const bestEffortFlush = () => {
-    if (!repository) return Promise.resolve();
-    return Promise.all([
-      repository.flush(),
-      editorApp?.flushPersonalState?.() || Promise.resolve(),
-      homeLearningSpaces.synchronizePendingAuthoringChanges?.({
-        online: globalThis.navigator?.onLine !== false
-      }) || Promise.resolve()
-    ]).catch(() => undefined);
+  const refreshStudy = async () => {
+    await repository.flush();
+    const nextProject = await repository.refreshCourses();
+    await editorApp?.replaceProject(nextProject);
+    await editorApp?.refreshPersonalState?.();
+    return nextProject;
   };
+  const bestEffortFlush = () => Promise.all([
+    repository?.flush() || Promise.resolve(),
+    editorApp?.flushPersonalState?.() || Promise.resolve()
+  ]).catch(() => undefined);
+
+  editorApp = createCourseStudyApplication({
+    root: editorRoot,
+    repository,
+    initialProject: project
+  });
+  void settings.loadProfile();
+  authoringSurface = createCourseAuthoringSurface({
+    root: authoringRoot,
+    controller: authoringController,
+    onClose() {
+      clearAuthoringRoute();
+      authoringRoot.hidden = true;
+      editorRoot.hidden = false;
+      void refreshStudy().catch((error) => {
+        console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
+      });
+    }
+  });
+
+  const openAuthoring = () => {
+    settings.close();
+    editorRoot.hidden = true;
+    authoringRoot.hidden = false;
+    void authoringSurface.open();
+  };
+  const refreshVisibleApplication = () => authoringSurface?.opened
+    ? authoringSurface.refresh()
+    : refreshStudy();
+  editorRoot.addEventListener("aralearn:open-settings", () => settings.open());
+  editorRoot.addEventListener("aralearn:open-authoring", openAuthoring);
+
   lifecycleAbortController = new AbortController();
-  lifecycleAbortController.signal.addEventListener("abort", () => {
-    globalThis.clearTimeout(automaticSyncTimer);
-    globalThis.clearTimeout(durabilityPendingTimer);
-    automaticSyncTimer = null;
-    durabilityPendingTimer = null;
-  }, { once: true });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      globalThis.clearTimeout(automaticSyncTimer);
-      automaticSyncTimer = null;
-      void bestEffortFlush();
-    } else {
-      scheduleAutomaticSync(100);
-      void editorApp?.refreshPersonalState?.();
+    if (document.visibilityState === "hidden") void bestEffortFlush();
+    else void refreshVisibleApplication().catch((error) => {
+      console.warn("A área atual será atualizada na próxima conexão.", error);
+    });
+  }, { signal: lifecycleAbortController.signal });
+  globalThis.addEventListener("pagehide", () => void bestEffortFlush(), {
+    signal: lifecycleAbortController.signal
+  });
+  globalThis.addEventListener("online", () => {
+    void refreshVisibleApplication().catch((error) => {
+      console.warn("A atualização da área atual foi adiada.", error);
+    });
+  }, { signal: lifecycleAbortController.signal });
+  globalThis.addEventListener("offline", () => {
+    editorApp?.setOfflineStatus?.(true);
+  }, { signal: lifecycleAbortController.signal });
+  globalThis.addEventListener("hashchange", () => {
+    if (isCourseAuthoringRouteCandidate(globalThis.location.hash) && !authoringSurface.opened) {
+      openAuthoring();
     }
   }, { signal: lifecycleAbortController.signal });
-  globalThis.addEventListener("pagehide", () => {
-    globalThis.clearTimeout(automaticSyncTimer);
-    automaticSyncTimer = null;
-    void bestEffortFlush();
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") settings.handleBack();
   }, { signal: lifecycleAbortController.signal });
+
   globalThis.AraLearnAndroid = {
     flush: bestEffortFlush,
     handleBackPress() {
       const destination = dispatchApplicationBack({
-        closeOverlay: () => experimentEnrollmentSurface?.handleBack?.() === true ||
-          learningPanel?.handleBack?.() === true,
-        returnToAuthoring: () => {
-          if (!authoringReturnContext) return false;
-          const context = authoringReturnContext;
-          authoringReturnContext = null;
-          editorApp?.closeAuthoringPreview?.();
-          editorRoot.hidden = true;
-          authoringReaderReturn.hidden = true;
-          void authoringSurface?.resume(context);
-          return true;
-        },
+        closeOverlay: () => settings.handleBack(),
         handleAuthoringBack: () => authoringSurface?.handleBack?.() === true,
         handleStudyBack: () => editorApp?.handleBack?.() === true
       });
       if (destination !== "exit") return true;
-      void bestEffortFlush()
-        .then(() => globalThis.AndroidHost?.finishApp?.())
-        .catch(() => undefined);
+      void bestEffortFlush().then(() => globalThis.AndroidHost?.finishApp?.());
       return true;
     }
   };
-  editorApp = createLessonEditorApp({
-    root: editorRoot,
-    storage: repository,
-    editor,
-    initialProject: project,
-    contextualAuthoring: {
-      remoteCatalog,
-      synchronizeReplica
-    },
-    homeTrails: homeLearningSpaces,
-    workspaceCourseAdapter: {
-      load({ item, courseRef }) {
-        return homeLearningSpaces.loadWorkspaceCourse(courseRef || item);
-      },
-      saveMetadata({
-        courseRef,
-        draftCourse,
-        entityType,
-        entityPath,
-        baseMetadata,
-        metadata
-      }) {
-        return homeLearningSpaces.queueWorkspaceMetadata({
-          courseRef,
-          draftCourse,
-          entityType,
-          entityPath,
-          baseMetadata,
-          metadata
-        });
-      },
-      saveMicrosequenceCards({
-        courseRef,
-        draftCourse,
-        microsequencePath,
-        baseCards,
-        cards
-      }) {
-        return homeLearningSpaces.queueWorkspaceCards({
-          courseRef,
-          draftCourse,
-          microsequencePath,
-          baseCards,
-          cards
-        });
-      },
-      resolveAuthoringConflict({ courseRef, resolution }) {
-        return homeLearningSpaces.resolveWorkspaceAuthoringConflict(courseRef, resolution);
-      },
-      moveEntity({ courseRef, entityType, entityPath, targetParentPath, position }) {
-        return remoteCatalog.executeApplicationAuthoringAction("reorganizarWorkspace", {
-          operation: "move_entity",
-          requestId: globalThis.crypto.randomUUID(),
-          workspaceId: courseRef.workspaceId,
-          expectedRevision: courseRef.revision,
-          entityType,
-          entityPath,
-          targetParentPath,
-          position
-        });
-      },
-      deleteEntity({ courseRef, entityType, entityPath }) {
-        return remoteCatalog.executeApplicationAuthoringAction("excluirDoWorkspace", {
-          operation: "delete_entity",
-          requestId: globalThis.crypto.randomUUID(),
-          workspaceId: courseRef.workspaceId,
-          expectedRevision: courseRef.revision,
-          entityType,
-          entityPath
-        });
-      },
-      deleteCourse({ courseRef }) {
-        return remoteCatalog.executeApplicationAuthoringAction("excluirDoWorkspace", {
-          operation: "delete_entity",
-          requestId: globalThis.crypto.randomUUID(),
-          workspaceId: courseRef.workspaceId,
-          expectedRevision: courseRef.revision,
-          entityType: "course",
-          entityPath: [courseRef.courseKey]
-        });
-      }
-    },
-    authoringWorkspaceReader({ workspaceId, entityPath }) {
-      if (typeof homeLearningSpaces.loadAuthoringWorkspaceCourse === "function") {
-        return homeLearningSpaces.loadAuthoringWorkspaceCourse({ workspaceId, entityPath });
-      }
-      return homeLearningSpaces.loadWorkspace(workspaceId, "document");
-    },
-    trailPersonalStateFactory({ trailItemId, course }) {
-      return new TrailPersonalStateRepository({
-        trailItemId,
-        store: relationalStore,
-        remoteCatalog,
-        course
-      });
-    }
-  });
-  const syncWorkspaceAuthoringDrafts = async () => {
-    const results = await homeLearningSpaces.syncAllWorkspaceAuthoringQueues();
-    if (results.some(Boolean)) await editorApp?.refreshTrails?.();
-    return results;
-  };
-  if (globalThis.navigator?.onLine !== false) {
-    void syncWorkspaceAuthoringDrafts().catch((error) => {
-      console.warn("Sincronização dos rascunhos de workspace adiada.", error);
-    });
-  }
-  learningPanel = createLearningSpacesPanel({
-    root: libraryRoot,
-    catalog: remoteCatalog,
-    authClient,
-    projectUrl: config.projectUrl,
-    syncEngine,
-    studyPathRepository: repository,
-    async beforeRemoteRead(options) {
-      return synchronizeReplica(options);
-    },
-    async beforeSignOut() {
-      await Promise.all([repository.flush(), editorApp?.flushPersonalState?.()]);
-      let contextualPendingFallback = 0;
-      try {
-        await editorApp?.syncContextualAuthoring?.();
-        await repository.flush();
-      } catch (error) {
-        contextualPendingFallback = 1;
-        console.warn("Não foi possível enviar toda a autoria contextual antes da saída.", error);
-      }
-      let workspacePending;
-      try {
-        const [, workspaceResults] = await Promise.all([
-          synchronizeReplica(),
-          syncWorkspaceAuthoringDrafts()
-        ]);
-        workspacePending = workspaceResults.filter((result) => result?.pending === true).length;
-      } catch (error) {
-        workspacePending = 1;
-        console.warn("Não foi possível enviar toda a fila antes da saída.", error);
-      }
-      let designPending;
-      try {
-        await homeLearningSpaces.synchronizePendingAuthoringChanges({
-          online: globalThis.navigator?.onLine !== false
-        });
-        const designSummary = await homeLearningSpaces.getPendingAuthoringChangeSummary();
-        designPending = (Number(designSummary?.pendingCount) || 0) +
-          (Number(designSummary?.conflictCount) || 0);
-      } catch (error) {
-        designPending = 1;
-        console.warn("Não foi possível concluir a fila do desenho instrucional antes da saída.", error);
-      }
-      const [pending, rejected, contextualPending] = await Promise.all([
-        relationalStore.listPendingOutbox(),
-        relationalStore.listRejectedOutbox(),
-        repository.listPendingLocalAuthoring()
-      ]);
-      return pending.length + rejected.length + workspacePending + designPending +
-        Math.max(contextualPending.length, contextualPendingFallback);
-    },
-    async onChanged() {
-      await repository.flush();
-      globalThis.location.reload();
-    },
-    async onStudyPathsChanged() {
-      editorApp?.replaceProject?.(repository.loadProject());
-    },
-    async onLocalDraftRestored() {
-      const refreshed = await repository.refreshFromReplica();
-      if (editorApp?.replaceProject) {
-        editorApp.replaceProject(refreshed.project);
-      } else {
-        globalThis.location.reload();
-      }
-    },
-    async onOpenCommentTarget({ entityPath }) {
-      return editorApp?.openCardPath?.(entityPath, { edit: true }) === true;
-    },
-    async onOpenStudyTarget({ entityPath }) {
-      return editorApp?.openCardPath?.(entityPath, { edit: false }) === true;
-    },
-    onOpenCourse({ courseId, courseKey }) {
-      return editorApp?.openCourse?.(courseKey || courseId) === true;
-    },
-    async onSignedOut() {
-      globalThis.clearTimeout(automaticSyncTimer);
-      await shutDownAuthenticatedRuntime(root);
-    },
-    async onAccountDeleted() {
-      globalThis.clearTimeout(automaticSyncTimer);
-      root.setAttribute("aria-busy", "true");
-      root.classList.add("is-signing-out");
-      await authClient.clearSession({ broadcast: false });
-      try {
-        await clearAraLearnLocalState();
-      } finally {
-        activeUserId = null;
-        globalThis.location.reload();
-      }
-    }
-  });
-  experimentEnrollmentSurface = createExperimentEnrollmentSurface({
-    root: experimentEnrollmentRoot,
-    controller: homeLearningSpaces,
-    async onEnrollmentChanged(enrollment) {
-      if (globalThis.navigator?.onLine === false) return;
-      const expectedCourseIds = enrollment?.selection?.courseId
-        ? [enrollment.selection.courseId]
-        : [];
-      try {
-        await synchronizeReplica({ guaranteeFresh: true, expectedCourseIds });
-      } catch (error) {
-        console.warn("A participação foi registrada, mas a réplica ainda não foi atualizada.", error);
-      }
-    },
-    async onOpenSelection(target, selection) {
-      const courseId = selection?.courseId || target?.courseId;
-      if (!courseId) return false;
-      if (globalThis.navigator?.onLine !== false) {
-        try {
-          await synchronizeReplica({ guaranteeFresh: true, expectedCourseIds: [courseId] });
-        } catch (error) {
-          console.warn("A variante atribuída ainda não pôde ser sincronizada.", error);
-          return false;
-        }
-      }
-      return editorApp?.openCourse?.(courseId) === true;
-    }
-  });
-  void experimentEnrollmentSurface.consumeFragment();
-  globalThis.addEventListener("hashchange", () => {
-    experimentEnrollmentRoot.hidden = false;
-    void experimentEnrollmentSurface?.consumeFragment?.();
-  }, { signal: lifecycleAbortController.signal });
-  const returnToAuthoring = async () => {
-    if (!authoringReturnContext || !authoringSurface) return false;
-    const context = authoringReturnContext;
-    authoringReturnContext = null;
-    editorApp?.closeAuthoringPreview?.();
-    editorRoot.hidden = true;
-    authoringReaderReturn.hidden = true;
-    await authoringSurface.resume(context);
-    return true;
-  };
-  authoringSurface = createAuthoringWorkspaceSurface({
-    root: authoringRoot,
-    controller: homeLearningSpaces,
-    onOpenCollections() {
-      return learningPanel.open("collections");
-    },
-    onOpenSettings() {
-      return learningPanel.open("settings");
-    },
-    async onOpenContent(target, returnContext) {
-      const opened = await editorApp?.openWorkspaceEntityPath?.(
-        target.workspaceId,
-        target.entityPath,
-        { edit: false, resourceTargetId: target.resourceTargetId || "" }
-      );
-      if (!opened) return false;
-      authoringReturnContext = Object.freeze({
-        workspaceId: returnContext.workspaceId,
-        destination: returnContext.destination,
-        findingId: String(returnContext.findingId || ""),
-        findingDetail: returnContext.findingDetail === true,
-        experimentView: String(returnContext.experimentView || ""),
-        experimentId: String(returnContext.experimentId || ""),
-        experimentStage: String(returnContext.experimentStage || ""),
-        differenceId: String(returnContext.differenceId || ""),
-        variantId: String(returnContext.variantId || ""),
-        microsequencePath: Array.isArray(returnContext.microsequencePath)
-          ? [...returnContext.microsequencePath]
-          : null
-      });
-      editorRoot.hidden = false;
-      authoringReaderReturn.hidden = false;
-      return true;
-    },
-    onClose() {
-      authoringReturnContext = null;
-      editorApp?.closeAuthoringPreview?.();
-      authoringReaderReturn.hidden = true;
-      editorRoot.hidden = false;
-      experimentEnrollmentRoot.hidden = false;
-    }
-  });
-  authoringReaderReturn.querySelector("[data-return-to-authoring]")?.addEventListener("click", () => {
-    void returnToAuthoring();
-  });
-  editorRoot.addEventListener("aralearn:open-library", () => {
-    void learningPanel.open();
-  });
-  editorRoot.addEventListener("aralearn:open-settings", () => {
-    void learningPanel.open("settings");
-  });
-  editorRoot.addEventListener("aralearn:open-authoring", () => {
-    authoringReturnContext = null;
-    editorApp?.closeAuthoringPreview?.();
-    authoringReaderReturn.hidden = true;
-    experimentEnrollmentSurface?.close?.();
-    experimentEnrollmentRoot.hidden = true;
-    editorRoot.hidden = true;
-    void authoringSurface.open();
-  });
-  editorRoot.addEventListener("aralearn:open-observation", (event) => {
-    void learningPanel.openObservationTarget(event.detail).catch((error) => {
-      console.warn("Não foi possível abrir a observação situada.", error);
-    });
-  });
-  globalThis.addEventListener("online", () => {
-    scheduleAutomaticSync(100);
-    void editorApp?.refreshPersonalState?.();
-    void homeLearningSpaces.synchronizePendingAuthoringChanges?.({ online: true }).catch((error) => {
-      console.warn("Sincronização do desenho instrucional adiada.", error);
-    });
-    void syncWorkspaceAuthoringDrafts().catch((error) => {
-      console.warn("Sincronização dos rascunhos de workspace adiada.", error);
-    });
-  }, { signal: lifecycleAbortController.signal });
-  globalThis.addEventListener("offline", () => {
-    globalThis.clearTimeout(automaticSyncTimer);
-    automaticSyncTimer = null;
-  }, { signal: lifecycleAbortController.signal });
-  // Reabra a fila de Autoria logo no início; a própria rodada bem-sucedida
-  // agenda as próximas sincronizações no intervalo periódico.
-  scheduleAutomaticSync(100);
+  if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) openAuthoring();
 }
 
 async function start(root) {
-  authStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
+  authStore = await AuthSessionStore.open(globalThis.indexedDB);
   watchLocalConnection(authStore);
   const oauthAuthorizationId = readOAuthAuthorizationId();
-  const actionOAuthAuthorizationId = readActionOAuthAuthorizationId();
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
     renderAuthGate({ root, configured: false });
@@ -870,11 +608,7 @@ async function start(root) {
     sessionStore: authStore
   });
   authClient.onAuthStateChange((event) => {
-    if (event === "SIGNED_OUT_REMOTE") {
-      void shutDownAuthenticatedRuntime(root);
-    } else if (event === "SESSION_INVALID") {
-      void shutDownAuthenticatedRuntime(root);
-    } else if (event === "SIGNED_OUT") {
+    if (["SIGNED_OUT_REMOTE", "SESSION_INVALID", "SIGNED_OUT"].includes(event)) {
       void shutDownAuthenticatedRuntime(root);
     }
   });
@@ -888,9 +622,7 @@ async function start(root) {
       root,
       authClient,
       configured: true,
-      onAuthenticated() {
-        globalThis.location.reload();
-      }
+      onAuthenticated() { globalThis.location.reload(); }
     });
     return;
   }
@@ -899,31 +631,16 @@ async function start(root) {
     renderAuthGate({ root, authClient, configured: true });
     return;
   }
-  if (oauthAuthorizationId || actionOAuthAuthorizationId) {
-    const authorizationClient = actionOAuthAuthorizationId
-      ? {
-        getOAuthAuthorizationDetails: (id) =>
-          authClient.getAuthoringActionOAuthAuthorizationDetails(id),
-        decideOAuthAuthorization: (id, action) =>
-          authClient.decideAuthoringActionOAuthAuthorization(id, action)
-      }
-      : authClient;
-    await renderOAuthAuthorizationConsent({
-      root,
-      authClient: authorizationClient,
-      authorizationId: actionOAuthAuthorizationId || oauthAuthorizationId
-    });
+  if (oauthAuthorizationId) {
+    await renderOAuthAuthorizationConsent({ root, authClient, authorizationId: oauthAuthorizationId });
     return;
   }
   activeUserId = session.user.id;
   renderStartupLoading(root);
-  relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB, {
-    userId: activeUserId
-  });
-  watchLocalConnection(relationalStore);
-  updateStartupLoading(root, { percent: 8 });
-  await relationalStore.bindReplicaToUser(session.user.id, session);
-  await renderAuthenticatedApplication(root, config, authClient, session);
+  updateStartupLoading(root, 36);
+  courseLocalStore = await CourseLocalStore.open(globalThis.indexedDB, { userId: activeUserId });
+  watchLocalConnection(courseLocalStore);
+  await renderAuthenticatedApplication(root, config, authClient);
 }
 
 const root = document.getElementById("app-root");

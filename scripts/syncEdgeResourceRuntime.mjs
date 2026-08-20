@@ -15,24 +15,18 @@ const edgeRuntimeRoot = path.join(
 const fixedFiles = [
   ["src/core/exerciseOptions.js", "core/exerciseOptions.js"],
   ["src/domain/aralearnProject.js", "domain/aralearnProject.js"],
+  ["src/domain/courseAnchoredAnnotations.js", "domain/courseAnchoredAnnotations.js"],
+  ["src/domain/courseAuthoringAnalytics.js", "domain/courseAuthoringAnalytics.js"],
+  ["src/domain/courseAuditCycle.js", "domain/courseAuditCycle.js"],
+  ["src/domain/courseEntities.js", "domain/courseEntities.js"],
+  ["src/domain/courseSources.js", "domain/courseSources.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
   ["src/flowchart/flowchartStructure.js", "flowchart/flowchartStructure.js"],
   ["src/persistence/contractToRelationalRows.js", "persistence/contractToRelationalRows.js"],
   ["src/persistence/canonicalCourseHash.js", "persistence/canonicalCourseHash.js"],
   ["src/persistence/relationalSchema.js", "persistence/relationalSchema.js"],
   ["src/persistence/relationalRowsToContract.js", "persistence/relationalRowsToContract.js"],
-  ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"],
-  ["src/authoring/instructionalDesignContracts.js", "authoring/instructionalDesignContracts.js"],
-  ["src/authoring/instructionalDesignValidation.js", "authoring/instructionalDesignValidation.js"],
-  ["src/authoring/instructionalExperiment.js", "authoring/instructionalExperiment.js"],
-  ["src/authoring/authoringAnalytics.js", "authoring/authoringAnalytics.js"],
-  ["src/authoring/designParameterResolution.js", "authoring/designParameterResolution.js"],
-  ["src/authoring/resourceSetResolution.js", "authoring/resourceSetResolution.js"],
-  ["src/authoring/instructionalDesignBinding.js", "authoring/instructionalDesignBinding.js"],
-  ["src/authoring/instructionalConformanceAudit.js", "authoring/instructionalConformanceAudit.js"],
-  ["src/authoring/legacyInstructionalDesign.js", "authoring/legacyInstructionalDesign.js"],
-  ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"],
-  ["src/authoring/protectedCore.js", "authoring/protectedCore.js"]
+  ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"]
 ];
 
 async function listJavaScriptFiles(relativeRoot) {
@@ -74,7 +68,7 @@ for (const [sourceRelativePath, targetRelativePath] of files) {
   }
 }
 
-for (const managedDirectory of ["resources", "authoring"]) {
+for (const managedDirectory of ["resources"]) {
   const managedRoot = path.resolve(edgeRuntimeRoot, managedDirectory);
   const mirroredEntries = await readdir(managedRoot, {
     recursive: true,

@@ -6,7 +6,6 @@ import {
   SupabaseAuthClient
 } from "../../src/supabase/SupabaseAuthClient.js";
 import { SupabaseHttpClient } from "../../src/supabase/SupabaseHttpClient.js";
-import { RemoteCourseCatalog } from "../../src/supabase/RemoteCourseCatalog.js";
 import {
   buildAuthRedirectUrl,
   readSupabaseRuntimeConfig
@@ -50,7 +49,6 @@ test("configuração pública aceita publishable key e rejeita service role", ()
   assert.deepEqual(config, {
     projectUrl: "https://projeto.supabase.co",
     publishableKey: "sb_publishable_exemplo",
-    assistAllowedOrigins: [],
     configured: true
   });
 
@@ -92,7 +90,7 @@ test("cliente HTTP encerra uma chamada remota que excede o prazo", async () => {
   );
 });
 
-test("download de revisão pode usar prazo explícito sem ampliar as RPCs comuns", async () => {
+test("uma leitura extensa do Curso pode usar prazo explícito sem ampliar as chamadas comuns", async () => {
   const client = new SupabaseHttpClient({
     projectUrl: "https://projeto.supabase.co",
     publishableKey: "public-key",
@@ -107,7 +105,7 @@ test("download de revisão pode usar prazo explícito sem ampliar as RPCs comuns
   });
 
   const result = await client.request(
-    `/functions/v1/aralearn-course-revisions/11111111-1111-4111-8111-111111111111/${"a".repeat(64)}`,
+    "/functions/v1/aralearn-course-api/v1/courses/11111111-1111-4111-8111-111111111111",
     { timeoutMs: 60 }
   );
   assert.deepEqual(result, { ok: true });
@@ -120,8 +118,8 @@ test("cliente HTTP preserva código e mensagem do envelope de erro da Edge Funct
     fetchImpl: async () => response(422, {
       ok: false,
       error: {
-        code: "invalid_workspace_revision",
-        message: "A revisão do workspace não corresponde à base esperada.",
+        code: "course_revision_changed",
+        message: "O Curso mudou durante a leitura.",
         details: { pointer: "/expectedRevision" }
       }
     })
@@ -129,75 +127,13 @@ test("cliente HTTP preserva código e mensagem do envelope de erro da Edge Funct
 
   await assert.rejects(
     () => client.request(
-      "/functions/v1/aralearn-course-revisions/00000000-0000-4000-8000-000000000001"
+      "/functions/v1/aralearn-course-api/v1/courses/00000000-0000-4000-8000-000000000001"
     ),
     (error) => error.status === 422 &&
-      error.code === "invalid_workspace_revision" &&
-      error.message === "A revisão do workspace não corresponde à base esperada." &&
+      error.code === "course_revision_changed" &&
+      error.message === "O Curso mudou durante a leitura." &&
       error.details?.pointer === "/expectedRevision"
   );
-});
-
-test("catálogo reserva prazo maior para baixar revisão imutável", async () => {
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      getSession() { return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } }; },
-      async getAccessToken() { return "access-token"; }
-    },
-    fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
-      const timer = setTimeout(() => resolve(response(200, { courses: [] })), 20);
-      signal.addEventListener("abort", () => {
-        clearTimeout(timer);
-        reject(new Error("aborted"));
-      }, { once: true });
-    })
-  });
-  catalog.http.timeoutMs = 5;
-
-  assert.deepEqual(
-    await catalog.downloadCourseRevision(
-      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      "a".repeat(64)
-    ),
-    { courses: [] }
-  );
-});
-
-test("catálogo chama a autoria contextual com a sessão corrente do aplicativo", async () => {
-  let received = null;
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      getSession() { return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } }; },
-      async getAccessToken() { return "access-token"; }
-    },
-    fetchImpl: async (url, options) => {
-      received = { url, options };
-      return response(200, {
-        ok: true,
-        requestId: "contextual-action-0001",
-        data: { revision: 2 }
-      });
-    }
-  });
-
-  assert.deepEqual(
-    await catalog.executeApplicationAuthoringAction("salvarCardsNaMicrossequencia", {
-      requestId: "contextual-action-0001"
-    }),
-    { revision: 2 }
-  );
-  assert.equal(
-    received.url,
-    "https://projeto.supabase.co/functions/v1/aralearn-authoring-action/app/salvarCardsNaMicrossequencia"
-  );
-  assert.equal(received.options.headers.get("Authorization"), "Bearer access-token");
-  assert.deepEqual(JSON.parse(received.options.body), {
-    requestId: "contextual-action-0001"
-  });
 });
 
 test("login persiste a sessão e envia apenas a chave pública no cabeçalho", async () => {
@@ -519,14 +455,6 @@ test("callback web preserva somente a solicitação de autorização OAuth", () 
     }, { androidHost: null }),
     "https://fabio-ara.github.io/AraLearn/?authorization_id=authorization-123"
   );
-  assert.equal(
-    buildAuthRedirectUrl({
-      origin: "https://fabio-ara.github.io",
-      pathname: "/AraLearn/",
-      search: "?action_authorization_id=22222222-2222-4222-8222-222222222222&outro=descartar"
-    }, { androidHost: null }),
-    "https://fabio-ara.github.io/AraLearn/?action_authorization_id=22222222-2222-4222-8222-222222222222"
-  );
 });
 
 test("consentimento OAuth usa a sessão renovável e os endpoints oficiais do Auth", async () => {
@@ -578,42 +506,6 @@ test("consentimento OAuth usa a sessão renovável e os endpoints oficiais do Au
     () => auth.getOAuthAuthorizationDetails("../invalido"),
     /Identificador de autorização OAuth inválido/u
   );
-});
-
-test("consentimento da Action usa a Edge Function sem reutilizar endpoints do MCP", async () => {
-  const requests = [];
-  const auth = new SupabaseAuthClient({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    sessionStore: createSessionStore(),
-    fetchImpl: async (url, options) => {
-      requests.push({ url, options });
-      return response(200, options.method === "GET"
-        ? {
-          authorization_id: "22222222-2222-4222-8222-222222222222",
-          client: { id: "client-1", name: "AraLearn Chatbot" },
-          user: { id: "user-1", email: "pessoa@example.com" },
-          scope: "openid email"
-        }
-        : {
-          redirect_url: "https://chatgpt.com/oauth/callback?code=resultado"
-        });
-    },
-    clock: () => 1_700_000_000_000
-  });
-  await auth.persistSession(session());
-  const id = "22222222-2222-4222-8222-222222222222";
-
-  await auth.getAuthoringActionOAuthAuthorizationDetails(id);
-  await auth.decideAuthoringActionOAuthAuthorization(id, "approve");
-
-  assert.equal(
-    requests[0].url,
-    `https://projeto.supabase.co/functions/v1/aralearn-authoring-action/oauth/authorizations/${id}`
-  );
-  assert.equal(requests[1].url, requests[0].url);
-  assert.equal(requests[0].options.headers.get("Authorization"), "Bearer access-token");
-  assert.deepEqual(JSON.parse(requests[1].options.body), { action: "approve" });
 });
 
 test("callback sem verifier não encerra uma sessão válida nem propaga logout", async () => {
@@ -797,263 +689,4 @@ test("saída é propagada para as demais abas sem compartilhar bearer", async ()
   assert.equal(await secondStore.getSyncState("auth.session"), null);
   assert.equal(remoteEvent, "SIGNED_OUT_REMOTE");
   assert.deepEqual([...channels.values()][0].size, 2);
-});
-
-test("retry de seleção reutiliza mutationId persistente após resposta perdida", async () => {
-  const sessionStore = createSessionStore();
-  const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const mutationIds = [];
-  let attempts = 0;
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      sessionStore,
-      getSession() { return { user: { id: userId } }; },
-      async getAccessToken() { return "access-token"; }
-    },
-    fetchImpl: async (_url, options) => {
-      attempts += 1;
-      mutationIds.push(JSON.parse(options.body).p_mutation_id);
-      if (attempts === 1) throw new TypeError("resposta perdida");
-      return response(200, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
-    }
-  });
-
-  await assert.rejects(() => catalog.selectCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"));
-  await catalog.selectCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-  assert.equal(mutationIds.length, 2);
-  assert.equal(mutationIds[0], mutationIds[1]);
-  assert.match(mutationIds[0], /^[0-9a-f]{8}-[0-9a-f-]{27}$/u);
-  assert.equal(
-    await sessionStore.getSyncState(
-      `rpc.pending.${userId}:select_catalog_course:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`
-    ),
-    null
-  );
-});
-
-for (const [method, operation] of [
-  ["selectCourse", "select_catalog_course"],
-  ["unselectCourse", "unselect_catalog_course"]
-]) {
-  test(`intenção ${operation} superada usa novo mutationId uma única vez`, async () => {
-    const sessionStore = createSessionStore();
-    const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-    const courseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-    const mutationIds = [];
-    let requestCount = 0;
-    const stateKey = `rpc.pending.${userId}:${operation}:${courseId}`;
-    const staleMutationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-    await sessionStore.putSyncState(stateKey, staleMutationId);
-    const catalog = new RemoteCourseCatalog({
-      projectUrl: "https://projeto.supabase.co",
-      publishableKey: "public-key",
-      authClient: {
-        sessionStore,
-        getSession() { return { user: { id: userId } }; },
-        async getAccessToken() { return "access-token"; }
-      },
-      fetchImpl: async (_url, options) => {
-        requestCount += 1;
-        mutationIds.push(JSON.parse(options.body).p_mutation_id);
-        return response(200, requestCount === 1
-          ? { status: "applied", superseded: true }
-          : { status: "applied", superseded: false });
-      }
-    });
-
-    await catalog[method](courseId);
-
-    assert.equal(mutationIds.length, 2);
-    assert.equal(mutationIds[0], staleMutationId);
-    assert.notEqual(mutationIds[1], staleMutationId);
-    assert.equal(await sessionStore.getSyncState(stateKey), null);
-  });
-}
-
-test("duas intenções superadas não são apresentadas como sucesso", async () => {
-  const sessionStore = createSessionStore();
-  const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const courseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-  const stateKey = `rpc.pending.${userId}:select_catalog_course:${courseId}`;
-  await sessionStore.putSyncState(
-    stateKey,
-    "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
-  );
-  let requestCount = 0;
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      sessionStore,
-      getSession() { return { user: { id: userId } }; },
-      async getAccessToken() { return "access-token"; }
-    },
-    fetchImpl: async () => {
-      requestCount += 1;
-      return response(200, { status: "applied", superseded: true });
-    }
-  });
-
-  await assert.rejects(
-    () => catalog.selectCourse(courseId),
-    (error) => error?.code === "CATALOG_INTENT_NOT_CONFIRMED"
-  );
-  assert.equal(requestCount, 2);
-  assert.equal(await sessionStore.getSyncState(stateKey), null);
-});
-
-for (const [firstMethod, oppositeMethod, firstOperation, oppositeOperation] of [
-  ["selectCourse", "unselectCourse", "select_catalog_course", "unselect_catalog_course"],
-  ["unselectCourse", "selectCourse", "unselect_catalog_course", "select_catalog_course"]
-]) {
-  test(`intenção oposta invalida mutationId pendente de ${firstOperation}`, async () => {
-    const sessionStore = createSessionStore();
-    const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-    const courseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-    const attempts = [];
-    let loseFirstResponse = true;
-    const catalog = new RemoteCourseCatalog({
-      projectUrl: "https://projeto.supabase.co",
-      publishableKey: "public-key",
-      authClient: {
-        sessionStore,
-        getSession() { return { user: { id: userId } }; },
-        async getAccessToken() { return "access-token"; }
-      },
-      fetchImpl: async (url, options) => {
-        const operation = String(url).split("/").at(-1);
-        const mutation = JSON.parse(options.body).p_mutation_id;
-        attempts.push({ operation, mutation });
-        if (loseFirstResponse) {
-          loseFirstResponse = false;
-          throw new TypeError("resposta perdida");
-        }
-        return response(200, { status: "applied" });
-      }
-    });
-
-    await assert.rejects(() => catalog[firstMethod](courseId), /resposta perdida/u);
-    const firstPendingKey = `rpc.pending.${userId}:${firstOperation}:${courseId}`;
-    const firstMutationId = await sessionStore.getSyncState(firstPendingKey);
-    assert.ok(firstMutationId);
-
-    await catalog[oppositeMethod](courseId);
-    assert.equal(await sessionStore.getSyncState(firstPendingKey), null);
-    await catalog[firstMethod](courseId);
-
-    assert.deepEqual(attempts.map(({ operation }) => operation), [
-      firstOperation,
-      oppositeOperation,
-      firstOperation
-    ]);
-    assert.notEqual(attempts[2].mutation, firstMutationId);
-  });
-}
-
-test("mutationId pendente de catálogo permanece isolado por UUID ao trocar de usuário", async () => {
-  const sessionStore = createSessionStore();
-  const userA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const userB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-  const courseId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-  let activeUserId = userA;
-  let firstAttemptOfA = true;
-  const attempts = [];
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      sessionStore,
-      getSession() { return { user: { id: activeUserId } }; },
-      async getAccessToken() { return `access-token-${activeUserId}`; }
-    },
-    fetchImpl: async (_url, options) => {
-      const request = JSON.parse(options.body);
-      attempts.push({ userId: activeUserId, mutationId: request.p_mutation_id });
-      if (activeUserId === userA && firstAttemptOfA) {
-        firstAttemptOfA = false;
-        throw new TypeError("resposta de A perdida");
-      }
-      return response(200, "dddddddd-dddd-4ddd-8ddd-dddddddddddd");
-    }
-  });
-
-  await assert.rejects(() => catalog.selectCourse(courseId), /resposta de A perdida/u);
-  const keyA = `rpc.pending.${userA}:select_catalog_course:${courseId}`;
-  const pendingA = await sessionStore.getSyncState(keyA);
-  assert.match(pendingA, /^[0-9a-f-]{36}$/u);
-
-  activeUserId = userB;
-  await catalog.selectCourse(courseId);
-  assert.equal(await sessionStore.getSyncState(keyA), pendingA);
-  assert.equal(
-    await sessionStore.getSyncState(`rpc.pending.${userB}:select_catalog_course:${courseId}`),
-    null
-  );
-
-  activeUserId = userA;
-  await catalog.selectCourse(courseId);
-  assert.equal(attempts.length, 3);
-  assert.equal(attempts[0].mutationId, attempts[2].mutationId);
-  assert.notEqual(attempts[0].mutationId, attempts[1].mutationId);
-  assert.equal(await sessionStore.getSyncState(keyA), null);
-});
-
-test("401 de RPC invalida a sessão e propaga estado explícito para a porta de autenticação", async () => {
-  let cleared = 0;
-  const events = [];
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      sessionStore: createSessionStore(),
-      getSession() {
-        return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } };
-      },
-      async getAccessToken() { return "access-token-expirado"; },
-      async clearSession() { cleared += 1; },
-      emit(event) { events.push(event); }
-    },
-    fetchImpl: async () => response(401, {
-      code: "JWT_EXPIRED",
-      message: "JWT expired"
-    })
-  });
-
-  await assert.rejects(
-    () => catalog.listTrailItems(),
-    (error) => error.authRequired === true && error.status === 401
-  );
-  assert.equal(cleared, 1);
-  assert.deepEqual(events, ["SESSION_INVALID"]);
-});
-
-test("negação de domínio 403 preserva a sessão e a réplica autenticada", async () => {
-  let cleared = 0;
-  const events = [];
-  const catalog = new RemoteCourseCatalog({
-    projectUrl: "https://projeto.supabase.co",
-    publishableKey: "public-key",
-    authClient: {
-      sessionStore: createSessionStore(),
-      getSession() {
-        return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } };
-      },
-      async getAccessToken() { return "access-token"; },
-      async clearSession() { cleared += 1; },
-      emit(event) { events.push(event); }
-    },
-    fetchImpl: async () => response(403, {
-      code: "42501",
-      message: "Mutação de curso não autorizada."
-    })
-  });
-
-  await assert.rejects(
-    () => catalog.unselectCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
-    (error) => error.status === 403 && error.code === "42501"
-  );
-  assert.equal(cleared, 0);
-  assert.deepEqual(events, []);
 });

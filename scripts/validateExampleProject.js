@@ -1,6 +1,5 @@
 import { validateContractDocument } from "../src/contract/validateContract.js";
 import { createExampleProjectDocument, createTeoriaDosGrafosProvaProjectDocument } from "../tests/support/exampleProjectDocument.js";
-import { getCatalogFixtureProject } from "../tests/support/catalogPublicationFixture.js";
 
 function assertValid(label, document) {
   const result = validateContractDocument(document);
@@ -16,8 +15,7 @@ function assertValid(label, document) {
 
 const summaries = [
   assertValid("exampleProjectDocument", createExampleProjectDocument()),
-  assertValid("teoriaDosGrafosProvaProjectDocument", createTeoriaDosGrafosProvaProjectDocument()),
-  assertValid("catalogPublicationFixtures", getCatalogFixtureProject())
+  assertValid("teoriaDosGrafosProvaProjectDocument", createTeoriaDosGrafosProvaProjectDocument())
 ];
 
 console.log(JSON.stringify(summaries, null, 2));

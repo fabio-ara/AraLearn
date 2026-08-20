@@ -78,6 +78,6 @@ export async function sha256Hex(value) {
 
 export function assertScope(principal, scope) {
   const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
-  if (scopes.has("*") || scopes.has(scope)) return;
+  if (scopes.has(scope)) return;
   throw new AuthoringApiError(403, "insufficient_scope", `A operação exige o escopo ${scope}.`);
 }

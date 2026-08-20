@@ -64,7 +64,7 @@ export const stateMachinePackage = Object.freeze({
     label: "Diagrama de estados",
     purpose: "Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["trace-transition", "recognize-state", "evaluate-input", "inspect-acceptance"]),
+    taskOperations: Object.freeze(["trace-transition", "recognize-state", "evaluate-input", "inspect-acceptance"]),
     academic: academicProfile({
       domains: ["linguagens formais", "engenharia de software", "redes de computadores", "sistemas digitais"],
       knowledgeObjects: ["estado", "evento ou símbolo", "transição", "guarda", "ação", "estado inicial e final"],
@@ -75,7 +75,7 @@ export const stateMachinePackage = Object.freeze({
       practiceModes: ["exposition", "gap", "typing", "selection"]
     }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
-    limitations: Object.freeze(["Autômatos densos devem ser recortados por submáquina ou objetivo.", "Use tabela de transição quando a completude da função, e não o percurso, for o gesto cognitivo."]),
+    limitations: Object.freeze(["Autômatos densos devem ser recortados por submáquina ou objetivo.", "Use tabela de transição quando a completude da função, e não o percurso, for a operação-alvo da tarefa."]),
     accessibility: "Estados e transições possuem descrição textual equivalente."
   }),
   authoringContract: Object.freeze({

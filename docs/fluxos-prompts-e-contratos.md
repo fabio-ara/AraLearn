@@ -1,367 +1,260 @@
 # Fluxos, instruções e contratos
 
-Um modelo de linguagem recebe texto e produz uma saída probabilística. Um
-sistema de autoria precisa preservar identidades, relações, permissões e
-revisões de forma determinística. O AraLearn não tenta eliminar essa diferença;
-ele a transforma numa fronteira explícita entre **intenção em linguagem
-natural** e **mudança estruturada**.
+Um modelo de linguagem interpreta texto e produz respostas probabilísticas. O
+AraLearn precisa preservar, de modo determinístico, identidades, relações,
+permissões, revisões e fatos. A linguagem natural expressa a intenção; uma
+operação fechada descreve a mudança; o domínio e o PostgreSQL decidem o que
+pode ser confirmado.
 
-Este capítulo ensina os componentes dessa fronteira, os dois fluxos de autoria
-e as razões para separá-los.
+## Conceitos básicos
 
-## Vocabulário básico
+Uma **instrução** estabelece um comportamento estável do cliente. Um **pedido**
+reúne a intenção da pessoa, o contexto necessário e a forma esperada da
+resposta. Instrução e pedido orientam o modelo, mas não concedem acesso ao
+Curso.
 
-### Instrução e prompt
+**Contexto** é informação para leitura, como objetivo, plano, parâmetros
+efetivos, posição curricular, conteúdo vizinho e versões. Receber esse contexto
+não torna qualquer objeto gravável.
 
-Uma **instrução** estabelece comportamento estável, como “não cobre um conceito
-antes de ensiná-lo”. Um **prompt** é a mensagem completa entregue numa chamada
-específica e pode reunir instruções, pedido, contexto e formato de saída.
+Um **esquema** delimita a forma dos dados. Um **contrato** acrescenta
+significado, autoridade, versões e invariantes. Um **envelope** transporta o
+conteúdo e seus metadados. JSON válido só se torna mudança de Curso depois de
+passar por essas regras.
 
-O prompt orienta o modelo, mas não concede autorização. Mesmo uma instrução
-cuidadosa pode ser interpretada incorretamente; por isso, o sistema verifica a
-saída depois da geração.
+## Uma autoridade, duas formas de interação
 
-### Contexto
+A interface visual e o MCP operam o mesmo Curso. A interface oferece campos e
+controles compreensíveis; no MCP, a pessoa descreve sua intenção e o cliente
+escolhe as ferramentas. As duas formas chegam aos mesmos casos de uso, às
+mesmas funções do banco e às mesmas regras de autorização.
 
-**Contexto** é a informação necessária para interpretar o pedido: objetivos,
-posição na árvore, conteúdo vizinho, fontes e decisões anteriores. Contexto
-somente para leitura ajuda a manter coerência sem se tornar gravável.
+O canal técnico `application|mcp` identifica por onde uma operação autoral
+chegou. Esse dado não altera a propriedade do Curso nem o resultado da
+validação.
 
-### Schema, contrato e envelope
+## Superfície do MCP
 
-Um **schema** descreve a forma válida de um dado: campos, tipos, limites e
-combinações permitidas. Um **contrato** acrescenta significado operacional:
-quem produz, quem consome, que invariantes devem ser preservadas e como a
-versão evolui. Um **envelope** é o objeto externo que transporta conteúdo e
-metadados de identificação segundo esse contrato.
+As seis ferramentas agrupam capacidades relacionadas, sem criar uma ferramenta
+para cada objeto:
 
-O schema responde “este JSON tem a forma admitida?”. Regras semânticas
-respondem perguntas que a forma isolada não resolve, como “a lacuna aponta para
-um campo que este package autoriza praticar?”.
-
-### Compilação
-
-No AraLearn, **compilar** uma resposta significa convertê-la em uma mudança
-canônica, resolver referências e validar invariantes antes da persistência. Não
-é a compilação de uma linguagem de programação para código de máquina; é a
-passagem de uma proposta para o modelo de dados autorizado.
-
-## Por que não gravar a resposta do modelo diretamente
-
-Gravação direta teria quatro riscos:
-
-1. campos inesperados poderiam entrar no curso;
-2. identidades ou referências poderiam ser trocadas;
-3. conteúdo fora do alvo poderia ser alterado;
-4. uma resposta parcial poderia deixar o documento incoerente.
-
-O fluxo adotado mantém o resultado em memória, compila-o, valida-o e somente
-então confirma a mudança integral. Uma falha não produz gravação parcial.
-
-## Duas fronteiras de autoria
-
-O manifesto técnico distingue dois fluxos:
-
-- `atomic-card-assistance`: assistência contextual iniciada por seleção no
-  aplicativo;
-- `atomic-resource-authoring`: autoria estrutural por integração externa sobre
-  um workspace.
-
-Esses nomes são identificadores técnicos. Conceitualmente, a diferença é de
-escala e autoridade.
-
-| Propriedade | Assistência contextual | Autoria estrutural |
-| --- | --- | --- |
-| início | card, microssequência ou lição selecionada | finalidade e árvore do curso |
-| alcance | recorte visual autorizado | cursos e partes acessíveis no workspace |
-| conversa | curta e volátil no card | continuidade compacta persistida |
-| operações | edição, recomposição ou criação delimitada | planejamento, recombinação, auditoria e publicação |
-| autenticação | sessão do aplicativo e chave do provider | OAuth da integração de autoria |
-
-Uma capacidade não funciona como fallback da outra. Mudança de módulo ou curso
-não é silenciosamente reduzida a uma edição de card; uma correção pontual não
-precisa carregar o fluxo editorial completo.
-
-## Fluxo da assistência contextual
-
-```text
-seleção visível
-→ autoridade calculada
-→ operação fechada
-→ contexto delimitado
-→ saída estruturada
-→ compilação e validação
-→ confirmação atômica
-→ nova renderização
-```
-
-### Classificar antes de transmitir conteúdo
-
-A primeira decisão escolhe uma operação entre alternativas permitidas pela
-seleção. Ela recebe apenas o pedido e a lista de operações autorizadas, não o
-curso inteiro. `unsupported` é uma resposta válida. Isso impede converter um
-pedido fora do escopo na única mutação que restou disponível.
-
-### Separar alvo gravável e contexto
-
-Em edição textual, cada alvo gravável aparece uma única vez com seu caminho.
-As instâncias irmãs e os vizinhos aparecem como leitura. O modelo devolve
-somente os pares que deseja mudar; o compilador aplica-os sobre o card
-congelado.
-
-Em recomposição, o sistema busca uma composição no catálogo, apresenta ao
-modelo uma lista curta e carrega somente os contratos escolhidos. Criar cards
-ou microssequência é outra operação e só aparece quando a seleção concedeu
-autoridade sobre o recipiente.
-
-Os limites completos por nível estão em [Assistência por modelo de
-linguagem](assistencia-por-ia.md#autoridade-por-nível).
-
-## Fluxo da autoria estrutural
-
-```text
-fontes e objetivo
-→ análise instrucional
-→ parâmetros efetivos
-→ disponibilidade, seleção e composição de resources
-→ blueprint contextual
-→ teoria e prática
-→ cards
-→ manifesto de materialização
-→ auditoria somente para leitura
-→ reparo autorizado e reauditoria
-→ resultados, submissão ou publicação
-```
-
-O **brief** registra contexto estável: público, objetivo, fontes, inclusões,
-exclusões, idioma e convenções. Ele não é texto de card. Estrutura, decisões,
-mandatos e achados possuem registros próprios, para que uma conversa não seja
-a única memória do trabalho.
-
-Antes do diálogo, o modelo consulta o que já existe no pedido, no workspace, no
-curso e nas fontes. Uma pergunta só é necessária quando a resposta ausente ou
-uma contradição puder mudar materialmente objetivo, escopo, pré-requisito,
-sequência, representação, prática ou dependência de ambiente externo. Não há
-questionário fixo de diagnóstico.
-
-### Planejar antes de produzir
-
-O planejamento estrutural precede o custo de geração. Ele delimita objetivos,
-cobertura, dependências, microssequências e Partes e conserva apenas as
-hipóteses de contexto necessárias para a decisão humana. A análise instrucional
-detalhada, os parâmetros e o blueprint são resolvidos just-in-time para uma
-microssequência imediatamente antes de materializá-la, salvo locks de pesquisa
-fixados previamente. A condição descreve o cenário; a resposta é uma decisão
-local sobre explicação, exemplo, representação, prática, apoio ou sequência.
-Uma não determina automaticamente a outra.
-
-A quantidade de cards não é escolhida por cota fixa: decorre dos conceitos,
-pré-requisitos, dificuldades, respostas aprovadas, formas de prática e
-necessidade de revisão. A pessoa autora examina essa síntese antes da
-materialização quando o mandato ou uma decisão material exigir. Dentro da Parte
-já autorizada, a produção ocorre por microssequência, em lotes que podem ser
-validados e retomados, sem nova confirmação automática a cada unidade.
-
-### Resolver parâmetros antes do blueprint
-
-Análise, definição, assignment e valor efetivo possuem contratos distintos. O
-servidor deriva a cadeia
-`workspace → course → module → lesson → microsequence`; Parte fica fora dela
-porque coordena lotes de trabalho, não decisões pedagógicas. Para cada definição
-aplicável, a autoridade é resolvida na ordem `research_lock`, `manual_override`,
-`auto`, default; `nearest_scope_replaces` escolhe a origem mais próxima dentro
-da classe vencedora e substitui o valor completo. Ordem de campos JSON não
-participa da precedência.
-
-`auto`, `manual_override` e `research_lock` sempre carregam valor explícito.
-Herança é proveniência calculada, não um quarto modo. Duplicidade do mesmo modo
-no mesmo escopo e parâmetros requeridos sem valor interrompem a resolução. Locks de pesquisa
-são verificados numa barreira de autoridade separada: o modelo não os altera
-nem os contorna por considerar outro desenho preferível.
-
-O resultado aceito é congelado num `EffectiveDesignSnapshot` com análise,
-definições, assignments, caminho e revisões exatos. O blueprint pedagógico v2
-não muda de formato: um binding versionado relaciona suas camadas, demandas,
-respostas e passos às unidades e exigências da análise, sem duplicar o plano.
-
-Quando Auto precisa referenciar um `ResourceSet` ainda inexistente, o servidor
-faz antes um bootstrap por famílias e facetas, congela as referências exatas e
-persiste o conjunto. Esse bootstrap não autoriza seleção. Depois o assignment
-referencia a versão salva, o snapshot resolve a disponibilidade efetiva e só
-então começa a descoberta autoritativa.
-
-A ferramenta agrupada `gerirDesenhoInstrucional` mantém poucas operações
-coesas: `read_slice`, `contracts`, `save_analysis`, `save_resource_set`,
-`set_parameter`, `remove_parameter`, `resolve_effective`, `save_blueprint` e
-`register_manifest`; na rodada separada, `run_audit` e
-`record_semantic_audit`. Cada escrita usa CAS e idempotência. O slice inclui apenas
-brief, objetivo, dependências, fontes, análise, assignments/locks, definições
-pertinentes, snapshot, conjuntos, blueprint, manifesto e findings aplicáveis.
-
-### Separar auditoria e reparo
-
-Auditar e corrigir na mesma chamada cria um conflito: o mesmo agente pode
-deixar de relatar um problema que já começou a racionalizar como solução. No
-AraLearn, auditoria é somente leitura e gera achados localizados. Reparos
-exigem autorização posterior; a reauditoria relê o resultado e procura tanto
-resolução quanto regressões.
-
-Essa separação não garante independência epistemológica completa — o mesmo
-modelo ainda pode ser usado —, mas torna ações e decisões observáveis e
-permite rejeitar apenas parte dos reparos.
-
-## Descoberta progressiva de recursos
-
-Um catálogo crescente não pode ser transmitido integralmente em todo prompt.
-Também não é seguro depender da memória do modelo para schemas que mudam. A
-consulta usa uma única biblioteca com operações progressivas:
-
-1. `explore` apresenta famílias e facetas;
-2. `search` procura representações pela intenção;
-3. `inspect` compara perfis sem carregar schemas;
-4. `contracts` devolve exatamente um contrato versionado por chamada;
-5. `validate_card` verifica estrutura;
-6. `audit_representation` verifica ajuste declarado e limitações;
-7. `preview_card` fornece um descritor, sem fingir uma renderização visual.
-
-O resultado de busca usa três classificações técnicas:
-
-- `canonical`: o perfil corresponde diretamente à intenção declarada;
-- `versatile`: um recurso mais geral preserva a estrutura necessária;
-- `substitute`: falta uma representação ideal e o melhor substituto possui
-  limitações que precisam ser informadas.
-
-Esses tokens expressam o ajuste dentro do catálogo; `canonical` não certifica
-consenso acadêmico externo. Quando a política permite registrar a limitação, a
-integração pode usar um substituto, informar brevemente a aproximação e registrar
-qual representação seria preferível. Uma condição com política `block` deve
-parar em vez de contornar a indisponibilidade.
-
-Quando um `ResourceSet` está ativo, a busca continua progressiva, mas somente
-`package@version` disponível no conjunto pode ser selecionado. O conjunto pode
-vir de facetas, desde que sua expansão exata e a versão do catálogo sejam
-congeladas. Cada seleção registra qual `ResourceSet` a autorizou; package,
-`canonical`/`versatile`/`substitute` e papel precisam ser permitidos pelo mesmo
-conjunto. A instância materializada referencia essa seleção.
-
-Disponibilidade, seleção e uso são, portanto, três fatos auditáveis. Um conjunto
-não exige escolha manual card a card e não copia contracts de packages. Se não
-contiver representação adequada, a política bloqueia ou registra a limitação;
-nunca declara equivalência fictícia.
-
-## Recuperação de conhecimento
-
-Instruções operacionais precisam ser curtas e estáveis. Regras extensas sobre
-fontes, práticas, continuidade e domínios são recuperadas conforme a tarefa.
-Esse arranjo é uma forma de **Retrieval-Augmented Generation (RAG)**: a geração
-recebe conhecimento recuperado de uma coleção externa ao contexto-base
-([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)).
-
-No AraLearn, a recuperação autoral atual é lexical, versionada e
-determinística. Ela seleciona até oito unidades pequenas por intenção e termos
-do recorte. Os chunks cobrem análise instrucional, granularidade semântica,
-elaboração explicativa, evidência e prática, tarefa profissional complexa,
-resolução, descoberta por `ResourceSet` e conformidade do desenho. Não usa
-embedding remoto nem banco vetorial. Essa escolha reduz infraestrutura, torna a seleção
-auditável e atende ao corpus controlado atual. Busca semântica vetorial seria
-justificada quando a escala, a variedade lexical e a avaliação demonstrarem
-vantagem suficiente para compensar custo, opacidade e manutenção adicionais.
-
-Conhecimento recuperado orienta o modelo. Contratos e validadores continuam
-determinando o que pode ser salvo.
-
-## Invariantes protegidos e decisões pedagógicas locais
-
-Limites de autorização, fechamento de schema, integridade referencial,
-proibição de pistas indevidas, preservação de identidade, cobertura e revisão
-humana são invariantes do produto. Eles não são preferências editáveis e não
-podem ser anulados por conversa ou configuração.
-
-Também é invariante consultar o contexto existente, explicitar dificuldades e
-respostas e obter revisão humana antes da materialização. O conteúdo dessas
-hipóteses e decisões, porém, permanece contextual e revisável.
-
-Idioma, notação, acesso a meios e conhecimentos prévios presumíveis são dados do
-contexto. Explicação, exemplo, representação, prática, apoio e sequência são
-decisões de desenho tomadas por microssequência. O AraLearn não aplica preset,
-perfil ou “pedagogia calibrada” ao curso inteiro: a autoria liga cada decisão a
-uma dificuldade pertinente e submete o conjunto à pessoa responsável.
-
-Essa responsabilidade diagnóstica organiza hipóteses para planejamento; ela não
-mede estudantes nem certifica adequação ou eficácia. Contratos e validadores
-controlam o que pode ser persistido, mas julgamento factual, disciplinar e
-pedagógico permanece humano.
-
-## Confirmação, concorrência e idempotência
-
-Cada mutação informa a revisão que foi lida. A confirmação usa
-**compare-and-swap**: se a revisão mudou, a operação relê o alvo e decide se a
-intenção ainda se aplica. Não há merge silencioso.
-
-Uma **chave de idempotência** identifica a mesma tentativa. Se a resposta do
-servidor se perder, repetir a requisição com o mesmo conteúdo recupera o mesmo
-resultado em vez de duplicá-lo. Uma intenção ou payload diferente recebe outra
-chave.
-
-No workspace estrutural, somente as partes atingidas são escritas; o servidor
-recompõe o documento e valida a composição antes de avançar sua revisão. Na
-assistência local, o change set inteiro é aplicado numa transação. As duas
-implementações preservam atomicidade, mas em escalas diferentes.
-
-## Proveniência e conversa
-
-O curso registra resultados e decisões estruturadas que precisam sobreviver à
-sessão. A conversa curta da assistência contextual não é proveniência. Na
-autoria estrutural, análise, assignments, snapshot efetivo, `ResourceSet`,
-blueprint v2, binding e manifesto usam identidades e versões próprias. Decisões
-sobre representações registram intenção, package escolhido, ajuste, limitação e
-versão do catálogo sem inserir esses metadados no card público.
-
-O estado compacto de continuidade continua menor: condições estáveis ficam no
-brief; a decisão resume condição e demanda; somente pares relevantes de
-dificuldade e resposta seguem em `pedagogicalDiagnosis.difficultyResponses`.
-Ele não duplica blueprint nem ids dos passos. O subsistema de desenho, por sua
-vez, persiste o blueprint v2 e seu binding fechado justamente para comparar
-intenção e materialização. Nenhuma das duas camadas persiste raciocínio privado
-do modelo ou transcript integral do diálogo. Essa separação economiza
-armazenamento e permite retomar a autoria a partir do workspace canônico.
-Quando uma investigação exigir preservar conversas, isso deve ser outro
-protocolo de coleta, com finalidade, consentimento e retenção próprios.
-
-## Falhas e recuperação
-
-| Falha | Resposta segura |
+| Ferramenta | Responsabilidade |
 | --- | --- |
-| JSON inválido | uma tentativa orientada de correção; nenhuma gravação parcial |
-| contrato incompatível | consultar o contrato exato e corrigir o menor lote |
-| revisão desatualizada | reler o alvo e reaplicar somente a intenção ainda válida |
-| valor exigido ou ancestria não resolvidos | retornar conflito estruturado; não inventar default nem caminho |
-| `ResourceSet` não autoriza a representação | bloquear ou registrar a limitação conforme a política; nunca fingir equivalência |
-| resposta perdida | repetir a mesma tentativa idempotente |
-| pedido fora da seleção | retornar como não suportado, sem adaptar o escopo |
-| conta sem capacidade | conservar o conteúdo no estado autorizado e explicar a dependência |
+| `listarCursos` | listar Cursos próprios com paginação |
+| `lerCurso` | ler uma vista delimitada e versionada |
+| `criarCurso` | criar a raiz privada do Curso |
+| `alterarCurso` | alterar plano, desenho, Fontes, Observações, auditoria, variantes, composição ou materialização |
+| `gerirPessoas` | ler perfil, atualizar nome ou avatar e gerir acesso direto ao Estudo |
+| `consultarComponentesDidaticos` | descobrir, inspecionar, validar, auditar e apresentar componentes |
 
-Falhar de modo explícito é preferível a trocar silenciosamente de provider,
-modelo, representação ou autoridade.
+`alterarCurso` aceita estas operações públicas:
 
-## Limites
+- `update_instructional_plan`;
+- `update_course_design`;
+- `update_course_sources`;
+- `update_anchored_annotations`;
+- `update_audit_cycle`;
+- `update_course_variants`;
+- `commit_course_composition`;
+- `advance_part_materialization`.
 
-Saída estruturada reduz ambiguidade e corrupção de estado; não garante verdade
-factual, suficiência da progressão ou qualidade da prática. O diff determinístico
-entre binding e manifesto encontra identidades divergentes, passos faltantes,
-cobertura declarada incompleta e diferença entre seleção e uso; ele não julga a
-semântica da explicação ou da prática. Auditoria por modelo pode encontrar esses
-problemas, mas não substitui revisão disciplinar e pedagógica. A publicação no
-catálogo permanece uma decisão humana autorizada.
+Cada operação admite somente o comando e os campos que lhe pertencem. Dados de
+Fontes não entram no comando de desenho, por exemplo, e confirmação de correção
+não é aceita em comandos que apenas registram ou leem evidência.
 
-Desde a #104, MCP e Action expõem o núcleo persistente pela ferramenta
-agrupada, e os pacotes distribuídos conservam o mesmo protocolo. A #105 projeta
-o estado na interface responsiva de Autoria; a #106 acrescenta audit run
-imutável, checks sobre cards/resources reais, decisão humana, reparo restrito e
-reauditoria corrente. Essa fronteira não autoriza usar conversa como fonte
-canônica, editar JSON fora das operações estruturadas, tratar aceitação do
-manifesto como conformidade ou inferir eficácia educacional.
+## Seleção de contexto
 
-Os envelopes e identificadores públicos são detalhados no [Contrato de
-conteúdo](aralearn-contract.md), e a operação remota aparece em [Autoria por
-Model Context Protocol](autoria-mcp.md).
+`lerCurso` oferece vistas específicas para cada decisão:
+
+- `summary` e `outline` para identidade e hierarquia;
+- `instructional_plan` para plano, Partes e vínculos;
+- `course_design` para parâmetros, orientações, política de componentes e itens
+  atribuídos;
+- `course_sources` e `course_source_attachment` para proveniência e PDFs;
+- `anchored_annotations` para Observações;
+- `part_materialization` para produção retomável;
+- `study_units` para Inspeção curricular;
+- `entities` para alterações estruturais;
+- `audit_cycle` para rodadas, achados e correções;
+- `variant_comparisons` e `variant_comparison` para variantes;
+- `research` para fatos, métricas e destinos da Pesquisa.
+
+O cliente escolhe a menor vista que sustenta a decisão. Conteúdo adjacente pode
+ser útil para coerência, mas a operação de escrita continua limitada aos alvos
+declarados.
+
+## Separação entre plano, desenho e composição
+
+O **plano instrucional** responde o que o Curso pretende ensinar e como o
+trabalho foi agrupado. Ele reúne público, escopo, resultados pretendidos,
+unidades de análise, requisitos de evidência e Partes.
+
+O **desenho instrucional parametrizado** registra as decisões que devem reger a
+produção num escopo: parâmetros, orientações e política de componentes. Cada
+Microssequência também recebe, de forma explícita, os itens do plano que precisa
+desenvolver.
+
+A **composição** contém Módulos, Lições, Tópicos, Microssequências e Unidades de
+estudo. Alterar um vínculo de Parte não altera essa hierarquia por implicação;
+criar, mover ou remover uma entidade exige um comando de composição.
+
+Essa divisão permite replanejar sem apagar conteúdo e materializar sem
+reinterpretar silenciosamente a intenção.
+
+## Resolução do desenho
+
+Parâmetros pedagógicos possuem definições versionadas, tipo, escopos,
+valor-padrão e limitações. A precedência corrente é:
+
+1. decisão autoral ou de pesquisa no escopo aplicável mais próximo;
+2. atribuição automática justificada no escopo aplicável mais próximo;
+3. valor-padrão do sistema.
+
+Herança e valor-padrão são calculados. Limpar uma atribuição remove a decisão
+local e faz a leitura resolver novamente a cadeia.
+
+Orientações autorais conservam o texto original em revisões. Uma interpretação
+estruturada aponta para uma revisão exata e registra resumo, diretivas,
+divergências e perguntas. Ela não substitui o texto da pessoa.
+
+A política de componentes fixa a revisão do catálogo, a disponibilidade geral
+ou restrita, os componentes bloqueados e os preferidos. O servidor resolve a
+política antes da produção e confere os componentes realmente presentes na
+Unidade.
+
+## Materialização reproduzível por Parte
+
+```text
+Parte e Microssequências vinculadas
+→ itens do plano atribuídos a cada alvo
+→ desenho e Fontes resolvidos pelo servidor
+→ execução e etapas persistidas
+→ produção de um recorte
+→ validação de estrutura, componentes e proveniência
+→ confirmação atômica da etapa
+→ Inspeção e eventual auditoria
+```
+
+Ao iniciar uma execução, o servidor sela o contexto efetivo. Catálogos de
+unidades de análise e requisitos de evidência preservam identidade, posição,
+enunciado e versão. Cada Microssequência referencia somente os itens que lhe
+foram atribuídos.
+
+Uma etapa informa fatos delimitados de aplicação: Unidades afetadas, unidades
+de análise introduzidas, formas de explicação, oportunidades de prática,
+dimensões de variação e componentes usados. O contrato verifica referências,
+contagens e coerência interna; o banco confere ainda as identidades das
+Unidades, o pai, a Microssequência, as atribuições de Fontes e as identidades
+`package@version` presentes no conteúdo.
+
+As formas, oportunidades e variações são declarações examináveis da autoria ou
+do cliente. O banco não deduz essas propriedades pela fluência do texto. Uma
+auditoria posterior pode confrontar a declaração com o conteúdo e suas
+evidências.
+
+Se uma verificação falhar, conteúdo, vínculo, progresso, evento e recibo da
+etapa são revertidos juntos. O estado persistido informa a próxima etapa e
+permite continuar depois de uma interrupção.
+
+## Proveniência e anexos
+
+Fontes e Âncoras possuem revisões próprias. `set_target_sources` substitui o
+conjunto ordenado de atribuições de um item do plano ou de uma Unidade. Cada
+vínculo declara relação e Âncoras exatas.
+
+PDFs ficam em armazenamento privado e são ligados a uma revisão de Fonte por
+impressão digital, tamanho e tipo. A preparação devolve um endereço temporário para envio
+direto; a confirmação transacional verifica o objeto antes de criar o vínculo.
+A leitura também usa endereço temporário e autorização corrente.
+
+Uma exportação de proveniência reúne o alvo, as atribuições, as revisões das
+Fontes, as Âncoras e os metadados dos anexos. O arquivo não contém o PDF nem
+transforma o vínculo em prova de correção factual.
+
+## Descoberta progressiva de componentes
+
+O catálogo completo não integra o contexto de cada pedido. O cliente:
+
+1. explora famílias e facetas;
+2. pesquisa por intenção;
+3. inspeciona poucos candidatos;
+4. solicita um contrato exato;
+5. valida a Unidade;
+6. audita a adequação representacional;
+7. apresenta uma prévia.
+
+A busca devolve até oito candidatos e cada consulta de contrato recebe uma
+única identidade. O navegador e a função remota usam o mesmo registro de
+componentes. Uma classificação `substitute` indica aproximação e exige que a
+limitação seja apresentada à pessoa.
+
+## Observações e auditoria
+
+Uma Observação preserva texto, alvo, revisão observada, origem, canal,
+classificação e estado. A leitura por MCP pode mostrar caixa de entrada, alvo ou
+detalhe. Criar uma Observação pela conversa exige alvo, síntese breve e
+confirmação humana.
+
+O ciclo de auditoria deriva o contexto de uma Unidade e registra uma rodada
+imutável. Achado, proposta de correção, aplicação, verificação e reversão são
+estados e operações distintos. Evidência factual positiva aponta para Fonte e
+Âncora correntes. Aplicação e reversão exigem confirmação explícita; a resolução
+exige outra rodada sobre o critério focal.
+
+## Variantes e fatos de Pesquisa
+
+Uma comparação de variantes conserva um ponto comum de planejamento, Cursos
+independentes e diferenças intencionais. As leituras confrontam revisões,
+parâmetros, políticas de componentes, Partes, Unidades, componentes e
+proveniência. Desvincular uma variante preserva o Curso.
+
+A vista `research` projeta sete conjuntos de fatos operacionais. Métricas,
+gráfico, tabela, exportação e MCP derivam das mesmas linhas e da mesma revisão.
+Os filtros e o instante de corte integram o cursor, impedindo que páginas de
+recortes diferentes sejam misturadas.
+
+## Concorrência e repetição segura
+
+Toda escrita informa `expectedRevision` e, conforme o objeto, a versão esperada
+do plano, da Parte, da execução, da etapa, da orientação, da Observação ou do
+ciclo de auditoria. O PostgreSQL aplica comparação e troca atômica
+(`compare-and-swap`, CAS). Uma revisão desatualizada exige releitura e
+reconciliação.
+
+`requestId` identifica uma intenção durante a janela de retenção do recibo.
+Repetir o mesmo comando devolve o resultado anterior; reutilizar a chave com
+outro conteúdo gera conflito. Uma operação sem alteração efetiva conserva as
+versões e não cria evento de atividade.
+
+## Persistência e privacidade
+
+O Curso conserva dados confirmados: plano, decisões de desenho, orientações,
+composição, proveniência, Observações, rodadas, correções, variantes, fatos de
+Pesquisa, eventos compactos e recibos temporários. Transcrição de conversa,
+resposta bruta e raciocínio privado do modelo ficam fora desse estado.
+
+O conteúdo estudável, o estado pessoal e as filas específicas de Observações
+podem permanecer no dispositivo. Mutações de Autoria usam o servidor e a revisão
+corrente. Essa fronteira impede que uma cópia local antiga se torne autoridade
+sobre o Curso.
+
+## Respostas a falhas
+
+| Situação | Resposta do contrato |
+| --- | --- |
+| comando ou JSON fora da forma | recusar antes de gravar |
+| revisão ou versão desatualizada | exigir releitura e reconciliação |
+| Curso fora da propriedade da conta | negar a operação sem expor dados |
+| interpretação ligada a outra revisão de orientação | recusar o vínculo |
+| componente bloqueado ou fora da lista permitida | reverter a etapa |
+| item do plano fora do alvo | recusar a declaração |
+| identidade, pai ou componente divergente | reverter a etapa |
+| Fonte, Âncora ou anexo divergente | recusar a atribuição |
+| recorte acima do limite | abortar sem truncamento silencioso |
+| repetição idêntica | devolver o recibo existente |
+
+Contratos comprovam integridade e rastreabilidade dentro das regras
+declaradas. Avaliar verdade, adequação pedagógica ou eficácia exige evidência e
+método próprios. Consulte [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md) para os parâmetros e
+[Autoria por MCP](autoria-mcp.md) para os esquemas completos.

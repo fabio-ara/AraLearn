@@ -6,7 +6,7 @@ export const tablePackage = Object.freeze({
     id: "aralearn.resource.table", version: "1.0.0", label: "Tabela",
     purpose: "Comparar atributos repetidos ou consultar valores organizados por linhas e colunas.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["compare-fields", "lookup", "classify", "contrast-cases"]),
+    taskOperations: Object.freeze(["compare-fields", "lookup", "classify", "contrast-cases"]),
     academic: academicProfile({ domains: ["transversal", "estatística descritiva"], knowledgeObjects: ["registros homogêneos", "atributos comparáveis"], conventions: ["cabeçalhos explícitos", "unidade declarada", "uma observação por linha"], appropriateWhen: ["os mesmos atributos são comparados entre casos"], avoidWhen: ["os valores formam uma matriz algébrica", "há apenas uma lista sem comparação bidimensional"], technologies: ["tabela HTML semântica"], practiceModes: ["exposition", "gap", "typing", "selection", "classification", "ordering"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice", "aralearn.response.ordering"]),
     limitations: Object.freeze(["Não introduz sozinha siglas, números ou categorias ainda não explicados.", "Evite tabelas densas em primeiro contato."]),
@@ -51,6 +51,7 @@ export const tablePackage = Object.freeze({
   editableTargets(data) {
     return [
       ...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []),
+      ...(data.caption ? [{ path: "caption", label: "Editar legenda" }] : []),
       ...data.columns.map((_, index) => ({ path: `columns[${index}]`, label: `Editar cabeçalho ${index + 1}` })),
       ...data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({ path: `rows[${rowIndex}][${columnIndex}]`, label: `Editar célula ${rowIndex + 1}, ${columnIndex + 1}` })))
     ];

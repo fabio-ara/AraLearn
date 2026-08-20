@@ -1,4 +1,4 @@
-# Revisão de literatura orientada ao design
+# Revisão de literatura orientada ao desenho do AraLearn
 
 ## Finalidade, pergunta e limites
 
@@ -10,7 +10,7 @@ as decisões educacionais e sociotécnicas do AraLearn. Sua pergunta orientadora
 > plataforma móvel, local-first, baseada em progressão didática,
 > representações externas, prática, feedback e autoria assistida?
 
-O texto é uma **revisão narrativa orientada ao design**. Isso significa que as
+O texto é uma **revisão narrativa orientada ao desenho do artefato**. Isso significa que as
 fontes foram organizadas em torno de problemas do artefato e de mecanismos
 plausíveis. Não se trata de revisão sistemática, revisão de escopo concluída ou
 meta-análise própria. Uma síntese que pretenda cobertura reproduzível deve
@@ -24,7 +24,7 @@ oferece:
 
 - **evidência externa**, produzida em populações, tarefas e ambientes próprios;
 - **inferências limitadas**, que relacionam essa evidência ao problema de
-  design;
+  desenho;
 - **decisões fundamentadas**, adotadas no produto por razões explícitas;
 - **hipóteses**, que permanecem abertas à avaliação e à refutação.
 
@@ -79,6 +79,86 @@ Essa estratégia oferece rastreabilidade, mas não garante exaustividade. Novas
 fontes devem entrar na bibliografia somente depois de conferência e devem
 alterar a síntese quando contradizem, limitam ou refinam o argumento vigente.
 
+O corpus inicial não conserva um diário completo das consultas que o
+originaram. Portanto, não é possível reconstruir retrospectivamente, com
+precisão, todas as bases, expressões, datas e contagens usadas. Essa limitação
+é declarada em vez de preencher lacunas com buscas presumidas.
+
+### Protocolo prospectivo de busca e atualização
+
+A partir desta versão, toda busca destinada a ampliar ou revisar o corpus segue
+o protocolo **ARA-LIT-1**. Ele aumenta a reprodutibilidade da revisão narrativa,
+mas não a converte automaticamente em revisão sistemática ou de escopo. Um
+estudo que reivindique um desses métodos precisa de protocolo próprio e das
+etapas exigidas pelo método escolhido.
+
+1. formular uma pergunta delimitada e associá-la a um eixo desta revisão;
+2. escolher bases adequadas ao eixo, por exemplo, ERIC ou PsycINFO para
+   educação e psicologia, Scopus ou Web of Science para cobertura
+   interdisciplinar, ACM Digital Library ou IEEE Xplore para interação e
+   computação, e fontes institucionais primárias para normas;
+3. registrar, antes da seleção, a base, a consulta exatamente como executada,
+   a data e hora em UTC, os filtros e a contagem informada pela base;
+4. deduplicar primeiro por DOI e, quando ele não existir, por título, ano e
+   autoria, conservando a decisão em caso de dúvida;
+5. avaliar título e resumo segundo os critérios abaixo; registrar o motivo da
+   exclusão quando a decisão depender do texto integral;
+6. conferir identidade bibliográfica e, conforme o desenho da fonte, examinar
+   população, contexto, tarefa, comparação, resultados, limitações e risco de
+   viés;
+7. incluir os metadados confirmados em `referencias.bib`, atualizar a síntese e
+   a matriz de rastreabilidade e explicar quando a nova fonte contradiz ou
+   restringe uma afirmação anterior.
+
+Consultas em mecanismos de busca gerais e rastreamento de referências para
+trás ou para a frente podem complementar as bases. Eles devem ser identificados
+como tal no registro; não substituem silenciosamente uma base declarada.
+
+### Critérios ARA-LIT-1
+
+Uma fonte pode ser incluída quando tem identidade verificável, relação direta
+com a pergunta registrada e informação suficiente para avaliar o alcance da
+afirmação utilizada. Conforme a pergunta, são elegíveis estudos primários,
+sínteses de evidência, trabalhos teóricos, normas e documentação técnica
+primária. Não há corte cronológico geral: cada filtro de data precisa de
+justificativa registrada.
+
+São excluídos como fundamento científico materiais promocionais, fontes sem
+proveniência verificável e textos cuja relação com a pergunta dependa apenas de
+analogia. Uma fonte não é excluída por contradizer a decisão atual; resultados
+nulos, adversos e explicações rivais são necessários para avaliar o argumento.
+Idioma, acesso ao texto integral e tipo de publicação não devem ser usados como
+filtros ocultos: quando afetarem a seleção, aparecem no campo `filtros` ou nas
+observações.
+
+### Registro reprodutível
+
+O arquivo
+[`evidence/registro-buscas-bibliograficas.csv`](evidence/registro-buscas-bibliograficas.csv)
+recebe uma linha por consulta realmente executada. Seu cabeçalho inicial, sem
+linhas retrospectivas inventadas, preserva a distinção entre o corpus recebido
+e as consultas prospectivas. As linhas datadas registram apenas buscas de fato
+executadas sob este protocolo; uma fonte conferida por DOI não é apresentada
+como se tivesse sido descoberta por uma consulta temática que não a recuperou.
+
+| Campo | Significado |
+| --- | --- |
+| `registro_id` | identificador estável da consulta |
+| `data_hora_utc` | instante da execução em ISO 8601 e UTC |
+| `eixo` | pergunta ou seção desta revisão atendida |
+| `base_ou_indice` | serviço consultado, sem agrupar bases diferentes numa linha |
+| `consulta_exata` | expressão copiada da interface ou API consultada |
+| `filtros` | limites de data, idioma, campo, tipo ou outros, inclusive “nenhum” |
+| campos de contagem | total informado, deduplicação, triagens e inclusões daquele fluxo |
+| `motivos_exclusao_texto_integral` | categorias e contagens das exclusões decididas após leitura integral |
+| `versao_criterios` | versão aplicada, inicialmente `ARA-LIT-1` |
+| `responsavel` | identificador ou papel definido no protocolo da investigação |
+| `observacoes` | falhas, limites, motivo de nova execução ou ligação para evidência complementar |
+
+Se a mesma consulta for repetida, recebe nova linha: resultados de uma base
+podem mudar ao longo do tempo. Correções preservam o valor anterior no histórico
+do Git e explicam a mudança em `observacoes`.
+
 ## 1. Aprendizagem móvel, interrupção e retomada
 
 ### Conceitos necessários
@@ -94,7 +174,7 @@ pessoa compreendeu onde estava ou o que precisava fazer.
 
 ### Evidência externa
 
-Uma revisão sistemática encontrou diversidade de frameworks de interface em
+Uma revisão sistemática encontrou diversidade de quadros para interfaces em
 aplicações de aprendizagem móvel, o que desaconselha a ideia de um layout
 universalmente adequado ([Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui)). Uma revisão sobre aprendizagem
 autodirigida de línguas com tecnologia móvel identificou estratégias
@@ -110,33 +190,34 @@ demonstram efeito educacional de armazenamento local.
 
 - **Problema:** uma sessão interrompida ou sem rede pode exigir reconstrução do
   percurso e introduzir espera em ações que deveriam ser locais.
-- **Alternativas e requisitos:** depender do servidor, manter somente cache de
+- **Alternativas e requisitos:** depender do servidor, manter somente uma cópia temporária da
   página ou conservar réplica e cursor locais; a solução requer resposta
   imediata, conteúdo já sincronizado
   disponível, estado corrente inteligível e sincronização fora do caminho
   crítico da interação.
 - **Decisão:** manter localmente o conteúdo sincronizado e o estado mínimo
   necessário à continuidade; não tratar abertura ou tempo como atenção. Estudo
-  e Autoria usam o mesmo front-end no celular e desktop, com exposição
+  e Autoria usam a mesma aplicação web no celular e no computador, com exposição
   progressiva e restauração explícita de contexto, em vez de relegar a Autoria a
   uma interface desktop separada.
 - **Fundamentação:** interrupções podem impor custo de retomada, enquanto a
   diversidade de situações móveis desaconselha solução universal
   ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption); [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui)).
 - **Operacionalização:** o estudo lê conteúdo e estado corrente localmente; a
-  sincronização ocorre fora do caminho crítico. A Autoria lê o último
-  Mapa/Desenho sincronizado, distingue conflito de pendência e volta ao mesmo
-  alvo do leitor sem usar a conversa como memória.
+  sincronização ocorre fora do caminho crítico. Na Autoria, o servidor continua
+  sendo a autoridade para alterações; listas conhecidas e uma página exata da
+  Inspeção podem permanecer visíveis sem conexão, identificadas como cópia
+  local, sem autorizar mutação.
 - **Consequências e hipótese:** uma réplica local e um cursor compreensível
   podem reduzir erros operacionais de retomada.
-- **Limites e evidência necessária:** funcionamento offline é propriedade
+- **Limites e evidência necessária:** funcionamento sem conexão é propriedade
   técnica; continuidade de estudo e aprendizagem são resultados empíricos
   distintos. A avaliação requer tarefa interrompida com intervalo e condições de
   rede definidos, medindo localização correta, continuação, erros, ajuda e
   explicação da pessoa. A paridade de funções e a ausência de overflow em
-  viewports automatizados não demonstram que uma pessoa leiga descubra a
-  alternância Estudo/Autoria, Auto, Resources ou retorno sem orientação; isso
-  exige teste humano prioritariamente móvel.
+  larguras automatizadas não demonstram que uma pessoa leiga descubra a
+  alternância entre Estudo e Autoria, retome o ponto correto ou compreenda o
+  estado sem orientação; isso exige teste humano prioritariamente móvel.
 
 ## 2. Autorregulação, autodireção e agência
 
@@ -167,13 +248,13 @@ escolha significativa e apoio à autonomia de abandono ou ausência de estrutura
   compreensíveis, possibilidade real de escolha, revisão e recusa, além de
   suporte suficiente.
 - **Decisão:** oferecer organização explícita do percurso, retomada, marcação de
-  revisão, observação situada e autoria reversível.
+  revisão, anotação ancorada e autoria reversível.
 - **Fundamentação:** autorregulação envolve planejamento, monitoramento e
   reflexão; controle disponível na interface apresenta resultados heterogêneos
   ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated); [Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol)).
 - **Operacionalização:** percurso, consequências, revisão e reversão permanecem
   visíveis e são exercidos por ações explícitas.
-- **Consequências e hipótese:** estrutura compreensível combinada a escolhas significativas
+- **Consequências e hipótese:** estrutura compreensível associada a escolhas significativas
   pode apoiar planejamento e revisão melhor do que controle meramente
   simbólico.
 - **Limites e evidência necessária:** autonomia é construto a ser
@@ -194,9 +275,39 @@ que precisam ser integradas.
 
 Segmentar uma explicação pode ajudar, mas não equivale a cortar texto em
 fragmentos. Uma meta-análise encontrou heterogeneidade e moderadores no efeito
-de segmentação ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura de microlearning também reúne
+de segmentação ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura de microaprendizagem (*microlearning*) também reúne
 definições e intervenções diversas ([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)). Portanto, não há
-base para as regras “um conceito por card” ou “quanto menor, melhor”.
+base para as regras “um conceito por unidade” ou “quanto menor, melhor”.
+
+### Texto, discurso e extensão editorial
+
+Modelos de compreensão textual distinguem relações locais e organização global;
+teorias e métodos de segmentação delimitam unidades por critérios como relação
+retórica, intenção discursiva ou mudança de subtópico
+([Kintsch e van Dijk (1978)](referencias.md#ref-kintsch1978model);
+[Mann e Thompson (1988)](referencias.md#ref-mann1988rst);
+[Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation);
+[Hearst (1997)](referencias.md#ref-hearst1997texttiling)). Uma revisão recente
+da linguística do texto também mostra que “unidade discursiva” não designa um
+átomo universal independente de teoria e procedimento
+([Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades)).
+
+Parágrafo, sentença, quantidade de caracteres, número de palavras, altura e
+tempo estimado de leitura são **medidas editoriais observáveis**. Podem apoiar
+renderização e ergonomia, mas não demonstram por si mesmas unidade de sentido,
+densidade conceitual, dificuldade ou completude. Ferramentas de complexidade
+textual integram propriedades lexicais, sintáticas, discursivas e de coesão;
+mesmo assim, seus valores dependem do corpus, da população, da tarefa e da
+interpretação pretendida
+([Graesser et al. (2004)](referencias.md#ref-graesser2004cohmetrix);
+[Leal et al. (2024)](referencias.md#ref-leal2024nilcmetrix);
+[Gazzola et al. (2022)](referencias.md#ref-gazzola2022textcomplexity)).
+
+Para investigar **densidade conceitual**, o AraLearn precisa declarar o que
+conta como conceito, relação e ocorrência, conservar as anotações semânticas
+brutas e versionar o denominador e o cálculo. Usar caracteres ou palavras como
+substitutos silenciosos produziria uma medida fácil de calcular, mas incapaz de
+sustentar a interpretação pedagógica desejada.
 
 ### Decisão e hipótese para o AraLearn
 
@@ -206,17 +317,19 @@ base para as regras “um conceito por card” ou “quanto menor, melhor”.
   progressão conceitual; o desenho requer contexto local, relações
   preservadas, densidade compatível com leitura móvel e profundidade definida
   pelo escopo.
-- **Decisão:** dimensionar microssequências e cards depois do planejamento, sem
+- **Decisão:** dimensionar microssequências e unidades de estudo e
+  interação depois do planejamento, sem
   quantidade fixa de teoria ou prática; tratar microteoria como recorte local
   suficiente, não resumo.
 - **Fundamentação:** memória de trabalho e segmentação dependem da tarefa e do
-  desenho; a literatura de microlearning não estabelece cota universal
+  desenho; a literatura de microaprendizagem não estabelece cota universal
   ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting); [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
 - **Operacionalização:** pré-requisitos, relações, exemplos e evidências de
-  aprendizagem são planejados antes da materialização dos cards.
+  aprendizagem são planejados antes da materialização das unidades; medidas
+  editoriais e anotações semânticas permanecem categorias distintas.
 - **Consequências e hipótese:** explicação progressiva com pré-requisitos explícitos pode reduzir
   carga extrínseca e preservar profundidade.
-- **Limites e evidência necessária:** quantidade de cards, tamanho do texto e
+- **Limites e evidência necessária:** quantidade de unidades, tamanho do texto e
   aparência minimalista não medem carga nem qualidade. São necessárias auditoria de especialistas e tarefas com novatos,
   examinando saltos, compreensão, integração e navegação.
 
@@ -232,12 +345,51 @@ análise depende da população e do desempenho que se pretende explicar
 Esse fundamento não autoriza um sistema de autoria a declarar que um tópico é
 um componente psicológico validado ou que conhece o domínio de cada estudante.
 
-Para planejar conteúdo de modo rastreável, o AraLearn adota como proposta uma
+Para planejar conteúdo de modo rastreável, o AraLearn adota uma
 **unidade de análise instrucional**. Ela é um recorte editorial revisável,
 ligado a fonte e objetivo. O conhecimento prévio presumido pode ser descrito
 como novo, parcial, integrado ou desconhecido, desde que a base da suposição
 permaneça explícita. Trata-se de operacionalização própria, não de diagnóstico,
 proficiência ou probabilidade de domínio.
+
+O objeto materializado diretamente apresentado em Estudo recebe, nesta
+taxonomia, o nome **unidade de estudo**: a menor unidade persistida, ordenável,
+endereçável e renderizável que pode ser somente expositiva ou também reunir uma
+ou mais representações, solicitação de resposta e feedback. Esse é um termo
+operacional do AraLearn, não um gênero discursivo reconhecido nem um construto
+psicológico. Sua aparência corrente em bloco retangular não deve definir a
+ontologia, e o nome não pressupõe interação quando ela não existe.
+
+**Flashcard** fica reservado ao item realmente organizado em torno de uma pista
+e de uma resposta para recuperação. Uma revisão de escopo sobre flashcards
+eletrônicos nas profissões da saúde ilustra usos e resultados dentro desse
+domínio específico; não autoriza classificar explicações, diagramas,
+simulações ou toda a plataforma como flashcards
+([Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards)).
+
+Uma **microssequência didática** ordena unidades de estudo em
+torno de um objetivo instrucional delimitado. Uma **Parte de autoria** reúne,
+por sua vez, trabalho de planejamento, produção e revisão que pode abranger
+várias microssequências. Ambas são construções próprias do produto: a primeira
+é didática; a segunda é uma unidade operacional de materialização. A faixa
+orientativa de Partes pode ser configurada e nunca constitui uma regularidade
+pedagógica universal.
+
+Estudos de sistemas recentes oferecem evidência situada para manter o plano
+intermediário visível e editável, sem transferir a decisão pedagógica inteira
+ao modelo. O VIVID organizou geração, avaliação e modificação de diálogos
+educacionais por instrutores; sua avaliação com doze participantes tratou uma
+tarefa e um formato específicos, não a produção de Cursos em geral
+([Choi et al. (2024)](referencias.md#ref-choi2024vivid)). O Shiksha Copilot
+combinou geração, curadoria humana e adaptação docente de planos de aula; o
+estudo misto envolveu 1.043 docentes e 23 curadores num contexto multilíngue e
+de recursos limitados, no qual profissionais continuaram avaliando e
+contextualizando o material produzido
+([Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha)). Esses
+resultados sustentam investigar planejamento revisável, intervenção humana e
+uso móvel no AraLearn. Eles não validam a entidade Parte, não determinam sua
+quantidade e não demonstram que a faixa de sete a doze melhora aprendizagem ou
+qualidade autoral; essa faixa permanece um valor padrão do produto a ser estudado.
 
 ### Interatividade depende da estrutura e do público
 
@@ -248,7 +400,8 @@ da estrutura da informação e do conhecimento prévio, é necessariamente
 aproximada e não equivale à dificuldade geral da tarefa
 ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
 
-A consequência para o desenho não é criar um score de carga. Unidades e
+A consequência para o desenho é preservar relações, em vez de criar uma
+pontuação de carga. Unidades e
 relações que precisam permanecer juntas são registradas como conjuntos de
 coordenação; sua cardinalidade pode ser calculada com unidade e escopo
 explícitos. Relações de pré-requisito, causalidade, contraste, composição ou
@@ -257,7 +410,7 @@ um escalar elimina a informação necessária à revisão.
 
 ### Requisito de evidência não é medida validada
 
-O *Evidence-Centered Design* organiza a avaliação como argumento entre
+O desenho centrado em evidências (*Evidence-Centered Design*) organiza a avaliação como argumento entre
 alegações, evidência observável e tarefas capazes de produzir essa evidência
 ([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)). O
 AraLearn aproveita a separação para ligar objetivo, operação, requisito de
@@ -285,14 +438,15 @@ aos conceitos relevantes ou à atividade cognitiva em curso
 portanto, base para um checklist universal ou para uma nota de “qualidade da
 explicação”.
 
-A proposta registra requisitos aplicáveis — como definição, mecanismo,
+A implementação registra requisitos aplicáveis, como definição, mecanismo,
 condição de aplicação, limite, contraste, exemplo ou justificativa de
-procedimento — ligados às unidades e relações pertinentes. O mesmo princípio
+procedimento, ligados às unidades e relações pertinentes. O mesmo princípio
 se aplica à prática: oportunidades distintas são reconhecidas por alvo,
 operação e estrutura semântica, não por troca cosmética de texto ou componente.
 
-- **Decisão:** separar fontes e objetivo, análise instrucional, parâmetros,
-  seleção de resources, blueprint contextual e conteúdo materializado.
+- **Decisão:** separar Fontes e objetivo, análise instrucional, parâmetros,
+  política de componentes, atribuição aos itens do plano e conteúdo
+  materializado.
 - **Operacionalização:** usar categorias, conjuntos, vetores e relações quando
   preservam a estrutura; aceitar números somente com unidade, denominador,
   escopo, algoritmo e versão explícitos.
@@ -320,7 +474,7 @@ natureza da operação.
 - **Alternativas e requisitos:** problema completo desde o início, imitação constante ou
   exemplo seguido de apoio progressivamente menor.
 - **Decisão:** usar exemplo resolvido e retirada de apoio quando a tarefa e o
-  público justificarem; preservar no card todos os dados particulares
+  público justificarem; preservar na unidade todos os dados particulares
   necessários.
 - **Fundamentação:** exemplos resolvidos e retirada gradual podem beneficiar
   aquisição inicial em condições delimitadas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)).
@@ -349,29 +503,122 @@ integrar elementos que precisam ser compreendidos em conjunto
 ([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Elas não sustentam que adicionar
 imagens ou aumentar a variedade visual melhora automaticamente a aprendizagem.
 
+Representações diferentes não são traduções transparentes umas das outras. O
+modo de representar pode apoiar determinada inferência e interferir em outra;
+relações entre texto e imagem podem envolver complementaridade, especialização,
+redundância ou outras funções que precisam ser declaradas
+([Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations);
+[Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext)).
+Sinalização pode apoiar a coordenação de texto e imagem em condições
+delimitadas, com moderadores e heterogeneidade; não corrige conteúdo
+incompatível nem torna qualquer arranjo instrucionalmente adequado
+([Richter et al. (2016)](referencias.md#ref-richter2016signaling);
+[Schneider et al. (2018)](referencias.md#ref-schneider2018signaling)).
+
 ### Decisão e hipótese para o AraLearn
 
 - **Problema:** prosa e tabela podem apagar relações próprias de um domínio;
-  recursos especializados também podem criar uma gramática visual artificial.
-- **Alternativas e requisitos:** prosa, recurso geral ou package especializado;
+  representações especializadas também podem criar uma gramática visual artificial.
+- **Alternativas e requisitos:** prosa, componente geral ou componente especializado;
   a escolha requer justificativa semântica, convenção acadêmica,
-  correspondência com o gesto cognitivo, legibilidade, acessibilidade e
+  correspondência com a operação-alvo da tarefa, legibilidade, acessibilidade e
   capacidade de representar casos complexos.
-- **Decisão:** admitir um recurso especializado somente quando preserva uma
-  estrutura que recursos gerais não expressam adequadamente; escolher primeiro
+- **Decisão:** admitir uma representação especializada somente quando preserva uma
+  estrutura que componentes gerais não expressam adequadamente; escolher primeiro
   pela intenção e consultar depois o contrato específico.
-- **Fundamentação:** representações podem complementar, restringir ou apoiar
-  relações, mas sua coordenação também cria demanda
-  ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
-- **Operacionalização:** catálogo semântico, contrato específico, mecanismo de renderização
-  disciplinar, caso de estresse e auditoria compõem o package.
+- **Fundamentação:** representações podem complementar, restringir, apoiar ou
+  interferir em relações, e sua coordenação também cria demanda
+  ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Mayer (2009)](referencias.md#ref-mayer2009multimedia);
+  [Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations);
+  [Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext)).
+- **Operacionalização:** catálogo semântico, contrato específico, mecanismo de
+  renderização disciplinar, caso de estresse e auditoria compõem o pacote de
+  componente.
 - **Consequências e hipótese:** seleção por intenção e renderização disciplinar podem reduzir
   ambiguidade e tradução mental.
 - **Limites e evidência necessária:** contrato válido, ausência de sobreposição
-  e biblioteca consolidada são evidências técnicas, não prova de compreensão. A avaliação deve comparar texto, recurso geral e especializado para
+  e biblioteca consolidada são evidências técnicas, não prova de compreensão. A avaliação deve comparar texto, representação geral e especializada para
   a mesma tarefa; incluir especialista do domínio, novato e caso de estresse.
 
-## 7. Prática de recuperação e formato de resposta
+## 7. Gênero discursivo e descrição do artefato
+
+Na tradição retórica e organizacional, gênero é uma forma recorrente de ação
+social reconhecida numa comunidade, não um contorno visual ou um tipo de arquivo
+([Miller (1984)](referencias.md#ref-miller1984genre);
+[Yates e Orlikowski (1992)](referencias.md#ref-yates1992genres)). Por isso, uma
+interface em blocos retangulares não estabelece por si um gênero discursivo, e
+uma unidade curta não se torna flashcard apenas pela aparência.
+
+O AraLearn é um **ambiente de aprendizagem, autoria
+e pesquisa com unidades de estudo estruturadas**. A fórmula
+explica funções do artefato; não reivindica a descoberta de um gênero
+discursivo estabelecido. Dentro dele podem coexistir gêneros e atividades
+diversos, como explicação, definição, exemplo resolvido, comparação, pergunta de
+recuperação ou anotação especializada. Eles precisam ser identificados por sua
+função comunicativa e instrucional, não apenas pelo mecanismo de renderização.
+
+- **Problema:** chamar toda unidade de “flashcard” apaga diferenças entre
+  exposição, representação, resposta e feedback; inventar um gênero próprio
+  sem comunidade e prática reconhecíveis transforma hipótese em conclusão.
+- **Decisão:** separar classe funcional do produto, gênero discursivo do
+  conteúdo, unidade persistida e formato de atividade.
+- **Hipótese:** uma taxonomia explícita dessas camadas pode melhorar a conversa
+  entre especialista, pesquisador e processo assistido de autoria.
+- **Limites e evidência necessária:** a utilidade dessa taxonomia exige análise
+  de corpus, concordância entre anotadores e estudo com autores. História do
+  produto e semelhança visual não demonstram validade das categorias.
+
+## 8. Leitura móvel, ação e inferências sobre atenção
+
+Layout, tamanho de tela e movimento do texto podem afetar leitura e esforço, mas
+os resultados dependem da tarefa, do material e do modo de interação
+([Dyson (2004)](referencias.md#ref-dyson2004layout);
+[Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens);
+[Li et al. (2021)](referencias.md#ref-li2021interaction)). Isso não estabelece
+que rolagem, paginação ou encaixe automático seja universalmente superior. A Autoria móvel
+adota como hipótese de interface uma **sequência vertical de inspeção**: fluxo finito,
+curricularmente ordenado, com posição, hierarquia, retomada e marcos explícitos.
+Ela deve ser avaliada pela capacidade de localizar, revisar e anotar unidades,
+não por semelhança com um fluxo contínuo de publicações.
+
+Twitter/X ajuda a explicar a genealogia de fluxos curtos e continuamente
+roláveis, mas não fornece fundamento pedagógico para copiá-los. Estudos de sua
+linguagem e de usos educacionais descrevem fenômenos situados, enquanto pesquisa
+de interação mostra riscos próprios de consumo de mídia social
+([Zappavigna (2011)](referencias.md#ref-zappavigna2011ambient);
+[Tang e Hew (2017)](referencias.md#ref-tang2017twitter);
+[Baughan et al. (2022)](referencias.md#ref-baughan2022dissociation)). O
+precedente genealógico permanece separado da evidência educacional.
+
+Uma expressão única para gesto e cognição reúne indevidamente níveis
+diferentes. A análise distingue:
+
+1. **gesto de entrada**, movimento observável, como toque ou deslize;
+2. **ação de interface**, mudança de estado disparada, como avançar ou abrir;
+3. **operação-alvo da tarefa**, como comparar, ordenar, explicar ou provar;
+4. **ação epistêmica**, ação externa que revela informação ou simplifica o
+   trabalho cognitivo sob condições demonstradas; e
+5. **processo cognitivo hipotético**, que não é observado diretamente.
+
+A distinção entre ações pragmáticas e epistêmicas oferece base conceitual, mas
+não autoriza classificar todo toque como ação epistêmica
+([Kirsh e Maglio (1994)](referencias.md#ref-kirshmaglio1994epistemic);
+[Kirsh (2010)](referencias.md#ref-kirsh2010external)). Atenção compreende
+processos seletivos internos e externos com mecanismos próprios
+([Chun et al. (2011)](referencias.md#ref-chun2011attention)). Cliques, foco de
+teclado, posição visível, rolagem e tempo de permanência são eventos técnicos,
+não medidas diretas de atenção; explicações neurocientíficas exigem cautela
+adicional ([Howard-Jones (2014)](referencias.md#ref-howardjones2014neuroscience)).
+
+Engajamento também é multidimensional, e revisões da aprendizagem mediada por
+tecnologia mostram diversidade de definições e instrumentos
+([Henrie et al. (2015)](referencias.md#ref-henrie2015engagement)). Nem relato nem
+log deve ser promovido sozinho a verdade psicológica; divergências sistemáticas
+entre uso digital registrado e autorrelatado reforçam a necessidade de declarar
+o que cada fonte observa
+([Parry et al. (2021)](referencias.md#ref-parry2021digitalmedia)).
+
+## 9. Prática de recuperação e formato de resposta
 
 **Prática de recuperação** exige produzir conhecimento ou tomar uma decisão sem
 reexposição integral ao conteúdo-alvo. Estudos experimentais e revisões
@@ -387,21 +634,21 @@ de um formato não o torna automaticamente mais educativo.
   recuperação; formatos repetidos podem medir apenas reconhecimento.
 - **Alternativas e requisitos:** formato fixo, rotação aleatória ou resposta
   escolhida pela operação; são necessários correspondência entre objetivo e resposta,
-  dados suficientes no card, feedback e possibilidade de ação posterior.
-- **Decisão:** escolher a resposta pelo gesto cognitivo e materializar lacunas
+  dados suficientes na unidade, feedback e possibilidade de ação posterior.
+- **Decisão:** escolher a resposta pela operação-alvo da tarefa e materializar lacunas
   dentro do objeto representado; cada lacuna possui estado e opções próprios.
 - **Fundamentação:** recuperação apresenta benefícios em diferentes contextos,
   mas formatos e transferência possuem moderadores
   ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 - **Operacionalização:** cada prática declara o que verifica e posiciona a
   resposta no lugar estrutural da decisão.
-- **Consequências e hipótese:** combinar reconhecimento e produção de forma planejada pode
+- **Consequências e hipótese:** articular reconhecimento e produção de forma planejada pode
   apoiar resultados diferentes.
 - **Limites e evidência necessária:** acerto imediato não demonstra retenção e
   dificuldade percebida não demonstra aprendizagem. É necessário medir compreensão imediata, retenção e transferência
   separadamente.
 
-## 8. Prática distribuída e intercalação
+## 10. Prática distribuída e intercalação
 
 A prática distribuída apresenta base empírica ampla, mas o intervalo favorável
 depende do horizonte de retenção e de outras características
@@ -424,16 +671,16 @@ discriminação, com moderadores como similaridade
   alternar categorias relacionadas.
 - **Consequências e hipótese:** retomada e discriminação planejadas podem apoiar retenção e
   seleção de procedimento.
-- **Limites e evidência necessária:** variedade de cards não equivale a
+- **Limites e evidência necessária:** variedade de unidades não equivale a
   intercalação. É necessária tarefa posterior em intervalo justificado e casos
   que realmente exigem discriminação.
 
-## 9. Feedback, ação e baixa consequência
+## 11. Feedback, ação e baixa consequência
 
 O feedback não é eficaz apenas por ser imediato. Seus efeitos variam conforme
-foco, conteúdo, timing, tarefa e possibilidade de ação
-([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Shute (2008)](referencias.md#ref-shute2008feedback); [Morris et al. (2021)](referencias.md#ref-morris2021formative)). A noção de
-*feedback literacy* desloca a atenção da mensagem entregue para a capacidade de
+foco, conteúdo, momento, tarefa e possibilidade de ação
+([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Shute (2008)](referencias.md#ref-shute2008feedback); [Morris et al. (2021)](referencias.md#ref-morris2021formative)). A competência para interpretar e usar feedback
+(*feedback literacy*) desloca a atenção da mensagem entregue para a capacidade de
 interpretar, julgar e usar essa informação ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Wood (2021)](referencias.md#ref-wood2021dialogic)). Feedback também pode corrigir avaliações metacognitivas
 equivocadas, como respostas corretas dadas com baixa confiança
 ([Butler et al. (2008)](referencias.md#ref-butler2008confidence)).
@@ -461,35 +708,35 @@ redução de ansiedade.
   demonstra uso do feedback. A avaliação precisa pedir que a pessoa explique o feedback, revise sua
   estratégia e aplique o aprendizado em outro item.
 
-## 10. Participação, colaboração e autoria
+## 12. Participação, responsabilidade e acesso
 
-Aprendizagem ocorre por mediações, instrumentos e relações sociais
-([Vygotsky (1978)](referencias.md#ref-vygotsky1978mind)). Apoio pode ser contingente e retirado à medida que a pessoa
+A aprendizagem ocorre por mediações, instrumentos e relações sociais
+([Vygotsky (1978)](referencias.md#ref-vygotsky1978mind)). O apoio pode ser contingente e retirado à medida que a pessoa
 assume partes da tarefa ([Wood et al. (1976)](referencias.md#ref-wood1976tutoring)). Comunidades de prática ajudam a
 compreender participação e construção de significado, mas também podem
-habilitar ou inibir agência ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)).
+habilitar ou inibir agência ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Essas fontes não
+permitem tratar acesso comum a um Curso como colaboração ou comunidade.
 
-Um **workspace** é um espaço de trabalho com membros, conteúdo e permissões
-locais. Essas fontes não permitem chamar qualquer workspace de comunidade ou qualquer
-comentário de colaboração.
-
-- **Problema:** autoria individual ou coletiva precisa de contexto, permissão,
-  responsabilidade e possibilidade de revisão sem poder global.
-- **Alternativas e requisitos:** papéis globais, espaços pessoais isolados ou
-  capacidades locais e revogáveis com proveniência.
-- **Decisão:** organizar permissões localmente, conservar proveniência e manter
-  publicação, estrutura e contribuição como ações distintas.
+- **Problema:** compartilhar um Curso para estudo precisa preservar acesso
+  revogável sem tornar difusa a responsabilidade por sua autoria.
+- **Alternativas e requisitos:** edição coletiva por papéis, isolamento pessoal
+  completo ou propriedade do Curso com compartilhamento direto para Estudo.
+- **Decisão:** reservar a Autoria à pessoa proprietária e conceder a outras
+  pessoas somente o Estudo e o estado pessoal associado.
 - **Fundamentação:** participação e agência coletiva dependem do contexto e das
-  relações sociais ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)).
-- **Operacionalização:** cada workspace delimita membros, papéis, capacidades e
-  autoria de mudanças.
-- **Consequências e hipótese:** papéis compreensíveis e revogáveis podem apoiar coordenação e
-  responsabilidade.
-- **Limites e evidência necessária:** acesso comum, copresença ou quantidade de
-  mensagens não demonstram colaboração. São necessárias tarefas de convite, contribuição, revisão,
-  revogação e explicação de papéis, acompanhadas de análise qualitativa.
+  relações sociais ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). A distinção entre propriedade e acesso
+  torna explícito que participação social não decorre de um papel cadastrado.
+- **Operacionalização:** a autorização é calculada por Curso e operação; o
+  acesso direto pode ser concedido ou revogado, e as mudanças autorais preservam
+  origem e revisão.
+- **Consequências e hipótese:** uma fronteira compreensível entre autoria e
+  Estudo pode apoiar responsabilidade e reduzir erros de permissão.
+- **Limites e evidência necessária:** acesso, copresença ou quantidade de
+  Observações não demonstram colaboração. A avaliação precisa incluir tarefas
+  de compartilhamento, revogação e explicação de responsabilidade. Autoria
+  coletiva continua sendo uma questão de pesquisa, não uma capacidade vigente.
 
-## 11. Inteligência artificial generativa, recuperação de contexto e controle humano
+## 13. Inteligência artificial generativa, recuperação de contexto e controle humano
 
 Um **modelo de linguagem de grande porte** (LLM, do inglês *large language
 model*) estima e produz sequências de linguagem a partir de instruções e
@@ -503,7 +750,7 @@ interpretação ou geração. Nem todo mecanismo de consulta de contexto deve se
 chamado de RAG; o termo exige que a recuperação integre a arquitetura de
 geração de modo identificável.
 
-Diretrizes de interação humano–IA recomendam comunicar capacidades e limites,
+Diretrizes para interação entre pessoas e IA recomendam comunicar capacidades e limites,
 oferecer feedback e permitir correção ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Funções que exigem
 reflexão podem reduzir dependência excessiva em alguns cenários, mas também
 introduzem custo e não se transferem automaticamente
@@ -518,7 +765,7 @@ risco, transparência, proteção de dados e responsabilidade humana
   especializados, escopo gravável explícito, validação, auditoria, iteração e
   reversão.
 - **Decisão:** apresentar primeiro o catálogo de intenções, recuperar o contrato
-  do recurso escolhido, separar contexto somente leitura de alvos editáveis e
+  do componente escolhido, separar contexto somente leitura de alvos editáveis e
   manter decisão editorial humana.
 - **Fundamentação:** recuperação de contexto não elimina erro
   ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)); interação responsável exige limites, correção e controle
@@ -530,10 +777,11 @@ risco, transparência, proteção de dados e responsabilidade humana
   garantem qualidade factual, pedagógica ou acadêmica. São necessárias tarefas com modelos e contextos variados, incluindo
   erro factual, lacuna do catálogo, mudança de escopo, rejeição e reversão.
 
-## 12. Learning analytics, privacidade e interpretação
+## 14. Análise de dados educacionais, privacidade e interpretação
 
-Learning analytics envolve mais que coletar e exibir dados. Transparência,
-controle, responsabilidade e finalidade são princípios éticos relevantes
+A análise de dados educacionais, também conhecida como *learning analytics*,
+envolve mais que coletar e exibir dados. Transparência, controle,
+responsabilidade e finalidade são princípios éticos relevantes
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). Abordagens centradas nas pessoas
 tratam feedback informado por dados como processo humano e dialógico
 ([Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
@@ -547,20 +795,58 @@ qualidade docente.
   indicadores sem pergunta ou intervenção legítima.
 - **Alternativas e requisitos:** coletar tudo, proibir qualquer dado ou definir
   finalidade, interpretação e ação antes da coleta.
-- **Decisão:** definir pergunta, construto, manifestação, interpretação,
-  alternativas, intervenção, retenção, acesso e custo antes de coletar.
-- **Fundamentação:** ética de analytics exige finalidade, transparência,
+- **Decisão:** a área Pesquisa expõe fatos do processo de Autoria e contagens
+  descritivas por conjunto, tipo e estado. Ela não acrescenta telemetria
+  comportamental de Estudo e retira identidade de conta, texto bruto de
+  Observações e cópias integrais de conteúdo.
+- **Fundamentação:** a ética da análise de dados exige finalidade, transparência,
   proporcionalidade e participação ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
-- **Operacionalização:** cada indicador precisa de ficha que relacione dado,
-  construto, decisão autorizada, retenção e responsabilidade.
-- **Consequências e hipótese:** essa governança pode produzir informação mais compreensível e
-  proporcional com menor risco de vigilância.
+- **Operacionalização:** cada consulta fixa Curso, revisão, filtros e instante de
+  corte. Gráfico, tabela, lista, CSV, JSON e MCP usam o mesmo recorte. As
+  métricas correntes declaram pergunta, unidade, denominador, tratamento de
+  ausências e inferências vedadas.
+- **Consequências e hipótese:** fatos rastreáveis e definições explícitas podem
+  tornar análises do processo autoral mais reprodutíveis e proporcionais, com
+  menor risco de vigilância.
 - **Limites e evidência necessária:** coletar menos é decisão normativa e
   técnica; efeitos sobre confiança, uso ou aprendizagem precisam ser
-  investigados por co-design, teste de interpretação, utilidade para
+  investigados por desenho participativo, teste de interpretação, utilidade para
   decisões reais e análise de efeitos adversos.
 
-## 13. Construção e avaliação do artefato
+## 15. Métrica, indicador, desfecho e validade
+
+Guardar um evento com precisão não valida a interpretação construída sobre ele.
+Validade diz respeito à sustentação das interpretações e dos usos de uma medida
+em determinada população, tarefa e decisão; não é um selo permanente do campo
+de banco, do instrumento ou do algoritmo
+([Messick (1995)](referencias.md#ref-messick1995validity);
+[American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
+
+Para a pesquisa no AraLearn, os níveis ficam separados:
+
+- **dado bruto** é o observável preservado com contexto, unidade e proveniência;
+- **métrica** é uma regra de cálculo versionada;
+- **medida** é o valor observado ou derivado pela aplicação dessa regra;
+- **indicador** é uma interpretação declarada para apoiar uma finalidade;
+- **desfecho de pesquisa** é a variável escolhida como resultado no protocolo.
+
+Uma contagem de anotações, por exemplo, pode ser dado e medida de frequência.
+Ela só se torna indicador de carga de revisão sob uma justificativa explícita e
+não mede automaticamente dificuldade, qualidade, engajamento ou atenção. O
+mesmo vale para proporção teoria–prática, distribuição de componentes,
+quantidade de conceitos anotados, tempo de materialização e taxa de correção.
+
+- **Decisão:** conservar fatos de autoria e planejamento em granularidade
+  suficiente para recalcular métricas; versionar definição, fórmula,
+  denominador e filtros; registrar interpretação permitida e proibida.
+- **Hipótese:** ligar configuração, fonte, anotação, correção e versão do
+  conteúdo pode permitir análises reprodutíveis do processo de autoria.
+- **Limites e evidência necessária:** reprodutibilidade técnica não demonstra
+  validade educacional ou causalidade. Cada estudo precisa justificar
+  instrumento, população, momento, dados ausentes, incerteza, comparações e
+  consequências do uso.
+
+## 16. Construção e avaliação do artefato
 
 Design-Based Research (DBR) investiga intervenções educacionais por ciclos em
 contextos autênticos e busca explicar relações entre teoria, design e prática
@@ -569,7 +855,7 @@ organiza construção, demonstração e avaliação de artefatos e do conhecimen
 design que incorporam ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)).
 
 Gregor e Hevner ajudam a posicionar a contribuição conforme a maturidade do
-problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). O framework FEDS distingue
+problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). O quadro FEDS distingue
 finalidade formativa ou somativa e ambiente artificial ou naturalístico
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
@@ -589,38 +875,49 @@ Para o AraLearn, as tradições são complementares:
 | --- | --- | --- |
 | unidades menores são sempre melhores | não sustentada | dimensionar por objetivo, relações e conhecimentos prévios |
 | cardinalidade de unidades mede carga cognitiva | não sustentada | conservar estrutura, público e relações; usar contagem apenas como descrição operacional |
-| toda dimensão pedagógica deve receber score | falso | manter categorias, conjuntos, vetores e relações quando preservam melhor a decisão |
+| parágrafo, caracteres ou palavras delimitam unidade de sentido | falso como regra geral | declarar critério discursivo, anotação, denominador e versão |
+| toda unidade visual do AraLearn é um flashcard | falso | reservar flashcard para organização pista–resposta; separar unidade, gênero e atividade |
+| toda dimensão pedagógica deve receber pontuação | falso | manter categorias, conjuntos, vetores e relações quando preservam melhor a decisão |
 | mais representações melhoram aprendizagem | não sustentada | exigir função e adequação de cada representação |
-| resource disponível foi selecionado e usado | falso | distinguir conjunto permitido, escolha local e instância materializada |
+| transformar texto em imagem preserva necessariamente o mesmo conteúdo | falso | registrar relação, fonte, perdas, acréscimos e finalidade da transformação |
+| componente disponível foi selecionado e usado | falso | distinguir política vigente, escolha local e instância materializada |
 | recuperação e distribuição podem beneficiar aprendizagem | sustentada em múltiplos contextos, com moderadores | escolher operação, intervalo, feedback e medida |
-| oferecer controle produz autonomia | não sustentada como regra | combinar escolha significativa, estrutura e avaliação de agência |
+| oferecer controle produz autonomia | não sustentada como regra | articular escolha significativa, estrutura e avaliação de agência |
 | feedback funciona por ser imediato | simplificação indevida | estudar conteúdo, foco, interpretação e ação |
 | armazenamento local reduz atrito e melhora aprendizagem | primeira relação é hipótese; segunda requer estudo separado | medir retomada antes de inferir efeito educacional |
+| rolagem vertical demonstra atenção ou engajamento | falso | registrar gesto, ação e contexto; validar separadamente qualquer inferência psicológica |
 | contrato e RAG garantem correção | falso | validar, auditar, revisar e conservar controle humano |
 | rastros de uso medem aprendizagem | falso sem validação | partir de construto e finalidade, não do dado disponível |
+| uma fórmula reproduzível torna a métrica válida | falso | validar interpretação e uso para população, tarefa e decisão declaradas |
 
 ## Lacunas de conhecimento
 
 O corpus atual ainda precisa ser ampliado para:
 
-- comparar LMS, flashcards, tutores, sistemas de microlearning, ferramentas de
+- comparar sistemas de gestão da aprendizagem, itens de recuperação por pista–resposta, tutores, sistemas de microaprendizagem, ferramentas de
   autoria, sistemas local-first e catálogos extensíveis sem reduzir suas
   diferenças;
 - caracterizar estudantes-trabalhadores e situações reais de conectividade;
-- selecionar e validar medidas de retomada, carga, agência, feedback literacy e
+- selecionar e validar medidas de retomada, carga, agência, competência para usar feedback e
   qualidade autoral;
-- mapear convenções representacionais e operações cognitivas em mais áreas do
+- mapear gêneros discursivos, critérios de segmentação, convenções
+  representacionais e operações-alvo em mais áreas do
   conhecimento;
-- estudar composição de múltiplas representações num mesmo card;
+- estudar composição e transformação de múltiplas representações numa mesma
+  unidade de estudo;
 - investigar explicação progressiva para novatos sem perda de profundidade;
 - avaliar se autores compreendem e corrigem unidades, conjuntos de coordenação,
   requisitos de explicação e requisitos de evidência;
 - validar limites locais de novidade, coordenação e oportunidades de prática
   sem promovê-los a escalas psicológicas;
-- comparar condições de `ResourceSet` e registrar quando nenhuma representação
-  permitida é adequada;
+- comparar políticas de componentes e registrar quando nenhuma representação
+  disponível é adequada;
 - separar compreensão imediata, retenção e transferência em formatos de
   prática diferentes;
+- comparar sequência vertical, paginação e outras formas de inspeção autoral
+  sem usar rolagem ou permanência como medidas substitutas de atenção;
+- validar definições e instrumentos para densidade conceitual, complexidade
+  textual, engajamento e qualidade autoral;
 - investigar modelos de IA de capacidades e custos distintos na autoria;
 - estudar governança, proveniência, poder e autoria coletiva;
 - registrar mecanismos que falham, resultados nulos e efeitos adversos.
@@ -634,5 +931,5 @@ O corpus atual ainda precisa ser ampliado para:
 - [Glossário de construtos](glossario-construtos.md)
 - [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
 - [Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md)
-- [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)
+- [Fundamentação pedagógica das representações](fundamentacao-pedagogica-dos-resources.md)
 - [Contribuição e originalidade](contribuicao-originalidade.md)

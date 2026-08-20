@@ -3,20 +3,13 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseJavaScript } from "espree";
-import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 const CACHE_REVISION_PLACEHOLDER = "__ARALEARN_CACHE_REVISION__";
-
-const runtimeStaticAssets = [
-  "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
-  "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
-  "docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md",
-  "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md",
-  "docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml"
-];
+const FORBIDDEN_PUBLISHED_SURFACE = /(?:remote-(?:library|workspace)|learning-spaces|authoring-workspace|workspace-authoring|home-trails|aralearn:open-library|\b(?:Workspace|Trilhas?|Coleções?)\b)/iu;
+const FORBIDDEN_CANONICAL_IDENTITY = /\b(?:moduleKey|lessonKey|microsequenceKey|cardKey|completedCardKeys|completedCardIds|cursorCardId|editorProgress)\b/u;
 
 function fail(message) {
   throw new Error(message);
@@ -179,18 +172,6 @@ async function copyRuntimeJavaScript(runtimeRoot) {
   }
 }
 
-async function copyRuntimeStaticAssets(publicDestination) {
-  for (const relativePath of runtimeStaticAssets) {
-    const sourcePath = path.join(repositoryRoot, relativePath);
-    try {
-      await fs.access(sourcePath);
-    } catch {
-      fail(`Material público do assistente ausente: ${relativePath}`);
-    }
-    await copyFile(sourcePath, path.join(publicDestination, relativePath));
-  }
-}
-
 async function rewritePagesMainImport(runtimeRoot) {
   const mainPath = path.join(runtimeRoot, "main.js");
   const source = await fs.readFile(mainPath, "utf8");
@@ -203,6 +184,22 @@ function normalizeArtifactPath(value) {
 }
 
 async function writePagesAssetManifest(runtimeRoot) {
+  const packageMetadata = JSON.parse(await fs.readFile(
+    path.join(repositoryRoot, "package.json"),
+    "utf8"
+  ));
+  const version = String(packageMetadata.version || "").trim();
+  if (!/^\d+\.\d+\.\d+$/u.test(version)) {
+    fail("package.json não contém uma versão publicável válida.");
+  }
+  const serviceWorkerSource = await fs.readFile(
+    path.join(runtimeRoot, "service-worker.js"),
+    "utf8"
+  );
+  const revision = serviceWorkerSource.match(
+    /const CACHE_NAME = `\$\{CACHE_PREFIX\}([a-f0-9]{20})`;/u
+  )?.[1];
+  if (!revision) fail("service-worker.js não contém a revisão final do artefato.");
   const files = await listFiles(runtimeRoot);
   const assets = files
     .map((filePath) => normalizeArtifactPath(path.relative(runtimeRoot, filePath)))
@@ -212,7 +209,7 @@ async function writePagesAssetManifest(runtimeRoot) {
     .sort();
   await fs.writeFile(
     path.join(runtimeRoot, "asset-manifest.json"),
-    `${JSON.stringify({ assets }, null, 2)}\n`,
+    `${JSON.stringify({ version, revision, assets }, null, 2)}\n`,
     "utf8"
   );
 }
@@ -256,7 +253,7 @@ function decodeJwtPayload(token) {
   }
 }
 
-function publicRuntimeConfig({ target = "pages" } = {}) {
+function publicRuntimeConfig() {
   const supabaseUrl = String(process.env.ARALEARN_SUPABASE_URL || "").trim().replace(/\/+$/, "");
   const supabasePublishableKey = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim();
   const payload = decodeJwtPayload(supabasePublishableKey);
@@ -279,34 +276,27 @@ function publicRuntimeConfig({ target = "pages" } = {}) {
       fail("ARALEARN_SUPABASE_URL deve usar HTTPS fora do desenvolvimento local.");
     }
   }
-  const assistAllowedOrigins = buildAssistAllowedOrigins({
-    configured: process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
-    development: target === "android"
-  });
   return {
     supabaseUrl,
-    supabasePublishableKey,
-    assistAllowedOrigins,
-    androidRuntime: target === "android"
+    supabasePublishableKey
   };
 }
 
-async function writeRuntimeConfig(publicDestination, target) {
-  const config = publicRuntimeConfig({ target });
+async function writeRuntimeConfig(publicDestination) {
+  const config = publicRuntimeConfig();
   const source = `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify(config, null, 2)});\n`;
   await fs.writeFile(path.join(publicDestination, "runtime-config.js"), source, "utf8");
 }
 
-async function writeExactContentSecurityPolicy(publicDestination, target) {
-  const config = publicRuntimeConfig({ target });
+async function writeExactContentSecurityPolicy(publicDestination) {
+  const config = publicRuntimeConfig();
   const indexPath = path.join(publicDestination, "index.html");
   const source = await fs.readFile(indexPath, "utf8");
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) {
     fail("Placeholder da CSP ausente em public/index.html.");
   }
   const connectSource = [
-    config.supabaseUrl ? new URL(config.supabaseUrl).origin : "",
-    ...config.assistAllowedOrigins
+    config.supabaseUrl ? new URL(config.supabaseUrl).origin : ""
   ].filter(Boolean).join(" ");
   const rewritten = source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource);
   if (/connect-src[^;]*\bhttps:\s/u.test(rewritten)) {
@@ -349,6 +339,27 @@ async function validateArtifact(runtimeRoot) {
     fail(`Curso ou catálogo operacional presente no artefato: ${packagedCourseFiles.join(", ")}.`);
   }
 
+  const publishedContracts = artifactFiles.filter((filePath) => {
+    const relativePath = normalizeArtifactPath(path.relative(runtimeRoot, filePath));
+    return ["styles.css", "course-authoring.css"].includes(path.posix.basename(relativePath))
+      || relativePath.endsWith("/src/ui/OAuthAuthorizationConsent.js")
+      || relativePath === "src/ui/OAuthAuthorizationConsent.js";
+  });
+  for (const filePath of publishedContracts) {
+    const source = await fs.readFile(filePath, "utf8");
+    if (FORBIDDEN_PUBLISHED_SURFACE.test(source)) {
+      fail(`Superfície ou cópia substituída presente no runtime: ${normalizeArtifactPath(path.relative(runtimeRoot, filePath))}.`);
+    }
+  }
+
+  for (const filePath of artifactFiles.filter((candidate) =>
+    path.extname(candidate).toLowerCase() === ".js")) {
+    const source = await fs.readFile(filePath, "utf8");
+    if (FORBIDDEN_CANONICAL_IDENTITY.test(source)) {
+      fail(`Identidade didática substituída presente no runtime: ${normalizeArtifactPath(path.relative(runtimeRoot, filePath))}.`);
+    }
+  }
+
 }
 
 async function stageRuntime({ target, outputPath }) {
@@ -358,9 +369,8 @@ async function stageRuntime({ target, outputPath }) {
   await fs.rm(outputPath, { recursive: true, force: true });
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
-  await copyRuntimeStaticAssets(publicDestination);
-  await writeRuntimeConfig(publicDestination, target);
-  await writeExactContentSecurityPolicy(publicDestination, target);
+  await writeRuntimeConfig(publicDestination);
+  await writeExactContentSecurityPolicy(publicDestination);
   await copyRuntimeJavaScript(runtimeRoot);
   if (target === "pages") {
     await rewritePagesMainImport(runtimeRoot);

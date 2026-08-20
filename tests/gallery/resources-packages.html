@@ -25,7 +25,7 @@
   <body>
     <main class="resource-gallery" aria-label="Galeria de packages"></main>
     <script type="module">
-      import { renderPackageCardBlocks } from "/src/render/renderPackageCard.js";
+      import { renderPackageStudyUnitBlocks } from "/src/render/renderPackageStudyUnit.js";
       import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
 
       const response = await fetch("/tests/fixtures/package/project-resources-gallery.json", {
@@ -33,14 +33,14 @@
       });
       if (!response.ok) throw new Error("Não foi possível carregar a fixture da galeria.");
       const library = await response.json();
-      const cards = library.courses[0].modules[0].lessons[0].microsequences[0].cards;
+      const studyUnits = library.courses[0].modules[0].lessons[0].microsequences[0].studyUnits;
       const gallery = document.querySelector(".resource-gallery");
-      cards.forEach((card) => {
-        const packageId = card.response?.package || card.content[0]?.package;
+      studyUnits.forEach((studyUnit) => {
+        const packageId = studyUnit.response?.package || studyUnit.content[0]?.package;
         const article = document.createElement("article");
         article.className = "resource-gallery-card";
         article.dataset.resource = packageId;
-        article.innerHTML = `<h2>${card.title}</h2>${renderPackageCardBlocks(card)}`;
+        article.innerHTML = `<h2>${studyUnit.title}</h2>${renderPackageStudyUnitBlocks(studyUnit)}`;
         gallery.append(article);
       });
       await RESOURCE_PACKAGE_REGISTRY.hydrate(gallery);

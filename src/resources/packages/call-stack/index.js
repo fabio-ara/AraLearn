@@ -20,7 +20,7 @@ export const callStackPackage = Object.freeze({
     label: "Pilha de chamadas",
     purpose: "Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["trace-call", "inspect-frame", "locate-local-variable", "explain-return"]),
+    taskOperations: Object.freeze(["trace-call", "inspect-frame", "locate-local-variable", "explain-return"]),
     academic: academicProfile({
       domains: ["programação", "compiladores", "sistemas operacionais", "segurança de software"],
       knowledgeObjects: ["quadro de ativação", "pilha de chamadas", "parâmetro", "variável local", "continuação no chamador"],

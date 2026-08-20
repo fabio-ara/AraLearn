@@ -1,249 +1,250 @@
-# Auditoria do front-end
+# Auditoria da interface
 
-Auditar a interface significa verificar sistematicamente se ela cumpre suas finalidades e regras. A auditoria não procura apenas “telas bonitas”: verifica se a pessoa consegue localizar, estudar e alterar conteúdo sem conhecer detalhes internos do sistema.
+Auditar a interface significa verificar se a pessoa consegue localizar,
+estudar e alterar o que lhe pertence sem conhecer detalhes internos do sistema.
+Não basta encontrar elementos no DOM: é preciso provar conexão com o domínio,
+persistência, autorização, rede e comportamento real.
 
-## Vocabulário inicial
+## 1. Método
 
-- **front-end** é a parte do sistema apresentada à pessoa no navegador ou no aplicativo;
-- **contrato** é uma regra verificável sobre a forma de dados ou o comportamento de uma operação;
-- **evidência executável** é um teste ou verificador que pode ser repetido para confrontar uma afirmação com o sistema;
-- **token de design** é um nome estável para uma decisão visual, como cor de ação ou espaçamento;
-- **IndexedDB** é o banco de dados do navegador usado como réplica local;
-- **Playwright** é a ferramenta que automatiza jornadas em um navegador real; um **smoke test** é uma verificação breve das funções essenciais no ambiente implantado;
-- **hash** é um resumo calculado de um conteúdo; **cursor** marca uma posição numa leitura paginada; **CAS** (*compare-and-swap*) rejeita uma gravação quando a revisão mudou desde a leitura;
-- **JWT** é o token assinado que identifica uma sessão perante o servidor;
-- **JSON** é um formato textual de dados; **schema** é o conjunto de regras que descreve sua forma aceita;
-- **provider** é o serviço externo que executa um modelo usado pela assistência.
-- **reflow** é a reorganização do conteúdo quando a largura, o tamanho do texto ou a ampliação mudam, sem perda de informação nem sobreposição.
+Cada requisito é examinado em seis níveis:
 
-Este documento descreve o método, a interface esperada e os limites da evidência. O [sistema visual](sistema-visual.md) detalha tokens e acessibilidade; a [matriz de conformidade](matriz-conformidade-tecnica.md) liga afirmações a código e testes.
+1. **semântica:** o controle representa a tarefa anunciada;
+2. **conexão:** a interação alcança o domínio e o serviço corretos;
+3. **autoridade:** interface, Edge Function e PostgreSQL impõem o mesmo limite;
+4. **estado:** carregamento, vazio, ausência de conexão, conflito e falha são distinguíveis;
+5. **interação:** toque, teclado, foco, retorno e rolagem funcionam;
+6. **proporcionalidade:** DOM, volume de dados, cópia local e chamadas têm limites verificáveis.
 
-## 1. Método de auditoria
-
-Cada requisito é examinado em cinco níveis:
-
-1. **semântica**: o controle representa a tarefa que anuncia;
-2. **autoridade**: a ação só aparece e só é aceita quando autorizada;
-3. **estado**: carregamento, sucesso, conflito e falha são distinguíveis;
-4. **interação**: toque, teclado, retorno, rolagem e foco funcionam;
-5. **integração**: IndexedDB, rede e servidor não criam resultados contraditórios.
-
-As evidências recebem pesos diferentes:
+As evidências possuem alcances diferentes:
 
 | Evidência | O que demonstra | O que não demonstra |
-|---|---|---|
-| inspeção de código | responsabilidade e fluxo implementados | execução em todos os ambientes |
-| teste unitário | regra isolada | integração visual completa |
-| Playwright | jornada no navegador e geometria medida | uso prolongado ou diversidade humana |
-| smoke remoto | comunicação no ambiente implantado | disponibilidade futura |
-| avaliação com pessoas | compreensibilidade e carga percebida | ausência de defeito técnico fora da amostra |
+| --- | --- | --- |
+| inspeção de código | responsabilidade e fluxo previsto | execução no navegador |
+| teste unitário | regra isolada | geometria e integração completas |
+| teste de navegador | jornada e medidas no motor real | compreensão humana prolongada |
+| PostgreSQL real | restrições, concorrência e privilégios | disponibilidade hospedada futura |
+| avaliação com pessoas | compreensão e carga percebida na amostra | ausência geral de defeitos |
 
-Uma alegação só é chamada de confirmada no escopo que a evidência realmente cobre.
+Uma alegação só é confirmada dentro do alcance da evidência usada.
 
-## 2. Modelo de navegação
+## 2. Navegação corrente
 
 ```text
 Shell
 ├── Estudo
-│   └── Trilhas → curso → módulo → lição → microssequência → card
-└── Autoria
-    ├── Workspaces
-    │   └── Mapa | Desenho | Conteúdo | Auditoria
-    └── Coleções
+│   └── Curso → Módulo → Lição → Microssequência → Unidade de estudo
+├── Autoria
+│   └── Curso próprio
+│       ├── Planejamento
+│       ├── Parâmetros
+│       ├── Fontes
+│       ├── Estrutura
+│       ├── Inspeção
+│       ├── Auditoria e correções
+│       ├── Variantes
+│       ├── Pesquisa
+│       └── Pessoas
+└── Conta e aparência
 ```
 
-`Trilhas` reúne organização pessoal e entrada no estudo. `Workspaces` apresenta
-o estado autoral persistido; `Coleções` apresenta o catálogo e, para contas
-autorizadas, controles editoriais. Não há Coleções duplicada em Estudo nem chat
-interno de Autoria. O registro de destinos admite **Resultados** quando a
-capability e os dados da etapa correspondente existirem.
+Estudo lista Cursos próprios e compartilhados. Autoria lista somente Cursos
+próprios; receber acesso direto não concede edição. O seletor Estudo/Autoria
+muda a tarefa sem criar outra identidade de Curso.
 
-### Decisão de vocabulário
+O vocabulário visível usa Curso, Parte, Módulo, Lição, Microssequência e Unidade
+de estudo. Revisão CAS, cursor, hashes e nomes de RPC pertencem ao protocolo e
+só aparecem quando necessários ao diagnóstico.
 
-O front-end expõe conceitos que ajudam a agir: grupo, curso, módulo, lição, microssequência, card e coleção. Estados técnicos como hash, cursor, revisão CAS, `partial` ou `ready` permanecem no protocolo. Quando um conflito exige decisão, a mensagem explica que o conteúdo mudou e precisa ser recarregado; não apresenta apenas o código interno.
+## 3. Tela inicial, Estudo e estado pessoal
 
-Essa abstração reduz carga, mas não pode esconder consequências. Retirar um curso de Trilhas, excluir uma composição privada e retirar uma publicação de Coleções são comandos diferentes e recebem rótulos e confirmações próprios.
+A tela inicial usa listas finas paginadas. Um item informa o necessário para localizar
+e abrir o Curso, sem baixar milhares de Unidades. Ao entrar em Estudo, o cliente
+fixa uma revisão, lê páginas de entidades, recusa mistura entre revisões,
+recompõe `aralearn.course.v1` e só então substitui a cópia local válida.
 
-## 3. Estudo, Workspaces e Coleções
+O percurso de Estudo apresenta uma Unidade por vez. Resposta e feedback são
+locais ao ciclo corrente; avançar não espera a persistência remota. Progresso e
+marcas para rever formam o estado pessoal v2. Anotações ancoradas próprias usam
+persistência separada; nenhum desses fluxos incrementa a revisão autoral do
+Curso apenas por continuidade ou triagem.
 
-### Trilhas
+Sem rede, conteúdo íntegro já carregado pode continuar em Estudo. Estado pessoal
+e Anotações ancoradas possuem filas separadas para uso sem conexão. Alteração autoral fora
+desse contrato não simula sucesso quando o servidor ou a revisão corrente não
+estão disponíveis.
 
-A tela inicial carrega a projeção paginada de grupos, planejamentos, composições e seleções. Um cache por conta substitui a projeção anterior somente quando todas as páginas chegam. Sem rede, o cache é leitura local; não concede autoridade nova.
+O proprietário coordena a caixa de entrada pela versão global. Estudo coordena
+cópia local, paginação e duas abas por uma versão monotônica privada da própria
+projeção; atividade de terceiros não muda esse valor nem se torna observável.
 
-Grupos e cursos usam ordem alfabética em português. A posição pedagógica dentro do curso continua explícita. Menus contextuais operam no item a que pertencem: criar ou renomear grupo, mover item, editar rótulo e retirar ou excluir quando permitido. Formulários surgem junto ao rótulo e devolvem foco ao acionador.
+## 4. Autoria
 
-### Coleções
+### Planejamento
 
-Coleções é carregada quando sua aba é aberta. Pesquisa, seleção e abertura são o estado comum. Controles de administrar coleção ou publicação dependem de capacidade resolvida no servidor.
+Planejamento edita título, objetivo, público, escopo, faixa preferencial, itens
+e Partes em linguagem natural. Criar, dividir, unir,
+reordenar ou retirar uma Parte não altera implicitamente a hierarquia didática.
+Copiar um pedido para o ChatGPT não inicia materialização nem grava progresso.
 
-Adicionar um curso oficial cria um vínculo leve em Trilhas. Abrir ou tocar Play não adiciona, move, copia nem publica. Essa separação é verificada em `tests/e2e/learning-spaces-panel.spec.js` e `tests/e2e/unified-home-trails.spec.js`.
+### Parâmetros
 
-### Autoria
+Parâmetros percorre Curso, Módulo, Lição e Microssequência e separa valor
+efetivo, atribuição local, orientação original, interpretação e política de
+componentes. Numa Microssequência, a cobertura planejada oferece controles de seleção
+para atribuir unidades de análise e requisitos de evidência. O estado visual é
+a relação muitos-para-muitos real: não apresenta o plano inteiro como se todo
+item pertencesse a todo alvo e não exige JSON.
 
-A entrada de Autoria apresenta somente Workspaces e Coleções. Um card de
-workspace usa o estado canônico `planning`, `building`, `audit_pending` ou
-`ready`; não infere construção pela quantidade de cards, por publicação nem por
-uma fatia que o dispositivo visitou anteriormente.
+### Fontes
 
-Dentro do workspace, uma única superfície fica ativa:
+A área Fontes mantém catálogo privado, revisões, Âncoras e atribuições. O envio de PDF
+ocorre em duas fases: a API de Cursos autoriza o objeto, o navegador o envia ao
+Storage privado e uma operação relacional confirma o vínculo. A interface não
+trata um arquivo enviado, mas ainda não confirmado, como parte do Curso.
 
-- **Mapa** projeta Partes e microssequências com estados compactos de plano,
-  análise, materialização e finding;
-- **Desenho** mostra parâmetros aplicáveis, valor efetivo, Auto, override e
-  lock, além de Resources sob disclosure;
-- **Conteúdo** abre o leitor corrente e preserva um contexto explícito de
-  retorno;
-- **Auditoria** lista findings progressivamente e abre o alvo disponível.
+### Estrutura
 
-No celular, os destinos formam navegação compacta; no desktop, tornam-se rail
-vertical. A composição muda, mas as operações disponíveis não. Um workspace
-compartilhado pode abrir uma prévia transitória no leitor sem ser selecionado em
-Trilhas; ao sair da prévia, projeto e seleção de Estudo são restaurados.
+Estrutura apresenta Módulos, Lições e Microssequências em páginas compactas.
+Ela serve para localização; não duplica a sequência de leitura da Inspeção.
 
-Resources não expõe identificadores de packages. A UI começa pelo resumo,
-permite escolher explicitamente entre conjuntos efetivos, filtra o catálogo por
-famílias/facetas e preserva seleções invisíveis entre páginas. Aplicar a
-microssequência, lição, curso ou grupo de microssequências gera resultados por
-alvo; conflito parcial nunca vira sucesso total.
+### Inspeção
 
-## 4. Hierarquia e estudo
+Inspeção apresenta uma sequência vertical fiel de Unidades, com respostas e
+edição desativadas. O filtro aceita Curso, Parte, Unidades sem Parte, Módulo,
+Lição ou Microssequência. Um link profundo usa âncora inclusiva; páginas
+posteriores e anteriores usam cursor `{studyUnitId}`. Âncora e cursor são
+mutuamente exclusivos.
 
-Curso, módulo, lição e microssequência são superfícies de navegação progressiva. A pessoa vê objetivo e filhos do nível corrente sem precisar percorrer um grafo de autoria.
+A interface pede 12 itens por página, admite resposta de até 24 e mantém no DOM
+no máximo 36 Unidades. Itens distantes viram espaçadores, e a busca ocorre nas
+duas direções. O contexto fixo, foco, controles abertos e posição visual não
+devem saltar quando a janela muda.
 
-No card, o Play segue dois estados:
+A posição local conserva escopo, `studyUnitId`, deslocamento em relação ao topo
+fixo e revisão. Atualização concorrente reancora pela identidade; alvo removido
+explicitamente é informado como ausente. Coordenação entre abas não interrompe
+uma interação recente.
 
-1. confirma a resposta e materializa feedback local;
-2. no toque seguinte, avança.
+O armazenamento temporário distingue revisão e pedido completo, inclusive escopo, âncora ou cursor,
+direção, limite e `maxBytes`. Conserva no máximo quatro páginas ou 8 MiB por
+Curso. Sem rede, somente a página exata pode reaparecer, marcada como sem conexão ou
+desatualizada. Revogação ou outra perda de autoridade purga página e posição.
 
-A avaliação não aguarda persistência remota. O estado é gravado na réplica e sincronizado em seguida. Tema, retorno e retomada também operam sem depender de uma requisição pendente. A jornada de latência e falta de rede está em `tests/e2e/study-card-progression.spec.js`.
+### Auditoria e correções
 
-O cartão preserva posição de leitura quando o feedback aparece. Scroll interno só pertence a resources que precisam manter tamanho natural; tocar fora do frame continua rolando o card.
+A área separa Observações, rodadas, achados e correções. Responder ou resolver
+uma Observação não altera conteúdo. Aplicar uma correção exige confirmação,
+conserva o estado anterior e ainda precisa de outra rodada para verificar o
+critério focal. Essas operações exigem conexão.
 
-## 5. Ações contextuais e autoridade
+### Variantes
 
-Um controle é exibido quando a ação faz sentido naquele alvo e a conta possui capacidade conhecida. A interface falha fechada: capacidade ausente ou carregamento incompleto não habilita edição destrutiva.
+A área Variantes cria Cursos independentes a partir de um mesmo ponto do planejamento
+e compara diferenças declaradas, fatos correntes e desvios. Desvincular uma
+variante não exclui o Curso. A interface não apresenta a comparação como
+experimento nem como evidência de aprendizagem.
 
-Entretanto, esconder o controle não é a barreira de segurança. Toda escrita remota revalida JWT, relação, capacidade, revisão e estado. O front-end apenas previne tentativa inútil e comunica a autoridade efetiva.
+### Pesquisa
 
-| Alvo | Ações comuns | Condição |
-|---|---|---|
-| grupo pessoal | criar, renomear, excluir | conta proprietária |
-| curso privado | editar, mover, excluir | capacidade sobre a composição |
-| curso oficial selecionado | abrir, retirar de Trilhas | vínculo da conta |
-| publicação oficial | editar classificação, retirar de Coleções | capacidade editorial |
-| parte do workspace | editar texto, estrutura autorizada, observar | revisão e capacidade correntes |
+Pesquisa apresenta fatos da Autoria, definições de métricas, filtros, gráfico,
+tabela equivalente e exportação. A mesma consulta está disponível no MCP. A
+interface preserva denominador, dados ausentes e limites de interpretação e
+não transforma contagens descritivas em conclusão causal.
 
-Falha de escrita mantém a superfície de edição e seu texto. Edição textual pode permanecer como mudança local pendente; conflito CAS conserva a proposta e pede reconciliação, sem sobrescrever silenciosamente o remoto.
+### Pessoas
 
-## 6. Edição situada
+O proprietário concede Estudo por e-mail exato de uma conta existente e revoga
+pelo identificador retornado. Não há diretório, papel de coautoria ou convite
+pendente. A confirmação e a mensagem precisam distinguir acesso para Estudo de
+autoridade autoral.
 
-**Visualizar**, **Editar** e **Assistência por IA** pertencem à superfície montada
-e ocupam o centro da barra superior quando disponíveis. No leitor de cards, o
-nome do curso não cria outra linha visual: permanece apenas como contexto
-acessível. Voltar permanece à esquerda e o painel global, identificado por um
-ícone de áreas, à direita.
+## 5. Paridade entre interface e MCP
 
-### Visualizar
+A vista MCP `study_units` usa a mesma leitura exclusiva do proprietário usada pela Inspeção. A auditoria
+compara escopos, revisão esperada, âncora, cursor, direção, limite, orçamento de
+bytes, links profundos, ordem e erros. Uma das superfícies não pode corrigir ou
+reinterpretar silenciosamente a resposta da outra.
 
-Mostra o resultado do card e os controles de estudo. Não exibe JSON, caminhos de schema ou ferramentas autorais.
+Uma página normal usa orçamento de 512 KiB, configurável entre 64 KiB e
+1.500.000 bytes. A projeção completa falha fechada acima de 1,75 MiB, preservando
+margem sob o teto de 2 MiB. A interface deve apresentar erro recuperável sem
+tentar carregar o Curso inteiro por uma rota alternativa silenciosa.
 
-### Editar
+## 6. Autoridade e falha fechada
 
-Um contorno discreto indica a instância escolhida sem alterar sua geometria.
-Os rótulos, textos, legendas e descrições visíveis autorizados por
-`editableTargets()` recebem cursor de texto e caret exatamente onde já aparecem.
-Não surge formulário, painel de campos, caminho de schema ou prévia paralela.
-Ids, coordenadas, topologia, tipos de nó e textos apenas acessíveis são contexto
-protegido.
+Esconder um controle não é barreira de segurança. A auditoria confirma em
+conjunto:
 
-### Assistência por IA
+- Autoria e MCP listam somente Cursos próprios;
+- a RPC de Inspeção é concedida somente a `service_role` e revalida o ator;
+- a função auxiliar privada não possui execução para papéis de cliente;
+- Curso compartilhado permanece acessível apenas em Estudo;
+- conflito de revisão conserva a intenção e exige releitura;
+- revogação impede nova leitura pela rede e elimina a cópia privada conhecida.
 
-A seleção delimita a autoridade:
+Segurança por linha, privilégios e checagem de propriedade são camadas
+complementares. Uma função privilegiada incorreta não é corrigida apenas por
+esconder a rota na interface.
 
-- instância: somente seus textos declarados;
-- card: recomposição completa validada do card;
-- cards da microssequência: alteração ou criação dentro dessa microssequência;
-- microssequências da lição: no máximo uma nova microssequência no escopo autorizado.
+## 7. Sistema visual e acessibilidade
 
-Contexto adjacente pode ser lido, mas não gravado. A conversa conserva uma janela curta de turnos e versões em memória, com desfazer, refazer e restaurar. Resposta do provider é validada contra os contratos e o escopo antes de entrar na árvore.
+Verificação proporcional abre a aplicação real em 360, 390 e 430 px e em computador,
+nos temas claro, escuro e Sistema. Deve conferir:
 
-Os componentes principais estão em `src/ui/renderLessonScreen.js`, `src/render/renderPackageCard.js` e `src/assist/`. As jornadas estão em `tests/e2e/card-assistance.spec.js` e `tests/e2e/authoring-assistant.spec.js`.
+- ausência de conteúdo além da largura da página e de controles cortados;
+- uma única região principal de rolagem vertical na Inspeção;
+- foco visível, ordem de teclado e retorno ao acionador;
+- nomes e estados acessíveis para ícones;
+- alvos de toque e reorganização com ampliação;
+- contraste de texto, controles, feedback e dados;
+- preservação de foco e posição durante paginação e atualização.
 
-## 7. Estados de rede e persistência
+Automação de contraste e árvore acessível não substitui leitor de tela nem teste
+com participantes. A referência normativa é [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 
-O front-end distingue:
+## 8. Auditoria semântica sem falso positivo visual
 
-- conteúdo disponível localmente;
-- mutação local pendente;
-- sincronização em curso;
-- rejeição determinística;
-- conflito de revisão;
-- indisponibilidade transitória;
-- curso ainda não materializado.
+O corte de domínio usa `study_unit`, `studyUnits` e Unidade de estudo. A auditoria automática
+de resíduos deve rejeitar identificadores, operações e atributos antigos quando
+representam essa entidade. Ele não deve reprovar classes CSS genéricas que
+descrevem apenas aparência, como `.clean-card`, `.card-title`,
+`.runtime-card-sheet`, `.card-sheet-content` ou `.card-answer-dock`.
 
-Uma ausência de conexão não bloqueia leitura, tema, resposta, feedback ou avanço já materializados. Uma operação que exige servidor — login novo, assistência remota, publicação ou mudança de permissão — informa a dependência em vez de simular sucesso.
+Essa distinção precisa ser sintática e contextual, não uma permissão ampla para
+qualquer ocorrência. Um `data-*`, variável ou função que nomeia a entidade com
+o termo substituído continua sendo regressão mesmo dentro de um componente
+visual.
 
-A fila local não é mostrada como jargão de “outbox”; a interface comunica “alteração pendente” ou “sincronização necessária”. Detalhes ficam disponíveis para diagnóstico, não como requisito para estudar.
-
-Overrides estruturados de parâmetros usam uma fila separada do snapshot
-canônico. Escolher Auto antes de enviar um override cancela a intenção local do
-mesmo slot. A reconexão e a saída da conta percorrem o índice das filas, mesmo
-que o workspace não esteja na página de lista em cache. Resposta perdida pode
-ser retomada por idempotência; conflito de revisão permanece conflito e exige
-releitura.
-
-Listas e overviews entram no cache apenas de forma monotônica: resposta antiga
-não substitui revisão mais nova em outra aba. Falha de quota na escrita
-suplementar não invalida uma leitura remota já recebida.
-
-## 8. Sistema visual e acessibilidade
-
-Componentes usam os tokens de `public/styles-tokens.css`. SVGs funcionais usam `currentColor`. O auditor de resíduos procura cores literais fora da fundação, seletores e ramos órfãos e glifos usados como ícones.
-
-A auditoria cobre:
-
-- claro, escuro e Sistema;
-- 360, 390, 412 e 1280 px;
-- foco visível e ordem de teclado;
-- nome e estado acessíveis;
-- alvo de toque;
-- zoom e reflow;
-- preferência de movimento reduzido;
-- recursos complexos com rolagem interna;
-- contraste de texto, controles e dados.
-
-Automação de contraste e árvore acessível não substitui leitor de tela nem teste com participantes. A referência normativa é [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
-
-## 9. Matriz de jornadas
+## 9. Matriz mínima de jornadas
 
 | Jornada | Evidência principal |
-|---|---|
-| carga e organização de Trilhas | `tests/e2e/unified-home-trails.spec.js`, `tests/e2e/home-course-group-move.spec.js` |
-| Coleções e permissões | `tests/e2e/learning-spaces-panel.spec.js` |
-| Estudo/Autoria, Mapa, Desenho, Resources e Auditoria | `tests/e2e/authoring-workspace-surface.spec.js`; `tests/runtime/authoring-workspace-view-model.test.js` |
-| estudo, Play, feedback, offline e retomada | `tests/e2e/study-card-progression.spec.js` |
-| edição e assistência situada | `tests/e2e/card-assistance.spec.js`, `tests/e2e/authoring-assistant.spec.js` |
-| persistência autoral offline | `tests/e2e/workspace-offline-authoring.spec.js` |
-| resources e temas | `tests/e2e/package-visuals.spec.js`, `tests/e2e/table-resource.spec.js` |
-| layout da tela inicial | `tests/e2e/home-layout.spec.js` |
-| Android e artefato | testes runtime de Android e verificador de implantação |
+| --- | --- |
+| Estudo, progresso e revisão | testes de `CourseStudy*` e estado pessoal v2 |
+| Observações próprias, uso sem conexão e duas abas | testes da folha de Unidade e de `CourseAnnotationRepository` |
+| Autoria, rota e nove áreas | testes da superfície, rota e painéis especializados |
+| Inspeção, janela, cópia local, ausência de conexão e posição | `course-inspection-sequence.test.js` e testes do controlador |
+| Interface e MCP sob a mesma propriedade | testes de MCP, roteador, adaptador e API |
+| restrições e concorrência | `course-postgres-concurrency.test.js` após recriação real |
+| pacotes no renderizador fiel | `package-study-rendering-regressions.test.js` |
+| Curso único e acesso direto ao Estudo | testes do repositório, API, RLS e manifesto |
 
-Os testes não mantêm componentes obsoletos apenas por compatibilidade. O objetivo é uma única interface corrente e uma única responsabilidade por ação.
+Testes automatizados não demonstram que pessoas leigas compreendem a navegação,
+que a carga cognitiva é baixa em uso prolongado ou que o Free Plan suportará a
+carga real. Esses pontos continuam dependentes de avaliação humana e observação
+operacional.
 
 ## 10. Critérios de aprovação
 
-Uma mudança de front-end é aprovada quando:
+Uma mudança de interface é aprovada quando:
 
-1. usa vocabulário da tarefa, sem expor implementação desnecessária;
-2. mantém leitura e ações frequentes em primeiro plano;
-3. não confunde abrir com selecionar, nem retirar com excluir;
-4. falha fechada em autoridade, mas não bloqueia operação local por rede;
-5. preserva texto diante de falha e conflito;
-6. funciona por toque e teclado nas larguras suportadas;
-7. oferece nome, estado, foco e contraste acessíveis;
-8. atualiza testes de jornada e auditoria de resíduos;
-9. não cria componente paralelo para responsabilidade já existente.
-
-## 11. Limites da auditoria
-
-A auditoria de código e navegador demonstra a implementação observada nas fixtures. Ela não comprova que uma pessoa leiga compreende toda representação, que a carga cognitiva é baixa em uso prolongado, nem que uma Edge Function remota permanecerá disponível. Esses aspectos requerem avaliação com participantes, observação de uso, dados operacionais e revisão pedagógica dos cursos produzidos.
+1. usa o vocabulário corrente sem nome semântico alternativo;
+2. mantém Estudo e Autoria ligados ao mesmo Curso;
+3. falha fechada em propriedade, revisão e tamanho da resposta;
+4. preserva posição, foco e contexto em paginação e atualização;
+5. não usa página aproximada como substituta quando está sem conexão;
+6. limita página, DOM e armazenamento temporário conforme o contrato;
+7. funciona por toque e teclado nas quatro larguras de referência;
+8. mantém paridade com o MCP quando a capacidade é compartilhada;
+9. atualiza testes e auditoria automática sem confundir classe visual com entidade;
+10. declara o que ainda depende de aceitação humana ou operação hospedada.

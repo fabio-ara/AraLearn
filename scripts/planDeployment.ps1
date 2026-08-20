@@ -66,18 +66,34 @@ switch ($Profile) {
     Add-Step 'diagnose' 'Conferir a máquina' automatic 'Verifica ferramentas, arquivos e configuração pública sem acessar o projeto remoto.' `
       'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile GitHubPagesManagedSupabase -Authoring'
     Add-Step 'supabase-project' 'Criar e proteger o projeto Supabase' manual 'Crie o projeto hospedado, configure Auth, SMTP e redirecionamentos. Não copie a service role para o repositório.'
-    Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado. Revise antes de usar o modo Apply.' `
-      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
-    Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
-      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
-    Add-Step 'github-variables' 'Cadastrar a configuração pública' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. ARALEARN_ASSIST_ALLOWED_ORIGINS é opcional para serviços adicionais. Não cadastre segredos administrativos.'
+    Add-Step 'github-variables' 'Cadastrar a configuração pública' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. Não cadastre segredos administrativos.'
     Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados. No OAuth Server, habilite DCR e use / como Authorization Path, pois a tela de consentimento está no próprio shell."
     Add-Step 'auth-oauth-signing' 'Concluir a segurança OAuth do MCP' manual 'Ative uma chave JWT assimétrica, selecione public.aralearn_mcp_access_token_hook como Custom Access Token Hook e confirme PKCE S256 na descoberta.'
+    Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado. Revise antes de usar o modo Apply.' `
+      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
     Add-Step 'validate' 'Validar o repositório' automatic 'Executa cada verificação em ordem e interrompe a sequência na primeira falha.' `
       'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Web -RequireRuntimeConfig'
     Add-Step 'verify-artifact' 'Examinar o site gerado' automatic 'Confere configuração pública, CSP, segredos e ausência de catálogo embarcado.' `
       'pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages -RequireRuntimeConfig'
-    Add-Step 'publish' 'Publicar pelo GitHub' manual 'Integre uma branch revisada na main somente com a CI verde; o workflow publica o conteúdo de .pages.'
+    if ($IncludeAndroid) {
+      Add-Step 'android-diagnose' 'Conferir ferramentas Android' automatic 'Verifica Java e Android SDK, além da configuração pública.' `
+        'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile GitHubPagesManagedSupabase -Authoring -Android -RequireRuntimeConfig'
+      Add-Step 'android-build' 'Gerar e analisar o APK' automatic 'Executa a validação completa, compila o APK e interrompe a sequência na primeira falha. A release requer assinatura mantida fora do repositório.' `
+        'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Full -RequireRuntimeConfig'
+      Add-Step 'android-verify' 'Examinar o runtime Android' automatic 'Confere configuração pública, segredos e ausência de catálogo embarcado.' `
+        'pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android -RequireRuntimeConfig'
+    }
+    Add-Step 'integrate-main' 'Integrar e validar a revisão' manual 'Integre a revisão em main com o backend anterior ativo, aguarde a validação verde do SHA exato e cancele os fluxos automáticos de Pages e Android, ou confirme que terminaram sem publicar, antes do corte.'
+    Add-Step 'database-apply' 'Aplicar migrations e funções aprovadas' automatic 'Depois da migração transacional de identidade aplicável, executa migrations versionadas, sem reset nem seed, e implanta a API e o MCP.' `
+      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply -DeployAuthoringFunctions -PublicAppUrl $applicationArgument/"
+    Add-Step 'verify-hosted' 'Conferir o contrato hospedado' automatic 'Comprova o manifesto remoto exigido pelos artefatos antes de iniciar qualquer publicação.' `
+      'npm.cmd run deployment:verify-hosted'
+    $publicationInstruction = if ($IncludeAndroid) {
+      'Dispare manualmente os fluxos de Pages e Android para o mesmo SHA de main já aprovado.'
+    } else {
+      'Dispare manualmente o fluxo de Pages para o mesmo SHA de main já aprovado.'
+    }
+    Add-Step 'publish' 'Publicar os artefatos aprovados' manual $publicationInstruction
     Add-Step 'verify-published' 'Conferir o endereço publicado' automatic 'Valida recursos, MIME, CSP, configuração pública e callback PKCE no endereço entregue pelo Pages.' `
       "npm.cmd run deployment:verify-site -- --url $applicationArgument/"
   }
@@ -87,8 +103,8 @@ switch ($Profile) {
     Add-Step 'supabase-project' 'Criar e proteger o projeto Supabase' manual 'Crie o projeto hospedado, configure Auth, SMTP e redirecionamentos. Não copie a service role para o host estático.'
     Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
-    Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
-      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
+    Add-Step 'database-apply' 'Aplicar migrations e funções aprovadas' automatic 'Executa migrations versionadas, sem reset nem seed, e implanta a API e o MCP.' `
+      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply -DeployAuthoringFunctions -PublicAppUrl $applicationArgument/"
     Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados. No OAuth Server, habilite DCR e use / como Authorization Path, pois a tela de consentimento está no próprio shell."
     Add-Step 'auth-oauth-signing' 'Concluir a segurança OAuth do MCP' manual 'Ative uma chave JWT assimétrica, selecione public.aralearn_mcp_access_token_hook como Custom Access Token Hook e confirme PKCE S256 na descoberta.'
     Add-Step 'dependencies' 'Instalar dependências' automatic 'Restaura as versões fixadas e interrompe a implantação se a instalação falhar.' 'npm.cmd ci'
@@ -119,7 +135,7 @@ switch ($Profile) {
   }
 }
 
-if ($IncludeAndroid) {
+if ($IncludeAndroid -and $Profile -ne 'GitHubPagesManagedSupabase') {
   Add-Step 'android-diagnose' 'Conferir ferramentas Android' automatic 'Verifica Java e Android SDK, além da configuração pública.' `
     "pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile $Profile -Authoring -Android -RequireRuntimeConfig"
   Add-Step 'android-build' 'Gerar e analisar o APK' automatic 'Executa a validação completa, compila o APK e interrompe a sequência na primeira falha. A release requer assinatura mantida fora do repositório.' `

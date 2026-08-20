@@ -1,249 +1,225 @@
-# Auditoria de conformidade instrucional
+# Auditoria e correções do Curso
 
-## Finalidade e limite
+O ciclo de auditoria examina uma Unidade de estudo diante do plano, dos
+parâmetros, da intenção representacional, das Fontes, das Âncoras e das
+Observações selecionadas. Ele registra critérios e evidências, identifica
+achados e permite corrigir um recorte do Curso. O resultado da correção precisa
+ser verificado numa nova rodada.
 
-A auditoria de conformidade confronta o desenho instrucional persistido com o
-conteúdo realmente materializado. Ela localiza divergências reproduzíveis,
-conserva evidência pública e organiza revisão e reparo. Não atribui nota ao
-curso, não mede aprendizagem, compreensão, proficiência ou carga cognitiva e
-não certifica eficácia educacional.
+A auditoria descreve o que foi examinado numa revisão. Ela não atribui nota ao
+Curso nem mede aprendizagem, compreensão, proficiência, atenção ou carga
+cognitiva. Uma rodada sem achados significa que os critérios registrados
+receberam os resultados apresentados naquele contexto.
 
-O ciclo mantém quatro responsabilidades separadas:
-
-1. o backend calcula fatos estruturais sobre versões, referências, cards e
-   resources reais;
-2. o auditor semântico examina aquilo que requer interpretação do conteúdo;
-3. uma pessoa aprova ou rejeita cada finding;
-4. um reparo autorizado altera somente findings aprovados e uma rodada nova
-   relê o estado corrente.
-
-Registrar um manifesto prova a identidade e o contrato da materialização. Não
-prova, por si só, conformidade instrucional. Do mesmo modo, um teste que passa
-prova apenas a regra técnica examinada.
-
-## Sequência autoritativa
+## Objetos do ciclo
 
 ```text
-planejamento e parâmetros
-  → materialização e manifesto
-  → audit run sobre a revisão corrente
-  → checks determinísticos
-  → revisão semântica pública
-  → decisão humana por finding
-  → mandato de reparo somente para aprovados
-  → escrita confirmada e vinculada
-  → novo audit run sobre o estado corrente
-  → resolução ou permanência do finding + detecção de regressões
+Observação situada, quando houver
+→ contexto corrente da Unidade
+→ rodada com critérios e evidências
+→ achado diante de reprovação ou incerteza
+→ proposta focal de correção
+→ aplicação confirmada
+→ nova rodada de verificação
+→ resolução ou reabertura do achado
 ```
 
-Construção, auditoria, reparo e reauditoria são rodadas diferentes. O auditor
-não usa o próprio finding como autorização para modificar conteúdo. A
-reauditoria não reaproveita a conclusão anterior: ela exige outra leitura,
-posterior à correção, com revisão, hash e referências correntes.
+Cada objeto cumpre uma função:
 
-## Quatro tipos de conclusão
+- **Observação** preserva uma manifestação situada;
+- **rodada** conserva os critérios aplicados, os resultados e as evidências;
+- **achado** identifica uma divergência ou incerteza;
+- **correção** registra a proposta, o estado anterior e o estado pretendido;
+- **verificação** confronta novamente o critério depois da mudança;
+- **reversão** restaura o estado anterior quando a correção aplicada ainda é o
+  estado corrente.
 
-| Tipo | Pode ser calculado pelo backend | Exemplo | Limite |
-| --- | --- | --- | --- |
-| fato determinístico | sim | hash corrente, referência existente, ordem dos cards, `package@version` realmente instanciado | vale para a regra e a revisão registradas |
-| juízo semântico | não; requer leitura contextual | uma explicação desenvolve a relação ou apenas menciona o termo | deve citar evidência pública curta; estabilidade não o torna verdade científica |
-| correção factual | depende de fonte apropriada | um valor, definição ou afirmação disciplinar está correto | exige fonte e competência do domínio |
-| efeito educacional | não | a pessoa aprendeu ou a representação foi eficaz | requer desenho empírico, participantes e medidas adequadas |
+Responder ou resolver uma Observação registra triagem. Abrir um achado registra
+um diagnóstico. Aplicar uma correção modifica o Curso. Somente uma nova rodada
+pode sustentar a resolução do achado.
 
-Contagens não atravessam essas fronteiras. Três práticas declaradas são três
-artefatos; não são automaticamente três oportunidades semanticamente distintas.
-Uma assinatura diferente é um dado estruturado; a relevância da variação ainda
-precisa de julgamento.
+## Contexto focal
 
-## Rodada imutável
+Antes de registrar uma rodada, o servidor recompõe o contexto da Unidade para a
+pessoa proprietária. O recorte contém:
 
-Cada `audit run` congela o contexto necessário para reproduzir o que foi
-examinado:
+- identidade, versão e impressão digital da Unidade;
+- caminho curricular e Microssequência;
+- itens do plano atribuídos ao alvo;
+- parâmetros e orientações efetivos;
+- intenção representacional e componentes usados;
+- Fontes, Âncoras e relações correntes;
+- até 12 Observações selecionadas.
 
-- escopo de microssequência ou Parte operacional;
-- revisão do workspace e marcador da materialização;
-- hash canônico dos cards correntes;
-- referências versionadas de análise, snapshot efetivo, blueprint, binding e
-  manifesto;
-- `ResourceSet`s e condição experimental efetivos;
-- algoritmo e versão dos checks;
-- microssequências incluídas, quando o escopo é uma Parte;
-- checks, métricas com unidade e denominador e fingerprints dos findings.
+Uma impressão digital liga o comando a esse contexto. Mudança de Curso,
+Unidade, plano, desenho, proveniência ou Observação exige nova leitura.
 
-Uma rodada sem finding também é um resultado persistido. Isso permite distinguir
-“checado sem finding nas regras cobertas” de “não auditado”, “resultado parcial”
-e “não aplicável”. A persistência do run não duplica cards nem artefatos
-instrucionais imutáveis.
+## Quatro dimensões
 
-## Finding público e localizado
+Cada critério avaliado conserva identidade e versão do método, resultado,
+adequação, evidência pública e referências pertinentes. As dimensões são:
 
-Um finding estruturado conserva:
+| Dimensão | Responsabilidade |
+| --- | --- |
+| `structural_conformance` | verificar de modo determinístico contrato, identidade e estrutura |
+| `pedagogical_quality` | examinar correspondência entre intenção, explicação, prática e público |
+| `factual_quality` | confrontar afirmações com evidência localizável |
+| `editorial_quality` | examinar clareza, consistência e apresentação do recorte |
 
-- código governado e origem `deterministic` ou `semantic_audit`;
-- gravidade operacional, sem conversão em score;
-- alvo exato — workspace, curso, módulo, lição, microssequência, card ou
-  instância de resource;
-- regra, parâmetro ou requisito confrontado;
-- evidência pública curta;
-- proposta de reparo opcional;
-- fingerprint estável no mesmo alvo e regra;
-- audit run de origem e, após reauditoria, run de verificação.
+Os resultados possíveis são:
 
-Raciocínio privado, transcript, prompt bruto e cadeia de pensamento não são
-campos de finding. Evidência pública deve ser suficiente para uma pessoa
-entender o problema sem expor memória interna do auditor.
+- `passed`, quando o critério foi atendido;
+- `failed`, quando há divergência identificada;
+- `uncertain`, quando a evidência disponível não permite decidir;
+- `not_applicable`, quando o critério não se aplica ao objeto;
+- `not_checked`, quando o critério não foi examinado.
 
-O ciclo de estado é explícito:
+A pessoa ou o cliente registra as três dimensões que dependem de julgamento. O
+servidor acrescenta a verificação estrutural. Um resultado `not_checked`
+permanece distinto de aprovação.
+
+## Evidência factual
+
+Resultado factual positivo exige uma Fonte ativa, uma revisão exata e uma
+Âncora corrente no contexto focal. A relação `supported_by` pode sustentar uma
+afirmação. `quoted_from` atesta a origem de uma citação e só atende ao critério
+`quotation_fidelity`; repetir corretamente uma frase não demonstra sua verdade.
+
+O AraLearn verifica identidade, revisão, relação e localização. Qualidade da
+Fonte, autoria científica e competência disciplinar de quem avaliou dependem
+de procedimentos externos ao contrato.
+
+## Rodadas e achados
+
+Uma rodada é imutável e possui tipo `audit` ou `verification`. Ela registra
+origem humana ou automática, método, revisão do Curso, contexto, alvo, critérios
+e quantidade de achados. Instruções enviadas ao modelo e raciocínio privado não
+integram esse registro.
+
+Rodadas sem achados continuam disponíveis na lista. Assim, a interface
+distingue uma Unidade examinada sem divergência de uma Unidade ainda não
+examinada. Listas de rodadas e achados aceitam paginação e filtro opcional pela
+Unidade; o detalhe de uma rodada apresenta todos os critérios e suas evidências.
+
+Um resultado `failed` ou `uncertain` pode abrir um achado. Seus estados são:
 
 ```text
-open → approved → repaired → resolved
-   └→ rejected
+open → awaiting_verification → resolved
+  │              │                 │
+  └→ dismissed   └→ open           └→ open
 ```
 
-`rejected` registra que a pessoa não autorizou o reparo; não apaga o caso nem
-vira aprovação implícita em uma rodada posterior. `repaired` significa que uma
-escrita pertinente foi confirmada e vinculada, não que o problema foi resolvido.
-Somente uma nova rodada pode verificar `resolved` ou manter o finding aberto.
+`awaiting_verification` informa que uma correção foi aplicada. `dismissed`
+conserva a decisão de não prosseguir. Uma verificação `still_open`, uma
+reabertura ou uma reversão devolve o achado a `open`.
 
-## Checks determinísticos
+## Correção focal
 
-O núcleo determinístico lê os artefatos normalizados e os cards reais. Entre as
-regras cobertas estão:
+Uma correção substitui apenas o conteúdo e as atribuições de Fontes da Unidade
+observada. Ela preserva identidade, pai, posição e campos relacionais. A
+proposta registra justificativa e dois estados:
 
-- análise, snapshot, blueprint, binding e manifesto nas identidades correntes;
-- hash e marcador de materialização sem stale silencioso;
-- preservação de `research_lock` e da condição de `ResourceSet`;
-- passos planejados e materializados, `artifactRefs` e papéis theory/practice;
-- existência de cards e contracts válidos;
-- teoria necessária anterior à prática, segundo a ordem real;
-- cardinalidade de unidades novas e conjuntos de coordenação explicitamente
-  declarados;
-- referências estruturais de explicação, evidência, variação e formas de
-  resposta;
-- package, versão, slot, papel, seleção e conjunto autorizador de cada instância
-  real.
+- `before`, com o conteúdo e a proveniência realmente lidos;
+- `after`, com o conteúdo proposto e Fontes e Âncoras ativas.
 
-Coleções malformadas falham fechado. Locks, assignments, `ResourceSet`s ou
-cards nunca são convertidos silenciosamente em listas vazias.
+Cada lado recebe uma impressão digital. Proposta sem diferença é recusada.
+Ajustar ou rejeitar cria uma nova versão da mesma correção, preservando as
+anteriores. Os estados são `proposed`, `rejected`, `applied`, `verified` e
+`rolled_back`.
 
-### Resources usados, não apenas declarados
+A aplicação exige que a Unidade, sua versão e a proveniência ainda correspondam
+ao estado `before`. Conteúdo, Fontes, versão da Unidade, revisão do Curso,
+evento e recibo confirmam ou revertem na mesma transação.
 
-O manifesto declara seleções e materialização, mas o auditor deriva novamente o
-multiconjunto de instâncias nos cards persistidos: card, slot, instância,
-`package@version` e papel. Como o manifesto identifica a materialização por
-artefato, package e papel, a igualdade usa esse multiconjunto com multiplicidade;
-slot e instância localizam a ocorrência real no card. Em seguida, cada ocorrência
-é confrontada com a seleção exata e o mesmo `ResourceSet` autorizador. Uma
-declaração forjada não oculta package extra, versão diferente, papel incompatível
-ou condição experimental violada.
+Depois da aplicação, a verificação relê a Unidade. O resultado `resolved` exige
+que o critério focal tenha passado; `still_open` exige reprovação ou incerteza.
+A reversão (`rollback`) só é aceita enquanto o conteúdo e a proveniência ainda
+correspondem ao estado aplicado. Ela restaura `before`, cria nova versão da
+correção e reabre o achado, sem apagar o histórico anterior.
 
-Adequação semântica da representação continua sendo juízo separado. O fato de
-um package estar autorizado não demonstra que ele é a melhor representação para
-a tarefa.
+## Relação com Observações
 
-## Revisão semântica
+Um achado pode apontar para versões exatas de Observações. O vínculo preserva a
+origem situada, sem copiar texto, pseudônimo ou identidade da pessoa. A
+Observação continua sendo manifestação, e não evidência factual ou autorização
+para corrigir.
 
-O auditor semântico recebe apenas a fatia JIT da microssequência e as fontes
-pertinentes. Ele começa pelos fatos determinísticos e registra somente a
-conclusão pública estruturada. Entre as perguntas que não podem ser resolvidas
-por contagem estão:
+Quando uma Observação é retirada, o achado a apresenta como indisponível e sem
+endereço. Depois da remoção física do registro redigido, o vínculo desaparece;
+rodada, achado e correção permanecem.
 
-- o conteúdo introduz unidades não declaradas e as comprime excessivamente;
-- um requisito marcado como desenvolvido foi explicado ou apenas mencionado;
-- a prática realmente solicita reconhecimento, aplicação, diagnóstico ou outra
-  operação pretendida;
-- variações declaradas são semanticamente distintas ou apenas cosméticas;
-- a representação preserva a estrutura disciplinar relevante;
-- afirmações factuais correspondem às fontes apropriadas.
+Decisões do ciclo podem sugerir `resolve` ou `reopen` para uma Observação. A
+sugestão não muda seu estado. A triagem exige outro comando explícito de
+Anotação ancorada com a versão corrente.
 
-Uma chamada sem findings é válida e encerra a etapa sem inventar problema. A
-mesma entrada deve produzir fingerprints estáveis nas repetições de engenharia,
-mas essa estabilidade não substitui revisão humana nem validação educacional.
+## Uso na interface
 
-## Auditoria de Parte
+A área **Auditoria e correções** reúne duas abas:
 
-Parte continua sendo lote operacional, não unidade pedagógica nem ancestral de
-parâmetro. A auditoria percorre as microssequências como rodadas componentes
-imutáveis; cada componente conserva sua própria revisão, checks e métricas. A
-rodada de Parte só agrega quando cada microssequência ainda disponível tem um
-componente corrente. Referências removidas permanecem como cobertura ausente,
-em vez de bloquear ou fingir conformidade. O pai congela a lista ordenada e as
-referências das rodadas usadas e registra a revisão cercada da agregação. Ela
-resume:
+- **Observações**, com a caixa de entrada e os detalhes das manifestações;
+- **Achados**, com rodadas, achados, propostas, verificações e reversões.
 
-- cobertura das microssequências;
-- distribuição dos findings por categoria e alvo;
-- coerência entre dependências e revisitas declaradas;
-- redundância sem função e lacunas de integração;
-- numeradores, denominadores e unidades das métricas aplicáveis.
+Os endereços internos reconhecem estes destinos:
 
-O resultado não soma categorias em nota nem apaga os recortes locais. Parte
-grande avança micro a micro; componentes ausentes são progresso explícito e
-mantêm o estado parcial em vez de afirmar conformidade. Depois de completo, o
-histórico e os findings continuam paginados. A leitura usa cursores independentes
-para findings e componentes. Cada item do pai aponta para a referência exata da
-rodada filha congelada; abrir o recorte local não substitui essa referência pela
-rodada mais recente da microssequência.
+- `section=observations&annotationId=...` para uma Observação;
+- `section=observations&findingId=...` para um achado;
+- `section=observations&findingId=...&correctionId=...` para uma correção;
+- `section=observations&auditRunId=...` para uma rodada.
 
-## Interface, autoridade e offline
+Fonte ou Âncora abre **Fontes**; a Unidade abre **Inspeção**. Combinações
+incompatíveis são recusadas para evitar que um endereço aparente apontar para
+outro contexto.
 
-Em Autoria, Auditoria apresenta resumo, lista e detalhe por exposição
-progressiva. `passed`, `failed`, `not_applicable`, não auditado e parcial têm
-rótulos distintos e nunca dependem apenas de cor. O detalhe mostra origem,
-regra ou critério, evidência pública que resume a divergência observada, alvo e
-proveniência; “Abrir conteúdo” preserva o finding e o filtro no retorno. Os
-contagens completas e o recorte governado de `expected` e `actual` permanecem
-no check imutável da rodada. Referências longas usam envelope bounded, enquanto
-a linhagem integral continua na relação imutável pai→filho; esses dados não são
-repetidos no finding compacto quando isso ampliaria a saída.
+## Uso pelo MCP
 
-Aprovar e rejeitar são decisões humanas explícitas, autorizadas e protegidas por
-CAS e idempotência. Preparar reparos cria mandato apenas para os aprovados. A
-interface não executa o reparo instrucional nem configura cards individualmente
-para contornar locks. Um mandato de reparo incompleto não pode ser limpo nem
-substituído; cada vínculo confirmado consome um finding e o último encerra o
-mandato. Só então solicitar reauditoria cria outro mandato e outra rodada.
+O ciclo utiliza duas das seis ferramentas existentes:
 
-Uma rodada histórica exata continua legível depois que o conteúdo, a Parte ou
-o mandato mudam, mas vem marcada como não corrente. Esse histórico não concede
-autoridade operacional: decisão, mandato e reparo exigem rodada concluída ainda
-corrente e alvo disponível. Depois de um reparo real, a rodada de origem fica
-histórica; o finding `repaired` ainda pode solicitar uma nova reauditoria, com
-alvo disponível, rede, CAS e escopo explícito, mas não pode voltar a autorizar
-decisão ou reparo por conta própria.
+- `lerCurso` com `view: "audit_cycle"` lê contexto, achados, rodadas e detalhe;
+- `alterarCurso` com `operation: "update_audit_cycle"` executa os comandos do
+  ciclo.
 
-A reauditoria cobre todos os reparos elegíveis do escopo. `still_open` exige uma
-nova ocorrência da mesma identidade na rodada ou no child run congelado da
-Parte, que sucede a anterior; `resolved` exige ausência dessa recorrência. Uma
-conclusão vazia não pode deixar findings reparados presos a uma rodada superada.
+Os comandos são:
 
-Offline, a última evidência sincronizada pode ser consultada. Decisões,
-mandatos, reparos e verificação ficam desabilitados até a releitura autoritativa;
-não há outbox local de auditoria que possa fabricar autoridade.
+- `record_audit`;
+- `propose_authoring_correction`;
+- `reject_authoring_correction`;
+- `decide_finding`;
+- `apply_authoring_correction`;
+- `verify_finding`;
+- `rollback_authoring_correction`.
 
-## Métricas sem meta escondida
+No MCP, aplicar e reverter exigem `auditCommand.confirmed: true` depois de
+confirmação humana. Os demais comandos recusam esse campo.
 
-Cards, palavras, caracteres, passos, instâncias, packages, requisitos,
-oportunidades e findings são métricas derivadas, com algoritmo versionado,
-unidade, denominador e referências de entrada. Servem para descrever e comparar
-rodadas. Não definem quantidade ideal de cards, nota de qualidade ou dosagem
-universal. Listas longas de referências usam envelope bounded com contagem e
-marcador de truncamento; a contagem do denominador não é reduzida ao recorte
-transportado.
+## Conexão, concorrência e limites
 
-## Evidência de engenharia
+Observações podem usar a fila local própria. Auditoria, achados, correções e
+verificações exigem conexão e propriedade do Curso. Sem rede, uma tela já
+apresentada serve apenas à consulta transitória; antes de qualquer escrita, o
+cliente precisa reler o estado autorizado.
 
-O corpus versionado da #106 contém oito cenários: compressão do texto DNS/DHCP
-da #89, menção versus desenvolvimento, reconhecimento versus aplicação,
-prática antes da teoria, resource inadequado, condição experimental divergente,
-falso positivo rejeitado e reparo que introduz novo problema. Ele verifica
-contratos, estabilidade, autoridade e regressões conhecidas; não é experimento
-com estudantes nem validação de uma medida científica.
+As principais cercas são:
 
-Veja também:
+- até 24 itens por página e cursor de até 240 caracteres;
+- até 12 Observações no contexto e por achado;
+- até 16 achados e 32 critérios por rodada, incluindo o critério estrutural;
+- comando de até 192 KiB e página de até 240 KiB;
+- até 256 rodadas por Curso, com reserva para verificar correções aplicadas;
+- até 1.024 identidades de achado;
+- até 64 identidades de correção por Curso e oito por achado;
+- estado anterior e posterior de até 48 KiB cada.
 
-- [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md);
-- [Fluxos, prompts e contratos](fluxos-prompts-e-contratos.md);
-- [Autoria por MCP](autoria-mcp.md);
-- [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md);
-- [Matriz de conformidade técnica](matriz-conformidade-tecnica.md).
+Revisões esperadas e `requestId` protegem concorrência e repetição. Uma proposta
+desatualizada não sobrescreve a edição corrente, e repetir o mesmo comando não
+duplica a operação.
+
+## Interpretação responsável
+
+Uma auditoria aprovada demonstra somente a aplicação dos critérios registrados
+ao contexto identificado. Avaliação disciplinar, revisão por especialistas e
+investigação com pessoas continuam necessárias conforme a finalidade.
+
+Consulte [Observações e Anotações
+ancoradas](observacoes-pedagogicas.md) para o registro situado, [Desenho
+instrucional parametrizado](desenho-instrucional-parametrizado.md) para os
+parâmetros e [Autoria por MCP](autoria-mcp.md) para os contratos completos.

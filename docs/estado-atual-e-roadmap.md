@@ -1,341 +1,150 @@
-# Estado atual e agenda de desenvolvimento
-
-Este documento distingue três tipos de afirmação:
-
-- **implementado**: existe no código e possui verificação automatizada;
-- **verificado tecnicamente**: o comportamento foi exercitado em ambiente de
-  teste, mas isso não demonstra benefício educacional;
-- **a investigar**: depende de estudo com pessoas, contextos e conteúdos reais.
-
-A distinção evita transformar disponibilidade técnica em alegação de eficácia.
-Um recurso pode funcionar corretamente e ainda precisar de avaliação de
-compreensão, usabilidade ou aprendizagem.
-
-## Síntese da versão atual
-
-O AraLearn está disponível como aplicação web instalável e aplicativo Android.
-As duas distribuições executam o mesmo núcleo e mantêm a largura de leitura
-orientada a celulares. A conta dá acesso a Coleções, Trilhas, estudo, autoria,
-workspaces e observações, conforme suas capacidades.
-
-O produto possui duas atividades paralelas:
-
-- **Estudo** apresenta o curso em microssequências, registra progresso local e
-  permite observações situadas;
-- **Autoria** permite criar, revisar e organizar o mesmo tipo de curso sem
-  converter o conteúdo para uma estrutura intermediária incompatível.
-
-Um curso incompleto já pode ser estudado. Publicação não significa “tornar o
-rascunho visível”, mas fixar uma composição validada como artefato imutável e
-apontar o catálogo para essa revisão.
-
-## Capacidades implementadas
-
-### Estudo
-
-- navegação por curso, módulo, lição, microssequência e card;
-- retomada pelo progresso funcional, sem inferir domínio ou proficiência;
-- marcação **Rever** e observações vinculadas ao contexto estudado;
-- funcionamento sem conexão depois do primeiro download do curso;
-- fila local para sincronizar alterações quando a rede volta;
-- tema claro ou escuro aplicado sem consulta remota;
-- resposta e avanço pelo botão Play sem esperar tarefas de rede;
-- ausência deliberada de telemetria de tempo, tentativas, acertos ou presença
-  inferida.
-
-O progresso informa onde a pessoa parou e quais cards concluiu. Ele não é nota,
-diagnóstico cognitivo nem modelo de domínio. Essa limitação preserva uma
-interpretação honesta dos dados disponíveis.
-
-### Autoria contextual
-
-- edição manual dos textos autorizados na própria representação;
-- seleção visual de cards, microssequências e lições;
-- assistência por modelo de linguagem para editar texto ou recompor um card;
-- conversa limitada a oito turnos e histórico local de até nove versões de um
-  card durante a sessão;
-- desfazer, refazer e restaurar versões sem nova chamada ao provedor;
-- validação de schema, semântica e revisão antes de persistir;
-- escopo de escrita derivado da seleção feita pela pessoa.
-
-O histórico curto da assistência existe para sustentar iterações imediatas. O
-pedido, o contexto enviado e a resposta integral do provedor não são
-persistidos. A decisão reduz armazenamento e exposição de conteúdo, mas impede
-usar esse chat efêmero como registro longitudinal de pesquisa.
-
-### Resources de card
-
-O catálogo é composto por packages independentes do kernel. Cada package
-declara contrato autoral, perfil acadêmico, capacidades de prática e renderer.
-O catálogo atual contém trinta e dois packages, dos quais vinte e nove
-materializam conteúdo e três materializam respostas.
-
-Representações diagramáticas usam motores especializados quando isso reduz
-medição manual de coordenadas: Graphviz/Viz.js para diferentes grafos e
-diagramas; Vega e Vega-Lite para gráficos e planos; MathML para notação
-matemática e científica. As bibliotecas são distribuídas com o aplicativo para
-continuarem disponíveis sem conexão.
-
-A quantidade atual não define uma cobertura universal das áreas do
-conhecimento. Quando falta uma representação especializada, a autoria pode usar
-um substituto declarado e registrar a lacuna do catálogo. A qualidade
-acadêmica da escolha continua sujeita a revisão humana e avaliação no domínio.
-
-### Persistência e publicação
-
-- IndexedDB conserva no dispositivo cursos, progresso e operações pendentes;
-- PostgreSQL conserva identidades, relações, revisões e estado colaborativo;
-- Supabase Storage conserva artefatos integrais e imutáveis de publicação;
-- análises, parâmetros, conjuntos disponíveis, snapshots efetivos, blueprints
-  v2 e manifestos possuem persistência relacional versionada própria;
-- compare-and-swap impede sobrescrita silenciosa entre revisões concorrentes;
-- chaves de idempotência tornam a repetição de uma requisição segura;
-- hashes identificam o conteúdo exato submetido ou publicado;
-- objetos sem referência tornam-se elegíveis à coleta de lixo.
-
-Essa distribuição evita guardar uma cópia integral do curso para cada pequena
-alteração e, ao mesmo tempo, permite demonstrar qual composição foi revisada ou
-publicada.
-
-### Workspaces e colaboração
-
-- workspaces pessoais, de turma ou equipe;
-- seis papéis locais com capacidades derivadas no servidor;
-- convites, entrada, saída e transferência de propriedade;
-- curso corrente acessível em Trilhas sem duplicação automática;
-- observações de estudo e notas situadas;
-- triagem, resposta e vínculo entre observação e correção confirmada;
-- submissão, revisão editorial e publicação conforme autorização.
-
-O papel não é uma permissão isolada gravada no token. Autenticação identifica a
-conta; relações e estado do workspace determinam capacidades; cada operação é
-autorizada novamente sobre seu alvo atual.
-
-### Autoria remota
-
-Clientes compatíveis podem conduzir autoria por MCP; um GPT personalizado usa
-uma Action OpenAPI. Ambos atravessam o mesmo registro, os mesmos schemas e o
-mesmo executor. A autenticação é individual por OAuth 2.1, e nenhuma superfície
-recebe acesso administrativo direto ao banco.
-
-O modelo consulta a biblioteca de resources progressivamente, recebe apenas os
-contratos escolhidos, um por chamada, valida o card e pode auditar a adequação
-da representação. A ferramenta agrupada `gerirDesenhoInstrucional` lê o slice
-JIT de uma microssequência e opera análise, assignments, `ResourceSet`,
-snapshot, blueprint e manifesto pelas mesmas regras persistentes do backend.
-Continuidade estruturada conserva brief, planejamento, decisões, mandatos e
-achados entre sessões sem armazenar o transcript inteiro.
-
-## Núcleo persistente de desenho parametrizado
-
-Uma análise bibliográfica focal fundamenta contratos versionados para
-análise instrucional, parâmetros por escopo, valores efetivos, manifesto de
-materialização e `ResourceSet`. A proposta preserva unidades e relações não
-escalares, admite números somente com unidade e denominador explícitos e separa
-disponibilidade, seleção e materialização de resources.
-
-O núcleo da #103 promove esses contratos para validação de runtime, entidades
-normalizadas no PostgreSQL e uma réplica fracionada no IndexedDB. Os artefatos
-instrucionais são imutáveis e versionados; a revisão corrente do workspace,
-CAS e idempotência coordenam cada gravação. O resolvedor segue
-`workspace → course → module → lesson → microsequence`: o ancestral aplicável
-mais próximo dentro da classe de autoridade vencedora substitui o valor
-completo. A prioridade é lock, override manual, Auto e default; duplicidades do
-mesmo modo no mesmo escopo falham e locks são verificados como gate separado.
-
-`ResourceSet` conserva a disponibilidade exata de `package@version`; o
-manifesto distingue a seleção autorizada e a instância efetivamente usada. O
-blueprint pedagógico v2 permanece contextual por microssequência e recebe um
-binding versionado com análise e snapshot, sem ser substituído por calibração
-global. Um diff determinístico aponta divergências factuais entre referências,
-passos, cobertura declarada e resources; ele não realiza a auditoria semântica.
-
-Workspaces anteriores permanecem `unresolved` até uma análise explícita;
-conteúdo já materializado é marcado `legacy_unrestricted`: o sistema não
-inventa parâmetros nem disponibilidade retroativos. Parte continua unidade
-operacional de coordenação e não integra a cadeia de herança dos parâmetros. A
-réplica local permite consultar a última fatia sincronizada e enfileirar somente
-override manual ou restauração de Auto;
-ela nunca concede autoridade e revalida revisão, capacidade e locks ao voltar à
-rede.
-
-Desde a #104, essas operações estão expostas pelo MCP e pela Action por uma
-única ferramenta coesa. A integração recupera knowledge por intenção, trabalha
-uma microssequência por vez e retoma pelo workspace, sem depender do chat. A
-interface responsiva da #105 projeta o mesmo estado no celular, desktop e APK:
-Estudo conserva Trilhas; Autoria reúne Workspaces e Coleções; Mapa, Desenho,
-Conteúdo e Auditoria usam exposição progressiva. Valores estruturados admitem
-Auto/override, research lock fica não editável e Resources preserva seleção
-versionada entre páginas e escopos sem configuração card a card.
-
-A listagem e o Mapa recebem estado canônico revisionado, sem inferir processo
-por publicação, quantidade de cards ou cache visitado. A réplica local é
-vinculada à conta, avança monotonicamente e sincroniza intenções pendentes na
-reconexão; conflito continua explícito. A #106 completa o ciclo de auditoria:
-uma rodada imutável confronta o desenho e os cards/resources reais, separa
-checks determinísticos de revisão semântica, conserva a decisão humana e só
-permite verificar um reparo em outra rodada corrente. Schemas,
-persistência e testes demonstram coerência técnica no escopo coberto, não
-validade educacional nem adequação dos valores escolhidos.
-
-O fundamento, o fluxo e os limites estão em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md) e [Auditoria de
-conformidade instrucional](auditoria-de-conformidade-instrucional.md).
-
-## O que foi verificado tecnicamente
-
-A suíte automatizada cobre, entre outros aspectos:
-
-- contratos de curso, card e packages;
-- paridade entre o runtime do navegador e o runtime das Edge Functions;
-- renderização em larguras móveis, nos temas claro e escuro;
-- lacunas independentes dentro de resources compostos;
-- hidratação de Graphviz e Vega sob a política de segurança de conteúdo;
-- retomada, avanço e troca de tema sem dependência da rede;
-- concorrência, idempotência e autorização relacional;
-- geração dos pacotes de integração e do aplicativo Android;
-- integridade das fixtures do catálogo;
-- contratos promovidos e referências internas do desenho instrucional em corpus
-  multidomínio;
-- resolução por escopo, precedência de locks, autorização por `ResourceSet`,
-  binding do blueprint v2, diff factual e projeção legada explícita;
-- cache fracionado e fila não canônica de desenho no IndexedDB, incluindo
-  isolamento por conta, concorrência entre instâncias e revalidação remota.
-- seleção JIT de knowledge, registro público da tool agrupada, contratos de
-  resource unitários e regressão de engenharia A–H para orientação, variação
-  Auto, override manual e lock de pesquisa.
-
-Esses testes sustentam afirmações de conformidade da implementação. Não
-demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
-compreendido por todos os públicos ou que uma assistência reduz efetivamente o
-trabalho de autoria.
-
-Na sequência de Autoria, a regressão intermediária é proporcional ao escopo de
-cada issue; a #103 concentra contratos, domínio, SQL/PG emulado e IndexedDB, e
-a #104 concentra prompt, knowledge, MCP/Action, catálogo restrito e pacotes
-distribuídos. Falhas focadas precisam ser resolvidas na própria etapa. A
-regressão integral entre código, banco, integrações, UI e distribuições fica
-concentrada no fechamento da #109, conforme o requisito normativo da sequência.
-
-## Limitações conhecidas
-
-### Evidência educacional
-
-Ainda não há evidência empírica suficiente para atribuir ganhos de aprendizagem
-ao AraLearn. A relação entre microteoria, prática, retomada e compreensão é uma
-hipótese de design apoiada por literatura, não um resultado causal já medido.
-As unidades, limites e parâmetros propostos para a autoria também são
-operacionalizações do AraLearn e hipóteses a avaliar; suas contagens não medem
-carga cognitiva, domínio, fidelidade ou qualidade.
-
-### Cobertura disciplinar
-
-O catálogo possui representações gerais e packages especializados, com maior
-densidade inicial em computação e matemática. Áreas como linguística,
-biologia, química e ciências humanas requerem avaliação sistemática das
-notações utilizadas e, quando necessário, novos packages.
-
-### Avaliação de usabilidade
-
-Testes geométricos detectam recortes, sobreposições e problemas de interação,
-mas não substituem observação de pessoas. A compreensão dos papéis, a clareza
-das observações e a leitura de diagramas densos precisam ser estudadas em
-condições reais.
-
-### Dependências remotas
-
-Estudar conteúdo já baixado não depende da rede. Login inicial, aquisição de um
-curso ainda ausente, convites, sincronização, assistência por API e publicação
-dependem dos serviços remotos. O aplicativo precisa comunicar essa fronteira
-sem bloquear operações que são estritamente locais.
-
-### Limites de armazenamento
-
-O projeto opera com orçamento restrito de banco e Storage. Artefatos imutáveis,
-projeções compactas, retenções específicas e coleta de lixo reduzem o consumo,
-mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
-A [medição reproduzível do payload parametrizado](evidence/parameterized-authoring-storage-budget-2026-08-15.json)
-cobre um cenário sintético de 500 microssequências; não estima páginas, índices
-ou custo real de produção.
-
-## Agenda de avaliação e desenvolvimento
-
-### Prioridade 1 — uso cotidiano
-
-- observar retomada em trajetos curtos e conexão instável;
-- testar alternância entre web e Android;
-- verificar compreensão do estado offline e da fila de sincronização;
-- acompanhar acessibilidade e gestos em telas pequenas;
-- medir tempo de resposta local sob limitação de CPU.
-
-### Prioridade 2 — qualidade pedagógica
-
-- avaliar se cards de teoria partem de premissas compreensíveis para iniciantes;
-- verificar progressão conceitual sem condensação excessiva;
-- medir cobertura e diversidade das práticas;
-- comparar a representação escolhida com convenções da área;
-- observar transferência entre o que foi explicado e o que foi praticado.
-- testar se unidades, relações e requisitos explícitos revelam compressão e
-  desalinhamento sem induzir fragmentação ou falsa precisão.
-
-### Prioridade 3 — autoria e revisão
-
-- avaliar o esforço necessário para produzir e revisar cursos extensos;
-- testar a continuidade entre sessões e a compreensão dos mandatos;
-- comparar reparos locais e recomposições estruturais;
-- estudar confiança, contestação e reversão das sugestões do modelo;
-- verificar se observações de estudantes apoiam correções sem se tornarem
-  vigilância comportamental.
-- testar com pessoas a interface responsiva já implementada, sua linguagem
-  simples, descoberta e exposição progressiva, prioritariamente no celular;
-- avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
-  separadamente, inclusive quando não houver representação adequada.
-
-### Prioridade 4 — infraestrutura
-
-- acompanhar crescimento do PostgreSQL e do Storage;
-- testar coleta de lixo e restauração operacional;
-- medir payloads, contexto e custo dos fluxos de autoria;
-- ampliar testes de concorrência e falhas parciais;
-- avaliar recuperação semântica e evolução do catálogo sem acoplamento ao
-  kernel.
-
-## Perguntas abertas
-
-- A organização em microssequências melhora a retomada depois de interrupções?
-- A combinação entre microteoria e práticas variadas reduz premissas ocultas?
-- Limites locais de novidade e coordenação ajudam a encontrar compressão sem
-  se transformar em scores artificiais?
-- Requisitos de explicação e evidência são compreendidos e corrigidos por
-  autores de diferentes áreas?
-- `ResourceSet` permite condições reproduzíveis sem produzir equivalência
-  falsa entre representações?
-- Resources especializados melhoram a interpretação de estruturas complexas?
-- A autoria assistida reduz trabalho mecânico sem reduzir a responsabilidade
-  editorial humana?
-- A proveniência registrada é suficiente para reconstruir decisões sem guardar
-  conversas integrais?
-- A arquitetura de artefatos imutáveis mantém custo sustentável quando o
-  catálogo e o número de workspaces crescem?
-
-Essas perguntas orientam avaliação; não antecipam resultados. O
-[Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) descreve
-como separar verificação técnica, inspeção especializada e investigação com
-participantes. A [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
-liga construtos, decisões, implementação, testes e evidências esperadas.
-
-## Como acompanhar o estado
-
-O estado publicado deve ser lido em conjunto com:
-
-- [Visão do produto](visao-do-produto.md), para a finalidade e o escopo;
-- [Arquitetura](arquitetura.md), para os componentes;
-- [Modelo didático](modelo-didatico.md), para as hipóteses pedagógicas;
-- [Matriz de conformidade técnica](matriz-conformidade-tecnica.md), para a
-  evidência verificável da implementação;
-- [Plano de controle e artefatos](plano-de-controle-e-artefatos.md), para os
-  procedimentos operacionais.
-
-O histórico cronológico de versões pertence ao [`CHANGELOG.md`](../CHANGELOG.md).
-Este documento descreve apenas o estado corrente e as lacunas que permanecem
-relevantes.
+# Estado corrente do produto
+
+Esta página registra o estado observado em **2026-08-20**. Ela distingue
+implementação, ligação entre camadas, acesso, uso e evidência. Um teste local
+comprova o comportamento no ambiente testado; a coluna correspondente informa
+quando ainda falta comprovação no serviço hospedado, no APK ou com pessoas.
+
+O contrato corrente usa o Curso como identidade comum de Estudo, Autoria,
+Pesquisa e Model Context Protocol (MCP). A revisão de banco declarada no
+manifesto é `20260820101500`.
+
+## Como ler a matriz
+
+- **Existe:** há implementação identificável na revisão corrente.
+- **Conectado:** interface, domínio, persistência e serviço participam do mesmo
+  caso de uso.
+- **Acessível:** informa quem pode chegar à capacidade e por qual superfície.
+- **Uso verificado:** separa execução automatizada, uso em navegador e uso no
+  serviço publicado.
+- **Funciona:** resume a evidência técnica disponível.
+- **Necessário:** indica se a capacidade resolve um problema atual.
+- **Alinhamento:** compara a solução com a intenção corrente do produto.
+- **Limites e destino:** registra o que a evidência ainda não autoriza afirmar e
+  qual providência operacional permanece.
+
+**Parcial** descreve uma ligação ou comprovação incompleta. Não significa
+aproximação percentual de conclusão. Teste de software também não demonstra
+aprendizagem, compreensão ou usabilidade humana.
+
+## Matriz por caso de uso
+
+| Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| listar e abrir Cursos concretos | Sim | Lista paginada, controlador, rota, banco e MCP usam o mesmo `courseId` | Pessoa autenticada vê Cursos próprios e Cursos recebidos para Estudo | Testes e navegador local | Busca, paginação, retorno e vínculo direto abrem o mesmo Curso sem baixar toda a composição | Sim | Alto | A publicação desta revisão e a medição com cardinalidade hospedada ainda precisam de comprovação |
+| estudar o Curso vivo | Sim | Revisão, entidades paginadas, composição validada, IndexedDB e mecanismo de renderização formam um único fluxo | Proprietário e pessoa com acesso direto | Testes focais e navegador local | Navegação curricular, prática, retorno, progresso, marcas de revisão e Fontes visíveis foram exercitados | Sim | Alto | Revalidar instalação e atualização do APK e a revisão hospedada; o funcionamento não prova eficácia educacional |
+| continuar o estudo sem conexão | Sim | Composição já validada, estado pessoal e filas específicas permanecem no dispositivo | Pessoa que já sincronizou o Curso | Testes de reinício, reconexão e duas abas | A última revisão válida continua disponível; estado pessoal e Observações retomam o envio sem duplicação | Sim | Alto | Um dispositivo desconhecido com escrita antiga ainda não sincronizada não pode ser recuperado depois da migração que remove o armazenamento anterior |
+| criar um Curso privado | Sim | Interface e MCP usam o mesmo domínio, API, transação e revisão | Pessoa autenticada torna-se proprietária | Testes locais | A criação idempotente produz identidade, metadados e plano inicial sob autorização | Sim | Alto | O padrão de 7 a 12 Partes é configurável e não constitui regra pedagógica |
+| planejar e organizar por Partes | Sim | Planejamento, itens, Partes, vínculos de produção e atividade são lidos e alterados pelas duas interfaces | Proprietário | Testes locais | É possível editar campos do plano, criar, reordenar, dividir e unir Partes e mover Microssequências sem apagar conteúdo | Sim | Alto | Parte é unidade operacional; o dimensionamento adequado continua sujeito ao conteúdo e à avaliação |
+| produzir uma Parte com assistência conversacional | Sim | O cliente conectado lê plano, parâmetros, componentes, Fontes e Observações e confirma etapas limitadas no servidor | Proprietário autenticado por OAuth | Testes de domínio, serviço e MCP | Etapas são retomáveis, idempotentes e transacionais; o progresso deriva do conteúdo confirmado | Sim | Alto | A interface visual prepara o pedido, mas não executa a produção sozinha; falta o ensaio final no cliente conversacional hospedado |
+| configurar parâmetros e componentes didáticos | Sim | Área Parâmetros e MCP chamam a mesma resolução por escopo e a mesma operação atômica de política | Proprietário | Testes de domínio, banco, MCP e interface | Valor efetivo, origem, herança, preferência, disponibilidade e bloqueio permanecem inspecionáveis | Sim | Alto | Valores aplicados são fatos declarados de desenho; não medem qualidade ou aprendizagem |
+| descobrir e validar componentes didáticos | Sim | Navegador e função remota usam o mesmo catálogo gerado e recuperam um contrato versionado por consulta | Proprietário na Autoria e no MCP | Auditoria dos 32 pacotes, testes do núcleo, função remota e MCP | A busca devolve até oito candidatos; 22 pacotes são mantidos e 10 possuem restrições de uso declaradas | Sim | Alto | Disponibilidade técnica e adequação contextual são relações distintas; o uso real continua concentrado em poucos componentes |
+| percorrer Unidades na Inspeção | Sim | Consulta paginada, janela vertical, posição local e endereços diretos usam a revisão fixada do Curso | Proprietário | Navegador em 360, 390, 430 e 1280 px; claro, escuro, movimento reduzido e duas abas | Páginas de 12 Unidades, janela de até 36, retorno exato, reconexão e atualização localizada possuem cobertura | Sim | Alto | Respostas ficam inertes; inspeção rápida não constitui medida de atenção ou qualidade da revisão humana |
+| manter perfil e compartilhar para Estudo | Sim | Perfil, avatar privado, acesso direto, lista de Estudo e MCP usam a mesma autorização | Proprietário concede ou revoga; favorecido recebe somente Estudo | Testes locais com duas identidades | Nome, foto, concessão e revogação possuem operações idempotentes e proteção no banco | Sim | Alto | Não há grupos, organizações, convite pendente ou coautoria; validar mensagens e avatar em aparelhos reais |
+| excluir a própria conta | Sim | O aplicativo envia uma solicitação confirmada; a API autentica a pessoa, deriva seus Cursos e caminhos privados, remove PDFs e avatares e chama a função transacional, que recusa resíduos antes de excluir a conta e seus Cursos | Somente a própria pessoa, após confirmação literal | Testes de API, controlador e banco | A operação falha sem excluir a conta quando resta um objeto privado; confirmação, ordem de bloqueio, limpeza física e remoção relacional possuem cobertura | Sim | Alto | Exige conexão; uma URL de envio de PDF ou sessão ainda válida pode criar objeto órfão depois da exclusão, por isso a operação hospedada exige inventário posterior às duas janelas |
+| registrar Observações situadas | Sim | Estudo, Autoria e MCP usam Anotação ancorada, versões, fila local e persistência protegida | Estudante vê somente as próprias; proprietário recebe a caixa de entrada | Testes de banco, repositório, reconexão, duas abas e navegador | Texto original, alvo, revisão, canal, estado, resposta e classificação corrigível permanecem rastreáveis | Sim | Alto | Ausência, quantidade, categoria e tempo de tratamento não diagnosticam compreensão, dificuldade ou aprendizagem |
+| registrar Fontes, Âncoras e proveniência | Sim | Interface, MCP, banco e leitura redigida em Estudo compartilham identidades e revisões | Catálogo e edição pertencem ao proprietário; Estudo recebe apenas citações autorizadas | Testes focais e fluxo local com PostgreSQL e armazenamento de objetos | Metadados estruturados, relações, Âncoras, referências importadas e aplicação por alvo possuem contratos comuns | Sim | Alto | Proveniência identifica origem e transformação; não prova correção factual ou autoria científica |
+| anexar PDF a uma Fonte | Sim | Envio direto assinado, confirmação transacional, vínculo à revisão da Fonte e transferência autorizada formam o fluxo | Proprietário | Testes de banco, armazenamento de objetos, deduplicação, autorização e limites | PDF de até 20 MiB, no máximo oito por revisão de Fonte e 64 MiB de conteúdo único por Curso; impressões digitais SHA-256 iguais reutilizam os bytes quando permitido | Sim | Alto | O serviço hospedado ainda precisa da migração e da verificação pós-publicação; fora da exclusão integral da conta, retirar bytes sem vínculo exige política de retenção e prova de segurança |
+| auditar, corrigir e verificar uma Unidade | Sim | Contexto focal, rodada, achado, proposta, comparação, aplicação, nova rodada e reversão usam o mesmo ciclo na interface e no MCP | Proprietário | Testes de domínio, banco, MCP e navegador | Quatro dimensões, evidência por Fonte e Âncora, concorrência, confirmação, métricas do ciclo e endereços diretos possuem cobertura | Sim | Alto | A correção corrente altera conteúdo e Fontes da Unidade focal; auditoria factual mantém incerteza quando a evidência não sustenta conclusão |
+| criar e comparar variantes | Sim | Área Variantes e MCP usam ponto comum de planejamento, Cursos independentes e comparação factual | Proprietário | Testes de domínio, PostgreSQL e navegador nos tamanhos de referência | De duas a oito variantes conservam diferenças declaradas, revisões, produção, Fontes, PDFs e desvinculação sem excluir Curso | Sim | Alto para comparação descritiva | Não há participantes, atribuição, desfecho ou inferência causal; uma comparação técnica não equivale a experimento |
+| consultar fatos de Autoria em Pesquisa | Sim | Banco, domínio, API, painel, exportação e MCP usam o mesmo recorte versionado | Proprietário | Testes de domínio, PostgreSQL, interface e MCP | Sete conjuntos de fatos, filtros, paginação, gráfico, tabela, CSV, JSON, denominador e dados ausentes usam os mesmos valores | Sim | Alto | Os fatos descrevem Autoria; não incluem telemetria comportamental de Estudo nem medem aprendizagem |
+| pedir análise e visualização no cliente conversacional | Sim | A vista de Pesquisa do MCP fornece conteúdo estruturado, representação textual, componente visual opcional e endereços para o AraLearn | Proprietário conectado por OAuth; a forma visual depende do suporte do cliente | Testes locais do servidor MCP e do componente | Tabela e gráfico derivam do mesmo contrato; a operação continua útil sem componente visual | Sim | Alto | Falta a verificação final numa sessão real do cliente conectado e no serviço publicado |
+| operar dentro dos limites gratuitos do Supabase | Parcial | Paginação, limites de resposta, anexos deduplicados e consultas sob demanda reduzem banco, armazenamento, transferência e funções remotas | Operação administrativa, sem painel próprio | Limites oficiais e cenários locais foram registrados | A arquitetura evita depósito analítico, processamento periódico, cópia de Curso por edição e um objeto por Unidade | Sim | Alto | Medir tamanho, transferência, invocações, latência e crescimento depois da migração hospedada e da remoção autorizada das estruturas substituídas |
+| manter somente a arquitetura corrente | Parcial | O código de execução, a interface, o MCP e os testes correntes usam Curso; módulos substituídos de autoria e sincronização genérica foram retirados | Não é uma capacidade exposta | Busca estática e inventário vertical | O saldo no repositório é negativo em tabelas conceituais, rotas, módulos, ferramentas e testes | Sim | Alto | Estruturas físicas substituídas ainda exigem backup restaurado, plano exato e autorização específica antes da remoção remota |
+| publicar a revisão integrada | Ainda não | Versão web, Android, manifesto, migrações, funções remotas, Pages e versão publicada formam uma única etapa de validação | Pessoas usuárias somente depois da publicação | A linha pública anterior continua sendo a referência hospedada | A automação de construção e verificação existe | Sim | Alto | Concluir a suíte integral, a inspeção visual real, o ensaio de recuperação e os testes hospedados antes de declarar esta revisão publicada |
+
+## Relações do Curso vivo
+
+**Descrição textual:** um Curso possui identidade e revisão próprias. O plano e
+a composição pertencem a essa identidade; estado pessoal, Observações, Fontes,
+auditorias, variantes e fatos de Pesquisa mantêm relações próprias. Estudo,
+Autoria e MCP consultam o mesmo objeto.
+
+```mermaid
+flowchart TD
+    C[Curso vivo] --> H[Composição didática]
+    H --> MO[Módulos]
+    MO --> LI[Lições]
+    LI --> MI[Microssequências didáticas]
+    MI --> U[Unidades de estudo]
+    C --> P[Plano instrucional]
+    P --> PA[Partes de autoria]
+    C --> F[Fontes e Âncoras]
+    F -->|atribuição ao plano| P
+    F -->|atribuição ao conteúdo| U
+    C --> O[Observações situadas]
+    C --> A[Auditorias, achados e correções]
+    O -. vínculo opcional .-> A
+    C --> V[Variantes comparáveis]
+    C --> R[Fatos de Pesquisa]
+    C --> PE[Proprietário e acessos de Estudo]
+    C --> ES[Estado pessoal por pessoa]
+    AU[Autoria] <--> C
+    MCP[Cliente conectado por MCP] <--> C
+    E[Estudo] <--> C
+```
+
+## Carregamento e autoridade
+
+**Descrição textual:** a lista inicial recebe apenas descritores. Ao abrir um
+Curso, a aplicação fixa uma revisão, pagina as entidades, recompõe e valida o
+documento e só então atualiza o IndexedDB. Fontes, auditoria, variantes e
+Pesquisa possuem leituras próprias, limitadas e autorizadas.
+
+```mermaid
+flowchart LR
+    L[Lista paginada] --> O[Abrir Curso]
+    O --> D{Destino}
+    D --> R[Fixar revisão]
+    R --> E[Paginar entidades]
+    E --> V[Compor e validar]
+    V --> I[IndexedDB]
+    I --> S[Estudo]
+    D --> P[Planejamento e Parâmetros]
+    D --> IN[Inspeção paginada]
+    D --> F[Fontes e PDFs]
+    D --> A[Auditoria e correções]
+    D --> VA[Variantes]
+    D --> Q[Pesquisa]
+```
+
+## Evidência visual
+
+A captura móvel de Estudo em 390 por 844 px documenta a composição de conteúdo
+e controles usada como referência:
+
+![Unidade de estudo em tela móvel clara, com conteúdo central e controles
+iconográficos.](screenshots/study/study-card-390-light.png)
+
+A lista móvel de Autoria, também em 390 por 844 px, documenta a entrada dos
+Cursos próprios:
+
+![Lista de Cursos da Autoria em tela móvel clara, com busca, criação e três
+Cursos.](screenshots/authoring/authoring-courses-390-light.png)
+
+Capturas anteriores de outras superfícies não definem o estado atual. A
+documentação só adota uma nova imagem depois de conferir a aplicação real em
+360, 390 e 430 px e em 1280 px, nos modos claro e escuro, com texto extenso,
+teclado e interação.
+
+## Condições restantes para publicação
+
+O código corrente já reúne as capacidades funcionais do Curso vivo. A publicação ainda
+depende dos seguintes resultados operacionais:
+
+1. reconstrução limpa do banco e aprovação de migrações, RLS, pgTAP, funções
+   remotas, MCP, navegador e Android;
+2. conferência do inventário, contagens e impressões digitais da migração dos
+   Cursos existentes;
+3. verificação visual real em celular e computador, inclusive sobreposições,
+   área segura, textos extensos e retomada;
+4. comprovação no serviço hospedado de autenticação, Estudo, Autoria, Fontes,
+   Pesquisa, MCP e endereços diretos;
+5. medição final de banco, armazenamento, transferência e funções remotas;
+6. alinhamento de versão, manifesto, site, APK e publicação.
+
+A remoção física remota das estruturas substituídas possui uma validação
+própria. Ela requer exportação, contagens e impressões digitais, restauração em
+ambiente descartável, estratégia de recuperação e autorização específica. Essa
+cautela não impede a validação e a publicação das partes não destrutivas da
+entrega.

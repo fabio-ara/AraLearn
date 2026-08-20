@@ -1,7 +1,12 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
+const EXPECTED_APP_VERSION = String(JSON.parse(readFileSync(
+  new URL("../package.json", import.meta.url),
+  "utf8"
+)).version || "").trim();
 const REQUEST_ATTEMPTS = 5;
 const RETRY_BASE_DELAY_MS = 1_000;
 const RETRY_MAX_DELAY_MS = 8_000;
@@ -22,7 +27,9 @@ const REQUIRED_ASSETS = Object.freeze([
   "./styles.css",
   "./main.js",
   "./service-worker.js",
-  "./assets/brand/aralearn-mark.png"
+  "./assets/brand/aralearn-mark.png",
+  "./src/render/renderPackageStudyUnit.js",
+  "./src/resources/kernel/studyUnitEnvelope.js"
 ]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".json", ".mjs", ".svg", ".txt", ".xml"]);
 const RETRYABLE_HTTP_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504]);
@@ -101,7 +108,8 @@ async function request(url, { fetchImpl, redirect = "error", waitImpl = wait } =
       response = await fetchImpl(url, {
         method: "GET",
         redirect,
-        headers: { Accept: "*/*" },
+        cache: "no-store",
+        headers: { Accept: "*/*", "Cache-Control": "no-cache" },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
       });
     } catch (error) {
@@ -206,31 +214,8 @@ export function parsePublicRuntimeConfig(source) {
   if (!publishableKey.startsWith("sb_publishable_") && payload?.role !== "anon") {
     throw new Error("runtime-config.js não contém uma publishable key pública válida.");
   }
-  if (!Array.isArray(config.assistAllowedOrigins)) {
-    throw new Error("runtime-config.js contém origens de assistência inválidas.");
-  }
-  const assistAllowedOrigins = config.assistAllowedOrigins.map((value) => {
-    let origin;
-    try {
-      origin = new URL(value);
-    } catch (error) {
-      throw new Error("runtime-config.js contém uma origem de assistência inválida.", { cause: error });
-    }
-    if (
-      origin.protocol !== "https:" ||
-      origin.username ||
-      origin.password ||
-      origin.pathname !== "/" ||
-      origin.search ||
-      origin.hash
-    ) {
-      throw new Error("runtime-config.js contém uma origem de assistência que não é uma origem HTTPS exata.");
-    }
-    return origin.origin;
-  });
   return {
-    projectOrigin: projectUrl.origin,
-    assistAllowedOrigins: [...new Set(assistAllowedOrigins)]
+    projectOrigin: projectUrl.origin
   };
 }
 
@@ -242,7 +227,7 @@ function readCsp(indexSource) {
   return content[1] || content[2];
 }
 
-export function validatePublishedCsp(indexSource, projectOrigin, assistAllowedOrigins = []) {
+export function validatePublishedCsp(indexSource, projectOrigin) {
   const csp = readCsp(indexSource);
   const connectDirective = csp
     .split(";")
@@ -256,11 +241,7 @@ export function validatePublishedCsp(indexSource, projectOrigin, assistAllowedOr
   if (!sources.includes(projectOrigin)) {
     throw new Error("A CSP não permite a Project URL pública configurada.");
   }
-  const missingAssistOrigins = assistAllowedOrigins.filter((origin) => !sources.includes(origin));
-  if (missingAssistOrigins.length) {
-    throw new Error("A CSP não permite uma origem de assistência declarada no runtime.");
-  }
-  const expectedSources = new Set(["'self'", projectOrigin, ...assistAllowedOrigins]);
+  const expectedSources = new Set(["'self'", projectOrigin]);
   const unexpectedSources = sources.filter((source) => !expectedSources.has(source));
   if (unexpectedSources.length) {
     throw new Error("A CSP permite uma origem que não consta da configuração pública.");
@@ -284,12 +265,13 @@ function assertNoSecrets(source, assetPath) {
   }
 }
 
-function assertVersionedServiceWorker(source) {
-  if (
-    source.includes("__ARALEARN_CACHE_REVISION__") ||
-    !/const CACHE_NAME = `\$\{CACHE_PREFIX\}[a-f0-9]{20}`;/u.test(source)
-  ) {
+function assertVersionedServiceWorker(source, expectedRevision) {
+  const revision = source.match(/const CACHE_NAME = `\$\{CACHE_PREFIX\}([a-f0-9]{20})`;/u)?.[1];
+  if (source.includes("__ARALEARN_CACHE_REVISION__") || !revision) {
     throw new Error("service-worker.js não contém uma revisão de cache derivada do artefato.");
+  }
+  if (revision !== expectedRevision) {
+    throw new Error("service-worker.js e asset-manifest.json descrevem revisões diferentes.");
   }
 }
 
@@ -305,7 +287,7 @@ function normalizeManifestAsset(siteUrl, value) {
   return { asset, url };
 }
 
-function validateAssetManifest(source, siteUrl) {
+function validateAssetManifest(source, siteUrl, expectedVersion) {
   let manifest;
   try {
     manifest = JSON.parse(source);
@@ -314,6 +296,12 @@ function validateAssetManifest(source, siteUrl) {
   }
   if (!Array.isArray(manifest?.assets) || manifest.assets.length > MAX_ASSET_COUNT) {
     throw new Error("asset-manifest.json não contém uma lista de recursos válida.");
+  }
+  if (manifest.version !== expectedVersion) {
+    throw new Error(`asset-manifest.json não corresponde à versão esperada ${expectedVersion}.`);
+  }
+  if (!/^[a-f0-9]{20}$/u.test(manifest.revision || "")) {
+    throw new Error("asset-manifest.json não contém uma revisão válida do artefato.");
   }
   const assets = manifest.assets.map((asset) => normalizeManifestAsset(siteUrl, asset));
   const names = new Set(assets.map(({ asset }) => asset));
@@ -325,7 +313,13 @@ function validateAssetManifest(source, siteUrl) {
   if (catalogFiles.length) {
     throw new Error(`O site contém curso, fixture ou catálogo operacional: ${catalogFiles[0]}.`);
   }
-  return assets;
+  return { assets, revision: manifest.revision };
+}
+
+function cacheBustedUrl(value, key) {
+  const url = new URL(value);
+  url.searchParams.set("aralearn-publication-check", key);
+  return url;
 }
 
 async function verifyCallback(siteUrl, fetchImpl, waitImpl) {
@@ -362,35 +356,43 @@ async function verifyCallback(siteUrl, fetchImpl, waitImpl) {
 export async function verifyPublishedSite({
   siteUrl,
   fetchImpl = globalThis.fetch,
-  waitImpl = wait
+  waitImpl = wait,
+  expectedVersion = EXPECTED_APP_VERSION
 }) {
   if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
   const baseUrl = normalizeSiteUrl(siteUrl);
-  const indexResponse = await request(baseUrl, { fetchImpl, waitImpl });
+  const normalizedExpectedVersion = requiredText(expectedVersion, "a versão esperada");
+  const publicationCheck = `${normalizedExpectedVersion}-${Date.now().toString(36)}`;
+  const indexResponse = await request(cacheBustedUrl(baseUrl, publicationCheck), { fetchImpl, waitImpl });
   const indexSource = await readSuccessfulText(indexResponse, "index.html");
   assertNoSecrets(indexSource, "index.html");
   if (!/<div\s+id=["']app-root["']/iu.test(indexSource)) {
     throw new Error("index.html não contém o ponto de montagem do AraLearn.");
   }
 
-  const runtimeUrl = new URL("./runtime-config.js", baseUrl);
+  const runtimeUrl = cacheBustedUrl(new URL("./runtime-config.js", baseUrl), publicationCheck);
   const runtimeResponse = await request(runtimeUrl, { fetchImpl, waitImpl });
   const runtimeSource = await readSuccessfulText(runtimeResponse, "runtime-config.js");
   assertNoSecrets(runtimeSource, "runtime-config.js");
   const runtimeConfig = parsePublicRuntimeConfig(runtimeSource);
-  validatePublishedCsp(indexSource, runtimeConfig.projectOrigin, runtimeConfig.assistAllowedOrigins);
+  validatePublishedCsp(indexSource, runtimeConfig.projectOrigin);
 
-  const manifestUrl = new URL("./asset-manifest.json", baseUrl);
+  const manifestUrl = cacheBustedUrl(new URL("./asset-manifest.json", baseUrl), publicationCheck);
   const manifestResponse = await request(manifestUrl, { fetchImpl, waitImpl });
   const manifestSource = await readSuccessfulText(manifestResponse, "asset-manifest.json");
   assertNoSecrets(manifestSource, "asset-manifest.json");
-  const assets = validateAssetManifest(manifestSource, baseUrl);
+  const { assets, revision } = validateAssetManifest(
+    manifestSource,
+    baseUrl,
+    normalizedExpectedVersion
+  );
 
   let totalTextBytes = Buffer.byteLength(indexSource, "utf8") + Buffer.byteLength(runtimeSource, "utf8") + Buffer.byteLength(manifestSource, "utf8");
   let checkedResources = 3;
   for (const { asset, url } of assets) {
     if (asset === "./runtime-config.js") continue;
-    const response = await request(url, { fetchImpl, waitImpl });
+    const checkedUrl = cacheBustedUrl(url, revision);
+    const response = await request(checkedUrl, { fetchImpl, waitImpl });
     if (!response.ok) throw new Error(`${asset} não está disponível (HTTP ${response.status}).`);
     assertMime(response, asset);
     checkedResources += 1;
@@ -401,12 +403,14 @@ export async function verifyPublishedSite({
       throw new Error("Os recursos textuais excedem o limite total de verificação.");
     }
     assertNoSecrets(source, asset);
-    if (asset === "./service-worker.js") assertVersionedServiceWorker(source);
+    if (asset === "./service-worker.js") assertVersionedServiceWorker(source, revision);
   }
 
   await verifyCallback(baseUrl, fetchImpl, waitImpl);
   return {
     siteUrl: baseUrl.href,
+    version: normalizedExpectedVersion,
+    artifactRevision: revision,
     projectUrl: runtimeConfig.projectOrigin,
     resourcesChecked: checkedResources,
     callbackChecked: true

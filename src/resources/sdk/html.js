@@ -153,11 +153,13 @@ function renderPackageInlineParsed(value) {
 }
 
 export function renderPackageInlineReference(value) {
-  const reference = parsePackageManualTextSegments(value)
-    .map(({ value: segment }) => segment)
-    .join("");
-  GAP_MARKER.lastIndex = 0;
-  return renderPackageInlineParsed(reference.replace(GAP_MARKER, "\u2026"));
+  return parsePackageManualTextSegments(value).map((segment) => {
+    GAP_MARKER.lastIndex = 0;
+    return manualFieldMarkup(
+      segment.path,
+      renderPackageInlineParsed(segment.value.replace(GAP_MARKER, "\u2026"))
+    );
+  }).join("");
 }
 
 export function renderPackageCode(value) {

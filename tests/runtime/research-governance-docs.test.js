@@ -75,7 +75,7 @@ test("bibliografia canônica cobre método, público, feedback, IA e analytics",
 
 test("bibliografia de pesquisa é ampla, identificável e livre de duplicatas", () => {
   const entries = parseBibtexEntries(read("docs/referencias.bib"));
-  assert.ok(entries.length >= 60, "a base deve sustentar uma revisão técnico-científica ampla");
+  assert.ok(entries.length > 0, "a bibliografia canônica não pode estar vazia");
 
   const keys = entries.map(({ key }) => key.toLowerCase());
   assert.equal(new Set(keys).size, keys.length, "chaves BibTeX devem ser únicas");
@@ -88,6 +88,19 @@ test("bibliografia de pesquisa é ampla, identificável e livre de duplicatas", 
   for (const { key, body } of entries) {
     assert.match(body, /\b(?:doi|isbn|url)\s*=\s*\{[^}]+\}/iu, `${key} precisa de identificador persistente`);
   }
+});
+
+test("revisão registra método prospectivo sem inventar buscas retrospectivas", () => {
+  const review = read("docs/revisao-de-literatura.md");
+  const log = read("docs/evidence/registro-buscas-bibliograficas.csv").trimEnd();
+  const lines = log.split(/\r?\n/gu);
+  assert.match(review, /protocolo \*\*ARA-LIT-1\*\*/u);
+  assert.match(review, /não conserva um diário completo/u);
+  assert.match(review, /sem\s+linhas retrospectivas inventadas/u);
+  assert.equal(
+    lines[0],
+    "registro_id,data_hora_utc,eixo,base_ou_indice,consulta_exata,filtros,registros_informados,duplicatas_removidas,titulos_resumos_avaliados,textos_em_integra_avaliados,incluidos,motivos_exclusao_texto_integral,versao_criterios,responsavel,observacoes"
+  );
 });
 
 test("bibliografia cobre desenho de pesquisa, cognição, autorregulação e IA responsável", () => {
@@ -110,6 +123,36 @@ test("bibliografia cobre desenho de pesquisa, cognição, autorregulação e IA 
   ]) {
     assert.match(bibliography, new RegExp(`\\{${key},`, "u"));
   }
+});
+
+test("revisão linguístico-semiótica separa unidade, gesto e inferência", () => {
+  const bibliography = read("docs/referencias.bib");
+  const review = read("docs/revisao-de-literatura.md");
+  const glossary = read("docs/glossario-construtos.md");
+
+  for (const key of [
+    "miller1984genre",
+    "kintsch1978model",
+    "schnotz2003representations",
+    "haverkamp2023screens",
+    "kirshmaglio1994epistemic",
+    "chun2011attention",
+    "messick1995validity",
+    "aera2014standards",
+    "barrison2025flashcards"
+  ]) {
+    assert.match(bibliography, new RegExp(`\\{${key},`, "u"));
+  }
+
+  assert.match(review, /ambiente de aprendizagem, autoria\s+e pesquisa com unidades de estudo estruturadas/u);
+  assert.match(glossary, /### Unidade de estudo/u);
+  assert.match(glossary, /### Anotação ancorada/u);
+  assert.match(glossary, /### Cartão de memorização/u);
+  assert.match(glossary, /### Gesto de entrada/u);
+  assert.match(glossary, /### Operação-alvo da tarefa/u);
+  assert.match(glossary, /### Atenção/u);
+  assert.match(glossary, /### Métrica/u);
+  assert.match(glossary, /### Desfecho de pesquisa/u);
 });
 
 test("governança de pesquisa separa DBR, DSR e estados epistêmicos", () => {

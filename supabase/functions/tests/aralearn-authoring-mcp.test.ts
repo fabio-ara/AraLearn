@@ -35,16 +35,14 @@ function adapter() {
         actorId: "11111111-1111-4111-8111-111111111111",
         oauthClientId: "chatgpt-client",
         authenticationKind: "oauth",
-        scopes: ["authoring:private:read", "authoring:private:write"]
+        scopes: ["authoring:read", "authoring:write"]
       };
     },
-    async createWorkspace(command: Record<string, unknown>) {
+    async createCourse(command: Record<string, unknown>) {
       return {
-        workspaceId: command.workspaceId,
+        courseId: "10000000-0000-4000-8000-000000000001",
         title: command.title,
         revision: 1,
-        currentRevision: 1,
-        entityCount: 0,
         createdAt: "2026-08-13T00:00:00.000Z",
         updatedAt: "2026-08-13T00:00:00.000Z",
         idempotent: false
@@ -53,7 +51,7 @@ function adapter() {
   };
 }
 
-Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas v4", async () => {
+Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas de Curso", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: adapter(),
     allowedOrigins: new Set([origin]),
@@ -71,7 +69,43 @@ Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas v4", as
   assertEquals(response.headers.get("mcp-session-id"), null);
 });
 
-Deno.test("gateway MCP cria workspace pelo mesmo adaptador REST", async () => {
+Deno.test("gateway MCP mantém seis tools e anuncia observações e ciclo de auditoria", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: adapter(),
+    allowedOrigins: new Set([origin]),
+    resourceUrl,
+    authorizationServer
+  });
+  const response = await handler(request("tools/list"));
+  const body = await response.json();
+  const tools = body.result.tools as Array<Record<string, unknown>>;
+  assertEquals(tools.map(({ name }) => name), [
+    "listarCursos",
+    "lerCurso",
+    "criarCurso",
+    "alterarCurso",
+    "gerirPessoas",
+    "consultarComponentesDidaticos"
+  ]);
+  const read = tools.find(({ name }) => name === "lerCurso") as {
+    inputSchema: { properties: { view: { enum: string[] } } }
+  };
+  const change = tools.find(({ name }) => name === "alterarCurso") as {
+    inputSchema: { properties: { operation: { enum: string[] } } }
+  };
+  assertEquals(read.inputSchema.properties.view.enum.includes("anchored_annotations"), true);
+  assertEquals(read.inputSchema.properties.view.enum.includes("audit_cycle"), true);
+  assertEquals(
+    change.inputSchema.properties.operation.enum.includes("update_anchored_annotations"),
+    true
+  );
+  assertEquals(
+    change.inputSchema.properties.operation.enum.includes("update_audit_cycle"),
+    true
+  );
+});
+
+Deno.test("gateway MCP cria Curso pelo mesmo caso de uso do aplicativo", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: adapter(),
     allowedOrigins: new Set([origin]),
@@ -79,10 +113,11 @@ Deno.test("gateway MCP cria workspace pelo mesmo adaptador REST", async () => {
     authorizationServer
   });
   const response = await handler(request("tools/call", {
-    name: "criarWorkspaceDeAutoria",
+    name: "criarCurso",
     arguments: {
-      requestId: "deno-workspace-create-0001",
-      title: "Curso"
+      requestId: "deno-course-create-0001",
+      title: "Curso",
+      objective: "Compreender o tema."
     }
   }));
   const body = await response.json();

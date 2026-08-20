@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  normalizeCardEnvelope,
-  renderCardEnvelope,
-  validateCardEnvelope
-} from "../../src/resources/kernel/cardEnvelope.js";
+  normalizeStudyUnitEnvelope,
+  renderStudyUnitEnvelope,
+  validateStudyUnitEnvelope
+} from "../../src/resources/kernel/studyUnitEnvelope.js";
 import {
   normalizeCourseDocument,
   validateCourseDocument
@@ -23,7 +23,7 @@ function paragraphInstance(overrides = {}) {
   };
 }
 
-function theoryCard() {
+function theoryStudyUnit() {
   return {
     id: "card-1",
     position: 1,
@@ -32,8 +32,7 @@ function theoryCard() {
     content: [paragraphInstance()],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 
@@ -184,9 +183,9 @@ test("gap rejeita campo editável que o package não declarou para prática", ()
     version: "1.0.0",
     data: { blanks: [{ id: "bad", targetInstanceId: content.id, targetPath: "prompt", responseMode: "text", answer: "TCP" }] }
   };
-  const card = { ...theoryCard(), id: "invalid-target", role: "practice", content: [content], response };
+  const card = { ...theoryStudyUnit(), id: "invalid-target", role: "practice", content: [content], response };
   assert.match(
-    validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /campo não declarado pelo package/u
   );
 });
@@ -225,16 +224,16 @@ test("todo alvo de prática do catálogo materializa a lacuna dentro do resource
       }
     }, "response");
     const practiceCard = {
-      ...theoryCard(),
+      ...theoryStudyUnit(),
       id: `render-practice-${index}`,
       role: "practice",
       content: [content],
       response
     };
-    const validation = validateCardEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY);
+    const validation = validateStudyUnitEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY);
     assert.equal(validation.valid, true, `${manifest.id}: ${validation.errors.join(" ")}`);
-    const rendered = renderCardEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY, {
-      cardResponse: response,
+    const rendered = renderStudyUnitEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY, {
+      studyUnitResponse: response,
       responseBlockKey: `gap-${index}`,
       blockKey: `gap-${index}`,
       responseState: { values: [] }
@@ -282,8 +281,8 @@ test("kernel rejeita alvo declarado que o renderer mantém invisível", () => {
     version: "1.0.0",
     data: { blanks: [{ id: "hidden", targetInstanceId: content.id, targetPath: "hidden", responseMode: "text", answer: "resposta" }] }
   }, "response");
-  const result = validateCardEnvelope({
-    ...theoryCard(), id: "hidden-card", role: "practice", content: [content], response
+  const result = validateStudyUnitEnvelope({
+    ...theoryStudyUnit(), id: "hidden-card", role: "practice", content: [content], response
   }, registry);
   assert.equal(result.valid, false);
   assert.match(result.errors.join(" "), /não materializa um controle visível/u);
@@ -317,12 +316,12 @@ test("lacunas múltiplas no mesmo campo não corrompem os marcadores umas das ou
     }
   }, "response");
   const card = {
-    ...theoryCard(), id: "multiple-gaps-card", role: "practice", content: [content], response
+    ...theoryStudyUnit(), id: "multiple-gaps-card", role: "practice", content: [content], response
   };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: response,
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    studyUnitResponse: response,
     responseBlockKey: "multiple-gaps",
     blockKey: "multiple-gaps",
     responseState: { values: [] }
@@ -375,14 +374,14 @@ test("destinos repetidos da tabela de transição viram lacunas independentes co
       distractors: ["q₁", "q₂"]
     }] }
   }, "response");
-  const derivedReferences = renderCardEnvelope({
-    ...theoryCard(),
+  const derivedReferences = renderStudyUnitEnvelope({
+    ...theoryStudyUnit(),
     id: "transition-state-label-card",
     role: "practice",
     content: [content],
     response: stateLabelResponse
   }, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: stateLabelResponse,
+    studyUnitResponse: stateLabelResponse,
     responseBlockKey: "transition-state-label",
     blockKey: "transition-state-label",
     responseState: { values: [] }
@@ -403,33 +402,33 @@ test("destinos repetidos da tabela de transição viram lacunas independentes co
     })) }
   }, "response");
   const card = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     id: "transition-destinations-card",
     role: "practice",
     content: [content],
     response
   };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
   const labelAsStructuralAnswer = structuredClone(card);
   labelAsStructuralAnswer.response.data.blanks[0].answer = "q₀";
   assert.match(
-    validateCardEnvelope(labelAsStructuralAnswer, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(labelAsStructuralAnswer, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /referência estrutural precisa usar o valor integral do campo/u
   );
   const contradictoryEquivalent = structuredClone(card);
   contradictoryEquivalent.response.data.blanks[0].acceptedAnswers = ["q1"];
   assert.match(
-    validateCardEnvelope(contradictoryEquivalent, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(contradictoryEquivalent, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /não admite resposta equivalente que altere a referência/u
   );
   const duplicateVisibleOption = structuredClone(card);
   duplicateVisibleOption.content[0].data.states[1].label = "q₀";
   assert.match(
-    validateCardEnvelope(duplicateVisibleOption, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(duplicateVisibleOption, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /precisa de rótulos de opção distintos/u
   );
-  const semanticCard = RESOURCE_PACKAGE_REGISTRY.prepareCardForSemantics(card);
+  const semanticCard = RESOURCE_PACKAGE_REGISTRY.prepareStudyUnitForSemantics(card);
   assert.equal(semanticCard.content[0].data.transitions[1].to, "q0");
   assert.equal(semanticCard.content[0].data.transitions[5].to, "q0");
   assert.equal(
@@ -438,11 +437,11 @@ test("destinos repetidos da tabela de transição viram lacunas independentes co
     2
   );
 
-  const renderWithValues = (values, activeBlankIndex = null) => renderCardEnvelope(
+  const renderWithValues = (values, activeBlankIndex = null) => renderStudyUnitEnvelope(
     card,
     RESOURCE_PACKAGE_REGISTRY,
     {
-      cardResponse: response,
+      studyUnitResponse: response,
       responseBlockKey: "transition-destinations",
       blockKey: "transition-destinations",
       responseState: { values },
@@ -515,17 +514,17 @@ test("todo package materializa cada alvo como uma lacuna única e independente",
         data: { blanks }
       }, "response");
       const card = {
-        ...theoryCard(),
+        ...theoryStudyUnit(),
         id: `independent-card-${packageIndex}-${offset}`,
         role: "practice",
         content: [content],
         response
       };
-      const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+      const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
       assert.equal(validation.valid, true, `${manifest.id}: ${validation.errors.join(" ")}`);
 
-      const renderWithValues = (values) => renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-        cardResponse: response,
+      const renderWithValues = (values) => renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+        studyUnitResponse: response,
         responseBlockKey: "independent-response",
         blockKey: "independent-response",
         responseState: { values }
@@ -583,7 +582,7 @@ test("ordering atua em ao menos dois alvos textuais sem renderer independente", 
     data: contract.contract.example
   }, "response");
   const card = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     role: "practice",
     content: [
       { ...paragraphInstance({ text: "Preparar" }), id: "step-1" },
@@ -591,10 +590,10 @@ test("ordering atua em ao menos dois alvos textuais sem renderer independente", 
     ],
     response: instance
   };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: instance,
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    studyUnitResponse: instance,
     responseBlockKey: "ordering-situated",
     blockKey: "ordering-situated",
     responseState: { order: ["execute", "prepare"] }
@@ -622,11 +621,11 @@ test("ordering valida ocorrências, ordem de leitura e respostas observáveis", 
     { id: "execute", targetInstanceId: content.id, targetPath: "text:execute", answer: "executar" },
     { id: "verify", targetInstanceId: content.id, targetPath: "text:verify", answer: "verificar" }
   ];
-  const validCard = { ...theoryCard(), role: "practice", content: [content], response: response(targets) };
-  assert.equal(validateCardEnvelope(validCard, RESOURCE_PACKAGE_REGISTRY).valid, true);
+  const validCard = { ...theoryStudyUnit(), role: "practice", content: [content], response: response(targets) };
+  assert.equal(validateStudyUnitEnvelope(validCard, RESOURCE_PACKAGE_REGISTRY).valid, true);
 
   const reversed = { ...validCard, response: response([...targets].reverse()) };
-  const reversedValidation = validateCardEnvelope(reversed, RESOURCE_PACKAGE_REGISTRY);
+  const reversedValidation = validateStudyUnitEnvelope(reversed, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(reversedValidation.valid, false);
   assert.match(reversedValidation.errors.join(" "), /ordem de leitura/u);
 
@@ -640,7 +639,7 @@ test("ordering valida ocorrências, ordem de leitura e respostas observáveis", 
 
   const ambiguousContent = paragraphInstance({ text: "executar, depois executar" });
   const ambiguousCard = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     role: "practice",
     content: [ambiguousContent],
     response: response([
@@ -648,13 +647,13 @@ test("ordering valida ocorrências, ordem de leitura e respostas observáveis", 
       { id: "after", targetInstanceId: ambiguousContent.id, targetPath: "text:after", answer: "depois" }
     ])
   };
-  const ambiguousValidation = validateCardEnvelope(ambiguousCard, RESOURCE_PACKAGE_REGISTRY);
+  const ambiguousValidation = validateStudyUnitEnvelope(ambiguousCard, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(ambiguousValidation.valid, false);
   assert.match(ambiguousValidation.errors.join(" "), /única ocorrência/u);
 
   const overlappingContent = paragraphInstance({ text: "banana e kiwi" });
   const overlappingCard = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     role: "practice",
     content: [overlappingContent],
     response: response([
@@ -662,13 +661,13 @@ test("ordering valida ocorrências, ordem de leitura e respostas observáveis", 
       { id: "kiwi", targetInstanceId: overlappingContent.id, targetPath: "text:kiwi", answer: "kiwi" }
     ])
   };
-  const overlappingValidation = validateCardEnvelope(overlappingCard, RESOURCE_PACKAGE_REGISTRY);
+  const overlappingValidation = validateStudyUnitEnvelope(overlappingCard, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(overlappingValidation.valid, false);
   assert.match(overlappingValidation.errors.join(" "), /única ocorrência/u);
 
   const markedContent = paragraphInstance({ text: "**Preparar** e executar" });
   const markedCard = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     role: "practice",
     content: [markedContent],
     response: response([
@@ -676,13 +675,13 @@ test("ordering valida ocorrências, ordem de leitura e respostas observáveis", 
       { id: "execute", targetInstanceId: markedContent.id, targetPath: "text:execute", answer: "executar" }
     ])
   };
-  const markedValidation = validateCardEnvelope(markedCard, RESOURCE_PACKAGE_REGISTRY);
+  const markedValidation = validateStudyUnitEnvelope(markedCard, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(markedValidation.valid, false);
   assert.match(markedValidation.errors.join(" "), /texto plano fora da marcação Markdown/u);
 
   const delimitedCard = structuredClone(markedCard);
   delimitedCard.response.data.targets[0].answer = "**Preparar**";
-  const delimitedValidation = validateCardEnvelope(delimitedCard, RESOURCE_PACKAGE_REGISTRY);
+  const delimitedValidation = validateStudyUnitEnvelope(delimitedCard, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(delimitedValidation.valid, false);
   assert.match(delimitedValidation.errors.join(" "), /texto plano fora da marcação Markdown/u);
 });
@@ -710,11 +709,11 @@ test("ordering atravessa células distintas da tabela sem expor o contrato técn
       }))
     }
   };
-  const card = { ...theoryCard(), role: "practice", content: [content], response };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const card = { ...theoryStudyUnit(), role: "practice", content: [content], response };
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: response,
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    studyUnitResponse: response,
     responseBlockKey: "table-ordering",
     blockKey: "table-ordering",
     responseState: { order: ["step-2", "step-3", "step-1"] }
@@ -749,15 +748,15 @@ test("ordering atravessa paragraph e célula de table na mesma ordem de leitura"
     }
   };
   const card = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     role: "practice",
     content: [paragraph, table],
     response
   };
-  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
-    cardResponse: response,
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    studyUnitResponse: response,
     responseBlockKey: "cross-ordering",
     blockKey: "cross-ordering",
     responseState: { order: ["verify", "prepare", "execute"] }
@@ -802,54 +801,54 @@ test("exemplos autorais de todos os packages instalados normalizam, validam e re
 });
 
 test("envelope valida slots e renderiza por delegação", () => {
-  const card = normalizeCardEnvelope(theoryCard(), RESOURCE_PACKAGE_REGISTRY);
-  assert.equal(validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const card = normalizeStudyUnitEnvelope(theoryStudyUnit(), RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.match(rendered.contentHtml, /data-package="aralearn\.resource\.paragraph"/u);
   assert.match(rendered.contentHtml, /Uma explicação concreta\./u);
   assert.equal(rendered.responseHtml, "");
   assert.equal(rendered.accessibleText, "Uma explicação concreta.");
 });
 
-test("card de prática pode concentrar o enunciado apenas no package de resposta", () => {
+test("Unidade de estudo de prática pode concentrar o enunciado apenas no package de resposta", () => {
   const card = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     id: "practice-1",
     role: "practice",
     content: [],
     response: choiceResponse()
   };
-  assert.equal(validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
+  assert.equal(validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
 });
 
 test("envelope rejeita repetição do enunciado de choice em paragraph", () => {
   const question = "Qual protocolo confirma a entrega?";
   const card = {
-    ...theoryCard(),
+    ...theoryStudyUnit(),
     id: "practice-duplicate",
     role: "practice",
     content: [paragraphInstance({ text: `  ${question.toUpperCase()}  ` })],
     response: choiceResponse(question)
   };
   assert.match(
-    validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /não pode repetir a mesma pergunta/u
   );
 });
 
 test("package ausente e slot incompatível falham explicitamente", () => {
-  const absent = theoryCard();
+  const absent = theoryStudyUnit();
   absent.content[0].package = "aralearn.resource.absent";
   assert.match(
-    validateCardEnvelope(absent, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(absent, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /Package não instalado/u
   );
-  const response = theoryCard();
+  const response = theoryStudyUnit();
   response.role = "practice";
   response.response = paragraphInstance();
   response.response.id = "response-1";
   assert.match(
-    validateCardEnvelope(response, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(response, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /não pode ocupar o slot response/u
   );
 });
@@ -897,22 +896,22 @@ test("kernel delega hidratação opcional apenas ao package da instância", asyn
 });
 
 test("texto técnico não transforma expansão com sigla em literal parcial", () => {
-  const card = theoryCard();
+  const card = theoryStudyUnit();
   card.content[0].data.text = "Transmission Control Protocol (TCP) transporta segmentos.";
-  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  const rendered = renderStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.doesNotMatch(rendered.contentHtml, /<code>/u);
   assert.match(rendered.contentHtml, /Transmission Control Protocol \(TCP\)/u);
 });
 
 test("literal autoral precisa ser completo e ter crases inequívocas", () => {
-  const valid = theoryCard();
+  const valid = theoryStudyUnit();
   valid.content[0].data.text = "Use `Transmission Control Protocol (TCP)` como literal completo.";
-  const validResult = validateCardEnvelope(valid, RESOURCE_PACKAGE_REGISTRY);
+  const validResult = validateStudyUnitEnvelope(valid, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validResult.valid, true, validResult.errors.join(" "));
-  const invalid = theoryCard();
+  const invalid = theoryStudyUnit();
   invalid.content[0].data.text = "Use Transmission Control `Protocol (TCP) sem fechamento.";
   assert.match(
-    validateCardEnvelope(invalid, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    validateStudyUnitEnvelope(invalid, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
     /crase sem par/u
   );
 });
@@ -952,7 +951,7 @@ test("paragraph atravessa documento de curso, JSON e validação sem união glob
             id: "micro-1",
             title: "Primeiro contato",
             goal: "Dar referente concreto ao termo.",
-            cards: [theoryCard()]
+            studyUnits: [theoryStudyUnit()]
           }]
         }]
       }]
@@ -963,7 +962,7 @@ test("paragraph atravessa documento de curso, JSON e validação sem união glob
   assert.equal(validateCourseDocument(persisted, RESOURCE_PACKAGE_REGISTRY).valid, true);
   assert.equal(persisted.contract, "aralearn.course.v1");
   assert.equal(
-    persisted.course.modules[0].lessons[0].microsequences[0].cards[0].content[0].package,
+    persisted.course.modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].package,
     "aralearn.resource.paragraph"
   );
 });

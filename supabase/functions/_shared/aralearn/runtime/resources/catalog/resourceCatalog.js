@@ -1,4 +1,4 @@
-import { validateCardEnvelope } from "../kernel/cardEnvelope.js";
+import { validateStudyUnitEnvelope } from "../kernel/studyUnitEnvelope.js";
 import { createPackageRegistry } from "../kernel/packageRegistry.js";
 import { RESOURCE_PACKAGE_DEFINITIONS } from "../packages/generated.js";
 import {
@@ -12,9 +12,9 @@ import { RESOURCE_SELECTION_POLICY } from "./resourcePolicy.js";
 const CATALOG_CONTRACT = "aralearn.resource-library.v1";
 const POLICY_VERSION = 1;
 const FIT_ORDER = Object.freeze({ canonical: 3, versatile: 2, substitute: 1 });
-const SEARCH_LIMIT = 12;
+const SEARCH_LIMIT = 8;
 const INSPECT_LIMIT = 8;
-const CONTRACT_LIMIT = 4;
+const CONTRACT_LIMIT = 1;
 
 function clone(value) {
   return structuredClone(value);
@@ -60,7 +60,9 @@ function fnv1a(value) {
 function validateLimit(value, fallback, maximum, label = "limit") {
   if (value == null) return fallback;
   if (!Number.isInteger(value) || value < 1 || value > maximum) {
-    throw new RangeError(`${label} precisa ficar entre 1 e ${maximum}.`);
+    throw new RangeError(maximum === 1
+      ? `${label} precisa ser 1.`
+      : `${label} precisa ficar entre 1 e ${maximum}.`);
   }
   return value;
 }
@@ -109,7 +111,7 @@ function publicProfile(manifest) {
     domains: manifest.academic.domains,
     knowledgeObjects: manifest.academic.knowledgeObjects,
     conventions: manifest.academic.conventions,
-    cognitiveOperations: manifest.cognitiveOperations,
+    taskOperations: manifest.taskOperations,
     practiceModes: manifest.academic.practiceModes,
     taxonomy: manifest.academic.taxonomy
   });
@@ -123,10 +125,10 @@ function publicProfile(manifest) {
     familyIds: Object.freeze([...taxonomy.familyIds]),
     disciplineIds: Object.freeze([...taxonomy.disciplineIds]),
     structureIds: Object.freeze([...taxonomy.structureIds]),
-    operationIds: Object.freeze([...taxonomy.operationIds]),
+    taskOperationIds: Object.freeze([...taxonomy.taskOperationIds]),
     practiceModeIds: Object.freeze([...taxonomy.practiceModeIds]),
     specificity: taxonomy.specificity,
-    cognitiveOperations: Object.freeze([...manifest.cognitiveOperations]),
+    taskOperations: Object.freeze([...manifest.taskOperations]),
     knowledgeObjects: Object.freeze([...manifest.academic.knowledgeObjects]),
     conventions: Object.freeze([...manifest.academic.conventions]),
     useWhen: Object.freeze([...manifest.academic.appropriateWhen]),
@@ -149,7 +151,7 @@ function searchText(profile) {
     profile.packageId,
     profile.label,
     profile.purpose,
-    ...profile.cognitiveOperations,
+    ...profile.taskOperations,
     ...profile.knowledgeObjects,
     ...profile.conventions,
     ...profile.useWhen
@@ -167,7 +169,7 @@ function searchCandidate(profile, intent) {
   const facets = [
     ["discipline", intent.disciplineIds, profile.disciplineIds, 18],
     ["structure", intent.structureIds, profile.structureIds, 28],
-    ["operation", intent.operationIds, profile.operationIds, 16],
+    ["taskOperation", intent.taskOperationIds, profile.taskOperationIds, 16],
     ["practice", intent.practiceModeIds, profile.practiceModeIds, 8]
   ];
   for (const [label, requested, available, weight] of facets) {
@@ -204,7 +206,7 @@ function searchCandidate(profile, intent) {
   if (intent.notationIsLearningObject && contraindicationHits.length) score -= 40;
 
   const missingStructural = missing.some((entry) => (
-    entry.startsWith("structure:") || entry.startsWith("operation:")
+    entry.startsWith("structure:") || entry.startsWith("taskOperation:")
     || entry.startsWith("practice:") || entry.startsWith("preserve:")
   ));
   const disciplineRequested = intent.disciplineIds.length > 0;
@@ -213,7 +215,7 @@ function searchCandidate(profile, intent) {
   let fit;
   if (!missingStructural && (!disciplineRequested || disciplineMatched)
       && contraindicationHits.length === 0
-      && (intent.structureIds.length || intent.operationIds.length || queryExact)) {
+      && (intent.structureIds.length || intent.taskOperationIds.length || queryExact)) {
     fit = "canonical";
   } else if (!missingStructural && contraindicationHits.length === 0
       && (!disciplineRequested || disciplineMatched || !intent.notationIsLearningObject)
@@ -253,17 +255,17 @@ function normalizedIntent(raw = {}) {
   if (slot && !new Set(["content", "response", "feedback"]).has(slot)) {
     throw new RangeError("slot desconhecido.");
   }
-  const cardRole = String(raw.cardRole || "").trim();
-  if (cardRole && !new Set(["theory", "practice"]).has(cardRole)) {
-    throw new RangeError("cardRole precisa ser theory ou practice.");
+  const studyUnitRole = String(raw.studyUnitRole || "").trim();
+  if (studyUnitRole && !new Set(["theory", "practice"]).has(studyUnitRole)) {
+    throw new RangeError("studyUnitRole precisa ser theory ou practice.");
   }
   return {
     query: String(raw.query || "").trim(),
     slot,
-    cardRole,
+    studyUnitRole,
     disciplineIds: validatedFacetIds("disciplineIds", raw.disciplineIds),
     structureIds: validatedFacetIds("structureIds", raw.structureIds),
-    operationIds: validatedFacetIds("operationIds", raw.operationIds),
+    taskOperationIds: validatedFacetIds("taskOperationIds", raw.taskOperationIds),
     practiceModeIds: validatedFacetIds("practiceModeIds", raw.practiceModeIds),
     knowledgeObjects: normalizedList(raw.knowledgeObjects),
     mustPreserve: normalizedList(raw.mustPreserve),
@@ -274,11 +276,12 @@ function normalizedIntent(raw = {}) {
 
 function effectiveSlot(intent) {
   if (intent.slot) return intent.slot;
-  return intent.cardRole === "theory" ? "content" : "";
+  return intent.studyUnitRole === "theory" ? "content" : "";
 }
 
-function rankedCandidates(profiles, rawIntent) {
+function rankedCandidates(profiles, rawIntent, maximumLimit = 32) {
   const intent = normalizedIntent(rawIntent);
+  validateLimit(intent.limit, SEARCH_LIMIT, maximumLimit);
   const slot = effectiveSlot(intent);
   const candidates = profiles
     .filter((profile) => !slot || profile.slots.includes(slot))
@@ -296,7 +299,7 @@ function coverage(candidates, intent) {
   const best = candidates[0] || null;
   const desiredResource = intent.query || [
     ...intent.structureIds,
-    ...intent.operationIds,
+    ...intent.taskOperationIds,
     ...intent.knowledgeObjects
   ].join(", ") || "representação solicitada";
   if (!best) {
@@ -315,11 +318,11 @@ function coverage(candidates, intent) {
   };
 }
 
-function allCardInstances(card) {
+function allStudyUnitInstances(studyUnit) {
   return [
-    ...list(card?.content).map((instance, index) => ({ instance, slot: "content", index })),
-    ...(card?.response ? [{ instance: card.response, slot: "response", index: 0 }] : []),
-    ...list(card?.feedback).map((instance, index) => ({ instance, slot: "feedback", index }))
+    ...list(studyUnit?.content).map((instance, index) => ({ instance, slot: "content", index })),
+    ...(studyUnit?.response ? [{ instance: studyUnit.response, slot: "response", index: 0 }] : []),
+    ...list(studyUnit?.feedback).map((instance, index) => ({ instance, slot: "feedback", index }))
   ];
 }
 
@@ -384,14 +387,18 @@ export function createResourceCatalog(registry) {
       facets: {
         disciplines: facetRecords(RESOURCE_VOCABULARIES.disciplines, selected, "disciplineIds"),
         structures: facetRecords(RESOURCE_VOCABULARIES.structures, selected, "structureIds"),
-        operations: facetRecords(RESOURCE_VOCABULARIES.operations, selected, "operationIds"),
+        taskOperations: facetRecords(
+          RESOURCE_VOCABULARIES.taskOperations,
+          selected,
+          "taskOperationIds"
+        ),
         practiceModes: facetRecords(RESOURCE_VOCABULARIES.practiceModes, selected, "practiceModeIds")
       }
     };
   }
 
   function search(rawIntent = {}) {
-    const { intent, candidates } = rankedCandidates(profiles, rawIntent);
+    const { intent, candidates } = rankedCandidates(profiles, rawIntent, SEARCH_LIMIT);
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
@@ -440,14 +447,14 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function validateCard(card) {
-    const result = validateCardEnvelope(card, registry, "$.card");
+  function validateStudyUnit(studyUnit) {
+    const result = validateStudyUnitEnvelope(studyUnit, registry, "$.studyUnit");
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
       valid: result.valid,
       errors: [...result.errors],
-      composition: allCardInstances(card).map(({ instance, slot, index }) => ({
+      composition: allStudyUnitInstances(studyUnit).map(({ instance, slot, index }) => ({
         slot,
         index,
         instanceId: String(instance?.id || ""),
@@ -457,13 +464,13 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function auditRepresentation({ card, intent = {} } = {}) {
-    const structural = validateCard(card);
+  function auditRepresentation({ studyUnit, intent = {} } = {}) {
+    const structural = validateStudyUnit(studyUnit);
     const normalizedAuditIntent = normalizedIntent({ ...intent, limit: 32 });
-    const contentProfiles = list(card?.content).map((instance) => (
+    const contentProfiles = list(studyUnit?.content).map((instance) => (
       getProfile(instance?.package, instance?.version)
     )).filter(Boolean);
-    const selections = allCardInstances(card).map(({ instance, slot, index }) => {
+    const selections = allStudyUnitInstances(studyUnit).map(({ instance, slot, index }) => {
       const identity = {
         slot,
         index,
@@ -517,9 +524,9 @@ export function createResourceCatalog(registry) {
               : missingModes.length
                 ? "A operação de resposta não corresponde à modalidade de prática solicitada."
                 : !compatible
-                  ? "A resposta não está declarada como compatível com as representações de conteúdo do card."
+                  ? "A resposta não está declarada como compatível com as representações de conteúdo da Unidade de estudo."
                   : hasContent
-                    ? "A operação de resposta é compatível com ao menos uma representação de conteúdo do card."
+                    ? "A operação de resposta é compatível com ao menos uma representação de conteúdo da Unidade de estudo."
                     : "A operação de resposta é válida, mas não há conteúdo representacional para confirmar compatibilidade.",
           matched: [
             ...compatibleContent.map(({ packageId }) => `compatibility:${packageId}`),
@@ -563,24 +570,23 @@ export function createResourceCatalog(registry) {
       : "substitute";
     const warnings = [];
     if (!structural.valid) {
-      warnings.push("O card é estruturalmente inválido; corrija os contratos antes de avaliar o encaixe representacional.");
+      warnings.push("A Unidade de estudo é estruturalmente inválida; corrija os contratos antes de avaliar o encaixe representacional.");
     }
-    if (list(card?.content).length > 2) {
-      warnings.push("O card coordena mais de duas representações de conteúdo; confirme se a coordenação é parte da tarefa.");
+    if (list(studyUnit?.content).length > 2) {
+      warnings.push("A Unidade de estudo coordena mais de duas representações de conteúdo; confirme se a coordenação é parte da tarefa.");
     }
-    if (JSON.stringify(card || {}).length > 24_000) {
-      warnings.push("O card é denso para inspeção móvel; avalie recorte ou decomposição.");
+    if (JSON.stringify(studyUnit || {}).length > 24_000) {
+      warnings.push("A Unidade de estudo é densa para inspeção móvel; avalie recorte ou decomposição.");
     }
     selections.filter(({ fit }) => fit === "substitute").forEach(({ packageId }) => {
       const profile = getProfile(packageId);
       if (profile) warnings.push(...profile.limitations);
     });
-    let accessibleText = "";
-    if (structural.valid) {
-      accessibleText = allCardInstances(card).map(({ instance, slot }) => (
-        registry.accessibleText(instance, slot)
-      )).filter(Boolean).join(" ");
-    }
+    const accessibleText = structural.valid
+      ? allStudyUnitInstances(studyUnit).map(({ instance, slot }) => (
+          registry.accessibleText(instance, slot)
+        )).filter(Boolean).join(" ")
+      : "";
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
@@ -590,21 +596,29 @@ export function createResourceCatalog(registry) {
       warnings: [...new Set(warnings)],
       accessibleText,
       visualPreview: {
-        rendered: false,
-        reason: "A auditoria do catálogo não executa layout, hidratação nem captura visual."
+        mode: structural.valid ? "client_renderer" : "unavailable",
+        description: structural.valid
+          ? "O cliente pode abrir esta Unidade com o mesmo renderer usado no Estudo."
+          : "A composição precisa passar pela validação estrutural antes da prévia."
       }
     };
   }
 
-  function previewDescriptor(card) {
-    const structural = validateCard(card);
+  function previewStudyUnitDescriptor(studyUnit) {
+    const structural = validateStudyUnit(studyUnit);
+    const accessibleText = structural.valid
+      ? allStudyUnitInstances(studyUnit).map(({ instance, slot }) => (
+          registry.accessibleText(instance, slot)
+        )).filter(Boolean).join(" ")
+      : "";
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
-      rendered: false,
       structural,
       packages: structural.composition,
-      reason: "A prévia visual fiel precisa ser aberta no renderer do aplicativo; este núcleo não simula viewport, Graphviz ou Vega."
+      studyUnit: structural.valid ? structuredClone(studyUnit) : null,
+      accessibleText,
+      previewMode: structural.valid ? "client_renderer" : "unavailable"
     };
   }
 
@@ -634,259 +648,6 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function restrict({
-    packageRefs,
-    authorizeCandidate = null,
-    authorizeComposition = null
-  } = {}) {
-    if (!Array.isArray(packageRefs)) {
-      throw new TypeError("A visão restrita exige uma lista confiável de package@version.");
-    }
-    if (authorizeCandidate != null && typeof authorizeCandidate !== "function") {
-      throw new TypeError("authorizeCandidate precisa ser uma função interna.");
-    }
-    if (authorizeComposition != null && typeof authorizeComposition !== "function") {
-      throw new TypeError("authorizeComposition precisa ser uma função interna.");
-    }
-    const allowedKeys = new Set();
-    packageRefs.forEach((request, index) => {
-      const { packageId, version } = requestIdentity(request);
-      if (!packageId || !version) {
-        throw new RangeError(`packageRefs[${index}] precisa identificar package e versão exatos.`);
-      }
-      const key = `${packageId}@${version}`;
-      if (!byIdentity.has(key)) {
-        throw new RangeError(`ResourceSet referencia package indisponível: ${key}.`);
-      }
-      allowedKeys.add(key);
-    });
-    const selectedProfiles = profiles.filter((profile) => (
-      allowedKeys.has(`${profile.packageId}@${profile.version}`)
-    ));
-
-    function restrictedProfile(packageId, version = "") {
-      const normalizedId = String(packageId || "").trim();
-      const normalizedVersion = String(version || "").trim();
-      const profile = normalizedVersion
-        ? selectedProfiles.find((candidate) => (
-            candidate.packageId === normalizedId && candidate.version === normalizedVersion
-          )) || null
-        : latestProfile(selectedProfiles, normalizedId);
-      return profile ? clone(profile) : null;
-    }
-
-    function assertAllowedRequests(requests) {
-      return list(requests).map((request) => {
-        const identity = requestIdentity(request);
-        const profile = restrictedProfile(identity.packageId, identity.version);
-        if (!profile) {
-          const suffix = identity.version ? `@${identity.version}` : "";
-          throw new RangeError(
-            `Package ${identity.packageId || "desconhecido"}${suffix} não pertence ao ResourceSet efetivo.`
-          );
-        }
-        return { identity, profile };
-      });
-    }
-
-    function restrictedExplore({ slot = "" } = {}) {
-      if (slot && !new Set(["content", "response", "feedback"]).has(slot)) {
-        throw new RangeError("slot desconhecido.");
-      }
-      const selected = selectedProfiles.filter((profile) => (
-        !slot || profile.slots.includes(slot)
-      ));
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        policyVersion: POLICY_VERSION,
-        policy: clone(RESOURCE_SELECTION_POLICY),
-        packageCount: selected.length,
-        families: RESOURCE_FAMILIES.map((family) => ({
-          ...family,
-          count: selected.filter(({ familyIds }) => familyIds.includes(family.id)).length
-        })).filter(({ count }) => count > 0),
-        facets: {
-          disciplines: facetRecords(RESOURCE_VOCABULARIES.disciplines, selected, "disciplineIds"),
-          structures: facetRecords(RESOURCE_VOCABULARIES.structures, selected, "structureIds"),
-          operations: facetRecords(RESOURCE_VOCABULARIES.operations, selected, "operationIds"),
-          practiceModes: facetRecords(RESOURCE_VOCABULARIES.practiceModes, selected, "practiceModeIds")
-        }
-      };
-    }
-
-    function restrictedSearch(rawIntent = {}) {
-      const { intent, candidates } = rankedCandidates(selectedProfiles, rawIntent);
-      const authorized = candidates.flatMap((candidate) => {
-        if (!authorizeCandidate) return [candidate];
-        const authorization = authorizeCandidate({
-          candidate: clone(candidate),
-          intent: clone(intent),
-          profile: restrictedProfile(candidate.packageId, candidate.version)
-        });
-        if (!authorization) return [];
-        return [{ ...candidate, ...clone(authorization) }];
-      });
-      const restrictedCoverage = coverage(authorized, intent);
-      if (authorized[0]?.fit === "versatile") {
-        restrictedCoverage.chatDisclosure = `O ResourceSet efetivo autoriza ${authorized[0].label} como representação versátil, não como equivalente canônico. Registre a limitação indicada.`;
-      } else if (authorized[0]?.fit === "substitute") {
-        restrictedCoverage.chatDisclosure = `O ResourceSet efetivo autoriza ${authorized[0].label} somente como aproximação. Registre a limitação indicada e não declare equivalência.`;
-      }
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        coverage: restrictedCoverage,
-        candidates: authorized.slice(0, intent.limit)
-      };
-    }
-
-    function restrictedAssessCandidate(request, rawIntent = {}) {
-      const [{ identity, profile }] = assertAllowedRequests([request]);
-      const assessment = assessCandidate(identity, rawIntent);
-      if (assessment.status !== "assessed" || !assessment.candidate) {
-        return assessment;
-      }
-      if (!authorizeCandidate) {
-        return { ...assessment, status: "authorized" };
-      }
-      const authorization = authorizeCandidate({
-        candidate: clone(assessment.candidate),
-        intent: clone(assessment.intent),
-        profile: clone(profile)
-      });
-      return authorization
-        ? {
-            ...assessment,
-            status: "authorized",
-            candidate: { ...assessment.candidate, ...clone(authorization) }
-          }
-        : { ...assessment, status: "blocked" };
-    }
-
-    function restrictedInspect(requests) {
-      const values = list(requests);
-      validateLimit(values.length, 1, INSPECT_LIMIT, "A quantidade de packages");
-      const allowed = assertAllowedRequests(values);
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        items: allowed.map(({ profile }) => ({ status: "ok", profile }))
-      };
-    }
-
-    function restrictedContracts(requests) {
-      const values = list(requests);
-      validateLimit(values.length, 1, CONTRACT_LIMIT, "A quantidade de contratos");
-      const allowed = assertAllowedRequests(values);
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        items: allowed.map(({ profile }) => ({
-          status: "ok",
-          packageId: profile.packageId,
-          version: profile.version,
-          definition: registry.getAuthoringContract(profile.packageId, profile.version)
-        }))
-      };
-    }
-
-    function availabilityErrors(card) {
-      return allCardInstances(card).flatMap(({ instance, slot, index }) => {
-        const packageId = String(instance?.package || "");
-        const version = String(instance?.version || "");
-        const profile = restrictedProfile(packageId, version);
-        if (!profile) {
-          return [`$.card.${slot}[${index}]: ${packageId}@${version} não pertence ao ResourceSet efetivo.`];
-        }
-        if (!authorizeComposition) return [];
-        const result = authorizeComposition({
-          cardRole: String(card?.role || ""),
-          packageRef: { packageId, version },
-          profile,
-          slot
-        });
-        if (result?.allowed === true) return [];
-        return normalizedList(result?.errors?.length
-          ? result.errors
-          : [`${packageId}@${version} não está autorizado para o papel materializado.`]);
-      });
-    }
-
-    function restrictedValidateCard(card) {
-      const result = validateCard(card);
-      const errors = [...result.errors, ...availabilityErrors(card)];
-      return { ...result, valid: errors.length === 0, errors };
-    }
-
-    function restrictedAuditRepresentation(args = {}) {
-      const result = auditRepresentation(args);
-      const structural = restrictedValidateCard(args.card);
-      const selections = result.selections.map((selection) => {
-        if (!authorizeComposition) return selection;
-        const profile = restrictedProfile(selection.packageId, selection.version);
-        const authorization = profile ? authorizeComposition({
-          cardRole: String(args.card?.role || ""),
-          fit: selection.fit,
-          limitation: selection.reason,
-          packageRef: {
-            packageId: selection.packageId,
-            version: selection.version
-          },
-          profile,
-          slot: selection.slot
-        }) : null;
-        if (authorization?.allowed === true) {
-          return {
-            ...selection,
-            authorizedByResourceSetRef: clone(authorization.authorizedByResourceSetRef)
-          };
-        }
-        return {
-          ...selection,
-          fit: "substitute",
-          reason: authorization?.errors?.join(" ")
-            || "O package não pertence ao ResourceSet efetivo.",
-          missing: [...new Set([
-            ...selection.missing,
-            "availability:resource_set"
-          ])]
-        };
-      });
-      const overallFit = structural.valid
-        ? selections.reduce((current, selection) => (
-            FIT_ORDER[selection.fit] < FIT_ORDER[current] ? selection.fit : current
-          ), "canonical")
-        : "substitute";
-      const warnings = structural.valid
-        ? result.warnings
-        : [...new Set([
-            ...result.warnings,
-            ...structural.errors.filter((entry) => entry.includes("ResourceSet"))
-          ])];
-      return { ...result, structural, overallFit, selections, warnings };
-    }
-
-    function restrictedPreviewDescriptor(card) {
-      const result = previewDescriptor(card);
-      return { ...result, structural: restrictedValidateCard(card) };
-    }
-
-    return Object.freeze({
-      contract: CATALOG_CONTRACT,
-      catalogVersion,
-      policyVersion: POLICY_VERSION,
-      getProfile: restrictedProfile,
-      explore: restrictedExplore,
-      search: restrictedSearch,
-      assessCandidate: restrictedAssessCandidate,
-      inspect: restrictedInspect,
-      contracts: restrictedContracts,
-      validateCard: restrictedValidateCard,
-      auditRepresentation: restrictedAuditRepresentation,
-      previewDescriptor: restrictedPreviewDescriptor
-    });
-  }
 
   return Object.freeze({
     contract: CATALOG_CONTRACT,
@@ -900,10 +661,9 @@ export function createResourceCatalog(registry) {
     assessCandidate,
     inspect,
     contracts,
-    validateCard,
+    validateStudyUnit,
     auditRepresentation,
-    previewDescriptor,
-    restrict
+    previewStudyUnitDescriptor
   });
 }
 

@@ -5,12 +5,9 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.OpenableColumns;
 import android.text.TextUtils;
-import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -25,18 +22,18 @@ import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.core.content.IntentCompat;
 import androidx.core.view.WindowCompat;
 import androidx.webkit.WebViewAssetLoader;
 
-import org.json.JSONObject;
-
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class MainActivity extends ComponentActivity {
     private static final String APP_URL =
@@ -45,11 +42,18 @@ public class MainActivity extends ComponentActivity {
     private static final String AUTH_SCHEME = "aralearn";
     private static final String AUTH_HOST = "auth";
     private static final String AUTH_PATH = "/callback";
-    private static final String DEFAULT_EXPORT_NAME = "aralearn-export.json";
-    private static final String DEFAULT_EXPORT_MIME = "application/json";
     private static final String JAVASCRIPT_MODULE_SUFFIX = ".mjs";
     private static final String JAVASCRIPT_MIME_TYPE = "text/javascript";
-    private static final int MAX_SHARED_IMPORT_BYTES = 5 * 1024 * 1024;
+    private static final String JSON_MIME_TYPE = "application/json";
+    private static final String CSV_MIME_TYPE = "text/csv";
+    private static final int MAX_TEXT_EXPORT_BYTES = 8 * 1024 * 1024;
+    private static final int MAX_TEXT_EXPORT_FILE_NAME_LENGTH = 160;
+    private static final String TEXT_EXPORT_CACHE_PREFIX = "aralearn-text-export-";
+    private static final String STATE_TEXT_EXPORT_PATH = "aralearn.textExport.path";
+    private static final String STATE_TEXT_EXPORT_FILE_NAME = "aralearn.textExport.fileName";
+    private static final String STATE_TEXT_EXPORT_MIME_TYPE = "aralearn.textExport.mimeType";
+    private static final Pattern SAFE_TEXT_EXPORT_FILE_NAME =
+        Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]*");
     private static final String BACK_PRESS_SCRIPT =
         "(function(){try{return !!(window.AraLearnAndroid && " +
         "window.AraLearnAndroid.handleBackPress && " +
@@ -61,26 +65,24 @@ public class MainActivity extends ComponentActivity {
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
-    private PendingDocumentWrite pendingExport;
+    private PendingTextExport pendingTextExport;
     private WebViewAssetLoader assetLoader;
-    private String pendingSharedImportText;
-    private String pendingSharedImportSourceName;
     private final ActivityResultLauncher<Intent> fileChooserLauncher = registerForActivityResult(
         new ActivityResultContracts.StartActivityForResult(),
         result -> completeFileChooser(result.getResultCode(), result.getData())
     );
-    private final ActivityResultLauncher<Intent> exportDocumentLauncher = registerForActivityResult(
+    private final ActivityResultLauncher<Intent> textExportLauncher = registerForActivityResult(
         new ActivityResultContracts.StartActivityForResult(),
-        result -> completeExportDocument(result.getResultCode(), result.getData())
+        result -> completeTextExport(result.getResultCode(), result.getData())
     );
 
-    private static final class PendingDocumentWrite {
-        final byte[] bytes;
+    private static final class PendingTextExport {
+        final File source;
         final String fileName;
         final String mimeType;
 
-        PendingDocumentWrite(byte[] bytes, String fileName, String mimeType) {
-            this.bytes = bytes;
+        PendingTextExport(File source, String fileName, String mimeType) {
+            this.source = source;
             this.fileName = fileName;
             this.mimeType = mimeType;
         }
@@ -117,6 +119,7 @@ public class MainActivity extends ComponentActivity {
         configureWebView();
         configureBackNavigation();
         WebView.setWebContentsDebuggingEnabled(isDebuggableApp());
+        restorePendingTextExport(savedInstanceState);
 
         String authUrl = resolveAuthCallbackUrl(getIntent());
         if (authUrl != null) {
@@ -127,10 +130,6 @@ public class MainActivity extends ComponentActivity {
             webView.restoreState(savedInstanceState);
         }
 
-        if (authUrl == null) {
-            captureSharedImportIntent(getIntent());
-        }
-        flushPendingSharedImportToWebView();
     }
 
     @Override
@@ -140,23 +139,34 @@ public class MainActivity extends ComponentActivity {
         String authUrl = resolveAuthCallbackUrl(intent);
         if (authUrl != null && webView != null) {
             webView.loadUrl(authUrl);
-            return;
         }
-        captureSharedImportIntent(intent);
-        flushPendingSharedImportToWebView();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
         if (webView != null) {
             webView.saveState(outState);
         }
+        synchronized (this) {
+            if (pendingTextExport != null) {
+                outState.putString(STATE_TEXT_EXPORT_PATH, pendingTextExport.source.getAbsolutePath());
+                outState.putString(STATE_TEXT_EXPORT_FILE_NAME, pendingTextExport.fileName);
+                outState.putString(STATE_TEXT_EXPORT_MIME_TYPE, pendingTextExport.mimeType);
+            }
+        }
+        super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onDestroy() {
         clearFilePathCallback();
+        if (isChangingConfigurations()) {
+            synchronized (this) {
+                pendingTextExport = null;
+            }
+        } else {
+            clearPendingTextExport();
+        }
 
         if (webView != null) {
             webView.removeJavascriptInterface("AndroidHost");
@@ -272,265 +282,132 @@ public class MainActivity extends ComponentActivity {
         }
     }
 
-    private void completeExportDocument(int resultCode, Intent data) {
-        Uri destination = data == null ? null : data.getData();
-        if (resultCode == RESULT_OK && destination != null) {
-            savePendingExport(destination);
-        } else {
-            pendingExport = null;
+    private void deletePendingTextExport(PendingTextExport pending) {
+        if (pending != null && pending.source.exists()) pending.source.delete();
+    }
+
+    private void clearPendingTextExport() {
+        deletePendingTextExport(takePendingTextExport());
+    }
+
+    private synchronized PendingTextExport takePendingTextExport() {
+        PendingTextExport pending = pendingTextExport;
+        pendingTextExport = null;
+        return pending;
+    }
+
+    private synchronized boolean reserveTextExport(byte[] bytes, String fileName, String mimeType) {
+        if (pendingTextExport != null || isFinishing() || isDestroyed()) return false;
+        File source = null;
+        try {
+            source = File.createTempFile(TEXT_EXPORT_CACHE_PREFIX, ".tmp", getCacheDir());
+            try (FileOutputStream output = new FileOutputStream(source, false)) {
+                output.write(bytes);
+                output.flush();
+            }
+            pendingTextExport = new PendingTextExport(source, fileName, mimeType);
+            return true;
+        } catch (IOException | RuntimeException error) {
+            if (source != null && source.exists()) source.delete();
+            return false;
         }
     }
 
-    private void openExportDocument(PendingDocumentWrite exportData) {
-        pendingExport = exportData;
+    private void restorePendingTextExport(Bundle state) {
+        if (state == null) return;
+        String path = state.getString(STATE_TEXT_EXPORT_PATH);
+        String fileName = state.getString(STATE_TEXT_EXPORT_FILE_NAME);
+        String mimeType = normalizeTextExportMimeType(state.getString(STATE_TEXT_EXPORT_MIME_TYPE));
+        if (path == null || mimeType == null || !validTextExportFileName(fileName, mimeType)) return;
+        File source = new File(path);
+        try {
+            String cachePrefix = getCacheDir().getCanonicalPath() + File.separator;
+            String sourcePath = source.getCanonicalPath();
+            if (!sourcePath.startsWith(cachePrefix) ||
+                !source.getName().startsWith(TEXT_EXPORT_CACHE_PREFIX) ||
+                !source.isFile() || source.length() > MAX_TEXT_EXPORT_BYTES) {
+                return;
+            }
+            synchronized (this) {
+                pendingTextExport = new PendingTextExport(source, fileName, mimeType);
+            }
+        } catch (IOException | SecurityException error) {
+            clearPendingTextExport();
+        }
+    }
+
+    private void openTextExport() {
+        final PendingTextExport pending;
+        synchronized (this) {
+            pending = pendingTextExport;
+        }
+        if (pending == null) return;
 
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType(exportData.mimeType);
-        intent.putExtra(Intent.EXTRA_TITLE, exportData.fileName);
-
+        intent.setType(pending.mimeType);
+        intent.putExtra(Intent.EXTRA_TITLE, pending.fileName);
         try {
-            exportDocumentLauncher.launch(intent);
-        } catch (ActivityNotFoundException error) {
-            pendingExport = null;
-            showToast(getString(R.string.export_unavailable));
+            textExportLauncher.launch(intent);
+        } catch (ActivityNotFoundException | IllegalStateException | SecurityException error) {
+            clearPendingTextExport();
+            showToast(getString(R.string.text_export_unavailable));
         }
     }
 
-    private void savePendingExport(Uri uri) {
-        PendingDocumentWrite exportData = pendingExport;
-        pendingExport = null;
-        if (exportData == null) return;
-
-        try {
-            writeBytesToUri(uri, exportData.bytes);
-            showToast(getString(R.string.export_success, exportData.fileName));
-        } catch (IOException error) {
-            showToast(getString(R.string.export_error));
+    private void completeTextExport(int resultCode, Intent data) {
+        PendingTextExport pending = takePendingTextExport();
+        if (pending == null || resultCode != RESULT_OK || data == null || data.getData() == null) {
+            deletePendingTextExport(pending);
+            return;
         }
+        Uri destination = data.getData();
+        new Thread(() -> saveTextExport(destination, pending), "aralearn-text-export").start();
     }
 
-    private void writeBytesToUri(Uri uri, byte[] bytes) throws IOException {
-        try (OutputStream output = getContentResolver().openOutputStream(uri, "w")) {
+    private void saveTextExport(Uri destination, PendingTextExport pending) {
+        try (InputStream input = new FileInputStream(pending.source);
+             OutputStream output = getContentResolver().openOutputStream(destination, "w")) {
             if (output == null) throw new IOException("Destino indisponível.");
-            output.write(bytes);
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
             output.flush();
+            showToast(getString(R.string.text_export_success, pending.fileName));
+        } catch (IOException | RuntimeException error) {
+            showToast(getString(R.string.text_export_error));
+        } finally {
+            deletePendingTextExport(pending);
         }
     }
 
-    private String sanitizeFileName(String value, String defaultValue) {
-        String raw = value == null ? "" : value.trim();
-        if (raw.isEmpty()) return defaultValue;
-
-        String cleaned = raw.replaceAll("[\\\\/:*?\"<>|]+", "_");
-        return cleaned.isEmpty() ? defaultValue : cleaned;
+    private String normalizeTextExportMimeType(String value) {
+        String mimeType = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return JSON_MIME_TYPE.equals(mimeType) || CSV_MIME_TYPE.equals(mimeType)
+            ? mimeType
+            : null;
     }
 
-    private String sanitizeMimeType(String value) {
-        String raw = value == null ? "" : value.trim();
-        return raw.isEmpty() ? DEFAULT_EXPORT_MIME : raw;
+    private boolean validTextExportFileName(String value, String mimeType) {
+        if (
+            value == null || value.isEmpty() || value.length() > MAX_TEXT_EXPORT_FILE_NAME_LENGTH ||
+            !value.equals(value.trim()) || value.contains("..") ||
+            !SAFE_TEXT_EXPORT_FILE_NAME.matcher(value).matches()
+        ) {
+            return false;
+        }
+        String lowerName = value.toLowerCase(Locale.ROOT);
+        return JSON_MIME_TYPE.equals(mimeType)
+            ? lowerName.endsWith(".json")
+            : lowerName.endsWith(".csv");
     }
 
     private void showToast(String message) {
         runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
     }
 
-    private void captureSharedImportIntent(Intent intent) {
-        if (intent == null) {
-            return;
-        }
-
-        String action = intent.getAction();
-        if (Intent.ACTION_VIEW.equals(action)) {
-            captureSharedImportFromUri(intent, intent.getData());
-            return;
-        }
-
-        if (Intent.ACTION_SEND.equals(action)) {
-            Uri streamUri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri.class);
-            if (streamUri != null) {
-                captureSharedImportFromUri(intent, streamUri);
-                return;
-            }
-
-            CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-            if (sharedText != null) {
-                queueSharedImportText(sharedText.toString(), resolveSharedSourceName(intent, null));
-                markSharedImportIntentConsumed(intent);
-            }
-            return;
-        }
-
-        if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
-            ArrayList<Uri> streams = IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri.class);
-            if (streams != null) {
-                for (Uri candidate : streams) {
-                    if (candidate == null) {
-                        continue;
-                    }
-                    if (captureSharedImportFromUri(intent, candidate)) {
-                        return;
-                    }
-                }
-            }
-
-            showToast(getString(R.string.shared_import_unreadable));
-        }
-    }
-
-    private boolean captureSharedImportFromUri(Intent intent, Uri uri) {
-        if (uri == null) {
-            return false;
-        }
-
-        try {
-            queueSharedImportText(readTextFromUri(uri), resolveSharedSourceName(intent, uri));
-            markSharedImportIntentConsumed(intent);
-            return true;
-        } catch (SharedImportTooLargeException error) {
-            showToast(getString(R.string.shared_import_too_large));
-            return false;
-        } catch (IOException error) {
-            showToast(getString(R.string.shared_import_unreadable));
-            return false;
-        }
-    }
-
-    private void queueSharedImportText(String rawText, String sourceName) {
-        if (rawText == null) {
-            showToast(getString(R.string.shared_import_not_text));
-            return;
-        }
-
-        byte[] bytes = rawText.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length > MAX_SHARED_IMPORT_BYTES) {
-            showToast(getString(R.string.shared_import_too_large));
-            return;
-        }
-
-        String normalizedText = rawText.trim();
-        if (normalizedText.isEmpty()) {
-            showToast(getString(R.string.shared_import_not_text));
-            return;
-        }
-
-        pendingSharedImportText = normalizedText;
-        pendingSharedImportSourceName = TextUtils.isEmpty(sourceName)
-            ? getString(R.string.shared_import_default_source)
-            : sourceName;
-        showToast(getString(R.string.shared_import_received));
-    }
-
-    private String readTextFromUri(Uri uri) throws IOException {
-        try (InputStream input = getContentResolver().openInputStream(uri)) {
-            if (input == null) {
-                throw new IOException("Conteúdo indisponível.");
-            }
-
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int totalBytes = 0;
-            int read;
-            while ((read = input.read(buffer)) != -1) {
-                totalBytes += read;
-                if (totalBytes > MAX_SHARED_IMPORT_BYTES) {
-                    throw new SharedImportTooLargeException();
-                }
-                output.write(buffer, 0, read);
-            }
-
-            if (output.size() == 0) {
-                throw new IOException("Conteúdo vazio.");
-            }
-
-            return output.toString(StandardCharsets.UTF_8.name());
-        }
-    }
-
-    private String resolveSharedSourceName(Intent intent, Uri uri) {
-        if (uri != null) {
-            String uriName = readDisplayName(uri);
-            if (!TextUtils.isEmpty(uriName)) {
-                return uriName;
-            }
-            String pathSegment = uri.getLastPathSegment();
-            if (!TextUtils.isEmpty(pathSegment)) {
-                return pathSegment;
-            }
-        }
-
-        CharSequence subject = intent != null ? intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT) : null;
-        if (subject != null && !TextUtils.isEmpty(subject.toString().trim())) {
-            return subject.toString().trim();
-        }
-
-        return getString(R.string.shared_import_default_source);
-    }
-
-    private String readDisplayName(Uri uri) {
-        try (Cursor cursor = getContentResolver().query(uri, new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                if (columnIndex >= 0) {
-                    String value = cursor.getString(columnIndex);
-                    if (!TextUtils.isEmpty(value)) {
-                        return value;
-                    }
-                }
-            }
-        } catch (RuntimeException ignored) {
-            // Alguns providers não expõem metadados estáveis; nesse caso, usa-se lastPathSegment.
-        }
-        return "";
-    }
-
-    private void markSharedImportIntentConsumed(Intent intent) {
-        if (intent == null) {
-            return;
-        }
-
-        intent.setAction(Intent.ACTION_MAIN);
-        intent.setData(null);
-        intent.removeExtra(Intent.EXTRA_STREAM);
-        intent.removeExtra(Intent.EXTRA_TEXT);
-        intent.removeExtra(Intent.EXTRA_SUBJECT);
-    }
-
-    private void flushPendingSharedImportToWebView() {
-        if (webView == null || TextUtils.isEmpty(pendingSharedImportText)) {
-            return;
-        }
-
-        final String importText = pendingSharedImportText;
-        final String sourceName = pendingSharedImportSourceName == null ? "" : pendingSharedImportSourceName;
-        String script =
-            "(function(){try{" +
-            "if(window.AraLearnAndroidImport&&window.AraLearnAndroidImport.receiveSharedJson){" +
-            "return !!window.AraLearnAndroidImport.receiveSharedJson(" +
-            JSONObject.quote(importText) +
-            "," +
-            JSONObject.quote(sourceName) +
-            ");" +
-            "}" +
-            "return false;" +
-            "}catch(_error){return false;}})();";
-
-        webView.evaluateJavascript(script, value -> {
-            if ("true".equals(value)) {
-                pendingSharedImportText = null;
-                pendingSharedImportSourceName = null;
-            }
-        });
-    }
-
     private boolean isDebuggableApp() {
         return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-    }
-
-    private static final class SharedImportTooLargeException extends IOException {
-        SharedImportTooLargeException() {
-            super("Arquivo muito grande para importação.");
-        }
     }
 
     private final class AraLearnWebChromeClient extends WebChromeClient {
@@ -592,36 +469,30 @@ public class MainActivity extends ComponentActivity {
             return assetLoader.shouldInterceptRequest(request.getUrl());
         }
 
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            super.onPageFinished(view, url);
-            flushPendingSharedImportToWebView();
-        }
     }
 
     private final class AndroidHostBridge {
         @JavascriptInterface
-        public void runtimeReady() {
-            runOnUiThread(MainActivity.this::flushPendingSharedImportToWebView);
-        }
-
-        @JavascriptInterface
-        public boolean saveExportFile(String base64Data, String fileName, String mimeType) {
-            final byte[] bytes;
-            try {
-                bytes = Base64.decode(base64Data, Base64.DEFAULT);
-            } catch (IllegalArgumentException error) {
-                showToast(getString(R.string.export_invalid));
+        public boolean saveTextFile(String content, String fileName, String mimeTypeValue) {
+            String mimeType = normalizeTextExportMimeType(mimeTypeValue);
+            if (content == null || mimeType == null || !validTextExportFileName(fileName, mimeType)) {
+                showToast(getString(R.string.text_export_invalid));
                 return false;
             }
-
-            final PendingDocumentWrite exportData = new PendingDocumentWrite(
-                bytes,
-                sanitizeFileName(fileName, DEFAULT_EXPORT_NAME),
-                sanitizeMimeType(mimeType)
-            );
-
-            runOnUiThread(() -> openExportDocument(exportData));
+            if (content.length() > MAX_TEXT_EXPORT_BYTES) {
+                showToast(getString(R.string.text_export_too_large));
+                return false;
+            }
+            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+            if (bytes.length > MAX_TEXT_EXPORT_BYTES) {
+                showToast(getString(R.string.text_export_too_large));
+                return false;
+            }
+            if (!reserveTextExport(bytes, fileName, mimeType)) {
+                showToast(getString(R.string.text_export_unavailable));
+                return false;
+            }
+            runOnUiThread(MainActivity.this::openTextExport);
             return true;
         }
 

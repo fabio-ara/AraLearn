@@ -8,8 +8,8 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const scriptDirectory = path.dirname(scriptPath);
-const OPERATION_LABELS = new Map(
-  RESOURCE_CATALOG.explore().facets.operations.map(({ id, label }) => [id, label])
+const TASK_OPERATION_LABELS = new Map(
+  RESOURCE_CATALOG.explore().facets.taskOperations.map(({ id, label }) => [id, label])
 );
 
 export const RESOURCE_CATALOG_COURSE_FILE_NAME = "aralearn-catalogo-recursos-course.json";
@@ -170,11 +170,13 @@ function theoryIntroduction(manifest) {
 
 function feedbackText(manifest) {
   const profile = RESOURCE_CATALOG.getProfile(manifest.id, manifest.version);
-  const operation = OPERATION_LABELS.get(profile?.operationIds?.[0]);
+  const taskOperation = TASK_OPERATION_LABELS.get(profile?.taskOperationIds?.[0]);
   const avoidWhen = manifest.academic?.avoidWhen?.[0];
   return [
     `Critério de revisão para ${manifest.label}: a representação deve realizar a finalidade declarada — ${manifest.purpose}`,
-    operation ? `A operação cognitiva em foco é ${operation.toLocaleLowerCase("pt-BR")}.` : "",
+    taskOperation
+      ? `A operação-alvo da tarefa é ${taskOperation.toLocaleLowerCase("pt-BR")}.`
+      : "",
     avoidWhen ? `Evite este recurso quando ${avoidWhen}.` : ""
   ].filter(Boolean).join(" ");
 }
@@ -284,7 +286,7 @@ function gapResponse(instance, manifest, id, responseMode) {
   });
 }
 
-function contentPackageCards(manifest, prefix, packageIndex) {
+function contentPackageStudyUnits(manifest, prefix, packageIndex) {
   const theoryExample = exampleContentInstance(manifest, `${prefix}-theory-example`);
   const practiceExample = exampleContentInstance(
     manifest,
@@ -322,7 +324,6 @@ function contentPackageCards(manifest, prefix, packageIndex) {
       response: null,
       feedback: [],
       topics: [],
-      sources: []
     },
     {
       id: `${prefix}-practice-card`,
@@ -333,7 +334,6 @@ function contentPackageCards(manifest, prefix, packageIndex) {
       response,
       feedback: [paragraphInstance(`${prefix}-practice-feedback`, feedbackText(manifest), "feedback")],
       topics: [],
-      sources: []
     }
   ];
 }
@@ -430,7 +430,7 @@ function responsePackagePractice(manifest, prefix) {
   };
 }
 
-function responsePackageCards(manifest, prefix) {
+function responsePackageStudyUnits(manifest, prefix) {
   const practice = responsePackagePractice(manifest, prefix);
   return [
     {
@@ -442,7 +442,6 @@ function responsePackageCards(manifest, prefix) {
       response: null,
       feedback: [],
       topics: [],
-      sources: []
     },
     {
       id: `${prefix}-practice-card`,
@@ -453,7 +452,6 @@ function responsePackageCards(manifest, prefix) {
       response: practice.response,
       feedback: [paragraphInstance(`${prefix}-practice-feedback`, feedbackText(manifest), "feedback")],
       topics: [],
-      sources: []
     }
   ];
 }
@@ -506,9 +504,9 @@ function moduleForFamily(family, entries, moduleIndex) {
     const packageToken = identifierToken(manifest.id);
     const prefix = `catalog-${packageToken}`;
     const microsequenceId = `${prefix}-microsequence`;
-    const cards = manifest.slots.includes("content")
-      ? contentPackageCards(manifest, prefix, packageIndex)
-      : responsePackageCards(manifest, prefix);
+    const studyUnits = manifest.slots.includes("content")
+      ? contentPackageStudyUnits(manifest, prefix, packageIndex)
+      : responsePackageStudyUnits(manifest, prefix);
     const microsequence = {
       id: microsequenceId,
       title: manifest.label,
@@ -521,7 +519,7 @@ function moduleForFamily(family, entries, moduleIndex) {
         "a prática usa uma modalidade declarada pelo package"
       ],
       errors: [],
-      cards
+      studyUnits
     };
     return microsequence;
   });
@@ -559,7 +557,7 @@ export function buildResourceCatalogCourse() {
     moduleIndex
   ));
   const project = {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     scope: "course",
     courses: [{
       id: "aralearn-catalogo-recursos",
@@ -607,7 +605,7 @@ async function run() {
   ), 0);
   console.log(
     `Curso gerado em ${RESOURCE_CATALOG_COURSE_PATH}: ${course.modules.length} módulos, `
-    + `${microsequenceCount} packages e ${microsequenceCount * 2} cards.`
+    + `${microsequenceCount} packages e ${microsequenceCount * 2} Unidades de estudo.`
   );
 }
 

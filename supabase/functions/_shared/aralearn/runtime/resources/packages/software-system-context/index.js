@@ -106,7 +106,7 @@ export const softwareSystemContextPackage = Object.freeze({
     label: "Contexto de sistema de software",
     purpose: "Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["identify-scope", "distinguish-actor", "trace-external-dependency", "explain-system-context"]),
+    taskOperations: Object.freeze(["identify-scope", "distinguish-actor", "trace-external-dependency", "explain-system-context"]),
     academic: academicProfile({
       domains: ["arquitetura de software", "engenharia de software", "análise de sistemas"],
       knowledgeObjects: ["sistema em foco", "pessoa", "sistema externo", "relação externa", "fronteira de escopo"],

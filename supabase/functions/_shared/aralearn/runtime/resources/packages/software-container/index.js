@@ -127,7 +127,7 @@ export const softwareContainerPackage = Object.freeze({
     label: "Contêineres de software",
     purpose: "Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["identify-runtime-boundary", "trace-container-dependency", "compare-responsibility", "explain-deployment-unit"]),
+    taskOperations: Object.freeze(["identify-runtime-boundary", "trace-container-dependency", "compare-responsibility", "explain-deployment-unit"]),
     academic: academicProfile({ domains: ["arquitetura de software", "engenharia de software", "sistemas distribuídos"], knowledgeObjects: ["contêiner", "aplicação", "armazenamento de dados", "fila", "tecnologia", "responsabilidade"], conventions: ["fronteira única de sistema", "contêineres internos tipados", "tecnologia e responsabilidade explícitas", "relações direcionais rotuladas"], appropriateWhen: ["a tarefa exige compreender unidades executáveis ou armazenamentos e suas dependências"], avoidWhen: ["o contexto externo basta", "a tarefa exige componentes internos de um contêiner", "a topologia de infraestrutura física é o objeto"], technologies: ["C4 Model", "Graphviz", "Viz.js WebAssembly", "SVG"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Não representa classes, módulos internos, processos temporais ou nós físicos de implantação."]),

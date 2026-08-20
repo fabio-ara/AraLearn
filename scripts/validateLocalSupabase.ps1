@@ -154,34 +154,41 @@ try {
     'test', '--config', 'supabase/functions/deno.json',
     'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
   )
-  Invoke-CheckedCommand 'Testes Deno da entrega de revisões' $deno @(
-    'test', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/tests/aralearn-course-revisions.test.ts'
-  )
   Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-authoring-mcp/index.ts'
   )
-  Invoke-CheckedCommand 'Verificação Deno da Action de autoria' $deno @(
+  Invoke-CheckedCommand 'Verificação Deno da API de Cursos' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-authoring-action/index.ts'
+    'supabase/functions/aralearn-course-api/index.ts'
   )
-  Invoke-CheckedCommand 'Verificação Deno da entrega de revisões' $deno @(
-    'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-course-revisions/index.ts'
+
+  Invoke-CheckedCommand 'Testes pgTAP do banco local' 'npx.cmd' @(
+    '--yes', 'supabase@2.109.1', 'test', 'db'
   )
 
   Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
     '--yes', 'supabase@2.109.1', 'db', 'lint', '--local', '--level', 'warning', '--fail-on', 'warning'
   )
-  Invoke-CheckedCommand 'Testes pgTAP' 'npx.cmd' @('--yes', 'supabase@2.109.1', 'test', 'db', '--local')
-  Invoke-CheckedCommand 'Publicação da fixture temporária' 'node' @(
-    '.\scripts\publishCatalogFixtures.mjs',
-    '--publish',
-    '--course',
-    'fundamentos-ia-analise-dados-seed-course.json'
-  )
-  Invoke-CheckedCommand 'Smoke de Auth, PostgREST e RLS' 'npm.cmd' @('run', 'test:supabase:smoke')
+
+  $courseApiHandle = Start-LocalEdgeFunction -Name 'aralearn-course-api'
+  try {
+    Wait-LocalEdgeFunction `
+      -Url "$apiUrl/functions/v1/aralearn-course-api/app/listarCursos" `
+      -Process $courseApiHandle.Process
+    Invoke-CheckedCommand 'Smoke da API, do PostgREST e do RLS de Curso' 'npm.cmd' @(
+      'run',
+      'test:supabase:smoke'
+    )
+  }
+  catch {
+    Show-EdgeFailureLog -Handle $courseApiHandle
+    throw
+  }
+  finally {
+    Stop-LocalEdgeFunction -Process $courseApiHandle.Process
+  }
+
   Invoke-CheckedCommand 'Smoke dos e-mails de Auth' 'node' @('.\supabase\tests\auth-email-smoke.mjs')
 
   $mcpHandle = Start-LocalEdgeFunction -Name 'aralearn-authoring-mcp'
@@ -198,20 +205,6 @@ try {
   }
   finally {
     Stop-LocalEdgeFunction -Process $mcpHandle.Process
-  }
-
-  $revisionHandle = Start-LocalEdgeFunction -Name 'aralearn-course-revisions'
-  try {
-    Wait-LocalEdgeFunction `
-      -Url "$apiUrl/functions/v1/aralearn-course-revisions/00000000-0000-4000-8000-000000000000/$('0' * 64)" `
-      -Process $revisionHandle.Process
-  }
-  catch {
-    Show-EdgeFailureLog -Handle $revisionHandle
-    throw
-  }
-  finally {
-    Stop-LocalEdgeFunction -Process $revisionHandle.Process
   }
 
   Write-Host "`nSupabase local validado sem falhas."

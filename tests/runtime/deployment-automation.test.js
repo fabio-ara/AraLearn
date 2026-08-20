@@ -18,10 +18,40 @@ const androidBuildScript = fs.readFileSync(
 const currentAndroidVersionCode = androidBuildScript.match(/versionCode\s*=\s*(\d+)/u)?.[1];
 const currentAndroidVersionName = androidBuildScript.match(/versionName\s*=\s*"([^"]+)"/u)?.[1];
 const scripts = {
+  androidActivity: path.join(
+    repositoryRoot,
+    "android", "app", "src", "main", "java", "com", "aralearn", "app", "MainActivity.java"
+  ),
+  androidManifest: path.join(
+    repositoryRoot,
+    "android", "app", "src", "main", "AndroidManifest.xml"
+  ),
+  androidStrings: path.join(
+    repositoryRoot,
+    "android", "app", "src", "main", "res", "values", "strings.xml"
+  ),
   androidWorkflow: path.join(repositoryRoot, ".github", "workflows", "android-release.yml"),
+  authoringMcpHostedSmoke: path.join(
+    repositoryRoot,
+    "supabase",
+    "tests",
+    "authoring-mcp-hosted-smoke.mjs"
+  ),
+  authoringMcpLocalSmoke: path.join(
+    repositoryRoot,
+    "supabase",
+    "tests",
+    "authoring-mcp-local-smoke.mjs"
+  ),
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
-  postgrestSmoke: path.join(repositoryRoot, "supabase", "tests", "postgrest-smoke.mjs"),
+  courseRuntimeSmoke: path.join(
+    repositoryRoot,
+    "supabase",
+    "tests",
+    "course-runtime-local-smoke.mjs"
+  ),
+  courseRuntimeValidator: path.join(repositoryRoot, "scripts", "validateCourseRuntime.mjs"),
   pagesWorkflow: path.join(repositoryRoot, ".github", "workflows", "pages.yml"),
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
   validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1"),
@@ -29,24 +59,18 @@ const scripts = {
   validationWorkflow: path.join(repositoryRoot, ".github", "workflows", "validacao.yml")
 };
 const publishableKey = `sb_publishable_${"A".repeat(24)}`;
-const assistOrigins = [
-  "https://api.deepseek.com",
-  "https://api.openai.com",
-  "https://generativelanguage.googleapis.com"
-];
 const requiredRuntimeModules = [
-  "src/assist/cardAssistanceScope.js",
-  "src/generation/engine/cardAuthoringSchema.js",
-  "src/generation/providers/providerRegistry.js",
-  "src/generation/providers/providerTransport.js",
-  "src/generation/runtime/cardAssistanceConfig.js",
-  "src/generation/runtime/cardAssistanceLaunchConfig.js",
-  "src/generation/runtime/cardAssistanceRuntime.js",
-  "src/generation/validation/cardAssistanceSemantics.js",
+  "src/persistence/AuthSessionStore.js",
+  "src/persistence/CourseLocalStore.js",
   "src/resources/kernel/packageRegistry.js",
   "src/resources/packages/index.js",
-  "src/ui/AuthoringAssistantPanel.js",
-  "src/ui/cardAssistanceUiState.js",
+  "src/study/CourseStudyApplication.js",
+  "src/study/CourseStudyBridge.js",
+  "src/study/CourseStudyRepository.js",
+  "src/study/CourseStudyScreen.js",
+  "src/supabase/CourseApiClient.js",
+  "src/supabase/CourseController.js",
+  "src/ui/CourseAuthoringSurface.js",
   "src/ui/OAuthAuthorizationConsent.js"
 ];
 
@@ -68,7 +92,6 @@ function runScript(scriptPath, args = [], environment = {}) {
       SUPABASE_DB_PASSWORD: "",
       ARALEARN_SUPABASE_URL: "",
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: "",
-      ARALEARN_ASSIST_ALLOWED_ORIGINS: "",
       ...environment
     }
   });
@@ -85,14 +108,13 @@ function writeSafeArtifact(root) {
     path.join(root, "runtime-config.js"),
     `globalThis.__ARALEARN_ENV__ = ${JSON.stringify({
       supabaseUrl: "https://abcdefghijklmnopqrst.supabase.co",
-      supabasePublishableKey: publishableKey,
-      assistAllowedOrigins: assistOrigins
+      supabasePublishableKey: publishableKey
     })};\n`,
     "utf8"
   );
   fs.writeFileSync(
     path.join(root, "index.html"),
-    `<!doctype html><meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://abcdefghijklmnopqrst.supabase.co ${assistOrigins.join(" ")};">\n`,
+    `<!doctype html><meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://abcdefghijklmnopqrst.supabase.co;">\n`,
     "utf8"
   );
 }
@@ -102,7 +124,7 @@ function packApk(
   preparePublicRuntime,
   {
     fileName = "application.apk",
-    authoringPackageText = "OAuth 2.1 com aralearn-authoring-mcp.\n"
+    legacySurfaceText = ""
   } = {}
 ) {
   const runtimeRoot = path.join(temporaryRoot, "payload", "assets", "www");
@@ -114,28 +136,9 @@ function packApk(
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, "export {};\n", "utf8");
   }
-  const authoringRoot = path.join(publicRoot, "docs", "downloads", "authoring");
-  fs.mkdirSync(authoringRoot, { recursive: true });
-  for (const fileName of [
-    "aralearn-chatgpt-system-prompt.md",
-    "aralearn-chatgpt-knowledge-core.md",
-    "aralearn-chatgpt-knowledge-resources.md",
-    "aralearn-chatgpt-action-openapi.yaml"
-  ]) {
-    fs.writeFileSync(path.join(authoringRoot, fileName), "OAuth 2.1 com aralearn-authoring-mcp.\n", "utf8");
+  if (legacySurfaceText) {
+    fs.writeFileSync(path.join(publicRoot, "legacy-surface.js"), legacySurfaceText, "utf8");
   }
-  const packageSource = path.join(temporaryRoot, "authoring-package-source");
-  fs.mkdirSync(packageSource, { recursive: true });
-  fs.writeFileSync(path.join(packageSource, "SETUP.md"), authoringPackageText, "utf8");
-  const packageZip = path.join(authoringRoot, "aralearn-authoring-chatgpt.zip");
-  const packedAuthoring = spawnSync("pwsh", [
-    "-NoProfile",
-    "-Command",
-    "& { param([string]$source, [string]$destination) Compress-Archive -Path (Join-Path $source '*') -DestinationPath $destination }",
-    packageSource,
-    packageZip
-  ], { encoding: "utf8" });
-  assert.equal(packedAuthoring.status, 0, packedAuthoring.stderr);
   const zipPath = path.join(temporaryRoot, "application.zip");
   const apkPath = path.join(temporaryRoot, fileName);
   const compressed = spawnSync("pwsh", [
@@ -179,7 +182,10 @@ test("planos de implantação cobrem somente os três perfis suportados", {
   skip: !powerShellAvailable
 }, () => {
   const expectedSteps = {
-    GitHubPagesManagedSupabase: ["github-variables", "verify-artifact", "publish", "verify-published"],
+    GitHubPagesManagedSupabase: [
+      "github-variables", "verify-artifact", "integrate-main", "verify-hosted",
+      "publish", "verify-published"
+    ],
     StaticHostManagedSupabase: ["build", "verify-artifact", "upload", "verify-published"],
     LocalDevelopment: ["start-supabase", "reset-local", "stop"]
   };
@@ -212,9 +218,34 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"]),
     runScript(scripts.plan, ["-Profile", "StaticHostManagedSupabase", "-AsJson"]),
   ]) {
-    const diagnose = parseJsonOutput(plan).steps.find(({ id }) => id === "diagnose");
+    const parsedPlan = parseJsonOutput(plan);
+    const diagnose = parsedPlan.steps.find(({ id }) => id === "diagnose");
+    const apply = parsedPlan.steps.find(({ id }) => id === "database-apply");
     assert.match(diagnose.command, /-Authoring/u);
+    assert.match(apply.command, /-Mode Apply/u);
+    assert.match(apply.command, /-DeployAuthoringFunctions/u);
+    assert.match(apply.command, /-PublicAppUrl https:\/\//u);
   }
+
+  const githubPlan = parseJsonOutput(
+    runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"])
+  );
+  const githubStepIds = githubPlan.steps.map(({ id }) => id);
+  const position = (id) => githubStepIds.indexOf(id);
+  assert.ok(position("validate") < position("integrate-main"));
+  assert.ok(position("integrate-main") < position("database-apply"));
+  assert.ok(position("database-apply") < position("verify-hosted"));
+  assert.ok(position("verify-hosted") < position("publish"));
+  assert.ok(position("publish") < position("verify-published"));
+
+  const githubAndroidPlan = parseJsonOutput(runScript(scripts.plan, [
+    "-Profile", "GitHubPagesManagedSupabase", "-IncludeAndroid", "-AsJson"
+  ]));
+  const githubAndroidStepIds = githubAndroidPlan.steps.map(({ id }) => id);
+  assert.ok(
+    githubAndroidStepIds.indexOf("android-verify") <
+      githubAndroidStepIds.indexOf("integrate-main")
+  );
 });
 
 test("executor de implantação verifica cada comando nativo antes de avançar", () => {
@@ -227,21 +258,14 @@ test("executor de implantação verifica cada comando nativo antes de avançar",
   assert.doesNotMatch(source, /\b(?:npm\.cmd|gradlew\.bat)[^\r\n]*;[^\r\n]*/u);
 });
 
-test("implantação publica somente MCP OAuth e entrega de revisões", () => {
+test("implantação publica somente MCP OAuth e API de Curso", () => {
   const source = fs.readFileSync(path.join(repositoryRoot, "scripts", "deploySupabase.ps1"), "utf8");
   assert.match(source, /DeployAuthoringFunctions/u);
   assert.match(source, /functions deploy aralearn-authoring-mcp/u);
-  assert.match(source, /functions deploy aralearn-course-revisions/u);
-  assert.match(
-    source,
-    /functions list[\s\S]+--output json[\s\S]+functions delete \$FunctionName[\s\S]+--yes/u
-  );
-  assert.match(source, /-FunctionName 'aralearn-authoring-api'/u);
-  assert.match(
-    source,
-    /secrets list[\s\S]+--output json[\s\S]+secrets unset \$SecretName[\s\S]+--yes/u
-  );
-  assert.match(source, /-SecretName 'ARALEARN_AUTHORING_INTEGRATION_SECRET'/u);
+  assert.match(source, /functions deploy aralearn-course-api/u);
+  assert.doesNotMatch(source, /functions deploy aralearn-course-revisions/u);
+  assert.doesNotMatch(source, /functions delete|Remove-AraLearnSupabaseFunctionIfPresent/u);
+  assert.match(source, /funções da versão publicada foram preservadas/u);
   assert.match(source, /function Resolve-AllowedOrigins/u);
   assert.match(source, /\$value -split ','/u);
   assert.match(source, /Select-Object -Unique/u);
@@ -250,7 +274,20 @@ test("implantação publica somente MCP OAuth e entrega de revisões", () => {
     source,
     /@\(\$RequiredApplicationOrigins\)\s*\+\s*@\(\$AllowedOrigin\)/u
   );
-  assert.match(source, /ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS=\$origins/u);
+  assert.match(source, /ARALEARN_COURSE_API_ALLOWED_ORIGINS=\$origins/u);
+  assert.match(source, /runHostedMcpOAuthSmoke\.mjs/u);
+  assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-course-api\/app\/listarCursos/u);
+  assert.match(source, /Access-Control-Allow-Origin/u);
+  assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
+  assert.doesNotMatch(source, /secrets unset/u);
+  assert.ok(
+    source.indexOf("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins") <
+      source.indexOf("functions deploy aralearn-authoring-mcp") &&
+    source.indexOf("functions deploy aralearn-course-api") <
+      source.indexOf("Invoke-WebRequest") &&
+    source.indexOf("Invoke-WebRequest") <
+      source.indexOf("runHostedMcpOAuthSmoke.mjs")
+  );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
 });
@@ -261,19 +298,212 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /--local/u);
   assert.match(source, /auth-email-smoke\.mjs/u);
   assert.match(source, /test:authoring:mcp:local/u);
+  assert.match(source, /aralearn-course-api/u);
+  assert.match(source, /test:supabase:smoke/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
+  assert.match(source, /supabase@2\.109\.1', 'test', 'db'/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
-  assert.doesNotMatch(source, /--linked|db\s+reset|SUPABASE_DB_PASSWORD/u);
+  assert.doesNotMatch(
+    source,
+    /--linked|db\s+reset|SUPABASE_DB_PASSWORD|publishCatalogFixtures/u
+  );
 });
 
-test("smoke hospedado usa o resolvedor administrativo sem enviar a chave como Bearer", () => {
-  const source = fs.readFileSync(scripts.postgrestSmoke, "utf8");
+test("CI só considera a API de Cursos pronta depois de alcançar seu handler", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  const readiness = source.slice(
+    source.indexOf("COURSE_API_URL="),
+    source.indexOf("npm run test:supabase:smoke")
+  );
+  assert.match(readiness, /--request GET/u);
+  assert.match(readiness, /\[ "\$status_code" = 405 \]/u);
+  assert.match(readiness, /"code":"method_not_allowed"/u);
+  assert.match(readiness, /content-type: application\/json; charset=utf-8/u);
+  assert.doesNotMatch(readiness, /--request OPTIONS|Access-Control-Request-Method/u);
+});
+
+test("smoke real de Curso cobre proveniência redigida sem enviar a chave como Bearer", () => {
+  const source = fs.readFileSync(scripts.courseRuntimeSmoke, "utf8");
   assert.match(source, /resolveSupabaseAdministrativeEnvironment/u);
   assert.match(source, /supabaseServerHeaders/u);
   assert.match(source, /\.\.\.process\.env/u);
+  assert.match(source, /aralearn-course-api/u);
+  assert.match(source, /aralearn\.course\.v1/u);
+  assert.match(source, /studyUnits/u);
+  assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
+  assert.match(source, /view:\s*"study_units"/u);
+  assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+  assert.match(source, /view:\s*"course_design"/u);
+  assert.match(source, /operation:\s*"update_course_design"/u);
+  assert.match(source, /aralearn\.course-design\.v1/u);
+  assert.match(source, /type:\s*"set_target_plan_items"/u);
+  assert.match(source, /kind:\s*"didactic_microsequence_materialization"/u);
+  assert.match(source, /designApplication/u);
+  assert.match(source, /sourceAttributionApplication/u);
+  assert.match(source, /sourceAttributionApplications/u);
+  assert.match(source, /aralearn\.course-design-context\.v2/u);
+  assert.match(source, /aralearn\.course-source-attribution-application\.v1/u);
+  assert.match(source, /view:\s*"course_sources"/u);
+  assert.match(source, /operation:\s*"update_course_sources"/u);
+  assert.match(source, /type:\s*"save_source"/u);
+  assert.match(source, /type:\s*"save_anchor"/u);
+  assert.match(source, /type:\s*"set_target_sources"/u);
+  assert.match(source, /verificationExcerpt/u);
+  assert.match(source, /get_course_study_citations_v1/u);
+  assert.match(
+    source,
+    /get_course_study_citations_v1"[\s\S]{0,180}p_expected_revision:\s*17/u
+  );
+  assert.match(source, /aralearn\.course-study-citations\.v1/u);
+  assert.match(source, /staleRemovedStudyUnitCitations[\s\S]+code,\s*"40001"/u);
+  assert.match(source, /revokedCitations[\s\S]+status,[\s\S]+404[\s\S]+"PT404"/u);
+  assert.match(source, /rejectedSourceAttribution/u);
+  assert.match(source, /afterRejectedSourceAttribution\.data\.courseRevision/u);
+  assert.match(source, /verificationExcerpt\|studyVisibility\|actorId\|channel\|history\|excerpt/u);
+  assert.match(source, /unassignedAnalysisUnitId/u);
+  assert.match(source, /steps\[0\]\.status,\s*"pending"/u);
+  assert.match(source, /list_courses_v1/u);
+  assert.match(source, /list_owned_courses_v1/u);
+  assert.match(source, /mutate_course_personal_state_v2/u);
+  assert.match(source, /aralearn\.course-personal-state\.v2/u);
+  assert.doesNotMatch(source, /(?:load|mutate)_course_personal_state_v1/u);
+  assert.match(source, /execute_my_course_anchored_annotation_command_v1/u);
+  assert.match(source, /view:\s*"anchored_annotations"/u);
+  assert.match(source, /provenance\.channel,\s*"authoring_interface"/u);
+  assert.match(source, /contributor\.kind,\s*"protected_person"/u);
+  assert.match(source, /foreignAnnotationProbes/u);
+  assert.match(source, /course_anchored_annotation_not_found/u);
+  assert.match(source, /view:\s*"audit_cycle"/u);
+  assert.match(source, /operation:\s*"update_audit_cycle"/u);
+  assert.match(source, /mode:\s*"runs"/u);
+  assert.match(source, /cleanAuditSummary\.findingsCreated,\s*0/u);
+  assert.match(source, /runDetail\.target\.path/u);
+  assert.match(source, /aralearn\.course-audit-cycle-page\.v1/u);
+  assert.match(source, /aralearn\.course-audit-context\.v1/u);
+  for (const command of [
+    "record_audit",
+    "propose_authoring_correction",
+    "reject_authoring_correction",
+    "apply_authoring_correction",
+    "verify_finding",
+    "rollback_authoring_correction"
+  ]) {
+    assert.match(source, new RegExp(`type:\\s*"${command}"`, "u"));
+  }
+  assert.match(source, /suggestedAnnotationActions/u);
+  assert.match(source, /type:\s*"resolve_anchored_annotation"/u);
+  assert.match(source, /type:\s*"reopen_anchored_annotation"/u);
+  assert.match(source, /sourceLinks:\s*\[sourceLink\]/u);
+  assert.match(source, /checkpoint\.before\.content\.topics/u);
+  assert.match(source, /replayedEditorialApplication\.idempotent,\s*true/u);
+  assert.match(source, /replayedFactualRollback\.idempotent,\s*true/u);
+  assert.match(source, /staleEditorialApplication[\s\S]+stale_course_state/u);
+  assert.match(source, /staleFactualRollback[\s\S]+stale_course_state/u);
+  assert.doesNotMatch(source, /aralearn\.library\.v1/u);
+  assert.doesNotMatch(source, /\bcards\s*:/u);
+  assert.doesNotMatch(source, /\bsources\s*:/u);
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
+});
+
+test("validator canônico cerca RPCs e observações pessoais removidos", () => {
+  const source = fs.readFileSync(scripts.courseRuntimeValidator, "utf8");
+  for (const removed of [
+    "load_course_personal_state_v1",
+    "mutate_course_personal_state_v1",
+    "saveCommentForPath",
+    "deleteCommentForPath",
+    "loadCommentForPath"
+  ]) {
+    assert.match(source, new RegExp(removed, "u"));
+  }
+  assert.match(source, /LEGACY_PERSONAL_OBSERVATIONS_ACCESS/u);
+  assert.match(source, /legacyPersonalObservationsStayInHandoffConverter/u);
+  assert.match(source, /accesses\.length === 2/u);
+  assert.match(source, /src\/ui\/CourseObservationsPanel\.js/u);
+  assert.match(source, /src\/ui\/renderStudyUnitObservationSheet\.js/u);
+  const manifest = JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
+    "utf8"
+  ));
+  assert.equal(manifest.schemaRevision, "20260820101500");
+  assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-corrections-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-audit-annotation-links-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-variant-comparisons-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-variant-comparison-list-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-source-pdf-attachments-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
+});
+
+test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de seis tools", () => {
+  for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
+    const source = fs.readFileSync(smokePath, "utf8");
+    for (const toolName of [
+      "listarCursos",
+      "lerCurso",
+      "criarCurso",
+      "alterarCurso",
+      "gerirPessoas",
+      "consultarComponentesDidaticos"
+    ]) {
+      assert.match(source, new RegExp(`"${toolName}"`, "u"));
+    }
+    assert.doesNotMatch(source, /auditarCurso|corrigirCurso|verificarCurso/u);
+    assert.match(source, /aralearn\.course\.v1/u);
+    assert.match(source, /studyUnits/u);
+    assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
+    assert.match(source, /view:\s*"study_units"/u);
+    assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+    assert.match(source, /view:\s*"course_design"/u);
+    assert.match(source, /operation:\s*"update_course_design"/u);
+    assert.match(source, /aralearn\.course-design\.v1/u);
+    assert.match(source, /type:\s*"set_target_plan_items"/u);
+    assert.match(source, /targetPlanItems/u);
+    assert.match(source, /view:\s*"course_sources"/u);
+    assert.match(source, /operation:\s*"update_course_sources"/u);
+    assert.match(source, /type:\s*"save_source"/u);
+    assert.match(source, /type:\s*"save_anchor"/u);
+    assert.match(source, /type:\s*"set_target_sources"/u);
+    assert.match(source, /sourceAttributionApplications/u);
+    assert.match(source, /rejectedTool/u);
+    assert.match(source, /rejectedAttribution/u);
+    assert.match(source, /afterRejectedAttribution\.courseRevision/u);
+    assert.match(source, /targetVersion,\s*2/u);
+    assert.match(source, /view:\s*"anchored_annotations"/u);
+    assert.match(source, /operation:\s*"update_anchored_annotations"/u);
+    assert.match(source, /type:\s*"create_anchored_annotation"/u);
+    assert.match(source, /anchored_annotation_confirmation_required/u);
+    assert.match(source, /provenance\.channel,\s*"authoring_chat"/u);
+    assert.match(source, /aralearn\.course-anchored-annotation-page\.v1/u);
+    assert.match(source, /replayedAnnotation\.idempotent,\s*true/u);
+    assert.match(source, /view:\s*"audit_cycle"/u);
+    assert.match(source, /operation:\s*"update_audit_cycle"/u);
+    assert.match(source, /mode:\s*"runs"/u);
+    assert.match(source, /runDetail\.target\.path/u);
+    assert.match(source, /aralearn\.course-audit-cycle-page\.v1/u);
+    assert.match(source, /aralearn\.course-audit-context\.v1/u);
+    assert.match(source, /type:\s*"record_audit"/u);
+    assert.match(source, /type:\s*"propose_authoring_correction"/u);
+    assert.match(source, /type:\s*"apply_authoring_correction"/u);
+    assert.match(source, /type:\s*"rollback_authoring_correction"/u);
+    assert.match(source, /confirmed:\s*false/u);
+    assert.match(source, /confirmed:\s*true/u);
+    assert.match(source, /authoring_correction_confirmation_required/u);
+    assert.match(source, /checkpoint\.before\.content\.topics/u);
+    assert.match(source, /checkpoint\.before\.sourceLinks/u);
+    assert.doesNotMatch(source, /aralearn\.library\.v1/u);
+    assert.doesNotMatch(source, /\bcards\s*:/u);
+    assert.doesNotMatch(source, /\bsources\s*:/u);
+    assert.doesNotMatch(
+      source,
+      /criarWorkspaceDeAutoria|salvarCardsNaMicrossequencia|listarCardsDaMicrossequencia/u
+    );
+  }
 });
 
 test("diagnóstico valida configuração pública sem revelar seu valor", {
@@ -319,20 +549,6 @@ test("diagnóstico valida configuração pública sem revelar seu valor", {
   );
   assert.notEqual(userSession.status, 0);
   assert.doesNotMatch(userSession.stdout, new RegExp(userToken.replaceAll(".", "\\.")));
-
-  const invalidAssistOrigin = runScript(
-    scripts.diagnose,
-    ["-Profile", "GitHubPagesManagedSupabase", "-RequireRuntimeConfig", "-AsJson"],
-    {
-      ARALEARN_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
-      ARALEARN_SUPABASE_PUBLISHABLE_KEY: publishableKey,
-      ARALEARN_ASSIST_ALLOWED_ORIGINS: "https://example.org/v1"
-    }
-  );
-  assert.notEqual(invalidAssistOrigin.status, 0);
-  assert.ok(parseJsonOutput(invalidAssistOrigin).checks.some(
-    (entry) => entry.id === "config.assist-origins" && entry.status === "blocked"
-  ));
 
   assert.ok(report.checks.some(
     (entry) => entry.id === "repository.supabase-temp-ignore" && entry.status === "ok"
@@ -437,7 +653,6 @@ test("verificador exige APK e runtime atual nos destinos finais", () => {
   const source = fs.readFileSync(scripts.verify, "utf8");
   assert.match(source, /artifact\.apk-missing/u);
   assert.match(source, /artifact\.required-runtime/u);
-  assert.match(source, /artifact\.required-authoring-asset/u);
   assert.match(source, /artifact\.static-authoring-api/u);
   assert.match(source, /app-release\.apk/u);
   assert.match(source, /package\.json/u);
@@ -493,23 +708,106 @@ test("versões publicáveis permanecem alinhadas entre npm e Android", () => {
 
 test("release Android aguarda a validação da main e usa exatamente o SHA aprovado", () => {
   const source = fs.readFileSync(scripts.androidWorkflow, "utf8");
+  const jobEnvironment = source.slice(
+    source.indexOf("    env:"),
+    source.indexOf("    steps:")
+  );
   assert.match(source, /workflow_run:/u);
   assert.match(source, /workflows:\s*\n\s*- Validar repositório/u);
   assert.match(source, /workflow_run\.conclusion == 'success'/u);
   assert.match(source, /workflow_run\.event == 'push'/u);
   assert.match(source, /workflow_run\.head_sha/u);
   assert.match(source, /github\.ref == 'refs\/heads\/main'/u);
+  assert.match(source, /permissions:\s*\n\s*actions: read\s*\n\s*contents: write/u);
   assert.match(source, /ref: \$\{\{ env\.ARALEARN_RELEASE_SHA \}\}/u);
+  assert.match(source, /persist-credentials: false/u);
+  assert.doesNotMatch(jobEnvironment, /GH_TOKEN|ARALEARN_ANDROID_KEYSTORE_/u);
   assert.equal(
     source.match(/git fetch origin \+refs\/heads\/main:refs\/remotes\/origin\/main --no-tags/gu)?.length,
     2
   );
   assert.match(source, /refs\/remotes\/origin\/main/u);
   assert.match(source, /steps\.freshness\.outputs\.current == 'true'/u);
+  assert.match(
+    source,
+    /actions\/workflows\/validacao\.yml\/runs\?event=push&head_sha=\$headSha&per_page=100/u
+  );
+  for (const validationField of [
+    /\$_\.head_sha -ceq \$env:ARALEARN_RELEASE_SHA/u,
+    /\$_\.head_branch -ceq 'main'/u,
+    /\$_\.event -ceq 'push'/u,
+    /\$_\.status -ceq 'completed'/u,
+    /\$_\.conclusion -ceq 'success'/u
+  ]) {
+    assert.match(source, validationField);
+  }
+  assert.ok(
+    source.indexOf("- name: Confirmar validação da revisão") <
+      source.indexOf("- name: Ler identidade da release")
+  );
   assert.match(source, /--target \$env:ARALEARN_RELEASE_SHA/u);
   assert.match(source, /verifyDeploymentArtifacts\.ps1/u);
+  assert.match(source, /git ls-remote --tags origin \$tagRef/u);
+  assert.match(source, /releases\/tags[\s\S]+Invoke-RestMethod/u);
+  assert.match(source, /\$statusCode -ne 404/u);
+  assert.match(source, /\$tagExists -xor \$releaseExists/u);
+  assert.match(source, /\$remoteTagSha -cne \$env:ARALEARN_RELEASE_SHA/u);
+  assert.match(source, /\[bool\]\$release\.draft/u);
+  assert.match(source, /\[bool\]\$release\.prerelease/u);
+  assert.match(source, /AraLearn-\$version\.apk/u);
+  assert.match(source, /\[int64\]\$asset\[0\]\.size -le 0/u);
+  assert.match(source, /\[string\]\$asset\[0\]\.state -cne 'uploaded'/u);
+  assert.match(source, /gh release download[\s\S]+--pattern \$asset/u);
+  assert.ok(
+    source.lastIndexOf("gh release download") <
+      source.lastIndexOf("verifyDeploymentArtifacts.ps1")
+  );
+  assert.match(source, /npm run deployment:verify-hosted/u);
+  assert.match(
+    source,
+    /- name: Compilar APK de release[\s\S]+?env:[\s\S]+?ARALEARN_ANDROID_KEYSTORE_PASSWORD:[\s\S]+?ARALEARN_ANDROID_KEY_ALIAS:[\s\S]+?ARALEARN_ANDROID_KEY_PASSWORD:[\s\S]+?run: npm run android:release/u
+  );
+  assert.ok(
+    source.indexOf("npm run deployment:verify-hosted") < source.indexOf("npm test") &&
+      source.indexOf("npm test") < source.indexOf("npm run lint") &&
+      source.indexOf("npm run deployment:verify-hosted") < source.indexOf("npm run android:release")
+  );
+  assert.match(source, /- name: Executar testes antes da release[\s\S]+run: npm test/u);
+  assert.match(source, /- name: Analisar código antes da release[\s\S]+run: npm run lint/u);
+  assert.doesNotMatch(source, /run:\s*\|\s*\r?\n\s*npm test\s*\r?\n\s*npm run lint/u);
+  assert.match(source, /android-release-\$\{\{[\s\S]+\|\| github\.run_id \}\}/u);
   assert.doesNotMatch(source, /certificate SHA-256 digest/u);
   assert.doesNotMatch(source, /compatibilidade para materialização/u);
+});
+
+test("Android expõe callback móvel e salvamento textual local restrito", () => {
+  const activity = fs.readFileSync(scripts.androidActivity, "utf8");
+  const manifest = fs.readFileSync(scripts.androidManifest, "utf8");
+  const strings = fs.readFileSync(scripts.androidStrings, "utf8");
+  assert.match(manifest, /android\.intent\.action\.VIEW/u);
+  assert.match(manifest, /android:scheme="aralearn"/u);
+  assert.match(manifest, /android:host="auth"/u);
+  assert.match(manifest, /android:path="\/callback"/u);
+  assert.match(activity, /public void finishApp\(\)/u);
+  assert.match(activity, /public boolean saveTextFile\(String content, String fileName, String mimeTypeValue\)/u);
+  assert.match(activity, /Intent\.ACTION_CREATE_DOCUMENT/u);
+  assert.match(activity, /MAX_TEXT_EXPORT_BYTES\s*=\s*8 \* 1024 \* 1024/u);
+  assert.match(activity, /MAX_TEXT_EXPORT_FILE_NAME_LENGTH\s*=\s*160/u);
+  assert.match(activity, /Pattern\.compile\("\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*"\)/u);
+  assert.match(activity, /value\.contains\("\.\."\)/u);
+  assert.match(activity, /"application\/json"/u);
+  assert.match(activity, /"text\/csv"/u);
+  assert.match(activity, /StandardCharsets\.UTF_8/u);
+  assert.match(manifest, /android:configChanges="[^"]*orientation[^"]*screenSize[^"]*uiMode/u);
+  assert.match(activity, /File\.createTempFile\(TEXT_EXPORT_CACHE_PREFIX, "\.tmp", getCacheDir\(\)\)/u);
+  assert.match(activity, /outState\.putString\(STATE_TEXT_EXPORT_PATH/u);
+  assert.match(activity, /restorePendingTextExport\(savedInstanceState\)/u);
+  assert.match(activity, /new FileInputStream\(pending\.source\)/u);
+  assert.match(activity, /finally \{\s*deletePendingTextExport\(pending\)/u);
+  assert.match(strings, /text_export_too_large[^>]*>[^<]*8 MiB/u);
+  assert.doesNotMatch(manifest, /android\.intent\.action\.SEND/u);
+  assert.doesNotMatch(manifest, /READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE/u);
+  assert.doesNotMatch(activity, /saveExportFile|receiveSharedJson|runtimeReady/u);
 });
 
 test("validação limpa e repete somente a inicialização local do Supabase", () => {
@@ -521,12 +819,67 @@ test("validação limpa e repete somente a inicialização local do Supabase", (
   assert.match(source, /if npx --yes supabase@2\.109\.1 start/u);
   assert.match(source, /ss -ltnp '\( sport = :54322 \)'/u);
   assert.match(source, /sleep \$\(\(attempt \* 3\)\)/u);
+  assert.match(source, /npx --yes supabase@2\.109\.1 test db/u);
+  assert.ok(
+    source.indexOf("supabase@2.109.1 db reset") <
+      source.indexOf("supabase@2.109.1 test db")
+  );
 });
 
-test("Pages delega o retry transitório ao verificador testado", () => {
+test("Pages publica somente a revisão aprovada pela validação da main", () => {
   const source = fs.readFileSync(scripts.pagesWorkflow, "utf8");
+  assert.match(source, /workflow_run:\s*\n\s*workflows:\s*\n\s*- Validar repositório/u);
+  assert.match(source, /workflow_run\.conclusion == 'success'/u);
+  assert.match(source, /workflow_run\.event == 'push'/u);
+  assert.match(source, /workflow_run\.head_branch == 'main'/u);
+  assert.match(source, /workflow_run\.head_sha/u);
+  assert.doesNotMatch(source, /^\s{2}push:/mu);
+  assert.match(
+    source,
+    /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/u
+  );
+  assert.match(source, /permissions:\s*\n\s*actions: read\s*\n\s*contents: read/u);
+  assert.equal(
+    source.match(/ref: \$\{\{ env\.ARALEARN_PAGES_SHA \}\}/gu)?.length,
+    2
+  );
+  assert.match(
+    source,
+    /actions\/workflows\/validacao\.yml\/runs\?branch=main&event=push&head_sha=\$headSha&per_page=100/u
+  );
+  for (const validationField of [
+    /\$_\.head_sha -ceq \$env:ARALEARN_PAGES_SHA/u,
+    /\$_\.head_branch -ceq 'main'/u,
+    /\$_\.event -ceq 'push'/u,
+    /\$_\.status -ceq 'completed'/u,
+    /\$_\.conclusion -ceq 'success'/u
+  ]) {
+    assert.match(source, validationField);
+  }
+  assert.match(
+    source,
+    /group: pages-\$\{\{[\s\S]+\|\| github\.run_id \}\}/u
+  );
+  assert.match(source, /npm run deployment:verify-hosted/u);
+  assert.match(source, /npm run pages:build/u);
+  assert.ok(
+    source.indexOf("npm run deployment:verify-hosted") <
+      source.indexOf("npm run pages:build") &&
+    source.indexOf("npm run pages:build") <
+      source.indexOf("verifyDeploymentArtifacts.ps1")
+  );
+  assert.doesNotMatch(
+    source,
+    /npm test|npm run lint|npm run validate:course-runtime|npm run test:e2e|playwright install/u
+  );
   assert.match(source, /node \.\/scripts\/verifyPublishedSite\.mjs --url/u);
   assert.doesNotMatch(source, /Start-Sleep|\$attempts/u);
+});
+
+test("validação do repositório usa permissão mínima", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  assert.match(source, /permissions:\s*\n\s*contents: read/u);
+  assert.doesNotMatch(source, /contents: write|actions: write|pages: write|id-token: write/u);
 });
 
 test("workflows usam Actions mantidas sobre o runtime atual do GitHub", () => {
@@ -573,7 +926,7 @@ test("verificação reprova identidade ou certificado incompatíveis com atualiz
   }
 });
 
-test("verificação inspeciona pacote de autoria aninhado e bloqueia a API estática", {
+test("verificação inspeciona o runtime aninhado e bloqueia a API estática", {
   skip: !powerShellAvailable
 }, () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-static-api-"));
@@ -582,7 +935,7 @@ test("verificação inspeciona pacote de autoria aninhado e bloqueia a API está
       temporaryRoot,
       writeSafeArtifact,
       {
-        authoringPackageText:
+        legacySurfaceText:
           [
             "Use https://example.supabase.co/functions/v1/aralearn-authoring-api com X-AraLearn-API-Key.",
             "ARALEARN_AUTHORING_INTEGRATION_SECRET e authoring_api_clients são resíduos."
@@ -636,8 +989,7 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
         path.join(publicRoot, "runtime-config.js"),
         `globalThis.__ARALEARN_ENV__ = ${JSON.stringify({
           supabaseUrl: "https://abcdefghijklmnopqrst.supabase.co",
-          supabasePublishableKey: "invalid-public-key",
-          assistAllowedOrigins: []
+          supabasePublishableKey: "invalid-public-key"
         })};\n`,
         "utf8"
       );

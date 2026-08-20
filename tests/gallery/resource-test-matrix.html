@@ -18,7 +18,7 @@
   <body>
     <main class="resource-test-matrix" aria-label="Matriz visual dos resources"></main>
     <script type="module">
-      import { renderPackageCardBlocks } from "/src/render/renderPackageCard.js";
+      import { renderPackageStudyUnitBlocks } from "/src/render/renderPackageStudyUnit.js";
       import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
 
       const response = await fetch("/tests/fixtures/package/resource-test-course.json", {
@@ -30,21 +30,21 @@
       const matrix = document.querySelector(".resource-test-matrix");
       const filledState = new URLSearchParams(location.search).get("state") === "filled";
       modules.forEach((moduleValue) => {
-        const cards = moduleValue.lessons[0].microsequences[0].cards;
-        cards.forEach((card) => {
-          const blockKeyPrefix = `resource-matrix:${card.id}`;
-          const responseKey = card.response?.id
-            ? `${blockKeyPrefix}::response:${card.response.id}`
+        const studyUnits = moduleValue.lessons[0].microsequences[0].studyUnits;
+        studyUnits.forEach((studyUnit) => {
+          const blockKeyPrefix = `resource-matrix:${studyUnit.id}`;
+          const responseKey = studyUnit.response?.id
+            ? `${blockKeyPrefix}::response:${studyUnit.response.id}`
             : "";
-          const responseStateByBlockKey = filledState && card.response?.package === "aralearn.response.gap"
-            ? { [responseKey]: { values: card.response.data.blanks.map((blank) => blank.answer) } }
+          const responseStateByBlockKey = filledState && studyUnit.response?.package === "aralearn.response.gap"
+            ? { [responseKey]: { values: studyUnit.response.data.blanks.map((blank) => blank.answer) } }
             : {};
           const article = document.createElement("article");
           article.className = "resource-test-card";
-          article.dataset.package = card.content[0]?.package || card.response?.package || "unknown";
-          article.dataset.modality = card.title;
+          article.dataset.package = studyUnit.content[0]?.package || studyUnit.response?.package || "unknown";
+          article.dataset.modality = studyUnit.title;
           article.dataset.testState = filledState ? "filled" : "initial";
-          article.innerHTML = `<h2>${moduleValue.title} · ${card.title}</h2>${renderPackageCardBlocks(card, { blockKeyPrefix, responseStateByBlockKey })}`;
+          article.innerHTML = `<h2>${moduleValue.title} · ${studyUnit.title}</h2>${renderPackageStudyUnitBlocks(studyUnit, { blockKeyPrefix, responseStateByBlockKey })}`;
           matrix.append(article);
         });
       });

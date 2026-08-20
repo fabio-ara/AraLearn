@@ -1,5 +1,14 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { escapePackageAttribute, escapePackageHtml, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  listPackageManualTextPaths,
+  stripPackageManualTextMarkers
+} from "../../kernel/manualTextMarkers.js";
+import {
+  escapePackageAttribute,
+  escapePackageHtml,
+  renderPackageInline,
+  renderPackageProse
+} from "../../sdk/html.js";
 import { renderStretchDelimiter } from "../../sdk/stretchDelimiter.js";
 
 function renderMatrix(values, name = "", delimiters = "brackets") {
@@ -7,12 +16,16 @@ function renderMatrix(values, name = "", delimiters = "brackets") {
   const accessibleName = name ? `Matriz ${name}, ${dimensions}` : `Matriz ${dimensions}`;
   const body = values.map((row) => `<mtr>${row.map((cell) => `<mtd><mtext>${renderPackageInline(cell)}</mtext></mtd>`).join("")}</mtr>`).join("");
   const symbols = delimiters === "parentheses" ? ["(", ")"] : ["[", "]"];
-  const prefix = name ? `<math class="runtime-matrix-prefix" aria-hidden="true"><mrow><mi class="runtime-matrix-name">${escapePackageHtml(name)}</mi><mo>=</mo></mrow></math>` : "";
+  const namePath = listPackageManualTextPaths(name)[0] || "";
+  const nameAttribute = namePath
+    ? ` data-package-manual-field-path="${escapePackageAttribute(encodeURIComponent(namePath))}"`
+    : "";
+  const prefix = name ? `<math class="runtime-matrix-prefix"${namePath ? "" : ' aria-hidden="true"'}><mrow><mi class="runtime-matrix-name"${nameAttribute}>${escapePackageHtml(stripPackageManualTextMarkers(name))}</mi><mo>=</mo></mrow></math>` : "";
   return `<span class="runtime-matrix-item" role="group" aria-label="${escapePackageAttribute(accessibleName)}">${prefix}<span class="runtime-matrix-fenced">${renderStretchDelimiter(symbols[0], "runtime-matrix-delimiter is-left")}<math class="runtime-matrix-values"><mtable class="runtime-matrix-grid">${body}</mtable></math>${renderStretchDelimiter(symbols[1], "runtime-matrix-delimiter is-right")}</span></span>`;
 }
 
 export const matrixPackage = Object.freeze({
-  manifest: Object.freeze({ id: "aralearn.resource.matrix", version: "1.0.0", label: "Matriz", purpose: "Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear.", slots: Object.freeze(["content", "feedback"]), cognitiveOperations: Object.freeze(["inspect-matrix", "calculate-matrix", "compare-matrices"]), academic: academicProfile({ domains: ["álgebra linear", "matemática discreta", "computação gráfica"], knowledgeObjects: ["matriz", "entrada", "dimensão", "operação matricial"], conventions: ["entradas sem grade de tabela", "delimitadores matriciais", "índices por linha e coluna"], appropriateWhen: ["as posições das entradas participam de uma operação algébrica"], avoidWhen: ["linhas são registros e colunas são atributos", "há cabeçalhos heterogêneos"], technologies: ["estrutura matemática sem grade tabular", "HTML acessível"], practiceModes: ["exposition", "gap", "typing", "selection"] }), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Não use como tabela de atributos."]), accessibility: "Cada matriz possui leitura por linhas e dimensões anunciadas." }),
+  manifest: Object.freeze({ id: "aralearn.resource.matrix", version: "1.0.0", label: "Matriz", purpose: "Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear.", slots: Object.freeze(["content", "feedback"]), taskOperations: Object.freeze(["inspect-matrix", "calculate-matrix", "compare-matrices"]), academic: academicProfile({ domains: ["álgebra linear", "matemática discreta", "computação gráfica"], knowledgeObjects: ["matriz", "entrada", "dimensão", "operação matricial"], conventions: ["entradas sem grade de tabela", "delimitadores matriciais", "índices por linha e coluna"], appropriateWhen: ["as posições das entradas participam de uma operação algébrica"], avoidWhen: ["linhas são registros e colunas são atributos", "há cabeçalhos heterogêneos"], technologies: ["estrutura matemática sem grade tabular", "HTML acessível"], practiceModes: ["exposition", "gap", "typing", "selection"] }), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Não use como tabela de atributos."]), accessibility: "Cada matriz possui leitura por linhas e dimensões anunciadas." }),
   authoringContract: Object.freeze({ intent: "Declare uma matriz algébrica; use table para registros com cabeçalhos.", required: Object.freeze([]), optional: Object.freeze(["prompt", "name", "values", "sequence", "delimiters"]), rules: Object.freeze(["Use exatamente values ou sequence.", "Linhas têm o mesmo comprimento.", "Não inclua cabeçalhos nem nomes de atributos nas entradas."]), example: Object.freeze({ prompt: "Observe a matriz identidade de ordem três.", name: "I", delimiters: "brackets", values: [["1", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]] }) }),
   schema: Object.freeze({
     type: "object",

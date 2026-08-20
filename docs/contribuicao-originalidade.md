@@ -1,12 +1,12 @@
 # Contribuição e originalidade do AraLearn
 
-## 1. O que significa contribuição em pesquisa orientada a design
+## 1. O que significa contribuição em pesquisa orientada ao desenho de artefatos
 
 Uma contribuição não é sinônimo de funcionalidade nova. Em pesquisa orientada
 à construção de artefatos, pode haver contribuição em pelo menos quatro níveis:
 
 1. **artefato**: sistema, método ou modelo concretamente implementado;
-2. **conhecimento de design**: explicação sobre como e em que condições uma
+2. **conhecimento de desenho**: explicação sobre como e em que condições uma
    solução pode enfrentar uma classe de problemas;
 3. **instrumento de investigação**: contratos, rubricas, corpora ou protocolos
    que permitem examinar o fenômeno;
@@ -14,7 +14,7 @@ Uma contribuição não é sinônimo de funcionalidade nova. Em pesquisa orienta
 
 Design Science Research trata relevância do problema, rigor do conhecimento
 utilizado, construção e avaliação como atividades relacionadas
-([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). Uma contribuição de design ganha
+([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). Uma contribuição de desenho ganha
 força quando ultrapassa a descrição da instância e explicita princípios,
 contextos e limites de transferência ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). Ciclos de
 Design-Based Research também valorizam refinamento em situações educacionais e
@@ -25,13 +25,13 @@ O AraLearn pode ser descrito como artefato implementado. Sua originalidade
 pedagógica, sua utilidade em uso e sua eficácia de aprendizagem permanecem
 questões empíricas até que sejam avaliadas com métodos compatíveis.
 
-Neste documento, **kernel** é o núcleo comum que coordena o aplicativo;
-**package** é um módulo de recurso com contrato e renderização próprios;
-**workspace** é um espaço de trabalho com membros e permissões locais; e
-**inteligência artificial (IA)** designa os modelos e serviços usados para
-assistir a autoria. A expressão **local-first** designa a arquitetura em que a
-cópia local sustenta a operação corrente e a sincronização com o servidor não
-bloqueia o gesto do usuário.
+Nos trechos técnicos, **núcleo comum** designa a camada que coordena os módulos
+do aplicativo; **pacote de componente**, o módulo versionado que reúne contrato,
+validação e implementação de uma representação ou formato de resposta; e
+**inteligência artificial (IA)**, os modelos e serviços usados para auxiliar a
+autoria. A expressão **operação local prioritária** designa a arquitetura em
+que a cópia local sustenta a operação corrente e a sincronização com o servidor
+não bloqueia o gesto da pessoa.
 
 ## 2. Distinções necessárias
 
@@ -54,7 +54,7 @@ software sejam apresentados como resultados educacionais.
 ### Problema
 
 Ambientes educacionais costumam separar planejamento didático, produção de
-conteúdo, renderização de representações, prática, estudo offline, edição
+conteúdo, renderização de representações, prática, Estudo sem conexão, edição
 assistida e governança. Integrar tudo em uma única aplicação pode gerar um
 monólito difícil de ampliar; mantê-los totalmente separados pode romper a
 rastreabilidade entre intenção pedagógica e experiência de estudo.
@@ -69,22 +69,23 @@ As alternativas principais são:
 - definir um núcleo pequeno e contratos explícitos que coordenem componentes
   especializados.
 
-A solução precisa preservar separação de responsabilidades, operação móvel e
-offline, autoria compreensível, expansão do catálogo e rastreabilidade entre
+A solução precisa preservar separação de responsabilidades, operação móvel sem
+conexão, autoria compreensível, expansão do catálogo e rastreabilidade entre
 decisão pedagógica e materialização.
 
 ### Decisão
 
 O AraLearn investiga uma configuração integrada composta por:
 
-- modelo didático de progressão sem quantidade fixa de cards;
-- catálogo semântico de recursos de card;
-- packages especializados e independentes de um kernel comum;
+- modelo didático de progressão sem quantidade fixa de Unidades de estudo;
+- catálogo semântico de componentes didáticos;
+- pacotes de componente especializados e independentes de um núcleo comum;
 - contratos recuperados sob demanda depois da escolha da representação;
 - práticas situadas dentro do objeto quando a operação assim exige;
-- estudo local-first com sincronização assíncrona;
-- autoria de curso e reparo contextual em escalas distintas;
-- permissões locais, proveniência e versões reversíveis;
+- estudo com cópia local e sincronização assíncrona;
+- autoria do Curso e correção focal em escalas distintas;
+- propriedade do Curso, acesso direto para Estudo, proveniência e correções
+  reversíveis;
 - política de dados orientada pela finalidade, sem telemetria comportamental
   automática.
 
@@ -95,7 +96,7 @@ representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006de
 ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)), recuperação e prática
 distribuída ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed)), feedback
 ([Shute (2008)](referencias.md#ref-shute2008feedback); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)), autorregulação
-([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)), interação humano–IA
+([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)), interação entre pessoas e IA
 ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)) e governança de dados
 educacionais ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). Nenhuma dessas fontes
 avalia a configuração do AraLearn como conjunto.
@@ -118,47 +119,49 @@ configuração completa.
 ### Limites e evidência
 
 A integração pode aumentar complexidade, custo de manutenção e dificuldade de
-atribuir efeitos a um mecanismo. Não se afirma que a combinação seja única,
-superior ou eficaz. A originalidade precisa ser sustentada por revisão do
-estado da arte; a utilidade e os efeitos precisam ser sustentados por avaliação.
+atribuir efeitos a um mecanismo. A configuração não é apresentada como única,
+superior ou eficaz. Sua originalidade depende da revisão do estado da arte; sua
+utilidade e seus efeitos dependem de avaliação.
 
 ## 4. Contribuições potenciais
 
-### C1 — arquitetura extensível de recursos de card
+### C1: arquitetura extensível de componentes didáticos
 
 **Problema.** Contratos monolíticos e renderizadores centrais tornam a inclusão
 de uma nova representação uma refatoração transversal.
 
-**Alternativas e requisitos.** Manter um mecanismo central de renderização, distribuir módulos
-sem interface comum ou adotar packages autodescritivos. A extensão precisa
-preservar isolamento, validação e integração previsível.
+**Alternativas e requisitos.** Manter um mecanismo central de renderização,
+distribuir módulos sem interface comum ou adotar pacotes autodescritivos. A
+extensão precisa preservar isolamento, validação e integração previsível.
 
-**Decisão.** Packages autodescritivos reúnem esquema de validação, mecanismo de renderização, catálogo,
-autoria, prática e testes sob um kernel comum.
+**Decisão.** Pacotes de componente autodescritivos reúnem esquema de validação,
+mecanismo de renderização, catálogo, autoria, prática e testes sob um núcleo
+comum.
 
 **Fundamentação.** A decisão aplica separação de responsabilidades ao problema
 de um artefato extensível; sua relevância e avaliação seguem a lógica de DSR
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)).
 
-**Operacionalização.** Cada package registra contrato, mecanismo de
-renderização, descrição de descoberta, campos editáveis e testes; o kernel
-consome essa interface comum.
+**Operacionalização.** Cada pacote registra contrato, mecanismo de
+renderização, descrição de descoberta, campos editáveis e testes; o núcleo
+consome essa interface comum. O catálogo corrente materializa essa decisão em
+32 pacotes, sendo 29 de conteúdo e três de resposta.
 
 **Consequências.** A contribuição potencial é um padrão arquitetural para integrar representações
 acadêmicas heterogêneas sem expor detalhes geométricos à autoria.
 
 **Limites e evidência.** Devem ser medidos dependências, esforço de inclusão, estabilidade do
-kernel, exemplos de extensão independente e comparação com alternativa
+núcleo, exemplos de extensão independente e comparação com alternativa
 monolítica. Código funcional demonstra a instância, não a generalidade do
 padrão.
 
-### C2 — descoberta progressiva de contratos para autoria assistida
+### C2: descoberta progressiva de contratos para autoria assistida
 
 **Problema.** Enviar todos os esquemas de validação simultaneamente aumenta contexto e
 dificulta escolher a representação pela intenção.
 
 **Alternativas e requisitos.** Fornecer contrato monolítico, exigir nome exato
-do package ou recuperar progressivamente catálogo e contrato. A autoria precisa
+do componente ou recuperar progressivamente catálogo e contrato. A autoria precisa
 encontrar uma intenção sem conhecer a sintaxe antecipadamente.
 
 **Decisão.** A autoria consulta descrições e facetas, escolhe o tipo e só então
@@ -177,23 +180,24 @@ progressiva de ferramentas representacionais com menor contexto inicial.
 contrato inadequado, retrabalho e comparação com catálogo monolítico. O simples
 funcionamento da busca não demonstra melhor decisão.
 
-### C3 — modelo didático operacional de microssequência
+### C3: modelo didático operacional de microssequência
 
-**Problema.** Um card curto pode permanecer condensado, e uma quantidade fixa
-de teoria ou prática pode ignorar complexidade e conhecimento prévio.
+**Problema.** Uma Unidade de estudo curta pode permanecer condensada, e uma
+quantidade fixa de teoria ou prática pode ignorar complexidade e conhecimento
+prévio.
 
 **Alternativas e requisitos.** Fixar tamanho, resumir para caber ou dimensionar
 a sequência por pré-requisitos, relações e evidência de aprendizagem. É preciso
 preservar profundidade e coerência.
 
 **Decisão.** A microssequência declara objetivo, pré-requisitos, progressão,
-exemplos, práticas e retomadas antes de materializar quantidade de cards.
+exemplos, práticas e retomadas antes de materializar as Unidades de estudo.
 
-**Fundamentação.** Segmentação e microlearning possuem efeitos e definições
+**Fundamentação.** Segmentação e microaprendizagem possuem efeitos e definições
 heterogêneos; não oferecem uma cota universal ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting); [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
 
-**Operacionalização.** Blueprint, rubrica e auditoria verificam cobertura entre
-teoria, exemplo, prática e feedback.
+**Operacionalização.** Plano instrucional, rubrica e auditoria verificam a
+cobertura entre teoria, exemplo, prática e feedback.
 
 **Consequências.** A contribuição potencial é um modelo operacional que distingue microteoria de
 resumo e associa granularidade à suficiência pedagógica.
@@ -202,7 +206,7 @@ resumo e associa granularidade à suficiência pedagógica.
 compreensão por novatos, retenção, transferência e casos em que a segmentação
 fragmenta relações. A base externa não valida automaticamente esse modelo.
 
-### C4 — prática incorporada a representações disciplinares
+### C4: prática incorporada a representações disciplinares
 
 **Problema.** Exercícios genéricos deslocam a resposta do lugar em que o
 raciocínio acontece.
@@ -220,9 +224,9 @@ cada relação ocupa uma lacuna independente no campo textual de `paragraph` ou
 **Fundamentação.** Recuperação pode beneficiar aprendizagem, mas tarefa e
 transferência são moderadores ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
-**Operacionalização.** O package declara alvos, respostas e feedback; o package
-de resposta controla estado e confirmação sem modificar a topologia. Lacunas
-que integram a mesma correspondência conservam opções e estado próprios.
+**Operacionalização.** O componente declara alvos, respostas e feedback; o
+formato de resposta controla estado e confirmação sem modificar a topologia.
+Lacunas que integram a mesma correspondência conservam opções e estado próprios.
 
 **Consequências.** A contribuição potencial é um mecanismo para coordenar representação
 especializada e resposta sem descaracterizar a notação.
@@ -231,38 +235,41 @@ especializada e resposta sem descaracterizar a notação.
 interpretação por estudantes e comparação com resposta externa. Benefícios de
 recuperação não demonstram que qualquer lacuna seja válida.
 
-### C5 — autoria em duas escalas com escopo explícito
+### C5: autoria estrutural e correção focal com escopo explícito
 
-**Problema.** Construir um curso inteiro e reparar um rótulo são tarefas de
+**Problema.** Construir um Curso inteiro e corrigir uma Unidade são tarefas de
 escala, risco e contexto diferentes.
 
 **Alternativas e requisitos.** Usar o mesmo fluxo para tudo, separar completamente
-as ferramentas ou coordenar autoria estrutural e reparo contextual. O escopo
+as ferramentas ou coordenar autoria estrutural e correção focal. O escopo
 precisa ser visível, validável e reversível.
 
-**Decisão.** Autoria estrutural planeja e compõe por meio de catálogo e
-contratos; edição contextual mantém o card visível, expõe apenas textos
-graváveis e permite diálogo iterável e reversão.
+**Decisão.** A autoria estrutural planeja e compõe por meio de catálogo e
+contratos. O ciclo de auditoria mantém a Unidade focal e seu contexto visíveis,
+limita a correção ao conteúdo e às atribuições de Fontes autorizadas e exige
+verificação posterior.
 
-**Fundamentação.** Interação humano–IA requer limites compreensíveis, correção e
+**Fundamentação.** A interação entre pessoas e IA requer limites compreensíveis, correção e
 controle efetivo ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 
-**Operacionalização.** Contexto somente leitura, campos graváveis, histórico
-curto, validação e versões locais são camadas distintas.
+**Operacionalização.** Contexto derivado pelo servidor, rodada imutável, achado,
+proposta versionada, aplicação confirmada, verificação e reversão são registros
+distintos.
 
-**Consequências.** A contribuição potencial é um modelo de coordenação entre autoria ampla e
-reparo localizado com assistência de modelos de linguagem.
+**Consequências.** A contribuição potencial é um modelo de coordenação entre
+autoria ampla e correção localizada com assistência de modelos de linguagem.
 
-**Limites e evidência.** Devem ser medidos erro de escopo, qualidade da mudança, retrabalho,
-compreensão, controle percebido e capacidade de desfazer. Diretrizes de
-interação não garantem que os controles sejam compreendidos.
+**Limites e evidência.** Devem ser medidos erro de escopo, qualidade da mudança,
+retrabalho, compreensão, controle percebido, verificação e capacidade de
+reverter. Diretrizes de interação não garantem que os controles sejam
+compreendidos.
 
-### C6 — continuidade local-first e sincronização não bloqueante
+### C6: continuidade local e sincronização não bloqueante
 
 **Problema.** Estudo móvel pode ocorrer sem conexão estável; ações locais não
 devem depender da latência da rede.
 
-**Alternativas e requisitos.** Operação centrada no servidor, cache parcial ou
+**Alternativas e requisitos.** Operação centrada no servidor, cópia parcial ou
 réplica local sincronizável. A resposta do gesto corrente precisa independer da
 rede sem perder consistência posterior.
 
@@ -278,37 +285,42 @@ são testados sob perda e retorno de conexão.
 **Consequências.** A contribuição potencial é uma aplicação educacional móvel cuja continuidade
 operacional e retomada são tratadas como requisitos arquiteturais.
 
-**Limites e evidência.** São necessários testes offline, latência, conflitos, consumo de
-armazenamento e tarefas reais de interrupção e retomada. Funcionamento offline
-é resultado técnico; menor esforço de retomada é hipótese.
+**Limites e evidência.** São necessários testes sem conexão, latência,
+conflitos, consumo de armazenamento e tarefas reais de interrupção e retomada.
+O funcionamento sem conexão é resultado técnico; menor esforço de retomada é
+hipótese.
 
-### C7 — governança local, proveniência e dados proporcionais
+### C7: propriedade, proveniência e dados proporcionais
 
-**Problema.** Papéis globais e telemetria abundante podem obscurecer
+**Problema.** Poder de edição difuso e telemetria abundante podem obscurecer
 responsabilidade e produzir inferências sem validade.
 
-**Alternativas e requisitos.** Poder global, isolamento individual ou
-capacidades locais; coleta ampla ou dados definidos pela finalidade. A solução
-precisa permitir revogação, atribuição e proporcionalidade.
+**Alternativas e requisitos.** Autoria coletiva com papéis, isolamento completo
+ou propriedade do Curso com acesso direto para Estudo; coleta ampla ou dados
+definidos pela finalidade. A solução precisa permitir revogação, atribuição e
+proporcionalidade.
 
-**Decisão.** Workspaces isolam capacidades revogáveis; mudanças mantêm
-proveniência; indicadores não são coletados sem pergunta e intervenção
-definidas.
+**Decisão.** Cada Curso possui uma pessoa proprietária, e o acesso direto concede
+somente Estudo. Fontes, Âncoras, eventos e correções preservam proveniência. A
+área Pesquisa expõe fatos autorais sem dados identificadores e contagens
+descritivas, sem criar telemetria comportamental por conveniência.
 
-**Fundamentação.** Ética de analytics exige finalidade, transparência e
+**Fundamentação.** A ética da análise de dados educacionais exige finalidade, transparência e
 responsabilidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
-**Operacionalização.** Capacidades são calculadas no workspace, mudanças recebem
-autoria e a ficha de indicador antecede qualquer coleta comportamental.
+**Operacionalização.** A autorização é calculada por Curso e operação; mudanças
+recebem origem e revisão; cada métrica declara pergunta, denominador, ausências
+e interpretações vedadas.
 
-**Consequências.** A contribuição potencial é uma política integrada de colaboração, autoria e
-minimização de dados para ambiente educacional.
+**Consequências.** A contribuição potencial é uma política integrada de
+responsabilidade autoral, compartilhamento para Estudo e minimização de dados.
 
-**Limites e evidência.** Devem ser examinados isolamento, reconstrução de autoria, compreensão de
-papéis, custo de armazenamento, proporcionalidade e análise de efeitos
-adversos. A fundamentação ética não prova que a política adotada seja suficiente.
+**Limites e evidência.** Devem ser examinados isolamento, reconstrução de
+autoria, compreensão de propriedade e acesso, custo de armazenamento,
+proporcionalidade e efeitos adversos. A fundamentação ética não prova que a
+política adotada seja suficiente.
 
-### C8 — instrumentos reprodutíveis de auditoria
+### C8: instrumentos reprodutíveis de auditoria
 
 **Problema.** Qualidade pedagógica, fidelidade representacional e correção
 técnica podem ser confundidas em uma única afirmação de “qualidade”.
@@ -321,7 +333,7 @@ definição e inferência próprias.
 conformidade, julgamento de especialista, usabilidade e aprendizagem.
 
 **Fundamentação.** DBR e DSR distinguem intervenção situada, artefato e
-conhecimento de design ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Venable et al. (2016)](referencias.md#ref-venable2016feds)).
+conhecimento de desenho ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
 **Operacionalização.** Cada instrumento declara unidade, pergunta, versão,
 procedimento, interpretação permitida e limite.
@@ -335,18 +347,18 @@ avaliadores, sensibilidade a defeitos conhecidos e uso por equipes externas.
 ## 5. Relação com classes de sistemas existentes
 
 O valor de uma contribuição integrada só pode ser avaliado por comparação
-explícita. A tabela organiza classes funcionais; não afirma ausência dessas
-combinações em produtos ou estudos existentes.
+explícita. A tabela organiza classes funcionais sem afirmar que determinada
+configuração inexista em outros produtos ou estudos.
 
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
-| sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | o modelo de workspace e curso preserva governança sem burocratizar o estudo? |
-| flashcards e prática | recuperação, repetição e feedback curto | microssequência e recursos estruturados acrescentam profundidade sem perder fluidez? |
+| sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do Curso e acesso direto preservam responsabilidade sem burocratizar o Estudo? |
+| flashcards e prática | recuperação, repetição e feedback curto | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
-| bibliotecas de visualização | renderização especializada | packages integram convenção, prática, edição e acessibilidade além da figura isolada? |
-| aplicações local-first | réplica, fila e sincronização | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
+| bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
+| aplicações com cópia local | réplica, fila e sincronização | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
 | assistência por modelo de linguagem | geração e transformação de conteúdo | escopo explícito, validação e reversão reduzem mudanças indevidas sem criar controle apenas simbólico? |
-| learning analytics | descrição, previsão e intervenção | que perguntas úteis podem ser respondidas com dados mínimos e participação explícita? |
+| análise de dados educacionais | descrição, previsão e intervenção | que perguntas úteis podem ser respondidas com dados mínimos, definições explícitas e participação adequada? |
 
 Uma revisão comparativa deve definir corpus, critérios de inclusão, data de
 busca e unidade de comparação. “Não foi encontrado” é diferente de “não
@@ -359,10 +371,10 @@ existe”.
 Quando acompanhadas de evidência reproduzível, podem ser afirmadas propriedades
 como:
 
-- existência de kernel e packages separados;
+- existência de núcleo comum e pacotes de componente separados;
 - descoberta de catálogo antes da recuperação do contrato;
 - validação de esquemas de dados e escopo de edição;
-- operação offline nos cenários testados;
+- operação sem conexão nos cenários testados;
 - reversão segundo o fluxo implementado;
 - ausência de recorte ou sobreposição nos casos geométricos avaliados.
 
@@ -370,10 +382,10 @@ como:
 
 Não podem ser inferidas apenas do código:
 
-- pessoas leigas compreendem catálogo, recursos, papéis e reversão;
+- pessoas leigas compreendem catálogo, componentes, propriedade, acesso e reversão;
 - autoria assistida reduz retrabalho;
 - retomada local reduz atrito;
-- workspaces tornam responsabilidade compreensível;
+- propriedade e acesso direto tornam a responsabilidade compreensível;
 - observações situadas produzem ação útil.
 
 ### 6.3 Alegações que exigem avaliação de aprendizagem
@@ -381,7 +393,7 @@ Não podem ser inferidas apenas do código:
 Exigem medidas compatíveis de compreensão, retenção ou transferência:
 
 - microssequências melhoram aprendizagem;
-- um recurso reduz carga cognitiva extrínseca;
+- uma representação reduz carga cognitiva extrínseca;
 - práticas internas produzem recuperação mais efetiva;
 - feedback melhora desempenho posterior;
 - o desenho não punitivo altera estratégia ou ansiedade.
@@ -390,17 +402,17 @@ Exigem medidas compatíveis de compreensão, retenção ou transferência:
 
 - o AraLearn é o primeiro ou único sistema com essa configuração;
 - a arquitetura é universalmente superior;
-- mais packages produzem cursos melhores;
+- mais componentes didáticos produzem Cursos melhores;
 - conteúdo gerado ou reparado por modelo é correto por ter esquema de dados válido;
 - ausência de telemetria é suficiente para garantir justiça ou privacidade;
 - uma preferência visual reduz carga cognitiva para todas as pessoas.
 
 ## 7. Resultados contrários e contribuição negativa
 
-Conhecimento de design também pode surgir quando uma solução não funciona.
+Conhecimento de desenho também pode surgir quando uma solução não funciona.
 Exemplos relevantes incluem:
 
-- package cuja convenção não é compreendida;
+- componente cuja convenção não é compreendida;
 - representação especializada sem vantagem sobre tabela ou prosa;
 - segmentação que quebra relações conceituais;
 - controle de assistência que não impede aceitação automática;

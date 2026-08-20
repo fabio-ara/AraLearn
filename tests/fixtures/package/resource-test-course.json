@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -16,7 +16,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "prosa acadêmica contínua",
@@ -58,10 +58,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-1-exposition",
                       "position": 1,
@@ -81,8 +81,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-1-choice",
@@ -123,8 +122,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-1-text",
@@ -161,8 +159,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -179,7 +176,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "fonte monoespaçada",
@@ -223,10 +220,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-2-exposition",
                       "position": 1,
@@ -246,8 +243,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-2-choice",
@@ -288,8 +284,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-2-text",
@@ -326,8 +321,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -344,7 +338,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "cabeçalhos explícitos",
@@ -388,10 +382,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-3-exposition",
                       "position": 1,
@@ -443,8 +437,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-3-choice",
@@ -517,8 +510,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-3-text",
@@ -587,8 +579,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -605,7 +596,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "alvo e comentário identificados",
@@ -649,10 +640,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-4-exposition",
                       "position": 1,
@@ -712,8 +703,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-4-choice",
@@ -794,8 +784,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-4-text",
@@ -872,8 +861,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -890,7 +878,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "eventos circulares",
@@ -940,10 +928,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-5-exposition",
                       "position": 1,
@@ -1112,8 +1100,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-5-choice",
@@ -1303,8 +1290,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-5-text",
@@ -1490,8 +1476,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1508,7 +1493,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "alinhamento interlinear por unidade",
@@ -1554,10 +1539,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-6-exposition",
                       "position": 1,
@@ -1628,8 +1613,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-6-choice",
@@ -1721,8 +1705,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-6-text",
@@ -1810,8 +1793,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1828,7 +1810,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "raiz no topo",
@@ -1874,10 +1856,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-7-exposition",
                       "position": 1,
@@ -1938,8 +1920,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-7-choice",
@@ -2021,8 +2002,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-7-text",
@@ -2100,8 +2080,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2118,7 +2097,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "entradas sem grade de tabela",
@@ -2162,10 +2141,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-8-exposition",
                       "position": 1,
@@ -2202,8 +2181,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-8-choice",
@@ -2261,8 +2239,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-8-text",
@@ -2316,8 +2293,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2334,7 +2310,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "reagentes à esquerda",
@@ -2378,10 +2354,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-9-exposition",
                       "position": 1,
@@ -2425,8 +2401,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-9-choice",
@@ -2491,8 +2466,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-9-text",
@@ -2553,8 +2527,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2571,7 +2544,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "terminais arredondados",
@@ -2623,10 +2596,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-10-exposition",
                       "position": 1,
@@ -2684,8 +2657,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-10-choice",
@@ -2764,8 +2736,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-10-text",
@@ -2840,8 +2811,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2858,7 +2828,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "estrutura bidimensional preservada",
@@ -2902,10 +2872,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-11-exposition",
                       "position": 1,
@@ -3041,8 +3011,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3059,7 +3028,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "eixos e unidades nomeados",
@@ -3105,10 +3074,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-12-exposition",
                       "position": 1,
@@ -3274,8 +3243,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3292,7 +3260,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "eixos, unidades e domínios nomeados",
@@ -3338,10 +3306,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-13-exposition",
                       "position": 1,
@@ -3477,8 +3445,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-13-choice",
@@ -3635,8 +3602,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-13-text",
@@ -3789,8 +3755,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3807,7 +3772,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "um único sistema em foco",
@@ -3853,10 +3818,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-14-exposition",
                       "position": 1,
@@ -3929,8 +3894,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-14-choice",
@@ -4024,8 +3988,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-14-text",
@@ -4115,8 +4078,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -4133,7 +4095,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "fronteira única de sistema",
@@ -4179,10 +4141,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-15-exposition",
                       "position": 1,
@@ -4294,8 +4256,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-15-choice",
@@ -4428,8 +4389,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-15-text",
@@ -4558,8 +4518,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -4576,7 +4535,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "quadro ibd nomeado",
@@ -4624,10 +4583,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-16-exposition",
                       "position": 1,
@@ -4733,8 +4692,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-16-choice",
@@ -4861,8 +4819,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-16-text",
@@ -4985,8 +4942,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5003,7 +4959,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "vértices como círculos discretos",
@@ -5051,10 +5007,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-17-exposition",
                       "position": 1,
@@ -5166,8 +5122,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-17-choice",
@@ -5300,8 +5255,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-17-text",
@@ -5430,8 +5384,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5448,7 +5401,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "dois conjuntos delimitados",
@@ -5494,10 +5447,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-18-exposition",
                       "position": 1,
@@ -5587,8 +5540,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-18-choice",
@@ -5699,8 +5651,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-18-text",
@@ -5807,8 +5758,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5825,7 +5775,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "relações como esquemas nomeados",
@@ -5871,10 +5821,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-19-exposition",
                       "position": 1,
@@ -6028,8 +5978,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-19-choice",
@@ -6204,8 +6153,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-19-text",
@@ -6376,8 +6324,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -6394,7 +6341,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "endereços nas extremidades",
@@ -6440,10 +6387,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-20-exposition",
                       "position": 1,
@@ -6521,8 +6468,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-20-choice",
@@ -6621,8 +6567,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-20-text",
@@ -6717,8 +6662,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -6735,7 +6679,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "equipamentos tipados e nomeados",
@@ -6781,10 +6725,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-21-exposition",
                       "position": 1,
@@ -6877,8 +6821,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-21-choice",
@@ -6992,8 +6935,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-21-text",
@@ -7103,8 +7045,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7121,7 +7062,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "régua de bits",
@@ -7169,10 +7110,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-22-exposition",
                       "position": 1,
@@ -7254,8 +7195,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-22-choice",
@@ -7358,8 +7298,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-22-text",
@@ -7458,8 +7397,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7476,7 +7414,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "contorno por conjunto",
@@ -7524,10 +7462,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-23-exposition",
                       "position": 1,
@@ -7608,8 +7546,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-23-choice",
@@ -7711,8 +7648,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-23-text",
@@ -7810,8 +7746,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7828,7 +7763,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "estado como nó",
@@ -7874,10 +7809,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-24-exposition",
                       "position": 1,
@@ -7976,8 +7911,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-24-choice",
@@ -8097,8 +8031,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-24-text",
@@ -8214,8 +8147,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -8232,7 +8164,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "V e F por valoração",
@@ -8276,10 +8208,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-25-exposition",
                       "position": 1,
@@ -8357,8 +8289,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-25-choice",
@@ -8457,8 +8388,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-25-text",
@@ -8553,8 +8483,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -8571,7 +8500,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "entidades como caixas nomeadas",
@@ -8619,10 +8548,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-26-exposition",
                       "position": 1,
@@ -8729,8 +8658,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-26-choice",
@@ -8858,8 +8786,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-26-text",
@@ -8983,8 +8910,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9001,7 +8927,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "estado por linha",
@@ -9047,10 +8973,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-27-exposition",
                       "position": 1,
@@ -9063,6 +8989,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -9136,8 +9064,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-27-choice",
@@ -9151,6 +9078,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -9256,8 +9185,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-27-text",
@@ -9271,6 +9199,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -9360,8 +9290,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9378,7 +9307,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "quadro ativo no topo",
@@ -9426,10 +9355,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-28-exposition",
                       "position": 1,
@@ -9494,8 +9423,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-28-choice",
@@ -9581,8 +9509,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-28-text",
@@ -9664,8 +9591,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9682,7 +9608,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "interações em ordem temporal",
@@ -9730,10 +9656,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "resource-test-29-exposition",
                       "position": 1,
@@ -9784,8 +9710,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-29-choice",
@@ -9857,8 +9782,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9870,12 +9794,12 @@
           "id": "response-choice-test-module",
           "title": "Escolha",
           "guide": {
-            "goal": "Avaliar seleção e feedback por Play.",
+            "goal": "Avaliar seleção e retorno após a confirmação.",
             "include": [
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "representação legível"
@@ -9889,7 +9813,7 @@
               "id": "response-choice-test-lesson",
               "title": "Escolha",
               "guide": {
-                "goal": "Avaliar seleção e feedback por Play.",
+                "goal": "Avaliar seleção e retorno após a confirmação.",
                 "include": [
                   "exposição e práticas semanticamente suportadas"
                 ],
@@ -9908,17 +9832,17 @@
                 {
                   "id": "response-choice-test-microsequence",
                   "title": "Escolha",
-                  "goal": "Avaliar seleção e feedback por Play.",
+                  "goal": "Avaliar seleção e retorno após a confirmação.",
                   "role": "practice",
                   "dependsOn": [],
                   "covers": [],
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "choice-card",
                       "position": 1,
@@ -9951,8 +9875,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9969,7 +9892,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "representação legível"
@@ -10009,10 +9932,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "gap-choice-card",
                       "position": 1,
@@ -10060,8 +9983,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "gap-typing-card",
@@ -10095,8 +10017,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -10113,7 +10034,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "representação legível"
@@ -10153,10 +10074,10 @@
                   "checks": [
                     "sem sobreposição",
                     "alvo de prática dentro da representação",
-                    "Play como confirmação"
+                    "confirmação da resposta"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "ordering-card",
                       "position": 1,
@@ -10211,8 +10132,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

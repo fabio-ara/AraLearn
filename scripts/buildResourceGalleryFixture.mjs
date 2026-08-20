@@ -18,7 +18,7 @@ const responseContent = (manifest) => {
   return [paragraph(`context-${manifest.id}`, manifest.purpose)];
 };
 
-const cards = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index) => {
+const studyUnits = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index) => {
   const slot = manifest.slots.includes("content") ? "content" : "response";
   const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
   const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
@@ -36,27 +36,26 @@ const cards = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index) => {
     response: slot === "response" ? instance : null,
     feedback: [paragraph(`feedback-${index + 1}`, manifest.accessibility)],
     topics: [],
-    sources: []
   };
 });
 
 const project = {
-  contract: "aralearn.library.v1",
+  contract: "aralearn.course.v1",
   scope: "course",
   courses: [{
     id: "course-resources-gallery",
     title: "Galeria de packages",
-    goal: "Demonstrar os packages instalados em cards válidos.",
+    goal: "Demonstrar os packages instalados em Unidades de estudo válidas.",
     modules: [{
       id: "module-resources-gallery",
       title: "Representações canônicas",
       guide: { goal: "Comparar representações e interações disponíveis.", include: ["packages instalados"], exclude: [], notation: [], avoid: [] },
       lessons: [{
         id: "lesson-resources-gallery",
-        title: "Um card por package",
+        title: "Uma Unidade de estudo por package",
         guide: { goal: "Inspecionar cada package em uma operação concreta.", include: ["catálogo de packages"], exclude: [], notation: [], avoid: [] },
         topics: [],
-        microsequences: [{ id: "micro-resources-gallery", title: "Galeria completa", goal: "Percorrer os packages instalados.", role: "practice", dependsOn: [], covers: [], checks: ["renderização", "interação", "responsividade"], errors: [], cards }]
+        microsequences: [{ id: "micro-resources-gallery", title: "Galeria completa", goal: "Percorrer os packages instalados.", role: "practice", dependsOn: [], covers: [], checks: ["renderização", "interação", "responsividade"], errors: [], studyUnits }]
       }]
     }]
   }]
@@ -65,4 +64,4 @@ const project = {
 const validation = validateProjectDocument(project);
 if (!validation.ok) throw new Error(`Fixture de galeria inválida:\n${JSON.stringify(validation.errors, null, 2)}`);
 fs.writeFileSync(outputPath, `${JSON.stringify(validation.value, null, 2)}\n`, "utf8");
-console.log(`Galeria de packages gerada em ${outputPath} (${cards.length} cards).`);
+console.log(`Galeria de packages gerada em ${outputPath} (${studyUnits.length} Unidades de estudo).`);

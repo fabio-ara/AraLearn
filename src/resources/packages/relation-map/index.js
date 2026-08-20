@@ -142,7 +142,10 @@ function relationNotation(data) {
   const pairs = data.relations
     .map(({ from, to }) => `(${left.get(from)}, ${right.get(to)})`)
     .join(", ");
-  return `<i>${renderPackageInline(data.name)}</i> = {${renderPackageInlineReference(pairs)}}`;
+  const meaning = data.relationMeaning
+    ? `<span class="package-relation-map-meaning">${renderPackageInline(data.relationMeaning)}</span> · `
+    : "";
+  return `${meaning}<i>${renderPackageInline(data.name)}</i> = {${renderPackageInlineReference(pairs)}}`;
 }
 
 export const relationMapPackage = Object.freeze({
@@ -152,7 +155,7 @@ export const relationMapPackage = Object.freeze({
     label: "Diagrama de relação",
     purpose: "Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["map-correspondence", "inspect-image", "inspect-preimage", "inspect-cardinality"]),
+    taskOperations: Object.freeze(["map-correspondence", "inspect-image", "inspect-preimage", "inspect-cardinality"]),
     academic: academicProfile({
       domains: ["teoria dos conjuntos", "lógica", "álgebra linear", "matemática discreta"],
       knowledgeObjects: ["relação binária", "domínio", "contradomínio", "imagem", "preimagem", "par ordenado"],
@@ -165,7 +168,7 @@ export const relationMapPackage = Object.freeze({
     responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]),
     limitations: Object.freeze([
       "Não representa interseção de conjuntos; para isso use diagrama de conjuntos.",
-      "Uma relação densa deve ser dividida ou apresentada por matriz de incidência, conforme o gesto cognitivo."
+      "Uma relação densa deve ser dividida ou apresentada por matriz de incidência, conforme a operação-alvo da tarefa."
     ]),
     accessibility: "A descrição textual enumera os conjuntos e todos os pares da relação; o desenho não é a única fonte de informação."
   }),

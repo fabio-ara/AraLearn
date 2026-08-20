@@ -71,10 +71,12 @@ export class SupabaseHttpClient {
   async request(path, {
     method = "GET",
     body,
+    rawBody = false,
     headers = {},
     accessToken = this.accessToken,
     signal,
     prefer,
+    responseType = "json",
     timeoutMs = this.timeoutMs
   } = {}) {
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
@@ -83,7 +85,7 @@ export class SupabaseHttpClient {
     const requestHeaders = new Headers(headers);
     requestHeaders.set("apikey", this.publishableKey);
     if (accessToken) requestHeaders.set("Authorization", `Bearer ${accessToken}`);
-    if (body !== undefined && !requestHeaders.has("Content-Type")) {
+    if (body !== undefined && !rawBody && !requestHeaders.has("Content-Type")) {
       requestHeaders.set("Content-Type", "application/json");
     }
     if (prefer) requestHeaders.set("Prefer", prefer);
@@ -112,7 +114,7 @@ export class SupabaseHttpClient {
         method,
         headers: requestHeaders,
         cache: "no-store",
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        ...(body !== undefined ? { body: rawBody ? body : JSON.stringify(body) } : {}),
         ...((controller?.signal || signal) ? { signal: controller?.signal || signal } : {})
       });
     } catch (error) {
@@ -127,7 +129,9 @@ export class SupabaseHttpClient {
       if (timeoutId !== null) globalThis.clearTimeout(timeoutId);
       detachExternalSignal?.();
     }
-    const responseBody = await readResponseBody(response);
+    const responseBody = response.ok && responseType === "blob"
+      ? await response.blob()
+      : await readResponseBody(response);
     if (!response.ok) {
       const failure = errorDetails(responseBody, response.status);
       throw new SupabaseHttpError(failure.message, {

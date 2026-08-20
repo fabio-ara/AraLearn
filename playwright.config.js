@@ -32,6 +32,6 @@ export default defineConfig({
       ARALEARN_SUPABASE_URL: e2eSupabaseUrl,
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: e2eSupabasePublishableKey
     },
-    reuseExistingServer: false
+    reuseExistingServer: process.env.ARALEARN_E2E_REUSE_SERVER === "1"
   }
 });

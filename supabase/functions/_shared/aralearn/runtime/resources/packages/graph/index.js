@@ -216,7 +216,7 @@ export const graphPackage = Object.freeze({
     label: "Grafo matemático",
     purpose: "Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["inspect-adjacency", "trace-path", "identify-cycle", "compare-degree", "locate-bridge", "analyze-connectivity"]),
+    taskOperations: Object.freeze(["inspect-adjacency", "trace-path", "identify-cycle", "compare-degree", "locate-bridge", "analyze-connectivity"]),
     academic: academicProfile({
       domains: ["teoria dos grafos", "algoritmos", "pesquisa operacional", "matemática discreta"],
       knowledgeObjects: ["grafo", "dígrafo", "vértice", "aresta", "caminho", "ciclo", "ponte", "componente"],

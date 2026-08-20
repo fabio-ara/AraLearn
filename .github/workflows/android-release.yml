@@ -11,10 +11,11 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
-  group: android-release
+  group: android-release-${{ (((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')) && 'publish') || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -29,18 +30,13 @@ jobs:
       ARALEARN_RELEASE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
-      ARALEARN_ASSIST_ALLOWED_ORIGINS: ${{ vars.ARALEARN_ASSIST_ALLOWED_ORIGINS }}
-      ARALEARN_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_BASE64 }}
-      ARALEARN_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_PASSWORD }}
-      ARALEARN_ANDROID_KEY_ALIAS: ${{ secrets.ARALEARN_ANDROID_KEY_ALIAS }}
-      ARALEARN_ANDROID_KEY_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEY_PASSWORD }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v7
         with:
           ref: ${{ env.ARALEARN_RELEASE_SHA }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Conferir ponta corrente da main
         id: freshness
@@ -55,7 +51,39 @@ jobs:
           $current = $mainSha -ceq $env:ARALEARN_RELEASE_SHA
           "current=$($current.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           if (-not $current) {
-            Write-Host "A revisão validada $env:ARALEARN_RELEASE_SHA foi superada por $mainSha; nenhuma release será criada."
+           Write-Host "A revisão validada $env:ARALEARN_RELEASE_SHA foi superada por $mainSha; nenhuma release será criada."
+          }
+
+      - name: Confirmar validação da revisão
+        if: github.event_name == 'workflow_dispatch' && steps.freshness.outputs.current == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+            throw 'O token do GitHub está ausente; a validação da revisão não pode ser confirmada.'
+          }
+          $headSha = [Uri]::EscapeDataString($env:ARALEARN_RELEASE_SHA)
+          $runsUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/workflows/validacao.yml/runs?event=push&head_sha=$headSha&per_page=100"
+          try {
+            $runs = Invoke-RestMethod -Method Get -Uri $runsUrl -Headers @{
+              Accept = 'application/vnd.github+json'
+              Authorization = "Bearer $env:GH_TOKEN"
+              'X-GitHub-Api-Version' = '2022-11-28'
+            }
+          }
+          catch {
+            throw 'Não foi possível consultar a validação da revisão no GitHub.'
+          }
+          $approved = @($runs.workflow_runs | Where-Object {
+            [string]$_.head_sha -ceq $env:ARALEARN_RELEASE_SHA -and
+            [string]$_.head_branch -ceq 'main' -and
+            [string]$_.event -ceq 'push' -and
+            [string]$_.status -ceq 'completed' -and
+            [string]$_.conclusion -ceq 'success'
+          })
+          if ($approved.Count -lt 1) {
+            throw "A revisão $env:ARALEARN_RELEASE_SHA ainda não tem uma validação completa e bem-sucedida de main."
           }
 
       - name: Preparar Node.js
@@ -76,6 +104,8 @@ jobs:
         if: steps.freshness.outputs.current == 'true'
         id: identity
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $package = Get-Content -Raw -Encoding UTF8 package.json | ConvertFrom-Json
           $gradle = Get-Content -Raw -Encoding UTF8 android/app/build.gradle.kts
@@ -91,19 +121,85 @@ jobs:
             throw "package.json ($version) e Android ($versionName) estão divergentes."
           }
           $tag = "v$version"
-          & gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
-          $exists = $LASTEXITCODE -eq 0
-          if (-not $exists) {
-            $global:LASTEXITCODE = 0
+          $tagRef = "refs/tags/$tag"
+          $remoteTagLines = @(& git ls-remote --tags origin $tagRef "$tagRef^{}")
+          if ($LASTEXITCODE -ne 0) {
+            throw "Não foi possível consultar a tag remota $tag."
           }
+          $remoteTagSha = ''
+          foreach ($line in $remoteTagLines) {
+            $parts = $line -split "`t", 2
+            if ($parts.Count -ne 2) {
+              throw "A referência remota da tag $tag é inválida."
+            }
+            if ($parts[1] -ceq "$tagRef^{}") {
+              $remoteTagSha = $parts[0]
+            }
+            elseif (-not $remoteTagSha -and $parts[1] -ceq $tagRef) {
+              $remoteTagSha = $parts[0]
+            }
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+            throw 'O token do GitHub está ausente; o estado da Release não pode ser confirmado.'
+          }
+          $release = $null
+          $releaseUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$([Uri]::EscapeDataString($tag))"
+          try {
+            $release = Invoke-RestMethod -Method Get -Uri $releaseUrl -Headers @{
+              Accept = 'application/vnd.github+json'
+              Authorization = "Bearer $env:GH_TOKEN"
+              'X-GitHub-Api-Version' = '2022-11-28'
+            }
+          }
+          catch {
+            $statusCode = try { [int]$_.Exception.Response.StatusCode } catch { 0 }
+            if ($statusCode -ne 404) {
+              throw "Não foi possível consultar a Release $tag no GitHub."
+            }
+          }
+
+          $tagExists = -not [string]::IsNullOrWhiteSpace($remoteTagSha)
+          $releaseExists = $null -ne $release
+          $publish = -not $tagExists -and -not $releaseExists
+          if ($tagExists -xor $releaseExists) {
+            throw "A publicação $tag está parcial: tag e Release precisam existir juntas ou estar ambas ausentes."
+          }
+          if ($releaseExists) {
+            $expectedAssetName = "AraLearn-$version.apk"
+            $asset = @($release.assets | Where-Object { $_.name -ceq $expectedAssetName })
+            $targetIsCurrent = [string]$release.target_commitish -in @(
+              $env:ARALEARN_RELEASE_SHA,
+              'main',
+              'refs/heads/main'
+            )
+            if (
+              [string]$release.tag_name -cne $tag -or
+              $remoteTagSha -cne $env:ARALEARN_RELEASE_SHA -or
+              -not $targetIsCurrent -or
+              [bool]$release.draft -or
+              [bool]$release.prerelease -or
+              $asset.Count -ne 1 -or
+              [int64]$asset[0].size -le 0 -or
+              [string]$asset[0].state -cne 'uploaded'
+            ) {
+              throw "A Release $tag existe, mas não corresponde à revisão corrente e ao APK esperado."
+            }
+          }
+
           "version=$version" >> $env:GITHUB_OUTPUT
           "version_code=$versionCode" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
-          "publish=$((-not $exists).ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "publish=$($publish.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
       - name: Conferir configuração de assinatura
         if: steps.identity.outputs.publish == 'true'
         shell: pwsh
+        env:
+          ARALEARN_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_BASE64 }}
+          ARALEARN_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_PASSWORD }}
+          ARALEARN_ANDROID_KEY_ALIAS: ${{ secrets.ARALEARN_ANDROID_KEY_ALIAS }}
+          ARALEARN_ANDROID_KEY_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEY_PASSWORD }}
         run: |
           $required = @(
             'ARALEARN_ANDROID_KEYSTORE_BASE64',
@@ -121,9 +217,15 @@ jobs:
             throw 'A release Android exige ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY nas Variables do repositório.'
           }
 
+      - name: Confirmar contrato hospedado
+        if: steps.identity.outputs.publish == 'true'
+        run: npm run deployment:verify-hosted
+
       - name: Restaurar keystore protegida
         if: steps.identity.outputs.publish == 'true'
         shell: pwsh
+        env:
+          ARALEARN_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_BASE64 }}
         run: |
           $keystorePath = Join-Path $env:RUNNER_TEMP 'aralearn-release.jks'
           try {
@@ -135,14 +237,20 @@ jobs:
           }
           "ARALEARN_ANDROID_KEYSTORE_PATH=$keystorePath" >> $env:GITHUB_ENV
 
-      - name: Validar código antes da release
+      - name: Executar testes antes da release
         if: steps.identity.outputs.publish == 'true'
-        run: |
-          npm test
-          npm run lint
+        run: npm test
+
+      - name: Analisar código antes da release
+        if: steps.identity.outputs.publish == 'true'
+        run: npm run lint
 
       - name: Compilar APK de release
         if: steps.identity.outputs.publish == 'true'
+        env:
+          ARALEARN_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_PASSWORD }}
+          ARALEARN_ANDROID_KEY_ALIAS: ${{ secrets.ARALEARN_ANDROID_KEY_ALIAS }}
+          ARALEARN_ANDROID_KEY_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEY_PASSWORD }}
         run: npm run android:release
 
       - name: Conferir identidade e certificado do APK
@@ -166,6 +274,8 @@ jobs:
       - name: Publicar GitHub Release
         if: steps.identity.outputs.publish == 'true'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           & git fetch origin +refs/heads/main:refs/remotes/origin/main --no-tags
           if ($LASTEXITCODE -ne 0) { throw 'Não foi possível reconferir a referência da main.' }
@@ -177,8 +287,10 @@ jobs:
           @"
           ## AraLearn ${{ steps.identity.outputs.version }}
 
-          - Android versionCode ${{ steps.identity.outputs.version_code }}.
-          - Dataprev: Analista de Processamento e AI-900 estão disponíveis no contrato canônico atual.
+          - Código de versão Android ${{ steps.identity.outputs.version_code }}.
+          - Estudo, Autoria e MCP passam a operar o mesmo Curso vivo e versionado.
+          - Planejamento, Fontes, Pesquisa, Auditoria, Variantes e acesso direto acompanham a revisão do Curso.
+          - O contrato remoto anterior foi substituído; instalações 0.0.22 precisam desta atualização para voltar a sincronizar.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `
@@ -188,10 +300,28 @@ jobs:
             --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar a GitHub Release.' }
 
-      - name: Release já existente
+      - name: Conferir Release já existente
         if: steps.freshness.outputs.current == 'true' && steps.identity.outputs.publish != 'true'
         shell: pwsh
-        run: Write-Host 'A release ${{ steps.identity.outputs.tag }} já existe; nenhuma publicação foi repetida.'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $asset = 'AraLearn-${{ steps.identity.outputs.version }}.apk'
+          & gh release download '${{ steps.identity.outputs.tag }}' `
+            --repo $env:GITHUB_REPOSITORY `
+            --pattern $asset `
+            --output $asset
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Não foi possível baixar o APK da Release existente.'
+          }
+          & pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1 `
+            -Target Android `
+            -ArtifactPath $asset `
+            -RequireRuntimeConfig
+          if ($LASTEXITCODE -ne 0) {
+            throw 'O APK da Release existente não corresponde à revisão corrente.'
+          }
+          Write-Host 'A Release ${{ steps.identity.outputs.tag }} já está completa; nenhuma publicação foi repetida.'
 
       - name: Revisão superada
         if: steps.freshness.outputs.current != 'true'

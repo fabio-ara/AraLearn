@@ -1,91 +1,24 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   compareRuntimeManifest,
   validatePublicProjectConfiguration,
-  verifyCourseRevisionCors,
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260815235900";
-const EXPECTED_CONTRACT_VERSION = 1;
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const runtimeManifest = JSON.parse(readFileSync(
+  path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
+  "utf8"
+));
+const EXPECTED_REVISION = runtimeManifest.schemaRevision;
+const EXPECTED_CONTRACT_VERSION = runtimeManifest.contractVersion;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
-const FEATURES = [
-  "lean-shared-catalog",
-  "artifact-offline-replica",
-  "granular-sync",
-  "private-authoring",
-  "text-language-metadata",
-  "storage-artifact-control-plane",
-  "pre-registered-publication-artifacts",
-  "single-current-course-revision",
-  "storage-only-course-content",
-  "canonical-resource-registry",
-  "atomic-resource-authoring",
-  "atomic-card-assistance",
-  "composed-authoring-workspaces",
-  "workspace-publication-bindings",
-  "unchanged-publication-short-circuit",
-  "bounded-authoring-events",
-  "microtheory-review-projection",
-  "workspace-event-cursor-pagination",
-  "workspace-microsequence-card-pagination",
-  "global-catalog-course-search",
-  "catalog-review-submissions",
-  "catalog-management",
-  "personal-library-course-removal",
-  "course-revision-sync-compaction",
-  "automatic-sync-history-maintenance",
-  "compact-authoring-brief",
-  "account-derived-authoring-capabilities",
-  "oauth-only-authoring-mcp",
-  "default-catalog-collection",
-  "confidential-gpt-action-oauth",
-  "gpt-action-oauth-linking",
-  "gpt-action-oauth-relinking",
-  "gpt-action-oauth-stable-callback",
-  "workspace-card-metadata",
-  "structured-authoring-errors",
-  "educational-workspace-membership-v1",
-  "educational-workspace-invitations-v1",
-  "workspace-capability-enforcement-v1",
-  "workspace-member-course-access-v1",
-  "workspace-contextual-current-state-v1",
-  "workspace-course-state-projection-v1",
-  "plans-derived-from-current-content-v1",
-  "workspace-entity-observations-v1",
-  "workspace-delete-cas-v1",
-  "atomic-private-course-removal-v1",
-  "atomic-catalog-course-removal-v1",
-  "single-active-course-composition-v1",
-  "alphabetic-catalog-v1",
-  "stable-trail-item-identity-v1",
-  "workspace-course-paged-composition-v1",
-  "atomic-trail-groups-v1",
-  "trail-personal-state-v1",
-  "atomic-trail-personal-state-v1",
-  "stable-entity-personal-state-v1",
-  "situated-trail-observations-v1",
-  "workspace-trail-observations-v1",
-  "unified-trails-clean-cutover-v1",
-  "alphabetic-trails-v1",
-  "resumable-authoring-continuity-v1",
-  "package-library-v1",
-  "package-contract-discovery-v1",
-  "catalog-package-artifact-cutover-v1",
-  "package-card-list-projection-v1",
-  "package-observation-targets-v1",
-  "catalog-authoring-root-reuse-v1",
-  "strict-catalog-root-reuse-v1",
-  "current-catalog-root-resolution-v1",
-  "discard-unpublished-catalog-materialization-v1",
-  "flat-runtime-manifest-v1",
-  "parameterized-authoring-design-v1",
-  "authoring-blueprint-artifact-receipt-v1",
-  "authoring-product-state-projection-v1",
-  "authoring-design-conformance-audit-v1"
-];
+const FEATURES = runtimeManifest.requiredFeatures;
 
 function response(status, body, headers = {}) {
   return new Response(body == null ? null : JSON.stringify(body), { status, headers });
@@ -129,9 +62,17 @@ test("verificador recusa banco atrasado ou sem capacidade obrigatória", () => {
     () => compareRuntimeManifest(expected, {
       schemaRevision: EXPECTED_REVISION,
       contractVersion: EXPECTED_CONTRACT_VERSION,
-      features: FEATURES.filter((item) => item !== "granular-sync")
+      features: FEATURES.filter((item) => item !== "course-personal-state-v2")
     }),
-    /granular-sync/
+    /course-personal-state-v2/
+  );
+  assert.throws(
+    () => compareRuntimeManifest(expected, {
+      schemaRevision: EXPECTED_REVISION,
+      contractVersion: EXPECTED_CONTRACT_VERSION,
+      features: [...FEATURES, "workspace-publication-bindings"]
+    }),
+    /workspace-publication-bindings/
   );
 });
 
@@ -142,13 +83,6 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     publishableKey: PUBLIC_KEY,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      if (String(url).includes("/functions/v1/aralearn-course-revisions/")) {
-        return response(204, null, {
-          "Access-Control-Allow-Origin": options.headers.Origin,
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "apikey, Authorization"
-        });
-      }
       return response(200, {
         schemaRevision: EXPECTED_REVISION,
         contractVersion: EXPECTED_CONTRACT_VERSION,
@@ -157,56 +91,10 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     }
   });
   assert.equal(result.schemaRevision, EXPECTED_REVISION);
-  assert.equal(result.courseRevisionCors, true);
-  assert.deepEqual(result.courseRevisionCorsOrigins, [
-    "https://fabio-ara.github.io",
-    "https://appassets.androidplatform.net"
-  ]);
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/get_aralearn_runtime_manifest");
   assert.equal(calls[0].options.headers.apikey, PUBLIC_KEY);
   assert.equal("Authorization" in calls[0].options.headers, false);
-  assert.match(calls[1].url, /functions\/v1\/aralearn-course-revisions/u);
-  assert.equal(calls[1].options.method, "OPTIONS");
-  assert.equal(calls[1].options.headers.Origin, "https://fabio-ara.github.io");
-  assert.equal(calls[2].options.headers.Origin, "https://appassets.androidplatform.net");
-});
-
-test("CORS ausente na entrega de revisões interrompe a publicação", async () => {
-  await assert.rejects(
-    () => verifyCourseRevisionCors({
-      projectUrl: "https://example.supabase.co",
-      publishableKey: PUBLIC_KEY,
-      fetchImpl: async () => response(204, null)
-    }),
-    /não permite que https:\/\/fabio-ara\.github\.io baixe cursos/
-  );
-});
-
-test("verificação remota reprova a origem Android ausente", async () => {
-  await assert.rejects(
-    () => verifyHostedBackend({
-      projectUrl: "https://example.supabase.co",
-      publishableKey: PUBLIC_KEY,
-      fetchImpl: async (url, options) => {
-        if (!String(url).includes("/functions/v1/aralearn-course-revisions/")) {
-          return response(200, {
-            schemaRevision: EXPECTED_REVISION,
-            contractVersion: EXPECTED_CONTRACT_VERSION,
-            features: FEATURES
-          });
-        }
-        return response(204, null, {
-          "Access-Control-Allow-Origin": options.headers.Origin === "https://fabio-ara.github.io"
-            ? options.headers.Origin
-            : "",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "apikey, Authorization"
-        });
-      }
-    }),
-    /appassets\.androidplatform\.net/
-  );
 });
 
 test("função ausente interrompe a publicação com orientação direta", async () => {

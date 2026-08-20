@@ -20,7 +20,7 @@ export const annotatedTextPackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.resource.annotated_text", version: "1.0.0", label: "Texto anotado",
     purpose: "Relacionar trechos precisos de um texto a observações, funções ou explicações.", slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["annotate", "identify-function", "connect-evidence", "close-reading"]),
+    taskOperations: Object.freeze(["annotate", "identify-function", "connect-evidence", "close-reading"]),
     academic: academicProfile({ domains: ["linguagens", "direito", "humanidades", "programação"], knowledgeObjects: ["trecho", "evidência", "anotação localizada"], conventions: ["alvo e comentário identificados", "citação preservada", "anotação próxima ao alvo"], appropriateWhen: ["a tarefa exige leitura minuciosa ou associação entre evidência e explicação"], avoidWhen: ["a observação não possui alvo textual preciso"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]), limitations: Object.freeze(["Não use para comentários sem alvo textual preciso."]),
     accessibility: "Trechos e notas usam marcadores numerados, controles associados e repetição textual do excerto."
@@ -73,6 +73,6 @@ export const annotatedTextPackage = Object.freeze({
     return `<div class="runtime-block runtime-annotated-text-block">${data.prompt ? renderPackageProse(data.prompt) : ""}${segments}${annotations}</div>`;
   },
   accessibleText(data) { return [...data.segments.map(({ text }) => text), ...data.annotations.map((item) => `${item.label}: ${item.note}`)].join(" "); },
-  editableTargets(data) { return [...data.segments.map((_, index) => ({ path: `segments[${index}].text`, label: `Editar trecho ${index + 1}` })), ...data.annotations.flatMap((annotation, index) => [...(annotation.category ? [{ path: `annotations[${index}].category`, label: `Editar categoria ${index + 1}` }] : []), { path: `annotations[${index}].label`, label: `Editar rótulo ${index + 1}` }, { path: `annotations[${index}].note`, label: `Editar anotação ${index + 1}` }])]; },
+  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...data.segments.map((_, index) => ({ path: `segments[${index}].text`, label: `Editar trecho ${index + 1}` })), ...data.annotations.flatMap((annotation, index) => [...(annotation.category ? [{ path: `annotations[${index}].category`, label: `Editar categoria ${index + 1}` }] : []), { path: `annotations[${index}].label`, label: `Editar rótulo ${index + 1}` }, { path: `annotations[${index}].note`, label: `Editar anotação ${index + 1}` }])]; },
   practiceTargets(data) { const annotatedIds = new Set(data.annotations.flatMap(({ targetIds }) => targetIds)); return [...data.segments.flatMap((segment, index) => annotatedIds.has(segment.id) ? [{ path: `segments[${index}].text`, label: `Lacuna no trecho anotado ${index + 1}`, modes: ["gap", "typing"] }] : []), ...data.annotations.map((_, index) => ({ path: `annotations[${index}].note`, label: `Lacuna na anotação ${index + 1}`, modes: ["gap", "typing"] }))]; }
 });

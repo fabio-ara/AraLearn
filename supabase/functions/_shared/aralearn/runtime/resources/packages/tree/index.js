@@ -81,7 +81,7 @@ export const treePackage = Object.freeze({
     label: "Árvore enraizada",
     purpose: "Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["locate-parent", "trace-ancestry", "compare-depth", "identify-subtree"]),
+    taskOperations: Object.freeze(["locate-parent", "trace-ancestry", "compare-depth", "identify-subtree"]),
     academic: academicProfile({
       domains: ["matemática discreta", "estruturas de dados", "computação", "classificação"],
       knowledgeObjects: ["árvore enraizada", "raiz", "pai", "filho", "ancestral", "subárvore"],

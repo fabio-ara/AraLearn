@@ -6,7 +6,7 @@ import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 
 function canonicalProject() {
   return {
-    contract: "aralearn.library.v1",
+    contract: "aralearn.course.v1",
     courses: [
       {
         id: "course-a",
@@ -53,7 +53,7 @@ function canonicalProject() {
                     covers: ["conceito A"],
                     checks: ["reconhecer A"],
                     errors: ["aplicar B no lugar de A"],
-                    cards: [
+                    studyUnits: [
                       {
                         id: "card-a",
                         position: 1,
@@ -72,8 +72,7 @@ function canonicalProject() {
                           version: "1.0.0",
                           data: { text: "A foi apresentado." }
                         }],
-                        topics: [],
-                        sources: []
+                        topics: []
                       }
                     ]
                   }
@@ -93,8 +92,8 @@ function nested(project) {
   const lesson = moduleValue.lessons[0];
   const topic = lesson.topics[0];
   const microsequence = lesson.microsequences[0];
-  const card = microsequence.cards[0];
-  return { course, moduleValue, lesson, topic, microsequence, card };
+  const studyUnit = microsequence.studyUnits[0];
+  return { course, moduleValue, lesson, topic, microsequence, studyUnit };
 }
 
 function errorText(result) {
@@ -121,14 +120,14 @@ test("a fronteira aceita somente propriedades canônicas", () => {
   });
 });
 
-test("a fronteira exige ids explícitos em todos os níveis, inclusive no card", () => {
+test("a fronteira exige ids explícitos em todos os níveis, inclusive na Unidade de estudo", () => {
   const cases = [
     ["course", (project) => delete nested(project).course.id],
     ["module", (project) => delete nested(project).moduleValue.id],
     ["lesson", (project) => delete nested(project).lesson.id],
     ["topic", (project) => delete nested(project).topic.id],
     ["microsequence", (project) => delete nested(project).microsequence.id],
-    ["card", (project) => delete nested(project).card.id]
+    ["study_unit", (project) => delete nested(project).studyUnit.id]
   ];
 
   cases.forEach(([entityName, mutate]) => {
@@ -140,6 +139,51 @@ test("a fronteira exige ids explícitos em todos os níveis, inclusive no card",
   });
 });
 
+test("a fronteira rejeita coleção e contrato substituídos sem alias", () => {
+  const oldCollection = canonicalProject();
+  const microsequence = nested(oldCollection).microsequence;
+  microsequence["cards"] = microsequence.studyUnits;
+  delete microsequence.studyUnits;
+  const collectionResult = validateProjectDocument(oldCollection);
+  assert.equal(collectionResult.ok, false);
+  assert.match(errorText(collectionResult), /\.cards: Campo fora do schema/u);
+  assert.match(errorText(collectionResult), /\.studyUnits: studyUnits é obrigatório/u);
+
+  const oldContract = canonicalProject();
+  oldContract.contract = "aralearn.library.v1";
+  const contractResult = validateProjectDocument(oldContract);
+  assert.equal(contractResult.ok, false);
+  assert.match(errorText(contractResult), /Contrato esperado: "aralearn\.course\.v1"/u);
+});
+
+test("títulos curriculares têm até 300 caracteres e rejeitam controles inválidos", () => {
+  const valid = canonicalProject();
+  nested(valid).course.title = "C".repeat(300);
+  nested(valid).moduleValue.title = "Módulo em duas linhas\ncom contexto";
+  nested(valid).lesson.title = "Lição com\ttabulação";
+  nested(valid).microsequence.title = "Microssequência válida";
+  assert.equal(validateProjectDocument(valid).ok, true, errorText(validateProjectDocument(valid)));
+
+  const cases = [
+    ["course", (project) => { nested(project).course.title = "C".repeat(301); }],
+    ["module", (project) => { nested(project).moduleValue.title = "Módulo\u0001inválido"; }],
+    ["lesson", (project) => { nested(project).lesson.title = "Lição\u007finválida"; }],
+    ["microsequence", (project) => {
+      nested(project).microsequence.title = "M".repeat(301);
+    }],
+    ["microsequence", (project) => {
+      nested(project).microsequence.title = "Micro\u0085inválida";
+    }]
+  ];
+  cases.forEach(([entityName, mutate]) => {
+    const project = canonicalProject();
+    mutate(project);
+    const result = validateProjectDocument(project);
+    assert.equal(result.ok, false, entityName);
+    assert.match(errorText(result), new RegExp(`${entityName}\\.title`), entityName);
+  });
+});
+
 test("a fronteira rejeita ids duplicados entre entidades irmãs", () => {
   const cases = [
     ["course", (project) => project.courses.push(structuredClone(project.courses[0]))],
@@ -147,7 +191,7 @@ test("a fronteira rejeita ids duplicados entre entidades irmãs", () => {
     ["lesson", (project) => nested(project).moduleValue.lessons.push(structuredClone(nested(project).lesson))],
     ["topic", (project) => nested(project).lesson.topics.push(structuredClone(nested(project).topic))],
     ["microsequence", (project) => nested(project).lesson.microsequences.push(structuredClone(nested(project).microsequence))],
-    ["card", (project) => {
+    ["study_unit", (project) => {
       const duplicateContainer = structuredClone(nested(project).microsequence);
       duplicateContainer.id = "micro-b";
       nested(project).lesson.microsequences.push(duplicateContainer);
@@ -170,7 +214,7 @@ test("ids de lição são únicos entre módulos e informam as duas ocorrências
   secondModule.title = "Módulo B";
   secondModule.lessons[0].topics[0].id = "topic-b";
   secondModule.lessons[0].microsequences[0].id = "micro-b";
-  secondModule.lessons[0].microsequences[0].cards[0].id = "card-b";
+  secondModule.lessons[0].microsequences[0].studyUnits[0].id = "card-b";
   project.courses[0].modules.push(secondModule);
 
   const result = validateProjectDocument(project);
@@ -224,7 +268,7 @@ test("dependsOn referencia somente pré-requisitos anteriores da mesma lição e
     copy.id = id;
     copy.title = id;
     copy.dependsOn = dependsOn;
-    copy.cards[0].id = `card-${id}`;
+    copy.studyUnits[0].id = `card-${id}`;
     nested(project).lesson.microsequences.push(copy);
     return copy;
   }
@@ -278,7 +322,7 @@ test("dependsOn referencia somente pré-requisitos anteriores da mesma lição e
 
 test("estruturas internas desconhecidas não desaparecem durante a normalização", () => {
   const project = canonicalProject();
-  nested(project).microsequence.cards[0] = {
+  nested(project).microsequence.studyUnits[0] = {
     id: "card-graph",
     position: 1,
     title: "Grafo",
@@ -301,8 +345,7 @@ test("estruturas internas desconhecidas não desaparecem durante a normalizaçã
     }],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 
   const result = validateProjectDocument(project);
@@ -338,7 +381,7 @@ test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
 
   for (const { label, nodes, expected } of cases) {
     const project = canonicalProject();
-    nested(project).microsequence.cards[0] = {
+    nested(project).microsequence.studyUnits[0] = {
       id: "card-tree",
       position: 1,
       title: "Árvore",
@@ -351,8 +394,7 @@ test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
       }],
       response: null,
       feedback: [],
-      topics: [],
-      sources: []
+      topics: []
     };
     const result = validateProjectDocument(project);
     assert.equal(result.ok, false, label);

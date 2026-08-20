@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -29,7 +29,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -55,7 +55,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -110,10 +110,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "alg-1",
                       "position": 1,
@@ -135,10 +135,6 @@
                       "feedback": [],
                       "topics": [
                         "alg-problem"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/tads",
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -163,9 +159,6 @@
                       "topics": [
                         "alg-problem",
                         "alg-state"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -189,9 +182,6 @@
                       "feedback": [],
                       "topics": [
                         "alg-binary"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     }
                   ]
@@ -215,10 +205,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "alg-4",
                       "position": 1,
@@ -240,9 +230,6 @@
                       "feedback": [],
                       "topics": [
                         "alg-binary"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -305,9 +292,6 @@
                       "topics": [
                         "alg-state",
                         "alg-binary"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     }
                   ]
@@ -331,10 +315,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "alg-6",
                       "position": 1,
@@ -421,9 +405,6 @@
                       ],
                       "topics": [
                         "alg-state"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -504,9 +485,6 @@
                       ],
                       "topics": [
                         "alg-binary"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -564,9 +542,6 @@
                       ],
                       "topics": [
                         "alg-binary"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     }
                   ]
@@ -597,7 +572,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -623,7 +598,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -680,10 +655,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "db-1",
                       "position": 1,
@@ -705,10 +680,6 @@
                       "feedback": [],
                       "topics": [
                         "db-conceptual"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/tads",
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -820,9 +791,6 @@
                       "topics": [
                         "db-conceptual",
                         "db-transform"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -846,9 +814,6 @@
                       "feedback": [],
                       "topics": [
                         "db-relational"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -1007,9 +972,6 @@
                       "topics": [
                         "db-relational",
                         "db-transform"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     }
                   ]
@@ -1034,10 +996,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "db-5",
                       "position": 1,
@@ -1177,9 +1139,6 @@
                       ],
                       "topics": [
                         "db-conceptual"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -1273,9 +1232,6 @@
                       ],
                       "topics": [
                         "db-relational"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     },
                     {
@@ -1333,9 +1289,6 @@
                       ],
                       "topics": [
                         "db-transform"
-                      ],
-                      "sources": [
-                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
                       ]
                     }
                   ]
@@ -1373,7 +1326,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -1399,7 +1352,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -1465,10 +1418,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "tcp-1",
                       "position": 1,
@@ -1490,10 +1443,6 @@
                       "feedback": [],
                       "topics": [
                         "tcp-service"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     },
                     {
@@ -1517,10 +1466,6 @@
                       "feedback": [],
                       "topics": [
                         "tcp-service"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     },
                     {
@@ -1545,9 +1490,6 @@
                       "topics": [
                         "tcp-service",
                         "tcp-state"
-                      ],
-                      "sources": [
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     }
                   ]
@@ -1572,10 +1514,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "tcp-4",
                       "position": 1,
@@ -1659,10 +1601,6 @@
                       "feedback": [],
                       "topics": [
                         "tcp-header"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     },
                     {
@@ -1765,10 +1703,6 @@
                       "feedback": [],
                       "topics": [
                         "tcp-state"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     },
                     {
@@ -1865,9 +1799,6 @@
                       "feedback": [],
                       "topics": [
                         "tcp-path"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf"
                       ]
                     }
                   ]
@@ -1892,10 +1823,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "tcp-7",
                       "position": 1,
@@ -2010,9 +1941,6 @@
                       ],
                       "topics": [
                         "tcp-header"
-                      ],
-                      "sources": [
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     },
                     {
@@ -2108,10 +2036,6 @@
                         "tcp-header",
                         "tcp-state",
                         "tcp-path"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     },
                     {
@@ -2169,9 +2093,6 @@
                       ],
                       "topics": [
                         "tcp-header"
-                      ],
-                      "sources": [
-                        "https://www.rfc-editor.org/rfc/rfc9293.html"
                       ]
                     }
                   ]
@@ -2202,7 +2123,7 @@
             ],
             "avoid": [
               "presumir repertório técnico",
-              "compactar para reduzir número de cards"
+              "compactar para reduzir número de Unidades de estudo"
             ]
           },
           "lessons": [
@@ -2228,7 +2149,7 @@
                 ],
                 "avoid": [
                   "presumir repertório técnico",
-                  "compactar para reduzir número de cards"
+                  "compactar para reduzir número de Unidades de estudo"
                 ]
               },
               "topics": [
@@ -2285,10 +2206,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "bpmn-1",
                       "position": 1,
@@ -2310,10 +2231,6 @@
                       "feedback": [],
                       "topics": [
                         "bpmn-responsibility"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     },
                     {
@@ -2337,10 +2254,6 @@
                       "feedback": [],
                       "topics": [
                         "bpmn-flow"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     },
                     {
@@ -2364,10 +2277,6 @@
                       "feedback": [],
                       "topics": [
                         "bpmn-gateway"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     },
                     {
@@ -2542,10 +2451,6 @@
                         "bpmn-responsibility",
                         "bpmn-flow",
                         "bpmn-gateway"
-                      ],
-                      "sources": [
-                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     }
                   ]
@@ -2570,10 +2475,10 @@
                   ],
                   "errors": [
                     "siglas ou convenções sem introdução",
-                    "mais de um núcleo conceitual novo no mesmo card",
+                    "mais de um núcleo conceitual novo na mesma Unidade de estudo",
                     "recurso usado apenas como decoração"
                   ],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "bpmn-5",
                       "position": 1,
@@ -2775,9 +2680,6 @@
                       ],
                       "topics": [
                         "bpmn-gateway"
-                      ],
-                      "sources": [
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     },
                     {
@@ -2835,9 +2737,6 @@
                       ],
                       "topics": [
                         "bpmn-flow"
-                      ],
-                      "sources": [
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     },
                     {
@@ -2935,9 +2834,6 @@
                       "topics": [
                         "bpmn-gateway",
                         "bpmn-flow"
-                      ],
-                      "sources": [
-                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
                       ]
                     }
                   ]

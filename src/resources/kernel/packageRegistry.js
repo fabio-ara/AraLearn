@@ -131,7 +131,7 @@ export function assertPackageDefinition(definition) {
   if (manifest.slots.some((slot) => !PACKAGE_SLOTS.includes(slot))) {
     throw new TypeError(`${manifest.id} declara slot desconhecido.`);
   }
-  assertNonEmptyList(manifest.cognitiveOperations, `${manifest.id}.manifest.cognitiveOperations`);
+  assertNonEmptyList(manifest.taskOperations, `${manifest.id}.manifest.taskOperations`);
   assertAcademicManifest(manifest);
   if (!definition.schema || typeof definition.schema !== "object") {
     throw new TypeError(`${manifest.id} precisa de schema.`);
@@ -169,7 +169,7 @@ function publicManifest(definition) {
     label: manifest.label,
     purpose: manifest.purpose,
     slots: manifest.slots,
-    cognitiveOperations: manifest.cognitiveOperations,
+    taskOperations: manifest.taskOperations,
     responseCompatibility: manifest.responseCompatibility || [],
     limitations: manifest.limitations || [],
     accessibility: manifest.accessibility || "",
@@ -179,7 +179,7 @@ function publicManifest(definition) {
         domains: academic.domains,
         knowledgeObjects: academic.knowledgeObjects,
         conventions: academic.conventions,
-        cognitiveOperations: manifest.cognitiveOperations,
+        taskOperations: manifest.taskOperations,
         practiceModes: academic.practiceModes,
         taxonomy: academic.taxonomy
       })
@@ -221,9 +221,9 @@ export function createPackageRegistry(packageDefinitions = []) {
     return typeof label === "string" && label ? label : original;
   }
 
-  function labelCardPracticeValue(card, targetInstanceId, targetPath, value) {
-    const target = Array.isArray(card?.content)
-      ? card.content.find((instance) => instance?.id === targetInstanceId)
+  function labelStudyUnitPracticeValue(studyUnit, targetInstanceId, targetPath, value) {
+    const target = Array.isArray(studyUnit?.content)
+      ? studyUnit.content.find((instance) => instance?.id === targetInstanceId)
       : null;
     return target ? labelPracticeValue(target, targetPath, value) : String(value ?? "");
   }
@@ -292,11 +292,11 @@ export function createPackageRegistry(packageDefinitions = []) {
       return normalized;
     },
     validateInstance,
-    validateCardRelations(card) {
-      if (!card?.response) return [];
-      const definition = get(card.response.package, card.response.version);
-      if (typeof definition?.validateCard !== "function") return [];
-      const errors = definition.validateCard(clone(card), {
+    validateStudyUnitRelations(studyUnit) {
+      if (!studyUnit?.response) return [];
+      const definition = get(studyUnit.response.package, studyUnit.response.version);
+      if (typeof definition?.validateStudyUnit !== "function") return [];
+      const errors = definition.validateStudyUnit(clone(studyUnit), {
          practiceTargets(instance) {
            const contentDefinition = requirePackage(instance.package, instance.version);
            return clone(resolvedPracticeTargets(contentDefinition, instance.data));
@@ -345,23 +345,23 @@ export function createPackageRegistry(packageDefinitions = []) {
       });
       return Array.isArray(errors) ? errors.filter(Boolean).map(String) : [];
     },
-    prepareCardForSemantics(card) {
-      if (!card?.response) return clone(card);
-      const definition = get(card.response.package, card.response.version);
-      return typeof definition?.prepareCardForSemantics === "function"
-        ? definition.prepareCardForSemantics(clone(card), {
+    prepareStudyUnitForSemantics(studyUnit) {
+      if (!studyUnit?.response) return clone(studyUnit);
+      const definition = get(studyUnit.response.package, studyUnit.response.version);
+      return typeof definition?.prepareStudyUnitForSemantics === "function"
+        ? definition.prepareStudyUnitForSemantics(clone(studyUnit), {
             practiceTargets(instance) {
               const contentDefinition = requirePackage(instance.package, instance.version);
               return clone(resolvedPracticeTargets(contentDefinition, instance.data));
             }
           })
-        : clone(card);
+        : clone(studyUnit);
     },
     renderInstance(instance, slot, options = {}) {
       const validation = validateInstance(instance, slot);
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
       const definition = requirePackage(instance.package, instance.version);
-      const response = options?.cardResponse;
+      const response = options?.studyUnitResponse;
       const responseDefinition = response
         ? get(response.package, response.version)
         : null;
@@ -371,8 +371,8 @@ export function createPackageRegistry(packageDefinitions = []) {
           practiceTargets: clone(resolvedPracticeTargets(definition, instance.data))
         } : {}),
         practiceValueLabel(targetInstanceId, targetPath, value) {
-          return labelCardPracticeValue(
-            options.card,
+          return labelStudyUnitPracticeValue(
+            options.studyUnit,
             targetInstanceId,
             targetPath,
             value

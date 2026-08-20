@@ -21,7 +21,7 @@ function instruction(data) {
 function responseFeedback(blockKey, feedback) {
   if (!feedback) return "";
   if (feedback === "correct") return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
-  if (feedback === "incomplete") return '<div class="inline-feedback warn"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
+  if (feedback === "incomplete") return '<div class="inline-feedback warn" role="alert" aria-live="assertive"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
   const key = escapePackageAttribute(blockKey);
   return `<div class="inline-feedback err has-actions"><p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
@@ -30,7 +30,7 @@ export const choiceResponsePackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.response.choice", version: "1.0.0", label: "Escolha",
     purpose: "Pedir que o estudante discrimine uma ou mais alternativas plausíveis.", slots: Object.freeze(["response"]),
-    cognitiveOperations: Object.freeze(["discriminate", "select-best", "identify-set", "diagnose-misconception"]),
+    taskOperations: Object.freeze(["discriminate", "select-best", "identify-set", "diagnose-misconception"]),
     academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["alternativas", "distratores", "conjunto de respostas"], conventions: ["enunciado único", "distratores plausíveis", "confirmação antes do feedback"], appropriateWhen: ["discriminar opções é a operação desejada"], avoidWhen: ["o estudante deve produzir a resposta sem pistas"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["selection"], content: false }),
     responseCompatibility: Object.freeze([]), limitations: Object.freeze(["Não use quando recordar ou produzir a resposta for a operação desejada."]),
     accessibility: "Alternativas usam fieldset, legend e controles nativos."

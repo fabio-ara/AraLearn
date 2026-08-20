@@ -36,51 +36,28 @@ function Invoke-AraLearnSupabase {
   }
 }
 
-function Remove-AraLearnSupabaseFunctionIfPresent {
-  param(
-    [Parameter(Mandatory)][string]$FunctionName,
-    [Parameter(Mandatory)][string]$ResolvedProjectRef
-  )
-
-  $source = & npx.cmd --yes supabase@2.109.1 functions list `
-    --project-ref $ResolvedProjectRef --output json
-  if ($LASTEXITCODE -ne 0) {
-    throw 'A Supabase CLI não conseguiu listar as Edge Functions implantadas.'
-  }
+function Invoke-AraLearnDatabaseLintGate {
+  $lintJsonPath = [System.IO.Path]::GetTempFileName()
   try {
-    $functions = @(($source -join [Environment]::NewLine) | ConvertFrom-Json)
-  }
-  catch {
-    throw 'A Supabase CLI devolveu uma lista de Edge Functions inválida.'
-  }
-  if ($functions.Slug -contains $FunctionName) {
-    Write-Host "Removendo a Edge Function aposentada $FunctionName..."
-    Invoke-AraLearnSupabase functions delete $FunctionName `
-      --project-ref $ResolvedProjectRef --yes
-  }
-}
+    & npx.cmd --yes supabase@2.109.1 db lint --linked --level warning `
+      --output-format json > $lintJsonPath
+    $lintExitCode = $LASTEXITCODE
+    if ($lintExitCode -ne 0) {
+      return [int]$lintExitCode
+    }
 
-function Remove-AraLearnSupabaseSecretIfPresent {
-  param(
-    [Parameter(Mandatory)][string]$SecretName,
-    [Parameter(Mandatory)][string]$ResolvedProjectRef
-  )
-
-  $source = & npx.cmd --yes supabase@2.109.1 secrets list `
-    --project-ref $ResolvedProjectRef --output json
-  if ($LASTEXITCODE -ne 0) {
-    throw 'A Supabase CLI não conseguiu listar os segredos implantados.'
+    $gateOutput = & node .\scripts\auditLegacyDbLint.mjs $lintJsonPath
+    $gateExitCode = $LASTEXITCODE
+    if ($gateOutput) {
+      Write-Host ($gateOutput -join [Environment]::NewLine)
+    }
+    if ($gateExitCode -ne 0) {
+      throw 'O lint do banco divergiu da baseline exata da limpeza legada.'
+    }
+    return [int]0
   }
-  try {
-    $secrets = @(($source -join [Environment]::NewLine) | ConvertFrom-Json)
-  }
-  catch {
-    throw 'A Supabase CLI devolveu uma lista de segredos inválida.'
-  }
-  if ($secrets.Name -contains $SecretName) {
-    Write-Host "Removendo o segredo aposentado $SecretName..."
-    Invoke-AraLearnSupabase secrets unset $SecretName `
-      --project-ref $ResolvedProjectRef --yes
+  finally {
+    Remove-Item -LiteralPath $lintJsonPath -Force -ErrorAction SilentlyContinue
   }
 }
 
@@ -169,33 +146,50 @@ try {
   Write-Host 'Aplicando migrations versionadas, sem seed e sem reset...'
   Invoke-AraLearnSupabase db push --linked
   Invoke-AraLearnSupabase migration list --linked
-  Invoke-AraLearnSupabase db lint --linked --level warning --fail-on warning
+  $lintExitCode = Invoke-AraLearnDatabaseLintGate
+  if ($lintExitCode -ne 0) {
+    Write-Error "A Supabase CLI falhou durante o lint do banco (código $lintExitCode)." `
+      -ErrorAction Continue
+    exit $lintExitCode
+  }
 
   if ($DeployAuthoringFunctions) {
-    Write-Host 'Implantando MCP, Action e entrega de revisões...'
-    Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
-    Invoke-AraLearnSupabase functions deploy aralearn-authoring-action --project-ref $resolvedProjectRef --no-verify-jwt
-    Invoke-AraLearnSupabase functions deploy aralearn-course-revisions --project-ref $resolvedProjectRef --no-verify-jwt
-    Remove-AraLearnSupabaseFunctionIfPresent `
-      -FunctionName 'aralearn-authoring-api' `
-      -ResolvedProjectRef $resolvedProjectRef
-    Remove-AraLearnSupabaseSecretIfPresent `
-      -SecretName 'ARALEARN_AUTHORING_INTEGRATION_SECRET' `
-      -ResolvedProjectRef $resolvedProjectRef
-
     $applicationOrigins = Resolve-AllowedOrigins (
       @($RequiredApplicationOrigins) + @($AllowedOrigin)
     )
     $origins = $applicationOrigins -join ','
-    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
     Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
-    Invoke-AraLearnSupabase secrets set "ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
-    $actionOrigins = (@(
-      'https://chatgpt.com',
-      'https://chat.openai.com'
-    ) + $applicationOrigins | Select-Object -Unique) -join ','
-    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=$actionOrigins" --project-ref $resolvedProjectRef
-    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_COURSE_API_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
+
+    Write-Host 'Implantando MCP e API de Cursos...'
+    Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-course-api --project-ref $resolvedProjectRef --no-verify-jwt
+
+    Write-Host 'Validando a configuração CORS da API de Cursos...'
+    $resolvedProjectUrl = "https://$resolvedProjectRef.supabase.co"
+    $courseApiPreflight = Invoke-WebRequest `
+      -Uri "$resolvedProjectUrl/functions/v1/aralearn-course-api/app/listarCursos" `
+      -Method Options `
+      -Headers @{
+        Origin = 'https://fabio-ara.github.io'
+        'Access-Control-Request-Method' = 'POST'
+      } `
+      -UseBasicParsing
+    if ($courseApiPreflight.StatusCode -lt 200 -or
+        $courseApiPreflight.StatusCode -ge 300 -or
+        $courseApiPreflight.Headers['Access-Control-Allow-Origin'] -ne
+          'https://fabio-ara.github.io') {
+      throw 'O preflight hospedado da API de Cursos falhou; as funções antigas foram preservadas.'
+    }
+
+    Write-Host 'Validando o MCP OAuth hospedado...'
+    & node .\scripts\runHostedMcpOAuthSmoke.mjs
+    if ($LASTEXITCODE -ne 0) {
+      throw 'O smoke hospedado do runtime de Cursos falhou; as funções antigas foram preservadas.'
+    }
+
+    Write-Host 'As funções da versão publicada foram preservadas até a verificação do novo site.'
   }
 
   Write-Host 'Implantação concluída.'

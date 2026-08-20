@@ -14,7 +14,7 @@ const files = testDirectories.flatMap((testsDir) => fs.readdirSync(testsDir)
   .sort()
   .map((fileName) => path.join(testsDir, fileName)));
 
-const testConcurrency = process.env.ARALEARN_TEST_CONCURRENCY || "2";
+const testConcurrency = process.env.ARALEARN_TEST_CONCURRENCY || "1";
 const result = spawnSync(process.execPath, [
   "--test",
   `--test-concurrency=${testConcurrency}`,

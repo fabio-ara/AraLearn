@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  renderPackageCardArticle,
-  renderPackageCardBlocks,
-  renderPackageCardBlocksWithDock
-} from "../../src/render/renderPackageCard.js";
+  renderPackageStudyUnitArticle,
+  renderPackageStudyUnitBlocks,
+  renderPackageStudyUnitBlocksWithDock
+} from "../../src/render/renderPackageStudyUnit.js";
 
-function cardWith(instance) {
+function studyUnitWith(instance) {
   return {
     id: "card-package",
     position: 1,
@@ -16,22 +16,21 @@ function cardWith(instance) {
     content: [instance],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 
-test("artigos independentes isolam a memória visual pela identidade do card", () => {
+test("artigos independentes isolam a memória visual pela identidade da Unidade de estudo", () => {
   const instance = {
     id: "shared-instance",
     package: "aralearn.resource.paragraph",
     version: "1.0.0",
     data: { text: "Mesmo conteúdo estrutural." }
   };
-  const first = renderPackageCardArticle({ ...cardWith(instance), id: "first-card" });
-  const second = renderPackageCardArticle({ ...cardWith(instance), id: "second-card" });
-  assert.match(first, /data-package-render-key="card:first-card::content:shared-instance"/u);
-  assert.match(second, /data-package-render-key="card:second-card::content:shared-instance"/u);
+  const first = renderPackageStudyUnitArticle({ ...studyUnitWith(instance), id: "first-card" });
+  const second = renderPackageStudyUnitArticle({ ...studyUnitWith(instance), id: "second-card" });
+  assert.match(first, /data-package-render-key="study-unit:first-card::content:shared-instance"/u);
+  assert.match(second, /data-package-render-key="study-unit:second-card::content:shared-instance"/u);
 });
 
 test("edição manual preserva o resource e publica somente o mapa textual invisível", () => {
@@ -41,7 +40,7 @@ test("edição manual preserva o resource e publica somente o mapa textual invis
     version: "1.0.0",
     data: { text: "O próprio rótulo permanece na interface." }
   };
-  const html = renderPackageCardBlocks(cardWith(instance), {
+  const html = renderPackageStudyUnitBlocks(studyUnitWith(instance), {
     resourceSelectionEnabled: true,
     selectedResourceTargetIds: ["content:paragraph-edit"],
     manualEditingTargetId: "content:paragraph-edit"
@@ -55,7 +54,7 @@ test("edição manual preserva o resource e publica somente o mapa textual invis
 
 test("edição manual mostra conteúdo canônico e suprime a prática de lacuna", () => {
   const card = {
-    ...cardWith({
+    ...studyUnitWith({
       id: "body",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -78,7 +77,7 @@ test("edição manual mostra conteúdo canônico e suprime a prática de lacuna"
       }
     }
   };
-  const rendered = renderPackageCardBlocksWithDock(card, {
+  const rendered = renderPackageStudyUnitBlocksWithDock(card, {
     resourceSelectionEnabled: true,
     selectedResourceTargetIds: ["content:body"],
     manualEditingTargetId: "content:body"
@@ -91,7 +90,7 @@ test("edição manual mostra conteúdo canônico e suprime a prática de lacuna"
 
 test("edição manual de célula suprime ordering e conserva a tabela", () => {
   const card = {
-    ...cardWith({
+    ...studyUnitWith({
       id: "steps",
       package: "aralearn.resource.table",
       version: "1.0.0",
@@ -110,7 +109,7 @@ test("edição manual de célula suprime ordering e conserva a tabela", () => {
       }
     }
   };
-  const rendered = renderPackageCardBlocksWithDock(card, {
+  const rendered = renderPackageStudyUnitBlocksWithDock(card, {
     resourceSelectionEnabled: true,
     selectedResourceTargetIds: ["content:steps"],
     manualEditingTargetId: "content:steps"
@@ -126,7 +125,7 @@ test("edição manual de choice preserva a aparência sem resposta revelada ou c
   const blockKeyPrefix = "lesson::card";
   const blockKey = `${blockKeyPrefix}::response:${responseId}`;
   const card = {
-    ...cardWith({
+    ...studyUnitWith({
       id: "context",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -149,7 +148,7 @@ test("edição manual de choice preserva a aparência sem resposta revelada ou c
       }
     }
   };
-  const rendered = renderPackageCardBlocksWithDock(card, {
+  const rendered = renderPackageStudyUnitBlocksWithDock(card, {
     blockKeyPrefix,
     resourceSelectionEnabled: true,
     selectedResourceTargetIds: [`response:${responseId}`],
@@ -171,7 +170,7 @@ test("edição manual ignora prompt de lacuna aberto e não inventa editor na re
   const blockKeyPrefix = "lesson::card";
   const blockKey = `${blockKeyPrefix}::response:${responseId}`;
   const card = {
-    ...cardWith({
+    ...studyUnitWith({
       id: "body",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -194,7 +193,7 @@ test("edição manual ignora prompt de lacuna aberto e não inventa editor na re
       }
     }
   };
-  const rendered = renderPackageCardBlocksWithDock(card, {
+  const rendered = renderPackageStudyUnitBlocksWithDock(card, {
     blockKeyPrefix,
     resourceSelectionEnabled: true,
     selectedResourceTargetIds: [`response:${responseId}`],
@@ -213,7 +212,7 @@ test("edição manual ignora prompt de lacuna aberto e não inventa editor na re
 test("seleção manual omite response sem folha textual visível", () => {
   const responseId = "order";
   const card = {
-    ...cardWith({
+    ...studyUnitWith({
       id: "first",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -243,23 +242,23 @@ test("seleção manual omite response sem folha textual visível", () => {
       }
     }
   };
-  const rendered = renderPackageCardBlocks(card, {
+  const rendered = renderPackageStudyUnitBlocks(card, {
     resourceSelectionEnabled: true,
     resourceSelectionTargetIds: ["content:first", "content:second"],
     responseStateByBlockKey: {
-      "runtime-card::response:order": { order: ["first", "second"], feedback: "wrong" }
+      "runtime-study-unit::response:order": { order: ["first", "second"], feedback: "wrong" }
     }
   });
   assert.doesNotMatch(rendered, /data-resource-edit-target="response:order"/u);
   assert.match(rendered, /data-resource-edit-target="content:first"/u);
   assert.match(rendered, /data-resource-edit-target="content:second"/u);
 
-  const explicitManual = renderPackageCardBlocksWithDock(card, {
+  const explicitManual = renderPackageStudyUnitBlocksWithDock(card, {
     resourceSelectionEnabled: true,
     selectedResourceTargetIds: [`response:${responseId}`],
     manualEditingTargetId: `response:${responseId}`,
     responseStateByBlockKey: {
-      "runtime-card::response:order": { order: ["first", "second"], feedback: "wrong" }
+      "runtime-study-unit::response:order": { order: ["first", "second"], feedback: "wrong" }
     }
   });
   assert.doesNotMatch(explicitManual.bodyHtml, /ordering-(?:view-answer|try-again)|inline-feedback/u);
@@ -269,7 +268,7 @@ test("seleção manual omite response sem folha textual visível", () => {
 
 test("opções de cada lacuna usam ordem estável e independente do gabarito e do estado", () => {
   const card = {
-    ...cardWith({
+    ...studyUnitWith({
       id: "body",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -302,7 +301,7 @@ test("opções de cada lacuna usam ordem estável e independente do gabarito e d
   const blockKeyPrefix = "lesson";
   const blockKey = `${blockKeyPrefix}::response:gap`;
   const optionOrder = (blankIndex, values) => {
-    const rendered = renderPackageCardBlocksWithDock(card, {
+    const rendered = renderPackageStudyUnitBlocksWithDock(card, {
       blockKeyPrefix,
       exerciseShuffleSeed: "stable",
       activeTextGapPrompt: { blockKey, blankIndex },
@@ -318,8 +317,8 @@ test("opções de cada lacuna usam ordem estável e independente do gabarito e d
 
 test("modo Estudo não repete enunciado idêntico de paragraph e choice", () => {
   const question = "Qual protocolo confirma a entrega?";
-  assert.throws(() => renderPackageCardBlocks({
-    ...cardWith({
+  assert.throws(() => renderPackageStudyUnitBlocks({
+    ...studyUnitWith({
       id: "context",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -342,7 +341,7 @@ test("modo Estudo não repete enunciado idêntico de paragraph e choice", () => 
 });
 
 test("modo Estudo entrega o grafo matemático ao Graphviz sem coordenadas autorais", () => {
-  const html = renderPackageCardBlocks(cardWith({
+  const html = renderPackageStudyUnitBlocks(studyUnitWith({
     id: "graph",
     package: "aralearn.resource.graph",
     version: "1.0.0",
@@ -367,7 +366,7 @@ test("modo Estudo entrega o grafo matemático ao Graphviz sem coordenadas autora
 });
 
 test("modo Estudo materializa relation_map como diagrama sem rótulos sobre arestas", () => {
-  const html = renderPackageCardBlocks(cardWith({
+  const html = renderPackageStudyUnitBlocks(studyUnitWith({
     id: "relations",
     package: "aralearn.resource.relation_map",
     version: "1.0.0",
@@ -394,8 +393,8 @@ test("choice incorreto não revela a alternativa esperada antes de Ver resposta"
   const blockKeyPrefix = "lesson::card";
   const responseId = "answer";
   const blockKey = `${blockKeyPrefix}::response:${responseId}`;
-  const html = renderPackageCardBlocks({
-    ...cardWith({
+  const html = renderPackageStudyUnitBlocks({
+    ...studyUnitWith({
       id: "context",
       package: "aralearn.resource.paragraph",
       version: "1.0.0",
@@ -431,8 +430,8 @@ test("choice incorreto não revela a alternativa esperada antes de Ver resposta"
   assert.doesNotMatch(html, /<svg(?![^>]*class="runtime-feedback-icon")/u);
 });
 
-test("matrix e tree preservam a estrutura visual package-native no card completo", () => {
-  const matrixHtml = renderPackageCardBlocks(cardWith({
+test("matrix e tree preservam a estrutura visual package-native na Unidade de estudo completa", () => {
+  const matrixHtml = renderPackageStudyUnitBlocks(studyUnitWith({
     id: "matrix",
     package: "aralearn.resource.matrix",
     version: "1.0.0",
@@ -448,7 +447,7 @@ test("matrix e tree preservam a estrutura visual package-native no card completo
   assert.match(matrixHtml, /<mtable class="runtime-matrix-grid"/u);
   assert.doesNotMatch(matrixHtml, /<table/u);
 
-  const treeHtml = renderPackageCardBlocks(cardWith({
+  const treeHtml = renderPackageStudyUnitBlocks(studyUnitWith({
     id: "tree",
     package: "aralearn.resource.tree",
     version: "1.0.0",
@@ -469,7 +468,7 @@ test("matrix e tree preservam a estrutura visual package-native no card completo
 });
 
 test("recursos visuais extraídos preservam representação própria em vez de texto cru", () => {
-  const render = (instance) => renderPackageCardBlocks(cardWith(instance));
+  const render = (instance) => renderPackageStudyUnitBlocks(studyUnitWith(instance));
 
   const planeHtml = render({
     id: "plane",
@@ -569,7 +568,7 @@ test("recursos visuais extraídos preservam representação própria em vez de t
 });
 
 test("texto anotado ancora notas nos trechos sem revelar ids internos", () => {
-  const html = renderPackageCardBlocks(cardWith({
+  const html = renderPackageStudyUnitBlocks(studyUnitWith({
     id: "annotated",
     package: "aralearn.resource.annotated_text",
     version: "1.0.0",
@@ -585,7 +584,7 @@ test("texto anotado ancora notas nos trechos sem revelar ids internos", () => {
 });
 
 test("glosa interlinear preserva linhas alinhadas, tradução livre e legenda", () => {
-  const html = renderPackageCardBlocks(cardWith({
+  const html = renderPackageStudyUnitBlocks(studyUnitWith({
     id: "gloss",
     package: "aralearn.resource.interlinear_gloss",
     version: "1.0.0",

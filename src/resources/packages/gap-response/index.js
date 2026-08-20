@@ -74,7 +74,7 @@ function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
   const key = escapePackageAttribute(blockKey);
   if (feedback === "correct") return `<div class="inline-feedback ok" data-complete-feedback-block-key="${key}"><p class="tiny">Correto.</p></div>`;
-  if (feedback === "incomplete") return `<div class="inline-feedback warn" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
+  if (feedback === "incomplete") return `<div class="inline-feedback warn" role="alert" aria-live="assertive" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
   return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
@@ -120,7 +120,7 @@ export const gapResponsePackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.response.gap", version: "1.0.0", label: "Lacuna",
     purpose: "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo.", slots: Object.freeze(["response"]),
-    cognitiveOperations: Object.freeze(["recall", "complete", "label", "calculate"]), responseCompatibility: Object.freeze([]),
+    taskOperations: Object.freeze(["recall", "complete", "label", "calculate"]), responseCompatibility: Object.freeze([]),
     academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["lacuna semântica", "resposta curta"], conventions: ["lacuna no lugar exato do conceito", "equivalentes aceitos explícitos"], appropriateWhen: ["recordar ou completar um elemento localizado é a operação desejada"], avoidWhen: ["a resposta exige argumentação extensa"], technologies: ["HTML semântico", "controles nativos"], practiceModes: ["gap", "typing", "selection"], content: false }),
     limitations: Object.freeze(["O package de conteúdo precisa declarar o targetPath como editável por resposta." ]), accessibility: "Cada lacuna tem prompt, rótulo e controle nativo próprios."
   }),
@@ -128,11 +128,11 @@ export const gapResponsePackage = Object.freeze({
   schema: Object.freeze({ type: "object", additionalProperties: false, required: ["blanks"], properties: { prompt: { type: "string", maxLength: 2000 }, blanks: { type: "array", minItems: 1, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "targetInstanceId", "targetPath", "responseMode", "answer"], properties: { id: { type: "string", minLength: 1 }, targetInstanceId: { type: "string", minLength: 1 }, targetPath: { type: "string", minLength: 1 }, label: { type: "string" }, responseMode: { type: "string", enum: ["text", "choice"] }, answer: { type: "string", minLength: 1 }, acceptedAnswers: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }, distractors: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } } } } } } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), blanks: (data?.blanks || []).map((blank) => ({ id: String(blank?.id || "").trim(), targetInstanceId: String(blank?.targetInstanceId || "").trim(), targetPath: String(blank?.targetPath || "").trim(), ...(blank?.label ? { label: String(blank.label).trim() } : {}), responseMode: String(blank?.responseMode || "text").trim(), answer: normalizeAnswer(blank?.answer), ...(blank?.acceptedAnswers ? { acceptedAnswers: blank.acceptedAnswers.map(normalizeAnswer) } : {}), ...(blank?.distractors ? { distractors: blank.distractors.map(normalizeAnswer) } : {}) })) }; },
   validate(data) { const errors = []; if (new Set(data.blanks.map(({ id }) => id)).size !== data.blanks.length) errors.push("Lacunas precisam de ids únicos."); data.blanks.forEach((blank) => { if (blank.responseMode === "choice" && (!blank.distractors || blank.distractors.length < 1)) errors.push(`Lacuna ${blank.id} por escolha precisa de distrator.`); if (blank.distractors?.includes(blank.answer)) errors.push(`Lacuna ${blank.id} repete a resposta nos distratores.`); }); return errors; },
-  validateCard(card, registry) {
+  validateStudyUnit(studyUnit, registry) {
     const errors = [];
-    const contents = new Map((card.content || []).map((instance) => [instance.id, instance]));
+    const contents = new Map((studyUnit.content || []).map((instance) => [instance.id, instance]));
     const requiredByTarget = new Map();
-    (card.response?.data?.blanks || []).forEach((blank) => {
+    (studyUnit.response?.data?.blanks || []).forEach((blank) => {
       const instance = contents.get(blank.targetInstanceId);
       if (!instance) {
         errors.push(`Lacuna ${blank.id} aponta para uma instância de conteúdo inexistente.`);
@@ -176,14 +176,14 @@ export const gapResponsePackage = Object.freeze({
         errors.push(`Lacuna ${blank.id} não encontra sua resposta no campo de conteúdo indicado.`);
         return;
       }
-      if (!registry?.materializesGap?.(instance, card.response, (card.response?.data?.blanks || []).indexOf(blank))) {
+      if (!registry?.materializesGap?.(instance, studyUnit.response, (studyUnit.response?.data?.blanks || []).indexOf(blank))) {
         errors.push(`Lacuna ${blank.id} não materializa um controle visível no renderer do package.`);
       }
     });
     return errors;
   },
-  prepareCardForSemantics(card, registry = {}) {
-    const visible = structuredClone(card);
+  prepareStudyUnitForSemantics(studyUnit, registry = {}) {
+    const visible = structuredClone(studyUnit);
     (visible.content || []).forEach((instance) => {
       const grouped = new Map();
       (visible.response?.data?.blanks || []).forEach((blank, index) => {

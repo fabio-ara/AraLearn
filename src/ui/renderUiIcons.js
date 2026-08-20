@@ -1,6 +1,15 @@
 export function renderUiIcon(iconName, className = "ui-icon") {
   const classes = `${className}`.trim();
 
+  if (iconName === "account") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="5.2" r="2.5" fill="none" stroke="currentColor" stroke-width="1.25"></circle>' +
+      '<path d="M3.1 13.4c.5-2.5 2.2-3.8 4.9-3.8s4.4 1.3 4.9 3.8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "sparkles") {
     return (
       '<svg class="' +
@@ -68,7 +77,7 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "trail") {
+  if (iconName === "study") {
     return (
       '<svg class="' +
       classes +
@@ -136,6 +145,15 @@ export function renderUiIcon(iconName, className = "ui-icon") {
       '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
       '<path d="M4.3 4.6h7.4l-.6 8a1 1 0 0 1-1 .9H6a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
       '<path d="M3.6 4.6h8.8M6.1 4.6V3.4a.7.7 0 0 1 .7-.7h2.4a.7.7 0 0 1 .7.7v1.2M6.6 7.1v4M9.4 7.1v4" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "reset") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.2 4.6A5.2 5.2 0 1 1 3 9.4" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path>' +
+      '<path d="M1.9 4.6h2.8v2.8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
       "</svg>"
     );
   }
@@ -299,7 +317,7 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "card") {
+  if (iconName === "study-unit") {
     return (
       '<svg class="' +
       classes +
@@ -428,6 +446,15 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
       '<path d="M4.1 12.2h7.6a2.5 2.5 0 0 0 .4-5 4.1 4.1 0 0 0-7.8-1.1 3.1 3.1 0 0 0-.2 6.1z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "offline") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.1 11.9h7.1a2.3 2.3 0 0 0 .5-4.5A4.1 4.1 0 0 0 5 4.7a3 3 0 0 0-.9 5.9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<path d="M2.4 2.4l11.2 11.2" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>' +
       "</svg>"
     );
   }

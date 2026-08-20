@@ -1,5 +1,5 @@
 {
-  "contract": "aralearn.library.v1",
+  "contract": "aralearn.course.v1",
   "scope": "course",
   "courses": [
     {
@@ -188,7 +188,7 @@
                     "explica por que processar localmente pode preservar privacidade e funcionar offline"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-01-01-problema-concreto",
                       "position": 1,
@@ -215,8 +215,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-01-02-servidor-smartphone",
@@ -260,8 +259,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-01-03-problema-central",
@@ -314,8 +312,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-01-04-gargalos-efeitos",
@@ -437,8 +434,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-01-05-on-device",
@@ -466,8 +462,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-01-06-lacuna-offline",
@@ -515,8 +510,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-01-07-erro-modelo-menor",
@@ -569,8 +563,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -596,7 +589,7 @@
                     "usa um exemplo concreto para explicar o fluxo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-02-01-exemplo-rag-pdf",
                       "position": 1,
@@ -623,8 +616,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-02-02-fluxo-rag",
@@ -678,8 +670,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-02-03-definicao-rag",
@@ -732,8 +723,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-02-04-recuperacao-geracao",
@@ -761,8 +751,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-02-05-etapa-correta",
@@ -815,8 +804,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-02-06-lacuna-rag",
@@ -864,8 +852,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-02-07-rag-nao-e-chatbot",
@@ -918,8 +905,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1060,7 +1046,7 @@
                     "relaciona token e TTFT"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-03-01-embedding-explicacao",
                       "position": 1,
@@ -1087,8 +1073,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-03-02-embedding-exemplo",
@@ -1159,8 +1144,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-03-03-termos-significados",
@@ -1266,8 +1250,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-03-04-o-que-e-topk",
@@ -1320,8 +1303,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-03-05-slm-token-ttft",
@@ -1349,8 +1331,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-03-06-token-ttft",
@@ -1403,8 +1384,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-03-07-vetor-humano",
@@ -1452,8 +1432,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -1481,7 +1460,7 @@
                     "interpreta TTFT e energia como somas aproximadas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-04-01-formula-cosseno-ponte",
                       "position": 1,
@@ -1508,8 +1487,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-04-02-vetores-parecidos",
@@ -1611,8 +1589,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-04-03-partes-formula",
@@ -1661,8 +1638,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-04-04-o-que-mede-cosseno",
@@ -1715,8 +1691,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-04-05-formula-ttft-energia",
@@ -1744,8 +1719,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-04-06-menos-token-ttft",
@@ -1798,8 +1772,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-04-07-energia-cpu",
@@ -1847,8 +1820,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1981,7 +1953,7 @@
                     "ordena corretamente as etapas do pipeline"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-05-01-comparacao-metodos",
                       "position": 1,
@@ -2029,8 +2001,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-05-02-particularidade-mobilerag",
@@ -2083,8 +2054,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-05-03-pipeline-mobile",
@@ -2153,8 +2123,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-05-04-ordem-exercicio",
@@ -2257,8 +2226,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-05-05-slm-llm-quantizada",
@@ -2286,8 +2254,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-05-06-erro-scr-antes",
@@ -2340,8 +2307,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-05-07-ttft-pipeline",
@@ -2389,8 +2355,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -2422,7 +2387,7 @@
                     "interpreta c* e memória aproximada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-06-01-ecovector-ideia",
                       "position": 1,
@@ -2449,8 +2414,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-02-passos-eco",
@@ -2509,8 +2473,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-03-grafo-centroides",
@@ -2581,8 +2544,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-04-ram-flash",
@@ -2631,8 +2593,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-05-o-que-fica-ram",
@@ -2685,8 +2646,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-06-lista-invertida",
@@ -2739,8 +2699,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-07-formulas-eco",
@@ -2768,8 +2727,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-06-08-memoria-formula",
@@ -2822,8 +2780,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -2855,7 +2812,7 @@
                     "explica por que menos tokens reduzem trabalho do modelo"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-07-01-scr-ideia",
                       "position": 1,
@@ -2882,8 +2839,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-07-02-passos-scr",
@@ -2947,8 +2903,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-07-03-janelas-sobreposicao",
@@ -2976,8 +2931,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-07-04-scores-segmentos",
@@ -3055,8 +3009,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-07-05-formulas-scr",
@@ -3084,8 +3037,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-07-06-topr-topk",
@@ -3138,8 +3090,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-07-07-menos-token",
@@ -3187,8 +3138,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3304,7 +3254,7 @@
                     "evita afirmações absolutas"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-08-01-arquitetura-papeis",
                       "position": 1,
@@ -3396,8 +3346,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-08-02-resultados-comunicaveis",
@@ -3451,8 +3400,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-08-03-frase-segura-resultados",
@@ -3505,8 +3453,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-08-04-tradeoff-arquitetural",
@@ -3534,8 +3481,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-08-05-flash-custo",
@@ -3588,8 +3534,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-08-06-pergunta-precisao",
@@ -3642,8 +3587,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-08-07-energia-aproximada",
@@ -3691,8 +3635,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -3719,7 +3662,7 @@
                     "evita exageros"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-09-02-fluxo-slides",
                       "position": 1,
@@ -3802,8 +3745,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-09-03-abertura-slide-1",
@@ -3856,8 +3798,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-09-04-slide-3-conceitos",
@@ -3910,8 +3851,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-09-05-slide-6-formula-eco",
@@ -3964,8 +3904,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-09-06-pergunta-banca-precisao",
@@ -4018,8 +3957,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-09-07-respostas-prontas",
@@ -4068,8 +4006,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-09-08-conclusao-arquitetura",
@@ -4122,8 +4059,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -4280,7 +4216,7 @@
                     "distingue problema conceitual de problema de engenharia"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m1-1-tese",
                       "position": 1,
@@ -4307,8 +4243,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m1-2-mapa-areas",
@@ -4388,8 +4323,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m1-3-foco-artigo",
@@ -4442,8 +4376,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m1-4-problema-ou-engenharia",
@@ -4539,8 +4472,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m1-5-lacuna-oac",
@@ -4588,8 +4520,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -4612,7 +4543,7 @@
                     "reconhece arquitetura híbrida como condição realista"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m2-1-tres-modos",
                       "position": 1,
@@ -4660,8 +4591,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m2-2-comparacao",
@@ -4714,8 +4644,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m2-3-arquitetura-hibrida",
@@ -4795,8 +4724,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m2-4-identificar-modo",
@@ -4877,8 +4805,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m2-5-erro-velocidade",
@@ -4931,8 +4858,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5015,7 +4941,7 @@
                     "interpreta |ψ⟩ = α|0⟩ + β|1⟩ como combinação de estados básicos"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m3-1-bit-qubit",
                       "position": 1,
@@ -5042,8 +4968,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m3-2-termos",
@@ -5092,8 +5017,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m3-3-formula",
@@ -5146,8 +5070,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m3-4-caso-estado",
@@ -5217,8 +5140,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m3-5-amplitude-resultado",
@@ -5271,8 +5193,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -5297,7 +5218,7 @@
                     "identifica que a medição produz 0 ou 1"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m4-1-regra-normalizacao",
                       "position": 1,
@@ -5324,8 +5245,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m4-2-lacuna",
@@ -5373,8 +5293,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m4-3-probabilidades",
@@ -5431,8 +5350,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m4-4-escolher-probabilidade",
@@ -5505,8 +5423,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m4-5-saida-classica",
@@ -5559,8 +5476,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5643,7 +5559,7 @@
                     "reconhece que portas transformam amplitudes"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m5-1-portas-papeis",
                       "position": 1,
@@ -5722,8 +5638,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m5-2-circuito-minimo",
@@ -5777,8 +5692,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m5-3-associar-porta",
@@ -5887,8 +5801,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m5-4-transformam-amplitudes",
@@ -5941,8 +5854,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m5-5-cnot",
@@ -5995,8 +5907,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -6022,7 +5933,7 @@
                     "reconhece que a saída medida é clássica"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m6-1-fluxo-geral",
                       "position": 1,
@@ -6080,8 +5991,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m6-2-etapas",
@@ -6134,8 +6044,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m6-3-ordem-correta",
@@ -6228,8 +6137,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m6-4-interferencia",
@@ -6282,8 +6190,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m6-5-saida",
@@ -6358,8 +6265,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -6444,7 +6350,7 @@
                     "relaciona modelo abstrato e realização física"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m7-1-arvore-modelos",
                       "position": 1,
@@ -6499,8 +6405,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m7-2-modelo-papel",
@@ -6593,8 +6498,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m7-3-identificar-von",
@@ -6674,8 +6578,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m7-4-modelo-nao-detalhe",
@@ -6728,8 +6631,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m7-5-medicoes",
@@ -6829,8 +6731,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -6856,7 +6757,7 @@
                     "entende Shor como exemplo conceitual"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m8-1-crescimentos",
                       "position": 1,
@@ -6900,8 +6801,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m8-2-bpp-bqp",
@@ -6950,8 +6850,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m8-3-interpretar-inclusao",
@@ -7004,8 +6903,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m8-4-shor",
@@ -7033,8 +6931,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m8-5-poliexp",
@@ -7087,8 +6984,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7173,7 +7069,7 @@
                     "reconhece por que a pergunta importa para computação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m9-1-interpretacoes",
                       "position": 1,
@@ -7217,8 +7113,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m9-2-associar-interpretacao",
@@ -7298,8 +7193,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m9-3-identificar-instrumental",
@@ -7352,8 +7246,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m9-4-estado-e-computacao",
@@ -7453,8 +7346,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m9-5-sem-resposta-unica",
@@ -7507,8 +7399,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -7535,7 +7426,7 @@
                     "entende por que a base preferida é problema para certas explicações"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m10-1-medicao-modelos",
                       "position": 1,
@@ -7614,8 +7505,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m10-2-base-pergunta",
@@ -7669,8 +7559,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m10-3-associar-verbo",
@@ -7779,8 +7668,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m10-4-base-preferida",
@@ -7833,8 +7721,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m10-5-saida-depende-pergunta",
@@ -7917,8 +7804,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -8006,7 +7892,7 @@
                     "identifica que emaranhamento é importante, mas não basta isoladamente"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m11-1-cautela",
                       "position": 1,
@@ -8033,8 +7919,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m11-2-rede-conceitos",
@@ -8118,8 +8003,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m11-3-grafo-critica",
@@ -8228,8 +8112,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m11-4-emaranhamento",
@@ -8282,8 +8165,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m11-5-lacuna",
@@ -8331,8 +8213,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -8359,7 +8240,7 @@
                     "sintetiza que arquitetura depende do suporte físico da informação"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-m12-1-limites",
                       "position": 1,
@@ -8407,8 +8288,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m12-2-gk-limites",
@@ -8488,8 +8368,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m12-3-gottesman",
@@ -8542,8 +8421,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m12-4-sintese-oac",
@@ -8626,8 +8504,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-m12-5-custo-real",
@@ -8754,8 +8631,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9167,7 +9043,7 @@
                     "calcula valor decimal de binário pequeno"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-notacao-regra-base",
                       "position": 1,
@@ -9194,8 +9070,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-notacao-pesos-binarios",
@@ -9245,8 +9120,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-notacao-base-binaria",
@@ -9299,8 +9173,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-notacao-pesos-ligados-1011",
@@ -9377,8 +9250,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-notacao-valor-1011",
@@ -9431,8 +9303,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-notacao-lacuna-binario",
@@ -9480,8 +9351,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-notacao-erro-peso",
@@ -9534,8 +9404,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -9560,7 +9429,7 @@
                     "evita ler restos na ordem errada"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-dec-bin-fluxo-13",
                       "position": 1,
@@ -9618,8 +9487,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-pesos",
@@ -9666,8 +9534,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-13",
@@ -9720,8 +9587,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-19",
@@ -9774,8 +9640,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-45-table",
@@ -9856,8 +9721,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-26",
@@ -9910,8 +9774,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-32",
@@ -9964,8 +9827,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-restos-22",
@@ -10058,8 +9920,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-dec-bin-erro-ordem-restos",
@@ -10112,8 +9973,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10138,7 +9998,7 @@
                     "converte bytes binários para hexadecimal"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-hex-regra",
                       "position": 1,
@@ -10165,8 +10025,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-tabela-4bits",
@@ -10263,8 +10122,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-quantos-bits",
@@ -10317,8 +10175,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-1111",
@@ -10371,8 +10228,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-1010",
@@ -10425,8 +10281,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-10101100",
@@ -10499,8 +10354,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-00111110",
@@ -10553,8 +10407,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hex-byte",
@@ -10602,8 +10455,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10624,7 +10476,7 @@
                     "calcula OR em linhas da tabela verdade"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-or-regra",
                       "position": 1,
@@ -10651,8 +10503,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-or-tabela-verdade",
@@ -10706,8 +10557,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-or-condicao-saida-1",
@@ -10760,8 +10610,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-or-00",
@@ -10814,8 +10663,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-or-01",
@@ -10868,8 +10716,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-or-11",
@@ -10922,8 +10769,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-or-linha-saida-zero",
@@ -11011,8 +10857,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -11033,7 +10878,7 @@
                     "reconhece dados e instruções na memória"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-cpu-regra",
                       "position": 1,
@@ -11060,8 +10905,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cpu-ciclo-flow",
@@ -11132,8 +10976,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cpu-papel",
@@ -11186,8 +11029,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cpu-ordem-ciclo",
@@ -11240,8 +11082,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cpu-von-neumann",
@@ -11294,8 +11135,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cpu-decode",
@@ -11348,8 +11188,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cpu-fluxo-lacuna",
@@ -11432,8 +11271,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -11459,7 +11297,7 @@
                     "diferencia IR, UC e registradores"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-componentes-mapa",
                       "position": 1,
@@ -11564,8 +11402,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-pc-funcao",
@@ -11618,8 +11455,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ula-funcao",
@@ -11672,8 +11508,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-ir-funcao",
@@ -11726,8 +11561,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-uc-funcao",
@@ -11780,8 +11614,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-componentes-relacao-pc",
@@ -11932,8 +11765,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-componentes-relacao-ula",
@@ -12084,8 +11916,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -12107,7 +11938,7 @@
                     "associa ARM/RISC à eficiência energética"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-risc-cisc-regra",
                       "position": 1,
@@ -12134,8 +11965,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-risc-cisc-tabela",
@@ -12189,8 +12019,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-risc-foco",
@@ -12243,8 +12072,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-risc-formato-fixo",
@@ -12297,8 +12125,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-risc-arm-energia",
@@ -12351,8 +12178,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-cisc-caracteristica",
@@ -12405,8 +12231,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-risc-lacuna-pipeline",
@@ -12454,8 +12279,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-risc-escolha-tabela",
@@ -12534,8 +12358,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -12560,7 +12383,7 @@
                     "identifica RAW"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-paralelismo-regra",
                       "position": 1,
@@ -12587,8 +12410,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-paralelismo-comparacao",
@@ -12637,8 +12459,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-raw-flow",
@@ -12692,8 +12513,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-clock-calor",
@@ -12746,8 +12566,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-superescalar-definicao",
@@ -12800,8 +12619,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-raw-definicao",
@@ -12854,8 +12672,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-superescalar-nao-multicore",
@@ -12908,8 +12725,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-raw-identificar-fluxo",
@@ -12992,8 +12808,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -13021,7 +12836,7 @@
                     "associa multicore a MIMD"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-flynn-regra",
                       "position": 1,
@@ -13048,8 +12863,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-tabela",
@@ -13108,8 +12922,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-mapa",
@@ -13202,8 +13015,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-criterios",
@@ -13256,8 +13068,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-multicore",
@@ -13310,8 +13121,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-gpu-simd",
@@ -13364,8 +13174,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-sisd",
@@ -13418,8 +13227,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-misd",
@@ -13472,8 +13280,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-flynn-desafio-mimd",
@@ -13526,8 +13333,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -13551,7 +13357,7 @@
                     "associa PCIe a GPU, rede rápida e SSD NVMe"
                   ],
                   "errors": [],
-                  "cards": [
+                  "studyUnits": [
                     {
                       "id": "card-hw-regra",
                       "position": 1,
@@ -13578,8 +13384,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-mapa",
@@ -13685,8 +13490,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-objetivo",
@@ -13739,8 +13543,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-direta-cpuid",
@@ -13793,8 +13596,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-indireta",
@@ -13847,8 +13649,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-cpuid-dados",
@@ -13901,8 +13702,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-pcie",
@@ -13955,8 +13755,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-classificar-metodo",
@@ -14031,8 +13830,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-hw-relacao-pcie",
@@ -14170,8 +13968,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

@@ -16,7 +16,6 @@ test("documentação pública possui links, índice e exemplos neutros", () => {
 function temporaryDocumentation() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-doc-audit-"));
   fs.mkdirSync(path.join(temporaryRoot, "docs", "nested"), { recursive: true });
-  fs.mkdirSync(path.join(temporaryRoot, "authoring", "platforms"), { recursive: true });
   fs.mkdirSync(path.join(temporaryRoot, "src", "ui"), { recursive: true });
   fs.writeFileSync(
     path.join(temporaryRoot, "README.md"),
@@ -49,6 +48,10 @@ function temporaryDocumentation() {
       "[Glossário técnico](glossario-tecnico.md)",
       "[Matriz de conformidade técnica](matriz-conformidade-tecnica.md)",
       "[Princípios editoriais](principios-editoriais.md)",
+      "[Estado corrente](estado-atual-e-roadmap.md)",
+      "[Cobertura da documentação](inventario-documentacao.md)",
+      "[Origens](origens-do-aralearn.md)",
+      "[Revisão de literatura](revisao-de-literatura.md)",
       "",
       "## Começar a usar",
       "",
@@ -74,12 +77,46 @@ function temporaryDocumentation() {
   );
   fs.writeFileSync(path.join(temporaryRoot, "docs", "principios-editoriais.md"), "# Princípios editoriais\n", "utf8");
   fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "estado-atual-e-roadmap.md"),
+    [
+      "# Estado corrente",
+      "",
+      "Evidência revista em 2026-08-17.",
+      "",
+      "| Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      "| Abrir conteúdo | sim | sim | aplicativo | teste | sim | sim | sim | manter |",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "inventario-documentacao.md"),
+    "# Cobertura da documentação\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "origens-do-aralearn.md"),
+    "# Origens\n\nMemória autobiográfica não é evidência de eficácia.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "revisao-de-literatura.md"),
+    "# Revisão de literatura\n\nRevisão narrativa com protocolo prospectivo.\n",
+    "utf8"
+  );
+  fs.mkdirSync(path.join(temporaryRoot, "docs", "evidence"), { recursive: true });
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "evidence", "registro-buscas-bibliograficas.csv"),
+    "registro_id,data_hora_utc,eixo,base_ou_indice,consulta_exata,filtros,registros_informados,duplicatas_removidas,titulos_resumos_avaliados,textos_em_integra_avaliados,incluidos,motivos_exclusao_texto_integral,versao_criterios,responsavel,observacoes\n",
+    "utf8"
+  );
+  fs.writeFileSync(
     path.join(temporaryRoot, "docs", "referencias.bib"),
     "@article{fonte2026,\n  title = {Fonte de teste},\n  year = {2026},\n  url = {https://example.org/fonte}\n}\n",
     "utf8"
   );
   fs.writeFileSync(path.join(temporaryRoot, "docs", "nested", "detalhe.md"), "# Detalhe\n", "utf8");
-  fs.writeFileSync(path.join(temporaryRoot, "authoring", "README.md"), "# Autoria\n", "utf8");
   return temporaryRoot;
 }
 
@@ -118,7 +155,7 @@ test("auditoria rejeita vocabulário de bastidor e integração antes da apresen
       "",
       "## Visão",
       "",
-      "Este texto foi escrito conforme solicitado na issue #42 para uma tese.",
+      "Este texto foi escrito conforme solicitado na issue #42 e produzido para esta tese.",
       ""
     ].join("\n"),
     "utf8"
@@ -127,8 +164,60 @@ test("auditoria rejeita vocabulário de bastidor e integração antes da apresen
   const errors = auditDocumentation({ root: temporaryRoot });
   assert.ok(errors.some((error) => error.includes("integração técnica aparece antes da apresentação do produto")));
   assert.ok(errors.some((error) => error.includes("referência a issue")));
-  assert.ok(errors.some((error) => error.includes("vocabulário de finalidade acadêmica")));
+  assert.ok(errors.some((error) => error.includes("justificativa autorreferente")));
   assert.ok(errors.some((error) => error.includes("referência ao processo de solicitação")));
+});
+
+test("auditoria aceita dissertação e tese em contexto metodológico legítimo", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.appendFileSync(
+    path.join(temporaryRoot, "docs", "guia.md"),
+    "\nDados exportados podem receber análise posterior em dissertação, tese ou artigo.\n",
+    "utf8"
+  );
+
+  assert.deepEqual(auditDocumentation({ root: temporaryRoot }), []);
+});
+
+test("auditoria rejeita checkpoint público e matriz de estado sem dimensão obrigatória", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "checkpoint-autoria-109.md"),
+    "# Checkpoint\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "estado-atual-e-roadmap.md"),
+    "# Estado corrente\n\n2026-08-17\n\n| Caso de uso | Existe |\n| --- | --- |\n",
+    "utf8"
+  );
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(errors.some((error) => error.includes("checkpoint de tarefa")));
+  assert.ok(errors.some((error) => error.includes("matriz corrente deve separar")));
+});
+
+test("auditoria valida log bibliográfico e acessibilidade dos visuais", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "evidence", "registro-buscas-bibliograficas.csv"),
+    "registro_id,data_hora_utc\nR1,ontem\n",
+    "utf8"
+  );
+  fs.appendFileSync(
+    path.join(temporaryRoot, "docs", "guia.md"),
+    "\n![](figura.png)\n\n```mermaid\nflowchart LR\nA --> B\n```\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(temporaryRoot, "docs", "figura.png"), "figura", "utf8");
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(errors.some((error) => error.includes("cabeçalho não implementa")));
+  assert.ok(errors.some((error) => error.includes("visual sem texto alternativo")));
+  assert.ok(errors.some((error) => error.includes("Mermaid sem descrição textual")));
 });
 
 test("auditoria valida chaves bibliográficas sem confundir texto entre citações", (context) => {
@@ -224,19 +313,16 @@ test("auditoria detecta afirmações factuais legadas em prosa autoral", (contex
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(
-    path.join(temporaryRoot, "authoring", "README.md"),
+    path.join(temporaryRoot, "docs", "guia.md"),
     [
-      "# Autoria",
+      "# Guia",
       "",
       "A assistência por API no aplicativo repara recursos selecionados, repara um",
       "card inteiro ou cria exatamente um card.",
+      "",
+      "Os cursos oficiais ficam uma única vez no banco compartilhado.",
       ""
     ].join("\n"),
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(temporaryRoot, "docs", "guia.md"),
-    "# Guia\n\nOs cursos oficiais ficam uma única vez\nno banco compartilhado.\n",
     "utf8"
   );
 
@@ -244,18 +330,18 @@ test("auditoria detecta afirmações factuais legadas em prosa autoral", (contex
   assert.ok(
     errors.some(
       (error) =>
-        error === "authoring/README.md:3: afirmação legada incorreta sobre a cardinalidade da assistência"
+        error === "docs/guia.md:3: afirmação legada incorreta sobre a cardinalidade da assistência"
     )
   );
   assert.ok(
     errors.some(
       (error) =>
-        error === "docs/guia.md:3: afirmação legada incorreta sobre o armazenamento dos cursos oficiais"
+        error === "docs/guia.md:6: afirmação legada incorreta sobre o armazenamento dos cursos oficiais"
     )
   );
 });
 
-test("auditoria não confunde histórico, material gerado ou literais com afirmações atuais", (context) => {
+test("auditoria não confunde histórico ou literais com afirmações atuais", (context) => {
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(
@@ -300,27 +386,19 @@ test("auditoria não confunde histórico, material gerado ou literais com afirma
     ].join("\n"),
     "utf8"
   );
-  const generatedDirectory = path.join(temporaryRoot, "docs", "downloads", "authoring");
-  fs.mkdirSync(generatedDirectory, { recursive: true });
-  fs.writeFileSync(
-    path.join(generatedDirectory, "aralearn-chatgpt-knowledge-core.md"),
-    "# Material gerado\n\nOs cursos oficiais ficam uma única vez no banco compartilhado.\n",
-    "utf8"
-  );
-
   assert.deepEqual(auditDocumentation({ root: temporaryRoot }), []);
 });
 
-test("auditoria percorre documentação e materiais de autoria aninhados", (context) => {
+test("auditoria percorre documentação aninhada", (context) => {
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(
-    path.join(temporaryRoot, "authoring", "platforms", "setup.md"),
-    "# Configuração\n\n[Ausente](../../missing.md)\n",
+    path.join(temporaryRoot, "docs", "nested", "setup.md"),
+    "# Configuração\n\n[Ausente](missing.md)\n",
     "utf8"
   );
   const errors = auditDocumentation({ root: temporaryRoot });
-  assert.ok(errors.some((error) => error.includes("authoring/platforms/setup.md:3: link inexistente")));
+  assert.ok(errors.some((error) => error.includes("docs/nested/setup.md:3: link inexistente")));
 });
 
 test("auditoria alcança texto de interface e fixture publicada não classificada", (context) => {

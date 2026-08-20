@@ -24,10 +24,16 @@ function combinations(ids) {
 }
 
 function vennModuleUrl() {
-  const stylesheet = [...document.styleSheets].find(({ href }) => href?.endsWith("/styles.css"));
-  return stylesheet?.href
-    ? new URL("vendor/venn.esm.js", stylesheet.href).href
-    : new URL("public/vendor/venn.esm.js", document.baseURI).href;
+  const stylesheet = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map((link) => link.href)
+    .find((href) => /(?:^|\/)styles\.css(?:$|[?#])/u.test(href));
+  if (!stylesheet) throw new Error("A folha de estilos do AraLearn não está disponível.");
+  const stylesheetUrl = new URL(stylesheet);
+  if (!["http:", "https:"].includes(stylesheetUrl.protocol) ||
+      stylesheetUrl.username || stylesheetUrl.password) {
+    throw new Error("A origem dos recursos visuais do AraLearn é inválida.");
+  }
+  return new URL("vendor/venn.esm.js", stylesheetUrl).href;
 }
 
 function loadVennModule() {
@@ -177,7 +183,7 @@ export const setDiagramPackage = Object.freeze({
     label: "Diagrama de conjuntos",
     purpose: "Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["inspect-intersection", "classify-membership", "compare-sets", "apply-set-operation"]),
+    taskOperations: Object.freeze(["inspect-intersection", "classify-membership", "compare-sets", "apply-set-operation"]),
     academic: academicProfile({
       domains: ["teoria dos conjuntos", "lógica", "probabilidade", "bancos de dados"],
       knowledgeObjects: ["conjunto", "interseção", "união", "complemento", "região"],
@@ -188,7 +194,7 @@ export const setDiagramPackage = Object.freeze({
       practiceModes: ["exposition", "gap", "typing", "selection", "classification"]
     }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
-    limitations: Object.freeze(["No máximo três conjuntos por card.", "Os contornos não codificam cardinalidade; números e itens pertencem à legenda ancorada por marcadores.", "Para mais de três conjuntos, use uma representação de interseções própria, como UpSet."]),
+    limitations: Object.freeze(["No máximo três conjuntos por Unidade de estudo.", "Os contornos não codificam cardinalidade; números e itens pertencem à legenda ancorada por marcadores.", "Para mais de três conjuntos, use uma representação de interseções própria, como UpSet."]),
     accessibility: "Cada marcador liga uma região visual a uma descrição textual completa; o desenho nunca é a única fonte de informação."
   }),
   authoringContract: Object.freeze({

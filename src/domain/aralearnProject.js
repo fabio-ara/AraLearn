@@ -1,8 +1,11 @@
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
-import { normalizeCardEnvelope, validateCardEnvelope } from "../resources/kernel/cardEnvelope.js";
+import {
+  normalizeStudyUnitEnvelope,
+  validateStudyUnitEnvelope
+} from "../resources/kernel/studyUnitEnvelope.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 
-export const PROJECT_CONTRACT = "aralearn.library.v1";
+export const PROJECT_CONTRACT = "aralearn.course.v1";
 export const PROJECT_VERSION = 1;
 
 const PROJECT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
@@ -25,8 +28,16 @@ const MICROSEQUENCE_FIELDS = new Set([
   "covers",
   "checks",
   "errors",
-  "cards"
+  "studyUnits"
 ]);
+
+const COURSE_ENTITY_CHILD_FIELDS = Object.freeze({
+  module: Object.freeze(["lessons"]),
+  lesson: Object.freeze(["topics", "microsequences"]),
+  topic: Object.freeze([]),
+  microsequence: Object.freeze(["studyUnits"]),
+  study_unit: Object.freeze([])
+});
 
 function hasOwn(value, fieldName) {
   return Object.prototype.hasOwnProperty.call(value, fieldName);
@@ -44,13 +55,39 @@ function rejectUnknownFields(value, allowedFields, path, errors) {
   });
 }
 
-function validateRequiredText(value, fieldName, path, errors, label = fieldName) {
+function hasInvalidControlCharacter(value, { allowLayoutWhitespace = false } = {}) {
+  return [...value].some((character) => {
+    const point = character.codePointAt(0);
+    if (point >= 127 && point <= 159) return true;
+    if (point >= 32) return false;
+    return !allowLayoutWhitespace || ![9, 10, 13].includes(point);
+  });
+}
+
+function validateRequiredText(
+  value,
+  fieldName,
+  path,
+  errors,
+  label = fieldName,
+  {
+    maximum = Number.POSITIVE_INFINITY,
+    rejectControls = false,
+    allowLayoutWhitespace = false
+  } = {}
+) {
   const fieldPath = `${path}.${fieldName}`;
   if (!hasOwn(value, fieldName) || typeof value[fieldName] !== "string" || !text(value[fieldName])) {
     pushError(errors, fieldPath, `${label} é obrigatório e deve ser texto não vazio.`);
     return "";
   }
-  return text(value[fieldName]);
+  const normalized = text(value[fieldName]);
+  if (normalized.length > maximum ||
+      (rejectControls && hasInvalidControlCharacter(normalized, { allowLayoutWhitespace }))) {
+    pushError(errors, fieldPath, `${label} excede o limite ou contém controle inválido.`);
+    return "";
+  }
+  return normalized;
 }
 
 function validateRequiredArray(value, fieldName, path, errors) {
@@ -112,25 +149,25 @@ function validateSiblingIds(items, path, errors, entityLabel) {
   });
 }
 
-function validateLessonCardIds(microsequences, path, errors) {
+function validateLessonStudyUnitIds(microsequences, path, errors) {
   const seen = new Set();
   microsequences.forEach((microsequence, microsequenceIndex) => {
-    if (!isPlainObject(microsequence) || !Array.isArray(microsequence.cards)) {
+    if (!isPlainObject(microsequence) || !Array.isArray(microsequence.studyUnits)) {
       return;
     }
-    microsequence.cards.forEach((card, cardIndex) => {
-      if (!isPlainObject(card)) {
+    microsequence.studyUnits.forEach((studyUnit, studyUnitIndex) => {
+      if (!isPlainObject(studyUnit)) {
         return;
       }
-      const id = text(card.id);
+      const id = text(studyUnit.id);
       if (!id) {
         return;
       }
       if (seen.has(id)) {
         pushError(
           errors,
-          `${path}[${microsequenceIndex}].cards[${cardIndex}].id`,
-          `id duplicado entre cards da lição: "${id}".`
+          `${path}[${microsequenceIndex}].studyUnits[${studyUnitIndex}].id`,
+          `id duplicado entre Unidades de estudo da lição: "${id}".`
         );
         return;
       }
@@ -243,9 +280,9 @@ function validateEntityIdsPerCourse(courses, errors) {
         lesson.microsequences.forEach((microsequence, microsequenceIndex) => {
           const microsequencePath = `${lessonPath}.microsequences[${microsequenceIndex}]`;
           register("microsequence", microsequence, microsequencePath);
-          if (!isPlainObject(microsequence) || !Array.isArray(microsequence.cards)) return;
-          microsequence.cards.forEach((card, cardIndex) => {
-            register("card", card, `${microsequencePath}.cards[${cardIndex}]`);
+          if (!isPlainObject(microsequence) || !Array.isArray(microsequence.studyUnits)) return;
+          microsequence.studyUnits.forEach((studyUnit, studyUnitIndex) => {
+            register("study_unit", studyUnit, `${microsequencePath}.studyUnits[${studyUnitIndex}]`);
           });
         });
       });
@@ -296,7 +333,14 @@ function validateMicrosequence(microsequence, path, errors) {
   }
   rejectUnknownFields(microsequence, MICROSEQUENCE_FIELDS, path, errors);
   const id = validateRequiredText(microsequence, "id", path, errors, "microsequence.id");
-  const title = validateRequiredText(microsequence, "title", path, errors, "microsequence.title");
+  const title = validateRequiredText(
+    microsequence,
+    "title",
+    path,
+    errors,
+    "microsequence.title",
+    { maximum: 300, rejectControls: true, allowLayoutWhitespace: true }
+  );
   const goal = validateRequiredText(microsequence, "goal", path, errors, "microsequence.goal");
   const role = validateRequiredText(microsequence, "role", path, errors, "microsequence.role");
   if (role && !MICROSEQUENCE_ROLES.has(role)) {
@@ -311,19 +355,19 @@ function validateMicrosequence(microsequence, path, errors) {
     }
   }
 
-  const cardInputs = validateRequiredArray(microsequence, "cards", path, errors);
-  const cards = cardInputs
-    .map((card, index) => {
-      const cardPath = `${path}.cards[${index}]`;
-      if (isPlainObject(card)) {
-        validateRequiredText(card, "id", cardPath, errors, "card.id");
+  const studyUnitInputs = validateRequiredArray(microsequence, "studyUnits", path, errors);
+  const studyUnits = studyUnitInputs
+    .map((studyUnit, index) => {
+      const studyUnitPath = `${path}.studyUnits[${index}]`;
+      if (isPlainObject(studyUnit)) {
+        validateRequiredText(studyUnit, "id", studyUnitPath, errors, "study_unit.id");
       }
-      const result = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, cardPath);
+      const result = validateStudyUnitEnvelope(studyUnit, RESOURCE_PACKAGE_REGISTRY, studyUnitPath);
       if (!result.valid) {
-        result.errors.forEach((message) => pushError(errors, cardPath, message));
+        result.errors.forEach((message) => pushError(errors, studyUnitPath, message));
         return null;
       }
-      return normalizeCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+      return normalizeStudyUnitEnvelope(studyUnit, RESOURCE_PACKAGE_REGISTRY);
     })
     .filter(Boolean);
 
@@ -337,7 +381,7 @@ function validateMicrosequence(microsequence, path, errors) {
     covers: validateStringList(microsequence, "covers", path, errors),
     checks: validateStringList(microsequence, "checks", path, errors),
     errors: validateStringList(microsequence, "errors", path, errors, { required: false }),
-    cards
+    studyUnits
   };
 }
 
@@ -351,11 +395,15 @@ function validateLesson(lesson, path, errors) {
   const microsequencesInput = validateRequiredArray(lesson, "microsequences", path, errors);
   validateSiblingIds(topicsInput, `${path}.topics`, errors, "topics da lição");
   validateSiblingIds(microsequencesInput, `${path}.microsequences`, errors, "microssequências da lição");
-  validateLessonCardIds(microsequencesInput, `${path}.microsequences`, errors);
+  validateLessonStudyUnitIds(microsequencesInput, `${path}.microsequences`, errors);
   validateLessonDependencies(microsequencesInput, `${path}.microsequences`, errors);
   return {
     id: validateRequiredText(lesson, "id", path, errors, "lesson.id"),
-    title: validateRequiredText(lesson, "title", path, errors, "lesson.title"),
+    title: validateRequiredText(lesson, "title", path, errors, "lesson.title", {
+      maximum: 300,
+      rejectControls: true,
+      allowLayoutWhitespace: true
+    }),
     guide: validateGuide(lesson.guide, `${path}.guide`, errors),
     topics: topicsInput
       .map((topic, index) => validateTopic(topic, `${path}.topics[${index}]`, errors))
@@ -376,7 +424,11 @@ function validateModule(moduleValue, path, errors) {
   validateSiblingIds(lessonsInput, `${path}.lessons`, errors, "lições do módulo");
   return {
     id: validateRequiredText(moduleValue, "id", path, errors, "module.id"),
-    title: validateRequiredText(moduleValue, "title", path, errors, "module.title"),
+    title: validateRequiredText(moduleValue, "title", path, errors, "module.title", {
+      maximum: 300,
+      rejectControls: true,
+      allowLayoutWhitespace: true
+    }),
     guide: validateGuide(moduleValue.guide, `${path}.guide`, errors),
     lessons: lessonsInput
       .map((lesson, index) => validateLesson(lesson, `${path}.lessons[${index}]`, errors))
@@ -394,12 +446,75 @@ function validateCourse(course, path, errors) {
   validateSiblingIds(modulesInput, `${path}.modules`, errors, "módulos do curso");
   return {
     id: validateRequiredText(course, "id", path, errors, "course.id"),
-    title: validateRequiredText(course, "title", path, errors, "course.title"),
+    title: validateRequiredText(course, "title", path, errors, "course.title", {
+      maximum: 300,
+      rejectControls: true,
+      allowLayoutWhitespace: true
+    }),
     goal: validateRequiredText(course, "goal", path, errors, "course.goal"),
     modules: modulesInput
       .map((moduleValue, index) => validateModule(moduleValue, `${path}.modules[${index}]`, errors))
       .filter(Boolean)
   };
+}
+
+export function validateCourseEntityContent(entityType, entity) {
+  const errors = [];
+  const path = "$";
+  const childFields = Object.hasOwn(COURSE_ENTITY_CHILD_FIELDS, entityType)
+    ? COURSE_ENTITY_CHILD_FIELDS[entityType]
+    : null;
+  if (!childFields) {
+    pushError(errors, `${path}.entityType`, `entityType inválido: "${text(entityType)}".`);
+    return { valid: false, errors, normalized: null };
+  }
+  if (!isPlainObject(entity)) {
+    pushError(errors, path, "Entidade do Curso deve ser objeto.");
+    return { valid: false, errors, normalized: null };
+  }
+
+  const position = Number(entity.position);
+  const minimumPosition = entityType === "study_unit" ? 1 : 0;
+  if (!Number.isSafeInteger(position) || position < minimumPosition) {
+    pushError(errors, `${path}.position`, "position precisa ser um inteiro válido para o tipo da entidade.");
+  }
+  childFields.forEach((fieldName) => {
+    if (hasOwn(entity, fieldName)) {
+      pushError(errors, `${path}.${fieldName}`, `${fieldName} pertence à relação, não ao conteúdo da entidade.`);
+    }
+  });
+
+  const candidate = { ...entity };
+  if (entityType !== "study_unit") delete candidate.position;
+  childFields.forEach((fieldName) => {
+    candidate[fieldName] = [];
+  });
+
+  let normalized = null;
+  if (entityType === "module") {
+    normalized = validateModule(candidate, path, errors);
+  } else if (entityType === "lesson") {
+    normalized = validateLesson(candidate, path, errors);
+  } else if (entityType === "topic") {
+    normalized = validateTopic(candidate, path, errors);
+  } else if (entityType === "microsequence") {
+    normalized = validateMicrosequence(candidate, path, errors);
+  } else {
+    const validation = validateStudyUnitEnvelope(candidate, RESOURCE_PACKAGE_REGISTRY, path);
+    if (!validation.valid) {
+      validation.errors.forEach((message) => pushError(errors, path, message));
+    } else {
+      normalized = normalizeStudyUnitEnvelope(candidate, RESOURCE_PACKAGE_REGISTRY);
+    }
+  }
+
+  if (errors.length || !normalized) {
+    return { valid: false, errors, normalized: null };
+  }
+  const relationFree = { ...normalized };
+  childFields.forEach((fieldName) => delete relationFree[fieldName]);
+  if (entityType !== "study_unit") relationFree.position = position;
+  return { valid: true, errors: [], normalized: relationFree };
 }
 
 export function validateProjectDocument(document) {

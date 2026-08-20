@@ -82,18 +82,18 @@ const STRUCTURE_RECORDS = [
   { id: "structure.response_order", label: "Reconstrução de ordem", aliases: ["ordenação", "ordem de itens", "sequência reconstruída"] }
 ];
 
-const OPERATION_RECORDS = [
-  { id: "operation.explain", label: "Explicar e situar", aliases: ["explicar", "situar", "exemplificar"] },
-  { id: "operation.identify", label: "Identificar e localizar", aliases: ["identificar", "localizar", "reconhecer", "inspecionar"] },
-  { id: "operation.compare", label: "Comparar e contrastar", aliases: ["comparar", "contrastar", "distinguir"] },
-  { id: "operation.trace", label: "Acompanhar e percorrer", aliases: ["acompanhar", "percorrer", "rastrear", "prever caminho"] },
-  { id: "operation.calculate", label: "Calcular e avaliar", aliases: ["calcular", "avaliar", "balancear"] },
-  { id: "operation.transform", label: "Transformar e reconstruir", aliases: ["transformar", "derivar", "normalizar", "reconstruir"] },
-  { id: "operation.classify", label: "Classificar e associar", aliases: ["classificar", "associar", "mapear", "encaixar"] },
-  { id: "operation.recall", label: "Recordar e completar", aliases: ["recordar", "recuperar", "completar"] },
-  { id: "operation.decide", label: "Decidir e discriminar", aliases: ["decidir", "selecionar", "discriminar", "diagnosticar"] },
-  { id: "operation.order", label: "Ordenar e sequenciar", aliases: ["ordenar", "sequenciar"] },
-  { id: "operation.annotate", label: "Anotar e rotular", aliases: ["anotar", "rotular", "conectar evidência"] }
+const TASK_OPERATION_RECORDS = [
+  { id: "task_operation.explain", label: "Explicar e situar", aliases: ["explicar", "situar", "exemplificar"] },
+  { id: "task_operation.identify", label: "Identificar e localizar", aliases: ["identificar", "localizar", "reconhecer", "inspecionar"] },
+  { id: "task_operation.compare", label: "Comparar e contrastar", aliases: ["comparar", "contrastar", "distinguir"] },
+  { id: "task_operation.trace", label: "Acompanhar e percorrer", aliases: ["acompanhar", "percorrer", "rastrear", "prever caminho"] },
+  { id: "task_operation.calculate", label: "Calcular e avaliar", aliases: ["calcular", "avaliar", "balancear"] },
+  { id: "task_operation.transform", label: "Transformar e reconstruir", aliases: ["transformar", "derivar", "normalizar", "reconstruir"] },
+  { id: "task_operation.classify", label: "Classificar e associar", aliases: ["classificar", "associar", "mapear", "encaixar"] },
+  { id: "task_operation.recall", label: "Recordar e completar", aliases: ["recordar", "recuperar", "completar"] },
+  { id: "task_operation.decide", label: "Decidir e discriminar", aliases: ["decidir", "selecionar", "discriminar", "diagnosticar"] },
+  { id: "task_operation.order", label: "Ordenar e sequenciar", aliases: ["ordenar", "sequenciar"] },
+  { id: "task_operation.annotate", label: "Anotar e rotular", aliases: ["anotar", "rotular", "conectar evidência"] }
 ];
 
 const PRACTICE_MODE_RECORDS = [
@@ -125,7 +125,7 @@ export const RESOURCE_FAMILIES = freezeRecords(FAMILY_RECORDS);
 export const RESOURCE_VOCABULARIES = Object.freeze({
   disciplines: freezeRecords(DISCIPLINE_RECORDS),
   structures: freezeRecords(STRUCTURE_RECORDS),
-  operations: freezeRecords(OPERATION_RECORDS),
+  taskOperations: freezeRecords(TASK_OPERATION_RECORDS),
   practiceModes: freezeRecords(PRACTICE_MODE_RECORDS)
 });
 
@@ -149,24 +149,24 @@ export function controlledVocabularyIds(kind, values = []) {
   }).map(({ id }) => id);
 }
 
-function operationIds(cognitiveOperations) {
-  const values = (Array.isArray(cognitiveOperations) ? cognitiveOperations : [])
+function taskOperationIds(taskOperations) {
+  const values = (Array.isArray(taskOperations) ? taskOperations : [])
     .flatMap((value) => String(value).split(/[-_]/u));
-  const direct = controlledVocabularyIds("operations", values);
+  const direct = controlledVocabularyIds("taskOperations", values);
   const prefixRules = [
-    [/^(?:explain|situate|exemplify)/u, "operation.explain"],
-    [/^(?:identify|interpret|locate|recognize|inspect|lookup|read)/u, "operation.identify"],
-    [/^(?:compare|contrast|distinguish)/u, "operation.compare"],
-    [/^(?:trace|predict|relate)/u, "operation.trace"],
-    [/^(?:calculate|evaluate|balance|test)/u, "operation.calculate"],
-    [/^(?:transform|derive|normalize|reconstruct)/u, "operation.transform"],
-    [/^(?:classify|associate|map|match)/u, "operation.classify"],
-    [/^(?:recall|complete)/u, "operation.recall"],
-    [/^(?:decide|select|discriminate|diagnose)/u, "operation.decide"],
-    [/^(?:order|sequence)/u, "operation.order"],
-    [/^(?:annotate|label|connect)/u, "operation.annotate"]
+    [/^(?:explain|situate|exemplify)/u, "task_operation.explain"],
+    [/^(?:identify|interpret|locate|recognize|inspect|lookup|read)/u, "task_operation.identify"],
+    [/^(?:compare|contrast|distinguish)/u, "task_operation.compare"],
+    [/^(?:trace|predict|relate)/u, "task_operation.trace"],
+    [/^(?:calculate|evaluate|balance|test)/u, "task_operation.calculate"],
+    [/^(?:transform|derive|normalize|reconstruct)/u, "task_operation.transform"],
+    [/^(?:classify|associate|map|match)/u, "task_operation.classify"],
+    [/^(?:recall|complete)/u, "task_operation.recall"],
+    [/^(?:decide|select|discriminate|diagnose)/u, "task_operation.decide"],
+    [/^(?:order|sequence)/u, "task_operation.order"],
+    [/^(?:annotate|label|connect)/u, "task_operation.annotate"]
   ];
-  for (const value of cognitiveOperations || []) {
+  for (const value of taskOperations || []) {
     for (const [pattern, id] of prefixRules) {
       if (pattern.test(String(value))) direct.push(id);
     }
@@ -202,7 +202,7 @@ export function inferAcademicTaxonomy({
   domains = [],
   knowledgeObjects = [],
   conventions = [],
-  cognitiveOperations = [],
+  taskOperations = [],
   practiceModes = [],
   taxonomy = {}
 } = {}) {
@@ -212,9 +212,9 @@ export function inferAcademicTaxonomy({
   const structureIds = taxonomy.structureIds?.length
     ? [...taxonomy.structureIds]
     : controlledVocabularyIds("structures", [...knowledgeObjects, ...conventions]);
-  const resolvedOperationIds = taxonomy.operationIds?.length
-    ? [...taxonomy.operationIds]
-    : operationIds(cognitiveOperations);
+  const resolvedTaskOperationIds = taxonomy.taskOperationIds?.length
+    ? [...taxonomy.taskOperationIds]
+    : taskOperationIds(taskOperations);
   const practiceModeIds = taxonomy.practiceModeIds?.length
     ? [...taxonomy.practiceModeIds]
     : controlledVocabularyIds("practiceModes", practiceModes);
@@ -231,7 +231,7 @@ export function inferAcademicTaxonomy({
     ])]),
     disciplineIds: Object.freeze([...new Set(disciplineIds)]),
     structureIds: Object.freeze([...new Set(structureIds)]),
-    operationIds: Object.freeze([...new Set(resolvedOperationIds)]),
+    taskOperationIds: Object.freeze([...new Set(resolvedTaskOperationIds)]),
     practiceModeIds: Object.freeze([...new Set(practiceModeIds)]),
     specificity: taxonomy.specificity || (
       domains.includes("transversal") || domains.length >= 4 ? "versatile" : "disciplinary"

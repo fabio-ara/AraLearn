@@ -18,7 +18,7 @@ export function academicProfile({
   avoidWhen,
   technologies,
   practiceModes,
-  cognitiveOperations = [],
+  taskOperations = [],
   taxonomy = {}
 }) {
   const preservedStructure = freezeTextList(conventions);
@@ -36,7 +36,7 @@ export function academicProfile({
       domains,
       knowledgeObjects,
       conventions,
-      cognitiveOperations,
+      taskOperations,
       practiceModes,
       taxonomy
     }),

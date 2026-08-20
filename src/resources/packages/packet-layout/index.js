@@ -48,7 +48,7 @@ export const packetLayoutPackage = Object.freeze({
     label: "Layout de pacote",
     purpose: "Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["locate-field", "calculate-offset", "interpret-header", "compare-width"]),
+    taskOperations: Object.freeze(["locate-field", "calculate-offset", "interpret-header", "compare-width"]),
     academic: academicProfile({
       domains: ["redes de computadores", "organização de computadores", "sistemas embarcados"],
       knowledgeObjects: ["cabeçalho de protocolo", "campo de bits", "offset", "palavra"],

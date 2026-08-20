@@ -20,7 +20,7 @@ function exampleInstance(packageId, slot, id) {
   }, slot);
 }
 
-function auditedPracticeCard() {
+function auditedPracticeStudyUnit() {
   return {
     id: "catalog-audit-card",
     position: 1,
@@ -29,8 +29,7 @@ function auditedPracticeCard() {
     content: [exampleInstance("aralearn.resource.chart", "content", "chart-content")],
     response: exampleInstance("aralearn.response.choice", "response", "choice-response"),
     feedback: [exampleInstance("aralearn.resource.paragraph", "feedback", "feedback-text")],
-    topics: ["tendência"],
-    sources: []
+    topics: ["tendência"]
   };
 }
 
@@ -49,13 +48,13 @@ test("catálogo organiza todo package em sete famílias canônicas e facetas con
     familyIds: new Set(RESOURCE_FAMILIES.map(({ id }) => id)),
     disciplineIds: new Set(RESOURCE_VOCABULARIES.disciplines.map(({ id }) => id)),
     structureIds: new Set(RESOURCE_VOCABULARIES.structures.map(({ id }) => id)),
-    operationIds: new Set(RESOURCE_VOCABULARIES.operations.map(({ id }) => id)),
+    taskOperationIds: new Set(RESOURCE_VOCABULARIES.taskOperations.map(({ id }) => id)),
     practiceModeIds: new Set(RESOURCE_VOCABULARIES.practiceModes.map(({ id }) => id))
   };
   manifests.forEach((manifest) => {
     const profile = RESOURCE_CATALOG.getProfile(manifest.id, manifest.version);
     assert.ok(profile, manifest.id);
-    assert.ok(manifest.academic.taxonomy.operationIds.length, manifest.id);
+    assert.ok(manifest.academic.taxonomy.taskOperationIds.length, manifest.id);
     assert.equal(profile.familyIds.includes(profile.primaryFamilyId), true, manifest.id);
     for (const [field, ids] of Object.entries(allowed)) {
       assert.equal(profile[field].every((id) => ids.has(id)), true, `${manifest.id}: ${field}`);
@@ -68,7 +67,7 @@ test("busca distingue uso canônico, versátil e substitutivo sem bloquear", () 
     query: "topologia de rede",
     disciplineIds: ["discipline.engineering"],
     structureIds: ["structure.network_topology"],
-    operationIds: ["operation.trace"]
+    taskOperationIds: ["task_operation.trace"]
   });
   assert.equal(canonical.coverage.status, "canonical");
   assert.equal(canonical.coverage.chatDisclosure, null);
@@ -125,7 +124,7 @@ test("versão do catálogo incorpora perfis, vocabulários e política", () => {
   assert.notEqual(RESOURCE_CATALOG.catalogVersion, formerIdentityOnlyVersion);
 });
 
-test("inspeção e contratos em lote mantêm limites e ausência item a item", () => {
+test("inspeção em lote e contrato exato mantêm os limites progressivos", () => {
   const inspected = RESOURCE_CATALOG.inspect([
     { packageId: "aralearn.resource.chart" },
     { packageId: "aralearn.resource.inexistente" }
@@ -134,38 +133,31 @@ test("inspeção e contratos em lote mantêm limites e ausência item a item", (
   assert.equal(inspected.items[1].status, "not_found");
 
   const contracts = RESOURCE_CATALOG.contracts([
-    { packageId: "aralearn.resource.paragraph" },
-    { packageId: "aralearn.resource.chart" },
-    { packageId: "aralearn.response.choice" },
-    { packageId: "aralearn.resource.inexistente" }
+    { packageId: "aralearn.resource.paragraph" }
   ]);
-  assert.equal(contracts.items.length, 4);
+  assert.equal(contracts.items.length, 1);
   assert.equal(contracts.items[0].definition.schema.type, "object");
-  assert.equal(contracts.items[3].status, "not_found");
   assert.throws(() => RESOURCE_CATALOG.contracts([
     "aralearn.resource.paragraph",
-    "aralearn.resource.chart",
-    "aralearn.response.choice",
-    "aralearn.response.gap",
-    "aralearn.response.ordering"
-  ]), /entre 1 e 4/u);
+    "aralearn.resource.chart"
+  ]), /precisa ser 1/u);
 });
 
-test("validação e auditoria separam conteúdo, resposta e feedback sem simular prévia", () => {
-  const card = auditedPracticeCard();
-  const validation = RESOURCE_CATALOG.validateCard(card);
+test("validação e auditoria separam slots e entregam a prévia ao renderer canônico", () => {
+  const studyUnit = auditedPracticeStudyUnit();
+  const validation = RESOURCE_CATALOG.validateStudyUnit(studyUnit);
   assert.equal(validation.valid, true, validation.errors.join(" "));
   assert.deepEqual(validation.composition.map(({ slot }) => slot), [
     "content", "response", "feedback"
   ]);
 
   const audit = RESOURCE_CATALOG.auditRepresentation({
-    card,
+    studyUnit,
     intent: {
       query: "gráfico estatístico de tendência",
       disciplineIds: ["discipline.statistics"],
       structureIds: ["structure.quantitative_series"],
-      operationIds: ["operation.compare"],
+      taskOperationIds: ["task_operation.compare"],
       practiceModeIds: ["practice.selection"]
     }
   });
@@ -176,29 +168,30 @@ test("validação e auditoria separam conteúdo, resposta e feedback sem simular
   ]);
   assert.ok(audit.accessibleText);
   assert.deepEqual(audit.visualPreview, {
-    rendered: false,
-    reason: "A auditoria do catálogo não executa layout, hidratação nem captura visual."
+    mode: "client_renderer",
+    description: "O cliente pode abrir esta Unidade com o mesmo renderer usado no Estudo."
   });
 
-  const preview = RESOURCE_CATALOG.previewDescriptor(card);
-  assert.equal(preview.rendered, false);
+  const preview = RESOURCE_CATALOG.previewStudyUnitDescriptor(studyUnit);
   assert.equal(preview.structural.valid, true);
-  assert.match(preview.reason, /renderer do aplicativo/u);
+  assert.equal(preview.previewMode, "client_renderer");
+  assert.deepEqual(preview.studyUnit, studyUnit);
+  assert.ok(preview.accessibleText);
 });
 
-test("auditoria nunca aprova semanticamente um card estruturalmente inválido", () => {
-  const card = auditedPracticeCard();
-  card.content[0].data = {};
+test("auditoria nunca aprova semanticamente uma Unidade de estudo estruturalmente inválida", () => {
+  const studyUnit = auditedPracticeStudyUnit();
+  studyUnit.content[0].data = {};
   const audit = RESOURCE_CATALOG.auditRepresentation({
-    card,
+    studyUnit,
     intent: {
       structureIds: ["structure.quantitative_series"],
-      operationIds: ["operation.compare"]
+      taskOperationIds: ["task_operation.compare"]
     }
   });
   assert.equal(audit.structural.valid, false);
   assert.equal(audit.overallFit, "substitute");
   assert.equal(audit.selections[0].fit, "substitute");
   assert.ok(audit.selections[0].missing.includes("contract:content"));
-  assert.match(audit.warnings[0], /estruturalmente inválido/u);
+  assert.match(audit.warnings[0], /estruturalmente inválida/u);
 });
