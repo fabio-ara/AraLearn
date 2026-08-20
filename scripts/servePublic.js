@@ -39,6 +39,15 @@ if (runtimeConfigUrl === PUBLISHED_RUNTIME_CONFIG_URL && port !== 4182) {
 const artifactMode = Boolean(requestedRoot);
 const serverRoot = artifactMode ? path.resolve(repoRoot, requestedRoot) : repoRoot;
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
+const ARTIFACT_FILE_CACHE = new Map();
+const TRANSIENT_FILE_READ_CODES = new Set([
+  "EACCES",
+  "EBUSY",
+  "EMFILE",
+  "ENFILE",
+  "EPERM"
+]);
+const STATIC_FILE_READ_ATTEMPTS = 4;
 
 async function loadPublicRuntimeConfig(url) {
   let parsedUrl;
@@ -98,12 +107,22 @@ function safeResolve(requestPath) {
 }
 
 async function tryReadFile(absolutePath) {
-  try {
-    const data = await fs.readFile(absolutePath);
-    return data;
-  } catch {
-    return null;
+  if (artifactMode && ARTIFACT_FILE_CACHE.has(absolutePath)) {
+    return ARTIFACT_FILE_CACHE.get(absolutePath);
   }
+  for (let attempt = 0; attempt < STATIC_FILE_READ_ATTEMPTS; attempt += 1) {
+    try {
+      const data = await fs.readFile(absolutePath);
+      if (artifactMode) ARTIFACT_FILE_CACHE.set(absolutePath, data);
+      return data;
+    } catch (error) {
+      if (error?.code === "ENOENT") return null;
+      const transient = TRANSIENT_FILE_READ_CODES.has(String(error?.code || ""));
+      if (!transient || attempt === STATIC_FILE_READ_ATTEMPTS - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 20 * (attempt + 1)));
+    }
+  }
+  return null;
 }
 
 function developmentConfig() {
@@ -187,13 +206,18 @@ const server = http.createServer(async (req, res) => {
     });
     res.end(data);
   } catch (error) {
+    const code = String(error?.code || "").trim();
+    const requestPath = String(req.url || "/").split("?")[0];
+    console.error(
+      `Falha ao servir ${requestPath}${code ? ` (${code})` : ""}.`
+    );
     res.writeHead(500, {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
       Pragma: "no-cache",
       Expires: "0"
     });
-    res.end("Erro interno: " + String(error && error.message ? error.message : error));
+    res.end("Erro interno ao ler o artefato.");
   }
 });
 
