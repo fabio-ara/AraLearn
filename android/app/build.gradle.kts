@@ -32,7 +32,6 @@ val historicalSigningIsReady =
     historicalDebugKeystoreFile.isFile
 val supabaseUrl = System.getenv("ARALEARN_SUPABASE_URL")?.trim().orEmpty()
 val supabasePublishableKey = System.getenv("ARALEARN_SUPABASE_PUBLISHABLE_KEY")?.trim().orEmpty()
-val assistAllowedOrigins = System.getenv("ARALEARN_ASSIST_ALLOWED_ORIGINS")?.trim().orEmpty()
 
 val stageWebRuntime by tasks.registering(Exec::class) {
     val stagingScript = File(webProjectDir, "scripts/stageWebRuntime.mjs")
@@ -50,13 +49,6 @@ val stageWebRuntime by tasks.registering(Exec::class) {
     inputs.dir(File(webProjectDir, "src"))
     inputs.property("ARALEARN_SUPABASE_URL", supabaseUrl)
     inputs.property("ARALEARN_SUPABASE_PUBLISHABLE_KEY", supabasePublishableKey)
-    inputs.property("ARALEARN_ASSIST_ALLOWED_ORIGINS", assistAllowedOrigins)
-    inputs.dir(File(webProjectDir, "docs/downloads/authoring"))
-    inputs.files(
-        File(webProjectDir, "node_modules/pdfjs-dist/build/pdf.mjs"),
-        File(webProjectDir, "node_modules/pdfjs-dist/build/pdf.worker.mjs"),
-        File(webProjectDir, "node_modules/mammoth/mammoth.browser.js")
-    )
     outputs.dir(generatedWebAssetsRoot)
 }
 
@@ -68,8 +60,8 @@ android {
         applicationId = "com.aralearn.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 168
-        versionName = "0.0.22"
+        versionCode = 169
+        versionName = "0.0.23"
     }
 
     signingConfigs {

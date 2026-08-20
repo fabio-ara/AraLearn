@@ -1,302 +1,282 @@
 # Criar e desenvolver Cursos por conversa
 
-Este guia descreve o fluxo corrente de Autoria por um cliente conectado ao
-Model Context Protocol (MCP). A conversa e a interface visual operam o mesmo
-Curso vivo. Não existe uma cópia “do assistente”, um Workspace intermediário
-ou uma publicação paralela.
+Este guia apresenta a Autoria por um cliente conectado ao Model Context
+Protocol (MCP). A conversa e a interface visual trabalham sobre o mesmo Curso.
+O cliente traduz a intenção expressa em linguagem natural para leituras e
+operações delimitadas, enquanto o AraLearn verifica propriedade, revisões,
+contratos e relações antes de confirmar uma mudança.
 
-## O que já funciona
+## Antes de começar
 
-Com uma conta autorizada, o cliente pode:
-
-- listar, ler e criar Cursos próprios;
-- editar o plano instrucional e suas Partes;
-- configurar parâmetros pedagógicos, orientações por escopo e política de
-  componentes;
-- criar, revisar e aposentar Fontes e Âncoras e atribuí-las a itens do plano ou
-  Unidades;
-- incluir, alterar ou excluir entidades didáticas em lotes delimitados;
-- iniciar, retomar e concluir a materialização de uma Parte;
-- ler, criar e triar Anotações ancoradas;
-- auditar uma Unidade, registrar e decidir achados, propor/aplicar uma correção
-  focal, verificar o resultado numa nova rodada e executar rollback;
-- consultar e validar contratos de componentes;
-- gerir perfil e acesso direto ao Estudo.
-
-Variantes experimentais e analytics educacionais completos não estão
-disponíveis. A conversa pode discuti-los, mas não deve afirmar que os persistiu
-sem uma operação correspondente.
-
-## Antes da primeira conversa
-
-1. Conecte o endpoint MCP do ambiente correto.
-2. Autorize uma conta individual por OAuth.
-3. Confirme que o cliente descobriu seis ferramentas e o recurso
+1. Conecte o endereço MCP do ambiente do AraLearn.
+2. Autorize sua conta individual por OAuth.
+3. Confirme a descoberta das seis ferramentas e do recurso
    `aralearn://authoring/invariants`.
-4. Leia o Curso e a projeção necessária antes de qualquer alteração.
+4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
+   propor alterações.
 
-A conta nunca recebe uma chave administrativa. O servidor confere propriedade
-em cada operação de Autoria.
+A conta conectada conserva as mesmas permissões do AraLearn. A Autoria por
+conversa exige que a pessoa seja proprietária do Curso; uma pessoa com acesso
+direto ao Estudo continua limitada ao estudo.
 
-## Começar pelo problema educacional
+## Apresentar o problema educacional
 
-No primeiro pedido, descreva em linguagem natural:
+Um bom primeiro pedido informa:
 
 - quem deverá aprender;
-- o que deverá conseguir compreender ou fazer;
+- o que deverá compreender ou conseguir fazer;
 - conhecimentos prévios relevantes;
-- conteúdo ou fontes disponíveis;
-- restrições reais de tempo, linguagem ou acessibilidade;
-- dúvidas que ainda exigem decisão humana.
+- conteúdo e Fontes disponíveis;
+- restrições de tempo, idioma, dispositivo ou acessibilidade;
+- decisões que ainda precisam de julgamento humano.
 
-Essas informações orientam o planejamento. Elas não justificam inventar
-fontes, resultados de aprendizagem, valores de parâmetros ou eficácia que não
-foram demonstrados.
+Esses elementos dão base ao planejamento. Quando faltar informação, o cliente
+deve explicitar a lacuna ou pedir esclarecimento, em vez de inventar Fonte,
+resultado de aprendizagem, valor de parâmetro ou alegação de eficácia.
 
 ## Localizar ou criar o Curso
 
-Peça ao cliente para procurar pelo título. Ele deve usar `listarCursos` e, se
-houver homônimos, apresentar contexto suficiente para a escolha.
+Peça ao cliente que procure pelo título com `listarCursos`. Diante de homônimos,
+ele deve apresentar título, objetivo e revisão suficientes para uma escolha
+segura.
 
 Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título e
-objetivo. A operação usa um `requestId` estável: repetir a mesma intenção após
-uma resposta perdida não produz duplicatas.
+objetivo. A operação usa um `requestId`, que permite recuperar o mesmo resultado
+quando uma resposta de rede se perde. O Curso criado possui uma única identidade
+para Autoria, Pesquisa, Estudo e MCP.
 
-Não há Workspace, Coleção, Trilha ou estágio de publicação a escolher. O Curso
-criado é a mesma identidade aberta em Autoria e Estudo.
+## Planejar por Partes
 
-## Planejar sem duplicar autoridades
-
-Use `lerCurso` com a vista `instructional_plan`. O plano conserva:
+Use `lerCurso` com `view: "instructional_plan"`. O plano reúne:
 
 - público e escopo;
 - resultados de aprendizagem pretendidos;
 - unidades de análise instrucional;
 - requisitos de evidência;
-- Partes e seus vínculos com Microssequências didáticas;
-- faixa preferencial de Partes, como hipótese operacional ajustável.
+- Partes de autoria e seus vínculos com Microssequências;
+- faixa preferencial de Partes e a origem dessa escolha.
 
-Título e objetivo continuam na raiz do Curso. Orientações naturais não ficam
-num campo genérico do plano: elas são revisões próprias, versionadas e
-aplicadas por escopo na vista `course_design`.
+Parte de autoria agrupa trabalho de produção. Ela não integra a hierarquia
+didática, formada por Curso, Módulo, Lição, Microssequência didática e Unidade
+de estudo. A faixa inicial de 7 a 12 Partes é uma orientação operacional
+configurável, não uma prescrição pedagógica.
 
-Parte é um agrupamento operacional de produção. Ela não substitui Módulo,
-Lição, Microssequência didática ou Unidade de estudo e não define a ordem
-curricular.
+A pessoa pode pedir que o cliente reorganize, divida, una, amplie ou reduza
+Partes. Essas mudanças preservam as Unidades já produzidas. Depois que as
+Microssequências existem, atribua a cada uma as unidades de análise e os
+requisitos de evidência que ela precisa desenvolver. Essa atribuição é
+explícita e admite vários itens em vários alvos.
 
-Depois que as Microssequências existem, atribua explicitamente a cada uma as
-unidades de análise e os requisitos de evidência que ela deve realizar. Um
-item pode pertencer a vários alvos e um alvo pode receber vários itens. Essa
-cobertura não é inferida do vínculo com a Parte nem do plano inteiro.
+Na interface, **Copiar pedido para o ChatGPT** prepara um texto com a Parte e o
+Curso. Cole esse texto na conversa conectada. A cópia ainda não inicia a
+produção; o estado muda somente depois que o cliente executa e confirma as
+operações do MCP.
 
-## Configurar o desenho antes da materialização
+## Configurar o desenho
 
-Leia `course_design` no escopo que será alterado. O contrato apresenta quatro
-parâmetros pedagógicos explícitos:
+Leia `course_design` no Curso, na Lição ou na Microssequência pertinente. A
+vista apresenta quatro parâmetros pedagógicos:
 
 - teto de novas unidades de análise por Unidade expositiva;
 - formas de explicação exigidas quando aplicáveis;
-- mínimo de oportunidades distintas de prática por requisito de evidência;
-- dimensões de variação exigidas entre essas oportunidades.
+- quantidade mínima de oportunidades distintas de prática por requisito de
+  evidência;
+- dimensões que precisam variar entre essas oportunidades.
 
-Os defaults são hipóteses de produto, não leis pedagógicas. Uma atribuição
-`automatic` precisa de justificativa breve; `author` e
-`research_condition` registram decisões explícitas. Limpar uma atribuição
-restaura a resolução herdada ou o default, sem gravar uma cópia derivada.
+O valor efetivo vem de uma decisão explícita da autoria ou da pesquisa, de uma
+atribuição automática justificada, ou do valor-padrão do produto. A leitura
+informa origem e escopo de proveniência. Limpar uma atribuição restaura o valor
+herdado ou o valor-padrão calculado.
 
-Orientações naturais são preservadas no texto original. Uma interpretação
-estruturada registra diretivas, divergências e perguntas sem substituir nem
-reescrever o original. Para um alvo, a pilha efetiva acumula as revisões do
-Curso até o escopo mais próximo.
+Orientações autorais permanecem no texto original e recebem revisões. Uma
+interpretação estruturada pode registrar resumo, diretivas, divergências e
+perguntas, sempre ligada à revisão exata e sem substituir o texto humano.
 
-A política de componentes separa disponibilidade, exclusão e preferência:
+A política de componentes didáticos separa:
 
-- `all` mantém o catálogo corrente disponível;
-- `allow_only` restringe a uma lista explícita;
-- exclusões sempre vencem;
-- preferências apenas desempatem opções permitidas e semanticamente adequadas.
+- catálogo disponível por inteiro ou limitado a uma lista;
+- componentes bloqueados;
+- componentes preferidos entre os permitidos.
 
-No escopo de Microssequência, leia `targetPlanItems` e use
-`set_target_plan_items` para substituir atomicamente as listas
-`instructionalAnalysisUnitIds` e `evidenceRequirementIds`. Nos demais escopos,
-`targetPlanItems` é `null`. IDs repetidos, de outro tipo ou de outro Curso são
-recusados.
+Bloqueio prevalece sobre permissão. Preferência orienta a escolha entre
+candidatos adequados, sem tornar o uso obrigatório.
 
-## Registrar Fontes e Âncoras antes de produzir
+No escopo de Microssequência, `targetPlanItems` mostra os itens do plano
+atribuídos. `set_target_plan_items` substitui, na mesma operação, as listas de
+unidades de análise e requisitos de evidência daquele alvo.
 
-Use `lerCurso` com `view: "course_sources"` para percorrer o catálogo, abrir uma
-Fonte ou ler o histórico de um alvo. Crie ou revise a Fonte sem inventar
-metadados; depois crie Âncoras de página, tempo, fragmento URI ou trecho textual
-na revisão exata.
+## Registrar Fontes e Âncoras
 
-Toda atribuição nova declara se a Fonte informa, sustenta, foi adaptada ou foi
-citada e exige ao menos uma Âncora ativa. `set_target_sources` substitui o
-conjunto completo e ordenado do item do plano ou da Unidade; não o trate como
-acréscimo parcial. Referência legada não resolvida mantém identidade e ordem,
-fica oculta e deve ser resolvida sob a mesma identidade literal.
+Use `course_sources` para percorrer o catálogo, abrir uma Fonte ou consultar o
+histórico de um alvo. Registre somente metadados conhecidos. Depois, crie uma
+Âncora que localize o trecho relevante por páginas, intervalo de tempo,
+fragmento de endereço ou citação textual.
 
-Não coloque `sources` no JSON de uma Unidade. Para cada Unidade incluída ou
-substituída pelo commit da composição, envie exatamente uma aplicação separada
-de atribuição, ainda que vazia. Repetir depois de resposta perdida preserva o
-mesmo `requestId` e o mesmo comando.
+Uma atribuição liga a revisão exata da Fonte e suas Âncoras a um item do plano
+ou a uma Unidade. A relação pode indicar que a Fonte informou, sustentou,
+inspirou, exemplificou, contrastou ou serviu de base para adaptação ou citação.
+Também pode registrar que o caso ainda precisa de verificação.
 
-## Descobrir componentes sob demanda
+`set_target_sources` substitui o conjunto completo e ordenado do alvo. Para
+cada Unidade criada ou substituída numa operação de composição, o cliente envia
+uma aplicação de Fontes correspondente, ainda que vazia. O conteúdo interno da
+Unidade não recebe um campo paralelo `sources`.
 
-O cliente não carrega todos os contratos do catálogo no contexto. O fluxo
-econômico é:
+Na área **Fontes**, a pessoa proprietária também pode:
 
-1. explorar famílias e facetas;
-2. buscar candidatos pela intenção didática;
-3. inspecionar poucos packages;
-4. obter somente os contratos necessários;
-5. validar a Unidade proposta;
-6. preparar uma prévia quando a decisão exigir inspeção visual.
+- anexar PDFs privados à revisão ativa da Fonte;
+- baixar um anexo por endereço temporário autorizado;
+- acompanhar a cota de PDFs do Curso;
+- exportar a proveniência de um alvo em JSON, preservando identidades,
+  revisões, relações e Âncoras.
 
-A política de componentes limita os candidatos, mas não prova que um package é
-pedagogicamente adequado.
+Cada PDF aceita até 20 MiB, cada revisão de Fonte aceita até oito anexos e o
+Curso aceita até 64 MiB de conteúdo PDF único. Arquivos com os mesmos bytes são
+reutilizados dentro do Curso quando impressão digital, tamanho, tipo e autorização
+coincidem.
 
-## Produzir por Parte
+## Descobrir componentes conforme a intenção
 
-Antes de iniciar uma tentativa, o servidor resolve e sela o desenho efetivo
-para as Microssequências-alvo: parâmetros, orientações versionadas, política de
-componentes, itens do plano atribuídos e Fontes/Âncoras desses itens. Os catálogos selados conservam
-`id`, `position`, `statement` e `version`; cada alvo referencia somente seus
-IDs. O cliente não declara esse contexto como fato.
+O cliente consulta o catálogo progressivamente:
 
-Para cada etapa de materialização, o cliente deve:
+1. explora famílias e facetas;
+2. pesquisa pela intenção didática;
+3. inspeciona até oito candidatos;
+4. obtém o contrato exato de um componente por chamada;
+5. valida a Unidade proposta;
+6. prepara uma prévia quando a inspeção visual é necessária.
 
-1. retomar a tentativa persistida e sua próxima etapa;
-2. gerar somente o recorte autorizado;
-3. validar relações pai–filho e contratos das Unidades;
-4. informar fatos limitados sobre a aplicação do desenho;
-5. informar aplicações de Fontes somente com revisões e Âncoras seladas;
-6. enviar o lote delimitado com as versões esperadas;
-7. reler o estado e resumir apenas o que foi persistido.
+No texto para pessoas, prefira o nome **componente didático**. A identidade
+técnica `package@version` deve aparecer apenas quando for necessária para
+diagnóstico ou contrato. Quando o catálogo oferece apenas uma aproximação, o
+cliente precisa informar a limitação antes de materializar.
 
-O auditor verifica, para a Microssequência da etapa, schema, pertencimento ao
-subconjunto atribuído, contagens e coerência interna das declarações de formas,
-oportunidades e variações. Essas declarações vêm do agente ou da pessoa autora;
-o banco não as descobre semanticamente na prosa. Na mesma transação, o banco
-reconcilia materialmente os IDs de Unidades do lote, o pai/alvo, as atribuições
-de Fonte e os `componentRefs` presentes no conteúdo, além do CAS e da política. Uma resposta
-técnica bem-sucedida não demonstra qualidade pedagógica ou efeito de
-aprendizagem.
+## Produzir uma Parte com segurança
 
-## Conferir visualmente
+Ao iniciar a produção, o servidor deriva o contexto efetivo de cada
+Microssequência: parâmetros, orientações, política de componentes, itens do
+plano e Fontes aplicáveis. O cliente não fornece esse contexto como declaração
+confiável.
 
-Depois de uma alteração:
+Para cada etapa, o cliente:
 
-1. confira **Planejamento**, **Parâmetros** e **Fontes**;
-2. use **Estrutura** para a hierarquia compacta;
-3. percorra **Inspeção** na ordem curricular e confira a atribuição da Unidade;
-4. abra o mesmo Curso em **Estudo** para verificar renderer, navegação e a
-   projeção redigida de Fontes;
-5. confirme que Fonte oculta ou não resolvida não aparece e que **Citação** não
-   entrega link;
-6. abra **Auditoria e correções** para acompanhar Observações, rodadas, achados
-   e correções sem criar uma oitava área;
-7. separe defeitos técnicos de decisões pedagógicas.
+1. lê a execução persistida e identifica a próxima etapa;
+2. produz somente o recorte autorizado;
+3. valida hierarquia, conteúdo e contratos dos componentes;
+4. declara fatos delimitados sobre a aplicação do desenho;
+5. aplica somente Fontes e Âncoras presentes no contexto;
+6. envia o lote com as revisões e versões esperadas;
+7. relê o resultado e informa apenas o que foi confirmado.
 
-Respostas ficam inertes na Inspeção. A tela examina o conteúdo real, mas não é
-um segundo editor de Unidade.
+Uma etapa de Microssequência confirma entidades, vínculo com a Parte,
+proveniência, progresso, evento e recibo na mesma transação. Se a validação
+falhar, esse conjunto é revertido. Uma interrupção pode ser retomada pela etapa
+pendente, e a repetição do mesmo pedido não duplica conteúdo.
 
-## Revisar, corrigir e continuar
+As declarações sobre formas de explicação, oportunidades de prática e
+dimensões de variação permanecem examináveis. A validação comprova sua
+consistência com o contrato; a avaliação semântica e pedagógica continua sendo
+uma responsabilidade humana apoiada por auditoria.
 
-Para trabalhar com Observações, use `lerCurso` na vista
-`anchored_annotations`, nos modos caixa de entrada, alvo ou detalhe. A mutação
-continua dentro de `alterarCurso`, pela operação
-`update_anchored_annotations`; o MCP mantém exatamente seis ferramentas.
+## Conferir na interface e no Estudo
 
-Antes de criar, confirme com a pessoa o alvo exato e uma síntese breve. O
-comando exige `confirmed: true` e `briefSummary` não vazio, preserva o texto
-declarado e não envia a conversa inteira. Responder ou resolver descreve
-triagem, não uma correção do Curso. A classificação automática só associa
-assunto quando o alvo é exatamente um Tópico; qualquer seleção diferente é uma
-correção humana separada.
+Depois de produzir ou alterar conteúdo:
 
-Peça uma revisão com critério explícito, por exemplo cobertura do objetivo,
-formas de explicação, oportunidades de prática ou adequação representacional.
-O cliente deve citar os alvos encontrados, confrontar o planejado com os fatos
-declarados como aplicados e propor a menor mudança suficiente. Para formas,
-oportunidades e variações, essa comparação é ponto de partida para revisão do
-conteúdo, não observação independente de que a declaração seja verdadeira.
+1. confira o plano e o estado das Partes em **Planejamento**;
+2. confirme decisões e proveniência em **Parâmetros** e **Fontes**;
+3. verifique a hierarquia em **Estrutura**;
+4. percorra as Unidades em **Inspeção**;
+5. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
+   citações visíveis;
+6. trate divergências em **Auditoria e correções**.
 
-Para persistir essa revisão, use `lerCurso` com `view: "audit_cycle"`. O modo
-`context` prepara uma Unidade focal; `findings` e `runs` são paginados e aceitam
-filtro opcional pela Unidade; `runs` enumera inclusive rodadas sem achados. O
-modo `detail` recebe exatamente um entre `findingId` e `auditRunId`; o detalhe
-da rodada expõe todos os checks e evidências.
+A Inspeção reproduz o conteúdo real com as respostas inertes. Ela serve para
+conferência fiel, sem criar outro editor da Unidade.
 
-Registre a auditoria sem misturar reparo. A pessoa ou o cliente fornece checks
-pedagógicos, factuais e editoriais; o servidor acrescenta o check estrutural.
-Um resultado factual positivo precisa de Fonte e Âncora ativas e exatas:
-`supported_by` sustenta uma afirmação, enquanto `quoted_from` só comprova o
-critério `quotation_fidelity`.
+## Registrar e tratar Observações
 
-Depois, se um achado aberto justificar mudança, proponha uma correção somente
-para o conteúdo e as atribuições de Fontes da Unidade focal existente. Ela não
-pode criar, excluir, mover, reposicionar ou trocar o pai de entidades e precisa
-preservar `topics` legítimos. Mostre o efeito à pessoa e só envie
-`auditCommand.confirmed: true` ao aplicar. A aplicação conserva checkpoint
-`before|after` e deixa o achado aguardando verificação.
+`lerCurso` com `view: "anchored_annotations"` consulta caixa de entrada, alvo
+ou detalhe. `alterarCurso`, com `update_anchored_annotations`, cria, revisa,
+retira, considera, responde, resolve, reabre ou corrige a classificação de uma
+Observação.
 
-Verifique sempre numa nova rodada. `resolved` exige que o critério focal tenha
-passado; `still_open` reabre o achado. Rollback também exige confirmação e só
-restaura o checkpoint quando o estado aplicado ainda é corrente. Os demais
-cinco comandos do ciclo recusam `confirmed`.
+Para criar uma Observação pela conversa, o cliente apresenta o alvo e uma
+síntese breve e pede confirmação. O comando conserva o texto declarado, sem
+copiar a conversa inteira. Responder ou resolver uma Observação registra
+triagem; uma mudança de conteúdo pertence ao ciclo de auditoria e correção.
 
-Vínculos com Observações não copiam texto, pseudônimo ou pessoa. Uma Observação
-retirada aparece indisponível e sem link enquanto o tombstone existe; depois da
-limpeza física, o vínculo e seu ID simplesmente deixam a projeção. Uma
-`suggestedAnnotationAction` de resolver ou reabrir não executa a triagem: exige
-outro comando explícito de Anotações com a versão corrente.
+## Auditar, corrigir e verificar
 
-Na interface, use `section=observations&annotationId=...` para uma Observação,
-`section=observations&findingId=...` com `correctionId` opcional para um achado
-e `section=observations&auditRunId=...` para uma rodada. Fonte ou Âncora abre
-`section=sources`; a Unidade abre a Inspeção. Combinações incompatíveis e links
-profundos acima do limite são recusados.
+Use `audit_cycle` no modo `context` para preparar uma Unidade focal. Os modos
+`findings` e `runs` listam achados e rodadas, inclusive rodadas sem achados. O
+modo `detail` abre um achado ou uma rodada exata.
 
-Quando houver decisão pedagógica real, a pessoa confirma o valor ou a
-orientação. Uma automação não sobrescreve silenciosamente uma decisão explícita.
+Uma rodada registra critérios estruturais, pedagógicos, factuais e editoriais.
+Resultado factual positivo exige Fonte e Âncora ativas. A relação
+`supported_by` pode sustentar uma afirmação; `quoted_from` comprova apenas que o
+trecho foi citado com fidelidade.
+
+Quando um achado justificar mudança, proponha uma correção focal da Unidade. A
+proposta pode substituir conteúdo e o conjunto de Fontes, preservando
+identidade, pai e posição. A pessoa confirma a aplicação depois de compreender
+o efeito. Em seguida, outra rodada verifica o critério: `resolved` exige
+resultado aprovado; `still_open` mantém o achado aberto. A reversão também
+exige confirmação e só se aplica enquanto o estado correspondente continuar
+corrente.
+
+## Criar variantes comparáveis
+
+Use a área **Variantes** ou `update_course_variants` para criar de duas a oito
+variantes a partir do planejamento atual. Uma variante serve de referência
+inicial; ao menos outra declara uma diferença de parâmetro ou de política de
+componentes. Cada resultado é um Curso independente.
+
+A comparação informa o ponto comum de planejamento, as revisões, as diferenças
+declaradas, os fatos materializados, os desvios e os dados ausentes. Alterar um
+Curso não altera os demais. Desvincular uma variante remove somente a relação
+comparativa e preserva o Curso.
+
+## Examinar os fatos de Autoria
+
+A vista `research` e a área **Pesquisa** consultam os mesmos sete conjuntos de
+fatos: atividade, materializações, desenho, Fontes, Observações, auditorias e
+variantes. O recorte pode usar canal, origem, estado e período. Cada gráfico
+possui tabela equivalente, definição da métrica, denominador, dados ausentes e
+limites de interpretação.
+
+O cliente pode conduzir a pessoa ao Curso, Parte, Unidade, Fonte, Observação,
+achado ou comparação que originou o fato. A interface exporta CSV e JSON sob a
+mesma revisão. Contagens descrevem o processo de Autoria; não medem
+aprendizagem, atenção, esforço ou eficácia.
 
 ## Retomar em outra conversa
 
-Uma nova sessão deve:
+Uma nova sessão deve reler:
 
-1. ler o recurso de invariantes;
-2. localizar o Curso;
-3. ler o plano, o desenho no escopo e a tentativa pertinente;
-4. ler o catálogo ou as atribuições de Fontes pertinentes;
-5. se houver revisão em curso, ler achado, rodada e correção pertinentes;
-6. explicar em poucas linhas o estado recuperado;
-7. só então propor a próxima operação.
+1. o recurso de invariantes;
+2. o Curso e sua revisão;
+3. o plano e a Parte pertinente;
+4. o desenho, os componentes e as Fontes do alvo;
+5. a execução de materialização, se houver etapa pendente;
+6. o achado, a rodada ou a comparação pertinente, quando aplicável.
 
-O estado recuperável está no Curso. Prompt, conversa e raciocínio não viram uma
-cópia oculta do planejamento.
+O estado recuperável está no Curso e em seus registros associados. A conversa
+anterior não se torna uma cópia oculta do planejamento.
 
-## Recuperar falhas
+## Resolver falhas comuns
 
-- **Não autenticado:** refaça o OAuth; não use chave administrativa.
-- **Curso não encontrado:** confirme conta, identificador e propriedade.
-- **Conflito de revisão:** releia e reconcilie; não incremente versão à mão.
-- **Pedido repetido:** reutilize o mesmo `requestId` somente para a mesma
-  intenção e o mesmo comando.
-- **Parâmetro ou orientação inválidos:** confira escopo, versão da orientação,
-  origem e contrato do valor.
-- **Componente bloqueado:** releia a política efetiva; preferência não autoriza
-  um package excluído.
-- **Fonte ou Âncora inválida:** releia a revisão, o alvo e o conjunto completo;
-  não retire a Âncora nem normalize a identidade legada para contornar o erro.
-- **Evidência factual recusada:** use Fonte e Âncora ativas na revisão exata e
-  confira se a relação corresponde ao critério.
-- **Correção ou rollback obsoleto:** releia a Unidade e o checkpoint; não force
-  uma revisão ou substitua o alvo por aproximação.
-- **Entidade inválida:** confira pai, posição, identidade e contrato antes de
-  reenviar.
-- **Resultado ausente na interface:** releia o Curso e confirme ambiente,
-  conta, revisão e escopo.
+| Situação | Como proceder |
+| --- | --- |
+| autorização expirou | refaça o OAuth com a mesma conta |
+| Curso não foi encontrado | confira conta, identidade e propriedade |
+| revisão mudou | releia a vista e reconcilie a proposta |
+| pedido perdeu a resposta | repita o mesmo `requestId` apenas com o mesmo comando |
+| componente foi bloqueado | releia a política efetiva e escolha entre os permitidos |
+| Fonte ou Âncora foi recusada | releia a revisão ativa e envie o conjunto completo do alvo |
+| evidência factual foi recusada | confira relação, Fonte, Âncora e revisão do critério |
+| correção ficou desatualizada | releia a Unidade e prepare outra proposta sobre o estado corrente |
+| resultado não apareceu | confirme ambiente, conta, Curso, revisão e destino da interface |
 
-Os contratos técnicos completos estão em [Autoria por MCP](autoria-mcp.md). O
-[estado corrente](estado-atual-e-roadmap.md) distingue capacidades conectadas
-de avaliações e marcos ainda pendentes.
+Os argumentos completos estão em [Autoria por MCP](autoria-mcp.md). Para os
+fundamentos da assistência, consulte [Assistência por modelo de
+linguagem](assistencia-por-ia.md).

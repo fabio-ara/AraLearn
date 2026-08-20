@@ -11,6 +11,9 @@ on:
       - release/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: validacao-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
@@ -119,6 +122,9 @@ jobs:
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
 
+      - name: Executar testes pgTAP
+        run: npx --yes supabase@2.109.1 test db
+
       - name: Conferir paridade vertical no banco real
         shell: bash
         run: |
@@ -217,7 +223,19 @@ jobs:
           } | node scripts/auditVerticalParity.mjs --database-inventory -
 
       - name: Conferir o lint do banco
-        run: npx --yes supabase@2.109.1 db lint --local --level warning --fail-on warning
+        shell: bash
+        run: |
+          lint_json="$(mktemp)"
+          trap 'rm -f "$lint_json"' EXIT
+          set +e
+          npx --yes supabase@2.109.1 db lint --local --level warning \
+            --output-format json > "$lint_json"
+          lint_status=$?
+          set -e
+          if [ "$lint_status" -ne 0 ]; then
+            exit "$lint_status"
+          fi
+          node scripts/auditLegacyDbLint.mjs "$lint_json"
 
       - name: Testar concorrência real dos pedidos de Curso
         shell: bash

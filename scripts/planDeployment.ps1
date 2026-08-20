@@ -68,9 +68,9 @@ switch ($Profile) {
     Add-Step 'supabase-project' 'Criar e proteger o projeto Supabase' manual 'Crie o projeto hospedado, configure Auth, SMTP e redirecionamentos. Não copie a service role para o repositório.'
     Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado. Revise antes de usar o modo Apply.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
-    Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
-      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
-    Add-Step 'github-variables' 'Cadastrar a configuração pública' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. ARALEARN_ASSIST_ALLOWED_ORIGINS é opcional para serviços adicionais. Não cadastre segredos administrativos.'
+    Add-Step 'database-apply' 'Aplicar migrations e funções aprovadas' automatic 'Executa migrations versionadas, sem reset nem seed, e implanta a API e o MCP.' `
+      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply -DeployAuthoringFunctions -PublicAppUrl $applicationArgument/"
+    Add-Step 'github-variables' 'Cadastrar a configuração pública' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. Não cadastre segredos administrativos.'
     Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados. No OAuth Server, habilite DCR e use / como Authorization Path, pois a tela de consentimento está no próprio shell."
     Add-Step 'auth-oauth-signing' 'Concluir a segurança OAuth do MCP' manual 'Ative uma chave JWT assimétrica, selecione public.aralearn_mcp_access_token_hook como Custom Access Token Hook e confirme PKCE S256 na descoberta.'
     Add-Step 'validate' 'Validar o repositório' automatic 'Executa cada verificação em ordem e interrompe a sequência na primeira falha.' `
@@ -87,8 +87,8 @@ switch ($Profile) {
     Add-Step 'supabase-project' 'Criar e proteger o projeto Supabase' manual 'Crie o projeto hospedado, configure Auth, SMTP e redirecionamentos. Não copie a service role para o host estático.'
     Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
-    Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
-      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
+    Add-Step 'database-apply' 'Aplicar migrations e funções aprovadas' automatic 'Executa migrations versionadas, sem reset nem seed, e implanta a API e o MCP.' `
+      "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply -DeployAuthoringFunctions -PublicAppUrl $applicationArgument/"
     Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados. No OAuth Server, habilite DCR e use / como Authorization Path, pois a tela de consentimento está no próprio shell."
     Add-Step 'auth-oauth-signing' 'Concluir a segurança OAuth do MCP' manual 'Ative uma chave JWT assimétrica, selecione public.aralearn_mcp_access_token_hook como Custom Access Token Hook e confirme PKCE S256 na descoberta.'
     Add-Step 'dependencies' 'Instalar dependências' automatic 'Restaura as versões fixadas e interrompe a implantação se a instalação falhar.' 'npm.cmd ci'

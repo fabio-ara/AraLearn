@@ -72,8 +72,7 @@ function canonicalProject() {
                           version: "1.0.0",
                           data: { text: "A foi apresentado." }
                         }],
-                        topics: [],
-                        sources: []
+                        topics: []
                       }
                     ]
                   }
@@ -346,8 +345,7 @@ test("estruturas internas desconhecidas não desaparecem durante a normalizaçã
     }],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 
   const result = validateProjectDocument(project);
@@ -396,8 +394,7 @@ test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
       }],
       response: null,
       feedback: [],
-      topics: [],
-      sources: []
+      topics: []
     };
     const result = validateProjectDocument(project);
     assert.equal(result.ok, false, label);

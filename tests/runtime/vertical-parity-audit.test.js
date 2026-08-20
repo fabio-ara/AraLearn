@@ -62,7 +62,7 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário pós-corte separa os oito casos correntes do legado físico", async () => {
+test("o inventário pós-corte separa os dez casos correntes do legado físico", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
@@ -70,13 +70,15 @@ test("o inventário pós-corte separa os oito casos correntes do legado físico"
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 2_186);
+  assert.equal(inventory.objects.length, 2_256);
   assert.deepEqual(counts, {
     "study-course-experience": 26,
     "course-authoring-experience": 272,
-    "course-source-provenance": 84,
+    "course-source-provenance": 105,
     "course-anchored-annotations": 84,
     "course-audit-corrections": 90,
+    "course-variant-comparisons": 48,
+    "course-authoring-research": 1,
     "person-profile-and-course-access": 31,
     "didactic-component-runtime": 1,
     "course-shared-transports": 3,
@@ -85,7 +87,7 @@ test("o inventário pós-corte separa os oito casos correntes do legado físico"
   const currentCaseIds = current.cases
     .filter(({ status }) => status === "current")
     .map(({ id }) => id);
-  assert.equal(currentCaseIds.length, 8);
+  assert.equal(currentCaseIds.length, 10);
   assert.deepEqual(
     new Set(inventory.objects.map(({ caseId }) => caseId)),
     new Set([...currentCaseIds, "pre-course-database-removal"])

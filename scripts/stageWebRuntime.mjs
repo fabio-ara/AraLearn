@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseJavaScript } from "espree";
-import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -185,6 +184,22 @@ function normalizeArtifactPath(value) {
 }
 
 async function writePagesAssetManifest(runtimeRoot) {
+  const packageMetadata = JSON.parse(await fs.readFile(
+    path.join(repositoryRoot, "package.json"),
+    "utf8"
+  ));
+  const version = String(packageMetadata.version || "").trim();
+  if (!/^\d+\.\d+\.\d+$/u.test(version)) {
+    fail("package.json não contém uma versão publicável válida.");
+  }
+  const serviceWorkerSource = await fs.readFile(
+    path.join(runtimeRoot, "service-worker.js"),
+    "utf8"
+  );
+  const revision = serviceWorkerSource.match(
+    /const CACHE_NAME = `\$\{CACHE_PREFIX\}([a-f0-9]{20})`;/u
+  )?.[1];
+  if (!revision) fail("service-worker.js não contém a revisão final do artefato.");
   const files = await listFiles(runtimeRoot);
   const assets = files
     .map((filePath) => normalizeArtifactPath(path.relative(runtimeRoot, filePath)))
@@ -194,7 +209,7 @@ async function writePagesAssetManifest(runtimeRoot) {
     .sort();
   await fs.writeFile(
     path.join(runtimeRoot, "asset-manifest.json"),
-    `${JSON.stringify({ assets }, null, 2)}\n`,
+    `${JSON.stringify({ version, revision, assets }, null, 2)}\n`,
     "utf8"
   );
 }
@@ -238,7 +253,7 @@ function decodeJwtPayload(token) {
   }
 }
 
-function publicRuntimeConfig({ target = "pages" } = {}) {
+function publicRuntimeConfig() {
   const supabaseUrl = String(process.env.ARALEARN_SUPABASE_URL || "").trim().replace(/\/+$/, "");
   const supabasePublishableKey = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim();
   const payload = decodeJwtPayload(supabasePublishableKey);
@@ -261,34 +276,27 @@ function publicRuntimeConfig({ target = "pages" } = {}) {
       fail("ARALEARN_SUPABASE_URL deve usar HTTPS fora do desenvolvimento local.");
     }
   }
-  const assistAllowedOrigins = buildAssistAllowedOrigins({
-    configured: process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
-    development: target === "android"
-  });
   return {
     supabaseUrl,
-    supabasePublishableKey,
-    assistAllowedOrigins,
-    androidRuntime: target === "android"
+    supabasePublishableKey
   };
 }
 
-async function writeRuntimeConfig(publicDestination, target) {
-  const config = publicRuntimeConfig({ target });
+async function writeRuntimeConfig(publicDestination) {
+  const config = publicRuntimeConfig();
   const source = `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify(config, null, 2)});\n`;
   await fs.writeFile(path.join(publicDestination, "runtime-config.js"), source, "utf8");
 }
 
-async function writeExactContentSecurityPolicy(publicDestination, target) {
-  const config = publicRuntimeConfig({ target });
+async function writeExactContentSecurityPolicy(publicDestination) {
+  const config = publicRuntimeConfig();
   const indexPath = path.join(publicDestination, "index.html");
   const source = await fs.readFile(indexPath, "utf8");
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) {
     fail("Placeholder da CSP ausente em public/index.html.");
   }
   const connectSource = [
-    config.supabaseUrl ? new URL(config.supabaseUrl).origin : "",
-    ...config.assistAllowedOrigins
+    config.supabaseUrl ? new URL(config.supabaseUrl).origin : ""
   ].filter(Boolean).join(" ");
   const rewritten = source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource);
   if (/connect-src[^;]*\bhttps:\s/u.test(rewritten)) {
@@ -361,8 +369,8 @@ async function stageRuntime({ target, outputPath }) {
   await fs.rm(outputPath, { recursive: true, force: true });
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
-  await writeRuntimeConfig(publicDestination, target);
-  await writeExactContentSecurityPolicy(publicDestination, target);
+  await writeRuntimeConfig(publicDestination);
+  await writeExactContentSecurityPolicy(publicDestination);
   await copyRuntimeJavaScript(runtimeRoot);
   if (target === "pages") {
     await rewritePagesMainImport(runtimeRoot);

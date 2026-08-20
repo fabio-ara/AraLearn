@@ -1,12 +1,61 @@
-# Changelog
+# Registro de mudanças
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
-## [Unreleased]
+## [Não publicado]
+
+## [0.0.23] - 2026-08-20
+
+### Adicionado
+
+- Autoria integrada ao próprio Curso, com planejamento instrucional, Partes
+  retomáveis, parâmetros de desenho, inspeção paginada, auditoria e correções;
+- Fontes versionadas, Âncoras exatas, relações de proveniência e PDFs privados
+  com limites, deduplicação, exportação e acesso autorizado;
+- Variantes comparáveis com diferenças declaradas e factuais, sem misturar a
+  comparação técnica com inferência causal;
+- área Pesquisa com sete conjuntos de fatos, filtros, paginação, métricas e
+  exportações que preservam revisão, denominador e dados ausentes;
+- perfil humano mínimo, avatar privado e acesso direto de outra pessoa ao
+  Estudo, com as mesmas regras na interface e no MCP;
+- recurso visual do MCP para inspecionar o Curso e seus componentes no cliente
+  compatível.
+
+### Alterado
+
+- Estudo, Autoria, API e MCP passam a usar a mesma identidade e a mesma revisão
+  de Curso, sem recipiente autoral intermediário;
+- o catálogo de componentes didáticos mantém 32 contratos versionados, busca
+  limitada e classificação explícita dos usos que exigem restrição;
+- o corte hospedado valida a topologia real dos oito Cursos, aplica as
+  migrações funcionais em uma transação e conserva cópia verificável antes da
+  retirada física das estruturas substituídas;
+- instalações Android 0.0.22 precisam ser atualizadas porque o contrato remoto
+  substituído não permanece como camada de compatibilidade;
+- a documentação pública foi reescrita como descrição corrente do produto, de
+  seus fundamentos e de seus limites observáveis.
+
+### Corrigido
+
+- uma revisão remota inválida deixa a última cópia estudável disponível, mesmo
+  depois de reiniciar o aplicativo;
+- paginação, retorno de escopo, reconexão, foco, menus e mensagens da Autoria
+  permanecem utilizáveis entre 360 e 430 px e em telas de computador;
+- exclusão de conta remove avatares e PDFs dos Cursos próprios antes de apagar
+  os vínculos relacionais e recusa a operação quando algum objeto permanece;
+- URLs assinadas de PDFs usam a origem pública correta fora da rede interna do
+  Supabase.
+
+### Removido
+
+- Workspaces, Actions, sincronização relacional e assistência por Card que não
+  possuíam consumidor no produto corrente;
+- adaptações silenciosas para contratos de autoria e estado pessoal que nunca
+  foram publicados.
 
 ## [0.0.22] - 2026-08-18
 
-### Fixed
+### Corrigido
 
 - o curso **Dataprev: Analista de Processamento** voltou a ser materializado a
   partir de uma nova revisão publicada no contrato canônico atual, sem alterar
@@ -24,14 +73,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - os workflows usam as gerações correntes de checkout, Node e Java compatíveis
   com o runtime Node 24 dos runners do GitHub.
 
-### Removed
+### Removido
 
 - a adaptação em runtime de revisões publicadas antigas; os cursos ativos devem
   obedecer ao mesmo contrato canônico validado na autoria e na publicação.
 
 ## [0.0.21] - 2026-08-18
 
-### Fixed
+### Corrigido
 
 - a release intermediária passou a reconhecer o certificado V2 emitido pelo
   `apksigner`, repetir o smoke do Pages durante a propagação e conservar a
@@ -39,7 +88,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.20] - 2026-08-16
 
-### Added
+### Adicionado
 
 - ciclo técnico de Autoria promovido: planejamento instrucional versionado,
   auditoria de conformidade, variantes experimentais, atribuição controlada e
@@ -47,12 +96,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - publicação coordenada de migrations e funções remotas da Autoria antes do
   lançamento do cliente correspondente.
 
-### Fixed
+### Corrigido
 
 - validações, proveniência, currentness, paginação e isolamento de variantes
   foram reforçados no fluxo de Autoria e nos artefatos móveis.
 
-### Added
+### Adicionado
 
 - shell responsivo com entrada explícita **Estudo/Autoria** na mesma aplicação
   web e APK, landing de Workspaces/Coleções e destinos registrados Mapa,
@@ -108,7 +157,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   suficiente, área não técnica, pedido completo e risco de densidade, sem alegar
   eficácia pedagógica.
 
-### Changed
+### Alterado
 
 - Coleções passa a integrar Autoria; Estudo permanece centrado em Trilhas e no
   leitor, sem chat ou controles administrativos instrucionais;
@@ -174,7 +223,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   dependências, das dificuldades e da progressão, sem cotas pedagógicas de
   cards, microssequências, Partes ou alternativas.
 
-### Fixed
+### Corrigido
 
 - caches de Autoria passam a avançar monotonicamente por revisão e a falhar de
   forma best-effort; fila de Desenho é encontrada na inicialização, reconexão e
@@ -198,7 +247,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o embaralhamento de alternativas volta a admitir qualquer permutação,
   inclusive a ordem autoral original, sem viés de rotação.
 
-### Removed
+### Removido
 
 - a entrada visual de Chatbot/assistência autoral interna e a duplicação de
   Coleções em Estudo; linguagem natural de planejamento permanece no GPT
@@ -213,7 +262,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.19] - 2026-08-13
 
-### Added
+### Adicionado
 
 - corpus documental técnico-científico reconciliado com a implementação,
   incluindo glossário técnico, matriz de conformidade entre documentação e
@@ -222,7 +271,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   avaliação do artefato, distinguindo evidência, hipótese de projeto, decisão
   vigente e limitação ainda aberta.
 
-### Changed
+### Alterado
 
 - documentação pública, material autoral e pacotes derivados passam a usar
   terminologia precisa de computação e educação, conforme a revisão
@@ -231,7 +280,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   eixo superior-inferior em telas móveis, preservando as convenções cuja
   orientação horizontal é semanticamente relevante.
 
-### Fixed
+### Corrigido
 
 - `chart` e `plane` voltam a materializar gráficos sob a política de segurança
   de conteúdo do app, por meio do interpretador de expressões do Vega
@@ -247,7 +296,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.18] - 2026-08-13
 
-### Added
+### Adicionado
 
 - biblioteca progressiva de `resources`, organizada por vocabulários e perfis
   acadêmicos, com descoberta, busca, inspeção, contratos seletivos, validação e
@@ -257,7 +306,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - conversa iterativa na assistência de cards, com recomposição estrutural,
   versões limitadas, ramificação, desfazer, refazer e restauração determinística.
 
-### Changed
+### Alterado
 
 - o kernel deixa de conhecer a lista concreta de packages; o índice é gerado a
   partir das pastas instaladas e compartilhado entre navegador e Edge Runtime;
@@ -268,7 +317,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - decisões representacionais substitutivas preservam intenção, limitações e
   proveniência sem bloquear a produção do curso.
 
-### Fixed
+### Corrigido
 
 - assistência por API distingue edição textual de troca de representação e
   conserva explicações sem alteração dentro da conversa;
@@ -277,7 +326,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - navegação do histórico reconhece pedidos naturais em português sem confundir
   menções explicativas, negações, títulos ou rótulos com operações estruturais.
 
-### Removed
+### Removido
 
 - rota produtiva `/teste-recursos`, substituída pelo curso oficial no catálogo;
 - ferramenta intermediária de consulta de packages, endpoints REST paralelos e
@@ -285,7 +334,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.17] - 2026-08-12
 
-### Changed
+### Alterado
 
 - modo Estudo, edição, assistência, autoria MCP e Edge Runtime passam pelo
   mesmo kernel e pelo registro versionado de packages, sem projeção para um
@@ -297,7 +346,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o backend publica um manifesto corrente achatado, sem cadeia de wrappers,
   e reutiliza uma única raiz autoral oficial por curso do catálogo.
 
-### Fixed
+### Corrigido
 
 - enunciados de `choice` deixam de ser duplicados em `paragraph`;
 - rótulos de `graph` e `relation_map` deixam de se sobrepor a arestas,
@@ -305,7 +354,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a montagem de tabelas preserva multilinhas, contém a rolagem horizontal e
   ocupa a largura disponível quando o conteúdo é curto.
 
-### Removed
+### Removido
 
 - renderer e normalizador monolíticos, contratos globais de resource,
   projeções intermediárias e módulos auxiliares exclusivos do formato
@@ -317,7 +366,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.16] - 2026-08-12
 
-### Added
+### Adicionado
 
 - kernel de cards independente dos packages de conteúdo, resposta e feedback,
   com catálogo compacto e contrato versionado consultado somente após a escolha
@@ -328,7 +377,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   referente, prática sem preparação e quantidade de cards definida por custo;
 - galeria visual package-native e cobertura mobile dos 19 packages instalados.
 
-### Changed
+### Alterado
 
 - biblioteca, cursos oficiais, autoria incremental, Action e MCP passam a usar
   exclusivamente `aralearn.library.v1` e instâncias `id/package/version/data`;
@@ -339,7 +388,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - materiais do Chatbot orientam progressão do zero, explicação em camadas,
   escolha cognitiva de resources e prática abundante conforme a microssequência.
 
-### Fixed
+### Corrigido
 
 - tema, retomada, feedback e avanço respondem localmente mesmo quando uma
   requisição remota fica pendurada;
@@ -349,7 +398,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - edição offline de feedback sobrevive à recarga e sincroniza sem converter o
   card para a representação anterior.
 
-### Removed
+### Removido
 
 - contrato monolítico v4, estados burocráticos de publicação na
   microssequência, rotas globais de resource e fallback de assistência para
@@ -358,7 +407,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.14] - 2026-08-01
 
-### Added
+### Adicionado
 
 - interface clara e minimalista com modos Sistema, Claro e Escuro, ícones SVG
   coerentes e os dezoito recursos didáticos adaptados aos dois temas;
@@ -385,7 +434,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - feed limitado das alterações recentes e recibos idempotentes temporários
   para continuidade segura da conversa sem snapshots do documento completo.
 
-### Fixed
+### Corrigido
 
 - o modo Editar passa a sincronizar somente as microssequências confirmadas e
   publica uma prévia privada parcial; correções em cursos oficiais criam um
@@ -424,7 +473,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   retenção automaticamente, no máximo uma vez por dia, sem depender de uma
   chamada administrativa manual.
 
-### Changed
+### Alterado
 
 - o leitor mantém o card como superfície principal: Ler oculta controles de
   autoria e Editar oferece seleção de recursos, edição textual, pedido à IA,
@@ -449,7 +498,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   revisão conceitual pelas microteorias e uso rastreável de fontes atuais,
   oficiais e primárias.
 
-### Removed
+### Removido
 
 - histórico restaurável de workspaces, snapshots integrais, cadeias de
   revisões publicadas e operações externas genéricas de inserir ou substituir
@@ -459,7 +508,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.13] - 2026-07-29
 
-### Added
+### Adicionado
 
 - seleção explícita do card inteiro ou de recursos identificados, prévia
   renderizada e criação de um card antes, depois, no fim ou em uma nova
@@ -469,7 +518,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - workspaces MCP versionados com mutações atômicas, leitura de cursos
   existentes, publicação privada parcial e revisão de microteorias no chat.
 
-### Fixed
+### Corrigido
 
 - o painel superior de autoria e seus comandos de criação, organização e
   assistência por linguagem voltam a ficar disponíveis nos cursos selecionados;
@@ -502,7 +551,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a dependência transitiva `brace-expansion` avança para `5.0.8`, eliminando a
   vulnerabilidade de esgotamento de memória apontada pela auditoria npm.
 
-### Changed
+### Alterado
 
 - a assistência por API repara o card ou os recursos selecionados e cria um
   card por pedido, com contexto limitado, schema exato, prévia mínima e
@@ -517,7 +566,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a autoria estrutural externa usa exclusivamente OAuth 2.1 e MCP, com
   permissões efetivas resolvidas no banco.
 
-### Removed
+### Removido
 
 - geração e reparo integral de microssequência, sessões de intervenção,
   seletor de representação preferida, feedback iterativo e fluxo granular
@@ -528,7 +577,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.12] - 2026-07-28
 
-### Fixed
+### Corrigido
 
 - a origem de cada curso na biblioteca passou a ser obrigatória e sincronizada
   para a réplica local; a interface não classifica mais cursos pela ausência de
@@ -536,14 +585,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o curso de teste Laboratório AraLearn foi retirado das coleções, seleções e
   da biblioteca.
 
-### Removed
+### Removido
 
 - fallback de interface que tratava qualquer curso sem proprietário recebido
   como publicação de catálogo.
 
 ## [0.0.11] - 2026-07-28
 
-### Added
+### Adicionado
 
 - plano de controle de autoria com artefatos JSON imutáveis no Supabase Storage,
   hashing canônico, referências pequenas, leases e feed de revisões;
@@ -552,13 +601,13 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - testes de concorrência que comprovam uma única gravação para três pedidos
   simultâneos com o mesmo `requestId`.
 
-### Fixed
+### Corrigido
 
 - materiais de Instruções e Conhecimento do Chatbot passam a abrir o seletor nativo de arquivo no APK Android;
 - a API e o MCP de autoria aceitam a origem segura do WebView Android, permitindo listar e criar chaves pessoais no aplicativo.
 - a Action de autoria repete gravações transitórias de forma idempotente, informa quando tentar novamente e preserva a retomada do registro de fontes;
 
-### Changed
+### Alterado
 
 - planos, ledgers, especificações, submissões, auditorias e revisões completas
   deixam de ocupar JSONB no PostgreSQL;
@@ -570,7 +619,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o planejamento de cursos passa a revisar automaticamente a cobertura da ementa, os pré-requisitos e a diversidade de prática antes de gravar o plano;
 - os materiais de autoria incluem a revisão de cobertura e a retomada automática do registro de fontes para ChatGPT e demais assistentes compatíveis.
 
-### Removed
+### Removido
 
 - árvore pedagógica remota, staging relacional, cópias pessoais e correções
   pontuais por linha;
@@ -581,7 +630,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.10] - 2026-07-24
 
-### Added
+### Adicionado
 
 - API de autoria do catálogo com planejamento, produção, auditoria, reparo, bloqueio por dúvida, validação e publicação retomável em partes;
 - papéis editoriais por UUID, clientes com chave restrita, rotação, limite de requisições, auditoria e retenção do material transitório;
@@ -604,7 +653,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - correção de conteúdo restrita a uma microssequência, com validação do curso remontado, gravação somente do recorte e cópia pessoal automática quando a edição parte de uma publicação oficial;
 - coleção reservada `Outros`, que mantém todos os cursos oficiais classificados enquanto permite reorganizar e aposentar as demais coleções.
 
-### Changed
+### Alterado
 
 - a biblioteca passa a reunir a configuração do chatbot do ChatGPT em um percurso curto de materiais, configuração e chave pessoal;
 - Trilhas adota o mesmo padrão visual de Coleções e identifica a origem pelos cartões verdes de cursos oficiais e vermelhos de cursos pessoais, sem chips;
@@ -626,7 +675,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - relações de pré-requisito passam a ser avaliadas de forma transitiva, com rejeição de ciclos e transporte apenas do recorte causal necessário à parte seguinte;
 - cards retirados por uma correção conservam somente a identidade necessária para progresso e comentários; blocos e demais filhos continuam sendo removidos fisicamente.
 
-### Fixed
+### Corrigido
 
 - a exclusão de curso privado não deixa execuções publicadas em uma forma inválida;
 - a retirada de cursos de Trilhas não falha ao atualizar o histórico de autoria;
@@ -644,7 +693,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.9] - 2026-07-20
 
-### Added
+### Adicionado
 
 - schema relacional PostgreSQL/Supabase para a árvore didática, progresso, comentários, dispositivos, mutações idempotentes e feed incremental de alterações;
 - autenticação por e-mail e senha com cadastro, confirmação, recuperação, sessão persistida, renovação e saída no runtime JavaScript compartilhado pela web e pelo APK;
@@ -655,7 +704,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - documentação de desenvolvimento local, implantação Supabase, segurança, sincronização e corte de legado;
 - coleções oficiais pesquisáveis e trilhas pessoais muitos-para-muitos, com ordenação offline, RLS e sincronização incremental.
 
-### Changed
+### Alterado
 
 - PostgreSQL/Supabase passa a ser a fonte canônica compartilhada; o IndexedDB funciona como réplica offline e nunca como documento único do projeto;
 - o catálogo passa a ser exclusivamente remoto e lista somente metadados de cursos oficiais publicados;
@@ -672,12 +721,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - arquivar uma publicação retira seleções e estado pessoal de modo transacional, emite tombstones e impede exclusão física acidental do catálogo canônico;
 - a interface da biblioteca passa a organizar o catálogo por coleções e os cursos selecionados por trilhas pessoais, preservando o runtime de estudo, edição e assistência completo na web e no Android.
 
-### Fixed
+### Corrigido
 
 - erros transitórios de infraestrutura PostgreSQL durante o push agora revertem integralmente a operação e preservam a outbox para retry, em vez de registrar uma rejeição definitiva;
 - fixtures SQL de cópia sob demanda passaram a verificar a árvore pessoal pelo escopo correto, sem ambiguidade com a publicação canônica.
 
-### Removed
+### Removido
 
 - catálogo operacional embarcado nos artefatos web e Android;
 - persistência documental de projeto, progresso e comentários;
@@ -688,7 +737,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.8] - 2026-07-18
 
-### Changed
+### Alterado
 
 - persistência local consolidada no IndexedDB para cursos do usuário, progresso e comentários;
 - catálogo oficial carregado de forma assíncrona a partir de um manifesto único, com três cursos embarcados;
@@ -700,13 +749,13 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.7] - 2026-07-10
 
-### Added
+### Adicionado
 
 - curso embarcado `Dataprev: Analista de Processamento`, com os módulos `Segurança da Informação`, `Gestão de Servidores` e `Redes de Computadores`;
 - trilha Dataprev composta por `24` lições, `175` microssequências e `1.052` cards validados;
 - cursos `Microsoft Azure AI Fundamentals (AI-900)` e `Fundamentos de IA e Análise de Dados` no mesmo catálogo oficial.
 
-### Changed
+### Alterado
 
 - o curso embarcado passa a se chamar `Dataprev: Analista de Processamento` e tem objetivo alinhado à preparação completa para o cargo;
 - o módulo inicial `Segurança da Informação` permanece estruturado nos dez tópicos do edital: políticas, procedimentos e gerenciamento, redes, vulnerabilidades e ataques, criptografia, softwares maliciosos, certificação digital, LGPD, IDS/IPS/SIEM e NIST Cybersecurity Framework 1.1;
@@ -714,20 +763,20 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.6] - 2026-07-08
 
-### Changed
+### Alterado
 
 - expansão do curso embarcado `Microsoft Azure AI Fundamentals (AI-900)` das Partes 01 a 04 para as Partes 01 a 12, agora com `9` módulos, `12` lições, `72` microssequências e `858` cards ativos;
-- integração das Partes 05 a 12 feita sobre o seed já saneado das Partes 01 a 04, evitando reintroduzir tabelas vazias e outros defeitos estruturais presentes nas entregas brutas iniciais;
+- integração das Partes 05 a 12 feita sobre o seed já validado das Partes 01 a 04, sem reintroduzir tabelas vazias e outros defeitos estruturais dos arquivos de origem;
 - correção estrutural do runtime e do contrato para não aceitar mais `table` com linhas vazias ou desalinhadas e para renderizar `tree` como hierarquia real em vez de lista plana;
 - suíte pública atualizada com regressões específicas para o AI-900 expandido e para os cenários de tabela inválida e árvore hierárquica;
 - APK pública de release atualizada com a versão completa do curso AI-900 até a Parte 12.
 
 ## [0.0.5] - 2026-07-03
 
-### Changed
+### Alterado
 
 - inclusão do curso embarcado `Microsoft Azure AI Fundamentals (AI-900)`, já compilado a partir das Partes 01 a 04, com `2` módulos, `4` lições, `24` microssequências e `269` cards ativos;
-- auditoria e saneamento das entregas parciais do curso AI-900 antes da incorporação ao seed oficial, com normalização de `role`, conversão de `tree`, `relation_map` e `plane` para o contrato atual e limpeza de bastidor em textos e metadados;
+- revisão e normalização dos arquivos do curso AI-900 antes da incorporação ao seed oficial, com ajuste de `role`, `tree`, `relation_map` e `plane` ao contrato vigente e revisão editorial de textos e metadados;
 - adição do compilador reutilizável `scripts/compileEmbeddedCourseFromParts.mjs` para recompilar cursos embarcados a partir de partes em `json` ou `zip` nas próximas rodadas;
 - manifesto oficial dos cursos embarcados atualizado para carregar o novo curso AI-900 diretamente no app;
 - correção do título visível do curso `Lógica de Programação 1` no seed oficial embarcado;
@@ -735,11 +784,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.4] - 2026-07-02
 
-### Changed
+### Alterado
 
 - migração coerente dos cursos embarcados oficiais para `JSON` em `src/data/embedded-courses`, sem wrappers `*SeedCourse.js`, sem lista hardcoded de factories em `src/ui` e com manifesto único em `embedded-seed-manifest.json`;
 - atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `8` módulos, `8` lições, `96` microssequências e `582` cards ativos, com as Aulas 5, 6, 7 e 8 integradas ao app;
-- auditoria e saneamento das entregas brutas das Aulas 7 e 8 antes da incorporação ao seed oficial: remoção de campos extras de raiz, limpeza de bastidor e correção de `composite` de exercício para o shape compatível com o contrato atual;
+- revisão e normalização dos arquivos das Aulas 7 e 8 antes da incorporação ao seed oficial: remoção de campos extras de raiz, revisão editorial e ajuste de `composite` de exercício ao formato do contrato vigente;
 - saneamento final da trilha de seed e adoção do manifesto como fonte única do catálogo oficial;
 - carregamento Android alinhado ao mesmo manifesto usado na web;
 - contrato ajustado para impedir `after` e `afterBlocks` com sintaxe de lacuna interativa;
@@ -747,26 +796,26 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [0.0.3] - 2026-06-23
 
-### Changed
+### Alterado
 
 - atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `4` módulos, `4` lições, `43` microssequências e a nova Aula 4 sobre dados em planilhas Excel com Pandas;
 - Aula 4 cobrindo estrutura tabular, leitura de Excel, inspeção de `shape`, `columns` e `dtypes`, conversão de datas, filtros, estatísticas, agrupamentos e checagens simples de qualidade;
-- revisão editorial do seed de `Fundamentos` para remover bastidor e vocabulário artificial também na nova aula, além de corrigir a ponte entre leitura de CSV e leitura de Excel;
+- revisão editorial do seed de `Fundamentos` para manter o texto natural e preciso também na nova aula, além de corrigir a passagem entre leitura de CSV e leitura de Excel;
 - APK pública de release atualizada com a quarta aula integrada ao curso.
 
 ## [0.0.2] - 2026-06-18
 
-### Changed
+### Alterado
 
 - atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `3` módulos, `3` lições, `32` microssequências e a nova Aula 3 sobre NumPy e Pandas;
 - Aula 3 cobrindo leitura de CSV, métricas em colunas, filtros, classificação com `np.where()` e agrupamento por setor;
-- revisão dos enunciados para manter a trilha focada no conteúdo, sem formulações editoriais de bastidor;
+- revisão dos enunciados para manter a trilha focada no conteúdo e com linguagem natural;
 - cards da Aula 3 agora repetem no próprio card os quadros e resumos necessários aos exercícios;
 - APK pública de release atualizada com a versão corrigida do curso.
 
 ## [0.0.1] - 2026-06-17
 
-### Added
+### Adicionado
 
 - aplicação web servida localmente, com projeto persistido no navegador;
 - empacotamento Android por WebView, com build pública de depuração e release;

@@ -1,47 +1,46 @@
 # Desenho instrucional parametrizado
 
-## Finalidade e estado
+O AraLearn representa um conjunto pequeno de decisões pedagógicas que a pessoa
+autora pode compreender, revisar e aplicar a um Curso. A interface, o MCP e a
+produção por Partes usam a mesma resolução. O propósito é tornar uma intenção
+examinável, sem converter preferência editorial em resultado científico ou
+conformidade técnica em prova de aprendizagem.
 
-O AraLearn representa um conjunto pequeno de decisões pedagógicas que uma
-pessoa autora consegue compreender, revisar e aplicar a um Curso vivo. A mesma
-resolução é usada pela interface, pelo MCP e pela materialização. O objetivo é
-tornar uma intenção verificável; não é transformar preferência editorial em
-ciência, produzir uma nota de qualidade nem inferir aprendizagem.
+## O que constitui um parâmetro
 
-O recorte corrente possui quatro parâmetros pedagógicos, orientações autorais
-em linguagem natural e uma política de componentes didáticos. Faixa de Partes,
-limites de lote, bytes, altura e quantidade de elementos no DOM permanecem
-políticas de produção ou cercas técnicas. Não participam da herança pedagógica.
+Um parâmetro de desenho instrucional possui:
 
-A implementação está validada localmente. O [estado corrente](estado-atual-e-roadmap.md)
-e o [roteiro de implantação](implantacao.md) registram os gates que ainda
-impedem descrevê-la como promovida no ambiente hospedado.
+- identidade e versão;
+- definição operacional;
+- forma do valor e domínio permitido;
+- escopos em que pode ser atribuído;
+- valor-padrão do produto;
+- limites de interpretação;
+- referências que fundamentam a dimensão investigada.
 
-## Quatro estatutos que não se confundem
+O valor-padrão é uma hipótese de produto. Evidência externa pode justificar a
+investigação de uma dimensão, mas não estabelece automaticamente o melhor valor
+para toda população, conteúdo ou tarefa.
 
-| Estatuto | Exemplo | Interpretação permitida | Interpretação proibida |
+Limites de caracteres, bytes, elementos de página e tamanho de lote continuam
+relevantes para ergonomia e segurança. Faixa de Partes e etapas de execução
+organizam a produção. Esses controles não integram a herança dos parâmetros
+pedagógicos.
+
+## Catálogo corrente
+
+O catálogo aceita quatro parâmetros. Comandos não criam definições livres.
+
+| Parâmetro | Forma e valor-padrão | Escopos | Decisão representada |
 | --- | --- | --- | --- |
-| evidência externa | estudos sobre análise de conhecimento, explicação, recuperação ou variação | justificar que uma decisão merece ser investigada | afirmar que um valor local é universalmente ótimo |
-| operacionalização do AraLearn | unidade de análise instrucional, forma explicativa ou oportunidade distinta | planejar e auditar o artefato com uma unidade explícita | declarar que o sistema observou conhecimento ou aprendizagem |
-| propriedade de software | precedência determinística, referência exata e contagem reproduzível | verificar que o contrato foi respeitado | tratar conformidade técnica como eficácia educacional |
-| hipótese de produto ou pesquisa | no máximo duas unidades novas por Unidade expositiva | produzir uma variante examinável e registrar sua origem | apresentar o número como constante cognitiva |
+| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; padrão `2` | Curso, Lição e Microssequência | teto de unidades de análise apresentadas pela primeira vez numa Unidade expositiva |
+| `required_explanation_forms` | conjunto; padrão definição simples, exemplo concreto, mecanismo e contraste | Curso, Lição e Microssequência | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
+| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; padrão `2` | Curso, Lição e Microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
+| `required_practice_variation_dimensions` | conjunto; padrão caso ou dados | Curso, Lição e Microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
 
-Essa separação acompanha cada definição do catálogo. O default é identificado
-como hipótese de produto, não como conclusão da literatura.
+### Formas de explicação
 
-## Catálogo pedagógico pequeno e fechado
-
-Os quatro parâmetros aprovados são os únicos que podem ser atribuídos. Nenhum
-comando cria definições ad hoc.
-
-| Parâmetro | Valor | Default de produto | Escopos | O que operacionaliza |
-| --- | --- | --- | --- | --- |
-| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro positivo | `2` | Curso, Lição, Microssequência didática | teto de unidades de análise apresentadas pela primeira vez numa Unidade de estudo expositiva |
-| `required_explanation_forms` | conjunto fechado | definição simples, exemplo concreto, mecanismo e contraste | Curso, Lição, Microssequência didática | formas que precisam ser desenvolvidas quando forem aplicáveis às unidades e relações planejadas |
-| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro positivo | `2` | Curso, Lição, Microssequência didática | quantidade mínima de oportunidades semanticamente distintas por requisito de evidência |
-| `required_practice_variation_dimensions` | conjunto fechado | caso ou dados | Curso, Lição, Microssequência didática | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
-
-As formas explicativas permitidas são:
+O conjunto fechado admite:
 
 - definição simples;
 - exemplo concreto;
@@ -52,326 +51,212 @@ As formas explicativas permitidas são:
 - exemplo resolvido;
 - ligação entre representações.
 
-Definição simples é a base. Exemplo concreto, mecanismo e contraste são
-condicionais: quando uma forma não se aplica, o fato materializado registra a
-forma e uma justificativa curta. Um processo ou relação causal torna mecanismo
-pertinente; um vizinho confundível torna contraste pertinente; uma unidade
-abstrata ou relacional que admita instância torna exemplo concreto pertinente.
-O default não é checklist de oito itens.
+Definição simples é a base do valor-padrão. Exemplo, mecanismo e contraste são
+condicionais ao objeto tratado. Quando uma forma exigida não se aplica, a
+produção registra a forma e uma justificativa breve. A lista completa não é um
+roteiro obrigatório para toda Unidade.
 
-As dimensões de variação permitidas são caso ou dados, contexto, característica
-da tarefa, representação externa e nível de apoio. A operação-alvo permanece
-invariante para um mesmo requisito de evidência. Trocar apenas palavras, ordem
-visual ou componente não cria automaticamente outra oportunidade.
+### Oportunidades e variação da prática
 
-## O que não virou parâmetro
+Uma oportunidade distinta conserva a operação-alvo e modifica um aspecto
+semanticamente relevante. As dimensões disponíveis são:
 
-O catálogo não contém controles chamados densidade conceitual, dificuldade,
-carga cognitiva, teoria/prática, cobertura, progressão ou qualidade. Esses
-rótulos esconderiam unidades ou relações diferentes:
+- caso ou dados;
+- contexto;
+- característica da tarefa;
+- representação externa;
+- nível de apoio.
 
-- densidade só pode ser uma métrica de pesquisa depois que unidade semântica,
-  denominador, idioma, gênero e procedimento estiverem declarados;
-- granularidade resulta da análise e da estrutura, não de um controle global;
-- coordenação simultânea é uma relação ou conjunto auditável, não um número a
-  ser maximizado ou minimizado;
-- cobertura compara referências planejadas e aplicadas;
-- progressão depende de ordem e dependências curriculares;
-- teoria e prática são realizações observáveis nas Unidades, não uma proporção
-  universalmente adequada.
+Trocar palavras, ordem visual ou componente pode preservar a mesma tarefa. A
+distinção entre oportunidades depende do requisito de evidência e da estrutura
+semântica, não de diferença cosmética.
 
-Caracteres, linhas, pixels, bytes e tamanho do lote continuam importantes para
-ergonomia e segurança. Nenhum deles, isoladamente, mede completude, coerência,
-complexidade ou aprendizagem.
+## Dimensões mantidas fora do catálogo
+
+Rótulos como densidade conceitual, dificuldade, carga cognitiva, profundidade,
+teoria e prática, cobertura, progressão ou qualidade abrangem fenômenos
+distintos e exigem unidades e métodos próprios. O AraLearn não os reduz a
+controles globais.
+
+Algumas relações podem ser examinadas por meios mais precisos:
+
+- cobertura compara itens planejados, alvos atribuídos e fatos aplicados;
+- progressão depende de ordem curricular e pré-requisitos;
+- teoria e prática aparecem nas Unidades e em suas operações;
+- extensão editorial usa contagens observáveis, sem equivaler a complexidade;
+- densidade textual só se torna métrica quando unidade, idioma, gênero,
+  denominador e procedimento estão definidos.
+
+Essa escolha preserva a possibilidade de pesquisa sem atribuir um significado
+indevido a números fáceis de calcular.
 
 ## Escopo, origem e precedência
 
-Parâmetros pedagógicos podem existir em Curso, Lição e Microssequência
-didática. Módulo não recebeu parâmetros neste marco porque não foi demonstrada
-uma necessidade pedagógica distinta; a interface ainda mostra o contexto e a
-herança quando um Módulo é selecionado. Orientações e política de componentes
-podem usar Curso, Módulo, Lição ou Microssequência.
+Parâmetros pedagógicos podem ser atribuídos ao Curso, à Lição ou à
+Microssequência. Um Módulo mostra os valores herdados, mas não recebe uma
+atribuição pedagógica própria. Orientações e políticas de componentes podem
+usar Curso, Módulo, Lição ou Microssequência.
 
-Cada atribuição aponta para o objeto concreto e registra uma origem:
+Cada atribuição registra uma origem:
 
-- `system_default`: valor do catálogo, sem linha de atribuição;
-- `automatic`: escolha explícita do assistente, com motivo breve;
-- `author`: escolha de uma pessoa autora;
-- `research_condition`: condição identificada de pesquisa, sem criar lock ou
-  workflow experimental.
+| Origem | Significado |
+| --- | --- |
+| `author` | decisão explícita da pessoa autora |
+| `research_condition` | decisão identificada para comparação ou pesquisa |
+| `automatic` | proposta automática gravada com valor e justificativa |
+| `system_default` | valor-padrão calculado, sem linha de atribuição |
 
-A resolução de parâmetros usa uma regra única:
+A resolução segue uma regra única:
 
-1. entre `author` e `research_condition`, vence o escopo aplicável mais
-   próximo;
-2. se não houver valor explícito aplicável, vence o `automatic` mais próximo;
-3. sem atribuição aplicável, vale o `system_default`.
+1. entre `author` e `research_condition`, vale a atribuição aplicável mais
+   próxima do alvo;
+2. na ausência de decisão explícita aplicável, vale a atribuição `automatic`
+   mais próxima;
+3. sem atribuição, vale `system_default`.
 
-Assim, uma escolha automática numa Lição não apaga silenciosamente uma escolha
-explícita do Curso. `research_condition` identifica proveniência; não impede
-que uma pessoa autora registre outra decisão no objeto corrente. Herança é
-resultado calculado, nunca origem persistida.
-
-Remover uma atribuição atua somente no parâmetro e escopo selecionados. A nova
-leitura resolve novamente a cadeia e mostra o valor restaurado, sua origem e o
-objeto de onde veio. Mudanças efetivas incrementam a revisão do Curso e geram
-receipt idempotente e evento compacto; um no-op não cria falsa atividade.
+Uma decisão automática numa Lição, portanto, não substitui uma decisão
+explícita no Curso. `research_condition` registra proveniência e continua
+editável. Remover uma atribuição atua somente no parâmetro e no escopo
+selecionados; a leitura seguinte mostra o valor restaurado, a origem e o escopo
+de onde veio.
 
 ### Exemplo de herança
 
-Considere teto `2` definido pelo autor no Curso e teto `1` definido pelo autor
-na Lição A. Uma Microssequência de A mostra valor efetivo `1`, origem `author`
-e fonte Lição A. Limpar o valor da Lição faz a mesma Microssequência voltar a
-`2`, com fonte Curso. Interface e MCP apresentam a mesma explicação.
+Considere o teto `2` definido pela autoria no Curso e o teto `1` definido na
+Lição A. Uma Microssequência dessa Lição recebe `1`, com origem `author` e
+proveniência na Lição A. Ao limpar a atribuição da Lição, a mesma
+Microssequência volta a receber `2` do Curso. Interface e MCP apresentam a mesma
+resolução.
 
-## Itens do plano atribuídos a cada Microssequência
+## Itens do plano por Microssequência
 
-Unidades de análise instrucional e requisitos de evidência não se aplicam
-automaticamente a todas as Microssequências de uma Parte ou do Curso. Uma
-relação muitos-para-muitos atribui explicitamente cada item a zero ou mais
-Microssequências e permite que cada Microssequência receba zero ou mais itens
-dos dois tipos. Resultados de aprendizagem pretendidos continuam no plano, mas
-não integram essa atribuição operacional.
+Unidades de análise instrucional e requisitos de evidência são atribuídos a
+Microssequências concretas. A relação admite vários itens em cada alvo e vários
+alvos para o mesmo item. Resultados de aprendizagem pretendidos permanecem no
+plano geral e não são copiados para essa atribuição operacional.
 
 Ao ler `course_design` numa Microssequência, `targetPlanItems` devolve duas
-listas ordenadas: `instructionalAnalysisUnitIds` e
-`evidenceRequirementIds`. Nos demais escopos, o campo é `null`. O comando
-`set_target_plan_items` substitui atomicamente as duas listas do alvo; IDs de
-outro Curso, de outro tipo ou repetidos são recusados. Interface e MCP usam o
-mesmo comando, sem inferir cobertura a partir da Parte ou da posição
-curricular.
+listas ordenadas:
 
-## Orientações autorais em linguagem natural
+- `instructionalAnalysisUnitIds`;
+- `evidenceRequirementIds`.
 
-Orientação natural não é um quinto parâmetro nem volta a ser um campo escalar
-do plano. Cada edição cria uma revisão imutável com texto original, escopo,
-origem, ator, canal e revisão do Curso. A conversão inicial preserva como
-`migration` a orientação que existia no planejamento; essa origem é somente de
-leitura e não pode ser escolhida por novos comandos.
+Nos demais escopos, `targetPlanItems` é `null`. O comando
+`set_target_plan_items` substitui as duas listas na mesma transação. Identidades
+repetidas, de outro tipo ou de outro Curso são recusadas.
 
-A orientação efetiva é uma pilha ordenada do Curso até o alvo. Uma orientação
-local complementa as ancestrais; não as reescreve. Limpar a orientação de um
-escopo retira somente aquela revisão corrente.
+## Orientações autorais
 
-Uma interpretação automatizada é outro registro, ligado à revisão exata do
-texto. Ela conserva diretivas estruturadas, divergências e perguntas de
-esclarecimento dentro de limites pequenos. Não altera o original. Uma nova
-versão da orientação não herda silenciosamente a interpretação anterior.
+Uma orientação conserva seu texto original numa revisão imutável, com escopo,
+origem, canal e revisão do Curso. A orientação efetiva acumula as revisões do
+Curso até o alvo, em ordem estrutural. Limpar a orientação local retira somente
+aquela contribuição.
 
-A materialização sela os identificadores e versões exatos das orientações e
-interpretações efetivas. Quando uma variante for tratada como condição de
-pesquisa, essa referência permite saber qual texto e qual interpretação foram
-usados sem guardar conversa, prompt ou raciocínio privado.
+Uma interpretação automatizada é outro registro. Ela aponta para a revisão
+exata do texto e pode conter:
+
+- resumo;
+- diretivas `require`, `avoid` e `prefer`;
+- divergências;
+- perguntas de esclarecimento.
+
+A interpretação auxilia a execução e a auditoria, mantendo o texto da pessoa
+como referência. Uma nova revisão da orientação exige interpretação própria.
 
 ## Política de componentes didáticos
 
-Política de componentes é separada dos parâmetros pedagógicos. O valor efetivo
-é completo e usa a mesma precedência de autoridade dos parâmetros: entre
-`author` e `research_condition`, vence o escopo aplicável mais próximo; na
-ausência de política explícita, vence a `automatic` mais próxima e, por fim, o
-`system_default`:
+A política de componentes é independente dos parâmetros pedagógicos. Seu valor
+efetivo fixa:
 
 ```text
-catálogo exato
-disponibilidade: todos ou apenas permitidos
-permitidos
-excluídos
-preferidos
+revisão do catálogo
+disponibilidade: todos ou somente uma lista permitida
+componentes permitidos
+componentes bloqueados
+componentes preferidos
 ```
 
-Cada referência usa `package@version` do catálogo canônico. Há no máximo 32
-referências por conjunto. Exclusão vence permissão; preferência apenas
-desempata entre opções ainda permitidas e semanticamente adequadas. Preferir
-não obriga uso, e permitir não prova adequação.
+Cada referência usa a identidade técnica `package@version`. Um conjunto admite
+até 32 referências. Bloqueio prevalece sobre permissão; preferência apenas
+orienta a escolha entre componentes permitidos e adequados. Disponibilidade,
+preferência e uso materializado são fatos diferentes.
 
-O catálogo mostrado pela interface e pelo MCP vem no mesmo contrato de leitura
-que a política. A Edge compara versão, referências, rótulos e finalidade com o
-catálogo executável e falha diante de drift. Não existe `ResourceSet`, cópia de
-contrato de package nem lista livre aceita do cliente.
+O catálogo apresentado pela interface e pelo MCP vem da mesma fonte usada na
+função remota. Na produção seguinte, o servidor sela a revisão do catálogo e a
+política efetiva de cada Microssequência. Componente desconhecido, bloqueado ou
+fora de uma lista restrita faz a etapa inteira ser revertida.
 
-Na próxima materialização, o servidor resolve a política para a
-Microssequência, sela a revisão do catálogo e as referências efetivas e valida
-os componentes realmente presentes no lote. Referência desconhecida,
-excluída ou fora de uma lista `allow_only` reverte conteúdo, vínculo, etapa,
-evento e receipt na mesma transação.
+## Contexto efetivo e fatos de aplicação
 
-## Contexto efetivo e resultado aplicado
+Ao iniciar a produção de uma Parte, o servidor deriva o contexto de cada
+Microssequência. Ele reúne parâmetros, orientações, interpretações, política de
+componentes e itens do plano atribuídos. A impressão digital canônica abrange enunciados,
+versões e vínculos e protege as etapas posteriores.
 
-O cliente não fornece `designContext`. Ao iniciar uma tentativa, o servidor
-resolve parâmetros, orientações, interpretações e política para cada
-Microssequência-alvo e grava um contexto compacto de até 64 KiB. O contexto
-sela catálogos do recorte com `{id, position, statement, version}` para as
-unidades de análise e os requisitos de evidência atribuídos, além das duas
-listas de IDs de cada alvo. O hash canônico inclui enunciados, versões e
-atribuições e cerca todas as etapas posteriores.
+Cada etapa registra fatos delimitados sobre o que foi aplicado:
 
-Uma etapa de materialização registra somente fatos declarados sobre a
-aplicação, em até 16 KiB:
+- identidades das Unidades do lote;
+- unidades de análise declaradas como introduzidas;
+- formas de explicação desenvolvidas ou justificadamente inaplicáveis;
+- oportunidades dirigidas aos requisitos de evidência;
+- operação mantida e dimensões variadas;
+- componentes usados.
 
-- IDs das Unidades de estudo do lote;
-- unidades de análise que o agente ou a pessoa autora declara ter introduzido
-  em cada Unidade;
-- formas explicativas declaradas como desenvolvidas ou não aplicáveis;
-- oportunidades declaradas para requisitos de evidência;
-- operação declarada como invariável e dimensões declaradas como variadas;
-- componentes `package@version` declarados como usados.
+O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
+e política de componentes. O PostgreSQL também confere se as Unidades, os pais,
+as Microssequências e os componentes correspondem ao conteúdo gravado.
 
-O validador interno cerca schema, enumerações, unicidade, pertencimento aos
-itens atribuídos ao alvo, teto, cobertura declarada, contagens, operação
-invariável e dimensões exigidas. Isso torna a declaração consistente com o
-próprio contrato, mas não observa semanticamente a prosa para descobrir se uma
-forma foi de fato desenvolvida ou se duas oportunidades são substantivamente
-distintas. O banco reconcilia materialmente somente os IDs de Unidades com o
-lote, o pai e a Microssequência-alvo, e os `componentRefs` declarados com os
-packages presentes no conteúdo persistido e com a política selada.
-
-O registro não contém conteúdo gerado, prompt, conversa, justificativa extensa
-nem cadeia de raciocínio. Cada `record_step` é auditado somente contra o
-subconjunto de itens atribuído à sua Microssequência; não precisa cobrir itens
-destinados a outro alvo da mesma tentativa.
-
-A área **Parâmetros** resume planejado e aplicado usando apenas esses fatos
-persistidos. Uma diferença significa divergência do contrato observado, não
-baixa qualidade, dificuldade do estudante ou efeito educacional. Analytics e
-inferência acadêmica mais ampla pertencem a marcos posteriores.
-
-## Caso de regressão DNS e DHCP
-
-O caso obrigatório registra sete unidades ou relações da explicação:
-
-1. função do DNS;
-2. exemplo nome → endereço IP;
-3. hierarquia do DNS;
-4. registros e distribuição;
-5. mecanismo de resolução;
-6. concessão do DHCP;
-7. contraste entre DNS e DHCP.
-
-Com teto `2` e formas definição, exemplo, mecanismo e contraste, a versão
-densa falha no auditor porque sua declaração introduz muitas unidades de uma
-vez e não contabiliza as formas aplicáveis. Uma versão reparada passa no
-contrato quando:
-
-- cada unidade possui primeira introdução identificada;
-- nenhuma Unidade expositiva introduz mais de duas;
-- as sete unidades estão cobertas;
-- as formas aplicáveis foram declaradas como desenvolvidas ou justificadamente
-  não aplicáveis.
-
-Essa regressão verifica o contrato factual fornecido ao auditor. Ela não é um
-analisador semântico da explicação e não transforma a declaração de uma forma,
-oportunidade ou variação em observação independente do conteúdo.
-
-O plano corrente não persiste relações de dependência entre unidades de
-análise. O teste não inventa essa informação: ordem e dependências da estrutura
-curricular continuam sendo validadas separadamente, enquanto uma futura
-relação semântica só poderá ser auditada quando existir de ponta a ponta.
-
-Os testes metamórficos impedem um atalho editorial: texto longo e claro pode
-passar; texto curto e semanticamente denso falha; dividir o mesmo texto em
-várias Unidades sem desenvolver termos continua falhando; omitir um dos sete
-fatos falha cobertura. Não existe limiar de caracteres.
+Essa verificação preserva rastreabilidade. Ela não substitui leitura
+disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
+mecanismo ou se duas práticas são substantivamente distintas.
 
 ## Interface e MCP
 
-A área **Parâmetros** usa navegação progressiva Curso → Módulo → Lição →
-Microssequência, sem carregar o documento integral. Ela apresenta:
+A área **Parâmetros** percorre Curso, Módulo, Lição e Microssequência. Para o
+alvo selecionado, mostra:
 
-- valor efetivo, origem e escopo fonte de cada parâmetro;
-- atribuição corrente e ação de limpar para restaurar herança;
-- orientação original e interpretações separadas;
-- política de componentes com opções legíveis do catálogo;
-- cobertura planejada da Microssequência, com seleção natural das unidades de
-  análise e dos requisitos de evidência do plano;
-- resumo de planejado versus aplicado;
-- produção e limites técnicos em bloco separado, somente quando pertinentes.
+- valor efetivo, origem e escopo de proveniência;
+- atribuição local e ação para restaurar a herança;
+- orientação original e interpretação em registros separados;
+- política de componentes com nomes legíveis;
+- itens do plano atribuídos à Microssequência;
+- confronto entre o planejado e os fatos aplicados;
+- limites de produção quando forem pertinentes.
 
-Não há editor JSON nem formulário com todas as decisões abertas ao mesmo tempo.
-Módulo mostra os parâmetros herdados, mas não oferece controle pedagógico que o
-catálogo não sustenta.
+`lerCurso` usa a vista `course_design`; `alterarCurso` usa
+`update_course_design`. A interface e o MCP chegam ao mesmo domínio. Uma
+mudança informa escopo, revisão esperada, origem, motivo e `requestId`. Repetir
+o mesmo pedido recupera o mesmo resultado; uma operação sem alteração conserva
+a revisão.
 
-O MCP não ganha outra ferramenta. `lerCurso` consulta a vista `course_design`;
-`alterarCurso` usa `update_course_design`. Ambos chegam ao mesmo domínio e às
-mesmas RPCs owner-only da interface. O comando informa escopo, revisão esperada,
-origem, motivo e `requestId`; replay idêntico devolve o mesmo resultado.
-`set_target_plan_items` é a variante fechada que substitui a atribuição do alvo
-e não exige origem ou motivo de parâmetro.
+## Limites operacionais
 
-## Fundamentação e limites
+Valores individuais ocupam até 4 KiB. Orientação e interpretação ocupam até
+8 KiB cada. Uma política contém até 32 referências. A leitura de um escopo
+possui teto de 256 KiB. O contexto de materialização ocupa até 64 KiB e os fatos
+de aplicação de uma etapa, até 16 KiB.
 
-O KLI fundamenta analisar explicitamente unidades e relações de conhecimento,
-mas também mostra que granularidade depende da população e da tarefa
-([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)). O AraLearn
-chama seus recortes de unidades de análise instrucional e não afirma que sejam
-componentes cognitivos observados.
+Esses valores protegem transporte, memória e transação. Eles não possuem
+significado pedagógico.
 
-Coerência textual interage com conhecimento prévio e com as inferências que o
-texto exige; não é uma função simples do comprimento
-([McNamara e Kintsch (1996)](referencias.md#ref-mcnamara1996coherence)).
-Explicações podem apoiar elaboração, condições de aplicação e relações com
-princípios, mas seu efeito depende do conteúdo e de como são produzidas e
-usadas ([Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations);
-[Wittwer e Renkl (2008)](referencias.md#ref-wittwer2008explanations)).
+## Fundamentação e limites de interpretação
 
-Prática de recuperação, distribuição e intercalação oferecem bases para
-distinguir oportunidades e variações, sem estabelecer a mesma dosagem para
-todo objetivo ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval);
-[Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing);
-[Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved)).
-Representações externas precisam ser escolhidas por função e pela tarefa de
-coordenação que impõem; quantidade não garante benefício
+O referencial Knowledge-Learning-Instruction (KLI) oferece uma base para explicitar
+unidades e relações de conhecimento, ao mesmo tempo que situa sua granularidade
+na população e na tarefa ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)). O AraLearn usa **unidade de
+análise instrucional** como operacionalização autoral; o termo não afirma a
+observação de um componente cognitivo.
+
+Coerência textual interage com conhecimento prévio e inferências exigidas pelo
+texto, sem se reduzir ao comprimento ([McNamara e Kintsch (1996)](referencias.md#ref-mcnamara1996coherence)). Explicações podem apoiar
+elaboração e relações com princípios, mas dependem do conteúdo e do modo de uso
+([Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations); [Wittwer e Renkl (2008)](referencias.md#ref-wittwer2008explanations)).
+
+Prática de recuperação, distribuição e intercalação apoiam a investigação de
+oportunidades e variações, sem fixar uma dosagem universal ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing); [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved)). Representações externas
+precisam ser escolhidas segundo sua função e a tarefa de coordenação
 ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)).
 
-Essas fontes justificam as dimensões examinadas. Os defaults `2`, as formas
-iniciais e `case_or_data` continuam hipóteses do produto, sujeitas a revisão e
-pesquisa. Conformidade estrutural não demonstra eficácia.
-
-## Persistência, migração e orçamento
-
-O catálogo é versionado e imutável. Mudanças de parâmetro, orientação e
-política são append-only; a leitura deriva somente o estado corrente e a
-herança. Defaults não geram linhas. Eventos são compactos e receipts existentes
-continuam sendo usados; não há event store, snapshot global, blueprint ou
-ledger paralelo.
-
-A migration posterior ao corte de Unidade de estudo:
-
-- exige o catálogo antigo exato e ausência de assignments, snapshots,
-  análises, `ResourceSet`s e manifests antigos;
-- bloqueia as relações legadas antes de contar suas linhas, evitando que uma
-  escrita concorrente atravesse o preflight;
-- aborta se houver qualquer tentativa ou etapa de materialização anterior à
-  `1800`; esse estado não é reinterpretado sob o novo contexto;
-- aborta e exige exportação privada diante de qualquer estado inesperado;
-- resemeia apenas as quatro definições curadas, sem inferir defaults ausentes;
-- cria a relação muitos-para-muitos de itens do plano por Microssequência;
-- move a orientação existente do plano para uma revisão de escopo Curso;
-- remove o campo antigo do plano e suas assinaturas, sem dual read/write;
-- não converte `research_lock`, escopo Workspace ou referência opaca.
-
-A leitura de um escopo falha fechada acima do hard cap executável de 256 KiB;
-não existe promessa contratual de que toda leitura normal fique abaixo de
-96 KiB. Valores individuais ficam abaixo de 4 KiB; orientação e interpretação,
-abaixo de 8 KiB; política aceita no máximo 32 referências. A materialização
-mantém os limites de 64 KiB para contexto e 16 KiB para fatos. São cercas de
-Free Plan e transporte, não limites pedagógicos.
-
-## O que os testes demonstram
-
-Os gates cobrem domínio, PGlite, PostgreSQL real, Edge/API/MCP, navegador em
-360/390/430 px e desktop, Estudo e corte transitório. Eles verificam:
-
-- precedência, herança e restauração por `clear`;
-- CAS, idempotência, no-op e autorização owner-only;
-- imutabilidade do texto original e vínculo de interpretações;
-- catálogo e políticas sem refs livres;
-- atribuição muitos-para-muitos por alvo, contexto com enunciados e versões e
-  aplicação cercada pelo hash;
-- rejeição atômica de componente proibido;
-- regressão DNS/DHCP e casos metamórficos sobre declarações contratuais, sem
-  proxy de comprimento nem alegação de análise semântica independente;
-- paridade entre interface e MCP.
-
-Esses testes demonstram propriedades do artefato nos casos cobertos. Não medem
-compreensão, aprendizagem, validade de construto nem sustentabilidade futura do
-Free Plan.
+Essas fontes sustentam as dimensões examinadas. Os valores-padrão continuam
+hipóteses revisáveis. Para o funcionamento conversacional, consulte [Fluxos,
+instruções e contratos](fluxos-prompts-e-contratos.md).

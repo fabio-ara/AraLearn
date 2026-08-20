@@ -1,5 +1,6 @@
 export const COURSE_AUTHORING_SECTIONS = Object.freeze([
-  "planning", "parameters", "sources", "structure", "inspection", "observations", "variants", "people"
+  "planning", "parameters", "sources", "structure", "inspection", "observations", "variants",
+  "research", "people"
 ]);
 
 const COURSE_AUTHORING_ROUTE_PREFIX = "#/authoring/courses/";
@@ -95,6 +96,8 @@ function normalizedTargetOptions(options) {
 
 function targetAllowedForSection(target, section) {
   if (!target) return true;
+  if (section === "research") return true;
+  if (target.kind === "authoring_part") return section === "planning" || section === "inspection";
   if (target.kind === "anchored_annotation") return section === "observations";
   if (target.kind === "audit_finding") return section === "observations";
   if (target.kind === "audit_run") return section === "observations";

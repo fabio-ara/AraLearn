@@ -1,251 +1,207 @@
 # Assistência por modelo de linguagem
 
-O AraLearn usa modelos de linguagem como instrumentos de autoria, não como
-fontes automáticas de verdade. A pessoa descreve a intenção; um cliente
-conectado lê o Curso vivo, propõe uma operação tipada e pede confirmação quando
-necessário; domínio e PostgreSQL determinam o que pode ser gravado.
+O AraLearn usa modelos de linguagem para apoiar a Autoria e a Pesquisa. A
+pessoa descreve o que pretende fazer; o cliente conectado lê o Curso, apresenta
+uma proposta e envia uma operação com forma e alcance definidos. O domínio e o
+PostgreSQL verificam identidade, autorização, revisão e invariantes antes de
+gravar qualquer mudança.
 
-Essa divisão resolve um problema concreto. Linguagem natural é adequada para
-planejar e revisar, mas pode ser ambígua, ultrapassar o alvo pedido ou produzir
-estrutura inválida. O modelo não recebe autoridade por gerar JSON plausível.
+Essa separação permite trabalhar em linguagem natural sem tomar uma resposta
+provável por registro autorizado ou comando irrestrito. Um documento JSON bem
+formado ainda pode conter alvo, relação, referência ou decisão pedagógica
+inválidos.
 
-## Capacidade corrente
+## Como a assistência se integra ao AraLearn
 
-Nesta revisão, a assistência acessível de ponta a ponta é a **Autoria por MCP**
-sobre Curso próprio. A interface visual pode copiar o pedido de uma Parte para
-o chat conectado, mas copiar texto:
+A interface de Autoria e o cliente conectado pelo Model Context Protocol (MCP)
+operam o mesmo Curso vivo. Uma alteração confirmada na conversa aparece na
+interface e no Estudo; uma alteração feita na interface integra as leituras
+posteriores do cliente.
 
-- não inicia uma tentativa;
-- não materializa conteúdo;
-- não muda o status da Parte;
-- não persiste conversa ou raciocínio.
-
-A Inspeção continua sendo leitura fiel, com respostas e edição direta
-desativadas. Quando um achado autoriza reparo, porém, o ciclo de auditoria pode
-propor e aplicar uma correção focal no conteúdo e nas atribuições exatas de
-Fontes de uma Unidade existente. Esse fluxo não é um editor livre: não cria,
-remove, move ou reorganiza entidades.
-
-## Uma realidade compartilhada
-
-A interface e o MCP operam o mesmo Curso no PostgreSQL. Não existe workspace,
-publicação ou cópia paralela criada só para a conversa. O fluxo normal é:
+O percurso habitual é:
 
 1. localizar um Curso próprio;
-2. ler a projeção necessária e sua revisão;
-3. apresentar uma proposta compreensível;
-4. chamar uma operação fechada com as versões esperadas;
-5. receber o recibo e reler o estado;
-6. conferir o resultado na Autoria e, quando pertinente, em Estudo.
+2. ler a vista necessária e sua revisão;
+3. explicar a proposta em linguagem compreensível;
+4. enviar uma operação delimitada com as versões esperadas;
+5. reler o estado confirmado;
+6. conferir o resultado na Autoria e, quando houver conteúdo estudável, no
+   Estudo.
 
-O [guia de Autoria por MCP](autoria-mcp.md) descreve as ferramentas e os
-argumentos completos.
+O botão **Copiar pedido para o ChatGPT**, disponível numa Parte de autoria,
+leva à área de transferência um pedido contextualizado. Essa cópia prepara a
+conversa. O Curso só muda quando o cliente conectado executa as operações do
+MCP e o servidor as confirma.
 
-## Seleção de contexto
+## Ferramentas e contexto
 
-O cliente não deve carregar o Curso inteiro por conveniência. `lerCurso`
-oferece projeções distintas:
+O MCP oferece seis ferramentas estáveis:
 
-- `summary` para identidade e cabeçalho;
-- `outline` para hierarquia compacta;
-- `instructional_plan` para plano, Partes, vínculos e atividade recente;
-- `course_design` para parâmetros, orientações e política de componentes no
-  escopo escolhido e, numa Microssequência, os itens do plano atribuídos;
-- `course_sources` para Fontes, revisões, Âncoras e atribuições;
-- `anchored_annotations` para Observações em caixa de entrada, alvo ou detalhe;
-- `audit_cycle` para contexto focal, achados, rodadas e detalhe de exatamente um
-  achado ou uma rodada;
-- `part_materialization` para retomar uma tentativa e suas etapas;
-- `study_units` para inspecionar Unidades em ordem curricular;
-- `entities` para uma página estrutural sob revisão fixada.
+- `listarCursos` localiza Cursos próprios;
+- `lerCurso` lê uma vista delimitada do estado corrente;
+- `criarCurso` cria a raiz privada de um Curso;
+- `alterarCurso` reúne as operações autorais do Curso;
+- `gerirPessoas` cuida do perfil e do acesso direto ao Estudo;
+- `consultarComponentesDidaticos` descobre, inspeciona e valida componentes.
 
-Para revisar conteúdo, `study_units` mantém paridade com a Inspeção visual. O
-cliente escolhe Curso, Parte, Unidades sem Parte, Módulo, Lição ou
-Microssequência, usa uma âncora inclusiva para entrada ou restauração e cursores
-para continuar para frente ou para trás. Âncora e cursor não coexistem.
+`lerCurso` evita carregar o Curso inteiro quando a decisão exige apenas um
+recorte. As vistas correntes são:
 
-Conteúdo adjacente pode ser necessário para coerência, mas leitura não concede
-escrita. A operação enviada continua limitada ao Curso próprio, à revisão
-esperada e às identidades explicitamente incluídas no comando.
+| Vista | Conteúdo principal |
+| --- | --- |
+| `summary` | identidade, título, objetivo e revisão |
+| `outline` | hierarquia compacta |
+| `instructional_plan` | plano, Partes, vínculos e atividade recente |
+| `course_design` | parâmetros, orientações, política de componentes e itens atribuídos ao alvo |
+| `course_sources` | Fontes, revisões, Âncoras, anexos e atribuições |
+| `course_source_attachment` | preparação de envio ou leitura autorizada de um PDF |
+| `anchored_annotations` | caixa de entrada, alvo ou detalhe de Observações |
+| `part_materialization` | execução retomável e etapas da produção de uma Parte |
+| `study_units` | Unidades em ordem curricular, com a mesma composição da Inspeção |
+| `entities` | página estrutural sob revisão fixada |
+| `audit_cycle` | contexto focal, rodadas, achados e correções |
+| `variant_comparisons` | conjuntos de variantes associados ao Curso |
+| `variant_comparison` | comparação completa de um conjunto |
+| `research` | fatos de Autoria, métricas, filtros e destinos |
 
-Em `audit_cycle`, achados e rodadas são paginados e aceitam filtro opcional por
-Unidade. A lista de rodadas também enumera execuções limpas, sem achados. O
-detalhe por `auditRunId` entrega todos os checks e suas evidências; no modo
-`detail`, `findingId` e `auditRunId` são mutuamente exclusivos.
+Uma leitura fornece contexto, não permissão de escrita. O comando seguinte
+continua restrito ao Curso próprio, à revisão esperada e aos objetos que sua
+forma admite.
 
-## Autoridade e confirmação
+## Planejamento e produção por Partes
 
-As regras correntes são estreitas:
+O plano instrucional registra público, escopo, resultados pretendidos,
+unidades de análise, requisitos de evidência e Partes. Parte de autoria é um
+agrupamento operacional de Microssequências; ela organiza o trabalho sem criar
+outro nível na hierarquia didática.
 
-- somente o proprietário vê o Curso na Autoria e no MCP autoral;
-- acesso direto concede somente Estudo;
-- OAuth identifica a pessoa, mas não substitui a checagem de propriedade;
-- mutações exigem escopo de escrita;
-- conceder ou revogar acesso exige confirmação humana explícita;
-- aplicar uma correção ou executar rollback exige confirmação humana explícita;
-- identificadores fornecidos pelo cliente nunca ampliam autoridade.
+A pessoa pode discutir e reorganizar o plano antes ou durante a produção.
+Reordenar, dividir ou unir Partes altera os vínculos de trabalho, preservando o
+conteúdo didático já materializado.
 
-Uma decisão pedagógica não deve ser escondida num lote. O cliente apresenta o
-efeito pretendido em linguagem natural e separa alteração do plano de alteração
-da composição.
+A produção de uma Parte ocorre em etapas delimitadas e retomáveis. Ao iniciar a
+execução, o servidor resolve os parâmetros, as orientações, a política de
+componentes, os itens do plano e as Fontes aplicáveis a cada Microssequência.
+Cada etapa confirma conteúdo, vínculos, proveniência e fatos de aplicação numa
+única transação. O próximo passo vem do estado persistido, o que permite retomar
+uma interrupção sem depender da memória da conversa.
 
-## Operações de autoria
+## Componentes didáticos
 
-### Plano e Partes
-
-O plano é alterado por comandos semânticos: atualizar campos naturais, gerir
-itens, criar ou reorganizar Partes e mover vínculos de Microssequência. Título e
-objetivo continuam pertencendo à raiz do Curso. Reorganizar uma Parte não apaga
-conteúdo didático.
-
-### Parâmetros, orientações e componentes
-
-O desenho é lido e alterado por escopo. Parâmetros possuem valores efetivos e
-proveniência visível; orientações preservam o texto original e uma
-interpretação estruturada separada; a política de componentes distingue
-disponibilidade, exclusão e preferência. Defaults são hipóteses de produto, e
-uma atribuição automática precisa de justificativa. Nenhuma automação
-sobrescreve silenciosamente uma decisão explícita.
-
-Unidades de análise e requisitos de evidência são atribuídos explicitamente a
-cada Microssequência. `targetPlanItems` mostra as duas listas no alvo, e
-`set_target_plan_items` as substitui de forma atômica. Essa relação
-muitos-para-muitos impede que uma etapa seja obrigada a declarar cobertura de
-itens destinados a outra Microssequência.
-
-### Composição
-
-A composição usa o contrato `aralearn.course.v1`, coleção `studyUnits` e
-discriminador persistido `study_unit`, sem alias. A escrita é segmentada. Cada
-linha é validada conforme
-`module|lesson|topic|microsequence|study_unit`, e o banco verifica dependências
-somente nas Lições afetadas pelo lote.
-
-Packages são descobertos progressivamente por
-`consultarComponentesDidaticos`:
+O cliente descobre componentes conforme a intenção autoral, em vez de receber
+todos os contratos de uma só vez. `consultarComponentesDidaticos` oferece esta
+sequência:
 
 1. `explore` apresenta famílias e facetas;
-2. `search` encontra candidatos por intenção;
-3. `inspect` compara poucos packages;
-4. `contracts` entrega o contrato exato;
-5. `validate_study_unit` valida `studyUnitJson`;
+2. `search` encontra até oito candidatos por intenção;
+3. `inspect` compara os candidatos selecionados;
+4. `contracts` entrega um contrato exato por chamada;
+5. `validate_study_unit` valida a Unidade proposta;
 6. `audit_representation` confronta intenção e composição;
-7. `preview_study_unit` prepara a inspeção fiel.
+7. `preview_study_unit` prepara uma prévia no mecanismo de apresentação do
+   AraLearn.
 
-A validação comprova forma, referências e compatibilidade. Ela não comprova
-verdade científica, adequação ao público ou eficácia educacional.
+O termo de produto é **componente didático**. No contrato técnico, cada pacote
+de componente possui uma identidade `package@version`. A validação confirma a
+forma, as referências e a compatibilidade; a adequação ao público e a correção
+do conteúdo ainda exigem julgamento responsável.
 
-### Materialização retomável
+## Fontes e proveniência
 
-Uma Parte pode ter tentativa persistida com etapas pequenas. Iniciar, registrar
-etapa e finalizar são operações explícitas. Ao iniciar, o servidor resolve e
-sela os parâmetros, as revisões de orientação e a política efetivos; o cliente
-não declara esse contexto. O selo inclui enunciado e versão dos itens
-atribuídos, e cada etapa é auditada somente contra o subconjunto do seu alvo.
-Uma etapa de Microssequência confirma entidades, vínculo, fatos limitados de
-aplicação, evento e recibo na mesma transação. Formas, oportunidades e
-variações continuam sendo declarações validadas internamente; a reconciliação
-material do banco cobre IDs de Unidades, pai/alvo e `componentRefs`. O próximo
-passo vem do estado persistido, não da memória da conversa.
+O cliente pode criar e revisar Fontes, localizar trechos por Âncoras e atribuir
+essas referências a itens do plano ou Unidades. Uma atribuição informa a
+relação da Fonte com o alvo, como sustentação, adaptação, citação, contraste ou
+necessidade de verificação.
 
-### Auditoria, correção e verificação
+PDFs privados são enviados diretamente ao armazenamento de objetos por um
+endereço temporário e só passam a integrar a Fonte depois da confirmação do
+servidor. A leitura exige autorização e a atribuição pode ser exportada em JSON
+com identidades, revisões, relações e Âncoras exatas.
 
-Uma rodada confronta uma Unidade focal nas dimensões estrutural, pedagógica,
-factual e editorial. A interface envia exatamente três checks humanos; o servidor
-acrescenta o check estrutural determinístico e limita o total a 32. Resultados
-são `passed|failed|uncertain|not_applicable|not_checked`. A rodada é imutável e
-continua enumerável mesmo sem achado.
+Uma citação torna a origem localizável. Ela não atesta, sozinha, a qualidade da
+Fonte nem a verdade da afirmação.
 
-Um achado não altera o Curso. Seus estados são
-`open|awaiting_verification|resolved|dismissed`, e suas decisões são novas
-versões. A correção v1 atua somente na Unidade focal: pode substituir seu
-conteúdo e seu conjunto completo e ordenado de Fontes, preserva `topics`
-legítimos e não cria, exclui, move, reposiciona ou troca o pai. Proposta,
-rejeição, aplicação, verificação e rollback são fatos separados. Aplicação e
-rollback usam checkpoint `before|after`, CAS e a mesma autoridade de recibos do
-Curso; somente essas duas operações criam `course_events`.
+## Observações, auditoria e correções
 
-Verificar exige outra rodada. `resolved` só é válido quando o critério focal
-passou; `still_open` reabre o achado. Para resultado factual positivo ou
-resolução factual, a evidência precisa apontar Fonte e Âncora ativas e exatas.
-`supported_by` sustenta afirmações; `quoted_from` só serve ao critério
-`quotation_fidelity`.
+Observações registram manifestações situadas de quem estuda ou de quem cria o
+Curso. A assistência pode consultar a caixa de entrada, registrar uma
+Observação autoral após confirmar alvo e síntese, e ajudar na triagem. O texto
+da conversa não é copiado integralmente.
 
-O MCP mantém seis ferramentas. `alterarCurso update_audit_cycle` recebe sete
-comandos: registrar auditoria, propor ou rejeitar correção, decidir achado,
-aplicar correção, verificar achado e executar rollback. O campo
-`auditCommand.confirmed: true` é aceito apenas na aplicação e no rollback; os
-outros cinco comandos o recusam, e o transporte o remove antes do domínio.
-Sugestões de resolver ou reabrir uma Observação são apenas ações sugeridas:
-exigem um comando explícito e versionado da capacidade de Anotações.
+A auditoria trata uma Unidade nas dimensões estrutural, pedagógica, factual e
+editorial. Cada rodada conserva critérios, resultados e evidências públicos.
+Um achado permanece separado de sua proposta de correção, da aplicação e da
+verificação posterior.
 
-## Concorrência e repetição segura
+Uma correção focal pode substituir o conteúdo e as atribuições de Fontes da
+Unidade observada. Ela preserva identidade, pai, posição e restante da
+estrutura. Aplicar ou reverter a correção exige confirmação humana explícita;
+considerá-la resolvida exige outra rodada com o critério pertinente aprovado.
 
-Cada mutação informa `expectedRevision`; plano, Parte, tentativa ou etapa usam
-também suas versões específicas. O PostgreSQL aplica compare-and-swap (CAS): se
-o estado mudou desde a leitura, a escrita é recusada e o cliente precisa reler e
-reconciliar.
+## Variantes e Pesquisa
 
-`requestId` identifica uma intenção dentro da janela de retenção. Repetir o
-mesmo pedido e o mesmo conteúdo recupera o recibo; reutilizar a chave com outro
-conteúdo é conflito. Um no-op não avança revisão nem cria atividade falsa.
+O cliente pode criar de duas a oito variantes comparáveis a partir do mesmo
+ponto de planejamento. Cada variante é outro Curso, com identidade e revisão
+próprias. A comparação apresenta diferenças declaradas, fatos materializados,
+desvios e dados ausentes. Essa relação sustenta comparação descritiva, não uma
+conclusão causal.
 
-## Persistência, offline e privacidade
+A vista `research` usa os mesmos fatos, filtros, métricas e revisões da área
+**Pesquisa**. O cliente pode explicar o denominador, mostrar a tabela que
+sustenta o gráfico e conduzir a pessoa ao objeto relacionado. Quando o cliente
+aceita a extensão visual MCP Apps, um componente apresenta prévias de Unidades,
+indicadores agregados de Pesquisa e comparações de Variantes. Nos demais
+clientes, a resposta textual preserva o mesmo conteúdo autorizado; quando o
+contrato fornece endereço, ele também permanece no texto.
 
-Alterações autorais exigem servidor disponível e revisão corrente. Não existe
-outbox universal de Autoria. Sem conexão, a pessoa pode estudar conteúdo já
-carregado e a Inspeção pode reutilizar somente uma página exata em cache,
-marcada offline ou desatualizada; isso não autoriza mutação.
+Diagramas que dependem de WebAssembly aparecem como descrição textual dentro do
+MCP Apps porque a política estável do cliente não permite esse processamento.
+Essa limitação não altera a prévia visual disponível no próprio AraLearn.
 
-Auditoria, achados e correções são online-only. Não possuem store, cache
-autoritativo ou outbox no IndexedDB; esse limite não remove o cache e a outbox
-próprios das Observações.
+## Autoridade, concorrência e confirmação
 
-Prompt, resposta e raciocínio do cliente não são persistidos como estado do
-Curso. O produto conserva somente dados confirmados, eventos pequenos e recibos
-temporários necessários à operação. O cliente e o provider continuam sujeitos
-a seus próprios termos, retenção e localização de dados.
+A Autoria, a Pesquisa e o MCP autoral pertencem à pessoa proprietária do Curso.
+O acesso direto concedido a outra conta permite estudar, sem conceder autoria.
+OAuth identifica a pessoa e o escopo do cliente; o servidor ainda verifica a
+propriedade em cada operação.
 
-## Limites proporcionais
+Cada alteração informa a revisão esperada do Curso e, quando necessário, a
+versão do plano, da Parte, da execução ou do objeto focal. Se o estado mudou
+desde a leitura, a operação é recusada para que o cliente releia e reconcilie a
+proposta.
 
-Limites impedem que contexto amplo vire carga irrestrita:
+`requestId` identifica a repetição segura de uma intenção. O mesmo pedido com o
+mesmo conteúdo recupera o recibo anterior; a mesma chave com conteúdo diferente
+gera conflito. Uma operação sem mudança efetiva também não cria atividade
+artificial.
 
-- pedido do transporte: até 1 MiB;
-- lote geral de composição: até 200 itens;
-- etapa de materialização: até 64 mudanças e 256 KiB;
-- plano: até 192 vínculos e alvo de 512 KiB;
-- Inspeção: 12 itens por padrão, 24 no máximo e resposta de até 1,75 MiB.
-- páginas e resultados do ciclo de auditoria: até 240 KiB; comando: até
-  192 KiB; página: até 24 itens e cursor opaco de até 240 caracteres;
-- contexto: até 12 Observações selecionadas; rodada: até 16 achados e 32 checks
-  após a inclusão estrutural do servidor;
-- checkpoint: snapshot de até 48 KiB por lado e conjunto `before|after` de até
-  96 KiB; recibo: até 64 KiB;
-- retenção delimitada: até 256 rodadas por Curso, com reserva para correções
-  aplicadas, 1.024 identidades de achado e 64 correções por Curso, no máximo
-  oito por achado; projeções de históricos também são limitadas.
+Conceder ou revogar acesso, criar uma Observação pela conversa, aplicar uma
+correção e executar sua reversão possuem confirmações próprias. Uma decisão
+pedagógica relevante deve aparecer para a pessoa antes da operação que a grava.
 
-Essas cercas reduzem risco de memória, transação e egress, mas não demonstram
-que o Free Plan sustenta uso prolongado. Essa afirmação depende de medição real.
+## Privacidade e funcionamento sem conexão
 
-## Validação não é avaliação pedagógica
+O Curso conserva somente o estado confirmado, fatos operacionais delimitados e
+recibos temporários. Instruções enviadas ao modelo, respostas brutas e raciocínio
+privado não integram o Curso. O cliente de modelo continua sujeito aos seus próprios
+termos de retenção e localização de dados.
 
-O sistema verifica schema, identidades, posições, hierarquia, dependências,
-packages, slots, referências e autoridade. Ele não prova que uma explicação é
-verdadeira, suficiente ou adequada. Recomendações de interação humano–IA
-enfatizam visibilidade, controle e possibilidade de correção
+Alterações autorais exigem conexão. Conteúdo já sincronizado continua disponível
+em Estudo, e a Inspeção pode reapresentar a página exata guardada no
+dispositivo. Observações possuem uma fila local própria; plano, composição,
+auditoria, variantes e Pesquisa dependem de releitura do servidor para escrever.
+
+## Limites de interpretação
+
+Os contratos demonstram integridade técnica, autorização e correspondência
+entre referências. Eles não demonstram verdade científica, qualidade global,
+aprendizagem ou eficácia. Recomendações de interação humano-IA ressaltam
+visibilidade, controle e possibilidade de correção
 ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
-[Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). A
-responsabilidade factual e pedagógica continua humana, conforme também
-recomendado para IA generativa em educação
-([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
+[Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Para uso
+educacional de modelos generativos, a responsabilidade factual e pedagógica
+permanece humana ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
-## Verificação
-
-Os testes comuns usam respostas determinísticas e não consomem APIs pagas. A
-verificação focal deve cobrir OAuth, autorização owner-only, schemas MCP,
-roteamento comum à interface, CAS, idempotência, validação por tipo, paginação
-de `study_units`, enumeração de rodadas limpas, detalhe de rodada, correção
-focal, nova rodada de verificação, rollback e PostgreSQL real. Um teste aprovado
-demonstra somente o cenário codificado; não avalia qualidade educacional do
-conteúdo produzido.
+Consulte [Criar e desenvolver Cursos por
+conversa](criar-cursos-pelo-chat.md) para o percurso de uso e [Autoria por
+MCP](autoria-mcp.md) para a referência das ferramentas.

@@ -147,7 +147,7 @@ test("revisão linguístico-semiótica separa unidade, gesto e inferência", () 
   assert.match(review, /ambiente de aprendizagem, autoria\s+e pesquisa com unidades de estudo estruturadas/u);
   assert.match(glossary, /### Unidade de estudo/u);
   assert.match(glossary, /### Anotação ancorada/u);
-  assert.match(glossary, /### Flashcard/u);
+  assert.match(glossary, /### Cartão de memorização/u);
   assert.match(glossary, /### Gesto de entrada/u);
   assert.match(glossary, /### Operação-alvo da tarefa/u);
   assert.match(glossary, /### Atenção/u);

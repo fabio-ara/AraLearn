@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   compareRuntimeManifest,
@@ -7,30 +10,15 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260817180000";
-const EXPECTED_CONTRACT_VERSION = 1;
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const runtimeManifest = JSON.parse(readFileSync(
+  path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
+  "utf8"
+));
+const EXPECTED_REVISION = runtimeManifest.schemaRevision;
+const EXPECTED_CONTRACT_VERSION = runtimeManifest.contractVersion;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
-const FEATURES = [
-  "flat-runtime-manifest-v1",
-  "single-live-course-identity-v1",
-  "paged-live-course-composition-v1",
-  "direct-course-access-v1",
-  "course-personal-state-v1",
-  "course-cas-idempotency-v1",
-  "oauth-only-authoring-mcp",
-  "package-library-v1",
-  "package-contract-discovery-v1",
-  "person-profile-v1",
-  "study-only-course-access-v1",
-  "private-person-avatar-v1",
-  "self-account-deletion-v1",
-  "course-instructional-plan-v1",
-  "course-authoring-part-materialization-v1",
-  "course-study-unit-inspection-v1",
-  "course-design-parameters-v1",
-  "course-authoring-guidance-v1",
-  "course-component-policy-v1"
-];
+const FEATURES = runtimeManifest.requiredFeatures;
 
 function response(status, body, headers = {}) {
   return new Response(body == null ? null : JSON.stringify(body), { status, headers });
@@ -74,9 +62,9 @@ test("verificador recusa banco atrasado ou sem capacidade obrigatória", () => {
     () => compareRuntimeManifest(expected, {
       schemaRevision: EXPECTED_REVISION,
       contractVersion: EXPECTED_CONTRACT_VERSION,
-      features: FEATURES.filter((item) => item !== "course-personal-state-v1")
+      features: FEATURES.filter((item) => item !== "course-personal-state-v2")
     }),
-    /course-personal-state-v1/
+    /course-personal-state-v2/
   );
   assert.throws(
     () => compareRuntimeManifest(expected, {

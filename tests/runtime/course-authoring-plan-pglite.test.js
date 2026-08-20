@@ -7,6 +7,9 @@ import { PGlite } from "@electric-sql/pglite";
 import {
   normalizeCourseDesignRead
 } from "../../src/domain/courseDesignParameters.js";
+import { validateCourseEntityContent } from "../../src/domain/aralearnProject.js";
+import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
 
 const migrationUrl = new URL(
   "../../supabase/migrations/20260817160000_course_authoring_plan.sql",
@@ -44,6 +47,25 @@ const DESIGN_EVIDENCE_ID_B = "52000000-0000-4000-8000-000000000002";
 const DESIGN_FORMS = [
   "plain_definition", "concrete_example", "mechanism", "contrast"
 ];
+
+function sourceDocument(overrides = {}) {
+  return {
+    kind: "document",
+    title: "Fonte verificada",
+    authorship: "Autoria",
+    publicationDate: "2026",
+    identifier: null,
+    language: "pt-BR",
+    citationText: null,
+    url: null,
+    editionOrVersion: null,
+    origin: "external",
+    availability: "unknown",
+    verificationStatus: "author_verified",
+    studyVisibility: "hidden",
+    ...overrides
+  };
+}
 
 async function scalar(database, sql, parameters = []) {
   const result = await database.query(sql, parameters);
@@ -324,7 +346,8 @@ async function applyStudyUnitInspectionMigration(database) {
 async function applyCourseDesignMigration(database, {
   nonEmptyLegacyState = false,
   corruptLegacyCatalog = false,
-  pre1800Materialization = false
+  pre1800Materialization = false,
+  preservedMaterializationState = false
 } = {}) {
   await database.exec(`
     create table private.authoring_design_parameter_definitions(
@@ -355,6 +378,11 @@ async function applyCourseDesignMigration(database, {
   if (nonEmptyLegacyState) {
     await database.exec(`
       insert into private.authoring_design_parameter_assignments values(1)
+    `);
+  }
+  if (preservedMaterializationState) {
+    await database.exec(`
+      insert into private.authoring_materialization_states values(1)
     `);
   }
   if (corruptLegacyCatalog) {
@@ -436,7 +464,7 @@ function materializationApplication({
         introducedInstructionalAnalysisUnitIds: [],
         explanationApplications: [],
         practiceApplications: [practice("dns-case-a")],
-        componentRefs: [componentRef]
+        componentRefs: [componentRef, "aralearn.response.choice@1.0.0"].sort()
       },
       {
         studyUnitId: `${prefix}-practice-2`,
@@ -444,29 +472,54 @@ function materializationApplication({
         introducedInstructionalAnalysisUnitIds: [],
         explanationApplications: [],
         practiceApplications: [practice("dns-case-b")],
-        componentRefs: [componentRef]
+        componentRefs: [componentRef, "aralearn.response.choice@1.0.0"].sort()
       }] : [])
     ]
   };
 }
 
 function studyUnitUpserts(application, packageId, firstPosition = 1) {
-  return application.studyUnits.map((studyUnit, index) => ({
-    entityType: "study_unit",
-    entityId: studyUnit.studyUnitId,
-    parentType: "microsequence",
-    parentId: application.didacticMicrosequenceId,
-    position: firstPosition + index,
-    content: {
+  const contentContract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+  const responseContract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.response.choice",
+    "1.0.0"
+  );
+  return application.studyUnits.map((studyUnit, index) => {
+    const position = firstPosition + index;
+    const candidate = {
+      id: studyUnit.studyUnitId,
+      position,
       title: `Unidade factual ${index + 1}`,
-      kind: "study_unit",
-      resource: {
+      role: studyUnit.mode === "practice" ? "practice" : "theory",
+      content: [{
+        id: `${studyUnit.studyUnitId}-content`,
         package: packageId,
         version: "1.0.0",
-        data: { text: `Conteúdo factual ${index + 1}.` }
-      }
-    }
-  }));
+        data: structuredClone(contentContract.contract.example)
+      }],
+      response: studyUnit.mode === "practice" ? {
+        id: `${studyUnit.studyUnitId}-response`,
+        package: "aralearn.response.choice",
+        version: "1.0.0",
+        data: structuredClone(responseContract.contract.example)
+      } : null,
+      feedback: [],
+      topics: ["DNS", "DHCP"]
+    };
+    const validation = validateCourseEntityContent("study_unit", candidate);
+    assert.equal(validation.valid, true, validation.errors.join(" "));
+    const content = structuredClone(validation.normalized);
+    delete content.id;
+    delete content.position;
+    return {
+      entityType: "study_unit",
+      entityId: studyUnit.studyUnitId,
+      parentType: "microsequence",
+      parentId: application.didacticMicrosequenceId,
+      position,
+      content
+    };
+  });
 }
 
 async function applyDesignCommand(database, expectedRevision, command, requestId) {
@@ -2226,6 +2279,17 @@ test("#122 preserva orientação válida anterior acima do novo teto de escrita"
   await database.close();
 });
 
+test("#122 mantém contadores legados já validados pelo corte de identidade", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database, { preservedMaterializationState: true });
+  assert.equal(await scalar(database, `
+    select count(*) as value from private.authoring_materialization_states
+  `), 1);
+  await database.close();
+});
+
 test("#122 preflight falha fechado para catálogo, estado ou materialização anterior", async () => {
   for (const scenario of [
     { corruptLegacyCatalog: true, pattern: /catálogo legado/iu },
@@ -2447,12 +2511,22 @@ test("#122 acumula guidance e resolve precedência e navegação sem árvore int
   await database.close();
 });
 
-test("#122 sela contexto e rejeita densidade ou componente divergente atomicamente", async () => {
+test("#122 e #131 percorrem plano, descoberta, contrato, materialização, prévia e auditoria", async () => {
   const database = await databaseFixture();
   await applyMigration(database);
   await applyStudyUnitInspectionMigration(database);
   await applyCourseDesignMigration(database);
   await actor(database, OWNER, "service_role");
+  const discovery = RESOURCE_CATALOG.search({ query: "explicação em prosa" });
+  assert.equal(discovery.coverage.status, "canonical");
+  assert.equal(discovery.candidates[0].packageId, "aralearn.resource.paragraph");
+  const exactContract = RESOURCE_CATALOG.contracts([{
+    packageId: discovery.candidates[0].packageId,
+    version: discovery.candidates[0].version
+  }]);
+  assert.equal(exactContract.items.length, 1);
+  assert.equal(exactContract.items[0].status, "ok");
+  assert.equal(exactContract.items[0].definition.package, "aralearn.resource.paragraph");
   const plan = await scalar(database, `
     select jsonb_build_object('id',id,'partId',(
       select part.id from private.course_authoring_parts part
@@ -2769,6 +2843,22 @@ test("#122 sela contexto e rejeita densidade ou componente divergente atomicamen
   }]);
   assert.equal(recorded.courseRevision, 9);
   assert.equal(recorded.step.status, "completed");
+  const persistedStudyUnit = await scalar(database, `
+    select jsonb_build_object('id',entity_id,'position',position) || content as value
+    from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id=$2
+  `, [COURSE, application.studyUnits[0].studyUnitId]);
+  const persistedValidation = RESOURCE_CATALOG.validateStudyUnit(persistedStudyUnit);
+  assert.equal(persistedValidation.valid, true, persistedValidation.errors.join(" "));
+  const preview = RESOURCE_CATALOG.previewStudyUnitDescriptor(persistedStudyUnit);
+  assert.equal(preview.previewMode, "client_renderer");
+  assert.ok(preview.accessibleText);
+  const representationAudit = RESOURCE_CATALOG.auditRepresentation({
+    studyUnit: persistedStudyUnit,
+    intent: { query: "explicação em prosa" }
+  });
+  assert.equal(representationAudit.structural.valid, true);
+  assert.equal(representationAudit.overallFit, "canonical");
   assert.equal(await scalar(database, `
     select result_facts->'designApplication' = $3::jsonb as value
     from private.course_authoring_part_materialization_steps
@@ -3274,14 +3364,11 @@ test("#123 limita cada revisão de Fonte a oito identidades de Âncora", async (
     type: "save_source",
     sourceId,
     expectedSourceRevision: 0,
-    source: {
-      kind: "document",
+    source: sourceDocument({
       title: "Fonte com conjunto limitado de Âncoras",
       citationText: "AUTOR. Fonte com conjunto limitado de Âncoras.",
-      url: null,
-      editionOrVersion: null,
       studyVisibility: "citation"
-    }
+    })
   }, "source-anchor-limit-save");
   assert.equal(saved.courseRevision, 5);
 
@@ -3315,14 +3402,7 @@ test("#123 limita cada revisão de Fonte a oito identidades de Âncora", async (
     type: "save_source",
     sourceId: secondSourceId,
     expectedSourceRevision: 0,
-    source: {
-      kind: "document",
-      title: "Segunda Fonte para testar identidade",
-      citationText: null,
-      url: null,
-      editionOrVersion: null,
-      studyVisibility: "hidden"
-    }
+    source: sourceDocument({ title: "Segunda Fonte para testar identidade" })
   }, "source-anchor-limit-second");
   assert.equal(secondSource.courseRevision, 15);
   await assert.rejects(
@@ -3390,14 +3470,8 @@ test("#123 limites SQL contam scalars Unicode e preservam byte caps", async () =
     type: "save_source",
     sourceId,
     expectedSourceRevision: 0,
-    source: {
-      kind: "document",
-      title,
-      citationText,
-      url: null,
-      editionOrVersion,
-      studyVisibility: "citation"
-    }
+    source: sourceDocument({ title, citationText, editionOrVersion,
+      studyVisibility: "citation" })
   }, "source-unicode-scalars-save");
   assert.equal(saved.courseRevision, 5);
   const anchorId = "⚓".repeat(240);
@@ -3481,18 +3555,13 @@ test("#123 limites SQL contam scalars Unicode e preservam byte caps", async () =
     }, requestId), (error) => error.code === "23514");
   }
   for (const [requestId, source] of [
-    ["source-title-layout-bad", {
-      kind: "document", title: "Título\nquebrado", citationText: null,
-      url: null, editionOrVersion: null, studyVisibility: "hidden"
-    }],
-    ["source-edition-layout", {
-      kind: "document", title: "Título válido", citationText: null,
-      url: null, editionOrVersion: "v1\tx", studyVisibility: "hidden"
-    }],
-    ["source-citation-border", {
-      kind: "document", title: "Título válido", citationText: "\nCitação",
-      url: null, editionOrVersion: null, studyVisibility: "citation"
-    }]
+    ["source-title-layout-bad", sourceDocument({ title: "Título\nquebrado" })],
+    ["source-edition-layout", sourceDocument({
+      title: "Título válido", editionOrVersion: "v1\tx"
+    })],
+    ["source-citation-border", sourceDocument({
+      title: "Título válido", citationText: "\nCitação", studyVisibility: "citation"
+    })]
   ]) {
     await assert.rejects(() => executeCourseSourceCommand(database, 7, {
       type: "save_source",
@@ -3522,14 +3591,12 @@ test("#123 resolve identidade legacy longa, protege tabelas e permite cascatas r
   await applyCourseSourcesMigration(database);
   await actor(database, OWNER, "service_role");
 
-  const source = {
-    kind: "article",
-    title: "Fonte legada agora verificada",
+  const source = sourceDocument({
+    kind: "article", title: "Fonte legada agora verificada",
     citationText: "AUTOR. Fonte legada agora verificada.",
-    url: "https://example.test/legacy",
-    editionOrVersion: null,
-    studyVisibility: "citation_and_link"
-  };
+    url: "https://example.test/legacy", origin: "imported_legacy",
+    availability: "unknown", studyVisibility: "citation_and_link"
+  });
   const saveCommand = {
     type: "save_source",
     sourceId: legacySourceId,
@@ -3761,14 +3828,7 @@ test("#123 resolve identidade legacy longa, protege tabelas e permite cascatas r
     type: "save_source",
     sourceId: "source-account-delete",
     expectedSourceRevision: 0,
-    source: {
-      kind: "document",
-      title: "Fonte eliminada com o Curso",
-      citationText: null,
-      url: null,
-      editionOrVersion: null,
-      studyVisibility: "hidden"
-    }
+    source: sourceDocument({ title: "Fonte eliminada com o Curso" })
   }, "source-account-delete-01");
   await actor(accountDatabase, OWNER, "authenticated");
   const deleted = await scalar(accountDatabase, `
@@ -3810,14 +3870,8 @@ test("#123 lookup contextual encontra revisão pinada sem varrer histórico long
     type: "save_source",
     sourceId,
     expectedSourceRevision: 0,
-    source: {
-      kind: "document",
-      title: "Revisão pinada",
-      citationText: "Fonte pinada.",
-      url: null,
-      editionOrVersion: null,
-      studyVisibility: "citation"
-    }
+    source: sourceDocument({ title: "Revisão pinada", citationText: "Fonte pinada.",
+      studyVisibility: "citation" })
   }, "source-context-save-0001");
   await executeCourseSourceCommand(database, 5, {
     type: "save_anchor",
@@ -3855,21 +3909,26 @@ test("#123 lookup contextual encontra revisão pinada sem varrer histórico long
   `, [COURSE, sourceId, OWNER]);
   await database.query(`
     insert into private.course_source_revisions(
-      course_id,source_id,revision,status,kind,title,citation_text,url,
-      edition_or_version,study_visibility,actor_id
+      course_id,source_id,revision,status,kind,title,authorship,publication_date,
+      identifier,language,citation_text,url,edition_or_version,origin,availability,
+      verification_status,study_visibility,actor_id
     )
     select $1,$2,revision,'active','document',
-      'Revisão ' || revision::text,'Fonte corrente.',null,null,'citation',$3
+      'Revisão ' || revision::text,'Autoria','2026',null,'pt-BR',
+      'Fonte corrente.',null,null,'author_provided','unknown','author_verified',
+      'citation',$3
     from generate_series(2,105) revision
   `, [COURSE, sourceId, OWNER]);
   await database.query(`
     insert into private.course_source_revisions(
-      course_id,source_id,revision,status,kind,title,citation_text,url,
-      edition_or_version,study_visibility,actor_id
+      course_id,source_id,revision,status,kind,title,authorship,publication_date,
+      identifier,language,citation_text,url,edition_or_version,origin,availability,
+      verification_status,study_visibility,actor_id
     )
     select $1,'source-catalog-default-' || lpad(identity::text,2,'0'),
-      1,'active','document','Fonte ' || identity::text,
-      'Fonte de catálogo.',null,null,'citation',$2
+      1,'active','document','Fonte ' || identity::text,'Autoria','2026',
+      null,'pt-BR','Fonte de catálogo.',null,null,'author_provided','unknown',
+      'author_verified','citation',$2
     from generate_series(0,9) identity
   `, [COURSE, OWNER]);
 
@@ -4037,14 +4096,12 @@ test("#123 grava plano e composição com atribuições atômicas, vazias e repl
     type: "save_source",
     sourceId: "source-plan-a",
     expectedSourceRevision: 0,
-    source: {
-      kind: "article",
-      title: "Fonte do planejamento",
+    source: sourceDocument({
+      kind: "article", title: "Fonte do planejamento",
       citationText: "AUTOR. Fonte do planejamento.",
-      url: "https://example.test/plan",
-      editionOrVersion: null,
+      url: "https://example.test/plan", availability: "open_access",
       studyVisibility: "citation"
-    }
+    })
   }, "source-plan-save-0001");
   assert.equal(sourceSaved.courseRevision, 5);
   const anchorSaved = await executeCourseSourceCommand(database, 5, {
@@ -4928,14 +4985,12 @@ test("#123 redação Study omite privados e rejeita unresolved, retired e cross-
     type: "save_source",
     sourceId: "source-visible-a",
     expectedSourceRevision: 0,
-    source: {
-      kind: "article",
-      title: "Fonte visível",
-      citationText: "AUTOR. Fonte visível.",
-      url: "https://example.test/visible",
-      editionOrVersion: "2",
+    source: sourceDocument({
+      kind: "article", title: "Fonte visível",
+      citationText: "AUTOR. Fonte visível.", url: "https://example.test/visible",
+      editionOrVersion: "2", availability: "open_access",
       studyVisibility: "citation_and_link"
-    }
+    })
   }, "source-visible-save-001");
   await executeCourseSourceCommand(database, 5, {
     type: "save_anchor",
@@ -4950,14 +5005,7 @@ test("#123 redação Study omite privados e rejeita unresolved, retired e cross-
     type: "save_source",
     sourceId: "source-hidden-a",
     expectedSourceRevision: 0,
-    source: {
-      kind: "document",
-      title: "Fonte oculta",
-      citationText: null,
-      url: "https://example.test/hidden",
-      editionOrVersion: null,
-      studyVisibility: "hidden"
-    }
+    source: sourceDocument({ title: "Fonte oculta", url: "https://example.test/hidden" })
   }, "source-hidden-save-0001");
   await executeCourseSourceCommand(database, 7, {
     type: "save_anchor",
@@ -5017,14 +5065,11 @@ test("#123 redação Study omite privados e rejeita unresolved, retired e cross-
     type: "save_source",
     sourceId: "source-visible-a",
     expectedSourceRevision: 1,
-    source: {
-      kind: "article",
-      title: "Fonte visível",
-      citationText: "AUTOR. Fonte visível.",
-      url: "https://example.test/visible",
-      editionOrVersion: "2",
-      studyVisibility: "hidden"
-    }
+    source: sourceDocument({
+      kind: "article", title: "Fonte visível",
+      citationText: "AUTOR. Fonte visível.", url: "https://example.test/visible",
+      editionOrVersion: "2", availability: "open_access", studyVisibility: "hidden"
+    })
   }, "source-visible-hide-0001");
   assert.equal(hiddenCurrent.courseRevision, 10);
   await actor(database, LEARNER, "authenticated");
@@ -5038,14 +5083,11 @@ test("#123 redação Study omite privados e rejeita unresolved, retired e cross-
     type: "save_source",
     sourceId: "source-visible-a",
     expectedSourceRevision: 2,
-    source: {
-      kind: "article",
-      title: "Fonte visível",
-      citationText: "AUTOR. Fonte visível.",
-      url: "https://example.test/visible",
-      editionOrVersion: "2",
-      studyVisibility: "citation"
-    }
+    source: sourceDocument({
+      kind: "article", title: "Fonte visível",
+      citationText: "AUTOR. Fonte visível.", url: "https://example.test/visible",
+      editionOrVersion: "2", availability: "open_access", studyVisibility: "citation"
+    })
   }, "source-visible-citation-01");
   assert.equal(citationOnlyCurrent.courseRevision, 11);
   await actor(database, LEARNER, "authenticated");
@@ -5167,9 +5209,13 @@ test("#123 cerca citações densas no último payload legível sem revisão parc
     const sourceId = `dense-source-${sourceIndex}`;
     await database.query(`
       insert into private.course_source_revisions(
-        course_id,source_id,revision,status,kind,title,citation_text,url,
-        edition_or_version,study_visibility,actor_id
-      ) values($1,$2,1,'active','document',$3,'C',null,null,'citation',$4)
+        course_id,source_id,revision,status,kind,title,authorship,publication_date,
+        identifier,language,citation_text,url,edition_or_version,origin,availability,
+        verification_status,study_visibility,actor_id
+      ) values(
+        $1,$2,1,'active','document',$3,'Autoria','2026',null,'pt-BR','C',null,
+        null,'author_provided','unknown','author_verified','citation',$4
+      )
     `, [COURSE, sourceId, `S${sourceIndex}`, OWNER]);
     const anchors = [];
     for (let anchorIndex = 0; anchorIndex < 8; anchorIndex += 1) {
@@ -5281,14 +5327,7 @@ test("#123 cerca citações densas no último payload legível sem revisão parc
     type: "save_source",
     sourceId: "dense-source-6",
     expectedSourceRevision: 1,
-    source: {
-      kind: "document",
-      title: "S6",
-      citationText: "C",
-      url: null,
-      editionOrVersion: null,
-      studyVisibility: "hidden"
-    }
+    source: sourceDocument({ title: "S6", citationText: "C" })
   }, "source-budget-hide-seventh");
   assert.equal(hiddenSeventh.courseRevision, 6);
   await actor(database, OWNER, "authenticated");
@@ -5311,14 +5350,8 @@ test("#123 cerca citações densas no último payload legível sem revisão parc
     type: "save_source",
     sourceId: "dense-source-6",
     expectedSourceRevision: 2,
-    source: {
-      kind: "document",
-      title: "S6",
-      citationText: "C",
-      url: null,
-      editionOrVersion: null,
-      studyVisibility: "citation"
-    }
+    source: sourceDocument({ title: "S6", citationText: "C",
+      studyVisibility: "citation" })
   }, "source-budget-reexpose-01"), (error) => (
     error.code === "54000" && /Citações de Estudo excedem 256 KiB/iu.test(error.message)
   ));

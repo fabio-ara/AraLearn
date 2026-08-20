@@ -19,13 +19,28 @@ begin
      or to_regclass('private.trail_items') is null
      or to_regclass('private.trail_item_courses') is null
      or to_regclass('public.trail_personal_states') is null
-     or to_regclass('private.app_role_assignments') is null
      or to_regclass('private.educational_workspace_members') is null
      or to_regclass('public.user_course_selections') is null
      or to_regclass('private.authoring_workspace_events') is null
      or to_regclass('private.authoring_workspace_requests') is null
      or to_regclass('private.authoring_workspace_publications') is null
      or to_regclass('private.catalog_review_submissions') is null
+     or to_regclass('private.authoring_instructional_analyses') is null
+     or to_regclass('private.authoring_design_parameter_assignments') is null
+     or to_regclass('private.authoring_resource_sets') is null
+     or to_regclass('private.authoring_resource_set_members') is null
+     or to_regclass('private.authoring_effective_design_snapshots') is null
+     or to_regclass('private.authoring_effective_design_snapshot_values') is null
+     or to_regclass('private.authoring_effective_design_snapshot_resource_sets') is null
+     or to_regclass('private.authoring_pedagogical_blueprints') is null
+     or to_regclass('private.authoring_pedagogical_blueprint_bindings') is null
+     or to_regclass('private.authoring_microsequence_design_bindings') is null
+     or to_regclass('private.authoring_materialization_states') is null
+     or to_regclass('private.authoring_materialization_manifests') is null
+     or to_regclass('private.authoring_manifest_coverage') is null
+     or to_regclass('private.authoring_manifest_metrics') is null
+     or to_regclass('private.authoring_manifest_resource_selections') is null
+     or to_regclass('private.authoring_manifest_materialized_resources') is null
      or to_regprocedure('auth.uid()') is null
      or to_regprocedure('private.require_service_role()') is null
      or to_regprocedure('extensions.digest(bytea,text)') is null
@@ -74,7 +89,7 @@ create temporary table course_identity_cutover_map_v1 (
   legacy_publication_course_id uuid,
   source_kind text not null,
   constraint course_identity_cutover_map_source_v1 check(source_kind in (
-    'root_only', 'root_and_publication', 'publication_only'
+    'root_only', 'root_and_publication'
   ))
 ) on commit drop;
 
@@ -92,35 +107,32 @@ select
       then 'root_only'
     when item.workspace_id is not null and item.course_id is not null
       then 'root_and_publication'
-    else 'publication_only'
+    else 'invalid'
   end
 from private.trail_items item;
 
--- O corte hospedado conhecido possui quatro raízes sem publicação, duas raízes
--- com publicação e duas publicações sem raiz relacional. Banco vazio continua
+-- O corte hospedado conhecido possui quatro raízes sem publicação e quatro
+-- raízes com publicação. Banco vazio continua
 -- sendo um caso válido para bootstrap/teste; qualquer outra topologia aborta.
 do $validate_course_cutover_topology$
 declare
   v_total integer;
   v_root_only integer;
   v_root_and_publication integer;
-  v_publication_only integer;
-  v_product_owner_count integer;
 begin
   select
     count(*)::integer,
     count(*) filter(where source_kind = 'root_only')::integer,
-    count(*) filter(where source_kind = 'root_and_publication')::integer,
-    count(*) filter(where source_kind = 'publication_only')::integer
-  into v_total, v_root_only, v_root_and_publication, v_publication_only
+    count(*) filter(where source_kind = 'root_and_publication')::integer
+  into v_total, v_root_only, v_root_and_publication
   from course_identity_cutover_map_v1;
 
   if v_total = 0 then return; end if;
-  if (v_total, v_root_only, v_root_and_publication, v_publication_only)
-     is distinct from (8, 4, 2, 2) then
+  if (v_total, v_root_only, v_root_and_publication)
+     is distinct from (8, 4, 4) then
     raise exception
-      'Topologia inesperada no corte de Curso: total %, raízes %, combinados %, somente publicação %.',
-      v_total, v_root_only, v_root_and_publication, v_publication_only
+      'Topologia inesperada no corte de Curso: total %, raízes %, combinados %.',
+      v_total, v_root_only, v_root_and_publication
       using errcode = '55000';
   end if;
 
@@ -134,8 +146,7 @@ begin
       on root.workspace_id = mapping.workspace_id
      and root.entity_type = 'course'
      and root.entity_id = mapping.workspace_course_id
-    where mapping.source_kind <> 'publication_only'
-      and (
+    where (
         workspace.id is null
         or workspace.owner_id is null
         or root.workspace_id is null
@@ -165,17 +176,79 @@ begin
       using errcode = '55000';
   end if;
 
-  select count(*)::integer into v_product_owner_count
-  from private.app_role_assignments assignment
-  where assignment.role = 'owner' and assignment.active;
-  if v_publication_only > 0 and v_product_owner_count <> 1 then
-    raise exception
-      'Cursos sem raiz exigem exatamente um owner ativo de produto; encontrados %.',
-      v_product_owner_count
-      using errcode = '55000';
-  end if;
 end;
 $validate_course_cutover_topology$;
+
+-- Os 247 registros abaixo são apenas contadores de invalidação. Eles não
+-- carregam conteúdo nem têm consumidor no runtime de Curso. O corte confirma
+-- a disposição exata e os mantém isolados para a limpeza integral do legado,
+-- depois do backup e da verificação próprios dessa etapa.
+do $preserve_known_materialization_counters$
+declare
+  v_course_count bigint;
+  v_state_count bigint;
+  v_state_workspace_count bigint;
+  v_mapped_workspace_count bigint;
+  v_orphan_count bigint;
+  v_fact_count bigint;
+begin
+  select count(*) into v_course_count from course_identity_cutover_map_v1;
+  select count(*),count(distinct state.workspace_id)
+    into v_state_count,v_state_workspace_count
+  from private.authoring_materialization_states state;
+  select count(distinct state.workspace_id) into v_mapped_workspace_count
+  from private.authoring_materialization_states state
+  join course_identity_cutover_map_v1 mapping
+    on mapping.workspace_id=state.workspace_id;
+  select count(*) into v_orphan_count
+  from private.authoring_materialization_states state
+  left join private.authoring_workspaces workspace
+    on workspace.id=state.workspace_id and workspace.deleted_at is null
+  left join private.authoring_workspace_entities microsequence
+    on microsequence.workspace_id=state.workspace_id
+   and microsequence.entity_type='microsequence'
+   and microsequence.entity_id=state.microsequence_ref
+  where workspace.id is null or microsequence.workspace_id is null
+     or not exists(
+       select 1 from course_identity_cutover_map_v1 mapping
+       where mapping.workspace_id=state.workspace_id
+     );
+  select coalesce(sum(fact.count_value),0) into v_fact_count
+  from (
+    select count(*) count_value from private.authoring_instructional_analyses
+    union all select count(*) from private.authoring_design_parameter_assignments
+    union all select count(*) from private.authoring_resource_sets
+    union all select count(*) from private.authoring_resource_set_members
+    union all select count(*) from private.authoring_effective_design_snapshots
+    union all select count(*) from private.authoring_effective_design_snapshot_values
+    union all select count(*) from private.authoring_effective_design_snapshot_resource_sets
+    union all select count(*) from private.authoring_pedagogical_blueprints
+    union all select count(*) from private.authoring_pedagogical_blueprint_bindings
+    union all select count(*) from private.authoring_microsequence_design_bindings
+    union all select count(*) from private.authoring_materialization_manifests
+    union all select count(*) from private.authoring_manifest_coverage
+    union all select count(*) from private.authoring_manifest_metrics
+    union all select count(*) from private.authoring_manifest_resource_selections
+    union all select count(*) from private.authoring_manifest_materialized_resources
+  ) fact;
+  if v_course_count=0 then
+    if (v_state_count,v_state_workspace_count,v_mapped_workspace_count,
+        v_orphan_count,v_fact_count) is distinct from (0,0,0,0,0) then
+      raise exception 'Banco sem Cursos contém estado de materialização legado.'
+        using errcode='55000';
+    end if;
+    return;
+  end if;
+  if (v_state_count,v_state_workspace_count,v_mapped_workspace_count,
+      v_orphan_count,v_fact_count) is distinct from (247,2,2,0,0) then
+    raise exception
+      'Contadores de materialização inesperados: registros %, workspaces %, mapeados %, órfãos %, fatos dependentes %.',
+      v_state_count,v_state_workspace_count,v_mapped_workspace_count,
+      v_orphan_count,v_fact_count
+      using errcode='55000';
+  end if;
+end;
+$preserve_known_materialization_counters$;
 
 -- O vocabulário histórico existe apenas neste mapa TEMP. Cada evento recebe
 -- uma operação ampla do Curso e um tipo de mudança canônico que conserva a
@@ -194,7 +267,7 @@ create temporary table course_event_cutover_map_v1 (
 insert into course_event_cutover_map_v1(
   source_operation, target_operation, change_kind, expected_count
 ) values
-  ('create', 'create_course', 'course_initialized', 6),
+  ('create', 'create_course', 'course_initialized', 8),
   ('create_structure', 'replace_course_composition',
     'didactic_structure_materialized', 4),
   ('replace_catalog_document', 'replace_course_composition',
@@ -206,10 +279,10 @@ insert into course_event_cutover_map_v1(
     'authoring_guidance_updated', 4),
   ('update_metadata', 'update_course_metadata', 'course_metadata_updated', 1);
 
--- The hosted cutover is intentionally exact: current events remain analytics
--- authority after rekeying, while expired receipts, withdrawn reviews and
--- deleted workspaces are export-only evidence for removal with the legacy
--- graph in #130. An empty database remains a valid local bootstrap.
+-- O corte hospedado é deliberadamente exato: os eventos correntes preservam
+-- a autoridade analítica após a troca de chave. Receipts expirados, revisões
+-- retiradas e workspaces removidos ficam como evidência exportável para #130.
+-- Banco vazio continua sendo um bootstrap local válido.
 do $validate_course_cutover_disposition$
 declare
   v_course_count integer;
@@ -222,6 +295,8 @@ declare
   v_tombstone_count integer;
   v_member_count integer;
   v_publication_count integer;
+  v_catalog_course_count integer;
+  v_unlinked_catalog_course_count integer;
 begin
   select count(*)::integer into v_course_count
   from course_identity_cutover_map_v1;
@@ -248,11 +323,20 @@ begin
   from private.educational_workspace_members;
   select count(*)::integer into v_publication_count
   from private.authoring_workspace_publications;
+  select
+    count(*)::integer,
+    count(*) filter(where not exists(
+      select 1 from private.trail_items item
+      where item.course_id=catalog_course.id
+    ))::integer
+  into v_catalog_course_count,v_unlinked_catalog_course_count
+  from public.courses catalog_course;
   if v_course_count = 0 then
     if (
       v_event_count, v_request_count, v_review_count, v_tombstone_count,
-      v_member_count, v_publication_count
-    ) is distinct from (0, 0, 0, 0, 0, 0) then
+      v_member_count, v_publication_count, v_catalog_course_count,
+      v_unlinked_catalog_course_count
+    ) is distinct from (0, 0, 0, 0, 0, 0, 0, 0) then
       raise exception 'Banco sem Cursos contém resíduos autorais não classificados.'
         using errcode = '55000';
     end if;
@@ -268,13 +352,16 @@ begin
     v_withdrawn_review_count,
     v_tombstone_count,
     v_member_count,
-    v_publication_count
-  ) is distinct from (36, 52, 43, 9, 2, 2, 10, 6, 2) then
+    v_publication_count,
+    v_catalog_course_count,
+    v_unlinked_catalog_course_count
+  ) is distinct from (38, 55, 46, 9, 2, 2, 10, 8, 4, 8, 4) then
     raise exception
-      'Disposição legacy inesperada: eventos %, receipts % (% ativos/% tombstone), reviews % (% withdrawn), tombstones %, membros %, publicações %.',
+      'Disposição legacy inesperada: eventos %, receipts % (% ativos/% tombstone), reviews % (% withdrawn), tombstones %, membros %, publicações %, catálogo % (% sem vínculo).',
       v_event_count, v_request_count, v_active_request_count,
       v_deleted_request_count, v_review_count, v_withdrawn_review_count,
-      v_tombstone_count, v_member_count, v_publication_count
+      v_tombstone_count, v_member_count, v_publication_count,
+      v_catalog_course_count,v_unlinked_catalog_course_count
       using errcode = '55000';
   end if;
   if exists(
@@ -294,33 +381,171 @@ begin
     raise exception 'Vocabulário ou distribuição de eventos legacy divergiu.'
       using errcode = '55000';
   end if;
+  -- Os campos operacionais abaixo provam que cada registro pertence aos
+  -- formatos conhecidos no banco hospedado. Depois dessa conferência, somente
+  -- o tipo de mudança e as três contagens seguem para course_events: o estado
+  -- resultante já está nas entidades e revisões do Curso, e nenhum consumidor
+  -- atual usa caminhos, flags de continuidade ou nomes do mecanismo anterior.
   if exists(
     select 1
     from private.authoring_workspace_events event_value
-    where jsonb_typeof(event_value.summary) is distinct from 'object'
-      or not (event_value.summary ?& array[
-        'created', 'updated', 'deleted'
-      ])
-      or exists(
-        select 1
-        from jsonb_object_keys(event_value.summary) field_name
-        where field_name not in (
-          'operation', 'created', 'updated', 'deleted',
-          'workspaceId', 'catalog', 'publication'
+    where case
+      when jsonb_typeof(event_value.summary) is distinct from 'object'
+        then true
+      when event_value.operation in (
+        'create', 'create_structure', 'replace_catalog_document'
+      ) then
+        jsonb_typeof(event_value.summary->'created')
+          is distinct from 'number'
+        or event_value.summary->>'created' !~ '^[1-9][0-9]{0,8}$'
+        or event_value.summary - 'created' is distinct from jsonb_build_object(
+          'operation', event_value.operation,
+          'updated', 0,
+          'deleted', 0
         )
-      )
-      or (
-        event_value.summary ? 'operation'
-        and event_value.summary->>'operation' is distinct from event_value.operation
-      )
-      or (
-        event_value.summary ? 'workspaceId'
-        and event_value.summary->>'workspaceId'
-          is distinct from event_value.workspace_id::text
-      )
-      or coalesce(event_value.summary->>'created', '') !~ '^[0-9]{1,9}$'
-      or coalesce(event_value.summary->>'updated', '') !~ '^[0-9]{1,9}$'
-      or coalesce(event_value.summary->>'deleted', '') !~ '^[0-9]{1,9}$'
+      when event_value.operation = 'update_brief' then
+        event_value.summary is distinct from jsonb_build_object(
+          'operation', 'update_brief',
+          'created', 0,
+          'updated', 0,
+          'deleted', 0
+        )
+      when event_value.operation = 'save_microsequence_cards' then
+          jsonb_typeof(event_value.summary->'created')
+            is distinct from 'number'
+          or event_value.summary->>'created' !~ '^[1-9][0-9]{0,8}$'
+          or jsonb_typeof(event_value.summary->'submittedCardCount')
+            is distinct from 'number'
+          or event_value.summary->'submittedCardCount'
+            is distinct from event_value.summary->'created'
+          or event_value.summary - array[
+            'created', 'submittedCardCount', 'targetPath'
+          ]::text[] is distinct from jsonb_build_object(
+            'operation', 'save_microsequence_cards',
+            'updated', 1,
+            'deleted', 0,
+            'mode', 'replace',
+            'positionsNormalized', true
+          )
+          or case
+            when jsonb_typeof(event_value.summary->'targetPath') = 'array'
+              then jsonb_array_length(event_value.summary->'targetPath') <> 4
+                or exists(
+                  select 1
+                  from jsonb_array_elements(
+                    event_value.summary->'targetPath'
+                  ) path_part
+                  where jsonb_typeof(path_part) is distinct from 'string'
+                    or nullif(btrim(path_part #>> '{}'), '') is null
+                    or char_length(path_part #>> '{}') > 240
+                )
+            else true
+          end
+      when event_value.operation = 'save_card' then
+        event_value.summary - array[
+          'targetPath', 'targetPaths', 'resourceTargets', 'changedCardPaths'
+        ]::text[] is distinct from jsonb_build_object(
+          'operation', 'save_card',
+          'operationFamily', 'content',
+          'created', 0,
+          'updated', 1,
+          'deleted', 0,
+          'targetPathsTruncated', false,
+          'resourceTargetsTruncated', false,
+          'changedCardPathsTruncated', false,
+          'cardShellChangedPaths', '[]'::jsonb,
+          'cardShellChangedPathsTruncated', false,
+          'continuityAdjusted', false,
+          'continuityAffectedPartCount', 0,
+          'continuityMandateConsumed', false,
+          'continuityReferenceCount', 0
+        )
+          or case
+            when jsonb_typeof(event_value.summary->'targetPath') = 'array'
+              then jsonb_array_length(event_value.summary->'targetPath') <> 5
+                or exists(
+                  select 1
+                  from jsonb_array_elements(
+                    event_value.summary->'targetPath'
+                  ) path_part
+                  where jsonb_typeof(path_part) is distinct from 'string'
+                    or nullif(btrim(path_part #>> '{}'), '') is null
+                    or char_length(path_part #>> '{}') > 240
+                )
+            else true
+          end
+          or event_value.summary->'targetPaths' is distinct from
+            jsonb_build_array(event_value.summary->'targetPath')
+          or event_value.summary->'changedCardPaths' is distinct from
+            jsonb_build_array(event_value.summary->'targetPath')
+          or case
+            when jsonb_typeof(event_value.summary->'resourceTargets') = 'array'
+              then jsonb_array_length(
+                event_value.summary->'resourceTargets'
+              ) <> 1
+                or case
+                  when jsonb_typeof(
+                    event_value.summary#>'{resourceTargets,0}'
+                  ) = 'object' then
+                    (
+                      event_value.summary#>'{resourceTargets,0}'
+                    ) - 'targetId'::text
+                      is distinct from jsonb_build_object(
+                        'cardPath', event_value.summary->'targetPath'
+                      )
+                    or jsonb_typeof(
+                      event_value.summary#>'{resourceTargets,0,targetId}'
+                    ) is distinct from 'string'
+                    or nullif(btrim(
+                      event_value.summary#>>'{resourceTargets,0,targetId}'
+                    ), '') is null
+                    or char_length(
+                      event_value.summary#>>'{resourceTargets,0,targetId}'
+                    ) > 240
+                  else true
+                end
+            else true
+          end
+      when event_value.operation = 'update_metadata' then
+        event_value.summary - array[
+          'targetPath', 'targetPaths'
+        ]::text[] is distinct from jsonb_build_object(
+          'operation', 'update_metadata',
+          'operationFamily', 'structure',
+          'entityType', 'microsequence',
+          'created', 0,
+          'updated', 1,
+          'deleted', 0,
+          'targetPathsTruncated', false,
+          'resourceTargets', '[]'::jsonb,
+          'resourceTargetsTruncated', false,
+          'changedCardPaths', '[]'::jsonb,
+          'changedCardPathsTruncated', false,
+          'cardShellChangedPaths', '[]'::jsonb,
+          'cardShellChangedPathsTruncated', false,
+          'continuityAdjusted', false,
+          'continuityAffectedPartCount', 0,
+          'continuityMandateConsumed', false,
+          'continuityReferenceCount', 0
+        )
+          or case
+            when jsonb_typeof(event_value.summary->'targetPath') = 'array'
+              then jsonb_array_length(event_value.summary->'targetPath') <> 4
+                or exists(
+                  select 1
+                  from jsonb_array_elements(
+                    event_value.summary->'targetPath'
+                  ) path_part
+                  where jsonb_typeof(path_part) is distinct from 'string'
+                    or nullif(btrim(path_part #>> '{}'), '') is null
+                    or char_length(path_part #>> '{}') > 240
+                )
+            else true
+          end
+          or event_value.summary->'targetPaths' is distinct from
+            jsonb_build_array(event_value.summary->'targetPath')
+      else true
+    end
   ) then
     raise exception 'Summary de evento legacy não pode ser convertido com segurança.'
       using errcode = '55000';
@@ -332,7 +557,6 @@ begin
       on workspace.id = mapping.workspace_id
     left join private.educational_workspace_members member
       on member.workspace_id = workspace.id
-    where mapping.source_kind <> 'publication_only'
     group by mapping.course_id, workspace.owner_id
     having count(member.user_id) <> 1
       or not bool_and(
@@ -373,7 +597,6 @@ begin
     from private.authoring_workspace_events event_value
     left join course_identity_cutover_map_v1 mapping
       on mapping.workspace_id = event_value.workspace_id
-     and mapping.source_kind <> 'publication_only'
     group by event_value.id
     having count(mapping.course_id) <> 1
   ) then
@@ -385,7 +608,6 @@ begin
     from private.authoring_workspace_events event_value
     join course_identity_cutover_map_v1 mapping
       on mapping.workspace_id = event_value.workspace_id
-     and mapping.source_kind <> 'publication_only'
     join private.authoring_workspaces workspace
       on workspace.id = mapping.workspace_id
     where event_value.revision > workspace.revision
@@ -475,10 +697,10 @@ end;
 $reject_unconverted_authoring_audit_findings$;
 
 -- Catch any other private table directly scoped by an active workspace. Only
--- the explicitly converted/retired sources, trail identity and the two
--- observation relations staged for the next canonical migration may carry
--- rows into this cutover. The observation tables stay private and revoked;
--- #124 converts notes, while the explicit preflight above rejects findings.
+-- Somente as origens convertidas ou isoladas de modo explícito, a identidade
+-- de Estudo e as duas relações de observação preparadas para a migração
+-- seguinte podem carregar registros neste corte. As observações continuam
+-- privadas e sem grants; o preflight acima já rejeitou achados não convertidos.
 do $reject_unclassified_workspace_scoped_state$
 declare
   v_relation record;
@@ -504,6 +726,7 @@ begin
         'authoring_workspace_publications',
         'authoring_workspace_observations',
         'authoring_workspace_observation_receipts',
+        'authoring_materialization_states',
         'educational_workspace_members',
         'trail_items'
       )
@@ -632,26 +855,15 @@ begin
       or char_length(staged.course_goal) > 2000
       or staged.entity_version < 1
       or staged.entity_created_at > staged.entity_updated_at
-      or (
-        mapping.source_kind <> 'publication_only'
-        and not exists(
-          select 1
-          from private.authoring_workspace_entities source_entity
-          where source_entity.workspace_id = mapping.workspace_id
-            and source_entity.entity_type = staged.entity_type
-            and source_entity.entity_id = staged.entity_id
-            and source_entity.version = staged.entity_version
-            and source_entity.created_at = staged.entity_created_at
-            and source_entity.updated_at = staged.entity_updated_at
-        )
-      )
-      or (
-        mapping.source_kind = 'publication_only'
-        and (
-          staged.entity_version <> 1
-          or staged.entity_created_at is distinct from publication.created_at
-          or staged.entity_updated_at is distinct from publication.updated_at
-        )
+      or not exists(
+        select 1
+        from private.authoring_workspace_entities source_entity
+        where source_entity.workspace_id = mapping.workspace_id
+          and source_entity.entity_type = staged.entity_type
+          and source_entity.entity_id = staged.entity_id
+          and source_entity.version = staged.entity_version
+          and source_entity.created_at = staged.entity_created_at
+          and source_entity.updated_at = staged.entity_updated_at
       )
   ) or exists(
     select 1
@@ -736,24 +948,14 @@ begin
       on root.workspace_id = mapping.workspace_id
      and root.entity_type = 'course'
      and root.entity_id = mapping.workspace_course_id
-    left join public.courses publication
-      on publication.id = mapping.legacy_publication_course_id
-    where staged.course_title is distinct from case
-        when mapping.source_kind = 'publication_only'
-          then nullif(btrim(publication.title), '')
-        else coalesce(
-          nullif(btrim(root.content->>'title'), ''),
-          nullif(btrim(workspace.title), '')
-        )
-      end
-      or staged.course_goal is distinct from case
-        when mapping.source_kind = 'publication_only'
-          then nullif(btrim(publication.goal), '')
-        else coalesce(
-          nullif(btrim(root.content->>'goal'), ''),
-          nullif(btrim(workspace.purpose), '')
-        )
-      end
+    where staged.course_title is distinct from coalesce(
+        nullif(btrim(root.content->>'title'), ''),
+        nullif(btrim(workspace.title), '')
+      )
+      or staged.course_goal is distinct from coalesce(
+        nullif(btrim(root.content->>'goal'), ''),
+        nullif(btrim(workspace.purpose), '')
+      )
   ) or exists(
     select 1
     from pg_temp.course_content_import_v1 staged
@@ -936,7 +1138,7 @@ end;
 $disable_external_legacy_course_triggers$;
 
 comment on table public.legacy_catalog_courses is
-  'Isolada pelo corte #117/#118; sem consumidor novo e destinada a remoção em #130.';
+  'Isolada pelo corte #117/#118; inclui quatro registros sem vínculo, não possui consumidor novo e será tratada em #130.';
 comment on table private.legacy_authoring_workspaces is
   'Isolada pelo corte #117/#118; sem consumidor novo e destinada a remoção em #130.';
 comment on table private.legacy_authoring_workspace_entities is
@@ -1229,7 +1431,7 @@ revoke all on table public.courses
 revoke all on table public.course_access
   from public, anon, authenticated, service_role;
 
--- C1-C6: a raiz viva é a autoridade de owner e metadados; project/course não
+-- C1-C8: a raiz viva é a autoridade de owner e metadados; project/course não
 -- são entidades do modelo final.
 insert into public.courses(
   id, owner_id, title, goal, brief, revision, authoring_state,
@@ -1258,41 +1460,7 @@ join (
     min(staged.course_goal) as course_goal
   from pg_temp.course_content_import_v1 staged
   group by staged.course_id
-) staged_header on staged_header.course_id = mapping.course_id
-where mapping.source_kind <> 'publication_only';
-
--- C7-C8: somente o cabeçalho é criado. O owner não é inferido por e-mail nem
--- pelo owner histórico da publicação: exige exatamente um owner de produto.
-insert into public.courses(
-  id, owner_id, title, goal, brief, revision, authoring_state,
-  created_at, updated_at
-)
-select
-  mapping.course_id,
-  product_owner.user_id,
-  staged_header.course_title,
-  staged_header.course_goal,
-  '',
-  1,
-  '{"version":1,"parts":[],"decisions":[],"mandate":null}'::jsonb,
-  publication.created_at,
-  publication.updated_at
-from course_identity_cutover_map_v1 mapping
-join public.legacy_catalog_courses publication
-  on publication.id = mapping.legacy_publication_course_id
-join (
-  select staged.course_id,
-    min(staged.course_title) as course_title,
-    min(staged.course_goal) as course_goal
-  from pg_temp.course_content_import_v1 staged
-  group by staged.course_id
-) staged_header on staged_header.course_id = mapping.course_id
-cross join lateral (
-  select assignment.user_id
-  from private.app_role_assignments assignment
-  where assignment.role = 'owner' and assignment.active
-) product_owner
-where mapping.source_kind = 'publication_only';
+) staged_header on staged_header.course_id = mapping.course_id;
 
 insert into private.course_entities(
   course_id, entity_type, entity_id, parent_type, parent_id,
@@ -1359,7 +1527,7 @@ $validate_migrated_course_structure$;
 
 drop table pg_temp.course_content_import_v1;
 
--- Os seis memberships hospedados são somente a redundância do owner já
+-- Os oito memberships hospedados são somente a redundância do owner já
 -- migrado. O preflight confirmou zero compartilhamentos reais, portanto o
 -- corte não inventa grants a partir de seleção, membership ou papel legado.
 
@@ -1382,7 +1550,6 @@ select
 from private.authoring_workspace_events event_value
 join course_identity_cutover_map_v1 mapping
   on mapping.workspace_id = event_value.workspace_id
- and mapping.source_kind <> 'publication_only'
 join course_event_cutover_map_v1 conversion
   on conversion.source_operation = event_value.operation;
 
@@ -1395,13 +1562,12 @@ begin
     end if;
     return;
   end if;
-  if (select count(*) from private.course_events) <> 36
+  if (select count(*) from private.course_events) <> 38
      or exists(
        select 1
        from private.authoring_workspace_events source_event
        join course_identity_cutover_map_v1 course_mapping
          on course_mapping.workspace_id = source_event.workspace_id
-        and course_mapping.source_kind <> 'publication_only'
        join course_event_cutover_map_v1 conversion
          on conversion.source_operation = source_event.operation
        left join private.course_events target_event

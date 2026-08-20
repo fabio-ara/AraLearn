@@ -6,10 +6,6 @@ import {
   normalizeCourseAnchoredAnnotationQuery,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
-import {
-  COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-  courseAnnotationHandoffCacheKey
-} from "./CoursePersonalStateRepository.js";
 
 export const COURSE_ANNOTATION_CACHE_CONTRACT =
   "aralearn.course-anchored-annotation-cache.v1";
@@ -253,15 +249,6 @@ function normalizeOutbox(value, id, updatedAt) {
   return outbox;
 }
 
-function sameLegacyIntent(left, right) {
-  return plainObject(left) && plainObject(right) &&
-    left.kind === right.kind &&
-    left.targetStudyUnitId === right.targetStudyUnitId &&
-    left.category === right.category &&
-    left.text === right.text &&
-    left.updatedAt === right.updatedAt;
-}
-
 function assertOutboxBudget(value) {
   if (value.commands.length > MAX_OUTBOX_COMMANDS ||
       encoder.encode(JSON.stringify(value)).byteLength > MAX_OUTBOX_BYTES) {
@@ -435,7 +422,7 @@ function applyOptimisticCommand(items, entry) {
   });
 }
 
-function presentationItems(cache, outbox, targetStudyUnitId, handoff = null) {
+function presentationItems(cache, outbox, targetStudyUnitId) {
   const items = pageItems(cache, targetStudyUnitId);
   for (const [id, item] of items) items.set(id, { ...item, syncStatus: "synced", syncError: "" });
   for (const entry of outbox.commands) {
@@ -460,27 +447,6 @@ function presentationItems(cache, outbox, targetStudyUnitId, handoff = null) {
         capabilities: { canRevise: false, canWithdraw: false }
       });
     }
-  }
-  const legacy = handoff?.intents?.find((intent) =>
-    intent.targetStudyUnitId === targetStudyUnitId && intent.kind === "upsert");
-  if (legacy && ![...items.values()].some((item) => item.rawText === legacy.text && item.category === legacy.category)) {
-    items.set(`legacy:${targetStudyUnitId}`, {
-      ...optimisticCreate({
-        annotationId: `legacy:${targetStudyUnitId}`,
-        targetStudyUnitId,
-        expectedCourseRevision: cache.courseRevision,
-        createdAt: legacy.updatedAt,
-        command: {
-          rawText: legacy.text,
-          category: legacy.category,
-          briefSummary: null,
-          capturedAt: null
-        }
-      }),
-      syncStatus: "pending",
-      migrationPending: true,
-      capabilities: { canRevise: false, canWithdraw: false }
-    });
   }
   return [...items.values()].sort((left, right) =>
     String(right.timestamps?.updatedAt || "").localeCompare(String(left.timestamps?.updatedAt || "")));
@@ -535,7 +501,7 @@ export class CourseAnnotationRepository {
     }
   }
 
-  async initialize({ reconcileLegacy = true } = {}) {
+  async initialize() {
     if (this.#initialized) return this.snapshot();
     await this.#readLocal();
     if (typeof this.BroadcastChannelValue === "function") {
@@ -547,7 +513,6 @@ export class CourseAnnotationRepository {
       }
     }
     this.#initialized = true;
-    if (reconcileLegacy) await this.reconcileLegacyHandoff();
     await this.flush();
     return this.snapshot();
   }
@@ -576,7 +541,6 @@ export class CourseAnnotationRepository {
       await this.cache.putCache(outboxKey(this.courseId), null);
       this.outbox = emptyOutbox(this.courseId, timestamp);
     }
-    this.handoff = await this.cache.getCache(courseAnnotationHandoffCacheKey(this.courseId));
     return true;
   }
 
@@ -605,12 +569,7 @@ export class CourseAnnotationRepository {
           targetPages: { ...this.localCache.targetPages, [id]: ephemeralPages }
         }
       : this.localCache;
-    return clone(presentationItems(
-      cache,
-      this.outbox,
-      id,
-      this.handoff
-    ));
+    return clone(presentationItems(cache, this.outbox, id));
   }
 
   countForTarget(reference) {
@@ -643,7 +602,6 @@ export class CourseAnnotationRepository {
       ...this.outbox,
       commands: this.outbox.commands.filter(({ annotationId }) => !invalidatedIds.has(annotationId))
     };
-    this.handoff = null;
     const reload = async () => {
       try {
         await this.#readLocal();
@@ -874,7 +832,7 @@ export class CourseAnnotationRepository {
   async revise(annotationId, { rawText, category = null, briefSummary = null } = {}) {
     this.#assertInitialized();
     const item = this.#findItem(annotationId);
-    if (!item || item.migrationPending || item.capabilities?.canRevise === false) {
+    if (!item || item.capabilities?.canRevise === false) {
       throw new Error("Esta observação não pode ser editada.");
     }
     const expectedAnnotationVersion = Math.max(1, Number(item.annotationVersion || 0));
@@ -892,7 +850,7 @@ export class CourseAnnotationRepository {
   async withdraw(annotationId) {
     this.#assertInitialized();
     const item = this.#findItem(annotationId);
-    if (!item || item.migrationPending || item.capabilities?.canWithdraw === false) {
+    if (!item || item.capabilities?.canWithdraw === false) {
       throw new Error("Esta observação não pode ser retirada.");
     }
     await this.#enqueueCommand(item.target.id, {
@@ -944,114 +902,6 @@ export class CourseAnnotationRepository {
       if (item) return item;
     }
     return null;
-  }
-
-  async reconcileLegacyHandoff() {
-    this.#assertInitialized();
-    const key = courseAnnotationHandoffCacheKey(this.courseId);
-    const handoff = await this.cache.getCache(key);
-    if (handoff == null) return false;
-    if (!plainObject(handoff) || handoff.contract !== COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT ||
-        handoff.courseId !== this.courseId || !Array.isArray(handoff.intents)) {
-      throw new Error("Não foi possível migrar as observações offline anteriores.");
-    }
-    this.handoff = handoff;
-    for (const intent of [...handoff.intents]) {
-      const id = targetId({ studyUnitId: intent.targetStudyUnitId });
-      let pages;
-      try {
-        pages = await this.#readPages(targetQuery(id));
-      } catch (error) {
-        if (authorityFailure(error)) await this.clearLocal();
-        if (authorityFailure(error) || !networkFailure(error)) throw error;
-        return false;
-      }
-      await this.#updateCache((cache) => {
-        cache.targetPages[id] = pages;
-        cache.annotationSetVersion = pages[0]?.annotationSetVersion ?? cache.annotationSetVersion;
-        return cache;
-      });
-      const migrated = pages.flatMap(({ items }) => items).filter((item) =>
-        item.target.kind === "study_unit" && item.target.id === id &&
-        item.contributor.kind === "self" &&
-        item.provenance.origin === "learner" &&
-        item.provenance.channel === "study_interface" &&
-        item.observedRevision.certainty === "legacy_unknown" &&
-        item.state !== "withdrawn");
-      if (migrated.length > 1) {
-        throw new Error("Há mais de uma observação legada candidata; a migração foi interrompida.");
-      }
-      const existing = migrated[0] || null;
-      let command = null;
-      if (intent.kind === "upsert" && existing &&
-          (existing.rawText !== intent.text || existing.category !== intent.category)) {
-        command = normalizeCourseAnchoredAnnotationCommand({
-          type: "revise_anchored_annotation",
-          annotationId: existing.annotationId,
-          expectedAnnotationVersion: existing.annotationVersion,
-          rawText: intent.text,
-          category: intent.category,
-          briefSummary: existing.briefSummary
-        });
-      } else if (intent.kind === "upsert" && !existing) {
-        command = normalizeCourseAnchoredAnnotationCommand({
-          type: "create_anchored_annotation",
-          annotationId: this.uuidFactory(),
-          target: { kind: "study_unit", id },
-          rawText: intent.text,
-          category: intent.category,
-          capturedAt: null,
-          briefSummary: null
-        });
-      } else if (intent.kind === "withdraw" && existing) {
-        command = normalizeCourseAnchoredAnnotationCommand({
-          type: "withdraw_anchored_annotation",
-          annotationId: existing.annotationId,
-          expectedAnnotationVersion: existing.annotationVersion
-        });
-      }
-      await this.#consumeHandoffIntent(intent, command);
-      this.handoff = await this.cache.getCache(key);
-    }
-    return true;
-  }
-
-  async #consumeHandoffIntent(intent, command) {
-    const handoffKey = courseAnnotationHandoffCacheKey(this.courseId);
-    const pendingKey = outboxKey(this.courseId);
-    const requestId = command ? this.uuidFactory() : null;
-    const timestamp = nowIso(this.clock);
-    const update = (records) => {
-      const handoff = records[handoffKey];
-      if (!handoff?.intents?.some((candidate) => sameLegacyIntent(candidate, intent))) {
-        return records;
-      }
-      const outbox = normalizeOutbox(records[pendingKey], this.courseId, timestamp);
-      const remaining = (handoff?.intents || []).filter((candidate) =>
-        !sameLegacyIntent(candidate, intent));
-      if (command) {
-        outbox.commands.push({
-          requestId,
-          annotationId: command.annotationId,
-          targetStudyUnitId: intent.targetStudyUnitId,
-          expectedCourseRevision: new Set([
-            "create_anchored_annotation", "correct_anchored_annotation_subjects"
-          ]).has(command.type) ? this.courseRevision : null,
-          command,
-          status: "pending",
-          attempted: false,
-          createdAt: timestamp,
-          lastError: null
-        });
-        assertOutboxBudget(outbox);
-      }
-      return {
-        [handoffKey]: remaining.length ? { ...handoff, intents: remaining, updatedAt: timestamp } : null,
-        [pendingKey]: outbox
-      };
-    };
-    const next = await this.cache.updateCaches([handoffKey, pendingKey], update);
-    this.outbox = normalizeOutbox(next[pendingKey], this.courseId, timestamp);
   }
 
   #withFlushLock(operation) {
@@ -1164,12 +1014,10 @@ export class CourseAnnotationRepository {
   async clearLocal() {
     await Promise.all([
       this.cache.deleteCachePrefix(cacheKey(this.courseId)),
-      this.cache.deleteCachePrefix(outboxKey(this.courseId)),
-      this.cache.deleteCachePrefix(courseAnnotationHandoffCacheKey(this.courseId))
+      this.cache.deleteCachePrefix(outboxKey(this.courseId))
     ]);
     this.localCache = emptyCache(this.courseId, this.courseRevision, nowIso(this.clock));
     this.outbox = emptyOutbox(this.courseId, nowIso(this.clock));
-    this.handoff = null;
     this.ephemeralTargetPages.clear();
     return true;
   }

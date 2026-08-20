@@ -61,6 +61,24 @@ with recursive legacy_audit_counts(name,value) as (
   from private.authoring_microsequence_design_bindings
   union all select 'materialization_states',count(*)
   from private.authoring_materialization_states
+  union all select 'materialization_state_workspaces',count(distinct state.workspace_id)
+  from private.authoring_materialization_states state
+  union all select 'materialization_state_unmapped_workspaces',count(distinct state.workspace_id)
+  from private.authoring_materialization_states state
+  where not exists(
+    select 1 from private.trail_items item
+    where item.workspace_id=state.workspace_id
+      and item.workspace_course_id is not null
+  )
+  union all select 'materialization_state_orphans',count(*)
+  from private.authoring_materialization_states state
+  left join private.authoring_workspaces workspace
+    on workspace.id=state.workspace_id and workspace.deleted_at is null
+  left join private.authoring_workspace_entities microsequence
+    on microsequence.workspace_id=state.workspace_id
+   and microsequence.entity_type='microsequence'
+   and microsequence.entity_id=state.microsequence_ref
+  where workspace.id is null or microsequence.workspace_id is null
   union all select 'materialization_manifests',count(*)
   from private.authoring_materialization_manifests
   union all select 'manifest_coverage',count(*)
@@ -88,7 +106,7 @@ with recursive legacy_audit_counts(name,value) as (
         then 'root_only'
       when item.workspace_id is not null and item.course_id is not null
         then 'root_and_publication'
-      else 'publication_only'
+      else 'invalid'
     end as source_kind
   from private.trail_items item
 ), workspace_tree as (
@@ -141,15 +159,11 @@ with recursive legacy_audit_counts(name,value) as (
         nullif(btrim(workspace.purpose), '')
       )
     ) end as workspace_header,
-    nullif(btrim(publication.title), '') as publication_title,
-    nullif(btrim(publication.goal), '') as publication_goal,
     publication.current_revision_hash as legacy_revision_hash,
     artifact.hash as artifact_hash,
     artifact.bucket as artifact_bucket,
     artifact.object_key as artifact_object_key,
-    artifact.size_bytes as artifact_size_bytes,
-    publication.created_at as publication_created_at,
-    publication.updated_at as publication_updated_at
+    artifact.size_bytes as artifact_size_bytes
   from mapping
   left join private.authoring_workspaces workspace
     on workspace.id = mapping.workspace_id
@@ -178,18 +192,7 @@ select jsonb_build_object(
     'workspaceRevision', source.workspace_revision,
     'legacyCourseId', source.legacy_course_id,
     'legacyRevisionHash', source.legacy_revision_hash,
-    'entityDefaults', case
-      when source.source_kind = 'publication_only' then jsonb_build_object(
-        'basis', 'course_record',
-        'version', 1,
-        'createdAt', source.publication_created_at,
-        'updatedAt', source.publication_updated_at
-      ) else null end,
-    'targetHeader', case
-      when source.source_kind = 'publication_only' then jsonb_build_object(
-        'title', source.publication_title,
-        'goal', source.publication_goal
-      ) else source.workspace_header end,
+    'targetHeader', source.workspace_header,
     'workspaceEntities', coalesce((
       select jsonb_agg(jsonb_build_object(
         'entityType', tree.entity_type,

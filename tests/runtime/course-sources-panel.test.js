@@ -29,9 +29,16 @@ function source(index, overrides = {}) {
     status: "active",
     kind: "book",
     title: `Fonte ${index}`,
+    authorship: "Autoria",
+    publicationDate: "2026",
+    identifier: null,
+    language: "pt-BR",
     citationText: `Autoria. Fonte ${index}. 2026.`,
     url: `https://example.test/source-${index}`,
     editionOrVersion: null,
+    origin: "external",
+    availability: "open_access",
+    verificationStatus: "author_verified",
     studyVisibility: "citation_and_link",
     anchorCount: 1,
     createdAt: "2026-08-17T12:00:00.000Z",
@@ -53,6 +60,19 @@ function anchor(overrides = {}) {
   };
 }
 
+function sourceFormMetadata(overrides = {}) {
+  return {
+    authorship: "Autoria",
+    publicationDate: "2026",
+    identifier: "doi:10.0000/exemplo",
+    language: "pt-BR",
+    origin: "external",
+    availability: "open_access",
+    verificationStatus: "author_verified",
+    ...overrides
+  };
+}
+
 function catalogPage(items, { revision = 5, nextCursor = null } = {}) {
   return {
     contract: "aralearn.course-sources.v1",
@@ -60,6 +80,7 @@ function catalogPage(items, { revision = 5, nextCursor = null } = {}) {
     courseRevision: revision,
     mode: "catalog",
     query: { sourceId: null, targetKind: null, targetId: null },
+    pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
     items,
     nextCursor
   };
@@ -77,7 +98,13 @@ function sourcePage(value, {
     courseRevision: revision,
     mode: "source",
     query: { sourceId: value.sourceId, targetKind, targetId },
-    items: [{ ...value, actorId: null, anchors: [anchor({ sourceRevision: value.revision })] }],
+    pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+    items: [{
+      ...value,
+      actorId: null,
+      anchors: [anchor({ sourceRevision: value.revision })],
+      attachments: structuredClone(value.attachments || [])
+    }],
     nextCursor
   };
 }
@@ -89,6 +116,7 @@ function targetPage({ revision = 5 } = {}) {
     courseRevision: revision,
     mode: "target",
     query: { sourceId: null, targetKind: "plan_item", targetId: PLAN_ITEM_ID },
+    pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
     items: [{
       attributionId: ATTRIBUTION_ID,
       targetKind: "plan_item",
@@ -107,6 +135,110 @@ function targetPage({ revision = 5 } = {}) {
       effective: true
     }],
     nextCursor: null
+  };
+}
+
+function annotationController() {
+  return {
+    async loadCourseAnchoredAnnotations(courseId, options) {
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId,
+        courseRevision: options.expectedCourseRevision,
+        annotationSetVersion: options.annotationSetVersion ?? 0,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: 0,
+          byOrigin: {},
+          byChannel: {},
+          byState: {},
+          unclassifiedTotal: 0
+        },
+        items: [],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async mutateCourseAnchoredAnnotations() {
+      throw new Error("Mutação de observação inesperada.");
+    }
+  };
+}
+
+function sourceObservation(annotationId, {
+  targetKind = "source",
+  targetId = "source-01",
+  rawText = "Observação sobre a Fonte.",
+  category = null
+} = {}) {
+  const observedPath = [
+    { kind: "course", id: COURSE_ID, label: "Curso", version: 5 },
+    { kind: "source", id: "source-01", label: "Fonte 1", version: 1 },
+    ...(targetKind === "source_anchor"
+      ? [{ kind: "source_anchor", id: targetId, label: null, version: 1 }]
+      : [])
+  ];
+  return {
+    contract: "aralearn.course-anchored-annotation.v1",
+    annotationId,
+    annotationVersion: 1,
+    courseId: COURSE_ID,
+    provenance: { origin: "author", channel: "authoring_interface" },
+    contributor: { kind: "self", role: "author", ref: "self", label: "Você" },
+    target: {
+      kind: targetKind,
+      id: targetId,
+      observedPath,
+      currentAvailable: true,
+      currentPath: observedPath,
+      deepLink: `?section=sources&sourceId=source-01${targetKind === "source_anchor"
+        ? `&anchorId=${targetId}` : ""}`
+    },
+    observedRevision: {
+      certainty: "known",
+      courseRevision: 5,
+      targetVersion: 1
+    },
+    rawText,
+    category,
+    briefSummary: null,
+    subjectClassification: {
+      status: "unclassified",
+      automatic: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 5,
+        subjects: []
+      },
+      effective: {
+        method: "target_scope_unclassified",
+        methodVersion: 1,
+        taxonomyRevision: 5,
+        subjects: []
+      },
+      correctedAt: null
+    },
+    state: "open",
+    ownerResponse: null,
+    timestamps: {
+      capturedAt: "2026-08-20T12:00:00.000Z",
+      createdAt: "2026-08-20T12:00:00.000Z",
+      updatedAt: "2026-08-20T12:00:00.000Z",
+      firstConsideredAt: null,
+      respondedAt: null,
+      resolvedAt: null,
+      withdrawnAt: null
+    },
+    capabilities: {
+      canRevise: true,
+      canWithdraw: true,
+      canConsider: true,
+      canRespond: true,
+      canResolve: true,
+      canReopen: false,
+      canCorrectSubjects: true
+    },
+    deepLink: `?section=observations&annotationId=${annotationId}`
   };
 }
 
@@ -133,6 +265,16 @@ function submit(root, kind, values) {
   root.listeners.get("submit")({ target: form, preventDefault() {} });
 }
 
+function change(root, selector, values = {}) {
+  const node = {
+    ...values,
+    matches(candidate) {
+      return candidate === selector;
+    }
+  };
+  root.listeners.get("change")({ target: node });
+}
+
 async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
@@ -146,7 +288,7 @@ test("catálogo pagina mais de 55 Fontes em páginas estritas de 10", async () =
     root,
     courseId: COURSE_ID,
     courseRevision: 5,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         calls.push({ courseId, options: structuredClone(options) });
         const offset = options.cursor === null
@@ -175,6 +317,7 @@ test("catálogo pagina mais de 55 Fontes em páginas estritas de 10", async () =
   await settle();
 
   assert.match(root.innerHTML, /data-source-count="55"/u);
+  assert.match(root.innerHTML, /PDFs 0 B de 64 MiB/u);
   assert.deepEqual(calls.map(({ options }) => ({
     limit: options.limit,
     expectedRevision: options.expectedRevision,
@@ -187,6 +330,151 @@ test("catálogo pagina mais de 55 Fontes em páginas estritas de 10", async () =
     { limit: 10, expectedRevision: 5, cursor: "page-40" },
     { limit: 10, expectedRevision: 5, cursor: "page-50" }
   ]);
+});
+
+test("Fonte registra nota, contestação e reformulação e exporta a mesma proveniência", async () => {
+  const root = new FakeRoot();
+  const commands = [];
+  const exports = [];
+  let annotationSetVersion = 1;
+  const consideredSourceLinks = [{
+    sourceId: "source-01",
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+  }];
+  const reformulated = sourceObservation(
+    "60000000-0000-4000-8000-000000000090",
+    {
+      rawText: "A interpretação precisa distinguir os dois conceitos.",
+      category: "reformulation_request"
+    }
+  );
+  reformulated.annotationVersion = 2;
+  reformulated.ownerResponse = {
+    text: "A formulação agora distingue os dois conceitos.",
+    kind: "reformulation",
+    consideredSourceLinks,
+    updatedAt: "2026-08-20T12:30:00.000Z"
+  };
+  reformulated.timestamps.respondedAt = "2026-08-20T12:30:00.000Z";
+  reformulated.timestamps.updatedAt = "2026-08-20T12:30:00.000Z";
+  const observations = [reformulated];
+  let lastQuery = null;
+  const controller = {
+    async loadCourseSources(courseId, options) {
+      return options.mode === "catalog"
+        ? catalogPage([source(1)])
+        : sourcePage(source(1));
+    },
+    async mutateCourseSources() {
+      throw new Error("Mutação de Fonte inesperada.");
+    },
+    async loadCourseAnchoredAnnotations(courseId, options) {
+      lastQuery = structuredClone(options.query);
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId,
+        courseRevision: 5,
+        annotationSetVersion,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: observations.length,
+          byOrigin: { author: observations.length },
+          byChannel: { authoring_interface: observations.length },
+          byState: { open: observations.length },
+          unclassifiedTotal: observations.length
+        },
+        items: structuredClone(observations),
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async mutateCourseAnchoredAnnotations(value) {
+      commands.push(structuredClone(value.command));
+      const item = sourceObservation(value.command.annotationId, {
+        targetKind: value.command.target.kind,
+        targetId: value.command.target.id,
+        rawText: value.command.rawText,
+        category: value.command.category
+      });
+      observations.unshift(item);
+      annotationSetVersion += 1;
+      return {
+        contract: "aralearn.course-anchored-annotation-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        annotationSetVersion,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        annotation: structuredClone(item)
+      };
+    }
+  };
+  const panel = createCourseSourcesPanel({
+    root,
+    controller,
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    mode: "catalog",
+    now: () => "2026-08-20T13:00:00.000Z",
+    downloadJson(value, filename) {
+      exports.push({ value: structuredClone(value), filename });
+    }
+  });
+
+  await panel.open();
+  click(root, "open-source", { sourceId: "source-01" });
+  await settle();
+  assert.deepEqual(lastQuery.hierarchy, {
+    target: { kind: "source", id: "source-01" },
+    includeDescendants: true
+  });
+  assert.match(root.innerHTML, /Acrescentar nota/u);
+  assert.match(root.innerHTML, /Contestar interpretação/u);
+  assert.match(root.innerHTML, /Solicitar reformulação/u);
+  assert.match(root.innerHTML, /Fontes e Âncoras consideradas/u);
+
+  for (const values of [
+    {
+      observationKind: "note",
+      targetId: "",
+      rawText: "Nota ligada à Fonte."
+    },
+    {
+      observationKind: "contestation",
+      targetId: "anchor-a",
+      rawText: "Esta Âncora não sustenta a interpretação."
+    },
+    {
+      observationKind: "reformulation",
+      targetId: "",
+      rawText: "Reformule a interpretação desta Fonte."
+    }
+  ]) {
+    submit(root, "observation", values);
+    await settle();
+  }
+  assert.deepEqual(commands.map(({ target, category }) => ({ target, category })), [
+    { target: { kind: "source", id: "source-01" }, category: null },
+    {
+      target: { kind: "source_anchor", id: "anchor-a" },
+      category: "possible_error"
+    },
+    {
+      target: { kind: "source", id: "source-01" },
+      category: "reformulation_request"
+    }
+  ]);
+
+  click(root, "export-observations");
+  assert.equal(exports.length, 1);
+  assert.equal(exports[0].value.contract,
+    "aralearn.course-source-observations-export.v1");
+  assert.deepEqual(exports[0].value.items.find(({ annotationId }) =>
+    annotationId === reformulated.annotationId
+  ).ownerResponse.consideredSourceLinks, consideredSourceLinks);
 });
 
 test("histórico da Fonte preserva a consulta literal e carrega uma revisão por página", async () => {
@@ -202,7 +490,7 @@ test("histórico da Fonte preserva a consulta literal e carrega uma revisão por
     root,
     courseId: COURSE_ID,
     courseRevision: 5,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           return catalogPage([revisions[0]], { revision: options.expectedRevision });
@@ -273,7 +561,7 @@ test("deep link abre Fonte literal e localiza a Âncora sem cair no catálogo", 
     courseRevision: 5,
     initialSourceId: sourceId,
     initialAnchorId: "anchor-pinned",
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         calls.push(structuredClone(options));
         assert.equal(courseId, COURSE_ID);
@@ -321,7 +609,7 @@ test("deep link de Fonte ausente termina em not_found sem catálogo silencioso",
     courseRevision: 5,
     initialSourceId: "fonte-ausente",
     initialAnchorId: "anchor-ausente",
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         calls.push({ courseId, options: structuredClone(options) });
         return sourcePage(source(1, { sourceId: "fonte-ausente" }), {
@@ -345,7 +633,7 @@ test("deep link de Fonte ausente termina em not_found sem catálogo silencioso",
     courseId: COURSE_ID,
     courseRevision: 5,
     initialAnchorId: "anchor-sem-fonte",
-    controller: {
+    controller: { ...annotationController(),
       loadCourseSources() {},
       mutateCourseSources() {}
     }
@@ -360,7 +648,7 @@ test("retry ambíguo conserva exatamente requestId e comando sem formulário JSO
     root,
     courseId: COURSE_ID,
     courseRevision: currentRevision,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         return catalogPage([], { revision: options.expectedRevision });
       },
@@ -384,6 +672,7 @@ test("retry ambíguo conserva exatamente requestId e comando sem formulário JSO
   click(root, "add-source");
   assert.doesNotMatch(root.innerHTML, /JSON/iu);
   submit(root, "source", {
+    ...sourceFormMetadata(),
     sourceId: "fonte-estavel",
     kind: "book",
     title: "Fonte estável",
@@ -418,7 +707,7 @@ test("editor de alvo salva o conjunto completo ordenado com relação e âncoras
     targetId: PLAN_ITEM_ID,
     targetVersion: 3,
     targetLabel: "Explicar o mecanismo",
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         reads.push(structuredClone(options));
         if (options.mode === "catalog") {
@@ -449,6 +738,12 @@ test("editor de alvo salva o conjunto completo ordenado com relação e âncoras
   });
   await panel.open();
   await settle();
+  for (const relation of [
+    "informed_by", "supported_by", "adapted_from", "quoted_from",
+    "contrasted_with", "exemplified_by", "inspired_by", "needs_verification"
+  ]) {
+    assert.match(root.innerHTML, new RegExp(`value="${relation}"`, "u"));
+  }
   assert.deepEqual(reads.map((options) => ({
     mode: options.mode,
     sourceId: options.sourceId,
@@ -498,6 +793,123 @@ test("editor de alvo salva o conjunto completo ordenado com relação e âncoras
   });
 });
 
+test("exportação do alvo preserva identidades, revisão, relação e Âncora exatas", async () => {
+  const exports = [];
+  const root = new FakeRoot();
+  const currentSource = source(1, {
+    attachments: [{
+      contentHash: "b".repeat(64),
+      byteSize: 2_048,
+      mediaType: "application/pdf",
+      storagePath: `${COURSE_ID}/${"b".repeat(64)}.pdf`,
+      actorId: "40000000-0000-4000-8000-000000000004",
+      createdAt: "2026-08-20T12:00:00.000Z"
+    }]
+  });
+  const panel = createCourseSourcesPanel({
+    root,
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    mode: "target",
+    targetKind: "plan_item",
+    targetId: PLAN_ITEM_ID,
+    targetVersion: 3,
+    targetLabel: "Explicar o mecanismo",
+    now: () => "2026-08-20T18:00:00.000Z",
+    downloadJson: (value, filename) => exports.push({ value, filename }),
+    controller: { ...annotationController(),
+      async loadCourseSources(courseId, options) {
+        if (options.mode === "catalog") {
+          const { attachments, ...catalogSource } = currentSource;
+          assert.equal(attachments.length, 1);
+          return catalogPage([catalogSource], { revision: options.expectedRevision });
+        }
+        if (options.mode === "source") {
+          return sourcePage(currentSource, {
+            revision: options.expectedRevision,
+            targetKind: options.targetKind,
+            targetId: options.targetId
+          });
+        }
+        return targetPage({ revision: options.expectedRevision });
+      },
+      async mutateCourseSources() {
+        throw new Error("Não deve salvar.");
+      }
+    }
+  });
+
+  await panel.open();
+  await settle();
+  assert.match(root.innerHTML, /Exportar proveniência/u);
+  assert.doesNotMatch(root.innerHTML, /data-source-action="export-target" disabled/u);
+  click(root, "export-target");
+
+  assert.equal(exports.length, 1);
+  assert.equal(exports[0].filename, `aralearn-proveniencia-${COURSE_ID}-plan_item.json`);
+  assert.deepEqual(exports[0].value, {
+    contract: "aralearn.course-source-attribution-export.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    exportedAt: "2026-08-20T18:00:00.000Z",
+    target: {
+      kind: "plan_item",
+      id: PLAN_ITEM_ID,
+      version: 3,
+      label: "Explicar o mecanismo",
+      attribution: {
+        attributionId: ATTRIBUTION_ID,
+        revision: 1,
+        targetHash: "a".repeat(64),
+        createdAt: "2026-08-17T12:00:00.000Z"
+      }
+    },
+    sources: [{
+      sourceId: "source-01",
+      sourceRevision: 1,
+      relation: "supported_by",
+      source: {
+        sourceId: "source-01",
+        revision: 1,
+        status: "active",
+        kind: "book",
+        title: "Fonte 1",
+        authorship: "Autoria",
+        publicationDate: "2026",
+        identifier: null,
+        language: "pt-BR",
+        citationText: "Autoria. Fonte 1. 2026.",
+        url: "https://example.test/source-1",
+        editionOrVersion: null,
+        origin: "external",
+        availability: "open_access",
+        verificationStatus: "author_verified",
+        studyVisibility: "citation_and_link",
+        anchorCount: 1,
+        createdAt: "2026-08-17T12:00:00.000Z"
+      },
+      anchors: [{
+        anchorId: "anchor-a",
+        revision: 1,
+        sourceRevision: 1,
+        status: "active",
+        selector: { kind: "page_range", startPage: 10, endPage: 12 },
+        verificationExcerpt: null,
+        createdAt: "2026-08-17T12:00:00.000Z"
+      }],
+      attachments: [{
+        contentHash: "b".repeat(64),
+        byteSize: 2_048,
+        mediaType: "application/pdf",
+        storagePath: `${COURSE_ID}/${"b".repeat(64)}.pdf`,
+        createdAt: "2026-08-20T12:00:00.000Z"
+      }]
+    }]
+  });
+  assert.match(root.innerHTML, /exportação da proveniência foi preparada para salvamento/u);
+  assert.doesNotMatch(root.innerHTML, /is-error/u);
+});
+
 test("32 vínculos pinados entre 105 revisões usam lookup contextual único e literal", async () => {
   const links = Array.from({ length: 32 }, (_, index) => ({
     sourceId: `source-${String(index + 1).padStart(2, "0")}`,
@@ -518,7 +930,7 @@ test("32 vínculos pinados entre 105 revisões usam lookup contextual único e l
     targetKind: "plan_item",
     targetId: PLAN_ITEM_ID,
     targetVersion: 3,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         calls.push(structuredClone(options));
         if (options.mode === "catalog") {
@@ -553,7 +965,8 @@ test("32 vínculos pinados entre 105 revisões usam lookup contextual único e l
               anchorId: `anchor-${String(ordinal).padStart(2, "0")}`,
               revision,
               sourceRevision: revision
-            })]
+            })],
+            attachments: []
           }]
         };
       },
@@ -596,13 +1009,14 @@ test("catálogo cria, revisa e aposenta a Fonte por comandos versionados naturai
     courseId: COURSE_ID,
     courseRevision,
     confirmValue: () => true,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           const catalogItem = current ? structuredClone(current) : null;
           if (catalogItem) {
             delete catalogItem.actorId;
             delete catalogItem.anchors;
+            delete catalogItem.attachments;
           }
           return catalogPage(catalogItem ? [catalogItem] : [], {
             revision: options.expectedRevision
@@ -614,6 +1028,7 @@ test("catálogo cria, revisa e aposenta a Fonte por comandos versionados naturai
           courseRevision: options.expectedRevision,
           mode: "source",
           query: { sourceId: options.sourceId, targetKind: null, targetId: null },
+          pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
           items: current ? [structuredClone(current)] : [],
           nextCursor: null
         };
@@ -630,7 +1045,8 @@ test("catálogo cria, revisa e aposenta a Fonte por comandos versionados naturai
             anchorCount: 0,
             createdAt: "2026-08-17T12:00:00.000Z",
             actorId: null,
-            anchors: []
+            anchors: [],
+            attachments: []
           };
         } else {
           current = {
@@ -661,6 +1077,7 @@ test("catálogo cria, revisa e aposenta a Fonte por comandos versionados naturai
   await panel.open();
   click(root, "add-source");
   submit(root, "source", {
+    ...sourceFormMetadata(),
     sourceId: "fonte-versionada",
     kind: "book",
     title: "Fonte versionada",
@@ -674,6 +1091,7 @@ test("catálogo cria, revisa e aposenta a Fonte por comandos versionados naturai
   await settle();
   click(root, "edit-source");
   submit(root, "source", {
+    ...sourceFormMetadata(),
     sourceId: "fonte-versionada",
     kind: "book",
     title: "Fonte versionada e revista",
@@ -714,9 +1132,16 @@ test("resolver Fonte legada preserva a identidade literal existente", async () =
     status: "unresolved_legacy",
     kind: null,
     title: null,
+    authorship: null,
+    publicationDate: null,
+    identifier: null,
+    language: null,
     citationText: null,
     url: null,
     editionOrVersion: null,
+    origin: "imported_legacy",
+    availability: "unknown",
+    verificationStatus: "unverified",
     studyVisibility: "hidden",
     anchorCount: 0
   });
@@ -726,7 +1151,7 @@ test("resolver Fonte legada preserva a identidade literal existente", async () =
     root,
     courseId: COURSE_ID,
     courseRevision: 5,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           return catalogPage([unresolved], { revision: options.expectedRevision });
@@ -737,7 +1162,8 @@ test("resolver Fonte legada preserva a identidade literal existente", async () =
           courseRevision: options.expectedRevision,
           mode: "source",
           query: { sourceId: legacySourceId, targetKind: null, targetId: null },
-          items: [{ ...unresolved, actorId: null, anchors: [] }],
+          pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+          items: [{ ...unresolved, actorId: null, anchors: [], attachments: [] }],
           nextCursor: null
         };
       },
@@ -763,6 +1189,8 @@ test("resolver Fonte legada preserva a identidade literal existente", async () =
   click(root, "edit-source");
   assert.match(root.innerHTML, /name="sourceId" maxlength="4096"/u);
   submit(root, "source", {
+    ...sourceFormMetadata({ origin: "imported_legacy", availability: "unknown",
+      verificationStatus: "unverified" }),
     sourceId: "valor-do-campo-não-substitui-identidade",
     kind: "document",
     title: "Referência legada resolvida",
@@ -789,7 +1217,7 @@ test("detalhe cria, revisa e aposenta Âncora presa à revisão exata da Fonte",
     courseId: COURSE_ID,
     courseRevision,
     confirmValue: () => true,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           return catalogPage([{ ...base, anchorCount: anchors.filter(({ status }) =>
@@ -801,11 +1229,13 @@ test("detalhe cria, revisa e aposenta Âncora presa à revisão exata da Fonte",
           courseRevision: options.expectedRevision,
           mode: "source",
           query: { sourceId: base.sourceId, targetKind: null, targetId: null },
+          pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
           items: [{
             ...base,
             anchorCount: anchors.filter(({ status }) => status === "active").length,
             actorId: null,
-            anchors: structuredClone(anchors)
+            anchors: structuredClone(anchors),
+            attachments: []
           }],
           nextCursor: null
         };
@@ -904,7 +1334,7 @@ test("Âncora text_quote rejeita exact vazio e preserva whitespace literal", asy
     root,
     courseId: COURSE_ID,
     courseRevision: 5,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           return catalogPage([currentSource], { revision: options.expectedRevision });
@@ -973,7 +1403,7 @@ test("formulários contam escalares Unicode e deixam maxlength defensivo para pa
     root: sourceRoot,
     courseId: COURSE_ID,
     courseRevision: 5,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         return catalogPage([], { revision: options.expectedRevision });
       },
@@ -996,6 +1426,7 @@ test("formulários contam escalares Unicode e deixam maxlength defensivo para pa
   assert.match(sourceRoot.innerHTML, /name="sourceId" maxlength="480"/u);
   assert.match(sourceRoot.innerHTML, /name="title" maxlength="600"/u);
   submit(sourceRoot, "source", {
+    ...sourceFormMetadata(),
     sourceId: "fonte-unicode",
     kind: "document",
     title: "🔎".repeat(301),
@@ -1009,6 +1440,7 @@ test("formulários contam escalares Unicode e deixam maxlength defensivo para pa
   assert.match(sourceRoot.innerHTML, /O título é inválido/u);
 
   submit(sourceRoot, "source", {
+    ...sourceFormMetadata(),
     sourceId: "fonte-unicode",
     kind: "document",
     title: "🔎".repeat(300),
@@ -1028,7 +1460,7 @@ test("formulários contam escalares Unicode e deixam maxlength defensivo para pa
     root: anchorRoot,
     courseId: COURSE_ID,
     courseRevision: 5,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           return catalogPage([currentSource], { revision: options.expectedRevision });
@@ -1110,7 +1542,7 @@ test("atribuição nova sem Âncora ativa é recusada antes do transporte", asyn
     targetKind: "plan_item",
     targetId: PLAN_ITEM_ID,
     targetVersion: 3,
-    controller: {
+    controller: { ...annotationController(),
       async loadCourseSources(courseId, options) {
         if (options.mode === "catalog") {
           return catalogPage([currentSource], { revision: options.expectedRevision });
@@ -1118,7 +1550,7 @@ test("atribuição nova sem Âncora ativa é recusada antes do transporte", asyn
         if (options.mode === "source") {
           return {
             ...sourcePage(currentSource, { revision: options.expectedRevision }),
-            items: [{ ...currentSource, actorId: null, anchors: [] }]
+            items: [{ ...currentSource, actorId: null, anchors: [], attachments: [] }]
           };
         }
         return {
@@ -1141,4 +1573,100 @@ test("atribuição nova sem Âncora ativa é recusada antes do transporte", asyn
 
   assert.equal(writes.length, 0);
   assert.match(root.innerHTML, /ao menos uma âncora exata/u);
+});
+
+test("painel envia PDF da revisão ativa e baixa o vínculo exato por URL assinada", async () => {
+  const root = new FakeRoot();
+  const current = source(1);
+  const file = {
+    name: "fonte.pdf",
+    size: 1_024,
+    type: "application/pdf",
+    async arrayBuffer() {
+      return new ArrayBuffer(1_024);
+    }
+  };
+  const attachment = {
+    contentHash: "a".repeat(64),
+    byteSize: 1_024,
+    mediaType: "application/pdf",
+    storagePath: `${COURSE_ID}/${"a".repeat(64)}.pdf`,
+    actorId: "40000000-0000-4000-8000-000000000004",
+    createdAt: "2026-08-20T12:00:00.000Z"
+  };
+  const uploads = [];
+  const downloads = [];
+  const opened = [];
+  let courseRevision = 5;
+  let attachments = [];
+  const panel = createCourseSourcesPanel({
+    root,
+    courseId: COURSE_ID,
+    courseRevision,
+    downloadUrl: (url, value) => opened.push({ url, value }),
+    controller: { ...annotationController(),
+      async loadCourseSources(courseId, options) {
+        if (options.mode === "catalog") {
+          return catalogPage([current], { revision: options.expectedRevision });
+        }
+        return sourcePage({ ...current, attachments }, { revision: options.expectedRevision });
+      },
+      async mutateCourseSources() {
+        throw new Error("Não deve usar o comando genérico.");
+      },
+      async uploadCourseSourcePdf(value) {
+        uploads.push(value);
+        attachments = [attachment];
+        courseRevision += 1;
+        return {
+          contract: "aralearn.course-source-change.v1",
+          courseId: COURSE_ID,
+          courseRevision,
+          requestId: value.requestId,
+          idempotent: false,
+          changed: true,
+          change: { type: "attach_pdf", subjectId: current.sourceId, revision: 1 }
+        };
+      },
+      async getCourseSourceAttachmentDownload(value) {
+        downloads.push(value);
+        return {
+          signedUrl: "https://storage.example.test/file.pdf?token=sealed"
+        };
+      }
+    }
+  });
+
+  await panel.open();
+  click(root, "open-source", { sourceId: current.sourceId });
+  await settle();
+  assert.match(root.innerHTML, /data-source-pdf-input/u);
+  assert.match(root.innerHTML, /<dt>Autoria<\/dt><dd>Autoria<\/dd>/u);
+  assert.match(root.innerHTML, /<dt>Publicação<\/dt><dd>2026<\/dd>/u);
+  assert.match(root.innerHTML, /<dt>Idioma<\/dt><dd>pt-BR<\/dd>/u);
+  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>Fonte externa<\/dd>/u);
+
+  change(root, "[data-source-pdf-input]", { files: [file] });
+  await settle();
+  await settle();
+  assert.equal(uploads.length, 1);
+  assert.equal(uploads[0].file, file);
+  assert.equal(uploads[0].sourceRevision, 1);
+  assert.match(root.innerHTML, /Baixar PDF/u);
+  assert.match(root.innerHTML, /1 KiB/u);
+
+  click(root, "download-attachment", {
+    sourceRevision: "1",
+    contentHash: attachment.contentHash
+  });
+  await settle();
+  assert.deepEqual(downloads, [{
+    courseId: COURSE_ID,
+    expectedCourseRevision: 6,
+    sourceId: current.sourceId,
+    sourceRevision: 1,
+    contentHash: attachment.contentHash
+  }]);
+  assert.equal(opened[0].url, "https://storage.example.test/file.pdf?token=sealed");
+  assert.deepEqual(opened[0].value, attachment);
 });

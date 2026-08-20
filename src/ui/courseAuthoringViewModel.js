@@ -1495,7 +1495,9 @@ export function mergeCourseSourceCatalogPages(currentValue, incomingValue) {
   });
   if (currentValue?.contract !== incoming.contract || currentValue?.mode !== "catalog" ||
       currentValue?.query?.sourceId !== null || currentValue?.query?.targetKind !== null ||
-      currentValue?.query?.targetId !== null || !Array.isArray(currentValue?.items)) {
+      currentValue?.query?.targetId !== null || !Array.isArray(currentValue?.items) ||
+      currentValue?.pdfStorage?.uniqueBytes !== incoming.pdfStorage.uniqueBytes ||
+      currentValue?.pdfStorage?.maxUniqueBytes !== incoming.pdfStorage.maxUniqueBytes) {
     fail("invalid_course_sources", "As páginas do catálogo pertencem a leituras diferentes.");
   }
   const items = [...currentValue.items, ...incoming.items];

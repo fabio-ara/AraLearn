@@ -1,109 +1,67 @@
 begin;
 
-select plan(53);
+select plan(66);
 
 select has_function(
   'public',
   'get_aralearn_runtime_manifest',
   array[]::text[],
-  'o banco expõe o manifesto público do runtime'
-);
-
-select hasnt_function(
-  'public',
-  'get_current_state_central_v1',
-  array[]::text[],
-  'a projeção categórica antiga da Central foi retirada'
-);
-
-select has_function(
-  'public',
-  'get_authoring_workspace_product_states_v1',
-  array['uuid', 'uuid[]', 'boolean'],
-  'a Autoria expõe andamento compacto e canônico por workspace'
-);
-
-select function_privs_are(
-  'public',
-  'get_authoring_workspace_product_states_v1',
-  array['uuid', 'uuid[]', 'boolean'],
-  'authenticated',
-  array[]::text[],
-  'o cliente não contorna a fronteira de serviço da projeção autoral'
-);
-
-select function_privs_are(
-  'public',
-  'get_authoring_workspace_product_states_v1',
-  array['uuid', 'uuid[]', 'boolean'],
-  'service_role',
-  array['EXECUTE'],
-  'somente o executor interno lê a projeção autoral canônica'
-);
-
-select hasnt_function(
-  'public',
-  'list_current_state_central_v1',
-  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
-  'a listagem categórica antiga da Central foi retirada'
-);
-
-select has_function(
-  'public',
-  'list_trail_items_v1',
-  array['integer', 'uuid'],
-  'Trilhas expõe planos e cursos em uma projeção paginada'
-);
-
-select function_privs_are(
-  'public',
-  'list_trail_items_v1',
-  array['integer', 'uuid'],
-  'authenticated',
-  array['EXECUTE'],
-  'somente uma conta autenticada lê Trilhas'
-);
-
-select has_function(
-  'public',
-  'reuse_unchanged_authoring_publication_v5',
-  array[
-    'uuid', 'uuid', 'text', 'text', 'bigint', 'text',
-    'text', 'text', 'text', 'uuid', 'text', 'uuid'
-  ],
-  'o banco confirma publicação idêntica sem nova revisão'
-);
-
-select function_privs_are(
-  'public',
-  'reuse_unchanged_authoring_publication_v5',
-  array[
-    'uuid', 'uuid', 'text', 'text', 'bigint', 'text',
-    'text', 'text', 'text', 'uuid', 'text', 'uuid'
-  ],
-  'service_role',
-  array['EXECUTE'],
-  'somente o executor interno chama a confirmação de publicação inalterada'
-);
-
-select has_function(
-  'public',
-  'delete_authoring_workspace_v5',
-  array['uuid', 'uuid', 'text', 'text', 'bigint'],
-  'a exclusão de workspace exige a revisão corrente'
-);
-
-select hasnt_function(
-  'public',
-  'delete_authoring_workspace_v5',
-  array['uuid', 'uuid', 'text', 'text'],
-  'a exclusão sem CAS foi retirada'
+  'o banco expõe o manifesto do runtime'
 );
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260815235900',
-  'a revisão corresponde à migration mais recente exigida'
+  '20260820101500',
+  'o manifesto identifica a revisão final do esquema'
+);
+
+select is(
+  public.get_aralearn_runtime_manifest() ->> 'contractVersion',
+  '1',
+  'o manifesto mantém a versão do contrato público'
+);
+
+select is(
+  jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
+  31,
+  'o manifesto não omite nem duplica capacidades correntes'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') @> '[
+    "flat-runtime-manifest-v1",
+    "single-live-course-identity-v1",
+    "paged-live-course-composition-v1",
+    "direct-course-access-v1",
+    "course-cas-idempotency-v1",
+    "oauth-only-authoring-mcp",
+    "package-library-v1",
+    "package-contract-discovery-v1",
+    "person-profile-v1",
+    "study-only-course-access-v1",
+    "private-person-avatar-v1",
+    "self-account-deletion-v1",
+    "course-instructional-plan-v1",
+    "course-authoring-part-materialization-v1",
+    "course-study-unit-inspection-v1",
+    "course-design-parameters-v1",
+    "course-authoring-guidance-v1",
+    "course-component-policy-v1",
+    "course-sources-v1",
+    "course-source-provenance-v1",
+    "course-source-pdf-attachments-v1",
+    "course-anchored-annotations-v1",
+    "course-annotation-subject-classification-v1",
+    "course-personal-state-v2",
+    "course-audit-cycle-v1",
+    "course-authoring-corrections-v1",
+    "course-audit-annotation-links-v1",
+    "course-variant-comparisons-v1",
+    "course-variant-comparison-list-v1",
+    "course-authoring-analytics-v1",
+    "course-variant-factual-comparison-v1"
+  ]'::jsonb,
+  'o manifesto anuncia todo o contrato de Curso'
 );
 
 select is(
@@ -119,262 +77,343 @@ select is(
       )
   ),
   0::bigint,
-  'o manifesto corrente não conserva wrappers de revisões anteriores'
+  'o manifesto corrente não depende de versões intermediárias'
 );
 
-select is(
-  public.get_aralearn_runtime_manifest() ->> 'contractVersion',
-  '1',
-  'o manifesto anuncia a biblioteca por packages'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'granular-sync',
-  'o manifesto anuncia sincronização relacional granular'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'atomic-card-assistance',
-  'o manifesto anuncia assistência atômica de cards'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'pre-registered-publication-artifacts',
-  'o manifesto anuncia pré-registro coletável dos artefatos de publicação'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'automatic-sync-history-maintenance',
-  'o manifesto anuncia manutenção automática do histórico de sincronização'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-publication-bindings',
-  'o manifesto anuncia continuidade enxuta entre workspace e publicação'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'unchanged-publication-short-circuit',
-  'o manifesto anuncia republicação inalterada sem nova sincronização'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'alphabetic-trails-v1',
-  'o manifesto anuncia a ordenação alfabética de Trilhas'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'alphabetic-catalog-v1',
-  'o manifesto anuncia Coleções alfabéticas sem posição manual'
-);
-
-select hasnt_function(
+select has_table('public', 'courses', 'Cursos têm uma identidade pública única');
+select has_table('public', 'course_access', 'acessos diretos pertencem ao Curso');
+select has_table(
   'public',
-  'move_catalog_collection_v5',
-  array['uuid', 'uuid', 'text', 'bigint', 'integer'],
-  'o catálogo não expõe mais reordenação manual de Coleções'
+  'course_personal_states',
+  'o estado pessoal de estudo pertence ao Curso'
 );
-
-select function_privs_are(
-  'public',
-  'move_catalog_course_v5',
-  array['uuid', 'uuid', 'text', 'bigint', 'uuid'],
-  'service_role',
-  array['EXECUTE'],
-  'somente o executor interno transfere cursos entre Coleções'
+select has_table('private', 'course_entities', 'a composição do Curso é relacional');
+select has_table('private', 'course_revisions', 'revisões do Curso são atômicas');
+select has_table(
+  'private',
+  'course_instructional_plans',
+  'o planejamento instrucional pertence ao Curso'
+);
+select has_table('private', 'course_authoring_parts', 'a produção é organizada por Partes');
+select has_table(
+  'private',
+  'course_authoring_part_materializations',
+  'materializações registram o avanço de cada Parte'
+);
+select has_table(
+  'private',
+  'course_design_parameter_definitions',
+  'parâmetros de desenho têm definições canônicas'
+);
+select has_table('private', 'course_source_revisions', 'Fontes mantêm histórico imutável');
+select has_table(
+  'private',
+  'course_source_attachments',
+  'anexos PDF são vinculados a revisões de Fonte'
+);
+select has_table(
+  'private',
+  'course_source_attributions',
+  'atribuições ligam evidências à composição'
+);
+select has_table(
+  'private',
+  'course_anchored_annotations',
+  'observações mantêm âncoras estruturais'
+);
+select has_table('private', 'course_audit_findings', 'achados de auditoria são persistidos');
+select has_table(
+  'private',
+  'course_authoring_corrections',
+  'reparos mantêm vínculo com o achado correspondente'
+);
+select has_table(
+  'private',
+  'course_variant_comparison_sets',
+  'comparações de variantes têm identidade própria'
+);
+select has_table(
+  'private',
+  'course_variant_comparison_members',
+  'cada Curso comparado pertence a um conjunto explícito'
+);
+select has_column(
+  'private',
+  'course_variant_comparison_members',
+  'position',
+  'a ordem de criação das variantes é persistida'
+);
+select col_not_null(
+  'private',
+  'course_variant_comparison_members',
+  'position',
+  'toda variante mantém uma posição estável'
 );
 
 select has_function(
-  'private',
-  'protect_structural_catalog_collection_v1',
-  array[]::text[],
-  'o banco protege a identidade semântica da coleção Outros'
+  'public', 'create_course_for_actor_v1',
+  array['uuid', 'text', 'text', 'text'],
+  'a fronteira de serviço cria Cursos'
 );
-
-select has_trigger(
-  'public',
-  'catalog_collections',
-  'catalog_collections_protect_structural_other_v1',
-  'a proteção estrutural cobre toda mutação da coleção Outros'
+select has_function(
+  'public', 'get_course_for_actor_v1',
+  array['uuid', 'uuid', 'boolean'],
+  'a fronteira de serviço lê um Curso autorizado'
 );
-
-select hasnt_function(
-  'public',
-  'apply_situated_comment_batch_v1',
-  array['uuid', 'jsonb'],
-  'a RPC isolada de observações foi retirada no estado pessoal unificado'
+select has_function(
+  'public', 'list_course_entities_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'integer', 'text', 'text'],
+  'a composição é paginada pela fronteira de serviço'
 );
-
-select function_privs_are(
-  'public',
-  'mutate_trail_personal_state_v1',
+select has_function(
+  'public', 'commit_course_composition_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text'],
+  'a composição usa revisão esperada e confirmação atômica'
+);
+select has_function(
+  'public', 'manage_course_access_for_actor_v1',
+  array['uuid', 'uuid', 'text', 'text', 'uuid', 'boolean', 'text'],
+  'o proprietário administra o acesso direto ao Curso'
+);
+select has_function(
+  'public', 'commit_course_instructional_plan_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'jsonb', 'text', 'text'],
+  'o planejamento é confirmado com controle de concorrência'
+);
+select has_function(
+  'public', 'advance_course_authoring_part_materialization_for_actor_v1',
+  array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'bigint', 'text', 'jsonb', 'text', 'text'],
+  'uma Parte avança por operações pequenas e idempotentes'
+);
+select has_function(
+  'public', 'apply_course_design_command_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text', 'text'],
+  'parâmetros e regras de componentes usam a fronteira do Curso'
+);
+select has_function(
+  'public', 'list_owned_course_study_units_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'text', 'text', 'text', 'text', 'text', 'integer', 'integer'],
+  'a inspeção carrega Unidades em janelas limitadas'
+);
+select has_function(
+  'public', 'execute_course_source_command_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text', 'text'],
+  'Fontes e proveniência usam comandos com revisão esperada'
+);
+select has_function(
+  'public', 'attach_course_source_pdf_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text', 'text'],
+  'a confirmação do PDF é atômica e autorizada'
+);
+select has_function(
+  'public', 'get_course_source_attachment_access_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'text', 'text', 'bigint', 'text', 'bigint', 'text'],
+  'o acesso ao PDF comprova vínculo, hash e tamanho'
+);
+select has_function(
+  'public', 'execute_course_anchored_annotation_command_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text', 'text'],
+  'observações do autor e do chat compartilham o mesmo contrato'
+);
+select has_function(
+  'public', 'execute_course_audit_cycle_command_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text', 'text'],
+  'auditoria, reparo e verificação formam um único ciclo'
+);
+select has_function(
+  'public', 'create_course_variants_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text'],
+  'variantes derivam de uma revisão conhecida do Curso'
+);
+select has_function(
+  'public', 'get_owned_course_variant_comparison_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'uuid'],
+  'a comparação expõe diferenças factuais entre variantes'
+);
+select has_function(
+  'public', 'get_owned_course_authoring_analytics_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb'],
+  'Pesquisa lê fatos brutos por consulta estável'
+);
+select has_function(
+  'public', 'load_course_personal_state_v2',
+  array['uuid'],
+  'o estudante lê seu estado pessoal corrente'
+);
+select has_function(
+  'public', 'mutate_course_personal_state_v2',
   array['uuid', 'bigint', 'jsonb', 'uuid'],
-  'authenticated',
-  array['EXECUTE'],
-  'somente a conta autenticada altera seu estado pessoal de Trilhas'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'situated-trail-observations-v1',
-  'o manifesto anuncia observações situadas no estado de Trilhas'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'workspace-trail-observations-v1',
-  'o manifesto anuncia triagem autoral das observações de Trilhas'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'workspace-course-state-projection-v1',
-  'o manifesto anuncia a composição corrente dos cursos do workspace'
+  'o estudante altera o estado pessoal com revisão esperada'
 );
 
 select function_privs_are(
-  'public',
-  'list_current_educational_workspace_comments_v1',
-  array['uuid', 'integer', 'timestamp with time zone', 'uuid', 'text[]', 'text[]'],
-  'authenticated',
-  array['EXECUTE'],
-  'participantes autenticados consultam observações conforme o papel local'
+  'public', 'get_aralearn_runtime_manifest', array[]::text[],
+  'anon', array['EXECUTE'],
+  'o manifesto é legível antes da autenticação'
 );
-
 select function_privs_are(
-  'public',
-  'manage_current_educational_workspace_comment_v1',
-  array['text', 'uuid', 'uuid', 'text', 'jsonb'],
-  'authenticated',
-  array['EXECUTE'],
-  'responsáveis autenticados respondem por uma operação contextual'
+  'public', 'create_course_for_actor_v1', array['uuid', 'text', 'text', 'text'],
+  'service_role', array['EXECUTE'],
+  'somente o serviço cria Cursos em nome de um ator'
 );
-
 select function_privs_are(
-  'public',
-  'list_educational_workspace_comments_for_actor_v1',
-  array['uuid', 'uuid', 'integer', 'timestamp with time zone', 'uuid', 'text[]', 'text[]'],
-  'service_role',
-  array['EXECUTE'],
-  'somente o executor interno lista observações em nome do OAuth'
+  'public', 'create_course_for_actor_v1', array['uuid', 'text', 'text', 'text'],
+  'authenticated', array[]::text[],
+  'o cliente autenticado não pode escolher outro ator na criação'
 );
-
 select function_privs_are(
-  'public',
-  'manage_educational_workspace_comment_for_actor_v1',
-  array['uuid', 'text', 'uuid', 'uuid', 'text', 'jsonb'],
-  'service_role',
-  array['EXECUTE'],
-  'somente o executor interno responde em nome do OAuth'
+  'public', 'get_owned_course_authoring_analytics_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb'],
+  'service_role', array['EXECUTE'],
+  'somente o serviço consulta fatos autorais em nome do proprietário'
 );
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'workspace-event-cursor-pagination',
-  'o manifesto anuncia paginação dos eventos de workspace'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'workspace-microsequence-card-pagination',
-  'o manifesto anuncia paginação leve dos cards de uma microssequência'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'global-catalog-course-search',
-  'o manifesto anuncia busca global e leve dos cursos do catálogo'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'oauth-only-authoring-mcp',
-  'o manifesto anuncia autoria remota exclusivamente por MCP OAuth'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'default-catalog-collection',
-  'o manifesto anuncia a coleção padrão para a primeira publicação oficial'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'alphabetic-catalog-v1',
-  'o manifesto anuncia Coleções alfabéticas sem posição manual'
-);
-
-select ok(
-  not ((public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'catalog-collection-ordering-v1'),
-  'o manifesto não anuncia o contrato retirado de ordenação manual'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'confidential-gpt-action-oauth',
-  'o manifesto anuncia a concessão confidencial específica da Action'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'gpt-action-oauth-linking',
-  'o manifesto anuncia o vínculo posterior do GPT salvo'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'gpt-action-oauth-relinking',
-  'o manifesto anuncia a substituição segura de um vínculo anterior'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'gpt-action-oauth-stable-callback',
-  'o manifesto anuncia callbacks oficiais estáveis da Action'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-card-metadata',
-  'o manifesto anuncia metadados de card no workspace composto'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'structured-authoring-errors',
-  'o manifesto anuncia diagnóstico estruturado da autoria'
-);
-
-select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'resumable-authoring-continuity-v1',
-  'o manifesto anuncia retomada autoral corrente sem snapshots'
-);
-
-select enum_has_labels(
-  'public',
-  'card_resource',
-  array[
-    'paragraph', 'choice', 'composite', 'code', 'table', 'flow',
-    'tree', 'graph', 'relation_map', 'matrix', 'plane', 'formula',
-    'chart', 'sequence', 'annotated_text', 'linguistic_example',
-    'system_map', 'reaction'
-  ],
-  'o banco reconhece os dezoito resources canônicos'
-);
-
 select function_privs_are(
-  'public',
-  'get_aralearn_runtime_manifest',
-  array[]::text[],
-  'anon',
-  array['EXECUTE'],
-  'anon pode ler somente o manifesto constante de implantação'
+  'public', 'get_owned_course_authoring_analytics_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb'],
+  'authenticated', array[]::text[],
+  'o cliente não contorna a filtragem da Pesquisa'
+);
+select function_privs_are(
+  'public', 'get_course_source_attachment_access_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'text', 'text', 'bigint', 'text', 'bigint', 'text'],
+  'service_role', array['EXECUTE'],
+  'somente o serviço autoriza upload ou download de PDF'
+);
+select function_privs_are(
+  'public', 'get_course_source_attachment_access_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'text', 'text', 'bigint', 'text', 'bigint', 'text'],
+  'authenticated', array[]::text[],
+  'o cliente não emite acesso ao Storage diretamente'
+);
+select function_privs_are(
+  'public', 'create_course_variants_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text'],
+  'service_role', array['EXECUTE'],
+  'somente o serviço cria variantes em nome do proprietário'
+);
+select function_privs_are(
+  'public', 'create_course_variants_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'text'],
+  'authenticated', array[]::text[],
+  'o cliente não contorna a autorização das variantes'
+);
+select function_privs_are(
+  'public', 'load_course_personal_state_v2', array['uuid'],
+  'authenticated', array['EXECUTE'],
+  'a conta autenticada lê apenas o próprio estado pela RPC'
+);
+select function_privs_are(
+  'public', 'load_course_personal_state_v2', array['uuid'],
+  'anon', array[]::text[],
+  'uma sessão anônima não lê estado pessoal'
+);
+select function_privs_are(
+  'public', 'execute_my_course_anchored_annotation_command_v1',
+  array['uuid', 'bigint', 'jsonb', 'text'],
+  'authenticated', array['EXECUTE'],
+  'o estudante registra observações pela RPC vinculada à própria conta'
+);
+select function_privs_are(
+  'public', 'execute_my_course_anchored_annotation_command_v1',
+  array['uuid', 'bigint', 'jsonb', 'text'],
+  'anon', array[]::text[],
+  'uma sessão anônima não registra observações'
 );
 
-select function_privs_are(
-  'public',
-  'get_aralearn_runtime_manifest',
-  array[]::text[],
-  'authenticated',
-  array['EXECUTE'],
-  'usuários autenticados também podem conferir o manifesto'
+select is(
+  (
+    select count(*)
+    from pg_class relation_value
+    join pg_namespace namespace_value on namespace_value.oid = relation_value.relnamespace
+    where namespace_value.nspname = 'public'
+      and relation_value.relname in ('courses', 'course_access', 'course_personal_states')
+      and not relation_value.relrowsecurity
+  ),
+  0::bigint,
+  'todas as relações públicas correntes de Curso usam RLS'
+);
+
+select is(
+  (
+    select count(*)
+    from pg_class relation_value
+    join pg_namespace namespace_value on namespace_value.oid = relation_value.relnamespace
+    where namespace_value.nspname = 'private'
+      and relation_value.relname in (
+        'course_entities',
+        'course_source_revisions',
+        'course_source_attachments',
+        'course_source_attributions',
+        'course_anchored_annotations',
+        'course_audit_findings',
+        'course_authoring_corrections',
+        'course_variant_comparison_sets',
+        'course_variant_comparison_members'
+      )
+      and not relation_value.relrowsecurity
+  ),
+  0::bigint,
+  'registros privados vinculados ao usuário usam RLS'
+);
+
+select ok(
+  exists(select 1 from storage.buckets where id = 'course-source-pdfs'),
+  'o bucket de PDFs existe'
+);
+
+select is(
+  (select public from storage.buckets where id = 'course-source-pdfs'),
+  false,
+  'o bucket de PDFs é privado'
+);
+
+select is(
+  (select file_size_limit from storage.buckets where id = 'course-source-pdfs'),
+  20971520::bigint,
+  'cada PDF respeita o limite de 20 MiB'
+);
+
+select is(
+  (select allowed_mime_types from storage.buckets where id = 'course-source-pdfs'),
+  array['application/pdf']::text[],
+  'o bucket aceita somente PDF'
+);
+
+select is(
+  (
+    select function_value.prosecdef
+    from pg_proc function_value
+    where function_value.oid =
+      'private.can_read_course_source_pdf_v1(text)'::regprocedure
+  ),
+  true,
+  'o helper de acesso ao PDF consulta o proprietário com privilégio protegido'
+);
+
+select ok(
+  exists(
+    select 1
+    from pg_policies policy
+    where policy.schemaname = 'storage'
+      and policy.tablename = 'objects'
+      and policy.policyname = 'course_source_pdfs_owner_select_v1'
+      and strpos(policy.qual,'can_read_course_source_pdf_v1') > 0
+      and strpos(policy.qual,'courses') = 0
+  ),
+  'a leitura do PDF delega a autorização sem consultar Cursos sob authenticated'
+);
+
+select ok(
+  not exists(
+    select 1
+    from pg_policies policy
+    where policy.schemaname = 'storage'
+      and policy.tablename = 'objects'
+      and policy.policyname = 'course_source_pdfs_owner_delete_v1'
+  ),
+  'PDF vinculado não pode ser removido diretamente por sessão autenticada'
 );
 
 select * from finish();
+
 rollback;

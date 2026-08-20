@@ -13,15 +13,8 @@ function syntheticRegistry(termOverrides = {}) {
     contract: "aralearn.canonical-terminology.v1",
     purpose: "Registro sintético completo para provar as regras do auditor terminológico.",
     policy: {
-      reviewIssue: "#116",
-      finalRemovalIssue: "#129",
-      transitionPolicy: "clean-cutover",
       historicalPaths: ["supabase/migrations/"],
-      requiredFamilies: ["synthetic-family"],
-      issueCatalog: {
-        "#116": "Vocabulário canônico",
-        "#129": "Corte integral"
-      }
+      requiredFamilies: ["synthetic-family"]
     },
     terms: [{
       id: "synthetic-term",
@@ -37,12 +30,10 @@ function syntheticRegistry(termOverrides = {}) {
       ambiguityRisk: "Sem a definição, o termo sintético pode ser confundido com outro conceito e invalidar a decisão.",
       alternativesAssessment: "compared",
       alternativesConsidered: ["Usar “conceito diferente”: rejeitado porque designa outra coisa."],
-      migrationImpact: "Não há corte programado; novas superfícies devem aplicar a definição sem inferir disponibilidade.",
       decision: "restringir",
-      cutoverStatus: "sem-corte",
+      status: "vigente",
       layers: ["domain"],
-      sources: [{ status: "definicao-propria", ref: "#116" }],
-      cutoverIssue: "#116",
+      sources: [{ status: "definicao-propria", ref: "docs/vocabulario-controlado.md" }],
       notSynonyms: ["conceito diferente"],
       ...termOverrides
     }]
@@ -71,8 +62,7 @@ test("o audit rejeita símbolo abolido fora de migration ou evidência históric
   const registry = syntheticRegistry({
     decision: "remover",
     technicalSymbol: "current_symbol",
-    cutoverStatus: "concluido",
-    migrationImpact: "Corte terminológico concluído; o gate rejeita resíduos fora das evidências históricas.",
+    status: "concluido",
     forbiddenSymbols: ["LegacyTerm"]
   });
   const findings = await auditTerminology({
@@ -99,9 +89,8 @@ test("o padrão operation.* não bloqueia o namespace canônico task_operation",
   );
   const registry = syntheticRegistry({
     decision: "substituir",
-    cutoverStatus: "concluido",
-    forbiddenSymbols: ["operation.*"],
-    migrationImpact: "Corte terminológico concluído; o namespace canônico task_operation permanece permitido."
+    status: "concluido",
+    forbiddenSymbols: ["operation.*"]
   });
   assert.deepEqual(await auditTerminology({
     repositoryRoot,
@@ -121,9 +110,8 @@ test("o padrão operation.* rejeita identificador antigo em string", async (cont
   );
   const registry = syntheticRegistry({
     decision: "substituir",
-    cutoverStatus: "concluido",
-    forbiddenSymbols: ["operation.*"],
-    migrationImpact: "Corte terminológico concluído; identificadores da taxonomia antiga são proibidos."
+    status: "concluido",
+    forbiddenSymbols: ["operation.*"]
   });
   const findings = await auditTerminology({
     repositoryRoot,
@@ -153,8 +141,7 @@ test("o gate inspeciona fontes SVG e Kotlin", async (context) => {
   const registry = syntheticRegistry({
     decision: "remover",
     technicalSymbol: "current_symbol",
-    cutoverStatus: "concluido",
-    migrationImpact: "Corte concluído; o gate deve abranger fontes vetoriais e Kotlin.",
+    status: "concluido",
     forbiddenSymbols: ["LegacyTerm"]
   });
   const findings = await auditTerminology({
@@ -170,26 +157,23 @@ test("o gate inspeciona fontes SVG e Kotlin", async (context) => {
   ));
 });
 
-test("um corte pendente sem etapa de remoção é inválido", () => {
+test("uma substituição não pode permanecer como decisão vigente", () => {
   const registry = syntheticRegistry({
     decision: "substituir",
-    cutoverStatus: "pendente",
-    migrationImpact: "Corte limpo ainda pendente, com renomeação coordenada e sem compatibilidade de legado.",
-    transitionPolicy: "clean-cutover"
+    status: "vigente"
   });
   const findings = validateTerminologyRegistry(registry);
   assert.ok(findings.includes(
-    "terms[0].removeBy: referência de issue inválida (ausente)."
+    "terms[0]: substituir/remover exige decisão concluída."
   ));
 });
 
-test("a ficha exige exemplo, risco, avaliação de alternativas e impacto de migração", () => {
+test("a ficha exige exemplo, risco e avaliação de alternativas", () => {
   const registry = syntheticRegistry({
     araLearnExample: "",
     ambiguityRisk: "",
     alternativesAssessment: undefined,
-    alternativesConsidered: undefined,
-    migrationImpact: ""
+    alternativesConsidered: undefined
   });
   const findings = validateTerminologyRegistry(registry);
   assert.ok(findings.includes(

@@ -1,15 +1,15 @@
 # Visão do produto
 
-O AraLearn é um ambiente móvel de estudo e autoria de cursos. Seu propósito é
+O AraLearn é um ambiente móvel de estudo e autoria de Cursos. Seu propósito é
 transformar um conjunto extenso de assuntos em um percurso que explique,
 exemplifique, proponha práticas e possa ser retomado depois de uma interrupção.
-O produto não substitui o trabalho intelectual do estudante nem promete que a
-mera exposição a Unidades de estudo produza aprendizagem. Ele organiza condições para que o
-estudo seja compreensível, praticável e revisável.
+Ele organiza condições para que o estudo seja compreensível, praticável e
+revisável. A aprendizagem ainda depende do trabalho intelectual do estudante e
+não pode ser inferida da simples exposição às Unidades.
 
 Este documento apresenta o problema tratado, as escolhas centrais do produto e
 os limites dessas escolhas. Os procedimentos de uso estão em [Uso do
-app](uso-do-app.md); os conceitos pedagógicos são aprofundados em [Modelo
+aplicativo](uso-do-app.md); os conceitos pedagógicos são aprofundados em [Modelo
 didático](modelo-didatico.md).
 
 ## Problema educacional e problema de interação
@@ -22,7 +22,7 @@ linguagem e ainda precisar descobrir sozinha:
 - quanto conteúdo cabe em uma etapa sem perder a continuidade;
 - em que momento observar um exemplo ou uma representação visual;
 - que prática exige a operação-alvo pretendida;
-- como interpretar o feedback e retomar o estudo posteriormente.
+- como interpretar o retorno e retomar o estudo posteriormente.
 
 Essa dificuldade possui uma dimensão pedagógica e outra de interação. Na
 dimensão pedagógica, explicações muito condensadas podem ocultar pré-requisitos
@@ -45,12 +45,12 @@ O conteúdo segue uma hierarquia estável:
 Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
 ```
 
-Cada nível resolve um problema distinto:
+Cada nível cumpre uma função distinta:
 
 - **Curso** delimita a finalidade e o campo de conhecimento;
 - **Módulo** reúne uma região coerente do programa;
 - **Lição** organiza uma progressão que pode ser estudada como unidade;
-- **Microssequência didática** combina teoria e prática em torno de uma
+- **Microssequência didática** articula teoria e prática em torno de uma
   finalidade local;
 - **Unidade de estudo** apresenta uma contribuição delimitada para essa
   Microssequência.
@@ -58,7 +58,7 @@ Cada nível resolve um problema distinto:
 A Microssequência evita dois extremos. Uma Unidade completamente isolada pode não
 oferecer contexto suficiente; uma lição apresentada como bloco único pode
 concentrar relações demais. A divisão intermediária mantém um contexto próximo
-e permite alternar explicação, exemplo, prática e feedback. Estudos sobre
+e permite alternar explicação, exemplo, prática e retorno. Estudos sobre
 segmentação em materiais instrucionais oferecem fundamento para investigar
 essa escolha, mas não comprovam por si sós a eficácia da implementação do
 AraLearn ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
@@ -87,7 +87,7 @@ recordar, distinguir, relacionar, ordenar, calcular, interpretar uma
 representação ou produzir uma resposta, por exemplo. Depois, seleciona-se a
 quantidade e a variedade de práticas necessárias para cobrir essas operações.
 
-Prática de recuperação e feedback formativo possuem suporte consistente na
+Prática de recuperação e retorno formativo possuem suporte consistente na
 literatura, mas seus efeitos dependem da tarefa, do intervalo, do conteúdo e da
 qualidade do retorno ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Shute (2008)](referencias.md#ref-shute2008feedback)). Por isso, o produto não reduz prática a contagem de itens
 nem trata qualquer resposta como prova de domínio.
@@ -108,23 +108,24 @@ adivinhar por que duas formas aparecem juntas ([Ainsworth (2006)](referencias.md
 rótulos próximos aos elementos que explicam também reduz a integração mental
 desnecessária ([Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
 
-Os componentes são pacotes independentes do núcleo de execução. Essa separação
-permite acrescentar uma representação ou corrigir seu contrato e seu
-renderizador sem reescrever a progressão, a persistência e os controles comuns
-das Unidades. A independência arquitetural não dispensa curadoria acadêmica: cada
-pacote continua responsável por convenções da área, legibilidade móvel,
-interação de prática, edição textual e validação.
+Os componentes são distribuídos em pacotes independentes do núcleo de execução.
+Essa separação permite acrescentar uma representação ou corrigir seu contrato e
+sua apresentação sem reescrever a progressão, a persistência e os controles
+comuns das Unidades. Cada pacote continua responsável pelas convenções da área,
+pela legibilidade móvel, pela interação de prática, pelos campos textuais
+editáveis e pela validação.
 
 ## Estudo, autoria e assistência computacional
 
 O mesmo Curso pode ser observado em dois contextos complementares:
 
-- no **Estudo**, a pessoa lê, pratica, recebe feedback, marca uma Unidade para rever
-  e registra uma observação;
-- na **Autoria**, a pessoa proprietária cria e inspeciona o Curso, edita o
-  planejamento, tria Anotações ancoradas e concede acesso direto para Estudo. A conversa de
-  planejamento permanece num cliente MCP externo; não existe chat autoral
-  interno no aplicativo.
+- no **Estudo**, a pessoa lê, pratica, recebe retorno, marca uma Unidade para
+  rever e registra uma observação;
+- na **Autoria**, a pessoa proprietária planeja, produz e inspeciona o Curso,
+  mantém sua proveniência, tria Anotações, audita correções, compara variantes,
+  consulta fatos da produção e concede acesso direto para Estudo. Um protocolo
+  aberto, o **Model Context Protocol (MCP)**, conecta o assistente de autoria ao
+  aplicativo.
 
 Uma alteração não precisa transportar todos os Cursos. A lista inicial é fina
 e a composição é lida em páginas sob uma revisão fixa. O contexto enviado a um
@@ -132,8 +133,8 @@ serviço de linguagem é montado para o Curso e o alvo pertinentes, e a resposta
 precisa satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
-é, portanto, uma ferramenta de autoria sob responsabilidade humana, não uma
-autoridade pedagógica. Recomendações para interação humano-IA favorecem tornar
+é uma ferramenta de autoria sob responsabilidade humana. Recomendações para
+interação entre pessoas e inteligência artificial favorecem tornar
 o escopo visível, oferecer possibilidade de correção e apoiar a recuperação de
 erros ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações para IA generativa em educação também
 reforçam supervisão, transparência e adequação ao contexto ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
@@ -142,7 +143,7 @@ reforçam supervisão, transparência e adequação ao contexto ([UNESCO (2023)]
 
 O AraLearn foi concebido para contextos em que a conexão pode desaparecer. O
 dispositivo mantém uma réplica local dos Cursos já abertos e do estado
-funcional necessário para estudar. Depois do primeiro download, leitura,
+funcional necessário para estudar. Depois da primeira transferência, leitura,
 prática e retomada dependem primeiro dessa réplica; mudanças pendentes podem ser
 sincronizadas quando a rede retorna.
 
@@ -153,10 +154,10 @@ Essa escolha separa duas responsabilidades:
 - o **dispositivo** oferece resposta imediata e continuidade temporária quando
   o servidor não pode ser alcançado.
 
-Uma réplica não é uma segunda autoridade. Ela não concede permissões e pode
-mostrar o último estado remoto confirmado enquanto estiver sem rede. Conceder
-ou revogar acesso, alterar conteúdo e usar assistência externa exigem conexão
-porque dependem do servidor e precisam ser validados no momento da operação.
+Uma réplica conserva o último estado remoto confirmado e as mudanças locais que
+aguardam sincronização. Permissões continuam sendo aplicadas pelo servidor.
+Conceder ou revogar acesso, alterar conteúdo e usar assistência externa exigem
+conexão porque precisam ser validados no momento da operação.
 Os fundamentos técnicos dessa decisão estão em
 [Arquitetura](arquitetura.md) e [Persistência relacional](persistencia-relacional.md).
 
@@ -164,8 +165,9 @@ Os fundamentos técnicos dessa decisão estão em
 
 O produto conserva o necessário para responder a perguntas funcionais, como
 “em que Unidade continuar?” e “qual Unidade a própria pessoa marcou para
-rever?”. Ele não registra abertura de Unidade, permanência, número de tentativas, acertos,
-erros ou último resultado para inferir atenção, esforço ou domínio.
+rever?”. Ele não registra abertura de Unidade, permanência, quantidade de
+respostas enviadas, acertos, erros ou último resultado para inferir atenção,
+esforço ou domínio.
 
 Dados de interação são ambíguos fora do contexto em que foram produzidos. A
 literatura sobre ética em análise da aprendizagem recomenda relacionar coleta,
@@ -181,17 +183,15 @@ próprios e aqueles aos quais a pessoa recebeu acesso. Autoria lista somente
 Cursos próprios.
 
 O proprietário pode conceder ou revogar acesso diretamente a outra conta. A
-concessão significa Estudo: não cria grupo, sequência curricular, organização
-ou autoridade de edição. Organização pessoal e eventual disponibilização
-pública são problemas separados e não devem ser usados para esconder regras de
-autorização.
+concessão dá acesso a Estudo e preserva com o proprietário a edição do Curso. O
+modelo não cria grupos, organizações nem acesso público anônimo.
 
 ## Público e condições de uso
 
 O desenho móvel atende especialmente pessoas que estudam em sessões curtas,
 durante deslocamentos ou entre outras atividades. A interface web mantém a
 largura de leitura próxima à experiência móvel para que o mesmo conteúdo não
-dependa de uma diagramação exclusiva de desktop. Revisões de aprendizagem móvel
+dependa de uma diagramação exclusiva para computador. Revisões de aprendizagem móvel
 e autodirigida identificam oportunidades e exigências próprias desse contexto,
 mas não autorizam supor que qualquer interface móvel produza autorregulação
 ([Lai et al. (2022)](referencias.md#ref-lai2022mobile); [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated)).
@@ -205,20 +205,20 @@ acordo com propriedade e acesso.
 
 O produto assume os seguintes compromissos de projeto:
 
-- conteúdo novo deve ser estudável à medida que é materializado, sem um estado
-  burocrático de rascunho oculto ao leitor autorizado;
+- conteúdo novo deve ser estudável por quem tem acesso à medida que é
+  produzido;
 - a seleção de um componente visual deve decorrer de uma necessidade de
   representação, não de variedade decorativa;
-- uma resposta de IA nunca dispensa validação estrutural e revisão humana;
-- estados funcionais de retomada não devem ser reinterpretados como medidas de
-  aprendizagem;
-- operações locais não devem aguardar a rede quando sua execução não depende
-  dela;
-- uma falha isolada não deve bloquear a leitura dos demais cursos;
+- alterações propostas por IA passam pelos contratos estruturais e devem ser
+  conferidas pela pessoa autora;
+- estados funcionais de retomada conservam sua finalidade e não viram medidas
+  de aprendizagem por conveniência;
+- operações locais permanecem imediatas quando sua execução independe da rede;
+- uma falha isolada preserva a leitura dos demais Cursos;
 - decisões de eficiência, acessibilidade e eficácia devem ser avaliadas por
   testes ou estudos adequados, e não declaradas como resultado já comprovado.
 
-Esses compromissos descrevem o desenho pretendido. A confirmação de usabilidade
+Esses compromissos orientam o produto e sua avaliação. A confirmação de usabilidade
 e de efeitos educacionais exige avaliação empírica com tarefas, participantes e
 critérios explícitos. A documentação distingue, por isso, fundamento da
 literatura, decisão de projeto, propriedade verificada por teste e questão

@@ -24,12 +24,6 @@ export function readOAuthAuthorizationId(locationValue = globalThis.location) {
   return text(value);
 }
 
-export function readActionOAuthAuthorizationId(locationValue = globalThis.location) {
-  const value = new URLSearchParams(text(locationValue?.search).replace(/^\?/u, ""))
-    .get("action_authorization_id");
-  return text(value);
-}
-
 function parsedOAuthRedirect(rawUrl) {
   let target;
   try {

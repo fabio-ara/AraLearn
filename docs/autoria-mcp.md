@@ -2,12 +2,13 @@
 
 Este capítulo ensina como um cliente conversacional opera a Autoria pelo
 **Model Context Protocol (MCP)** sem criar uma segunda realidade. A interface
-visual e o MCP leem e alteram o mesmo Curso vivo no PostgreSQL.
+visual usa a API de Cursos, enquanto o cliente conversacional usa o MCP; ambos
+leem e alteram o mesmo Curso vivo no PostgreSQL.
 
 ## O problema que o serviço resolve
 
-Uma conversa é adequada para intenções amplas — planejar, comparar, revisar ou
-reorganizar —, mas texto livre não deve receber acesso irrestrito ao banco. Sem
+Uma conversa é adequada para intenções amplas, como planejar, comparar, revisar
+ou reorganizar, mas texto livre não deve receber acesso irrestrito ao banco. Sem
 uma fronteira tipada, cada cliente precisaria conhecer tabelas, autorização,
 paginação, concorrência e contratos de componentes.
 
@@ -15,6 +16,10 @@ O serviço MCP oferece poucas ferramentas de produto. A pessoa descreve a
 tarefa; o cliente escolhe a ferramenta, valida argumentos, chama o servidor e
 apresenta o resultado. O servidor continua responsável por identidade,
 propriedade, revisão, idempotência e invariantes.
+
+Na interface visual, **Copiar pedido para o ChatGPT** apenas transfere o texto.
+O AraLearn não apresenta essa cópia como execução. A geração e as chamadas MCP
+ocorrem no ChatGPT ou em outro cliente externo conectado pela pessoa.
 
 ## O que é MCP
 
@@ -27,14 +32,26 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
-O recurso corrente é `aralearn://authoring/invariants`. Ele contém somente
+O recurso de conhecimento `aralearn://authoring/invariants` contém somente
 invariantes de operação: Curso vivo, leitura antes de escrita, estado dinâmico
 persistido, Parte como agrupamento operacional, descoberta progressiva de
 componentes, materialização por etapas retomáveis e síntese breve do resultado.
 
+O recurso visual opcional `ui://aralearn/course-inspector/0.0.23.html` segue a
+extensão MCP Apps. Ele representa a prévia de uma Unidade de estudo, os
+indicadores agregados de Pesquisa e a comparação de Variantes; também apresenta
+um resumo adequado para as demais operações da biblioteca de componentes. Um
+cliente sem MCP Apps continua recebendo a forma textual canônica do mesmo
+resultado autorizado.
+
+A política estável do MCP Apps não permite a compilação WebAssembly usada pelos
+diagramas Graphviz. Nesses componentes, o recurso apresenta a descrição textual
+equivalente e o endereço autorizado, sem tentar afrouxar a política do cliente.
+Os demais componentes conservam a prévia visual.
+
 Plano, parâmetros, orientações, política de componentes, fontes, observações,
 rodadas, achados e correções não devem ser copiados para esse recurso nem
-fixados no prompt do cliente. Eles pertencem ao Curso e precisam poder mudar
+fixados nas instruções do cliente. Eles pertencem ao Curso e precisam poder mudar
 sem reconstruir o assistente.
 
 ## Componentes e fluxo de uma alteração
@@ -53,7 +70,7 @@ sequenceDiagram
     participant A as Autoria visual
     P->>C: intenção em linguagem natural
     C->>M: listar ou ler Curso
-    M->>D: rota owner-only
+    M->>D: rota exclusiva do proprietário
     D->>B: leitura autorizada
     B-->>C: revisão e estado corrente
     C->>M: mutação + revisão esperada
@@ -73,8 +90,8 @@ Cada cliente usa OAuth com uma conta individual do AraLearn. O token identifica
 a sessão; o servidor ainda revalida a propriedade do Curso em cada operação.
 Uma chave administrativa compartilhada não é credencial de cliente.
 
-O fluxo interativo usa Authorization Code com PKCE S256. O endpoint protegido
-publica metadata OAuth em `/.well-known/oauth-protected-resource`, e respostas
+O fluxo interativo usa código de autorização com PKCE S256. O endereço protegido
+publica metadados OAuth em `/.well-known/oauth-protected-resource`, e respostas
 401/403 incluem o desafio necessário para reconectar a conta.
 
 As regras correntes são deliberadamente simples:
@@ -112,11 +129,16 @@ Lê uma destas projeções:
   planejado×aplicado;
 - `course_sources`: catálogo de Fontes, detalhe versionado de uma Fonte ou
   histórico de atribuições de um alvo;
+- `course_source_attachment`: autorização temporária para enviar ou abrir um
+  PDF privado de uma revisão de Fonte;
 - `anchored_annotations`: caixa de entrada, anotações de um alvo ou detalhe de
   uma Anotação ancorada;
 - `audit_cycle`: contexto focal, achados, rodadas ou detalhe de um achado ou de
   uma rodada de auditoria;
-- `part_materialization`: uma tentativa persistida, seu contexto e fatos
+- `variant_comparisons`: conjuntos de Variantes ligados ao Curso;
+- `variant_comparison`: comparação factual de um conjunto e suas revisões;
+- `research`: fatos, métricas, filtros e páginas da área Pesquisa;
+- `part_materialization`: uma execução persistida, seu contexto e fatos
   limitados, as etapas com versão e a próxima etapa pendente;
 - `study_units`: Unidades de estudo em ordem curricular, com contexto, Parte e
   links profundos;
@@ -137,8 +159,9 @@ resposta completa ultrapassar 1,75 MiB.
 `part_materialization` exige `authoringPartId` e `materializationId`, ambos
 obtidos do plano ou do recibo anterior. A resposta traz no máximo 64 etapas e
 `nextPendingStep`; por isso um cliente novo retoma trabalho real sem depender
-da conversa anterior. Se uma etapa falhou ou a tentativa terminou, o próximo
-passo é nulo. Essa vista é owner-only e não inclui prompt nem raciocínio privado.
+da conversa anterior. Se uma etapa falhou ou a execução terminou, o próximo
+passo é nulo. Essa vista é exclusiva do proprietário e não inclui instruções
+enviadas ao modelo nem raciocínio privado.
 
 Antes de auditar ou alterar estrutura, percorra todas as páginas pertinentes.
 Um resumo não demonstra que uma Unidade existe nem que sua composição é válida.
@@ -150,22 +173,30 @@ catálogo de componentes. Parâmetros pedagógicos não aceitam override em Mód
 orientação e política aceitam. `targetPlanItems` contém as listas de unidades de
 análise e requisitos de evidência atribuídos quando o alvo é uma
 Microssequência e vale `null` nos demais escopos. A leitura falha fechada acima
-do hard cap executável de 256 KiB; não há promessa contratual de 96 KiB para
+do limite executável de 256 KiB; não há promessa contratual de 96 KiB para
 toda resposta normal.
 
 `course_sources` exige `expectedRevision` e escolhe exatamente um modo:
-`catalog`, `source` ou `target`. A leitura é owner-only, estrita e paginada em
+`catalog`, `source` ou `target`. A leitura é exclusiva do proprietário, estrita e paginada em
 até 24 itens. `source` recebe a identidade literal da Fonte; `target` recebe
 `plan_item|study_unit` e a identidade do alvo. O cursor é opaco, não pode ser
 fabricado pelo cliente e só vale sob a revisão lida. O catálogo traz a revisão
 corrente; o detalhe preserva revisões e Âncoras; o alvo preserva atribuições
-append-only e indica qual ainda corresponde à versão e ao hash atuais.
+somente por acréscimo e indica qual ainda corresponde à versão e ao resumo
+criptográfico atuais.
 
 O objeto lido contém exatamente `contract`, `courseId`, `courseRevision`,
 `mode`, `query`, `items` e `nextCursor`. `query` explicita os três binds e deixa
 nulos os que não pertencem ao modo. Cada vínculo de alvo tem
 `{sourceId, sourceRevision, relation, anchors}`; cada referência de Âncora tem
 `{anchorId, anchorRevision}`. Campos adicionais não são extensão tolerada.
+
+`course_source_attachment` exige revisão do Curso, Fonte e revisão da Fonte.
+`prepare_upload` valida tipo, tamanho e resumo criptográfico e devolve uma URL assinada para o
+PDF; `download` autoriza a abertura de um anexo já confirmado. O cliente envia
+o arquivo à URL assinada e só então usa `attach_pdf` para confirmar o vínculo
+relacional. Há limite de 20 MiB por arquivo, 64 MiB de conteúdo único por Curso
+e oito anexos por Fonte.
 
 `anchored_annotations` escolhe `inbox`, `target` ou `detail`. A caixa de entrada
 aceita filtros por origem, canal, estado, categoria, ausência de categoria,
@@ -174,27 +205,43 @@ detalhe exige `annotationId`. A página admite no máximo 24 itens, cursor opaco
 de até 240 caracteres e resposta de até 256 KiB. Cada item usa
 `aralearn.course-anchored-annotation.v1` e inclui caminho observado e corrente,
 certeza da revisão observada, classificação automática e humana separadas,
-capacidades e links profundos. O contribuidor owner-only é protegido por papel
+capacidades e links profundos. O contribuidor lido pelo proprietário é protegido por papel
 no formato `contributor={kind:'protected_person',role,ref,label}`. `ref` é o
 pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUID,
 nunca UUID ou e-mail e não reversível pelo contrato. A interface mostra somente o `label` pseudônimo protegido, nunca
 `ref`, UUID ou e-mail.
 
+Fonte e Âncora são alvos válidos dessa leitura, ao lado dos objetos da
+hierarquia didática. O detalhe de uma Fonte pode, portanto, consultar a mesma
+página de Anotações usada pela caixa de entrada. A categoria
+`reformulation_request` identifica um pedido de reformulação ligado à Fonte ou
+à Âncora exata.
+
 `audit_cycle` escolhe `context`, `findings`, `runs` ou `detail`. `findings` e
 `runs` são paginados, aceitam `targetStudyUnitId` opcional e usam cursor opaco;
 `runs` enumera também rodadas limpas, sem achados. A página distingue a lista
 `runs` do detalhe `runDetail`. No modo `detail`, o cliente informa exatamente
-um entre `findingId` e `auditRunId`; o detalhe da rodada entrega todos os checks
+um entre `findingId` e `auditRunId`; o detalhe da rodada entrega todas as verificações
 e suas evidências, e não apenas os achados derivados. A página admite até 24
 itens, cursor de até 240 caracteres e resposta de até 240 KiB.
 
 O contexto focal reúne a Unidade corrente, Microssequência, plano, desenho,
 Fontes/Âncoras e até 12 Observações selecionadas. Uma referência a Observação
 guarda somente identidade e versão. Enquanto uma retirada ainda existe como
-tombstone, ela aparece `available: false` e sem link profundo. Depois do hard
-delete previsto pelo ciclo de limpeza das Anotações, o cascade remove apenas o
+registro de retirada, ela aparece `available: false` e sem link profundo. Depois da remoção
+física prevista pelo ciclo de limpeza das Anotações, a exclusão em cascata remove apenas o
 vínculo e o identificador da projeção; nenhum texto, pseudônimo ou dado pessoal
 foi copiado para rodada, achado ou correção.
+
+`variant_comparisons` lista os conjuntos ligados ao Curso na revisão esperada.
+`variant_comparison` exige `comparisonSetId` e devolve planejamento comum,
+revisões dos Cursos, diferenças declaradas, desvios não declarados, diferenças
+factuais e dados ausentes. Cada membro continua sendo um Curso independente.
+
+`research` devolve o mesmo contrato da área Pesquisa. Aceita conjuntos,
+estados, intervalo de datas, limite e cursor; a resposta preserva definições,
+denominadores e dados ausentes. Os fatos são descritivos e não sustentam, por si
+sós, uma conclusão causal ou de aprendizagem.
 
 ### `criarCurso`
 
@@ -213,9 +260,9 @@ autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui sete operações fechadas:
+Possui oito operações fechadas:
 
-- `update_instructional_plan`: aplica um comando semântico ao plano — atualizar
+- `update_instructional_plan`: aplica um comando semântico ao plano, como atualizar
   campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
   juntar/reordenar Partes ou mover vínculos de microssequência;
 - `update_course_design`: define ou limpa parâmetro, orientação e política de
@@ -223,15 +270,17 @@ Possui sete operações fechadas:
   aplica `set_target_plan_items` para substituir as duas listas de itens de uma
   Microssequência;
 - `update_course_sources`: cria ou revisa uma Fonte, aposenta Fonte ou Âncora,
-  salva Âncora ou substitui o conjunto ordenado de Fontes de um item do plano
-  ou de uma Unidade;
+  salva Âncora, confirma um PDF já enviado ou substitui o conjunto ordenado de
+  Fontes de um item do plano ou de uma Unidade;
 - `update_anchored_annotations`: cria ou revisa Anotação ancorada, retira,
   considera, responde, resolve, reabre ou corrige assuntos;
 - `update_audit_cycle`: registra rodada, propõe ou rejeita correção, decide
-  achado, aplica correção, verifica achado ou executa rollback;
+  achado, aplica correção, verifica achado ou executa reversão;
+- `update_course_variants`: cria Cursos variantes a partir de um ponto comum ou
+  desvincula um membro sem excluir o Curso;
 - `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
-- `advance_part_materialization`: inicia uma tentativa, registra uma etapa
-  delimitada ou finaliza a tentativa de uma Parte.
+- `advance_part_materialization`: inicia uma execução, registra uma etapa
+  delimitada ou finaliza a materialização de uma Parte.
 
 Todas exigem `courseId` e `requestId`. Operações de conteúdo exigem a revisão
 esperada do Curso; em Anotações ancoradas ela aparece somente ao criar ou
@@ -242,14 +291,22 @@ O alvo do plano aceita até 192 vínculos de Microssequência no total e 512 KiB
 esse limite mantém sua leitura enriquecida abaixo do orçamento do transporte.
 
 `update_course_sources` aceita somente os comandos `save_source`,
-`retire_source`, `save_anchor`, `retire_anchor` e `set_target_sources`. Um
-vínculo novo declara `informed_by`, `supported_by`, `adapted_from` ou
-`quoted_from` e exige ao menos uma Âncora ativa da revisão exata. Há no máximo
+`retire_source`, `save_anchor`, `retire_anchor`, `attach_pdf` e
+`set_target_sources`. Um
+vínculo novo declara `informed_by`, `supported_by`, `adapted_from`,
+`quoted_from`, `contrasted_with`, `exemplified_by`, `inspired_by` ou
+`needs_verification` e exige ao menos uma Âncora ativa da revisão exata. Há no máximo
 32 Fontes por alvo e oito identidades de Âncora por revisão de Fonte.
 `legacy_reference` é apenas fato de
 migração e nunca opção de escrita. Uma identidade legada não resolvida é
-resolvida in-place, preservando literalmente o identificador; o cliente não a
+resolvida na mesma identidade, preservando literalmente o identificador; o cliente não a
 normaliza nem cria substituto.
+
+`update_course_variants` aceita `create_comparison_variants` e
+`detach_comparison_variant`. A criação recebe de duas a oito variantes, fixa o
+ponto comum do planejamento e cria Cursos independentes com diferenças
+declaradas de parâmetros ou política. A desvinculação exige confirmação e não
+apaga Curso, conteúdo, acesso nem estado pessoal.
 
 `update_anchored_annotations` aceita os oito comandos fechados
 `create_anchored_annotation`, `revise_anchored_annotation`,
@@ -265,31 +322,37 @@ Há várias anotações por ator e alvo. Estados são apenas
 somente em alvo Tópico; a correção de assuntos é um fato humano separado.
 Criar e corrigir assuntos exigem também a revisão esperada do Curso. Revisar,
 responder e mudar estado usam a versão esperada da anotação e o contador global
-do conjunto, pois MCP é owner-only, sem avançar a revisão de conteúdo apenas
+do conjunto, pois o MCP é exclusivo do proprietário, sem avançar a revisão de conteúdo apenas
 pela triagem. A projeção de Estudo usa outro contador privado por pessoa; ele
 não cria ferramenta nem estado MCP adicional.
+
+O comando de criação aceita também os alvos `source` e `source_anchor` e a
+categoria `reformulation_request`. Ao responder, `responseKind: "answer"`
+exige `consideredSourceLinks` vazio. `responseKind: "reformulation"` exige ao
+menos um vínculo canônico com revisão de Fonte e uma ou mais Âncoras vigentes.
+O recibo devolve essa base na resposta da pessoa autora.
 
 `update_audit_cycle` aceita sete comandos fechados: `record_audit`,
 `propose_authoring_correction`, `reject_authoring_correction`,
 `decide_finding`, `apply_authoring_correction`, `verify_finding` e
 `rollback_authoring_correction`. O envelope do ciclo aceita no máximo 192 KiB.
 `auditCommand.confirmed: true` é obrigatório apenas para aplicar ou executar
-rollback; os outros cinco comandos recusam esse campo. O servidor retira a
+`rollback_authoring_correction`; os outros cinco comandos recusam esse campo. O servidor retira a
 confirmação antes de chamar o domínio.
 
-Uma rodada registra exatamente três checks humanos nas dimensões pedagógica, factual e
-editorial; o servidor acrescenta o check estrutural determinístico, sob máximo
-de 32 checks. Cada resultado é
+Uma rodada registra exatamente três verificações humanas nas dimensões pedagógica, factual e
+editorial; o servidor acrescenta a verificação estrutural determinística, sob máximo
+de 32 verificações. Cada resultado é
 `passed|failed|uncertain|not_applicable|not_checked`, com até 16 achados na
-rodada. Rodada imutável, versões append-only de achado e correção e a junção com
+rodada. Rodada imutável, versões somente por acréscimo de achado e correção e a junção com
 Anotações são autoridades privadas distintas.
 
 A correção v1 só substitui conteúdo e o conjunto completo de Fontes da Unidade
 focal existente. Ela preserva `topics` legítimos e não cria, apaga, move,
-reposiciona ou muda o pai de uma entidade. No-op é recusado. Aplicação conserva
-checkpoint `before|after`, com até 48 KiB por snapshot e 96 KiB no conjunto, e
-avança o achado para `awaiting_verification`; rollback exige que o estado
-aplicado ainda corresponda ao checkpoint. Ambos reutilizam
+reposiciona ou muda o pai de uma entidade. Uma operação sem efeito é recusada.
+A aplicação conserva o ponto de controle `before|after`, com até 48 KiB por
+estado e 96 KiB no conjunto, e avança o achado para `awaiting_verification`; a
+reversão exige que o estado aplicado ainda corresponda ao ponto de controle. Ambos reutilizam
 `course_change_receipts`, com resultado de até 64 KiB, e são as únicas operações
 do ciclo que criam `course_events`.
 
@@ -302,19 +365,19 @@ sugestão; executá-la requer outro comando explícito de
 `update_anchored_annotations` com a versão corrente.
 
 O recibo de Fonte contém exatamente `contract`, `courseId`, `courseRevision`,
-`requestId`, `idempotent`, `changed` e `change`. `change` é nulo no no-op; caso
+`requestId`, `idempotent`, `changed` e `change`. `change` é nulo quando não há alteração; caso
 contrário, contém `type`, `subjectId` e `revision`, e `changed` precisa refletir
 essa diferença.
 
 Cada grupo de composição aceita no máximo 200 itens. Uma etapa de
 materialização aceita no máximo 64 mudanças de entidade e 256 KiB, fixa a
 versão da Parte e mantém conteúdo, etapa, vínculo, revisão, evento e recibo na
-mesma transação. A tentativa persiste o próximo passo; repetir a mesma chamada
+mesma transação. A execução persiste o próximo passo; repetir a mesma chamada
 recupera o recibo antes do CAS. A transação valida pais, posições, identidades,
 conteúdo de cada linha pelo tipo
 `module|lesson|topic|microsequence|study_unit`; o banco verifica `dependsOn`
 somente nas Lições afetadas. A escrita permanece segmentada e não recompõe o
-Curso integral antes de cada commit. Excluir ou reordenar uma Parte nunca
+Curso integral antes de cada confirmação. Excluir ou reordenar uma Parte nunca
 exclui a composição didática.
 
 `commit_course_composition` não aceita `sources` dentro de `studyUnits`. Para
@@ -332,10 +395,10 @@ a ele, além das revisões e Âncoras seladas. Cada `record_step` apresenta uma
 aplicação factual limitada e aplicações
 `aralearn.course-source-attribution-application.v1`; somente fatos presentes
 no contexto podem ser gravados. Conteúdo, vínculos, atribuições, etapa, evento e
-recibo são atômicos sob o hash do contexto.
+recibo são atômicos sob o resumo criptográfico do contexto.
 
 Formas de explicação, oportunidades e dimensões de variação são declarações do
-agente ou da pessoa autora com schema, referências, contagens e coerência
+cliente conversacional ou da pessoa autora com esquema, referências, contagens e coerência
 interna validados; não são inferidas semanticamente da prosa pelo banco. A
 transação reconcilia materialmente os IDs de Unidades, o pai/alvo e os
 `componentRefs` do conteúdo. Referência desconhecida, excluída ou fora de
@@ -371,7 +434,7 @@ Descobre e valida a biblioteca sem carregar todos os contratos no contexto:
 4. `contracts` entrega o contrato exato necessário;
 5. `validate_study_unit` valida uma Unidade composta;
 6. `audit_representation` confronta composição e intenção;
-7. `preview_study_unit` prepara inspeção fiel ao renderer.
+7. `preview_study_unit` prepara inspeção fiel ao renderizador.
 
 ## Concorrência e repetição segura
 
@@ -380,12 +443,12 @@ Cada Curso possui uma revisão inteira crescente. Uma mutação só é aceita qu
 **compare-and-swap (CAS)**: comparar a revisão lida e trocar o estado numa única
 transação.
 
-O plano e cada tentativa de materialização também possuem versões próprias.
+O plano e cada execução de materialização também possuem versões próprias.
 Assim, uma mudança alheia fora da Parte não apaga trabalho em andamento, mas
 alterar a própria Parte ou repetir uma etapa sobre uma versão antiga produz um
-conflito explícito. Enquanto uma tentativa está em andamento, cabeçalho e
+conflito explícito. Enquanto uma execução está em andamento, cabeçalho e
 itens independentes do plano continuam editáveis; a Parte, sua posição e seus
-vínculos ficam cercados até a tentativa terminar ou ser marcada como falha.
+vínculos ficam protegidos até a execução terminar ou ser marcada como falha.
 
 Cada mutação também possui `requestId`. O servidor conserva um recibo pequeno e
 temporário:
@@ -395,11 +458,12 @@ temporário:
 - recibos de Curso, acesso e Anotações ancoradas expiram em até 14 dias;
 - o recibo não é histórico de conversa nem cópia do Curso.
 
-Para Anotações, essa expiração é autoritativa: o recibo deixa de admitir replay
-no prazo. A remoção física ocorre oportunisticamente durante leituras/mutações
-do Curso, em um lote de até 128 tombstones e 256 recibos expirados por toque;
-Curso inativo pode conservar lixo físico porque não há cron nem garantia de
-hard delete na janela.
+Para Anotações, essa expiração é autoritativa: o recibo deixa de admitir
+repetição no prazo. A remoção física ocorre oportunisticamente durante leituras
+e mutações do Curso, em um lote de até 128 registros de retirada e 256 recibos
+expirados a cada operação;
+um Curso inativo pode conservar dados físicos expirados porque não há tarefa
+periódica nem garantia de remoção física na janela.
 
 Diante de conflito de revisão, não aumente o número e tente novamente às cegas.
 Releia, compare a intenção com o estado novo e proponha a reconciliação.
@@ -417,17 +481,18 @@ invariantes. O Curso conserva dados mutáveis:
 - atribuições muitos-para-muitos de unidades de análise e requisitos de
   evidência às Microssequências;
 - catálogo privado e versionado de Fontes e Âncoras, mais atribuições
-  append-only a itens do plano e Unidades;
-- Partes operacionais, seus vínculos e tentativas de materialização;
+  somente por acréscimo a itens do plano e Unidades;
+- Partes operacionais, seus vínculos e execuções de materialização;
 - composição didática;
-- Anotações ancoradas autorais e estudantis, com contador global owner-only e
-  contador privado por pessoa na projeção de Estudo;
+- Anotações ancoradas autorais e estudantis, com contador global exclusivo do
+  proprietário e contador privado por pessoa na projeção de Estudo;
 - rodadas imutáveis, versões de achados, vínculos protegidos com Observações e
   correções versionadas;
-- futuramente, configuração de pesquisa quando essa fatia for implementada.
+- fatos, métricas, filtros e exportações da área Pesquisa;
+- pontos comuns, membros e comparações factuais de Variantes.
 
-Essa separação evita que mudar o planejamento exija editar o prompt de sistema
-ou reconstruir uma base fixa. Também evita persistir conversa integral ou
+Essa separação evita que mudar o planejamento exija editar as instruções fixas
+do cliente ou reconstruir uma base fixa. Também evita persistir conversa integral ou
 raciocínio privado como se fossem dados do produto.
 
 ## Respostas, erros e limites
@@ -456,31 +521,30 @@ Erros previsíveis incluem:
 - entidade, plano, Parte ou etapa de materialização inválida;
 - e-mail sem conta correspondente;
 - confirmação ausente;
-- limite de payload ou prazo excedido.
+- limite do corpo do pedido ou prazo excedido.
 
 O transporte aceita pedidos de até 1 MiB, e as ferramentas usam limites ainda
 menores por campo e lote. A leitura `study_units` possui orçamento próprio de
-resposta, com hard cap de 1,75 MiB sob o teto de 2 MiB. O prazo de uma chamada
-não autoriza aumentar lote
-indefinidamente; produção por Partes precisa respeitar limites reais de modelo,
-rede e transação.
+resposta, com limite máximo de 1,75 MiB sob o teto de 2 MiB. O prazo de uma
+chamada não autoriza aumentar o lote indefinidamente; a produção por Partes
+precisa respeitar limites reais de modelo, rede e transação.
 
 As leituras de Fontes têm resposta máxima de 256 KiB, página de até 24 itens e
 cursor opaco de até 240 caracteres. Metadados e URLs ficam no PostgreSQL; o
 contrato não envia arquivos de referência ao Storage. Esses limites reduzem
-transferência, mas o crescimento append-only e o consumo real de banco, egress
-e funções ainda precisam ser medidos antes de afirmar sustentabilidade no Free
-Plan.
+transferência, mas o crescimento somente por acréscimo e o consumo real de
+banco, saída de dados e funções ainda precisam ser medidos antes de afirmar
+sustentabilidade no plano gratuito.
 
 O ciclo de auditoria limita páginas e resultados de mudança a 240 KiB, comandos
 a 192 KiB, 256 rodadas por Curso com reserva para correções aplicadas, 1.024
 identidades de achado, 64 correções por Curso e oito por achado. Históricos
-projetados também são limitados. Auditoria e correção são online-only: não há
-store, cache autoritativo nem outbox delas no IndexedDB.
+projetados também são limitados. Auditoria e correção exigem conexão: não há
+relação local, cópia autoritativa nem fila de envio delas no IndexedDB.
 
 ## Configuração
 
-O endpoint tem a forma:
+O endereço tem a forma:
 
 ```text
 https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
@@ -488,22 +552,19 @@ https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
 
 Para conectar um cliente:
 
-1. confirme que migrations, manifesto e Edge Function pertencem à mesma
+1. confirme que migrações, manifesto e Edge Function pertencem à mesma
    revisão;
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
-3. configure o endpoint acima;
+3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das seis ferramentas e do recurso de invariantes;
+5. confira a descoberta das seis ferramentas, do recurso de invariantes e, num
+   cliente compatível, do recurso visual versionado;
 6. faça primeiro uma leitura sem mutação;
 7. teste criação e alteração somente num Curso de desenvolvimento.
 
-Os materiais de empacotamento ficam em [`authoring/`](../authoring/README.md).
-Eles precisam ser regenerados para corresponder ao mesmo registro de
-ferramentas, manifesto e revisão do backend.
-
 ## Verificação
 
-A verificação focal cobre protocolo, OAuth, registro de ferramentas, roteamento,
+A verificação cobre protocolo, OAuth, registro de ferramentas, roteamento,
 autorização, concorrência e contratos:
 
 ```powershell
@@ -514,14 +575,15 @@ node --test tests/runtime/course-router.test.js
 npm run test:authoring:mcp:local
 ```
 
-O smoke local exige Supabase iniciado e credenciais de teste efêmeras. O smoke
-hospedado só deve ser executado depois da migration remota; no estado corrente,
-essa promoção continua bloqueada pelos gates de importação.
+O teste integrado local exige Supabase iniciado e credenciais efêmeras. A
+verificação hospedada só deve ser executada depois que as migrações remotas
+estiverem em paridade com `supabase/runtime-manifest.json`.
 
 ## Referências normativas e técnicas
 
-- [Model Context Protocol — especificação 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)
+- [Model Context Protocol: especificação 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)
+- [MCP Apps: extensão estável 2026-01-26](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx)
 - [Supabase Auth como servidor OAuth 2.1](https://supabase.com/docs/guides/auth/oauth-server)
-- [OAuth 2.0 Security Best Current Practice — RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)
-- [Proof Key for Code Exchange — RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)
-- [OAuth 2.0 Protected Resource Metadata — RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)
+- [OAuth 2.0 Security Best Current Practice: RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)
+- [Proof Key for Code Exchange: RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)
+- [OAuth 2.0 Protected Resource Metadata: RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)

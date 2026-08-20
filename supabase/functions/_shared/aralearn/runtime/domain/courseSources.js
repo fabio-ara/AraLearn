@@ -3,6 +3,9 @@ const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const HTTPS_PATTERN = /^https:\/\/[^\s]+$/u;
 const CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
+const COURSE_SOURCE_PDF_PATH_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([a-f0-9]{64})\.pdf$/u;
+const PARTIAL_ISO_DATE_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/u;
+const BCP47_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
 const encoder = new TextEncoder();
 
 export const COURSE_SOURCES_CONTRACT = "aralearn.course-sources.v1";
@@ -10,6 +13,11 @@ export const COURSE_SOURCE_CHANGE_CONTRACT = "aralearn.course-source-change.v1";
 export const COURSE_STUDY_CITATIONS_CONTRACT = "aralearn.course-study-citations.v1";
 export const COURSE_SOURCE_CONTEXT_CONTRACT = "aralearn.course-source-context.v1";
 export const COURSE_DESIGN_CONTEXT_V2_CONTRACT = "aralearn.course-design-context.v2";
+export const COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT =
+  "aralearn.course-source-attachment-access.v1";
+export const COURSE_SOURCE_PDF_MEDIA_TYPE = "application/pdf";
+export const COURSE_SOURCE_PDF_MAX_BYTES = 20 * 1024 * 1024;
+export const COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES = 64 * 1024 * 1024;
 
 export const COURSE_SOURCE_KINDS = Object.freeze([
   "web_page", "article", "book", "document", "media", "other"
@@ -20,17 +28,27 @@ export const COURSE_SOURCE_STATUSES = Object.freeze([
 export const COURSE_SOURCE_STUDY_VISIBILITIES = Object.freeze([
   "hidden", "citation", "citation_and_link"
 ]);
+export const COURSE_SOURCE_ORIGINS = Object.freeze([
+  "external", "author_provided", "imported_legacy"
+]);
+export const COURSE_SOURCE_AVAILABILITIES = Object.freeze([
+  "open_access", "restricted", "private", "unknown"
+]);
+export const COURSE_SOURCE_VERIFICATION_STATUSES = Object.freeze([
+  "unverified", "author_verified"
+]);
 export const COURSE_SOURCE_SELECTOR_KINDS = Object.freeze([
   "page_range", "time_range", "uri_fragment", "text_quote"
 ]);
 export const COURSE_SOURCE_RELATIONS = Object.freeze([
-  "informed_by", "supported_by", "adapted_from", "quoted_from"
+  "informed_by", "supported_by", "adapted_from", "quoted_from",
+  "contrasted_with", "exemplified_by", "inspired_by", "needs_verification"
 ]);
 export const COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT =
   "aralearn.course-source-attribution-application.v1";
 export const COURSE_SOURCE_COMMAND_TYPES = Object.freeze([
   "save_source", "retire_source", "save_anchor", "retire_anchor",
-  "set_target_sources"
+  "attach_pdf", "set_target_sources"
 ]);
 
 export class CourseSourcesError extends Error {
@@ -123,6 +141,73 @@ function timestamp(value, code, label) {
   return value;
 }
 
+function partialIsoDate(value, code = "invalid_course_source") {
+  if (value === null) return null;
+  if (typeof value !== "string" || value !== value.trim()) {
+    fail(code, "A data de publicação precisa usar AAAA, AAAA-MM ou AAAA-MM-DD.");
+  }
+  const match = PARTIAL_ISO_DATE_PATTERN.exec(value);
+  if (!match || match[1] === "0000") {
+    fail(code, "A data de publicação precisa usar AAAA, AAAA-MM ou AAAA-MM-DD.");
+  }
+  if (match[2] !== undefined) {
+    const month = Number(match[2]);
+    if (month < 1 || month > 12) {
+      fail(code, "A data de publicação possui mês inválido.");
+    }
+  }
+  if (match[3] !== undefined) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const candidate = new Date(0);
+    candidate.setUTCHours(0, 0, 0, 0);
+    candidate.setUTCFullYear(year, month - 1, day);
+    if (candidate.getUTCFullYear() !== year || candidate.getUTCMonth() !== month - 1 ||
+        candidate.getUTCDate() !== day) {
+      fail(code, "A data de publicação possui dia inválido.");
+    }
+  }
+  return value;
+}
+
+function languageTag(value, code = "invalid_course_source") {
+  if (value === null) return null;
+  if (typeof value !== "string" || value !== value.trim() || value.length > 35 ||
+      !BCP47_PATTERN.test(value)) {
+    fail(code, "O idioma da Fonte precisa ser uma etiqueta BCP 47 simples, como pt-BR.");
+  }
+  return value;
+}
+
+function sourceMetadataEnums(value, code = "invalid_course_source") {
+  if (!COURSE_SOURCE_ORIGINS.includes(value.origin) ||
+      !COURSE_SOURCE_AVAILABILITIES.includes(value.availability) ||
+      !COURSE_SOURCE_VERIFICATION_STATUSES.includes(value.verificationStatus)) {
+    fail(code, "A origem, a disponibilidade ou a verificação da Fonte é inválida.");
+  }
+}
+
+function normalizePdfStorage(value) {
+  exact(
+    value,
+    ["uniqueBytes", "maxUniqueBytes"],
+    "invalid_course_sources_read",
+    "O uso de PDFs do Curso"
+  );
+  const uniqueBytes = integer(
+    value.uniqueBytes,
+    0,
+    COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
+    "invalid_course_sources_read",
+    "O uso de PDFs do Curso"
+  );
+  if (value.maxUniqueBytes !== COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES) {
+    fail("invalid_course_sources_read", "A cota de PDFs do Curso diverge do contrato.");
+  }
+  return { uniqueBytes, maxUniqueBytes: value.maxUniqueBytes };
+}
+
 function byteBound(value, maximum, code, label) {
   if (encoder.encode(JSON.stringify(value)).byteLength > maximum) {
     fail(code, `${label} excede ${maximum} bytes.`);
@@ -144,6 +229,148 @@ function opaqueId(value, maximum, code, label) {
 
 function anchorId(value) {
   return opaqueId(value, 240, "invalid_course_source_anchor_id", "A identidade da Âncora");
+}
+
+function contentHash(value, code = "invalid_course_source_attachment") {
+  if (typeof value !== "string" || !SHA256_PATTERN.test(value)) {
+    fail(code, "O hash SHA-256 do anexo é inválido.");
+  }
+  return value;
+}
+
+function pdfStoragePath(value, expectedHash = null, code = "invalid_course_source_attachment") {
+  if (typeof value !== "string" || value !== value.trim()) {
+    fail(code, "O caminho do anexo é inválido.");
+  }
+  const match = COURSE_SOURCE_PDF_PATH_PATTERN.exec(value);
+  if (!match || expectedHash !== null && match[2] !== expectedHash) {
+    fail(code, "O caminho do anexo não corresponde ao hash SHA-256.");
+  }
+  return value;
+}
+
+export function normalizeCourseSourceAttachment(value, { persisted = false } = {}) {
+  const attachment = clone(value);
+  const fields = ["contentHash", "byteSize", "mediaType", "storagePath"];
+  if (persisted) fields.push("actorId", "createdAt");
+  exact(attachment, fields, "invalid_course_source_attachment", "O anexo PDF");
+  const hash = contentHash(attachment.contentHash);
+  const normalized = {
+    contentHash: hash,
+    byteSize: integer(
+      attachment.byteSize,
+      1,
+      COURSE_SOURCE_PDF_MAX_BYTES,
+      "invalid_course_source_attachment",
+      "O tamanho do anexo"
+    ),
+    mediaType: attachment.mediaType,
+    storagePath: pdfStoragePath(attachment.storagePath, hash)
+  };
+  if (normalized.mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE) {
+    fail("invalid_course_source_attachment", "O anexo precisa ser um PDF.");
+  }
+  if (persisted) {
+    normalized.actorId = attachment.actorId === null ? null : uuid(
+      attachment.actorId,
+      "invalid_course_source_attachment",
+      "A identidade do ator do anexo"
+    );
+    normalized.createdAt = timestamp(
+      attachment.createdAt,
+      "invalid_course_source_attachment",
+      "A criação do anexo"
+    );
+  }
+  return normalized;
+}
+
+function signedStorageUrl(value, { nullable = false } = {}) {
+  if (nullable && value === null) return null;
+  if (typeof value !== "string" || value.length > 8_192 || hasControl(value, false)) {
+    fail("invalid_course_source_attachment_access", "A URL assinada do anexo é inválida.");
+  }
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    fail("invalid_course_source_attachment_access", "A URL assinada do anexo é inválida.");
+  }
+  const localHttp = parsed.protocol === "http:" &&
+    ["127.0.0.1", "localhost", "10.0.2.2"].includes(parsed.hostname);
+  if (parsed.protocol !== "https:" && !localHttp || !parsed.searchParams.has("token")) {
+    fail("invalid_course_source_attachment_access", "A URL assinada do anexo é inválida.");
+  }
+  return value;
+}
+
+export function normalizeCourseSourceAttachmentAccess(value) {
+  const access = clone(value);
+  exact(access, [
+    "contract", "courseId", "courseRevision", "operation", "sourceId",
+    "sourceRevision", "storageOriginCourseId", "attachment", "uploadRequired",
+    "alreadyLinked", "signedUrl", "expiresAt"
+  ], "invalid_course_source_attachment_access", "O acesso ao anexo PDF");
+  if (access.contract !== COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT ||
+      !["prepare_upload", "download"].includes(access.operation) ||
+      typeof access.uploadRequired !== "boolean" ||
+      typeof access.alreadyLinked !== "boolean") {
+    fail("invalid_course_source_attachment_access", "O contrato de acesso ao anexo é inválido.");
+  }
+  const courseId = uuid(
+    access.courseId,
+    "invalid_course_source_attachment_access",
+    "A identidade do Curso"
+  );
+  const attachment = normalizeCourseSourceAttachment(access.attachment);
+  const storageOriginCourseId = uuid(
+    access.storageOriginCourseId,
+    "invalid_course_source_attachment_access",
+    "A identidade do Curso de origem do objeto"
+  );
+  const pathCourseId = COURSE_SOURCE_PDF_PATH_PATTERN.exec(attachment.storagePath)?.[1];
+  if (pathCourseId !== storageOriginCourseId ||
+      !access.alreadyLinked && storageOriginCourseId !== courseId ||
+      access.operation === "download" && (access.uploadRequired || !access.alreadyLinked) ||
+      access.alreadyLinked && access.uploadRequired ||
+      access.operation === "prepare_upload" &&
+        access.uploadRequired !== (access.signedUrl !== null) ||
+      access.operation === "download" && access.signedUrl === null ||
+      (access.signedUrl === null) !== (access.expiresAt === null)) {
+    fail("invalid_course_source_attachment_access", "O acesso ao anexo é inconsistente.");
+  }
+  return {
+    contract: access.contract,
+    courseId,
+    courseRevision: integer(
+      access.courseRevision,
+      1,
+      Number.MAX_SAFE_INTEGER,
+      "invalid_course_source_attachment_access",
+      "A revisão do Curso"
+    ),
+    operation: access.operation,
+    sourceId: legacySourceId(access.sourceId),
+    sourceRevision: integer(
+      access.sourceRevision,
+      1,
+      Number.MAX_SAFE_INTEGER,
+      "invalid_course_source_attachment_access",
+      "A revisão da Fonte"
+    ),
+    storageOriginCourseId,
+    attachment,
+    uploadRequired: access.uploadRequired,
+    alreadyLinked: access.alreadyLinked,
+    signedUrl: signedStorageUrl(access.signedUrl, { nullable: true }),
+    expiresAt: access.expiresAt === null
+      ? null
+      : timestamp(
+          access.expiresAt,
+          "invalid_course_source_attachment_access",
+          "A expiração do acesso ao anexo"
+        )
+  };
 }
 
 export function normalizeCourseSourceSelector(value) {
@@ -236,11 +463,16 @@ export function normalizeCourseSourceLinks(value, { allowLegacyIds = false } = {
 }
 
 function normalizeSourceDocument(value) {
-  exact(value, ["kind", "title", "citationText", "url", "editionOrVersion", "studyVisibility"], "invalid_course_source", "A revisão da Fonte");
+  exact(value, [
+    "kind", "title", "authorship", "publicationDate", "identifier", "language",
+    "citationText", "url", "editionOrVersion", "origin", "availability",
+    "verificationStatus", "studyVisibility"
+  ], "invalid_course_source", "A revisão da Fonte");
   if (!COURSE_SOURCE_KINDS.includes(value.kind) ||
       !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility)) {
     fail("invalid_course_source", "O tipo ou a visibilidade da Fonte é inválido.");
   }
+  sourceMetadataEnums(value);
   const url = optionalText(value.url, 2048, "invalid_course_source", "A URL HTTPS da Fonte");
   if (url !== null && !HTTPS_PATTERN.test(url)) {
     fail("invalid_course_source", "A URL da Fonte precisa usar HTTPS.");
@@ -250,11 +482,22 @@ function normalizeSourceDocument(value) {
     title: text(value.title, 300, "invalid_course_source", "O título da Fonte", {
       allowLayoutWhitespace: false
     }),
+    authorship: optionalText(value.authorship, 500, "invalid_course_source", "A autoria", {
+      allowLayoutWhitespace: false
+    }),
+    publicationDate: partialIsoDate(value.publicationDate),
+    identifier: optionalText(value.identifier, 240, "invalid_course_source", "O identificador", {
+      allowLayoutWhitespace: false
+    }),
+    language: languageTag(value.language),
     citationText: optionalText(value.citationText, 2048, "invalid_course_source", "O texto de citação"),
     url,
     editionOrVersion: optionalText(value.editionOrVersion, 120, "invalid_course_source", "A edição ou versão", {
       allowLayoutWhitespace: false
     }),
+    origin: value.origin,
+    availability: value.availability,
+    verificationStatus: value.verificationStatus,
     studyVisibility: value.studyVisibility
   };
   if (normalized.studyVisibility !== "hidden" && normalized.citationText === null) {
@@ -310,6 +553,15 @@ export function normalizeCourseSourceCommand(value) {
       type: command.type,
       anchorId: anchorId(command.anchorId),
       expectedAnchorRevision: integer(command.expectedAnchorRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Âncora")
+    };
+  }
+  if (command.type === "attach_pdf") {
+    exact(command, ["type", "sourceId", "sourceRevision", "attachment"], "invalid_course_source_command", "O comando attach_pdf");
+    return {
+      type: command.type,
+      sourceId: legacySourceId(command.sourceId),
+      sourceRevision: integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte"),
+      attachment: normalizeCourseSourceAttachment(command.attachment)
     };
   }
   exact(command, ["type", "targetKind", "targetId", "expectedTargetVersion", "sourceLinks"], "invalid_course_source_command", "O comando set_target_sources");
@@ -509,10 +761,12 @@ function nullableActor(value) {
 
 function validateSourceRevision(value, { detailed = false } = {}) {
   const fields = [
-    "sourceId", "revision", "status", "kind", "title", "citationText", "url",
-    "editionOrVersion", "studyVisibility", "anchorCount", "createdAt"
+    "sourceId", "revision", "status", "kind", "title", "authorship",
+    "publicationDate", "identifier", "language", "citationText", "url",
+    "editionOrVersion", "origin", "availability", "verificationStatus",
+    "studyVisibility", "anchorCount", "createdAt"
   ];
-  if (detailed) fields.push("actorId", "anchors");
+  if (detailed) fields.push("actorId", "anchors", "attachments");
   exact(value, fields, "invalid_course_sources_read", "A revisão de Fonte");
   legacySourceId(value.sourceId);
   integer(value.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Fonte");
@@ -522,8 +776,12 @@ function validateSourceRevision(value, { detailed = false } = {}) {
       !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility)) {
     fail("invalid_course_sources_read", "A revisão de Fonte possui enumeração inválida.");
   }
+  sourceMetadataEnums(value, "invalid_course_sources_read");
   if (value.status === "unresolved_legacy") {
-    if (value.title !== null || value.citationText !== null || value.url !== null || value.editionOrVersion !== null) {
+    if (value.title !== null || value.authorship !== null || value.publicationDate !== null ||
+        value.identifier !== null || value.language !== null || value.citationText !== null ||
+        value.url !== null || value.editionOrVersion !== null || value.origin !== "imported_legacy" ||
+        value.availability !== "unknown" || value.verificationStatus !== "unverified") {
       fail("invalid_course_sources_read", "Uma Fonte legada não resolvida não pode inventar metadados.");
     }
     if (value.studyVisibility !== "hidden") {
@@ -533,6 +791,14 @@ function validateSourceRevision(value, { detailed = false } = {}) {
     text(value.title, 300, "invalid_course_sources_read", "O título da Fonte", {
       allowLayoutWhitespace: false
     });
+    optionalText(value.authorship, 500, "invalid_course_sources_read", "A autoria", {
+      allowLayoutWhitespace: false
+    });
+    partialIsoDate(value.publicationDate, "invalid_course_sources_read");
+    optionalText(value.identifier, 240, "invalid_course_sources_read", "O identificador", {
+      allowLayoutWhitespace: false
+    });
+    languageTag(value.language, "invalid_course_sources_read");
     optionalText(value.citationText, 2048, "invalid_course_sources_read", "O texto de citação");
     const url = optionalText(value.url, 2048, "invalid_course_sources_read", "A URL da Fonte");
     if (url !== null && !HTTPS_PATTERN.test(url)) fail("invalid_course_sources_read", "A URL da Fonte precisa usar HTTPS.");
@@ -565,6 +831,17 @@ function validateSourceRevision(value, { detailed = false } = {}) {
       nullableActor(anchor.actorId);
       timestamp(anchor.createdAt, "invalid_course_sources_read", "A criação da Âncora");
     });
+    if (!Array.isArray(value.attachments) || value.attachments.length > 8) {
+      fail("invalid_course_sources_read", "A lista de anexos PDF é inválida.");
+    }
+    const hashes = new Set();
+    value.attachments.forEach((attachment) => {
+      const normalized = normalizeCourseSourceAttachment(attachment, { persisted: true });
+      if (hashes.has(normalized.contentHash)) {
+        fail("invalid_course_sources_read", "A revisão da Fonte repete um anexo PDF.");
+      }
+      hashes.add(normalized.contentHash);
+    });
   }
 }
 
@@ -588,12 +865,16 @@ function validateAttribution(value) {
 
 export function normalizeCourseSourcesRead(value) {
   const read = clone(value);
-  exact(read, ["contract", "courseId", "courseRevision", "mode", "query", "items", "nextCursor"], "invalid_course_sources_read", "A leitura de Fontes");
+  exact(read, [
+    "contract", "courseId", "courseRevision", "mode", "query", "pdfStorage",
+    "items", "nextCursor"
+  ], "invalid_course_sources_read", "A leitura de Fontes");
   if (read.contract !== COURSE_SOURCES_CONTRACT || !["catalog", "source", "target"].includes(read.mode)) {
     fail("invalid_course_sources_read", "O contrato ou modo da leitura de Fontes é inválido.");
   }
   uuid(read.courseId, "invalid_course_sources_read", "A identidade do Curso");
   integer(read.courseRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão do Curso");
+  normalizePdfStorage(read.pdfStorage);
   exact(read.query, ["sourceId", "targetKind", "targetId"], "invalid_course_sources_read", "A consulta de Fontes");
   if (read.mode === "catalog") {
     if (read.query.sourceId !== null || read.query.targetKind !== null || read.query.targetId !== null) {

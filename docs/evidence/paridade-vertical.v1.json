@@ -125,12 +125,15 @@
       "objects": {
         "manifestFeatures": [
           "course-sources-v1",
-          "course-source-provenance-v1"
+          "course-source-provenance-v1",
+          "course-source-pdf-attachments-v1"
         ],
         "databasePatterns": [
-          "^table:private\\.course_source_(?:revisions|anchor_revisions|attributions|attribution_sources|attribution_anchors)$",
-      "^function:private\\.(?:advance_course_authoring_part_materialization_design_core_v1|apply_course_source_attribution_v1|assert_course_source_target_citation_budget_v1|commit_course_composition_core_v1|commit_course_instructional_plan_core_v1|course_design_context_with_sources_v1|course_effective_source_attribution_v1|course_effective_source_links_v1|course_instructional_plan_command_document_core_v1|course_materialization_design_context_core_v1|course_plan_item_sources_projection_v1|course_plan_sources_projection_v1|course_plan_without_sources_v1|course_source_context_plan_items_v1|course_source_cursor_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|get_course_instructional_plan_for_actor_core_v1|get_owned_course_authoring_part_materialization_design_core_v1|reject_course_source_fact_change_v1|valid_course_design_application_v2|valid_course_source_links_shape_v1|valid_course_source_materialization_application_v1)\\(.*\\)$",
-          "^function:public\\.(?:execute_course_source_command_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1)\\(.*\\)$"
+          "^table:private\\.course_source_(?:revisions|anchor_revisions|attributions|attribution_sources|attribution_anchors|attachments)$",
+          "^function:private\\.(?:advance_course_authoring_part_materialization_design_core_v1|apply_course_source_attribution_v1|assert_course_source_target_citation_budget_v1|commit_course_composition_core_v1|commit_course_instructional_plan_core_v1|course_design_context_with_sources_v1|course_effective_source_attribution_v1|course_effective_source_links_v1|course_instructional_plan_command_document_core_v1|course_materialization_design_context_core_v1|course_plan_item_sources_projection_v1|course_plan_sources_projection_v1|course_plan_without_sources_v1|course_source_context_plan_items_v1|course_source_cursor_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|get_course_instructional_plan_for_actor_core_v1|get_owned_course_authoring_part_materialization_design_core_v1|get_owned_course_sources_core_v1|reject_course_source_fact_change_v1|valid_course_design_application_v2|valid_course_source_links_shape_v1|valid_course_source_materialization_application_v1|valid_course_source_publication_date_v1)\\(.*\\)$",
+          "^function:private\\.(?:can_read_course_source_pdf_v1|course_source_pdf_unique_bytes_v1|valid_course_source_pdf_object_v1)\\(.*\\)$",
+          "^function:public\\.(?:attach_course_source_pdf_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_attachment_access_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1)\\(.*\\)$",
+          "^bucket:storage\\.course-source-pdfs$"
         ]
       },
       "ui": [
@@ -139,11 +142,13 @@
       ],
       "visibleEffects": [
         { "path": "src/ui/CourseSourcesPanel.js", "token": "renderCourseSourcesPanel" },
+        { "path": "src/ui/CourseSourcesPanel.js", "token": "data-source-pdf-input" },
         { "path": "src/study/CourseStudyScreen.js", "token": "study-citations-panel" }
       ],
       "persistence": [
         { "path": "src/supabase/CourseController.js", "token": "loadCourseSources" },
         { "path": "src/supabase/CourseController.js", "token": "mutateCourseSources" },
+        { "path": "src/supabase/CourseController.js", "token": "uploadCourseSourcePdf" },
         { "path": "src/study/CourseStudyRepository.js", "token": "getStudyUnitCitations" }
       ],
       "routes": [
@@ -154,6 +159,7 @@
       "tests": [
         "tests/runtime/course-sources.test.js",
         "tests/runtime/course-sources-panel.test.js",
+        "tests/runtime/course-source-attachments-pglite.test.js",
         "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js",
         "tests/e2e/course-study-cutover.spec.js"
@@ -252,6 +258,92 @@
         "tests/e2e/course-audit-panel.spec.js"
       ],
       "justification": "Rodadas imutáveis, achados versionados, vínculos redigíveis com Observações e checkpoints focais de correção formam um único ciclo verificável. A correção só altera a Unidade em transação com CAS e checkpoint; a verificação posterior preserva evidência e pode sugerir, mas nunca executar silenciosamente, ações no ciclo independente de Observações. Rodadas limpas continuam enumeráveis e auditáveis pela mesma leitura paginada."
+    },
+    {
+      "id": "course-variant-comparisons",
+      "intent": "Criar Cursos independentes a partir do mesmo planejamento e comparar diferenças declaradas, observadas e acidentais sem misturar conteúdo, acesso ou estado de estudo.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#126",
+      "objects": {
+        "manifestFeatures": [
+          "course-variant-comparisons-v1",
+          "course-variant-comparison-list-v1",
+          "course-variant-factual-comparison-v1"
+        ],
+        "databasePatterns": [
+          "^table:private\\.course_variant_(?:plan_checkpoints|comparison_sets|comparison_members)$",
+          "^function:private\\.(?:clone_course_variant_from_source_v1|course_variant_comparison_differences_v1|course_variant_member_facts_v1|course_variant_plan_checkpoint_snapshot_v1|course_variant_plan_snapshot_hash_v1|reject_course_variant_history_change_v1)\\(.*\\)$",
+          "^function:public\\.(?:create_course_variants_for_actor_v1|detach_course_variant_for_actor_v1|get_owned_course_variant_comparison_for_actor_v1|list_owned_course_variant_comparisons_for_actor_v1)\\(.*\\)$"
+        ]
+      },
+      "ui": [
+        { "path": "src/ui/CourseVariantsPanel.js", "token": "createCourseVariantsPanel" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"variants\"" }
+      ],
+      "visibleEffects": [
+        { "path": "src/ui/CourseVariantsPanel.js", "token": "Desvios não declarados" },
+        { "path": "src/ui/CourseVariantsPanel.js", "token": "Diferenças factuais" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "renderVariantComparison" }
+      ],
+      "persistence": [
+        { "path": "src/supabase/CourseController.js", "token": "loadCourseVariantComparison" },
+        { "path": "src/supabase/CourseController.js", "token": "mutateCourseVariants" },
+        { "path": "supabase/migrations/20260818042341_course_variant_comparisons.sql", "token": "course_variant_plan_checkpoints" }
+      ],
+      "routes": [
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "variant_comparison" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseVariantComparison" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "COURSE_MCP_APP_RESOURCE_URI" }
+      ],
+      "tests": [
+        "tests/runtime/course-variants.test.js",
+        "tests/runtime/course-variants-pglite.test.js",
+        "tests/runtime/course-variants-panel.test.js",
+        "tests/runtime/course-mcp-app-resource.test.js",
+        "tests/e2e/course-authoring-cutover.spec.js"
+      ],
+      "justification": "O planejamento preservado, os Cursos derivados, suas materializações e a comparação factual formam uma capacidade única. Cada Curso continua autônomo; o vínculo serve apenas para explicar a origem comum e distinguir a diferença pretendida de alterações posteriores."
+    },
+    {
+      "id": "course-authoring-research",
+      "intent": "Investigar fatos da Autoria com definições, denominadores, lacunas, filtros, tabelas, gráficos e exportações reproduzíveis no aplicativo e no MCP.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#127",
+      "objects": {
+        "manifestFeatures": [
+          "course-authoring-analytics-v1"
+        ],
+        "databasePatterns": [
+          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v1\\(.*\\)$"
+        ]
+      },
+      "ui": [
+        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "createCourseAnalyticsPanel" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"research\"" }
+      ],
+      "visibleEffects": [
+        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "data-course-analytics-action=\"export-csv\"" },
+        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "data-course-analytics-action=\"export-json\"" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "renderAnalytics" }
+      ],
+      "persistence": [
+        { "path": "src/supabase/CourseController.js", "token": "loadCourseAuthoringAnalytics" },
+        { "path": "supabase/migrations/20260820063156_course_authoring_analytics.sql", "token": "get_owned_course_authoring_analytics_for_actor_v1" }
+      ],
+      "routes": [
+        { "path": "src/supabase/CourseApiClient.js", "token": "view: \"research\"" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuthoringAnalytics" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "COURSE_MCP_APP_RESOURCE_URI" }
+      ],
+      "tests": [
+        "tests/runtime/course-authoring-analytics-domain.test.js",
+        "tests/runtime/course-authoring-analytics-pglite.test.js",
+        "tests/runtime/course-analytics-panel.test.js",
+        "tests/runtime/course-mcp-app-resource.test.js"
+      ],
+      "justification": "Os fatos brutos, o dicionário, a síntese visual e os arquivos exportados derivam do mesmo recorte versionado. A interface e o MCP acrescentam apenas apresentação e navegação; não mantêm telemetria, autenticação ou estado de pesquisa paralelos."
     },
     {
       "id": "person-profile-and-course-access",

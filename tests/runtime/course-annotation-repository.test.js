@@ -9,10 +9,6 @@ import {
 } from
   "../../src/persistence/CourseAnnotationRepository.js";
 import { CourseLocalStore } from "../../src/persistence/CourseLocalStore.js";
-import {
-  COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-  courseAnnotationHandoffCacheKey
-} from "../../src/persistence/CoursePersonalStateRepository.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
@@ -96,6 +92,8 @@ function denseAnnotation(value) {
   annotationValue.briefSummary = "😀".repeat(500);
   annotationValue.ownerResponse = {
     text: "😀".repeat(2_000),
+    kind: "answer",
+    consideredSourceLinks: [],
     updatedAt: "2026-08-17T15:00:00.000Z"
   };
   annotationValue.timestamps.respondedAt = "2026-08-17T15:00:00.000Z";
@@ -268,7 +266,7 @@ async function repository(api = fakeApi()) {
     uuidFactory: ids(),
     windowValue: {}
   });
-  await value.initialize({ reconcileLegacy: false });
+  await value.initialize();
   return { value, cache, api };
 }
 
@@ -354,6 +352,8 @@ test("retirada offline redige texto, síntese e resposta no cache e na memória"
   const authoritative = api.state.items.get(created.annotationId);
   authoritative.ownerResponse = {
     text: "Resposta privada da autoria.",
+    kind: "answer",
+    consideredSourceLinks: [],
     updatedAt: "2026-08-17T15:30:00.000Z"
   };
   authoritative.timestamps.respondedAt = "2026-08-17T15:30:00.000Z";
@@ -389,6 +389,8 @@ test("revisão offline reabre e remove resposta e resolução antigas da projeç
   authoritative.state = "resolved";
   authoritative.ownerResponse = {
     text: "Resposta que ficou obsoleta.",
+    kind: "answer",
+    consideredSourceLinks: [],
     updatedAt: "2026-08-17T15:30:00.000Z"
   };
   authoritative.timestamps.respondedAt = "2026-08-17T15:30:00.000Z";
@@ -515,8 +517,8 @@ test("duas abas serializam a outbox e invalidam sem transmitir texto", async () 
   const valueA = create(cacheA, () => "30000000-0000-4000-8000-000000000101");
   const valueB = create(cacheB, () => "30000000-0000-4000-8000-000000000102");
   await Promise.all([
-    valueA.initialize({ reconcileLegacy: false }),
-    valueB.initialize({ reconcileLegacy: false })
+    valueA.initialize(),
+    valueB.initialize()
   ]);
 
   let refreshB = Promise.resolve();
@@ -570,8 +572,8 @@ test("segunda aba relê o cache ao receber retirada sem depender de subscriber",
   const valueA = create(cacheA, ids());
   const valueB = create(cacheB, () => "30000000-0000-4000-8000-000000000112");
   await Promise.all([
-    valueA.initialize({ reconcileLegacy: false }),
-    valueB.initialize({ reconcileLegacy: false })
+    valueA.initialize(),
+    valueB.initialize()
   ]);
   const created = await valueA.createForTarget({ studyUnitId: UNIT_ID }, {
     rawText: "Texto que a outra aba não pode reter.",
@@ -582,6 +584,8 @@ test("segunda aba relê o cache ao receber retirada sem depender de subscriber",
   const remote = api.state.items.get(created.annotationId);
   remote.ownerResponse = {
     text: "Resposta que precisa ser redigida.",
+    kind: "answer",
+    consideredSourceLinks: [],
     updatedAt: "2026-08-17T15:30:00.000Z"
   };
   remote.timestamps.respondedAt = "2026-08-17T15:30:00.000Z";
@@ -624,8 +628,8 @@ test("segunda aba relê a outbox, mas sinaliza que falta snapshot completo sem r
   const valueA = create(cacheA, () => "30000000-0000-4000-8000-000000000121");
   const valueB = create(cacheB, () => "30000000-0000-4000-8000-000000000122");
   await Promise.all([
-    valueA.initialize({ reconcileLegacy: false }),
-    valueB.initialize({ reconcileLegacy: false })
+    valueA.initialize(),
+    valueB.initialize()
   ]);
   let refreshB = Promise.resolve();
   const unsubscribe = valueB.subscribe(({ stale }) => {
@@ -667,7 +671,7 @@ test("Broadcast ignora IDs não UUID e lotes acima do teto", async () => {
     windowValue: channel.windowValue,
     clock: () => new Date("2026-08-17T14:00:00.000Z")
   });
-  await value.initialize({ reconcileLegacy: false });
+  await value.initialize();
   let received = 0;
   value.subscribe(() => { received += 1; });
   const rogue = new channel.windowValue.BroadcastChannel(
@@ -722,259 +726,6 @@ test("descarte offline remove a intenção falha sem fingir rebase", async () =>
   assert.equal(visible.syncStatus, "synced");
   value.close();
   cache.close();
-});
-
-test("handoff revisa somente a anotação legada e preserva observações novas", async () => {
-  const api = fakeApi();
-  const legacyId = "30000000-0000-4000-8000-000000000201";
-  const knownId = "30000000-0000-4000-8000-000000000202";
-  const authorId = "30000000-0000-4000-8000-000000000203";
-  const legacy = annotation({
-    annotationId: legacyId,
-    rawText: "Texto remoto legado.",
-    category: null,
-    capturedAt: "2026-08-17T12:00:00.000Z"
-  }, 1, "2026-08-17T12:00:00.000Z");
-  legacy.observedRevision = {
-    certainty: "legacy_unknown",
-    courseRevision: null,
-    targetVersion: null
-  };
-  const known = annotation({
-    annotationId: knownId,
-    rawText: "Observação nova que não pode ser sobrescrita.",
-    category: "question",
-    capturedAt: "2026-08-17T13:00:00.000Z"
-  }, 1, "2026-08-17T13:00:00.000Z");
-  const authorLegacy = annotation({
-    annotationId: authorId,
-    rawText: "Nota autoral legada que não pode ser sobrescrita.",
-    category: "suggestion",
-    capturedAt: null
-  }, 1, "2026-08-17T11:00:00.000Z");
-  authorLegacy.provenance = { origin: "author", channel: "unknown_legacy" };
-  authorLegacy.contributor = { kind: "self", role: "author", ref: "self", label: "Você" };
-  authorLegacy.observedRevision = {
-    certainty: "legacy_unknown",
-    courseRevision: null,
-    targetVersion: null
-  };
-  api.state.items.set(knownId, known);
-  api.state.items.set(authorId, authorLegacy);
-  api.state.items.set(legacyId, legacy);
-  api.state.setVersion = 3;
-  const cache = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
-  await cache.putCache(courseAnnotationHandoffCacheKey(COURSE_ID), {
-    contract: COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-    courseId: COURSE_ID,
-    intents: [{
-      kind: "upsert",
-      targetStudyUnitId: UNIT_ID,
-      category: "suggestion",
-      text: "Texto local legado final.",
-      updatedAt: "2026-08-17T14:00:00.000Z"
-    }],
-    updatedAt: "2026-08-17T14:00:00.000Z"
-  });
-  const value = new CourseAnnotationRepository({
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    api,
-    cache,
-    uuidFactory: ids(),
-    clock: () => new Date("2026-08-17T14:00:00.000Z"),
-    windowValue: {}
-  });
-  await value.initialize();
-
-  const revisionCall = api.state.calls.find(({ command }) =>
-    command.type === "revise_anchored_annotation");
-  assert.equal(revisionCall.command.annotationId, legacyId);
-  assert.equal(api.state.items.get(knownId).rawText,
-    "Observação nova que não pode ser sobrescrita.");
-  assert.equal(api.state.items.get(authorId).rawText,
-    "Nota autoral legada que não pode ser sobrescrita.");
-  assert.equal(api.state.calls.some(({ command }) => command.annotationId === authorId), false);
-  assert.equal(api.state.items.get(legacyId).rawText, "Texto local legado final.");
-  assert.equal(await cache.getCache(courseAnnotationHandoffCacheKey(COURSE_ID)), null);
-  value.close();
-  cache.close();
-});
-
-test("handoff retira somente a observação learner legada, nunca a nota autoral", async () => {
-  const api = fakeApi();
-  const learnerId = "30000000-0000-4000-8000-000000000211";
-  const authorId = "30000000-0000-4000-8000-000000000212";
-  const learnerLegacy = annotation({
-    annotationId: learnerId,
-    rawText: "Observação learner legada.",
-    category: "question",
-    capturedAt: null
-  }, 1, "2026-08-17T12:00:00.000Z");
-  learnerLegacy.observedRevision = {
-    certainty: "legacy_unknown",
-    courseRevision: null,
-    targetVersion: null
-  };
-  const authorLegacy = annotation({
-    annotationId: authorId,
-    rawText: "Nota autoral legada preservada.",
-    category: "possible_error",
-    capturedAt: null
-  }, 1, "2026-08-17T11:00:00.000Z");
-  authorLegacy.provenance = { origin: "author", channel: "unknown_legacy" };
-  authorLegacy.contributor = { kind: "self", role: "author", ref: "self", label: "Você" };
-  authorLegacy.observedRevision = {
-    certainty: "legacy_unknown",
-    courseRevision: null,
-    targetVersion: null
-  };
-  api.state.items.set(learnerId, learnerLegacy);
-  api.state.items.set(authorId, authorLegacy);
-  api.state.setVersion = 2;
-  const cache = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
-  await cache.putCache(courseAnnotationHandoffCacheKey(COURSE_ID), {
-    contract: COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-    courseId: COURSE_ID,
-    intents: [{
-      kind: "withdraw",
-      targetStudyUnitId: UNIT_ID,
-      updatedAt: "2026-08-17T14:00:00.000Z"
-    }],
-    updatedAt: "2026-08-17T14:00:00.000Z"
-  });
-  const value = new CourseAnnotationRepository({
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    api,
-    cache,
-    uuidFactory: ids(),
-    clock: () => new Date("2026-08-17T14:00:00.000Z"),
-    windowValue: {}
-  });
-
-  await value.initialize();
-
-  const withdrawal = api.state.calls.find(({ command }) =>
-    command.type === "withdraw_anchored_annotation");
-  assert.equal(withdrawal.command.annotationId, learnerId);
-  assert.equal(api.state.items.get(learnerId).state, "withdrawn");
-  assert.equal(api.state.items.get(authorId).state, "open");
-  assert.equal(api.state.items.get(authorId).rawText, "Nota autoral legada preservada.");
-  assert.equal(api.state.calls.some(({ command }) => command.annotationId === authorId), false);
-  value.close();
-  cache.close();
-});
-
-test("handoff não promove updatedAt legado para capturedAt", async () => {
-  const api = fakeApi();
-  api.state.online = false;
-  const cache = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
-  const legacyUpdatedAt = "2026-08-17T12:30:00.000Z";
-  await cache.putCache(courseAnnotationHandoffCacheKey(COURSE_ID), {
-    contract: COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-    courseId: COURSE_ID,
-    intents: [{
-      kind: "upsert",
-      targetStudyUnitId: UNIT_ID,
-      category: "question",
-      text: "Texto legado sem instante de captura conhecido.",
-      updatedAt: legacyUpdatedAt
-    }],
-    updatedAt: legacyUpdatedAt
-  });
-  const value = new CourseAnnotationRepository({
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    api,
-    cache,
-    uuidFactory: ids(),
-    clock: () => new Date("2026-08-17T14:00:00.000Z"),
-    windowValue: {}
-  });
-  await value.initialize();
-
-  const pending = value.loadForTarget({ studyUnitId: UNIT_ID })[0];
-  assert.equal(pending.migrationPending, true);
-  assert.equal(pending.timestamps.capturedAt, null);
-  assert.equal(pending.timestamps.createdAt, legacyUpdatedAt);
-  assert.equal(pending.timestamps.updatedAt, legacyUpdatedAt);
-
-  api.state.online = true;
-  await value.reconcileLegacyHandoff();
-  await value.flush();
-  const createCall = api.state.calls.find(({ command }) =>
-    command.type === "create_anchored_annotation");
-  assert.equal(createCall.command.capturedAt, null);
-  assert.equal(await cache.getCache(courseAnnotationHandoffCacheKey(COURSE_ID)), null);
-  value.close();
-  cache.close();
-});
-
-test("duas abas consomem um handoff legado exatamente uma vez", async () => {
-  const api = fakeApi();
-  const originalRead = api.getMyCourseAnchoredAnnotations.bind(api);
-  let readCount = 0;
-  let releaseReads;
-  const bothReads = new Promise((resolve) => { releaseReads = resolve; });
-  api.getMyCourseAnchoredAnnotations = async (...args) => {
-    const pageValue = await originalRead(...args);
-    readCount += 1;
-    if (readCount === 2) releaseReads();
-    await bothReads;
-    return pageValue;
-  };
-  const factory = new IDBFactory();
-  const cacheA = await CourseLocalStore.open(factory, { userId: USER_ID });
-  const cacheB = await CourseLocalStore.open(factory, { userId: USER_ID });
-  const updatedAt = "2026-08-17T12:30:00.000Z";
-  await cacheA.putCache(courseAnnotationHandoffCacheKey(COURSE_ID), {
-    contract: COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-    courseId: COURSE_ID,
-    intents: [{
-      kind: "upsert",
-      targetStudyUnitId: UNIT_ID,
-      category: "question",
-      text: "Um único fato legado entre duas abas.",
-      updatedAt
-    }],
-    updatedAt
-  });
-  const locks = collaborativeLocks();
-  const uuidSequence = (values) => () => values.shift();
-  const create = (cache, values) => new CourseAnnotationRepository({
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    api,
-    cache,
-    navigatorValue: { locks },
-    windowValue: {},
-    uuidFactory: uuidSequence(values),
-    clock: () => new Date("2026-08-17T14:00:00.000Z")
-  });
-  const valueA = create(cacheA, [
-    "30000000-0000-4000-8000-000000000301",
-    "30000000-0000-4000-8000-000000000302"
-  ]);
-  const valueB = create(cacheB, [
-    "30000000-0000-4000-8000-000000000303",
-    "30000000-0000-4000-8000-000000000304"
-  ]);
-
-  await Promise.all([valueA.initialize(), valueB.initialize()]);
-
-  assert.equal(readCount, 2);
-  assert.equal(api.state.calls.length, 1);
-  assert.equal(api.state.items.size, 1);
-  assert.equal(await cacheA.getCache(courseAnnotationHandoffCacheKey(COURSE_ID)), null);
-  const storedOutbox = await cacheA.getCache(
-    `${COURSE_ANNOTATION_OUTBOX_CONTRACT}:${COURSE_ID}`
-  );
-  assert.deepEqual(storedOutbox.commands, []);
-  valueA.close();
-  valueB.close();
-  cacheA.close();
-  cacheB.close();
 });
 
 test("outbox adulterada falha fechada antes de chamar a API", async (t) => {
@@ -1051,7 +802,7 @@ test("outbox adulterada falha fechada antes de chamar a API", async (t) => {
         windowValue: {},
         clock: () => new Date("2026-08-17T14:00:00.000Z")
       });
-      await value.initialize({ reconcileLegacy: false });
+      await value.initialize();
       assert.equal(api.state.calls.length, 0);
       assert.equal(value.snapshot().pendingCount, 0);
       assert.equal(await cache.getCache(key), null);
@@ -1236,7 +987,7 @@ test("cache adulterado ou de revisão anterior falha fechado e é purgado", asyn
     uuidFactory: ids(),
     windowValue: {}
   });
-  await reopened.initialize({ reconcileLegacy: false });
+  await reopened.initialize();
   assert.deepEqual(reopened.loadForTarget({ studyUnitId: UNIT_ID }), []);
   assert.equal(await cache.getCache(key), null);
   reopened.close();
@@ -1257,7 +1008,7 @@ test("cache adulterado ou de revisão anterior falha fechado e é purgado", asyn
     uuidFactory: ids(),
     windowValue: {}
   });
-  await revised.initialize({ reconcileLegacy: false });
+  await revised.initialize();
   assert.equal(await cache.getCache(key), null);
   revised.close();
   cache.close();
@@ -1301,7 +1052,7 @@ test("cache denso poda mudanças deterministicamente e nunca ultrapassa 2 MiB", 
     uuidFactory: ids(),
     windowValue: {}
   });
-  await reopened.initialize({ reconcileLegacy: false });
+  await reopened.initialize();
   assert.equal(await cache.getCache(key), null);
   reopened.close();
   cache.close();
@@ -1383,7 +1134,7 @@ test("alvo online maior que 2 MiB retorna completo sem persistir falso vazio", a
     uuidFactory: ids(),
     windowValue: {}
   });
-  await reopened.initialize({ reconcileLegacy: false });
+  await reopened.initialize();
   await assert.rejects(
     reopened.refreshTarget({ studyUnitId: UNIT_ID }),
     (error) => error?.code === "course_annotation_cache_miss" && /offline/u.test(error.message)

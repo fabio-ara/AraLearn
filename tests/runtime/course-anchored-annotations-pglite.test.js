@@ -153,6 +153,64 @@ async function legacyDatabase({ orphan = false, auditFinding = false } = {}) {
       ('${COURSE}','study_unit','unit-a','microsequence','micro-a',1,
         '{"title":"Unidade A","topics":["topic-dns","topic-dhcp"]}',7);
 
+    create table private.course_source_revisions(
+      course_id uuid not null references public.courses(id) on delete cascade,
+      source_id text not null,
+      revision bigint not null,
+      status text not null,
+      title text not null,
+      primary key(course_id,source_id,revision)
+    );
+    create table private.course_source_anchor_revisions(
+      course_id uuid not null references public.courses(id) on delete cascade,
+      anchor_id text not null,
+      revision bigint not null,
+      source_id text not null,
+      source_revision bigint not null,
+      status text not null,
+      primary key(course_id,anchor_id,revision)
+    );
+    insert into private.course_source_revisions values
+      ('${COURSE}','source-a',1,'active','Fonte A');
+    insert into private.course_source_anchor_revisions values
+      ('${COURSE}','anchor-source-a',1,'source-a',1,'active');
+
+    create function private.valid_course_source_links_shape_v1(
+      p_links jsonb,p_allow_legacy_ids boolean default false
+    ) returns boolean language sql immutable as $$
+      select coalesce(
+        jsonb_typeof(p_links)='array'
+        and jsonb_array_length(p_links)<=case when p_allow_legacy_ids then 128 else 32 end
+        and not exists(
+          select 1 from jsonb_array_elements(p_links) link(value)
+          where jsonb_typeof(link.value)<>'object'
+             or link.value-'sourceId'-'sourceRevision'-'relation'-'anchors'<>'{}'::jsonb
+             or not(link.value ?& array['sourceId','sourceRevision','relation','anchors'])
+             or jsonb_typeof(link.value->'sourceId')<>'string'
+             or nullif(btrim(link.value->>'sourceId'),'') is null
+             or jsonb_typeof(link.value->'sourceRevision')<>'number'
+             or link.value->>'sourceRevision'!~'^[1-9][0-9]*$'
+             or link.value->>'relation' not in(
+               'informed_by','supported_by','adapted_from','quoted_from',
+               'contrasted_with','exemplified_by','inspired_by','needs_verification'
+             )
+             or jsonb_typeof(link.value->'anchors')<>'array'
+             or jsonb_array_length(link.value->'anchors')>8
+             or not p_allow_legacy_ids and jsonb_array_length(link.value->'anchors')=0
+             or exists(
+               select 1 from jsonb_array_elements(link.value->'anchors') anchor(value)
+               where jsonb_typeof(anchor.value)<>'object'
+                  or anchor.value-'anchorId'-'anchorRevision'<>'{}'::jsonb
+                  or not(anchor.value ?& array['anchorId','anchorRevision'])
+                  or jsonb_typeof(anchor.value->'anchorId')<>'string'
+                  or nullif(btrim(anchor.value->>'anchorId'),'') is null
+                  or jsonb_typeof(anchor.value->'anchorRevision')<>'number'
+                  or anchor.value->>'anchorRevision'!~'^[1-9][0-9]*$'
+             )
+        ),false
+      )
+    $$;
+
     create function private.valid_course_personal_state_v1(p_state jsonb)
       returns boolean language sql immutable as $$
       select jsonb_typeof(p_state)='object'
@@ -340,6 +398,15 @@ async function legacyDatabase({ orphan = false, auditFinding = false } = {}) {
         '2026-08-16T11:12:14Z',now(),now()+interval '1 day'
       )
     `, [LEARNER_B, COURSE, "a".repeat(64)]);
+    await database.query(`
+      insert into private.course_personal_state_receipts(
+        user_id,request_id,course_id,request_hash,result_revision,result_updated_at,
+        created_at,expires_at
+      ) values(
+        $1,'71000000-0000-4000-8000-000000000099',$2,$3,4,
+        '2026-08-16T11:12:14Z',now()-interval '2 days',now()-interval '1 day'
+      )
+    `, [OWNER, COURSE, "b".repeat(64)]);
   }
 
   if (auditFinding) {
@@ -362,6 +429,23 @@ async function installMigration(database) {
 test("#124 migra fatos legados sem inventar caminho, texto, estado ou instante", async (t) => {
   const database = await legacyDatabase();
   t.after(() => database.close());
+  const legacySourcesBefore = await scalar(database, `
+    select jsonb_build_object(
+      'noteCount',(select count(*) from private.authoring_workspace_observations
+        where kind='note'),
+      'noteHash',(select encode(extensions.digest(convert_to(coalesce(jsonb_agg(
+        to_jsonb(observation) order by observation.id
+      ),'[]'::jsonb)::text,'UTF8'),'sha256'),'hex')
+        from private.authoring_workspace_observations observation where kind='note'),
+      'personalObservationCount',(select count(*)
+        from public.legacy_trail_personal_states),
+      'personalObservationHash',(select encode(extensions.digest(convert_to(
+        coalesce(jsonb_agg(jsonb_build_object(
+          'userId',user_id,'courseId',trail_item_id,'observations',state->'observations'
+        ) order by user_id,trail_item_id),'[]'::jsonb)::text,'UTF8'
+      ),'sha256'),'hex') from public.legacy_trail_personal_states)
+    ) value
+  `);
   await installMigration(database);
 
   const rows = (await database.query(`
@@ -408,9 +492,24 @@ test("#124 migra fatos legados sem inventar caminho, texto, estado ou instante",
   );
   assert.equal(answeredOpenThread.state, "considered");
   assert.equal(answeredOpenThread.owner_response, "Resposta em thread aberta");
-  assert.equal(await scalar(database,
-    "select count(*)::integer value from private.authoring_workspace_observations"
-  ), 0);
+  const legacySourcesAfter = await scalar(database, `
+    select jsonb_build_object(
+      'noteCount',(select count(*) from private.authoring_workspace_observations
+        where kind='note'),
+      'noteHash',(select encode(extensions.digest(convert_to(coalesce(jsonb_agg(
+        to_jsonb(observation) order by observation.id
+      ),'[]'::jsonb)::text,'UTF8'),'sha256'),'hex')
+        from private.authoring_workspace_observations observation where kind='note'),
+      'personalObservationCount',(select count(*)
+        from public.legacy_trail_personal_states),
+      'personalObservationHash',(select encode(extensions.digest(convert_to(
+        coalesce(jsonb_agg(jsonb_build_object(
+          'userId',user_id,'courseId',trail_item_id,'observations',state->'observations'
+        ) order by user_id,trail_item_id),'[]'::jsonb)::text,'UTF8'
+      ),'sha256'),'hex') from public.legacy_trail_personal_states)
+    ) value
+  `);
+  assert.deepEqual(legacySourcesAfter, legacySourcesBefore);
   assert.equal(await scalar(database,
     "select (state->>'version')::integer value from public.course_personal_states"
   ), 2);
@@ -420,7 +519,7 @@ test("#124 migra fatos legados sem inventar caminho, texto, estado ou instante",
   assert.deepEqual(await scalar(database, `
     select state->'observations' value
     from public.legacy_trail_personal_states
-  `), {});
+  `), legacyObservation);
   assert.deepEqual(await scalar(database, `
     select jsonb_build_object(
       'requestId',correction_request_id,
@@ -440,6 +539,12 @@ test("#124 migra fatos legados sem inventar caminho, texto, estado ou instante",
     select protocol_version::integer value
     from private.course_personal_state_receipts
     where request_id='71000000-0000-4000-8000-000000000001'
+  `), 1);
+  assert.equal(await scalar(database, `
+    select count(*)::integer value
+    from private.course_personal_state_receipts
+    where request_id='71000000-0000-4000-8000-000000000099'
+      and protocol_version=1 and expires_at<=statement_timestamp()
   `), 1);
   const manifest = await scalar(database,
     "select public.get_aralearn_runtime_manifest() value"
@@ -936,6 +1041,105 @@ test("#124 aplica classificação conservadora, privacidade, CAS e redação", a
   `, [COURSE]), { annotations: 0, events: 0, receipts: 0, viewerVersions: 0 });
 });
 
+test("#123 registra nota e contestação em Fonte e exige proveniência na reformulação", async (t) => {
+  const database = await legacyDatabase();
+  t.after(() => database.close());
+  await installMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const sourceAnnotationId = "40000000-0000-4000-8000-000000000081";
+  const anchorAnnotationId = "40000000-0000-4000-8000-000000000082";
+  const createSource = {
+    type: "create_anchored_annotation",
+    annotationId: sourceAnnotationId,
+    target: { kind: "source", id: "source-a" },
+    rawText: "Reformule a interpretação atribuída a esta Fonte.",
+    category: "reformulation_request",
+    capturedAt: "2026-08-20T12:00:00.000Z",
+    briefSummary: null
+  };
+  const createAnchor = {
+    ...createSource,
+    annotationId: anchorAnnotationId,
+    target: { kind: "source_anchor", id: "anchor-source-a" },
+    rawText: "Este trecho não sustenta a interpretação apresentada.",
+    category: "possible_error"
+  };
+  for (const [index, command] of [createSource, createAnchor].entries()) {
+    const change = await scalar(database, `
+      select public.execute_course_anchored_annotation_command_for_actor_v1(
+        $1,$2,7,$3::jsonb,'authoring_interface',$4
+      ) value
+    `, [OWNER, COURSE, JSON.stringify(command), `request.source.note.000${index + 1}`]);
+    normalizeCourseAnchoredAnnotationChange(change);
+  }
+
+  const sourcePage = await scalar(database, `
+    select public.get_owned_course_anchored_annotations_for_actor_v1(
+      $1,$2,7,null,'target','{}','{}','{}','{}',true,'{}',
+      'source','source-a',true,null,null,24
+    ) value
+  `, [OWNER, COURSE]);
+  normalizeCourseAnchoredAnnotationPage(sourcePage);
+  assert.deepEqual(sourcePage.items.map((item) => item.annotationId).sort(), [
+    sourceAnnotationId,
+    anchorAnnotationId
+  ].sort());
+  const sourceItem = sourcePage.items.find(({ annotationId }) =>
+    annotationId === sourceAnnotationId
+  );
+  const anchorItem = sourcePage.items.find(({ annotationId }) =>
+    annotationId === anchorAnnotationId
+  );
+  assert.deepEqual(sourceItem.target.observedPath.map(({ kind }) => kind), [
+    "course", "source"
+  ]);
+  assert.deepEqual(anchorItem.target.observedPath.map(({ kind }) => kind), [
+    "course", "source", "source_anchor"
+  ]);
+  assert.match(sourceItem.target.deepLink, /section=sources&sourceId=source-a/u);
+  assert.match(anchorItem.target.deepLink, /anchorId=anchor-source-a/u);
+
+  const consideredSourceLinks = [{
+    sourceId: "source-a",
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-source-a", anchorRevision: 1 }]
+  }];
+  await assert.rejects(database.query(`
+    select public.execute_course_anchored_annotation_command_for_actor_v1(
+      $1,$2,null,$3::jsonb,'authoring_interface','request.source.response.bad'
+    ) value
+  `, [OWNER, COURSE, JSON.stringify({
+    type: "respond_to_anchored_annotation",
+    annotationId: sourceAnnotationId,
+    expectedAnnotationVersion: 1,
+    ownerResponse: "Texto reformulado.",
+    responseKind: "reformulation",
+    consideredSourceLinks: []
+  })]), (error) => error.code === "22023");
+
+  const reformulated = await scalar(database, `
+    select public.execute_course_anchored_annotation_command_for_actor_v1(
+      $1,$2,null,$3::jsonb,'authoring_interface','request.source.response.good'
+    ) value
+  `, [OWNER, COURSE, JSON.stringify({
+    type: "respond_to_anchored_annotation",
+    annotationId: sourceAnnotationId,
+    expectedAnnotationVersion: 1,
+    ownerResponse: "Texto reformulado com a distinção solicitada.",
+    responseKind: "reformulation",
+    consideredSourceLinks
+  })]);
+  normalizeCourseAnchoredAnnotationChange(reformulated);
+  assert.deepEqual(reformulated.annotation.ownerResponse, {
+    text: "Texto reformulado com a distinção solicitada.",
+    kind: "reformulation",
+    consideredSourceLinks,
+    updatedAt: reformulated.annotation.timestamps.respondedAt
+  });
+});
+
 test("#124 cerca quotas, versões, replay e CAS v2 sem escrita parcial", async (t) => {
   const database = await legacyDatabase();
   t.after(() => database.close());
@@ -1226,14 +1430,24 @@ test("#124 cerca quotas, versões, replay e CAS v2 sem escrita parcial", async (
       $1,0,$2::jsonb,'71000000-0000-4000-8000-000000000001'
     ) value
   `, [COURSE, JSON.stringify([
-    { kind: "set", collection: "reviewMarks", path: "unit-a", value: true }
+    {
+      kind: "set",
+      collection: "reviewMarks",
+      path: "unit-a",
+      value: "2026-08-20T12:00:00.000Z"
+    }
   ])]);
   await assert.rejects(database.query(`
     select public.mutate_course_personal_state_v2(
       $1,0,$2::jsonb,'71000000-0000-4000-8000-000000000002'
     ) value
   `, [COURSE, JSON.stringify([
-    { kind: "set", collection: "reviewMarks", path: "unit-b", value: true }
+    {
+      kind: "set",
+      collection: "reviewMarks",
+      path: "unit-b",
+      value: "2026-08-20T12:01:00.000Z"
+    }
   ])]), (error) => error.code === "PGRST" && /"code": "40001"/u.test(error.message));
   assert.equal(await scalar(database, `
     select revision value from public.course_personal_states
@@ -1443,5 +1657,32 @@ test("#124 normalizadores clonam DTOs e fecham modos, cursores e limites Unicode
     category: null,
     capturedAt: null,
     briefSummary: null
+  }), CourseAnchoredAnnotationsError);
+  const literalSourceId = `  Fonte ${"x".repeat(260)}  `;
+  assert.equal(normalizeCourseAnchoredAnnotationCommand({
+    type: "create_anchored_annotation",
+    annotationId: STUDY_ANNOTATION,
+    target: { kind: "source", id: literalSourceId },
+    rawText: "Nota sobre a Fonte.",
+    category: "reformulation_request",
+    capturedAt: null,
+    briefSummary: null
+  }).target.id, literalSourceId);
+  assert.throws(() => normalizeCourseAnchoredAnnotationCommand({
+    type: "create_anchored_annotation",
+    annotationId: STUDY_ANNOTATION,
+    target: { kind: "source", id: "   " },
+    rawText: "Nota sobre a Fonte.",
+    category: null,
+    capturedAt: null,
+    briefSummary: null
+  }), CourseAnchoredAnnotationsError);
+  assert.throws(() => normalizeCourseAnchoredAnnotationCommand({
+    type: "respond_to_anchored_annotation",
+    annotationId: STUDY_ANNOTATION,
+    expectedAnnotationVersion: 1,
+    ownerResponse: "Texto reformulado.",
+    responseKind: "reformulation",
+    consideredSourceLinks: []
   }), CourseAnchoredAnnotationsError);
 });

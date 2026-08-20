@@ -1,215 +1,260 @@
 # Fluxos, instruções e contratos
 
-Um modelo de linguagem recebe texto e produz uma saída probabilística. O
-AraLearn precisa preservar identidades, relações, permissões, revisões e fatos
-de forma determinística. A fronteira entre os dois mundos é explícita:
-linguagem natural expressa intenção; comandos fechados descrevem a mudança;
-domínio e PostgreSQL decidem o que pode ser gravado.
+Um modelo de linguagem interpreta texto e produz respostas probabilísticas. O
+AraLearn precisa preservar, de modo determinístico, identidades, relações,
+permissões, revisões e fatos. A linguagem natural expressa a intenção; uma
+operação fechada descreve a mudança; o domínio e o PostgreSQL decidem o que
+pode ser confirmado.
 
 ## Conceitos básicos
 
-Uma **instrução** estabelece comportamento estável. Um **prompt** reúne o
-pedido de uma chamada, o contexto necessário e o formato esperado. Nenhum dos
-dois concede autorização.
+Uma **instrução** estabelece um comportamento estável do cliente. Um **pedido**
+reúne a intenção da pessoa, o contexto necessário e a forma esperada da
+resposta. Instrução e pedido orientam o modelo, mas não concedem acesso ao
+Curso.
 
-**Contexto** é informação somente para leitura: objetivo, plano, desenho
-efetivo, posição curricular, conteúdo vizinho e versões. O cliente não pode
-transformar um trecho do contexto em alvo gravável apenas porque o recebeu.
+**Contexto** é informação para leitura, como objetivo, plano, parâmetros
+efetivos, posição curricular, conteúdo vizinho e versões. Receber esse contexto
+não torna qualquer objeto gravável.
 
-Um **schema** delimita forma. Um **contrato** acrescenta significado,
-autoridade, versões e invariantes. Um **envelope** transporta conteúdo e
-metadados segundo o contrato. JSON válido não é, por si, uma mudança válida.
+Um **esquema** delimita a forma dos dados. Um **contrato** acrescenta
+significado, autoridade, versões e invariantes. Um **envelope** transporta o
+conteúdo e seus metadados. JSON válido só se torna mudança de Curso depois de
+passar por essas regras.
 
 ## Uma autoridade, duas formas de interação
 
-A interface visual e um cliente MCP operam o mesmo Curso vivo. Elas não mantêm
-documentos paralelos nem convertem uma conversa em publicação.
+A interface visual e o MCP operam o mesmo Curso. A interface oferece campos e
+controles compreensíveis; no MCP, a pessoa descreve sua intenção e o cliente
+escolhe as ferramentas. As duas formas chegam aos mesmos casos de uso, às
+mesmas funções do banco e às mesmas regras de autorização.
 
-- Na interface, a pessoa edita campos naturais, escolhe escopos, valores e
-  componentes e inspeciona o resultado.
-- No MCP, a pessoa descreve a intenção em conversa; o cliente lê a mesma
-  projeção e envia o mesmo tipo de comando ao executor autoral.
+O canal técnico `application|mcp` identifica por onde uma operação autoral
+chegou. Esse dado não altera a propriedade do Curso nem o resultado da
+validação.
 
-As duas formas convergem nas mesmas RPCs owner-only, no mesmo CAS, nos mesmos
-recibos e nos mesmos eventos. O canal `application|mcp` é registrado como fato
-de transporte, não como regra diferente de autorização.
+## Superfície do MCP
 
-## Selecionar somente o contexto necessário
+As seis ferramentas agrupam capacidades relacionadas, sem criar uma ferramenta
+para cada objeto:
 
-`lerCurso` oferece vistas delimitadas:
+| Ferramenta | Responsabilidade |
+| --- | --- |
+| `listarCursos` | listar Cursos próprios com paginação |
+| `lerCurso` | ler uma vista delimitada e versionada |
+| `criarCurso` | criar a raiz privada do Curso |
+| `alterarCurso` | alterar plano, desenho, Fontes, Observações, auditoria, variantes, composição ou materialização |
+| `gerirPessoas` | ler perfil, atualizar nome ou avatar e gerir acesso direto ao Estudo |
+| `consultarComponentesDidaticos` | descobrir, inspecionar, validar, auditar e apresentar componentes |
 
-- `summary`: identidade e cabeçalho;
-- `outline`: hierarquia compacta;
-- `instructional_plan`: plano, Partes, vínculos e atividade recente;
-- `course_design`: parâmetros, orientações e política no escopo escolhido;
-- `part_materialization`: tentativa retomável e suas etapas;
-- `study_units`: Inspeção paginada em ordem curricular;
-- `entities`: página estrutural sob revisão fixada.
+`alterarCurso` aceita estas operações públicas:
 
-Carregar o Curso inteiro por conveniência aumenta custo e contexto sem ampliar
-autoridade. A leitura escolhida deve corresponder à decisão ou ao lote em
-preparação.
+- `update_instructional_plan`;
+- `update_course_design`;
+- `update_course_sources`;
+- `update_anchored_annotations`;
+- `update_audit_cycle`;
+- `update_course_variants`;
+- `commit_course_composition`;
+- `advance_part_materialization`.
 
-## Planejamento e desenho são estados distintos
+Cada operação admite somente o comando e os campos que lhe pertencem. Dados de
+Fontes não entram no comando de desenho, por exemplo, e confirmação de correção
+não é aceita em comandos que apenas registram ou leem evidência.
 
-O plano instrucional conserva título e objetivo projetados da raiz do Curso,
-público, escopo, resultados pretendidos, unidades de análise, requisitos de
-evidência e Partes. Ele responde **o que** se pretende cobrir e como a produção
-foi agrupada.
+## Seleção de contexto
 
-A ligação entre esse plano e a produção é explícita: cada Microssequência pode
-receber várias unidades de análise e requisitos de evidência, e cada um desses
-itens pode servir a vários alvos. A atribuição não é inferida da Parte nem
-copiada para todas as Microssequências.
+`lerCurso` oferece vistas específicas para cada decisão:
 
-O desenho por escopo conserva:
+- `summary` e `outline` para identidade e hierarquia;
+- `instructional_plan` para plano, Partes e vínculos;
+- `course_design` para parâmetros, orientações, política de componentes e itens
+  atribuídos;
+- `course_sources` e `course_source_attachment` para proveniência e PDFs;
+- `anchored_annotations` para Observações;
+- `part_materialization` para produção retomável;
+- `study_units` para Inspeção curricular;
+- `entities` para alterações estruturais;
+- `audit_cycle` para rodadas, achados e correções;
+- `variant_comparisons` e `variant_comparison` para variantes;
+- `research` para fatos, métricas e destinos da Pesquisa.
 
-- quatro parâmetros pedagógicos operacionalizados;
-- revisões originais de orientação natural e interpretações separadas;
-- política de componentes vinculada a uma revisão exata do catálogo.
+O cliente escolhe a menor vista que sustenta a decisão. Conteúdo adjacente pode
+ser útil para coerência, mas a operação de escrita continua limitada aos alvos
+declarados.
 
-Ele responde **quais decisões** precisam reger a materialização naquele alvo.
-Não há `brief`, blueprint, ResourceSet ou snapshot declarado pelo cliente como
-autoridade paralela.
+## Separação entre plano, desenho e composição
 
-## Resolver parâmetros sem esconder proveniência
+O **plano instrucional** responde o que o Curso pretende ensinar e como o
+trabalho foi agrupado. Ele reúne público, escopo, resultados pretendidos,
+unidades de análise, requisitos de evidência e Partes.
 
-Cada parâmetro possui definição versionada, schema, default de produto,
-limitações, referências de base e escopos admitidos. O valor efetivo segue:
+O **desenho instrucional parametrizado** registra as decisões que devem reger a
+produção num escopo: parâmetros, orientações e política de componentes. Cada
+Microssequência também recebe, de forma explícita, os itens do plano que precisa
+desenvolver.
 
-1. atribuição explícita `author|research_condition` mais próxima;
-2. atribuição `automatic` mais próxima;
-3. `system_default`.
+A **composição** contém Módulos, Lições, Tópicos, Microssequências e Unidades de
+estudo. Alterar um vínculo de Parte não altera essa hierarquia por implicação;
+criar, mover ou remover uma entidade exige um comando de composição.
 
-`research_condition` registra proveniência e não bloqueia edição. Uma decisão
-explícita do autor no alvo pode substituí-la. `automatic` exige valor explícito
-e justificativa breve; nunca apaga silenciosamente uma decisão explícita.
+Essa divisão permite replanejar sem apagar conteúdo e materializar sem
+reinterpretar silenciosamente a intenção.
 
-Limpar uma atribuição remove somente a decisão local. Herança e default são
-projeções calculadas, não linhas copiadas.
+## Resolução do desenho
 
-Os quatro parâmetros correntes tratam introdução de novas unidades de análise,
-formas de explicação, quantidade de oportunidades distintas de prática e
-dimensões de variação. Limites de bytes, DOM, lotes e Partes são cercas
-técnicas, não parâmetros pedagógicos.
+Parâmetros pedagógicos possuem definições versionadas, tipo, escopos,
+valor-padrão e limitações. A precedência corrente é:
 
-## Preservar orientação natural e interpretação
+1. decisão autoral ou de pesquisa no escopo aplicável mais próximo;
+2. atribuição automática justificada no escopo aplicável mais próximo;
+3. valor-padrão do sistema.
 
-Uma orientação é gravada como texto original imutável em nova revisão. A pilha
-efetiva acumula as revisões do Curso ao alvo, em ordem estrutural. Limpar a
-orientação local não reescreve revisões ancestrais.
+Herança e valor-padrão são calculados. Limpar uma atribuição remove a decisão
+local e faz a leitura resolver novamente a cadeia.
 
-Uma interpretação referencia uma revisão exata e conserva:
+Orientações autorais conservam o texto original em revisões. Uma interpretação
+estruturada aponta para uma revisão exata e registra resumo, diretivas,
+divergências e perguntas. Ela não substitui o texto da pessoa.
 
-- resumo;
-- diretivas `require|avoid|prefer`;
-- divergências;
-- perguntas pendentes.
-
-A interpretação não substitui o original e não é raciocínio oculto. Nova
-interpretação cria um fato versionado; não altera silenciosamente a orientação
-humana.
-
-## Aplicar política de componentes
-
-A política efetiva usa uma revisão exata do catálogo e separa:
-
-- disponibilidade `all|allow_only`;
-- lista permitida quando aplicável;
-- exclusões;
-- preferências.
-
-Exclusão vence. Preferência apenas desempata entre opções permitidas e
-semanticamente adequadas. Disponibilidade não prova uso; uso não prova
-adequação. O fato aplicado registra referências exatas `package@version`.
+A política de componentes fixa a revisão do catálogo, a disponibilidade geral
+ou restrita, os componentes bloqueados e os preferidos. O servidor resolve a
+política antes da produção e confere os componentes realmente presentes na
+Unidade.
 
 ## Materialização reproduzível por Parte
 
 ```text
-Parte, Microssequências-alvo e itens do plano atribuídos a cada alvo
-→ resolução server-side do desenho efetivo
-→ tentativa e etapas persistidas
-→ geração delimitada
-→ validação da Unidade e dos componentes
-→ fatos de aplicação do desenho
-→ commit atômico da etapa
-→ inspeção e eventual reparo
+Parte e Microssequências vinculadas
+→ itens do plano atribuídos a cada alvo
+→ desenho e Fontes resolvidos pelo servidor
+→ execução e etapas persistidas
+→ produção de um recorte
+→ validação de estrutura, componentes e proveniência
+→ confirmação atômica da etapa
+→ Inspeção e eventual auditoria
 ```
 
-No início, o servidor calcula e sela o contexto efetivo. Para vários alvos, o
-contexto contém um dicionário deduplicado de revisões de orientação e, por
-Microssequência, a sequência de IDs efetivos em ordem Curso→alvo. Catálogos de
-unidades de análise e requisitos de evidência conservam cada item como
-`{id, position, statement, version}`; cada alvo referencia somente os IDs que
-lhe foram atribuídos. O cliente não envia `designContext` como declaração
-confiável.
+Ao iniciar uma execução, o servidor sela o contexto efetivo. Catálogos de
+unidades de análise e requisitos de evidência preservam identidade, posição,
+enunciado e versão. Cada Microssequência referencia somente os itens que lhe
+foram atribuídos.
 
-Ao registrar uma etapa, `designApplication` contém somente fatos limitados:
-unidades de análise introduzidas, formas de explicação desenvolvidas ou
-justificadamente não aplicáveis, oportunidades de prática, dimensões que
-variaram, operação-alvo invariável e componentes usados. O auditor valida a
-forma, as referências, as contagens e a coerência interna dessas declarações
-somente contra o subconjunto atribuído à Microssequência da etapa.
+Uma etapa informa fatos delimitados de aplicação: Unidades afetadas, unidades
+de análise introduzidas, formas de explicação, oportunidades de prática,
+dimensões de variação e componentes usados. O contrato verifica referências,
+contagens e coerência interna; o banco confere ainda as identidades das
+Unidades, o pai, a Microssequência, as atribuições de Fontes e as identidades
+`package@version` presentes no conteúdo.
 
-Formas, oportunidades e variações são fatos declarados pelo agente ou pela
-pessoa autora; o banco não os infere semanticamente do conteúdo. A
-reconciliação material na transação cobre os IDs das Unidades do lote, seu
-pai/alvo e os `componentRefs` extraídos das entidades persistidas. Assim, o
-contrato torna divergências rastreáveis sem fingir observação pedagógica
-independente.
+As formas, oportunidades e variações são declarações examináveis da autoria ou
+do cliente. O banco não deduz essas propriedades pela fluência do texto. Uma
+auditoria posterior pode confrontar a declaração com o conteúdo e suas
+evidências.
 
-Falha de validação reverte entidades, vínculo, progresso, evento e recibo. Não
-há confirmação parcial escondida.
+Se uma verificação falhar, conteúdo, vínculo, progresso, evento e recibo da
+etapa são revertidos juntos. O estado persistido informa a próxima etapa e
+permite continuar depois de uma interrupção.
+
+## Proveniência e anexos
+
+Fontes e Âncoras possuem revisões próprias. `set_target_sources` substitui o
+conjunto ordenado de atribuições de um item do plano ou de uma Unidade. Cada
+vínculo declara relação e Âncoras exatas.
+
+PDFs ficam em armazenamento privado e são ligados a uma revisão de Fonte por
+impressão digital, tamanho e tipo. A preparação devolve um endereço temporário para envio
+direto; a confirmação transacional verifica o objeto antes de criar o vínculo.
+A leitura também usa endereço temporário e autorização corrente.
+
+Uma exportação de proveniência reúne o alvo, as atribuições, as revisões das
+Fontes, as Âncoras e os metadados dos anexos. O arquivo não contém o PDF nem
+transforma o vínculo em prova de correção factual.
 
 ## Descoberta progressiva de componentes
 
-O catálogo não deve ser despejado inteiro no prompt. O cliente explora, busca,
-inspeciona poucos candidatos, carrega os contratos necessários, valida a
-Unidade e só então prepara uma prévia.
+O catálogo completo não integra o contexto de cada pedido. O cliente:
 
-Esse fluxo reduz contexto e evita selecionar um package somente pelo rótulo. A
-política efetiva limita candidatos, mas o validador ainda precisa conferir
-slots, referências e relações da Unidade.
+1. explora famílias e facetas;
+2. pesquisa por intenção;
+3. inspeciona poucos candidatos;
+4. solicita um contrato exato;
+5. valida a Unidade;
+6. audita a adequação representacional;
+7. apresenta uma prévia.
 
-## Concorrência, repetição e no-op
+A busca devolve até oito candidatos e cada consulta de contrato recebe uma
+única identidade. O navegador e a função remota usam o mesmo registro de
+componentes. Uma classificação `substitute` indica aproximação e exige que a
+limitação seja apresentada à pessoa.
 
-Cada mudança informa revisão esperada do Curso e, quando aplicável, versão do
-plano, Parte, tentativa, etapa ou revisão de orientação. O PostgreSQL aplica
-CAS. Em conflito, o cliente relê e reconcilia.
+## Observações e auditoria
 
-`requestId` identifica uma intenção dentro da janela de retenção. Repetir o
-mesmo comando recupera o recibo; usar a mesma chave para conteúdo diferente é
-conflito. Um no-op sela o resultado sem avançar revisão, versão ou atividade.
+Uma Observação preserva texto, alvo, revisão observada, origem, canal,
+classificação e estado. A leitura por MCP pode mostrar caixa de entrada, alvo ou
+detalhe. Criar uma Observação pela conversa exige alvo, síntese breve e
+confirmação humana.
 
-## O que não é persistido
+O ciclo de auditoria deriva o contexto de uma Unidade e registra uma rodada
+imutável. Achado, proposta de correção, aplicação, verificação e reversão são
+estados e operações distintos. Evidência factual positiva aponta para Fonte e
+Âncora correntes. Aplicação e reversão exigem confirmação explícita; a resolução
+exige outra rodada sobre o critério focal.
 
-O produto não grava transcrição de chat, prompt completo, resposta bruta ou
-raciocínio do modelo como estado do Curso. Persiste somente o dado confirmado:
-plano, decisões de desenho, orientação original, interpretação estruturada,
-composição, contexto efetivo limitado, fatos de aplicação, eventos compactos e
-recibos temporários.
+## Variantes e fatos de Pesquisa
 
-## Falhas fechadas
+Uma comparação de variantes conserva um ponto comum de planejamento, Cursos
+independentes e diferenças intencionais. As leituras confrontam revisões,
+parâmetros, políticas de componentes, Partes, Unidades, componentes e
+proveniência. Desvincular uma variante preserva o Curso.
 
-| Situação | Resultado correto |
-|---|---|
-| comando ou JSON inválido | rejeitar antes de gravar |
-| revisão ou versão obsoleta | reler e reconciliar |
-| escopo fora do Curso próprio | negar autoridade |
-| orientação referenciada não é a revisão exata | rejeitar interpretação |
-| componente excluído ou fora de `allow_only` | reverter a etapa |
-| item declarado não pertence ao subconjunto atribuído ao alvo | reverter a etapa |
-| IDs, pai/alvo ou `componentRefs` não correspondem às entidades | reverter a etapa |
-| contexto excede o orçamento | abortar sem truncar silenciosamente |
-| pedido idêntico repetido | devolver o recibo idempotente |
+A vista `research` projeta sete conjuntos de fatos operacionais. Métricas,
+gráfico, tabela, exportação e MCP derivam das mesmas linhas e da mesma revisão.
+Os filtros e o instante de corte integram o cursor, impedindo que páginas de
+recortes diferentes sejam misturadas.
 
-## Limite da automação
+## Concorrência e repetição segura
 
-Contratos demonstram integridade técnica, não verdade, adequação pedagógica ou
-eficácia. Parâmetros são operacionalizações examináveis; defaults são
-hipóteses de produto. Resultado educacional exige desenho de pesquisa,
-instrumentos, participantes, análise de incerteza e interpretação humana.
+Toda escrita informa `expectedRevision` e, conforme o objeto, a versão esperada
+do plano, da Parte, da execução, da etapa, da orientação, da Observação ou do
+ciclo de auditoria. O PostgreSQL aplica comparação e troca atômica
+(`compare-and-swap`, CAS). Uma revisão desatualizada exige releitura e
+reconciliação.
 
-O fluxo técnico detalhado está em [Autoria por MCP](autoria-mcp.md); a base dos
-parâmetros e suas limitações está em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md).
+`requestId` identifica uma intenção durante a janela de retenção do recibo.
+Repetir o mesmo comando devolve o resultado anterior; reutilizar a chave com
+outro conteúdo gera conflito. Uma operação sem alteração efetiva conserva as
+versões e não cria evento de atividade.
+
+## Persistência e privacidade
+
+O Curso conserva dados confirmados: plano, decisões de desenho, orientações,
+composição, proveniência, Observações, rodadas, correções, variantes, fatos de
+Pesquisa, eventos compactos e recibos temporários. Transcrição de conversa,
+resposta bruta e raciocínio privado do modelo ficam fora desse estado.
+
+O conteúdo estudável, o estado pessoal e as filas específicas de Observações
+podem permanecer no dispositivo. Mutações de Autoria usam o servidor e a revisão
+corrente. Essa fronteira impede que uma cópia local antiga se torne autoridade
+sobre o Curso.
+
+## Respostas a falhas
+
+| Situação | Resposta do contrato |
+| --- | --- |
+| comando ou JSON fora da forma | recusar antes de gravar |
+| revisão ou versão desatualizada | exigir releitura e reconciliação |
+| Curso fora da propriedade da conta | negar a operação sem expor dados |
+| interpretação ligada a outra revisão de orientação | recusar o vínculo |
+| componente bloqueado ou fora da lista permitida | reverter a etapa |
+| item do plano fora do alvo | recusar a declaração |
+| identidade, pai ou componente divergente | reverter a etapa |
+| Fonte, Âncora ou anexo divergente | recusar a atribuição |
+| recorte acima do limite | abortar sem truncamento silencioso |
+| repetição idêntica | devolver o recibo existente |
+
+Contratos comprovam integridade e rastreabilidade dentro das regras
+declaradas. Avaliar verdade, adequação pedagógica ou eficácia exige evidência e
+método próprios. Consulte [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md) para os parâmetros e
+[Autoria por MCP](autoria-mcp.md) para os esquemas completos.

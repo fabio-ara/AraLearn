@@ -8,13 +8,13 @@ O AraLearn pode ser examinado simultaneamente como:
    interfaces e infraestrutura;
 2. **artefato de design**, construído para responder a um conjunto de problemas
    e incorporar conhecimentos de projeto;
-3. **intervenção educacional**, utilizada por pessoas em atividades de estudo,
-   autoria e colaboração;
+3. **intervenção educacional**, utilizada por pessoas em atividades de Estudo,
+   Autoria e compartilhamento;
 4. **objeto de investigação**, sobre o qual se formulam perguntas, hipóteses e
    avaliações.
 
 Essas perspectivas se relacionam, mas não são equivalentes. Um teste pode
-demonstrar que um card abre offline; não demonstra que a disponibilidade local
+demonstrar que uma Unidade de estudo abre sem conexão; não demonstra que a disponibilidade local
 melhora a aprendizagem. Uma fonte pode sustentar a plausibilidade de exemplos
 resolvidos; não prova que uma microssequência concreta foi bem escrita. Uma
 entrevista pode revelar como participantes compreenderam uma permissão; não
@@ -23,13 +23,13 @@ substitui um teste de isolamento do banco de dados.
 Este documento ensina como separar essas formas de conhecimento, como organizar
 uma investigação responsável e como manter a documentação auditável.
 
-Nos trechos técnicos, **kernel** significa o núcleo comum que coordena o
-aplicativo; **package**, um módulo de recurso com contrato e renderização
-próprios; **workspace**, um espaço de trabalho com membros e permissões locais;
-e **inteligência artificial (IA)**, os modelos e serviços usados para auxiliar
-autoria. **Local-first** designa a arquitetura em que a cópia local sustenta a
-operação corrente e a sincronização remota ocorre fora do caminho crítico da
-interação.
+Nos trechos técnicos, **núcleo comum** significa a camada que coordena os
+módulos do aplicativo; **pacote de componente**, o módulo versionado que reúne
+contrato, validação e implementação de uma representação ou formato de
+resposta; e **inteligência artificial (IA)**, os modelos e serviços usados para
+auxiliar a autoria. **Local-first** designa a arquitetura em que a cópia local
+sustenta a operação corrente e a sincronização remota ocorre fora do caminho
+crítico da interação.
 
 ## O que significa governança científica
 
@@ -67,7 +67,7 @@ do AraLearn utiliza seis estados:
 
 ### Por que essa separação é necessária
 
-Considere a afirmação “o funcionamento offline reduz o abandono”. Ela contém
+Considere a afirmação “o funcionamento sem conexão reduz o abandono”. Ela contém
 duas relações distintas:
 
 ```text
@@ -86,9 +86,9 @@ usa-se “pretende”, “pode” ou “hipótese a avaliar”.
 
 ## Objeto, contexto e delimitação
 
-O objeto investigado é uma plataforma móvel e local-first para estudo e autoria
-de cursos organizados em percursos, microssequências, cards e representações
-especializadas. O contexto prioritário inclui pessoas adultas que conciliam
+O objeto investigado é uma plataforma móvel e local-first para Estudo e Autoria
+de Cursos organizados em Módulos, Lições, Microssequências didáticas e Unidades
+de estudo com representações especializadas. O contexto prioritário inclui pessoas adultas que conciliam
 trabalho e estudo, utilizam celular, enfrentam interrupções e podem perder
 conectividade.
 
@@ -103,9 +103,9 @@ O problema de pesquisa não se reduz a disponibilizar conteúdo. Ele envolve:
 - dividir o percurso sem fragmentar relações;
 - escolher representações apropriadas às operações;
 - articular teoria, prática, feedback e retomada;
-- sustentar estudo em condições móveis e offline;
+- sustentar Estudo em condições móveis e sem conexão;
 - permitir autoria assistida sem transferir responsabilidade à IA;
-- coordenar pessoas e permissões sem vigilância ou poder global;
+- delimitar propriedade e acesso sem vigilância ou poder difuso;
 - manter custo, armazenamento e manutenção proporcionais.
 
 ## Pergunta orientadora e subproblemas
@@ -121,15 +121,15 @@ Essa pergunta deve ser decomposta em estudos delimitados:
 
 1. **progressão didática:** em que condições a distribuição de explicação,
    exemplo, prática e feedback sustenta compreensão, retenção e transferência?
-2. **representação:** quando um recurso especializado ajuda a executar uma
+2. **representação:** quando uma representação especializada ajuda a executar uma
    operação sem introduzir gramática visual ou carga desnecessária?
 3. **continuidade:** como disponibilidade local, sincronização e marco de
    retomada afetam a capacidade de continuar após interrupção?
 4. **autoria assistida:** como catálogo, contrato, escopo e reversibilidade
    afetam erro de alvo, qualidade e controle humano?
-5. **governança:** que papéis, dados e intervenções são legítimos e úteis sem
+5. **governança:** que formas de propriedade, acesso, dados e intervenções são legítimas e úteis sem
    converter rastros ambíguos em diagnóstico?
-6. **frugalidade:** como custo, armazenamento, payload e manutenção evoluem sem
+6. **frugalidade:** como custo, armazenamento, volume transferido e manutenção evoluem sem
    comprometer segurança, acessibilidade e rigor?
 
 Essas perguntas podem ser investigadas separadamente. Colocá-las num único
@@ -185,19 +185,19 @@ esses artefatos incorporam ([Hevner et al. (2004)](referencias.md#ref-hevner2004
 arquitetura, um princípio ou conhecimento sobre condições de sucesso e falha.
 
 Gregor e Hevner propõem posicionar a contribuição conforme a maturidade do
-problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). O framework FEDS ajuda a
+problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). O quadro FEDS ajuda a
 planejar avaliações formativas ou somativas, artificiais ou naturalísticas
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
 ### Aplicação ao AraLearn
 
-- **Problema:** o produto combina kernel, packages, contratos, armazenamento,
+- **Problema:** o produto articula núcleo comum, pacotes de componente, contratos, armazenamento,
   sincronização, autoria e governança; é necessário demonstrar correção,
   utilidade e custo sem confundir esses resultados.
 - **Alternativas:** relatar apenas implementação, executar testes sem argumento
   de design ou organizar problema, objetivo, construção, demonstração,
   avaliação e contribuição.
-- **Decisão:** usar DSR para investigar arquitetura de recursos, contratos,
+- **Decisão:** usar DSR para investigar arquitetura de componentes, contratos,
   persistência local-first, delimitação de autoria, validação e frugalidade.
 - **Fundamentação:** DSR oferece estrutura para relacionar relevância,
   rigor, artefato e avaliação ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm); [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
@@ -245,10 +245,10 @@ A teoria da carga cognitiva destaca demandas introduzidas pelo desenho
 ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). O quadro DeFT examina
 funções e tarefas de representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Evidências de
 contiguidade e segmentação sustentam atenção à integração, mas não tornam
-qualquer card curto ou imagem pedagogicamente adequado
+qualquer Unidade curta ou imagem pedagogicamente adequada
 ([Ginns (2006)](referencias.md#ref-ginns2006contiguity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
-**Decisão:** um recurso especializado só se justifica quando preserva uma
+**Decisão:** uma representação especializada só se justifica quando preserva uma
 estrutura acadêmica relevante. **Hipótese:** seleção por operação e
 representação canônica podem reduzir tradução mental. **Limite:** essa relação
 precisa ser comparada por tarefa e domínio.
@@ -261,7 +261,7 @@ distribuição possuem suporte amplo, com efeitos condicionados por conteúdo,
 formato, intervalo e medida ([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Intercalação possui moderadores
 próprios ([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving)).
 
-**Decisão:** planejamento antecede a quantidade de cards; prática é escolhida
+**Decisão:** planejamento antecede a quantidade de Unidades de estudo; prática é escolhida
 pela operação e retomada não segue intervalo universal. **Hipótese:** uma
 microssequência coerente pode articular apoio, produção, feedback e retomada.
 **Limite:** resultados imediatos, posteriores e de transferência permanecem
@@ -283,10 +283,11 @@ sobre ansiedade ou autonomia é presumido.
 ### IA e governança de dados
 
 Recuperação pode condicionar a geração, mas não garante factualidade
-([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Interação humano–IA requer comunicação de limites, correção e
+([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). A interação entre pessoas e IA requer comunicação de limites, correção e
 controle ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações de risco destacam responsabilidade
-e proteção de dados ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)). Learning analytics exige
-finalidade, transparência e proporcionalidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
+e proteção de dados ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)). A análise de dados
+educacionais, também conhecida como *learning analytics*, exige finalidade,
+transparência e proporcionalidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
 **Decisão:** contexto, escopo, validação e responsabilidade permanecem
 explícitos; dados só entram quando ligados a pergunta e intervenção. **Hipótese:**
@@ -302,8 +303,23 @@ servir à descoberta, mas não se tornam evidência externa sem conferência da
 fonte original.
 
 Uma revisão reproduzível futura deve registrar o protocolo fora do código do
-produto: bases, strings, datas, critérios, duplicatas, seleção, avaliação
+produto: bases, expressões de busca, datas, critérios, duplicatas, seleção, avaliação
 crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scoping); [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)).
+
+### Proveniência das Fontes de um Curso
+
+A bibliografia desta documentação e as Fontes usadas num Curso cumprem funções
+diferentes. Dentro do produto, uma Fonte possui identidade estável e revisões;
+uma Âncora localiza página, tempo, fragmento de endereço ou trecho textual numa
+revisão exata; e uma atribuição liga essa Âncora a um item do plano ou a uma
+Unidade de estudo. A relação declara se a Fonte informa ou sustenta o alvo, ou
+se o alvo foi adaptado ou citado a partir dela. O histórico não é reescrito
+quando surge outra revisão.
+
+Essa cadeia permite localizar o material usado e reconstruir a decisão
+autoral. Ela não demonstra que a Fonte é verdadeira, que a atribuição é
+pertinente ou que o conteúdo derivado é fiel. Essas conclusões exigem leitura,
+julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria.
 
 ## Governança de decisões
 
@@ -351,32 +367,31 @@ Antes de coletar um dado, devem ser definidos:
 - custo de armazenamento e risco;
 - informação e consentimento necessários.
 
-Cliques, tempo e conclusão não entram apenas por estarem disponíveis. Ética é
-parte do desenho de analytics, não etapa posterior
+Cliques, tempo e conclusão não entram apenas por estarem disponíveis. A ética
+integra o desenho da análise de dados desde a definição da finalidade
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
 operacional sempre que o desenho e o risco assim exigirem.
 
-### Governança de variantes experimentais
+### Governança de variantes comparáveis
 
-Uma condição experimental não é um rótulo aplicado depois da coleta. Ela é um
-protocolo versionado que fixa base, fatores, escopo, invariantes, regra de
-atribuição e instrumentos antes da exposição. O AraLearn deriva variantes de
-um mesmo artefato aprovado, registra diferenças e congela a revisão atribuída;
-uma mudança posterior gera outra revisão em vez de reescrever o tratamento.
+O AraLearn pode criar de dois a oito Cursos independentes a partir de um mesmo
+planejamento. A relação preserva o planejamento comum, as revisões de vínculo e
+as diferenças declaradas de parâmetros ou da política de componentes. Cada
+Curso derivado permanece editável e mantém composição, acesso, estado pessoal,
+Observações e revisões próprios.
 
-Parâmetros de desenho continuam sendo definições ordinárias. A autoridade de
-pesquisa apenas fixa valores ou `ResourceSet`s numa condição. O servidor, não o
-modelo de linguagem ou o dispositivo do participante, aplica locks, sorteio e
-balanceamento. Consentimento e vínculo de conta permanecem separados do
-pseudônimo usado pelo experimento, e o participante recebe somente a revisão
-que lhe foi atribuída.
+Essa capacidade permite reconstituir a origem comum e verificar diferenças
+declaradas, observadas ou surgidas depois. Ela não cria participantes,
+atribuição, aleatorização, consentimento, desfecho nem análise causal. A origem
+`research_condition` de um parâmetro também registra apenas proveniência; ela
+não bloqueia alterações e não constitui condição experimental.
 
-Essas propriedades tornam uma comparação reconstituível, mas não a tornam
-automaticamente válida. Randomização reprodutível não elimina viés de seleção;
-freeze não prova fidelidade de implementação; igualdade de contagem não prova
-equivalência semântica; e telemetria disponível não se torna outcome sem
-instrumento, finalidade e interpretação declarados. Consulte [Experimentos
-instrucionais parametrizados](experimentos-instrucionais-parametrizados.md).
+Quando uma investigação usa variantes, o protocolo externo precisa fixar a
+pergunta, a população, as revisões efetivamente expostas, os invariantes, a
+regra de atribuição, os instrumentos, os dados ausentes e a análise. A
+comparação técnica ajuda a descrever a intervenção, mas não garante equivalência
+semântica, fidelidade de exposição ou validade causal. Consulte [Variantes
+comparáveis de um Curso](experimentos-instrucionais-parametrizados.md).
 
 ## Limitações atuais do programa
 
@@ -401,15 +416,23 @@ instrucionais parametrizados](experimentos-instrucionais-parametrizados.md).
 | definições operacionais | [Glossário de construtos](glossario-construtos.md) | nomes do produto não se tornam construtos universais |
 | teoria, decisão, código e avaliação | [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) | teste técnico não demonstra aprendizagem |
 | desenho de episódios | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) | precisa ser particularizado e aprovado quando houver participantes |
-| justificativa dos recursos | [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md) | representação correta ainda exige avaliação de compreensão |
+| justificativa dos componentes | [Fundamentação pedagógica das representações](fundamentacao-pedagogica-dos-resources.md) | representação correta ainda exige avaliação de compreensão |
 | contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
 | bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |
-## Governança de analytics e outcomes
+
+## Governança dos fatos e das métricas
+
+A área **Pesquisa** projeta fatos correntes de atividade, materialização,
+desenho, Fontes, Observações, auditorias e variantes. A consulta é exclusiva da
+pessoa proprietária e omite identidades de conta, endereços de correio
+eletrônico, texto bruto de Observações e cópias integrais de conteúdo.
 
 Uma métrica só entra no produto com pergunta, definição, unidade, derivação,
 denominador, tratamento de ausências, interpretação permitida e limite. A
-definição é versionada e imutável. Outcome experimental exige consentimento,
-instrumento e onda declarados, atribuição congelada e finalidade institucional.
-Exportação pseudonimizada reduz exposição, mas não torna o dado anônimo nem
-dispensa retenção, controle de acesso e direito de retirada. O produto não
-escolhe teste estatístico nem emite causalidade automaticamente.
+definição é versionada. As métricas correntes contam fatos por conjunto, tipo e
+estado dentro de um recorte explícito; elas não medem aprendizagem, atenção,
+esforço ou qualidade. Um desfecho de pesquisa exige protocolo, consentimento,
+instrumento e finalidade próprios. A exportação sem dados identificadores reduz
+a exposição, mas não dispensa retenção, controle de acesso nem direito de
+retirada. O produto
+não escolhe teste estatístico nem emite conclusão causal automaticamente.

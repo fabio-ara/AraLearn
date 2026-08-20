@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import { routeCourseRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseProtocol.js";
 import { executeCourseRoute } from "../../supabase/functions/_shared/aralearn-authoring/courseRouter.js";
+import { courseVariantComparisonFixture } from
+  "../support/courseVariantComparisonFixture.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PLAN_ID = "15000000-0000-4000-8000-000000000005";
@@ -73,6 +75,13 @@ test("roteia somente endpoints canônicos de Curso", () => {
     courseId: COURSE_ID
   });
   assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/source-attachments/access`
+  ), {
+    name: "getCourseSourceAttachmentAccess",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
     "POST",
     `/v1/courses/${COURSE_ID}/sources/changes`
   ), {
@@ -105,6 +114,26 @@ test("roteia somente endpoints canônicos de Curso", () => {
     `/v1/courses/${COURSE_ID}/audit-cycle/changes`
   ), {
     name: "executeCourseAuditCycleCommand",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}/research`), {
+    name: "getCourseAuthoringAnalytics",
+    courseId: COURSE_ID
+  });
+  const comparisonSetId = "81000000-0000-4000-8000-000000000008";
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/variant-comparisons/${comparisonSetId}`
+  ), {
+    name: "getCourseVariantComparison",
+    courseId: COURSE_ID,
+    comparisonSetId
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/variant-comparisons/changes`
+  ), {
+    name: "executeCourseVariantCommand",
     courseId: COURSE_ID
   });
   assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/composition`), {
@@ -347,6 +376,104 @@ test("observações chegam ao Adapter com query canônica e sem autoridade do cl
     }),
     (error) => error.code === "unknown_course_command_field"
   );
+
+  const sourceRead = request(
+    `/v1/courses/${COURSE_ID}/anchored-annotations?` +
+      "expectedRevision=7&mode=target&category=reformulation_request&" +
+      "includeUncategorized=false&targetKind=source&targetId=source-a&" +
+      "includeDescendants=true&limit=24"
+  );
+  await executeCourseRoute({
+    request: sourceRead,
+    route: routeCourseRequest("GET", new URL(sourceRead.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(calls[3].value.query.hierarchy, {
+    target: { kind: "source", id: "source-a" },
+    includeDescendants: true
+  });
+  assert.deepEqual(calls[3].value.query.categories, ["reformulation_request"]);
+
+  const consideredSourceLinks = [{
+    sourceId: "source-a",
+    sourceRevision: 2,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-a", anchorRevision: 3 }]
+  }];
+  await executeCourseRoute({
+    request: request(writePath, {
+      method: "POST",
+      requestId: "request-annotation-router-4",
+      body: {
+        requestId: "request-annotation-router-4",
+        expectedCourseRevision: null,
+        command: {
+          type: "respond_to_anchored_annotation",
+          annotationId,
+          expectedAnnotationVersion: 2,
+          ownerResponse: "Interpretação reformulada.",
+          responseKind: "reformulation",
+          consideredSourceLinks
+        }
+      }
+    }),
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(calls[4].value.command.consideredSourceLinks,
+    consideredSourceLinks);
+});
+
+test("Pesquisa chega ao Adapter com filtros explícitos e limite server-side", async () => {
+  const calls = [];
+  const adapter = {
+    async getCourseAuthoringAnalytics(value) {
+      calls.push(value);
+      return { contract: "research-read-ok" };
+    }
+  };
+  const read = request(
+    `/v1/courses/${COURSE_ID}/research?expectedRevision=7&` +
+      "dataset=annotations&dataset=audits&channel=study_interface&" +
+      "origin=learner&state=open&from=2026-08-01T00%3A00%3A00.000Z&" +
+      "to=2026-08-20T23%3A59%3A59.000Z&limit=40&cursor=cGFnZS0y"
+  );
+  const result = await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+
+  assert.deepEqual(result.data, { contract: "research-read-ok" });
+  assert.equal(calls[0].courseId, COURSE_ID);
+  assert.equal(calls[0].expectedCourseRevision, 7);
+  assert.deepEqual(calls[0].query, {
+    datasets: ["annotations", "audits"],
+    channels: ["study_interface"],
+    origins: ["learner"],
+    states: ["open"],
+    from: "2026-08-01T00:00:00.000Z",
+    to: "2026-08-20T23:59:59.000Z",
+    limit: 40,
+    cursor: "cGFnZS0y"
+  });
+
+  for (const invalid of [
+    `expectedRevision=7&expectedRevision=8&dataset=annotations`,
+    `expectedRevision=7&dataset=unknown`,
+    `expectedRevision=7&dataset=annotations&limit=201`
+  ]) {
+    const invalidRead = request(`/v1/courses/${COURSE_ID}/research?${invalid}`);
+    await assert.rejects(() => executeCourseRoute({
+      request: invalidRead,
+      route: routeCourseRequest("GET", new URL(invalidRead.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }), (error) => error.status === 422);
+  }
 });
 
 test("ciclo de auditoria chega ao Adapter com query exata e somente checks humanos", async () => {
@@ -651,9 +778,16 @@ test("Fontes usam consulta cercada e comando discriminado sem campos de autorida
     source: {
       kind: "web_page",
       title: "Fonte A",
+      authorship: "Autoria",
+      publicationDate: "2026",
+      identifier: null,
+      language: "pt-BR",
       citationText: "Fonte A, 2026.",
       url: "https://example.test/fonte-a",
       editionOrVersion: null,
+      origin: "external",
+      availability: "open_access",
+      verificationStatus: "author_verified",
       studyVisibility: "citation_and_link"
     }
   };
@@ -798,6 +932,101 @@ test("Router limita comando de Fontes a 196608 bytes antes do domínio", async (
       predicate
     );
   }
+});
+
+test("Router liga acesso do PDF à Fonte, revisão, hash e cerca do Curso", async () => {
+  const contentHash = "a".repeat(64);
+  let call = null;
+  const adapter = {
+    async getCourseSourceAttachmentAccess(value) {
+      call = value;
+      return { allowed: true };
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/source-attachments/access?` +
+    "expectedRevision=8&operation=prepare_upload&sourceId=source-pdf&" +
+    `sourceRevision=2&contentHash=${contentHash}&byteSize=1024&mediaType=application%2Fpdf`;
+  const value = request(path);
+  const result = await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("GET", new URL(value.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(result.data, { allowed: true });
+  assert.deepEqual({
+    courseId: call.courseId,
+    expectedRevision: call.expectedRevision,
+    operation: call.operation,
+    sourceId: call.sourceId,
+    sourceRevision: call.sourceRevision,
+    contentHash: call.contentHash,
+    byteSize: call.byteSize,
+    mediaType: call.mediaType
+  }, {
+    courseId: COURSE_ID,
+    expectedRevision: 8,
+    operation: "prepare_upload",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash,
+    byteSize: 1_024,
+    mediaType: "application/pdf"
+  });
+
+  for (const invalidPath of [
+    path.replace("byteSize=1024", `byteSize=${20 * 1024 * 1024 + 1}`),
+    path.replace("mediaType=application%2Fpdf", "mediaType=text%2Fplain"),
+    path.replace("operation=prepare_upload", "operation=download"),
+    `${path}&actorId=${COURSE_ID}`
+  ]) {
+    const invalid = request(invalidPath);
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: invalid,
+        route: routeCourseRequest("GET", new URL(invalid.url).pathname),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.code === "invalid_course_source_attachment_access" ||
+        error.code === "invalid_integer"
+    );
+  }
+});
+
+test("Router devolve à UI e ao MCP o mesmo DTO factual de variantes", async () => {
+  const comparisonSetId = "81000000-0000-4000-8000-000000000008";
+  const expected = courseVariantComparisonFixture({
+    sourceCourseId: COURSE_ID,
+    comparisonSetId,
+    courseRevision: 7
+  });
+  let call = null;
+  const adapter = {
+    async getCourseVariantComparison(value) {
+      call = value;
+      return expected;
+    }
+  };
+  const value = request(
+    `/v1/courses/${COURSE_ID}/variant-comparisons/${comparisonSetId}?expectedRevision=7`
+  );
+  const result = await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("GET", new URL(value.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.strictEqual(result.data, expected);
+  assert.deepEqual({
+    courseId: call.courseId,
+    comparisonSetId: call.comparisonSetId,
+    expectedCourseRevision: call.expectedCourseRevision
+  }, {
+    courseId: COURSE_ID,
+    comparisonSetId,
+    expectedCourseRevision: 7
+  });
 });
 
 test("cria Curso e reconcilia requestId", async () => {

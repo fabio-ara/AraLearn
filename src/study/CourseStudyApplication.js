@@ -831,6 +831,41 @@ export function createCourseStudyApplication({
     });
   }
 
+  function bindTextGapChoiceActions(scope) {
+    scope.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
+      if (node.dataset.studyChoiceBound === "true") return;
+      node.dataset.studyChoiceBound = "true";
+      const openPrompt = () => {
+        state.activeGapPrompt = {
+          blockKey: node.getAttribute("data-complete-block-key"),
+          blankIndex: Number(node.getAttribute("data-complete-blank-index"))
+        };
+        render();
+      };
+      node.addEventListener("click", openPrompt);
+      node.addEventListener("keydown", (event) => {
+        if (node.getAttribute("role") !== "button" ||
+            !["Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        openPrompt();
+      });
+    });
+    scope.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
+      if (node.dataset.studyChoiceBound === "true") return;
+      node.dataset.studyChoiceBound = "true";
+      node.addEventListener("click", () => {
+        const entry = currentResponseEntry();
+        const exercise = ensureResponseState(entry);
+        const index = Number(node.getAttribute("data-complete-blank-index"));
+        if (!exercise || !Number.isInteger(index)) return;
+        exercise.values[index] = node.getAttribute("data-text-gap-value") || "";
+        exercise.feedback = null;
+        state.activeGapPrompt = null;
+        render();
+      });
+    });
+  }
+
   function selectChoice(node, { forceSelected = false, focusAfterRender = true } = {}) {
     const entry = currentResponseEntry();
     const exercise = ensureResponseState(entry);
@@ -963,33 +998,7 @@ export function createCourseStudyApplication({
       state.activeGapPrompt = null;
       render();
     });
-    root.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
-      const openPrompt = () => {
-        state.activeGapPrompt = {
-          blockKey: node.getAttribute("data-complete-block-key"),
-          blankIndex: Number(node.getAttribute("data-complete-blank-index"))
-        };
-        render();
-      };
-      node.addEventListener("click", openPrompt);
-      node.addEventListener("keydown", (event) => {
-        if (node.getAttribute("role") !== "button" ||
-            !["Enter", " "].includes(event.key)) return;
-        event.preventDefault();
-        openPrompt();
-      });
-    });
-    root.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) =>
-      node.addEventListener("click", () => {
-        const entry = currentResponseEntry();
-        const exercise = ensureResponseState(entry);
-        const index = Number(node.getAttribute("data-complete-blank-index"));
-        if (!exercise || !Number.isInteger(index)) return;
-        exercise.values[index] = node.getAttribute("data-text-gap-value") || "";
-        exercise.feedback = null;
-        state.activeGapPrompt = null;
-        render();
-      }));
+    bindTextGapChoiceActions(root);
     root.querySelectorAll("[data-action='ordering-move']").forEach((node) =>
       node.addEventListener("click", () => {
         const entry = currentResponseEntry();
@@ -1157,7 +1166,10 @@ export function createCourseStudyApplication({
     onViewChange(state.view);
     syncAccountControl();
     bindActions();
-    void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => bindGapInputs(root)).catch((error) => {
+    void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
+      bindGapInputs(root);
+      bindTextGapChoiceActions(root);
+    }).catch((error) => {
       root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {
         bubbles: true,
         detail: { error }
@@ -1173,7 +1185,6 @@ export function createCourseStudyApplication({
   }
 
   render({ preserveFocus: false });
-  globalThis.AndroidHost?.runtimeReady?.();
 
   return Object.freeze({
     setAccountProfile(profile) {

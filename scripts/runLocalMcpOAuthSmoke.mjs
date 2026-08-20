@@ -481,13 +481,20 @@ export async function cleanupLocalMcpOAuthProvision({
   }
 }
 
-async function executeAuthenticatedSmoke(accessToken) {
+async function executeAuthenticatedSmoke(accessToken, {
+  projectUrl = "",
+  publishableKey = ""
+} = {}) {
   const previousToken =
     process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN;
   const previousRequirement =
     process.env.ARALEARN_AUTHORING_MCP_REQUIRE_OAUTH;
+  const previousProjectUrl = process.env.SUPABASE_URL;
+  const previousPublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
   process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN = accessToken;
   process.env.ARALEARN_AUTHORING_MCP_REQUIRE_OAUTH = "1";
+  if (projectUrl) process.env.SUPABASE_URL = projectUrl;
+  if (publishableKey) process.env.SUPABASE_PUBLISHABLE_KEY = publishableKey;
   try {
     const smokeUrl = new URL(
       "../supabase/tests/authoring-mcp-local-smoke.mjs",
@@ -506,6 +513,16 @@ async function executeAuthenticatedSmoke(accessToken) {
     } else {
       process.env.ARALEARN_AUTHORING_MCP_REQUIRE_OAUTH =
         previousRequirement;
+    }
+    if (previousProjectUrl === undefined) {
+      delete process.env.SUPABASE_URL;
+    } else {
+      process.env.SUPABASE_URL = previousProjectUrl;
+    }
+    if (previousPublishableKey === undefined) {
+      delete process.env.SUPABASE_PUBLISHABLE_KEY;
+    } else {
+      process.env.SUPABASE_PUBLISHABLE_KEY = previousPublishableKey;
     }
   }
 }
@@ -529,7 +546,10 @@ export async function runLocalMcpOAuthSmoke({
       ...(nowSeconds ? { nowSeconds } : {}),
       lifecycle
     });
-    await executeSmoke(provision.accessToken);
+    await executeSmoke(provision.accessToken, {
+      projectUrl: provision.projectUrl,
+      publishableKey: provision.publishableKey
+    });
   } catch (error) {
     primaryFailure = error;
   }

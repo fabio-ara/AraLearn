@@ -30,6 +30,13 @@ import {
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantRead
 } from "../aralearn/runtime/domain/courseVariants.js";
+import {
+  COURSE_AUTHORING_ANALYTICS_CHANNELS,
+  COURSE_AUTHORING_ANALYTICS_DATASETS,
+  CourseAuthoringAnalyticsError,
+  normalizeCourseAuthoringAnalyticsQuery
+} from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
+import { courseMcpAppToolMeta } from "./courseMcpAppResource.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -40,6 +47,7 @@ const RFC3339_PATTERN =
   "(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$";
 const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
+const AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 const objectSchema = (properties, required = Object.keys(properties)) => ({
   type: "object",
@@ -72,6 +80,11 @@ const legacySourceIdSchema = stringSchema({
   maxLength: 2_048,
   pattern: "^[^\\u0000-\\u001F\\u007F-\\u009F]+$"
 });
+const anchoredAnnotationSourceIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 2_048,
+  pattern: "^(?=[\\s\\S]*\\S)[^\\u0000-\\u001F\\u007F-\\u009F]+$"
+});
 
 const anchoredAnnotationOpaqueIdSchema = stringSchema({
   minLength: 1,
@@ -92,13 +105,45 @@ const anchoredAnnotationCategorySchema = {
 const anchoredAnnotationTargetSchema = {
   ...objectSchema({
     kind: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS] }),
-    id: anchoredAnnotationOpaqueIdSchema
+    id: legacySourceIdSchema
   }),
   allOf: [{
     if: { properties: { kind: { const: "course" } }, required: ["kind"] },
     then: { properties: { id: uuidSchema } }
+  }, {
+    if: { properties: { kind: { const: "source" } }, required: ["kind"] },
+    then: { properties: { id: anchoredAnnotationSourceIdSchema } },
+    else: { properties: { id: anchoredAnnotationOpaqueIdSchema } }
   }]
 };
+
+const sourceAnchorLinkSchema = objectSchema({
+  anchorId: courseSourceOpaqueIdSchema,
+  anchorRevision: { type: "integer", minimum: 1 }
+});
+const sourceLinkSchema = {
+  ...objectSchema({
+    sourceId: legacySourceIdSchema,
+    sourceRevision: { type: "integer", minimum: 1 },
+    relation: stringSchema({ enum: [
+      "informed_by", "supported_by", "adapted_from", "quoted_from",
+      "contrasted_with", "exemplified_by", "inspired_by", "needs_verification"
+    ] }),
+    anchors: {
+      type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
+      items: sourceAnchorLinkSchema
+    }
+  }),
+  allOf: [{
+    if: { properties: { relation: { const: "quoted_from" } }, required: ["relation"] },
+    then: { properties: { anchors: { minItems: 1 } } }
+  }]
+};
+const sourceLinksSchema = {
+  type: "array", maxItems: 32, uniqueItems: true, items: sourceLinkSchema
+};
+const sourceLinksSchemaReference = { $ref: "#/$defs/sourceLinks" };
+
 const anchoredAnnotationCommandSchema = {
   oneOf: [
     objectSchema({
@@ -142,12 +187,24 @@ const anchoredAnnotationCommandSchema = {
       annotationId: uuidSchema,
       expectedAnnotationVersion: { type: "integer", minimum: 1 }
     })),
-    objectSchema({
+    {
+      ...objectSchema({
       type: { const: "respond_to_anchored_annotation" },
       annotationId: uuidSchema,
       expectedAnnotationVersion: { type: "integer", minimum: 1 },
-      ownerResponse: anchoredAnnotationLayoutTextSchema
-    }),
+      ownerResponse: anchoredAnnotationLayoutTextSchema,
+      responseKind: stringSchema({ enum: ["answer", "reformulation"] }),
+      consideredSourceLinks: sourceLinksSchemaReference
+      }),
+      allOf: [{
+        if: {
+          properties: { responseKind: { const: "reformulation" } },
+          required: ["responseKind"]
+        },
+        then: { properties: { consideredSourceLinks: { minItems: 1 } } },
+        else: { properties: { consideredSourceLinks: { maxItems: 0 } } }
+      }]
+    },
     objectSchema({
       type: { const: "correct_anchored_annotation_subjects" },
       annotationId: uuidSchema,
@@ -160,31 +217,6 @@ const anchoredAnnotationCommandSchema = {
       }
     })
   ]
-};
-
-const sourceAnchorLinkSchema = objectSchema({
-  anchorId: courseSourceOpaqueIdSchema,
-  anchorRevision: { type: "integer", minimum: 1 }
-});
-const sourceLinkSchema = {
-  ...objectSchema({
-    sourceId: legacySourceIdSchema,
-    sourceRevision: { type: "integer", minimum: 1 },
-    relation: stringSchema({ enum: [
-      "informed_by", "supported_by", "adapted_from", "quoted_from"
-    ] }),
-    anchors: {
-      type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
-      items: sourceAnchorLinkSchema
-    }
-  }),
-  allOf: [{
-    if: { properties: { relation: { const: "quoted_from" } }, required: ["relation"] },
-    then: { properties: { anchors: { minItems: 1 } } }
-  }]
-};
-const sourceLinksSchema = {
-  type: "array", maxItems: 32, uniqueItems: true, items: sourceLinkSchema
 };
 
 const sourceSelectorSchema = {
@@ -228,6 +260,19 @@ const sourceDocumentSchema = {
     title: stringSchema({
       minLength: 1, maxLength: 300, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
     }),
+    authorship: nullableString(stringSchema({
+      minLength: 1, maxLength: 500, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+    })),
+    publicationDate: nullableString(stringSchema({
+      pattern: "^[0-9]{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12][0-9]|3[01]))?)?$"
+    })),
+    identifier: nullableString(stringSchema({
+      minLength: 1, maxLength: 240, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+    })),
+    language: nullableString(stringSchema({
+      maxLength: 35,
+      pattern: "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
+    })),
     citationText: nullableString(stringSchema({
       minLength: 1, maxLength: 2_048, pattern: COURSE_SOURCE_TRIMMED_LAYOUT_TEXT_PATTERN
     })),
@@ -235,6 +280,9 @@ const sourceDocumentSchema = {
     editionOrVersion: nullableString(stringSchema({
       minLength: 1, maxLength: 120, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
     })),
+    origin: stringSchema({ enum: ["external", "author_provided", "imported_legacy"] }),
+    availability: stringSchema({ enum: ["open_access", "restricted", "private", "unknown"] }),
+    verificationStatus: stringSchema({ enum: ["unverified", "author_verified"] }),
     studyVisibility: stringSchema({ enum: ["hidden", "citation", "citation_and_link"] })
   }),
   allOf: [{
@@ -281,11 +329,24 @@ const sourceCommandSchema = {
       expectedAnchorRevision: { type: "integer", minimum: 1 }
     }),
     objectSchema({
+      type: { const: "attach_pdf" },
+      sourceId: legacySourceIdSchema,
+      sourceRevision: { type: "integer", minimum: 1 },
+      attachment: objectSchema({
+        contentHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
+        byteSize: { type: "integer", minimum: 1, maximum: 20 * 1024 * 1024 },
+        mediaType: { const: "application/pdf" },
+        storagePath: stringSchema({
+          pattern: "^[0-9a-f-]{36}/[a-f0-9]{64}\\.pdf$"
+        })
+      })
+    }),
+    objectSchema({
       type: { const: "set_target_sources" },
       targetKind: stringSchema({ enum: ["plan_item", "study_unit"] }),
-      targetId: courseSourceOpaqueIdSchema,
+      targetId: legacySourceIdSchema,
       expectedTargetVersion: { type: "integer", minimum: 1 },
-      sourceLinks: sourceLinksSchema
+      sourceLinks: sourceLinksSchemaReference
     })
   ]
 };
@@ -335,7 +396,7 @@ const auditCheckSchema = objectSchema({
       }
     })
   },
-  sourceLinks: sourceLinksSchema
+  sourceLinks: sourceLinksSchemaReference
 });
 const auditChecksSchema = {
   type: "array", minItems: 3, maxItems: 31, uniqueItems: true,
@@ -382,7 +443,7 @@ const auditCommandSchema = {
       expectedFindingVersion: { type: "integer", minimum: 1 },
       expectedCorrectionVersion: { type: "integer", minimum: 0 },
       afterContent: { type: "object" },
-      afterSourceLinks: sourceLinksSchema,
+      afterSourceLinks: sourceLinksSchemaReference,
       rationale: auditLayoutTextSchema(2_000)
     }),
     objectSchema({
@@ -439,7 +500,7 @@ const authoringPlanCommandSchema = {
   id: uuidSchema,
   position: { type: "integer", minimum: 0, maximum: 255 },
   statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
-  sourceLinks: sourceLinksSchema,
+  sourceLinks: sourceLinksSchemaReference,
   orderedIds: { type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema },
   title: stringSchema({ minLength: 1, maxLength: 300 }),
   objective: stringSchema({ minLength: 1, maxLength: 2_000 }),
@@ -578,6 +639,42 @@ componentPolicySchema.allOf = [{
   },
   then: { properties: { allowedRefs: { minItems: 1 } } }
 }];
+const courseVariantParameterDifferenceSchema = objectSchema({
+  scopeKind: stringSchema({ enum: ["course", "lesson", "didactic_microsequence"] }),
+  scopeId: stringSchema({ minLength: 1, maxLength: 240 }),
+  parameterId: parameterIdSchema,
+  value: parameterValueSchema,
+  rationale: stringSchema({ minLength: 1, maxLength: 1_000 })
+});
+const courseVariantCommandSchema = {
+  oneOf: [
+    objectSchema({
+      type: { const: "create_comparison_variants" },
+      comparisonSetId: uuidSchema,
+      expectedCourseRevision: { type: "integer", minimum: 1 },
+      variants: {
+        type: "array", minItems: 2, maxItems: 8,
+        items: objectSchema({
+          label: stringSchema({ minLength: 1, maxLength: 80 }),
+          title: stringSchema({ minLength: 1, maxLength: 300 }),
+          goal: stringSchema({ minLength: 1, maxLength: 2_000 }),
+          parameterDifferences: {
+            type: "array", maxItems: 16,
+            items: courseVariantParameterDifferenceSchema
+          },
+          componentPolicyDifference: {
+            anyOf: [componentPolicySchema, { type: "null" }]
+          }
+        })
+      }
+    }),
+    objectSchema({
+      type: { const: "detach_comparison_variant" },
+      comparisonSetId: uuidSchema,
+      courseId: uuidSchema
+    })
+  ]
+};
 const courseDesignCommandSchema = {
   oneOf: [
     {
@@ -797,7 +894,7 @@ const designApplicationSchema = objectSchema({
 
 const sourceAttributionStudyUnitSchema = objectSchema({
   studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
-  sourceLinks: sourceLinksSchema
+  sourceLinks: sourceLinksSchemaReference
 });
 const sourceAttributionApplicationsSchema = {
   type: "array",
@@ -932,24 +1029,25 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos. Consulte anchored_annotations para manifestações humanas, instructional_plan para Partes, course_design para parâmetros, course_sources para proveniência, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos. Consulte anchored_annotations para manifestações humanas, instructional_plan para Partes, course_design para parâmetros, course_sources para proveniência, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
       view: stringSchema({ enum: [
         "summary", "outline", "instructional_plan", "course_design",
-        "course_sources", "anchored_annotations", "part_materialization",
-        "study_units", "entities", "audit_cycle", "variant_comparison", "variant_comparisons"
+        "course_sources", "course_source_attachment", "anchored_annotations", "part_materialization",
+        "study_units", "entities", "audit_cycle", "research",
+        "variant_comparison", "variant_comparisons"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
       expectedRevision: { type: "integer", minimum: 1 },
-      limit: { type: "integer", minimum: 1, maximum: 100 },
+      limit: { type: "integer", minimum: 1, maximum: 200 },
       cursor: {
         anyOf: [
           courseEntityCursorSchema,
           courseStudyUnitCursorSchema,
-          stringSchema({ minLength: 1, maxLength: 240 }),
+          stringSchema({ minLength: 1, maxLength: 2_048 }),
           { type: "null" }
         ]
       },
@@ -961,10 +1059,15 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         "catalog", "source", "target", "inbox", "detail", "context", "findings", "runs"
       ] }),
       sourceId: legacySourceIdSchema,
+      attachmentOperation: stringSchema({ enum: ["prepare_upload", "download"] }),
+      sourceRevision: { type: "integer", minimum: 1 },
+      contentHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
+      byteSize: { type: "integer", minimum: 1, maximum: 20 * 1024 * 1024 },
+      mediaType: { const: "application/pdf" },
       targetKind: stringSchema({ enum: [
         "plan_item", ...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS
       ] }),
-      targetId: courseSourceOpaqueIdSchema,
+      targetId: legacySourceIdSchema,
       annotationSetVersion: {
         anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }]
       },
@@ -972,22 +1075,19 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }]
       },
       origins: {
-        type: "array", maxItems: 5, uniqueItems: true,
-        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_ORIGINS] })
+        type: "array", maxItems: 16, uniqueItems: true,
+        items: stringSchema({ pattern: "^[a-z][a-z0-9._:-]{0,79}$" })
       },
       channels: {
         type: "array", maxItems: 6, uniqueItems: true,
-        items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_CHANNELS] })
+        items: stringSchema({ pattern: "^[a-z][a-z0-9._:-]{0,79}$" })
       },
       states: {
-        type: "array", maxItems: 4, uniqueItems: true,
-        items: stringSchema({ enum: [...new Set([
-          ...COURSE_ANCHORED_ANNOTATION_STATES,
-          ...COURSE_AUDIT_FINDING_STATES
-        ])] })
+        type: "array", maxItems: 24, uniqueItems: true,
+        items: stringSchema({ pattern: "^[a-z][a-z0-9._:-]{0,79}$" })
       },
       categories: {
-        type: "array", maxItems: 4, uniqueItems: true,
+        type: "array", maxItems: 5, uniqueItems: true,
         items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_CATEGORIES] })
       },
       includeUncategorized: { type: "boolean" },
@@ -1012,7 +1112,15 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       annotationIds: {
         type: "array", maxItems: 12, uniqueItems: true, items: uuidSchema
       },
-      comparisonSetId: uuidSchema
+      comparisonSetId: uuidSchema,
+      datasets: {
+        type: "array", minItems: 1,
+        maxItems: COURSE_AUTHORING_ANALYTICS_DATASETS.length,
+        uniqueItems: true,
+        items: stringSchema({ enum: [...COURSE_AUTHORING_ANALYTICS_DATASETS] })
+      },
+      from: stringSchema({ pattern: RFC3339_PATTERN }),
+      to: stringSchema({ pattern: RFC3339_PATTERN })
       }, ["courseId"]),
       allOf: [{
         if: {
@@ -1082,6 +1190,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           properties: {
             mode: { enum: ["catalog", "source", "target"] },
             targetKind: { enum: ["plan_item", "study_unit"] },
+            targetId: courseSourceOpaqueIdSchema,
             limit: { maximum: 24 },
             cursor: {
               anyOf: [
@@ -1119,7 +1228,45 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             then: { ...forbidFields(["sourceId", "targetKind", "targetId"]) }
           }]
         },
-        else: forbidFields(["sourceId"])
+        else: {
+          if: {
+            properties: { view: { const: "course_source_attachment" } },
+            required: ["view"]
+          },
+          then: {},
+          else: forbidFields(["sourceId"])
+        }
+      }, {
+        if: {
+          properties: { view: { const: "course_source_attachment" } },
+          required: ["view"]
+        },
+        then: {
+          required: [
+            "expectedRevision", "attachmentOperation", "sourceId",
+            "sourceRevision", "contentHash"
+          ],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "limit", "cursor", "scope",
+            "anchorStudyUnitId", "direction", "maxBytes", "mode", "targetKind",
+            "targetId", "annotationSetVersion", "auditSetVersion", "origins",
+            "channels", "states", "categories", "includeUncategorized",
+            "subjectIds", "includeDescendants", "annotationId", "targetStudyUnitId",
+            "findingId", "correctionId", "auditRunId", "dimensions", "severities",
+            "annotationIds", "comparisonSetId"
+          ]),
+          allOf: [{
+            if: {
+              properties: { attachmentOperation: { const: "prepare_upload" } },
+              required: ["attachmentOperation"]
+            },
+            then: { required: ["byteSize", "mediaType"] },
+            else: forbidFields(["byteSize", "mediaType"])
+          }]
+        },
+        else: forbidFields([
+          "attachmentOperation", "sourceRevision", "contentHash", "byteSize", "mediaType"
+        ])
       }, {
         if: {
           properties: { view: { const: "anchored_annotations" } },
@@ -1134,6 +1281,14 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           properties: {
             mode: { enum: ["inbox", "target", "detail"] },
             targetKind: { enum: [...COURSE_ANCHORED_ANNOTATION_TARGET_KINDS] },
+            origins: {
+              type: "array", maxItems: 5, uniqueItems: true,
+              items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_ORIGINS] })
+            },
+            channels: {
+              type: "array", maxItems: 6, uniqueItems: true,
+              items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_CHANNELS] })
+            },
             states: {
               type: "array", maxItems: 4, uniqueItems: true,
               items: stringSchema({ enum: [...COURSE_ANCHORED_ANNOTATION_STATES] })
@@ -1172,10 +1327,17 @@ export const COURSE_MCP_TOOLS = Object.freeze([
               required: ["targetKind"]
             },
             then: { properties: { targetId: uuidSchema } }
+          }, {
+            if: {
+              properties: { targetKind: { const: "source" } },
+              required: ["targetKind"]
+            },
+            then: { properties: { targetId: anchoredAnnotationSourceIdSchema } },
+            else: { properties: { targetId: courseSourceOpaqueIdSchema } }
           }]
         },
         else: forbidFields([
-          "annotationSetVersion", "origins", "channels", "categories",
+          "annotationSetVersion", "categories",
           "includeUncategorized", "subjectIds", "includeDescendants", "annotationId"
         ])
       }, {
@@ -1249,6 +1411,43 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         ])
       }, {
         if: {
+          properties: { view: { const: "research" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "scope", "anchorStudyUnitId",
+            "direction", "maxBytes", "mode", "sourceId", "attachmentOperation",
+            "sourceRevision", "contentHash", "byteSize", "mediaType", "targetKind",
+            "targetId", "annotationSetVersion", "auditSetVersion", "categories",
+            "includeUncategorized", "subjectIds", "includeDescendants", "annotationId",
+            "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
+            "dimensions", "severities", "annotationIds", "comparisonSetId"
+          ]),
+          properties: {
+            channels: {
+              type: "array",
+              maxItems: COURSE_AUTHORING_ANALYTICS_CHANNELS.length,
+              uniqueItems: true,
+              items: stringSchema({ enum: [...COURSE_AUTHORING_ANALYTICS_CHANNELS] })
+            },
+            limit: { maximum: 200 },
+            cursor: {
+              anyOf: [
+                stringSchema({
+                  minLength: 1,
+                  maxLength: 2_048,
+                  pattern: "^[A-Za-z0-9_-]+$"
+                }),
+                { type: "null" }
+              ]
+            }
+          }
+        },
+        else: forbidFields(["datasets", "from", "to"])
+      }, {
+        if: {
           properties: {
             view: { enum: ["course_sources", "anchored_annotations", "audit_cycle", "variant_comparison", "variant_comparisons"] }
           },
@@ -1257,10 +1456,16 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         else: forbidFields(["mode", "targetKind", "targetId"])
       }, {
         if: {
-          properties: { view: { enum: ["anchored_annotations", "audit_cycle"] } },
+          properties: { view: { enum: ["anchored_annotations", "audit_cycle", "research"] } },
           required: ["view"]
         },
         else: forbidFields(["states"])
+      }, {
+        if: {
+          properties: { view: { enum: ["anchored_annotations", "research"] } },
+          required: ["view"]
+        },
+        else: forbidFields(["origins", "channels"])
       }, {
         if: {
           properties: { view: { const: "course_design" } },
@@ -1322,6 +1527,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       }]
     },
     outputSchema,
+    _meta: courseMcpAppToolMeta(),
     annotations: readAnnotations
   }),
   Object.freeze({
@@ -1360,7 +1566,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       sourceCommand: sourceCommandSchema,
       annotationCommand: anchoredAnnotationCommandSchema,
       auditCommand: auditCommandSchema,
-      variantCommand: { type: "object" },
+      variantCommand: courseVariantCommandSchema,
       materializationCommand: materializationCommandSchema,
       upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
       sourceAttributionApplications: sourceAttributionApplicationsSchema,
@@ -1375,6 +1581,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         })
       }
       }, ["requestId", "courseId", "operation"]),
+      $defs: { sourceLinks: sourceLinksSchema },
       allOf: [{
         if: {
           properties: { operation: { const: "update_course_design" } },
@@ -1541,8 +1748,9 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "consultarComponentesDidaticos",
     title: "Consultar componentes didáticos",
-    description: "Explora, pesquisa, inspeciona e valida os componentes didáticos instalados sem carregar contratos desnecessários no contexto.",
-    inputSchema: objectSchema({
+    description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto.",
+    inputSchema: {
+      ...objectSchema({
       operation: stringSchema({
         enum: ["explore", "search", "inspect", "contracts", "validate_study_unit", "audit_representation", "preview_study_unit"]
       }),
@@ -1556,9 +1764,40 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         items: stringSchema({ minLength: 1, maxLength: 160 })
       },
       studyUnitJson: stringSchema({ maxLength: 40_000 }),
+      courseId: uuidSchema,
+      studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
       limit: { type: "integer", minimum: 1, maximum: 8 }
-    }, ["operation"]),
+      }, ["operation"]),
+      allOf: [{
+        if: {
+          properties: { operation: { const: "preview_study_unit" } },
+          required: ["operation"]
+        },
+        then: {
+          allOf: [{
+            if: { required: ["courseId"] },
+            then: { required: ["studyUnitId"] }
+          }, {
+            if: { required: ["studyUnitId"] },
+            then: { required: ["courseId"] }
+          }]
+        },
+        else: forbidFields(["courseId", "studyUnitId"])
+      }, {
+        if: {
+          properties: { operation: { const: "contracts" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["packages"],
+          properties: {
+            packages: { minItems: 1, maxItems: 1 }
+          }
+        }
+      }]
+    },
     outputSchema,
+    _meta: courseMcpAppToolMeta(),
     annotations: readAnnotations
   })
 ]);
@@ -1683,6 +1922,15 @@ function normalizeCourseVariantDomain(normalize) {
   }
 }
 
+function normalizeCourseAuthoringAnalyticsDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuthoringAnalyticsError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message);
+  }
+}
+
 function route(method, path, requestId = null, body = null) {
   return { kind: "route", method, path, requestId, body };
 }
@@ -1704,6 +1952,17 @@ function boundedAuditCycleReadRoute(path) {
     fail(
       "course_audit_cycle_query_too_large",
       "Os filtros de auditoria excedem o limite transportável de 8 KiB."
+    );
+  }
+  return route("GET", path);
+}
+
+function boundedCourseAuthoringAnalyticsReadRoute(path) {
+  if (new TextEncoder().encode(path).byteLength >
+      AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES) {
+    fail(
+      "course_authoring_analytics_query_too_large",
+      "Os filtros de Pesquisa excedem o limite transportável de 8 KiB."
     );
   }
   return route("GET", path);
@@ -1745,34 +2004,44 @@ function mapRead(raw) {
     "annotationSetVersion", "origins", "channels", "states", "categories",
     "includeUncategorized", "subjectIds", "includeDescendants", "annotationId",
     "auditSetVersion", "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
-    "dimensions", "severities", "annotationIds", "comparisonSetId"
+    "dimensions", "severities", "annotationIds", "comparisonSetId",
+    "attachmentOperation", "sourceRevision", "contentHash", "byteSize", "mediaType",
+    "datasets", "from", "to"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
-  const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
+  const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 32 });
   if (!new Set([
     "summary", "outline", "instructional_plan", "course_design",
-    "course_sources", "anchored_annotations", "part_materialization",
-    "study_units", "entities", "audit_cycle", "variant_comparison", "variant_comparisons"
+    "course_sources", "course_source_attachment", "anchored_annotations", "part_materialization",
+    "study_units", "entities", "audit_cycle", "research",
+    "variant_comparison", "variant_comparisons"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
   }
-  if (!["course_sources", "anchored_annotations", "audit_cycle"].includes(view) && [
+  if (!["course_sources", "course_source_attachment", "anchored_annotations", "audit_cycle"].includes(view) && [
     raw.mode, raw.sourceId, raw.targetKind, raw.targetId
   ].some((value) => value != null)) {
     fail("invalid_tool_argument", "A leitura recebeu campos contextuais incompatíveis.");
   }
-  if (view !== "course_sources" && raw.sourceId != null) {
+  if (!["course_sources", "course_source_attachment"].includes(view) && raw.sourceId != null) {
     fail("invalid_tool_argument", "sourceId pertence somente à leitura de Fontes.");
   }
   const annotationFields = [
-    raw.annotationSetVersion, raw.origins, raw.channels, raw.categories,
+    raw.annotationSetVersion, raw.categories,
     raw.includeUncategorized, raw.subjectIds, raw.includeDescendants, raw.annotationId
   ];
   if (view !== "anchored_annotations" && annotationFields.some((value) => value != null)) {
     fail("invalid_tool_argument", "A leitura recebeu filtros de observação incompatíveis.");
   }
-  if (!["anchored_annotations", "audit_cycle"].includes(view) && raw.states != null) {
+  if (!["anchored_annotations", "audit_cycle", "research"].includes(view) && raw.states != null) {
     fail("invalid_tool_argument", "A leitura recebeu estados incompatíveis.");
+  }
+  if (!["anchored_annotations", "research"].includes(view) &&
+      [raw.origins, raw.channels].some((value) => value != null)) {
+    fail("invalid_tool_argument", "A leitura recebeu filtros de origem ou canal incompatíveis.");
+  }
+  if (view !== "research" && [raw.datasets, raw.from, raw.to].some((value) => value != null)) {
+    fail("invalid_tool_argument", "A leitura recebeu filtros de Pesquisa incompatíveis.");
   }
   const auditFields = [
     raw.auditSetVersion, raw.targetStudyUnitId, raw.findingId, raw.correctionId, raw.auditRunId,
@@ -1783,6 +2052,48 @@ function mapRead(raw) {
   }
   if (view !== "variant_comparison" && raw.comparisonSetId != null) {
     fail("invalid_tool_argument", "comparisonSetId pertence somente às variantes.");
+  }
+  const attachmentFields = [
+    raw.attachmentOperation, raw.sourceRevision, raw.contentHash, raw.byteSize,
+    raw.mediaType
+  ];
+  if (view !== "course_source_attachment" && attachmentFields.some((value) => value != null)) {
+    fail("invalid_tool_argument", "A leitura recebeu campos de anexo incompatíveis.");
+  }
+  if (view === "research") {
+    if (raw.authoringPartId != null || raw.materializationId != null ||
+        raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
+        raw.maxBytes != null || raw.mode != null || raw.sourceId != null ||
+        raw.targetKind != null || raw.targetId != null ||
+        annotationFields.some((value) => value != null) ||
+        auditFields.some((value) => value != null) || raw.comparisonSetId != null) {
+      fail("invalid_tool_argument", "A leitura de Pesquisa recebeu campos incompatíveis.");
+    }
+    const query = normalizeCourseAuthoringAnalyticsDomain(() =>
+      normalizeCourseAuthoringAnalyticsQuery({
+        ...(raw.datasets == null ? {} : { datasets: raw.datasets }),
+        channels: raw.channels ?? [],
+        origins: raw.origins ?? [],
+        states: raw.states ?? [],
+        from: raw.from ?? null,
+        to: raw.to ?? null,
+        limit: raw.limit ?? 100,
+        cursor: raw.cursor ?? null
+      })
+    );
+    return boundedCourseAuthoringAnalyticsReadRoute(
+      `/v1/courses/${courseId}/research${searchParams({
+        expectedRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
+        dataset: query.datasets,
+        channel: query.channels,
+        origin: query.origins,
+        state: query.states,
+        from: query.from,
+        to: query.to,
+        limit: query.limit,
+        cursor: query.cursor
+      })}`
+    );
   }
   if (view === "variant_comparison") {
     if (raw.authoringPartId != null || raw.materializationId != null || raw.limit != null ||
@@ -1836,7 +2147,9 @@ function mapRead(raw) {
           ? {
               target: {
                 kind: requiredText(raw.targetKind, "targetKind", { maximum: 32 }),
-                id: requiredCourseSourceText(raw.targetId, "targetId", 240)
+                id: raw.targetKind === "source"
+                  ? requiredOpaqueText(raw.targetId, "targetId", 2_048)
+                  : requiredCourseSourceText(raw.targetId, "targetId", 240)
               },
               includeDescendants: raw.includeDescendants ?? false
             }
@@ -1953,6 +2266,49 @@ function mapRead(raw) {
       scopeRef,
       limit,
       cursor
+    })}`);
+  }
+  if (view === "course_source_attachment") {
+    if (raw.authoringPartId != null || raw.materializationId != null ||
+        raw.limit != null || raw.cursor != null || raw.scope != null ||
+        raw.anchorStudyUnitId != null || raw.direction != null || raw.maxBytes != null ||
+        raw.mode != null || raw.targetKind != null || raw.targetId != null ||
+        annotationFields.some((value) => value != null) ||
+        auditFields.some((value) => value != null) || raw.comparisonSetId != null) {
+      fail("invalid_tool_argument", "A leitura do anexo recebeu campos incompatíveis.");
+    }
+    const operation = requiredText(
+      raw.attachmentOperation,
+      "attachmentOperation",
+      { maximum: 24 }
+    );
+    if (!["prepare_upload", "download"].includes(operation)) {
+      fail("invalid_tool_argument", "attachmentOperation é inválida.", {
+        field: "attachmentOperation"
+      });
+    }
+    const contentHash = requiredText(raw.contentHash, "contentHash", { maximum: 64 });
+    if (!/^[a-f0-9]{64}$/u.test(contentHash)) {
+      fail("invalid_tool_argument", "contentHash é inválido.", { field: "contentHash" });
+    }
+    const byteSize = operation === "prepare_upload"
+      ? positiveInteger(raw.byteSize, "byteSize", 20 * 1024 * 1024)
+      : null;
+    const mediaType = operation === "prepare_upload"
+      ? requiredText(raw.mediaType, "mediaType", { maximum: 32 })
+      : null;
+    if (operation === "prepare_upload" && mediaType !== "application/pdf" ||
+        operation === "download" && (raw.byteSize != null || raw.mediaType != null)) {
+      fail("invalid_tool_argument", "Os metadados do anexo são inválidos.");
+    }
+    return route("GET", `/v1/courses/${courseId}/source-attachments/access${searchParams({
+      expectedRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
+      operation,
+      sourceId: requiredOpaqueText(raw.sourceId, "sourceId", 2_048),
+      sourceRevision: positiveInteger(raw.sourceRevision, "sourceRevision"),
+      contentHash,
+      byteSize,
+      mediaType
     })}`);
   }
   if (view === "course_sources") {
@@ -2522,7 +2878,8 @@ function mapPeople(raw) {
 
 function mapResourceLibrary(raw) {
   exactFields(raw, new Set([
-    "operation", "query", "intent", "slot", "packages", "studyUnitJson", "limit"
+    "operation", "query", "intent", "slot", "packages", "studyUnitJson", "courseId",
+    "studyUnitId", "limit"
   ]));
   const operation = requiredText(raw.operation, "operation", { maximum: 40 });
   if (!new Set([
@@ -2531,10 +2888,27 @@ function mapResourceLibrary(raw) {
   ]).has(operation)) {
     fail("invalid_tool_argument", "operation é inválida.", { field: "operation" });
   }
+  const hasCourseId = raw.courseId != null;
+  const hasStudyUnitId = raw.studyUnitId != null;
+  if (operation !== "preview_study_unit" && (hasCourseId || hasStudyUnitId)) {
+    fail("invalid_tool_argument", "O alvo da prévia só pertence a preview_study_unit.");
+  }
+  if (hasCourseId !== hasStudyUnitId) {
+    fail("invalid_tool_argument", "courseId e studyUnitId precisam ser informados juntos.");
+  }
   return {
     kind: "resource-library",
     requestId: null,
-    body: { ...raw, operation }
+    body: {
+      ...raw,
+      operation,
+      ...(hasCourseId
+        ? {
+          courseId: requiredUuid(raw.courseId, "courseId"),
+          studyUnitId: requiredText(raw.studyUnitId, "studyUnitId", { maximum: 240 })
+        }
+        : {})
+    }
   };
 }
 

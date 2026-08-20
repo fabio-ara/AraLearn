@@ -9,10 +9,11 @@ import { canonicalRevisionString } from "../../src/storage/canonicalRevision.js"
 
 const SOURCE_KINDS = new Set([
   "root_only",
-  "root_and_publication",
-  "publication_only"
+  "root_and_publication"
 ]);
 
+const TASK_OPERATION_TERMINOLOGY_MIGRATION_VERSION = "20260817130000";
+const TASK_OPERATION_TERMINOLOGY_MIGRATION_NAME = "task_operation_terminology";
 const CUTOVER_MIGRATION_VERSION = "20260817140000";
 const CUTOVER_MIGRATION_NAME = "course_identity_cutover";
 const PROFILE_ACCESS_MIGRATION_VERSION = "20260817150000";
@@ -78,6 +79,9 @@ export const COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS = Object.freeze([
   "pedagogical_blueprint_bindings",
   "microsequence_design_bindings",
   "materialization_states",
+  "materialization_state_workspaces",
+  "materialization_state_unmapped_workspaces",
+  "materialization_state_orphans",
   "materialization_manifests",
   "manifest_coverage",
   "manifest_metrics",
@@ -86,7 +90,9 @@ export const COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS = Object.freeze([
 ]);
 
 const COURSE_CUTOVER_LEGACY_AUDIT_ALLOWED_NONZERO = new Set([
-  "observation_threads"
+  "observation_threads",
+  "materialization_states",
+  "materialization_state_workspaces"
 ]);
 
 const PREPARATION_SEALS = new WeakMap();
@@ -95,7 +101,9 @@ const LEGACY_CONTENT_FIELDS = Object.freeze({
   paragraph: Object.freeze(["text"]),
   table: Object.freeze(["columns", "rows"]),
   code: Object.freeze(["prompt", "language", "code"]),
+  sequence: Object.freeze(["prompt", "variant", "items"]),
   tree: Object.freeze(["prompt", "variant", "nodes"]),
+  system_map: Object.freeze(["prompt", "groups", "nodes", "links"]),
   relation_map: Object.freeze([
     "prompt", "leftSet", "rightSet", "relations"
   ]),
@@ -226,6 +234,12 @@ export function courseCutoverLegacyAuditHash(value) {
 
 export function assertCourseCutoverLegacyAudit(value, hash) {
   const countFields = new Set(COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS);
+  const materializationStateIsEmpty =
+    value?.counts?.materialization_states === 0 &&
+    value?.counts?.materialization_state_workspaces === 0;
+  const materializationStateIsKnown =
+    value?.counts?.materialization_states === 247 &&
+    value?.counts?.materialization_state_workspaces === 2;
   if (!isObject(value) ||
       value.contract !==
         "aralearn.legacy-authoring-audit-cutover-preflight.v1" ||
@@ -241,6 +255,7 @@ export function assertCourseCutoverLegacyAudit(value, hash) {
       COURSE_CUTOVER_LEGACY_AUDIT_COUNT_FIELDS.some((field) =>
         !COURSE_CUTOVER_LEGACY_AUDIT_ALLOWED_NONZERO.has(field) &&
         value.counts[field] !== 0) ||
+      (!materializationStateIsEmpty && !materializationStateIsKnown) ||
       !/^[0-9a-f]{64}$/u.test(hash || "") ||
       courseCutoverLegacyAuditHash(value) !== hash) {
     fail(
@@ -259,11 +274,21 @@ function entityVersion(value, label) {
 }
 
 function entityTimestamp(value, label) {
-  if (typeof value !== "string" || !value.trim() ||
-      !Number.isFinite(Date.parse(value))) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u
+    .exec(normalized);
+  if (!match || !Number.isFinite(Date.parse(normalized))) {
     fail("invalid_entity_metadata", `${label} possui instante inválido.`);
   }
-  return new Date(value).toISOString().replace(/\.000Z$/u, "Z");
+  return normalized;
+}
+
+function entityTimestampMicroseconds(value) {
+  const [, seconds, fraction = "", offset] =
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u
+      .exec(value);
+  return BigInt(Date.parse(`${seconds}${offset}`)) * 1000n +
+    BigInt(fraction.padEnd(6, "0") || "0");
 }
 
 function normalizedEntityMetadata(value, label) {
@@ -273,37 +298,13 @@ function normalizedEntityMetadata(value, label) {
   const version = entityVersion(value.entityVersion ?? value.version, label);
   const createdAt = entityTimestamp(value.entityCreatedAt ?? value.createdAt, label);
   const updatedAt = entityTimestamp(value.entityUpdatedAt ?? value.updatedAt, label);
-  if (Date.parse(createdAt) > Date.parse(updatedAt)) {
+  if (entityTimestampMicroseconds(createdAt) > entityTimestampMicroseconds(updatedAt)) {
     fail("invalid_entity_metadata", `${label} possui ordem temporal inválida.`);
   }
   return { version, createdAt, updatedAt };
 }
 
 function entityMetadataForRows(entry, rows) {
-  if (entry.sourceKind === "publication_only") {
-    if (entry.entityDefaults?.basis !== "course_record") {
-      fail(
-        "invalid_entity_metadata_defaults",
-        "Curso sem origem relacional não declara a base temporal dos defaults."
-      );
-    }
-    const defaults = normalizedEntityMetadata(
-      entry.entityDefaults,
-      "Defaults do Curso sem origem relacional"
-    );
-    if (defaults.version !== 1) {
-      fail(
-        "invalid_entity_metadata_defaults",
-        "Curso sem origem relacional deve iniciar entidades na versão 1."
-      );
-    }
-    return rows.map((row) => ({
-      entityType: row.entityType,
-      entityId: row.entityId,
-      ...defaults
-    }));
-  }
-
   const source = new Map();
   for (const row of entry.workspaceEntities || []) {
     const key = entityIdentity(row.entityType, row.entityId);
@@ -359,9 +360,16 @@ function mapChoiceOption(option, index) {
     });
   }
   if (typeof option.text === "string") {
+    if (option.kind !== undefined && option.kind !== "text") {
+      fail(
+        "ambiguous_choice_option",
+        "O tipo declarado da alternativa antiga diverge do conteúdo textual.",
+        { optionIndex: index }
+      );
+    }
     assertExactFields(
       option,
-      new Set(["id", "text", "feedback", "misconceptionId"]),
+      new Set(["id", "kind", "text", "feedback", "misconceptionId"]),
       "ambiguous_choice_option",
       "Alternativa textual"
     );
@@ -376,9 +384,16 @@ function mapChoiceOption(option, index) {
     };
   }
   if (typeof option.code === "string" && text(option.language)) {
+    if (option.kind !== undefined && option.kind !== "code") {
+      fail(
+        "ambiguous_choice_option",
+        "O tipo declarado da alternativa antiga diverge do conteúdo de código.",
+        { optionIndex: index }
+      );
+    }
     assertExactFields(
       option,
-      new Set(["id", "language", "code", "feedback", "misconceptionId"]),
+      new Set(["id", "kind", "language", "code", "feedback", "misconceptionId"]),
       "ambiguous_choice_option",
       "Alternativa de código"
     );
@@ -485,6 +500,279 @@ function mapRelationData(card) {
   };
 }
 
+const SYSTEM_MAP_RESOLUTION_STRATEGY = "hierarchy_and_tables.v1";
+const SEQUENCE_RESOLUTION_STRATEGY = "cycle_table.v1";
+const INLINE_GAP_RESOLUTION_STRATEGY = "escaped_colon.v1";
+
+function systemMapSourceData(card) {
+  const data = {
+    prompt: card.prompt,
+    groups: card.groups === undefined ? null : clone(card.groups),
+    nodes: card.nodes === undefined ? null : clone(card.nodes),
+    links: card.links === undefined ? null : clone(card.links)
+  };
+  if (!Array.isArray(data.groups) || !Array.isArray(data.nodes) ||
+      !Array.isArray(data.links) || data.nodes.length < 1) {
+    fail("invalid_legacy_system_map", "Mapa de sistema antigo está incompleto.");
+  }
+  data.groups.forEach((group, index) => {
+    if (!isObject(group)) {
+      fail("invalid_legacy_system_map", "Grupo antigo não é um objeto.", {
+        groupIndex: index
+      });
+    }
+    assertExactFields(
+      group,
+      new Set(["id", "label", "kind", "parentId"]),
+      "invalid_legacy_system_map",
+      "Grupo antigo"
+    );
+  });
+  data.nodes.forEach((node, index) => {
+    if (!isObject(node)) {
+      fail("invalid_legacy_system_map", "Nó antigo não é um objeto.", {
+        nodeIndex: index
+      });
+    }
+    assertExactFields(
+      node,
+      new Set(["id", "label", "kind", "groupId"]),
+      "invalid_legacy_system_map",
+      "Nó antigo"
+    );
+  });
+  data.links.forEach((link, index) => {
+    if (!isObject(link)) {
+      fail("invalid_legacy_system_map", "Conexão antiga não é um objeto.", {
+        linkIndex: index
+      });
+    }
+    assertExactFields(
+      link,
+      new Set(["id", "from", "to", "label", "directed"]),
+      "invalid_legacy_system_map",
+      "Conexão antiga"
+    );
+  });
+  const groupIds = data.groups.map(({ id }) => text(id));
+  const nodeIds = data.nodes.map(({ id }) => text(id));
+  const linkIds = data.links.map(({ id }) => text(id));
+  const groups = new Set(groupIds);
+  const nodes = new Set(nodeIds);
+  if (groupIds.some((id) => !id) || nodeIds.some((id) => !id) ||
+      linkIds.some((id) => !id) || groups.size !== groupIds.length ||
+      nodes.size !== nodeIds.length || new Set(linkIds).size !== linkIds.length ||
+      groupIds.some((id) => nodes.has(id)) ||
+      data.groups.some(({ label, kind, parentId }) =>
+        !text(label) || !text(kind) || (parentId !== null && !groups.has(text(parentId)))) ||
+      data.nodes.some(({ label, kind, groupId }) =>
+        !text(label) || !text(kind) || (groupId !== null && !groups.has(text(groupId)))) ||
+      data.links.some(({ from, to, label, directed }) =>
+        !nodes.has(text(from)) || !nodes.has(text(to)) || !text(label) ||
+        typeof directed !== "boolean")) {
+    fail(
+      "invalid_legacy_system_map",
+      "Mapa de sistema antigo possui identidade, relação ou rótulo inválido."
+    );
+  }
+  return data;
+}
+
+function systemMapInventoryLabel(value) {
+  return /\[\[[^\x5B\x5D]*?::[^\x5B\x5D]*?\]\]/u.test(String(value))
+    ? "Ver rótulo no diagrama"
+    : value;
+}
+
+function systemMapResolution(card, resolutions) {
+  const data = systemMapSourceData(card);
+  const fingerprint = canonicalSha256(data);
+  const resolution = resolutions?.systemMaps?.[fingerprint];
+  if (!isObject(resolution)) {
+    fail(
+      "system_map_resolution_required",
+      "Mapa de sistema antigo exige resolução semântica explícita.",
+      { sourceFingerprint: fingerprint }
+    );
+  }
+  if (resolution.sourceFingerprint !== fingerprint) {
+    fail(
+      "system_map_resolution_mismatch",
+      "A resolução do mapa de sistema não corresponde à origem.",
+      { sourceFingerprint: fingerprint }
+    );
+  }
+  assertExactFields(
+    resolution,
+    new Set(["sourceFingerprint", "strategy"]),
+    "invalid_system_map_resolution",
+    "Resolução do mapa de sistema"
+  );
+  if (resolution.strategy !== SYSTEM_MAP_RESOLUTION_STRATEGY) {
+    fail(
+      "invalid_system_map_resolution",
+      "A resolução do mapa de sistema não declara a estratégia comprovada."
+    );
+  }
+  const elementRows = [
+    ...data.groups.map((group) => [
+      "Grupo",
+      group.id,
+      systemMapInventoryLabel(group.label),
+      group.kind,
+      group.parentId ?? ""
+    ]),
+    ...data.nodes.map((node) => [
+      "Componente",
+      node.id,
+      systemMapInventoryLabel(node.label),
+      node.kind,
+      node.groupId ?? ""
+    ])
+  ];
+  if (elementRows.length > 30) {
+    fail(
+      "invalid_system_map_resolution",
+      "Mapa de sistema excede a tabela aprovada para esta resolução."
+    );
+  }
+  const content = [{
+    id: `${card.id}-content-hierarchy`,
+    package: "aralearn.resource.tree",
+    version: "1.0.0",
+    data: {
+      prompt: data.prompt,
+      variant: "hierarchy",
+      nodes: [
+        ...data.groups.map((group) => ({
+          id: group.id,
+          label: group.label,
+          parentId: group.parentId
+        })),
+        ...data.nodes.map((node) => ({
+          id: node.id,
+          label: node.label,
+          parentId: node.groupId
+        }))
+      ]
+    }
+  }, {
+    id: `${card.id}-content-elements`,
+    package: "aralearn.resource.table",
+    version: "1.0.0",
+    data: {
+      caption: "Limites e componentes",
+      layout: "wide",
+      columns: ["Classe", "Identificador", "Rótulo", "Tipo", "Pertence a"],
+      rows: elementRows
+    }
+  }];
+  if (data.links.length) {
+    content.push({
+      id: `${card.id}-content-links`,
+      package: "aralearn.resource.table",
+      version: "1.0.0",
+      data: {
+        caption: "Conexões",
+        layout: "wide",
+        columns: ["Identificador", "Origem", "Relação", "Destino", "Direcionada"],
+        rows: data.links.map((link) => [
+          link.id,
+          link.from,
+          link.label,
+          link.to,
+          link.directed ? "Sim" : "Não"
+        ])
+      }
+    });
+  }
+  return content;
+}
+
+function sequenceResolution(card, resolutions) {
+  const data = {
+    prompt: card.prompt,
+    variant: card.variant,
+    items: card.items === undefined ? null : clone(card.items)
+  };
+  if (data.variant !== "cycle" || !Array.isArray(data.items) ||
+      data.items.length < 2 || data.items.length > 20) {
+    fail(
+      "invalid_legacy_sequence",
+      "Sequência antiga não corresponde ao ciclo observado no corte."
+    );
+  }
+  const ids = new Set();
+  data.items.forEach((item, index) => {
+    if (!isObject(item)) {
+      fail("invalid_legacy_sequence", "Etapa antiga não é um objeto.", {
+        itemIndex: index
+      });
+    }
+    assertExactFields(
+      item,
+      new Set(["id", "label", "detail"]),
+      "invalid_legacy_sequence",
+      "Etapa antiga"
+    );
+    const id = text(item.id);
+    if (!id || ids.has(id) || !text(item.label) ||
+        (item.detail !== undefined && typeof item.detail !== "string")) {
+      fail(
+        "invalid_legacy_sequence",
+        "Etapa antiga possui identidade, rótulo ou detalhe inválido.",
+        { itemIndex: index }
+      );
+    }
+    ids.add(id);
+  });
+  const fingerprint = canonicalSha256(data);
+  const resolution = resolutions?.sequences?.[fingerprint];
+  if (!isObject(resolution)) {
+    fail(
+      "sequence_resolution_required",
+      "Sequência antiga exige resolução semântica explícita.",
+      { sourceFingerprint: fingerprint }
+    );
+  }
+  if (resolution.sourceFingerprint !== fingerprint) {
+    fail(
+      "sequence_resolution_mismatch",
+      "A resolução da sequência não corresponde à origem.",
+      { sourceFingerprint: fingerprint }
+    );
+  }
+  assertExactFields(
+    resolution,
+    new Set(["sourceFingerprint", "strategy"]),
+    "invalid_sequence_resolution",
+    "Resolução da sequência"
+  );
+  if (resolution.strategy !== SEQUENCE_RESOLUTION_STRATEGY) {
+    fail(
+      "invalid_sequence_resolution",
+      "A resolução da sequência não declara a estratégia comprovada."
+    );
+  }
+  return [{
+    id: `${card.id}-content-cycle`,
+    package: "aralearn.resource.table",
+    version: "1.0.0",
+    data: {
+      prompt: data.prompt,
+      caption: "Ciclo: depois da última etapa, a leitura retorna à primeira.",
+      layout: "wide",
+      columns: ["Ordem", "Identificador", "Etapa", "Detalhe"],
+      rows: data.items.map((item, index) => [
+        String(index + 1),
+        item.id,
+        item.label,
+        item.detail ?? ""
+      ])
+    }
+  }];
+}
+
 function assertLegacyFieldContract(card) {
   const contentFields = card.resource === "choice"
     ? ["text"]
@@ -517,7 +805,13 @@ function legacyContentData(card) {
   );
 }
 
-function legacyContent(card) {
+function legacyContent(card, resolutions) {
+  if (card.resource === "system_map") {
+    return systemMapResolution(card, resolutions);
+  }
+  if (card.resource === "sequence") {
+    return sequenceResolution(card, resolutions);
+  }
   if (card.resource === "choice") {
     if (typeof card.text !== "string" || card.text === card.question) return [];
     return [{
@@ -597,7 +891,51 @@ function replaceAtPath(root, path, before, after) {
   target[field] = target[field].replace(before, after);
 }
 
-function convertInlineGap(card, content) {
+function resolvedInlineGap(location, resolutions) {
+  if (!location.answer.includes("\\") && !location.optionSource.includes("\\")) {
+    return location;
+  }
+  const sourceFingerprint = canonicalSha256({
+    path: location.path,
+    source: location.source,
+    token: location.token
+  });
+  const resolution = resolutions?.inlineGaps?.[sourceFingerprint];
+  if (!isObject(resolution)) {
+    fail(
+      "inline_gap_resolution_required",
+      "Lacuna antiga com escape exige resolução semântica explícita.",
+      { sourceFingerprint }
+    );
+  }
+  if (resolution.sourceFingerprint !== sourceFingerprint) {
+    fail(
+      "inline_gap_resolution_mismatch",
+      "A resolução da lacuna não corresponde à origem.",
+      { sourceFingerprint }
+    );
+  }
+  assertExactFields(
+    resolution,
+    new Set(["sourceFingerprint", "strategy"]),
+    "invalid_inline_gap_resolution",
+    "Resolução da lacuna"
+  );
+  if (resolution.strategy !== INLINE_GAP_RESOLUTION_STRATEGY ||
+      /\\(?!:)/u.test(location.answer + location.optionSource)) {
+    fail(
+      "invalid_inline_gap_resolution",
+      "A resolução da lacuna não corresponde ao escape de dois-pontos comprovado."
+    );
+  }
+  return {
+    ...location,
+    answer: location.answer.replaceAll("\\:", ":"),
+    optionSource: location.optionSource.replaceAll("\\:", ":")
+  };
+}
+
+function convertInlineGap(card, content, resolutions) {
   const locations = content.flatMap((instance) =>
     inlineGapLocations(instance.data).map((location) => ({
       ...location,
@@ -611,7 +949,7 @@ function convertInlineGap(card, content) {
       { gapCount: locations.length }
     );
   }
-  const [location] = locations;
+  const location = resolvedInlineGap(locations[0], resolutions);
   if (!location.answer || location.answer !== location.answer.trim() ||
       !location.optionSource || location.optionSource !== location.optionSource.trim() ||
       ["\\", "[", "]"].some((marker) =>
@@ -648,7 +986,7 @@ function convertInlineGap(card, content) {
   };
 }
 
-function convertLegacyCard(card) {
+function convertLegacyCard(card, resolutions) {
   if (!isObject(card)) fail("invalid_legacy_card", "Unidade antiga não é um objeto.");
   assertExactFields(
     card,
@@ -687,14 +1025,14 @@ function convertLegacyCard(card) {
   }
   const sources = card.sources === undefined ? [] : clone(card.sources);
   const topics = card.topics === undefined ? [] : clone(card.topics);
-  const content = legacyContent(card);
+  const content = legacyContent(card, resolutions);
   if (card.exercise === "gap" && !hasInlineGap) {
     fail("ambiguous_inline_gap", "Exercício antigo de lacuna não possui alvo.");
   }
   const response = role === "theory"
     ? null
     : card.exercise === "gap"
-      ? convertInlineGap(card, content)
+      ? convertInlineGap(card, content, resolutions)
       : choiceResponse(card);
   const converted = {
     id: card.id,
@@ -755,7 +1093,7 @@ function repairPackageInstance(instance, resolutions) {
 function convertCard(card, resolutions) {
   if (Object.hasOwn(card || {}, "resource") || Object.hasOwn(card || {}, "exercise") ||
       Object.hasOwn(card || {}, "kind")) {
-    return convertLegacyCard(card);
+    return convertLegacyCard(card, resolutions);
   }
   const next = clone(card);
   next.content = (next.content || []).map((instance) =>
@@ -1129,7 +1467,7 @@ function validateTopology(snapshot) {
     fail("invalid_cutover_snapshot", "Snapshot de origem possui contrato inválido.");
   }
   assertCourseCutoverLegacyAudit(snapshot.legacyAudit, snapshot.legacyAuditHash);
-  const totals = { root_only: 0, root_and_publication: 0, publication_only: 0 };
+  const totals = { root_only: 0, root_and_publication: 0 };
   const ids = new Set();
   let artifactCount = 0;
   for (const entry of snapshot.topology) {
@@ -1139,15 +1477,12 @@ function validateTopology(snapshot) {
     }
     ids.add(entry.courseId);
     totals[entry.sourceKind] += 1;
-    const needsWorkspace = entry.sourceKind !== "publication_only";
     const needsArtifact = entry.sourceKind !== "root_only";
     const header = entry.targetHeader;
-    if (Boolean(text(entry.workspaceId)) !== needsWorkspace ||
-        Boolean(text(entry.workspaceCourseId)) !== needsWorkspace ||
-        (Number.isInteger(entry.workspaceRevision) && entry.workspaceRevision >= 0) !==
-          needsWorkspace ||
+    if (!text(entry.workspaceId) || !text(entry.workspaceCourseId) ||
+        !Number.isInteger(entry.workspaceRevision) || entry.workspaceRevision < 0 ||
         !Array.isArray(entry.workspaceEntities) ||
-        (entry.workspaceEntities.length > 0) !== needsWorkspace ||
+        entry.workspaceEntities.length < 1 ||
         Boolean(text(entry.legacyCourseId)) !== needsArtifact ||
         Boolean(text(entry.legacyRevisionHash)) !== needsArtifact ||
         Boolean(isObject(entry.artifact)) !== needsArtifact) {
@@ -1156,41 +1491,21 @@ function validateTopology(snapshot) {
         "Topologia não corresponde aos metadados de sua origem."
       );
     }
-    if (needsWorkspace) {
-      if (entry.entityDefaults !== null || entry.workspaceEntities.some((row) => {
-        try {
-          normalizedEntityMetadata(
-            row,
-            `Entidade ${row?.entityType || "desconhecida"}/${row?.entityId || "sem-id"}`
-          );
-          return false;
-        } catch {
-          return true;
-        }
-      })) {
-        fail(
-          "invalid_cutover_topology",
-          "Topologia relacional não preserva metadados por entidade."
+    if (entry.workspaceEntities.some((row) => {
+      try {
+        normalizedEntityMetadata(
+          row,
+          `Entidade ${row?.entityType || "desconhecida"}/${row?.entityId || "sem-id"}`
         );
+        return false;
+      } catch {
+        return true;
       }
-    } else {
-      if (!isObject(entry.entityDefaults) ||
-          entry.entityDefaults.basis !== "course_record") {
-        fail(
-          "invalid_cutover_topology",
-          "Topologia sem raiz não declara defaults técnicos auditáveis."
-        );
-      }
-      const defaults = normalizedEntityMetadata(
-        entry.entityDefaults,
-        "Defaults do Curso sem origem relacional"
+    })) {
+      fail(
+        "invalid_cutover_topology",
+        "Topologia relacional não preserva metadados por entidade."
       );
-      if (defaults.version !== 1) {
-        fail(
-          "invalid_cutover_topology",
-          "Topologia sem raiz deve iniciar entidades na versão 1."
-        );
-      }
     }
     if (!isObject(header) || !text(header.title) || !text(header.goal) ||
         header.title !== text(header.title) || header.goal !== text(header.goal) ||
@@ -1200,8 +1515,7 @@ function validateTopology(snapshot) {
     if (needsArtifact) artifactCount += 1;
   }
   if (snapshot.topology.length !== 8 || totals.root_only !== 4 ||
-      totals.root_and_publication !== 2 || totals.publication_only !== 2 ||
-      artifactCount !== 4) {
+      totals.root_and_publication !== 4 || artifactCount !== 4) {
     fail("unexpected_cutover_topology", "Topologia não corresponde ao corte conhecido.", {
       courseCount: snapshot.topology.length,
       totals
@@ -1396,9 +1710,7 @@ export function attestPreparedCourseCutover(preparation) {
       );
     }
     const expectedInputs = {};
-    if (entry.sourceKind !== "publication_only") {
-      expectedInputs.workspaceHash = canonicalSha256(assembleWorkspaceCourse(entry));
-    }
+    expectedInputs.workspaceHash = canonicalSha256(assembleWorkspaceCourse(entry));
     if (entry.sourceKind !== "root_only") {
       if (!isObject(entry.artifact) || entry.artifact.hash !== entry.legacyRevisionHash) {
         fail("cutover_attestation_failed", "Referência de artefato mudou após a leitura.");
@@ -1538,17 +1850,14 @@ export async function prepareCourseCutover(snapshot, {
   validateTopology(snapshot);
   const prepared = [];
   for (const entry of snapshot.topology) {
-    let live = null;
     let artifact = null;
     const inputs = {};
-    if (entry.sourceKind !== "publication_only") {
-      const liveSource = assembleWorkspaceCourse(entry);
-      inputs.workspaceHash = canonicalSha256(liveSource);
-      live = convertCourseDocument(liveSource, {
-        targetCourseId: entry.courseId,
-        resolutions
-      });
-    }
+    const liveSource = assembleWorkspaceCourse(entry);
+    inputs.workspaceHash = canonicalSha256(liveSource);
+    const live = convertCourseDocument(liveSource, {
+      targetCourseId: entry.courseId,
+      resolutions
+    });
     if (entry.sourceKind !== "root_only") {
       const loaded = await loadArtifact(entry, artifactLoader);
       inputs.artifactByteHash = loaded.byteHash;
@@ -1569,7 +1878,7 @@ export async function prepareCourseCutover(snapshot, {
         "Raiz viva e publicação sobrepostas não são semanticamente idênticas."
       );
     }
-    const converted = live || artifact;
+    const converted = live;
     assertHeader(entry, converted);
     const entityMetadata = entityMetadataForRows(entry, converted.rows);
     const manifest = buildManifest(entry, converted, entityMetadata, inputs);
@@ -1659,8 +1968,49 @@ function withoutTransactionGuards(body) {
     .trim();
 }
 
+function transactionlessMigrationBody(migrationSql, label) {
+  if (typeof migrationSql !== "string" || !migrationSql.trim()) {
+    fail("migration_transaction_drift", `Limites transacionais de ${label} mudaram.`);
+  }
+  const beginCount = [...migrationSql.matchAll(/^begin;\s*$/gimu)].length;
+  const commitCount = [...migrationSql.matchAll(/^commit;\s*$/gimu)].length;
+  if (beginCount === 0 && commitCount === 0) {
+    return withoutTransactionGuards(migrationSql.trim());
+  }
+  if (beginCount === 1 && commitCount === 1) {
+    return withoutTransactionGuards(transactionBody(migrationSql, label).body);
+  }
+  fail("migration_transaction_drift", `Limites transacionais de ${label} mudaram.`);
+}
+
+function preparePostCutoverMigrations(migrations) {
+  if (!Array.isArray(migrations) || migrations.length < 1) {
+    fail("invalid_cutover_execution", "Migrations posteriores ao corte estão ausentes.");
+  }
+  let previousVersion = COURSE_AUDIT_MIGRATION_VERSION;
+  return migrations.map((migration) => {
+    if (!isObject(migration) || Object.keys(migration).length !== 3 ||
+        !/^\d{14}$/u.test(migration.version || "") ||
+        !/^[a-z][a-z0-9_]*$/u.test(migration.name || "") ||
+        typeof migration.sql !== "string" ||
+        migration.version <= previousVersion) {
+      fail(
+        "invalid_cutover_execution",
+        "A sequência de migrations posteriores ao corte é inválida."
+      );
+    }
+    previousVersion = migration.version;
+    return {
+      version: migration.version,
+      name: migration.name,
+      body: transactionlessMigrationBody(migration.sql, `a migration ${migration.name}`)
+    };
+  });
+}
+
 export function buildCourseCutoverSql(
   preparation,
+  taskOperationTerminologyMigrationSql,
   migrationSql,
   profileAccessMigrationSql,
   authoringPlanMigrationSql,
@@ -1668,10 +2018,13 @@ export function buildCourseCutoverSql(
   courseDesignMigrationSql,
   courseSourcesMigrationSql,
   courseAnnotationsMigrationSql,
-  courseAuditMigrationSql
+  courseAuditMigrationSql,
+  postCutoverMigrations
 ) {
   if (!isObject(preparation) || !Array.isArray(preparation.rows) ||
-      !preparation.rows.length || typeof migrationSql !== "string" ||
+      !preparation.rows.length ||
+      typeof taskOperationTerminologyMigrationSql !== "string" ||
+      typeof migrationSql !== "string" ||
       typeof profileAccessMigrationSql !== "string" ||
       typeof authoringPlanMigrationSql !== "string" ||
       typeof studyUnitInspectionMigrationSql !== "string" ||
@@ -1687,6 +2040,10 @@ export function buildCourseCutoverSql(
   attestPreparedCourseCutover(preparation);
   assertMigrationStagingSchema(migrationSql);
   const rows = preparation.rows;
+  const taskOperationTerminologyTransaction = transactionBody(
+    taskOperationTerminologyMigrationSql,
+    "a migration de terminologia das operações-alvo"
+  );
   const identityTransaction = transactionBody(
     migrationSql,
     "a migration de identidade"
@@ -1737,6 +2094,9 @@ export function buildCourseCutoverSql(
   const courseAuditExecutionBody = withoutTransactionGuards(
     courseAuditTransaction.body
   );
+  const preparedPostCutoverMigrations = preparePostCutoverMigrations(
+    postCutoverMigrations
+  );
   const guardPositions = COURSE_CUTOVER_TRANSACTION_GUARDS.map((guard) =>
     migrationSql.indexOf(guard));
   if (COURSE_CUTOVER_TRANSACTION_GUARDS.some((guard) =>
@@ -1780,6 +2140,7 @@ export function buildCourseCutoverSql(
     `copy course_content_import_v1(${columns.join(",")}) from stdin with (format csv, null '\\N');`,
     csv,
     "\\.",
+    taskOperationTerminologyTransaction.body,
     identityExecutionBody,
     profileAccessTransaction.body,
     authoringPlanExecutionBody,
@@ -1788,6 +2149,11 @@ export function buildCourseCutoverSql(
     courseSourcesExecutionBody,
     courseAnnotationsExecutionBody,
     courseAuditExecutionBody,
+    ...preparedPostCutoverMigrations.map(({ body }) => body),
+    "insert into supabase_migrations.schema_migrations(version,statements,name)",
+    `values (${sqlText(TASK_OPERATION_TERMINOLOGY_MIGRATION_VERSION)},` +
+      `array[${sqlText(taskOperationTerminologyTransaction.body)}]::text[],` +
+      `${sqlText(TASK_OPERATION_TERMINOLOGY_MIGRATION_NAME)});`,
     "insert into supabase_migrations.schema_migrations(version,statements,name)",
     `values (${sqlText(CUTOVER_MIGRATION_VERSION)},` +
       `array[${sqlText(identityTransaction.body)}]::text[],` +
@@ -1820,6 +2186,10 @@ export function buildCourseCutoverSql(
     `values (${sqlText(COURSE_AUDIT_MIGRATION_VERSION)},` +
       `array[${sqlText(courseAuditTransaction.body)}]::text[],` +
       `${sqlText(COURSE_AUDIT_MIGRATION_NAME)});`,
+    ...preparedPostCutoverMigrations.flatMap(({ version, name, body }) => [
+      "insert into supabase_migrations.schema_migrations(version,statements,name)",
+      `values (${sqlText(version)},array[${sqlText(body)}]::text[],${sqlText(name)});`
+    ]),
     "commit;",
     ""
   ].join("\n");

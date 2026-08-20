@@ -158,6 +158,20 @@ function formattedInstant(value) {
   }).format(date);
 }
 
+function formattedRecordedDuration(timestamps) {
+  const startedAt = new Date(timestamps?.createdAt || "").getTime();
+  const endedAt = new Date(
+    timestamps?.resolvedAt || timestamps?.dismissedAt || timestamps?.updatedAt || ""
+  ).getTime();
+  if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt < startedAt) return "Não calculável";
+  const minutes = Math.floor((endedAt - startedAt) / 60000);
+  if (minutes < 1) return "Menos de 1 minuto";
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder ? `${hours} h ${remainder} min` : `${hours} h`;
+}
+
 function pathLabel(path = []) {
   return path.map(({ label: value }) => value).filter(Boolean).join(" › ") ||
     "Caminho preservado sem rótulos";
@@ -553,6 +567,9 @@ function renderDetail(state) {
     '<div class="course-audit-links">' +
     renderDeepLink(finding.deepLinks.detail, state.courseId, "Link do achado") +
     renderDeepLink(finding.deepLinks.target, state.courseId, "Abrir Unidade") + annotationLinks + "</div>" +
+    '<dl class="course-audit-summary" aria-label="Métricas do ciclo">' +
+    '<div><dt>Unidades afetadas</dt><dd>1</dd></div>' +
+    `<div><dt>Tempo registrado</dt><dd>${escapeHtml(formattedRecordedDuration(finding.timestamps))}</dd></div></dl>` +
     renderCheck(finding.check, state.detailContextPage?.context, state.courseId) +
     (state.detailContextError
       ? `<p class="course-authoring-notice" role="status">Contexto corrente indisponível: ${escapeHtml(state.detailContextError)}. As referências históricas foram preservadas.</p>`
@@ -623,7 +640,7 @@ function renderRunCard(run, courseId) {
     `<p class="course-audit-meta">Curso v${run.courseRevision} · Unidade ${escapeHtml(run.target.studyUnitId)} v${run.target.version}</p></div>` +
     `<span class="course-audit-badge">${run.findingsCreated === 0
       ? "Nenhum achado criado"
-      : `${run.findingsCreated} achado(s) criado(s)`}</span></header>` +
+      : `${run.findingsCreated} ${run.findingsCreated === 1 ? "achado criado" : "achados criados"}`}</span></header>` +
     renderResultCounts(run.resultCounts) +
     '<div class="course-audit-links">' +
     renderDeepLink(run.deepLink, courseId, "Abrir rodada") + "</div></article>";
@@ -715,7 +732,17 @@ function renderAuditView(state) {
     (state.message ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.message)}</p>` : "") +
     (state.suggestedAnnotationActions.length
       ? '<section class="course-audit-context-card"><h3>Observações sugeridas</h3>' +
-        `<p>${state.suggestedAnnotationActions.length} ação(ões) sugerida(s). Revise-as em Observações; nada foi alterado automaticamente.</p></section>`
+        '<p>Revise cada sugestão em sua observação; nenhuma delas é aplicada automaticamente.</p><ul>' +
+        state.suggestedAnnotationActions.map((suggestion) => {
+          const label = suggestion.action === "resolve" ? "Revisar sugestão de resolução" :
+            "Revisar sugestão de reabertura";
+          const href = buildCourseAuthoringRoute(state.courseId, {
+            section: "observations",
+            annotationId: suggestion.annotationId
+          });
+          return `<li><a href="${escapeHtml(href)}" data-audit-action="navigate-deep-link">` +
+            `${escapeHtml(label)}</a><span>Observação v${suggestion.annotationVersion}</span></li>`;
+        }).join("") + "</ul></section>"
       : "") + content + renderEditor(state);
 }
 

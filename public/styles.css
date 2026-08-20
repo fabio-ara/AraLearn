@@ -3419,6 +3419,10 @@ input:-webkit-autofill:focus {
   background: var(--action-primary-subtle);
 }
 
+.account-profile-avatar > :is(img, span)[hidden] {
+  display: none;
+}
+
 .account-profile-avatar-icon {
   width: 28px;
   height: 28px;
@@ -3965,10 +3969,6 @@ input:-webkit-autofill:focus {
   gap: 8px;
 }
 
-.comment-sheet {
-  max-height: min(70dvh, 560px);
-}
-
 .editor-head {
   display: grid;
   grid-template-columns: 48px 1fr 48px;
@@ -4030,28 +4030,6 @@ input:-webkit-autofill:focus {
   min-height: 28dvh;
 }
 
-.comment-follow-up {
-  display: grid;
-  gap: 5px;
-  padding: 9px 10px;
-  border-left: 2px solid var(--action-primary);
-  border-radius: 0 10px 10px 0;
-  background: var(--surface-sunken);
-}
-
-.comment-follow-up span,
-.comment-follow-up small {
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-}
-
-.comment-follow-up p {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: var(--type-sm);
-  line-height: 1.4;
-}
-
 .study-observation-category-list {
   display: flex;
   gap: 6px;
@@ -4097,15 +4075,6 @@ input:-webkit-autofill:focus {
 .study-observation-category-chip:focus-within {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-}
-
-.comment-delete {
-  justify-self: end;
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  min-height: 42px;
-  color: var(--status-danger);
 }
 
 /* Observações pessoais: lista plural, estado de sincronização e composição no mesmo sheet. */

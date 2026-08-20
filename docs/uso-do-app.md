@@ -1,100 +1,79 @@
 # Uso do aplicativo
 
-Este guia descreve o runtime canônico da revisão corrente. O site e o APK da
-última release podem continuar na versão anterior até a migração e a promoção
-hospedadas.
+Este guia reúne as operações disponíveis no site e no aplicativo Android. O
+[Guia do estudante](guia-estudante.md) e o [Guia do professor e
+autor](guia-professor-autor.md) desenvolvem os dois percursos em separado.
 
-## Antes de usar: cinco conceitos
+## Conceitos para começar
 
-### Conta
+Uma **conta** autentica uma pessoa. O perfil contém nome e foto opcionais e
+serve para identificar relações diretas de Curso.
 
-A conta autentica uma pessoa. O perfil humano mínimo contém nome e foto
-opcionais; ele não é perfil social.
+Um **Curso vivo** é o mesmo objeto em Estudo, Autoria e ferramentas
+conversacionais. O conteúdo pode mudar sob a mesma identidade e fica disponível
+para Estudo assim que contém Unidades válidas.
 
-### Curso vivo
+**Estudo** permite abrir Cursos próprios ou compartilhados, avançar, marcar
+Unidades para rever e registrar Observações próprias.
 
-Curso é o objeto concreto compartilhado entre Estudo, Autoria e MCP. Ele pode
-ser alterado sem trocar de identidade e não precisa passar por um estágio de
-publicação para ser estudado.
+**Autoria** apresenta somente Cursos próprios. Ela reúne Planejamento,
+Parâmetros, Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes,
+Pesquisa e Pessoas.
 
-### Estudo
-
-Estudo lê Cursos próprios e Cursos com acesso direto. Ele altera o próprio
-estado pessoal — progresso e marcas para rever — e permite criar Anotações
-ancoradas próprias em Unidades de estudo.
-
-### Autoria
-
-Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
-e editar planejamento e Partes, configurar Parâmetros, manter Fontes e Âncoras,
-percorrer a composição em uma sequência vertical, triar Observações, auditar e
-acompanhar correções verificáveis, copiar um pedido de materialização para o
-chat conectado e gerir acesso. O MCP autoral
-possui a mesma restrição de propriedade e opera o mesmo estado persistido.
-
-### Réplica local
-
-IndexedDB conserva lista conhecida, Cursos abertos e estado pessoal. A réplica
-permite retomada, mas PostgreSQL continua sendo a autoridade para propriedade,
-acesso e estado compartilhado.
+Uma **réplica local** é a cópia dos dados necessários à continuidade no
+dispositivo. Ela permite retomar conteúdo carregado, enquanto o servidor
+continua responsável por propriedade, acesso e estado compartilhado.
 
 ## Criar uma conta
 
 1. Na tela de acesso, use **Criar conta**.
 2. Informe e-mail e senha com pelo menos oito caracteres.
 3. Envie o formulário.
-4. Se a configuração exigir confirmação, abra a mensagem recebida.
+4. Se a instalação exigir confirmação, abra a mensagem recebida.
 5. Volte ao aplicativo e entre.
 
-Não reutilize credencial administrativa do Supabase. Cada pessoa deve operar
-com sua própria conta para que autorização e autoria sejam auditáveis.
+Cada pessoa deve usar a própria conta. Assim, propriedade, acesso e autoria
+continuam associados à identidade correta.
 
-## Entrar
+## Entrar e recuperar a senha
 
-1. Informe e-mail e senha.
-2. Use **Entrar**.
-3. Aguarde as etapas Dispositivo, Conta e Cursos.
+Para entrar, informe e-mail e senha e use **Entrar**. A preparação apresenta as
+etapas **Dispositivo**, **Conta** e **Cursos**. Se os dados locais estiverem
+inconsistentes, a tela oferece tentar novamente ou limpar o dispositivo. A
+limpeza exige confirmação porque descarta mudanças ainda não sincronizadas.
 
-Se a preparação local falhar, a tela oferece tentar novamente ou limpar os
-dados do dispositivo. A limpeza descarta alterações offline ainda não enviadas
-e pede confirmação explícita.
+Para recuperar a senha:
 
-## Recuperar a senha
+1. use **Recuperar senha**;
+2. informe o e-mail;
+3. abra o link recebido;
+4. defina e repita a nova senha.
 
-1. Use **Recuperar senha**.
-2. Informe o e-mail.
-3. Abra o link recebido no mesmo contexto autorizado.
-4. Defina e repita a nova senha.
+Um link inválido ou pertencente a um fluxo de autenticação incompatível é
+recusado. Nesse caso, solicite outro link pelo aplicativo.
 
-Links em fluxo implícito inseguro são recusados; solicite um novo link quando o
-aplicativo informar esse problema.
+## Alterar perfil e aparência
 
-## Alterar o perfil
+Abra **Conta e aparência**. O nome aceita de 1 a 120 caracteres. A foto pode ser
+JPEG, PNG ou WebP de até 512 KiB. Use os controles junto à foto para escolher ou
+remover uma imagem e salve o perfil.
 
-Abra **Conta e aparência**.
+A foto fica em armazenamento privado. Ao substituí-la, o aplicativo primeiro
+registra a nova referência e depois remove o objeto anterior. Uma falha nessa
+segunda etapa é informada para que a remoção possa ser refeita.
 
-- Digite um nome de 1 a 120 caracteres e salve.
-- Para a foto, escolha JPEG, PNG ou WebP de até 512 KiB.
-- Use remover para retirar a foto corrente.
-
-A foto é privada. O aplicativo envia o objeto primeiro, registra sua chave no
-perfil e então tenta apagar a foto anterior. Se a última limpeza falhar, a tela
-informa que ficou pendente.
-
-## Alterar a aparência
-
-Em **Conta e aparência**, escolha tema do sistema, claro ou escuro. A mudança é
-local ao dispositivo e não altera nenhum Curso.
+Na mesma área, escolha o tema do sistema, claro ou escuro. A preferência fica no
+dispositivo e não altera nenhum Curso.
 
 ## Alternar entre Estudo e Autoria
 
-Na Home, use o seletor **Estudo / Autoria**.
+Use o seletor **Estudo / Autoria** na tela inicial.
 
-- Estudo mostra todos os Cursos acessíveis.
-- Autoria mostra somente Cursos próprios.
+- **Estudo** mostra todos os Cursos acessíveis.
+- **Autoria** mostra somente Cursos próprios.
 
-Um Curso compartilhado não desapareceu quando não aparece na Autoria: a
-concessão significa prática, não edição.
+A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
+a pessoa pode estudar, e a edição permanece com o proprietário.
 
 ## Abrir e percorrer um Curso
 
@@ -104,281 +83,207 @@ concessão significa prática, não edição.
 4. Escolha uma Microssequência didática.
 5. Abra uma Unidade de estudo.
 
-Na primeira abertura, o cliente baixa a composição em páginas, verifica que
-todas pertencem à mesma revisão, recompõe o documento e o valida. Depois disso,
-o Curso fica disponível no cache local.
+Na primeira abertura, o aplicativo baixa a composição em páginas, confirma que
+todas pertencem à mesma revisão e valida o documento. Depois, mantém uma cópia
+local para retomada.
 
-Para consultar a proveniência de uma Unidade, use **Fontes** dentro dela. A
-leitura só acontece ao abrir o painel. Fonte oculta ou legada não resolvida não
-aparece; **Citação** não entrega URL e **Citação e link** pode entregá-la. O
-Estudo nunca apresenta histórico, trecho privado de verificação ou edição.
+Quando a Unidade possuir proveniência pública, use **Fontes**. A consulta
+apresenta somente as Fontes e localizações autorizadas. Uma Fonte oculta ou
+pendente de comprovação não aparece; **Mostrar citação** omite o endereço e
+**Mostrar citação e link** pode entregá-lo.
 
-## Responder e avançar
+## Responder, avançar e rever
 
-Quando houver resposta:
+Quando houver uma prática, responda no próprio componente e use **Continuar**.
+Complete os campos indicados, leia o retorno e use **Continuar** novamente para
+avançar. A Unidade concluída e o novo ponto de retomada entram no estado pessoal.
 
-1. interaja com o componente;
-2. use **Continuar**;
-3. corrija campos incompletos, se necessário;
-4. leia o feedback;
-5. use **Continuar** novamente.
+Use **Marcar para rever** dentro da Unidade para acrescentá-la à seção **Rever**
+da tela inicial. O mesmo controle retira a marca.
 
-Ao avançar, a Unidade é registrada como concluída. A resposta momentânea do
-componente não é convertida automaticamente em nota, ranking ou medida de
-aprendizagem.
-
-## Marcar para rever
-
-Use o ícone de revisão na Unidade. A Home passa a mostrar **Rever**, com links
-diretos aos alvos marcados. Use novamente o ícone para retirar a marca.
+O AraLearn não transforma a resposta momentânea em nota, classificação entre
+pessoas ou medida de aprendizagem.
 
 ## Registrar uma observação
 
 1. Na Unidade, use **Observação**.
-2. Escolha Dúvida, Possível erro, Trecho confuso, Sugestão ou Sem categoria.
-3. Escreva até 2.000 escalares Unicode e 16 KiB em UTF-8.
+2. Escolha **Dúvida**, **Possível erro**, **Trecho confuso**, **Sugestão** ou
+   **Sem categoria**.
+3. Escreva até 2.000 caracteres Unicode, respeitado o limite de 16 KiB.
 4. Salve.
 
 É possível criar várias observações na mesma Unidade. Abra um item para editar
-ou retirar e consulte categoria, estado, sincronização e eventual resposta. A
-Anotação ancorada usa persistência própria, separada do estado pessoal v2, e
-chega à caixa de entrada do proprietário. Colegas não a recebem. Salvar,
-responder ou resolver não significa que houve correção ou verificação.
+ou retirar e consulte sua categoria, seu estado, a sincronização e eventual
+resposta. A Anotação ancorada chega à caixa de entrada do proprietário; outros
+estudantes não a recebem.
 
 ## Zerar o progresso
 
-Quando houver progresso, o cartão do Curso na Home mostra o ícone de zerar.
-Confirme a pergunta que inclui o título do Curso. A ação limpa somente o
-progresso daquele Curso; não remove conteúdo nem outros Cursos.
+Quando há progresso, o item do Curso oferece **Zerar progresso do Curso**.
+Confira o título na confirmação. A ação limpa o progresso daquele Curso e
+preserva conteúdo, marcas **Rever**, Anotações e outros Cursos.
 
-## Criar um Curso
+Dentro do percurso, controles de reinício delimitam o alcance pelo rótulo:
+Módulo, Lição, Microssequência ou a partir de uma Unidade.
 
-1. Abra Autoria.
-2. Use **Criar Curso**.
-3. Informe título e objetivo.
-4. Salve.
+## Criar e planejar um Curso
 
-O Curso nasce privado. A lista usa paginação; se ele não aparecer após falha de
-rede, atualize quando a conexão retornar antes de repetir a criação com uma
-nova intenção. O plano nasce vazio com preferência inicial de 7–12 Partes; esse
-intervalo pode ser alterado e não é regra pedagógica.
+Em Autoria, use **Criar Curso**, informe título e objetivo e salve. O Curso nasce
+privado, com plano vazio e sugestão inicial de 7 a 12 Partes.
 
-## Consultar e editar o planejamento
+Em **Planejamento**, edite título, objetivo, público, escopo e faixa de Partes.
+Acrescente, reordene ou retire resultados de aprendizagem pretendidos, unidades
+de análise e requisitos de evidência. Em **Partes**, organize a ordem de
+produção e os vínculos com Microssequências. Essas ações preservam a hierarquia
+curricular e as Unidades já existentes.
 
-Abra o Curso e escolha **Planejamento**. A tela mostra objetivo, público,
-escopo, faixa preferencial, referências do plano, Partes, vínculos, contagens
-e atividade recente persistida.
+## Configurar o desenho do Curso
 
-O ícone de edição permite alterar título, objetivo, público, escopo e faixa
-preferencial. Em **Referências do plano**, acrescente, edite, mova ou
-retire resultados de aprendizagem pretendidos, unidades de análise
-instrucional e requisitos de evidência. Todos são campos em linguagem natural;
-a interface não pede JSON.
+Em **Parâmetros**, percorra Curso, Módulo, Lição e Microssequência. Cada decisão
+mostra valor, origem e escopo. Use **Remover definição local** para voltar à
+herança.
 
-Em **Partes**, você pode:
+As orientações autorais conservam o texto original e suas revisões. Uma
+interpretação estruturada aparece em bloco separado. A política de componentes
+permite usar a biblioteca completa ou restringi-la, além de registrar exclusões
+e preferências.
 
-- criar ou editar título e intenção operacional;
-- mover a Parte na ordem de produção;
-- dividir ou unir Partes;
-- mover uma Microssequência para outra Parte ou deixá-la sem Parte;
-- consultar Microssequências e Unidades já materializadas.
+Numa Microssequência, **Cobertura planejada desta Microssequência** atribui os
+itens de análise e evidência pertinentes. O resumo **Planejado × aplicado**
+confronta essa seleção com fatos registrados na produção. Ele descreve a
+correspondência entre plano e aplicação, sem atribuir nota ao Curso ou ao
+estudante.
 
-Essas ações mudam o plano, não a hierarquia curricular. Retirar uma Parte ou
-um vínculo não apaga conteúdo já produzido.
+## Manter Fontes, PDFs e proveniência
 
-## Definir parâmetros, itens por alvo, orientações e componentes
+Em **Fontes**, crie registros, acrescente revisões, aposente fontes e consulte o
+histórico. Uma revisão pode ter Âncoras por página, tempo, fragmento de endereço
+ou trecho textual. O trecho de verificação permanece privado.
 
-Abra **Parâmetros**. O primeiro contexto é o Curso; avance progressivamente por
-Módulo, Lição e Microssequência para examinar outro nível sem carregar o Curso
-inteiro.
+No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
+interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora
+ativa como alvo. A lista no mesmo detalhe reúne essas manifestações, permite
+carregar outras páginas e exporta o recorte filtrado, até 8 MiB por arquivo.
+Uma reformulação respondida informa quais revisões de Fonte e Âncora foram
+consideradas.
 
-Cada parâmetro mostra o valor efetivo, sua origem e o escopo fonte. Para criar
-uma decisão local, escolha o valor, informe uma justificativa breve e salve.
-Para restaurar a herança, use **Remover definição local**. Módulo mostra
-parâmetros herdados, mas não permite um override pedagógico neste catálogo.
+Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
+64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
+**Baixar PDF** para consultar o arquivo autorizado.
 
-Em **Orientação autoral**, escreva o texto natural daquele escopo. Uma nova
-edição conserva a versão anterior; uma interpretação automatizada aparece em
-bloco separado e nunca substitui o original. Limpar a orientação local mantém
-as orientações ancestrais.
+Toda nova atribuição exige uma Âncora ativa da revisão exata. Use **Definir
+fontes** em um item do Planejamento ou numa Unidade da Inspeção. Salvar substitui
+o conjunto completo daquele alvo. **Exportar proveniência** gera um arquivo JSON com o
+alvo, as relações, as revisões, as Âncoras e os metadados dos PDFs depois que o
+conjunto estiver salvo.
 
-Em **Componentes didáticos**, escolha entre todos ou apenas os permitidos e
-marque exclusões e preferências nas opções conhecidas do catálogo. Não digite
-refs. Na próxima materialização, uma política explícita de pessoa autora ou de
-condição de pesquisa prevalece sobre políticas automáticas descendentes; dentro
-da mesma classe de autoridade, vale o escopo aplicável mais próximo.
+Uma referência anterior pendente de comprovação fica oculta em Estudo. Para
+resolvê-la, preserve a identidade apresentada e acrescente metadados e Âncoras
+comprovados.
 
-Numa Microssequência, **Cobertura planejada desta Microssequência** permite
-marcar quais unidades de análise e requisitos de evidência do plano pertencem
-àquele alvo. Um item pode servir a várias Microssequências e cada alvo pode
-receber vários itens. Salvar substitui somente as duas listas daquele alvo; a
-Parte e a ordem curricular não distribuem o plano automaticamente.
+## Produzir uma Parte com o ChatGPT
 
-O resumo **Planejado × aplicado** usa os fatos que a tentativa realmente
-persistiu. Ele pode apontar uma diferença de cobertura ou política, mas não é
-nota de aprendizagem ou qualidade. Formas, oportunidades e variações são
-declarações validadas do agente ou da pessoa autora, não interpretações
-semânticas produzidas pelo banco a partir da prosa.
+1. Prepare a Parte, sua cobertura e suas Fontes.
+2. Use **Copiar pedido para o ChatGPT**.
+3. Cole o pedido no cliente conectado.
+4. Autorize o trabalho nesse cliente.
+5. Volte ao Planejamento e confira as etapas confirmadas pelo servidor.
 
-## Manter Fontes, Âncoras e atribuições
-
-Abra **Fontes** para percorrer o catálogo privado em páginas. É possível criar
-uma Fonte, acrescentar uma revisão, aposentar e abrir o histórico. No detalhe da
-revisão, acrescente uma Âncora por página, tempo, fragmento URI ou trecho
-textual. O trecho de verificação é opcional e permanece privado.
-
-O histórico visual carrega uma revisão por página e oferece continuar; isso é
-comportamento da interface corrente, não um teto contratual do serviço.
-
-Toda atribuição nova exige ao menos uma Âncora ativa da revisão exata. No
-Planejamento, use **Definir fontes** num item de análise ou evidência; na
-Inspeção, use o mesmo controle na Unidade. Salvar substitui o conjunto completo
-e preserva a ordem escolhida: confira todas as Fontes antes de confirmar.
-
-**Legado não resolvido** identifica uma referência anterior sem metadados ou
-Âncora suficientes. Ela fica oculta no Estudo. Ao resolver, mantenha a mesma
-identidade apresentada e acrescente a revisão completa; não crie uma duplicata
-nem invente título ou link.
-
-## Levar uma Parte ao chat conectado
-
-1. Na Parte desejada, use **Levar pedido ao chat conectado**.
-2. Aguarde a confirmação de que o texto foi copiado.
-3. Cole o pedido no cliente conectado e autorize o trabalho ali.
-4. Reabra ou atualize o planejamento para conferir os fatos confirmados.
-
-O botão apenas copia texto para a área de transferência. Ele não inicia uma
-tentativa, não altera a composição e não muda o status da Parte. Os estados
-Planejada, Em materialização, Atenção necessária, Parcial e Materializada são
-derivados de vínculos, Unidades, tentativas e etapas persistidas pelo serviço.
+Copiar o texto não inicia a produção nem altera o Curso. Quando o cliente
+executa a materialização, **Ver etapas** apresenta o andamento e a próxima ação
+pendente.
 
 ## Consultar Estrutura e Inspeção
 
-**Estrutura** pagina Módulos, Lições e Microssequências. **Inspeção** apresenta
-as Unidades de estudo em uma sequência vertical fiel ao renderer de Estudo,
-sem ativar respostas nem edição. Escolha o Curso inteiro, uma Parte, as
-Unidades sem Parte, um Módulo, uma Lição ou uma Microssequência; cada troca de
-escopo volta ao início daquele recorte.
+**Estrutura** percorre Módulos, Lições e Microssequências em páginas.
+**Inspeção** apresenta as Unidades em uma sequência vertical, com respostas
+desativadas. O recorte pode abranger Curso, Parte, Unidades sem Parte, Módulo,
+Lição ou Microssequência.
 
-O controle **Definir fontes** é uma edição da atribuição separada, não do
-conteúdo renderizado. Respostas continuam inertes.
+A Inspeção mantém uma janela limitada de Unidades e conserva a posição no
+dispositivo. Ao mudar de revisão, procura a mesma identidade de Unidade.
+**Definir fontes**, **Anotar** e **Auditar** trabalham sobre o alvo exato.
 
-Uma página traz normalmente 12 Unidades, e a interface mantém no DOM no máximo
-36 por vez. Ao se aproximar de uma extremidade, o aplicativo busca a página
-anterior ou seguinte e substitui trechos distantes por espaçadores, preservando
-a posição visual. Um link profundo abre o escopo correto e inclui a Unidade
-ancorada na primeira página. A posição corrente é local ao dispositivo; ao
-reabrir o Curso, o aplicativo tenta restaurá-la sob a mesma revisão e se
-reposiciona pela Unidade quando a revisão mudou.
+## Usar Auditoria e correções
 
-Sem conexão, a Inspeção só reutiliza a página exata já guardada para a mesma
-revisão, escopo, âncora ou cursor, direção e limites. Ela a identifica como
-offline ou desatualizada e não inventa uma página aproximada. Revogação de autoridade
-purga esse cache na próxima validação online.
+Em **Auditoria e correções**, a aba **Observações** reúne as Anotações do Curso.
+Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
+resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
 
-## Usar Auditoria e correções na Autoria
+Na aba **Achados**, escolha uma Unidade e carregue seu contexto. Uma rodada pode
+registrar verificações estruturais, pedagógicas, factuais e editoriais. Se um
+achado justificar mudança, examine a proposta antes de aplicar. A correção é
+focal, preserva o estado anterior e precisa de outra rodada para ser verificada.
+Uma reversão restaura o estado anterior somente enquanto a Unidade ainda
+corresponde à aplicação.
 
-Abra **Auditoria e correções**, a sétima área funcional do Curso, que conserva
-`section=observations`. A aba **Observações** mostra a caixa de entrada única.
-Use sínteses e filtros e siga o link profundo até o alvo ou detalhe. No detalhe,
-as capacidades disponíveis permitem considerar, responder, resolver, reabrir,
-retirar, revisar o registro ou corrigir seus assuntos.
+Auditoria e correções exigem conexão. As Observações continuam com cópia e fila
+próprias para uso sem rede.
 
-Uma anotação autoral pode ser criada no Curso, Módulo, Lição, Tópico ou
-Microssequência. Para uma Unidade, use **Anotar** na **Inspeção**. A
-classificação automática escolhe assunto somente quando o alvo é exatamente um
-Tópico; toda seleção diferente é uma correção humana explícita, nunca inferência
-pela prosa.
+## Criar e comparar Variantes
 
-Na aba **Achados**, escolha uma Unidade focal e carregue o contexto. Registre a
-auditoria estrutural, pedagógica, factual e editorial sem editar o conteúdo na
-mesma ação. Cada rodada permanece listada, inclusive quando terminou limpa e
-não criou achado; abrir a rodada mostra todos os checks e suas evidências.
+Em **Variantes**, crie de dois a oito Cursos derivados do mesmo planejamento.
+Informe rótulo, título, objetivo e ao menos uma diferença intencional de
+parâmetro ou política de componentes para cada variante.
 
-Se um achado justificar reparo, examine a proposta focal. A correção pode mudar
-somente conteúdo e Fontes da Unidade existente; não cria, apaga, move,
-reposiciona nem troca o pai. A proposta registra um checkpoint `before|after`;
-a aplicação exige confirmação, confronta-o e o usa. O achado passa a aguardar
-outra rodada, que precisa aprovar o critério focal antes de marcá-lo resolvido.
-Se o critério continuar aberto, a verificação registra isso. Rollback também
-exige confirmação e só restaura enquanto o estado aplicado ainda é corrente.
+A comparação mostra o ponto comum, as diferenças declaradas e observadas,
+Fontes, PDFs, Partes, Unidades e componentes usados. Cada variante é um Curso
+independente. **Desvincular** retira a relação comparativa sem excluir o Curso.
 
-Em achado factual, conclusão positiva exige Fonte e Âncora ativas e exatas:
-**Sustenta** vale para afirmação, e **Citado de** apenas para fidelidade de
-citação. Uma ação sugerida de resolver ou reabrir Observação não executa nada;
-use a ação explícita da aba Observações com a versão corrente.
+## Consultar Pesquisa
 
-Os links profundos aceitos são:
+**Pesquisa** apresenta fatos da atividade, produção por Partes, desenho,
+Fontes, Observações, auditorias e Variantes. Use os filtros de conjunto, canal,
+origem, estado e período. O gráfico e a tabela representam o mesmo recorte; os
+links levam ao registro correspondente.
 
-- `section=observations&annotationId=...` para Observação;
-- `section=observations&findingId=...` e `correctionId=...` opcional para
-  achado/correção;
-- `section=observations&auditRunId=...` para rodada.
+As exportações CSV e JSON conservam os códigos estáveis para análise, enquanto
+a tela apresenta rótulos em português. Definições, dados ausentes e limitações
+acompanham o resultado. A Pesquisa descreve o processo autoral; qualquer medida
+de aprendizagem ou efeito exige outro desenho de pesquisa.
 
-Essas identidades são mutuamente exclusivas. Fonte ou Âncora abre
-`section=sources`; a Unidade abre a Inspeção. Uma Observação retirada aparece
-indisponível e sem link enquanto o tombstone existe. Depois da limpeza física,
-o vínculo e o ID desaparecem do achado sem apagar rodada, achado ou correção.
+## Conceder e revogar acesso
 
-## Conceder acesso
+Em **Pessoas**, use **Conceder acesso**, informe o e-mail exato de uma conta
+existente e confirme. A pessoa passa a encontrar o Curso em Estudo. A concessão
+mantém propriedade e edição com o autor e não cria organização nem cópia do
+Curso.
 
-1. Em Autoria, abra um Curso próprio.
-2. Escolha **Pessoas**.
-3. Use acrescentar.
-4. Informe o e-mail exato de uma conta existente.
-5. Confirme.
-
-A pessoa passa a ver o Curso em Estudo. A concessão não cria organização, não
-duplica Curso e não permite edição. O serviço não oferece pesquisa de diretório
-nem inclui o e-mail nos eventos de Curso.
-
-## Revogar acesso
-
-Em **Pessoas**, use retirar ao lado do nome e confirme. O servidor impede novas
-leituras. Uma réplica já baixada pode permanecer fisicamente no dispositivo da
-pessoa até a limpeza local; revogação não recolhe bytes já entregues.
+Para revogar, use a ação junto ao nome e confirme. O servidor encerra o acesso.
+Uma cópia anteriormente baixada é removida na próxima validação conectada do
+dispositivo dessa pessoa.
 
 ## Usar Autoria conversacional
 
-Conecte um cliente MCP com OAuth individual. A experiência esperada é:
+Conecte um assistente por meio de um protocolo aberto, o **Model Context
+Protocol (MCP)**, com autorização individual. Descreva a intenção, deixe o
+cliente localizar e ler o recorte necessário, revise a proposta, autorize a
+alteração e confira o resultado na Autoria e em Estudo.
 
-1. descrever a intenção;
-2. permitir que o cliente localize e leia o Curso, seu plano e as Fontes
-   pertinentes e, numa auditoria, a Unidade, o achado ou a rodada pertinentes;
-3. revisar a proposta quando houver decisão de conteúdo;
-4. autorizar a mutação;
-5. receber síntese breve e link visual;
-6. conferir o resultado na Autoria e em Estudo.
-
-A pessoa não precisa escolher a ferramenta técnica. O cliente deve reler o
-Curso antes de escrever e usar a revisão e a versão específica recebidas. Uma
-alteração do plano e uma alteração da composição são comandos separados. Veja
-[Autoria por MCP](autoria-mcp.md).
+O cliente usa a revisão do Curso e a versão do objeto lido para proteger a
+escrita. A pessoa escolhe a finalidade; o cliente seleciona a ferramenta e a
+operação adequadas. Veja [Autoria por MCP](autoria-mcp.md).
 
 ## Trabalhar sem conexão
 
-Conteúdo já carregado pode ser estudado offline. Progresso e marcas usam a fila
-do estado pessoal; observações usam uma outbox separada, com cache próprio.
-Quando a conexão retorna, cada repositório compara sua versão remota, reconcilia
-as operações locais e tenta novamente de forma limitada. Duas abas trocam
-somente a versão aplicável àquela conta e IDs de anotações e releem o IndexedDB;
-texto bruto não passa por essa mensagem e um rascunho aberto não é sobrescrito.
-No Estudo, a versão é privada e monotônica por pessoa/Curso: atividade de outra
-pessoa não muda o contador nem aparece como conflito ou sinal indireto.
+Conteúdo já carregado pode ser estudado sem rede. Progresso e marcas **Rever**
+usam a fila do estado pessoal; Observações usam outra fila e outra cópia local.
+Quando a conexão retorna, cada repositório compara sua versão remota e envia as
+operações pendentes.
 
-Auditoria, achados e correções exigem conexão. Não possuem store, cache
-autoritativo ou outbox no IndexedDB; uma aba offline não pode aplicar, verificar
-ou reverter correção.
+Auditoria, correções, gestão de acesso, Autoria conversacional, Variantes e
+Pesquisa dependem do servidor. A tela inicial pode mostrar um Curso conhecido
+sem garantir que uma composição nunca aberta esteja disponível.
 
-Não limpe dados, desinstale nem troque de navegador antes da sincronização se
-houver alterações importantes. A Home pode mostrar Cursos conhecidos sem
-garantir que uma composição nunca aberta esteja disponível offline.
+Preserve os dados do aplicativo até a sincronização quando houver alterações
+recentes importantes.
 
 ## Sair
 
-Em **Conta e aparência**, use **Sair**. Se uma saída for interrompida, a tela de
-recuperação oferece repetir. Sair não apaga automaticamente o cache do Curso;
-a política de limpeza local deve ser considerada em dispositivo compartilhado.
+Em **Conta e aparência**, use **Sair**. Se houver uma interrupção, o aplicativo
+permite repetir a saída.
+Sair encerra a sessão, mas a cópia local dos Cursos pode permanecer no
+dispositivo; considere isso ao usar aparelho compartilhado.
 
 ## Excluir a conta
 
@@ -386,26 +291,22 @@ a política de limpeza local deve ser considerada em dispositivo compartilhado.
 2. Use **Excluir conta**.
 3. Digite exatamente `EXCLUIR MINHA CONTA`.
 
-A interface remove os avatares privados antes de chamar a exclusão. O banco
-recusa a operação enquanto houver objeto de avatar. A exclusão remove a conta,
-os Cursos próprios e os dados relacionados por cascade; é irreversível e não
-deve ser usada como forma de sair.
+A operação exige conexão e é irreversível. O aplicativo envia uma única
+solicitação confirmada; a API autentica a pessoa, localiza seus Cursos e remove
+os avatares e PDFs correspondentes. O banco recusa a exclusão enquanto algum
+desses objetos permanecer. Depois, remove a conta, os Cursos próprios e as
+relações dependentes; contribuições em Cursos alheios são retiradas e redigidas
+conforme a política de retenção. Uma falha intermediária conserva a conta para
+nova tentativa, e a cópia local só é limpa depois da confirmação do servidor.
 
-## O que ainda não está disponível
+## Limites atuais
 
-O runtime canônico desta revisão não apresenta como concluídos:
+A Inspeção não oferece edição livre de toda a estrutura interna de uma Unidade;
+correções focais e materialização usam operações próprias. Cursos também não são
+disponibilizados anonimamente: Estudo exige conta própria ou acesso direto
+concedido pelo proprietário.
 
-- edição contextual completa de Unidades;
-- variantes experimentais;
-- analytics de Autoria;
-- disponibilização pública.
-
-Consulte o [estado corrente](estado-atual-e-roadmap.md) antes de planejar uma
-atividade que dependa dessas capacidades.
-
-## O que o aplicativo não interpreta
-
-Progresso, cliques, rolagem, tempo, marcas e observações são eventos ou estados
-observáveis. Eles não medem diretamente atenção, engajamento, compreensão ou
-aprendizagem. Uma pesquisa precisa declarar construto, medida, algoritmo,
-denominador, ausências e limites.
+Progresso, cliques, rolagem, tempo, marcas e Observações descrevem eventos ou
+estados observáveis. A interpretação como atenção, engajamento, compreensão ou
+aprendizagem exige construto, medida, procedimento, tratamento dos dados
+ausentes e limites declarados.

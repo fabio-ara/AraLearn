@@ -8,7 +8,7 @@ Antes de limpar dados ou reinstalar:
 2. verifique se a conexão voltou;
 3. observe mensagens de fila, revisão ou retomada;
 4. tente novamente uma vez;
-5. só use limpeza local depois de avaliar alterações offline pendentes.
+5. só use limpeza local depois de avaliar alterações pendentes feitas sem conexão.
 
 Uma captura de tela ajuda a explicar o estado visual. Console e rede ajudam a
 separar falha da interface, autorização, servidor e sincronização. Não inclua
@@ -27,8 +27,8 @@ A preparação mostra Dispositivo, Conta e Cursos. Use **Tentar novamente**. Se
 a falha local persistir, a interface pode oferecer limpar os dados do
 dispositivo.
 
-Essa limpeza remove cache e operações ainda não sincronizadas. Não a confirme
-se houver progresso, marcas ou observações offline que precisam ser
+Essa limpeza remove a cópia local e operações ainda não sincronizadas. Não a confirme
+se houver progresso, marcas ou observações feitas sem conexão que precisam ser
 preservados.
 
 ## Um Curso não aparece
@@ -51,7 +51,7 @@ e reinicia a leitura.
 
 Tente novamente com conexão estável. Se continuar falhando, registre o Curso,
 a mensagem e se o erro ocorreu antes ou depois de aparecer conteúdo conhecido
-do cache.
+da cópia local.
 
 ## O aplicativo mostra o último estado conhecido
 
@@ -74,14 +74,14 @@ Se a fila continuar pendente:
 
 ## Uma observação aguarda envio
 
-Anotações usam uma outbox própria, separada do estado pessoal. Reabra a Unidade,
-confirme o indicador de sincronização e reconecte. Em duas abas, a atualização
+Anotações usam uma fila de envio própria, separada do estado pessoal. Reabra a
+Unidade, confirme o indicador de sincronização e reconecte. Em duas abas, a atualização
 leva apenas a versão privada daquela conta e IDs; cada aba relê o IndexedDB e
 preserva um rascunho aberto. Atividade de outra pessoa não muda essa versão nem
 deve aparecer como conflito. Se o item ficar **em conflito** ou **falhou**, não
-crie uma cópia às
-cegas: releia o estado remoto e revise o comando. Perda de acesso purga cache e
-outbox porque o dispositivo não pode continuar entregando dados sem autoridade.
+crie uma cópia às cegas: releia o estado remoto e revise o comando. Perda de
+acesso purga a cópia local e a fila porque o dispositivo não pode continuar
+entregando dados sem autoridade.
 
 ## Uma observação foi salva, mas não houve correção
 
@@ -95,26 +95,26 @@ aplicação. Outra rodada ainda precisa verificar o critério.
 ## Auditoria ou correção não funciona sem conexão
 
 Esse comportamento é intencional. Rodadas, achados, correções, verificação e
-rollback são online-only e não possuem cache autoritativo nem outbox no
-IndexedDB. Reconecte, releia a Unidade/achado e só então execute a ação. Não
+reversão exigem conexão e não possuem cópia autoritativa nem fila no IndexedDB.
+Reconecte, releia a Unidade ou o achado e só então execute a ação. Não
 trate a última tela renderizada como estado corrente.
 
 ## Uma rodada limpa ou suas evidências não aparecem
 
 Na aba **Achados**, consulte a lista de rodadas, não somente a lista de achados.
 Rodadas sem achado continuam enumeráveis. Abra a rodada pelo link com
-`auditRunId` para ver todos os checks e evidências. Se usou filtro, confira a
-Unidade focal e reinicie a paginação depois de mudança de versão.
+`auditRunId` para ver todas as verificações e evidências. Se usou filtro,
+confira a Unidade focal e reinicie a paginação depois de mudança de versão.
 
 ## Não consigo aplicar ou reverter uma correção
 
-Aplicação e rollback exigem confirmação explícita. Também são protegidos por
-revisão, versões e checkpoint: se a Unidade, seu conteúdo ou suas Fontes
+Aplicação e reversão exigem confirmação explícita. Também são protegidas por
+revisão, versões e ponto de controle: se a Unidade, seu conteúdo ou suas Fontes
 mudaram desde a leitura, releia e reconcilie em vez de forçar o número. A
 correção v1 não pode criar, excluir, mover, reposicionar ou trocar o pai de uma
-entidade e um no-op é recusado.
+entidade, e uma operação sem efeito é recusada.
 
-## Um check factual foi recusado
+## Uma verificação factual foi recusada
 
 Conclusão factual positiva exige Fonte e Âncora ativas na revisão exata.
 **Sustenta** é a relação apropriada para afirmações; **Citado de** só vale para
@@ -123,7 +123,7 @@ registre uma nova rodada.
 
 ## Uma Observação ligada ao achado ficou indisponível ou sumiu
 
-Ao retirar a Anotação, o tombstone é mostrado como indisponível e sem link.
+Ao retirar a Anotação, o registro de retirada é mostrado como indisponível e sem link.
 Depois da limpeza física, somente a junção e o ID deixam o achado; texto/pessoa
 nunca foram copiados e rodada, achado e correção permanecem. Isso não é perda
 do histórico de auditoria.
@@ -153,6 +153,18 @@ resolvê-la, revise a mesma identidade literal; não crie uma Fonte parecida nem
 remova espaços do identificador. Depois de falha de rede sem resposta, repita o
 mesmo pedido com o mesmo `requestId` e comando.
 
+## Um PDF de Fonte não foi enviado ou não abre
+
+O PDF precisa pertencer a uma revisão ativa da Fonte, ter cabeçalho válido e no
+máximo 20 MiB. O envio só termina depois que o objeto no Storage privado é
+confirmado pela API de Cursos. Se a rede falhar após o envio, use **Confirmar o
+mesmo PDF** em vez de escolher outro arquivo.
+
+Para abrir um anexo, releia a Fonte e solicite um novo endereço assinado. O
+endereço expira e não deve ser guardado como identidade do arquivo. Confira
+também a cota de 64 MiB de conteúdo único por Curso e o limite de oito anexos
+por Fonte.
+
 ## O Estudo não mostra uma Fonte ou um link
 
 Abra **Fontes** na Unidade: a consulta é sob demanda e não ocorre junto com o
@@ -164,7 +176,7 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 ## O MCP não encontra ou não altera o Curso
 
 1. confirme OAuth e conta;
-2. confirme que o Curso é próprio, pois Autoria é owner-only;
+2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
 3. verifique a descoberta das seis ferramentas;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;
@@ -180,6 +192,20 @@ do servidor contiver a mudança e a tela não, registre console, rede, rota e
 revisão exibida: o defeito está na projeção ou atualização da interface, não
 numa etapa de publicação.
 
+## Uma Variante não mostra a diferença esperada
+
+Cada variante é um Curso independente e pode mudar depois do ponto comum de
+planejamento. Abra a comparação novamente e confira a revisão lida, as
+diferenças declaradas, os desvios não declarados e os dados ausentes.
+Desvincular remove somente a relação de comparação; não exclui o Curso.
+
+## Um gráfico de Pesquisa parece contradizer a tabela
+
+Confirme se gráfico e tabela usam os mesmos conjuntos, filtros e intervalo de
+datas. Abra **Como esta métrica é definida** e verifique unidade, denominador e
+regra de dados ausentes. Pesquisa apresenta fatos da Autoria; uma contagem ou
+diferença entre Variantes não demonstra efeito de aprendizagem.
+
 ## Não consigo conceder acesso
 
 Somente o proprietário pode gerir **Pessoas**. O destinatário precisa ter uma
@@ -194,23 +220,23 @@ deve informar a limpeza pendente; não envie repetidamente arquivos maiores.
 
 ## A conta não é excluída
 
-A exclusão exige a frase exata `EXCLUIR MINHA CONTA`. O aplicativo tenta apagar
-os avatares antes da conta, e o banco recusa a exclusão enquanto ainda houver
-objeto de avatar. Tente novamente com conexão estável. Não use exclusão como
-forma de sair: ela remove Cursos próprios e dados relacionados de modo
-irreversível.
+A exclusão exige a frase exata `EXCLUIR MINHA CONTA`. O aplicativo envia uma
+única solicitação confirmada à API, que remove os avatares e os PDFs dos Cursos
+próprios. O banco recusa a exclusão enquanto algum desses objetos permanecer.
+Tente novamente com conexão estável. Não use exclusão como forma de sair: ela
+remove Cursos próprios e dados relacionados de modo irreversível.
 
 ## O desenvolvimento local não inicia
 
 1. confira versões de Node.js e dependências;
 2. use os scripts existentes em `package.json`;
-3. para backend, confirme Supabase CLI e containers locais;
+3. para os serviços, confirme Supabase CLI e contêineres locais;
 4. verifique se variáveis privadas estão no ambiente local, não no repositório;
 5. leia o primeiro erro real antes de executar uma suíte ampla.
 
-A migração hospedada do novo modelo de Curso continua bloqueada pelos gates de
-importação, reset e verificação. Um ambiente remoto na versão anterior não é
-evidência de que o runtime canônico local falhou.
+Compare `supabase/runtime-manifest.json` com `supabase migration list --local`.
+Uma diferença entre o ambiente local e o hospedado deve ser tratada como
+diferença de versão, não como falha do contrato instalado localmente.
 
 ## Registrar um defeito útil e seguro
 
@@ -219,8 +245,8 @@ Inclua:
 - ação realizada e resultado esperado;
 - resultado observado;
 - modo Estudo ou Autoria;
-- smartphone ou desktop e largura aproximada;
-- online ou offline;
+- celular ou computador e largura aproximada;
+- com ou sem conexão;
 - mensagem segura do console ou da rede;
 - se o problema se repete após nova leitura.
 

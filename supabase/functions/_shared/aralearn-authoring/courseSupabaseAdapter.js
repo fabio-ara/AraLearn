@@ -1,8 +1,6 @@
 import { AuthoringApiError } from "./errors.js";
 import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
-import { validateCourseEntityContent } from
-  "../aralearn/runtime/domain/courseEntities.js";
 import {
   applyCourseAuthoringPlanCommand,
   normalizeCourseAuthoringPlan,
@@ -18,7 +16,9 @@ import {
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 import {
   COURSE_DESIGN_CONTEXT_V2_CONTRACT,
+  COURSE_SOURCE_PDF_MAX_BYTES,
   CourseSourcesError,
+  normalizeCourseSourceAttachmentAccess,
   normalizeCourseSourceAttributionApplication,
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
@@ -53,12 +53,14 @@ import {
   normalizeCourseVariantRead
 } from "../aralearn/runtime/domain/courseVariants.js";
 import {
-  RESOURCE_CATALOG,
-  RESOURCE_PACKAGE_REGISTRY
-} from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
+  CourseAuthoringAnalyticsError,
+  assembleCourseAuthoringAnalyticsPage,
+  normalizeCourseAuthoringAnalyticsQuery
+} from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
 
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const COURSE_VARIANT_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES = 512 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const MATERIALIZATION_FIELDS = new Set([
   "id", "authoringPartVersion", "channel", "status", "version", "designContext",
@@ -105,20 +107,22 @@ const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_AUDIT_CYCLE_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_AUDIT_CYCLE_DTO_LIMIT_BYTES = 240 * 1024;
-const COMPONENT_CATALOG_OPTIONS = Object.freeze(
-  RESOURCE_PACKAGE_REGISTRY.listCatalog()
-    .map((manifest) => Object.freeze({
-      ref: `${manifest.id}@${manifest.version}`,
-      label: manifest.label,
-      purpose: manifest.purpose
-    }))
-);
-const COMPONENT_REFS = new Set(COMPONENT_CATALOG_OPTIONS.map(({ ref }) => ref));
 const COURSE_DESIGN_PARAMETER_DEFAULTS = new Map(
   COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultValue }) => [id, defaultValue])
 );
 const CONTEXT_HASH_PATTERN = /^[a-f0-9]{64}$/u;
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
+const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
+const PERSON_AVATAR_BUCKET = "person-avatars";
+const COURSE_SOURCE_UPLOAD_EXPIRY_SECONDS = 2 * 60 * 60;
+const COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS = 60;
+const COURSE_SOURCE_PDF_VERIFICATION_TIMEOUT_MS = 20_000;
+const ACCOUNT_DELETION_CONFIRMATION = "EXCLUIR MINHA CONTA";
+const ACCOUNT_DELETION_CONTRACT = "aralearn.account-deletion.v1";
+const ACCOUNT_STORAGE_BATCH_SIZE = 100;
+const ACCOUNT_MAX_COURSE_PAGES = 100;
+const ACCOUNT_MAX_STORAGE_BATCHES = 100;
+const PDF_HEADER = Object.freeze([0x25, 0x50, 0x44, 0x46, 0x2d]);
 
 function first(value) {
   return Array.isArray(value) ? value[0] || null : value;
@@ -136,6 +140,42 @@ function exactRecord(value, fields) {
   return value && typeof value === "object" && !Array.isArray(value) &&
     Object.keys(value).length === fields.size &&
     Object.keys(value).every((field) => fields.has(field));
+}
+
+function accountDeletionUnavailable() {
+  return new AuthoringApiError(
+    503,
+    "account_deletion_unavailable",
+    "Não foi possível confirmar a limpeza segura da conta."
+  );
+}
+
+function accountUuid(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!UUID_PATTERN.test(normalized)) throw accountDeletionUnavailable();
+  return normalized;
+}
+
+function accountStorageObjectKey(item, prefix) {
+  const rawName = typeof item?.name === "string" ? item.name.trim() : "";
+  const objectKey = rawName.includes("/") ? rawName : `${prefix}${rawName}`;
+  if (!rawName || objectKey === prefix || !objectKey.startsWith(prefix) ||
+      objectKey.length > 2_048 || [...objectKey].some((character) => {
+        const codePoint = character.codePointAt(0);
+        return codePoint <= 31 || codePoint === 127;
+      })) {
+    throw accountDeletionUnavailable();
+  }
+  return objectKey;
+}
+
+function accountDeletionResult(value) {
+  const result = first(value);
+  if (!exactRecord(result, new Set(["contract", "status"])) ||
+      result.contract !== ACCOUNT_DELETION_CONTRACT || result.status !== "deleted") {
+    throw accountDeletionUnavailable();
+  }
+  return { contract: result.contract, status: result.status };
 }
 
 function positiveSafeInteger(value) {
@@ -161,6 +201,14 @@ function duplicatesMaterializationPayload(value) {
   ].some((field) => Object.hasOwn(value, field));
 }
 
+function publicMaterializationResultFacts(value) {
+  if (!jsonRecord(value)) return null;
+  const result = structuredClone(value);
+  delete result.designApplication;
+  delete result.sourceAttributionApplication;
+  return duplicatesMaterializationPayload(result) ? null : result;
+}
+
 function decimalIdentity(value) {
   return typeof value === "string" && /^[1-9][0-9]*$/u.test(value);
 }
@@ -176,7 +224,10 @@ function normalizedDesignScope(value, { nullable = false } = {}) {
   return { kind, ref };
 }
 
-function normalizeComponentPolicy(value) {
+function normalizeComponentPolicy(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }) {
+  const componentRefs = new Set(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
+    ({ id, version }) => `${id}@${version}`
+  ));
   if (!exactRecord(value, new Set([
     "catalogVersion", "availability", "allowedRefs", "excludedRefs", "preferredRefs"
   ])) || value.catalogVersion !== RESOURCE_CATALOG.catalogVersion ||
@@ -191,7 +242,7 @@ function normalizeComponentPolicy(value) {
   for (const field of ["allowedRefs", "excludedRefs", "preferredRefs"]) {
     const refs = value[field];
     if (!Array.isArray(refs) || refs.length > 32 || new Set(refs).size !== refs.length ||
-        refs.some((ref) => typeof ref !== "string" || !COMPONENT_REFS.has(ref))) {
+        refs.some((ref) => typeof ref !== "string" || !componentRefs.has(ref))) {
       throw new AuthoringApiError(
         503,
         "component_catalog_drift",
@@ -267,7 +318,8 @@ function assertSourceLinksAllowedByContext(studyUnits, target) {
 }
 
 function courseSourceCommandSubjectId(command) {
-  return command.type === "save_source" || command.type === "retire_source"
+  return command.type === "save_source" || command.type === "retire_source" ||
+    command.type === "attach_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -340,7 +392,11 @@ function normalizeInspectionCursor(value, expected) {
   return { studyUnitId };
 }
 
-function normalizeInspectionPage(value, { courseId, expectedRevision, scopeKind, scopeId }) {
+function normalizeInspectionPage(
+  value,
+  { courseId, expectedRevision, scopeKind, scopeId },
+  validateCourseEntityContent
+) {
   if (!exactRecord(value, INSPECTION_FIELDS) ||
       value.contract !== "aralearn.course-study-unit-inspection-page.v1" ||
       String(value.courseId || "").trim().toLowerCase() !== courseId ||
@@ -414,7 +470,7 @@ function normalizeInspectionPage(value, { courseId, expectedRevision, scopeKind,
   };
 }
 
-function normalizeEffectiveComponentPolicy(value) {
+function normalizeEffectiveComponentPolicy(value, resourceRuntime) {
   if (!exactRecord(value, new Set([
     "changeId", "policy", "origin", "reason", "sourceScope"
   ])) || value.changeId != null && !decimalIdentity(value.changeId) ||
@@ -433,7 +489,7 @@ function normalizeEffectiveComponentPolicy(value) {
   }
   let policy;
   try {
-    policy = normalizeComponentPolicy(value.policy);
+    policy = normalizeComponentPolicy(value.policy, resourceRuntime);
   } catch {
     invalidMaterializationRead();
   }
@@ -450,7 +506,11 @@ function normalizeEffectiveComponentPolicy(value) {
   };
 }
 
-function normalizeMaterializationDesignContext(value, { courseId, authoringPartId }) {
+function normalizeMaterializationDesignContext(
+  value,
+  { courseId, authoringPartId },
+  resourceRuntime
+) {
   const sourceContext = normalizeCourseSourcesDatabaseValue(() =>
     normalizeCourseSourceContext(value)
   );
@@ -464,7 +524,7 @@ function normalizeMaterializationDesignContext(value, { courseId, authoringPartI
       String(sourceContext.courseId || "").trim().toLowerCase() !== courseId ||
       String(sourceContext.authoringPartId || "").trim().toLowerCase() !== authoringPartId ||
       !positiveSafeInteger(sourceContext.courseRevision) ||
-      sourceContext.componentCatalogVersion !== RESOURCE_CATALOG.catalogVersion ||
+      sourceContext.componentCatalogVersion !== resourceRuntime.RESOURCE_CATALOG.catalogVersion ||
       !Array.isArray(sourceContext.instructionalAnalysisUnits) ||
       sourceContext.instructionalAnalysisUnits.length > 256 ||
       !Array.isArray(sourceContext.evidenceRequirements) ||
@@ -623,7 +683,7 @@ function normalizeMaterializationDesignContext(value, { courseId, authoringPartI
       evidenceRequirementIds: [...target.evidenceRequirementIds],
       parameters,
       guidanceRevisionIds: [...target.guidanceRevisionIds],
-      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy),
+      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy, resourceRuntime),
       sourceAttributions
     };
   });
@@ -656,12 +716,12 @@ function normalizeMaterializationStep(value) {
   const productionPosition = value.productionPosition == null
     ? null
     : Number(value.productionPosition);
+  const resultFacts = publicMaterializationResultFacts(value.resultFacts);
   const didactic = kind === "didactic_microsequence_materialization";
   if (!UUID_PATTERN.test(id) || !nonNegativeSafeInteger(value.position) ||
       !new Set(["context_load", "didactic_microsequence_materialization", "validation"]).has(kind) ||
       !new Set(["pending", "completed", "failed"]).has(status) ||
-      !positiveSafeInteger(value.version) || !jsonRecord(value.resultFacts) ||
-      duplicatesMaterializationPayload(value.resultFacts) ||
+      !positiveSafeInteger(value.version) || !resultFacts ||
       !validTimestamp(value.updatedAt) ||
       !validTimestamp(value.completedAt, { nullable: true }) ||
       (status === "pending") !== (value.completedAt == null) ||
@@ -679,13 +739,17 @@ function normalizeMaterializationStep(value) {
     productionPosition,
     status,
     version: Number(value.version),
-    resultFacts: structuredClone(value.resultFacts),
+    resultFacts,
     updatedAt: value.updatedAt,
     completedAt: value.completedAt
   };
 }
 
-function normalizePartMaterialization(value, { courseId, authoringPartId, materializationId }) {
+function normalizePartMaterialization(
+  value,
+  { courseId, authoringPartId, materializationId },
+  resourceRuntime
+) {
   const topFields = new Set([
     "contract", "courseId", "courseRevision", "authoringPartId", "materialization"
   ]);
@@ -701,13 +765,14 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
   const id = String(source.id || "").trim().toLowerCase();
   const status = String(source.status || "").trim();
   const channel = String(source.channel || "").trim();
+  const resultFacts = publicMaterializationResultFacts(source.resultFacts);
   if (id !== materializationId || !UUID_PATTERN.test(id) ||
       !positiveSafeInteger(source.authoringPartVersion) ||
       !new Set(["application", "mcp"]).has(channel) ||
       !new Set(["running", "completed", "failed"]).has(status) ||
       !positiveSafeInteger(source.version) || !jsonRecord(source.designContext) ||
       typeof source.contextHash !== "string" || !CONTEXT_HASH_PATTERN.test(source.contextHash) ||
-      !jsonRecord(source.resultFacts) || duplicatesMaterializationPayload(source.resultFacts) ||
+      !resultFacts ||
       !validTimestamp(source.startedAt) || !validTimestamp(source.updatedAt) ||
       !validTimestamp(source.completedAt, { nullable: true }) ||
       (status === "running") !== (source.completedAt == null) ||
@@ -717,7 +782,7 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
   const designContext = normalizeMaterializationDesignContext(source.designContext, {
     courseId,
     authoringPartId
-  });
+  }, resourceRuntime);
   const steps = source.steps.map(normalizeMaterializationStep);
   if (steps.some((step, index) => step.position !== index) ||
       new Set(steps.map((step) => step.id)).size !== steps.length) {
@@ -748,7 +813,7 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
       version: Number(source.version),
       designContext,
       contextHash: source.contextHash,
-      resultFacts: structuredClone(source.resultFacts),
+      resultFacts,
       startedAt: source.startedAt,
       updatedAt: source.updatedAt,
       completedAt: source.completedAt,
@@ -796,7 +861,7 @@ function normalizeMaterializationChange(value, {
   operation,
   channel,
   stepId = null
-}) {
+}, resourceRuntime) {
   if (!exactRecord(value, MATERIALIZATION_CHANGE_FIELDS) ||
       value.contract !== "aralearn.course-authoring-materialization-change.v1" ||
       String(value.courseId || "").trim().toLowerCase() !== courseId ||
@@ -841,7 +906,7 @@ function normalizeMaterializationChange(value, {
   const designContext = normalizeMaterializationDesignContext(source.designContext, {
     courseId,
     authoringPartId
-  });
+  }, resourceRuntime);
 
   let step = null;
   if (value.step != null) {
@@ -985,6 +1050,13 @@ function databaseError(status, body) {
       "O Curso mudou; releia o estado e tente novamente."
     );
   }
+  if (code === "AR001") {
+    return new AuthoringApiError(
+      422,
+      "account_storage_not_empty",
+      "A exclusão aguarda a limpeza dos objetos privados da conta."
+    );
+  }
   if (code === "23514" && databaseMessage.startsWith("requestId reutilizado")) {
     return new AuthoringApiError(
       409,
@@ -1016,6 +1088,22 @@ function responseTooLarge() {
     413,
     "course_response_too_large",
     "A resposta do serviço de Cursos excedeu o limite seguro."
+  );
+}
+
+function invalidCourseSourcePdf() {
+  return new AuthoringApiError(
+    422,
+    "invalid_course_source_pdf",
+    "O objeto enviado não corresponde ao PDF declarado."
+  );
+}
+
+function unavailableCourseSourcePdf() {
+  return new AuthoringApiError(
+    503,
+    "course_storage_unavailable",
+    "O Storage não permitiu verificar o PDF enviado."
   );
 }
 
@@ -1084,6 +1172,32 @@ function normalizeCourseVariantDatabaseValue(callback) {
   }
 }
 
+function normalizeCourseAuthoringAnalyticsInputValue(callback) {
+  try {
+    return callback();
+  } catch (error) {
+    if (error instanceof CourseAuthoringAnalyticsError) {
+      throw new AuthoringApiError(422, error.code, error.message);
+    }
+    throw error;
+  }
+}
+
+function normalizeCourseAuthoringAnalyticsDatabaseValue(callback) {
+  try {
+    return callback();
+  } catch (error) {
+    if (error instanceof CourseAuthoringAnalyticsError || error instanceof TypeError) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço devolveu fatos de Pesquisa inválidos."
+      );
+    }
+    throw error;
+  }
+}
+
 function courseAuditReplayProbeAllowed(error, commandType) {
   if (!(error instanceof AuthoringApiError)) return false;
   if (new Set(["stale_course_state", "PT404"]).has(error.code)) return true;
@@ -1121,6 +1235,57 @@ async function readBoundedResponseText(response, limitBytes) {
   } finally {
     reader.releaseLock();
   }
+}
+
+async function readBoundedResponseBytes(response, limitBytes) {
+  const declaredHeader = response.headers.get("content-length");
+  const declared = declaredHeader === null ? null : Number(declaredHeader);
+  if (declared !== null && (!Number.isSafeInteger(declared) || declared < 0 ||
+      declared > limitBytes)) {
+    await response.body?.cancel?.().catch(() => undefined);
+    throw invalidCourseSourcePdf();
+  }
+  if (!response.body || typeof response.body.getReader !== "function") {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > limitBytes) throw invalidCourseSourcePdf();
+    return bytes;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      byteLength += value.byteLength;
+      if (byteLength > limitBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw invalidCourseSourcePdf();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function validPdfHeader(bytes) {
+  return bytes.byteLength >= PDF_HEADER.length &&
+    PDF_HEADER.every((value, index) => bytes[index] === value);
+}
+
+async function sha256Hex(bytes) {
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", bytes));
+  return [...digest]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function withDeepLink(value, publicAppUrl, section = "planning") {
@@ -1385,6 +1550,9 @@ function auditPublicEvidence(audit) {
 }
 
 async function deterministicRepresentationFacts(context, auditRunId) {
+  const { RESOURCE_CATALOG } = await import(
+    "../aralearn/runtime/resources/catalog/resourceCatalog.js"
+  );
   const target = context?.target;
   const studyUnit = {
     id: target?.studyUnitId,
@@ -1439,16 +1607,20 @@ async function deterministicRepresentationFacts(context, auditRunId) {
   };
 }
 
-function validateCorrectionCandidate(context, command) {
+async function validateCorrectionCandidate(context, command) {
+  const [entityRuntime, resourceRuntime] = await Promise.all([
+    import("../aralearn/runtime/domain/courseEntities.js"),
+    import("../aralearn/runtime/resources/catalog/resourceCatalog.js")
+  ]);
   const target = context?.target;
   const candidate = {
     id: target?.studyUnitId,
     position: target?.position,
     ...(jsonRecord(command.afterContent) ? structuredClone(command.afterContent) : {})
   };
-  const entity = validateCourseEntityContent("study_unit", candidate);
+  const entity = entityRuntime.validateCourseEntityContent("study_unit", candidate);
   const catalog = entity.valid
-    ? RESOURCE_CATALOG.validateStudyUnit(entity.normalized)
+    ? resourceRuntime.RESOURCE_CATALOG.validateStudyUnit(entity.normalized)
     : null;
   if (!entity.valid || !catalog?.valid) {
     throw new AuthoringApiError(
@@ -1523,12 +1695,18 @@ function normalizeCourseAnchoredAnnotationsInputValue(normalize) {
   }
 }
 
-function validateComponentCatalogProjection(value) {
+function validateComponentCatalogProjection(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }) {
+  const componentCatalogOptions = RESOURCE_PACKAGE_REGISTRY.listCatalog()
+    .map((manifest) => ({
+      ref: `${manifest.id}@${manifest.version}`,
+      label: manifest.label,
+      purpose: manifest.purpose
+    }));
   const catalog = value?.componentCatalog;
   const options = Array.isArray(catalog?.options) ? catalog.options : [];
-  const validOptions = options.length === COMPONENT_CATALOG_OPTIONS.length &&
+  const validOptions = options.length === componentCatalogOptions.length &&
     options.every((option, index) => {
-      const expected = COMPONENT_CATALOG_OPTIONS[index];
+      const expected = componentCatalogOptions[index];
       if (!exactRecord(option, new Set(["ref", "label", "purpose"])) ||
           option.ref !== expected.ref || option.label !== expected.label ||
           option.purpose !== expected.purpose) return false;
@@ -1555,7 +1733,10 @@ function validateComponentCatalogProjection(value) {
       "A leitura não contém regra efetiva de componentes."
     );
   }
-  policies.forEach(normalizeComponentPolicy);
+  policies.forEach((policy) => normalizeComponentPolicy(
+    policy,
+    { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }
+  ));
   if (new TextEncoder().encode(JSON.stringify(normalized)).byteLength >
       COURSE_DESIGN_RESPONSE_LIMIT_BYTES) {
     throw responseTooLarge();
@@ -1567,6 +1748,31 @@ function authoringChannel(principal) {
   if (principal?.authenticationKind === "application") return "application";
   if (principal?.authenticationKind === "oauth") return "mcp";
   throw new AuthoringApiError(401, "authentication_required", "A origem da Autoria é inválida.");
+}
+
+function storageObjectPath(value) {
+  return String(value || "").split("/").map(encodeURIComponent).join("/");
+}
+
+function signedStorageUrl(baseUrl, value, { download = false } = {}) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    throw new AuthoringApiError(
+      503,
+      "course_storage_unavailable",
+      "O Storage não devolveu uma URL assinada."
+    );
+  }
+  const url = new URL(raw.startsWith("http") ? raw : `${baseUrl}${raw}`);
+  if (download) url.searchParams.set("download", "");
+  if (!url.searchParams.has("token")) {
+    throw new AuthoringApiError(
+      503,
+      "course_storage_unavailable",
+      "O Storage não devolveu uma URL assinada válida."
+    );
+  }
+  return url.toString();
 }
 
 function anchoredAnnotationChannel(principal) {
@@ -1620,6 +1826,7 @@ export class CourseSupabaseAdapter {
   /**
    * @param {{
    *   supabaseUrl?: string,
+   *   publicSupabaseUrl?: string,
    *   oauthIssuer?: string,
    *   serverApiKey?: string,
    *   publishableKey?: string,
@@ -1632,6 +1839,7 @@ export class CourseSupabaseAdapter {
    */
   constructor({
     supabaseUrl,
+    publicSupabaseUrl = supabaseUrl,
     oauthIssuer = "",
     serverApiKey,
     publishableKey,
@@ -1642,6 +1850,7 @@ export class CourseSupabaseAdapter {
     responseLimitBytes = DEFAULT_RESPONSE_LIMIT_BYTES
   } = {}) {
     this.supabaseUrl = requiredUrl(supabaseUrl, "SUPABASE_URL");
+    this.publicSupabaseUrl = requiredUrl(publicSupabaseUrl, "URL pública do Supabase");
     this.oauthIssuer = requiredUrl(oauthIssuer || `${this.supabaseUrl}/auth/v1`, "Issuer OAuth");
     this.serverApiKey = String(serverApiKey || "").trim();
     this.publishableKey = String(publishableKey || "").trim();
@@ -1701,6 +1910,145 @@ export class CourseSupabaseAdapter {
     throw lastError;
   }
 
+  async #verifyCourseSourcePdf(attachment, { deadlineAt = null } = {}) {
+    const remaining = deadlineAt == null
+      ? COURSE_SOURCE_PDF_VERIFICATION_TIMEOUT_MS
+      : deadlineAt - Date.now();
+    if (remaining <= 0) {
+      throw new AuthoringApiError(503, "service_timeout", "O prazo da operação terminou.");
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      Math.max(1, Math.min(COURSE_SOURCE_PDF_VERIFICATION_TIMEOUT_MS, remaining))
+    );
+    try {
+      const response = await this.fetchImpl(
+        `${this.supabaseUrl}/storage/v1/object/authenticated/` +
+          `${COURSE_SOURCE_ATTACHMENT_BUCKET}/${storageObjectPath(attachment.storagePath)}`,
+        {
+          method: "GET",
+          headers: {
+            ...supabaseServerHeaders(this.serverApiKey, { contentType: false }),
+            "Cache-Control": "no-store"
+          },
+          cache: "no-store",
+          signal: controller.signal
+        }
+      );
+      if (!response.ok) {
+        await response.body?.cancel?.().catch(() => undefined);
+        if (response.status === 400 || response.status === 404) {
+          throw invalidCourseSourcePdf();
+        }
+        throw unavailableCourseSourcePdf();
+      }
+      const bytes = await readBoundedResponseBytes(response, COURSE_SOURCE_PDF_MAX_BYTES);
+      if (bytes.byteLength !== attachment.byteSize || !validPdfHeader(bytes) ||
+          await sha256Hex(bytes) !== attachment.contentHash) {
+        throw invalidCourseSourcePdf();
+      }
+    } catch (error) {
+      if (error instanceof AuthoringApiError) throw error;
+      throw unavailableCourseSourcePdf();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async #deleteAccountWithJwt(accessToken, confirmation, { deadlineAt = null } = {}) {
+    const result = await this.#request(
+      `${this.supabaseUrl}/rest/v1/rpc/delete_my_account_v1`,
+      {
+        method: "POST",
+        headers: {
+          apikey: this.publishableKey,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ p_confirmation: confirmation })
+      },
+      { deadlineAt, timeoutMs: 60_000, responseLimitBytes: 32 * 1024 }
+    );
+    return accountDeletionResult(result);
+  }
+
+  async #ownedCourseIdsForAccount(principal, { deadlineAt = null } = {}) {
+    const courseIds = [];
+    const seen = new Set();
+    let cursor = null;
+    for (let pageIndex = 0; pageIndex < ACCOUNT_MAX_COURSE_PAGES; pageIndex += 1) {
+      const page = await this.listCourses({
+        principal,
+        limit: 50,
+        beforeUpdatedAt: cursor?.beforeUpdatedAt ?? null,
+        beforeId: cursor?.beforeId ?? null,
+        deadlineAt
+      });
+      if (!exactRecord(page, new Set(["contract", "items", "hasMore", "nextCursor"])) ||
+          page.contract !== "aralearn.course-list.v1" || !Array.isArray(page.items) ||
+          page.items.length > 50 || typeof page.hasMore !== "boolean" ||
+          (page.hasMore ? page.nextCursor == null : page.nextCursor !== null)) {
+        throw accountDeletionUnavailable();
+      }
+      for (const item of page.items) {
+        const courseId = accountUuid(item?.courseId);
+        if (seen.has(courseId)) throw accountDeletionUnavailable();
+        seen.add(courseId);
+        courseIds.push(courseId);
+      }
+      if (!page.hasMore) return courseIds;
+      if (!exactRecord(page.nextCursor, new Set(["beforeUpdatedAt", "beforeId"]))) {
+        throw accountDeletionUnavailable();
+      }
+      const beforeUpdatedAt = String(page.nextCursor.beforeUpdatedAt || "").trim();
+      const beforeId = accountUuid(page.nextCursor.beforeId);
+      if (!beforeUpdatedAt || !Number.isFinite(Date.parse(beforeUpdatedAt))) {
+        throw accountDeletionUnavailable();
+      }
+      cursor = { beforeUpdatedAt, beforeId };
+    }
+    throw accountDeletionUnavailable();
+  }
+
+  async #deleteAccountStoragePrefix(bucket, prefix, { deadlineAt = null } = {}) {
+    for (let batch = 0; batch < ACCOUNT_MAX_STORAGE_BATCHES; batch += 1) {
+      const items = await this.#request(
+        `${this.supabaseUrl}/storage/v1/object/list/${bucket}`,
+        {
+          method: "POST",
+          headers: supabaseServerHeaders(this.serverApiKey),
+          body: JSON.stringify({
+            prefix,
+            limit: ACCOUNT_STORAGE_BATCH_SIZE,
+            offset: 0,
+            sortBy: { column: "name", order: "asc" }
+          })
+        },
+        { deadlineAt, responseLimitBytes: 128 * 1024 }
+      );
+      if (!Array.isArray(items) || items.length > ACCOUNT_STORAGE_BATCH_SIZE) {
+        throw accountDeletionUnavailable();
+      }
+      if (items.length === 0) return;
+      const objectKeys = items.map((item) => accountStorageObjectKey(item, prefix));
+      if (new Set(objectKeys).size !== objectKeys.length) {
+        throw accountDeletionUnavailable();
+      }
+      await this.#request(
+        `${this.supabaseUrl}/storage/v1/object/${bucket}`,
+        {
+          method: "DELETE",
+          headers: supabaseServerHeaders(this.serverApiKey),
+          body: JSON.stringify({ prefixes: objectKeys })
+        },
+        { deadlineAt, responseLimitBytes: 128 * 1024 }
+      );
+      if (items.length < ACCOUNT_STORAGE_BATCH_SIZE) return;
+    }
+    throw accountDeletionUnavailable();
+  }
+
   rpc(functionName, payload, options = {}) {
     return this.#request(`${this.supabaseUrl}/rest/v1/rpc/${functionName}`, {
       method: "POST",
@@ -1730,6 +2078,45 @@ export class CourseSupabaseAdapter {
       authenticationKind: "application",
       scopes: ["authoring:read", "authoring:write"]
     };
+  }
+
+  async deleteMyAccount({ accessToken, confirmation, deadlineAt = null } = {}) {
+    const token = String(accessToken || "").trim();
+    if (!token) {
+      throw new AuthoringApiError(401, "authentication_required", "Sessão inválida ou expirada.");
+    }
+    if (confirmation !== ACCOUNT_DELETION_CONFIRMATION) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_account_deletion",
+        "A confirmação de exclusão da conta é inválida."
+      );
+    }
+    try {
+      return await this.#deleteAccountWithJwt(token, confirmation, { deadlineAt });
+    } catch (error) {
+      if (!(error instanceof AuthoringApiError && error.status === 422 &&
+          error.code === "account_storage_not_empty")) {
+        throw error;
+      }
+    }
+
+    const principal = await this.resolveApplicationPrincipal(token, { deadlineAt });
+    const actorId = accountUuid(principal.actorId);
+    const courseIds = await this.#ownedCourseIdsForAccount(principal, { deadlineAt });
+    for (const courseId of courseIds) {
+      await this.#deleteAccountStoragePrefix(
+        COURSE_SOURCE_ATTACHMENT_BUCKET,
+        `${courseId}/`,
+        { deadlineAt }
+      );
+    }
+    await this.#deleteAccountStoragePrefix(
+      PERSON_AVATAR_BUCKET,
+      `${actorId}/`,
+      { deadlineAt }
+    );
+    return this.#deleteAccountWithJwt(token, confirmation, { deadlineAt });
   }
 
   async resolvePrincipal(authentication, { deadlineAt = null } = {}) {
@@ -1845,7 +2232,10 @@ export class CourseSupabaseAdapter {
       }
       throw error;
     }
-    const normalized = validateComponentCatalogProjection(result);
+    const resourceRuntime = await import(
+      "../aralearn/runtime/resources/catalog/resourceCatalog.js"
+    );
+    const normalized = validateComponentCatalogProjection(result, resourceRuntime);
     const expectedScopeRef = scopeKind === "course" ? courseId : scopeRef;
     if (normalized.courseId !== courseId ||
         normalized.scopeContext.current.kind !== scopeKind ||
@@ -1919,6 +2309,88 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "A leitura de Fontes não corresponde ao Curso e à consulta solicitados."
+      );
+    }
+    return normalized;
+  }
+
+  async getCourseSourceAttachmentAccess({
+    principal,
+    courseId,
+    expectedRevision,
+    operation,
+    sourceId,
+    sourceRevision,
+    contentHash,
+    byteSize = null,
+    mediaType = null,
+    deadlineAt = null
+  }) {
+    const raw = first(await this.rpc("get_course_source_attachment_access_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_expected_course_revision: expectedRevision,
+      p_operation: operation,
+      p_source_id: sourceId,
+      p_source_revision: sourceRevision,
+      p_content_hash: contentHash,
+      p_byte_size: byteSize,
+      p_media_type: mediaType
+    }, {
+      deadlineAt,
+      responseLimitBytes: 32 * 1024
+    }));
+    const storageBaseUrl = `${this.supabaseUrl}/storage/v1`;
+    const publicStorageBaseUrl = `${this.publicSupabaseUrl}/storage/v1`;
+    let signedUrl = null;
+    let expiresAt = null;
+    if (operation === "prepare_upload" && raw?.uploadRequired === true) {
+      const signed = await this.#request(
+        `${storageBaseUrl}/object/upload/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
+          storageObjectPath(raw?.attachment?.storagePath),
+        {
+          method: "POST",
+          headers: supabaseServerHeaders(this.serverApiKey),
+          body: "{}"
+        },
+        { retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
+      );
+      signedUrl = signedStorageUrl(publicStorageBaseUrl, signed?.url);
+      expiresAt = new Date(Date.now() + COURSE_SOURCE_UPLOAD_EXPIRY_SECONDS * 1_000)
+        .toISOString();
+    } else if (operation === "download") {
+      const signed = await this.#request(
+        `${storageBaseUrl}/object/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
+          storageObjectPath(raw?.attachment?.storagePath),
+        {
+          method: "POST",
+          headers: supabaseServerHeaders(this.serverApiKey),
+          body: JSON.stringify({ expiresIn: COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS })
+        },
+        { retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
+      );
+      signedUrl = signedStorageUrl(publicStorageBaseUrl, signed?.signedURL, { download: true });
+      expiresAt = new Date(Date.now() + COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS * 1_000)
+        .toISOString();
+    }
+    const normalized = normalizeCourseSourcesDatabaseValue(() =>
+      normalizeCourseSourceAttachmentAccess({
+        ...raw,
+        signedUrl,
+        expiresAt
+      })
+    );
+    if (normalized.courseId !== courseId ||
+        normalized.courseRevision !== expectedRevision ||
+        normalized.operation !== operation || normalized.sourceId !== sourceId ||
+        normalized.sourceRevision !== sourceRevision ||
+        normalized.attachment.contentHash !== contentHash ||
+        byteSize !== null && normalized.attachment.byteSize !== byteSize ||
+        mediaType !== null && normalized.attachment.mediaType !== mediaType) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O acesso ao anexo não corresponde ao Curso e à Fonte solicitados."
       );
     }
     return normalized;
@@ -2119,6 +2591,52 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  async getCourseAuthoringAnalytics({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    query,
+    deadlineAt = null
+  }) {
+    const normalizedQuery = normalizeCourseAuthoringAnalyticsInputValue(() =>
+      normalizeCourseAuthoringAnalyticsQuery(query)
+    );
+    let raw;
+    try {
+      raw = first(await this.rpc(
+        "get_owned_course_authoring_analytics_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_expected_course_revision: expectedCourseRevision,
+          p_query: normalizedQuery
+        },
+        {
+          deadlineAt,
+          responseLimitBytes: COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES
+        }
+      ));
+    } catch (error) {
+      if (error instanceof AuthoringApiError && new Set([
+        "payload_too_large", "course_response_too_large"
+      ]).has(error.code)) {
+        throw new AuthoringApiError(
+          413,
+          "course_authoring_analytics_response_too_large",
+          "A página de Pesquisa excedeu 512 KiB. Use um recorte menor."
+        );
+      }
+      throw error;
+    }
+    return normalizeCourseAuthoringAnalyticsDatabaseValue(() =>
+      assembleCourseAuthoringAnalyticsPage(raw, {
+        publicAppUrl: this.publicAppUrl,
+        expectedCourseId: courseId,
+        expectedQuery: normalizedQuery
+      })
+    );
+  }
+
   async #auditContextForCommand({
     principal,
     courseId,
@@ -2223,11 +2741,14 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt }
     ));
+    const resourceRuntime = await import(
+      "../aralearn/runtime/resources/catalog/resourceCatalog.js"
+    );
     return normalizePartMaterialization(result, {
       courseId,
       authoringPartId,
       materializationId
-    });
+    }, resourceRuntime);
   }
 
   async listCourseEntities({
@@ -2278,12 +2799,15 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt }
     ));
+    const { validateCourseEntityContent } = await import(
+      "../aralearn/runtime/domain/courseEntities.js"
+    );
     return withInspectionDeepLinks(normalizeInspectionPage(result, {
       courseId,
       expectedRevision,
       scopeKind,
       scopeId
-    }), this.publicAppUrl);
+    }, validateCourseEntityContent), this.publicAppUrl);
   }
 
   async listCourseAccess({ principal, courseId, deadlineAt = null }) {
@@ -2408,8 +2932,10 @@ export class CourseSupabaseAdapter {
     const normalizedCommand = normalizeCourseSourcesInputValue(() =>
       normalizeCourseSourceCommand(command)
     );
-    const result = first(await this.rpc(
-      "execute_course_source_command_for_actor_v1",
+    const execute = () => this.rpc(
+      normalizedCommand.type === "attach_pdf"
+        ? "attach_course_source_pdf_for_actor_v1"
+        : "execute_course_source_command_for_actor_v1",
       {
         p_actor_id: principal.actorId,
         p_course_id: courseId,
@@ -2422,7 +2948,32 @@ export class CourseSupabaseAdapter {
         timeoutMs: 40_000,
         responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
       }
-    ));
+    );
+    let result;
+    if (normalizedCommand.type === "attach_pdf") {
+      try {
+        const access = await this.getCourseSourceAttachmentAccess({
+          principal,
+          courseId,
+          expectedRevision: expectedCourseRevision,
+          operation: "prepare_upload",
+          sourceId: normalizedCommand.sourceId,
+          sourceRevision: normalizedCommand.sourceRevision,
+          contentHash: normalizedCommand.attachment.contentHash,
+          byteSize: normalizedCommand.attachment.byteSize,
+          mediaType: normalizedCommand.attachment.mediaType,
+          deadlineAt
+        });
+        if (access.uploadRequired) throw invalidCourseSourcePdf();
+        await this.#verifyCourseSourcePdf(access.attachment, { deadlineAt });
+      } catch (error) {
+        if (!(error instanceof AuthoringApiError) || error.code !== "stale_course_state") {
+          throw error;
+        }
+        result = first(await execute());
+      }
+    }
+    result ??= first(await execute());
     const normalized = normalizeCourseSourcesDatabaseValue(() =>
       normalizeCourseSourceChange(result)
     );
@@ -2571,7 +3122,7 @@ export class CourseSupabaseAdapter {
           command: publicCommand,
           deadlineAt
         });
-        serverCommand = validateCorrectionCandidate(context, publicCommand);
+        serverCommand = await validateCorrectionCandidate(context, publicCommand);
       }
     } catch (error) {
       if (!courseAuditReplayProbeAllowed(error, publicCommand.type)) throw error;
@@ -2688,7 +3239,7 @@ export class CourseSupabaseAdapter {
           normalized.sourceCourseRevision !== expectedCourseRevision ||
           normalized.members.length !== normalizedCommand.variants.length
         ) ||
-        normalizedCommand.type === "detach_course_variant" &&
+        normalizedCommand.type === "detach_comparison_variant" &&
           normalized.courseId !== normalizedCommand.courseId) {
       throw new AuthoringApiError(
         503,
@@ -2812,6 +3363,9 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt, timeoutMs: 40_000 }
     ));
+    const resourceRuntime = await import(
+      "../aralearn/runtime/resources/catalog/resourceCatalog.js"
+    );
     const normalized = normalizeMaterializationChange(result, {
       courseId,
       authoringPartId,
@@ -2819,7 +3373,7 @@ export class CourseSupabaseAdapter {
       operation,
       channel: authoringChannel(principal),
       stepId: operation === "record_step" ? payload.stepId : null
-    });
+    }, resourceRuntime);
     return withDeepLink(normalized, this.publicAppUrl, "planning");
   }
 

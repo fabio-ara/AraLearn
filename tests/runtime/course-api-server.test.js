@@ -21,6 +21,56 @@ function request(path, { method = "POST", body = {}, token = "session" } = {}) {
   });
 }
 
+test("expõe exclusão de conta somente na rota interna autenticada do aplicativo", async () => {
+  let call = null;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        assert.fail("A operação interna autentica o JWT no RPC de exclusão.");
+      },
+      async deleteMyAccount(value) {
+        call = value;
+        return { contract: "aralearn.account-deletion.v1", status: "deleted" };
+      }
+    }
+  });
+
+  const response = await handler(request("/app/excluirMinhaConta", {
+    body: { confirmation: "EXCLUIR MINHA CONTA" },
+    token: "session-delete"
+  }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    requestId: null,
+    data: { contract: "aralearn.account-deletion.v1", status: "deleted" }
+  });
+  assert.equal(call.accessToken, "session-delete");
+  assert.equal(call.confirmation, "EXCLUIR MINHA CONTA");
+  assert.ok(Number.isFinite(call.deadlineAt));
+});
+
+test("rota interna recusa confirmação ambígua antes da operação destrutiva", async () => {
+  let calls = 0;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async deleteMyAccount() { calls += 1; }
+    }
+  });
+  for (const body of [
+    { confirmation: "excluir" },
+    { confirmation: "EXCLUIR MINHA CONTA", requestId: "campo-indevido" }
+  ]) {
+    const response = await handler(request("/app/excluirMinhaConta", { body }));
+    const payload = await response.json();
+    assert.equal(response.status, 422);
+    assert.equal(payload.error.code, "invalid_account_deletion");
+  }
+  assert.equal(calls, 0);
+});
+
 test("expõe leitura autenticada do plano instrucional no aplicativo", async () => {
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),
@@ -316,6 +366,7 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
           courseRevision: 5,
           mode: "target",
           query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+          pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
           items: [],
           nextCursor: null
         };

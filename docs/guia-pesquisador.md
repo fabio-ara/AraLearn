@@ -3,9 +3,10 @@
 ## Finalidade
 
 Este guia ajuda a estudar o AraLearn sem confundir uma propriedade do software
-com um efeito educacional. A área **Parâmetros** torna decisões de desenho e
-fatos de materialização reproduzíveis; ela não cria por si só experimento,
-instrumento, medida, amostra ou inferência causal.
+com um efeito educacional. **Parâmetros** torna decisões de desenho e fatos de
+produção reproduzíveis; **Variantes** registra Cursos de origem comum; e
+**Pesquisa** expõe fatos brutos e contagens descritivas. Nenhuma dessas áreas
+cria, por si só, experimento, instrumento, medida, amostra ou inferência causal.
 
 Antes de formular uma pergunta, consulte:
 
@@ -20,7 +21,7 @@ Antes de formular uma pergunta, consulte:
 Toda afirmação de pesquisa deve receber um estatuto:
 
 - **evidência externa:** resultado ou argumento da literatura;
-- **decisão de design:** escolha feita para responder a um problema;
+- **decisão de desenho:** escolha feita para responder a um problema;
 - **propriedade implementada:** comportamento verificável do artefato;
 - **hipótese:** relação ainda sujeita a investigação;
 - **resultado empírico:** conclusão produzida por um estudo adequado.
@@ -63,10 +64,11 @@ interface, MCP e testes.
 ### Origem `research_condition`
 
 `research_condition` identifica que um valor pertence a uma condição
-deliberada. Ele não cria lock, protocolo, aleatorização, consentimento,
+deliberada. Ele não cria bloqueio, protocolo, aleatorização, consentimento,
 atribuição de participante ou coleta. Uma pessoa autora pode substituí-lo no
-Curso vivo; o evento registra a mudança. Experimentos governados e variantes
-imutáveis pertencem a um marco posterior.
+Curso vivo; o evento registra a mudança. Variantes comparáveis registram uma
+origem comum e diferenças declaradas, mas continuam sendo Cursos editáveis,
+sem constituir um experimento governado.
 
 Ao usar essa origem:
 
@@ -105,12 +107,12 @@ O resumo imediato compara:
 
 Ele pode mostrar teto excedido, forma não contabilizada na declaração,
 oportunidade declarada insuficiente, variação declarada ausente ou componente
-proibido. Esses são achados de conformidade ao desenho, não scores
+proibido. Esses são achados de conformidade ao desenho, não pontuações
 educacionais.
 
 Os fatos aplicados preservam identidades de Unidades de estudo e declarações
 sobre unidades da análise, requisitos de evidência, oportunidades, formas,
-dimensões e packages. Forma, oportunidade e variação não são inferidas
+dimensões e pacotes. Forma, oportunidade e variação não são inferidas
 semanticamente do conteúdo pelo banco. A reconciliação material cobre IDs das
 Unidades, pai/alvo e `componentRefs`. O registro não preserva conversa, prompt,
 conteúdo gerado ou raciocínio privado.
@@ -131,7 +133,8 @@ O caso examina propriedades do artefato:
 - operação-alvo invariável.
 
 Essas propriedades são verificadas sobre a aplicação factual fornecida ao
-auditor. O teste cerca schema, atribuição por alvo, contagens e coerência
+auditor. O teste delimita o esquema, a atribuição por alvo, as contagens e a
+coerência
 interna; não é uma observação semântica independente de que a explicação
 desenvolveu uma forma ou que duas práticas diferem de modo substantivo.
 
@@ -145,6 +148,31 @@ Casos metamórficos impedem proxy de comprimento:
 - texto curto com muitas introduções pode falhar;
 - fragmentar o mesmo texto sem desenvolver as formas continua falhando;
 - omitir uma identidade planejada falha cobertura.
+
+## Consultar fatos e comparar variantes
+
+A área **Pesquisa** projeta sete conjuntos de fatos: atividade, produção,
+desenho, Fontes, Observações, auditorias e variantes. Cada consulta fixa Curso,
+revisão, filtros e instante de corte. Gráfico, tabela, lista, CSV, JSON e MCP
+derivam da mesma resposta paginada.
+
+Use a visão para localizar o registro que sustenta uma contagem. Informe a
+definição, o denominador e as lacunas junto do número. Identidade de conta,
+texto bruto de Observação e cópias integrais de conteúdo não fazem parte da
+projeção.
+
+Uma comparação de variantes permite verificar:
+
+- o planejamento comum registrado;
+- as diferenças de parâmetros ou componentes declaradas;
+- os valores e políticas efetivos;
+- as Partes, Unidades, componentes e referências existentes;
+- mudanças posteriores que não haviam sido declaradas.
+
+Esses fatos ajudam a descrever a intervenção. Eles não informam exposição,
+aprendizagem ou efeito. Consulte [Pesquisa sobre a
+Autoria](analytics-instrucionais.md) e [Variantes
+comparáveis](experimentos-instrucionais-parametrizados.md).
 
 ## Construir a cadeia de evidência
 
@@ -182,10 +210,11 @@ ancoradas são manifestações protegidas em uma relação separada, visíveis �
 própria pessoa e ao proprietário para triagem. Não una esses conjuntos só
 porque compartilham um `courseId`.
 
-Anotações não são copiadas para pesquisa por padrão. Quantidade, ausência,
-categoria, estado, resposta, resolução e timestamps não medem aprendizagem,
+A projeção de Pesquisa inclui somente fatos redigidos sobre Observações. Texto
+bruto e identidade da pessoa não são exportados. Quantidade, ausência,
+categoria, estado, resposta, resolução e instantes não medem aprendizagem,
 dificuldade, atenção, qualidade ou eficácia; `capturedAt` é uma pista de
-contexto, não duração. Qualquer cópia analítica exige protocolo explícito,
+contexto, não duração. Uma coleta adicional exige protocolo explícito,
 minimizado e governado, com finalidade, retenção, acesso e inferências proibidas
 documentadas.
 
@@ -219,6 +248,6 @@ O relatório deve separar:
 - quais interpretações rivais permanecem;
 - quais alterações ocorreram depois da observação.
 
-Preserve resultados negativos e divergências. Não apresente default como
+Preserve resultados negativos e divergências. Não apresente valor padrão como
 evidência, conformidade como aprendizagem, `research_condition` como
-randomização ou planned×applied como analytics final.
+randomização nem contagem descritiva como efeito educacional.

@@ -18,6 +18,7 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "Achado não autoriza alteração. Mostre a proposta e o antes/depois; no MCP, aplique ou desfaça somente após confirmação humana explícita com confirmed=true e as versões correntes; depois abra verificação separada sobre o Curso vivo.",
   "Aplicar uma correção não prova que ela resolveu o achado. Somente a verificação posterior pode resolver ou sugerir a reabertura das observações vinculadas; use os deep links literais devolvidos por audit_cycle.",
   "Registre uma Anotação ancorada somente depois de confirmar com a pessoa autora o alvo exato e uma síntese breve; envie o texto bruto exato da manifestação e nunca grave a conversa completa.",
+  "Nota, contestação e pedido de reformulação sobre Fonte ou Âncora são Anotações ancoradas no próprio alvo. Ao responder com uma reformulação, declare em consideredSourceLinks todas as Fontes e Âncoras efetivamente consideradas.",
   "Use os deep links literais devolvidos por anchored_annotations para voltar ao alvo correto; não reconstrua nem invente links a partir da conversa.",
   "Ao criar ou alterar item de planejamento, declare sourceLinks completos, mesmo vazios; ao compor Unidades, declare sourceAttributionApplications completos e não grave sources dentro do conteúdo da Unidade.",
   "Use as ferramentas para observar ou modificar fatos. Não invente conteúdo, fontes, resultados, permissões ou estado de materialização.",

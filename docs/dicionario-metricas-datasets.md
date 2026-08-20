@@ -1,41 +1,141 @@
-# Dicionário de métricas e datasets
+# Dicionário de métricas e conjuntos de dados
 
-Cada métrica tem id e versão imutáveis, pergunta, definição, tipo, unidade,
-derivação, tratamento de ausências, interpretação permitida, limite e
-denominador. Alterar significado exige nova versão.
+O contrato `aralearn.course-authoring-analytics-dictionary.v1` acompanha cada
+consulta da área **Pesquisa**. Uma definição de métrica informa identidade,
+versão, rótulo, pergunta, regra de cálculo, unidade, denominador, tratamento da
+ausência e inferências vedadas. Mudar o significado exige outra versão.
 
-| Métrica `@1.0.0` | Dataset | Unidade/denominador | Interpretação permitida | Inferência proibida |
-| --- | --- | --- | --- | --- |
-| `design.assignment_origin` | `authoring_design` | valor efetivo / valores dos snapshots correntes | composição entre catálogo, Auto, override e protocolo | qualidade, acerto ou esforço |
-| `design.resource_package` | `authoring_design` | seleção / seleções dos manifestos correntes | packages efetivamente selecionados | variedade como qualidade |
-| `design.resource_role` | `authoring_design` | seleção / seleções correntes | papel instrucional declarado | prática ou teoria inferida pelo clique |
-| `design.resource_fit` | `authoring_design` | seleção / seleções correntes | fit declarado e substituições a revisar | canônico como melhor resultado |
-| `design.resource_set_use` | `authoring_design` | seleção / seleções correntes | conjuntos exatos usados | permitido como usado |
-| `process.materialization_coverage` | `authoring_process` | proporção / microssequências correntes | cobertura operacional | qualidade ou aprendizagem |
-| `process.finding_status` | `authoring_process` | finding / ocorrências não superseded | pendências e decisões formais | nota única do curso |
-| `process.part_microsequence_count` | `authoring_process` | microssequência / Parte | distribuição estrutural | tamanho ideal universal |
-| `learning.structural_progress` | `authoring_process` | card × seleção / cards aplicáveis das seleções | conclusão explícita e lacuna de estado | atenção, domínio, esforço ou abandono |
-| `experiment.assignment_count` | `experiment_assignments` | participante atribuído / assignments | N realizado por condição | adesão ou efeito |
-| `experiment.outcome_numeric` | `experiment_outcomes` | unidade do instrumento / observações esperadas | N, ausentes, média, mínimo e máximo | causalidade ou significância |
-| `experiment.outcome_category` | `experiment_outcomes` | observação / valores não ausentes | frequências por condição e onda | ordem ou superioridade implícita |
+## Métricas correntes
 
-## Linhas e proveniência
+| Identidade | Versão | Pergunta | Unidade | Denominador |
+| --- | ---: | --- | --- | --- |
+| `facts_by_dataset` | 1 | Como os fatos do processo de criação se distribuem neste recorte? | contagem | todos os fatos que correspondem ao recorte informado |
+| `facts_by_kind` | 1 | Quais fatos e estados aparecem no conjunto selecionado? | contagem | todos os fatos que correspondem ao recorte informado |
 
-`authoring_design` contém linhas `parameter` e `resource`, com refs exatas de
-snapshot, manifesto e `ResourceSet`. `authoring_process` contém `part`,
-`finding`, `materialization` e `learning`. `experiment_assignments` contém
-pseudônimo local, condição e revisão congelada; `experiment_outcomes` fixa
-instrumento, outcome, onda, tipo, valor ou motivo de ausência.
+`facts_by_dataset` conta cada fato uma vez no conjunto de origem.
+`facts_by_kind` conta cada fato uma vez pela combinação de tipo e estado. Uma
+consulta sem fatos possui contagem zero. Revisão ou valor ausente dentro de um
+fato permanece indicado no próprio registro.
 
-`datasetSetRef` inclui revisão relevante do workspace ou experimento e a revisão
-append-only do dataset. Em progresso estrutural também inclui o estado corrente
-das conclusões explícitas; assim uma página posterior não pode combinar
-snapshots diferentes. Cursores nunca substituem o pin.
+As duas métricas proíbem inferir aprendizagem, atenção, qualidade didática ou
+causalidade a partir da contagem.
 
-## Dados ausentes
+## Conjuntos de fatos
 
-Ausência não vira zero de aprendizagem. Outcome `missing` conserva motivo e fica
-fora da média; estado de conclusão inexistente aparece como indisponível. Uma
-onda não declarada pelo protocolo não é fabricada como ausência. A análise deve
-relatar denominador, cobertura e limitações junto de qualquer número.
+| Chave | Registros incluídos | Objetos relacionados frequentes |
+| --- | --- | --- |
+| `activity` | operações confirmadas no Curso | Curso, mudança |
+| `materializations` | produção por Partes e suas etapas | Parte, materialização, Microssequência |
+| `design` | parâmetros, orientações, atribuições do plano e políticas de componentes | escopo, parâmetro, componente |
+| `sources` | Fonte, Âncora, atribuição e PDF | Fonte, alvo atribuído |
+| `annotations` | criação e tratamento de Observações | Observação, Unidade |
+| `audits` | rodada, achado, correção, verificação e reversão | auditoria, achado, Unidade |
+| `variants` | ponto comum, vínculo e comparação | conjunto, Curso derivado |
 
+Esses conjuntos são projeções das relações operacionais correntes. Eles não
+armazenam conversa completa nem formam um depósito analítico paralelo.
+
+## Canais
+
+| Chave | Significado |
+| --- | --- |
+| `authoring_interface` | operação feita na interface de Autoria |
+| `authoring_chat` | operação solicitada por um cliente MCP conectado |
+| `study_interface` | fato originado no Estudo |
+| `audit_process` | fato produzido pelo ciclo de auditoria e correção |
+
+Canal `null` informa ausência do dado. O sistema não escolhe um canal por
+aproximação.
+
+## Recorte de consulta
+
+O recorte aceita:
+
+| Campo | Regra |
+| --- | --- |
+| `datasets` | um ou mais dos sete conjuntos; a ausência seleciona todos |
+| `channels` | zero ou mais canais; lista vazia não restringe o canal |
+| `origins` | até 16 origens identificadas |
+| `states` | até 24 estados identificados |
+| `from` e `to` | instantes inclusivos; início deve anteceder o fim |
+| `limit` | de 1 a 200 fatos; padrão 100 |
+| `cursor` | cursor opaco da página seguinte, ou `null` |
+
+O cursor pertence ao recorte, à revisão do Curso e ao instante de corte. Uma
+página de outro contexto é recusada.
+
+## Forma da página
+
+O contrato de leitura é `aralearn.course-authoring-analytics.v1`. A página
+contém:
+
+| Campo | Regra |
+| --- | --- |
+| `dictionaryVersion` | versão do dicionário usada na projeção |
+| `courseId` e `courseRevision` | identidade e revisão exatas do Curso |
+| `generatedAt` | instante de geração da página |
+| `query` | recorte normalizado que produziu a resposta |
+| `metrics` | até 32 definições versionadas |
+| `overview` | métrica selecionada, pergunta e até 64 linhas de resumo |
+| `facts` | até 200 fatos distintos |
+| `nextCursor` | continuação do mesmo recorte, ou `null` |
+| `limitations` | até 16 limites de interpretação |
+| `deepLink` | endereço da área Pesquisa no Curso |
+
+Cada linha do resumo informa chave, rótulo, valor, unidade, denominador e
+ausência. O campo `missing` é verdadeiro exatamente quando `value` é `null`.
+
+## Forma de um fato
+
+| Campo | Regra |
+| --- | --- |
+| `factId` | identidade estável dentro da projeção |
+| `dataset` | conjunto ao qual o fato pertence |
+| `kind` | tipo operacional do fato |
+| `occurredAt` | instante registrado |
+| `courseRevision` | revisão vinculada, ou `null` quando ausente |
+| `channel` | canal reconhecido, ou `null` |
+| `origin` e `state` | proveniência e estado quando aplicáveis |
+| `subject` | objeto principal, com tipo, identidade e rótulo opcional |
+| `related` | objeto relacionado, ou `null` |
+| `values` | até 24 valores escalares |
+| `missingData` | até 32 descrições de lacunas conhecidas |
+| `deepLink` | endereço do objeto relacionado, ou `null` |
+
+Os valores aceitam texto, número finito, booleano e `null`. Chaves sensíveis
+como identidade de conta, endereço de correio eletrônico, texto bruto e cópias
+integrais de antes e depois são recusadas pelo contrato.
+
+## Exportação JSON
+
+O contrato `aralearn.course-authoring-analytics-export.v1` reúne páginas do
+mesmo Curso, revisão e recorte. Ele conserva:
+
+- versão do dicionário;
+- instante de exportação;
+- identidade e revisão do Curso;
+- consulta sem cursor;
+- definições das métricas;
+- fatos sem duplicação;
+- limites de interpretação.
+
+A montagem falha se uma página pertencer a outro recorte ou repetir um
+`factId`.
+
+## Exportação CSV
+
+O CSV usa uma linha por fato e estas colunas estáveis:
+
+```text
+dictionary_version,course_id,course_revision,fact_id,dataset,fact_kind,
+occurred_at,fact_course_revision,channel,origin,state,subject_kind,
+subject_id,subject_label,related_kind,related_id,related_label,values_json,
+missing_data,deep_link
+```
+
+`values_json` preserva as chaves e os valores escalares do fato. Ausências
+conhecidas são separadas por ` | `. O arquivo usa UTF-8 com marcador inicial
+para facilitar a abertura em programas de planilha.
+
+Consulte [Pesquisa sobre a Autoria](analytics-instrucionais.md) para o uso pela
+interface e pelo MCP.

@@ -1,81 +1,156 @@
-# Analytics instrucionais
+# Pesquisa sobre a Autoria
 
-O destino **Resultados** reúne descrições versionadas do desenho, do processo
-de autoria, do estado estrutural explícito de estudo e de experimentos. Ele não
-atribui uma nota única ao curso, ao autor ou ao estudante. Gráfico e tabela
-usam a mesma base numérica, e cada visualização aponta para uma definição no
-[dicionário de métricas e datasets](dicionario-metricas-datasets.md).
+A área **Pesquisa** permite examinar fatos registrados durante a criação de um
+Curso. Ela apresenta o processo de planejamento, produção, revisão e comparação
+sem atribuir nota ao Curso, à pessoa autora ou a quem estuda.
+
+Gráfico, tabela, lista, exportação e MCP partem das mesmas linhas e da mesma
+revisão. Cada métrica informa pergunta, definição, unidade, denominador,
+tratamento dos dados ausentes e inferências indevidas.
 
 ## Como consultar
 
-1. Abra **Autoria**, escolha um workspace e entre em **Resultados**.
-2. Leia a pergunta pedagógica de cada seção antes dos valores.
-3. Use a tabela como alternativa acessível ao gráfico.
-4. Abra **Definição e proveniência** para conferir métrica, versão, unidade,
-   denominador, ausências e limites.
-5. Pessoas com capacidade `research` podem trocar o recorte do workspace por
-   um experimento. A seleção fixa protocolo, condições e revisões correntes.
-6. Para conferência externa, exporte CSV ou JSON. O servidor pagina sob o mesmo
-   `datasetSetRef`; se o conjunto mudar, a exportação falha em vez de misturar
-   revisões.
+1. Abra **Autoria** e escolha um Curso próprio.
+2. Entre em **Pesquisa**.
+3. Selecione um conjunto de fatos ou mantenha **Todos os fatos**.
+4. Filtre pelo canal da interação e pelo período, quando necessário.
+5. Leia o gráfico e a tabela equivalente.
+6. Abra **Como esta métrica é definida** antes de interpretar os valores.
+7. Percorra os fatos que sustentam o resumo.
+8. Use **Abrir o objeto relacionado** para chegar ao contexto de origem.
+9. Exporte CSV ou JSON quando precisar conferir ou tratar o recorte filtrado.
 
-O overview pode ser relido do cache como `stale` e somente leitura. Linhas,
-exportações e novos outcomes exigem conexão. O cache pertence à conta e ao
-escopo; trocar conta ou pin não reaproveita a cópia anterior.
+A área pertence à pessoa proprietária do Curso. A revisão esperada integra a
+consulta: se o Curso mudar, a leitura não mistura fatos de revisões diferentes.
 
-## Quatro recortes, sem colapso em score
+## Conjuntos de fatos
 
-- **Desenho instrucional:** origem dos valores efetivos; packages, papel
-  instrucional, fit e `ResourceSet` efetivamente usados; refs do snapshot e do
-  manifesto. Permitido não significa selecionado, e selecionado não significa
-  materializado.
-- **Processo de autoria:** Partes, materializações e findings não superseded.
-  Override não significa erro; Auto não significa qualidade; ausência de
-  finding não prova dimensão não verificada.
-- **Aprendizagem:** somente conclusão estrutural explicitamente persistida.
-  O denominador é `card × seleção`; ausência de estado é mostrada como dado
-  indisponível, pois pode refletir falta de sincronização.
-- **Experimento:** N atribuído por condição, revisão congelada, completude de
-  instrumentos e outcomes descritivos por condição/onda. Participantes aparecem
-  por pseudônimo local. Seed, conta, consentimento individual e roster não
-  entram na exportação.
+| Conjunto | Conteúdo |
+| --- | --- |
+| `activity` | mudanças registradas no Curso |
+| `materializations` | início, etapas e conclusão da produção por Partes |
+| `design` | parâmetros, orientações, itens do plano e políticas de componentes |
+| `sources` | Fontes, Âncoras, atribuições e PDFs |
+| `annotations` | Observações e seu tratamento |
+| `audits` | rodadas, achados, correções, verificações e reversões |
+| `variants` | pontos comuns, vínculos e comparações entre Cursos |
 
-## O que não é coletado nem inferido
+Os canais são:
 
-Cliques, abertura, tempo, velocidade, número de tentativas e uso de revelação
-não são tratados como atenção, esforço, domínio ou aprendizagem. O AraLearn não
-executa automaticamente teste de hipótese, valor-p, ranking, predição ou
-conclusão causal. Uma associação descritiva entre desenho e outcome continua
-dependente do protocolo, instrumento, dados ausentes, contexto e explicações
-rivais.
+- `authoring_interface`, para a interface de Autoria;
+- `authoring_chat`, para operações feitas pela conversa conectada;
+- `study_interface`, para fatos originados no Estudo;
+- `audit_process`, para o ciclo de auditoria.
 
-## Outcomes explícitos
+Canal ausente permanece ausente. O AraLearn não o deduz pelo conteúdo do fato.
 
-Um outcome só pode ser registrado para enrollment consentido, ativo e atribuído
-a uma `VariantRevision` congelada, enquanto o experimento está coletando. A
-observação fixa instrumento, outcome, onda, tipo, instante e revisão. Valor
-ausente exige motivo explícito e nunca é imputado automaticamente. Repetir o
-mesmo `requestId` devolve o receipt original; tentar reutilizá-lo com outro
-payload é rejeitado.
+## O que um fato conserva
 
-## Resources como dimensão analítica
+Um fato de Autoria possui:
 
-A leitura conserva `package@version`, família, papel, fit
-`canonical|versatile|substitute`, `ResourceSetRef`, limitações e quantidade
-materializada. Isso permite confrontar disponibilidade e uso ou distinguir
-prática incorporada de resposta quando o manifesto declarou esses papéis. Mais
-variedade, mais packages ou fit canônico não são interpretados como melhora.
+- identidade, conjunto e tipo;
+- instante registrado;
+- revisão do Curso, quando disponível;
+- canal, origem e estado, quando aplicáveis;
+- objeto principal e objeto relacionado;
+- até 24 valores escalares;
+- indicação dos dados ausentes;
+- endereço do objeto no AraLearn, quando houver destino seguro.
 
-## Exportação e limites
+A projeção exclui identidade de conta, endereço de correio eletrônico, texto
+bruto de Observação e cópias integrais de estados anteriores e posteriores.
+Rótulos dos objetos ajudam a leitura, enquanto as identidades preservam a
+rastreabilidade da exportação.
 
-Os datasets são `authoring_design`, `authoring_process`,
-`experiment_assignments` e `experiment_outcomes`, todos em
-`schemaVersion: 1.0.0`. Páginas têm no máximo 20 linhas e respostas permanecem
-abaixo de 96 KiB. CSV inclui versão, dataset, tipo e JSON canônico da linha;
-JSON é emitido em chunks estruturados. A aplicação recebe páginas criadas no
-servidor sob um pin imutável e recompõe um único documento JSON
-válido ao concluir.
+## Métricas correntes
 
-Esses mecanismos demonstram rastreabilidade técnica, não validade educacional.
-A data da regressão integrada e as pendências de stress e avaliação humana
-permanecem explícitas no [estado corrente](estado-atual-e-roadmap.md).
+A visão geral usa duas regras de contagem:
+
+- `facts_by_dataset`, quando o recorte contém vários conjuntos, conta cada fato
+  uma vez em seu conjunto de origem;
+- `facts_by_kind`, quando há um único conjunto, conta cada fato pela combinação
+  de tipo e estado.
+
+O denominador é a quantidade total de fatos que corresponde aos filtros e à
+revisão. Uma consulta sem fatos produz contagem zero. Dentro de um fato, revisão
+ou valor ausente permanece marcado como ausência e não recebe um valor
+inventado.
+
+Essas métricas descrevem a distribuição dos registros. Diferenças entre canais,
+tipos, estados ou variantes não demonstram relação causal.
+
+## Gráfico, tabela e fatos
+
+O gráfico de barras resume a métrica selecionada. A tabela logo abaixo contém
+as mesmas categorias, valores, denominadores e indicações de ausência. O
+próprio gráfico possui descrição textual para tecnologias assistivas.
+
+A lista de fatos permite conferir cada parcela do resumo. Ela mostra instante,
+conjunto, tipo, valores, canal, origem, estado, revisão e dados ausentes. O
+endereço direto conduz à Parte, Unidade, Fonte, Observação, auditoria ou
+comparação correspondente.
+
+## Filtros e paginação
+
+A interface oferece seleção de um conjunto ou de todos, um canal ou todos e um
+intervalo de datas. O contrato também admite filtros por várias origens e
+estados. Cada página aceita de 1 a 200 fatos e usa paginação por chave.
+
+O cursor fica vinculado ao Curso, à revisão, aos filtros e ao instante de corte.
+Ele não pode continuar outra consulta. A interface também recusa cursor
+repetido, fato duplicado ou página de outro recorte.
+
+## Exportação
+
+A exportação direta percorre as páginas sob a mesma consulta e revisão, até cem
+páginas e 8 MiB por arquivo. Acima desse volume, nenhum arquivo parcial é salvo:
+a área Pesquisa orienta restringir o período, o conjunto ou o canal. Esse limite
+mantém o salvamento previsível no navegador e no aplicativo Android. Não há
+volume observado que justifique criar arquivos temporários, retenção e limpeza
+no Storage apenas para exportações maiores.
+
+O JSON usa o contrato `aralearn.course-authoring-analytics-export.v1` e
+conserva:
+
+- versão do dicionário;
+- instante de exportação;
+- Curso e revisão;
+- filtros sem cursor;
+- definições das métricas;
+- fatos completos do recorte aceito pelo limite do arquivo;
+- limites de interpretação.
+
+O CSV possui uma linha por fato e colunas estáveis para dicionário, Curso,
+revisão, identidade, conjunto, tipo, instante, canal, origem, estado, objetos,
+valores, ausências e endereço. O campo de valores usa JSON canônico para manter
+as chaves sem criar colunas instáveis.
+
+## Consulta pela conversa
+
+`lerCurso` com `view: "research"` devolve o mesmo contrato da área Pesquisa.
+O cliente pode filtrar, explicar a métrica, apresentar a tabela e abrir os
+objetos relacionados sem criar outra base de dados.
+
+Quando o cliente oferece a extensão visual MCP Apps, o resultado pode aparecer
+num componente com indicadores agregados, gráfico, tabela equivalente, limites
+de interpretação e endereço para a área Pesquisa. Em outros clientes, a
+representação textual conserva números, denominadores, revisão, ausências e o
+mesmo endereço. Para preservar a legibilidade, a síntese apresenta até 12
+categorias e avisa quando o conteúdo estruturado conserva outras linhas do
+mesmo recorte.
+
+## Limites de interpretação
+
+Os fatos descrevem operações e estados do processo de Autoria. Eles não medem
+aprendizagem, atenção, esforço, dificuldade, domínio ou eficácia. O intervalo
+entre etapas inclui rede, processamento e espera, portanto não representa tempo
+de trabalho humano.
+
+O AraLearn não coleta rolagem, abertura de tela, sequência de toques ou tempo de
+permanência para essa área. Uma pesquisa que precise de outra medida deve
+definir previamente construto, população, instrumento, finalidade, dados
+ausentes, retenção e interpretação permitida.
+
+Consulte o [Dicionário de métricas e conjuntos de
+dados](dicionario-metricas-datasets.md) para os campos do contrato e o [Guia do
+pesquisador](guia-pesquisador.md) para formular perguntas e registrar limites.

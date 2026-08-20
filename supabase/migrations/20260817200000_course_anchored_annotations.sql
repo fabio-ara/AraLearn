@@ -24,6 +24,7 @@ begin
      or to_regclass('private.legacy_authoring_workspaces') is null
      or to_regprocedure('private.require_service_role()') is null
      or to_regprocedure('private.require_course_access_v1(uuid,uuid,boolean)') is null
+     or to_regprocedure('private.valid_course_source_links_shape_v1(jsonb,boolean)') is null
      or to_regprocedure('extensions.digest(bytea,text)') is null then
     raise exception 'Dependências da autoridade de observações do Curso ausentes.'
       using errcode = '55000';
@@ -97,13 +98,12 @@ set search_path = pg_catalog
 as $function$
 declare
   v_entry jsonb;
-  v_expected text[] := array['course','module','lesson'];
   v_ordinal integer := 0;
   v_last_kind text;
 begin
   if jsonb_typeof(p_value) is distinct from 'array'
      or jsonb_array_length(p_value) not between 1 and 5
-     or pg_column_size(p_value) > 16384 then
+     or octet_length(p_value::text) > 16384 then
     return false;
   end if;
   for v_entry in select value from jsonb_array_elements(p_value)
@@ -113,11 +113,17 @@ begin
        or not (v_entry ?& array['kind','id','label','version'])
        or v_entry - 'kind' - 'id' - 'label' - 'version' <> '{}'::jsonb
        or v_entry->>'kind' not in(
-         'course','module','lesson','topic','didactic_microsequence','study_unit'
+         'course','module','lesson','topic','didactic_microsequence','study_unit',
+         'source','source_anchor'
        )
        or nullif(btrim(v_entry->>'id'),'') is null
-       or v_entry->>'id' <> btrim(v_entry->>'id')
-       or char_length(v_entry->>'id') > 240
+       or v_entry->>'kind'<>'source' and v_entry->>'id'<>btrim(v_entry->>'id')
+       or v_entry->>'kind'='source' and (
+         char_length(v_entry->>'id')>2048 or octet_length(v_entry->>'id')>8192
+       )
+       or v_entry->>'kind'<>'source' and (
+         char_length(v_entry->>'id')>240 or octet_length(v_entry->>'id')>960
+       )
        or (v_entry->>'id') ~ '[[:cntrl:]]'
        or (
          v_entry->'label' <> 'null'::jsonb and (
@@ -139,7 +145,8 @@ begin
   end loop;
   return (p_value->0->>'kind') = 'course'
     and v_last_kind in(
-      'course','module','lesson','topic','didactic_microsequence','study_unit'
+      'course','module','lesson','topic','didactic_microsequence','study_unit',
+      'source','source_anchor'
     );
 end;
 $function$;
@@ -154,8 +161,6 @@ immutable
 security definer
 set search_path = pg_catalog
 as $function$
-declare
-  v_timestamp timestamptz;
 begin
   if p_value is null then return p_nullable; end if;
   if p_value !~
@@ -164,9 +169,13 @@ begin
   end if;
   if left(p_value,4)='0000' then return false; end if;
   begin
-    v_timestamp:=p_value::timestamptz;
-    return isfinite(v_timestamp);
-  exception when datetime_field_overflow or invalid_datetime_format then
+    perform make_date(
+      substring(p_value from 1 for 4)::integer,
+      substring(p_value from 6 for 2)::integer,
+      substring(p_value from 9 for 2)::integer
+    );
+    return true;
+  exception when datetime_field_overflow then
     return false;
   end;
 end;
@@ -184,7 +193,7 @@ declare
 begin
   if jsonb_typeof(p_value) is distinct from 'array'
      or jsonb_array_length(p_value) > 64
-     or pg_column_size(p_value) > 65536
+     or octet_length(p_value::text) > 65536
      or exists(
        select 1 from jsonb_array_elements(p_value) ref
        group by ref->>'topicId' having count(*) > 1
@@ -238,6 +247,8 @@ create table private.course_anchored_annotations(
   classification_corrected_at timestamptz,
   state text not null default 'open',
   owner_response text,
+  owner_response_kind text,
+  owner_response_source_links jsonb not null default '[]'::jsonb,
   captured_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -258,11 +269,15 @@ create table private.course_anchored_annotations(
   ),
   constraint course_anchored_annotations_target_v1 check(
     target_kind in(
-      'course','module','lesson','topic','didactic_microsequence','study_unit'
+      'course','module','lesson','topic','didactic_microsequence','study_unit',
+      'source','source_anchor'
     )
     and nullif(btrim(target_id),'') is not null
-    and target_id=btrim(target_id)
-    and char_length(target_id)<=240
+    and (target_kind='source' or target_id=btrim(target_id))
+    and (target_kind='source' and char_length(target_id)<=2048
+      and octet_length(target_id)<=8192
+      or target_kind<>'source' and char_length(target_id)<=240
+        and octet_length(target_id)<=960)
     and target_id !~ '[[:cntrl:]]'
     and private.valid_course_annotation_path_v1(observed_path)
     and observed_path->0->>'id'=course_id::text
@@ -285,7 +300,7 @@ create table private.course_anchored_annotations(
   ),
   constraint course_anchored_annotations_category_v1 check(
     category is null or category in(
-      'question','possible_error','confusing','suggestion'
+      'question','possible_error','confusing','suggestion','reformulation_request'
     )
   ),
   constraint course_anchored_annotations_classification_v1 check(
@@ -327,6 +342,22 @@ create table private.course_anchored_annotations(
       state='withdrawn' and withdrawn_at is not null
         and hard_delete_after=withdrawn_at+interval '14 days'
       or state<>'withdrawn' and withdrawn_at is null and hard_delete_after is null
+    )
+  ),
+  constraint course_anchored_annotations_owner_response_v1 check(
+    private.valid_course_source_links_shape_v1(
+      owner_response_source_links,false
+    )
+    and (
+      owner_response is null and owner_response_kind is null
+        and owner_response_source_links='[]'::jsonb
+      or owner_response is not null and owner_response_kind='answer'
+        and owner_response_source_links='[]'::jsonb
+      or owner_response is not null and owner_response_kind='reformulation'
+        and jsonb_array_length(case
+          when jsonb_typeof(owner_response_source_links)='array'
+            then owner_response_source_links else '[]'::jsonb end
+        )>0
     )
   )
 );
@@ -524,6 +555,16 @@ begin
     when p_annotation.target_kind='study_unit' then
       '#/authoring/courses/'||p_annotation.course_id::text||
       '?section=inspection&studyUnitId='||private.course_annotation_urlencode_v1(p_annotation.target_id)
+    when p_annotation.target_kind='source' then
+      '#/authoring/courses/'||p_annotation.course_id::text||
+      '?section=sources&sourceId='||private.course_annotation_urlencode_v1(
+        p_annotation.target_id
+      )
+    when p_annotation.target_kind='source_anchor' then
+      '#/authoring/courses/'||p_annotation.course_id::text||
+      '?section=sources&sourceId='||private.course_annotation_urlencode_v1(
+        v_current#>>'{path,1,id}'
+      )||'&anchorId='||private.course_annotation_urlencode_v1(p_annotation.target_id)
     else
       '#/authoring/courses/'||p_annotation.course_id::text||
       '?section=inspection&lessonId='||private.course_annotation_urlencode_v1(
@@ -583,7 +624,9 @@ begin
     'state',p_annotation.state,
     'ownerResponse',case when p_annotation.owner_response is null then null
       else jsonb_build_object(
-        'text',p_annotation.owner_response,'updatedAt',p_annotation.responded_at
+        'text',p_annotation.owner_response,'kind',p_annotation.owner_response_kind,
+        'consideredSourceLinks',p_annotation.owner_response_source_links,
+        'updatedAt',p_annotation.responded_at
       ) end,
     'timestamps',jsonb_build_object(
       'capturedAt',p_annotation.captured_at,
@@ -665,14 +708,13 @@ revoke all on function private.valid_course_annotation_text_v1(text,integer,inte
 create function private.course_annotation_urlencode_v1(p_value text)
 returns text
 language plpgsql
-immutable
+stable
 security definer
 set search_path = pg_catalog
 as $function$
 declare
   v_bytes bytea := convert_to(p_value,'UTF8');
   v_result text := '';
-  v_index integer;
   v_byte integer;
 begin
   for v_index in 0..octet_length(v_bytes)-1 loop
@@ -705,6 +747,8 @@ declare
   v_module private.course_entities%rowtype;
   v_lesson private.course_entities%rowtype;
   v_microsequence private.course_entities%rowtype;
+  v_source private.course_source_revisions%rowtype;
+  v_anchor private.course_source_anchor_revisions%rowtype;
   v_path jsonb := '[]'::jsonb;
   v_subject_refs jsonb := '[]'::jsonb;
   v_method text;
@@ -721,6 +765,52 @@ begin
     if p_target_id<>p_course_id::text then return null; end if;
     return jsonb_build_object(
       'kind','course','id',p_course_id::text,'targetVersion',v_course.revision,
+      'path',v_path,'method','target_scope_unclassified','methodVersion',1,
+      'taxonomyRevision',v_course.revision,'subjectRefs','[]'::jsonb
+    );
+  end if;
+  if p_target_kind='source' then
+    select * into v_source
+    from private.course_source_revisions source
+    where source.course_id=p_course_id and source.source_id=p_target_id
+    order by source.revision desc limit 1;
+    if not found then return null; end if;
+    v_path:=v_path||jsonb_build_array(jsonb_build_object(
+      'kind','source','id',v_source.source_id,
+      'label',v_source.title,
+      'version',v_source.revision
+    ));
+    return jsonb_build_object(
+      'kind','source','id',v_source.source_id,'targetVersion',v_source.revision,
+      'path',v_path,'method','target_scope_unclassified','methodVersion',1,
+      'taxonomyRevision',v_course.revision,'subjectRefs','[]'::jsonb
+    );
+  end if;
+  if p_target_kind='source_anchor' then
+    select * into v_anchor
+    from private.course_source_anchor_revisions anchor
+    where anchor.course_id=p_course_id and anchor.anchor_id=p_target_id
+    order by anchor.revision desc limit 1;
+    if not found then return null; end if;
+    select * into strict v_source
+    from private.course_source_revisions source
+    where source.course_id=p_course_id
+      and source.source_id=v_anchor.source_id
+      and source.revision=v_anchor.source_revision;
+    v_path:=v_path||jsonb_build_array(
+      jsonb_build_object(
+        'kind','source','id',v_source.source_id,
+        'label',v_source.title,
+        'version',v_source.revision
+      ),
+      jsonb_build_object(
+        'kind','source_anchor','id',v_anchor.anchor_id,
+        'label',null,'version',v_anchor.revision
+      )
+    );
+    return jsonb_build_object(
+      'kind','source_anchor','id',v_anchor.anchor_id,
+      'targetVersion',v_anchor.revision,
       'path',v_path,'method','target_scope_unclassified','methodVersion',1,
       'taxonomyRevision',v_course.revision,'subjectRefs','[]'::jsonb
     );
@@ -851,6 +941,62 @@ as $function$
   select encode(extensions.digest(convert_to(p_value::text,'UTF8'),'sha256'),'hex')
 $function$;
 
+create function private.course_annotation_source_links_resolved_v1(
+  p_course_id uuid,
+  p_links jsonb
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog,private
+as $function$
+declare
+  v_link jsonb;
+  v_anchor jsonb;
+begin
+  if not private.valid_course_source_links_shape_v1(p_links,false) then
+    return false;
+  end if;
+  for v_link in select value from jsonb_array_elements(p_links)
+  loop
+    if not exists(
+      select 1 from private.course_source_revisions source
+      where source.course_id=p_course_id
+        and source.source_id=v_link->>'sourceId'
+        and source.revision=(v_link->>'sourceRevision')::bigint
+        and source.status='active'
+        and not exists(
+          select 1 from private.course_source_revisions newer
+          where newer.course_id=source.course_id
+            and newer.source_id=source.source_id
+            and newer.revision>source.revision
+        )
+    ) then return false; end if;
+    for v_anchor in select value from jsonb_array_elements(v_link->'anchors')
+    loop
+      if not exists(
+        select 1 from private.course_source_anchor_revisions anchor
+        where anchor.course_id=p_course_id
+          and anchor.anchor_id=v_anchor->>'anchorId'
+          and anchor.revision=(v_anchor->>'anchorRevision')::bigint
+          and anchor.source_id=v_link->>'sourceId'
+          and anchor.source_revision=(v_link->>'sourceRevision')::bigint
+          and anchor.status='active'
+          and not exists(
+            select 1 from private.course_source_anchor_revisions newer
+            where newer.course_id=anchor.course_id
+              and newer.anchor_id=anchor.anchor_id
+              and newer.revision>anchor.revision
+          )
+      ) then return false; end if;
+    end loop;
+  end loop;
+  return true;
+exception when others then return false;
+end;
+$function$;
+
 create function private.record_course_annotation_event_v1(
   p_annotation private.course_anchored_annotations,
   p_event_type text,
@@ -876,6 +1022,11 @@ begin
       then null else private.course_annotation_hash_v1(to_jsonb(p_annotation.brief_summary)) end,
     'responseHash',case when p_annotation.owner_response is null
       then null else private.course_annotation_hash_v1(to_jsonb(p_annotation.owner_response)) end,
+    'responseKind',p_annotation.owner_response_kind,
+    'consideredSourceLinksHash',case
+      when p_annotation.owner_response is null then null
+      else private.course_annotation_hash_v1(p_annotation.owner_response_source_links)
+    end,
     'automaticClassificationHash',private.course_annotation_hash_v1(
       jsonb_build_object(
         'method',p_annotation.automatic_method,
@@ -995,6 +1146,7 @@ $function$;
 revoke all on function private.course_annotation_urlencode_v1(text),
   private.course_annotation_target_snapshot_v1(uuid,text,text),
   private.course_annotation_hash_v1(jsonb),
+  private.course_annotation_source_links_resolved_v1(uuid,jsonb),
   private.record_course_annotation_event_v1(
     private.course_anchored_annotations,text,uuid,text,jsonb
   ),
@@ -1031,7 +1183,8 @@ declare
   v_raw_text text;
   v_summary text;
   v_response text;
-  v_subject_ids jsonb;
+  v_response_kind text;
+  v_response_source_links jsonb;
   v_subject_refs jsonb;
   v_now timestamptz := statement_timestamp();
   v_item jsonb;
@@ -1194,7 +1347,7 @@ begin
        or not private.valid_course_annotation_text_v1(v_summary,500,4096,true)
        or p_channel='authoring_chat' and v_summary is null
        or v_category is not null and v_category not in(
-         'question','possible_error','confusing','suggestion'
+         'question','possible_error','confusing','suggestion','reformulation_request'
        )
        or p_command->'capturedAt'<>'null'::jsonb
           and jsonb_typeof(p_command->'capturedAt') is distinct from 'string'
@@ -1308,7 +1461,7 @@ begin
       if not private.valid_course_annotation_text_v1(v_raw_text,2000,16384,false)
          or not private.valid_course_annotation_text_v1(v_summary,500,4096,true)
          or v_category is not null and v_category not in(
-           'question','possible_error','confusing','suggestion'
+           'question','possible_error','confusing','suggestion','reformulation_request'
          ) then
         raise exception 'Conteúdo revisado inválido.' using errcode='22023';
       end if;
@@ -1316,11 +1469,15 @@ begin
         or v_annotation.category is distinct from v_category
         or v_annotation.brief_summary is distinct from v_summary
         or v_annotation.state<>'open'
-        or v_annotation.owner_response is not null;
+        or v_annotation.owner_response is not null
+        or v_annotation.owner_response_kind is not null
+        or v_annotation.owner_response_source_links<>'[]'::jsonb;
       if v_changed then
         update private.course_anchored_annotations annotation set
           raw_text=v_raw_text,category=v_category,brief_summary=v_summary,
-          state='open',owner_response=null,responded_at=null,resolved_at=null,
+          state='open',owner_response=null,owner_response_kind=null,
+          owner_response_source_links='[]'::jsonb,
+          responded_at=null,resolved_at=null,
           updated_at=v_now,version=annotation.version+1
         where annotation.id=v_annotation.id returning * into v_annotation;
         v_event_type:='revised';
@@ -1332,6 +1489,7 @@ begin
       end if;
       update private.course_anchored_annotations annotation set
         raw_text=null,brief_summary=null,owner_response=null,
+        owner_response_kind=null,owner_response_source_links='[]'::jsonb,
         state='withdrawn',responded_at=null,resolved_at=null,
         withdrawn_at=v_now,hard_delete_after=v_now+interval '14 days',
         updated_at=v_now,version=annotation.version+1
@@ -1352,19 +1510,43 @@ begin
       end if;
     elsif v_type='respond_to_anchored_annotation' then
       if p_command-'type'-'annotationId'-'expectedAnnotationVersion'-
-           'ownerResponse'<>'{}'::jsonb or not (p_command ? 'ownerResponse')
+           'ownerResponse'-'responseKind'-'consideredSourceLinks'<>'{}'::jsonb
+         or not (p_command ?& array[
+           'ownerResponse','responseKind','consideredSourceLinks'
+         ])
          or v_annotation.state='withdrawn' then
         raise exception 'Resposta à observação inválida.' using errcode='22023';
       end if;
       v_response:=p_command->>'ownerResponse';
-      if not private.valid_course_annotation_text_v1(v_response,2000,16384,false) then
+      v_response_kind:=p_command->>'responseKind';
+      v_response_source_links:=p_command->'consideredSourceLinks';
+      if not private.valid_course_annotation_text_v1(v_response,2000,16384,false)
+         or v_response_kind not in('answer','reformulation')
+         or not private.valid_course_source_links_shape_v1(
+           v_response_source_links,false
+         )
+         or v_response_kind='answer'
+           and v_response_source_links<>'[]'::jsonb
+         or v_response_kind='reformulation'
+           and jsonb_array_length(case
+             when jsonb_typeof(v_response_source_links)='array'
+               then v_response_source_links else '[]'::jsonb end
+           )=0
+         or v_response_kind='reformulation'
+           and not private.course_annotation_source_links_resolved_v1(
+             p_course_id,v_response_source_links
+           ) then
         raise exception 'Resposta à observação inválida.' using errcode='22023';
       end if;
       v_changed:=v_annotation.owner_response is distinct from v_response
+        or v_annotation.owner_response_kind is distinct from v_response_kind
+        or v_annotation.owner_response_source_links is distinct from
+          v_response_source_links
         or v_annotation.state='open';
       if v_changed then
         update private.course_anchored_annotations annotation set
-          owner_response=v_response,responded_at=v_now,
+          owner_response=v_response,owner_response_kind=v_response_kind,
+          owner_response_source_links=v_response_source_links,responded_at=v_now,
           state=case when state='open' then 'considered' else state end,
           first_considered_at=coalesce(first_considered_at,v_now),
           updated_at=v_now,version=annotation.version+1
@@ -1439,6 +1621,8 @@ begin
             )
             when 'lesson' then topic.parent_id=v_annotation.target_id
             when 'topic' then topic.entity_id=v_annotation.target_id
+            when 'source' then true
+            when 'source_anchor' then true
             when 'didactic_microsequence' then topic.entity_id in(
               select cover.value from private.course_entities microsequence
               cross join lateral jsonb_array_elements_text(
@@ -1713,7 +1897,7 @@ begin
      or p_include_uncategorized is null or p_include_descendants is null
      or p_limit is null or p_limit not between 1 and 24
      or cardinality(p_origins)>5 or cardinality(p_channels)>6
-     or cardinality(p_states)>4 or cardinality(p_categories)>4
+     or cardinality(p_states)>4 or cardinality(p_categories)>5
      or cardinality(p_subject_ids)>16
      or exists(select 1 from unnest(p_origins) value where value is null or value not in(
        'author','learner','human_audit','automatic_audit','unknown_legacy'
@@ -1726,7 +1910,7 @@ begin
        'open','considered','resolved','withdrawn'
      ))
      or exists(select 1 from unnest(p_categories) value where value is null or value not in(
-       'question','possible_error','confusing','suggestion'
+       'question','possible_error','confusing','suggestion','reformulation_request'
      ))
      or (select count(*)<>count(distinct value) from unnest(p_origins) value)
      or (select count(*)<>count(distinct value) from unnest(p_channels) value)
@@ -1744,11 +1928,19 @@ begin
      or p_annotation_id is not null and p_annotation_id::text !~
        '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
      or p_target_kind is not null and p_target_kind not in(
-       'course','module','lesson','topic','didactic_microsequence','study_unit'
+       'course','module','lesson','topic','didactic_microsequence','study_unit',
+       'source','source_anchor'
      )
      or p_target_id is not null and(
-       nullif(btrim(p_target_id),'') is null or p_target_id<>btrim(p_target_id)
-       or char_length(p_target_id)>240 or p_target_id ~ '[[:cntrl:]]'
+       nullif(btrim(p_target_id),'') is null
+       or p_target_kind<>'source' and p_target_id<>btrim(p_target_id)
+       or p_target_kind='source' and(
+         char_length(p_target_id)>2048 or octet_length(p_target_id)>8192
+       )
+       or p_target_kind<>'source' and(
+         char_length(p_target_id)>240 or octet_length(p_target_id)>960
+       )
+       or p_target_id ~ '[[:cntrl:]]'
      )
      or p_cursor is not null and(
        char_length(p_cursor)>240 or p_cursor!~'^[A-Za-z0-9+/_-]+={0,2}$'
@@ -2132,6 +2324,30 @@ begin
 end;
 $validate_legacy_course_annotations$;
 
+create temporary table course_legacy_annotation_source_audit_v1(
+  source_name text primary key,
+  row_count bigint not null,
+  source_hash text not null
+) on commit drop;
+
+insert into course_legacy_annotation_source_audit_v1(
+  source_name,row_count,source_hash
+)
+select 'author_notes',count(*),private.course_annotation_hash_v1(coalesce(jsonb_agg(
+  to_jsonb(observation) order by observation.id
+),'[]'::jsonb))
+from private.authoring_workspace_observations observation
+where observation.kind='note'
+union all
+select 'personal_state_observations',count(*),private.course_annotation_hash_v1(coalesce(jsonb_agg(
+  jsonb_build_object(
+    'userId',legacy_state.user_id,
+    'courseId',legacy_state.trail_item_id,
+    'observations',legacy_state.state->'observations'
+  ) order by legacy_state.user_id,legacy_state.trail_item_id
+),'[]'::jsonb))
+from public.legacy_trail_personal_states legacy_state;
+
 create temporary table course_legacy_anchored_annotations_v1(
   id uuid primary key,
   course_id uuid not null,
@@ -2276,7 +2492,7 @@ begin
         legacy.owner_response,2000,16384,true
       )
        or legacy.category is not null and legacy.category not in(
-         'question','possible_error','confusing','suggestion'
+         'question','possible_error','confusing','suggestion','reformulation_request'
        )
        or not private.valid_course_annotation_path_v1(legacy.observed_path)
        or legacy.observed_path->0->>'id'<>legacy.course_id::text
@@ -2317,7 +2533,7 @@ insert into private.course_anchored_annotations(
   raw_text,category,brief_summary,automatic_method,automatic_method_version,
   automatic_taxonomy_revision,automatic_subject_refs,effective_method,
   effective_method_version,effective_taxonomy_revision,effective_subject_refs,
-  state,owner_response,captured_at,created_at,updated_at,first_considered_at,
+  state,owner_response,owner_response_kind,captured_at,created_at,updated_at,first_considered_at,
   responded_at,resolved_at
 )
 select
@@ -2326,6 +2542,7 @@ select
   null,null,'legacy_unknown',legacy.raw_text,legacy.category,legacy.brief_summary,
   'legacy_unclassified',1,null,'[]'::jsonb,
   'legacy_unclassified',1,null,'[]'::jsonb,legacy.state,legacy.owner_response,
+  case when legacy.owner_response is null then null else 'answer' end,
   legacy.captured_at,legacy.created_at,legacy.updated_at,
   legacy.first_considered_at,legacy.responded_at,legacy.resolved_at
 from course_legacy_anchored_annotations_v1 legacy;
@@ -2347,6 +2564,11 @@ select annotation.course_id,annotation.id,annotation.version,'created',
       else private.course_annotation_hash_v1(to_jsonb(annotation.brief_summary)) end,
     'responseHash',case when annotation.owner_response is null then null
       else private.course_annotation_hash_v1(to_jsonb(annotation.owner_response)) end,
+    'responseKind',annotation.owner_response_kind,
+    'consideredSourceLinksHash',case when annotation.owner_response is null
+      then null else private.course_annotation_hash_v1(
+        annotation.owner_response_source_links
+      ) end,
     'automaticClassificationHash',private.course_annotation_hash_v1(
       jsonb_build_object(
         'method',annotation.automatic_method,
@@ -2381,9 +2603,6 @@ from(
   select annotation.course_id,count(*)::bigint annotation_count
   from private.course_anchored_annotations annotation group by annotation.course_id
 ) source where source.course_id=course.id;
-
-delete from private.authoring_workspace_observations observation
-where observation.kind='note';
 
 do $verify_legacy_course_annotations$
 declare
@@ -2424,38 +2643,141 @@ begin
     raise exception 'Auditoria da migração de observações divergiu.' using errcode='55000';
   end if;
   if exists(
-    select 1 from private.authoring_workspace_observations observation
-    where observation.kind='note'
+    with current_source as(
+      select 'author_notes' source_name,count(*) row_count,
+        private.course_annotation_hash_v1(coalesce(jsonb_agg(
+          to_jsonb(observation) order by observation.id
+        ),'[]'::jsonb)) source_hash
+      from private.authoring_workspace_observations observation
+      where observation.kind='note'
+      union all
+      select 'personal_state_observations',count(*),private.course_annotation_hash_v1(coalesce(jsonb_agg(
+        jsonb_build_object(
+          'userId',legacy_state.user_id,
+          'courseId',legacy_state.trail_item_id,
+          'observations',legacy_state.state->'observations'
+        ) order by legacy_state.user_id,legacy_state.trail_item_id
+      ),'[]'::jsonb))
+      from public.legacy_trail_personal_states legacy_state
+    )
+    select 1
+    from course_legacy_annotation_source_audit_v1 original
+    full join current_source current using(source_name)
+    where (original.row_count,original.source_hash)
+      is distinct from(current.row_count,current.source_hash)
   ) then
-    raise exception 'Nota legada permaneceu ativa após a migração.' using errcode='55000';
+    raise exception 'Uma fonte legada de observações foi alterada durante a migração.'
+      using errcode='55000';
   end if;
 end;
 $verify_legacy_course_annotations$;
 
-update public.legacy_trail_personal_states legacy_state
-set state=jsonb_set(legacy_state.state,'{observations}','{}'::jsonb,true),
-  updated_at=greatest(legacy_state.updated_at,statement_timestamp())
-where legacy_state.state->'observations' is distinct from '{}'::jsonb;
-
--- O estado pessoal volta a ser somente progresso e marcações. Observações já
--- foram copiadas acima e nunca recebem dual-write.
+-- O estado pessoal corrente volta a conter somente progresso e marcações.
+-- O snapshot legado permanece intacto até a limpeza física separada.
 create function private.valid_course_personal_state_v2(p_state jsonb)
 returns boolean
-language sql
+language plpgsql
 immutable
 security definer
 set search_path = pg_catalog,private
 as $function$
-  select p_state is not null
-    and jsonb_typeof(p_state)='object'
-    and p_state ?& array['version','progress','reviewMarks']
-    and p_state-'version'-'progress'-'reviewMarks'='{}'::jsonb
-    and p_state->'version'='2'::jsonb
-    and private.valid_course_personal_state_v1(jsonb_build_object(
-      'version',1,'progress',p_state->'progress',
-      'reviewMarks',p_state->'reviewMarks','observations','{}'::jsonb
-    ))
-    and pg_column_size(p_state)<=524288
+declare
+  v_progress jsonb;
+  v_lessons jsonb;
+  v_reviews jsonb;
+  v_timestamp text;
+begin
+  if jsonb_typeof(p_state) is distinct from 'object'
+     or octet_length(p_state::text)>524288
+     or p_state->>'version' is distinct from '2'
+     or exists(
+       select 1 from jsonb_object_keys(p_state) field
+       where field not in('version','progress','reviewMarks')
+     ) then return false; end if;
+  v_progress:=p_state->'progress';
+  v_lessons:=v_progress->'lessons';
+  v_reviews:=p_state->'reviewMarks';
+  if jsonb_typeof(v_progress) is distinct from 'object'
+     or v_progress->>'version' is distinct from '3'
+     or exists(
+       select 1 from jsonb_object_keys(v_progress) field
+       where field not in('version','lessons')
+     )
+     or jsonb_typeof(v_lessons) is distinct from 'object'
+     or jsonb_typeof(v_reviews) is distinct from 'object' then
+    return false;
+  end if;
+  if (select count(*) from jsonb_object_keys(v_lessons))>10000
+     or coalesce((
+       select sum(jsonb_array_length(value->'completedStudyUnitIds'))
+       from jsonb_each(v_lessons)
+       where jsonb_typeof(value->'completedStudyUnitIds')='array'
+     ),0)>100000
+     or (select count(*) from jsonb_object_keys(v_reviews))>100000 then
+    return false;
+  end if;
+  if exists(
+    select 1 from jsonb_each(v_lessons) entry(key,value)
+    where nullif(btrim(key),'') is null or char_length(key)>240
+      or key ~ '[[:cntrl:]]'
+      or jsonb_typeof(value)<>'object'
+      or exists(
+        select 1 from jsonb_object_keys(value) field
+        where field not in('cursorStudyUnitId','completedStudyUnitIds')
+      )
+      or not (value ?& array['cursorStudyUnitId','completedStudyUnitIds'])
+      or jsonb_typeof(value->'completedStudyUnitIds')<>'array'
+      or jsonb_array_length(value->'completedStudyUnitIds') not between 1 and 10000
+      or jsonb_typeof(value->'cursorStudyUnitId')<>'string'
+      or nullif(btrim(value->>'cursorStudyUnitId'),'') is null
+      or char_length(value->>'cursorStudyUnitId')>240
+      or value->>'cursorStudyUnitId' ~ '[[:cntrl:]]'
+      or not (value->'completedStudyUnitIds' ? (value->>'cursorStudyUnitId'))
+      or exists(
+        select 1 from jsonb_array_elements(value->'completedStudyUnitIds') study_unit_id
+        where jsonb_typeof(study_unit_id)<>'string'
+          or nullif(btrim(study_unit_id #>> '{}'),'') is null
+          or char_length(study_unit_id #>> '{}')>240
+          or study_unit_id #>> '{}' ~ '[[:cntrl:]]'
+      )
+      or (
+        select count(*)<>count(distinct study_unit_id #>> '{}')
+        from jsonb_array_elements(value->'completedStudyUnitIds') study_unit_id
+      )
+  ) then return false; end if;
+  if exists(
+    select 1
+    from jsonb_each(v_lessons) lesson(path,value)
+    cross join lateral jsonb_array_elements_text(
+      lesson.value->'completedStudyUnitIds'
+    ) study_unit(study_unit_id)
+    group by study_unit.study_unit_id
+    having count(*)>1
+  ) then return false; end if;
+  if exists(
+    select 1 from jsonb_each(v_reviews) entry(key,value)
+    where nullif(btrim(key),'') is null or char_length(key)>240
+      or key ~ '[[:cntrl:]]'
+      or jsonb_typeof(value)<>'string'
+      or value #>> '{}' !~ '^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$'
+  ) then return false; end if;
+  for v_timestamp in select value from jsonb_each_text(v_reviews)
+  loop
+    begin
+      perform make_timestamp(
+        substring(v_timestamp from 1 for 4)::integer,
+        substring(v_timestamp from 6 for 2)::integer,
+        substring(v_timestamp from 9 for 2)::integer,
+        substring(v_timestamp from 12 for 2)::integer,
+        substring(v_timestamp from 15 for 2)::integer,
+        substring(v_timestamp from 18 for char_length(v_timestamp)-18)::double precision
+      );
+    exception when others then
+      return false;
+    end;
+  end loop;
+  return true;
+end;
 $function$;
 
 alter table public.course_personal_states
@@ -2480,8 +2802,6 @@ alter table private.course_personal_state_receipts
     protocol_version in(1,2)
   ),
   add primary key(user_id,request_id,protocol_version);
-delete from private.course_personal_state_receipts receipt
-where receipt.expires_at<=statement_timestamp();
 alter table private.course_personal_state_receipts
   alter column protocol_version set default 2;
 
@@ -2682,6 +3002,7 @@ begin
   for v_annotation in
     update private.course_anchored_annotations annotation set
       actor_id=null,raw_text=null,brief_summary=null,owner_response=null,
+      owner_response_kind=null,owner_response_source_links='[]'::jsonb,
       state='withdrawn',responded_at=null,resolved_at=null,
       withdrawn_at=case when annotation.state='withdrawn'
         then annotation.withdrawn_at else v_now end,
@@ -2775,19 +3096,14 @@ begin
     raise exception 'Estado pessoal v1 permaneceu ativo após a migração.' using errcode='55000';
   end if;
   if exists(
-    select 1 from public.legacy_trail_personal_states legacy_state
-    where legacy_state.state->'observations' is distinct from '{}'::jsonb
-  ) then
-    raise exception 'Texto de observação permaneceu duplicado no estado legado.'
-      using errcode='55000';
-  end if;
-  if exists(
     select 1 from private.course_anchored_annotations annotation
     where annotation.observed_path->-1->>'kind'<>annotation.target_kind
        or annotation.observed_path->-1->>'id'<>annotation.target_id
        or annotation.state='withdrawn' and(
          annotation.raw_text is not null or annotation.brief_summary is not null
          or annotation.owner_response is not null
+         or annotation.owner_response_kind is not null
+         or annotation.owner_response_source_links<>'[]'::jsonb
         )
   ) then
     raise exception 'Invariante final de observação situada falhou.' using errcode='55000';
@@ -2863,6 +3179,7 @@ begin
   ) into v_definition;
   if strpos(v_definition,'authoring_chat')=0
      or strpos(v_definition,'briefSummary')=0
+     or strpos(v_definition,'consideredSourceLinks')=0
      or strpos(v_definition,'annotation_set_version+1')=0
      or strpos(v_definition,'for update')=0
      or strpos(v_definition,'from auth.users actor')=0

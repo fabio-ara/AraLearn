@@ -799,7 +799,7 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
         and entity_type='study_unit'
       order by position,entity_id limit 24;
     `));
-    assert.match(entityPlan, /"Node Type": "Index Scan"/u);
+    assert.match(entityPlan, /"Node Type": "Index(?: Only)? Scan"/u);
     assert.match(entityPlan,
       /course_entities_(?:parent_v1_idx|sibling_position_v1)/u);
     assert.equal(await result(psql(`

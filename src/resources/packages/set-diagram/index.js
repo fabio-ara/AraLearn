@@ -24,10 +24,16 @@ function combinations(ids) {
 }
 
 function vennModuleUrl() {
-  const stylesheet = [...document.styleSheets].find(({ href }) => href?.endsWith("/styles.css"));
-  return stylesheet?.href
-    ? new URL("vendor/venn.esm.js", stylesheet.href).href
-    : new URL("public/vendor/venn.esm.js", document.baseURI).href;
+  const stylesheet = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map((link) => link.href)
+    .find((href) => /(?:^|\/)styles\.css(?:$|[?#])/u.test(href));
+  if (!stylesheet) throw new Error("A folha de estilos do AraLearn não está disponível.");
+  const stylesheetUrl = new URL(stylesheet);
+  if (!["http:", "https:"].includes(stylesheetUrl.protocol) ||
+      stylesheetUrl.username || stylesheetUrl.password) {
+    throw new Error("A origem dos recursos visuais do AraLearn é inválida.");
+  }
+  return new URL("vendor/venn.esm.js", stylesheetUrl).href;
 }
 
 function loadVennModule() {

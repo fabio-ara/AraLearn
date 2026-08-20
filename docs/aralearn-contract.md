@@ -11,9 +11,9 @@ o mesmo documento de maneiras incompatíveis.
   intercambiar os documentos de conteúdo;
 - **esquema (`schema`)**: conjunto de regras legíveis por programa que descreve
   os campos e valores admitidos por um documento;
-- **pacote de recurso (`package`)**: módulo que reúne contrato, validação e
+- **pacote de componente (`package`)**: módulo que reúne contrato, validação e
   renderização de uma representação ou interação didática;
-- **núcleo (`kernel`)**: camada que organiza Unidades de estudo e packages sem
+- **núcleo (`kernel`)**: camada que organiza Unidades de estudo e pacotes sem
   incorporar as regras internas de cada representação.
 
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
@@ -26,15 +26,18 @@ auditoria:
 |---|---|
 | `aralearn.course.v1` | documento didático completo ou recortado |
 | envelope de Unidade de estudo | composição de conteúdo, resposta e feedback |
-| contrato de cada pacote de recurso (`package`) | dados próprios de uma representação ou interação |
+| contrato de cada pacote de componente (`package`) | dados próprios de uma representação ou interação |
 | `aralearn.resource-library.v1` | descoberta, inspeção e validação do catálogo de pacotes |
 | `aralearn.course-sources.v1` | catálogo privado, revisões, Âncoras e atribuições de Fontes na Autoria |
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
+| `aralearn.course-source-attachment-access.v1` | autorização temporária de envio ou abertura de PDF privado de uma Fonte |
 | `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
 | `aralearn.course-anchored-annotation-page.v1`, `aralearn.course-anchored-annotation.v1` e `aralearn.course-anchored-annotation-change.v1` | página, item protegido e recibo de Anotações ancoradas |
 | `aralearn.course-audit-context.v1` | contexto focal corrente que pode ser auditado |
-| `aralearn.course-instructional-audit-run.v1`, `aralearn.course-audit-finding.v1` e `aralearn.course-authoring-correction.v1` | rodada imutável, achado versionado e checkpoint de correção |
+| `aralearn.course-instructional-audit-run.v1`, `aralearn.course-audit-finding.v1` e `aralearn.course-authoring-correction.v1` | rodada imutável, achado versionado e ponto de controle da correção |
 | `aralearn.course-audit-cycle-page.v1` e `aralearn.course-audit-cycle-change.v1` | leitura paginada/detalhada e recibo estrito do ciclo |
+| `aralearn.course-variant-comparison.v1`, `aralearn.course-variant-comparison-list.v1` e `aralearn.course-variant-comparison-change.v1` | comparação, listagem e mudança de Variantes independentes |
+| `aralearn.course-authoring-analytics.v1` e `aralearn.course-authoring-analytics-export.v1` | fatos, métricas e exportação da área Pesquisa |
 
 Essa separação evita um esquema monolítico: acrescentar uma representação não
 exige alterar o núcleo, e consultar o catálogo não exige enviar todos os
@@ -68,7 +71,7 @@ O documento é a unidade de intercâmbio e validação da composição:
 }
 ```
 
-`scope` é opcional e, quando presente, vale `course`, `module`, `lesson` ou `microsequence`. `courses` continua sendo uma lista mesmo quando o recorte contém um único curso. Essa regularidade permite que as mesmas ferramentas componham e validem documentos completos e recortes sem criar envelopes paralelos.
+`scope` é opcional e, quando presente, vale `course`, `module`, `lesson` ou `microsequence`. `courses` continua sendo uma lista mesmo quando o recorte contém um único Curso. Essa regularidade permite que as mesmas ferramentas componham e validem documentos completos e recortes sem criar envelopes paralelos. No modelo relacional, cada item dessa lista corresponde a uma única raiz de Curso; Estudo, Autoria, API de Cursos e MCP preservam essa identidade.
 
 A hierarquia é:
 
@@ -134,8 +137,8 @@ Toda Unidade de estudo tem esta moldura:
 - ids de instância: únicos dentro da Unidade.
 
 `sources` não pertence ao envelope nem ao conteúdo de uma Unidade. O corte é
-estrito: produtores e consumidores rejeitam esse campo; não há alias, fallback
-ou leitura dupla do formato anterior.
+estrito: produtores e consumidores rejeitam esse campo; não há nome alternativo
+nem leitura dupla do formato anterior.
 
 Uma instância de `content`, `response` ou `feedback` tem:
 
@@ -148,7 +151,7 @@ Uma instância de `content`, `response` ou `feedback` tem:
 }
 ```
 
-O kernel conhece `id`, `package`, `version` e o slot ocupado. O package conhece
+O núcleo conhece `id`, `package`, `version` e o espaço ocupado. O pacote conhece
 `data`. Essa fronteira é implementada em
 `src/resources/kernel/studyUnitEnvelope.js` e
 `src/resources/kernel/packageRegistry.js`.
@@ -159,16 +162,17 @@ Uma resposta `choice` já contém o estímulo e as alternativas quando esse é s
 
 ## 4. Fontes, Âncoras e atribuições fora do envelope
 
-Uma Fonte possui identidade estável e revisões append-only. Uma Âncora aponta
+Uma Fonte possui identidade estável e revisões somente por acréscimo. Uma Âncora aponta
 para uma revisão exata por página, tempo, fragmento URI ou trecho textual. A
 atribuição registra, em ordem, quais revisões e Âncoras sustentam um item do
 plano ou uma Unidade de estudo e qual relação foi declarada:
-`informed_by`, `supported_by`, `adapted_from` ou `quoted_from`.
+`informed_by`, `supported_by`, `adapted_from`, `quoted_from`,
+`contrasted_with`, `exemplified_by`, `inspired_by` ou `needs_verification`.
 
 Toda atribuição nova não vazia exige ao menos uma Âncora ativa da revisão exata
 para cada Fonte. O limite de escrita é 32 Fontes por alvo e oito identidades de
 Âncora por revisão de Fonte. Salvar substitui o conjunto completo sob revisão esperada do Curso e
-versão exata do alvo; o histórico permanece append-only.
+versão exata do alvo; o histórico permanece somente por acréscimo.
 
 Referências anteriores ao contrato são preservadas, na mesma identidade e
 ordem, como `legacy_reference`. Enquanto não resolvidas, têm estado
@@ -177,7 +181,7 @@ ordem, como `legacy_reference`. Enquanto não resolvidas, têm estado
 literal existente, inclusive seus espaços; não significa criar uma Fonte
 paralela nem inventar metadados.
 
-O catálogo owner-only usa `aralearn.course-sources.v1` e pagina os modos
+O catálogo exclusivo do proprietário usa `aralearn.course-sources.v1` e pagina os modos
 `catalog`, `source` e `target` sob a revisão esperada. O Estudo não recebe esse
 catálogo. Ao abrir Fontes numa Unidade, ele solicita
 `aralearn.course-study-citations.v1`: Fontes ocultas ou ainda não resolvidas são
@@ -193,8 +197,9 @@ evento e recibo atomicamente.
 ### Anotações ancoradas fora do conteúdo e do estado pessoal
 
 Uma Anotação ancorada liga uma manifestação a Curso, Módulo, Lição, Tópico,
-Microssequência didática ou Unidade de estudo. Há N registros por ator e alvo;
-os estados são somente `open`, `considered`, `resolved` e `withdrawn`. Origem e
+Microssequência didática, Unidade de estudo, Fonte ou Âncora. Há N registros por
+ator e alvo; os estados são somente `open`, `considered`, `resolved` e
+`withdrawn`. Origem e
 canal formam pares coerentes entre pessoa autora, estudante, auditoria humana,
 auditoria automática e legado desconhecido. As superfícies correntes criam
 apenas origens autorais ou estudantis.
@@ -205,6 +210,11 @@ usa `exact_topic_target` somente quando o alvo é exatamente um Tópico. Os dema
 alvos usam `target_scope_unclassified`, o legado pode usar
 `legacy_unclassified` e uma escolha humana posterior usa
 `human_topic_selection` sem substituir o fato automático.
+
+Uma resposta usa `answer` sem lista de Fontes consideradas ou `reformulation`
+com ao menos uma revisão vigente de Fonte e suas Âncoras. Assim, a reformulação
+preserva a base consultada sem copiar o documento de referência para a
+Anotação.
 
 Leituras `inbox`, `target` e `detail` usam até 24 itens, cursor opaco de até 240
 caracteres e resposta de até 256 KiB. O item informa caminho observado e
@@ -220,46 +230,46 @@ O estado pessoal v2 continua limitado a `progress` e `reviewMarks`.
 Estudo recebe no mesmo campo de DTO um contador monotônico privado por pessoa e
 Curso. A versão privada contém somente coordenação, sem texto ou autoridade de
 domínio, e não muda por atividade alheia. Ela permanece até excluir a pessoa ou
-o Curso para manter monotonicidade do cache e não entra no TTL de conteúdo,
-tombstone ou recibo. Nenhum contador avança a revisão de
+o Curso para manter a monotonicidade da cópia local e não se sujeita aos prazos
+de expiração de conteúdo, registros de retirada ou recibos. Nenhum contador avança a revisão de
 conteúdo em revisão de texto, resposta ou mudança de estado. Criação e correção
 de assuntos também confrontam a revisão do Curso. O servidor limita 128 linhas
 correntes por ator/Curso/alvo, 512 por ator/Curso e 256 versões ou eventos em
 operações ordinárias; retirada e exclusão de conta permanecem possíveis no
 teto.
 
-Retirada redige texto, síntese e resposta imediatamente. Tombstones e recibos
-expiram logicamente em até 14 dias: deixam de ser legíveis, pagináveis, contar
-quota ou admitir replay. A limpeza física é oportunista durante
-leituras/mutações do Curso e processa por toque um lote de até 128 tombstones e
-256 recibos expirados; Curso inativo pode conservar lixo físico porque não há
-cron nem prazo de hard delete.
-Eventos
-guardam hashes e metadados pequenos, nunca o texto anterior. Categoria,
+Retirada redige texto, síntese e resposta imediatamente. Registros de retirada
+e recibos expiram logicamente em até 14 dias: deixam de ser legíveis,
+pagináveis, contar cota ou admitir repetição. A limpeza física é oportunista durante
+leituras ou mutações do Curso e processa, a cada operação, até 128 registros de
+retirada e 256 recibos expirados; um Curso inativo pode conservar dados físicos
+expirados porque não há tarefa periódica nem prazo de remoção física.
+Eventos guardam resumos criptográficos e metadados pequenos, nunca o texto
+anterior. Categoria,
 resposta, resolução e timestamps não autorizam inferência de aprendizagem,
 dificuldade, atenção, qualidade ou eficácia.
 
 ### Auditoria e correções fora do conteúdo
 
 O ciclo de auditoria também não entra em `aralearn.course.v1`. Um contexto
-owner-only fixa a Unidade corrente, sua Microssequência, plano, parâmetros,
+exclusivo do proprietário fixa a Unidade corrente, sua Microssequência, plano, parâmetros,
 intenção representacional, Fontes/Âncoras e até 12 Anotações selecionadas. A
-rodada registra checks públicos nas dimensões estrutural, pedagógica, factual e
-editorial; o servidor acrescenta a conformidade estrutural aos três checks
+rodada registra verificações públicas nas dimensões estrutural, pedagógica, factual e
+editorial; o servidor acrescenta a conformidade estrutural às três verificações
 humanos.
 
 Rodadas são imutáveis e permanecem enumeráveis quando não geram achado. A
 leitura `audit_cycle` usa `context|findings|runs|detail`; achados e rodadas são
 paginados e aceitam filtro opcional pela Unidade. `detail` exige exatamente um
-entre `findingId` e `auditRunId`, e o detalhe da rodada expõe todos os checks e
+entre `findingId` e `auditRunId`, e o detalhe da rodada expõe todas as verificações e
 evidências; a página separa a lista `runs` de `runDetail`. Achados e correções
-preservam versões append-only. Um
-achado nasce apenas de check `failed|uncertain`; aplicar uma correção o move
+preservam versões somente por acréscimo. Um
+achado nasce apenas de resultado `failed|uncertain`; aplicar uma correção o move
 para `awaiting_verification`, e outra rodada o leva a `resolved` ou novamente a
 `open`. A correção v1 só altera o conteúdo próprio e as atribuições de Fontes
 de uma Unidade existente, preserva `topics` legítimos e não cria, apaga, move,
-reposiciona ou muda o pai. O checkpoint `before|after` permite conferir a
-aplicação e, enquanto o estado aplicado continuar exato, executar rollback sem
+reposiciona ou muda o pai. O ponto de controle `before|after` permite conferir a
+aplicação e, enquanto o estado aplicado continuar exato, executar a reversão sem
 apagar a história.
 
 Uma conclusão factual positiva exige Fonte e Âncora atuais e ativas. A relação
@@ -269,15 +279,15 @@ mas não a transforma em prova factual. Ações `resolve|reopen` devolvidas para
 essas Observações são sugestões: outro comando explícito precisa executá-las.
 
 A junção conserva apenas identidade e versão da Anotação. Retirada ainda
-presente como tombstone é projetada indisponível e sem link; o hard delete
-remove somente o vínculo e seu ID por cascade. Texto, pseudônimo e pessoa não
+presente como registro de retirada é projetada indisponível e sem link; a remoção
+física remove somente o vínculo e seu identificador por exclusão em cascata. Texto, pseudônimo e pessoa não
 são copiados, e rodada, achado e correção permanecem.
 
 Leituras do ciclo são limitadas a 24 itens, cursor de 240 caracteres e 240 KiB.
-Comandos aceitam até 192 KiB; snapshots, 48 KiB; checkpoints, 96 KiB; recibos,
-64 KiB. Há até 12 Observações selecionadas, 16 achados por rodada, 32 checks,
+Comandos aceitam até 192 KiB; estados registrados, 48 KiB; pontos de controle, 96 KiB; recibos,
+64 KiB. Há até 12 Observações selecionadas, 16 achados por rodada, 32 verificações,
 256 rodadas com reserva, 1.024 identidades de achado, 64 correções por Curso e
-oito por achado. Auditoria não possui réplica nem outbox no IndexedDB. O
+oito por achado. Auditoria não possui réplica nem fila de envio no IndexedDB. O
 contrato completo e seus limites estão em
 [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md).
 
@@ -294,36 +304,37 @@ O kernel também oferece uma fronteira unitária para validar um único Curso:
 
 Ela é útil em testes e operações unitárias. Não aceita `courses` e não é o
 protocolo do catálogo. Tanto o perfil de intercâmbio quanto este perfil usam o
-contrato final `aralearn.course.v1`; não existe alias para o nome substituído.
+contrato final `aralearn.course.v1`; não existe nome alternativo para o termo substituído.
 A implementação está em `src/resources/kernel/courseContract.js`.
 
 Ter uma fronteira unitária explícita é preferível a inferir que qualquer objeto semelhante a curso está completo. A consequência é que o chamador precisa escolher deliberadamente o envelope adequado.
 
-## 6. Contratos próprios dos packages
+## 6. Contratos próprios dos pacotes
 
-Cada package fornece:
+O catálogo corrente contém 32 pacotes, sendo 29 de conteúdo e três de resposta.
+Cada pacote fornece:
 
-- manifest com id, versão, propósito e slots;
+- manifesto com identidade, versão, propósito e espaços admitidos;
 - operações-alvo das tarefas e taxonomia acadêmica;
 - adequações, contraindicações, limitações e acessibilidade;
 - contrato autoral de alto nível e exemplo;
-- schema de `data`;
+- esquema de `data`;
 - normalização e validação semântica;
-- renderer e texto acessível;
+- renderizador e texto acessível;
 - alvos textuais editáveis;
 - alvos de prática quando pode receber lacuna ou digitação;
 - avaliador quando ocupa `response`;
-- hidratação opcional quando há interação pós-renderização.
+- ativação opcional quando há interação após a renderização.
 
 ### Decisão de alto nível
 
-O contrato autoral descreve objetos do domínio, não coordenadas de desenho. Um grafo recebe vértices e arestas; um gráfico estatístico recebe variáveis, séries e intervalos; uma matriz recebe células algébricas. O renderer especializado calcula geometria e notação.
+O contrato autoral descreve objetos do domínio, não coordenadas de desenho. Um grafo recebe vértices e arestas; um gráfico estatístico recebe variáveis, séries e intervalos; uma matriz recebe células algébricas. O renderizador especializado calcula geometria e notação.
 
-A alternativa seria pedir ao autor ou ao modelo que produzisse SVG, HTML ou posições. Isso aumentaria ambiguidades, permitiria sobreposição e acoplaria conteúdo a uma largura de tela. O custo da decisão adotada é construir um package competente para cada convenção que não possa ser representada adequadamente por outro.
+A alternativa seria pedir ao autor ou ao modelo que produzisse SVG, HTML ou posições. Isso aumentaria ambiguidades, permitiria sobreposição e acoplaria conteúdo a uma largura de tela. O custo da decisão adotada é construir um pacote competente para cada convenção que não possa ser representada adequadamente por outro.
 
 ## 7. Protocolo `aralearn.resource-library.v1`
 
-Esse protocolo descreve o catálogo de packages, não o conteúdo didático. Ele oferece descoberta progressiva:
+Esse protocolo descreve o catálogo de pacotes, não o conteúdo didático. Ele oferece descoberta progressiva:
 
 1. `explore`: famílias e facetas instaladas;
 2. `search`: candidatos ranqueados por intenção e restrições;
@@ -331,27 +342,27 @@ Esse protocolo descreve o catálogo de packages, não o conteúdo didático. Ele
 4. `contracts`: exatamente um contrato versionado por chamada;
 5. `validate_study_unit`: forma, referências e composição, recebida em
    `studyUnitJson`;
-6. `audit_representation`: ajuste semântico, affordance da resposta e legibilidade do feedback;
-7. `preview_study_unit`: capacidade de abrir a composição no renderer.
+6. `audit_representation`: ajuste semântico, possibilidade de resposta e legibilidade do retorno;
+7. `preview_study_unit`: capacidade de abrir a composição no renderizador.
 
 `preview_study_unit` e `audit_representation` retornam `rendered: false`: não
-fingem simular viewport, Graphviz, Vega ou hidratação. Uma prévia geométrica
-exige o runtime real do aplicativo.
+fingem simular a área visível, Graphviz, Vega ou ativação interativa. Uma prévia geométrica
+exige o aplicativo real.
 
 ### Taxonomia e cobertura
 
 Os tokens `canonical`, `versatile` e `substitute` são resultados do algoritmo de cobertura:
 
-- `canonical`: package específico para as facetas pedidas;
+- `canonical`: pacote específico para as facetas pedidas;
 - `versatile`: representação geral que preserva a intenção;
 - `substitute`: melhor aproximação disponível, com alguma perda declarada.
 
-Nesse protocolo, `canonical` não certifica consenso universal da área acadêmica. A evidência para escolher um package continua sendo seu propósito, convenções, contraindicações e exemplo.
+Nesse protocolo, `canonical` não certifica consenso universal da área acadêmica. A evidência para escolher um pacote continua sendo seu propósito, convenções, contraindicações e exemplo.
 
 Cobertura não é autorização. A política de componentes efetiva fixa a revisão
 do catálogo, a disponibilidade `all|allow_only`, as exclusões e as
-preferências. Exclusão vence; preferência apenas desempata entre packages ainda
-permitidos e semanticamente adequados. Na materialização, o backend confronta
+preferências. Exclusão vence; preferência apenas desempata entre pacotes ainda
+permitidos e semanticamente adequados. Na materialização, o servidor confronta
 as referências `package@version` realmente gravadas com a política selada.
 Ausência de representação adequada permanece registrada e nunca vira
 equivalência presumida.
@@ -373,9 +384,9 @@ objetivo e progressão
 → gravação por CAS
 ```
 
-Essa sequência economiza contexto: o modelo recebe descrições e apenas os schemas que efetivamente usará. Carregar todos os contratos de uma vez seria simples para um catálogo pequeno, mas cresce linearmente e dificulta distinguir candidatos próximos.
+Essa sequência economiza contexto: o modelo recebe descrições e apenas os esquemas que efetivamente usará. Carregar todos os contratos de uma vez seria simples para um catálogo pequeno, mas cresce linearmente e dificulta distinguir candidatos próximos.
 
-Packages complementares podem coexistir na mesma Unidade quando cada um cumpre uma função necessária, como fórmula e gráfico. A prática possui uma única resposta formal, embora possa usar múltiplos conteúdos e feedbacks. O validador rejeita slots ou compatibilidades inválidos.
+Pacotes complementares podem coexistir na mesma Unidade quando cada um cumpre uma função necessária, como fórmula e gráfico. A prática possui uma única resposta formal, embora possa usar múltiplos conteúdos e retornos. O validador rejeita espaços ou compatibilidades inválidos.
 
 ## 9. Curso vivo e completude
 
@@ -384,19 +395,19 @@ O documento não carrega estados burocráticos como “rascunho”, “pronto”
 Microssequência sem Unidades pode permanecer como parte do planejamento
 visível.
 
-O runtime corrente não oferece publicação pública. Estudo, Autoria e MCP operam
+O aplicativo corrente não oferece publicação pública. Estudo, Autoria, API de Cursos e MCP operam
 o mesmo Curso vivo, cuja composição relacional é validada sem mudar de
 identidade por um rótulo editorial.
 
 ## 10. Limites e verificação
 
-Validação estrutural não demonstra qualidade pedagógica, correção científica ou legibilidade em qualquer viewport. Auditoria semântica também depende de critérios implementados e não substitui revisão humana especializada. Por isso o fluxo combina:
+Validação estrutural não demonstra qualidade pedagógica, correção científica ou legibilidade em qualquer tamanho de tela. Auditoria semântica também depende de critérios implementados e não substitui revisão humana especializada. Por isso, a verificação inclui:
 
-- testes do kernel e dos packages;
+- testes do núcleo e dos pacotes;
 - validação do documento recomposto;
 - galeria visual e testes de interação;
 - auditoria pedagógica da microssequência;
 - revisão situada e possibilidade de correção.
 
-Consulte [Componentes didáticos e packages](componentes-didaticos.md), [Autoria por
+Consulte [Componentes didáticos e pacotes](componentes-didaticos.md), [Autoria por
 MCP](autoria-mcp.md) e [Matriz de conformidade técnica](matriz-conformidade-tecnica.md).

@@ -29,8 +29,7 @@ function auditedPracticeStudyUnit() {
     content: [exampleInstance("aralearn.resource.chart", "content", "chart-content")],
     response: exampleInstance("aralearn.response.choice", "response", "choice-response"),
     feedback: [exampleInstance("aralearn.resource.paragraph", "feedback", "feedback-text")],
-    topics: ["tendência"],
-    sources: []
+    topics: ["tendência"]
   };
 }
 
@@ -125,7 +124,7 @@ test("versão do catálogo incorpora perfis, vocabulários e política", () => {
   assert.notEqual(RESOURCE_CATALOG.catalogVersion, formerIdentityOnlyVersion);
 });
 
-test("inspeção e contratos em lote mantêm limites e ausência item a item", () => {
+test("inspeção em lote e contrato exato mantêm os limites progressivos", () => {
   const inspected = RESOURCE_CATALOG.inspect([
     { packageId: "aralearn.resource.chart" },
     { packageId: "aralearn.resource.inexistente" }
@@ -134,24 +133,17 @@ test("inspeção e contratos em lote mantêm limites e ausência item a item", (
   assert.equal(inspected.items[1].status, "not_found");
 
   const contracts = RESOURCE_CATALOG.contracts([
-    { packageId: "aralearn.resource.paragraph" },
-    { packageId: "aralearn.resource.chart" },
-    { packageId: "aralearn.response.choice" },
-    { packageId: "aralearn.resource.inexistente" }
+    { packageId: "aralearn.resource.paragraph" }
   ]);
-  assert.equal(contracts.items.length, 4);
+  assert.equal(contracts.items.length, 1);
   assert.equal(contracts.items[0].definition.schema.type, "object");
-  assert.equal(contracts.items[3].status, "not_found");
   assert.throws(() => RESOURCE_CATALOG.contracts([
     "aralearn.resource.paragraph",
-    "aralearn.resource.chart",
-    "aralearn.response.choice",
-    "aralearn.response.gap",
-    "aralearn.response.ordering"
-  ]), /entre 1 e 4/u);
+    "aralearn.resource.chart"
+  ]), /precisa ser 1/u);
 });
 
-test("validação e auditoria separam conteúdo, resposta e feedback sem simular prévia", () => {
+test("validação e auditoria separam slots e entregam a prévia ao renderer canônico", () => {
   const studyUnit = auditedPracticeStudyUnit();
   const validation = RESOURCE_CATALOG.validateStudyUnit(studyUnit);
   assert.equal(validation.valid, true, validation.errors.join(" "));
@@ -176,14 +168,15 @@ test("validação e auditoria separam conteúdo, resposta e feedback sem simular
   ]);
   assert.ok(audit.accessibleText);
   assert.deepEqual(audit.visualPreview, {
-    rendered: false,
-    reason: "A auditoria do catálogo não executa layout, hidratação nem captura visual."
+    mode: "client_renderer",
+    description: "O cliente pode abrir esta Unidade com o mesmo renderer usado no Estudo."
   });
 
   const preview = RESOURCE_CATALOG.previewStudyUnitDescriptor(studyUnit);
-  assert.equal(preview.rendered, false);
   assert.equal(preview.structural.valid, true);
-  assert.match(preview.reason, /renderer do aplicativo/u);
+  assert.equal(preview.previewMode, "client_renderer");
+  assert.deepEqual(preview.studyUnit, studyUnit);
+  assert.ok(preview.accessibleText);
 });
 
 test("auditoria nunca aprova semanticamente uma Unidade de estudo estruturalmente inválida", () => {

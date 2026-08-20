@@ -12,9 +12,9 @@ import { RESOURCE_SELECTION_POLICY } from "./resourcePolicy.js";
 const CATALOG_CONTRACT = "aralearn.resource-library.v1";
 const POLICY_VERSION = 1;
 const FIT_ORDER = Object.freeze({ canonical: 3, versatile: 2, substitute: 1 });
-const SEARCH_LIMIT = 12;
+const SEARCH_LIMIT = 8;
 const INSPECT_LIMIT = 8;
-const CONTRACT_LIMIT = 4;
+const CONTRACT_LIMIT = 1;
 
 function clone(value) {
   return structuredClone(value);
@@ -60,7 +60,9 @@ function fnv1a(value) {
 function validateLimit(value, fallback, maximum, label = "limit") {
   if (value == null) return fallback;
   if (!Number.isInteger(value) || value < 1 || value > maximum) {
-    throw new RangeError(`${label} precisa ficar entre 1 e ${maximum}.`);
+    throw new RangeError(maximum === 1
+      ? `${label} precisa ser 1.`
+      : `${label} precisa ficar entre 1 e ${maximum}.`);
   }
   return value;
 }
@@ -277,8 +279,9 @@ function effectiveSlot(intent) {
   return intent.studyUnitRole === "theory" ? "content" : "";
 }
 
-function rankedCandidates(profiles, rawIntent) {
+function rankedCandidates(profiles, rawIntent, maximumLimit = 32) {
   const intent = normalizedIntent(rawIntent);
+  validateLimit(intent.limit, SEARCH_LIMIT, maximumLimit);
   const slot = effectiveSlot(intent);
   const candidates = profiles
     .filter((profile) => !slot || profile.slots.includes(slot))
@@ -395,7 +398,7 @@ export function createResourceCatalog(registry) {
   }
 
   function search(rawIntent = {}) {
-    const { intent, candidates } = rankedCandidates(profiles, rawIntent);
+    const { intent, candidates } = rankedCandidates(profiles, rawIntent, SEARCH_LIMIT);
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
@@ -579,12 +582,11 @@ export function createResourceCatalog(registry) {
       const profile = getProfile(packageId);
       if (profile) warnings.push(...profile.limitations);
     });
-    let accessibleText = "";
-    if (structural.valid) {
-      accessibleText = allStudyUnitInstances(studyUnit).map(({ instance, slot }) => (
-        registry.accessibleText(instance, slot)
-      )).filter(Boolean).join(" ");
-    }
+    const accessibleText = structural.valid
+      ? allStudyUnitInstances(studyUnit).map(({ instance, slot }) => (
+          registry.accessibleText(instance, slot)
+        )).filter(Boolean).join(" ")
+      : "";
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
@@ -594,21 +596,29 @@ export function createResourceCatalog(registry) {
       warnings: [...new Set(warnings)],
       accessibleText,
       visualPreview: {
-        rendered: false,
-        reason: "A auditoria do catálogo não executa layout, hidratação nem captura visual."
+        mode: structural.valid ? "client_renderer" : "unavailable",
+        description: structural.valid
+          ? "O cliente pode abrir esta Unidade com o mesmo renderer usado no Estudo."
+          : "A composição precisa passar pela validação estrutural antes da prévia."
       }
     };
   }
 
   function previewStudyUnitDescriptor(studyUnit) {
     const structural = validateStudyUnit(studyUnit);
+    const accessibleText = structural.valid
+      ? allStudyUnitInstances(studyUnit).map(({ instance, slot }) => (
+          registry.accessibleText(instance, slot)
+        )).filter(Boolean).join(" ")
+      : "";
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
-      rendered: false,
       structural,
       packages: structural.composition,
-      reason: "A prévia visual fiel precisa ser aberta no renderer do aplicativo; este núcleo não simula viewport, Graphviz ou Vega."
+      studyUnit: structural.valid ? structuredClone(studyUnit) : null,
+      accessibleText,
+      previewMode: structural.valid ? "client_renderer" : "unavailable"
     };
   }
 
@@ -638,263 +648,6 @@ export function createResourceCatalog(registry) {
     };
   }
 
-  function restrict({
-    packageRefs,
-    authorizeCandidate = null,
-    authorizeComposition = null
-  } = {}) {
-    if (!Array.isArray(packageRefs)) {
-      throw new TypeError("A visão restrita exige uma lista confiável de package@version.");
-    }
-    if (authorizeCandidate != null && typeof authorizeCandidate !== "function") {
-      throw new TypeError("authorizeCandidate precisa ser uma função interna.");
-    }
-    if (authorizeComposition != null && typeof authorizeComposition !== "function") {
-      throw new TypeError("authorizeComposition precisa ser uma função interna.");
-    }
-    const allowedKeys = new Set();
-    packageRefs.forEach((request, index) => {
-      const { packageId, version } = requestIdentity(request);
-      if (!packageId || !version) {
-        throw new RangeError(`packageRefs[${index}] precisa identificar package e versão exatos.`);
-      }
-      const key = `${packageId}@${version}`;
-      if (!byIdentity.has(key)) {
-        throw new RangeError(`ResourceSet referencia package indisponível: ${key}.`);
-      }
-      allowedKeys.add(key);
-    });
-    const selectedProfiles = profiles.filter((profile) => (
-      allowedKeys.has(`${profile.packageId}@${profile.version}`)
-    ));
-
-    function restrictedProfile(packageId, version = "") {
-      const normalizedId = String(packageId || "").trim();
-      const normalizedVersion = String(version || "").trim();
-      const profile = normalizedVersion
-        ? selectedProfiles.find((candidate) => (
-            candidate.packageId === normalizedId && candidate.version === normalizedVersion
-          )) || null
-        : latestProfile(selectedProfiles, normalizedId);
-      return profile ? clone(profile) : null;
-    }
-
-    function assertAllowedRequests(requests) {
-      return list(requests).map((request) => {
-        const identity = requestIdentity(request);
-        const profile = restrictedProfile(identity.packageId, identity.version);
-        if (!profile) {
-          const suffix = identity.version ? `@${identity.version}` : "";
-          throw new RangeError(
-            `Package ${identity.packageId || "desconhecido"}${suffix} não pertence ao ResourceSet efetivo.`
-          );
-        }
-        return { identity, profile };
-      });
-    }
-
-    function restrictedExplore({ slot = "" } = {}) {
-      if (slot && !new Set(["content", "response", "feedback"]).has(slot)) {
-        throw new RangeError("slot desconhecido.");
-      }
-      const selected = selectedProfiles.filter((profile) => (
-        !slot || profile.slots.includes(slot)
-      ));
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        policyVersion: POLICY_VERSION,
-        policy: clone(RESOURCE_SELECTION_POLICY),
-        packageCount: selected.length,
-        families: RESOURCE_FAMILIES.map((family) => ({
-          ...family,
-          count: selected.filter(({ familyIds }) => familyIds.includes(family.id)).length
-        })).filter(({ count }) => count > 0),
-        facets: {
-          disciplines: facetRecords(RESOURCE_VOCABULARIES.disciplines, selected, "disciplineIds"),
-          structures: facetRecords(RESOURCE_VOCABULARIES.structures, selected, "structureIds"),
-          taskOperations: facetRecords(
-            RESOURCE_VOCABULARIES.taskOperations,
-            selected,
-            "taskOperationIds"
-          ),
-          practiceModes: facetRecords(RESOURCE_VOCABULARIES.practiceModes, selected, "practiceModeIds")
-        }
-      };
-    }
-
-    function restrictedSearch(rawIntent = {}) {
-      const { intent, candidates } = rankedCandidates(selectedProfiles, rawIntent);
-      const authorized = candidates.flatMap((candidate) => {
-        if (!authorizeCandidate) return [candidate];
-        const authorization = authorizeCandidate({
-          candidate: clone(candidate),
-          intent: clone(intent),
-          profile: restrictedProfile(candidate.packageId, candidate.version)
-        });
-        if (!authorization) return [];
-        return [{ ...candidate, ...clone(authorization) }];
-      });
-      const restrictedCoverage = coverage(authorized, intent);
-      if (authorized[0]?.fit === "versatile") {
-        restrictedCoverage.chatDisclosure = `O ResourceSet efetivo autoriza ${authorized[0].label} como representação versátil, não como equivalente canônico. Registre a limitação indicada.`;
-      } else if (authorized[0]?.fit === "substitute") {
-        restrictedCoverage.chatDisclosure = `O ResourceSet efetivo autoriza ${authorized[0].label} somente como aproximação. Registre a limitação indicada e não declare equivalência.`;
-      }
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        coverage: restrictedCoverage,
-        candidates: authorized.slice(0, intent.limit)
-      };
-    }
-
-    function restrictedAssessCandidate(request, rawIntent = {}) {
-      const [{ identity, profile }] = assertAllowedRequests([request]);
-      const assessment = assessCandidate(identity, rawIntent);
-      if (assessment.status !== "assessed" || !assessment.candidate) {
-        return assessment;
-      }
-      if (!authorizeCandidate) {
-        return { ...assessment, status: "authorized" };
-      }
-      const authorization = authorizeCandidate({
-        candidate: clone(assessment.candidate),
-        intent: clone(assessment.intent),
-        profile: clone(profile)
-      });
-      return authorization
-        ? {
-            ...assessment,
-            status: "authorized",
-            candidate: { ...assessment.candidate, ...clone(authorization) }
-          }
-        : { ...assessment, status: "blocked" };
-    }
-
-    function restrictedInspect(requests) {
-      const values = list(requests);
-      validateLimit(values.length, 1, INSPECT_LIMIT, "A quantidade de packages");
-      const allowed = assertAllowedRequests(values);
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        items: allowed.map(({ profile }) => ({ status: "ok", profile }))
-      };
-    }
-
-    function restrictedContracts(requests) {
-      const values = list(requests);
-      validateLimit(values.length, 1, CONTRACT_LIMIT, "A quantidade de contratos");
-      const allowed = assertAllowedRequests(values);
-      return {
-        contract: CATALOG_CONTRACT,
-        catalogVersion,
-        items: allowed.map(({ profile }) => ({
-          status: "ok",
-          packageId: profile.packageId,
-          version: profile.version,
-          definition: registry.getAuthoringContract(profile.packageId, profile.version)
-        }))
-      };
-    }
-
-    function availabilityErrors(studyUnit) {
-      return allStudyUnitInstances(studyUnit).flatMap(({ instance, slot, index }) => {
-        const packageId = String(instance?.package || "");
-        const version = String(instance?.version || "");
-        const profile = restrictedProfile(packageId, version);
-        if (!profile) {
-          return [`$.studyUnit.${slot}[${index}]: ${packageId}@${version} não pertence ao ResourceSet efetivo.`];
-        }
-        if (!authorizeComposition) return [];
-        const result = authorizeComposition({
-          studyUnitRole: String(studyUnit?.role || ""),
-          packageRef: { packageId, version },
-          profile,
-          slot
-        });
-        if (result?.allowed === true) return [];
-        return normalizedList(result?.errors?.length
-          ? result.errors
-          : [`${packageId}@${version} não está autorizado para o papel materializado.`]);
-      });
-    }
-
-    function restrictedValidateStudyUnit(studyUnit) {
-      const result = validateStudyUnit(studyUnit);
-      const errors = [...result.errors, ...availabilityErrors(studyUnit)];
-      return { ...result, valid: errors.length === 0, errors };
-    }
-
-    function restrictedAuditRepresentation(args = {}) {
-      const result = auditRepresentation(args);
-      const structural = restrictedValidateStudyUnit(args.studyUnit);
-      const selections = result.selections.map((selection) => {
-        if (!authorizeComposition) return selection;
-        const profile = restrictedProfile(selection.packageId, selection.version);
-        const authorization = profile ? authorizeComposition({
-          studyUnitRole: String(args.studyUnit?.role || ""),
-          fit: selection.fit,
-          limitation: selection.reason,
-          packageRef: {
-            packageId: selection.packageId,
-            version: selection.version
-          },
-          profile,
-          slot: selection.slot
-        }) : null;
-        if (authorization?.allowed === true) {
-          return {
-            ...selection,
-            authorizedByResourceSetRef: clone(authorization.authorizedByResourceSetRef)
-          };
-        }
-        return {
-          ...selection,
-          fit: "substitute",
-          reason: authorization?.errors?.join(" ")
-            || "O package não pertence ao ResourceSet efetivo.",
-          missing: [...new Set([
-            ...selection.missing,
-            "availability:resource_set"
-          ])]
-        };
-      });
-      const overallFit = structural.valid
-        ? selections.reduce((current, selection) => (
-            FIT_ORDER[selection.fit] < FIT_ORDER[current] ? selection.fit : current
-          ), "canonical")
-        : "substitute";
-      const warnings = structural.valid
-        ? result.warnings
-        : [...new Set([
-            ...result.warnings,
-            ...structural.errors.filter((entry) => entry.includes("ResourceSet"))
-          ])];
-      return { ...result, structural, overallFit, selections, warnings };
-    }
-
-    function restrictedPreviewStudyUnitDescriptor(studyUnit) {
-      const result = previewStudyUnitDescriptor(studyUnit);
-      return { ...result, structural: restrictedValidateStudyUnit(studyUnit) };
-    }
-
-    return Object.freeze({
-      contract: CATALOG_CONTRACT,
-      catalogVersion,
-      policyVersion: POLICY_VERSION,
-      getProfile: restrictedProfile,
-      explore: restrictedExplore,
-      search: restrictedSearch,
-      assessCandidate: restrictedAssessCandidate,
-      inspect: restrictedInspect,
-      contracts: restrictedContracts,
-      validateStudyUnit: restrictedValidateStudyUnit,
-      auditRepresentation: restrictedAuditRepresentation,
-      previewStudyUnitDescriptor: restrictedPreviewStudyUnitDescriptor
-    });
-  }
 
   return Object.freeze({
     contract: CATALOG_CONTRACT,
@@ -910,8 +663,7 @@ export function createResourceCatalog(registry) {
     contracts,
     validateStudyUnit,
     auditRepresentation,
-    previewStudyUnitDescriptor,
-    restrict
+    previewStudyUnitDescriptor
   });
 }
 

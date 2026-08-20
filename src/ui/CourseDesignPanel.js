@@ -9,6 +9,10 @@ const ORIGIN_LABELS = Object.freeze({
   migration: "Migrada do planejamento"
 });
 
+function quantity(value, singular, plural) {
+  return `${value} ${Number(value) === 1 ? singular : plural}`;
+}
+
 const SCOPE_LABELS = Object.freeze({
   course: "Curso",
   module: "Módulo",
@@ -341,17 +345,21 @@ function renderApplicationComparison(design) {
     '<p>Última aplicação registrada para este escopo.</p></div></header>' +
     '<p class="course-design-comparison-warning">A comparação descreve o que foi registrado. ' +
     "Ela não mede qualidade, aprendizagem nem conformidade quando o fato agregado não basta.</p>" +
-    '<dl><div><dt>Unidades de análise</dt><dd><span>Planejado: até ' + escapeHtml(ceiling) +
-    " nova(s) por Unidade expositiva.</span><span>Registrado: " +
-    `${application.introducedInstructionalAnalysisUnitIds.length} identidade(s) introduzida(s) em ` +
-    `${application.studyUnitCount} Unidade(s); ${application.modeCounts.expository} expositiva(s), ` +
-    `${application.modeCounts.practice} de prática e ${application.modeCounts.mixed} mista(s).</span></dd></div>` +
+    '<dl><div><dt>Unidades de análise</dt><dd><span>Planejado: até ' +
+    escapeHtml(quantity(ceiling, "nova por Unidade expositiva", "novas por Unidade expositiva")) +
+    ".</span><span>Registrado: " +
+    `${quantity(application.introducedInstructionalAnalysisUnitIds.length, "identidade introduzida", "identidades introduzidas")} em ` +
+    `${quantity(application.studyUnitCount, "Unidade", "Unidades")}; ` +
+    `${quantity(application.modeCounts.expository, "expositiva", "expositivas")}, ` +
+    `${application.modeCounts.practice} de prática e ` +
+    `${quantity(application.modeCounts.mixed, "mista", "mistas")}.</span></dd></div>` +
     '<div><dt>Formas de explicação</dt><dd><span>Planejado: ' +
     `${escapeHtml(labels(explanationForms))}.</span><span>Registrado: ` +
     `${escapeHtml(labels(application.developedExplanationForms))}.</span></dd></div>` +
-    '<div><dt>Prática</dt><dd><span>Planejado: ao menos ' + escapeHtml(practiceMinimum) +
-    " oportunidade(s) distinta(s) por requisito de evidência.</span><span>Registrado: " +
-    `${application.practiceOpportunityCount} oportunidade(s); variação em ` +
+    '<div><dt>Prática</dt><dd><span>Planejado: ao menos ' +
+    escapeHtml(quantity(practiceMinimum, "oportunidade distinta", "oportunidades distintas")) +
+    " por requisito de evidência.</span><span>Registrado: " +
+    `${quantity(application.practiceOpportunityCount, "oportunidade", "oportunidades")}; variação em ` +
     `${escapeHtml(labels(application.variedDimensions))}. Dimensões planejadas: ` +
     `${escapeHtml(labels(variationDimensions))}.</span></dd></div>` +
     '<div><dt>Componentes</dt><dd><span>Registrado: ' +

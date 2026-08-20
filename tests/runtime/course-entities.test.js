@@ -66,8 +66,7 @@ function documentFixture() {
               }],
               response: null,
               feedback: [],
-              topics: [],
-              sources: []
+              topics: []
             }]
           }]
         }]

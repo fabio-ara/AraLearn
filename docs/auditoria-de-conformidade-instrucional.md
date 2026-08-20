@@ -1,93 +1,107 @@
 # Auditoria e correções do Curso
 
-## Finalidade e limite
+O ciclo de auditoria examina uma Unidade de estudo diante do plano, dos
+parâmetros, da intenção representacional, das Fontes, das Âncoras e das
+Observações selecionadas. Ele registra critérios e evidências, identifica
+achados e permite corrigir um recorte do Curso. O resultado da correção precisa
+ser verificado numa nova rodada.
 
-O ciclo de auditoria confronta uma Unidade de estudo existente com o plano, os
-parâmetros, a intenção representacional, as Fontes, as Âncoras e as Observações
-selecionadas no estado corrente do Curso. Ele registra evidência pública,
-localiza um achado, permite propor uma correção pequena, aplica essa correção
-somente após confirmação e exige uma nova rodada para verificar o resultado.
+A auditoria descreve o que foi examinado numa revisão. Ela não atribui nota ao
+Curso nem mede aprendizagem, compreensão, proficiência, atenção ou carga
+cognitiva. Uma rodada sem achados significa que os critérios registrados
+receberam os resultados apresentados naquele contexto.
 
-O ciclo não atribui nota ao Curso, não mede aprendizagem, compreensão,
-proficiência, atenção ou carga cognitiva e não certifica eficácia educacional.
-Uma rodada sem achado informa apenas que os critérios registrados tiveram os
-resultados declarados naquela revisão.
-
-## Sequência autoritativa
+## Objetos do ciclo
 
 ```text
-Observação opcional e situada
-  → contexto corrente da Unidade
-  → rodada imutável com checks públicos
-  → achado aberto quando um check falha ou permanece incerto
-  → proposta versionada de correção
-  → aplicação confirmada sobre a Unidade ainda corrente
-  → nova rodada de verificação
-  → achado resolvido ou novamente aberto
+Observação situada, quando houver
+→ contexto corrente da Unidade
+→ rodada com critérios e evidências
+→ achado diante de reprovação ou incerteza
+→ proposta focal de correção
+→ aplicação confirmada
+→ nova rodada de verificação
+→ resolução ou reabertura do achado
 ```
 
-Observação, achado, correção e verificação são objetos diferentes. Responder ou
-resolver uma Observação não corrige o Curso. Registrar um achado não concede
-autoridade para alterar conteúdo. Aplicar uma correção não prova que o achado
-foi resolvido; somente `verify_finding` pode registrar essa conclusão.
+Cada objeto cumpre uma função:
 
-## Contexto focal e quatro dimensões
+- **Observação** preserva uma manifestação situada;
+- **rodada** conserva os critérios aplicados, os resultados e as evidências;
+- **achado** identifica uma divergência ou incerteza;
+- **correção** registra a proposta, o estado anterior e o estado pretendido;
+- **verificação** confronta novamente o critério depois da mudança;
+- **reversão** restaura o estado anterior quando a correção aplicada ainda é o
+  estado corrente.
 
-Antes de registrar uma rodada, o servidor recompõe um contexto owner-only da
-Unidade. Ele inclui a versão e o hash do alvo, seu caminho curricular, a
-Microssequência, o plano focal, os parâmetros efetivos, a orientação, a intenção
-representacional, as atribuições correntes de Fontes e até 12 Observações
-selecionadas. Um hash liga o comando exatamente a esse contexto. Mudança de
-revisão, alvo, plano, parâmetro, proveniência ou Observação exige releitura.
+Responder ou resolver uma Observação registra triagem. Abrir um achado registra
+um diagnóstico. Aplicar uma correção modifica o Curso. Somente uma nova rodada
+pode sustentar a resolução do achado.
 
-Cada check conserva critério público versionado, resultado, adequação, evidência
-pública e referências exatas de plano, parâmetro e Fonte. As dimensões são:
+## Contexto focal
 
-- `structural_conformance`, calculada deterministicamente pelo servidor;
-- `pedagogical_quality`, registrada por revisão humana ou automática explícita;
-- `factual_quality`, registrada com a evidência factual pertinente;
-- `editorial_quality`, registrada sobre clareza e consistência do recorte.
+Antes de registrar uma rodada, o servidor recompõe o contexto da Unidade para a
+pessoa proprietária. O recorte contém:
 
-Os resultados são `passed`, `failed`, `uncertain`, `not_applicable` e
-`not_checked`. A interface registra as três dimensões humanas; a Edge Function
-acrescenta exatamente um check estrutural antes da RPC. `not_checked` nunca é
-convertido em conformidade.
+- identidade, versão e impressão digital da Unidade;
+- caminho curricular e Microssequência;
+- itens do plano atribuídos ao alvo;
+- parâmetros e orientações efetivos;
+- intenção representacional e componentes usados;
+- Fontes, Âncoras e relações correntes;
+- até 12 Observações selecionadas.
 
-## Evidência factual e proveniência
+Uma impressão digital liga o comando a esse contexto. Mudança de Curso,
+Unidade, plano, desenho, proveniência ou Observação exige nova leitura.
 
-Uma conclusão factual positiva exige Fonte e Âncora correntes, ativas e exatas
-no contexto focal. Para uma afirmação, a relação admissível é `supported_by`.
-`quoted_from` só é admissível no critério específico de fidelidade de citação;
-ela não sustenta, por si só, a verdade da afirmação citada.
+## Quatro dimensões
 
-Resolver um achado factual exige que o check focal da nova rodada resulte em
-`passed` e continue obedecendo à mesma cerca de proveniência. O sistema prova a
-identidade, a revisão, a relação e a localização usadas no check. Não prova
-autoria científica, qualidade da Fonte ou competência disciplinar de quem
-avaliou.
+Cada critério avaliado conserva identidade e versão do método, resultado,
+adequação, evidência pública e referências pertinentes. As dimensões são:
 
-## Rodada, achado e decisão
+| Dimensão | Responsabilidade |
+| --- | --- |
+| `structural_conformance` | verificar de modo determinístico contrato, identidade e estrutura |
+| `pedagogical_quality` | examinar correspondência entre intenção, explicação, prática e público |
+| `factual_quality` | confrontar afirmações com evidência localizável |
+| `editorial_quality` | examinar clareza, consistência e apresentação do recorte |
 
-Uma rodada em `private.course_instructional_audit_runs` é imutável. Ela guarda
-tipo `audit|verification`, origem `human_audit|automatic_audit`, método
-versionado, revisão do Curso, hash do contexto, alvo, caminho, checks e número
-de achados criados. Raciocínio privado, prompt bruto, transcript e cadeia de
-pensamento não pertencem ao registro.
+Os resultados possíveis são:
 
-Rodadas com zero achados continuam enumeráveis. A lista paginada mostra alvo,
-método, contagens por resultado e quantidade de achados; o detalhe da rodada
-devolve todos os checks e suas evidências. Assim, “checado sem achado” não some
-da interface nem é confundido com “nunca auditado”. Achados e rodadas podem ser
-filtrados opcionalmente pela Unidade focal.
+- `passed`, quando o critério foi atendido;
+- `failed`, quando há divergência identificada;
+- `uncertain`, quando a evidência disponível não permite decidir;
+- `not_applicable`, quando o critério não se aplica ao objeto;
+- `not_checked`, quando o critério não foi examinado.
 
-`audit_cycle` possui os modos `context|findings|runs|detail`. `findings` e
-`runs` usam cursor e aceitam `targetStudyUnitId` opcional. A página separa a
-lista `runs` de `runDetail`; em `detail`, exatamente um entre `findingId` e
-`auditRunId` deve estar presente.
+A pessoa ou o cliente registra as três dimensões que dependem de julgamento. O
+servidor acrescenta a verificação estrutural. Um resultado `not_checked`
+permanece distinto de aprovação.
 
-Um check `failed|uncertain` pode abrir no máximo um achado. O achado guarda a
-rodada e o check de origem, gravidade, alvo observado, referências opcionais de
-Observações e versões append-only. Seus estados são:
+## Evidência factual
+
+Resultado factual positivo exige uma Fonte ativa, uma revisão exata e uma
+Âncora corrente no contexto focal. A relação `supported_by` pode sustentar uma
+afirmação. `quoted_from` atesta a origem de uma citação e só atende ao critério
+`quotation_fidelity`; repetir corretamente uma frase não demonstra sua verdade.
+
+O AraLearn verifica identidade, revisão, relação e localização. Qualidade da
+Fonte, autoria científica e competência disciplinar de quem avaliou dependem
+de procedimentos externos ao contrato.
+
+## Rodadas e achados
+
+Uma rodada é imutável e possui tipo `audit` ou `verification`. Ela registra
+origem humana ou automática, método, revisão do Curso, contexto, alvo, critérios
+e quantidade de achados. Instruções enviadas ao modelo e raciocínio privado não
+integram esse registro.
+
+Rodadas sem achados continuam disponíveis na lista. Assim, a interface
+distingue uma Unidade examinada sem divergência de uma Unidade ainda não
+examinada. Listas de rodadas e achados aceitam paginação e filtro opcional pela
+Unidade; o detalhe de uma rodada apresenta todos os critérios e suas evidências.
+
+Um resultado `failed` ou `uncertain` pode abrir um achado. Seus estados são:
 
 ```text
 open → awaiting_verification → resolved
@@ -95,165 +109,117 @@ open → awaiting_verification → resolved
   └→ dismissed   └→ open           └→ open
 ```
 
-`dismissed` conserva a decisão de dispensar o caso; `reopen` cria outra versão
-aberta. `awaiting_verification` significa somente que uma correção foi aplicada.
-Uma verificação `still_open` ou um rollback devolve o achado a `open`.
+`awaiting_verification` informa que uma correção foi aplicada. `dismissed`
+conserva a decisão de não prosseguir. Uma verificação `still_open`, uma
+reabertura ou uma reversão devolve o achado a `open`.
 
-## Correção autoral e checkpoint
+## Correção focal
 
-Uma correção v1 edita apenas o conteúdo próprio e as atribuições de Fontes de
-uma Unidade de estudo já existente. Ela não cria, exclui, move ou renumera
-entidades, não altera pai ou posição e não transporta campos relacionais. O
-campo legítimo `topics` da Unidade é preservado; `sources` continua fora do
-conteúdo e aparece somente em `sourceLinks`.
+Uma correção substitui apenas o conteúdo e as atribuições de Fontes da Unidade
+observada. Ela preserva identidade, pai, posição e campos relacionais. A
+proposta registra justificativa e dois estados:
 
-A proposta registra uma justificativa e um checkpoint com:
+- `before`, com o conteúdo e a proveniência realmente lidos;
+- `after`, com o conteúdo proposto e Fontes e Âncoras ativas.
 
-- `before`: conteúdo e proveniência realmente lidos, inclusive referência
-  legada histórica quando ela ainda integra o estado anterior;
-- `after`: conteúdo proposto e somente Fontes e Âncoras atuais e resolvidas;
-- hashes de ambos os snapshots.
+Cada lado recebe uma impressão digital. Proposta sem diferença é recusada.
+Ajustar ou rejeitar cria uma nova versão da mesma correção, preservando as
+anteriores. Os estados são `proposed`, `rejected`, `applied`, `verified` e
+`rolled_back`.
 
-Proposta sem diferença é recusada. Ajustar ou rejeitar cria nova versão da
-mesma correção; o estado anterior não é reescrito. Os estados são
-`proposed|rejected|applied|verified|rolled_back`. Aplicar exige que alvo,
-versão, hash e proveniência ainda correspondam ao checkpoint. Conteúdo,
-atribuição, versão da Unidade, revisão do Curso, evento e recibo confirmam ou
-revertem juntos.
+A aplicação exige que a Unidade, sua versão e a proveniência ainda correspondam
+ao estado `before`. Conteúdo, Fontes, versão da Unidade, revisão do Curso,
+evento e recibo confirmam ou revertem na mesma transação.
 
-Depois da aplicação, a nova rodada precisa reler o estado corrente. `resolved`
-exige o mesmo critério focal, agora `passed`; `still_open` exige `failed` ou
-`uncertain`. Um rollback só é permitido enquanto conteúdo e proveniência ainda
-correspondem ao snapshot aplicado. Ele restaura o checkpoint `before`, cria
-outra versão da correção, reabre o achado e registra a mudança do Curso. O
-rollback não apaga a aplicação nem a verificação anteriores.
+Depois da aplicação, a verificação relê a Unidade. O resultado `resolved` exige
+que o critério focal tenha passado; `still_open` exige reprovação ou incerteza.
+A reversão (`rollback`) só é aceita enquanto o conteúdo e a proveniência ainda
+correspondem ao estado aplicado. Ela restaura `before`, cria nova versão da
+correção e reabre o achado, sem apagar o histórico anterior.
 
-## Relação com Observações e privacidade
+## Relação com Observações
 
-`private.course_audit_finding_annotations` liga um achado a versões exatas de
-Anotações ancoradas. O vínculo ajuda a preservar a origem situada, mas a
-Observação não se torna evidência factual nem autoridade de correção.
+Um achado pode apontar para versões exatas de Observações. O vínculo preserva a
+origem situada, sem copiar texto, pseudônimo ou identidade da pessoa. A
+Observação continua sendo manifestação, e não evidência factual ou autorização
+para corrigir.
 
-Uma Observação retirada permanece temporariamente como tombstone redigido. Até
-a limpeza física, o achado a projeta como `available:false`, sem link profundo.
-Quando o tombstone é apagado fisicamente, o `ON DELETE CASCADE` remove o vínculo
-e a identidade da Observação deixa de aparecer nas projeções futuras do
-achado. O achado, a rodada e a correção permanecem.
+Quando uma Observação é retirada, o achado a apresenta como indisponível e sem
+endereço. Depois da remoção física do registro redigido, o vínculo desaparece;
+rodada, achado e correção permanecem.
 
-Dispensar, reabrir, verificar ou reverter pode devolver
-`suggestedAnnotationActions` com `resolve|reopen`. Essas ações são sugestões
-somente. A pessoa precisa executar depois um comando explícito de Anotação
-ancorada, com a versão corrente; o ciclo de auditoria nunca muda a Observação
-implicitamente.
+Decisões do ciclo podem sugerir `resolve` ou `reopen` para uma Observação. A
+sugestão não muda seu estado. A triagem exige outro comando explícito de
+Anotação ancorada com a versão corrente.
 
-## Autoridades privadas e minimização
+## Uso na interface
 
-Quatro relações privadas são suficientes para o ciclo:
+A área **Auditoria e correções** reúne duas abas:
 
-| Relação | Autoridade |
-| --- | --- |
-| `course_instructional_audit_runs` | rodadas imutáveis |
-| `course_audit_findings` | versões append-only de achados e decisões |
-| `course_audit_finding_annotations` | vínculo focal entre achado e Observação |
-| `course_authoring_corrections` | versões append-only, checkpoint e fatos de aplicação, verificação e rollback |
+- **Observações**, com a caixa de entrada e os detalhes das manifestações;
+- **Achados**, com rodadas, achados, propostas, verificações e reversões.
 
-As quatro usam RLS forçada e não possuem grants diretos. A API chama somente as
-duas RPCs service-role owner-only. Exclusão do Curso aplica cascade. Exclusão
-da pessoa autora torna os campos de ator anuláveis sem apagar a evidência
-instrucional.
+Os endereços internos reconhecem estes destinos:
 
-O ciclo reutiliza `private.course_change_receipts` para idempotência; não cria
-um ledger ou receipt paralelo. `private.course_events` recebe somente aplicação
-e rollback, que realmente mudam o Curso. Registrar, decidir, propor, rejeitar e
-verificar avançam `audit_set_version`, mas não simulam uma alteração do
-conteúdo.
+- `section=observations&annotationId=...` para uma Observação;
+- `section=observations&findingId=...` para um achado;
+- `section=observations&findingId=...&correctionId=...` para uma correção;
+- `section=observations&auditRunId=...` para uma rodada.
 
-## Interface, rotas e offline
+Fonte ou Âncora abre **Fontes**; a Unidade abre **Inspeção**. Combinações
+incompatíveis são recusadas para evitar que um endereço aparente apontar para
+outro contexto.
 
-A sétima área da Autoria continua no destino canônico
-`section=observations`. Seu rótulo visível é **Auditoria e correções**, com duas
-abas: **Observações** e **Achados**. Assim, o novo ciclo não cria uma oitava área
-nem separa a manifestação situada do lugar em que ela pode ser selecionada para
-uma auditoria.
+## Uso pelo MCP
 
-O link de uma Observação usa `section=observations&annotationId=...`; o de um
-achado usa `section=observations&findingId=...` e pode selecionar uma correção
-com `correctionId=...`; o de uma rodada usa
-`section=observations&auditRunId=...`. No detalhe, `findingId` e `auditRunId`
-são mutuamente exclusivos. Fontes e Âncoras abrem `section=sources`; a Unidade
-abre a Inspeção. Combinações extras ou incompatíveis falham fechado, e um link
-que ultrapasse o orçamento do contrato é devolvido como indisponível.
+O ciclo utiliza duas das seis ferramentas existentes:
 
-Observações continuam com cache e outbox próprios. Auditoria, achados,
-correções e verificação são estritamente online e owner-only: não há store,
-réplica, outbox ou autoridade de auditoria no IndexedDB. Sem rede, a última tela
-já renderizada é somente evidência transitória; ações ficam desabilitadas e uma
-releitura autoritativa é obrigatória.
+- `lerCurso` com `view: "audit_cycle"` lê contexto, achados, rodadas e detalhe;
+- `alterarCurso` com `operation: "update_audit_cycle"` executa os comandos do
+  ciclo.
 
-## MCP e operações fechadas
+Os comandos são:
 
-O MCP permanece com exatamente seis ferramentas. O ciclo entra nas duas já
-existentes:
+- `record_audit`;
+- `propose_authoring_correction`;
+- `reject_authoring_correction`;
+- `decide_finding`;
+- `apply_authoring_correction`;
+- `verify_finding`;
+- `rollback_authoring_correction`.
 
-- `lerCurso` com `view: "audit_cycle"` lê contexto, achados, rodadas ou o
-  detalhe exclusivo de um achado ou de uma rodada;
-- `alterarCurso` com `operation: "update_audit_cycle"` executa um dos sete
-  comandos do domínio.
+No MCP, aplicar e reverter exigem `auditCommand.confirmed: true` depois de
+confirmação humana. Os demais comandos recusam esse campo.
 
-Os comandos são `record_audit`, `propose_authoring_correction`,
-`reject_authoring_correction`, `decide_finding`,
-`apply_authoring_correction`, `verify_finding` e
-`rollback_authoring_correction`. No MCP, somente aplicar e desfazer exigem
-`auditCommand.confirmed:true` depois de confirmação humana explícita. A Edge
-remove esse campo antes do domínio; os outros cinco comandos o recusam.
+## Conexão, concorrência e limites
 
-## Limites e quotas
+Observações podem usar a fila local própria. Auditoria, achados, correções e
+verificações exigem conexão e propriedade do Curso. Sem rede, uma tela já
+apresentada serve apenas à consulta transitória; antes de qualquer escrita, o
+cliente precisa reler o estado autorizado.
 
-As cercas principais são simultâneas no domínio, na Edge e no PostgreSQL:
+As principais cercas são:
 
-- até 24 itens por página, cursor opaco de até 240 caracteres e página ou
-  mudança de até 240 KiB;
-- até 12 Observações no contexto e por achado, 16 achados por rodada e 32
-  checks após o check estrutural do servidor;
-- comando de até 192 KiB, snapshot de até 48 KiB, checkpoint de até 96 KiB e
-  recibo compacto de até 64 KiB;
+- até 24 itens por página e cursor de até 240 caracteres;
+- até 12 Observações no contexto e por achado;
+- até 16 achados e 32 critérios por rodada, incluindo o critério estrutural;
+- comando de até 192 KiB e página de até 240 KiB;
 - até 256 rodadas por Curso, com reserva para verificar correções aplicadas;
-- até 1.024 identidades de achado, 64 identidades de correção por Curso e oito
-  por achado;
-- históricos projetados limitados, sem apagar as versões persistidas.
+- até 1.024 identidades de achado;
+- até 64 identidades de correção por Curso e oito por achado;
+- estado anterior e posterior de até 48 KiB cada.
 
-Esses tetos tornam custo, transação e egress mensuráveis. Eles não demonstram
-sustentabilidade prolongada no Supabase Free Plan nem justificam retenção
-indefinida.
+Revisões esperadas e `requestId` protegem concorrência e repetição. Uma proposta
+desatualizada não sobrescreve a edição corrente, e repetir o mesmo comando não
+duplica a operação.
 
-## Corte limpo e evidência de engenharia
+## Interpretação responsável
 
-A migration `20260817210000_course_audit_corrections.sql` instala o ciclo novo
-somente sobre o Curso canônico. O preflight bloqueia e reconta 26 famílias de
-resíduo do modelo anterior. Todos os blockers de auditoria, desenho,
-materialização e correção precisam estar vazios; apenas a contagem bruta de
-`observation_threads` pode existir, desde que nenhuma thread conserve referência
-de correção.
+Uma auditoria aprovada demonstra somente a aplicação dos critérios registrados
+ao contexto identificado. Avaliação disciplinar, revisão por especialistas e
+investigação com pessoas continuam necessárias conforme a finalidade.
 
-Runs, findings, mandatos, manifests e ResourceSets substituídos não são lidos,
-copiados ou usados como fallback. A existência física de uma arquitetura
-anterior não lhe devolve autoridade no Curso canônico.
-
-O domínio `src/domain/courseAuditCycle.js` e seu espelho Edge congelados nesta
-revisão possuem SHA-256
-`6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9`.
-
-A verificação da fatia precisa cobrir domínio e espelho Edge, PGlite,
-PostgreSQL real, RLS, CAS, replay, stale, quotas, privacidade da junção,
-preservação de conteúdo/Fontes, aplicação, verificação, sugestões explícitas,
-rollback e a interface real em 360, 390, 430 e 1280 px. Automação demonstra
-somente os cenários codificados; revisão disciplinar e avaliação humana
-continuam necessárias.
-
-Veja também:
-
-- [Contratos públicos de conteúdo](aralearn-contract.md);
-- [Autoria por MCP](autoria-mcp.md);
-- [Persistência relacional e sincronização](persistencia-relacional.md);
-- [Privacidade](privacidade.md);
-- [Matriz de conformidade técnica](matriz-conformidade-tecnica.md).
+Consulte [Observações e Anotações
+ancoradas](observacoes-pedagogicas.md) para o registro situado, [Desenho
+instrucional parametrizado](desenho-instrucional-parametrizado.md) para os
+parâmetros e [Autoria por MCP](autoria-mcp.md) para os contratos completos.

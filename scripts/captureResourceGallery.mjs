@@ -8,7 +8,7 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const outputDirectory = path.join(repositoryRoot, "docs/screenshots/resources-packages");
+const outputDirectory = path.join(repositoryRoot, "test-results", "resource-gallery");
 const port = Number.parseInt(
   process.env.ARALEARN_RESOURCE_GALLERY_PORT || "4182",
   10

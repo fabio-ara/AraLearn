@@ -1,216 +1,103 @@
 # Matriz de conformidade técnica
 
-Uma matriz de conformidade liga uma afirmação sobre o sistema à implementação que pretende realizá-la e ao teste que pode refutá-la. Ela evita que documentação, código e validação evoluam como descrições independentes.
+Esta matriz liga propriedades do AraLearn à implementação e à evidência
+executável da entrega 0.0.23. O estado “demonstrado” indica que a capacidade
+existe no contrato corrente e possui verificação no repositório. Limites
+declarados fazem parte desse contrato.
 
-Esta matriz é versionada junto com o repositório. Não fixa contagem de testes nem data de uma execução: esses valores envelhecem sem que a propriedade mude. O resultado de uma rodada deve ser registrado pelo processo de integração ou de release.
+## Curso e composição
 
-## 1. Como interpretar
-
-| Estado | Significado |
-|---|---|
-| demonstrado | código e teste citado cobrem a propriedade no escopo descrito |
-| demonstrado com limite | a propriedade existe, mas possui teto, janela ou cenário não coberto |
-| proposta conceitual verificada | contrato exploratório e fixtures cobrem a forma proposta, sem integração operacional |
-| não oferecido | a arquitetura deliberadamente não promete a propriedade |
-| avaliação externa | código não basta; requer participantes, operação ou análise especializada |
-
-“Demonstrado” não significa prova formal, segurança absoluta ou eficácia pedagógica universal. Significa que há uma cadeia rastreável entre requisito, implementação e ensaio automatizado. Um teste pode conter defeito, e uma fixture não representa todas as entradas.
-
-## 2. Contratos, kernel e catálogo
-
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| `aralearn.course.v1` aceita `contract`, `scope` opcional e `courses` | `src/domain/aralearnProject.js`; `src/domain/courseEntities.js` | `tests/runtime/aralearn-project-strict.test.js`; `tests/runtime/course-entities.test.js` | demonstrado; Microssequências usam `studyUnits`, e a forma da raiz não substitui invariantes profundos do validador |
-| o kernel valida o mesmo contrato para um Curso unitário | `src/resources/kernel/courseContract.js` | `tests/kernel/resource-package-kernel.test.js` | demonstrado; a forma unitária não cria outro nome de contrato |
-| Unidades de estudo usam slots e instâncias `package@version` | `src/resources/kernel/studyUnitEnvelope.js`; `src/resources/kernel/packageRegistry.js` | `tests/kernel/resource-package-kernel.test.js`; `tests/kernel/resource-package-edge.test.js` | demonstrado; teoria exige conteúdo e prática exige resposta |
-| `StudyUnit.sources` continua como compatibilidade do conteúdo | validadores de `aralearn.course.v1`; `courseEntities.js`; migration `20260817190000_course_sources_provenance.sql` | testes de contrato, corte e composição | não oferecido: `sources` é rejeitado sem alias, fallback ou leitura dupla; atribuições vivem fora do envelope |
-| package novo entra pelo registry sem branch no kernel | `src/resources/packages/generated.js`; `src/resources/kernel/packageRegistry.js` | `tests/kernel/resource-package-autoindex.test.js`; `tests/kernel/resource-package-kernel.test.js` | demonstrado para packages que cumprem a interface; índice derivado precisa ser regenerado |
-| manifest, contrato autoral, schema e renderer têm papéis separados | `src/resources/packages/*/index.js`; `src/resources/kernel/packageRegistry.js` | testes do registry, catálogo e kernel de packages | demonstrado |
-| descoberta usa `aralearn.resource-library.v1` | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js`; `tests/runtime/authoring-mcp.test.js` | demonstrado; o protocolo não transporta árvore de curso |
-| busca entrega lista curta e contratos sob demanda | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js`; `tests/runtime/authoring-catalog-search-v5.test.js` | demonstrado: busca padrão 12, máximo 32; inspeção 8; contratos exatamente 1 por chamada |
-| `canonical`, `versatile` e `substitute` representam cobertura calculada | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | demonstrado; não certifica consenso acadêmico externo |
-| o validador implementa todo JSON Schema 2020-12 | `src/resources/kernel/schemaValidation.js` | `tests/kernel/resource-package-kernel.test.js` | não oferecido; apenas o subconjunto documentado é aceito |
-| auditoria catalográfica reproduz layout real | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | não oferecido; `rendered: false`; layout exige navegador e motores reais |
-| contratos, packages, catálogo, IndexedDB, MCP e app possuem versões próprias | registry, catálogo, store, servidor MCP e `package.json` | testes de cada fronteira | demonstrado; `revision` é CAS e `cursor` é paginação, não versão de contrato |
-| catálogo pedagógico aceita somente quatro definições versionadas | `src/domain/courseDesignParameters.js`; migration `20260817180000_course_design_parameters.sql` | `course-design-parameters.test.js`; PGlite e PostgreSQL focais | demonstrado com limite: inteiros e conjuntos fechados têm schema próprio; defaults são hipóteses do produto, não valores ótimos da literatura |
-| valor efetivo conserva origem, fonte e herança sem copiar atribuições | resolvedor comum de `courseDesignParameters.js`; mudanças append-only no PostgreSQL | testes de Curso→Lição→Microssequência, clear, no-op, CAS e replay | demonstrado: `author|research_condition` mais próximo precede `automatic` mais próximo e `system_default`; condição de pesquisa é proveniência, não lock |
-| orientação original e interpretação automatizada permanecem separadas | `course_authoring_guidance_revisions`; `course_authoring_guidance_interpretations` | domínio, PGlite, Edge/MCP e jornada visual | demonstrado: pilha Curso→alvo, revisão original imutável, interpretação ligada por UUID exato e nova revisão sem reaproveitamento silencioso |
-| itens de análise e evidência são atribuídos explicitamente por Microssequência | `course_design_target_plan_items`; `targetPlanItems`; `set_target_plan_items` | domínio, PGlite, Edge/MCP e jornada visual multi-alvo | demonstrado: relação muitos-para-muitos, FKs do mesmo Curso, substituição atômica das duas listas e `null` fora do escopo de Microssequência |
-| Fontes e Âncoras possuem revisões e atribuições exatas por alvo | `src/domain/courseSources.js`; cinco relações `private.course_source_*`; contratos `aralearn.course-sources.v1` e `aralearn.course-source-change.v1` | `course-sources.test.js`; PGlite, PostgreSQL, Edge/MCP e jornada da sexta área | demonstrado: escrita nova substitui conjunto ordenado, exige Âncora ativa/exata, limita 32 Fontes por alvo e oito identidades de Âncora por revisão de Fonte e preserva histórico append-only |
-| legado de Fontes é completado por inferência ou por nova identidade | migration `1900`; revisão `unresolved_legacy`; relação `legacy_reference` | corte focal, hashes e casos de resolução in-place | não oferecido: identidade literal e ordem são preservadas, metadados permanecem nulos/ocultos e resolver acrescenta revisão ativa sob a mesma identidade |
-| Anotação ancorada admite N registros por alvo e estados fechados | `src/domain/courseAnchoredAnnotations.js`; contratos de página/item/mudança; migration `2000` | domínio, PGlite, API/MCP e UI | demonstrado: alvos Curso→Unidade, origens/canais coerentes e estados `open|considered|resolved|withdrawn`; não existe `incorporated` |
-| classificação automática infere assuntos pela prosa ou ancestralidade | `exact_topic_target`; `target_scope_unclassified`; `human_topic_selection` | domínio, PGlite e casos de correção humana | não oferecido: somente alvo exatamente Tópico recebe assunto automático; seleção humana é fato efetivo separado e não apaga a classificação original |
-| rodadas de auditoria limpas desaparecem por não possuírem achado | `src/domain/courseAuditCycle.js`; `course_instructional_audit_runs`; leitura `audit_cycle` em `runs|detail` | domínio, PGlite, Router/Adapter/MCP e painel | não oferecido: `runs` é paginado e enumera toda rodada; o detalhe exclusivo por `auditRunId` entrega todos os checks e evidências, enquanto `findings`/`runs` aceitam filtro opcional pela Unidade |
-| conclusão factual positiva dispensa Fonte ou trata citação como sustentação geral | validação de evidência em `courseAuditCycle.js`; relações de Fonte/Âncora da migration `2100` | casos de `supported_by`, `quoted_from`, Fonte/Âncora aposentada, record e verify | não oferecido: Fonte e Âncora precisam estar ativas e exatas; `supported_by` sustenta afirmação, e `quoted_from` só vale para `quotation_fidelity` |
-| correção autoral pode reorganizar a árvore como atalho de reparo | contrato focal e checkpoint de `courseAuditCycle.js`; `course_authoring_corrections` | domínio, PGlite e casos create/delete/move/parent/position/no-op | não oferecido: v1 altera somente conteúdo e atribuições exatas de Fontes da Unidade existente, preserva `topics` legítimos e recusa no-op, criação, exclusão, movimento, posição e pai |
-| política de componentes separa disponibilidade, exclusão, preferência e uso | `course_component_policy_changes`; catálogo executável `1-3e5629f8`; validação do lote de materialização | domínio, PGlite, adapter e teste de componente proibido | demonstrado: exclusão vence, `allow_only` limita e preferência não autoriza; referências usadas são confrontadas na mesma transação |
-| contexto aplicado é derivado pelo servidor, não declarado pelo cliente | `courseDesignParameters.js`; `courseSources.js`; `start` de materialização; hash do `aralearn.course-design-context.v2` | testes de contexto multi-alvo, Fontes, hash, rollback e retry | demonstrado com limite: catálogos selam `{id,position,statement,version}`, cada alvo referencia seus IDs e Fontes/Âncoras atribuídas, e a etapa é auditada somente contra esse subconjunto |
-| aplicação factual separa declaração pedagógica de reconciliação material | auditor `auditDesignApplication`; `assert_course_design_application_materialized_v1` | casos de schema, pertencimento, contagem, alvo, lote e componente proibido | demonstrado com limite: formas, oportunidades e variações são declarações validadas internamente; o banco reconcilia materialmente apenas IDs de Unidades, pai/alvo e `componentRefs` |
-| regressão de densidade não usa caracteres como proxy | fixture DNS/DHCP e auditor `auditDesignApplication` | casos teto/7 de 7/formas/prática e metamórficos longo-claro, curto-denso, divisão cosmética e omissão | demonstrado sobre os fatos declarados no cenário codificado; não é análise semântica independente, não mede aprendizagem nem inventa dependência ausente do plano |
-| experimento, variante, lock e inferência causal fazem parte deste marco | documentação de roadmap e fronteiras sem RPC/UI corrente | scanner de runtime e inventário vertical | não oferecido; `research_condition` registra apenas origem da decisão, sem protocolo, lock, assignment ou alegação causal |
+| Estudo, Autoria e MCP usam a mesma identidade de Curso | `public.courses`, `private.course_entities`, `CourseController.js` | `course-main-cutover.test.js`, `course-controller.test.js` | demonstrado; não há conversão para uma árvore autoral paralela |
+| a hierarquia aceita Módulo, Lição, Tópico, Microssequência e Unidade de estudo | `courseEntities.js` e restrições de `course_entities` | `course-entities.test.js`, recriação local | demonstrado; Tópico e Microssequência são irmãos sob Lição |
+| composição extensa é lida em páginas de uma revisão | RPCs de lista e composição, `CourseStudyRepository.js` | `course-study-repository.test.js`, teste local de funcionamento | demonstrado; revisão divergente invalida a candidata |
+| uma candidata inválida não substitui a última composição íntegra | `CourseLocalStore.js`, `CourseController.js` | `course-local-store.test.js`, `course-controller.test.js` | demonstrado no processo e após reinício; revisão anterior fica somente para leitura |
+| inspeção autoral limita rede, memória e documento visual | RPC de inspeção, `CourseInspectionSequence.js` | `course-inspection-sequence.test.js`, `course-authoring-surface.test.js` | demonstrado; quatro páginas ou 8 MiB por Curso na réplica de inspeção |
 
-## 3. Representações e interação
+## Persistência pessoal
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| packages expõem texto acessível, edição e alvos de prática | `src/resources/kernel/packageRegistry.js`; packages instalados | testes do kernel e de package | demonstrado para o registry corrente |
-| lacunas distintas mantêm estado e opções próprios | `gap-response`; mediação do registry e renderer | `tests/e2e/table-resource.spec.js`; matriz do curso de resources | demonstrado nos packages com múltiplos alvos |
-| Graphviz calcula layout de grafos e fluxos sem coordenadas autorais | `src/resources/sdk/graphviz.js`; packages diagramáticos | `tests/e2e/package-visuals.spec.js`; testes acadêmicos de resources | demonstrado com limite; pertinência e semântica dependem do contrato preenchido |
-| Vega/Vega-Lite materializa gráficos e planos | `src/resources/sdk/vegaRuntime.js`; `chart`; `plane` | testes de packages e galeria visual | demonstrado com limite; escala e interpretação científicas exigem dados corretos |
-| MathML preserva estrutura de fórmulas, matrizes e reações | `formula`; `matrix`; `reaction`; `stretchDelimiter.js` | testes de package e geometrias em navegador | demonstrado nos exemplos cobertos; suporte depende também do motor do navegador |
-| corpus, viewport móvel e estresse acadêmico exercitam o catálogo | scripts de corpus, cursos acadêmicos e galeria | `tests/resource-course/`; `tests/e2e/package-visuals.spec.js` | demonstrado com limite; não cobre todas as áreas nem eficácia com estudantes |
-| um package é pedagogicamente necessário | manifest e documentação de fundamentação | auditoria acadêmica e avaliação disciplinar | avaliação externa; testes técnicos não demonstram necessidade didática |
+| cada conta usa um banco IndexedDB próprio | `CourseLocalStore.js` | `course-local-store.test.js`, `auth-session-store.test.js` | demonstrado em `aralearn-course-v1-<user-id>` |
+| conteúdo já promovido pode ser estudado sem rede | `CourseStudyApplication.js` e repositório local | `course-study-bridge.test.js`, `course-study-screen.test.js`, teste de Estudo no navegador | demonstrado; autenticação inicial e primeiro carregamento exigem rede |
+| progresso e itens para rever usam estado pessoal v2 | `CoursePersonalStateRepository.js` e RPCs próprias | `course-personal-state-repository.test.js`, teste local de funcionamento | demonstrado; Anotações não fazem parte desse documento |
+| Anotações possuem dados locais, paginação e fila próprios | `CourseAnnotationRepository.js` | `course-annotation-repository.test.js`, `course-anchored-annotations-pglite.test.js` | demonstrado; limites bloqueiam nova entrada sem descartar comandos existentes |
+| alterações autorais podem ser enfileiradas sem conexão | ausência de fila autoral; API de Cursos exige conexão | controlador, painéis e auditor de persistência | fora do contrato; revisão corrente é necessária para escrever |
+| duas abas convergem sem transmitir texto bruto pelo canal | repositórios e `BroadcastChannel` | testes de estado pessoal e Anotações | demonstrado; o canal sinaliza releitura do IndexedDB |
 
-## 4. Persistência local e sincronização
+## Autoria
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| cada conta possui namespace IndexedDB próprio | `src/persistence/IndexedDbRelationalStore.js` | `tests/runtime/relational-sync.test.js`; `tests/e2e/workspace-offline-authoring.spec.js` | demonstrado: `aralearn-relational-v4-r3`, versão 4, sufixo da conta |
-| IndexedDB funciona como SGBD SQL completo | store e `relationalSchema.js` | testes de persistência | não oferecido; é projeção normalizada sobre object stores e índices |
-| conteúdo já materializado pode ser estudado sem rede | repositórios de Curso e estado pessoal | testes de `CourseStudy*`, controller e estado pessoal | demonstrado; login inicial, primeiro download e serviços remotos continuam online |
-| desenho sincronizado pode ser lido offline sem virar autoridade | `src/persistence/WorkspaceDesignOfflineStore.js`; `syncState` | `tests/runtime/workspace-design-offline-store.test.js` | demonstrado: fatias por microssequência; fila apenas para override manual/Auto, separada do snapshot e revalidada remotamente |
-| revisão remota só substitui a local depois de contrato e hash válidos | `src/sync/RelationalSyncEngine.js`; `canonicalCourseHash.js` | `tests/runtime/relational-sync.test.js`; `integrated-course-sync.test.js` | demonstrado; falha conserva a projeção anterior |
-| todas as mutações usam uma outbox universal | `DomainMutationService.js`; sync engine; repositórios contextuais | testes de sync e estado pessoal | não oferecido; seleção, trilhas, estado e autoria têm protocolos limitados próprios |
-| Anotações e estado pessoal compartilham documento ou outbox | `CourseAnnotationRepository.js`; `CoursePersonalStateRepository.js` | testes dos dois repositórios, handoff e duas abas | não oferecido: personal-state v2 contém somente progresso/Rever; anotações têm outbox 128 comandos/256 KiB, cache 2 MiB/48 alvos/128 itens e 128 páginas por alvo e BroadcastChannel sem texto bruto |
-| auditoria ou correção pode operar offline a partir de cache/outbox local | `CourseAuditPanel.js`; `CourseController.js`; ausência de store no schema IndexedDB | painel, controlador, E2E online/offline e scanner de persistência | não oferecido: ciclo é online-only, sem store, cache autoritativo, réplica ou outbox; isso não remove as filas próprias de estado pessoal e Anotações |
-| mutação repetida não duplica efeito dentro de sua janela | sync engine e RPCs de idempotência | testes de sync integrado e PGlite | demonstrado com limite; retenções variam por família |
-| dispositivo ausente indefinidamente pode reproduzir todo feed | compactação e bootstrap | testes de retenção/sync | não oferecido; após a janela segura, novo bootstrap pode ser necessário |
+| plano e Partes de autoria são editáveis no Curso | `courseAuthoringPlan.js`, migração de plano | `course-authoring-plan.test.js`, `course-authoring-plan-pglite.test.js` | demonstrado; título e objetivo continuam na raiz do Curso |
+| desenho resolve parâmetros e política por escopo | `courseDesignParameters.js`, `CourseDesignPanel.js` | `course-design-parameters.test.js`, testes de superfície | demonstrado; limites técnicos permanecem separados da orientação pedagógica |
+| uma Parte pode materializar Unidades de estudo | operações canônicas e `course_entities` | testes de plano, adaptador e executor | demonstrado; materialização registra origem e respeita revisão esperada |
+| operações repetidas não duplicam efeito | recibos e identificadores de pedido nas RPCs | `course-postgres-concurrency.test.js`, testes PGlite e do executor | demonstrado dentro da retenção da família |
+| operação sem mudança avança a revisão | comparador semântico das operações | `course-tool-executor.test.js`, testes PGlite | fora do contrato; ausência de mudança conserva revisão e evento |
+| a interface oferece as nove áreas correntes | `CourseAuthoringSurface.js` e painéis de Curso | `course-authoring-surface.test.js`, teste de Autoria no navegador | demonstrado em Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes, Pesquisa e Pessoas |
 
-## 5. Curso, concorrência e materialização
+## Fontes e PDFs
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| Curso vivo e entidades usam CAS e diferenças reais | `public.courses`; `private.course_entities`; `commit_course_composition_for_actor_v1` | PGlite, PostgreSQL real, Router/Adapter e smokes com duas contas | demonstrado; conflito exige reler, no-op não avança revisão e eventos não restauram documento passado |
-| plano e Partes são relações próprias, não documento monolítico | `course_instructional_plans`, itens, Partes e vínculos | domínio, PGlite, API/MCP e E2E de Autoria | demonstrado; posição da Parte não altera ordem curricular e remover vínculo não apaga conteúdo |
-| materialização é retomável e confirma etapa atomicamente | tentativas, até 64 etapas, leitura detalhada owner-only e `advance_part_materialization` | PGlite, Router/Adapter/MCP e E2E visual | demonstrado com limites de versão, bytes e mudanças; contexto e fatos não são transcrição de chat |
-| composição pode gravar Unidade sem declarar o conjunto de Fontes | `commit_course_composition_for_actor_v1`; `sourceAttributionApplications` | domínio, PGlite, Router/Adapter e replay | não oferecido: cada upsert de Unidade exige exatamente uma aplicação, inclusive vazia; entidade, atribuição, evento e recibo confirmam juntos |
-| materialização pode atribuir Fonte fora do contexto selado | `aralearn.course-design-context.v2`; `aralearn.course-source-attribution-application.v1` | casos de revisão/Âncora fora do contexto, rollback e retry | não oferecido: aplicação, entidades, vínculo, atribuições, etapa, evento e recibo formam uma transação; o resultado guarda hash e contagens, não uma cópia da aplicação |
-| repetir `requestId` com mesmo comando recupera recibo | `course_change_receipts` e executor comum | testes de resposta perdida, replay, conflito de hash e expiração | demonstrado dentro da janela; chave divergente é conflito |
-| toda operação de auditoria cria evento ou ledger de recibos paralelo | `course_change_receipts`; `course_events`; executor do ciclo na migration `2100` | PGlite de record/decide/propose/apply/verify/rollback/replay | não oferecido: o ciclo reutiliza recibos; somente aplicação e rollback mudam o Curso e criam evento, enquanto as demais operações versionam apenas sua autoridade |
-| verificação pode resolver o achado sem nova rodada ou critério aprovado | `verify_finding`; estados de achado/correção; checkpoint `before|after` | domínio, PGlite e E2E de apply→verify/`still_open`→rollback | não oferecido: verificação exige outra rodada, `resolved` exige o critério focal `passed`, `still_open` reabre e rollback só restaura quando o snapshot aplicado ainda é corrente |
-| triagem de observação sempre avança a revisão do conteúdo | `courses.annotation_set_version`; executor de Anotações ancoradas | domínio e PGlite por comando | não oferecido: revisão de texto, resposta e estado avançam versão específica; criar e corrigir assuntos também confrontam a revisão do Curso |
-| versão de anotações do Estudo revela atividade de terceiros | `course_anchored_annotation_viewer_versions`; wrappers self-only | PGlite com duas contas, cache e duas abas | não oferecido: owner usa contador global; Estudo recebe contador monotônico privado da própria projeção, sem texto ou autoridade de domínio, sob FORCE RLS e sem grants diretos |
-| vínculo de achado conserva texto/pessoa da Anotação ou apaga o histórico do ciclo | `course_audit_finding_annotations`; FK composta `ON DELETE CASCADE`; projeção do ciclo | PGlite de retirada, tombstone e hard delete | não oferecido: a junção guarda só ID/versão; antes da limpeza projeta `available:false`/link nulo, depois o vínculo e ID somem, mas rodada, achado e correção permanecem |
-| objetos físicos do runtime anterior constituem capacidade corrente | inventário vertical marcado `pre-course-database-removal` | `auditVerticalParity.mjs` e PostgreSQL pós-reset | não oferecido; não possuem rota/grant/UI/MCP corrente e serão removidos pela #130 |
+| fonte possui proveniência revisável e identidade estável | `courseSources.js`, relações de fonte e revisão | `course-sources.test.js`, `course-sources-panel.test.js` | demonstrado; revisões anteriores permanecem endereçáveis |
+| âncoras ligam fonte a alvos do Curso | relações de âncora e atribuição | `course-anchored-annotations-pglite.test.js`, testes de fonte | demonstrado; citações não dependem de texto copiado no estado pessoal |
+| PDF é privado e vinculado depois do envio | API de Cursos, `course_source_attachments`, bucket `course-source-pdfs` | `course-source-attachments-pglite.test.js`, testes da API e segurança | demonstrado em duas fases com URL assinada |
+| conhecimento do caminho concede acesso ao PDF | vínculo relacional e autorização da API | `course-security.test.js`, teste local de funcionamento | fora do contrato; acesso exige a propriedade do Curso vinculado |
+| cotas do aplicativo limitam anexos | domínio de fontes e RPCs | testes de fonte e anexos | demonstrado: 20 MiB por PDF, 64 MiB únicos por Curso e oito anexos por detalhe |
+| variantes podem reaproveitar objeto imutável | vínculos autorizados por Curso e hash da origem | testes de anexos e variantes | demonstrado; cada Curso conserva vínculo próprio |
+| autoria pode anotar, contestar e pedir reformulação de uma Fonte | Anotações ancoradas com alvos Fonte e Âncora, categoria de reformulação e vínculos considerados na resposta | `course-sources-panel.test.js`, `course-anchored-annotations-pglite.test.js`, testes de controlador, adaptador, roteador e MCP | demonstrado; a reformulação exige revisões vigentes de Fonte e Âncora e não copia o PDF para a Anotação |
 
-## 6. Identidade, RLS, MCP e API de Curso
+## Auditoria, variantes e Pesquisa
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| dados pessoais são isolados por JWT, RLS e RPC | migrations, políticas e cliente Auth | pgTAP, PostgREST e smoke com duas contas | demonstrado nos fluxos cobertos |
-| corte pode preservar contagem de Fontes e trocar identidade ou ordem | `sourceReferenceHash` sobre `{studyUnitId,sourceOrdinal,sourceId}`; atestações `prepared|verified` | corte focal e comparação origem/artefato/pós-`1900` | não oferecido: identidade literal, ordem e hash precisam coincidir junto com `documentHash`, `rowHash`, `entityStateHash` e contagens |
-| uma estrutura persistente pode surgir sem caso de uso revisado | `auditVerticalParity.mjs`; registro canônico de Auditoria/correções, Anotações, Estudo, Autoria, Fontes, pessoas/acesso, componentes e transportes; inventário exato versionado de relações, funções, índices, restrições, triggers, policies, estado RLS e buckets | `vertical-parity-audit.test.js`; comparação do PostgreSQL após `db reset` na CI | não oferecido: todo objeto novo falha até regeneração e revisão explícitas; o inventário pós-`20260817210000` contém 2.186 objetos, liga 591 aos oito casos correntes (`course-audit-corrections` 90, `course-authoring-experience` 272, `course-anchored-annotations` 84, `course-source-provenance` 84, `study-course-experience` 26, `person-profile-and-course-access` 31, `course-shared-transports` 3 e `didactic-component-runtime` 1) e mantém 1.595 em `pre-course-database-removal`; `private.valid_course_personal_state_v1` é físico isolado, não capacidade do runtime v2 |
-| domínio browser e espelho Edge podem divergir silenciosamente | `src/domain/courseAuditCycle.js`; espelho `supabase/functions/_shared/aralearn/runtime/domain/courseAuditCycle.js` | validação de mirror e smoke local real | não oferecido: ambos congelam SHA-256 `6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9` |
-| Estudo recebe catálogo, histórico ou campos privados de Fonte | `get_course_study_citations_v1`; `aralearn.course-study-citations.v1` | casos hidden/unresolved, citation sem URL, citation_and_link, 404/revogação e DTO estrito | não oferecido: a leitura é lazy por Unidade e omite trecho de verificação, ator, canal, histórico e edição; atribuição por alvo não prova autoria nem cadeia W3C completa |
-| termo abolido, decisão incompleta ou alias de legado pode entrar no estado corrente | `docs/evidence/terminologia-canonica.v1.json`; `scripts/auditTerminology.mjs`; documento humano derivado `docs/vocabulario-controlado.md` | `tests/runtime/terminology-audit.test.js`; `npm run audit:terminology` | não oferecido: cada ficha exige termos de interface e domínio, equivalente inglês, símbolo-alvo, definição, exemplo, risco, alternativas específicas, fontes, impacto de migração, issue e não sinônimos; `cutoverStatus` descreve apenas o corte terminológico, corte pendente exige `removeBy` e decisão concluída falha diante de símbolo abolido fora de migrations e evidência histórica; aliases, fallbacks e boilerplate são rejeitados; a imagem continua hipótese visual não implementada |
-| compartilhar um Curso exige papel, capability ou recipiente institucional | `course_access`; `CourseAuthoringSurface.js`; `gerirPessoas` | `course-identity-cutover-pglite.test.js`; `course-authoring-surface.test.js`; `course-mcp-tools.test.js` | não oferecido: propriedade é direta e a concessão explícita permite somente Estudo; Autoria e MCP listam apenas Cursos próprios |
-| Inspeção visual e MCP podem divergir em escopo, âncora, cursor ou link | `CourseInspectionSequence.js`; vista MCP `study_units`; `list_owned_course_study_units_for_actor_v1` | `course-inspection-sequence.test.js`; `course-mcp-tools.test.js`; `course-router.test.js`; ensaio PostgreSQL focal | não oferecido: ambos usam a mesma leitura owner-only, revisão esperada, escopos curriculares e de Parte, âncora inclusiva e cursor `{studyUnitId}` |
-| MCP usa Streamable HTTP sem sessão de servidor | `mcpServer.js`; função `aralearn-authoring-mcp` | testes runtime, Deno e jornada MCP | demonstrado: protocolo `2025-11-25`, JSON-RPC e sem `MCP-Session-Id`; corpo até 1 MiB e resposta total até 2 MiB |
-| MCP aceita credencial estática de autoria | servidor MCP e segurança | testes OAuth e smoke local | não oferecido; exige access token OAuth do recurso protegido |
-| aplicativo e MCP mantêm operações ou motores paralelos | `courseMcpTools.js`; `courseToolExecutor.js`; `courseApiServer.js`; `mcpServer.js` | `course-mcp-tools.test.js`; `course-tool-executor.test.js`; `course-api-server.test.js`; `course-mcp-server.test.js` | não oferecido: os dois transportes usam as mesmas seis ferramentas, o mesmo executor e o mesmo estado de Curso; o guardrail rejeita `applicationTools` |
-| MCP ganha ferramenta paralela exclusiva para observações | `lerCurso anchored_annotations`; `alterarCurso update_anchored_annotations` | `course-mcp-tools.test.js`; Router/Adapter e PGlite | não oferecido: continuam seis ferramentas; criação exige confirmação e síntese breve, e o servidor remove `confirmed` antes do domínio |
-| MCP ganha ferramenta paralela exclusiva para auditoria ou aceita confirmação em qualquer comando | `lerCurso audit_cycle`; `alterarCurso update_audit_cycle`; sete `auditCommand` fechados | `course-mcp-tools.test.js`; Router/Adapter e PGlite | não oferecido: continuam seis ferramentas; `confirmed:true` é obrigatório só em aplicar/rollback, recusado nos outros cinco e removido antes do domínio |
-| MCP aceita credencial do aplicativo ou fachada confidencial paralela | descoberta OAuth do MCP e sessão normal do aplicativo | `course-mcp-server.test.js`; `course-api-server.test.js` | não oferecido: o MCP exige seu token OAuth; o aplicativo usa a sessão autenticada corrente e origens CORS exatas |
-| o assistente lê e altera o Curso por operações agrupadas e contratos fechados | `courseMcpTools.js`; `courseRouter.js`; `courseSupabaseAdapter.js` | `course-mcp-tools.test.js`; `course-router.test.js`; `course-supabase-adapter.test.js` | demonstrado no corte corrente: listar, ler paginado, criar, alterar sob CAS, gerir perfil/acesso e consultar componentes; não existe ferramenta exclusiva do aplicativo |
-| system prompt fica estável e ciência/políticas entram por knowledge JIT | prompts em `authoring/platforms/`; `authoringKnowledge.js`; oito chunks em `authoring/knowledge/` | `authoring-contextual-planning-guidance.test.js`; `authoring-guidance-regression.test.js`; `testAuthoringPackages.mjs` | demonstrado com limite: seleção determinística de até oito trechos; os cenários A–H são regressão de engenharia, não validação educacional |
-| secret key entra no site ou APK | runtime config, ambiente de função e verificador de artefato | testes de ambiente/deployment/Android | não oferecido; clientes recebem apenas URL e publishable key |
-| callback customizado Android prova propriedade do aplicativo | Auth client e manifesto Android | testes de callback | não oferecido; PKCE protege a troca, mas App Link HTTPS é necessário contra interceptação/DoS |
+| auditoria registra ciclo, achado, decisão, correção e vínculo com Anotação | `courseAuditCycle.js`, `CourseAuditPanel.js`, relações privadas | `course-audit-cycle.test.js`, `course-audit-corrections-pglite.test.js`, teste de auditoria no navegador | demonstrado; escrita exclusiva do proprietário e com conexão |
+| comparação cria Cursos independentes a partir de ponto de controle comum | `courseVariants.js`, relações de ponto de controle, conjunto e membro | `course-variants.test.js`, `course-variants-pglite.test.js`, `course-variants-panel.test.js` | demonstrado para dois a oito membros |
+| variantes copiam Unidades já materializadas | operação de criação de variante | testes de variantes | fora do contrato; cada Curso materializa suas próprias Unidades |
+| comparação distingue declaração, observação e desvio factual | domínio e painel de variantes | testes de variantes e painel | demonstrado; não há atribuição de participantes nem inferência causal |
+| Pesquisa lê projeção factual das autoridades correntes | `courseAuthoringAnalytics.js`, RPC exclusiva do proprietário e `CourseAnalyticsPanel.js` | `course-authoring-analytics-domain.test.js`, `course-authoring-analytics-pglite.test.js`, `course-analytics-panel.test.js` | demonstrado em sete conjuntos, até duzentas linhas por página |
+| fatos de Pesquisa expõem identidade ou texto bruto | função de projeção e validadores do domínio | testes de domínio, PGlite e painel | fora do contrato; pessoa, e-mail, texto bruto e instantâneos integrais são excluídos |
+| gráfico de Pesquisa possui equivalente textual e exportação direta delimitada | `CourseAnalyticsPanel.js`, `downloadTextFile.js` | `course-analytics-panel.test.js`, `text-file-download.test.js` | demonstrado com tabela, definições, CSV e JSON paginados, até 8 MiB por arquivo |
 
-## 7. Assistência contextual por API
+## API, MCP e catálogo
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| seleção delimita caminhos graváveis | `cardAssistanceScope.js`; `bottomUpAssistanceScope.js` | testes de operações e sync scope | demonstrado; contexto não selecionado é somente leitura |
-| edição textual expõe apenas rótulos declarados | registry e renderer de packages | testes do kernel e de edição | demonstrado no contrato dos packages; a edição contextual ainda não está acessível na superfície canônica de Curso |
-| provider pode gravar qualquer JSON que retornar | escopo e validação semântica | testes de assistência | não oferecido; `edit_text` limita caminhos e recomposição exige contrato completo |
-| conversa admite iteração e navegação de versões | ledger e navigation | testes de ledger/navigation | demonstrado com limite: até oito turnos e nove versões; novo ramo elimina redo abandonado |
-| conversa é proveniência persistida e sincronizada | ledger e local state | testes de estado local | não oferecido; prompts/respostas são voláteis; somente mudança aceita segue a persistência do curso |
-| pedido pode criar conteúdo fora do escopo | domínio de autoria e operações MCP | testes de Router, MCP e domínio | não oferecido; toda mutação exige Curso próprio, revisão corrente e lote explícito |
-| contexto e resposta são ilimitados | Router, ferramentas MCP e políticas de payload | testes de transporte, Router e limites | não oferecido; pedido até 1 MiB e projeções/lotes possuem limites menores; Inspeção falha acima de 1,75 MiB |
+| navegador e MCP executam o mesmo contrato de Curso | `courseRouter.js`, `courseToolExecutor.js`, `courseSupabaseAdapter.js` | `course-router.test.js`, `course-tool-executor.test.js`, `course-supabase-adapter.test.js` | demonstrado; transportes diferem, regra e autorização convergem |
+| MCP oferece seis ferramentas estáveis | `courseMcpTools.js`, `mcpServer.js` | `course-mcp-tools.test.js`, `course-mcp-server.test.js` | demonstrado; capacidades novas entram como visões ou operações quando cabem |
+| recurso visual MCP corresponde à versão 0.0.23 | `courseMcpAppResource.js` | `course-mcp-app-resource.test.js`, `course-mcp-app-resource.spec.js` | protocolo, temas, tamanho, encerramento, prévia, Pesquisa e Variantes verificados localmente; sessão no cliente conectado permanece pendente |
+| cliente escolhe vários pacotes para uma instância | catálogo e `courseContract.js` | validação do corpus e testes de pacotes | fora do contrato; cada instância usa um `package@version` |
+| navegador e Edge usam catálogo idêntico | código gerado em `_shared/aralearn/runtime` | `resources:sync-edge --check`, testes globais | demonstrado; divergência reprova a validação |
+| catálogo oferece 29 pacotes de conteúdo e três de resposta | `src/resources/packages/` e registro gerado | `resources:catalog-course:check`, teste do Curso de recursos | demonstrado; busca retorna até oito resultados por chamada |
 
-## 8. Front-end, offline e acessibilidade
+## Segurança
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| Estudo avalia e avança sem aguardar a rede | `CourseStudyApplication.js`; `CoursePersonalStateRepository.js` | testes de Estudo e estado pessoal | demonstrado nos cenários cobertos; envio remoto permanece assíncrono |
-| troca de tema depende de requisição | tokens e resolução local de tema | jornadas visuais/de estudo | não oferecido; preferência e aplicação são locais |
-| Inspeção carrega o Curso inteiro ou cresce o DOM sem limite | `CourseInspectionSequence.js`; cache no `CourseController.js`; RPC de Inspeção | `course-inspection-sequence.test.js`; testes de controller/API e PostgreSQL | não oferecido: página normal 12, máximo 24, janela de até 36 Unidades, cache de quatro páginas ou 8 MiB por Curso e resposta de até 1,75 MiB; aceite visual ainda exige 360/390/430 px e desktop |
-| fallback offline pode misturar revisão, escopo ou cursor | cache e posição local da Inspeção | testes de controller e sequência | não oferecido: somente pedido exato é reutilizado e marcado stale/offline; revisão reancora por identidade e revogação purga o estado privado |
-| abrir ou navegar no Estudo carrega todas as Fontes | `CourseStudyApplication.js`; `CourseStudyRepository.js`; painel de citações | testes Study e E2E de Fontes | não oferecido: não há requisição antes de abrir; cache vale para a Unidade/revisão corrente, e mudança, 404 ou revogação limpam o estado |
-| Autoria de Fontes exige editar JSON | `CourseSourcesPanel.js`; Planejamento e Inspeção | runtime focal e E2E em 360/390/430/1280 | não oferecido: catálogo, revisão, aposentadoria, Âncoras e conjunto completo usam formulários naturais; aceitar layout automatizado não substitui ensaio humano |
-| estudantes veem observações de colegas ou o proprietário recebe UUID/e-mail | RLS/RPCs self-only e owner-only; DTO `protected_person`; `CourseObservationsPanel.js` | PGlite com duas contas, painel e folha de Estudo | não oferecido: estudante vê só as próprias; proprietário recebe papel, `ref` aleatório persistido não derivado de Curso/UUID e `label` protegido; UI mostra somente o rótulo, nunca `ref`, UUID ou e-mail |
-| Auditoria e correções é a sétima área, sem criar uma oitava | `CourseAuthoringSurface.js`; `CourseObservationsPanel.js`; `CourseAuditPanel.js` | testes dos painéis, superfície, rota e viewports | demonstrado tecnicamente: `section=observations` conserva abas Observações/Achados; compreensão humana ainda requer aceite |
-| rota de auditoria aceita identidades incompatíveis ou link profundo ilimitado | `courseAuthoringRoute.js`; links de `CourseAuditPanel.js` | `course-authoring-route.test.js`; `course-audit-panel.test.js`; E2E | não oferecido: detalhe usa exatamente `annotationId`, `findingId` com `correctionId` opcional ou `auditRunId`; Fonte/Âncora vai a `section=sources`, Unidade à Inspeção, e link acima do limite fica nulo |
-| abrir curso oficial equivale a selecioná-lo | painel e controlador de Trilhas | `learning-spaces-panel.spec.js` | não oferecido; seleção possui ação própria |
-| edição manual apresenta só textos do package | `renderPackageStudyUnit.js`; `editableTargets()` | testes do kernel e de renderização de Unidade | demonstrado no renderer; edição contextual continua futura na superfície canônica de Curso |
-| claro e escuro compartilham semântica visual | tokens e packages | galeria visual, E2E de packages | demonstrado nas fixtures e viewports cobertas |
-| todos os usuários compreenderão toda representação | UI e packages | requer ensaios de leitura e usabilidade | avaliação externa |
-| WCAG integral está certificada | sistema visual e testes automatizados | auditorias e jornadas | avaliação externa; automação cobre critérios selecionados, não certificação completa |
+| cliente público recebe credencial administrativa | configuração pública e verificadores de artefato | `supabase-server-environment.test.js`, `deployment-automation.test.js` | fora do contrato; somente URL e chave pública entram em site e APK |
+| tabelas expostas exigem privilégio e segurança por linha | migrações, privilégios e políticas | `course-security.test.js`, teste PostgREST/RLS, análise do banco | demonstrado para os contratos públicos correntes |
+| função com credencial administrativa aceita identidade declarada pelo corpo | funções de entrada e RPCs exclusivas do proprietário | testes de API, MCP, adaptador e segurança | fora do contrato; a função valida o token e a função SQL comprova a pessoa |
+| MCP usa OAuth 2.1 com PKCE | Auth OAuth Server, gancho de token e função MCP | `local-mcp-oauth-smoke.test.js`, teste local e hospedado | demonstrado; servidor valida sessão, emissor, destinatário, recurso, cliente, sujeito e validade temporal; cliente valida estado e código PKCE |
+| origens de produção são exatas | segredos CORS e `deploySupabase.ps1` | `deployment-automation.test.js` | demonstrado; HTTP somente em desenvolvimento local |
+| buckets são privados | políticas de Storage e URLs assinadas | testes de segurança, anexos e teste local de funcionamento | demonstrado para `person-avatars` e `course-source-pdfs` |
 
-## 9. Implantação e artefatos
+## Integração e publicação
 
-| Propriedade | Implementação | Verificação | Estado e limite |
+| Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| web e Android executam o mesmo aplicativo web | `public/`; Android; scripts de build | testes Android e `verifyDeploymentArtifacts.ps1` | demonstrado para o pipeline corrente |
-| qualquer backend SQL substitui Supabase | cliente, migrations e Edge Functions | `validate:cutover`; smoke remoto | não oferecido; Auth, RLS, PostgREST, Storage e funções integram o contrato operacional |
-| build contém apenas configuração pública | scripts de build e runtime config | verificador de Pages/Android | demonstrado nos artefatos examinados; segredo operacional ainda exige disciplina externa |
-| limites de Fontes demonstram sustentabilidade no Free Plan | páginas de 24/256 KiB, 32 vínculos por alvo, oito identidades de Âncora por revisão, citações lazy e metadados/URLs no PostgreSQL | testes de limites e medição operacional futura | não oferecido: os caps limitam cada operação, mas crescimento append-only, banco, egress, Storage e funções exigem série real |
-| limites de Anotações demonstram sustentabilidade ou validade pedagógica | páginas 24/256 KiB; quotas 128/512/256; cache/outbox cercados; retenção/redação | domínio, PGlite e repositório local | não oferecido: caps e limpeza tornam custo mensurável; não provam sustentabilidade nem autorizam inferência por contagem, estado, categoria, resposta ou timestamp |
-| limites de auditoria demonstram sustentabilidade no Free Plan | páginas/resultados 240 KiB, comandos 192 KiB, 24 itens, 256 rodadas com reserva, 1.024 achados, 64 correções/Curso, 8 por achado, snapshots/checkpoints/recibos 48/96/64 KiB | domínio, SQL, testes de limite e medição futura | não oferecido: quotas e históricos delimitados cercam cada operação, mas crescimento append-only, banco, egress e invocações exigem série real |
-| versão do APK equivale à versão do contrato | `package.json`, Gradle e contracts | testes de versão | não oferecido; são ciclos diferentes |
-| downloads de autoria são fontes primárias | `authoring/`; builder de packages | `test:authoring-packages` | não oferecido; `docs/downloads/authoring/` é saída derivada |
-| `npm test` demonstra todos os requisitos | `package.json`; runners | suíte geral | não oferecido; não cobre pessoas, operação prolongada, custo ou disponibilidade futura |
-| Anotações ancoradas implementam achados, correção e verificação | `course_anchored_annotations` versus quatro autoridades da migration `2100` | domínio, PGlite, inventário de RPC/UI e documentação | não oferecido: Observações continuam manifestação/triagem; o ciclo referencia só ID/versão, e `suggestedAnnotationActions` exige outro comando explícito e versionado |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado na revisão `20260820101500` |
+| integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
+| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado para site e APK |
+| Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |
+| publicação Android parte da ponta validada de `main` | `.github/workflows/android-release.yml` | `deployment-automation.test.js` | demonstrado; revisão superada e tag existente não são republicadas |
+| limpeza física acompanha toda migração | `scripts/courseCutover/prepareLegacyCleanup.mjs` | `course-legacy-cleanup-plan.test.js`, `course-legacy-cleanup-backup.test.js` | fora do contrato; requer inventário, cópia verificada, restauração e confirmação específicas |
 
-## 10. Validações de referência
+## Verificações documentais
 
-```powershell
-npm.cmd run lint
-npm.cmd test
-npm.cmd run test:e2e
-npm.cmd run validate:example
-npm.cmd run validate:cutover
-npm.cmd run catalog:validate
-npm.cmd run audit:frontend
-npm.cmd run audit:residues
-npm.cmd run audit:docs
-npm.cmd run audit:parity
-npm.cmd run audit:terminology
-```
-
-Durante a evolução da Autoria, a validação intermediária é proporcional ao
-risco: começa por verificações estáticas e testes do comportamento alterado,
-avança para a integração da fatia vertical e concentra a regressão integral em
-mudanças que atravessam várias camadas, marcos de fechamento e releases. Uma
-suíte ampla já aprovada não é repetida sem mudança de código, fixture,
-dependência, ambiente ou outro insumo relevante. A execução integral é
-registrada com data e commit no [estado corrente](estado-atual-e-roadmap.md).
-Isso não permite concluir uma etapa com teste focado falhando nem alegar
-integração ainda não exercitada.
-Para o banco parametrizado, o ensaio autocontido está em
-`tests/runtime/parameterized-authoring-design-pglite.test.js`; o complemento de
-RLS/PostgREST no stack Supabase está em
-`supabase/tests/040_parameterized_authoring_design_test.sql` e não deve ser dado
-como executado quando CLI ou `psql` não estiverem disponíveis.
-
-O ensaio experimental autocontido está em
-`tests/runtime/authoring-experiments-pglite.test.js`; o complemento estrutural e
-de RLS está em `supabase/tests/060_authoring_experiments_test.sql`. Testes de
-software demonstram fences, replay, privacidade e identidade do artefato, mas
-não autorizam afirmar validade causal, qualidade do instrumento ou efeito de
-aprendizagem.
-
-Quando banco ou funções mudarem, acrescente `validateLocalSupabase.ps1`; quando o ambiente remoto mudar, execute smoke hospedado; quando site ou APK mudar, examine os artefatos finais.
-
-## 11. Como manter a matriz
-
-Ao alterar uma propriedade:
-
-1. reescreva a afirmação de modo observável;
-2. identifique a fonte normativa da regra;
-3. acrescente teste capaz de falhar diante da regressão;
-4. registre limite e cenário não coberto;
-5. evite contagens e datas que não sejam geradas automaticamente;
-6. não transforme ausência de teste em alegação de conformidade.
-
-Saídas derivadas são regeneradas a partir das fontes. Avaliação pedagógica, acessibilidade com participantes, segurança independente e custo em produção pertencem a protocolos próprios e não devem ser convertidos em “demonstrado” apenas porque a suíte técnica passou.
+| Propriedade | Implementação | Evidência | Estado e limite |
+|---|---|---|---|
+| links, títulos, índices e independência editorial são auditados | `scripts/auditDocumentation.mjs` | `documentation-audit.test.js`, `npm run audit:docs` | demonstrado para documentação pública corrente |
+| vocabulário abolido é detectado | `scripts/auditTerminology.mjs` | `terminology-audit.test.js`, `npm run audit:terminology` | demonstrado em código, interface e documentação cobertos pelo auditor |
+| a evidência citada continua executável | comandos e testes desta matriz | validação de integração | demonstrado para itens automatizados; inspeção visual e ambiente hospedado conservam verificações próprias |

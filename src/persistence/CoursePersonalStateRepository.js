@@ -7,18 +7,11 @@ import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 export const COURSE_PERSONAL_STATE_VERSION = 2;
 export const COURSE_PERSONAL_STATE_CACHE_CONTRACT =
   "aralearn.course-personal-state-cache.v2";
-export const COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT =
-  "aralearn.course-personal-state-cache.v1";
-export const COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT =
-  "aralearn.course-anchored-annotation-handoff.v1";
 
 const MAX_STATE_BYTES = 524_288;
 const MAX_OPERATIONS = 512;
 const MAX_OPERATION_BYTES = 65_536;
 const COLLECTIONS = new Set(["progress.lessons", "reviewMarks"]);
-const LEGACY_OBSERVATION_CATEGORIES = new Set([
-  "question", "possible_error", "confusing", "suggestion", "observation"
-]);
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 function clone(value) {
@@ -124,23 +117,6 @@ function normalizeLessonState(value, label) {
   return {
     ...(cursorStudyUnitId ? { cursorStudyUnitId } : {}),
     completedStudyUnitIds
-  };
-}
-
-function normalizeLegacyObservation(value, label) {
-  if (!plainObject(value)) throw failure(`${label} inválida.`);
-  const allowed = new Set(["category", "body", "updatedAt"]);
-  const unknown = Object.keys(value).find((field) => !allowed.has(field));
-  if (unknown) throw failure(`${label}.${unknown} não pertence ao contrato.`);
-  const category = String(value.category || "");
-  const body = typeof value.body === "string" ? value.body.trim() : "";
-  if (!LEGACY_OBSERVATION_CATEGORIES.has(category) || !body || body.length > 1_000) {
-    throw failure(`${label} inválida.`);
-  }
-  return {
-    category,
-    body,
-    updatedAt: instant(value.updatedAt, `${label}.updatedAt`)
   };
 }
 
@@ -253,171 +229,6 @@ function mergeOperations(current, additions) {
     merged.set(operationKey(operation), operation);
   }
   return [...merged.values()];
-}
-
-function normalizeLegacyState(value) {
-  if (!plainObject(value) || value.version !== 1 || !plainObject(value.progress) ||
-      value.progress.version !== 3 || !plainObject(value.progress.lessons)) {
-    throw failure("Estado pessoal v1 inválido.", "course_personal_state_legacy_migration_failed");
-  }
-  const unknown = Object.keys(value).find((field) =>
-    !new Set(["version", "progress", "reviewMarks", "observations"]).has(field));
-  if (unknown) {
-    throw failure("Estado pessoal v1 contém campos desconhecidos.",
-      "course_personal_state_legacy_migration_failed");
-  }
-  return {
-    version: 1,
-    progress: {
-      version: 3,
-      lessons: normalizeMap(
-        value.progress.lessons,
-        "Estado pessoal v1.progress.lessons",
-        10_000,
-        normalizeLessonState
-      )
-    },
-    reviewMarks: normalizeMap(
-      value.reviewMarks,
-      "Estado pessoal v1.reviewMarks",
-      100_000,
-      instant
-    ),
-    observations: normalizeMap(
-      value.observations,
-      "Estado pessoal v1.observations",
-      10_000,
-      normalizeLegacyObservation
-    )
-  };
-}
-
-function normalizeLegacyOperation(value, index = 0) {
-  if (!plainObject(value) || !new Set(["set", "delete"]).has(value.kind) ||
-      !new Set([...COLLECTIONS, "observations"]).has(value.collection)) {
-    throw failure(`Operação v1 ${index + 1} inválida.`,
-      "course_personal_state_legacy_migration_failed");
-  }
-  if (value.collection !== "observations") return normalizeOperation(value, index);
-  const operation = {
-    kind: value.kind,
-    collection: "observations",
-    path: entityId(value.path, `Operação v1 ${index + 1}.path`)
-  };
-  if (value.kind === "set") {
-    operation.value = normalizeLegacyObservation(value.value, `Operação v1 ${index + 1}.value`);
-  }
-  return operation;
-}
-
-function normalizeLegacyOperations(values) {
-  if (!Array.isArray(values) || values.length > MAX_OPERATIONS) {
-    throw failure("Operações v1 inválidas.", "course_personal_state_legacy_migration_failed");
-  }
-  return values.map(normalizeLegacyOperation);
-}
-
-function normalizeLegacyCache(value, courseId) {
-  if (!plainObject(value) || value.contract !== COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT ||
-      requiredUuid(value.courseId, "Curso no cache v1") !== courseId) {
-    throw failure("Cache pessoal v1 inválido.", "course_personal_state_legacy_migration_failed");
-  }
-  const pending = value.pending == null ? null : {
-    requestId: requiredUuid(value.pending.requestId, "Pendência v1.requestId"),
-    baseRevision: nonNegativeInteger(value.pending.baseRevision, "Pendência v1.baseRevision"),
-    operations: normalizeLegacyOperations(value.pending.operations),
-    createdAt: instant(value.pending.createdAt, "Pendência v1.createdAt")
-  };
-  return {
-    courseId,
-    revision: nonNegativeInteger(value.revision, "Revisão v1 em cache"),
-    state: normalizeLegacyState(value.state),
-    pending,
-    queuedOperations: normalizeLegacyOperations(value.queuedOperations || []),
-    updatedAt: instant(value.updatedAt, "Atualização v1 em cache")
-  };
-}
-
-function legacyObservationIntents(record) {
-  const operationTimes = new Map();
-  for (const operation of record.pending?.operations || []) {
-    if (operation.collection === "observations") {
-      operationTimes.set(operation.path, record.pending.createdAt);
-    }
-  }
-  for (const operation of record.queuedOperations) {
-    if (operation.collection === "observations") {
-      operationTimes.set(operation.path, record.updatedAt);
-    }
-  }
-  const targets = new Set([
-    ...Object.keys(record.state.observations),
-    ...operationTimes.keys()
-  ]);
-  return [...targets].sort().map((targetStudyUnitId) => {
-    const observation = record.state.observations[targetStudyUnitId];
-    return observation ? {
-      kind: "upsert",
-      targetStudyUnitId,
-      category: observation.category === "observation" ? null : observation.category,
-      text: observation.body,
-      updatedAt: observation.updatedAt
-    } : {
-      kind: "withdraw",
-      targetStudyUnitId,
-      updatedAt: operationTimes.get(targetStudyUnitId) || record.updatedAt
-    };
-  });
-}
-
-function mergeAnnotationHandoff(value, courseId, additions, updatedAt) {
-  if (value != null && (!plainObject(value) ||
-      value.contract !== COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT ||
-      value.courseId !== courseId || !Array.isArray(value.intents))) {
-    throw failure("Handoff de observações v1 inválido.",
-      "course_personal_state_legacy_migration_failed");
-  }
-  const intents = new Map((value?.intents || []).map((intent) => [
-    entityId(intent.targetStudyUnitId, "Alvo do handoff"),
-    clone(intent)
-  ]));
-  for (const intent of additions) intents.set(intent.targetStudyUnitId, clone(intent));
-  return {
-    contract: COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
-    courseId,
-    intents: [...intents.values()],
-    updatedAt
-  };
-}
-
-function migrateLegacyCache(value, courseId, existingHandoff) {
-  const legacy = normalizeLegacyCache(value, courseId);
-  const personalOperations = mergeOperations([], [
-    ...(legacy.pending?.operations || []),
-    ...legacy.queuedOperations
-  ].filter((operation) => COLLECTIONS.has(operation.collection)));
-  return {
-    record: {
-      contract: COURSE_PERSONAL_STATE_CACHE_CONTRACT,
-      courseId,
-      revision: legacy.revision,
-      state: validateCoursePersonalState({
-        version: COURSE_PERSONAL_STATE_VERSION,
-        progress: legacy.state.progress,
-        reviewMarks: legacy.state.reviewMarks
-      }),
-      pending: null,
-      queuedOperations: personalOperations,
-      needsRemoteRebase: personalOperations.length > 0,
-      updatedAt: legacy.updatedAt
-    },
-    handoff: mergeAnnotationHandoff(
-      existingHandoff,
-      courseId,
-      legacyObservationIntents(legacy),
-      legacy.updatedAt
-    )
-  };
 }
 
 function mapDiff(name, previous, next) {
@@ -594,14 +405,6 @@ function cacheKey(courseId) {
   return `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`;
 }
 
-function legacyCacheKey(courseId) {
-  return `${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${courseId}`;
-}
-
-export function courseAnnotationHandoffCacheKey(courseId) {
-  return `${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${requiredUuid(courseId, "Curso")}`;
-}
-
 export class CoursePersonalStateRepository {
   #queue = Promise.resolve();
   #record = null;
@@ -623,9 +426,7 @@ export class CoursePersonalStateRepository {
       throw new TypeError("CourseApiClient obrigatório para o estado pessoal.");
     }
     if (!cache || typeof cache.getCache !== "function" ||
-        typeof cache.putCache !== "function" ||
-        typeof cache.updateCaches !== "function" ||
-        typeof cache.deleteCachePrefix !== "function") {
+        typeof cache.putCache !== "function" || typeof cache.deleteCachePrefix !== "function") {
       throw new TypeError("Cache canônico obrigatório para o estado pessoal.");
     }
     if (typeof clock !== "function" || typeof uuidFactory !== "function") {
@@ -678,30 +479,7 @@ export class CoursePersonalStateRepository {
       if (refresh) await this.refresh();
       return this.snapshot();
     }
-    let cached = await this.cache.getCache(cacheKey(this.courseId));
-    if (!cached) {
-      const migrationKeys = [
-        legacyCacheKey(this.courseId),
-        cacheKey(this.courseId),
-        courseAnnotationHandoffCacheKey(this.courseId)
-      ];
-      const migrate = (records) => {
-        const legacy = records[legacyCacheKey(this.courseId)];
-        if (!legacy) return records;
-        const result = migrateLegacyCache(
-          legacy,
-          this.courseId,
-          records[courseAnnotationHandoffCacheKey(this.courseId)]
-        );
-        return {
-          [legacyCacheKey(this.courseId)]: null,
-          [cacheKey(this.courseId)]: result.record,
-          [courseAnnotationHandoffCacheKey(this.courseId)]: result.handoff
-        };
-      };
-      const migrated = await this.cache.updateCaches(migrationKeys, migrate);
-      cached = migrated[cacheKey(this.courseId)];
-    }
+    const cached = await this.cache.getCache(cacheKey(this.courseId));
     if (cached) {
       try {
         this.#record = this.#normalizeCache(cached);
@@ -932,8 +710,6 @@ export class CoursePersonalStateRepository {
   async clearLocal() {
     await Promise.all([
       this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
-      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${this.courseId}`),
-      this.cache.deleteCachePrefix(`${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${this.courseId}`),
       this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
       this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`)
     ]);
@@ -956,8 +732,6 @@ export class CoursePersonalStateRepository {
   async #clearAuthority() {
     await Promise.all([
       this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
-      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${this.courseId}`),
-      this.cache.deleteCachePrefix(`${COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT}:${this.courseId}`),
       this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
       this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`),
       this.cache.deleteCachePrefix(`course.v1.header:${this.courseId}`),

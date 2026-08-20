@@ -1,14 +1,20 @@
 {
   "contract": "aralearn.canonical-terminology.v1",
-  "purpose": "Registro executável das decisões terminológicas da issue #116. Separa linguagem de produto, domínio, pesquisa, protocolos e infraestrutura e governa o corte sem aliases, fallback ou escrita dupla.",
+  "purpose": "Registro versionado das decisões terminológicas que separam linguagem de produto, domínio, pesquisa, protocolos e infraestrutura.",
   "policy": {
-    "reviewIssue": "#116",
-    "finalRemovalIssue": "#130",
-    "transitionPolicy": "clean-cutover",
     "historicalPaths": [
       "CHANGELOG.md",
       "docs/evidence/history/",
-      "supabase/migrations/"
+      "scripts/auditCurrentArchitecture.mjs",
+      "scripts/courseCutover/",
+      "scripts/validateCourseRuntime.mjs",
+      "supabase/migrations/",
+      "tests/runtime/course-cutover-importer.test.js",
+      "tests/runtime/course-identity-cutover-pglite.test.js",
+      "tests/runtime/course-main-cutover.test.js",
+      "tests/runtime/course-mcp-tools.test.js",
+      "tests/runtime/course-router.test.js",
+      "private/"
     ],
     "requiredFamilies": [
       "product-surfaces",
@@ -24,27 +30,7 @@
       "software-architecture",
       "interaction-cognition",
       "assistant-architecture"
-    ],
-    "issueCatalog": {
-      "#114": "Roadmap da Autoria 2.0",
-      "#115": "Visão, paridade vertical e documentação de base",
-      "#116": "Vocabulário canônico",
-      "#117": "Entrada por cursos concretos",
-      "#118": "Identidade do curso vivo entre Autoria e Estudo",
-      "#119": "Perfil, propriedade e acesso direto",
-      "#120": "Planejamento vivo e produção por Partes",
-      "#121": "Inspeção móvel da materialização",
-      "#122": "Parametrização semântica",
-      "#123": "Fontes, âncoras e proveniência",
-      "#124": "Observações situadas",
-      "#125": "Auditoria, correção e verificação",
-      "#126": "Variantes comparáveis",
-      "#127": "Métricas e dados de Autoria",
-      "#128": "Assistência de pesquisa por GPT e MCP",
-      "#129": "Corte integral da nova Autoria",
-      "#130": "Retirada da arquitetura substituída",
-      "#131": "Componentes didáticos, runtime e MCP"
-    }
+    ]
   },
   "terms": [
     {
@@ -57,7 +43,6 @@
       "technicalSymbol": "study_surface",
       "definition": "Superfície em que uma pessoa acessa e realiza as atividades de um curso; não designa aprendizagem comprovada nem resultado educacional.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -66,10 +51,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#115"
+          "ref": "docs/visao-do-produto.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "aprendizagem",
         "domínio",
@@ -81,10 +65,10 @@
       "araLearnExample": "Ao abrir um curso para praticar, a pessoa entra em Estudo e percorre as unidades sem que a tela afirme que houve aprendizagem.",
       "ambiguityRisk": "Sem esta delimitação, “Estudo” pode ser confundido com aprendizagem, domínio, resultado de aprendizagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Prática”: examinada e rejeitada como nome da superfície porque excluiria explicações e outras unidades expositivas que também integram a atividade de estudo."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "authoring-surface",
@@ -96,7 +80,6 @@
       "technicalSymbol": "authoring_surface",
       "definition": "Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, corrigir e investigar um curso e seus componentes.",
       "decision": "manter",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -109,10 +92,9 @@
         },
         {
           "status": "decisao-produto",
-          "ref": "#115"
+          "ref": "docs/visao-do-produto.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "chat",
         "publicação",
@@ -124,10 +106,10 @@
       "araLearnExample": "Na Autoria, a pessoa autora percorre o curso, abre uma unidade, consulta suas fontes e registra uma observação para correção.",
       "ambiguityRisk": "Sem esta delimitação, “Autoria” pode ser confundido com chat, publicação, administração, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Edição de curso”: examinada e rejeitada porque cobre alteração de conteúdo, mas não planejamento, produção, investigação, auditoria e coordenação assistida abrangidos por Autoria."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "research-surface",
@@ -139,7 +121,6 @@
       "technicalSymbol": "research_surface",
       "definition": "Superfície e conjunto de operações para configurar estudos, inspecionar medidas e exportar dados; não certifica validade científica por si só.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -148,10 +129,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#127"
+          "ref": "docs/analytics-instrucionais.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "analytics",
         "experimento",
@@ -163,11 +143,11 @@
       "araLearnExample": "Em Pesquisa, uma pessoa pesquisadora configura uma comparação e exporta medidas com seus dados brutos e metadados.",
       "ambiguityRisk": "Sem esta delimitação, “Pesquisa” pode ser confundido com analytics, experimento, relatório, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Nome reservado para #127: só deve aparecer como superfície quando configuração do estudo, medidas, análise e exportação formarem um ciclo acessível; até lá, Dados ou Análises nomeiam superfícies parciais.",
       "alternativesConsidered": [
         "“Dados de pesquisa”: designa os registros tratados, não a superfície que configura estudos, inspeciona medidas e exporta conjuntos analisáveis.",
-        "“Análises da autoria”: cobre apenas um subconjunto do ciclo de pesquisa previsto em #127 e por isso não pode nomear a superfície completa."
-      ]
+        "“Análises da autoria”: cobre apenas um subconjunto do ciclo de pesquisa e por isso não pode nomear a superfície completa."
+      ],
+      "status": "vigente"
     },
     {
       "id": "course",
@@ -179,7 +159,6 @@
       "technicalSymbol": "course",
       "definition": "Objeto instrucional vivo e identificável que reúne estrutura, conteúdo, desenho, fontes, observações, parâmetros e estado de autoria, sem exigir estágio de publicação para ser utilizável.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -190,10 +169,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#118"
+          "ref": "docs/arquitetura.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "workspace",
         "publicação",
@@ -205,11 +183,11 @@
       "araLearnExample": "Um curso de japonês conserva o mesmo identificador enquanto o plano, as fontes, as unidades e as observações são revistos.",
       "ambiguityRisk": "Sem esta delimitação, “Curso” pode ser confundido com workspace, publicação, artefato, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Documento de curso”: privilegia uma representação documental e não alcança o objeto vivo com estrutura, parâmetros, fontes, observações e estado autoral.",
         "“Artefato instrucional”: descreve um produto serializado ou técnico, mas não a identidade persistente e editável do Curso."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "module",
@@ -221,7 +199,6 @@
       "technicalSymbol": "course_module",
       "definition": "Agrupamento curricular de lições dentro de um curso, usado quando há uma organização didática justificável nesse nível.",
       "decision": "manter",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -231,10 +208,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "Parte de autoria",
         "unidade de estudo",
@@ -246,11 +222,11 @@
       "araLearnExample": "O módulo “Escrita em hiragana” reúne lições relacionadas, mas não corresponde a uma Parte de autoria.",
       "ambiguityRisk": "Sem esta delimitação, “Módulo” pode ser confundido com Parte de autoria, unidade de estudo, package, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Unidade curricular”: pode sugerir disciplina ou componente curricular formal; Módulo nomeia apenas o agrupamento interno de lições no curso.",
         "“Seção”: foi examinada como rótulo editorial, mas não comunica a função curricular do agrupamento."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "lesson",
@@ -262,7 +238,6 @@
       "technicalSymbol": "lesson",
       "definition": "Unidade curricular de um módulo que organiza uma progressão didática coerente em uma ou mais microssequências.",
       "decision": "manter",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -272,10 +247,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "Parte",
         "microssequência",
@@ -287,11 +261,11 @@
       "araLearnExample": "A lição “Vogais” organiza microssequências que apresentam, praticam e retomam os cinco sinais.",
       "ambiguityRisk": "Sem esta delimitação, “Lição” pode ser confundido com Parte, microssequência, sessão, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Unidade didática”: é mais ampla e pode abranger módulo, lição ou sequência; não delimita este nível da hierarquia do AraLearn.",
         "“Aula”: pressupõe sessão ou evento de ensino, enquanto a Lição persiste independentemente de encontro síncrono."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "didactic-microsequence",
@@ -303,7 +277,6 @@
       "technicalSymbol": "didactic_microsequence",
       "definition": "Construto próprio do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -314,14 +287,13 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         },
         {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.5209/clac.96949"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "parágrafo",
         "subtópico automático",
@@ -333,11 +305,11 @@
       "araLearnExample": "Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.",
       "ambiguityRisk": "Sem esta delimitação, “Microssequência didática” pode ser confundido com parágrafo, subtópico automático, Parte, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Sequência didática breve”: torna a extensão editorial parte do nome, embora o limite seja parametrizável e não defina o construto.",
         "“Bloco”: não expressa que há ordem interna e objetivo instrucional delimitado entre as unidades reunidas."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "authoring-part",
@@ -348,8 +320,7 @@
       "productTerm": "Parte de autoria",
       "technicalSymbol": "authoring_part",
       "definition": "Unidade operacional configurável que agrupa planejamento, materialização, auditoria e revisão para tornar a produção pelo assistente manejável; não acrescenta nível à hierarquia didática.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -359,12 +330,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#120"
+          "ref": "docs/guia-professor-autor.md"
         }
       ],
-      "cutoverIssue": "#120",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "módulo",
         "lição",
@@ -381,7 +349,7 @@
         "“Lote de materialização”: descartado por ser estreito demais; a unidade também abrange planejamento, auditoria e revisão.",
         "“Módulo”: descartado porque é nível curricular do curso, enquanto a Parte de autoria é um recorte operacional configurável."
       ],
-      "migrationImpact": "Corte limpo coordenado em #120, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, sem alias, fallback ou dupla escrita."
+      "status": "vigente"
     },
     {
       "id": "study-unit",
@@ -391,9 +359,8 @@
       ],
       "productTerm": "Unidade de estudo",
       "technicalSymbol": "study_unit",
-      "definition": "Menor unidade persistida, ordenável, endereçável e renderizável apresentada em Estudo e Autoria; pode ser somente expositiva ou também conter solicitação de resposta e feedback.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "definition": "Menor unidade persistida, ordenável, endereçável e renderizável apresentada em Estudo e Autoria; pode ser somente expositiva ou também conter solicitação de resposta e retorno.",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -404,16 +371,13 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         },
         {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.1016/S0959-4752(02)00017-8"
         }
       ],
-      "cutoverIssue": "#121",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "flashcard",
         "tela",
@@ -423,17 +387,14 @@
       "interfaceTerm": "Unidade de estudo",
       "domainTerm": "Unidade de estudo",
       "englishEquivalent": "study unit",
-      "araLearnExample": "Na rolagem móvel, cada Unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer feedback.",
+      "araLearnExample": "Na rolagem móvel, cada Unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.",
       "ambiguityRisk": "Sem esta delimitação, “Unidade de estudo” pode ser confundido com flashcard, tela, objeto de aprendizagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Unidade interativa”: descartado porque algumas unidades são somente expositivas e o nome prometeria interação inexistente.",
         "“Card” ou “flashcard”: restrito porque a forma visual e o item pista–resposta não cobrem explicações, diagramas e outras unidades válidas."
       ],
-      "migrationImpact": "Corte limpo coordenado em #121, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.",
-      "currentSymbols": [
-        "card"
-      ]
+      "status": "vigente"
     },
     {
       "id": "retrieval-item",
@@ -445,7 +406,6 @@
       "technicalSymbol": "retrieval_practice_item",
       "definition": "Unidade específica organizada em torno de pista e resposta para praticar recuperação da memória; não designa qualquer unidade de estudo.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "research",
@@ -457,7 +417,6 @@
           "ref": "https://doi.org/10.1097/ACM.0000000000005968"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "AraLearn",
         "curso",
@@ -467,14 +426,14 @@
       "interfaceTerm": "Item de prática de recuperação",
       "domainTerm": "Item de prática de recuperação",
       "englishEquivalent": "retrieval practice item",
-      "araLearnExample": "Uma Unidade de estudo pede a tradução de uma expressão antes de mostrar a resposta e o feedback, constituindo um item de prática de recuperação.",
+      "araLearnExample": "Uma Unidade de estudo pede a tradução de uma expressão antes de mostrar a resposta e o retorno, constituindo um item de prática de recuperação.",
       "ambiguityRisk": "Sem esta delimitação, “Item de prática de recuperação” pode ser confundido com AraLearn, curso, unidade teórica, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Cartão de recuperação”: mantém a metáfora visual de cartão e pode induzir uma geometria que não define a função de prática.",
         "“Item pista–resposta”: descreve a forma mínima da interação, mas omite que sua finalidade declarada é a prática de recuperação."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "external-representation",
@@ -486,8 +445,7 @@
       "productTerm": "Representação externa",
       "technicalSymbol": "external_representation",
       "definition": "Forma perceptível pela qual conteúdo ou relações são apresentados, como texto, fórmula, tabela, gráfico, diagrama, código ou áudio.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -501,9 +459,6 @@
           "ref": "https://doi.org/10.1016/j.learninstruc.2006.03.001"
         }
       ],
-      "cutoverIssue": "#131",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "MCP Resource",
         "ativo de mídia",
@@ -517,13 +472,10 @@
       "ambiguityRisk": "Sem esta delimitação, “Representação externa” pode ser confundido com MCP Resource, ativo de mídia, formato de resposta, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Resource”: será retirado porque conflita com Resource MCP e não informa que se trata de uma forma externa observável.",
+        "“Resource”: fica restrito a identificadores técnicos porque conflita com Resource MCP e não informa que se trata de uma forma externa observável.",
         "“Mídia”: é estreito demais, pois texto estruturado, notação e diagrama também são representações externas."
       ],
-      "migrationImpact": "Corte limpo coordenado em #131, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.",
-      "currentSymbols": [
-        "resource"
-      ]
+      "status": "vigente"
     },
     {
       "id": "instructional-component",
@@ -537,16 +489,14 @@
       "englishEquivalent": "instructional component",
       "technicalSymbol": "instructional_component",
       "definition": "Capacidade modular instalada que produz uma representação externa, um formato de resposta ou ambos para uma Unidade de estudo, sem se confundir com a instância renderizada nem com seu pacote técnico.",
-      "araLearnExample": "O componente de escolha combina uma apresentação de alternativas com um formato de resposta selecionável; cada uso gera uma instância dentro de uma Unidade de estudo.",
+      "araLearnExample": "O componente de escolha apresenta alternativas em um formato de resposta selecionável; cada uso gera uma instância dentro de uma Unidade de estudo.",
       "ambiguityRisk": "Sem esta delimitação, Componente didático pode ser confundido com representação renderizada, pacote distribuível ou componente genérico de interface e esconder responsabilidades diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Resource”: não foi adotado porque conflita com Resource MCP e não distingue a capacidade instalada da representação produzida.",
-        "“Componente de UI”: foi restringido à engenharia de interface, pois um componente didático também possui contrato de domínio e formato de resposta."
+        "“Componente de interface”: foi restringido à engenharia de interface, pois um componente didático também possui contrato de domínio e formato de resposta."
       ],
-      "migrationImpact": "Não há corte isolado neste registro; a #131 deve aplicar o conceito ao substituir resource, package e kernel de modo coordenado, sem afirmar que a nova arquitetura já esteja disponível.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -557,20 +507,20 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         },
         {
           "status": "observacao-tecnica",
-          "ref": "#131"
+          "ref": "docs/componentes-didaticos.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "representação externa",
         "formato de resposta",
         "pacote de componente",
         "componente de interface"
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "response-format",
@@ -581,9 +531,8 @@
       ],
       "productTerm": "Formato de resposta",
       "technicalSymbol": "response_format",
-      "definition": "Estrutura pela qual a pessoa responde a uma atividade e pela qual a resposta pode ser interpretada ou receber feedback.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "definition": "Estrutura pela qual a pessoa responde a uma atividade e pela qual a resposta pode ser interpretada ou receber retorno.",
+      "decision": "restringir",
       "layers": [
         "domain",
         "code",
@@ -593,27 +542,24 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#131"
+          "ref": "docs/componentes-didaticos.md"
         }
       ],
-      "cutoverIssue": "#131",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "representação externa",
         "resposta do estudante",
-        "feedback"
+        "retorno"
       ],
       "interfaceTerm": "Formato de resposta",
       "domainTerm": "Formato de resposta",
       "englishEquivalent": "response format",
       "araLearnExample": "Uma atividade pode aceitar escolha, texto digitado ou ordenação; o Formato de resposta declara essa estrutura sem definir o conteúdo.",
-      "ambiguityRisk": "Sem esta delimitação, “Formato de resposta” pode ser confundido com representação externa, resposta do estudante, feedback, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Sem esta delimitação, “Formato de resposta” pode ser confundido com representação externa, resposta do estudante ou retorno, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #131, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas domain, code, mcp, research, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Pacote de resposta”: confunde a estrutura pela qual a pessoa responde com a unidade técnica versionada que pode implementá-la."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "media-asset",
@@ -626,7 +572,6 @@
       "technicalSymbol": "media_asset",
       "definition": "Arquivo binário ou documento armazenado e referenciado por uma representação, como imagem, áudio, vídeo ou anexo.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "storage",
@@ -638,7 +583,6 @@
           "ref": "https://www.rfc-editor.org/rfc/rfc3986.html"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "representação externa",
         "fonte",
@@ -650,10 +594,10 @@
       "araLearnExample": "Um arquivo de imagem ou áudio persistido no Storage é um Ativo de mídia referenciado por uma representação.",
       "ambiguityRisk": "Sem esta delimitação, “Ativo de mídia” pode ser confundido com representação externa, fonte, artefato de curso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, storage, database devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Representação externa”: pode ser construída sem arquivo armazenado; Ativo de mídia nomeia especificamente o binário ou documento persistido e referenciado."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "component-package",
@@ -664,9 +608,8 @@
       ],
       "productTerm": "Pacote de componente",
       "technicalSymbol": "component_package",
-      "definition": "Unidade técnica versionada que reúne contrato, schema, validação e implementação de uma representação ou formato de resposta.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "definition": "Unidade técnica versionada que reúne contrato, esquema, validação e implementação de uma representação ou formato de resposta.",
+      "decision": "restringir",
       "layers": [
         "code",
         "mcp",
@@ -675,12 +618,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#131"
+          "ref": "docs/componentes-didaticos.md"
         }
       ],
-      "cutoverIssue": "#131",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "representação externa",
         "MCP Resource",
@@ -692,13 +632,13 @@
       "araLearnExample": "Um Pacote de componente agrupa o contrato e o código distribuível de um componente, sem incorporar o conteúdo de cada curso.",
       "ambiguityRisk": "Sem esta delimitação, “Pacote de componente” pode ser confundido com representação externa, MCP Resource, módulo curricular, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #131, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas code, mcp, documentation, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Pacote de resource”: foi rejeitado porque resource conflita com Resource MCP e não explicita que o pacote distribui uma capacidade modular instalada."
-      ]
+      ],
+      "status": "vigente"
     },
     {
-      "id": "legacy-resource-discovery-tools",
+      "id": "abolished-resource-discovery-tools",
       "family": "representation-system",
       "currentTerms": [
         "consultarRecursosDeCard",
@@ -708,7 +648,6 @@
       "technicalSymbol": "abolished_resource_discovery_tools",
       "definition": "Registro histórico dos dois símbolos intermediários já retirados da superfície MCP de descoberta de componentes.",
       "decision": "remover",
-      "cutoverStatus": "concluido",
       "layers": [
         "mcp",
         "code"
@@ -716,10 +655,9 @@
       "sources": [
         {
           "status": "evidencia-historica",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "forbiddenSymbols": [
         "consultarRecursosDeCard",
         "consultarPackagesDeCard"
@@ -731,19 +669,19 @@
       ],
       "interfaceTerm": "Nomes intermediários abolidos da biblioteca",
       "domainTerm": "Nomes intermediários abolidos da biblioteca",
-      "englishEquivalent": "legacy resource discovery tools",
-      "araLearnExample": "Os nomes consultarRecursosDeCard e consultarPackagesDeCard aparecem somente nesta ficha histórica de corte; nenhuma ferramenta MCP corrente deve expô-los.",
+      "englishEquivalent": "abolished resource discovery tools",
+      "araLearnExample": "Os nomes consultarRecursosDeCard e consultarPackagesDeCard aparecem somente nesta ficha de formas abolidas; nenhuma ferramenta MCP corrente deve expô-los.",
       "ambiguityRisk": "Sem esta delimitação, “Nomes intermediários abolidos da biblioteca” pode ser confundido com MCP Resource, knowledge base, catálogo público de cursos, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“consultarRecursosDeCard”: abolido porque fundia o termo ambíguo resource com a forma histórica card.",
         "“consultarPackagesDeCard”: abolido porque expunha o empacotamento técnico como se fosse o objeto didático consultado."
       ],
-      "migrationImpact": "Corte terminológico concluído em #116; o gate rejeita os símbolos abolidos fora de migrations publicadas e evidências históricas.",
       "currentSymbols": [
         "consultarRecursosDeCard",
         "consultarPackagesDeCard"
-      ]
+      ],
+      "status": "concluido"
     },
     {
       "id": "didactic-component-library-tool",
@@ -753,9 +691,8 @@
       ],
       "productTerm": "Biblioteca de componentes didáticos",
       "technicalSymbol": "consultarBibliotecaDeComponentesDidaticos",
-      "definition": "Ferramenta única de descoberta e inspeção seletiva dos componentes instalados; o símbolo atual ainda contém Resources e será substituído no corte integral da #131.",
+      "definition": "Ferramenta única de descoberta e inspeção seletiva dos componentes instalados, com busca por intenção e leitura do contrato exato de cada componente.",
       "decision": "substituir",
-      "cutoverStatus": "pendente",
       "layers": [
         "mcp",
         "code",
@@ -764,12 +701,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#131"
+          "ref": "docs/componentes-didaticos.md"
         }
       ],
-      "cutoverIssue": "#131",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "MCP Resource",
         "knowledge base",
@@ -782,13 +716,16 @@
       "ambiguityRisk": "Sem esta delimitação, “Biblioteca de componentes didáticos” pode ser confundido com MCP Resource, knowledge base, catálogo público de cursos, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“consultarBibliotecaDeResources”: será retirado porque resource conflita com Resource MCP e não nomeia o componente didático instalado.",
+        "“consultarBibliotecaDeResources”: foi retirado porque resource conflita com Resource MCP e não nomeia o componente didático instalado.",
         "“consultarPackagesDeCard”: não retorna porque package é unidade de distribuição e card é apenas o nome histórico da unidade apresentada."
       ],
-      "migrationImpact": "Corte limpo coordenado em #131, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas mcp, code, documentation, sem alias, fallback ou dupla escrita.",
       "currentSymbols": [
         "consultarBibliotecaDeResources"
-      ]
+      ],
+      "forbiddenSymbols": [
+        "consultarBibliotecaDeResources"
+      ],
+      "status": "concluido"
     },
     {
       "id": "instructional-plan",
@@ -800,7 +737,6 @@
       "technicalSymbol": "instructional_plan",
       "definition": "Estado revisável que explicita objetivos, organização, cobertura, progressão, prática, representações previstas, fontes e critérios de conclusão da materialização.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -810,10 +746,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#120"
+          "ref": "docs/guia-professor-autor.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "prompt",
         "blueprint imutável",
@@ -825,11 +760,11 @@
       "araLearnExample": "O plano de um curso registra objetivos e organização prevista, mas pode ser ampliado quando a autoria revela que um tópico exige mais desenvolvimento.",
       "ambiguityRisk": "Sem esta delimitação, “Plano instrucional vivo” pode ser confundido com prompt, blueprint imutável, curso materializado, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Plano de curso”: é mais estreito quando entendido como ementa ou estrutura e não explicita fontes, cobertura, parâmetros e critérios de materialização.",
         "“Blueprint”: foi rejeitado na linguagem de produto por ser jargão e sugerir um desenho congelado, incompatível com revisão durante a produção."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "materialization",
@@ -841,7 +776,6 @@
       "technicalSymbol": "course_materialization",
       "definition": "Transformação controlada do plano e do estado autoral em unidades de estudo persistidas, renderizáveis e novamente auditáveis.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "database",
@@ -851,10 +785,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#120"
+          "ref": "docs/guia-professor-autor.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "publicação",
         "geração de texto",
@@ -866,11 +799,11 @@
       "araLearnExample": "Na interface, a pessoa acompanha a Produção; no domínio, cada transformação de uma Parte planejada em unidades persistidas e auditáveis é uma Materialização.",
       "ambiguityRisk": "Sem separar o rótulo concreto da interface do termo de domínio, Produção pode ser confundida com geração de texto e Materialização com publicação ou release.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, database, mcp, interface devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Produção”: é preferível na interface por ser concreta, mas no domínio não distingue a transformação persistida de outras atividades autorais.",
         "“Geração”: foi rejeitada no domínio porque reduz o processo à criação de saída nova e omite persistência, vínculo ao plano e auditabilidade."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "instructional-audit",
@@ -882,7 +815,6 @@
       "technicalSymbol": "instructional_audit",
       "definition": "Exame explícito e rastreável que confronta plano, parâmetros, fontes, materialização e critérios, produzindo achados sem alterar automaticamente o curso.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -893,10 +825,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#125"
+          "ref": "docs/auditoria-de-conformidade-instrucional.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "correção",
         "teste automatizado",
@@ -908,11 +839,11 @@
       "araLearnExample": "Depois de produzir uma Parte, a Auditoria instrucional compara unidades, objetivos, parâmetros, fontes e observações e gera achados verificáveis.",
       "ambiguityRisk": "Sem esta delimitação, “Auditoria instrucional” pode ser confundido com correção, teste automatizado, aprovação, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Avaliação instrucional”: pode significar mensuração de mérito ou resultado educacional, enquanto a Auditoria confronta evidências com critérios declarados.",
         "“Revisão de qualidade”: não exige por si só protocolo rastreável nem separa achado de alteração do curso."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "authoring-correction",
@@ -923,8 +854,7 @@
       "productTerm": "Correção autoral",
       "technicalSymbol": "authoring_correction",
       "definition": "Alteração autorizada do curso em resposta a um achado ou observação, seguida de verificação independente do resultado.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -935,12 +865,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#125"
+          "ref": "docs/auditoria-de-conformidade-instrucional.md"
         }
       ],
-      "cutoverIssue": "#125",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "auditoria",
         "revisão",
@@ -952,11 +879,11 @@
       "araLearnExample": "Uma Correção autoral altera uma unidade por causa de um achado ou observação e registra o vínculo com a razão da mudança.",
       "ambiguityRisk": "Sem esta delimitação, “Correção autoral” pode ser confundido com auditoria, revisão, resolução do achado, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #125, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Reparo”: carrega metáfora técnica de conserto e não deixa claro que a mudança é uma decisão autoral sobre conteúdo ou desenho.",
         "“Edição corretiva”: limita a operação à edição local, embora uma correção possa alterar planejamento, parâmetros, fontes ou várias unidades."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "authoring-review",
@@ -968,7 +895,6 @@
       "technicalSymbol": "authoring_review",
       "definition": "Leitura e reconsideração humana ou assistida de conteúdo e desenho, que pode ou não resultar em alteração.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -977,10 +903,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#125"
+          "ref": "docs/auditoria-de-conformidade-instrucional.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "versão de estado",
         "auditoria",
@@ -992,11 +917,11 @@
       "araLearnExample": "A pessoa autora relê uma Parte já materializada e decide manter, comentar ou solicitar correção de uma unidade.",
       "ambiguityRisk": "Sem esta delimitação, “Revisão autoral” pode ser confundido com versão de estado, auditoria, correção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Revisão de conteúdo”: exclui reconsideração do desenho instrucional e dos parâmetros, que também pertencem à Revisão autoral.",
         "“Inspeção editorial”: é estreita e sugere conferência formal, não a reconsideração que pode terminar sem alteração."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "state-revision",
@@ -1008,8 +933,7 @@
       "productTerm": "Versão de estado",
       "technicalSymbol": "state_version",
       "definition": "Contador monotônico usado para detectar concorrência e ordenar mutações; não é uma revisão editorial nem uma cópia integral do curso.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "domain",
         "database",
@@ -1019,12 +943,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#118"
+          "ref": "docs/arquitetura.md"
         }
       ],
-      "cutoverIssue": "#118",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "revisão autoral",
         "versão de contrato",
@@ -1036,14 +957,11 @@
       "araLearnExample": "Antes de uma alteração composta, uma Versão de estado permite identificar exatamente qual estado do curso foi analisado e qual resultou da mudança.",
       "ambiguityRisk": "Sem esta delimitação, “Versão de estado” pode ser confundido com revisão autoral, versão de contrato, checkpoint, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O runtime canônico já usa uma única revisão monotônica do Curso como condição de escrita; a troca final de símbolos técnicos e a remoção de resíduos fora do grafo executável continuam no gate de corte limpo, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Revisão”: colide em português com a atividade editorial de reconsiderar conteúdo e não comunica o controle monotônico de concorrência.",
         "“Número de versão”: descreve a forma do valor, mas não sua função de identificar o estado-base de uma mutação."
       ],
-      "currentSymbols": [
-        "state_revision"
-      ]
+      "status": "vigente"
     },
     {
       "id": "source",
@@ -1055,7 +973,6 @@
       "technicalSymbol": "source_entity",
       "definition": "Entidade identificável da qual uma afirmação, representação ou transformação deriva, com identidade e versão quando disponíveis.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1069,7 +986,6 @@
           "ref": "https://www.w3.org/TR/prov-dm/"
         }
       ],
-      "cutoverIssue": "#123",
       "notSynonyms": [
         "citação",
         "âncora",
@@ -1082,10 +998,10 @@
       "araLearnExample": "Um artigo, livro, documento interno ou entrevista usado para sustentar uma afirmação é registrado como Fonte identificável.",
       "ambiguityRisk": "Sem esta delimitação, “Fonte” pode ser confundido com citação, âncora, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Referência”: pode ser apenas um ponteiro interno ou bibliográfico; Fonte designa a entidade da qual conteúdo ou transformação deriva."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "source-anchor",
@@ -1098,7 +1014,6 @@
       "technicalSymbol": "source_anchor",
       "definition": "Localizador preciso de um trecho ou região dentro de uma fonte, como página, intervalo, seletor, fragmento ou timestamp.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1115,7 +1030,6 @@
           "ref": "https://www.rfc-editor.org/rfc/rfc3986.html"
         }
       ],
-      "cutoverIssue": "#123",
       "notSynonyms": [
         "fonte",
         "citação",
@@ -1127,10 +1041,10 @@
       "araLearnExample": "Uma afirmação da unidade aponta para a página 42 e o trecho correspondente de uma Fonte por meio de uma Âncora de fonte.",
       "ambiguityRisk": "Sem esta delimitação, “Âncora de fonte” pode ser confundido com fonte, citação, evidência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Citação”: identifica ou remete a uma fonte, mas não localiza necessariamente a página, o trecho, a região ou o instante usado."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "provenance",
@@ -1142,7 +1056,6 @@
       "technicalSymbol": "provenance_record",
       "definition": "Registro das entidades, atividades, agentes, derivações e versões envolvidos na produção ou transformação de conteúdo e dados.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "database",
@@ -1156,7 +1069,6 @@
           "ref": "https://www.w3.org/TR/prov-dm/"
         }
       ],
-      "cutoverIssue": "#123",
       "notSynonyms": [
         "histórico de chat",
         "citação",
@@ -1169,10 +1081,10 @@
       "araLearnExample": "Ao corrigir uma unidade, o AraLearn registra que uma pessoa ou ferramenta realizou a atividade usando determinadas fontes e produzindo novo estado.",
       "ambiguityRisk": "Sem esta delimitação, “Proveniência” pode ser confundido com histórico de chat, citação, log, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, database, mcp, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Histórico de alterações”: registra ordem de mudanças, porém não modela por si só entidades, atividades, agentes e relações de derivação como PROV."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "anchored-annotation",
@@ -1184,8 +1096,7 @@
       "productTerm": "Anotação ancorada",
       "technicalSymbol": "anchored_annotation",
       "definition": "Anotação com corpo e alvo endereçável, autoria, motivação e estado; na interface, o rótulo simples “Observação” é mapeado explicitamente para este conceito de domínio.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -1200,12 +1111,9 @@
         },
         {
           "status": "decisao-produto",
-          "ref": "#124"
+          "ref": "docs/observacoes-pedagogicas.md"
         }
       ],
-      "cutoverIssue": "#124",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "achado de auditoria",
         "mensagem de chat",
@@ -1221,7 +1129,7 @@
         "“Observação situada”: não foi adotado no domínio porque situated possui sentidos teóricos concorrentes e não explicita um alvo endereçável.",
         "“Comentário”: permanece rótulo coloquial possível, mas é insuficiente para o contrato com corpo, alvo, autoria e motivação."
       ],
-      "migrationImpact": "Corte limpo coordenado em #124, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, research, sem alias, fallback ou dupla escrita."
+      "status": "vigente"
     },
     {
       "id": "audit-finding",
@@ -1233,8 +1141,7 @@
       "productTerm": "Achado de auditoria",
       "technicalSymbol": "audit_finding",
       "definition": "Afirmação estruturada, verificável e situada produzida por uma auditoria, com regra, alvo, evidência, estado e decisão separados.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -1245,12 +1152,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#125"
+          "ref": "docs/auditoria-de-conformidade-instrucional.md"
         }
       ],
-      "cutoverIssue": "#125",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "anotação ancorada",
         "erro confirmado",
@@ -1265,7 +1169,7 @@
       "alternativesConsidered": [
         "“Anotação ancorada”: permanece conceito separado porque registra uma contribuição ligada a um alvo; o achado é uma afirmação verificável produzida pela auditoria."
       ],
-      "migrationImpact": "Corte limpo coordenado em #125, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, research, sem alias, fallback ou dupla escrita."
+      "status": "vigente"
     },
     {
       "id": "scholarly-citation",
@@ -1277,7 +1181,6 @@
       "technicalSymbol": "scholarly_citation",
       "definition": "Representação bibliográfica usada para identificar e apresentar uma fonte segundo uma convenção acadêmica.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "research",
@@ -1286,10 +1189,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#123"
+          "ref": "docs/criar-cursos-pelo-chat.md"
         }
       ],
-      "cutoverIssue": "#123",
       "notSynonyms": [
         "fonte",
         "âncora",
@@ -1301,10 +1203,10 @@
       "araLearnExample": "Uma Fonte acadêmica recebe autores, título, ano, DOI e demais elementos necessários para gerar uma Citação bibliográfica verificável.",
       "ambiguityRisk": "Sem esta delimitação, “Citação bibliográfica” pode ser confundido com fonte, âncora, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Referência bibliográfica”: foi examinada como registro descritivo completo da fonte; Citação bibliográfica fica restrita à remissão apresentada no conteúdo, derivada dos mesmos metadados."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "design-parameter",
@@ -1314,9 +1216,8 @@
       ],
       "productTerm": "Parâmetro de desenho instrucional",
       "technicalSymbol": "design_parameter",
-      "definition": "Propriedade controlável do desenho com definição versionada, schema, escopos admitidos, origem, valor efetivo e limitações explícitas.",
+      "definition": "Propriedade controlável do desenho com definição versionada, esquema, escopos admitidos, origem, valor efetivo e limitações explícitas.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1327,10 +1228,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "configuração técnica",
         "métrica",
@@ -1342,10 +1242,10 @@
       "araLearnExample": "O teto de novas unidades de análise por Unidade expositiva é um Parâmetro de desenho instrucional com inteiro positivo, escopos e origem declarados.",
       "ambiguityRisk": "Sem esta delimitação, “Parâmetro de desenho instrucional” pode ser confundido com configuração técnica, métrica, restrição editorial, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 instala o catálogo fechado, a resolução por escopo e a mesma superfície em interface, domínio, banco e MCP, sem aceitar definições livres ou o modelo anterior.",
       "alternativesConsidered": [
         "“Variável de desenho instrucional”: pode ser observada ou analisada sem ser controlável; Parâmetro exige tipo, escopo, origem e regra de resolução explícitos."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "technical-configuration",
@@ -1357,7 +1257,6 @@
       "technicalSymbol": "technical_configuration",
       "definition": "Valor que altera operação ou integração do software sem representar, por si, uma propriedade pedagógica pesquisada.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "code",
         "deployment",
@@ -1366,10 +1265,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "parâmetro de desenho instrucional",
         "política",
@@ -1381,10 +1279,10 @@
       "araLearnExample": "Um limite de bytes aceito pelo Storage é uma Configuração técnica e não deve aparecer como escolha pedagógica.",
       "ambiguityRisk": "Sem esta delimitação, “Configuração técnica” pode ser confundido com parâmetro de desenho instrucional, política, condição experimental, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas code, deployment, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Parâmetro de sistema”: é possível em engenharia, mas manteria a ambiguidade com parâmetros pedagógicos; Configuração técnica separa a finalidade operacional."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "enforced-policy",
@@ -1397,7 +1295,6 @@
       "technicalSymbol": "enforced_policy",
       "definition": "Regra versionada que permite, restringe ou exige comportamento e que é efetivamente aplicada por uma fronteira do sistema.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "database",
@@ -1407,10 +1304,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "preferência",
         "parâmetro",
@@ -1422,10 +1318,10 @@
       "araLearnExample": "A Política de componentes registra catálogo, disponibilidade, exclusões e preferências e é imposta na mesma transação da materialização.",
       "ambiguityRisk": "Sem esta delimitação, “Política aplicável” pode ser confundido com preferência, parâmetro, documentação sem execução, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 substitui listas ou conjuntos opacos por uma política completa, versionada e aplicada no domínio, banco e MCP.",
       "alternativesConsidered": [
         "“Regra de negócio”: é ampla e pode existir apenas em documentação; Política aplicável exige versão e imposição efetiva numa fronteira do sistema."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "default-value",
@@ -1437,7 +1333,6 @@
       "technicalSymbol": "default_value",
       "definition": "Valor explicitamente definido e versionado que se aplica na ausência de atribuição mais específica; não é uma recomendação universal.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1448,10 +1343,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "auto",
         "herança",
@@ -1463,10 +1357,10 @@
       "araLearnExample": "Sem atribuição aplicável, o teto de novas unidades usa o Valor padrão 2 e mostra origem system_default, sem criar uma linha herdada.",
       "ambiguityRisk": "Sem esta delimitação, “Valor padrão” pode ser confundido com auto, herança, melhor prática, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 torna o default parte versionada da definição e o projeta como system_default, sem alias, fallback ou atribuição gravada.",
       "alternativesConsidered": [
         "“Valor inicial”: só descreve o momento de criação, enquanto Valor padrão também pode ser resolvido sempre que uma atribuição específica estiver ausente."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "resolved-inheritance",
@@ -1478,7 +1372,6 @@
       "technicalSymbol": "resolved_inheritance",
       "definition": "Resultado do resolvedor que aplica um valor de escopo ancestral quando não existe atribuição de maior autoridade no alvo; não é uma atribuição gravada.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1488,10 +1381,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "cópia",
         "default",
@@ -1503,10 +1395,10 @@
       "araLearnExample": "Uma Microssequência mostra o valor efetivo herdado da Lição ou do Curso e informa o escopo fonte sem copiar a atribuição.",
       "ambiguityRisk": "Sem esta delimitação, “Herança calculada” pode ser confundido com cópia, default, sobrescrita, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 implementa a herança como resolução por caminho e proveniência, sem gravar valores derivados nos descendentes.",
       "alternativesConsidered": [
         "“Propagação de valor”: sugere cópia ou escrita nos descendentes; Herança calculada é resolvida sem criar atribuições locais duplicadas."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "explicit-override",
@@ -1519,7 +1411,6 @@
       "technicalSymbol": "explicit_override",
       "definition": "Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1529,10 +1420,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "edição do default",
         "herança",
@@ -1544,10 +1434,10 @@
       "araLearnExample": "A pessoa define para uma microssequência um valor diferente do curso; a Sobrescrita explícita fica registrada naquele escopo.",
       "ambiguityRisk": "Sem esta delimitação, “Sobrescrita explícita” pode ser confundido com edição do default, herança, lock de pesquisa, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Exceção local”: não explicita que existe uma atribuição intencional que substitui integralmente o valor herdado segundo uma ordem de autoridade."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "authoring-guidance-revision",
@@ -1560,7 +1450,6 @@
       "technicalSymbol": "course_authoring_guidance_revision",
       "definition": "Revisão imutável do texto original de uma orientação, ligada a um Curso, escopo, origem, ator, canal e revisão do Curso.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1570,10 +1459,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "prompt",
         "campo do plano",
@@ -1585,11 +1473,11 @@
       "araLearnExample": "Uma orientação da Lição complementa a orientação do Curso; a leitura efetiva preserva os dois textos e suas revisões na ordem estrutural.",
       "ambiguityRisk": "Sem esta delimitação, “Orientação de autoria” pode ser confundida com prompt, campo livre do plano ou interpretação automatizada, apagando origem e versão.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 move a orientação do plano para revisões próprias e remove o campo anterior sem leitura ou escrita dupla.",
       "alternativesConsidered": [
         "“Brief”: mistura intenção, contexto e estado e não preserva a pilha por escopo.",
         "“Prompt persistido”: confunde uma decisão humana confirmada com a mensagem enviada a um modelo."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "authoring-guidance-interpretation",
@@ -1601,7 +1489,6 @@
       "technicalSymbol": "course_authoring_guidance_interpretation",
       "definition": "Leitura estruturada, versionada e separada de uma revisão exata de orientação, com resumo, diretivas, divergências e perguntas.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1611,10 +1498,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "orientação original",
         "raciocínio privado",
@@ -1626,11 +1512,11 @@
       "araLearnExample": "A interpretação registra uma diretiva prefer e uma pergunta para a revisão exata sem alterar uma palavra do texto original.",
       "ambiguityRisk": "Sem esta separação, uma automação poderia parecer autora do texto humano ou substituir silenciosamente a orientação que deveria interpretar.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 cria um registro próprio ligado por UUID à revisão original; nova orientação não reaproveita interpretação antiga.",
       "alternativesConsidered": [
         "“Orientação estruturada”: sugere que a estrutura substitui o original, quando ambos precisam permanecer distinguíveis.",
         "“Resumo do modelo”: não inclui diretivas, divergências, perguntas nem vínculo versionado."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "course-component-policy",
@@ -1642,7 +1528,6 @@
       "technicalSymbol": "course_component_policy",
       "definition": "Política completa e versionada por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1652,10 +1537,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#122"
+          "ref": "docs/desenho-instrucional-parametrizado.md"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "catálogo",
         "componente usado",
@@ -1664,14 +1548,14 @@
       "interfaceTerm": "Política de componentes",
       "domainTerm": "Política de componentes do Curso",
       "englishEquivalent": "course component policy",
-      "araLearnExample": "Uma Lição permite somente referências declaradas, exclui um package e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.",
+      "araLearnExample": "Uma Lição permite somente referências declaradas, exclui um pacote e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.",
       "ambiguityRisk": "Sem esta delimitação, disponibilidade, preferência e uso podem ser contados como a mesma relação ou apresentados como qualidade pedagógica.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O corte #122 substitui conjuntos opacos por um valor fechado ligado à revisão executável do catálogo e sem alias de leitura.",
       "alternativesConsidered": [
         "“Conjunto de componentes”: não distingue permissão, exclusão e preferência e sugere que disponibilidade equivale a uso.",
-        "“Lista de packages”: omite escopo, catálogo e regra de aplicação."
-      ]
+        "“Lista de pacotes”: omite escopo, catálogo e regra de aplicação."
+      ],
+      "status": "vigente"
     },
     {
       "id": "course-variant-comparison",
@@ -1681,9 +1565,8 @@
       ],
       "productTerm": "Variante comparável",
       "technicalSymbol": "course_variant_comparison",
-      "definition": "Curso independente criado de checkpoint comum de planejamento, com diferenças declaradas de parâmetros e/ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal.",
+      "definition": "Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal.",
       "decision": "manter",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1693,16 +1576,15 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
+          "ref": "docs/experimentos-instrucionais-parametrizados.md",
           "supports": "A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal."
         }
       ],
-      "cutoverIssue": "#126",
       "notSynonyms": [
         "experimento",
         "condição experimental",
         "versão de estado",
-        "branch Git"
+        "ramificação Git"
       ],
       "interfaceTerm": "Variante comparável",
       "domainTerm": "Variante comparável",
@@ -1710,11 +1592,11 @@
       "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.",
       "ambiguityRisk": "Sem esta delimitação, “Variante comparável” pode ser confundido com experimento, condição experimental, versão de estado ou branch Git, produzindo promessas causais e de pesquisa que não existem no produto.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "A interface, o domínio e o banco criam Cursos independentes de um checkpoint comum e conservam a linhagem; não adicionam participantes, consentimento, freeze, outcomes ou analytics.",
       "alternativesConsidered": [
         "“Variante experimental”: exige participantes, atribuição, medidas e análise que esta fatia não implementa.",
         "“Curso derivado”: registra origem comum, mas não torna explícita a comparação das diferenças declaradas."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "experiment",
@@ -1726,7 +1608,6 @@
       "technicalSymbol": "research_experiment",
       "definition": "Protocolo de pesquisa que compara condições mediante fatores, atribuição, medidas e análise previamente declarados; a estrutura técnica não garante validade causal.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1736,16 +1617,15 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
+          "ref": "docs/experimentos-instrucionais-parametrizados.md",
           "supports": "A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal."
         },
         {
           "status": "evidencia-academica",
           "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
-          "supports": "Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o schema técnico do AraLearn garanta um experimento válido."
+          "supports": "Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o esquema técnico do AraLearn garanta um experimento válido."
         }
       ],
-      "cutoverIssue": "#126",
       "notSynonyms": [
         "variante comparável",
         "teste A/B informal",
@@ -1757,8 +1637,8 @@
       "araLearnExample": "Um experimento, se vier a ser implementado, compara condições previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.",
       "ambiguityRisk": "Sem esta delimitação, “Experimento” pode ser confundido com Variante comparável, teste A/B informal, analytics, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há recurso de Experimento no runtime atual; Variante comparável não ativa esta arquitetura.",
-      "alternativesRationale": "O AraLearn reserva Experimento ao protocolo com fatores, condições, atribuição, medidas e análise declarados, à luz da literatura de desenho e validade causal; estudo, comparação e teste A/B nomeiam escopos diferentes, e nenhum schema garante validade por si."
+      "alternativesRationale": "O AraLearn reserva Experimento ao protocolo com fatores, condições, atribuição, medidas e análise declarados, à luz da literatura de desenho e validade causal; estudo, comparação e teste A/B nomeiam escopos diferentes, e nenhum esquema garante validade por si.",
+      "status": "vigente"
     },
     {
       "id": "experimental-condition",
@@ -1770,7 +1650,6 @@
       "technicalSymbol": "experimental_condition",
       "definition": "Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "database",
@@ -1779,11 +1658,10 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
+          "ref": "docs/experimentos-instrucionais-parametrizados.md",
           "supports": "A capacidade local de variantes comparáveis explicita que diferenças declaradas não criam Condição experimental."
         }
       ],
-      "cutoverIssue": "#126",
       "notSynonyms": [
         "variante comparável",
         "parâmetro isolado",
@@ -1795,11 +1673,11 @@
       "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.",
       "ambiguityRisk": "Sem esta delimitação, “Condição experimental” pode ser confundida com Variante comparável, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há Condição experimental no runtime atual; diferenças declaradas de Variante comparável não a constituem.",
       "alternativesConsidered": [
         "“Grupo experimental”: designa participantes agrupados e não a combinação de níveis de fatores atribuída à variante ou participação.",
         "“Tratamento”: é estreito para desenhos que manipulam interface, parâmetros ou configuração sem uma intervenção tratamental."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "observed-measure",
@@ -1811,7 +1689,6 @@
       "technicalSymbol": "observed_measure",
       "definition": "Valor obtido por instrumento ou procedimento declarado, antes de qualquer interpretação como indicador de um construto.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "database",
@@ -1823,7 +1700,6 @@
           "ref": "https://doi.org/10.1037/0003-066X.50.9.741"
         }
       ],
-      "cutoverIssue": "#127",
       "notSynonyms": [
         "métrica calculada",
         "indicador",
@@ -1835,11 +1711,11 @@
       "araLearnExample": "O tempo registrado entre abertura e resposta é uma Medida observada; ainda não é interpretação de atenção ou aprendizagem.",
       "ambiguityRisk": "Sem esta delimitação, “Medida observada” pode ser confundido com métrica calculada, indicador, construto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, database, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Observação”: nomeia o registro ou ato observado, mas não necessariamente o valor produzido por instrumento e procedimento declarados.",
         "“Mensuração”: designa o processo de medir; Medida observada é o valor resultante antes da interpretação."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "computed-metric",
@@ -1851,8 +1727,7 @@
       "productTerm": "Métrica calculada",
       "technicalSymbol": "computed_metric",
       "definition": "Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -1866,12 +1741,9 @@
         },
         {
           "status": "decisao-produto",
-          "ref": "#127"
+          "ref": "docs/analytics-instrucionais.md"
         }
       ],
-      "cutoverIssue": "#127",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "medida observada",
         "indicador",
@@ -1884,11 +1756,11 @@
       "araLearnExample": "A mediana do tempo por Unidade de estudo é uma Métrica calculada a partir dos eventos exportáveis e de uma fórmula versionada.",
       "ambiguityRisk": "Sem esta delimitação, “Métrica calculada” pode ser confundido com medida observada, indicador, atenção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Em #127, preservar Métrica calculada para contagens, razões e agregações operacionais e exigir contrato de mensuração separado antes de interpretá-la como medida de um construto.",
       "alternativesConsidered": [
         "“Medida derivada”: foi reservada para casos com modelo de mensuração; contagens, razões e agregações operacionais continuam Métricas calculadas.",
         "“Estatística”: é um subconjunto matemático e não cobre toda fórmula versionada aplicada a fatos operacionais."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "research-indicator",
@@ -1900,7 +1772,6 @@
       "technicalSymbol": "research_indicator",
       "definition": "Interpretação declarada de uma ou mais medidas para uma finalidade analítica específica, com inferências permitidas e proibidas.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1913,7 +1784,6 @@
           "ref": "https://www.testingstandards.net/"
         }
       ],
-      "cutoverIssue": "#127",
       "notSynonyms": [
         "métrica",
         "desfecho",
@@ -1925,11 +1795,11 @@
       "araLearnExample": "Uma taxa de observações resolvidas pode servir como Indicador de pesquisa quando sua interpretação e limitações são declaradas.",
       "ambiguityRisk": "Sem esta delimitação, “Indicador de pesquisa” pode ser confundido com métrica, desfecho, prova, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Indicador analítico”: é possível, mas omite que as inferências permitidas e proibidas devem estar vinculadas ao desenho da pesquisa.",
         "“Proxy”: nomeia uma relação indireta específica; nem todo Indicador de pesquisa é proxy de um construto latente."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "research-outcome",
@@ -1940,8 +1810,7 @@
       "productTerm": "Resultado avaliado",
       "technicalSymbol": "outcome_variable",
       "definition": "Variável escolhida como resultado de interesse de um estudo e definida antes da interpretação quando o desenho exigir; a interface apresenta seu valor ou síntese como Resultado avaliado.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -1954,9 +1823,6 @@
           "ref": "https://www.testingstandards.net/"
         }
       ],
-      "cutoverIssue": "#127",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "métrica",
         "indicador",
@@ -1968,14 +1834,11 @@
       "araLearnExample": "Desempenho numa avaliação posterior pode ser uma Variável de resultado; a interface apresenta a medida correspondente como Resultado avaliado, com instrumento e momento declarados.",
       "ambiguityRisk": "Sem separar termo de domínio e rótulo de interface, resultado pode ser confundido com saída técnica, métrica intermediária ou conclusão causal não sustentada.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #127, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, research, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Desfecho”: é preciso em várias áreas empíricas, mas tem conotação biomédica forte para uma plataforma interdisciplinar.",
         "“Resultado”: isolado é ambíguo com saída de função, execução ou relatório; a interface usa Resultado avaliado e o domínio, Variável de resultado."
       ],
-      "currentSymbols": [
-        "research_outcome"
-      ]
+      "status": "vigente"
     },
     {
       "id": "authoring-workspace",
@@ -1988,7 +1851,6 @@
       "technicalSymbol": "authoring_course",
       "definition": "O próprio curso vivo enquanto está sendo planejado e materializado; a pessoa não precisa compreender um recipiente abstrato separado.",
       "decision": "substituir",
-      "cutoverStatus": "pendente",
       "layers": [
         "interface",
         "domain",
@@ -1999,12 +1861,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#117"
+          "ref": "docs/estado-atual-e-roadmap.md"
         }
       ],
-      "cutoverIssue": "#117",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "organização",
         "tenant",
@@ -2014,17 +1873,22 @@
       "interfaceTerm": "Curso em autoria",
       "domainTerm": "Curso em autoria",
       "englishEquivalent": "course under authoring",
-      "araLearnExample": "O que antes aparecia como Workspace passa a ser tratado como o próprio Curso em autoria, sem uma caixa-preta organizacional adicional.",
+      "araLearnExample": "O que antes aparecia como Workspace passa a ser tratado como o próprio Curso em autoria, sem uma estrutura organizacional opaca adicional.",
       "ambiguityRisk": "Sem esta delimitação, “Curso em autoria” pode ser confundido com organização, tenant, projeto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Workspace”: será retirado porque introduz uma caixa organizacional adicional sem explicar que o objeto concreto é o próprio curso em autoria.",
+        "“Workspace”: foi retirado porque introduzia uma caixa organizacional adicional sem explicar que o objeto concreto é o próprio Curso em autoria.",
         "“Projeto”: não foi adotado porque pode abranger tarefas e artefatos externos que não pertencem ao estado vivo de um curso."
       ],
-      "migrationImpact": "O runtime canônico já entra diretamente pelo Curso em Estudo, Autoria, banco e MCP; o gate pendente remove somente resíduos físicos fora do grafo executável, sem conservar recipiente, alias, fallback ou dupla escrita.",
       "currentSymbols": [
         "workspace"
-      ]
+      ],
+      "forbiddenSymbols": [
+        "AuthoringWorkspace",
+        "workspaceId",
+        "workspaceCourseId"
+      ],
+      "status": "concluido"
     },
     {
       "id": "personal-library",
@@ -2037,7 +1901,6 @@
       "technicalSymbol": "personal_course_library",
       "definition": "Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhamento e eventual ordenação curricular.",
       "decision": "substituir",
-      "cutoverStatus": "pendente",
       "layers": [
         "interface",
         "domain",
@@ -2048,12 +1911,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#117"
+          "ref": "docs/estado-atual-e-roadmap.md"
         }
       ],
-      "cutoverIssue": "#117",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "sequência curricular",
         "permissão",
@@ -2065,10 +1925,15 @@
       "araLearnExample": "A Biblioteca pessoal lista os cursos que pertencem à pessoa ou aos quais ela recebeu acesso, sem determinar uma sequência de estudo.",
       "ambiguityRisk": "Sem esta delimitação, “Biblioteca pessoal” pode ser confundido com sequência curricular, permissão, coleção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "A Home canônica já lista diretamente Cursos próprios e compartilhados, sem entidade organizacional intermediária; símbolos e arquivos físicos substituídos permanecem no gate de remoção final, fora do runtime.",
       "alternativesConsidered": [
         "“Trilha”: implica sequência planejada de estudo, enquanto Biblioteca pessoal reúne cursos acessíveis sem impor ordem curricular."
-      ]
+      ],
+      "forbiddenSymbols": [
+        "HomeTrailsController",
+        "homeTrailProjection",
+        "trailItemId"
+      ],
+      "status": "concluido"
     },
     {
       "id": "public-course-catalog",
@@ -2080,8 +1945,7 @@
       "productTerm": "Catálogo público de cursos",
       "technicalSymbol": "public_course_catalog",
       "definition": "Índice de cursos tornados públicos por decisão explícita; organização de catálogo não concede nem substitui acesso privado direto.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "remover",
       "layers": [
         "interface",
         "domain",
@@ -2092,12 +1956,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#117"
+          "ref": "docs/estado-atual-e-roadmap.md"
         }
       ],
-      "cutoverIssue": "#117",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "biblioteca pessoal",
         "permissão",
@@ -2109,10 +1970,15 @@
       "araLearnExample": "O Catálogo público de cursos lista somente cursos disponibilizados explicitamente ao público, sem controlar propriedade ou acesso privado.",
       "ambiguityRisk": "Sem esta delimitação, “Catálogo público de cursos” pode ser confundido com biblioteca pessoal, permissão, propriedade, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O runtime canônico não oferece catálogo público nem usa organização editorial para conceder acesso; qualquer disponibilização pública futura será uma capacidade nova, enquanto os resíduos do modelo retirado seguem para remoção final.",
       "alternativesConsidered": [
         "“Coleção”: também pode ser agrupamento privado ou curatorial; Catálogo público explicita indexação e disponibilidade pública sem conceder acesso privado."
-      ]
+      ],
+      "forbiddenSymbols": [
+        "RemoteCourseCatalog",
+        "LearningSpaces",
+        "LearningSpacesPanel"
+      ],
+      "status": "concluido"
     },
     {
       "id": "public-release",
@@ -2124,7 +1990,6 @@
       "technicalSymbol": "public_course_release",
       "definition": "Operação explícita que torna uma versão do curso acessível publicamente; não é estágio obrigatório da autoria ou condição para estudo privado.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -2134,10 +1999,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#118"
+          "ref": "docs/arquitetura.md"
         }
       ],
-      "cutoverIssue": "#118",
       "notSynonyms": [
         "materialização",
         "salvamento",
@@ -2149,10 +2013,10 @@
       "araLearnExample": "A pessoa proprietária decide disponibilizar publicamente um curso vivo; isso altera seu alcance, não cria um estado editorial imutável.",
       "ambiguityRisk": "Sem esta delimitação, “Disponibilização pública” pode ser confundido com materialização, salvamento, curso pronto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, storage devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Publicação”: foi examinada, mas pode sugerir estágio obrigatório ou workflow editorial; Disponibilização pública nomeia a mudança explícita de acesso."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "content-artifact",
@@ -2164,7 +2028,6 @@
       "technicalSymbol": "content_artifact",
       "definition": "Representação serializada e identificável por conteúdo usada para armazenamento ou distribuição; não é o curso vivo completo.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "storage",
@@ -2174,10 +2037,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#118"
+          "ref": "docs/arquitetura.md"
         }
       ],
-      "cutoverIssue": "#118",
       "notSynonyms": [
         "curso",
         "versão de estado",
@@ -2189,10 +2051,10 @@
       "araLearnExample": "Um arquivo exportado ou uma representação produzida é um Artefato de conteúdo; não é automaticamente o Curso vivo completo.",
       "ambiguityRisk": "Sem esta delimitação, “Artefato de conteúdo” pode ser confundido com curso, versão de estado, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, storage, database, deployment devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Snapshot”: sugere captura integral de estado num instante; Artefato de conteúdo pode representar apenas uma saída serializada e endereçada por conteúdo."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "recovery-checkpoint",
@@ -2203,8 +2065,7 @@
       "productTerm": "Ponto de recuperação",
       "technicalSymbol": "recovery_checkpoint",
       "definition": "Marco operacional criado para permitir retomada ou restauração controlada de trabalho técnico; não é revisão de conteúdo nem versão pública.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "code",
         "deployment",
@@ -2213,12 +2074,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#130"
+          "ref": "docs/implantacao.md"
         }
       ],
-      "cutoverIssue": "#130",
-      "removeBy": "#130",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "versão de estado",
         "release",
@@ -2230,10 +2088,10 @@
       "araLearnExample": "Antes de uma operação composta, o sistema cria um Ponto de recuperação para restaurar o estado se a operação falhar.",
       "ambiguityRisk": "Sem esta delimitação, “Ponto de recuperação” pode ser confundido com versão de estado, release, revisão autoral, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #130, com remoção integral até #130: renomear interface, domínio e símbolos nas camadas code, deployment, documentation, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Snapshot”: pode ser uma cópia completa, enquanto Ponto de recuperação é o marco operacional usado para retomada ou restauração controlada."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "user-account",
@@ -2245,7 +2103,6 @@
       "technicalSymbol": "user_account",
       "definition": "Pessoa identificada no produto por uma conta; o registro de autenticação não resume sua identidade humana.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -2255,10 +2112,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
       "notSynonyms": [
         "perfil",
         "ator técnico",
@@ -2270,10 +2126,10 @@
       "araLearnExample": "O perfil mínimo exibe nome e avatar da Pessoa usuária sem transformar a plataforma em rede social.",
       "ambiguityRisk": "Sem esta delimitação, “Pessoa usuária” pode ser confundido com perfil, ator técnico, proprietário, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, security devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Usuário”: é conciso, mas pode reduzir a pessoa ao ator técnico; Pessoa usuária é o rótulo de produto, deixando conta de autenticação como implementação."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "course-author",
@@ -2285,7 +2141,6 @@
       "technicalSymbol": "course_author",
       "definition": "Pessoa que participa intencionalmente do planejamento, produção, revisão ou correção de um curso; autoria não decorre apenas de executar uma mutação técnica.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -2295,10 +2150,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
       "notSynonyms": [
         "proprietário",
         "agente",
@@ -2310,10 +2164,10 @@
       "araLearnExample": "A Pessoa autora planeja, comenta e revisa o curso; ela pode ou não ser sua proprietária.",
       "ambiguityRisk": "Sem esta delimitação, “Pessoa autora” pode ser confundido com proprietário, agente, operador, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Pessoa criadora”: privilegia o início do curso e exclui quem planeja, revisa ou corrige de forma autoral posteriormente."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "researcher",
@@ -2325,7 +2179,6 @@
       "technicalSymbol": "researcher",
       "definition": "Pessoa responsável por decisões, instrumentos ou análises de uma pesquisa; não recebe automaticamente propriedade ou acesso a todo curso.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -2335,10 +2188,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
       "notSynonyms": [
         "autor",
         "administrador",
@@ -2350,10 +2202,10 @@
       "araLearnExample": "A Pessoa pesquisadora define condições e analisa dados, função que pode coexistir com autoria na mesma conta.",
       "ambiguityRisk": "Sem esta delimitação, “Pessoa pesquisadora” pode ser confundido com autor, administrador, participante, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, research, security devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Administrador de pesquisa”: descreve permissão operacional ou função institucional, não responsabilidade por decisões, instrumentos e análises científicas."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "student",
@@ -2365,7 +2217,6 @@
       "technicalSymbol": "student",
       "definition": "Pessoa que acessa o curso para estudar ou participar de uma investigação, com consentimento e papel de pesquisa separados quando aplicável.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -2375,10 +2226,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
       "notSynonyms": [
         "participante de pesquisa",
         "membro",
@@ -2390,10 +2240,10 @@
       "araLearnExample": "A Pessoa estudante acessa um curso compartilhado, pratica e pode registrar observações sobre unidades específicas.",
       "ambiguityRisk": "Sem esta delimitação, “Pessoa estudante” pode ser confundido com participante de pesquisa, membro, usuário genérico, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, research, security devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Aprendiz”: pode designar qualquer pessoa em processo de aprendizagem; Pessoa estudante nomeia o papel de acesso ao curso sem afirmar resultado."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "course-owner",
@@ -2405,7 +2255,6 @@
       "technicalSymbol": "course_owner",
       "definition": "Pessoa com autoridade primária sobre o curso e sobre a concessão de acesso, sem implicar autoria exclusiva de todo conteúdo.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -2415,10 +2264,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
       "notSynonyms": [
         "autor",
         "administrador",
@@ -2430,10 +2278,10 @@
       "araLearnExample": "A Pessoa proprietária controla o acesso ao curso e pode compartilhá-lo diretamente com outras pessoas.",
       "ambiguityRisk": "Sem esta delimitação, “Pessoa proprietária do curso” pode ser confundido com autor, administrador, criador original, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, security devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Pessoa criadora do curso”: criação inicial não equivale à autoridade corrente para gerir propriedade e concessões de acesso."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "course-access-grantee",
@@ -2444,8 +2292,7 @@
       "productTerm": "Pessoa com acesso",
       "technicalSymbol": "course_access_grantee",
       "definition": "Pessoa à qual foi concedido acesso explícito a um curso, com permissões delimitadas; não pressupõe organização institucional.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -2455,12 +2302,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "proprietário",
         "autor",
@@ -2472,10 +2316,10 @@
       "araLearnExample": "Ao compartilhar um curso com outra pessoa, o registro de acesso identifica diretamente a Pessoa com acesso e suas permissões.",
       "ambiguityRisk": "Sem esta delimitação, “Pessoa com acesso” pode ser confundido com proprietário, autor, membro de organização, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O runtime canônico já persiste uma relação direta Curso–pessoa para Estudo e a mostra em Pessoas; a retirada de nomes e arquivos físicos substituídos continua no gate final, sem camada de compatibilidade.",
       "alternativesConsidered": [
         "“Membro”: pressupõe grupo ou organização; Pessoa com acesso expressa a concessão direta ao curso e suas permissões delimitadas."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "access-role",
@@ -2487,7 +2331,6 @@
       "technicalSymbol": "access_role",
       "definition": "Rótulo técnico que agrupa responsabilidades ou permissões de acesso; não deve ser exposto como governança necessária para compartilhar um curso.",
       "decision": "substituir",
-      "cutoverStatus": "pendente",
       "layers": [
         "domain",
         "database",
@@ -2497,12 +2340,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "permissão efetiva",
         "identidade",
@@ -2514,10 +2354,14 @@
       "araLearnExample": "Um Papel de acesso agrupa permissões estritamente necessárias, sem representar cargo ou hierarquia institucional.",
       "ambiguityRisk": "Sem esta delimitação, “Papel de acesso” pode ser confundido com permissão efetiva, identidade, cargo institucional, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "O modelo canônico não persiste nem expõe papel para compartilhar Curso: proprietário edita e a relação direta concede Estudo. Estruturas físicas antigas ficam fora do runtime e serão removidas no corte final.",
       "alternativesConsidered": [
         "“Perfil de acesso”: pode ser confundido com perfil humano ou conjunto estático da conta; Papel de acesso agrupa responsabilidades no alvo."
-      ]
+      ],
+      "forbiddenSymbols": [
+        "accessRole",
+        "roleMatrix"
+      ],
+      "status": "concluido"
     },
     {
       "id": "effective-capability",
@@ -2529,7 +2373,6 @@
       "technicalSymbol": "effective_permission",
       "definition": "Autorização concreta para executar uma operação sobre um alvo e estado específicos, derivada e revalidada no ponto de uso.",
       "decision": "substituir",
-      "cutoverStatus": "pendente",
       "layers": [
         "domain",
         "database",
@@ -2540,12 +2383,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#119"
+          "ref": "docs/privacidade.md"
         }
       ],
-      "cutoverIssue": "#119",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "papel de acesso",
         "feature flag",
@@ -2557,10 +2397,14 @@
       "araLearnExample": "A interface habilita uma ação somente quando a Permissão efetiva calculada autoriza aquela pessoa naquele curso.",
       "ambiguityRisk": "Sem esta delimitação, “Permissão efetiva” pode ser confundido com papel de acesso, feature flag, propriedade, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "A autorização canônica deriva diretamente de propriedade ou acesso a Estudo e é revalidada no ponto de uso; matrizes e símbolos substituídos não participam do runtime e seguem para remoção física final.",
       "alternativesConsidered": [
         "“Permissão”: pode designar a concessão armazenada; Permissão efetiva é o resultado revalidado para operação, alvo e estado concretos."
-      ]
+      ],
+      "forbiddenSymbols": [
+        "effectiveCapability",
+        "capabilityMatrix"
+      ],
+      "status": "concluido"
     },
     {
       "id": "component-runtime-core",
@@ -2571,8 +2415,7 @@
       "productTerm": "Núcleo de execução de componentes",
       "technicalSymbol": "component_runtime_core",
       "definition": "Núcleo técnico pequeno que valida envelopes, resolve pacotes e coordena protocolos comuns sem conhecer tipos concretos de representação.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "code",
         "documentation"
@@ -2580,12 +2423,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#131"
+          "ref": "docs/componentes-didaticos.md"
         }
       ],
-      "cutoverIssue": "#131",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "sistema operacional",
         "catálogo",
@@ -2597,13 +2437,10 @@
       "araLearnExample": "O Núcleo de execução valida o manifesto e coordena a renderização de componentes, sem incorporar conteúdo ou regras pedagógicas específicas.",
       "ambiguityRisk": "Sem esta delimitação, “Núcleo de execução de componentes” pode ser confundido com sistema operacional, catálogo, engine de layout, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #131, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas code, documentation, sem alias, fallback ou dupla escrita.",
-      "currentSymbols": [
-        "kernel"
-      ],
       "alternativesConsidered": [
         "“Kernel”: foi rejeitado na linguagem canônica porque importa a metáfora de sistema operacional e oculta a responsabilidade limitada sobre componentes."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "runtime",
@@ -2615,7 +2452,6 @@
       "technicalSymbol": "runtime_environment",
       "definition": "Código e dependências necessários para executar um contrato em determinada plataforma; não inclui automaticamente autoria, persistência e catálogo.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "code",
         "deployment",
@@ -2624,10 +2460,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "engine",
         "aplicativo",
@@ -2639,10 +2474,10 @@
       "araLearnExample": "O Ambiente de execução carrega e renderiza componentes no cliente sem ser confundido com o motor que transforma dados.",
       "ambiguityRisk": "Sem esta delimitação, “Ambiente de execução” pode ser confundido com engine, aplicativo, núcleo, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas code, deployment, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Motor de execução”: confunde ambiente e dependências da plataforma com o componente que executa um algoritmo substantivo."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "engine",
@@ -2654,7 +2489,6 @@
       "technicalSymbol": "processing_engine",
       "definition": "Componente que executa um algoritmo ou transformação substantiva bem delimitada; não é nome genérico para qualquer serviço.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "code",
         "documentation"
@@ -2662,10 +2496,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "runtime",
         "adapter",
@@ -2677,10 +2510,10 @@
       "araLearnExample": "O Motor aplica uma transformação definida, como validar uma resposta, mas não representa toda a aplicação.",
       "ambiguityRisk": "Sem esta delimitação, “Motor” pode ser confundido com runtime, adapter, serviço, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas code, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Serviço”: é genérico demais e pode coordenar regras ou I/O; Motor fica reservado ao algoritmo ou transformação substantiva delimitada."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "adapter",
@@ -2692,7 +2525,6 @@
       "technicalSymbol": "boundary_adapter",
       "definition": "Componente de fronteira que traduz entre contratos sem assumir a regra de negócio traduzida.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "code",
         "documentation"
@@ -2700,10 +2532,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "serviço de domínio",
         "fallback",
@@ -2715,10 +2546,10 @@
       "araLearnExample": "Um Adaptador converte a forma usada pelo domínio para a API de Storage ou banco, mantendo essa fronteira explícita.",
       "ambiguityRisk": "Sem esta delimitação, “Adaptador” pode ser confundido com serviço de domínio, fallback, alias, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas code, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Conversor”: sugere transformação unilateral de dados; Adaptador traduz uma fronteira contratual e pode mediar chamadas nos dois sentidos."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "store",
@@ -2729,8 +2560,7 @@
       "productTerm": "Repositório de estado",
       "technicalSymbol": "state_repository",
       "definition": "Componente que lê e grava estado em uma fronteira de persistência declarada; não é o estado em si nem necessariamente a fonte canônica.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "code",
         "database",
@@ -2739,12 +2569,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#129"
+          "ref": "docs/arquitetura.md"
         }
       ],
-      "cutoverIssue": "#129",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "banco de dados",
         "estado",
@@ -2756,13 +2583,10 @@
       "araLearnExample": "O Repositório de estado lê e grava dados de autoria; ele não é sinônimo do serviço Supabase Storage.",
       "ambiguityRisk": "Sem esta delimitação, “Repositório de estado” pode ser confundido com banco de dados, estado, cache, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #129, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas code, database, documentation, sem alias, fallback ou dupla escrita.",
-      "currentSymbols": [
-        "store"
-      ],
       "alternativesConsidered": [
         "“Banco de dados”: nomeia uma tecnologia de persistência, enquanto Repositório de estado é o componente que isola leitura e gravação nessa fronteira."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "catalog",
@@ -2774,7 +2598,6 @@
       "technicalSymbol": "queryable_catalog",
       "definition": "Projeção consultável de itens disponíveis e de seus metadados; não é o registro de execução nem a coleção de dados completos.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "code",
         "domain",
@@ -2784,10 +2607,9 @@
       "sources": [
         {
           "status": "observacao-tecnica",
-          "ref": "#131"
+          "ref": "docs/componentes-didaticos.md"
         }
       ],
-      "cutoverIssue": "#131",
       "notSynonyms": [
         "registry",
         "biblioteca pessoal",
@@ -2799,10 +2621,10 @@
       "araLearnExample": "Um Catálogo permite consultar metadados e localizar componentes ou cursos sem assumir propriedade nem sequência.",
       "ambiguityRisk": "Sem esta delimitação, “Catálogo” pode ser confundido com registry, biblioteca pessoal, MCP Resource, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas code, domain, mcp, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Registry”: tende a sugerir registro autoritativo usado na execução; Catálogo é a projeção consultável de itens e metadados disponíveis."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "study-entry-action",
@@ -2813,8 +2635,7 @@
       "productTerm": "Começar, continuar ou retomar",
       "technicalSymbol": "study_entry_action",
       "definition": "Ação contextual que inicia uma unidade, continua a sequência corrente ou retoma uma posição anterior; o rótulo deve refletir o estado real.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "interface",
         "code",
@@ -2823,12 +2644,9 @@
       "sources": [
         {
           "status": "hipotese-produto",
-          "ref": "#121"
+          "ref": "docs/sistema-visual.md"
         }
       ],
-      "cutoverIssue": "#121",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "reprodução de mídia",
         "rolagem",
@@ -2840,11 +2658,11 @@
       "araLearnExample": "O botão inicial mostra Começar, Continuar ou Retomar conforme o progresso real, em vez do rótulo genérico Play.",
       "ambiguityRisk": "Sem esta delimitação, “Começar, continuar ou retomar” pode ser confundido com reprodução de mídia, rolagem, avanço automático, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #121, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, code, documentation, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Abrir”: ignora se a ação inicia, continua ou retoma progresso existente e por isso não descreve corretamente todos os estados.",
         "“Play”: foi rejeitado porque remete à reprodução de mídia, que não é a operação solicitada ao entrar no estudo."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "vertical-scroll",
@@ -2857,7 +2675,6 @@
       "technicalSymbol": "vertical_scroll",
       "definition": "Deslocamento contínuo da viewport no eixo vertical, distinto do gesto físico que o iniciou e da mudança curricular entre unidades.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "code",
@@ -2869,7 +2686,6 @@
           "ref": "https://doi.org/10.1007/s11145-022-10328-9"
         }
       ],
-      "cutoverIssue": "#121",
       "notSynonyms": [
         "deslize",
         "avançar",
@@ -2881,8 +2697,8 @@
       "araLearnExample": "No celular, a pessoa desliza a página para cima e percorre rapidamente as Unidades de estudo em Rolagem vertical.",
       "ambiguityRisk": "Sem esta delimitação, “Rolagem vertical” pode ser confundido com deslize, avançar, feed, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, code, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
-      "alternativesRationale": "Rolagem vertical nomeia precisamente a mudança contínua da viewport; deslize é gesto de entrada e avanço é navegação curricular, portanto nenhum deles disputa o mesmo conceito técnico."
+      "alternativesRationale": "Rolagem vertical nomeia precisamente a mudança contínua da viewport; deslize é gesto de entrada e avanço é navegação curricular, portanto nenhum deles disputa o mesmo conceito técnico.",
+      "status": "vigente"
     },
     {
       "id": "swipe-input",
@@ -2895,7 +2711,6 @@
       "technicalSymbol": "swipe_input_gesture",
       "definition": "Gesto de entrada observável executado sobre uma superfície, sem inferência automática sobre intenção ou processo cognitivo.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "code",
@@ -2904,10 +2719,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         }
       ],
-      "cutoverIssue": "#121",
       "notSynonyms": [
         "rolagem",
         "avanço",
@@ -2919,11 +2733,11 @@
       "araLearnExample": "Um movimento de dedo reconhecido como Gesto de deslize pode avançar a interface, mas não prova uma operação cognitiva.",
       "ambiguityRisk": "Sem esta delimitação, “Gesto de deslize” pode ser confundido com rolagem, avanço, ação epistêmica, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, code, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Swipe”: é o empréstimo inglês do gesto e não melhora a precisão da interface em português.",
         "“Arraste”: mantém um objeto sob contato durante o movimento e corresponde a outro padrão de entrada, distinto do deslize."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "curricular-navigation",
@@ -2938,7 +2752,6 @@
       "technicalSymbol": "curricular_navigation",
       "definition": "Mudança de posição ou escopo dentro da estrutura do curso, com destino e estado explícitos, independentemente do gesto usado.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "code",
@@ -2947,10 +2760,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#121"
+          "ref": "docs/sistema-visual.md"
         }
       ],
-      "cutoverIssue": "#121",
       "notSynonyms": [
         "rolagem",
         "deslize",
@@ -2962,10 +2774,10 @@
       "araLearnExample": "Na interface, a pessoa usa a Navegação do curso para saltar à próxima microssequência; o evento de domínio registra uma Navegação curricular com origem e destino.",
       "ambiguityRisk": "Sem distinguir interface e domínio, Navegação do curso pode ser confundida com rolagem ou busca local, e Navegação curricular pode ser tomada por evidência de aprendizagem.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, code, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Navegação de conteúdo”: é ampla e inclui busca ou rolagem dentro de uma unidade; o domínio precisa registrar mudança na estrutura curricular do curso."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "task-operation",
@@ -2982,7 +2794,6 @@
       ],
       "definition": "Definição terminológica própria do AraLearn para a transformação que a tarefa exige da pessoa sobre o conteúdo; o contrato e a resposta são observáveis, mas o rótulo não afirma observação direta de uma operação mental.",
       "decision": "substituir",
-      "cutoverStatus": "concluido",
       "layers": [
         "interface",
         "domain",
@@ -2994,7 +2805,7 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#116",
+          "ref": "docs/vocabulario-controlado.md",
           "supports": "Fixa o rótulo e a definição operacional adotados no domínio do AraLearn."
         },
         {
@@ -3003,7 +2814,6 @@
           "supports": "Sustenta apenas a distinção entre ações pragmáticas e epistêmicas; não fundamenta o rótulo operação-alvo da tarefa."
         }
       ],
-      "cutoverIssue": "#116",
       "forbiddenSymbols": [
         "cognitiveOperation",
         "cognitiveOperations",
@@ -3029,10 +2839,10 @@
         "“Gesto cognitivo”: abolido porque sugere inferência sobre processo mental a partir de uma tarefa ou entrada observável.",
         "“Gesto de entrada”: mantido separado porque descreve toque, clique ou deslize, não a transformação exigida e operacionalizada pela tarefa."
       ],
-      "migrationImpact": "Corte terminológico concluído em #116; o gate rejeita os símbolos abolidos fora de migrations publicadas e evidências históricas.",
       "currentSymbols": [
         "cognitiveOperations"
-      ]
+      ],
+      "status": "concluido"
     },
     {
       "id": "attention-construct",
@@ -3044,7 +2854,6 @@
       "technicalSymbol": "attention_construct",
       "definition": "Família de processos seletivos internos e externos que exige operacionalização e instrumento próprios; não é evento de visibilidade ou duração.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "research",
         "documentation"
@@ -3055,7 +2864,6 @@
           "ref": "https://doi.org/10.1146/annurev.psych.093008.100427"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "tempo de tela",
         "foco de teclado",
@@ -3068,8 +2876,8 @@
       "araLearnExample": "Uma pesquisa pode definir Atenção como construto e escolher múltiplas medidas; um scroll isolado não recebe esse rótulo.",
       "ambiguityRisk": "Sem esta delimitação, “Atenção” pode ser confundido com tempo de tela, foco de teclado, rolagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
-      "alternativesRationale": "Atenção é o construto estabelecido nas fontes reunidas; tempo de tela, foco do controle, rolagem e engajamento são eventos, estados ou construtos distintos, não nomes alternativos."
+      "alternativesRationale": "Atenção é o construto estabelecido nas fontes reunidas; tempo de tela, foco do controle, rolagem e engajamento são eventos, estados ou construtos distintos, não nomes alternativos.",
+      "status": "vigente"
     },
     {
       "id": "engagement-construct",
@@ -3081,7 +2889,6 @@
       "technicalSymbol": "engagement_construct",
       "definition": "Construto multidimensional cuja dimensão comportamental, cognitiva ou afetiva deve ser declarada e medida com evidência de validade.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "research",
         "documentation"
@@ -3092,7 +2899,6 @@
           "ref": "https://doi.org/10.1016/j.compedu.2015.09.005"
         }
       ],
-      "cutoverIssue": "#127",
       "notSynonyms": [
         "clique",
         "tempo",
@@ -3105,8 +2911,8 @@
       "araLearnExample": "A pesquisa declara como Engajamento será inferido de diferentes evidências, sem renomear mera abertura de tela como engajamento.",
       "ambiguityRisk": "Sem esta delimitação, “Engajamento” pode ser confundido com clique, tempo, atenção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
-      "alternativesRationale": "Engajamento é o construto multidimensional estabelecido, sempre qualificado por dimensão; participação, persistência, cliques e duração podem ser medidas, mas não candidatos equivalentes."
+      "alternativesRationale": "Engajamento é o construto multidimensional estabelecido, sempre qualificado por dimensão; participação, persistência, cliques e duração podem ser medidas, mas não candidatos equivalentes.",
+      "status": "vigente"
     },
     {
       "id": "input-focus",
@@ -3118,7 +2924,6 @@
       "technicalSymbol": "focus_state",
       "definition": "Estado técnico, conforme o modelo de foco do HTML, que determina qual controle recebe entrada de teclado ou tecnologia assistiva; não mede atenção psicológica.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "code",
@@ -3130,7 +2935,6 @@
           "ref": "https://html.spec.whatwg.org/multipage/interaction.html#focus"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "atenção",
         "engajamento",
@@ -3142,11 +2946,11 @@
       "araLearnExample": "Quando a caixa de observação se torna o elemento ativo para teclado, ela recebe Foco do controle; isso não demonstra atenção da pessoa.",
       "ambiguityRisk": "Sem o complemento do controle, foco pode ser interpretado como atenção, ênfase visual ou seleção, contaminando métricas de interação e acessibilidade.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, code, accessibility devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Foco de entrada”: explicita recepção de entrada, mas é menos concreto que Foco do controle para ensinar qual elemento está ativo.",
         "“Foco da interface”: pode sugerir ênfase visual global, não o estado definido pelo modelo de foco do HTML para um controle."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "system-instructions",
@@ -3158,8 +2962,7 @@
       "productTerm": "Instruções de sistema",
       "technicalSymbol": "system_instructions",
       "definition": "Camada estável reservada a invariantes, segurança, limites de autoridade e protocolo de uso das ferramentas; não contém estado corrente do curso nem manual científico mutável.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "mcp",
         "assistant",
@@ -3168,12 +2971,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#128"
+          "ref": "docs/assistencia-por-ia.md"
         }
       ],
-      "cutoverIssue": "#128",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "prompt de tarefa",
         "knowledge base",
@@ -3185,10 +2985,10 @@
       "araLearnExample": "As Instruções de sistema mantêm regras invariantes de segurança e de uso das ferramentas; o plano mutável do curso fica fora delas.",
       "ambiguityRisk": "Sem esta delimitação, “Instruções de sistema” pode ser confundido com prompt de tarefa, knowledge base, estado de autoria do curso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #128, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas mcp, assistant, documentation, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“System prompt”: sugere um único bloco textual; Instruções de sistema também podem resultar de políticas e camadas estruturadas de autoridade."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "task-prompt",
@@ -3198,9 +2998,8 @@
       ],
       "productTerm": "Prompt de tarefa",
       "technicalSymbol": "task_prompt",
-      "definition": "Instrução contextual de uma execução ou turno; pode referenciar estado persistido, mas não se torna sua fonte de verdade.",
+      "definition": "Instrução contextual de uma execução ou turno; pode referenciar estado persistido, mas não se torna o registro autorizado desse estado.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "assistant",
         "mcp",
@@ -3209,10 +3008,9 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "#128"
+          "ref": "docs/assistencia-por-ia.md"
         }
       ],
-      "cutoverIssue": "#128",
       "notSynonyms": [
         "instruções de sistema",
         "estado persistido",
@@ -3224,10 +3022,10 @@
       "araLearnExample": "Ao pedir auditoria de uma Parte, a solicitação e seus limites formam o Prompt de tarefa daquela execução.",
       "ambiguityRisk": "Sem esta delimitação, “Prompt de tarefa” pode ser confundido com instruções de sistema, estado persistido, ferramenta, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas assistant, mcp, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Comando”: descreve ordem executável, mas um Prompt de tarefa pode conter objetivo, contexto e critérios sem corresponder a uma única ação."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "knowledge-base",
@@ -3240,7 +3038,6 @@
       "technicalSymbol": "knowledge_base",
       "definition": "Conteúdo relativamente estável de referência recuperável sob demanda, como critérios, ciência, exemplos e limitações; não contém planejamento ou observações correntes do curso.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "assistant",
         "storage",
@@ -3250,10 +3047,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#128"
+          "ref": "docs/assistencia-por-ia.md"
         }
       ],
-      "cutoverIssue": "#128",
       "notSynonyms": [
         "RAG",
         "estado de autoria do curso",
@@ -3265,10 +3061,10 @@
       "araLearnExample": "A Base de referência estável contém documentação durável sobre ferramentas e métodos, não o planejamento mutável de um curso.",
       "ambiguityRisk": "Sem esta delimitação, “Base de referência estável” pode ser confundido com RAG, estado de autoria do curso, instruções de sistema, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas assistant, storage, mcp, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Base de conhecimento”: sugere conhecimento validado ou sistema especialista; Base de referência estável descreve com mais cautela o corpus recuperável."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "course-authoring-state",
@@ -3280,7 +3076,6 @@
       "technicalSymbol": "course_authoring_state",
       "definition": "Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface e MCP.",
       "decision": "manter",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -3292,10 +3087,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#128"
+          "ref": "docs/assistencia-por-ia.md"
         }
       ],
-      "cutoverIssue": "#128",
       "notSynonyms": [
         "workspace",
         "histórico de chat",
@@ -3305,13 +3099,13 @@
       "interfaceTerm": "Estado de autoria do curso",
       "domainTerm": "Estado de autoria do curso",
       "englishEquivalent": "course authoring state",
-      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela UI e pelas ferramentas MCP.",
+      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface e pelas ferramentas MCP.",
       "ambiguityRisk": "Sem esta delimitação, “Estado de autoria do curso” pode ser confundido com workspace, histórico de chat, knowledge base, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, storage, mcp, assistant devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Workspace”: nomeia um contêiner abstrato e esconde que o objeto compartilhado entre interface e MCP é o estado concreto do curso em autoria."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "retrieval-augmented-generation",
@@ -3323,7 +3117,6 @@
       "technicalSymbol": "retrieval_augmented_generation",
       "definition": "Processo em que uma consulta recupera explicitamente itens de um corpus indexado e os fornece à geração, com registro do corpus e da recuperação.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "assistant",
         "mcp",
@@ -3336,7 +3129,6 @@
           "ref": "https://arxiv.org/abs/2005.11401"
         }
       ],
-      "cutoverIssue": "#128",
       "notSynonyms": [
         "knowledge base",
         "MCP Resource",
@@ -3349,10 +3141,10 @@
       "araLearnExample": "Uma execução só é descrita como RAG quando consulta um corpus indexado e incorpora os resultados recuperados ao contexto de geração.",
       "ambiguityRisk": "Sem esta delimitação, “Geração aumentada por recuperação” pode ser confundido com knowledge base, MCP Resource, leitura direta de estado, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas assistant, mcp, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Busca semântica”: cobre apenas a recuperação; RAG exige que os itens recuperados sejam fornecidos à geração com corpus e consulta registráveis."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "agent-configuration",
@@ -3364,8 +3156,7 @@
       "productTerm": "Configuração do assistente",
       "technicalSymbol": "agent_configuration",
       "definition": "Conjunto versionado de modelo, instruções, ferramentas, políticas de recuperação e parâmetros operacionais que pode constituir fator experimental.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
       "layers": [
         "assistant",
         "mcp",
@@ -3375,12 +3166,9 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "#128"
+          "ref": "docs/assistencia-por-ia.md"
         }
       ],
-      "cutoverIssue": "#128",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "estado de autoria do curso",
         "perfil da pessoa",
@@ -3392,10 +3180,10 @@
       "araLearnExample": "Uma pesquisa versiona duas Configurações do assistente para comparar instruções ou estratégias de ferramenta sob condições controladas.",
       "ambiguityRisk": "Sem esta delimitação, “Configuração do assistente” pode ser confundido com estado de autoria do curso, perfil da pessoa, prompt isolado, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #128, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas assistant, mcp, research, database, sem alias, fallback ou dupla escrita.",
       "alternativesConsidered": [
         "“Perfil do assistente”: pode significar persona ou preferência não versionada; Configuração inclui modelo, instruções, ferramentas, recuperação e parâmetros operacionais."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "mcp-resource",
@@ -3407,7 +3195,6 @@
       "technicalSymbol": "mcp_resource",
       "definition": "Primitiva do protocolo pela qual um servidor expõe dados ou contexto identificados por URI para leitura orientada pela aplicação.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "mcp",
         "assistant",
@@ -3419,7 +3206,6 @@
           "ref": "https://modelcontextprotocol.io/specification/2025-11-25/server/resources"
         }
       ],
-      "cutoverIssue": "#128",
       "notSynonyms": [
         "representação externa",
         "knowledge base",
@@ -3432,10 +3218,10 @@
       "araLearnExample": "Uma ferramenta cliente lê um Resource MCP exposto pelo servidor; ele não é um componente visual armazenado dentro de uma unidade.",
       "ambiguityRisk": "Sem esta delimitação, “Resource MCP” pode ser confundido com representação externa, knowledge base, tool, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas mcp, assistant, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Arquivo MCP”: é estreito porque um Resource MCP pode expor dados calculados ou contexto por URI sem corresponder a arquivo armazenado."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "mcp-tool",
@@ -3448,7 +3234,6 @@
       "technicalSymbol": "mcp_tool",
       "definition": "Operação tipada exposta pelo servidor para o modelo solicitar uma ação ou consulta sob autorização e contrato explícitos.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "mcp",
         "assistant",
@@ -3461,7 +3246,6 @@
           "ref": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools"
         }
       ],
-      "cutoverIssue": "#128",
       "notSynonyms": [
         "MCP Resource",
         "prompt",
@@ -3474,10 +3258,10 @@
       "araLearnExample": "O assistente chama uma Ferramenta MCP para registrar uma anotação ou materializar uma Parte, produzindo efeito verificável no estado persistido.",
       "ambiguityRisk": "Sem esta delimitação, “Ferramenta MCP” pode ser confundido com MCP Resource, prompt, estado persistido, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas mcp, assistant, security, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Função MCP”: confunde a operação protocolar exposta ao modelo com a função de implementação interna que a atende."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "discourse-genre",
@@ -3490,7 +3274,6 @@
       "technicalSymbol": "discourse_genre",
       "definition": "Forma recorrente de ação social reconhecida em uma situação comunicativa, adotada aqui na linhagem socioretórica de Miller; gênero comunicativo ou textual exige qualificação teórica própria.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "research",
         "documentation"
@@ -3505,7 +3288,6 @@
           "ref": "https://journals.aom.org/doi/10.5465/amr.1992.4279545"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "gênero comunicativo sem qualificação",
         "gênero textual",
@@ -3520,11 +3302,11 @@
       "araLearnExample": "Uma Unidade de estudo pode realizar o Gênero discursivo explicação quando seu propósito e sua situação recorrente organizam a ação comunicativa, independentemente de ser texto ou diagrama.",
       "ambiguityRisk": "Sem declarar a linhagem socioretórica, Gênero discursivo pode ser misturado a gênero comunicativo, gênero textual, classe de produto ou mídia, produzindo categorias de pesquisa incomparáveis.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Gênero comunicativo”: pertence a uma tradição que precisa ser qualificada; não foi usado como sinônimo automático da linhagem socioretórica adotada para Gênero discursivo.",
         "“Gênero textual”: pertence a outra linhagem e a critérios teóricos que precisariam ser explicitados; não é adotado como sinônimo automático de Gênero discursivo."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "discourse-segment",
@@ -3537,7 +3319,6 @@
       "technicalSymbol": "discourse_segment",
       "definition": "Trecho delimitado segundo critério declarado, como intenção discursiva, relação retórica, subtópico, proposição ou função informacional; não existe fronteira universal independente do método.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "research",
@@ -3553,7 +3334,6 @@
           "ref": "https://doi.org/10.5209/clac.96949"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "parágrafo",
         "conceito",
@@ -3566,11 +3346,11 @@
       "araLearnExample": "Uma explicação longa pode ser dividida em Segmentos discursivos coerentes sem presumir que cada segmento seja um parágrafo ou conceito.",
       "ambiguityRisk": "Sem esta delimitação, “Segmento discursivo” pode ser confundido com parágrafo, conceito, unidade de estudo, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Unidade discursiva”: sugere uma fronteira natural e estável, incompatível com a exigência de declarar o critério de segmentação.",
         "“Segmento semântico”: restringe a delimitação ao sentido e exclui critérios retóricos, informacionais ou pragmáticos igualmente válidos."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "paragraph-unit",
@@ -3582,7 +3362,6 @@
       "technicalSymbol": "text_paragraph",
       "definition": "Unidade gráfica e textual que contribui para a organização do texto, mas cuja fronteira não garante unidade conceitual, retórica ou instrucional.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "research",
@@ -3594,7 +3373,6 @@
           "ref": "https://doi.org/10.5209/clac.96949"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "segmento semântico",
         "unidade de estudo",
@@ -3606,8 +3384,8 @@
       "araLearnExample": "Uma representação textual pode conter dois Parágrafos dentro da mesma Unidade de estudo quando a organização discursiva o exigir.",
       "ambiguityRisk": "Sem esta delimitação, “Parágrafo” pode ser confundido com segmento semântico, unidade de estudo, conceito, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
-      "alternativesRationale": "Parágrafo já é a unidade gráfico-textual estabelecida pela fonte adotada; segmento discursivo, conceito e unidade de estudo têm critérios de individuação diferentes, portanto não são nomes candidatos para o mesmo objeto."
+      "alternativesRationale": "Parágrafo já é a unidade gráfico-textual estabelecida pela fonte adotada; segmento discursivo, conceito e unidade de estudo têm critérios de individuação diferentes, portanto não são nomes candidatos para o mesmo objeto.",
+      "status": "vigente"
     },
     {
       "id": "conceptual-density",
@@ -3619,7 +3397,6 @@
       "technicalSymbol": "conceptual_density_measure",
       "definition": "Construto de pesquisa calculado a partir de unidades semânticas anotadas e de um denominador explícito, segundo esquema, versão e procedimento de validação declarados.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "research",
@@ -3636,7 +3413,6 @@
           "ref": "https://doi.org/10.1037/0003-066X.50.9.741"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "quantidade de caracteres",
         "complexidade textual",
@@ -3648,10 +3424,10 @@
       "araLearnExample": "A pesquisa define e mede quantas unidades conceituais relevantes aparecem em determinada extensão, em vez de usar “densidade” como impressão informal.",
       "ambiguityRisk": "Sem esta delimitação, “Densidade conceitual operacionalizada” pode ser confundido com quantidade de caracteres, complexidade textual, carga cognitiva, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, research, database, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Contagem de conceitos”: fornece apenas o numerador; Densidade conceitual operacionalizada exige unidade semântica, denominador, esquema e validação declarados."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "editorial-extent",
@@ -3662,9 +3438,8 @@
       ],
       "productTerm": "Extensão editorial",
       "technicalSymbol": "editorial_extent",
-      "definition": "Contagem observável de caracteres, palavras, linhas, altura, duração ou payload usada para ergonomia, edição ou limites técnicos, sem inferência pedagógica automática.",
+      "definition": "Contagem observável de caracteres, palavras, linhas, altura, duração ou volume de dados usada para ergonomia, edição ou limites técnicos, sem inferência pedagógica automática.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "code",
@@ -3677,7 +3452,6 @@
           "ref": "https://doi.org/10.1080/01449290410001715714"
         }
       ],
-      "cutoverIssue": "#122",
       "notSynonyms": [
         "densidade conceitual",
         "dificuldade",
@@ -3690,10 +3464,10 @@
       "araLearnExample": "O AraLearn registra caracteres, palavras, duração ou dimensão visual como Extensão editorial, separada da densidade conceitual.",
       "ambiguityRisk": "Sem esta delimitação, “Extensão editorial” pode ser confundido com densidade conceitual, dificuldade, completude, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, code, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Limite de caracteres”: cobre uma única medida e ainda confunde o valor observado com a restrição aplicada; Extensão editorial admite outras unidades."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "representation-relation",
@@ -3706,7 +3480,6 @@
       "technicalSymbol": "representation_relation",
       "definition": "Relação semântica declarada entre representações, como complementaridade, especialização, redundância, exemplificação ou interferência potencial.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "mcp",
@@ -3723,7 +3496,6 @@
           "ref": "https://doi.org/10.1177/1470357205055928"
         }
       ],
-      "cutoverIssue": "#131",
       "notSynonyms": [
         "tipo MIME",
         "coocorrência",
@@ -3735,10 +3507,10 @@
       "araLearnExample": "Texto e diagrama de uma unidade podem ser complementares; a Relação entre representações explicita o vínculo sem declarar equivalência automática.",
       "ambiguityRisk": "Sem esta delimitação, “Relação entre representações” pode ser confundido com tipo MIME, coocorrência, equivalência automática, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, mcp, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Multimodalidade”: descreve combinação de modos em sentido amplo, mas não substitui a relação semântica explícita entre representações específicas."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "representation-transformation",
@@ -3751,7 +3523,6 @@
       "technicalSymbol": "representation_transformation",
       "definition": "Mapeamento documentado entre representação de origem e destino com registro do conteúdo preservado, acrescentado, omitido ou reinterpretado.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "mcp",
@@ -3768,7 +3539,6 @@
           "ref": "https://www.w3.org/TR/prov-dm/"
         }
       ],
-      "cutoverIssue": "#131",
       "notSynonyms": [
         "tradução sem perda",
         "conversão de arquivo",
@@ -3780,10 +3550,10 @@
       "araLearnExample": "Ao converter uma explicação verbal em diagrama, a Transformação entre representações registra escolhas e perdas possíveis.",
       "ambiguityRisk": "Sem esta delimitação, “Transformação entre representações” pode ser confundido com tradução sem perda, conversão de arquivo, redundância, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, mcp, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Tradução”: pode prometer equivalência entre origem e destino; Transformação exige registrar conteúdo preservado, acrescentado, omitido ou reinterpretado."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "vertical-inspection-sequence",
@@ -3795,7 +3565,6 @@
       "technicalSymbol": "vertical_inspection_sequence",
       "definition": "Fluxo finito e curricularmente ordenado para percorrer unidades de estudo na Autoria, com posição, hierarquia, retomada e marcos explícitos.",
       "decision": "manter",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -3804,14 +3573,13 @@
       "sources": [
         {
           "status": "hipotese-produto",
-          "ref": "#121"
+          "ref": "docs/sistema-visual.md"
         },
         {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.1007/s11145-022-10328-9"
         }
       ],
-      "cutoverIssue": "#121",
       "notSynonyms": [
         "feed",
         "rolagem infinita",
@@ -3823,11 +3591,11 @@
       "araLearnExample": "Na Autoria móvel, uma Sequência vertical de inspeção permite percorrer unidade por unidade e abrir detalhes somente quando necessário.",
       "ambiguityRisk": "Sem esta delimitação, “Sequência vertical de inspeção” pode ser confundido com feed, rolagem infinita, evidência de compreensão, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Roteiro de inspeção”: expressa ordem orientada, mas não registra a disposição vertical nem a navegação rápida entre unidades materializadas.",
         "“Fila de inspeção”: remete a processamento de trabalho e não à sequência curricular renderizada para exame humano."
-      ]
+      ],
+      "status": "vigente"
     },
     {
       "id": "social-feed",
@@ -3839,7 +3607,6 @@
       "technicalSymbol": "social_content_feed",
       "definition": "Fluxo digital continuamente abastecido, usado aqui apenas como antecedente comparativo; não descreve a sequência curricular finita do AraLearn.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "research",
         "documentation"
@@ -3847,14 +3614,13 @@
       "sources": [
         {
           "status": "evidencia-historica",
-          "ref": "#116"
+          "ref": "docs/vocabulario-controlado.md"
         },
         {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.1145/3491102.3501899"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "sequência vertical de inspeção",
         "curso",
@@ -3866,8 +3632,8 @@
       "araLearnExample": "O feed do X serve como comparação histórica de rolagem e segmentação, mas não como modelo pedagógico ou evidência de eficácia.",
       "ambiguityRisk": "Sem esta delimitação, “Feed social” pode ser confundido com sequência vertical de inspeção, curso, navegação curricular, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
-      "alternativesRationale": "Feed social é mantido apenas como antecedente comparativo reconhecível e não vira entidade do produto; curso, navegação e sequência de inspeção designam objetos funcionalmente diferentes."
+      "alternativesRationale": "Feed social é mantido apenas como antecedente comparativo reconhecível e não vira entidade do produto; curso, navegação e sequência de inspeção designam objetos funcionalmente diferentes.",
+      "status": "vigente"
     },
     {
       "id": "epistemic-action",
@@ -3879,7 +3645,6 @@
       "technicalSymbol": "epistemic_action",
       "definition": "Ação externa realizada para revelar informação ou simplificar o trabalho cognitivo, usada somente quando essa função tiver sido demonstrada na tarefa.",
       "decision": "restringir",
-      "cutoverStatus": "sem-corte",
       "layers": [
         "domain",
         "research",
@@ -3891,7 +3656,6 @@
           "ref": "https://doi.org/10.1207/s15516709cog1804_1"
         }
       ],
-      "cutoverIssue": "#116",
       "notSynonyms": [
         "toque",
         "swipe",
@@ -3904,8 +3668,8 @@
       "araLearnExample": "Anotar uma contradição para facilitar o raciocínio pode ser modelado como Ação epistêmica quando a análise distingue ação observável e processo mental.",
       "ambiguityRisk": "Sem esta delimitação, “Ação epistêmica” pode ser confundido com toque, swipe, operação-alvo da tarefa, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, research, documentation devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
-      "alternativesRationale": "Ação epistêmica é a tradução direta do construto de Kirsh e Maglio adotado; gesto, interação genérica e operação-alvo da tarefa mudariam o nível de análise e o próprio construto."
+      "alternativesRationale": "Ação epistêmica é a tradução direta do construto de Kirsh e Maglio adotado; gesto, interação genérica e operação-alvo da tarefa mudariam o nível de análise e o próprio construto.",
+      "status": "vigente"
     }
   ]
 }

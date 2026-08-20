@@ -1,5 +1,3 @@
-import { parseNetworkOriginList } from "../config/networkOrigins.js";
-
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "10.0.2.2"]);
 export const ANDROID_AUTH_REDIRECT_URL = "aralearn://auth/callback";
 
@@ -55,10 +53,6 @@ export function readSupabaseRuntimeConfig(source = globalThis.__ARALEARN_ENV__ |
   return Object.freeze({
     projectUrl,
     publishableKey,
-    assistAllowedOrigins: Object.freeze(parseNetworkOriginList(
-      source.assistAllowedOrigins || [],
-      { allowLocalHttp: source.developmentRuntime === true || source.androidRuntime === true }
-    )),
     configured: !!projectUrl && !!publishableKey
   });
 }
@@ -81,9 +75,7 @@ export function buildAuthRedirectUrl(
     text(locationValue.search).replace(/^\?/u, "")
   );
   const redirect = new URL(`${locationValue.origin}${locationValue.pathname}`);
-  for (const parameter of ["authorization_id", "action_authorization_id"]) {
-    const value = text(authorizationParameters.get(parameter));
-    if (value) redirect.searchParams.set(parameter, value);
-  }
+  const authorizationId = text(authorizationParameters.get("authorization_id"));
+  if (authorizationId) redirect.searchParams.set("authorization_id", authorizationId);
   return redirect.toString();
 }

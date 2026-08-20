@@ -9,6 +9,8 @@ import { toolErrorData } from "./toolErrorEnvelope.js";
 
 const BODY_LIMIT = 512 * 1024;
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
+const ACCOUNT_DELETION_ACTION = "excluirMinhaConta";
+const ACCOUNT_DELETION_CONFIRMATION = "EXCLUIR MINHA CONTA";
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -102,28 +104,54 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
         }, { ...cors, Allow: "POST, OPTIONS" });
       }
       const actionName = actionNameFromPath(new URL(request.url).pathname);
-      if (!authoringApplicationToolDefinition(actionName)) {
+      const accountDeletion = actionName === ACCOUNT_DELETION_ACTION;
+      if (!accountDeletion && !authoringApplicationToolDefinition(actionName)) {
         throw new AuthoringApiError(404, "unknown_action", "Operação de Curso inexistente.");
       }
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = Date.now() + 40_000;
-      const principal = await adapter.resolveApplicationPrincipal(
-        authentication.credential,
-        { deadlineAt }
-      );
-      if (!authoringApplicationToolIsAllowed(actionName, principal)) {
-        throw new AuthoringApiError(403, "insufficient_scope", "A sessão não permite esta operação.");
+      let result;
+      if (accountDeletion) {
+        const rawArguments = await readBody(request);
+        if (Object.keys(rawArguments).length !== 1 ||
+            rawArguments.confirmation !== ACCOUNT_DELETION_CONFIRMATION) {
+          throw new AuthoringApiError(
+            422,
+            "invalid_account_deletion",
+            "A confirmação de exclusão da conta é inválida."
+          );
+        }
+        result = {
+          requestId: null,
+          data: await adapter.deleteMyAccount({
+            accessToken: authentication.credential,
+            confirmation: rawArguments.confirmation,
+            deadlineAt
+          })
+        };
+      } else {
+        const principal = await adapter.resolveApplicationPrincipal(
+          authentication.credential,
+          { deadlineAt }
+        );
+        if (!authoringApplicationToolIsAllowed(actionName, principal)) {
+          throw new AuthoringApiError(
+            403,
+            "insufficient_scope",
+            "A sessão não permite esta operação."
+          );
+        }
+        const rawArguments = await readBody(request);
+        requestId = rawArguments.requestId ?? null;
+        result = await executeCourseTool({
+          adapter,
+          principal,
+          name: actionName,
+          rawArguments,
+          deadlineAt,
+          surface: "application"
+        });
       }
-      const rawArguments = await readBody(request);
-      requestId = rawArguments.requestId ?? null;
-      const result = await executeCourseTool({
-        adapter,
-        principal,
-        name: actionName,
-        rawArguments,
-        deadlineAt,
-        surface: "application"
-      });
       const payload = { ok: true, requestId: result.requestId, data: result.data ?? null };
       if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > RESPONSE_LIMIT) {
         throw new AuthoringApiError(413, "response_too_large", "Leia uma parcela menor do Curso.");

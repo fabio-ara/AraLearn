@@ -1,169 +1,152 @@
 # Guia do estudante
 
-Este guia ensina o percurso de Estudo implementado no código corrente. O Curso
-pode pertencer à própria pessoa ou ter sido compartilhado diretamente pelo
-proprietário; a experiência de estudo é a mesma nos dois casos.
+Este guia apresenta o percurso de Estudo. Um Curso pode pertencer à própria
+pessoa ou ter sido compartilhado diretamente pelo proprietário; as ações de
+estudo são as mesmas nos dois casos.
 
 ## Compreender a tela inicial
 
-A Home de **Estudo** mostra diretamente os Cursos acessíveis. Cada cartão
-apresenta:
+A tela inicial de **Estudo** mostra os Cursos acessíveis. Cada item apresenta
+título, objetivo, progresso, quantidade de Módulos e Lições e um ícone que
+distingue Curso próprio de Curso compartilhado.
 
-- título e objetivo;
-- progresso em Unidades concluídas;
-- quantidade de Módulos e Lições;
-- um ícone que distingue Curso próprio de Curso compartilhado;
-- o botão de abrir.
+Essa lista usa uma descrição resumida. A composição completa é carregada quando
+o Curso é aberto. Por isso, a primeira abertura de um Curso requer conexão mesmo
+quando seu título já aparece.
 
-A lista começa por descritores pequenos. A composição completa de um Curso é
-carregada quando ele é aberto. Por isso, um Curso novo pode exigir conexão na
-primeira abertura mesmo que a Home já mostre seu nome.
+A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
+pessoa. O acesso à **Autoria** leva à atividade autoral. Cursos compartilhados
+ficam somente em Estudo porque a concessão permite praticar, mas mantém a edição
+com o proprietário.
 
-Acima da lista pode aparecer **Rever**, com as Unidades marcadas. O botão de
-Autoria leva à atividade autoral, mas Cursos compartilhados não aparecem lá:
-acesso direto concede Estudo, não edição.
-
-## Preparar o dispositivo
+## Preparar o dispositivo para estudar sem conexão
 
 1. Entre na conta correta.
-2. Com conexão disponível, abra cada Curso que pretende usar offline.
-3. Aguarde o conteúdo aparecer antes de sair da rede.
-4. Abra **Conta e aparência** para escolher tema, conferir o perfil ou sair.
+2. Com conexão disponível, abra cada Curso que pretende usar sem rede.
+3. Aguarde a composição aparecer.
+4. Volte à tela inicial e confirme que o Curso continua acessível.
 
-O AraLearn mantém no IndexedDB a lista conhecida, os Cursos abertos e o estado
-pessoal. Limpar dados do navegador, reinstalar o aplicativo ou excluir o
-armazenamento do site pode remover a réplica ainda não sincronizada.
+O AraLearn mantém no banco local do dispositivo a lista conhecida, os Cursos
+abertos e o estado pessoal. Limpar os dados do navegador, reinstalar o
+aplicativo ou apagar o armazenamento do site pode eliminar alterações que ainda
+aguardavam sincronização.
 
-## Iniciar ou retomar uma sessão de estudo
+## Iniciar ou retomar uma sessão
 
-1. Na Home, escolha **Abrir Curso**.
+1. Na tela inicial, escolha **Abrir Curso**.
 2. Abra um Módulo.
 3. Abra uma Lição.
 4. Abra uma Microssequência didática.
 5. Examine a lista de Unidades ou comece pela primeira.
 
-Os cartões de navegação mostram progresso em cada nível. Dentro da Unidade, a
-barra superior informa o contexto, a barra fina mostra a posição na
-Microssequência e a contagem indica a Unidade corrente.
+Os itens de navegação mostram o progresso de cada nível. Dentro de uma
+Unidade, a barra superior informa o contexto e a posição na Microssequência.
 
-Ao avançar, a Unidade é marcada como concluída. O cursor da Lição permite
-retomar o ponto alcançado. Se a conexão estiver ausente, a alteração fica
-pendente e é enviada quando possível.
+Ao avançar, a Unidade é marcada como concluída. O ponto alcançado permite
+retomar a Lição depois. Sem conexão, a mudança fica no dispositivo e é enviada
+quando a rede retorna.
 
 ## Responder a uma prática
 
-A forma de resposta depende do componente didático. O runtime corrente inclui,
-entre outras, seleção de alternativa, preenchimento de lacuna e ordenação.
+A forma de resposta depende do componente didático. Entre as possibilidades
+estão selecionar alternativas, preencher lacunas, digitar e ordenar trechos.
 
 1. Leia a explicação e a tarefa inteira.
-2. Informe a resposta no próprio componente.
+2. Responda no próprio componente.
 3. Use **Continuar**.
-4. Se a resposta estiver incompleta, complete os campos indicados.
-5. Quando houver feedback, leia-o e use **Continuar** novamente.
+4. Complete os campos indicados caso a resposta esteja incompleta.
+5. Leia o retorno apresentado e use **Continuar** para avançar.
 
-Uma resposta incorreta não produz nota global nem bloqueio do Curso. A
-interface oferece nova tentativa ou exibição da resposta quando o contrato do
-componente prevê essas ações.
+Uma resposta incorreta pode permitir um novo envio ou exibir a resposta,
+conforme o componente. O AraLearn não converte essa interação em nota global,
+classificação entre estudantes ou bloqueio do Curso.
 
-## Consultar as fontes de uma Unidade
+## Consultar as Fontes de uma Unidade
 
-Na Unidade, use o ícone **Fontes**. A consulta acontece somente quando o painel
-é aberto; o Curso não baixa o catálogo privado junto com o conteúdo.
+Use o ícone **Fontes** dentro da Unidade. A consulta ocorre quando o painel é
+aberto; o catálogo privado do Curso não acompanha o conteúdo de Estudo.
 
-O painel pode mostrar título, citação, edição ou versão, localização exata e,
-quando autorizado, o link externo. Há três regras de privacidade:
+O painel pode apresentar título, citação, edição ou versão, localização exata e
+endereço externo. A visibilidade definida pela pessoa autora controla o que é
+mostrado:
 
-- uma Fonte configurada como **Oculta** não aparece;
-- uma referência legada ainda não resolvida não aparece;
-- uma Fonte configurada como **Citação** mostra a identificação, mas não o
-  link; somente **Citação e link** entrega a URL.
+- **Não mostrar no Estudo** mantém a Fonte restrita à Autoria;
+- **Mostrar citação** apresenta a identificação e a localização;
+- **Mostrar citação e link** também pode apresentar o endereço externo.
 
-O Estudo recebe apenas essa projeção redigida. Trecho de verificação privado,
-histórico de revisões, identidade de quem editou e controles para alterar ou
-retirar Fontes permanecem na Autoria. Fechar e reabrir o painel na mesma
-Unidade pode reutilizar a leitura corrente; perder acesso ao Curso limpa os
-dados locais relacionados.
+Uma referência anterior ainda pendente de comprovação também fica restrita à
+Autoria. O Estudo não recebe trecho privado de verificação, histórico de
+revisões, identidade de quem editou nem controles de manutenção da Fonte.
 
 ## Marcar para rever
 
-Na Unidade, use o ícone **Marcar para rever**. O estado pressionado indica que a
-marca está ativa.
+Na Unidade, use **Marcar para rever**. O estado pressionado do ícone indica que
+a marca está ativa.
 
-As Unidades marcadas aparecem na seção **Rever** da Home. Cada item conserva o
-caminho exato até Curso, Módulo, Lição, Microssequência e Unidade. Abrir o item
-carrega o Curso se necessário e leva diretamente ao alvo. Toque novamente no
-ícone para retirar a marca.
+As Unidades marcadas aparecem em **Rever**, na tela inicial. Cada item conserva
+o caminho até Curso, Módulo, Lição, Microssequência e Unidade. Ao abri-lo, o
+aplicativo carrega o Curso, se necessário, e leva ao alvo. Use o mesmo ícone
+novamente para retirar a marca.
 
-Marcar para rever é uma decisão pessoal. Ela não altera o conteúdo e não é
-visível como marca de outra pessoa.
+A marca pertence à pessoa e não altera o conteúdo do Curso.
 
 ## Registrar uma observação
 
-Use o ícone **Observação** na Unidade. Escolha uma categoria:
+1. Use **Observação** dentro da Unidade.
+2. Escolha **Dúvida**, **Possível erro**, **Trecho confuso**, **Sugestão** ou
+   **Sem categoria**.
+3. Escreva a observação e salve.
 
-- Dúvida;
-- Possível erro;
-- Trecho confuso;
-- Sugestão;
-- Sem categoria.
+O texto aceita até 2.000 caracteres Unicode, observado o limite técnico de
+16 KiB. É possível criar várias observações próprias na mesma Unidade. A folha
+mostra categoria, estado, sincronização e eventual resposta do proprietário;
+abra um item para editar ou retirar.
 
-Escreva até 2.000 escalares Unicode, respeitando também o limite de 16 KiB em
-UTF-8, e salve. É possível criar várias observações próprias na mesma Unidade.
-A folha mostra categoria, estado, sincronização e eventual resposta do
-proprietário; abra um item para revisar ou retirar.
-
-A observação fica ancorada à Unidade, mas não faz parte do estado pessoal v2,
-que contém somente progresso e **Rever**. Ela usa persistência e fila próprias,
-e o proprietário pode recebê-la na caixa de entrada da Autoria. Colegas nunca
-veem as anotações uns dos outros. Salvar, receber resposta ou chegar ao estado
-**Resolvida** não significa que o conteúdo foi corrigido ou verificado.
+Uma observação fica ligada à Unidade e usa persistência própria. Ela pode chegar
+à caixa de entrada do proprietário, enquanto colegas veem somente os registros
+que eles mesmos criaram. Uma resposta ou o estado **Resolvida** descreve a
+triagem da observação; uma correção do conteúdo exige o ciclo próprio de
+auditoria e verificação.
 
 ## Interromper com segurança
 
-É seguro voltar pelos níveis ou fechar o aplicativo depois que a ação aparece
-na interface. Sem conexão, o estado pode continuar pendente no dispositivo.
-Evite limpar dados, trocar de navegador ou desinstalar antes de reconectar se
-houver progresso, marcas ou comandos de observação recentes importantes.
+Depois que uma ação aparece na interface, é possível voltar pelos níveis ou
+fechar o aplicativo. Se estiver sem conexão, a sincronização pode continuar
+pendente no dispositivo. Preserve os dados do aplicativo e volte a conectá-lo
+antes de trocar de navegador ou desinstalar quando houver alterações recentes
+importantes.
 
-Conflitos entre dois dispositivos são resolvidos pelo repositório de estado
-pessoal com revisão remota e reconciliação determinística. Se o Curso deixar de
-estar acessível, a sincronização falha fechada em vez de continuar escrevendo
-sem autorização.
+Ao estudar em dois dispositivos, cada um compara sua versão com a versão remota
+e reconcilia as operações pendentes. Se o acesso ao Curso for revogado, o
+servidor recusa novas leituras e alterações; na próxima validação conectada, o
+aplicativo remove a cópia privada daquele Curso.
 
 ## Zerar o progresso de um Curso
 
-Quando um Curso possui progresso, a Home mostra **Zerar progresso do Curso**.
-Essa ação:
+Quando há progresso, o item do Curso oferece **Zerar progresso do Curso**. A
+confirmação inclui o título para evitar engano. Essa ação limpa somente o
+progresso do Curso escolhido. O Curso, as marcas **Rever**, as Anotações
+ancoradas e os dados dos demais Cursos permanecem.
 
-1. pede confirmação com o título do Curso;
-2. limpa somente o progresso daquele Curso;
-3. não remove o Curso;
-4. não apaga progresso de outros Cursos;
-5. não altera o conteúdo canônico.
+Também há reinícios delimitados dentro do percurso. O rótulo da confirmação
+informa se o alcance começa em um Módulo, Lição, Microssequência ou Unidade.
 
-Marcas e Anotações ancoradas são registros distintos; não presuma que “zerar
-progresso” seja uma exclusão geral dos dados pessoais.
+## Quando solicitar uma alteração
 
-## Quando editar
+Estudo preserva título, estrutura e conteúdo do Curso. Se o Curso for seu, abra
+**Autoria** para examiná-lo. Se for compartilhado, registre uma observação
+situada e use os canais definidos pelo proprietário para conversar sobre uma
+alteração.
 
-Estudo não altera título, estrutura ou conteúdo do Curso. Se o Curso for seu,
-abra **Autoria** para inspecionar ou editar. Se for compartilhado, registre uma
-observação situada e converse com o proprietário pelos canais disponíveis.
+## Como interpretar o estado de estudo
 
-## Limites do estado de estudo
+O estado pessoal conserva posição, conclusões e marcas necessárias à
+continuidade. As Anotações ancoradas conservam o texto declarado e o contexto da
+triagem. Esses registros descrevem ações no produto; isoladamente, não permitem
+concluir atenção, engajamento, domínio, aprendizagem ou desempenho comparável
+entre pessoas.
 
-O estado pessoal conserva o necessário para continuidade: progresso, cursor e
-marcas. As Anotações ancoradas conservam apenas o que foi declarado e o contexto
-operacional da triagem. Nenhum desses registros deve ser tratado
-automaticamente como:
-
-- atenção;
-- engajamento;
-- domínio do conteúdo;
-- resultado de aprendizagem;
-- desempenho comparável entre pessoas.
-
-Qualquer uso em pesquisa precisa definir construto, unidade de análise,
-instrumento, procedimento, ausências e limites de interpretação. Veja
-[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) e o
-[glossário de construtos](glossario-construtos.md).
+Qualquer uso em pesquisa precisa definir o construto, a unidade de análise, o
+instrumento, o procedimento, os dados ausentes e os limites de interpretação.
+Veja [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) e o
+[Glossário de construtos](glossario-construtos.md).

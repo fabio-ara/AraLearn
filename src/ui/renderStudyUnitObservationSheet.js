@@ -77,10 +77,8 @@ function categoryLabel(value) {
 
 function renderItem(item, { saving, editingId, showContributor }) {
   const withdrawn = item.state === "withdrawn";
-  const canRevise = !withdrawn && item.capabilities?.canRevise === true &&
-    item.migrationPending !== true;
-  const canWithdraw = !withdrawn && item.capabilities?.canWithdraw === true &&
-    item.migrationPending !== true;
+  const canRevise = !withdrawn && item.capabilities?.canRevise === true;
+  const canWithdraw = !withdrawn && item.capabilities?.canWithdraw === true;
   const syncStatus = item.syncStatus || "synced";
   const selected = item.annotationId === editingId;
   return '<article class="study-observation-item' + (selected ? " is-editing" : "") +

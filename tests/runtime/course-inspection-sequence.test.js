@@ -8,6 +8,8 @@ import {
   inspectionRequestFromTarget,
   normalizeCourseInspectionPage
 } from "../../src/ui/CourseInspectionSequence.js";
+import { renderPackageStudyUnitBlocksWithDock } from
+  "../../src/render/renderPackageStudyUnit.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
@@ -337,6 +339,26 @@ test("pagina de 12 em 12 e conserva uma janela curricular de no máximo 36 artig
     assert.equal(options.maxBytes, 1_500_000);
     assert.deepEqual(options.scope, { kind: "course", id: null });
   });
+  sequence.destroy();
+});
+
+test("Inspeção incorpora sem tradução o mesmo renderer de Unidade usado no Estudo", async () => {
+  const root = new FakeRoot();
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture(),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+
+  const expected = renderPackageStudyUnitBlocksWithDock(studyUnit(1), {
+    omitRepeatedHeading: true,
+    blockKeyPrefix: "inspection:unit-01"
+  });
+  assert.notEqual(expected.bodyHtml, "");
+  assert.equal(root.innerHTML.includes(expected.bodyHtml), true);
   sequence.destroy();
 });
 
@@ -764,4 +786,256 @@ test("Inspeção recusa cursor repetido sem renderizar inbox parcial", async () 
   assert.match(root.innerHTML, /não avançou de forma válida/u);
   assert.doesNotMatch(root.innerHTML, /Observação da página 1\./u);
   sequence.destroy();
+});
+
+test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial", async () => {
+  const windowValue = new FakeWindow();
+  const documentValue = { activeElement: null };
+  const optionsPage = (options, totalCount = 60) => pageFor(options, totalCount);
+
+  const emptyRoot = new FakeRoot();
+  const empty = createCourseInspectionSequence({
+    root: emptyRoot,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        return optionsPage(options, 0);
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue,
+    documentValue
+  });
+  assert.equal(await empty.open(), true);
+  assert.match(emptyRoot.innerHTML, /Nenhuma Unidade de estudo materializada/u);
+  empty.destroy();
+
+  const offlineRoot = new FakeRoot();
+  const offline = createCourseInspectionSequence({
+    root: offlineRoot,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        return { ...optionsPage(options), offline: true, stale: true };
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue,
+    documentValue
+  });
+  assert.equal(await offline.open(), true);
+  assert.match(offlineRoot.innerHTML, /Sem conexão · exibindo Unidades de estudo salvas/u);
+  offline.destroy();
+
+  const failureRoot = new FakeRoot();
+  const failure = createCourseInspectionSequence({
+    root: failureRoot,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits() {
+        throw new TypeError("Failed to fetch");
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue,
+    documentValue
+  });
+  assert.equal(await failure.open(), false);
+  assert.match(failureRoot.innerHTML, /Inspeção indisponível/u);
+  assert.match(failureRoot.innerHTML, /Sem conexão para carregar este trecho/u);
+  failure.destroy();
+
+  const partialRoot = new FakeRoot();
+  let partialReads = 0;
+  const partial = createCourseInspectionSequence({
+    root: partialRoot,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        partialReads += 1;
+        if (partialReads > 1) throw new TypeError("Network failure");
+        return optionsPage(options);
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue,
+    documentValue
+  });
+  assert.equal(await partial.open(), true);
+  assert.equal(await partial.loadMore("forward"), false);
+  assert.equal((partialRoot.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 12);
+  assert.match(partialRoot.innerHTML, /Sem conexão para carregar este trecho/u);
+  assert.match(partialRoot.innerHTML, /Tentar novamente/u);
+  partial.destroy();
+});
+
+test("reconexão relê a página offline mesmo quando a revisão não mudou", async () => {
+  const root = new FakeRoot();
+  let online = false;
+  let reads = 0;
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        reads += 1;
+        return online ? pageFor(options) : { ...pageFor(options), offline: true, stale: true };
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+
+  assert.equal(await sequence.open(), true);
+  assert.match(root.innerHTML, /Sem conexão/u);
+  online = true;
+  assert.equal(await sequence.refresh(REVISION), true);
+  assert.equal(reads, 2);
+  assert.doesNotMatch(root.innerHTML, /Sem conexão/u);
+  sequence.destroy();
+});
+
+test("revisão nova cancela paginação antiga e mantém somente o trecho ancorado", async () => {
+  const root = new FakeRoot();
+  let releaseOldPage;
+  const oldPage = new Promise((resolve) => {
+    releaseOldPage = resolve;
+  });
+  const calls = [];
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        calls.push(structuredClone(options));
+        if (options.expectedRevision === REVISION && options.cursor) return oldPage;
+        return { ...pageFor(options), courseRevision: options.expectedRevision };
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+
+  assert.equal(await sequence.open(), true);
+  const loading = sequence.loadMore("forward");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(await sequence.refresh(REVISION + 1), true);
+  releaseOldPage(pageFor(calls[1]));
+  assert.equal(await loading, false);
+  assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
+  assert.equal(sequence.snapshot().itemCount, COURSE_INSPECTION_PAGE_SIZE);
+  assert.doesNotMatch(root.innerHTML, /O Curso mudou durante a leitura/u);
+  assert.equal(calls.at(-1).anchorStudyUnitId, "unit-01");
+  sequence.destroy();
+});
+
+test("troca de escopo salva a posição e preserva no histórico o deep link exato", async () => {
+  const root = new FakeRoot();
+  const events = [];
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        const page = pageFor(options);
+        page.items = page.items.map((item) => ({
+          ...item,
+          deepLink: `https://app.example/AraLearn/${item.deepLink}`
+        }));
+        return page;
+      },
+      async saveAuthoringInspectionPosition(_courseId, position) {
+        events.push(["save", structuredClone(position)]);
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    onNavigate(hash, options) {
+      events.push(["navigate", hash, structuredClone(options)]);
+    },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+
+  const microsequenceRoute = `#/authoring/courses/${COURSE_ID}` +
+    "?section=inspection&didacticMicrosequenceId=micro-a";
+  await root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-route]"
+          ? { getAttribute: () => microsequenceRoute }
+          : null;
+      }
+    }
+  });
+
+  assert.deepEqual(events.map(([kind]) => kind), ["save", "navigate"]);
+  assert.equal(events[0][1].studyUnitId, "unit-01");
+  assert.deepEqual(events[1], [
+    "navigate",
+    microsequenceRoute,
+    { returnTo: inspectionItem(1).deepLink }
+  ]);
+  sequence.destroy();
+});
+
+test("teclado fecha menus, clique externo os recolhe e reduced motion evita animação", async () => {
+  const root = new FakeRoot();
+  const summary = { focused: false, focus() { this.focused = true; } };
+  const menu = {
+    open: true,
+    querySelector(selector) { return selector === "summary" ? summary : null; }
+  };
+  const unitTwo = {
+    scroll: null,
+    scrollIntoView(value) { this.scroll = value; }
+  };
+  root.querySelectorAll = (selector) => selector.includes("details.course-inspection")
+    ? [menu]
+    : [];
+  root.querySelector = (selector) => selector.includes('data-inspection-study-unit="unit-02"')
+    ? unitTwo
+    : null;
+  const documentListeners = new Map();
+  const documentValue = {
+    activeElement: { closest: () => menu },
+    addEventListener(type, listener) { documentListeners.set(type, listener); },
+    removeEventListener(type, listener) {
+      if (documentListeners.get(type) === listener) documentListeners.delete(type);
+    }
+  };
+  const windowValue = new FakeWindow();
+  windowValue.matchMedia = () => ({ matches: true });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture(),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue,
+    documentValue
+  });
+  await sequence.open();
+
+  let prevented = false;
+  root.listeners.get("keydown")({
+    key: "Escape",
+    preventDefault() { prevented = true; },
+    stopPropagation() {}
+  });
+  assert.equal(menu.open, false);
+  assert.equal(summary.focused, true);
+  assert.equal(prevented, true);
+
+  menu.open = true;
+  documentListeners.get("pointerdown")({ target: { closest: () => null } });
+  assert.equal(menu.open, false);
+
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-action]"
+          ? { dataset: { inspectionAction: "next" } }
+          : null;
+      }
+    }
+  });
+  assert.deepEqual(unitTwo.scroll, { block: "start", behavior: "auto" });
+  assert.match(root.innerHTML, /aria-posinset="1" aria-setsize="60"/u);
+  sequence.destroy();
+  assert.equal(documentListeners.size, 0);
 });

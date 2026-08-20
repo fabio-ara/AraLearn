@@ -277,8 +277,7 @@ test("gap de escolha materializa somente dentro da entrada e permanece determin√
     content: [content],
     response,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
   const validation = validateStudyUnitEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
   assert.equal(validation.valid, true, validation.errors.join(" "));

@@ -1,6 +1,13 @@
 import { createUuid } from "../domain/identifiers.js";
+import {
+  normalizeCourseAnchoredAnnotationChange,
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseAnchoredAnnotationPage,
+  normalizeCourseAnchoredAnnotationReadOptions
+} from "../domain/courseAnchoredAnnotations.js";
 import { normalizeCourseSourceCommand } from "../domain/courseSources.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { downloadTextFile } from "./downloadTextFile.js";
 import {
   mergeCourseSourceCatalogPages,
   normalizeCourseSourceChange,
@@ -24,6 +31,21 @@ const SOURCE_VISIBILITIES = Object.freeze({
   citation: "Mostrar citação",
   citation_and_link: "Mostrar citação e link"
 });
+const SOURCE_ORIGINS = Object.freeze({
+  external: "Fonte externa",
+  author_provided: "Fornecida pela autoria",
+  imported_legacy: "Importada do acervo anterior"
+});
+const SOURCE_AVAILABILITIES = Object.freeze({
+  open_access: "Acesso aberto",
+  restricted: "Acesso restrito",
+  private: "Uso privado",
+  unknown: "Não informada"
+});
+const SOURCE_VERIFICATIONS = Object.freeze({
+  unverified: "Ainda não conferida",
+  author_verified: "Conferida pela autoria"
+});
 const SOURCE_STATUSES = Object.freeze({
   active: "Ativa",
   retired: "Aposentada",
@@ -39,7 +61,25 @@ const SOURCE_RELATIONS = Object.freeze({
   informed_by: "Informou a elaboração",
   supported_by: "Sustenta o conteúdo",
   adapted_from: "Conteúdo adaptado",
-  quoted_from: "Citação direta"
+  quoted_from: "Citação direta",
+  contrasted_with: "Contrasta com o conteúdo",
+  exemplified_by: "Exemplifica o conteúdo",
+  inspired_by: "Inspirou a elaboração",
+  needs_verification: "Precisa de verificação"
+});
+const SOURCE_OBSERVATION_KINDS = Object.freeze({
+  note: { label: "Acrescentar nota", category: null },
+  contestation: { label: "Contestar interpretação", category: "possible_error" },
+  reformulation: {
+    label: "Solicitar reformulação",
+    category: "reformulation_request"
+  }
+});
+const SOURCE_OBSERVATION_STATES = Object.freeze({
+  open: "Aberta",
+  considered: "Considerada",
+  resolved: "Resolvida",
+  withdrawn: "Retirada"
 });
 
 function escapeHtml(value) {
@@ -185,7 +225,96 @@ function renderNotice(state) {
     : "") + (state.pendingCommand
     ? '<button type="button" class="course-source-retry" data-source-action="retry-command">' +
       `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma operação</span></button>`
+    : state.pendingAnnotation?.sourceId === state.selectedSourceId
+      ? '<button type="button" class="course-source-retry" data-source-action="retry-annotation">' +
+        `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma observação</span></button>`
+    : state.pendingAttachment
+      ? '<button type="button" class="course-source-retry" data-source-action="retry-attachment">' +
+        `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar o mesmo PDF</span></button>`
     : "");
+}
+
+function sourceObservationTargetLabel(item, source) {
+  if (item.target.kind === "source") return "Fonte";
+  const anchor = source.anchors.find(({ anchorId }) => anchorId === item.target.id);
+  return anchor ? `Âncora · ${selectorLabel(anchor.selector)}` : `Âncora · ${item.target.id}`;
+}
+
+function sourceObservationCategoryLabel(category) {
+  if (category === "possible_error") return "Contestação";
+  if (category === "reformulation_request") return "Pedido de reformulação";
+  return category === null ? "Nota" : "Observação";
+}
+
+function renderConsideredSourceLinks(sourceLinks) {
+  if (!sourceLinks.length) return "";
+  return '<div class="course-source-observation-references"><strong>Fontes e Âncoras consideradas</strong><ul>' +
+    sourceLinks.map((link) => `<li>${escapeHtml(link.sourceId)} · fonte v${link.sourceRevision}` +
+      ` · ${link.anchors.map((anchor) => `${escapeHtml(anchor.anchorId)} v${anchor.anchorRevision}`).join(", ")}</li>`
+    ).join("") + "</ul></div>";
+}
+
+function renderSourceObservation(item, source) {
+  return '<article class="course-source-observation">' +
+    '<header><div>' +
+    `<strong>${escapeHtml(sourceObservationCategoryLabel(item.category))}</strong>` +
+    `<span>${escapeHtml(sourceObservationTargetLabel(item, source))} · ${escapeHtml(SOURCE_OBSERVATION_STATES[item.state] || item.state)}</span>` +
+    `</div><small>v${item.annotationVersion}</small></header>` +
+    `<p>${escapeHtml(item.rawText || "Observação retirada.")}</p>` +
+    (item.ownerResponse
+      ? '<div class="course-source-observation-response"><strong>' +
+        `${item.ownerResponse.kind === "reformulation" ? "Reformulação" : "Resposta"}</strong>` +
+        `<p>${escapeHtml(item.ownerResponse.text)}</p>` +
+        renderConsideredSourceLinks(item.ownerResponse.consideredSourceLinks) + "</div>"
+      : "") + "</article>";
+}
+
+function renderSourceObservationForm(state, source) {
+  if (source.status !== "active") return "";
+  const anchorOptions = source.anchors.filter(({ status }) => status === "active").map((anchor) =>
+    `<option value="${escapeHtml(anchor.anchorId)}">Âncora · ${escapeHtml(selectorLabel(anchor.selector))}</option>`
+  ).join("");
+  const kindOptions = Object.entries(SOURCE_OBSERVATION_KINDS).map(([value, entry]) =>
+    `<option value="${value}">${escapeHtml(entry.label)}</option>`
+  ).join("");
+  return '<form class="course-source-form course-source-observation-form" data-source-form="observation">' +
+    '<h4>Registrar observação</h4>' +
+    '<div class="course-source-form-grid"><div><label for="course-source-observation-kind">Intenção</label>' +
+    `<select id="course-source-observation-kind" name="observationKind" required>${kindOptions}</select></div>` +
+    '<div><label for="course-source-observation-target">Alvo</label>' +
+    '<select id="course-source-observation-target" name="targetId">' +
+    `<option value="">Fonte · ${escapeHtml(sourceTitle(source))}</option>${anchorOptions}</select></div></div>` +
+    '<label for="course-source-observation-text">Observação</label>' +
+    '<textarea id="course-source-observation-text" name="rawText" maxlength="2000" rows="4" required ' +
+    'placeholder="Registre a nota, a interpretação contestada ou o que precisa ser reformulado."></textarea>' +
+    '<div class="course-source-form-actions"><button type="submit"' +
+    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}<span>Registrar</span></button></div></form>`;
+}
+
+function renderSourceObservations(state, source) {
+  if (state.annotationsLoading && !state.annotations) {
+    return '<section class="course-source-observations"><h4>Observações</h4>' +
+      '<p class="course-authoring-loading" role="status">Carregando observações…</p></section>';
+  }
+  const items = state.annotations?.items || [];
+  return '<section class="course-source-observations"><header><div><h4>Observações</h4>' +
+    `<p>${items.length}${state.annotations?.hasMore ? "+" : ""} ` +
+    `${items.length === 1 ? "observação carregada" : "observações carregadas"}</p></div>` +
+    (!state.annotationsLoading && state.annotations && !state.annotations.hasMore
+      ? '<button type="button" data-source-action="export-observations">' +
+        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>Exportar</span></button>`
+      : "") + "</header>" +
+    (state.annotationsFailure
+      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.annotationsFailure)}</p>`
+      : "") +
+    renderSourceObservationForm(state, source) +
+    (items.length
+      ? `<div class="course-source-observation-list">${items.map((item) => renderSourceObservation(item, source)).join("")}</div>`
+      : '<p class="course-source-empty">Nenhuma nota, contestação ou solicitação registrada.</p>') +
+    (state.annotations?.hasMore
+      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-observations"${state.annotationsLoading ? " disabled" : ""}>` +
+        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>Carregar mais observações</span></button>`
+      : "") + "</section>";
 }
 
 function renderSourceForm(state) {
@@ -197,9 +326,16 @@ function renderSourceForm(state) {
     sourceId: source?.sourceId || "",
     kind: source?.kind === "other" && resolving ? "document" : source?.kind || "web_page",
     title: source?.title || "",
+    authorship: source?.authorship || "",
+    publicationDate: source?.publicationDate || "",
+    identifier: source?.identifier || "",
+    language: source?.language || "",
     citationText: source?.citationText || "",
     url: source?.url || "",
     editionOrVersion: source?.editionOrVersion || "",
+    origin: resolving ? "imported_legacy" : source?.origin || "author_provided",
+    availability: source?.availability || "unknown",
+    verificationStatus: source?.verificationStatus || "unverified",
     studyVisibility: resolving ? "hidden" : source?.studyVisibility || "citation"
   };
   const kindOptions = Object.entries(SOURCE_KINDS).map(([value, label]) =>
@@ -207,6 +343,15 @@ function renderSourceForm(state) {
   ).join("");
   const visibilityOptions = Object.entries(SOURCE_VISIBILITIES).map(([value, label]) =>
     `<option value="${value}"${values.studyVisibility === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+  ).join("");
+  const originOptions = Object.entries(SOURCE_ORIGINS).map(([value, label]) =>
+    `<option value="${value}"${values.origin === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+  ).join("");
+  const availabilityOptions = Object.entries(SOURCE_AVAILABILITIES).map(([value, label]) =>
+    `<option value="${value}"${values.availability === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+  ).join("");
+  const verificationOptions = Object.entries(SOURCE_VERIFICATIONS).map(([value, label]) =>
+    `<option value="${value}"${values.verificationStatus === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
   return '<form class="course-source-form" data-source-form="source">' +
     `<h3>${source ? resolving ? "Resolver fonte legada" : "Nova revisão da fonte" : "Nova fonte"}</h3>` +
@@ -217,6 +362,14 @@ function renderSourceForm(state) {
     `<select id="course-source-kind" name="kind" required>${kindOptions}</select>` +
     '<label for="course-source-title">Título</label>' +
     `<input id="course-source-title" name="title" maxlength="600" required value="${escapeHtml(values.title)}">` +
+    '<div class="course-source-form-grid"><div><label for="course-source-authorship">Autoria</label>' +
+    `<input id="course-source-authorship" name="authorship" maxlength="1000" value="${escapeHtml(values.authorship)}"></div>` +
+    '<div><label for="course-source-publication-date">Data de publicação</label>' +
+    `<input id="course-source-publication-date" name="publicationDate" maxlength="10" value="${escapeHtml(values.publicationDate)}" placeholder="AAAA, AAAA-MM ou AAAA-MM-DD"></div></div>` +
+    '<div class="course-source-form-grid"><div><label for="course-source-identifier">Identificador</label>' +
+    `<input id="course-source-identifier" name="identifier" maxlength="480" value="${escapeHtml(values.identifier)}" placeholder="DOI, ISBN ou outro identificador"></div>` +
+    '<div><label for="course-source-language">Idioma</label>' +
+    `<input id="course-source-language" name="language" maxlength="35" value="${escapeHtml(values.language)}" placeholder="pt-BR"></div></div>` +
     '<label for="course-source-citation">Citação legível</label>' +
     `<textarea id="course-source-citation" name="citationText" maxlength="4096" rows="3"` +
     ` placeholder="Autores, título, ano e publicação">${escapeHtml(values.citationText)}</textarea>` +
@@ -224,6 +377,12 @@ function renderSourceForm(state) {
     `<input id="course-source-url" name="url" type="url" maxlength="4096" value="${escapeHtml(values.url)}"` +
     ' placeholder="https://…"></div><div><label for="course-source-edition">Edição ou versão</label>' +
     `<input id="course-source-edition" name="editionOrVersion" maxlength="240" value="${escapeHtml(values.editionOrVersion)}"></div></div>` +
+    '<div class="course-source-form-grid"><div><label for="course-source-origin">Origem</label>' +
+    `<select id="course-source-origin" name="origin" required>${originOptions}</select></div>` +
+    '<div><label for="course-source-availability">Disponibilidade</label>' +
+    `<select id="course-source-availability" name="availability" required>${availabilityOptions}</select></div></div>` +
+    '<label for="course-source-verification">Verificação</label>' +
+    `<select id="course-source-verification" name="verificationStatus" required>${verificationOptions}</select>` +
     '<label for="course-source-visibility">Visibilidade no Estudo</label>' +
     `<select id="course-source-visibility" name="studyVisibility" required>${visibilityOptions}</select>` +
     '<p class="course-source-form-help">A autoria vê o registro completo. O Estudo recebe somente o que esta visibilidade permite.</p>' +
@@ -330,6 +489,33 @@ function renderAnchor(anchor, sourceRevision, state) {
       : "") + "</article>";
 }
 
+function byteSizeLabel(value) {
+  if (value < 1_024) return `${value} B`;
+  if (value < 1_024 * 1_024) return `${Math.ceil(value / 1_024)} KiB`;
+  return `${(value / (1_024 * 1_024)).toFixed(1).replace(".0", "")} MiB`;
+}
+
+function renderSourceAttachments(source, index, state) {
+  const attachments = Array.isArray(source.attachments) ? source.attachments : [];
+  const canUpload = index === 0 && source.status === "active" && attachments.length < 8;
+  return '<section class="course-source-attachments"><header><div><h4>PDFs desta revisão</h4>' +
+    `<p>${attachments.length} ${attachments.length === 1 ? "anexo" : "anexos"}</p></div>` +
+    (canUpload
+      ? '<label class="course-source-pdf-picker">' +
+        `${renderUiIcon("upload", "course-authoring-button-icon")}<span>${state.busy ? "Aguarde…" : "Enviar PDF"}</span>` +
+        `<input type="file" accept="application/pdf,.pdf" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
+        "</label>"
+      : "") + "</header>" +
+    (attachments.length
+      ? '<div class="course-source-attachment-list">' + attachments.map((attachment) =>
+        '<button type="button" data-source-action="download-attachment" ' +
+          `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
+          `${state.busy ? " disabled" : ""}>${renderUiIcon("arrow-down", "course-authoring-button-icon")}` +
+          `<span><strong>Baixar PDF</strong><small>${escapeHtml(byteSizeLabel(attachment.byteSize))} · ${escapeHtml(attachment.contentHash.slice(0, 12))}…</small></span></button>`
+      ).join("") + "</div>"
+      : '<p class="course-source-empty">Nenhum PDF anexado a esta revisão.</p>') + "</section>";
+}
+
 function renderSourceRevision(source, index, state) {
   const current = index === 0;
   const url = safeHttpUrl(source.url);
@@ -346,10 +532,18 @@ function renderSourceRevision(source, index, state) {
       ? '<p class="course-source-unresolved">Este identificador foi preservado da migração. Título, autoria, link e âncoras ainda não foram comprovados.</p>'
       : '<dl class="course-source-metadata">' +
         `<div><dt>Tipo</dt><dd>${escapeHtml(SOURCE_KINDS[source.kind] || "Não informado")}</dd></div>` +
+        `<div><dt>Autoria</dt><dd>${escapeHtml(source.authorship || "Não informada")}</dd></div>` +
+        `<div><dt>Publicação</dt><dd>${escapeHtml(source.publicationDate || "Não informada")}</dd></div>` +
+        `<div><dt>Identificador</dt><dd>${escapeHtml(source.identifier || "Não informado")}</dd></div>` +
+        `<div><dt>Idioma</dt><dd>${escapeHtml(source.language || "Não informado")}</dd></div>` +
         `<div><dt>Citação</dt><dd>${escapeHtml(source.citationText || "Não informada")}</dd></div>` +
         `<div><dt>Edição</dt><dd>${escapeHtml(source.editionOrVersion || "Não informada")}</dd></div>` +
+        `<div><dt>Origem</dt><dd>${escapeHtml(SOURCE_ORIGINS[source.origin])}</dd></div>` +
+        `<div><dt>Disponibilidade</dt><dd>${escapeHtml(SOURCE_AVAILABILITIES[source.availability])}</dd></div>` +
+        `<div><dt>Verificação</dt><dd>${escapeHtml(SOURCE_VERIFICATIONS[source.verificationStatus])}</dd></div>` +
         `<div><dt>Estudo</dt><dd>${escapeHtml(SOURCE_VISIBILITIES[source.studyVisibility])}</dd></div>` +
         `<div><dt>Link</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(source.url)}</a>` : escapeHtml(source.url || "Não informado")}</dd></div></dl>`) +
+    renderSourceAttachments(source, index, state) +
     `<section class="course-source-anchors"><header><div><h4>Âncoras desta revisão</h4><p>${source.anchors.length} carregadas</p></div>` +
     (current && source.status === "active"
       ? '<button type="button" data-source-action="add-anchor">' +
@@ -358,7 +552,8 @@ function renderSourceRevision(source, index, state) {
     (current ? renderAnchorForm(state) : "") +
     (source.anchors.length
       ? `<div class="course-source-anchor-list">${source.anchors.map((anchor) => renderAnchor(anchor, source.revision, state)).join("")}</div>`
-      : '<p class="course-source-empty">Nenhuma âncora nesta revisão.</p>') + "</section></article>";
+      : '<p class="course-source-empty">Nenhuma âncora nesta revisão.</p>') + "</section>" +
+    (current ? renderSourceObservations(state, source) : "") + "</article>";
 }
 
 function renderSourceDetail(state) {
@@ -421,9 +616,13 @@ function renderCatalog(state, { selectable = false } = {}) {
 
 function renderCatalogPanel(state) {
   if (state.selectedSourceId) return renderSourceDetail(state);
+  const pdfStorage = state.catalog?.pdfStorage;
+  const pdfStorageSummary = pdfStorage
+    ? ` · PDFs ${byteSizeLabel(pdfStorage.uniqueBytes)} de ${byteSizeLabel(pdfStorage.maxUniqueBytes)}`
+    : "";
   return '<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Fontes</h2>' +
-    `<p>${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} carregadas</p></div>` +
+    `<p>${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} carregadas${escapeHtml(pdfStorageSummary)}</p></div>` +
     '<button type="button" class="course-source-primary-action" data-source-action="add-source">' +
     `${renderUiIcon("add", "course-authoring-button-icon")}<span>Nova fonte</span></button></header>` +
     '<p class="course-source-intro">Identifique a obra uma vez, registre localizadores exatos e vincule somente o conjunto que sustenta cada item.</p>' +
@@ -471,7 +670,7 @@ function renderTargetLink(state, link, index) {
   );
   const relationOptions = [
     ...(link.relation === "legacy_reference"
-      ? ['<option value="legacy_reference" selected>Legado — escolha uma relação</option>']
+      ? ['<option value="legacy_reference" selected>Legado: escolha uma relação</option>']
       : []),
     ...Object.entries(SOURCE_RELATIONS).map(([value, label]) =>
       `<option value="${value}"${link.relation === value ? " selected" : ""}>${escapeHtml(label)}</option>`)
@@ -523,10 +722,71 @@ function renderTargetPanel(state) {
         ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.targetFailure)}</p>` +
           '<button type="button" data-source-action="retry-target">Tentar novamente</button>'
         : '<section class="course-source-selected"><h3>Conjunto atual</h3>' + selected +
+          '<div class="course-source-target-actions">' +
+          `<button type="button" class="course-source-export-target" data-source-action="export-target"${targetExportReady(state) && !state.busy ? "" : " disabled"}>` +
+          `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>Exportar proveniência</span></button>` +
           `<button type="button" class="course-source-save-target" data-source-action="save-target"${state.busy ? " disabled" : ""}>` +
-          `${renderUiIcon("save", "course-authoring-button-icon")}<span>Salvar conjunto completo</span></button></section>`) +
+          `${renderUiIcon("save", "course-authoring-button-icon")}<span>Salvar conjunto completo</span></button></div></section>`) +
     '<section class="course-source-available"><h3>Adicionar do catálogo</h3>' +
     renderCatalog(state, { selectable: true }) + "</section></section>";
+}
+
+function targetExportReady(state) {
+  if (!state.targetHistory || state.targetLoading || state.targetFailure ||
+      state.targetDetailsLoading.size ||
+      JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks)) {
+    return false;
+  }
+  return state.sourceLinks.every((link) => {
+    const source = sourceForLink(state, link);
+    return source && link.anchors.every(({ anchorId, anchorRevision }) =>
+      source.anchors.some((anchor) =>
+        anchor.anchorId === anchorId && anchor.revision === anchorRevision));
+  });
+}
+
+function recordWithoutActor(value) {
+  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "actorId"));
+}
+
+function buildTargetExport(state, exportedAt) {
+  if (!targetExportReady(state)) {
+    throw new TypeError("Salve e carregue a atribuição completa antes de exportar.");
+  }
+  const attribution = state.targetHistory.items.find(({ effective }) => effective) || null;
+  return {
+    contract: "aralearn.course-source-attribution-export.v1",
+    courseId: state.courseId,
+    courseRevision: state.courseRevision,
+    exportedAt,
+    target: {
+      kind: state.targetKind,
+      id: state.targetId,
+      version: state.targetVersion,
+      label: state.targetLabel || null,
+      attribution: attribution ? recordWithoutActor({
+        attributionId: attribution.attributionId,
+        revision: attribution.revision,
+        targetHash: attribution.targetHash,
+        createdAt: attribution.createdAt
+      }) : null
+    },
+    sources: state.sourceLinks.map((link) => {
+      const source = sourceForLink(state, link);
+      const { anchors, attachments, ...metadata } = source;
+      return {
+        sourceId: link.sourceId,
+        sourceRevision: link.sourceRevision,
+        relation: link.relation,
+        source: recordWithoutActor(metadata),
+        anchors: link.anchors.map(({ anchorId, anchorRevision }) => recordWithoutActor(
+          anchors.find((anchor) =>
+            anchor.anchorId === anchorId && anchor.revision === anchorRevision)
+        )),
+        attachments: attachments.map(recordWithoutActor)
+      };
+    })
+  };
 }
 
 export function renderCourseSourcesPanel(state = {}) {
@@ -537,7 +797,11 @@ function assertDependencies(root, controller, options) {
   if (!root || typeof root.addEventListener !== "function") {
     throw new TypeError("Raiz de Fontes inválida.");
   }
-  for (const method of ["loadCourseSources", "mutateCourseSources"]) {
+  const methods = ["loadCourseSources", "mutateCourseSources"];
+  if (options?.mode === "catalog") {
+    methods.push("loadCourseAnchoredAnnotations", "mutateCourseAnchoredAnnotations");
+  }
+  for (const method of methods) {
     if (typeof controller?.[method] !== "function") {
       throw new TypeError(`Controller de Cursos sem ${method}.`);
     }
@@ -572,6 +836,20 @@ export function createCourseSourcesPanel({
   initialSourceId = null,
   initialAnchorId = null,
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
+  downloadUrl = (url) => {
+    const anchor = globalThis.document?.createElement?.("a");
+    if (!anchor) throw new TypeError("O navegador não oferece download de arquivos.");
+    anchor.href = url;
+    anchor.download = "";
+    anchor.rel = "noreferrer";
+    anchor.click();
+  },
+  downloadJson = (value, filename) => downloadTextFile({
+    name: filename,
+    type: "application/json",
+    content: `${JSON.stringify(value, null, 2)}\n`
+  }),
+  now = () => new Date().toISOString(),
   onCourseRevisionChange = () => {},
   onTargetSaved = () => {},
   onClose = () => {}
@@ -581,6 +859,10 @@ export function createCourseSourcesPanel({
     initialSourceId, initialAnchorId
   };
   assertDependencies(root, controller, options);
+  if (typeof downloadUrl !== "function") throw new TypeError("Abertura de anexo inválida.");
+  if (typeof downloadJson !== "function" || typeof now !== "function") {
+    throw new TypeError("Exportação de proveniência inválida.");
+  }
   let epoch = 0;
   const state = {
     opened: false,
@@ -615,7 +897,12 @@ export function createCourseSourcesPanel({
     busy: false,
     message: "",
     failure: "",
-    pendingCommand: null
+    pendingCommand: null,
+    annotations: null,
+    annotationsLoading: false,
+    annotationsFailure: "",
+    pendingAnnotation: null,
+    pendingAttachment: null
   };
 
   function render() {
@@ -677,6 +964,76 @@ export function createCourseSourcesPanel({
     return Object.freeze({ ...incoming, items: Object.freeze(items) });
   }
 
+  function annotationQuery(sourceId) {
+    return {
+      mode: "target",
+      origins: [],
+      channels: [],
+      states: [],
+      categories: [],
+      includeUncategorized: true,
+      subjectIds: [],
+      hierarchy: {
+        target: { kind: "source", id: sourceId },
+        includeDescendants: true
+      },
+      annotationId: null
+    };
+  }
+
+  function mergeAnnotationPages(current, incoming) {
+    if (!current) return incoming;
+    if (current.courseId !== incoming.courseId ||
+        current.courseRevision !== incoming.courseRevision ||
+        current.annotationSetVersion !== incoming.annotationSetVersion ||
+        JSON.stringify(current.query) !== JSON.stringify(incoming.query)) {
+      throw new TypeError("A paginação das observações mudou durante a leitura.");
+    }
+    const items = [...current.items, ...incoming.items];
+    if (new Set(items.map(({ annotationId }) => annotationId)).size !== items.length) {
+      throw new TypeError("A paginação repetiu uma observação.");
+    }
+    return Object.freeze({ ...incoming, items: Object.freeze(items) });
+  }
+
+  async function loadAnnotations(sourceId, { cursor = null, append = false } = {}) {
+    const requestEpoch = epoch;
+    state.annotationsLoading = true;
+    state.annotationsFailure = "";
+    if (!append) state.annotations = null;
+    render();
+    try {
+      const options = normalizeCourseAnchoredAnnotationReadOptions({
+        expectedCourseRevision: state.courseRevision,
+        annotationSetVersion: append ? state.annotations?.annotationSetVersion ?? null : null,
+        query: annotationQuery(sourceId),
+        cursor,
+        limit: 24
+      });
+      const page = normalizeCourseAnchoredAnnotationPage(
+        await controller.loadCourseAnchoredAnnotations(state.courseId, options)
+      );
+      if (!state.opened || requestEpoch !== epoch || state.selectedSourceId !== sourceId) {
+        return false;
+      }
+      state.annotations = append
+        ? mergeAnnotationPages(state.annotations, page)
+        : page;
+      return true;
+    } catch (error) {
+      if (!state.opened || requestEpoch !== epoch || state.selectedSourceId !== sourceId) {
+        return false;
+      }
+      state.annotationsFailure = errorMessage(error);
+      return false;
+    } finally {
+      if (state.opened && requestEpoch === epoch && state.selectedSourceId === sourceId) {
+        state.annotationsLoading = false;
+        render();
+      }
+    }
+  }
+
   async function loadDetail(sourceId, {
     cursor = null,
     append = false,
@@ -732,7 +1089,10 @@ export function createCourseSourcesPanel({
           if (!contextualTarget) state.targetCurrentDetails.set(sourceId, page);
         }
       }
-      else state.detail = append ? mergeDetailPages(state.detail, page) : page;
+      else {
+        state.detail = append ? mergeDetailPages(state.detail, page) : page;
+        if (!append) await loadAnnotations(sourceId);
+      }
       return page;
     } catch (error) {
       if (!state.opened || requestEpoch !== epoch) return null;
@@ -937,6 +1297,98 @@ export function createCourseSourcesPanel({
     }
   }
 
+  async function uploadPdf(file, pending = null) {
+    if (state.busy) return false;
+    const source = state.detail?.items?.[0];
+    if (!source || source.status !== "active") {
+      state.failure = "A revisão ativa da Fonte não está disponível.";
+      render();
+      return false;
+    }
+    const operation = pending || {
+      requestId: createUuid(),
+      sourceId: source.sourceId,
+      sourceRevision: source.revision,
+      file
+    };
+    state.pendingAttachment = operation;
+    state.busy = true;
+    state.failure = "";
+    state.message = "Enviando e confirmando o PDF…";
+    render();
+    try {
+      if (typeof controller.uploadCourseSourcePdf !== "function") {
+        throw new TypeError("O envio de PDF não está disponível.");
+      }
+      const result = normalizeCourseSourceChange(await controller.uploadCourseSourcePdf({
+        requestId: operation.requestId,
+        courseId: state.courseId,
+        expectedCourseRevision: state.courseRevision,
+        sourceId: operation.sourceId,
+        sourceRevision: operation.sourceRevision,
+        file: operation.file
+      }), {
+        expectedCourseId: state.courseId,
+        expectedRequestId: operation.requestId
+      });
+      if (!state.opened) return false;
+      state.pendingAttachment = null;
+      await refreshAfterChange(result);
+      return true;
+    } catch (error) {
+      if (!state.opened) return false;
+      const ambiguous = !(error instanceof TypeError) && ambiguousWriteFailure(error);
+      if (!ambiguous) state.pendingAttachment = null;
+      state.message = "";
+      state.failure = ambiguous
+        ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
+        : errorMessage(error);
+      return false;
+    } finally {
+      if (state.opened) {
+        state.busy = false;
+        render();
+      }
+    }
+  }
+
+  async function downloadAttachment(sourceRevision, contentHash) {
+    if (state.busy) return false;
+    const source = state.detail?.items.find(({ revision }) => revision === sourceRevision);
+    const attachment = source?.attachments.find((item) => item.contentHash === contentHash);
+    if (!source || !attachment) return false;
+    state.busy = true;
+    state.failure = "";
+    state.message = "Preparando o download…";
+    render();
+    try {
+      if (typeof controller.getCourseSourceAttachmentDownload !== "function") {
+        throw new TypeError("O download de PDF não está disponível.");
+      }
+      const access = await controller.getCourseSourceAttachmentDownload({
+        courseId: state.courseId,
+        expectedCourseRevision: state.courseRevision,
+        sourceId: source.sourceId,
+        sourceRevision,
+        contentHash
+      });
+      if (!state.opened) return false;
+      downloadUrl(access.signedUrl, attachment);
+      state.message = "Download iniciado.";
+      return true;
+    } catch (error) {
+      if (!state.opened) return false;
+      state.message = "";
+      state.failure = errorMessage(error);
+      return false;
+    } finally {
+      if (state.opened) {
+        state.busy = false;
+        render();
+      }
+    }
+  }
+
   function selectorFromForm(form) {
     const kind = requiredFormValue(form, "selectorKind", "O tipo de âncora", 32);
     if (kind === "page_range") {
@@ -980,9 +1432,16 @@ export function createCourseSourcesPanel({
     const source = {
       kind: requiredFormValue(form, "kind", "O tipo", 32),
       title: requiredFormValue(form, "title", "O título", 300),
+      authorship: optionalFormValue(form, "authorship", "A autoria", 500),
+      publicationDate: optionalFormValue(form, "publicationDate", "A data de publicação", 10),
+      identifier: optionalFormValue(form, "identifier", "O identificador", 240),
+      language: optionalFormValue(form, "language", "O idioma", 35),
       citationText: optionalFormValue(form, "citationText", "A citação legível", 2_048),
       url,
       editionOrVersion: optionalFormValue(form, "editionOrVersion", "A edição ou versão", 120),
+      origin: requiredFormValue(form, "origin", "A origem", 32),
+      availability: requiredFormValue(form, "availability", "A disponibilidade", 32),
+      verificationStatus: requiredFormValue(form, "verificationStatus", "A verificação", 32),
       studyVisibility: requiredFormValue(form, "studyVisibility", "A visibilidade", 32)
     };
     if (source.studyVisibility !== "hidden" && !source.citationText) {
@@ -1016,6 +1475,103 @@ export function createCourseSourcesPanel({
       )
     };
     return runCommand(command, command);
+  }
+
+  async function runAnnotationCommand(command, draft) {
+    if (state.busy) return false;
+    const matches = state.pendingAnnotation &&
+      state.pendingAnnotation.sourceId === state.selectedSourceId &&
+      JSON.stringify(state.pendingAnnotation.draft) === JSON.stringify(draft);
+    if (!matches) state.pendingAnnotation = null;
+    let pending;
+    try {
+      pending = matches ? state.pendingAnnotation : {
+        requestId: createUuid(),
+        sourceId: state.selectedSourceId,
+        command: normalizeCourseAnchoredAnnotationCommand(command),
+        draft: structuredClone(draft)
+      };
+    } catch (error) {
+      state.message = "";
+      state.failure = errorMessage(error);
+      render();
+      return false;
+    }
+    state.pendingAnnotation = pending;
+    state.busy = true;
+    state.failure = "";
+    state.message = "Registrando observação…";
+    render();
+    try {
+      const result = normalizeCourseAnchoredAnnotationChange(
+        await controller.mutateCourseAnchoredAnnotations({
+          requestId: pending.requestId,
+          courseId: state.courseId,
+          expectedCourseRevision: state.courseRevision,
+          command: pending.command
+        })
+      );
+      if (!state.opened) return false;
+      if (result.courseId !== state.courseId || result.requestId !== pending.requestId ||
+          result.courseRevision !== state.courseRevision ||
+          result.annotation?.annotationId !== pending.command.annotationId) {
+        throw new TypeError("A confirmação da observação não corresponde ao pedido.");
+      }
+      state.pendingAnnotation = null;
+      state.message = result.idempotent
+        ? "A observação já estava registrada."
+        : "Observação registrada.";
+      state.failure = "";
+      if (state.selectedSourceId === pending.sourceId) {
+        await loadAnnotations(pending.sourceId);
+      }
+      return true;
+    } catch (error) {
+      if (!state.opened) return false;
+      if (!ambiguousWriteFailure(error)) state.pendingAnnotation = null;
+      state.message = "";
+      state.failure = ambiguousWriteFailure(error)
+        ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
+        : errorMessage(error);
+      return false;
+    } finally {
+      if (state.opened) {
+        state.busy = false;
+        render();
+      }
+    }
+  }
+
+  async function submitObservation(form) {
+    const source = state.detail?.items?.[0];
+    if (!source || source.status !== "active") {
+      throw new TypeError("A revisão ativa da Fonte não está disponível.");
+    }
+    const observationKind = requiredFormValue(
+      form,
+      "observationKind",
+      "A intenção da observação",
+      32
+    );
+    const observation = SOURCE_OBSERVATION_KINDS[observationKind];
+    if (!observation) throw new TypeError("A intenção da observação é inválida.");
+    const anchorId = optionalFormValue(form, "targetId", "A Âncora", 240) || "";
+    if (anchorId && !source.anchors.some((anchor) =>
+      anchor.anchorId === anchorId && anchor.status === "active")) {
+      throw new TypeError("A Âncora escolhida não está ativa nesta Fonte.");
+    }
+    const command = {
+      type: "create_anchored_annotation",
+      annotationId: createUuid(),
+      target: anchorId
+        ? { kind: "source_anchor", id: anchorId }
+        : { kind: "source", id: source.sourceId },
+      rawText: literalRequiredFormValue(form, "rawText", "A observação", 2_000),
+      category: observation.category,
+      capturedAt: now(),
+      briefSummary: null
+    };
+    return runAnnotationCommand(command, command);
   }
 
   function targetLinksValid() {
@@ -1056,11 +1612,22 @@ export function createCourseSourcesPanel({
         state.failure = errorMessage(error);
         render();
       });
+    } else if (event.target.matches?.('[data-source-form="observation"]')) {
+      event.preventDefault();
+      void submitObservation(event.target).catch((error) => {
+        state.failure = errorMessage(error);
+        render();
+      });
     }
   });
 
   root.addEventListener("change", (event) => {
     if (!state.opened) return;
+    if (event.target.matches?.("[data-source-pdf-input]")) {
+      const file = event.target.files?.[0] || null;
+      if (file) void uploadPdf(file);
+      return;
+    }
     if (event.target.matches?.("[data-source-anchor-kind]") && state.anchorEditor) {
       state.anchorEditor.draft = {
         ...anchorDraft(state.anchorEditor.anchor),
@@ -1114,6 +1681,8 @@ export function createCourseSourcesPanel({
       state.selectedSourceId = "";
       state.detail = null;
       state.detailFailure = "";
+      state.annotations = null;
+      state.annotationsFailure = "";
       state.initialSourceId = null;
       state.initialAnchorId = null;
       state.initialAnchorMatch = null;
@@ -1175,6 +1744,59 @@ export function createCourseSourcesPanel({
       void loadTarget();
     } else if (action === "retry-command" && state.pendingCommand) {
       void runCommand(state.pendingCommand.command, state.pendingCommand.draft);
+    } else if (action === "retry-annotation" && state.pendingAnnotation) {
+      void runAnnotationCommand(
+        state.pendingAnnotation.command,
+        state.pendingAnnotation.draft
+      );
+    } else if (action === "retry-attachment" && state.pendingAttachment) {
+      void uploadPdf(state.pendingAttachment.file, state.pendingAttachment);
+    } else if (action === "load-more-observations" &&
+        state.annotations?.nextCursor && !state.annotationsLoading) {
+      void loadAnnotations(state.selectedSourceId, {
+        cursor: state.annotations.nextCursor,
+        append: true
+      });
+    } else if (action === "export-observations" && state.annotations &&
+        !state.annotations.hasMore) {
+      try {
+        downloadJson({
+          contract: "aralearn.course-source-observations-export.v1",
+          exportedAt: now(),
+          courseId: state.courseId,
+          courseRevision: state.courseRevision,
+          sourceId: state.selectedSourceId,
+          annotationSetVersion: state.annotations.annotationSetVersion,
+          query: state.annotations.query,
+          summary: state.annotations.summary,
+          items: state.annotations.items
+        }, `aralearn-observacoes-fonte-${state.courseId}.json`);
+        state.failure = "";
+        state.message = "A exportação das observações foi preparada para salvamento.";
+      } catch (error) {
+        state.message = "";
+        state.failure = errorMessage(error);
+      }
+      render();
+    } else if (action === "download-attachment") {
+      void downloadAttachment(
+        Number(node.dataset.sourceRevision),
+        String(node.dataset.contentHash || "")
+      );
+    } else if (action === "export-target") {
+      try {
+        const value = buildTargetExport(state, now());
+        downloadJson(
+          value,
+          `aralearn-proveniencia-${state.courseId}-${state.targetKind}.json`
+        );
+        state.failure = "";
+        state.message = "A exportação da proveniência foi preparada para salvamento.";
+      } catch (error) {
+        state.message = "";
+        state.failure = errorMessage(error);
+      }
+      render();
     } else if (action === "close-target") {
       onClose();
     } else if (action === "add-target-source") {

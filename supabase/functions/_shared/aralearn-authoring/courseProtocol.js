@@ -89,6 +89,15 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(courseSourceChange[1])
     };
   }
+  const courseSourceAttachmentAccess = path.match(
+    /^\/v1\/courses\/([^/]+)\/source-attachments\/access$/u
+  );
+  if (courseSourceAttachmentAccess && verb === "GET") {
+    return {
+      name: "getCourseSourceAttachmentAccess",
+      courseId: courseUuid(courseSourceAttachmentAccess[1])
+    };
+  }
   const courseSources = path.match(/^\/v1\/courses\/([^/]+)\/sources$/u);
   if (courseSources && verb === "GET") {
     return {
@@ -128,6 +137,13 @@ export function routeCourseRequest(method, pathname) {
     return {
       name: "getCourseAuditCycle",
       courseId: courseUuid(auditCycle[1])
+    };
+  }
+  const research = path.match(/^\/v1\/courses\/([^/]+)\/research$/u);
+  if (research && verb === "GET") {
+    return {
+      name: "getCourseAuthoringAnalytics",
+      courseId: courseUuid(research[1])
     };
   }
   const variantComparisonChange = path.match(

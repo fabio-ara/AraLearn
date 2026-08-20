@@ -81,6 +81,9 @@ begin
           'courseId',entity.course_id,
           'courseRevision',9223372036854775807,
           'mode','target',
+          'pdfStorage',jsonb_build_object(
+            'uniqueBytes',0,'maxUniqueBytes',67108864
+          ),
           'query',jsonb_build_object(
             'sourceId',null,'targetKind','study_unit',
             'targetId',entity.entity_id
@@ -476,8 +479,12 @@ begin
       'relation',source_link.relation,
       'sourceHash',private.course_source_json_hash_v1(jsonb_build_object(
         'status',source.status,'kind',source.kind,'title',source.title,
+        'authorship',source.authorship,'publicationDate',source.publication_date,
+        'identifier',source.identifier,'language',source.language,
         'citationText',source.citation_text,'url',source.url,
         'editionOrVersion',source.edition_or_version,
+        'origin',source.origin,'availability',source.availability,
+        'verificationStatus',source.verification_status,
         'studyVisibility',source.study_visibility
       )),
       'anchors',coalesce((
@@ -1207,8 +1214,12 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object(
       'sourceId',page.source_id,'revision',page.revision,
       'status',page.status,'kind',page.kind,'title',page.title,
+      'authorship',page.authorship,'publicationDate',page.publication_date,
+      'identifier',page.identifier,'language',page.language,
       'citationText',page.citation_text,'url',page.url,
       'editionOrVersion',page.edition_or_version,
+      'origin',page.origin,'availability',page.availability,
+      'verificationStatus',page.verification_status,
       'studyVisibility',page.study_visibility,
       'anchorCount',(
         select count(*)::integer
@@ -1270,8 +1281,12 @@ begin
           select jsonb_build_array(jsonb_build_object(
             'sourceId',source.source_id,'revision',source.revision,
             'status',source.status,'kind',source.kind,'title',source.title,
+            'authorship',source.authorship,'publicationDate',source.publication_date,
+            'identifier',source.identifier,'language',source.language,
             'citationText',source.citation_text,'url',source.url,
             'editionOrVersion',source.edition_or_version,
+            'origin',source.origin,'availability',source.availability,
+            'verificationStatus',source.verification_status,
             'studyVisibility',source.study_visibility,
             'anchorCount',(
               select count(distinct anchor_value.anchor_id)::integer
@@ -1346,8 +1361,12 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object(
       'sourceId',page.source_id,'revision',page.revision,
       'status',page.status,'kind',page.kind,'title',page.title,
+      'authorship',page.authorship,'publicationDate',page.publication_date,
+      'identifier',page.identifier,'language',page.language,
       'citationText',page.citation_text,'url',page.url,
       'editionOrVersion',page.edition_or_version,
+      'origin',page.origin,'availability',page.availability,
+      'verificationStatus',page.verification_status,
       'studyVisibility',page.study_visibility,
       'anchorCount',jsonb_array_length(coalesce((
         select jsonb_agg(anchor_projection.value)
@@ -1457,6 +1476,9 @@ begin
   v_result := jsonb_build_object(
     'contract','aralearn.course-sources.v1','courseId',p_course_id,
     'courseRevision',v_course_revision,'mode',p_mode,
+    'pdfStorage',jsonb_build_object(
+      'uniqueBytes',0,'maxUniqueBytes',67108864
+    ),
     'query',jsonb_build_object(
       'sourceId',case when p_mode = 'source' then p_source_id else null end,
       'targetKind',case when p_mode in ('source','target')
@@ -1747,10 +1769,14 @@ begin
        or jsonb_typeof(p_command->'expectedSourceRevision') <> 'number'
        or p_command->>'expectedSourceRevision' !~ '^[0-9]+$'
        or jsonb_typeof(p_command->'source') <> 'object'
-       or (p_command->'source') - 'kind' - 'title' - 'citationText' - 'url'
-         - 'editionOrVersion' - 'studyVisibility' <> '{}'::jsonb
+       or (p_command->'source') - 'kind' - 'title' - 'authorship'
+         - 'publicationDate' - 'identifier' - 'language' - 'citationText' - 'url'
+         - 'editionOrVersion' - 'origin' - 'availability' - 'verificationStatus'
+         - 'studyVisibility' <> '{}'::jsonb
        or not (p_command->'source' ?& array[
-         'kind','title','citationText','url','editionOrVersion','studyVisibility'
+         'kind','title','authorship','publicationDate','identifier','language',
+         'citationText','url','editionOrVersion','origin','availability',
+         'verificationStatus','studyVisibility'
        ]) then
       raise exception 'save_source possui shape inválido.' using errcode = '22023';
     end if;
@@ -1776,24 +1802,36 @@ begin
         using errcode = '40001';
     end if;
     if found and v_source.status = 'active' and row(
-      v_source.kind,v_source.title,v_source.citation_text,v_source.url,
-      v_source.edition_or_version,v_source.study_visibility
+      v_source.kind,v_source.title,v_source.authorship,v_source.publication_date,
+      v_source.identifier,v_source.language,v_source.citation_text,v_source.url,
+      v_source.edition_or_version,v_source.origin,v_source.availability,
+      v_source.verification_status,v_source.study_visibility
     ) is not distinct from row(
       p_command#>>'{source,kind}',p_command#>>'{source,title}',
+      p_command#>>'{source,authorship}',p_command#>>'{source,publicationDate}',
+      p_command#>>'{source,identifier}',p_command#>>'{source,language}',
       p_command#>>'{source,citationText}',p_command#>>'{source,url}',
       p_command#>>'{source,editionOrVersion}',
+      p_command#>>'{source,origin}',p_command#>>'{source,availability}',
+      p_command#>>'{source,verificationStatus}',
       p_command#>>'{source,studyVisibility}'
     ) then
       v_subject_revision := v_source.revision;
     else
       insert into private.course_source_revisions(
-        course_id,source_id,revision,status,kind,title,citation_text,url,
-        edition_or_version,study_visibility,actor_id
+        course_id,source_id,revision,status,kind,title,authorship,
+        publication_date,identifier,language,citation_text,url,
+        edition_or_version,origin,availability,verification_status,
+        study_visibility,actor_id
       ) values(
         p_course_id,p_command->>'sourceId',coalesce(v_source.revision,0)+1,
         'active',p_command#>>'{source,kind}',p_command#>>'{source,title}',
+        p_command#>>'{source,authorship}',p_command#>>'{source,publicationDate}',
+        p_command#>>'{source,identifier}',p_command#>>'{source,language}',
         p_command#>>'{source,citationText}',p_command#>>'{source,url}',
         p_command#>>'{source,editionOrVersion}',
+        p_command#>>'{source,origin}',p_command#>>'{source,availability}',
+        p_command#>>'{source,verificationStatus}',
         p_command#>>'{source,studyVisibility}',p_actor_id
       ) returning * into v_source;
       v_changed := true;
@@ -1826,12 +1864,16 @@ begin
       v_subject_revision := v_source.revision;
     else
       insert into private.course_source_revisions(
-        course_id,source_id,revision,status,kind,title,citation_text,url,
-        edition_or_version,study_visibility,actor_id
+        course_id,source_id,revision,status,kind,title,authorship,
+        publication_date,identifier,language,citation_text,url,
+        edition_or_version,origin,availability,verification_status,
+        study_visibility,actor_id
       ) values(
         p_course_id,v_source.source_id,v_source.revision+1,'retired',
-        v_source.kind,v_source.title,v_source.citation_text,v_source.url,
-        v_source.edition_or_version,v_source.study_visibility,p_actor_id
+        v_source.kind,v_source.title,v_source.authorship,v_source.publication_date,
+        v_source.identifier,v_source.language,v_source.citation_text,v_source.url,
+        v_source.edition_or_version,v_source.origin,v_source.availability,
+        v_source.verification_status,v_source.study_visibility,p_actor_id
       ) returning * into v_source;
       v_changed := true;
       v_subject_revision := v_source.revision;
@@ -2064,6 +2106,25 @@ exception when serialization_failure then
 end;
 $function$;
 
+create function private.valid_course_source_publication_date_v1(p_value text)
+returns boolean
+language sql
+immutable
+security definer
+set search_path = pg_catalog
+as $function$
+  select case
+    when p_value is null then true
+    when p_value ~ '^[0-9]{4}$' then p_value <> '0000'
+    when p_value ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      then left(p_value,4) <> '0000'
+    when p_value ~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+      then left(p_value,4) <> '0000'
+        and to_char(to_date(p_value,'YYYY-MM-DD'),'YYYY-MM-DD') = p_value
+    else false
+  end
+$function$;
+
 create table private.course_source_revisions (
   course_id uuid not null references public.courses(id) on delete cascade,
   source_id text not null,
@@ -2071,9 +2132,16 @@ create table private.course_source_revisions (
   status text not null,
   kind text,
   title text,
+  authorship text,
+  publication_date text,
+  identifier text,
+  language text,
   citation_text text,
   url text,
   edition_or_version text,
+  origin text not null,
+  availability text not null,
+  verification_status text not null,
   study_visibility text not null,
   actor_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
@@ -2090,14 +2158,20 @@ create table private.course_source_revisions (
       or status <> 'unresolved_legacy'
         and kind in ('web_page','article','book','document','media','other')
     )
+    and origin in ('external','author_provided','imported_legacy')
+    and availability in ('open_access','restricted','private','unknown')
+    and verification_status in ('unverified','author_verified')
     and study_visibility in ('hidden','citation','citation_and_link')
   ),
   constraint course_source_revisions_metadata_v1 check(
     (
       status = 'unresolved_legacy'
       and kind is null
-      and title is null and citation_text is null and url is null
-      and edition_or_version is null and study_visibility = 'hidden'
+      and title is null and authorship is null and publication_date is null
+      and identifier is null and language is null and citation_text is null and url is null
+      and edition_or_version is null and origin = 'imported_legacy'
+      and availability = 'unknown' and verification_status = 'unverified'
+      and study_visibility = 'hidden'
       and actor_id is null
     ) or (
       status <> 'unresolved_legacy'
@@ -2105,6 +2179,23 @@ create table private.course_source_revisions (
       and title = btrim(title)
       and char_length(title) <= 300
       and title !~ '[[:cntrl:]]'
+      and (authorship is null or (
+        nullif(btrim(authorship),'') is not null
+        and authorship = btrim(authorship)
+        and char_length(authorship) <= 500
+        and authorship !~ '[[:cntrl:]]'
+      ))
+      and private.valid_course_source_publication_date_v1(publication_date)
+      and (identifier is null or (
+        nullif(btrim(identifier),'') is not null
+        and identifier = btrim(identifier)
+        and char_length(identifier) <= 240
+        and identifier !~ '[[:cntrl:]]'
+      ))
+      and (language is null or (
+        language = btrim(language) and char_length(language) <= 35
+        and language ~ '^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?(-([A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$'
+      ))
       and (citation_text is null or (
         nullif(btrim(citation_text),'') is not null
         and citation_text = btrim(citation_text)
@@ -2289,6 +2380,7 @@ create table private.course_source_attribution_sources (
     and source_revision > 0
     and relation in (
       'informed_by','supported_by','adapted_from','quoted_from',
+      'contrasted_with','exemplified_by','inspired_by','needs_verification',
       'legacy_reference'
     )
   )
@@ -2351,11 +2443,13 @@ alter table private.course_source_attribution_anchors enable row level security;
 alter table private.course_source_attribution_anchors force row level security;
 
 insert into private.course_source_revisions(
-  course_id,source_id,revision,status,kind,title,citation_text,url,
-  edition_or_version,study_visibility,actor_id
+  course_id,source_id,revision,status,kind,title,authorship,publication_date,
+  identifier,language,citation_text,url,edition_or_version,origin,availability,
+  verification_status,study_visibility,actor_id
 )
 select distinct legacy.course_id,legacy.source_id,1,
-  'unresolved_legacy',null,null,null,null,null,'hidden',null::uuid
+  'unresolved_legacy',null,null,null,null,null,null,null,null,null,
+  'imported_legacy','unknown','unverified','hidden',null::uuid
 from course_legacy_source_refs_v1 legacy;
 
 update private.course_entities entity
@@ -2630,7 +2724,8 @@ as $function$
         or link.value->>'sourceRevision' !~ '^[1-9][0-9]*$'
         or (link.value->>'sourceRevision')::numeric > 9223372036854775807
         or link.value->>'relation' not in (
-          'informed_by','supported_by','adapted_from','quoted_from'
+          'informed_by','supported_by','adapted_from','quoted_from',
+          'contrasted_with','exemplified_by','inspired_by','needs_verification'
         ) and not (
           p_allow_legacy_ids
           and link.value->>'relation' = 'legacy_reference'
@@ -3230,6 +3325,7 @@ comment on function public.get_course_study_citations_v1(uuid,bigint,text) is
 
 revoke all on function private.course_source_json_hash_v1(jsonb),
   private.reject_course_source_fact_change_v1(),
+  private.valid_course_source_publication_date_v1(text),
   private.course_source_context_plan_items_v1(uuid,jsonb),
   private.course_design_context_with_sources_v1(jsonb),
   private.course_materialization_design_context_v1(uuid,uuid,bigint,jsonb),
@@ -3315,8 +3411,13 @@ begin
     from private.course_source_revisions source
     where source.status = 'unresolved_legacy' and (
       source.kind is not null or source.title is not null
+      or source.authorship is not null or source.publication_date is not null
+      or source.identifier is not null or source.language is not null
       or source.citation_text is not null or source.url is not null
       or source.edition_or_version is not null
+      or source.origin <> 'imported_legacy'
+      or source.availability <> 'unknown'
+      or source.verification_status <> 'unverified'
       or source.study_visibility <> 'hidden' or source.actor_id is not null
     )
   ) or exists(
@@ -3378,6 +3479,9 @@ begin
           'courseId',attribution.course_id,
           'courseRevision',9223372036854775807,
           'mode','target',
+          'pdfStorage',jsonb_build_object(
+            'uniqueBytes',0,'maxUniqueBytes',67108864
+          ),
           'query',jsonb_build_object(
             'sourceId',null,'targetKind','study_unit',
             'targetId',attribution.target_id

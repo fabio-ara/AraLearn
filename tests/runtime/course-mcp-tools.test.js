@@ -81,6 +81,13 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").annotations.destructiveHint,
     true
   );
+  const componentUri = "ui://aralearn/course-inspector/0.0.23.html";
+  for (const name of ["lerCurso", "consultarComponentesDidaticos"]) {
+    const definition = COURSE_MCP_TOOLS.find((tool) => tool.name === name);
+    assert.equal(definition._meta.ui.resourceUri, componentUri);
+    assert.equal(definition._meta["openai/outputTemplate"], componentUri);
+  }
+  assert.equal(COURSE_MCP_TOOLS.find(({ name }) => name === "listarCursos")._meta, undefined);
 });
 
 test("leitura exige identidade e escrita também exige escopo", () => {
@@ -103,6 +110,55 @@ test("leitura exige identidade e escrita também exige escopo", () => {
       ["listarCursos", "lerCurso", "consultarComponentesDidaticos"]
     );
   }
+});
+
+test("prévia de componente aceita somente um alvo persistido completo", () => {
+  const mapped = mapAuthoringMcpToolCall("consultarComponentesDidaticos", {
+    operation: "preview_study_unit",
+    courseId: COURSE_ID,
+    studyUnitId: "unit-a",
+    studyUnitJson: "{}"
+  });
+  assert.equal(mapped.kind, "resource-library");
+  assert.equal(mapped.body.courseId, COURSE_ID);
+  assert.equal(mapped.body.studyUnitId, "unit-a");
+
+  assert.throws(() => mapAuthoringMcpToolCall("consultarComponentesDidaticos", {
+    operation: "preview_study_unit",
+    courseId: COURSE_ID,
+    studyUnitJson: "{}"
+  }), /courseId e studyUnitId/iu);
+  assert.throws(() => mapAuthoringMcpToolCall("consultarComponentesDidaticos", {
+    operation: "search",
+    courseId: COURSE_ID,
+    studyUnitId: "unit-a",
+    query: "tabela"
+  }), /só pertence a preview_study_unit/iu);
+});
+
+test("contrato de componente exige uma única identidade por chamada", () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const schema = COURSE_MCP_TOOLS.find(
+    ({ name }) => name === "consultarComponentesDidaticos"
+  ).inputSchema;
+  const validate = ajv.compile(schema);
+  const mapped = mapAuthoringMcpToolCall("consultarComponentesDidaticos", {
+    operation: "contracts",
+    packages: ["aralearn.resource.paragraph@1.0.0"]
+  });
+  assert.equal(mapped.kind, "resource-library");
+  assert.deepEqual(mapped.body.packages, ["aralearn.resource.paragraph@1.0.0"]);
+  assert.equal(validate({
+    operation: "contracts",
+    packages: ["aralearn.resource.paragraph@1.0.0"]
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    operation: "contracts",
+    packages: [
+      "aralearn.resource.paragraph@1.0.0",
+      "aralearn.resource.chart@1.0.0"
+    ]
+  }), false);
 });
 
 test("mapeia lista, leituras e criação sem identidade indireta", () => {
@@ -578,7 +634,10 @@ test("schema MCP fecha policy, alvos de etapa e versões como o Router", () => {
     preferredRefs: []
   }), false);
 
-  const validateMaterialization = ajv.compile(schema.properties.materializationCommand);
+  const validateMaterialization = ajv.compile({
+    ...schema.properties.materializationCommand,
+    $defs: schema.$defs
+  });
   const start = {
     operation: "start",
     authoringPartId: PART_ID,
@@ -614,14 +673,14 @@ test("schema MCP anuncia leitura retomável somente com as duas identidades", ()
   assert.equal(schema.properties.maxBytes.maximum, 1_500_000);
   assert.ok(schema.properties.view.enum.includes("course_sources"));
   assert.equal(schema.properties.sourceId.maxLength, 2_048);
-  const sourceCommand = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
-    .inputSchema.properties.sourceCommand;
+  const changeSchema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
+  const sourceCommand = changeSchema.properties.sourceCommand;
   assert.equal(sourceCommand.oneOf[0].properties.sourceId.maxLength, 2_048);
   assert.equal(sourceCommand.oneOf[2].properties.sourceId.maxLength, 2_048);
-  assert.equal(
-    sourceCommand.oneOf[4].properties.sourceLinks.items.properties.sourceId.maxLength,
-    2_048
-  );
+  const setTargetSources = sourceCommand.oneOf.find(({ properties }) =>
+    properties.type.const === "set_target_sources");
+  assert.equal(setTargetSources.properties.sourceLinks.$ref, "#/$defs/sourceLinks");
+  assert.equal(changeSchema.$defs.sourceLinks.items.properties.sourceId.maxLength, 2_048);
   assert.equal(sourceCommand.oneOf[2].properties.anchorId.maxLength, 240);
   const designBranch = schema.allOf.find((branch) =>
     branch.if?.properties?.view?.const === "course_design"
@@ -647,6 +706,21 @@ test("schema MCP discrimina os três modos de observações sem cruzá-los com F
     targetId: "unit-a",
     includeDescendants: false
   }), true, JSON.stringify(validate.errors));
+  const literalSourceId = `  Fonte ${"x".repeat(260)}  `;
+  assert.equal(validate({
+    ...base,
+    mode: "target",
+    targetKind: "source",
+    targetId: literalSourceId,
+    includeDescendants: true
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...base,
+    mode: "target",
+    targetKind: "source",
+    targetId: "   ",
+    includeDescendants: true
+  }), false);
   assert.equal(validate({
     ...base,
     mode: "detail",
@@ -810,7 +884,13 @@ test("MCP lê, cria e desvincula variantes pela mesma dupla de ferramentas", () 
     type: "create_comparison_variants", comparisonSetId, expectedCourseRevision: 7,
     variants: [
       { label: "A", title: "Curso A", goal: "Objetivo A", parameterDifferences: [], componentPolicyDifference: null },
-      { label: "B", title: "Curso B", goal: "Objetivo B", parameterDifferences: [], componentPolicyDifference: { availability: "all" } }
+      {
+        label: "B", title: "Curso B", goal: "Objetivo B", parameterDifferences: [],
+        componentPolicyDifference: {
+          catalogVersion: "1-3e5629f8", availability: "all", allowedRefs: [],
+          excludedRefs: [], preferredRefs: []
+        }
+      }
     ]
   };
   const mapped = mapAuthoringMcpToolCall("alterarCurso", {
@@ -828,6 +908,77 @@ test("MCP lê, cria e desvincula variantes pela mesma dupla de ferramentas", () 
     }
   });
   assert.equal(Object.hasOwn(detach.body, "expectedCourseRevision"), false);
+  assert.deepEqual(detach.body.command, {
+    type: "detach_comparison_variant",
+    comparisonSetId,
+    courseId: "82000000-0000-4000-8000-000000000009"
+  });
+
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
+  const validate = ajv.compile(schema);
+  assert.equal(validate({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_course_variants",
+    variantCommand: create
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_course_variants",
+    variantCommand: {
+      type: "detach_comparison_variant",
+      comparisonSetId,
+      variantCourseId: "82000000-0000-4000-8000-000000000009"
+    }
+  }), false);
+});
+
+test("MCP lê fatos de Pesquisa por recorte sem criar ferramenta paralela", () => {
+  const path = mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "research",
+    expectedRevision: 7,
+    datasets: ["materializations", "annotations"],
+    channels: ["authoring_chat"],
+    origins: ["automatic"],
+    states: ["completed"],
+    from: "2026-08-01T00:00:00.000Z",
+    to: "2026-08-20T23:59:59.000Z",
+    limit: 40,
+    cursor: "cGFnZS0y"
+  }).path;
+  assert.equal(path,
+    `/v1/courses/${COURSE_ID}/research?expectedRevision=7` +
+    "&dataset=materializations&dataset=annotations&channel=authoring_chat" +
+    "&origin=automatic&state=completed&from=2026-08-01T00%3A00%3A00.000Z" +
+    "&to=2026-08-20T23%3A59%3A59.000Z&limit=40&cursor=cGFnZS0y");
+
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").inputSchema;
+  const validate = ajv.compile(schema);
+  assert.equal(validate({
+    courseId: COURSE_ID,
+    view: "research",
+    expectedRevision: 7,
+    datasets: ["sources"],
+    limit: 200
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    courseId: COURSE_ID,
+    view: "research",
+    expectedRevision: 7,
+    datasets: ["sources"],
+    mode: "catalog"
+  }), false);
+  assert.throws(() => mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "research",
+    expectedRevision: 7,
+    datasets: ["unknown"]
+  }), /conjunto|fatos|Analytics/iu);
 });
 
 test("schema MCP fecha modos e os sete comandos públicos do ciclo de auditoria", () => {
@@ -997,9 +1148,16 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
       source: {
         kind: "web_page",
         title: "Fonte A",
+        authorship: "Autoria",
+        publicationDate: "2026",
+        identifier: null,
+        language: "pt-BR",
         citationText: "Fonte A, 2026.",
         url: "https://example.test/fonte-a",
         editionOrVersion: null,
+        origin: "external",
+        availability: "open_access",
+        verificationStatus: "author_verified",
         studyVisibility: "citation_and_link"
       }
     }
@@ -1216,6 +1374,88 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
     targetKind: "study_unit",
     targetId: "unit-a",
     cursor: "YWZ0ZXI="
+  }), false);
+});
+
+test("MCP prepara acesso e confirma anexo PDF pelo contrato único de Fontes", () => {
+  const contentHash = "a".repeat(64);
+  const read = mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "course_source_attachment",
+    expectedRevision: 4,
+    attachmentOperation: "prepare_upload",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash,
+    byteSize: 1_024,
+    mediaType: "application/pdf"
+  });
+  assert.equal(read.method, "GET");
+  assert.equal(read.path,
+    `/v1/courses/${COURSE_ID}/source-attachments/access?expectedRevision=4` +
+    `&operation=prepare_upload&sourceId=source-pdf&sourceRevision=2` +
+    `&contentHash=${contentHash}&byteSize=1024&mediaType=application%2Fpdf`);
+
+  const command = {
+    type: "attach_pdf",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    attachment: {
+      contentHash,
+      byteSize: 1_024,
+      mediaType: "application/pdf",
+      storagePath: `${COURSE_ID}/${contentHash}.pdf`
+    }
+  };
+  const change = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: command
+  });
+  assert.equal(change.path, `/v1/courses/${COURSE_ID}/sources/changes`);
+  assert.deepEqual(change.body.command, command);
+
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const tools = Object.fromEntries(COURSE_MCP_TOOLS.map((tool) => [tool.name, tool]));
+  const validateRead = ajv.compile(tools.lerCurso.inputSchema);
+  const validateChange = ajv.compile(tools.alterarCurso.inputSchema);
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_source_attachment",
+    expectedRevision: 4,
+    attachmentOperation: "download",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_source_attachment",
+    expectedRevision: 4,
+    attachmentOperation: "download",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash,
+    byteSize: 1_024
+  }), false);
+  assert.equal(validateChange({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: command
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: {
+      ...command,
+      attachment: { ...command.attachment, mediaType: "text/plain" }
+    }
   }), false);
 });
 
@@ -1453,6 +1693,55 @@ test("MCP separa CAS do Curso da versão da observação", () => {
     }
   });
   assert.equal(corrected.body.expectedCourseRevision, 7);
+});
+
+test("MCP usa o mesmo fato de Fonte e exige referências na reformulação", () => {
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  const sourceId = `  Fonte ${"x".repeat(260)}  `;
+  const query = mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "anchored_annotations",
+    expectedRevision: 7,
+    mode: "target",
+    targetKind: "source",
+    targetId: sourceId,
+    includeDescendants: true
+  });
+  assert.equal(new URL(`https://aralearn.invalid${query.path}`).searchParams.get(
+    "targetId"
+  ), sourceId);
+
+  const consideredSourceLinks = [{
+    sourceId,
+    sourceRevision: 3,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-a", anchorRevision: 2 }]
+  }];
+  const reformulation = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "respond_to_anchored_annotation",
+      annotationId,
+      expectedAnnotationVersion: 2,
+      ownerResponse: "Interpretação reformulada.",
+      responseKind: "reformulation",
+      consideredSourceLinks
+    }
+  });
+  assert.deepEqual(reformulation.body.command.consideredSourceLinks,
+    consideredSourceLinks);
+  assert.equal(reformulation.body.expectedCourseRevision, null);
+  assert.throws(() => mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      ...reformulation.body.command,
+      consideredSourceLinks: []
+    }
+  }), (error) => error.code === "invalid_course_anchored_annotation_command");
 });
 
 test("schema MCP condiciona revisão do Curso sem aumentar o registro de tools", () => {

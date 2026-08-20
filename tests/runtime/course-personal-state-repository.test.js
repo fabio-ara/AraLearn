@@ -2,11 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT,
   CoursePersonalStateRepository,
   COURSE_PERSONAL_STATE_CACHE_CONTRACT,
-  COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT,
-  courseAnnotationHandoffCacheKey,
   validateCoursePersonalState
 } from "../../src/persistence/CoursePersonalStateRepository.js";
 
@@ -161,75 +158,6 @@ test("instantes pessoais aceitam RFC3339 do PostgreSQL e normalizam para Z", () 
       reviewMarks: { "unit-a": invalid }
     }), /inválido/u);
   }
-});
-
-test("extrai cache v1 e intents finais set/delete para handoff atômico", async () => {
-  const cache = memoryCache();
-  const legacyKey = `${COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT}:${COURSE_ID}`;
-  await cache.putCache(legacyKey, {
-    contract: COURSE_PERSONAL_STATE_LEGACY_CACHE_CONTRACT,
-    courseId: COURSE_ID,
-    revision: 0,
-    state: {
-      version: 1,
-      progress: { version: 3, lessons: {} },
-      reviewMarks: {},
-      observations: {
-        "unit-a": {
-          category: "observation",
-          body: "Texto legado final.",
-          updatedAt: "2026-08-17T12:00:00.000Z"
-        }
-      }
-    },
-    pending: {
-      requestId: REQUEST_ID,
-      baseRevision: 0,
-      operations: [{
-        kind: "set",
-        collection: "observations",
-        path: "unit-a",
-        value: {
-          category: "observation",
-          body: "Texto legado final.",
-          updatedAt: "2026-08-17T12:00:00.000Z"
-        }
-      }],
-      createdAt: "2026-08-17T12:00:00.000Z"
-    },
-    queuedOperations: [{
-      kind: "delete",
-      collection: "observations",
-      path: "unit-b"
-    }],
-    updatedAt: "2026-08-17T12:01:00.000Z"
-  });
-  const repository = new CoursePersonalStateRepository({
-    courseId: COURSE_ID,
-    api: remote(),
-    cache,
-    course: course(),
-    clock: () => "2026-08-17T12:01:00.000Z",
-    uuidFactory: () => REQUEST_ID
-  });
-  await repository.initialize({ refresh: false });
-
-  assert.equal(await cache.getCache(legacyKey), null);
-  assert.equal(repository.loadCanonicalState().version, 2);
-  assert.equal(Object.hasOwn(repository.loadCanonicalState(), "observations"), false);
-  const handoff = await cache.getCache(courseAnnotationHandoffCacheKey(COURSE_ID));
-  assert.equal(handoff.contract, COURSE_ANNOTATION_HANDOFF_CACHE_CONTRACT);
-  assert.deepEqual(handoff.intents, [{
-    kind: "upsert",
-    targetStudyUnitId: "unit-a",
-    category: null,
-    text: "Texto legado final.",
-    updatedAt: "2026-08-17T12:00:00.000Z"
-  }, {
-    kind: "withdraw",
-    targetStudyUnitId: "unit-b",
-    updatedAt: "2026-08-17T12:01:00.000Z"
-  }]);
 });
 
 test("persiste somente progresso e marca de revisão pela identidade direta do Curso", async () => {

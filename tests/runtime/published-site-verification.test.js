@@ -10,15 +10,15 @@ import {
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
+const VERSION = "0.0.23";
+const REVISION = "0123456789abcdef0123";
 const INDEX = `<!doctype html>
 <html lang="pt-BR"><head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ${PROJECT_URL}; object-src 'none'">
 </head><body><div id="app-root"></div></body></html>`;
 const RUNTIME_CONFIG = `globalThis.__ARALEARN_ENV__ ??= Object.freeze({
   "supabaseUrl": "${PROJECT_URL}",
-  "supabasePublishableKey": "sb_publishable_public-test-value",
-  "assistAllowedOrigins": [],
-  "androidRuntime": false
+  "supabasePublishableKey": "sb_publishable_public-test-value"
 });\n`;
 const ASSETS = [
   "./index.html",
@@ -30,7 +30,9 @@ const ASSETS = [
   "./styles.css",
   "./main.js",
   "./service-worker.js",
-  "./assets/brand/aralearn-mark.png"
+  "./assets/brand/aralearn-mark.png",
+  "./src/render/renderPackageStudyUnit.js",
+  "./src/resources/kernel/studyUnitEnvelope.js"
 ];
 
 function makeResponse(status, body, type, { location = "" } = {}) {
@@ -58,7 +60,10 @@ function createPublishedSiteFetch({
     ["/AraLearn/", { body: index, type: "text/html; charset=utf-8" }],
     ["/AraLearn/index.html", { body: index, type: "text/html; charset=utf-8" }],
     ["/AraLearn/runtime-config.js", { body: runtimeConfig, type: "text/javascript" }],
-    ["/AraLearn/asset-manifest.json", { body: { assets }, type: "application/json" }],
+    ["/AraLearn/asset-manifest.json", {
+      body: { version: VERSION, revision: REVISION, assets },
+      type: "application/json"
+    }],
     ["/AraLearn/frame-guard.js", { body: "globalThis.frameGuard = true;", type: "text/javascript" }],
     ["/AraLearn/theme-bootstrap.js", { body: "globalThis.AraLearnTheme = {};", type: "text/javascript" }],
     ["/AraLearn/styles-tokens.css", { body: ":root { color-scheme: light; }", type: "text/css" }],
@@ -69,7 +74,15 @@ function createPublishedSiteFetch({
       body: 'const CACHE_PREFIX = "aralearn-shell-";\nconst CACHE_NAME = `${CACHE_PREFIX}0123456789abcdef0123`;\nself.addEventListener("fetch", () => {});',
       type: "text/javascript"
     }],
-    ["/AraLearn/assets/brand/aralearn-mark.png", { body: "PNG", type: "image/png" }]
+    ["/AraLearn/assets/brand/aralearn-mark.png", { body: "PNG", type: "image/png" }],
+    ["/AraLearn/src/render/renderPackageStudyUnit.js", {
+      body: 'import "../resources/kernel/studyUnitEnvelope.js";',
+      type: "text/javascript"
+    }],
+    ["/AraLearn/src/resources/kernel/studyUnitEnvelope.js", {
+      body: "export const COURSE_CONTRACT = 'aralearn.course.v1';",
+      type: "text/javascript"
+    }]
   ]);
 
   const fetchImpl = async (input, options = {}) => {
@@ -90,21 +103,25 @@ test("verifica integralmente um site publicado usando somente GET", async () => 
 
   assert.deepEqual(result, {
     siteUrl: BASE_URL,
+    version: VERSION,
+    artifactRevision: REVISION,
     projectUrl: PROJECT_URL,
-    resourcesChecked: 12,
+    resourcesChecked: 14,
     callbackChecked: true
   });
   assert.ok(calls.length >= ASSETS.length + 2);
   assert.ok(calls.every(({ options }) => options.method === "GET"));
+  assert.ok(calls.every(({ options }) => options.cache === "no-store"));
+  assert.ok(calls.every(({ options }) => options.headers["Cache-Control"] === "no-cache"));
   assert.ok(calls.every(({ options }) => !("Authorization" in options.headers)));
   assert.ok(calls.some(({ url }) => url.includes("auth_state=aralearn-publication-check")));
+  assert.ok(calls.some(({ url }) => url.includes("aralearn-publication-check=0.0.23-")));
   assert.doesNotMatch(JSON.stringify(result), /sb_publishable_/u);
 });
 
 test("lê a configuração pública sem executar JavaScript e valida a CSP exata", () => {
   assert.deepEqual(parsePublicRuntimeConfig(RUNTIME_CONFIG), {
-    projectOrigin: PROJECT_URL,
-    assistAllowedOrigins: []
+    projectOrigin: PROJECT_URL
   });
   assert.deepEqual(validatePublishedCsp(INDEX, PROJECT_URL).connectSources, ["'self'", PROJECT_URL]);
   assert.throws(
@@ -186,12 +203,45 @@ test("recusa recurso ausente ou servido com MIME incorreto", async (context) => 
   });
 });
 
+test("recusa manifesto cacheado de outra versão ou revisão divergente", async (context) => {
+  await context.test("versão anterior", async () => {
+    const { fetchImpl } = createPublishedSiteFetch({
+      overrides: {
+        "/AraLearn/asset-manifest.json": {
+          body: { version: "0.0.22", revision: REVISION, assets: ASSETS },
+          type: "application/json"
+        }
+      }
+    });
+    await assert.rejects(
+      () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+      /versão esperada 0\.0\.23/
+    );
+  });
+
+  await context.test("revisão do service worker divergente", async () => {
+    const { fetchImpl } = createPublishedSiteFetch({
+      overrides: {
+        "/AraLearn/service-worker.js": {
+          body: 'const CACHE_PREFIX = "aralearn-shell-";\nconst CACHE_NAME = `${CACHE_PREFIX}aaaaaaaaaaaaaaaaaaaa`;\n',
+          type: "text/javascript"
+        }
+      }
+    });
+    await assert.rejects(
+      () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+      /revisões diferentes/
+    );
+  });
+});
+
 test("repete somente falhas transitórias da publicação", async (context) => {
   await context.test("HTTP 503 transitório recupera", async () => {
     const publishedSite = createPublishedSiteFetch();
     let indexAttempts = 0;
     const fetchImpl = async (input, options) => {
-      if (new URL(input).href === BASE_URL) {
+      const url = new URL(input);
+      if (url.pathname === "/AraLearn/" && url.searchParams.has("aralearn-publication-check")) {
         indexAttempts += 1;
         if (indexAttempts === 1) {
           return makeResponse(503, "temporariamente indisponível", "text/plain");
@@ -216,7 +266,8 @@ test("repete somente falhas transitórias da publicação", async (context) => {
     const publishedSite = createPublishedSiteFetch();
     let indexAttempts = 0;
     const fetchImpl = async (input, options) => {
-      if (new URL(input).href === BASE_URL) {
+      const url = new URL(input);
+      if (url.pathname === "/AraLearn/" && url.searchParams.has("aralearn-publication-check")) {
         indexAttempts += 1;
         if (indexAttempts === 1) {
           throw new DOMException("tempo esgotado", "TimeoutError");

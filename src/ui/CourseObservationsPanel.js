@@ -41,7 +41,7 @@ const LABELS = Object.freeze({
   }),
   categories: Object.freeze({
     question: "Dúvida", possible_error: "Possível erro", confusing: "Trecho confuso",
-    suggestion: "Sugestão"
+    suggestion: "Sugestão", reformulation_request: "Pedido de reformulação"
   })
 });
 
@@ -300,6 +300,16 @@ function renderClassification(item, catalog) {
       : '<p>Nenhum assunto candidato neste contexto.</p>') + "</section>";
 }
 
+function renderOwnerResponseSources(sourceLinks) {
+  if (!sourceLinks?.length) return "";
+  return '<div class="course-observation-owner-response-sources">' +
+    '<strong>Fontes e Âncoras consideradas</strong><ul>' +
+    sourceLinks.map((link) => `<li>${escapeHtml(link.sourceId)} · fonte v${link.sourceRevision}` +
+      ` · ${link.anchors.map((anchor) =>
+        `${escapeHtml(anchor.anchorId)} v${anchor.anchorRevision}`).join(", ")}</li>`
+    ).join("") + "</ul></div>";
+}
+
 function renderDetail(state, item) {
   if (!item) {
     return '<section class="course-authoring-state is-error" role="alert"><h3>Observação não encontrada</h3>' +
@@ -337,13 +347,18 @@ function renderDetail(state, item) {
       : "") +
     (item.capabilities.canRespond
       ? '<form class="course-observation-response-form" data-observation-response-form>' +
-        '<h3>Retorno da autoria</h3><p>Resposta privada vinculada a esta observação.</p>' +
+        `<h3>${item.ownerResponse?.kind === "reformulation" ? "Reformulação" : "Retorno da autoria"}</h3>` +
+        '<p>Resposta privada vinculada a esta observação.</p>' +
         `<textarea name="ownerResponse" aria-label="Retorno da autoria">${escapeHtml(
           item.ownerResponse?.text || ""
-        )}</textarea><button type="submit">Salvar retorno</button></form>`
+        )}</textarea>` + renderOwnerResponseSources(
+          item.ownerResponse?.consideredSourceLinks
+        ) + '<button type="submit">Salvar retorno</button></form>'
       : item.ownerResponse
-        ? '<section class="course-observation-owner-response"><h3>Retorno da autoria</h3>' +
-          `<p>${escapeHtml(item.ownerResponse.text)}</p></section>`
+        ? '<section class="course-observation-owner-response">' +
+          `<h3>${item.ownerResponse.kind === "reformulation" ? "Reformulação" : "Retorno da autoria"}</h3>` +
+          `<p>${escapeHtml(item.ownerResponse.text)}</p>` +
+          renderOwnerResponseSources(item.ownerResponse.consideredSourceLinks) + "</section>"
         : "") +
     renderClassification(item, subjects) + "</div>";
 }
@@ -654,7 +669,11 @@ export function createCourseObservationsPanel({
         type: "respond_to_anchored_annotation",
         annotationId: item.annotationId,
         expectedAnnotationVersion: item.annotationVersion,
-        ownerResponse
+        ownerResponse,
+        responseKind: item.ownerResponse?.kind || "answer",
+        consideredSourceLinks: structuredClone(
+          item.ownerResponse?.consideredSourceLinks || []
+        )
       }, "Retorno salvo.");
     } else if (event.target.matches?.("[data-observation-subject-form]")) {
       event.preventDefault();

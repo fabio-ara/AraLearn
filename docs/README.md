@@ -15,58 +15,58 @@ científica nem representa endosso institucional.
 
 ## Começar a usar
 
-1. [Visão do produto](visao-do-produto.md) — problema educacional, público e
+1. [Visão do produto](visao-do-produto.md): problema educacional, público e
    compromissos;
-2. [Uso do aplicativo](uso-do-app.md) — conta, lista de Cursos, Estudo,
+2. [Uso do aplicativo](uso-do-app.md): conta, lista de Cursos, Estudo,
    Autoria e sincronização;
-3. [Guia do estudante](guia-estudante.md) — primeiro percurso, retomada,
+3. [Guia do estudante](guia-estudante.md): primeiro percurso, retomada,
    revisão, observações e citações redigidas;
-4. [Guia do professor e autor](guia-professor-autor.md) — criação privada,
-   planejamento, Fontes, inspeção, Auditoria e correções e acesso direto;
-5. [Solução de problemas](solucao-de-problemas.md) — diagnóstico por sintoma e
+4. [Guia do professor e autor](guia-professor-autor.md): criação privada,
+   planejamento, Fontes, inspeção, auditoria, correções e acesso direto;
+5. [Solução de problemas](solucao-de-problemas.md): diagnóstico por sintoma e
    recuperação segura.
 
-O [estado corrente](estado-atual-e-roadmap.md) deve ser consultado antes de um
-guia sobre pesquisa, experimentação ou analytics: ele distingue capacidade
-implementada de intenção ainda em desenvolvimento.
+O [estado corrente](estado-atual-e-roadmap.md) registra quais capacidades estão
+publicadas, quais foram verificadas somente em ambiente local e quais limites
+continuam relevantes.
 
 ## Estudar o modelo pedagógico
 
-1. [Modelo didático](modelo-didatico.md) — Microssequência didática,
+1. [Modelo didático](modelo-didatico.md): Microssequência didática,
    microteoria, prática e progressão;
-2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
-   — propriedades pedagógicas, escopo e limites;
-3. [Revisão de literatura](revisao-de-literatura.md) — bases, controvérsias e
+2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
+   propriedades pedagógicas, escopo e limites;
+3. [Revisão de literatura](revisao-de-literatura.md): bases, controvérsias e
    lacunas;
-4. [Quadro teórico](quadro-teorico.md) — construtos e relações propostas;
-5. [Fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md)
-   — quando uma representação é justificável;
-6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) — retomada
+4. [Quadro teórico](quadro-teorico.md): construtos e relações propostas;
+5. [Fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md):
+   quando uma representação é justificável;
+6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md): retomada
    e dados que não devem ser confundidos com aprendizagem;
-7. [Observações e Anotações ancoradas](observacoes-pedagogicas.md) — retorno
-   situado, triagem protegida, offline e limites de inferência.
+7. [Observações e Anotações ancoradas](observacoes-pedagogicas.md): retorno
+   situado, triagem protegida, funcionamento sem conexão e limites de inferência.
 
 O [glossário de construtos](glossario-construtos.md) delimita termos
 educacionais e metodológicos. O [vocabulário controlado](vocabulario-controlado.md)
-registra as decisões terminológicas, seus fundamentos e os cortes ainda
-pendentes. A [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
+registra as decisões terminológicas e seus fundamentos. A
+[matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
 ## Estudar a engenharia
 
-1. [Arquitetura](arquitetura.md) — Curso vivo, fronteiras e fontes de
+1. [Arquitetura](arquitetura.md): Curso vivo, fronteiras e fontes de
    autoridade;
-2. [Persistência relacional e sincronização](persistencia-relacional.md) —
-   IndexedDB, PostgreSQL, Storage, cache e fila;
-3. [Supabase](supabase.md) — Auth, banco, Storage, Edge Functions, migrations e
+2. [Persistência relacional e sincronização](persistencia-relacional.md):
+   IndexedDB, PostgreSQL, Storage, cópia temporária e fila;
+3. [Supabase](supabase.md): Auth, banco, Storage, Edge Functions, migrações e
    políticas de acesso;
-4. [Contrato de conteúdo](aralearn-contract.md) — envelopes, clean cut de
+4. [Contrato de conteúdo](aralearn-contract.md): envelopes, corte direto de
    Fontes e validação;
-5. [Componentes didáticos e packages](componentes-didaticos.md) — núcleo,
+5. [Componentes didáticos e pacotes](componentes-didaticos.md): núcleo,
    pacotes, catálogo e renderização;
-6. [Sistema visual](sistema-visual.md) — tipografia, responsividade e
+6. [Sistema visual](sistema-visual.md): tipografia, responsividade e
    acessibilidade;
-7. [Privacidade](privacidade.md) — finalidade, retenção e limites de acesso.
+7. [Privacidade](privacidade.md): finalidade, retenção e limites de acesso.
 
 O [glossário técnico](glossario-tecnico.md) define os mecanismos correntes. A
 [matriz de conformidade técnica](matriz-conformidade-tecnica.md) indica onde
@@ -76,37 +76,31 @@ cada propriedade pode ser verificada.
 
 Comece pelo comportamento já implementado:
 
-1. [Guia do professor e autor](guia-professor-autor.md) — criar e abrir Cursos,
+1. [Guia do professor e autor](guia-professor-autor.md): criar e abrir Cursos,
    editar planejamento e proveniência e conceder acesso para Estudo;
-2. [Autoria por Model Context Protocol](autoria-mcp.md) — ferramentas que
+2. [Autoria por Model Context Protocol](autoria-mcp.md): ferramentas que
    operam o mesmo Curso da interface;
-3. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) — percurso
+3. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md): percurso
    conversacional e seus limites;
-4. [Assistência por modelo de linguagem](assistencia-por-ia.md) — autoridade,
+4. [Assistência por modelo de linguagem](assistencia-por-ia.md): autoridade,
    contexto e concorrência;
-5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — separação
+5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md): separação
    entre intenção textual e operação estruturada;
-6. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
-   — parâmetros, orientação natural, herança e política de componentes.
+6. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
+   parâmetros, orientação natural, herança e política de componentes.
 
 O ciclo implementado de revisão possui um capítulo próprio:
 
-7. [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md)
-   — contexto focal, achados, checkpoints, verificação, rollback e relação
+7. [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md):
+   contexto focal, achados, pontos de recuperação, verificação, reversão e relação
    explícita com Observações.
 
-Os capítulos de experimentos e analytics descrevem problemas, fundamentos ou
-trabalho em evolução. Nenhum deve ser lido como prova de que toda a capacidade
-está disponível no runtime corrente:
+Variantes e Pesquisa também operam sobre o mesmo Curso:
 
-- [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md);
-- [Analytics instrucionais](analytics-instrucionais.md);
-- [Dicionário de métricas e datasets](dicionario-metricas-datasets.md);
+- [Variantes comparáveis](experimentos-instrucionais-parametrizados.md);
+- [Pesquisa sobre a Autoria](analytics-instrucionais.md);
+- [Dicionário de métricas e conjuntos de dados](dicionario-metricas-datasets.md);
 - [Guia de investigação](guia-pesquisador.md).
-
-Os arquivos em [`authoring/`](../authoring/README.md) instruem clientes e
-assistentes. Eles não substituem estes capítulos e devem seguir os mesmos
-contratos do Curso vivo.
 
 ## Avaliar o artefato
 
@@ -117,7 +111,7 @@ resultado empírico:
 2. [Contribuição e originalidade](contribuicao-originalidade.md);
 3. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
 4. [Auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md);
-5. [Auditoria do front-end](auditoria-front-end.md);
+5. [Auditoria da interface](auditoria-front-end.md);
 6. [Estado corrente e lacunas](estado-atual-e-roadmap.md).
 
 O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) prepara a
@@ -131,8 +125,6 @@ pode declarar compreensão ou eficácia educacional.
 | ambientes, configuração e publicação | [Implantação](implantacao.md) |
 | banco, Storage, autenticação e funções | [Supabase](supabase.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
-| importação pelo Android | [Importação por compartilhamento](integrations/android-share-import.md) |
-| automação local | [Integração com Codex CLI](integrations/codex-cli.md) |
 
 ## Referência completa
 
@@ -143,7 +135,7 @@ pode declarar compreensão ou eficácia educacional.
 | [Glossário de construtos](glossario-construtos.md) | termos educacionais e metodológicos |
 | [Vocabulário controlado](vocabulario-controlado.md) | decisões terminológicas e mapa de corte |
 | [Referências](referencias.md) | bibliografia legível gerada da fonte canônica |
-| [Inventário editorial](inventario-documentacao.md) | função e destino de cada capítulo |
+| [Cobertura da documentação](inventario-documentacao.md) | assunto e percurso de cada capítulo |
 | [Matriz de conformidade](matriz-conformidade-tecnica.md) | rastreabilidade da engenharia |
 
 ## Como interpretar uma afirmação

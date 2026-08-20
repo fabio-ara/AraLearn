@@ -1,3 +1,8 @@
+import {
+  CourseSourcesError,
+  normalizeCourseSourceLinks
+} from "./courseSources.js";
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
@@ -12,7 +17,8 @@ export const COURSE_ANCHORED_ANNOTATION_CHANGE_CONTRACT =
 export const COURSE_ANCHORED_ANNOTATION_CONTRACT =
   "aralearn.course-anchored-annotation.v1";
 export const COURSE_ANCHORED_ANNOTATION_TARGET_KINDS = Object.freeze([
-  "course", "module", "lesson", "topic", "didactic_microsequence", "study_unit"
+  "course", "module", "lesson", "topic", "didactic_microsequence", "study_unit",
+  "source", "source_anchor"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_ORIGINS = Object.freeze([
   "author", "learner", "human_audit", "automatic_audit", "unknown_legacy"
@@ -22,7 +28,10 @@ export const COURSE_ANCHORED_ANNOTATION_CHANNELS = Object.freeze([
   "audit_automation", "unknown_legacy"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_CATEGORIES = Object.freeze([
-  "question", "possible_error", "confusing", "suggestion"
+  "question", "possible_error", "confusing", "suggestion", "reformulation_request"
+]);
+export const COURSE_ANCHORED_ANNOTATION_RESPONSE_KINDS = Object.freeze([
+  "answer", "reformulation"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_STATES = Object.freeze([
   "open", "considered", "resolved", "withdrawn"
@@ -116,6 +125,33 @@ function opaqueId(value, code, label) {
   return boundedText(value, 240, 960, code, label);
 }
 
+function sourceId(value, code, label) {
+  const hasControl = typeof value === "string" && [...value].some((character) => {
+    const point = character.codePointAt(0);
+    return point <= 31 || point >= 127 && point <= 159;
+  });
+  if (typeof value !== "string" || !value.trim() || [...value].length > 2048 ||
+      encoder.encode(value).byteLength > 8192 || hasControl) {
+    fail(code, `${label} é inválida.`);
+  }
+  return value;
+}
+
+function consideredSourceLinks(value, code) {
+  try {
+    return normalizeCourseSourceLinks(value);
+  } catch (error) {
+    if (!(error instanceof CourseSourcesError)) throw error;
+    fail(code, error.message, error.details);
+  }
+}
+
+function targetId(kind, value, code, label = "A identidade do alvo") {
+  if (kind === "course") return uuid(value, code, label);
+  if (kind === "source") return sourceId(value, code, label);
+  return opaqueId(value, code, label);
+}
+
 function timestamp(value, code, label, { nullable = false } = {}) {
   if (nullable && value === null) return null;
   const match = typeof value === "string" ? RFC3339_PATTERN.exec(value) : null;
@@ -150,9 +186,12 @@ function target(value, code = "invalid_course_anchored_annotation_target") {
   enumValue(value.kind, COURSE_ANCHORED_ANNOTATION_TARGET_KINDS, code, "O tipo do alvo");
   return {
     kind: value.kind,
-    id: value.kind === "course"
-      ? uuid(value.id, code, "A identidade do Curso-alvo")
-      : opaqueId(value.id, code, "A identidade do alvo")
+    id: targetId(
+      value.kind,
+      value.id,
+      code,
+      value.kind === "course" ? "A identidade do Curso-alvo" : "A identidade do alvo"
+    )
   };
 }
 
@@ -205,14 +244,35 @@ export function normalizeCourseAnchoredAnnotationCommand(value) {
       })
     };
   } else if (command.type === "respond_to_anchored_annotation") {
-    exact(command, ["type", "annotationId", "expectedAnnotationVersion", "ownerResponse"], code, "O comando de resposta");
+    exact(command, [
+      "type", "annotationId", "expectedAnnotationVersion", "ownerResponse",
+      "responseKind", "consideredSourceLinks"
+    ], code, "O comando de resposta");
+    const responseKind = enumValue(
+      command.responseKind,
+      COURSE_ANCHORED_ANNOTATION_RESPONSE_KINDS,
+      code,
+      "O tipo da resposta"
+    );
+    const sourceLinks = consideredSourceLinks(command.consideredSourceLinks, code);
+    if ((responseKind === "answer" && sourceLinks.length > 0) ||
+        (responseKind === "reformulation" && sourceLinks.length === 0)) {
+      fail(
+        code,
+        responseKind === "reformulation"
+          ? "Uma reformulação precisa declarar as Fontes e Âncoras consideradas."
+          : "Uma resposta simples não declara Fontes consideradas."
+      );
+    }
     normalized = {
       type: command.type,
       annotationId: uuid(command.annotationId, code, "A identidade da observação"),
       expectedAnnotationVersion: integer(command.expectedAnnotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão esperada"),
       ownerResponse: boundedText(command.ownerResponse, 2000, 16384, code, "A resposta da pessoa autora", {
         preserveLayout: true
-      })
+      }),
+      responseKind,
+      consideredSourceLinks: sourceLinks
     };
   } else if (command.type === "correct_anchored_annotation_subjects") {
     exact(command, ["type", "annotationId", "expectedAnnotationVersion", "subjectIds"], code, "O comando de correção de assunto");
@@ -263,7 +323,7 @@ export function normalizeCourseAnchoredAnnotationQuery(value) {
     origins: enumList(query.origins, COURSE_ANCHORED_ANNOTATION_ORIGINS, 5, code, "As origens"),
     channels: enumList(query.channels, COURSE_ANCHORED_ANNOTATION_CHANNELS, 6, code, "Os canais"),
     states: enumList(query.states, COURSE_ANCHORED_ANNOTATION_STATES, 4, code, "Os estados"),
-    categories: enumList(query.categories, COURSE_ANCHORED_ANNOTATION_CATEGORIES, 4, code, "As categorias"),
+    categories: enumList(query.categories, COURSE_ANCHORED_ANNOTATION_CATEGORIES, 5, code, "As categorias"),
     includeUncategorized: query.includeUncategorized,
     subjectIds: (() => {
       if (!Array.isArray(query.subjectIds) || query.subjectIds.length > 16) fail(code, "Os assuntos são inválidos.");
@@ -316,7 +376,12 @@ function pathEntry(value, code, label) {
   enumValue(value.kind, COURSE_ANCHORED_ANNOTATION_TARGET_KINDS, code, "O tipo do caminho");
   return {
     kind: value.kind,
-    id: value.kind === "course" ? uuid(value.id, code, "A identidade do Curso no caminho") : opaqueId(value.id, code, "A identidade no caminho"),
+    id: targetId(
+      value.kind,
+      value.id,
+      code,
+      value.kind === "course" ? "A identidade do Curso no caminho" : "A identidade no caminho"
+    ),
     label: boundedText(value.label, 300, 1200, code, "O rótulo do caminho", { nullable: true, preserveLayout: true }),
     version: value.version === null ? null : integer(value.version, 1, Number.MAX_SAFE_INTEGER, code, "A versão no caminho")
   };
@@ -445,8 +510,21 @@ function annotationItem(value) {
   }
   enumValue(value.state, COURSE_ANCHORED_ANNOTATION_STATES, code, "O estado");
   if (value.ownerResponse !== null) {
-    exact(value.ownerResponse, ["text", "updatedAt"], code, "A resposta da pessoa autora");
+    exact(value.ownerResponse, [
+      "text", "kind", "consideredSourceLinks", "updatedAt"
+    ], code, "A resposta da pessoa autora");
     boundedText(value.ownerResponse.text, 2000, 16384, code, "A resposta da pessoa autora", { preserveLayout: true });
+    enumValue(
+      value.ownerResponse.kind,
+      COURSE_ANCHORED_ANNOTATION_RESPONSE_KINDS,
+      code,
+      "O tipo da resposta"
+    );
+    const sourceLinks = consideredSourceLinks(value.ownerResponse.consideredSourceLinks, code);
+    if ((value.ownerResponse.kind === "answer" && sourceLinks.length > 0) ||
+        (value.ownerResponse.kind === "reformulation" && sourceLinks.length === 0)) {
+      fail(code, "A declaração de Fontes consideradas é incoerente com a resposta.");
+    }
     timestamp(value.ownerResponse.updatedAt, code, "A atualização da resposta");
   }
   exact(value.timestamps, [

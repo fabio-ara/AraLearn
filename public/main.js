@@ -450,12 +450,12 @@ async function deliverPartMaterializationRequest({ requestText } = {}) {
   const text = String(requestText || "").trim();
   if (!text) throw new TypeError("O pedido de materialização está vazio.");
   if (typeof globalThis.navigator?.clipboard?.writeText !== "function") {
-    throw new Error("Não foi possível copiar o pedido para o chat conectado.");
+    throw new Error("Não foi possível copiar o pedido para o ChatGPT.");
   }
   await globalThis.navigator.clipboard.writeText(text);
   return {
     delivery: "clipboard",
-    message: "Pedido copiado para levar ao chat conectado."
+    message: "Pedido copiado. Cole no ChatGPT para solicitar a materialização."
   };
 }
 

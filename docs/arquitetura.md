@@ -1,720 +1,233 @@
 # Arquitetura do AraLearn
 
-Este capítulo explica a arquitetura implementada no código corrente. O ciclo
-owner-only de auditoria, correção e verificação já pertence ao runtime local;
-variantes e analytics de pesquisa permanecem posteriores.
+O AraLearn organiza estudo e autoria em torno de um único Curso vivo. A mesma
+identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
+ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
+auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-## Vocabulário necessário
+## O Curso como raiz do domínio
 
-**Curso vivo.** Objeto instrucional identificável e mutável que reúne título,
-objetivo, plano instrucional e composição. O mesmo identificador é usado por
-Estudo, Autoria e MCP.
+`public.courses` guarda a raiz identificável do Curso. O conteúdo curricular
+fica em entidades ordenadas sob esta hierarquia:
 
-**Plano instrucional.** Planejamento normalizado e editável do Curso. Reúne
-público, escopo, resultados de aprendizagem pretendidos, unidades de análise
-instrucional, requisitos de evidência e Partes de autoria. Título e objetivo
-aparecem nessa projeção para leitura, mas sua autoridade permanece
-exclusivamente na raiz do Curso.
-
-**Desenho por escopo.** Resolução versionada de parâmetros pedagógicos,
-orientações naturais e política de componentes para um alvo do Curso.
-Orientação conserva texto original e interpretação separada; política
-representacional não se mistura a limites técnicos. Numa Microssequência, o
-desenho inclui também a atribuição explícita dos itens de análise e evidência
-que aquele alvo deve realizar.
-
-**Fonte e Âncora.** Uma Fonte é uma identidade privada do Curso com revisões
-append-only. Uma Âncora localiza evidência numa revisão exata por página,
-tempo, fragmento URI ou trecho textual; seu trecho de verificação permanece
-privado.
-
-**Atribuição de Fonte.** Conjunto completo, ordenado e versionado de vínculos
-entre revisões de Fontes, Âncoras exatas e um item do plano ou uma Unidade. A
-relação declara se a Fonte informa, sustenta, foi adaptada ou foi citada.
-
-**Parte de autoria.** Recorte operacional ordenado que liga uma intenção de
-produção a zero ou mais Microssequências didáticas. Sua posição de produção
-não muda a hierarquia curricular e sua remoção não apaga conteúdo didático.
-
-**Entidade do Curso.** Linha que representa Módulo, Lição, Tópico,
-Microssequência didática ou Unidade de estudo. A posição e a relação com o pai
-ficam em colunas; o conteúdo próprio fica em JSON validado.
-
-**Lista fina.** Página de descritores pequenos: identidade, título, objetivo,
-revisão, propriedade, contagens, progresso e data de atualização. Ela não leva
-a composição inteira de todos os Cursos.
-
-**Inspeção autoral.** Leitura vertical owner-only de Unidades de estudo em uma
-revisão fixada. Pode ser limitada ao Curso, a uma Parte, às Unidades sem Parte
-ou a um recorte curricular e não recompõe o documento integral.
-
-**Estado pessoal.** Documento v2 com somente progresso e marcas para rever de
-uma pessoa em um Curso. Ele não altera o conteúdo canônico e não é compartilhado
-com outra pessoa que estude o mesmo Curso.
-
-**Anotação ancorada.** Registro protegido de uma Observação ligado a Curso,
-Módulo, Lição, Tópico, Microssequência didática ou Unidade de estudo. Várias
-anotações podem coexistir no mesmo alvo; elas possuem persistência, versões e
-sincronização separadas do estado pessoal e do conteúdo canônico.
-
-**Rodada de auditoria.** Registro imutável de checks públicos sobre uma Unidade
-e um contexto focal versionado. Ela não autoriza correção nem mede
-aprendizagem.
-
-**Achado de auditoria.** Divergência ou incerteza localizada, ligada a um check
-falho ou incerto. Suas decisões e transições são versões append-only.
-
-**Correção autoral.** Proposta versionada que preserva os snapshots anterior e
-posterior do conteúdo e da proveniência de uma Unidade existente. Aplicação,
-verificação e rollback são fatos distintos.
-
-**Concorrência otimista.** Uma alteração informa a revisão que leu. O servidor
-só a aceita se essa revisão ainda for corrente; caso contrário, o cliente
-precisa reler e reconciliar o estado.
-
-**Idempotência.** Uma chave de pedido permite repetir com segurança a mesma
-operação. Reutilizá-la com outro conteúdo é conflito, não uma nova solicitação.
-
-## Visão geral
-
-**Descrição textual:** Estudo e Autoria usam controladores separados porque
-possuem autoridades diferentes, mas ambos chegam ao mesmo Curso. A interface e
-o cliente MCP compartilham o serviço de Curso; o dispositivo conserva cache e
-estado pessoal no IndexedDB; PostgreSQL é a autoridade remota. Metadados e URLs
-de Fontes ficam no PostgreSQL; Storage contém somente fotos privadas de perfil
-nesta etapa e não armazena os arquivos referenciados.
-
-```mermaid
-flowchart LR
-    P[Pessoa] --> S[Estudo]
-    P --> A[Autoria]
-    M[Cliente MCP] --> E[Edge Functions]
-    S <--> I[IndexedDB]
-    A <--> I
-    S <--> R[RPCs de Curso]
-    A <--> E
-    E <--> R
-    R <--> D[(PostgreSQL)]
-    D --> F[Fontes e atribuições]
-    D --> Q[Auditoria, achados e correções]
-    F --> S
-    A <--> V[(Storage de avatar)]
+```text
+Curso
+└── Módulo
+    └── Lição
+        ├── Tópico
+        └── Microssequência
+            └── Unidade de estudo
 ```
 
-O diagrama mostra canais, não equivalência de autoridade. Estudo pode ler um
-Curso próprio ou compartilhado e alterar somente estado pessoal. Autoria e MCP
-listam e alteram apenas Cursos próprios.
-
-## Decisão 1 — uma identidade de Curso vivo
-
-### Problema
-
-Separar planejamento, cópia de estudo e versão publicada cria a impressão de
-três produtos. Uma alteração precisa ser propagada entre identidades e a pessoa
-não consegue saber qual estado é o vigente.
-
-### Alternativas consideradas
-
-- manter um recipiente de produção e gerar cópias distribuídas;
-- fixar versões integrais imutáveis no Storage;
-- usar o Curso como raiz única e registrar sua revisão corrente.
-
-### Decisão e funcionamento
-
-`public.courses` é a raiz. Ela conserva `id`, proprietário, título, objetivo,
-revisão e datas. `private.course_instructional_plans` e suas relações guardam o
-planejamento autoral; `private.course_entities` conserva a composição
-normalizada. Toda relação aponta diretamente para `course_id`; não há
-identidade intermediária necessária para abrir o Curso em Estudo.
-
-O Curso pode ser estudado enquanto muda. Uma nova edição incrementa a revisão,
-mas não transforma o conteúdo em outro Curso. Nesta etapa não existe estado
-editorial de rascunho ou publicado, nem documento integral imutável necessário
-à leitura.
-
-### Consequências
-
-- Autoria, Estudo e MCP apontam para a mesma raiz;
-- propriedade e compartilhamento também apontam diretamente para o Curso;
-- a revisão protege concorrência sem prometer imutabilidade do Curso;
-- exportação ou disponibilização pública, se vierem a existir, serão operações
-  explícitas e não um segundo estado obrigatório.
-
-### Limites e evidência
-
-O modelo está implementado e testado localmente. A conversão dos dados
-hospedados ainda não foi executada; a seção de gates ao final delimita o que
-falta antes da promoção.
-
-## Decisão 2 — lista fina e composição paginada
-
-### Problema
-
-Baixar todos os Cursos e todas as Unidades de estudo para desenhar a tela
-inicial desperdiça memória, rede e processamento, especialmente em celular e
-no Supabase Free Plan.
-
-### Decisão e funcionamento
-
-A lista usa paginação por data de atualização e identidade. Cada item traz
-contagens agregadas e progresso, mas não a composição. A busca examina título,
-objetivo e, somente para o proprietário, orientações privadas.
-
-Quando a pessoa abre um Curso, o cliente recebe cabeçalho e hierarquia compacta
-ou percorre entidades em páginas. Cada página exige a revisão esperada; se o
-Curso mudar entre páginas, a leitura falha em vez de misturar duas versões.
-Depois de composto e validado, o documento é cacheado no IndexedDB.
-
-Autoria possui uma leitura diferente para inspeção: a RPC owner-only devolve
-Unidades em ordem curricular com contexto de Módulo, Lição e Microssequência,
-Parte associada e link profundo. Âncora inclui o alvo de entrada; cursor marca
-a fronteira já consumida e nunca aparece junto da âncora. A interface pede 12
-itens, mantém no máximo 36 artigos no DOM e pagina em ambas as direções. O cache
-local é indexado pela revisão e pelo pedido completo e limitado a quatro
-páginas ou 8 MiB por Curso; a posição local guarda Unidade, escopo e distância
-da barra fixa sem criar escrita remota.
-
-### Consequências
-
-- a Home cresce com o número de páginas, não com o total de Unidades;
-- um Curso só consome tráfego de composição ao ser aberto;
-- cache conhecido permite abrir conteúdo já carregado sem conexão;
-- Curso atualizado invalida a leitura parcial e é recarregado de modo íntegro;
-- inspeção longa mantém rede, memória e DOM limitados sem perder contexto;
-- uma página exata pode ser relida offline como stale, mas outro recorte não é
-  usado como aproximação.
-
-### Limites e evidência
-
-O carregamento inicial de Estudo percorre descritores acessíveis para permitir
-retomada offline. A Inspeção usa alvo normal de 512 KiB, aceita entre 64 KiB e
-1.500.000 bytes e falha fechada se a projeção completa ultrapassar 1,75 MiB,
-preservando margem sob 2 MiB. O orçamento de rede prolongado ainda precisa ser
-medido com uso real; “paginado” não significa automaticamente “barato” em
-qualquer cardinalidade.
-
-## Decisão 3 — composição relacional e documento validado
-
-### Problema
-
-Um único JSON integral simplifica a leitura, mas torna atualizações parciais,
-relações, paginação e inspeção no banco mais difíceis. Fragmentação excessiva,
-por outro lado, distribui o conteúdo em tabelas demais.
-
-### Decisão e funcionamento
-
-A solução usa uma única tabela de entidades para cinco tipos:
-
-| Tipo persistido | Pai | Posição |
-| --- | --- | --- |
-| Módulo | Curso | contígua a partir de zero |
-| Lição | Módulo | contígua a partir de zero |
-| Tópico | Lição | contígua a partir de zero |
-| Microssequência didática | Lição | contígua a partir de zero |
-| Unidade de estudo | Microssequência | inteiro positivo do contrato |
-
-Chaves estrangeiras compostas garantem que o pai pertence ao mesmo Curso. O
-domínio `courseEntities` achata um documento `aralearn.course.v1`, valida
-linhas e recompõe o documento usado pelo renderer. Estrutura relacional e
-conteúdo JSON não duplicam `id`, posição nem filhos.
-
-O tipo final da Unidade é `study_unit`, e a coleção filha da Microssequência é
-`studyUnits`; não há alias para o discriminador ou a coleção substituídos. A
-escrita continua segmentada: cada linha alterada passa pelo validador semântico
-do tipo, e o PostgreSQL verifica `dependsOn` somente nas Lições afetadas. A
-inspeção permanece leitura paginada e não é usada como pretexto para recompor o
-Curso antes de cada escrita.
-
-### Consequências
-
-Uma tabela atende a paginação e a substituição de composição sem criar uma
-tabela para cada nível didático. O custo é manter validação equivalente no
-domínio JavaScript e no banco; os testes de roundtrip e da migration verificam
-essa fronteira.
-
-## Decisão 4 — plano vivo e Partes operacionais normalizadas
-
-### Problema
-
-Um grande JSON de autoria obriga pessoas e clientes conversacionais a trocar o
-documento inteiro, oculta relações e cria uma segunda interpretação do estado.
-Também confunde a ordem em que conteúdo será produzido com a ordem curricular
-em que será estudado.
-
-### Decisão e funcionamento
-
-Cada Curso possui exatamente um plano em
-`private.course_instructional_plans`. Itens ordenados ficam em
-`private.course_instructional_plan_items`; Partes vivas, em
-`private.course_authoring_parts`; e o vínculo exclusivo entre Parte e
-Microssequência, em
-`private.course_authoring_part_didactic_microsequences`. A posição desse
-vínculo é ordem de produção, não `course_entities.position`.
-
-A interface apresenta campos e listas em linguagem natural. Ela permite editar
-o plano, acrescentar, editar, remover e reordenar itens, criar, editar,
-reordenar, dividir e unir Partes e mover ou retirar vínculos. Nenhuma dessas
-operações exige editar JSON. Remover ou reorganizar o plano conserva Módulos,
-Lições, Microssequências e Unidades já produzidos.
-
-A faixa preferencial nasce em 7–12 Partes. Ela pode ser alterada pela pessoa ou
-por uma condição de pesquisa e registra sua origem; é um padrão operacional,
-não lei pedagógica, resultado científico nem validação do número ideal.
-
-Materializar uma Parte é um processo retomável em
-`private.course_authoring_part_materializations` e
-`private.course_authoring_part_materialization_steps`. Começar, registrar uma
-etapa e finalizar são comandos pequenos, limitados, idempotentes e protegidos
-por revisão do Curso, versão do plano, versão da Parte ou versão da tentativa,
-conforme a operação. Uma etapa que altera entidades confirma composição,
-vínculo, fatos e progresso na mesma transação. O progresso exibido é derivado
-de vínculos, Unidades e tentativas persistidas; não é um selo manual.
-
-O botão visual **Levar pedido ao chat conectado** apenas copia uma solicitação.
-Ele não inicia tentativa, não materializa conteúdo e não muda o status. Somente
-fatos confirmados por API/MCP podem aparecer como atividade ou progresso.
-
-A vista leve do plano conserva somente o resumo da última tentativa. Quando a
-pessoa escolhe **Ver etapas**, ou quando um cliente MCP precisa retomar, uma
-leitura owner-only busca somente aquela tentativa e no máximo 64 etapas. O DTO
-inclui as versões, o contexto e os fatos limitados e a próxima etapa pendente;
-não depende do histórico da conversa nem carrega todas as tentativas do Curso.
-Uma Parte com tentativa em andamento não pode ser alterada ou ter vínculos
-reorganizados até terminar ou falhar, evitando estado irrecuperável.
-
-### Consequências
-
-- planejamento e composição possuem comandos separados e não se sobrescrevem;
-- interface e MCP leem e alteram o mesmo plano e os mesmos recibos;
-- repetição idêntica devolve o recibo selado; reutilização divergente da chave
-  é conflito;
-- CAS desatualizado exige releitura e reconciliação, sem última escrita vencer;
-- a atividade recente informa apenas fatos persistidos e o canal `application`
-  ou `mcp`.
-
-## Decisão 5 — desenho pedagógico resolvido e selado pelo servidor
-
-### Problema
-
-Um campo livre no plano não permite distinguir intenção humana, interpretação
-automatizada, herança, default e decisão experimental. Permitir que o cliente
-declare o contexto usado numa materialização também tornaria a auditoria
-autorreferente.
-
-### Decisão e funcionamento
-
-O catálogo corrente possui quatro parâmetros fechados: teto de novas unidades
-de análise por Unidade expositiva, formas de explicação, mínimo de
-oportunidades distintas de prática e dimensões de variação. Cada definição
-declara schema, default como hipótese de produto, escopos admitidos,
-limitações e referências de fundamentação.
-
-Parâmetros usam Curso, Lição ou Microssequência. Orientação e política de
-componentes também admitem Módulo. A resolução escolhe primeiro a decisão
-explícita `author|research_condition` mais próxima, depois a automática mais
-próxima e, por fim, o default. Herança é calculada; limpar remove somente a
-atribuição local.
-
-Orientações são revisões imutáveis do texto original. A leitura acumula a pilha
-Curso→alvo e mantém interpretações estruturadas ligadas à revisão exata, sem
-reescrever o texto. Política de componentes é um valor completo, ligado à
-revisão exata do catálogo, cuja resolução escolhe primeiro a política
-`author|research_condition` mais próxima, depois a `automatic` mais próxima e,
-por fim, o default; exclusão vence e preferência não autoriza uso.
-
-`private.course_design_target_plan_items` representa a atribuição
-muitos-para-muitos de unidades de análise instrucional e requisitos de
-evidência às Microssequências. A leitura `targetPlanItems` expõe as duas listas
-somente no escopo de Microssequência; `set_target_plan_items` substitui o
-conjunto completo daquele alvo. Nada infere que toda Microssequência de uma
-Parte precise cobrir todos os itens do Curso.
-
-Ao iniciar uma materialização, o servidor resolve o desenho para cada
-Microssequência-alvo e sela um contexto limitado. Revisões de orientação são
-deduplicadas; os catálogos de análise e evidência selam
-`{id, position, statement, version}` e cada alvo referencia somente seus IDs.
-O contexto `aralearn.course-design-context.v2` também sela as revisões e
-Âncoras atribuídas a esses itens do plano. Na etapa, o cliente envia fatos
-limitados de aplicação e aplicações de proveniência; o auditor os confronta
-somente com o subconjunto daquele alvo.
-
-Formas explicativas, oportunidades e variações são declarações do agente ou da
-pessoa autora cuja forma, referências, contagens e coerência interna são
-validadas; o PostgreSQL não as extrai semanticamente do conteúdo. A checagem
-material na mesma transação reconcilia os IDs de Unidades, seu pai e alvo e os
-`componentRefs` presentes nas entidades com a política selada.
-
-### Consequências
-
-- interface e MCP mostram o mesmo valor efetivo, origem e fonte;
-- automação não sobrescreve silenciosamente decisão explícita;
-- defaults e conformidade são hipóteses e fatos técnicos, não eficácia;
-- limites de bytes, DOM e lote ficam fora do catálogo pedagógico;
-- prompt, conversa e raciocínio não viram estado do Curso.
-
-## Decisão 6 — estado pessoal separado do Curso
-
-### Problema
-
-Progresso e marcações **Rever** pertencem à continuidade de uma pessoa. Se forem
-misturados ao conteúdo, cada avanço de estudante alterará a revisão autoral e
-poderá vazar para outras pessoas.
-
-### Decisão e funcionamento
-
-`public.course_personal_states` mantém um documento compacto por pessoa e
-Curso. Ele contém:
-
-- cursores e Unidades concluídas por Lição;
-- marcas de revisão por Unidade.
-
-O IndexedDB mantém a réplica local e uma mutação pendente por Curso. As RPCs
-`load_course_personal_state_v2` e `mutate_course_personal_state_v2` validam
-acesso, revisão, limites e chave de pedido. O runtime não lê nem grava o contrato
-v1; recibos v1 remanescentes são cercados por versão de protocolo e só existem
-até sua expiração original.
-
-### Consequências
-
-- conteúdo e estado pessoal evoluem separadamente;
-- uma concessão de acesso basta para Estudo, sem papel editorial;
-- revogar acesso impede novas leituras, mas o tratamento de dados locais já
-  baixados continua dependente da política do dispositivo;
-- Anotações ancoradas usam tabelas, API, cache e outbox próprios; não ampliam o
-  estado pessoal v2.
-
-## Decisão 7 — propriedade e acesso direto
-
-### Problema
-
-Compartilhar um Curso para prática não exige organização institucional, papel,
-matriz de permissões ou workflow editorial.
-
-### Decisão e funcionamento
-
-Todo Curso tem exatamente um `owner_id`. `public.course_access` contém somente
-o par Curso–pessoa, quem concedeu e quando. Não há nível de acesso: a concessão
-significa **Estudo**. O proprietário conserva toda edição.
-
-Na interface, **Pessoas** mostra o proprietário e as pessoas com acesso. Uma
-concessão exige o e-mail exato de uma conta existente e confirmação; a resposta
-e os eventos não devolvem nem persistem o e-mail. Revogar usa a identidade já
-listada. MCP aplica a mesma regra pela ferramenta `gerirPessoas`.
-
-### Consequências
-
-- compartilhar não organiza nem duplica o Curso;
-- a pessoa favorecida encontra o Curso em Estudo, não em Autoria;
-- coestudantes não veem uns aos outros;
-- somente proprietário e pessoa favorecida podem ver nome e avatar entre si;
-- conceder ou revogar é idempotente e produz um evento pequeno quando muda o
-  estado.
-
-## Decisão 8 — perfil humano mínimo e avatar privado
-
-`public.person_profiles` conserva nome opcional e chave de avatar. Um perfil é
-criado para cada conta, sem transformar o produto em rede social. A interface
-de Conta permite definir nome, enviar ou remover foto e excluir a própria
-conta.
-
-O bucket `person-avatars` é privado. Aceita JPEG, PNG e WebP até 512 KiB, com
-chave `<user-id>/<uuid>.<extensão>`. A própria pessoa envia e apaga seus objetos;
-a leitura é permitida somente para ela e para uma relação direta de acesso a
-Curso. Antes da exclusão da conta, os objetos de avatar precisam ser removidos.
-
-O Storage não guarda conteúdo de Curso nesta etapa. Essa delimitação evita usar
-armazenamento de objetos apenas porque a infraestrutura existe.
-
-## Decisão 9 — dois transportes, uma regra de domínio
-
-O aplicativo usa RPCs autenticadas para Estudo e a Edge Function
-`aralearn-course-api` para operações autorais. Clientes conversacionais usam
-`aralearn-authoring-mcp`, autenticado por OAuth. As duas Edge Functions chamam
-o mesmo roteador de Curso, o mesmo domínio de plano e as mesmas funções de
-serviço; não reimplementam propriedade, revisão ou idempotência. Planejamento,
-composição e avanço de materialização são operações distintas no protocolo,
-embora compartilhem a revisão do mesmo Curso.
-
-As ferramentas MCP correntes são seis:
-
-1. `listarCursos`;
-2. `lerCurso`;
-3. `criarCurso`;
-4. `alterarCurso`;
-5. `gerirPessoas`;
-6. `consultarComponentesDidaticos`.
-
-O sexto item é uma ferramenta de descoberta e validação da biblioteca, não uma
-mutação do Curso. A lista separa capacidades de Curso das operações progressivas
-da biblioteca sem expor o banco diretamente.
-
-## Decisão 10 — núcleo pequeno e pacotes de componentes
-
-O núcleo de execução conhece composição, temas, acessibilidade e protocolos
-comuns. Cada pacote de componente conserva schema, validação, renderer,
-capacidades e exemplos. Browser e Edge derivam a biblioteca do mesmo índice
-gerado.
-
-Essa modularidade é útil somente se cada pacote possuir valor representacional
-e contrato semanticamente defensável. O corte de Curso encontrou formatos
-antigos sem equivalência instalada; eles bloqueiam a migração em vez de serem
-convertidos por aproximação. A resolução dessa lacuna é gate de dados, não
-compatibilidade permanente.
-
-## Decisão 11 — proveniência relacional fora do conteúdo
-
-### Problema
-
-Um vetor textual `sources` dentro de cada Unidade mistura conteúdo público com
-catálogo privado, não identifica versão nem localização e permite que uma
-correção silenciosa reescreva a explicação histórica.
-
-### Decisão e funcionamento
-
-Cinco tabelas privadas conservam revisões de Fontes, revisões de Âncoras,
-snapshots de atribuição e seus vínculos ordenados. Leituras owner-only separam
-catálogo, detalhe e histórico do alvo. Escritas novas admitem no máximo 32
-Fontes por alvo e oito identidades de Âncora por revisão de Fonte, e cada vínculo exige ao menos uma
-Âncora ativa da revisão exata.
-
-O corte remove `StudyUnit.sources` do documento canônico. A composição recebe
-um `sourceAttributionApplications` separado e completo para cada Unidade
-incluída ou substituída, inclusive vazio. O Estudo consulta citações somente ao
-abrir a Unidade e recebe uma projeção redigida: Fonte oculta ou legada não
-resolvida é omitida; `citation` omite URL; `citation_and_link` pode entregá-la.
-
-A migration `1900` preserva cada referência anterior em ordem como
-`legacy_reference`, com identidade literal, estado `unresolved_legacy`,
-metadados nulos e visibilidade oculta. Resolver acrescenta uma revisão ativa
-sob essa mesma identidade. Não existe inferência de título, URL, Âncora ou
-autoria, nem compatibilidade permanente com `sources` no conteúdo.
-
-Na materialização, o servidor só aceita
-`aralearn.course-source-attribution-application.v1` formado por Fontes e
-Âncoras seladas no contexto. Entidades, vínculo, aplicação, atribuições, etapa,
-evento e recibo pertencem à mesma transação.
-
-### Consequências
-
-- histórico e ordem são verificáveis sem expor o catálogo ao Estudo;
-- visibilidade de estudo não concede acesso ao trecho privado de verificação,
-  ator, canal ou histórico;
-- a atribuição por alvo não equivale a uma cadeia de alegações no padrão W3C
-  nem prova autoria científica;
-- Anotações ancoradas continuam sendo uma relação própria; achados, correções e
-  verificação independente pertencem ao ciclo de auditoria, sem transformar a
-  atribuição numa alegação científica.
-
-## Decisão 12 — Observações como Anotações ancoradas protegidas
-
-### Problema
-
-Uma observação precisa conservar contexto, chegar ao proprietário e continuar
-privada entre estudantes. Misturá-la ao Curso avançaria a revisão de conteúdo;
-misturá-la ao estado pessoal impediria a caixa de entrada compartilhada e
-obrigaria um único registro por Unidade.
-
-### Decisão e funcionamento
-
-`private.course_anchored_annotations` conserva a linha corrente;
-`private.course_anchored_annotation_events` guarda eventos append-only com
-hashes e metadados limitados, sem texto anterior; e
-`private.course_anchored_annotation_receipts` oferece idempotência por até 14
-dias. `private.course_anchored_annotation_viewer_versions` guarda Curso, pessoa,
-contador monotônico da projeção privada e `protected_ref` aleatório persistido,
-com RLS forçada e sem grants diretos; é coordenação e pseudonimização, não
-autoridade textual ou histórico novo.
-`courses.annotation_set_version` é o contador global entregue ao proprietário.
-Estudo recebe apenas o contador privado da própria pessoa, de modo que atividade
-alheia não se torna observável. Nenhum dos dois transforma triagem em mudança
-de conteúdo. A linha privada dura até excluir a pessoa ou o Curso para manter a
-monotonicidade do cache; não entra no TTL de texto, tombstone ou recibo. Há N
-anotações por pessoa e alvo, nos estados
-`open|considered|resolved|withdrawn`, com origem e canal validados.
-
-A classificação automática só associa assunto quando o alvo é exatamente um
-Tópico (`exact_topic_target`). Outros alvos permanecem
-`target_scope_unclassified`; uma seleção posterior do proprietário é registrada
-separadamente como `human_topic_selection`, sem apagar o fato automático.
-
-O proprietário lê a caixa de entrada inteira. Cada estudante lê somente os
-próprios registros. O DTO owner-only usa contribuidor protegido: papel e
-pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUID e
-nunca UUID ou e-mail. Assim, conhecer o roster não permite correlacionar `ref`.
-A interface mostra
-somente o `label` pseudônimo protegido, não `ref` nem identidade direta. Estudo
-possui cache e outbox offline próprios e coordena abas por IDs,
-nunca por texto bruto. Perda de autoridade purga cache, outbox e handoff.
-
-### Consequências
-
-- `section=observations` é a sétima área da Autoria, agora apresentada como
-  **Auditoria e correções**, com abas de Observações e Achados; Anotar uma
-  Unidade parte da Inspeção;
-- o MCP continua com seis ferramentas: `lerCurso` lê
-  `anchored_annotations` e `alterarCurso` executa
-  `update_anchored_annotations`;
-- retirada redige texto, síntese e resposta imediatamente; após 14 dias o
-  tombstone expira logicamente; a limpeza física processa por toque um lote de
-  até 128 tombstones e 256 recibos expirados, mas Curso inativo pode conservar
-  lixo físico porque não há cron; Curso e conta aplicam as respectivas regras;
-- categoria, quantidade, estado, resposta, resolução e timestamps não são
-  medidas de aprendizagem, dificuldade, atenção, qualidade ou eficácia.
-
-## Decisão 13 — auditoria focal com correção verificável
-
-### Problema
-
-Uma Observação situa uma dúvida ou possível erro, mas não conserva o critério,
-a evidência nem o estado exato que uma correção precisa confrontar. Tratar a
-triagem como reparo também permitiria declarar resolução sem reler o conteúdo.
-
-### Decisão e funcionamento
-
-O Curso recebe quatro autoridades privadas: rodadas imutáveis, versões
-append-only de achados, a junção achado–Anotação e versões append-only de
-correções. Um contexto focal derivado pelo servidor reúne a Unidade corrente,
-Microssequência, plano, parâmetros, intenção representacional, Fontes/Âncoras e
-Observações selecionadas. A interface fornece três checks humanos e o servidor
-acrescenta a conformidade estrutural.
-
-Rodadas são enumeradas em páginas próprias, inclusive quando não criaram
-achado; seu detalhe preserva todos os checks e evidências. Achados e rodadas
-aceitam filtro opcional por Unidade. O detalhe escolhe exatamente uma
-identidade: achado ou rodada. Essa separação impede que “rodada limpa” fique
-invisível e evita carregar todo o histórico num único relatório.
-
-A correção v1 só altera conteúdo e atribuições de Fontes de uma Unidade
-existente. O checkpoint conserva `before|after`; aplicação exige o alvo ainda
-corrente e avança a revisão do Curso. O achado fica aguardando verificação até
-uma nova rodada confirmar `resolved|still_open`. Rollback restaura o checkpoint
-anterior somente quando o snapshot aplicado ainda corresponde ao alvo.
-
-O ciclo reutiliza `course_change_receipts`; somente aplicação e rollback geram
-`course_events`, porque são as operações que mudam o Curso. As quatro relações
-usam RLS forçada, não têm grants diretos e são acessadas por duas RPCs
-service-role owner-only.
-
-A junção conserva apenas IDs e versões. Anotação retirada é projetada como
-indisponível e sem link enquanto o tombstone existe; sua limpeza física remove
-o vínculo por cascade. Nenhum texto, pseudônimo ou identidade pessoal é copiado
-para o achado. Sugestões de resolver ou reabrir Observações exigem outro comando
-explícito e nunca são executadas pelo ciclo.
-
-### Consequências
-
-- a sétima área continua em `section=observations`, agora com o rótulo
-  **Auditoria e correções** e abas de Observações e Achados;
-- MCP mantém seis ferramentas: `lerCurso audit_cycle` e `alterarCurso
-  update_audit_cycle` carregam a capacidade nova;
-- auditoria e correção são online-only, sem store, cache autoritativo ou outbox
-  no IndexedDB;
-- conclusão factual positiva exige Fonte e Âncora ativas; `supported_by`
-  sustenta afirmações e `quoted_from` só verifica fidelidade de citação;
-- o preflight falha diante de resíduos de auditoria, correção, desenho ou
-  materialização substituídos, em vez de convertê-los.
-
-## Organização do código
-
-| Responsabilidade | Local principal |
-| --- | --- |
-| identidade e composição do Curso | `src/domain/courseEntities.js` |
-| plano instrucional e comandos de Parte | `src/domain/courseAuthoringPlan.js` |
-| parâmetros, orientação e política de componentes | `src/domain/courseDesignParameters.js` |
-| Fontes, Âncoras e atribuições | `src/domain/courseSources.js` |
-| Anotações ancoradas | `src/domain/courseAnchoredAnnotations.js` |
-| auditoria, achados e correções | `src/domain/courseAuditCycle.js` |
-| cache local | `src/persistence/CourseLocalStore.js` |
-| estado pessoal e fila | `src/persistence/CoursePersonalStateRepository.js` |
-| cache e outbox de anotações | `src/persistence/CourseAnnotationRepository.js` |
-| acesso HTTP/RPC | `src/supabase/CourseApiClient.js` |
-| cache, paginação e revisão | `src/supabase/CourseController.js` |
-| aplicação de Estudo | `src/study/` |
-| Autoria visual | `src/ui/CourseAuthoringSurface.js` |
-| sequência vertical de Inspeção | `src/ui/CourseInspectionSequence.js` |
-| catálogo visual de Fontes | `src/ui/CourseSourcesPanel.js` |
-| caixa de entrada de Observações | `src/ui/CourseObservationsPanel.js` |
-| ciclo visual de auditoria | `src/ui/CourseAuditPanel.js` |
-| API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000` a `20260817210000` |
-| importador transitório | `scripts/courseCutover/` |
-
-## Gates antes da promoção hospedada
-
-O runtime canônico está implementado localmente, mas a migração hospedada não
-está concluída. A promoção exige, nesta ordem:
-
-1. reinstalar equivalentes semanticamente válidos para os componentes antigos
-   ainda bloqueadores e decidir explicitamente os poucos dados sem contrato;
-2. executar o importador em modo somente leitura e obter validação integral dos
-   oito Cursos reais;
-3. reconstruir o Supabase local, executar migrations, testes de banco e jornada
-   de navegador contra o schema resultante;
-4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
-   substituído;
-5. executar o importador e as migrations `1400`, `1500`, `1600`, `1700`,
-   `1800`, `1900`, `2000` e `2100`, nessa ordem, na mesma transação hospedada,
-   abortando diante de drift; o runner declara e hasheia as oito antes de
-   `--apply` e não usa `db push` separado para as migrations do corte;
-6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
-
-O importador é transitório e não entra no runtime. Não há leitura dupla,
-fallback, alias nem sincronização paralela. O Git preserva a arquitetura
-anterior.
-
-O preflight da `1800` também é fail-closed: bloqueia as relações legadas antes
-de conferir que estão vazias e aborta diante de qualquer tentativa ou etapa de
-materialização criada antes do novo contexto. Materialização antiga não é
-reinterpretada nem retomada sob o contrato novo.
-
-O preflight da `1900` bloqueia materializações em andamento e referências
-legadas malformadas. A atestação `prepared` e a verificação pós-corte incluem
-`sourceReferenceHash`, hash canônico da ordem de
-`{studyUnitId, sourceOrdinal, sourceId}`, junto com os hashes e contagens já
-selados.
-
-O preflight da `2000` aceita somente as pontes legadas de observações e recibos
-previstas pelo contrato. Notas autorais e observações pessoais legadas são
-convertidas uma vez e removidas dos documentos pessoais após prova por hash.
-`trail_observation_threads` permanece apenas como ponte temporária de correção
-sem texto bruto, não como fonte ativa.
-
-O preflight da `2100` é fail-closed sobre um envelope fixo de 26 contagens. Todos
-os bloqueadores precisam ser zero; somente a contagem bruta de
-`observation_threads` pode ser diferente de zero, desde que suas referências a
-correções também sejam zero. Nenhum achado, reparo, checkpoint ou vínculo legado
-é convertido, retomado ou tratado como estado válido do ciclo novo.
-
-O domínio congelado do ciclo de auditoria e seu espelho Edge têm SHA-256
-`6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9`, idêntico
-no domínio e no espelho Edge. O inventário regenerado pós-`2100` contém 2.186
-objetos: 591 ligados aos oito casos correntes — 90 Auditoria e correções, 272
-Autoria, 84 Anotações ancoradas, 84 Fontes, 26 Estudo, 31 pessoas/acesso, três
-transportes e um componentes — e 1.595 isolados como legado físico. Totais de
-schemas anteriores não servem como evidência desse corte.
-
-## Propriedades demonstradas e questões abertas
-
-| Afirmação | Estado | Evidência ou limite |
-| --- | --- | --- |
-| um identificador representa o Curso em Estudo, Autoria e MCP | implementado localmente | domínio, migrations, testes de API/MCP e jornada de navegador |
-| Cursos compartilhados aparecem somente em Estudo | implementado localmente | controladores owner-only e testes de acesso |
-| lista fina precede composição sob demanda | implementado localmente | RPCs paginadas, cache e testes de revisão |
-| plano e Partes são editáveis sem JSON pela interface e pelo MCP | implementado localmente | domínio, migration `1600`, API, MCP e testes focais |
-| parâmetros, itens do plano por alvo, orientação original e política são resolvidos pelo mesmo contrato na UI e no MCP | implementado localmente | domínio, relação muitos-para-muitos da migration `1800`, API/MCP, área Parâmetros e testes focais |
-| materialização sela enunciados, versões e subconjuntos por alvo e cerca fatos declarados | implementado localmente | migration `1800`, hash do contexto, validação interna e regressão DNS/DHCP; o banco reconcilia materialmente somente IDs de Unidades, pai/alvo e `componentRefs` |
-| Fontes e Âncoras preservam revisões e atribuições por alvo fora do conteúdo | implementado localmente | domínio compartilhado, migration `1900`, API/MCP, sexta área de Autoria e testes focais |
-| Anotações ancoradas reúnem manifestações autorais e estudantis sem ampliar o estado pessoal | implementado localmente | domínio compartilhado, migration `2000`, RPC/API/MCP, sétima área, folha no Estudo e testes focais |
-| auditoria focal enumera rodadas limpas, separa achado, correção e verificação e não transforma Observações em autoridade | implementado localmente | domínio compartilhado, migration `2100`, RPC/API/MCP, painel em `section=observations` e testes focais |
-| Estudo recebe somente citações visíveis e sob demanda | implementado localmente | RPC redigida, cache lazy e casos de ocultação, URL e revogação; não há edição de Fontes no Estudo |
-| composição e materialização confirmam proveniência junto com conteúdo | implementado localmente | aplicação completa por Unidade, contexto v2, transações e rollback focal |
-| UI e MCP inspecionam as mesmas Unidades por escopo e revisão | implementado localmente | migration `1700`, RPC owner-only, `lerCurso study_units`, cache e testes focais |
-| a Inspeção limita página, payload e janela visual | implementado localmente | 12/24 itens, hard cap de 1,75 MiB, cache limitado e no máximo 36 artigos |
-| remover ou reorganizar Parte não apaga conteúdo produzido | implementado localmente | relações separadas, transações e testes de domínio/banco |
-| progresso de Parte reflete somente fatos persistidos | implementado localmente | projeção relacional de vínculos, entidades, tentativas e etapas |
-| estado pessoal v2 contém somente progresso e Rever e não altera o Curso | implementado localmente | schema, RPC v2 e repositório local; anotações usam contador global owner-only e contador privado no Estudo |
-| perfil e avatar respeitam relação direta | implementado localmente | RLS, bucket privado e interface de Conta |
-| o corte preserva todos os dados reais | ainda não demonstrado | importação hospedada bloqueada por componentes sem equivalente |
-| a interface é compreensível por pessoas leigas | ainda não demonstrado | exige aceitação humana em celular e desktop |
-| o modelo cabe no Free Plan em uso prolongado | ainda não demonstrado | Fontes usam metadados/URLs; páginas, vínculos, rodadas, achados, correções, histórico e checkpoints têm limites explícitos, mas faltam séries de banco, egress, Storage, funções e crescimento append-only |
-| o desenho melhora aprendizagem | não demonstrado | exige estudo educacional com instrumentos e análise adequados |
+Tópico e Microssequência são filhos de Lição. A Unidade de estudo pertence a
+uma Microssequência. Essa estrutura é compartilhada pelo estudo, pela inspeção
+autoral e pelas operações conversacionais. Não existe uma segunda árvore de
+autoria que precise ser convertida antes da publicação.
+
+O Curso também reúne plano instrucional, parâmetros de desenho, política de
+componentes, fontes, ancoragens, auditorias, correções e relações de variante.
+Cada família conserva sua própria revisão e suas regras, mas todas se referem à
+mesma raiz.
+
+## Superfícies do produto
+
+A interface separa responsabilidades sem duplicar o domínio:
+
+| Superfície | Responsabilidade |
+|---|---|
+| Home | listar Cursos acessíveis e abrir a última composição íntegra |
+| Estudo | apresentar Unidades, progresso, revisão e Anotações |
+| Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
+| API de Cursos | executar operações autorais solicitadas pelo navegador |
+| servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
+
+Na Autoria, o percurso corrente possui nove áreas: Planejamento, Parâmetros,
+Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes, Pesquisa e
+Pessoas. Essas áreas são projeções de contratos do Curso, não documentos
+paralelos.
+
+O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
+`criarCurso`, `alterarCurso`, `gerirPessoas` e
+`consultarComponentesDidaticos`. Fontes, auditoria, variantes e Pesquisa são
+visões ou operações dessas ferramentas. O contrato não cria uma ferramenta
+nova para cada painel da interface.
+
+## Fluxo entre navegador e serviços
+
+O caminho principal é:
+
+```text
+navegador → IndexedDB → Edge Function ou MCP → PostgreSQL e Storage
+```
+
+O sentido da seta indica a passagem da solicitação, não uma fila universal.
+Cada trecho tem uma função distinta:
+
+1. o navegador mantém sessão, navegação e estado transitório da interface;
+2. o IndexedDB conserva a última composição íntegra, listas leves, posição de
+   leitura, progresso, itens marcados para rever e filas próprias de Anotações;
+3. a API de Cursos recebe alterações autorais do navegador com a sessão da
+   pessoa;
+4. o servidor MCP recebe chamadas de clientes conversacionais autenticados por
+   OAuth 2.1 com PKCE;
+5. as duas Edge Functions convergem no mesmo roteador e executor de operações;
+6. o PostgreSQL aplica autorização, revisão esperada, idempotência e
+   integridade relacional;
+7. o Storage guarda avatares e PDFs privados, enquanto o banco guarda vínculo,
+   autoria, hash e permissões.
+
+Estudo usa ainda leituras autenticadas por PostgREST e funções SQL para Cursos
+acessíveis, estado pessoal e Anotações. Autoria permanece on-line porque suas
+mudanças dependem da revisão corrente e de verificações relacionais. A réplica
+local não se torna autoridade autoral.
+
+## Leitura paginada e réplica local
+
+A Home recebe uma lista pequena de cabeçalhos. A composição completa só é
+buscada quando a pessoa abre um Curso. Cabeçalho e páginas informam a mesma
+revisão esperada; se o Curso mudar durante a leitura, a composição candidata é
+descartada.
+
+O `CourseLocalStore` usa o banco
+`aralearn-course-v1-<identificador-da-conta>` e a store `course_cache`. Uma
+revisão nova só substitui o ponteiro da composição válida depois que todas as
+páginas foram reunidas e validadas. Se a candidata estiver incompleta ou
+inválida, a revisão anterior continua disponível como leitura desatualizada e
+somente leitura, inclusive depois de reiniciar o aplicativo.
+
+A inspeção autoral também é paginada. O cliente conserva no máximo quatro
+páginas ou 8 MiB por Curso e limita a quantidade renderizada. Esse recorte
+mantém rede, memória e documento visual previsíveis em dispositivos modestos.
+
+Estado pessoal e Anotações possuem contratos independentes. Progresso e itens
+para rever usam estado pessoal v2. Anotações guardam texto, classificação,
+âncoras e citações em repositório próprio. As filas locais dessas duas famílias
+não autorizam uma fila genérica para toda mutação do produto.
+
+## Escritas concorrentes
+
+Operações que alteram o Curso enviam a revisão esperada. O servidor só aceita a
+mudança quando essa revisão ainda é corrente. Conflitos retornam a revisão
+atual para que o cliente releia o estado antes de decidir uma nova alteração.
+
+Cada pedido mutável também possui identificador idempotente. Repetir o mesmo
+pedido dentro da janela de retenção devolve o resultado registrado, sem
+duplicar o efeito. Uma operação sem mudança material conserva a revisão e não
+cria evento artificial.
+
+Esses dois mecanismos resolvem problemas diferentes. A comparação de revisão
+impede sobrescrita concorrente; a idempotência torna segura a repetição causada
+por rede instável.
+
+## Fontes, ancoragens e PDFs
+
+Fontes são registros relacionais com autoria, data parcial de publicação,
+identificador, idioma BCP 47, citação, endereço, edição, origem, disponibilidade,
+verificação e visibilidade. Revisões de fonte são acrescentadas ao histórico em
+vez de sobrescrever sua proveniência.
+
+Ancoragens ligam trechos do Curso às fontes. Atribuições e Anotações podem
+referir-se a essas âncoras sem incorporar uma cópia opaca do documento.
+
+PDFs ficam no bucket privado `course-source-pdfs`. O navegador faz a verificação
+inicial do cabeçalho, calcula SHA-256 e solicita à API uma URL assinada de
+envio. Antes de confirmar o vínculo relacional, a API lê o objeto com a
+credencial do servidor e confere os bytes reais: limite, tamanho declarado,
+cabeçalho `%PDF-` e SHA-256. O caminho físico segue
+`<curso-de-origem>/<sha256>.pdf`; acesso depende do vínculo autorizado no
+banco, não do conhecimento desse caminho.
+
+Cada objeto aceita até 20 MiB. Um Curso pode vincular até 64 MiB de conteúdo
+único e o detalhe de uma fonte retorna no máximo oito anexos. Conteúdo idêntico
+é reaproveitado pelo hash dentro da mesma origem. Variantes podem compartilhar
+o objeto imutável por vínculos próprios e autorizados.
+
+## Auditoria, correções, variantes e Pesquisa
+
+Auditoria registra ciclos, achados, decisões e vínculos com Anotações. Correções
+continuam explícitas e sujeitas à revisão esperada do Curso. Esses dados ficam
+no servidor e não possuem réplica autoral ou fila de saída no IndexedDB.
+
+Uma comparação de variantes parte de um ponto de controle imutável do plano e
+cria de dois a oito Cursos independentes. Ela copia desenho, fontes,
+ancoragens e vínculos de PDF pertinentes, mas cada Curso materializa suas
+Unidades de estudo separadamente. A comparação descreve parâmetros efetivos,
+materialização, componentes, fontes e desvios observados. Ela não distribui
+participantes nem sustenta inferência causal.
+
+Pesquisa é uma projeção atual das autoridades do Curso, produzida pela função
+`get_owned_course_authoring_analytics_for_actor_v1`. Ela não usa uma base
+analítica paralela como fonte. A projeção, disponível apenas ao proprietário,
+expõe atividade, materializações, desenho, fontes, Anotações, auditorias e
+variantes, com filtros, cursor e até duzentas linhas por página. Os fatos excluem
+identificadores pessoais, e-mail, texto bruto e instantâneos integrais.
+Gráficos possuem tabela equivalente; exportação CSV ou JSON percorre todas as
+páginas solicitadas.
+
+## Componentes didáticos
+
+O catálogo corrente contém 32 pacotes versionados: 29 de conteúdo e três de
+resposta. Busca e consulta retornam no máximo oito resultados por chamada e
+cada contrato seleciona exatamente um `package@version`. O navegador e o MCP
+usam o mesmo catálogo gerado, o que impede divergência entre criação,
+validação e renderização.
+
+Um pacote define contrato, dados de exemplo, limites e representação
+acessível. A Unidade de estudo guarda a instância validada; o renderizador não
+reinterpreta um formato autoral antigo.
+
+## Segurança por fronteira
+
+A sessão comum do Supabase identifica a pessoa no navegador. Tabelas expostas
+pela API de dados exigem privilégios explícitos e políticas de segurança por
+linha. Leituras de Estudo limitam-se a Cursos próprios ou compartilhados,
+estado pessoal da própria conta e Anotações autorizadas.
+
+A credencial administrativa existe somente nas Edge Functions. Antes de
+qualquer operação privilegiada, a função valida o token recebido e repassa a
+identidade ao contrato SQL exclusivo do proprietário. O navegador nunca recebe
+essa credencial.
+
+O servidor MCP aceita OAuth 2.1 com PKCE e valida emissor, destinatário,
+recurso, cliente, sujeito e validade temporal do token. O cliente confere o
+estado da autorização antes de trocar o código. A API de Cursos exige origem
+permitida e sessão Supabase. As origens públicas são configuradas de modo
+exato, sem curingas de produção.
+
+Os buckets `person-avatars` e `course-source-pdfs` são privados. URLs assinadas
+têm duração limitada. O envio de avatar usa a pasta da própria conta e valida
+JPEG, PNG ou WebP até 512 KiB. O envio de PDF passa pelo fluxo em duas etapas e
+pelas cotas do Curso.
+
+## Mapa do código
+
+| Área | Implementação principal |
+|---|---|
+| domínio e composição de Curso | módulos `course*.js` em `src/domain/` |
+| réplica local | `src/persistence/CourseLocalStore.js` e repositórios de Curso |
+| acesso remoto e coordenação | `src/supabase/CourseApiClient.js`, `src/supabase/CourseController.js` |
+| Estudo e Autoria | `src/study/`, `src/ui/` |
+| catálogo e renderização | `src/resources/`, `src/render/` |
+| cliente Supabase e sessão | `src/supabase/` |
+| funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/` |
+| esquema e operações SQL | `supabase/migrations/` |
+| implantação e verificação | `scripts/`, `.github/workflows/` |
+| retirada controlada de estruturas substituídas | `scripts/courseCutover/` |
+
+## Contrato implantável
+
+`supabase/runtime-manifest.json` declara a revisão de esquema
+`20260820101500`, a versão de contrato e todas as capacidades obrigatórias. O
+site publica uma cópia desse manifesto. A inicialização compara o contrato
+esperado com o ambiente remoto antes de oferecer operações dependentes dele.
+
+A promoção exige migrações em paridade, análise do banco, testes de
+concorrência, testes reais de funcionamento da API e do MCP, validação de
+autenticação, testes do navegador e artefatos web e Android. A remoção física
+de estruturas substituídas segue um plano separado, com inventário exato,
+cópia verificada e ensaio de restauração. Ela não faz parte de uma atualização
+rotineira de esquema.
+
+Detalhes operacionais estão em [Persistência relacional e sincronização](persistencia-relacional.md),
+[Supabase](supabase.md), [Implantação](implantacao.md) e
+[Guia do desenvolvedor](guia-desenvolvedor.md).

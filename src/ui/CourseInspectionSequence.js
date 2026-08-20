@@ -29,6 +29,8 @@ const MAX_ANNOTATION_PAGES_PER_TARGET = 128;
 const ENTITY_ID_MAX_LENGTH = 240;
 const DEEP_LINK_MAX_LENGTH = 2_048;
 const POSITION_CHANNEL_NAME = "aralearn.course-authoring-inspection.v1";
+const INSPECTION_MENU_SELECTOR =
+  "details.course-inspection-context-selector, details.course-inspection-item-details";
 const PART_STATES = new Set([
   "planned", "materializing", "attention_required", "partially_materialized", "materialized"
 ]);
@@ -383,7 +385,8 @@ function renderStudyUnit(item, totalCount, canEditSources, observationCount = nu
   });
   const part = item.authoringPart;
   return `<li class="course-inspection-item" data-inspection-study-unit="${escapeHtml(item.studyUnit.id)}"` +
-    ` data-inspection-ordinal="${item.ordinal}"><article aria-labelledby="inspection-study-unit-${escapeHtml(item.studyUnit.id)}">` +
+    ` data-inspection-ordinal="${item.ordinal}" aria-posinset="${item.ordinal}" aria-setsize="${totalCount}">` +
+    `<article aria-labelledby="inspection-study-unit-${escapeHtml(item.studyUnit.id)}">` +
     '<header class="course-inspection-item-heading"><div>' +
     `<p>${escapeHtml(path.module.title)} · ${escapeHtml(path.lesson.title)}</p>` +
     `<span>${escapeHtml(path.didacticMicrosequence.title)} · Unidade ${item.ordinal} de ${totalCount}</span>` +
@@ -447,11 +450,13 @@ function renderSequence(state) {
     : 0;
   const notice = state.offlineKnown
     ? '<p class="course-authoring-notice" role="status">Sem conexão · exibindo Unidades de estudo salvas neste dispositivo.</p>'
-    : state.stale
-      ? '<p class="course-authoring-notice" role="status">O Curso mudou. Mantendo seu ponto…</p>'
-      : state.hydrationFailure
-        ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.hydrationFailure)}</p>`
-        : "";
+    : state.initialFailure && state.items.length > 0
+      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.initialFailure)}</p>`
+      : state.stale
+        ? '<p class="course-authoring-notice" role="status">O Curso mudou. Mantendo seu ponto…</p>'
+        : state.hydrationFailure
+          ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.hydrationFailure)}</p>`
+          : "";
   let body;
   if (state.initialLoading && state.items.length === 0) {
     body = '<p class="course-authoring-loading" role="status">Carregando inspeção…</p>';
@@ -636,6 +641,38 @@ export function createCourseInspectionSequence({
 
   function markInteraction() {
     lastInteractionAt = Date.now();
+  }
+
+  function closeOpenMenus({ except = null, restoreFocus = false } = {}) {
+    const openMenus = [...(root.querySelectorAll?.(INSPECTION_MENU_SELECTOR) || [])]
+      .filter((menu) => menu.open);
+    let closed = false;
+    for (const menu of openMenus) {
+      if (menu === except) continue;
+      menu.open = false;
+      closed = true;
+      if (restoreFocus) menu.querySelector?.("summary")?.focus?.({ preventScroll: true });
+    }
+    return closed;
+  }
+
+  function handleDocumentPointerDown(event) {
+    const containingMenu = event?.target?.closest?.(INSPECTION_MENU_SELECTOR) || null;
+    closeOpenMenus({ except: containingMenu });
+  }
+
+  function handleKeyDown(event) {
+    markInteraction();
+    if (event?.key !== "Escape") return;
+    const focusedMenu = documentValue?.activeElement?.closest?.(INSPECTION_MENU_SELECTOR) || null;
+    const activeMenu = focusedMenu?.open ? focusedMenu :
+      [...(root.querySelectorAll?.(INSPECTION_MENU_SELECTOR) || [])]
+        .find((menu) => menu.open) || null;
+    if (!activeMenu) return;
+    activeMenu.open = false;
+    activeMenu.querySelector?.("summary")?.focus?.({ preventScroll: true });
+    event.preventDefault?.();
+    event.stopPropagation?.();
   }
 
   function stickyTop() {
@@ -1147,12 +1184,26 @@ export function createCourseInspectionSequence({
     return true;
   }
 
+  async function navigateFromCurrentPoint(route) {
+    const anchor = captureAnchor();
+    await savePositionNow();
+    const returnItem = state.items.find(({ studyUnit }) =>
+      studyUnit.id === anchor.studyUnitId) || activeItem();
+    const returnTo = returnItem
+      ? buildCourseAuthoringRoute(state.courseId, {
+          section: "inspection",
+          studyUnitId: returnItem.studyUnit.id
+        })
+      : null;
+    return onNavigate(route, { returnTo });
+  }
+
   async function navigateScope(scope) {
     const route = buildCourseAuthoringRoute(state.courseId, {
       section: "inspection",
       ...scopeRouteOptions(scope)
     });
-    return onNavigate(route);
+    return navigateFromCurrentPoint(route);
   }
 
   async function handleClick(event) {
@@ -1209,7 +1260,7 @@ export function createCourseInspectionSequence({
     const route = event.target.closest?.("[data-inspection-route]");
     if (route) {
       event.preventDefault?.();
-      return onNavigate(route.getAttribute("href"));
+      return navigateFromCurrentPoint(route.getAttribute("href"));
     }
     const copy = event.target.closest?.("[data-inspection-copy-link]");
     if (copy) {
@@ -1339,8 +1390,9 @@ export function createCourseInspectionSequence({
   root.addEventListener("input", handleInput);
   root.addEventListener("submit", handleSubmit);
   root.addEventListener("pointerdown", markInteraction, { passive: true });
-  root.addEventListener("keydown", markInteraction);
+  root.addEventListener("keydown", handleKeyDown);
   root.addEventListener("focusin", markInteraction);
+  documentValue?.addEventListener?.("pointerdown", handleDocumentPointerDown, { passive: true });
   windowValue?.addEventListener?.("scroll", onScroll, { passive: true });
   const BroadcastChannelValue = windowValue?.BroadcastChannel;
   if (typeof BroadcastChannelValue === "function") {
@@ -1381,13 +1433,17 @@ export function createCourseInspectionSequence({
     },
     async refresh(nextRevision = state.pinnedRevision) {
       const revision = natural(nextRevision, "A revisão do Curso", { minimum: 1 });
-      if (revision === state.pinnedRevision) return true;
+      if (revision === state.pinnedRevision && !state.offlineKnown && !state.stale &&
+          !state.initialFailure && !state.hydrationFailure) return true;
+      const epoch = ++requestEpoch;
       const anchor = captureAnchor();
       const previousRevision = state.pinnedRevision;
       state.stale = true;
+      state.loadingDirection = "refresh";
       state.pinnedRevision = revision;
       try {
         let page = await readPage(pageOptions({ anchorStudyUnitId: anchor.studyUnitId }));
+        if (state.destroyed || epoch !== requestEpoch) return false;
         if (anchor.studyUnitId && page.items.length === 0 && page.totalCount > 0) {
           if (state.explicitTarget) {
             state.items = [];
@@ -1395,10 +1451,12 @@ export function createCourseInspectionSequence({
             state.scopeOptions = page.scopeOptions;
             state.targetMissing = true;
             state.stale = false;
+            state.loadingDirection = "";
             render({ anchor });
             return false;
           }
           page = await readPage(pageOptions());
+          if (state.destroyed || epoch !== requestEpoch) return false;
         }
         state.items = [];
         mergePage(page, "initial");
@@ -1407,9 +1465,15 @@ export function createCourseInspectionSequence({
           : page.items[0]?.studyUnit.id || null;
         state.stale = false;
         state.targetMissing = false;
+        state.initialFailure = "";
+        state.previousFailure = "";
+        state.nextFailure = "";
+        state.hydrationFailure = "";
+        state.loadingDirection = "";
         render({ anchor });
         return true;
       } catch (error) {
+        if (state.destroyed || epoch !== requestEpoch) return false;
         let refreshError = error;
         if (statusMessage(error) === "Ponto não encontrado.") {
           if (state.explicitTarget) {
@@ -1417,6 +1481,7 @@ export function createCourseInspectionSequence({
             state.totalCount = 0;
             state.targetMissing = true;
             state.stale = false;
+            state.loadingDirection = "";
             render({ anchor });
             return false;
           }
@@ -1429,11 +1494,17 @@ export function createCourseInspectionSequence({
               state.scope = Object.freeze({ kind: "course", id: null });
               page = await readPage(pageOptions());
             }
+            if (state.destroyed || epoch !== requestEpoch) return false;
             state.items = [];
             mergePage(page, "initial");
             state.activeStudyUnitId = page.items[0]?.studyUnit.id || null;
             state.targetMissing = false;
             state.stale = false;
+            state.initialFailure = "";
+            state.previousFailure = "";
+            state.nextFailure = "";
+            state.hydrationFailure = "";
+            state.loadingDirection = "";
             render({ anchor: { studyUnitId: state.activeStudyUnitId, offsetFromStickyTop: 0 } });
             return true;
           } catch (rebaseError) {
@@ -1443,6 +1514,7 @@ export function createCourseInspectionSequence({
         state.pinnedRevision = previousRevision;
         state.initialFailure = statusMessage(refreshError);
         state.stale = true;
+        state.loadingDirection = "";
         render({ anchor });
         return false;
       }
@@ -1470,8 +1542,9 @@ export function createCourseInspectionSequence({
       root.removeEventListener?.("input", handleInput);
       root.removeEventListener?.("submit", handleSubmit);
       root.removeEventListener?.("pointerdown", markInteraction);
-      root.removeEventListener?.("keydown", markInteraction);
+      root.removeEventListener?.("keydown", handleKeyDown);
       root.removeEventListener?.("focusin", markInteraction);
+      documentValue?.removeEventListener?.("pointerdown", handleDocumentPointerDown);
       positionChannel?.removeEventListener?.("message", handlePositionSignal);
       positionChannel?.close?.();
       positionChannel = null;

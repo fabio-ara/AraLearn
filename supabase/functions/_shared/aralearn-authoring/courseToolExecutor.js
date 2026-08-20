@@ -9,7 +9,6 @@ import {
   validateAuthoringApplicationToolOutput,
   validateAuthoringMcpToolOutput
 } from "./courseMcpTools.js";
-import { RESOURCE_CATALOG } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
 function parseStudyUnitJson(source) {
   try {
@@ -25,7 +24,19 @@ function parseStudyUnitJson(source) {
   }
 }
 
-function resourceLibraryResult(args) {
+function previewDeepLink(publicAppUrl, courseId, studyUnitId) {
+  const base = String(publicAppUrl || "").replace(/\/+$/u, "");
+  if (!base) return null;
+  return courseId && studyUnitId
+    ? `${base}/#/authoring/courses/${encodeURIComponent(courseId)}` +
+      `?section=inspection&studyUnitId=${encodeURIComponent(studyUnitId)}`
+    : `${base}/#/authoring`;
+}
+
+async function resourceLibraryResult(args, publicAppUrl) {
+  const { RESOURCE_CATALOG } = await import(
+    "../aralearn/runtime/resources/catalog/resourceCatalog.js"
+  );
   const {
     operation,
     packages = [],
@@ -58,9 +69,18 @@ function resourceLibraryResult(args) {
       intent: { ...facets, query: intent || query }
     });
   } else if (operation === "preview_study_unit") {
-    result = RESOURCE_CATALOG.previewStudyUnitDescriptor(
-      parseStudyUnitJson(studyUnitJson)
-    );
+    const studyUnit = parseStudyUnitJson(studyUnitJson);
+    if (args.studyUnitId && studyUnit.id !== args.studyUnitId) {
+      throw new AuthoringApiError(
+        422,
+        "preview_study_unit_mismatch",
+        "A Unidade informada não corresponde ao alvo persistido."
+      );
+    }
+    result = {
+      ...RESOURCE_CATALOG.previewStudyUnitDescriptor(studyUnit),
+      deepLink: previewDeepLink(publicAppUrl, args.courseId, args.studyUnitId)
+    };
   } else {
     throw new AuthoringApiError(
       422,
@@ -111,7 +131,7 @@ export async function executeCourseTool({
     return validatedSuccess(
       name,
       operation.requestId,
-      resourceLibraryResult(operation.body),
+      await resourceLibraryResult(operation.body, adapter?.publicAppUrl),
       surface
     );
   }

@@ -2,7 +2,8 @@ import { createCourseApiHandler } from "../_shared/aralearn-authoring/courseApiS
 import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
 import { CourseSupabaseAdapter } from "../_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import {
-  readSupabaseServerEnvironment
+  readSupabaseServerEnvironment,
+  resolvePublicSupabaseUrl
 } from "../_shared/aralearn-authoring/supabaseEnvironment.js";
 
 const serverEnvironment = readSupabaseServerEnvironment((name: string) => Deno.env.get(name));
@@ -16,6 +17,7 @@ const publicAppUrl = String(
 
 const adapter = new CourseSupabaseAdapter({
   supabaseUrl: serverEnvironment.supabaseUrl,
+  publicSupabaseUrl: resolvePublicSupabaseUrl(serverEnvironment),
   serverApiKey: serverEnvironment.serverApiKey,
   publishableKey: serverEnvironment.publishableKey,
   publicAppUrl

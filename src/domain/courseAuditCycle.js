@@ -1,4 +1,6 @@
 import {
+  COURSE_SOURCE_RELATIONS,
+  normalizeCourseSourceCommand,
   normalizeCourseSourceLinks,
   normalizeCourseSourceSelector
 } from "./courseSources.js";
@@ -7,7 +9,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
-const HTTPS_PATTERN = /^https:\/\/[^\s]+$/u;
 const CODE_PATTERN = /^[a-z][a-z0-9._:-]{2,119}$/u;
 const DECIMAL_ID_PATTERN = /^[1-9][0-9]{0,18}$/u;
 const PARAMETER_ID_PATTERN = /^[a-z][a-z0-9_]{0,159}$/u;
@@ -587,40 +588,70 @@ function sourceAnchor(value, code) {
 
 function sourceEvidence(value, code) {
   exact(value, [
-    "sourceId", "sourceRevision", "status", "kind", "title", "citationText", "url",
-    "editionOrVersion", "studyVisibility", "relation", "sourceHash", "anchors", "deepLink"
+    "sourceId", "sourceRevision", "status", "kind", "title", "authorship",
+    "publicationDate", "identifier", "language", "citationText", "url",
+    "editionOrVersion", "origin", "availability", "verificationStatus",
+    "studyVisibility", "relation", "sourceHash", "anchors", "deepLink"
   ], code, "Uma Fonte de evidência");
   const anchors = distinctList(
     value.anchors, 8, (anchor) => sourceAnchor(anchor, code), code, "As Âncoras da Fonte"
   );
   const status = enumValue(value.status, ["active", "retired", "unresolved_legacy"], code, "O estado da Fonte");
   if (status === "unresolved_legacy" && (
-    value.kind !== null || value.title !== null || value.citationText !== null || value.url !== null ||
-    value.editionOrVersion !== null || value.studyVisibility !== "hidden" || anchors.length
-  ) || status !== "unresolved_legacy" && (
-    !["web_page", "article", "book", "document", "media", "other"].includes(value.kind) ||
-    typeof value.title !== "string" || !value.title.trim() ||
-    value.url !== null && (typeof value.url !== "string" || !HTTPS_PATTERN.test(value.url)) ||
-    value.studyVisibility !== "hidden" && value.citationText === null
+    value.kind !== null || value.title !== null || value.authorship !== null ||
+    value.publicationDate !== null || value.identifier !== null || value.language !== null ||
+    value.citationText !== null || value.url !== null || value.editionOrVersion !== null ||
+    value.origin !== "imported_legacy" || value.availability !== "unknown" ||
+    value.verificationStatus !== "unverified" || value.studyVisibility !== "hidden" || anchors.length
   )) {
     fail(code, "A Fonte resolvida ou legada não resolvida possui metadados incoerentes.");
+  }
+  let metadata = null;
+  if (status !== "unresolved_legacy") {
+    try {
+      metadata = normalizeCourseSourceCommand({
+        type: "save_source",
+        sourceId: "audit-source",
+        expectedSourceRevision: 0,
+        source: {
+          kind: value.kind,
+          title: value.title,
+          authorship: value.authorship,
+          publicationDate: value.publicationDate,
+          identifier: value.identifier,
+          language: value.language,
+          citationText: value.citationText,
+          url: value.url,
+          editionOrVersion: value.editionOrVersion,
+          origin: value.origin,
+          availability: value.availability,
+          verificationStatus: value.verificationStatus,
+          studyVisibility: value.studyVisibility
+        }
+      }).source;
+    } catch {
+      fail(code, "A Fonte de evidência possui metadados inválidos.");
+    }
   }
   return {
     sourceId: literalSourceId(value.sourceId, code, "A identidade da Fonte"),
     sourceRevision: integer(value.sourceRevision, 1, Number.MAX_SAFE_INTEGER, code, "A revisão da Fonte"),
     status,
-    kind: status === "unresolved_legacy" ? null : enumValue(
-      value.kind, ["web_page", "article", "book", "document", "media", "other"], code, "O tipo da Fonte"
-    ),
-    title: text(value.title, 300, 1200, code, "O título da Fonte", {
-      nullable: status === "unresolved_legacy"
-    }),
-    citationText: text(value.citationText, 2048, 8192, code, "A citação", { nullable: true }),
-    url: text(value.url, 2048, 8192, code, "A URL", { nullable: true }),
-    editionOrVersion: text(value.editionOrVersion, 120, 480, code, "A edição", { nullable: true }),
-    studyVisibility: enumValue(value.studyVisibility, ["hidden", "citation", "citation_and_link"], code, "A visibilidade"),
+    kind: metadata?.kind ?? null,
+    title: metadata?.title ?? null,
+    authorship: metadata?.authorship ?? null,
+    publicationDate: metadata?.publicationDate ?? null,
+    identifier: metadata?.identifier ?? null,
+    language: metadata?.language ?? null,
+    citationText: metadata?.citationText ?? null,
+    url: metadata?.url ?? null,
+    editionOrVersion: metadata?.editionOrVersion ?? null,
+    origin: metadata?.origin ?? value.origin,
+    availability: metadata?.availability ?? value.availability,
+    verificationStatus: metadata?.verificationStatus ?? value.verificationStatus,
+    studyVisibility: metadata?.studyVisibility ?? value.studyVisibility,
     relation: enumValue(value.relation, [
-      "informed_by", "supported_by", "adapted_from", "quoted_from", "legacy_reference"
+      ...COURSE_SOURCE_RELATIONS, "legacy_reference"
     ], code, "A relação da Fonte"),
     sourceHash: sha256(value.sourceHash, code, "O hash da Fonte"),
     anchors,

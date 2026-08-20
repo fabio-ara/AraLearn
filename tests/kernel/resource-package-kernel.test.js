@@ -32,8 +32,7 @@ function theoryStudyUnit() {
     content: [paragraphInstance()],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 

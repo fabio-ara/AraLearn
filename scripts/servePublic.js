@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
-import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,11 +110,7 @@ function developmentConfig() {
   return readSupabaseRuntimeConfig({
     supabaseUrl: process.env.ARALEARN_SUPABASE_URL || "",
     supabasePublishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "",
-    developmentRuntime: true,
-    assistAllowedOrigins: buildAssistAllowedOrigins({
-      configured: process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
-      development: true
-    })
+    developmentRuntime: true
   });
 }
 
@@ -125,7 +120,6 @@ function developmentRuntimeConfig() {
     `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify({
       supabaseUrl: config.projectUrl,
       supabasePublishableKey: config.publishableKey,
-      assistAllowedOrigins: config.assistAllowedOrigins,
       developmentRuntime: true
     }, null, 2)});\n`,
     "utf8"
@@ -137,8 +131,7 @@ function applyDevelopmentContentSecurityPolicy(data) {
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) return data;
   const config = developmentConfig();
   const connectSource = [
-    config.projectUrl ? new URL(config.projectUrl).origin : "",
-    ...config.assistAllowedOrigins
+    config.projectUrl ? new URL(config.projectUrl).origin : ""
   ].filter(Boolean).join(" ");
   return Buffer.from(source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource), "utf8");
 }
@@ -146,11 +139,9 @@ function applyDevelopmentContentSecurityPolicy(data) {
 const server = http.createServer(async (req, res) => {
   try {
     const urlPath = new URL(req.url || "/", "http://127.0.0.1").pathname;
-    const targetPath = !artifactMode && urlPath === "/teste-academico"
-      ? "/tests/gallery/academic-stress-courses.html"
-      : urlPath === "/"
-        ? (artifactMode ? "/index.html" : "/public/index.html")
-        : urlPath;
+    const targetPath = urlPath === "/"
+      ? (artifactMode ? "/index.html" : "/public/index.html")
+      : urlPath;
     if (!artifactMode && targetPath.split("?")[0] === "/runtime-config.js") {
       res.writeHead(200, {
         "Content-Type": "text/javascript; charset=utf-8",

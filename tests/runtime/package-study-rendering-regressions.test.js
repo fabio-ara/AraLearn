@@ -16,8 +16,7 @@ function studyUnitWith(instance) {
     content: [instance],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 

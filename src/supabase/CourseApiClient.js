@@ -22,8 +22,15 @@ import {
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantRead
 } from "../domain/courseVariants.js";
+import {
+  normalizeCourseAuthoringAnalyticsPage,
+  normalizeCourseAuthoringAnalyticsQuery
+} from "../domain/courseAuthoringAnalytics.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
+  COURSE_SOURCE_PDF_MAX_BYTES,
+  COURSE_SOURCE_PDF_MEDIA_TYPE,
+  normalizeCourseSourceAttachmentAccess,
   normalizeCourseSourceAttributionApplication,
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
@@ -35,6 +42,7 @@ import { SupabaseHttpClient } from "./SupabaseHttpClient.js";
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const AVATAR_BUCKET = "person-avatars";
 const AVATAR_MAX_BYTES = 512 * 1024;
 const AVATAR_EXTENSIONS = Object.freeze({
@@ -145,7 +153,8 @@ function requestIdentity(value) {
 }
 
 function courseSourceCommandSubjectId(command) {
-  return command.type === "save_source" || command.type === "retire_source"
+  return command.type === "save_source" || command.type === "retire_source" ||
+    command.type === "attach_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -236,6 +245,80 @@ function courseSourcesReadOptions(value = {}) {
     cursor,
     limit
   };
+}
+
+function courseSourceAttachmentIdentity(value = {}, {
+  operation,
+  requireSize = false
+} = {}) {
+  const allowed = new Set([
+    "courseId", "expectedRevision", "sourceId", "sourceRevision",
+    "contentHash", "byteSize", "mediaType"
+  ]);
+  const source = exactObject(value, allowed, "Acesso ao anexo de Fonte");
+  const normalized = {
+    courseId: uuid(source.courseId, "Curso"),
+    expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
+    sourceId: boundedLegacySourceId(source.sourceId, "Identidade da Fonte"),
+    sourceRevision: positiveInteger(source.sourceRevision, "Revisão da Fonte"),
+    contentHash: String(source.contentHash || "").trim().toLowerCase(),
+    byteSize: source.byteSize == null ? null : positiveInteger(
+      source.byteSize,
+      "Tamanho do anexo",
+      { maximum: COURSE_SOURCE_PDF_MAX_BYTES }
+    ),
+    mediaType: source.mediaType == null
+      ? null
+      : String(source.mediaType).trim().toLowerCase()
+  };
+  if (!SHA256_PATTERN.test(normalized.contentHash) ||
+      requireSize && normalized.byteSize === null ||
+      requireSize && normalized.mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE ||
+      !requireSize && (normalized.byteSize !== null || normalized.mediaType !== null)) {
+    throw new TypeError("Acesso ao anexo de Fonte inválido.");
+  }
+  return { operation, ...normalized };
+}
+
+function boundCourseSourceAttachmentAccess(value, request) {
+  const access = normalizeCourseSourceAttachmentAccess(value);
+  if (access.operation !== request.operation || access.courseId !== request.courseId ||
+      access.courseRevision !== request.expectedRevision ||
+      access.sourceId !== request.sourceId ||
+      access.sourceRevision !== request.sourceRevision ||
+      access.attachment.contentHash !== request.contentHash ||
+      request.byteSize !== null && access.attachment.byteSize !== request.byteSize ||
+      request.mediaType !== null && access.attachment.mediaType !== request.mediaType) {
+    throw new TypeError("O acesso ao anexo não corresponde ao pedido.");
+  }
+  return access;
+}
+
+function bytesToHex(value) {
+  return [...new Uint8Array(value)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function pdfHeaderIsValid(value) {
+  const bytes = new Uint8Array(value, 0, Math.min(5, value.byteLength));
+  return bytes.length === 5 && bytes[0] === 0x25 && bytes[1] === 0x50 &&
+    bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d;
+}
+
+async function storageErrorPayload(response) {
+  const textValue = await response.text().catch(() => "");
+  try {
+    return textValue ? JSON.parse(textValue) : null;
+  } catch {
+    return textValue;
+  }
+}
+
+function storageObjectExists(response, body) {
+  const message = String(body?.message || body?.error || body || "").toLowerCase();
+  return response.status === 409 || response.status === 400 &&
+    /(?:already exists|resource exists|duplicate)/u.test(message);
 }
 
 function timestamp(value, label) {
@@ -640,6 +723,7 @@ export class CourseApiClient {
       throw new TypeError("Cliente de autenticação obrigatório.");
     }
     this.authClient = authClient;
+    this.fetchImpl = fetchImpl;
     this.http = new SupabaseHttpClient({ projectUrl, publishableKey, fetchImpl });
   }
 
@@ -923,6 +1007,108 @@ export class CourseApiClient {
     return result;
   }
 
+  async prepareCourseSourceAttachmentUpload(value = {}) {
+    const request = courseSourceAttachmentIdentity(value, {
+      operation: "prepare_upload",
+      requireSize: true
+    });
+    return boundCourseSourceAttachmentAccess(
+      await this.executeCourseAction("lerCurso", {
+        courseId: request.courseId,
+        view: "course_source_attachment",
+        attachmentOperation: request.operation,
+        expectedRevision: request.expectedRevision,
+        sourceId: request.sourceId,
+        sourceRevision: request.sourceRevision,
+        contentHash: request.contentHash,
+        byteSize: request.byteSize,
+        mediaType: request.mediaType
+      }),
+      request
+    );
+  }
+
+  async getCourseSourceAttachmentDownload(value = {}) {
+    const request = courseSourceAttachmentIdentity(value, {
+      operation: "download"
+    });
+    return boundCourseSourceAttachmentAccess(
+      await this.executeCourseAction("lerCurso", {
+        courseId: request.courseId,
+        view: "course_source_attachment",
+        attachmentOperation: request.operation,
+        expectedRevision: request.expectedRevision,
+        sourceId: request.sourceId,
+        sourceRevision: request.sourceRevision,
+        contentHash: request.contentHash
+      }),
+      request
+    );
+  }
+
+  async uploadCourseSourcePdf({
+    requestId = createUuid(),
+    courseId,
+    expectedRevision,
+    sourceId,
+    sourceRevision,
+    file
+  } = {}) {
+    const size = Number(file?.size);
+    const mediaType = String(file?.type || "").trim().toLowerCase();
+    if (mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE ||
+        !Number.isSafeInteger(size) || size < 1 || size > COURSE_SOURCE_PDF_MAX_BYTES ||
+        typeof file?.arrayBuffer !== "function" ||
+        !globalThis.crypto?.subtle || typeof this.fetchImpl !== "function") {
+      throw new TypeError("Use um PDF de até 20 MiB.");
+    }
+    const bytes = await file.arrayBuffer();
+    if (!(bytes instanceof ArrayBuffer) || bytes.byteLength !== size || !pdfHeaderIsValid(bytes)) {
+      throw new TypeError("O arquivo não contém um PDF válido.");
+    }
+    const contentHash = bytesToHex(await globalThis.crypto.subtle.digest("SHA-256", bytes));
+    const access = await this.prepareCourseSourceAttachmentUpload({
+      courseId,
+      expectedRevision,
+      sourceId,
+      sourceRevision,
+      contentHash,
+      byteSize: size,
+      mediaType
+    });
+    if (access.uploadRequired) {
+      const form = new FormData();
+      form.append("cacheControl", "3600");
+      form.append("", file);
+      const response = await this.fetchImpl.call(globalThis, access.signedUrl, {
+        method: "PUT",
+        headers: { "x-upsert": "false" },
+        body: form,
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        const body = await storageErrorPayload(response);
+        if (!storageObjectExists(response, body)) {
+          const error = new Error(String(body?.message || "Não foi possível enviar o PDF."));
+          error.status = response.status;
+          error.code = String(body?.errorCode || body?.code || "storage_upload_failed");
+          throw error;
+        }
+      }
+    }
+    return this.mutateCourseSources({
+      requestId,
+      courseId,
+      expectedRevision,
+      sourceCommand: {
+        type: "attach_pdf",
+        sourceId,
+        sourceRevision,
+        attachment: access.attachment
+      }
+    });
+  }
+
   async loadCourseAnchoredAnnotations(courseId, value = {}) {
     const normalizedCourseId = uuid(courseId, "Curso");
     const options = anchoredAnnotationReadOptions(value);
@@ -1030,6 +1216,40 @@ export class CourseApiClient {
     }));
     if (result.sourceCourseId !== normalizedCourseId || result.sourceCourseRevision !== revision) {
       throw new TypeError("A lista de variantes não corresponde ao Curso solicitado.");
+    }
+    return result;
+  }
+
+  async loadCourseAuthoringAnalytics(courseId, value = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const source = exactObject(
+      value,
+      new Set(["expectedCourseRevision", "query"]),
+      "Leitura de Pesquisa"
+    );
+    const normalizedQuery = normalizeCourseAuthoringAnalyticsQuery(source.query ?? {});
+    const expectedRevision = positiveInteger(
+      source.expectedCourseRevision,
+      "Versão do Curso"
+    );
+    const result = normalizeCourseAuthoringAnalyticsPage(
+      await this.executeCourseAction("lerCurso", {
+        courseId: normalizedCourseId,
+        view: "research",
+        expectedRevision,
+        datasets: normalizedQuery.datasets,
+        channels: normalizedQuery.channels,
+        origins: normalizedQuery.origins,
+        states: normalizedQuery.states,
+        from: normalizedQuery.from,
+        to: normalizedQuery.to,
+        limit: normalizedQuery.limit,
+        cursor: normalizedQuery.cursor
+      }),
+      { expectedCourseId: normalizedCourseId, expectedQuery: normalizedQuery }
+    );
+    if (result.courseRevision !== expectedRevision) {
+      throw new TypeError("A página de Pesquisa não corresponde ao Curso solicitado.");
     }
     return result;
   }
@@ -1211,7 +1431,7 @@ export class CourseApiClient {
         source.expectedCourseRevision !== command.expectedCourseRevision) {
       throw new TypeError("A revisão da variante não corresponde ao invólucro.");
     }
-    if (command.type === "detach_course_variant" &&
+    if (command.type === "detach_comparison_variant" &&
         source.expectedCourseRevision !== undefined && source.expectedCourseRevision !== null) {
       throw new TypeError("A desvinculação não recebe revisão de Curso.");
     }
@@ -1228,7 +1448,7 @@ export class CourseApiClient {
         result.comparisonSetId !== command.comparisonSetId ||
         command.type === "create_comparison_variants" &&
           result.members.length !== command.variants.length ||
-        command.type === "detach_course_variant" && result.courseId !== command.courseId) {
+        command.type === "detach_comparison_variant" && result.courseId !== command.courseId) {
       throw new TypeError("A confirmação de variantes não corresponde ao comando.");
     }
     return result;
@@ -1387,44 +1607,12 @@ export class CourseApiClient {
     if (confirmation !== "EXCLUIR MINHA CONTA") {
       throw new TypeError("A confirmação de exclusão da conta é inválida.");
     }
-    const userId = uuid(this.authClient.getSession?.()?.user?.id, "Pessoa");
-    const accessToken = await this.authClient.getAccessToken();
-    if (!accessToken) throw Object.assign(new Error("Entre novamente para continuar."), {
-      status: 401,
-      code: "AUTH_REQUIRED"
-    });
-    const objectKeys = [];
-    for (let offset = 0; offset < 1_000; offset += 100) {
-      const items = await this.http.request(`/storage/v1/object/list/${AVATAR_BUCKET}`, {
-        method: "POST",
-        body: {
-          prefix: `${userId}/`,
-          limit: 100,
-          offset,
-          sortBy: { column: "name", order: "asc" }
-        },
-        accessToken
-      });
-      if (!Array.isArray(items)) throw new TypeError("A listagem de avatares é inválida.");
-      for (const item of items) {
-        const name = String(item?.name || "").trim().toLowerCase();
-        const objectKey = name.includes("/") ? name : `${userId}/${name}`;
-        if (AVATAR_OBJECT_KEY.test(objectKey)) objectKeys.push(objectKey);
-      }
-      if (items.length < 100) break;
-      if (offset === 900) {
-        throw new Error("A conta possui objetos demais para exclusão segura automática.");
-      }
+    const result = await this.executeCourseAction("excluirMinhaConta", { confirmation });
+    if (!result || typeof result !== "object" || Array.isArray(result) ||
+        Object.keys(result).length !== 2 ||
+        result.contract !== "aralearn.account-deletion.v1" || result.status !== "deleted") {
+      throw new TypeError("A confirmação de exclusão da conta é inválida.");
     }
-    for (let index = 0; index < objectKeys.length; index += 100) {
-      await this.http.request(`/storage/v1/object/${AVATAR_BUCKET}`, {
-        method: "DELETE",
-        body: { prefixes: objectKeys.slice(index, index + 100) },
-        accessToken
-      });
-    }
-    return this.rpc("delete_my_account_v1", {
-      p_confirmation: confirmation
-    }, { timeoutMs: 60_000 });
+    return structuredClone(result);
   }
 }

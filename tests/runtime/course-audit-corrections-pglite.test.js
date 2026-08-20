@@ -248,6 +248,14 @@ test("runDetail no teto do comando continua inteiro, legível e cercado pós-wri
   await database.close();
 });
 
+test("preflight mantém os contadores de materialização validados pelo corte", async () => {
+  const migration = await fs.readFile(migrationUrl, "utf8");
+  assert.match(
+    migration,
+    /where item\.key not in\('observation_threads','materialization_states'\)\s+and item\.value::bigint<>0/u
+  );
+});
+
 test("validador SQL recusa StudyUnit parcial, default implícito e alias de pacote", async () => {
   const migration = await fs.readFile(migrationUrl, "utf8");
   const start = migration.indexOf(

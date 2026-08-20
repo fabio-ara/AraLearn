@@ -7,7 +7,7 @@ const defaultRepositoryRoot = path.resolve(path.dirname(scriptPath), "..");
 const defaultRegistryPath = "docs/evidence/terminologia-canonica.v1.json";
 const defaultDocumentPath = "docs/vocabulario-controlado.md";
 const decisions = new Set(["manter", "restringir", "substituir", "remover"]);
-const cutoverStatuses = new Set(["sem-corte", "pendente", "concluido"]);
+const decisionStatuses = new Set(["vigente", "concluido"]);
 const alternativesAssessments = new Set(["compared", "no-plausible-candidate"]);
 const sourceStatuses = new Set([
   "decisao-produto",
@@ -90,10 +90,19 @@ const familyLabels = new Map([
   ["assistant-architecture", "Assistente, MCP e estado" ]
 ]);
 const decisionLabels = new Map([
-  ["manter", "manter: o nome coincide com o conceito, dentro da definição registrada"],
-  ["restringir", "restringir: o nome permanece apenas no sentido e nas camadas declarados"],
-  ["substituir", "substituir: o nome atual sai no corte indicado e o canônico assume todas as camadas"],
-  ["remover", "remover: o nome ou símbolo não representa mais um conceito corrente"]
+  ["manter", "o nome coincide com o conceito, dentro da definição registrada"],
+  ["restringir", "o nome permanece apenas no sentido e nas camadas declarados"],
+  ["substituído", "a forma anterior saiu do uso corrente e o termo canônico assumiu seu lugar"],
+  ["retirado", "o nome ou símbolo não representa mais um conceito corrente"]
+]);
+const sourceLabels = new Map([
+  ["decisao-produto", "decisão de produto"],
+  ["definicao-propria", "definição própria"],
+  ["evidencia-academica", "evidência acadêmica"],
+  ["evidencia-historica", "evidência histórica"],
+  ["hipotese-produto", "hipótese de produto"],
+  ["observacao-tecnica", "observação técnica"],
+  ["padrao-externo", "padrão externo"]
 ]);
 
 function list(value) {
@@ -141,128 +150,83 @@ function codeValues(values) {
   return list(values).map((value) => `\`${markdownCell(value)}\``).join(", ");
 }
 
-function termStage(term) {
-  if (term.cutoverStatus === "pendente") {
-    return `corte ${term.cutoverIssue}; remoção integral até ${term.removeBy}`;
-  }
-  if (term.cutoverStatus === "concluido") {
-    return `corte terminológico concluído em ${term.cutoverIssue}`;
-  }
-  return `termo vigente; sem corte de renomeação`;
+function sentence(value) {
+  const normalized = markdownCell(value);
+  return /[.!?]$/u.test(normalized) ? normalized : `${normalized}.`;
 }
 
 function symbolValues(term) {
-  const target = codeValues([term.technicalSymbol, ...list(term.relatedSymbols)]);
-  const current = codeValues(term.currentSymbols);
-  return current ? `atual: ${current} → alvo: ${target}` : target;
+  return codeValues([term.technicalSymbol, ...list(term.relatedSymbols)]);
 }
 
 function sourceValues(sources) {
   return list(sources).map((source) => {
-    const status = markdownCell(source.status);
+    const status = sourceLabels.get(source.status) || markdownCell(source.status);
     const reference = markdownCell(source.ref);
     const citation = reference.startsWith("https://")
       ? `[${status}](${reference})`
-      : `\`${status}\` ${reference}`;
+      : reference.startsWith("docs/")
+        ? `[${status}](${reference.slice("docs/".length)})`
+        : `\`${status}\``;
     return typeof source.supports === "string" && source.supports.trim()
-      ? `${citation} — ${markdownCell(source.supports)}`
+      ? `${citation}: ${markdownCell(source.supports).replace(/[.!?;]+$/u, "")}`
       : citation;
   }).join("; ");
+}
+
+function publicDecision(term) {
+  if (term.status !== "concluido") return term.decision;
+  return term.decision === "remover" ? "retirado" : "substituído";
 }
 
 export function renderControlledVocabulary(registry) {
   const lines = [
     "# Vocabulário controlado do AraLearn",
     "",
-    "> Documento gerado de `docs/evidence/terminologia-canonica.v1.json`. Não edite as tabelas manualmente; altere o registro e execute `npm run audit:terminology -- --render`.",
-    "",
-    "Este vocabulário permite usar palavras simples na interface sem misturar conceitos de produto, pesquisa, protocolos e infraestrutura. Cada entrada liga o nome encontrado hoje aos termos de interface e de domínio, ao símbolo técnico-alvo, à definição operacional e à etapa que fará a retirada completa do nome anterior.",
+    "Este vocabulário permite usar palavras simples na interface sem misturar conceitos de produto, pesquisa, protocolos e infraestrutura. Cada entrada liga as formas encontradas no projeto aos termos de interface e de domínio, ao símbolo técnico adotado e à definição operacional. As definições, fontes e alternativas examinadas também estão disponíveis no [registro terminológico versionado](evidence/terminologia-canonica.v1.json).",
     "",
     "## Como as camadas se relacionam",
     "",
     "- **Interface e documentação:** linguagem ensinável às pessoas que estudam, criam cursos ou pesquisam.",
     "- **Domínio e pesquisa:** conceitos com definição operacional; eventos observáveis não recebem nomes de processos cognitivos não medidos.",
     "- **Código, banco, Storage e implantação:** símbolos de implementação; não criam um segundo conceito para o mesmo objeto.",
-    "- **MCP e assistente:** distinguem instruções de sistema, prompt de tarefa, Resource MCP, ferramenta e estado persistido do curso.",
+    "- **MCP e assistente:** distinguem instruções de sistema, pedido da tarefa, recurso MCP, ferramenta e estado persistido do Curso.",
     "- **Segurança e acessibilidade:** qualificam permissões e estados técnicos sem convertê-los em papéis institucionais ou cognição.",
     "",
     "Um termo pode aparecer em várias camadas, mas conserva uma única definição. Termos de interface podem ser mais curtos que o símbolo técnico somente quando esta correspondência está registrada.",
     "",
     "## Estatutos de decisão",
     "",
-    ...[...decisionLabels.entries()].map(([decision, explanation]) => `- \`${decision}\` — ${explanation}.`),
+    ...[...decisionLabels.entries()].map(([decision, explanation]) => `- \`${decision}\`: ${explanation}.`),
     "",
-    "`cutoverStatus` descreve somente o estado da **decisão terminológica**: `sem-corte` para um termo vigente, `pendente` para uma troca programada e `concluido` para uma troca já aplicada. Ele não afirma que a funcionalidade de produto correspondente existe, está conectada ou funciona.",
+    "As decisões registram quando um nome permanece com sentido delimitado, quando deve ser usado apenas numa camada e quando uma forma histórica foi substituída ou retirada.",
     "",
-    "Decisões pendentes usam corte limpo: não admitem aliases, fallback, dupla escrita nem leitor de legado. Migrations publicadas e evidências históricas podem conservar o nome anterior porque registram o passado; elas não autorizam esse nome em objetos ativos ou documentação corrente.",
-    "",
-    "Caminhos históricos excluídos do gate de resíduos:",
-    "",
-    ...list(registry.policy?.historicalPaths).map((entry) => `- \`${entry}\``),
-    "",
-    "## Hipótese visual",
-    "",
-    "A imagem abaixo é uma **hipótese visual ainda não implementada** para testar o vocabulário em celular. Ela não prova que os nomes já foram migrados nem que a interface foi aprovada por pessoas usuárias.",
-    "",
-    "![Hipótese visual móvel do vocabulário da Autoria](screenshots/authoring/prototype-terminologia-v1.png)",
-    "",
-    "[Abrir a versão vetorial da hipótese](screenshots/authoring/prototype-terminologia-v1.svg).",
-    "",
-    "## Mapa atual → canônico",
+    "## Termos",
     ""
   ];
 
   for (const family of list(registry.policy?.requiredFamilies)) {
     const terms = registry.terms.filter((term) => term.family === family);
-    lines.push(
-      `### ${familyLabels.get(family) || family}`,
-      "",
-      "| Termo encontrado | Interface | Domínio | Símbolo técnico-alvo | Decisão e etapa | Definição operacional | Base | Não usar como sinônimo |",
-      "|---|---|---|---|---|---|---|---|"
-    );
-    for (const term of terms) {
-      lines.push(`| ${codeValues(term.currentTerms)} | **${markdownCell(term.interfaceTerm)}** | **${markdownCell(term.domainTerm)}** | ${symbolValues(term)} | \`${term.decision}\`; ${termStage(term)} | ${markdownCell(term.definition)} | ${sourceValues(term.sources)} | ${codeValues(term.notSynonyms)} |`);
-    }
-    lines.push("");
-  }
-
-  lines.push(
-    "## Fichas terminológicas didáticas",
-    "",
-    "As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn; o risco registra a confusão que a escolha evita. Cada ficha registra candidatos realmente examinados ou justifica, com base no recorte disciplinar, por que nenhum nome próximo disputa o mesmo conceito.",
-    ""
-  );
-  for (const family of list(registry.policy?.requiredFamilies)) {
-    const terms = registry.terms.filter((term) => term.family === family);
     lines.push(`### ${familyLabels.get(family) || family}`, "");
     for (const term of terms) {
+      const normalizedInterface = normalizedTerm(term.interfaceTerm);
+      const distinctForms = list(term.currentTerms)
+        .filter((value) => normalizedTerm(value) !== normalizedInterface);
       lines.push(
-        `#### ${markdownCell(term.interfaceTerm)} — \`${term.id}\``,
+        `#### ${markdownCell(term.interfaceTerm)}`,
         "",
-        `- **Equivalente em inglês:** ${markdownCell(term.englishEquivalent)}.`,
-        `- **Termo de domínio:** ${markdownCell(term.domainTerm)}.`,
-        `- **Símbolo técnico-alvo:** ${symbolValues(term)}.`,
-        `- **Exemplo no AraLearn:** ${markdownCell(term.araLearnExample)}`,
-        `- **Risco de ambiguidade:** ${markdownCell(term.ambiguityRisk)}`,
-        term.alternativesAssessment === "compared"
-          ? `- **Alternativas consideradas:** ${list(term.alternativesConsidered).map(markdownCell).join("; ")}.`
-          : `- **Alternativas consideradas:** nenhum candidato plausível após exame — ${markdownCell(term.alternativesRationale)}`,
-        `- **Impacto da migração:** ${markdownCell(term.migrationImpact)}`,
+        `${sentence(term.definition)} ${sentence(term.araLearnExample)}`,
+        "",
+        `**Domínio e implementação.** ${markdownCell(term.domainTerm)}; equivalente internacional: ${markdownCell(term.englishEquivalent)}; símbolo: ${symbolValues(term)}.`,
+        "",
+        `**Uso.** \`${publicDecision(term)}\`${distinctForms.length > 0 ? `; formas técnicas ou históricas: ${codeValues(distinctForms)}` : ""}. Distinguir de ${codeValues(term.notSynonyms)}.`,
+        "",
+        `**Base.** ${sourceValues(term.sources)}.`,
         ""
       );
     }
   }
 
-  lines.push(
-    "## Uso operacional",
-    "",
-    "1. Antes de criar UI, schema, RPC, ferramenta, evento ou métrica, procure o conceito neste registro.",
-    "2. Se o conceito não existir, acrescente uma decisão com definição, camadas, fontes, issue de corte e termos não sinônimos.",
-    "3. Se a decisão for diferida, registre `removeBy` e faça um único corte coordenado; não crie compatibilidade paralela.",
-    "4. Quando a substituição terminar, marque-a como concluída e informe `forbiddenSymbols`; o audit falhará diante de qualquer resíduo corrente.",
-    "5. Execute `npm run audit:terminology`. Para regenerar este documento, use `npm run audit:terminology -- --render`.",
-    ""
-  );
   return lines.join("\n");
 }
 
@@ -290,18 +254,6 @@ function uniqueStrings(value, label, findings, { nonEmpty = true } = {}) {
   return values;
 }
 
-function validIssue(reference, issueCatalog, label, findings) {
-  if (typeof reference !== "string" || !/^#[1-9]\d*$/u.test(reference)) {
-    findings.push(`${label}: referência de issue inválida (${reference ?? "ausente"}).`);
-    return false;
-  }
-  if (!Object.hasOwn(issueCatalog, reference)) {
-    findings.push(`${label}: issue não registrada em policy.issueCatalog (${reference}).`);
-    return false;
-  }
-  return true;
-}
-
 function auditForbiddenKeys(value, location, findings) {
   if (Array.isArray(value)) {
     value.forEach((entry, index) => auditForbiddenKeys(entry, `${location}[${index}]`, findings));
@@ -317,7 +269,7 @@ function auditForbiddenKeys(value, location, findings) {
   }
 }
 
-function validateSource(source, label, issueCatalog, findings) {
+function validateSource(source, label, findings) {
   if (!isRecord(source)) {
     findings.push(`${label}: fonte inválida.`);
     return;
@@ -327,10 +279,9 @@ function validateSource(source, label, issueCatalog, findings) {
   }
   if (typeof source.ref !== "string" || !source.ref.trim()) {
     findings.push(`${label}.ref: referência vazia.`);
-  } else if (source.ref.startsWith("#")) {
-    validIssue(source.ref, issueCatalog, `${label}.ref`, findings);
-  } else if (!source.ref.startsWith("https://")) {
-    findings.push(`${label}.ref: use issue registrada ou URL HTTPS (${source.ref}).`);
+  } else if (!source.ref.startsWith("https://")
+      && !/^docs\/[A-Za-z0-9_./-]+\.md(?:#[A-Za-z0-9_.:-]+)?$/u.test(source.ref)) {
+    findings.push(`${label}.ref: use documento público do projeto ou URL HTTPS (${source.ref}).`);
   }
   if (Object.hasOwn(source, "supports")
       && (typeof source.supports !== "string" || source.supports.trim().length < 30)) {
@@ -339,7 +290,7 @@ function validateSource(source, label, issueCatalog, findings) {
 }
 
 function validateTerm(term, index, context) {
-  const { findings, issueCatalog, ids, symbols, currentTerms } = context;
+  const { findings, ids, symbols, currentTerms } = context;
   const label = `terms[${index}]`;
   if (!isRecord(term)) {
     findings.push(`${label}: registro inválido.`);
@@ -413,7 +364,7 @@ function validateTerm(term, index, context) {
   if (typeof term.definition !== "string" || term.definition.trim().length < 40) {
     findings.push(`${label}.definition: definição operacional ausente ou insuficiente.`);
   }
-  for (const field of ["araLearnExample", "ambiguityRisk", "migrationImpact"]) {
+  for (const field of ["araLearnExample", "ambiguityRisk"]) {
     if (typeof term[field] !== "string" || term[field].trim().length < 30) {
       findings.push(`${label}.${field}: explicação ausente ou insuficiente.`);
     }
@@ -462,11 +413,20 @@ function validateTerm(term, index, context) {
   if (!decisions.has(term.decision)) {
     findings.push(`${label}.decision: decisão inválida (${term.decision ?? "ausente"}).`);
   }
-  if (!cutoverStatuses.has(term.cutoverStatus)) {
-    findings.push(`${label}.cutoverStatus: estado inválido (${term.cutoverStatus ?? "ausente"}).`);
+  if (!decisionStatuses.has(term.status)) {
+    findings.push(`${label}.status: estado inválido (${term.status ?? "ausente"}).`);
   }
-  if (Object.hasOwn(term, "implementationStatus")) {
-    findings.push(`${label}.implementationStatus: use cutoverStatus; o campo descreve somente a decisão terminológica.`);
+  for (const obsoleteField of [
+    "cutoverStatus",
+    "cutoverIssue",
+    "removeBy",
+    "transitionPolicy",
+    "migrationImpact",
+    "implementationStatus"
+  ]) {
+    if (Object.hasOwn(term, obsoleteField)) {
+      findings.push(`${label}.${obsoleteField}: o registro corrente não conserva metadados de migração.`);
+    }
   }
   for (const [layerIndex, layer] of uniqueStrings(term.layers, `${label}.layers`, findings).entries()) {
     if (!layers.has(layer)) findings.push(`${label}.layers[${layerIndex}]: camada inválida (${layer}).`);
@@ -474,31 +434,18 @@ function validateTerm(term, index, context) {
   const sources = list(term.sources);
   if (sources.length === 0) findings.push(`${label}.sources: informe fonte e estatuto.`);
   sources.forEach((source, sourceIndex) => (
-    validateSource(source, `${label}.sources[${sourceIndex}]`, issueCatalog, findings)
+    validateSource(source, `${label}.sources[${sourceIndex}]`, findings)
   ));
-  validIssue(term.cutoverIssue, issueCatalog, `${label}.cutoverIssue`, findings);
   uniqueStrings(term.notSynonyms, `${label}.notSynonyms`, findings);
 
-  if (term.cutoverStatus === "pendente") {
-    validIssue(term.removeBy, issueCatalog, `${label}.removeBy`, findings);
-    if (term.transitionPolicy !== "clean-cutover") {
-      findings.push(`${label}.transitionPolicy: corte pendente exige clean-cutover.`);
-    }
-    if (!new Set(["substituir", "remover"]).has(term.decision)) {
-      findings.push(`${label}: corte pendente deve substituir ou remover o termo atual.`);
-    }
-  } else if (Object.hasOwn(term, "removeBy") || Object.hasOwn(term, "transitionPolicy")) {
-    findings.push(`${label}: removeBy/transitionPolicy só pertencem a corte pendente.`);
-  }
-
   const replacementDecision = new Set(["substituir", "remover"]).has(term.decision);
-  if (term.cutoverStatus === "sem-corte" && replacementDecision) {
-    findings.push(`${label}: substituir/remover exige corte pendente ou concluído.`);
+  if (term.status === "vigente" && replacementDecision) {
+    findings.push(`${label}: substituir/remover exige decisão concluída.`);
   }
-  if (term.cutoverStatus !== "sem-corte" && !replacementDecision) {
-    findings.push(`${label}: manter/restringir deve usar cutoverStatus sem-corte.`);
+  if (term.status === "concluido" && !replacementDecision) {
+    findings.push(`${label}: manter/restringir deve permanecer vigente.`);
   }
-  const requiresResidueGate = term.cutoverStatus === "concluido"
+  const requiresResidueGate = term.status === "concluido"
     && new Set(["substituir", "remover"]).has(term.decision);
   const forbiddenSymbols = uniqueStrings(
     term.forbiddenSymbols,
@@ -521,17 +468,16 @@ export function validateTerminologyRegistry(registry) {
     findings.push("purpose: finalidade ausente ou insuficiente.");
   }
   const policy = isRecord(registry.policy) ? registry.policy : {};
-  if (policy.transitionPolicy !== "clean-cutover") {
-    findings.push("policy.transitionPolicy: o corte deve ser clean-cutover.");
-  }
-  const issueCatalog = isRecord(policy.issueCatalog) ? policy.issueCatalog : {};
-  for (const [issue, title] of Object.entries(issueCatalog)) {
-    if (!/^#[1-9]\d*$/u.test(issue) || typeof title !== "string" || !title.trim()) {
-      findings.push(`policy.issueCatalog: entrada inválida (${issue}).`);
+  for (const obsoleteField of [
+    "reviewIssue",
+    "finalRemovalIssue",
+    "transitionPolicy",
+    "issueCatalog"
+  ]) {
+    if (Object.hasOwn(policy, obsoleteField)) {
+      findings.push(`policy.${obsoleteField}: a política corrente não conserva metadados de migração.`);
     }
   }
-  validIssue(policy.reviewIssue, issueCatalog, "policy.reviewIssue", findings);
-  validIssue(policy.finalRemovalIssue, issueCatalog, "policy.finalRemovalIssue", findings);
   const requiredFamilies = uniqueStrings(
     policy.requiredFamilies,
     "policy.requiredFamilies",
@@ -542,7 +488,6 @@ export function validateTerminologyRegistry(registry) {
   if (terms.length === 0) findings.push("terms: registro precisa conter decisões terminológicas.");
   const context = {
     findings,
-    issueCatalog,
     ids: new Set(),
     symbols: new Set(),
     currentTerms: new Map(),
@@ -592,7 +537,7 @@ async function auditAbolishedSymbols({
   documentPath
 }) {
   const findings = [];
-  const abolished = registry.terms.filter((term) => term.cutoverStatus === "concluido"
+  const abolished = registry.terms.filter((term) => term.status === "concluido"
     && new Set(["substituir", "remover"]).has(term.decision));
   if (abolished.length === 0) return findings;
   const registryRelativePath = normalizedRelativePath(registryPath);

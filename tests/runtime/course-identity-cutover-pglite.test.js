@@ -20,7 +20,7 @@ const EDITOR = "00000000-0000-4000-8000-000000000002";
 const LEARNER = "00000000-0000-4000-8000-000000000003";
 const OUTSIDER = "00000000-0000-4000-8000-000000000004";
 const SECOND_OWNER = "00000000-0000-4000-8000-000000000005";
-const WORKSPACES = Array.from({ length: 6 }, (_, index) =>
+const WORKSPACES = Array.from({ length: 8 }, (_, index) =>
   `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
 );
 const TOMBSTONE_WORKSPACES = Array.from({ length: 10 }, (_, index) =>
@@ -31,6 +31,9 @@ const COURSES = Array.from({ length: 8 }, (_, index) =>
 );
 const PUBLICATIONS = Array.from({ length: 4 }, (_, index) =>
   `30000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
+);
+const LEGACY_ONLY_COURSES = Array.from({ length: 4 }, (_, index) =>
+  `31000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
 );
 const PERSONAL_REQUEST = "50000000-0000-4000-8000-000000000001";
 const PERSONAL_REQUEST_STALE = "50000000-0000-4000-8000-000000000002";
@@ -69,6 +72,24 @@ const EXPERIMENT_TABLES = [
   "authoring_experiment_lock_write_tokens",
   "authoring_experiment_selection_write_tokens",
   "authoring_experiment_outcome_observations"
+];
+
+const MATERIALIZATION_FACT_TABLES = [
+  "authoring_instructional_analyses",
+  "authoring_design_parameter_assignments",
+  "authoring_resource_sets",
+  "authoring_resource_set_members",
+  "authoring_effective_design_snapshots",
+  "authoring_effective_design_snapshot_values",
+  "authoring_effective_design_snapshot_resource_sets",
+  "authoring_pedagogical_blueprints",
+  "authoring_pedagogical_blueprint_bindings",
+  "authoring_microsequence_design_bindings",
+  "authoring_materialization_manifests",
+  "authoring_manifest_coverage",
+  "authoring_manifest_metrics",
+  "authoring_manifest_resource_selections",
+  "authoring_manifest_materialized_resources"
 ];
 
 const legacyPersonalState = JSON.stringify({
@@ -132,7 +153,7 @@ async function actor(database, actorId, role = "authenticated") {
 
 function cutoverEntities(index) {
   const suffix = String(index + 1);
-  const definitions = index === 0 ? [
+  const baseDefinitions = index === 0 ? [
     { entityType: "module", entityId: "module-a", parentType: null, parentId: null, position: 0, content: { title: "Módulo A" } },
     { entityType: "lesson", entityId: "lesson-a", parentType: "module", parentId: "module-a", position: 0, content: { title: "Lição A" } },
     { entityType: "topic", entityId: "topic-a", parentType: "lesson", parentId: "lesson-a", position: 0, content: { label: "Tópico A" } },
@@ -144,17 +165,101 @@ function cutoverEntities(index) {
     { entityType: "microsequence", entityId: `micro-${suffix}`, parentType: "lesson", parentId: `lesson-${suffix}`, position: 0, content: { title: `Microssequência ${suffix}` } },
     { entityType: "card", entityId: `card-${suffix}`, parentType: "microsequence", parentId: `micro-${suffix}`, position: 1, content: { title: `Unidade ${suffix}`, content: [], response: null, feedback: [], topics: [] } }
   ];
-  const publicationTimestamp = index >= 6
-    ? `2026-08-${String(index - 3).padStart(2, "0")}T10:00:00Z`
-    : null;
+  const materializationDefinitions = index > 1 ? [] : Array.from(
+    { length: index === 0 ? 123 : 122 },
+    (_, extraIndex) => ({
+      entityType: "microsequence",
+      entityId: `materialized-${suffix}-${String(extraIndex + 1).padStart(3, "0")}`,
+      parentType: "lesson",
+      parentId: index === 0 ? "lesson-a" : `lesson-${suffix}`,
+      position: extraIndex + 1,
+      content: { title: `Microssequência materializada ${extraIndex + 1}` }
+    })
+  );
+  const definitions = [...baseDefinitions, ...materializationDefinitions];
   return definitions.map((entity, entityIndex) => ({
     ...entity,
-    entityVersion: index >= 6 ? 1 : (index + 1) * 10 + entityIndex + 1,
-    entityCreatedAt: publicationTimestamp ||
-      `2026-07-${suffix.padStart(2, "0")}T${String(entityIndex + 11).padStart(2, "0")}:00:00Z`,
-    entityUpdatedAt: publicationTimestamp ||
-      `2026-07-${suffix.padStart(2, "0")}T${String(entityIndex + 12).padStart(2, "0")}:00:00Z`
+    entityVersion: (index + 1) * 10 + entityIndex + 1,
+    entityCreatedAt: entityIndex < baseDefinitions.length
+      ? `2026-07-${suffix.padStart(2, "0")}T${String(entityIndex + 11).padStart(2, "0")}:00:00Z`
+      : `2026-07-${suffix.padStart(2, "0")}T10:00:00Z`,
+    entityUpdatedAt: entityIndex < baseDefinitions.length
+      ? `2026-07-${suffix.padStart(2, "0")}T${String(entityIndex + 12).padStart(2, "0")}:00:00Z`
+      : `2026-07-${suffix.padStart(2, "0")}T12:00:00Z`
   }));
+}
+
+function legacyEventSummary(operation, workspaceIndex) {
+  const suffix = String(workspaceIndex + 1);
+  const moduleId = workspaceIndex === 0 ? "module-a" : `module-${suffix}`;
+  const lessonId = workspaceIndex === 0 ? "lesson-a" : `lesson-${suffix}`;
+  const microsequenceId = workspaceIndex === 0 ? "micro-a" : `micro-${suffix}`;
+  const cardId = workspaceIndex === 0 ? "card-a" : `card-${suffix}`;
+  const microsequencePath = [
+    `course-${suffix}`, moduleId, lessonId, microsequenceId
+  ];
+  const cardPath = [...microsequencePath, cardId];
+  const base = {
+    operation,
+    created: new Set([
+      "create", "create_structure", "replace_catalog_document",
+      "save_microsequence_cards"
+    ]).has(operation) ? 1 : 0,
+    updated: new Set([
+      "save_card", "save_microsequence_cards", "update_metadata"
+    ]).has(operation) ? 1 : 0,
+    deleted: 0
+  };
+
+  if (operation === "save_microsequence_cards") {
+    return {
+      ...base,
+      mode: "replace",
+      positionsNormalized: true,
+      submittedCardCount: base.created,
+      targetPath: microsequencePath
+    };
+  }
+  if (operation === "save_card") {
+    return {
+      ...base,
+      operationFamily: "content",
+      targetPath: cardPath,
+      targetPaths: [cardPath],
+      targetPathsTruncated: false,
+      resourceTargets: [{ cardPath, targetId: "resource-a" }],
+      resourceTargetsTruncated: false,
+      changedCardPaths: [cardPath],
+      changedCardPathsTruncated: false,
+      cardShellChangedPaths: [],
+      cardShellChangedPathsTruncated: false,
+      continuityAdjusted: false,
+      continuityAffectedPartCount: 0,
+      continuityMandateConsumed: false,
+      continuityReferenceCount: 0
+    };
+  }
+  if (operation === "update_metadata") {
+    return {
+      ...base,
+      entityType: "microsequence",
+      operationFamily: "structure",
+      targetPath: microsequencePath,
+      targetPaths: [microsequencePath],
+      targetPathsTruncated: false,
+      resourceTargets: [],
+      resourceTargetsTruncated: false,
+      changedCardPaths: [],
+      changedCardPathsTruncated: false,
+      cardShellChangedPaths: [],
+      cardShellChangedPathsTruncated: false,
+      continuityAdjusted: false,
+      continuityAffectedPartCount: 0,
+      continuityMandateConsumed: false,
+      continuityReferenceCount: 0
+    };
+  }
+  return base;
 }
 
 async function installImportStaging(database) {
@@ -202,14 +307,14 @@ async function installImportStaging(database) {
       )
     `, [
       COURSES[index],
-      index < 4 ? "root_only" : index < 6 ? "root_and_publication" : "publication_only",
-      index < 6 ? WORKSPACES[index] : null,
-      index < 6 ? 6 : null,
+      index < 4 ? "root_only" : "root_and_publication",
+      WORKSPACES[index],
+      6,
       index >= 4 ? PUBLICATIONS[index - 4] : null,
       index >= 4 ? String.fromCharCode(97 + index - 4).repeat(64) : null,
       String(index + 1).repeat(64),
-      index < 6 ? `Curso raiz ${index + 1}` : `Publicação ${index - 3}`,
-      index < 6 ? `Meta raiz ${index + 1}` : `Objetivo publicado ${index - 3}`,
+      `Curso raiz ${index + 1}`,
+      `Meta raiz ${index + 1}`,
       entities.map((entity) => ({
         entity_type: entity.entityType,
         entity_id: entity.entityId,
@@ -415,6 +520,13 @@ async function legacyDatabase({
       course_id uuid not null references public.courses(id),
       primary key(workspace_id,workspace_course_id,course_id)
     );
+    create table private.authoring_materialization_states(
+      workspace_id uuid not null references private.authoring_workspaces(id) on delete cascade,
+      microsequence_ref text not null,
+      materialization_revision bigint not null default 0,
+      updated_at timestamptz not null default now(),
+      primary key(workspace_id,microsequence_ref)
+    );
     create table private.catalog_review_submissions(
       id uuid primary key,
       status text not null
@@ -429,6 +541,9 @@ async function legacyDatabase({
     grant execute on function public.legacy_course_count_v0() to authenticated;
   `);
   for (const tableName of EXPERIMENT_TABLES) {
+    await database.exec(`create table private.${tableName}(id bigint primary key)`);
+  }
+  for (const tableName of MATERIALIZATION_FACT_TABLES) {
     await database.exec(`create table private.${tableName}(id bigint primary key)`);
   }
 
@@ -458,6 +573,20 @@ async function legacyDatabase({
       index + 2,
       String.fromCharCode(97 + index),
       `2026-08-${String(index + 1).padStart(2, "0")}T10:00:00Z`
+    ]);
+  }
+  for (let index = 0; index < LEGACY_ONLY_COURSES.length; index += 1) {
+    await database.query(`
+      insert into public.courses(
+        id,status,deleted_at,title,goal,catalog_revision,current_revision_hash,
+        created_at,updated_at
+      ) values($1,$2,$3,$4,'Legado sem vínculo',1,null,$5,$5)
+    `, [
+      LEGACY_ONLY_COURSES[index],
+      index === 0 ? "published" : "archived",
+      index === 0 ? "2026-08-01T10:00:00Z" : null,
+      `Curso legado ${index + 1}`,
+      `2026-06-${String(index + 1).padStart(2, "0")}T10:00:00Z`
     ]);
   }
   for (let index = 0; index < WORKSPACES.length; index += 1) {
@@ -519,15 +648,14 @@ async function legacyDatabase({
     `, [TOMBSTONE_WORKSPACES[index], OWNER, `Removido ${index + 1}`]);
   }
   for (let index = 0; index < COURSES.length; index += 1) {
-    const root = index < 6;
     const publication = index >= 4 ? PUBLICATIONS[index - 4] : null;
     await database.query(`
       insert into private.trail_items(
         id,workspace_id,workspace_course_id,course_id,updated_at
       ) values($1,$2,$3,$4,$5)
     `, [
-      COURSES[index], root ? WORKSPACES[index] : null,
-      root ? `course-${index + 1}` : null,
+      COURSES[index], WORKSPACES[index],
+      `course-${index + 1}`,
       publication,
       `2026-08-${String(index + 9).padStart(2, "0")}T10:00:00Z`
     ]);
@@ -551,8 +679,26 @@ async function legacyDatabase({
       workspace_id,workspace_course_id,course_id
     ) values
       ($1,'course-5',$2),
-      ($3,'course-6',$4)
-  `, [WORKSPACES[4], PUBLICATIONS[0], WORKSPACES[5], PUBLICATIONS[1]]);
+      ($3,'course-6',$4),
+      ($5,'course-7',$6),
+      ($7,'course-8',$8)
+  `, [
+    WORKSPACES[4], PUBLICATIONS[0], WORKSPACES[5], PUBLICATIONS[1],
+    WORKSPACES[6], PUBLICATIONS[2], WORKSPACES[7], PUBLICATIONS[3]
+  ]);
+
+  for (const workspaceIndex of [0, 1]) {
+    const microsequenceRefs = cutoverEntities(workspaceIndex)
+      .filter((entity) => entity.entityType === "microsequence")
+      .map((entity) => ({ microsequence_ref: entity.entityId }));
+    await database.query(`
+      insert into private.authoring_materialization_states(
+        workspace_id,microsequence_ref,materialization_revision
+      )
+      select $1,state.microsequence_ref,1
+      from jsonb_to_recordset($2::jsonb) as state(microsequence_ref text)
+    `, [WORKSPACES[workspaceIndex], microsequenceRefs]);
+  }
 
   const eventOperations = [
     ["create", "create_structure", "replace_catalog_document", "save_card", "update_brief", "update_metadata"],
@@ -560,10 +706,14 @@ async function legacyDatabase({
     ["create", "create_structure", "replace_catalog_document", "save_microsequence_cards", "save_microsequence_cards", "update_brief"],
     ["create", "create_structure", "replace_catalog_document", "save_microsequence_cards", "save_microsequence_cards", "update_brief"],
     ["create", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards"],
-    ["create", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards"]
+    ["create", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards", "save_microsequence_cards"],
+    ["create"],
+    ["create"]
   ];
   for (let workspaceIndex = 0; workspaceIndex < WORKSPACES.length; workspaceIndex += 1) {
-    for (let revisionIndex = 0; revisionIndex < 6; revisionIndex += 1) {
+    for (let revisionIndex = 0;
+      revisionIndex < eventOperations[workspaceIndex].length;
+      revisionIndex += 1) {
       const operation = eventOperations[workspaceIndex][revisionIndex];
       await database.query(`
         insert into private.authoring_workspace_events(
@@ -571,15 +721,7 @@ async function legacyDatabase({
         ) values($1,$2,$3,$4,$5,$6)
       `, [
         WORKSPACES[workspaceIndex], revisionIndex + 1, operation,
-        {
-          operation,
-          created: operation === "create" ? 1 : 0,
-          updated: operation === "create" ? 0 : 1,
-          deleted: 0,
-          workspaceId: WORKSPACES[workspaceIndex],
-          catalog: "legacy-only",
-          publication: "legacy-only"
-        },
+        legacyEventSummary(operation, workspaceIndex),
         OWNER,
         `2026-07-${String(workspaceIndex + 1).padStart(2, "0")}T${String(revisionIndex + 10).padStart(2, "0")}:00:00Z`
       ]);
@@ -588,7 +730,9 @@ async function legacyDatabase({
 
   let activeRequestIndex = 0;
   for (let workspaceIndex = 0; workspaceIndex < WORKSPACES.length; workspaceIndex += 1) {
-    const requestCount = workspaceIndex === 0 ? 8 : 7;
+    const requestCount = workspaceIndex === 0 ? 8
+      : workspaceIndex < 6 ? 7
+        : workspaceIndex === 6 ? 2 : 1;
     for (let index = 0; index < requestCount; index += 1) {
       activeRequestIndex += 1;
       await database.query(`
@@ -704,7 +848,46 @@ test("ponte #124 preserva notes/receipts e mantém audit, #122 e tabela desconhe
   await unknown.exec("rollback");
 });
 
-test("migra a topologia 4/2/2, preserva UUID e isola todos os nomes legacy", async () => {
+test("só preserva os 247 contadores sem órfãos nem fatos dependentes", async (t) => {
+  const incomplete = await legacyDatabase();
+  const orphan = await legacyDatabase();
+  const consumer = await legacyDatabase();
+  t.after(async () => Promise.all([
+    incomplete.close(), orphan.close(), consumer.close()
+  ]));
+
+  await incomplete.query(`
+    delete from private.authoring_materialization_states
+    where workspace_id=$1 and microsequence_ref='micro-a'
+  `, [WORKSPACES[0]]);
+  await assert.rejects(
+    applyMigration(incomplete),
+    /Contadores de materialização inesperados/u
+  );
+  await incomplete.exec("rollback");
+
+  await orphan.query(`
+    update private.authoring_materialization_states
+    set microsequence_ref='microsequence-ausente'
+    where workspace_id=$1 and microsequence_ref='micro-a'
+  `, [WORKSPACES[0]]);
+  await assert.rejects(
+    applyMigration(orphan),
+    /Contadores de materialização inesperados/u
+  );
+  await orphan.exec("rollback");
+
+  await consumer.exec(
+    "insert into private.authoring_materialization_manifests values(1)"
+  );
+  await assert.rejects(
+    applyMigration(consumer),
+    /Contadores de materialização inesperados/u
+  );
+  await consumer.exec("rollback");
+});
+
+test("migra a topologia 4/4/0, preserva UUID e isola todos os nomes legacy", async () => {
   const database = await legacyDatabase();
   await applyMigration(database);
   assert.deepEqual(
@@ -736,7 +919,7 @@ test("migra a topologia 4/2/2, preserva UUID e isola todos os nomes legacy", asy
   assert.equal(await scalar(database, `
     select count(*)::int as value from private.course_entities
     where entity_type in ('module','lesson','topic','microsequence','card')
-  `), 33);
+  `), 278);
   assert.equal(await scalar(database, `
     select count(distinct course_id)::int as value from private.course_entities
   `), 8);
@@ -758,12 +941,16 @@ test("migra a topologia 4/2/2, preserva UUID e isola todos os nomes legacy", asy
     created_at: "2026-07-01 11:00:00+00",
     updated_at: "2026-07-01 12:00:00+00"
   });
-  assert.equal(await scalar(database, `
-    select bool_and(version=1
-      and created_at='2026-08-03T10:00:00Z'::timestamptz
-      and updated_at='2026-08-03T10:00:00Z'::timestamptz) as value
-    from private.course_entities where course_id=$1
-  `, [COURSES[6]]), true);
+  assert.deepEqual(await database.query(`
+    select version::int as version,created_at::text as created_at,
+      updated_at::text as updated_at
+    from private.course_entities
+    where course_id=$1 and entity_type='module'
+  `, [COURSES[6]]).then((result) => result.rows[0]), {
+    version: 71,
+    created_at: "2026-07-07 11:00:00+00",
+    updated_at: "2026-07-07 12:00:00+00"
+  });
   assert.equal(await scalar(database, `
     select title as value from public.courses where id=$1
   `, [COURSES[4]]), "Curso raiz 5");
@@ -771,8 +958,22 @@ test("migra a topologia 4/2/2, preserva UUID e isola todos os nomes legacy", asy
     select count(*)::int as value from public.courses where id=$1
   `, [PUBLICATIONS[0]]), 0);
   assert.equal(await scalar(database, `
+    select count(*)::int as value from public.legacy_catalog_courses
+  `), 8);
+  assert.equal(await scalar(database, `
+    select count(*)::int as value
+    from public.legacy_catalog_courses legacy_course
+    where not exists(
+      select 1 from private.legacy_trail_items item
+      where item.course_id=legacy_course.id
+    )
+  `), 4);
+  assert.equal(await scalar(database, `
     select revision::int as value from public.courses where id=$1
-  `, [COURSES[6]]), 1);
+  `, [COURSES[6]]), 6);
+  assert.equal(await scalar(database, `
+    select count(*)::int as value from private.authoring_materialization_states
+  `), 247);
   assert.equal(await scalar(database, `
     select course_id as value from public.course_personal_states
     where user_id=$1
@@ -823,13 +1024,13 @@ test("migra a topologia 4/2/2, preserva UUID e isola todos os nomes legacy", asy
   await database.close();
 });
 
-test("rekeya os 36 eventos e elimina vocabulário e payload legacy", async () => {
+test("rekeya os 38 eventos e elimina vocabulário e payload legacy", async () => {
   const database = await legacyDatabase();
   await applyMigration(database);
 
   assert.equal(await scalar(database, `
     select count(*)::int as value from private.course_events
-  `), 36);
+  `), 38);
   assert.equal(await scalar(database, `
     select count(*)::int as value
     from private.course_events event_value
@@ -837,12 +1038,12 @@ test("rekeya os 36 eventos e elimina vocabulário e payload legacy", async () =>
     join private.authoring_workspace_events legacy_event
       on legacy_event.id=event_value.id
      and legacy_event.workspace_id=item.workspace_id
-  `), 36);
+  `), 38);
   assert.deepEqual(await database.query(`
     select operation,count(*)::int as count
     from private.course_events group by operation order by operation
   `).then((result) => result.rows), [
-    { operation: "create_course", count: 6 },
+    { operation: "create_course", count: 8 },
     { operation: "replace_course_composition", count: 25 },
     { operation: "update_course_metadata", count: 5 }
   ]);
@@ -853,7 +1054,7 @@ test("rekeya os 36 eventos e elimina vocabulário e payload legacy", async () =>
   `).then((result) => result.rows), [
     { change_kind: "authoring_guidance_updated", count: 4 },
     { change_kind: "course_composition_replaced", count: 4 },
-    { change_kind: "course_initialized", count: 6 },
+    { change_kind: "course_initialized", count: 8 },
     { change_kind: "course_metadata_updated", count: 1 },
     { change_kind: "didactic_microsequence_study_units_updated", count: 16 },
     { change_kind: "didactic_structure_materialized", count: 4 },
@@ -877,6 +1078,52 @@ test("rekeya os 36 eventos e elimina vocabulário e payload legacy", async () =>
       '(workspace|catalog|publication|create_structure|replace_catalog_document|save_card|save_microsequence_cards|update_brief)'
   `), 0);
   await database.close();
+});
+
+test("recusa campo extra, tipo incorreto e semântica divergente nos summaries", async (t) => {
+  const [extraField, invalidType, invalidMeaning] = await Promise.all([
+    legacyDatabase(), legacyDatabase(), legacyDatabase()
+  ]);
+  t.after(() => Promise.all([
+    extraField.close(), invalidType.close(), invalidMeaning.close()
+  ]));
+
+  await extraField.exec(`
+    update private.authoring_workspace_events
+    set summary=summary || '{"unexpected":true}'::jsonb
+    where operation='create'
+      and id=(select min(id) from private.authoring_workspace_events
+        where operation='create')
+  `);
+  await invalidType.exec(`
+    update private.authoring_workspace_events
+    set summary=jsonb_set(summary,'{submittedCardCount}','"1"'::jsonb)
+    where operation='save_microsequence_cards'
+      and id=(select min(id) from private.authoring_workspace_events
+        where operation='save_microsequence_cards')
+  `);
+  await invalidMeaning.exec(`
+    update private.authoring_workspace_events
+    set summary=jsonb_set(summary,'{mode}','"append"'::jsonb)
+    where operation='save_microsequence_cards'
+      and id=(select min(id) from private.authoring_workspace_events
+        where operation='save_microsequence_cards')
+  `);
+
+  await Promise.all([
+    assert.rejects(
+      () => applyMigration(extraField),
+      /Summary de evento legacy não pode ser convertido com segurança/u
+    ),
+    assert.rejects(
+      () => applyMigration(invalidType),
+      /Summary de evento legacy não pode ser convertido com segurança/u
+    ),
+    assert.rejects(
+      () => applyMigration(invalidMeaning),
+      /Summary de evento legacy não pode ser convertido com segurança/u
+    )
+  ]);
 });
 
 test("autorização concreta aplica owner, grants explícitos e falha fechada", async () => {
@@ -1099,10 +1346,14 @@ test("Estudo recebe cabeçalho fino e Autoria obtém outline sob a mesma revisã
     seen.push(...page.items.map((item) => `${item.entityType}:${item.entityId}`));
     cursor = page.hasMore ? page.nextCursor : null;
   } while (cursor);
-  assert.deepEqual(seen, [
+  assert.equal(seen.length, 128);
+  assert.equal(seen.filter((item) => item.startsWith("microsequence:")).length, 124);
+  for (const expected of [
     "module:module-a", "lesson:lesson-a", "topic:topic-a",
     "microsequence:micro-a", "card:card-a"
-  ]);
+  ]) {
+    assert.equal(seen.includes(expected), true);
+  }
   await assert.rejects(
     () => scalar(database, `
       select public.list_course_entities_v1($1,$2,2,null,null) as value
@@ -1635,10 +1886,18 @@ test("estado JS v2 atravessa a fronteira e preserva evidência órfã sem inflar
   await database.close();
 });
 
-test("aborta owner ambíguo e raiz ausente sem inventar fallback", async () => {
-  const ambiguous = await legacyDatabase({ productOwners: 2 });
-  await assert.rejects(() => applyMigration(ambiguous), /exatamente um owner ativo/u);
-  await ambiguous.close();
+test("aborta raiz ausente sem inventar fallback", async () => {
+  const publicationOnly = await legacyDatabase();
+  await publicationOnly.query(`
+    update private.trail_items
+    set workspace_id=null,workspace_course_id=null
+    where id=$1
+  `, [COURSES[7]]);
+  await assert.rejects(
+    () => applyMigration(publicationOnly),
+    /course_identity_cutover_map_source_v1|check constraint/iu
+  );
+  await publicationOnly.close();
 
   const missing = await legacyDatabase({ missingRoot: true });
   await assert.rejects(() => applyMigration(missing), /Raiz viva, owner ou título ausente/u);

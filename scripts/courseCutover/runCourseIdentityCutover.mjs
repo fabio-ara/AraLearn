@@ -22,6 +22,10 @@ import {
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, "../..");
+const DEFAULT_TASK_OPERATION_TERMINOLOGY_MIGRATION = path.join(
+  REPOSITORY_ROOT,
+  "supabase/migrations/20260817130000_task_operation_terminology.sql"
+);
 const DEFAULT_MIGRATION = path.join(
   REPOSITORY_ROOT,
   "supabase/migrations/20260817140000_course_identity_cutover.sql"
@@ -54,6 +58,64 @@ const DEFAULT_COURSE_AUDIT_MIGRATION = path.join(
   REPOSITORY_ROOT,
   "supabase/migrations/20260817210000_course_audit_corrections.sql"
 );
+const DEFAULT_POST_CUTOVER_MIGRATIONS = Object.freeze([
+  Object.freeze({
+    version: "20260818042341",
+    name: "course_variant_comparisons",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260818042341_course_variant_comparisons.sql"
+    )
+  }),
+  Object.freeze({
+    version: "20260818051209",
+    name: "course_variant_comparison_listing",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260818051209_course_variant_comparison_listing.sql"
+    )
+  }),
+  Object.freeze({
+    version: "20260818052044",
+    name: "course_variant_listing_manifest",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260818052044_course_variant_listing_manifest.sql"
+    )
+  }),
+  Object.freeze({
+    version: "20260820061206",
+    name: "course_source_pdf_attachments",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260820061206_course_source_pdf_attachments.sql"
+    )
+  }),
+  Object.freeze({
+    version: "20260820063156",
+    name: "course_authoring_analytics",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260820063156_course_authoring_analytics.sql"
+    )
+  }),
+  Object.freeze({
+    version: "20260820065720",
+    name: "complete_course_variant_comparison",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260820065720_complete_course_variant_comparison.sql"
+    )
+  }),
+  Object.freeze({
+    version: "20260820101500",
+    name: "fix_person_avatar_path_validation",
+    filePath: path.join(
+      REPOSITORY_ROOT,
+      "supabase/migrations/20260820101500_fix_person_avatar_path_validation.sql"
+    )
+  })
+]);
 const DEFAULT_POOLER_URL = path.join(REPOSITORY_ROOT, "supabase/.temp/pooler-url");
 const DEFAULT_PROJECT_REF = path.join(REPOSITORY_ROOT, "supabase/.temp/project-ref");
 const DEFAULT_ATTESTATION_DIRECTORY = path.resolve(
@@ -331,6 +393,7 @@ export async function runCourseIdentityCutover({
   apply = false,
   sessions,
   resolutions = {},
+  taskOperationTerminologyMigrationSql,
   migrationSql,
   profileAccessMigrationSql,
   authoringPlanMigrationSql,
@@ -339,6 +402,7 @@ export async function runCourseIdentityCutover({
   courseSourcesMigrationSql,
   courseAnnotationsMigrationSql,
   courseAuditMigrationSql,
+  postCutoverMigrations,
   readSnapshot = readCourseCutoverSnapshot,
   createArtifactLoader = createRevisionArtifactLoader,
   prepare = prepareCourseCutover,
@@ -351,6 +415,7 @@ export async function runCourseIdentityCutover({
   now = () => new Date()
 } = {}) {
   if (!sessions?.database || !sessions?.supabase ||
+      typeof taskOperationTerminologyMigrationSql !== "string" ||
       typeof migrationSql !== "string" ||
       typeof profileAccessMigrationSql !== "string" ||
       typeof authoringPlanMigrationSql !== "string" ||
@@ -358,7 +423,9 @@ export async function runCourseIdentityCutover({
       typeof courseDesignMigrationSql !== "string" ||
       typeof courseSourcesMigrationSql !== "string" ||
       typeof courseAnnotationsMigrationSql !== "string" ||
-      typeof courseAuditMigrationSql !== "string") {
+      typeof courseAuditMigrationSql !== "string" ||
+      !Array.isArray(postCutoverMigrations) ||
+      postCutoverMigrations.some((migration) => typeof migration?.sql !== "string")) {
     fail("invalid_cutover_execution", "Sessões ou migrations do corte estão ausentes.");
   }
   const snapshotSession = {
@@ -383,10 +450,12 @@ export async function runCourseIdentityCutover({
       legacyAuditHash: preparation.sourceSnapshot.legacyAuditHash,
       legacyAuditCounts: preparation.sourceSnapshot.legacyAudit.counts,
       migrationHash: sha256Text(
-        `${migrationSql}\n${profileAccessMigrationSql}\n${authoringPlanMigrationSql}` +
+        `${taskOperationTerminologyMigrationSql}\n${migrationSql}\n` +
+          `${profileAccessMigrationSql}\n${authoringPlanMigrationSql}` +
           `\n${studyUnitInspectionMigrationSql}\n${courseDesignMigrationSql}` +
           `\n${courseSourcesMigrationSql}\n${courseAnnotationsMigrationSql}` +
-          `\n${courseAuditMigrationSql}`
+          `\n${courseAuditMigrationSql}\n` +
+          postCutoverMigrations.map(({ sql }) => sql).join("\n")
       )
     };
     await writeAttestation({
@@ -405,6 +474,7 @@ export async function runCourseIdentityCutover({
     }
     const sql = buildSql(
       preparation,
+      taskOperationTerminologyMigrationSql,
       migrationSql,
       profileAccessMigrationSql,
       authoringPlanMigrationSql,
@@ -412,7 +482,8 @@ export async function runCourseIdentityCutover({
       courseDesignMigrationSql,
       courseSourcesMigrationSql,
       courseAnnotationsMigrationSql,
-      courseAuditMigrationSql
+      courseAuditMigrationSql,
+      postCutoverMigrations
     );
     await executeSql(sql, {
       ...sessions.database,
@@ -442,11 +513,15 @@ export async function runCourseIdentityCutover({
 }
 
 function helpText() {
+  const migrationSequence = [
+    "1300", "1400", "1500", "1600", "1700", "1800", "1900", "2000", "2100",
+    ...DEFAULT_POST_CUTOVER_MIGRATIONS.map(({ version }) => version.slice(6))
+  ].join("/");
   return [
     "Uso: node scripts/courseCutover/runCourseIdentityCutover.mjs [opções]",
     "",
     "Sem --apply, não escreve no banco; valida e grava atestação privada.",
-    "  --apply                 executa TEMP + COPY + migrations 1400/1500/1600/1700/1800/1900/2000/2100 em uma transação",
+    `  --apply                 executa TEMP + COPY + migrations ${migrationSequence} em uma transação`,
     "  --secrets-stdin         lê as sessões efêmeras de um objeto JSON no stdin",
     "  --resolutions ARQUIVO   lê decisões semânticas de arquivo fora do repositório",
     "  --help                  mostra esta ajuda",
@@ -468,6 +543,10 @@ export async function main(argv = process.argv.slice(2)) {
   const stdinSecrets = argumentsValue.secretsStdin ? await readStdinJson() : {};
   const sessions = await resolveSessions(stdinSecrets);
   const resolutions = await readResolutions(argumentsValue.resolutionsPath);
+  const taskOperationTerminologyMigrationSql = await readLimitedFile(
+    DEFAULT_TASK_OPERATION_TERMINOLOGY_MIGRATION,
+    4 * 1024 * 1024
+  );
   const migrationSql = await readLimitedFile(DEFAULT_MIGRATION, 4 * 1024 * 1024);
   const profileAccessMigrationSql = await readLimitedFile(
     DEFAULT_PROFILE_ACCESS_MIGRATION,
@@ -497,10 +576,18 @@ export async function main(argv = process.argv.slice(2)) {
     DEFAULT_COURSE_AUDIT_MIGRATION,
     4 * 1024 * 1024
   );
+  const postCutoverMigrations = await Promise.all(
+    DEFAULT_POST_CUTOVER_MIGRATIONS.map(async ({ version, name, filePath }) => ({
+      version,
+      name,
+      sql: await readLimitedFile(filePath, 4 * 1024 * 1024)
+    }))
+  );
   const result = await runCourseIdentityCutover({
     apply: argumentsValue.apply,
     sessions,
     resolutions,
+    taskOperationTerminologyMigrationSql,
     migrationSql,
     profileAccessMigrationSql,
     authoringPlanMigrationSql,
@@ -508,7 +595,8 @@ export async function main(argv = process.argv.slice(2)) {
     courseDesignMigrationSql,
     courseSourcesMigrationSql,
     courseAnnotationsMigrationSql,
-    courseAuditMigrationSql
+    courseAuditMigrationSql,
+    postCutoverMigrations
   });
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

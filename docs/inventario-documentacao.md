@@ -1,108 +1,96 @@
-# Inventário editorial da documentação pública
+# Cobertura da documentação
 
-## Finalidade e escopo
+Esta página ajuda a localizar a explicação mais adequada para cada dúvida. O
+[mapa principal](README.md) oferece percursos completos; aqui, a consulta parte
+da tarefa ou do conceito procurado.
 
-Este inventário orienta a consolidação da documentação sem criar uma segunda
-fonte de verdade sobre o produto. Ele cobre cada página Markdown em
-`docs/**/*.md`, inclusive os materiais derivados publicados em
-`docs/downloads/authoring/`. Arquivos executáveis em `authoring/`, documentos
-gerais da raiz, imagens, dados de evidência e o manual operacional privado têm
-ciclos próprios e não fazem parte desta tabela.
+## Aprender e usar o AraLearn
 
-O inventário registra uma decisão editorial, não uma afirmação de que o
-conteúdo atual de uma página está correto. A implementação e o comportamento
-observado continuam sendo confrontados pelas matrizes e pelos testes
-apropriados.
+| Pergunta | Onde começar |
+| --- | --- |
+| Para que serve o AraLearn? | [Visão do produto](visao-do-produto.md) |
+| Como navegar pelo aplicativo? | [Uso do aplicativo](uso-do-app.md) |
+| Como estudar, retomar e marcar uma Unidade para rever? | [Guia do estudante](guia-estudante.md) |
+| Como criar, inspecionar e compartilhar um Curso? | [Guia do professor e autor](guia-professor-autor.md) |
+| Como recuperar uma sessão ou diagnosticar uma falha? | [Solução de problemas](solucao-de-problemas.md) |
+| Quais capacidades estão disponíveis agora? | [Estado corrente](estado-atual-e-roadmap.md) |
 
-A tabela acompanha apenas as páginas correntes. Retiradas editoriais e seus
-destinos são registradas abaixo; o conteúdo anterior permanece recuperável no
-Git.
+## Compreender o desenho educacional
 
-## Estados editoriais
+| Pergunta | Documento |
+| --- | --- |
+| Como Curso, Módulo, Lição, Microssequência e Unidade se relacionam? | [Modelo didático](modelo-didatico.md) |
+| Como os parâmetros alteram o desenho sem substituir a decisão do autor? | [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) |
+| Como escolher e compor representações e respostas? | [Componentes didáticos](componentes-didaticos.md) |
+| Que fundamentos sustentam essas representações? | [Fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md) |
+| Como continuidade, revisão e progresso são tratados sem nota implícita? | [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) |
+| O que diferencia uma Anotação ancorada de um achado de auditoria? | [Observações pedagógicas](observacoes-pedagogicas.md) |
 
-- **conservar:** a função e a maior parte do conteúdo permanecem úteis;
-- **reformular:** a página conserva sua função, mas precisa refletir o modelo e
-  o vocabulário que forem validados;
-- **fundir:** o conteúdo aproveitável deve ser incorporado ao destino e a
-  página, então, retirada;
-- **remover:** registro transitório ou obsoleto cujo histórico já é preservado
-  pelo Git;
-- **gerado:** artefato reconstruído a partir de uma fonte canônica, nunca
-  editado diretamente.
+A [revisão de literatura](revisao-de-literatura.md), o
+[quadro teórico](quadro-teorico.md), o
+[glossário de construtos](glossario-construtos.md) e as
+[referências](referencias.md) oferecem o aprofundamento acadêmico.
 
-## Inventário
+## Criar com a interface e com o chat
 
-| Página | Estado | Destino editorial explícito |
-| --- | --- | --- |
-| `analytics-instrucionais.md` | reformular | manter neste caminho, com métricas de autoria e pesquisa ligadas a dados observáveis |
-| `aralearn-contract.md` | reformular | manter neste caminho após estabilizar entidades, vocabulário e contratos públicos |
-| `arquitetura.md` | conservar | explica Curso vivo, composição paginada, auditoria/correções, estado pessoal, acesso direto e gates da promoção |
-| `assistencia-por-ia.md` | reformular | manter neste caminho e alinhar a assistência à autoria e à pesquisa realmente acessíveis |
-| `auditoria-academica-dos-resources.md` | reformular | manter neste caminho após a revisão terminológica e metodológica dos recursos de card |
-| `auditoria-de-conformidade-instrucional.md` | conservar | contrato corrente de contexto, rodada, achado, correção, verificação, rollback e privacidade |
-| `auditoria-front-end.md` | reformular | manter neste caminho como método reproduzível, sem resultados transitórios de uma versão |
-| `autoria-mcp.md` | conservar | explica as seis ferramentas, o recurso de invariantes, OAuth e o Curso compartilhado com a interface |
-| `contribuicao-originalidade.md` | reformular | manter neste caminho, distinguindo contribuição demonstrada de hipótese e intenção |
-| `criar-cursos-pelo-chat.md` | reformular | manter neste caminho como guia simples da autoria conversacional vigente |
-| `desenho-instrucional-parametrizado.md` | reformular | manter neste caminho após validar parâmetros semânticos, escopos e herança |
-| `dicionario-metricas-datasets.md` | reformular | manter neste caminho como dicionário versionado das métricas realmente coletadas |
-| `downloads/authoring/aralearn-chatgpt-knowledge-core.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
-| `downloads/authoring/aralearn-chatgpt-knowledge-resources.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
-| `downloads/authoring/aralearn-chatgpt-system-prompt.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
-| `downloads/authoring/README.md` | gerado | reconstruir das fontes em `authoring/` com `npm run authoring:packages` |
-| `estado-atual-e-roadmap.md` | conservar | matriz corrente e gates de importação, reset, migração e promoção |
-| `estado-de-estudo-nao-punitivo.md` | conservar | manter neste caminho e revisar apenas quando o comportamento de Estudo mudar |
-| `experimentos-instrucionais-parametrizados.md` | histórico | preserva a arquitetura de pesquisa isolada; a capacidade local de variantes comparáveis não a reativa |
-| `fluxos-prompts-e-contratos.md` | reformular | manter neste caminho, limitado aos fluxos e contratos realmente executados |
-| `fundamentacao-pedagogica-dos-resources.md` | reformular | manter neste caminho após a revisão acadêmica da nomenclatura e das representações |
-| `fundamentos-pesquisa-e-governanca.md` | reformular | manter neste caminho, separando rigor científico de governança institucional desnecessária |
-| `glossario-construtos.md` | reformular | manter neste caminho como vocabulário científico controlado |
-| `glossario-tecnico.md` | conservar | mecanismos do runtime canônico e termos futuros explicitamente não implementados |
-| `guia-desenvolvedor.md` | reformular | manter neste caminho com o fluxo técnico vigente e verificável |
-| `guia-estudante.md` | conservar | percurso atual de Estudo, revisão, observação, retomada e reset por Curso |
-| `guia-pesquisador.md` | reformular | manter neste caminho com autoria, experimentos, dados e análise que existirem de fato |
-| `guia-professor-autor.md` | conservar | percurso atual de criação, planejamento, Fontes, inspeção, Auditoria e correções, MCP, perfil e acesso |
-| `implantacao.md` | reformular | manter neste caminho com requisitos e limites de implantação atuais |
-| `integrations/android-share-import.md` | conservar | manter neste caminho enquanto a integração Android permanecer suportada |
-| `integrations/codex-cli.md` | remover | transferir memória operacional útil ao manual privado e preservar o texto público no histórico do Git |
-| `inventario-documentacao.md` | conservar | manter neste caminho somente durante a consolidação editorial; depois converter a manutenção em auditoria automática |
-| `matriz-conformidade-tecnica.md` | reformular | manter neste caminho como ligação entre afirmações e evidências executáveis atuais |
-| `matriz-rastreabilidade-pedagogica.md` | reformular | manter neste caminho como ligação entre fundamento, decisão, implementação e avaliação |
-| `modelo-didatico.md` | reformular | manter neste caminho após validar hierarquia, Parte, parâmetros e terminologia didática |
-| `observacoes-pedagogicas.md` | conservar | contrato de Anotação ancorada, triagem/offline/privacidade e fronteira explícita com auditoria/correções |
-| `origens-do-aralearn.md` | conservar | manter neste caminho como narrativa biográfica delimitada, sem função probatória |
-| `persistencia-relacional.md` | conservar | modelo canônico de PostgreSQL, IndexedDB, Anotações, auditoria/correções, avatar, CAS, recibos e reconciliação |
-| `principios-editoriais.md` | conservar | manter neste caminho como norma editorial da documentação pública |
-| `privacidade.md` | reformular | manter neste caminho conforme propriedade, compartilhamento, pesquisa e retenção forem validados |
-| `protocolo-avaliacao-artefato.md` | reformular | manter neste caminho como protocolo de avaliação, sem apresentar intenção como resultado |
-| `quadro-teorico.md` | reformular | manter neste caminho e atualizar somente com construtos e relações justificáveis |
-| `README.md` | reformular | manter neste caminho apenas como mapa de percursos, sem repetir capítulos |
-| `componentes-didaticos.md` | conservar | contrato corrente da fronteira entre núcleo, packages e interface de autoria |
-| `referencias.md` | gerado | reconstruir de `referencias.bib` com `npm run docs:references` |
-| `revisao-de-literatura.md` | reformular | manter neste caminho como síntese narrativa com protocolo e registro prospectivos |
-| `roteiro-aceitacao-humana-autoria.md` | reformular | manter neste caminho como roteiro reutilizável, sem dependência de uma tarefa numerada |
-| `sistema-visual.md` | conservar | manter neste caminho como referência visual e atualizar junto da interface |
-| `solucao-de-problemas.md` | reformular | manter neste caminho somente com sintomas e procedimentos ainda reproduzíveis |
-| `supabase.md` | reformular | manter neste caminho conforme banco, Storage, autenticação e funções efetivamente usados |
-| `uso-do-app.md` | conservar | guia do runtime canônico e limites ainda não implementados |
-| `vocabulario-controlado.md` | gerado | reconstruir de `evidence/terminologia-canonica.v1.json` com `npm run audit:terminology -- --render` |
-| `visao-do-produto.md` | reformular | manter neste caminho como intenção corrente, separada do estado implementado |
+| Tarefa | Documento |
+| --- | --- |
+| Planejar, produzir e revisar pela interface | [Guia do professor e autor](guia-professor-autor.md) |
+| Criar um Curso em conversa com um modelo de linguagem | [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) |
+| Entender autoridade, contexto e confirmação | [Assistência por modelo de linguagem](assistencia-por-ia.md) |
+| Entender instruções, pedidos e operações estruturadas | [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) |
+| Configurar o acesso por Model Context Protocol | [Autoria por MCP](autoria-mcp.md) |
+| Registrar Fontes, Âncoras e atribuição | [Contrato de conteúdo](aralearn-contract.md) |
+| Auditar, corrigir, verificar e reverter | [Auditoria e correções](auditoria-de-conformidade-instrucional.md) |
 
-## Decisões de retirada desta etapa
+## Investigar a Autoria
 
-| Página retirada | Decisão | Destino do conteúdo útil |
-| --- | --- | --- |
-| `checkpoint-autoria-109.md` | remover | resultados estáveis foram incorporados ao estado corrente e à evidência integrada; o checkpoint permanece no Git |
-| `checklist-ux-autoria-integrada.md` | fundir | critérios reutilizáveis foram incorporados ao roteiro de aceitação humana |
-| `conformidade-documentacao-autoria.md` | fundir | rastreabilidade vigente foi incorporada à matriz de conformidade técnica |
-| `autoria-do-catalogo.md` | remover | o runtime corrente não possui fluxo editorial público; história preservada no Git |
-| `guia-administracao-workspace.md` | remover | acesso direto foi incorporado a `guia-professor-autor.md`; história preservada no Git |
-| `plano-de-controle-e-artefatos.md` | remover | decisões vigentes foram incorporadas a `arquitetura.md` e `persistencia-relacional.md`; história preservada no Git |
-| `workspaces-educacionais.md` | remover | propriedade e acesso direto foram incorporados aos guias e à arquitetura; história preservada no Git |
+| Pergunta | Documento |
+| --- | --- |
+| Como comparar Cursos derivados de um mesmo ponto de recuperação? | [Variantes comparáveis](experimentos-instrucionais-parametrizados.md) |
+| Que fatos a área Pesquisa apresenta e como exportá-los? | [Pesquisa sobre a Autoria](analytics-instrucionais.md) |
+| O que significa cada conjunto, campo e métrica? | [Dicionário de métricas e conjuntos de dados](dicionario-metricas-datasets.md) |
+| Como formular uma investigação sem transformar contagem em conclusão causal? | [Guia de investigação](guia-pesquisador.md) |
+| Quais limites de inferência e governança se aplicam? | [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
+| Como avaliar o artefato e registrar evidências? | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) |
 
-## Regra de manutenção
+A [matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+liga fundamentos, decisões, implementação e formas de avaliação. A
+[auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md)
+registra a análise de cada componente mantido no catálogo.
 
-Uma página só muda de estado quando seu destino tiver absorvido o conteúdo que
-continua válido e os links de entrada tiverem sido corrigidos. Remoção não
-apaga a história: commits, tags e releases continuam preservando o contexto.
-Arquivos gerados mudam apenas por suas fontes e pelo gerador correspondente.
+## Entender e operar a engenharia
+
+| Assunto | Documento |
+| --- | --- |
+| Fronteiras e fluxo de dados | [Arquitetura](arquitetura.md) |
+| PostgreSQL, IndexedDB, filas e cache | [Persistência relacional](persistencia-relacional.md) |
+| Auth, banco, Storage, funções e políticas | [Supabase](supabase.md) |
+| Contratos de Curso e conteúdo | [Contrato de conteúdo](aralearn-contract.md) |
+| Tipografia, responsividade e acessibilidade | [Sistema visual](sistema-visual.md) |
+| Ambiente de desenvolvimento e validações | [Guia do desenvolvedor](guia-desenvolvedor.md) |
+| Implantação, migração e publicação | [Implantação](implantacao.md) |
+| Tratamento de dados pessoais | [Privacidade](privacidade.md) |
+
+O [glossário técnico](glossario-tecnico.md) explica os mecanismos usados nesses
+capítulos. A [matriz de conformidade técnica](matriz-conformidade-tecnica.md)
+indica onde verificar cada propriedade importante.
+
+## Referências de consulta
+
+- [Princípios editoriais](principios-editoriais.md): critérios de redação,
+  evidência e manutenção.
+- [Vocabulário controlado](vocabulario-controlado.md): termos de produto,
+  domínio, pesquisa e infraestrutura.
+- [Origens do AraLearn](origens-do-aralearn.md): genealogia biográfica do
+  projeto, separada de evidência de eficácia.
+- [Contribuição e originalidade](contribuicao-originalidade.md): distinção
+  entre contribuição demonstrada, hipótese e intenção.
+- [Auditoria do front-end](auditoria-front-end.md): método para verificar
+  conexão vertical, interação, acessibilidade e limites.
+- [Roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md): tarefas
+  para avaliar compreensão e uso com pessoas.
+
+`referencias.md` e `vocabulario-controlado.md` são gerados de suas fontes
+canônicas. As demais páginas descrevem o produto corrente e são atualizadas
+quando o comportamento correspondente muda.

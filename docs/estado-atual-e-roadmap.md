@@ -1,167 +1,150 @@
 # Estado corrente do produto
 
-Esta página separa capacidade implementada, ligação entre camadas, acesso,
-evidência e intenção. A fotografia técnica é de **2026-08-17** e descreve o
-código da revisão corrente. O serviço hospedado e a última release pública
-ainda não receberam este corte.
+Esta página registra o estado observado em **2026-08-20**. Ela distingue
+implementação, ligação entre camadas, acesso, uso e evidência. Um teste local
+comprova o comportamento no ambiente testado; a coluna correspondente informa
+quando ainda falta comprovação no serviço hospedado, no APK ou com pessoas.
+
+O contrato corrente usa o Curso como identidade comum de Estudo, Autoria,
+Pesquisa e Model Context Protocol (MCP). A revisão de banco declarada no
+manifesto é `20260820101500`.
 
 ## Como ler a matriz
 
-- **Existe:** há implementação identificável?
-- **Conectado:** interface, domínio, persistência e serviço realmente se ligam?
-- **Acessível:** uma pessoa autorizada alcança a capacidade?
-- **Uso verificado:** há uso humano ou somente fixtures e automação?
-- **Funciona:** qual evidência sustenta a afirmação?
-- **Necessário:** corresponde a um problema atual do produto?
-- **Alinhamento:** a solução corresponde à intenção corrente?
-- **Limites e destino:** o que ainda não se pode concluir?
+- **Existe:** há implementação identificável na revisão corrente.
+- **Conectado:** interface, domínio, persistência e serviço participam do mesmo
+  caso de uso.
+- **Acessível:** informa quem pode chegar à capacidade e por qual superfície.
+- **Uso verificado:** separa execução automatizada, uso em navegador e uso no
+  serviço publicado.
+- **Funciona:** resume a evidência técnica disponível.
+- **Necessário:** indica se a capacidade resolve um problema atual.
+- **Alinhamento:** compara a solução com a intenção corrente do produto.
+- **Limites e destino:** registra o que a evidência ainda não autoriza afirmar e
+  qual providência operacional permanece.
 
-“Parcial” pode significar uma fatia vertical incompleta, não “quase pronto”.
-Teste de software não é evidência de aprendizagem nem de compreensão humana.
+**Parcial** descreve uma ligação ou comprovação incompleta. Não significa
+aproximação percentual de conclusão. Teste de software também não demonstra
+aprendizagem, compreensão ou usabilidade humana.
 
 ## Matriz por caso de uso
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| listar Cursos sem baixar toda a composição | Sim | Sim: RPC paginada → cliente → controlador → Home | Pessoa autenticada; Cursos próprios e compartilhados em Estudo | Automação e navegador local | Lista fina, busca, cursor e cache têm testes focais | Sim, reduz rede e carga móvel | Alto | Medir egress e latência com cardinalidade real; serviço hospedado ainda não migrado |
-| abrir e estudar um Curso vivo | Sim | Sim: descritor → composição paginada → documento validado → IndexedDB → renderer; citações são buscadas por Unidade somente ao abrir Fontes | Proprietário ou pessoa com acesso | Jornada local em viewport móvel; ainda sem nova aceitação humana | Navegação Curso → Módulo → Lição → Microssequência → Unidade, prática, feedback, retomada e projeção redigida de Fontes foram exercitados | Sim | Alto; preserva Estudo como referência | Fontes ocultas ou não resolvidas são omitidas e citação sem permissão não entrega link; revalidar no APK e depois da migração hospedada; eficácia educacional não foi medida |
-| manter progresso e revisão pessoais | Sim | Sim: interface → repositório local v2 → fila → RPC v2 → PostgreSQL | Cada pessoa somente sobre seu próprio estado em Curso acessível | Automação local | Validação, revisão, idempotência, reconciliação e reset por Curso têm testes focais | Sim | Alto | O estado v2 contém apenas `progress` e `reviewMarks`; revogação e dispositivo offline exigem testes de campo |
-| registrar e triar Anotações ancoradas | Sim | Sim: Estudo/Autoria/MCP → domínio comum → cache/outbox ou API → PostgreSQL | Estudante lê somente as próprias e recebe contador privado; proprietário recebe caixa de entrada e contador global | Automação local e jornadas de navegador | N por alvo, estados, filtros, links profundos, classificação exata de Tópico, versões privadas, offline e duas abas têm testes focais | Sim | Alto | Resposta e resolução não corrigem o Curso; atividade alheia não fica observável no Estudo; achados apenas referenciam identidade/versão e qualquer ação sugerida exige comando explícito de Anotações; falta aceitação humana |
-| criar um Curso privado | Sim | Sim: formulário e MCP → API de Curso → RPC transacional | Somente pessoa autenticada; torna-se proprietária | Automação e interface local | Criação idempotente produz raiz vazia com título, objetivo, plano normalizado e preferência inicial de 7–12 Partes | Sim | Alto | 7–12 é padrão configurável, não regra pedagógica; criação hospedada aguarda o corte |
-| inspecionar o próprio Curso na Autoria | Sim | Sim: rota → leituras owner-only paginadas → sequência vertical, catálogo de Fontes, Auditoria e correções e Variantes | Somente proprietário | Automação e inspeção local | As oito áreas Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes e Pessoas usam o estado canônico; a Inspeção pagina 12 por vez e limita a janela a 36 Unidades | Sim | Alto para leitura | Respostas e edição livre ficam inertes na Inspeção; uma correção autorizada altera apenas conteúdo e Fontes da Unidade focal; falta nova aceitação humana em 360/390/430 px e desktop |
-| editar o plano instrucional em linguagem natural | Sim | Sim: interface e MCP → domínio de comandos → RPC do plano → projeção comum | Somente proprietário | Automação local | Título, objetivo, público, escopo, três listas do plano e faixa preferencial usam CAS, versão do plano e recibo idempotente | Sim | Alto | Orientação possui contrato próprio por escopo; o plano não mantém cópia. Não demonstra qualidade ou efeito educacional |
-| configurar parâmetros, orientações, itens por alvo e política de componentes | Sim | Sim: área Parâmetros e MCP → domínio comum → RPC owner-only → resolução por escopo | Somente proprietário | Automação local | Quatro parâmetros fechados, atribuição muitos-para-muitos de unidades de análise e evidências por Microssequência, pilha versionada de orientação, interpretação separada e política ligada ao catálogo usam CAS, idempotência e proveniência visível | Sim | Alto como contrato verificável | Formas, oportunidades e variações aplicadas são declarações validadas, não observação semântica do banco; defaults são hipóteses e planejado×aplicado não mede aprendizagem. Promoção hospedada e avaliação humana continuam pendentes |
-| planejar e reorganizar por Parte de autoria | Sim | Sim: controles naturais/MCP → comandos de Parte e vínculo → relações normalizadas | Somente proprietário | Automação local | É possível criar, editar, reordenar, dividir e unir Partes e mover/desvincular Microssequências sem apagar a composição | Sim | Alto | Parte é unidade operacional fora da hierarquia curricular; o melhor dimensionamento continua questão configurável e pesquisável |
-| materializar uma Parte com retomada | Sim no serviço; entrega visual delimitada | API/MCP avançam tentativa e etapas transacionais; a interface apenas copia o pedido para o chat conectado | Somente proprietário | Automação local | Início sela desenho e Fontes dos itens do plano; cada etapa confirma conteúdo, aplicação e atribuições de proveniência na mesma transação com CAS e idempotência | Sim | Alto | Copiar o pedido não inicia nem conclui materialização; a execução depende do cliente conectado e requer ensaio ponta a ponta real |
-| editar a composição do Curso pelo MCP | Sim | Sim: ferramenta → roteador → RPC própria de composição → entidades, atribuições e eventos | Somente proprietário autenticado por OAuth | Smokes e testes locais | Upserts e exclusões são atômicos, limitados a 200 itens e protegidos por revisão e idempotência; cada upsert de Unidade leva uma aplicação completa de Fontes, inclusive vazia | Sim | Alto como infraestrutura mínima | `StudyUnit.sources` é recusado sem alias ou fallback; Anotações e auditoria usam operações separadas, e correção v1 não amplia o commit de composição |
-| compartilhar um Curso para Estudo | Sim | Sim: Pessoas/MCP → serviço → vínculo direto → lista de Estudo | Proprietário concede por e-mail exato; favorecido recebe somente Estudo | Automação local | Concessão e revogação são idempotentes, confirmadas e registram evento sem e-mail | Sim | Alto | Sem convite pendente ou pesquisa de diretório; precisa de ensaio humano e promoção hospedada |
-| manter nome e foto de perfil | Sim | Sim: Conta → API → perfil; foto → bucket privado → chave no perfil | Própria pessoa; proprietário e favorecido veem perfis relacionados diretamente | Automação e interface local | Nome, envio, substituição, remoção e leitura autorizada possuem validações focais | Sim | Alto | Limite de 512 KiB e formatos precisam de mensagem clara em dispositivos reais; serviço hospedado ainda não migrado |
-| excluir a própria conta | Sim | Sim: confirmação → remoção de avatar → RPC → cascade da conta | Somente a própria pessoa autenticada | Automação local | A operação exige frase exata e recusa enquanto houver avatar privado | Sim | Alto | Ação é irreversível e exige aceitação humana antes da release |
-| consultar componentes didáticos no MCP | Sim | Sim: índice gerado compartilhado entre browser e Edge | Proprietário autenticado | Testes de catálogo e contratos | Descoberta progressiva, inspeção e validação existem | Sim | Parcial | Há formatos reais antigos ainda sem equivalente semântico; isso bloqueia a importação, não autoriza conversão aproximada |
-| rastrear Fontes e proveniência até a Unidade | Sim | Sim: sexta área/MCP → contratos comuns → cinco relações privadas; Estudo usa RPC lazy e redigida | Catálogo somente proprietário; pessoa com acesso recebe apenas citações visíveis | Automação local e jornada de navegador | Revisões e Âncoras append-only, atribuição de conjunto completo a item do plano ou Unidade, legado não resolvido honesto, resolução in-place e atomicidade de composição/materialização têm cobertura focal | Sim | Alto como proveniência por alvo | Não é cadeia de alegações W3C nem prova de autoria; promoção hospedada, medição e aceitação humana permanecem gates |
-| produzir achados, corrigir, revisar e verificar | Sim no runtime local | Sim: contexto focal → rodada imutável → versões de achado/correção → aplicação focal → nova rodada de verificação | Somente proprietário, na sétima área `section=observations` e nas mesmas seis ferramentas MCP | Automação local e jornada de navegador | Rodadas limpas enumeráveis, quatro dimensões, evidência factual por Fonte/Âncora, checkpoint, CAS, recibo, rollback e privacidade da junção têm testes focais | Sim | Alto | Online-only; aplicação e rollback exigem confirmação; correção v1 só muda conteúdo e Fontes da Unidade focal; promoção hospedada, escala e aceitação humana permanecem gates |
-| criar variantes comparáveis de um Curso | Sim no runtime local | Sim: área Variantes/MCP → domínio comum → checkpoint imutável, conjuntos e vínculos privados → clones independentes | Somente proprietário | Automação, PGlite e jornada local em 360/390/430/1280 px | Cria 2–8 Cursos a partir do mesmo planejamento, declara diferenças de parâmetros/política, compara revisões/materialização e desvincula sem apagar o Curso | Sim para comparação descritiva | Alto | Não há participantes, atribuição, consentimento, outcome, lock global ou inferência causal; promoção hospedada e aceitação humana continuam gates |
-| produzir analytics de pesquisa | Não no runtime canônico | Não | Não | Não | Infraestrutura anterior não é considerada capacidade corrente | Sim como objetivo de pesquisa | Ainda em desenho | Reconstruir sobre perguntas e dados brutos; nenhuma estrutura sobrevivente é legitimada apenas por existir |
-| operar dentro do Supabase Free Plan | Parcial | Limites, paginação, payloads, citações lazy, históricos delimitados e Storage pequeno estão conectados | Não há painel de orçamento | Medição pontual, sem série | Fontes usam metadados/URLs; páginas de auditoria têm até 24 itens/240 KiB, e rodadas, achados, correções e checkpoints possuem caps explícitos; isso reduz transferência, mas não prova sustentabilidade | Sim | Parcial | Medir banco, egress, Storage, invocações e crescimento append-only antes e depois da promoção |
+| listar e abrir Cursos concretos | Sim | Lista paginada, controlador, rota, banco e MCP usam o mesmo `courseId` | Pessoa autenticada vê Cursos próprios e Cursos recebidos para Estudo | Testes e navegador local | Busca, paginação, retorno e vínculo direto abrem o mesmo Curso sem baixar toda a composição | Sim | Alto | A publicação desta revisão e a medição com cardinalidade hospedada ainda precisam de comprovação |
+| estudar o Curso vivo | Sim | Revisão, entidades paginadas, composição validada, IndexedDB e mecanismo de renderização formam um único fluxo | Proprietário e pessoa com acesso direto | Testes focais e navegador local | Navegação curricular, prática, retorno, progresso, marcas de revisão e Fontes visíveis foram exercitados | Sim | Alto | Revalidar instalação e atualização do APK e a revisão hospedada; o funcionamento não prova eficácia educacional |
+| continuar o estudo sem conexão | Sim | Composição já validada, estado pessoal e filas específicas permanecem no dispositivo | Pessoa que já sincronizou o Curso | Testes de reinício, reconexão e duas abas | A última revisão válida continua disponível; estado pessoal e Observações retomam o envio sem duplicação | Sim | Alto | Um dispositivo desconhecido com escrita antiga ainda não sincronizada não pode ser recuperado depois da migração que remove o armazenamento anterior |
+| criar um Curso privado | Sim | Interface e MCP usam o mesmo domínio, API, transação e revisão | Pessoa autenticada torna-se proprietária | Testes locais | A criação idempotente produz identidade, metadados e plano inicial sob autorização | Sim | Alto | O padrão de 7 a 12 Partes é configurável e não constitui regra pedagógica |
+| planejar e organizar por Partes | Sim | Planejamento, itens, Partes, vínculos de produção e atividade são lidos e alterados pelas duas interfaces | Proprietário | Testes locais | É possível editar campos do plano, criar, reordenar, dividir e unir Partes e mover Microssequências sem apagar conteúdo | Sim | Alto | Parte é unidade operacional; o dimensionamento adequado continua sujeito ao conteúdo e à avaliação |
+| produzir uma Parte com assistência conversacional | Sim | O cliente conectado lê plano, parâmetros, componentes, Fontes e Observações e confirma etapas limitadas no servidor | Proprietário autenticado por OAuth | Testes de domínio, serviço e MCP | Etapas são retomáveis, idempotentes e transacionais; o progresso deriva do conteúdo confirmado | Sim | Alto | A interface visual prepara o pedido, mas não executa a produção sozinha; falta o ensaio final no cliente conversacional hospedado |
+| configurar parâmetros e componentes didáticos | Sim | Área Parâmetros e MCP chamam a mesma resolução por escopo e a mesma operação atômica de política | Proprietário | Testes de domínio, banco, MCP e interface | Valor efetivo, origem, herança, preferência, disponibilidade e bloqueio permanecem inspecionáveis | Sim | Alto | Valores aplicados são fatos declarados de desenho; não medem qualidade ou aprendizagem |
+| descobrir e validar componentes didáticos | Sim | Navegador e função remota usam o mesmo catálogo gerado e recuperam um contrato versionado por consulta | Proprietário na Autoria e no MCP | Auditoria dos 32 pacotes, testes do núcleo, função remota e MCP | A busca devolve até oito candidatos; 22 pacotes são mantidos e 10 possuem restrições de uso declaradas | Sim | Alto | Disponibilidade técnica e adequação contextual são relações distintas; o uso real continua concentrado em poucos componentes |
+| percorrer Unidades na Inspeção | Sim | Consulta paginada, janela vertical, posição local e endereços diretos usam a revisão fixada do Curso | Proprietário | Navegador em 360, 390, 430 e 1280 px; claro, escuro, movimento reduzido e duas abas | Páginas de 12 Unidades, janela de até 36, retorno exato, reconexão e atualização localizada possuem cobertura | Sim | Alto | Respostas ficam inertes; inspeção rápida não constitui medida de atenção ou qualidade da revisão humana |
+| manter perfil e compartilhar para Estudo | Sim | Perfil, avatar privado, acesso direto, lista de Estudo e MCP usam a mesma autorização | Proprietário concede ou revoga; favorecido recebe somente Estudo | Testes locais com duas identidades | Nome, foto, concessão e revogação possuem operações idempotentes e proteção no banco | Sim | Alto | Não há grupos, organizações, convite pendente ou coautoria; validar mensagens e avatar em aparelhos reais |
+| excluir a própria conta | Sim | O aplicativo envia uma solicitação confirmada; a API autentica a pessoa, deriva seus Cursos e caminhos privados, remove PDFs e avatares e chama a função transacional, que recusa resíduos antes de excluir a conta e seus Cursos | Somente a própria pessoa, após confirmação literal | Testes de API, controlador e banco | A operação falha sem excluir a conta quando resta um objeto privado; confirmação, ordem de bloqueio, limpeza física e remoção relacional possuem cobertura | Sim | Alto | Exige conexão; uma URL de envio de PDF ou sessão ainda válida pode criar objeto órfão depois da exclusão, por isso a operação hospedada exige inventário posterior às duas janelas |
+| registrar Observações situadas | Sim | Estudo, Autoria e MCP usam Anotação ancorada, versões, fila local e persistência protegida | Estudante vê somente as próprias; proprietário recebe a caixa de entrada | Testes de banco, repositório, reconexão, duas abas e navegador | Texto original, alvo, revisão, canal, estado, resposta e classificação corrigível permanecem rastreáveis | Sim | Alto | Ausência, quantidade, categoria e tempo de tratamento não diagnosticam compreensão, dificuldade ou aprendizagem |
+| registrar Fontes, Âncoras e proveniência | Sim | Interface, MCP, banco e leitura redigida em Estudo compartilham identidades e revisões | Catálogo e edição pertencem ao proprietário; Estudo recebe apenas citações autorizadas | Testes focais e fluxo local com PostgreSQL e armazenamento de objetos | Metadados estruturados, relações, Âncoras, referências importadas e aplicação por alvo possuem contratos comuns | Sim | Alto | Proveniência identifica origem e transformação; não prova correção factual ou autoria científica |
+| anexar PDF a uma Fonte | Sim | Envio direto assinado, confirmação transacional, vínculo à revisão da Fonte e transferência autorizada formam o fluxo | Proprietário | Testes de banco, armazenamento de objetos, deduplicação, autorização e limites | PDF de até 20 MiB, no máximo oito por revisão de Fonte e 64 MiB de conteúdo único por Curso; impressões digitais SHA-256 iguais reutilizam os bytes quando permitido | Sim | Alto | O serviço hospedado ainda precisa da migração e da verificação pós-publicação; fora da exclusão integral da conta, retirar bytes sem vínculo exige política de retenção e prova de segurança |
+| auditar, corrigir e verificar uma Unidade | Sim | Contexto focal, rodada, achado, proposta, comparação, aplicação, nova rodada e reversão usam o mesmo ciclo na interface e no MCP | Proprietário | Testes de domínio, banco, MCP e navegador | Quatro dimensões, evidência por Fonte e Âncora, concorrência, confirmação, métricas do ciclo e endereços diretos possuem cobertura | Sim | Alto | A correção corrente altera conteúdo e Fontes da Unidade focal; auditoria factual mantém incerteza quando a evidência não sustenta conclusão |
+| criar e comparar variantes | Sim | Área Variantes e MCP usam ponto comum de planejamento, Cursos independentes e comparação factual | Proprietário | Testes de domínio, PostgreSQL e navegador nos tamanhos de referência | De duas a oito variantes conservam diferenças declaradas, revisões, produção, Fontes, PDFs e desvinculação sem excluir Curso | Sim | Alto para comparação descritiva | Não há participantes, atribuição, desfecho ou inferência causal; uma comparação técnica não equivale a experimento |
+| consultar fatos de Autoria em Pesquisa | Sim | Banco, domínio, API, painel, exportação e MCP usam o mesmo recorte versionado | Proprietário | Testes de domínio, PostgreSQL, interface e MCP | Sete conjuntos de fatos, filtros, paginação, gráfico, tabela, CSV, JSON, denominador e dados ausentes usam os mesmos valores | Sim | Alto | Os fatos descrevem Autoria; não incluem telemetria comportamental de Estudo nem medem aprendizagem |
+| pedir análise e visualização no cliente conversacional | Sim | A vista de Pesquisa do MCP fornece conteúdo estruturado, representação textual, componente visual opcional e endereços para o AraLearn | Proprietário conectado por OAuth; a forma visual depende do suporte do cliente | Testes locais do servidor MCP e do componente | Tabela e gráfico derivam do mesmo contrato; a operação continua útil sem componente visual | Sim | Alto | Falta a verificação final numa sessão real do cliente conectado e no serviço publicado |
+| operar dentro dos limites gratuitos do Supabase | Parcial | Paginação, limites de resposta, anexos deduplicados e consultas sob demanda reduzem banco, armazenamento, transferência e funções remotas | Operação administrativa, sem painel próprio | Limites oficiais e cenários locais foram registrados | A arquitetura evita depósito analítico, processamento periódico, cópia de Curso por edição e um objeto por Unidade | Sim | Alto | Medir tamanho, transferência, invocações, latência e crescimento depois da migração hospedada e da remoção autorizada das estruturas substituídas |
+| manter somente a arquitetura corrente | Parcial | O código de execução, a interface, o MCP e os testes correntes usam Curso; módulos substituídos de autoria e sincronização genérica foram retirados | Não é uma capacidade exposta | Busca estática e inventário vertical | O saldo no repositório é negativo em tabelas conceituais, rotas, módulos, ferramentas e testes | Sim | Alto | Estruturas físicas substituídas ainda exigem backup restaurado, plano exato e autorização específica antes da remoção remota |
+| publicar a revisão integrada | Ainda não | Versão web, Android, manifesto, migrações, funções remotas, Pages e versão publicada formam uma única etapa de validação | Pessoas usuárias somente depois da publicação | A linha pública anterior continua sendo a referência hospedada | A automação de construção e verificação existe | Sim | Alto | Concluir a suíte integral, a inspeção visual real, o ensaio de recuperação e os testes hospedados antes de declarar esta revisão publicada |
 
-## Mapa do Curso vivo
+## Relações do Curso vivo
 
-**Descrição textual:** um Curso possui uma raiz, uma composição e vários
-estados pessoais. Proprietário, Autoria, Estudo e MCP não criam identidades
-paralelas.
+**Descrição textual:** um Curso possui identidade e revisão próprias. O plano e
+a composição pertencem a essa identidade; estado pessoal, Observações, Fontes,
+auditorias, variantes e fatos de Pesquisa mantêm relações próprias. Estudo,
+Autoria e MCP consultam o mesmo objeto.
 
 ```mermaid
 flowchart TD
     C[Curso vivo] --> H[Composição didática]
+    H --> MO[Módulos]
+    MO --> LI[Lições]
+    LI --> MI[Microssequências didáticas]
+    MI --> U[Unidades de estudo]
     C --> P[Plano instrucional]
-    P --> I[Itens do plano]
-    I --> F[Atribuições de Fontes e Âncoras]
-    H --> FU[Atribuições das Unidades]
-    C --> FC[Catálogo privado de Fontes]
-    FC --> F
-    FC --> FU
     P --> PA[Partes de autoria]
-    PA --> L[Vínculos de produção com Microssequências]
-    PA --> M[Tentativas e etapas de materialização]
-    C --> O[Proprietário]
-    C --> A[Acessos diretos de Estudo]
-    C --> AN[Anotações ancoradas protegidas]
-    C --> AR[Rodadas de auditoria imutáveis]
-    AR --> AF[Versões de achados]
-    AF --> AC[Versões de correções]
-    AF -. identidade e versão .-> AN
-    C --> S1[Estado pessoal A]
-    C --> S2[Estado pessoal B]
-    AU[Autoria visual] <--> C
-    MCP[Cliente MCP] <--> C
+    C --> F[Fontes e Âncoras]
+    F -->|atribuição ao plano| P
+    F -->|atribuição ao conteúdo| U
+    C --> O[Observações situadas]
+    C --> A[Auditorias, achados e correções]
+    O -. vínculo opcional .-> A
+    C --> V[Variantes comparáveis]
+    C --> R[Fatos de Pesquisa]
+    C --> PE[Proprietário e acessos de Estudo]
+    C --> ES[Estado pessoal por pessoa]
+    AU[Autoria] <--> C
+    MCP[Cliente conectado por MCP] <--> C
     E[Estudo] <--> C
 ```
 
-## Mapa de carregamento
+## Carregamento e autoridade
 
-**Descrição textual:** a Home obtém páginas pequenas; abrir um Curso busca sua
-revisão e suas entidades; somente o documento integral validado entra no cache
-e no renderer. O catálogo é carregado separadamente na Autoria, e o Estudo só
-consulta as citações de uma Unidade quando seu painel é aberto.
+**Descrição textual:** a lista inicial recebe apenas descritores. Ao abrir um
+Curso, a aplicação fixa uma revisão, pagina as entidades, recompõe e valida o
+documento e só então atualiza o IndexedDB. Fontes, auditoria, variantes e
+Pesquisa possuem leituras próprias, limitadas e autorizadas.
 
 ```mermaid
 flowchart LR
-    L[Lista fina paginada] --> O[Abrir Curso]
+    L[Lista paginada] --> O[Abrir Curso]
     O --> D{Destino}
-    D --> A[Plano e atividade persistida]
-    D --> R[Fixar revisão da composição]
-    D --> IN[Inspeção owner-only por escopo e âncora]
-    D --> F[Catálogo owner-only paginado]
-    D --> Q[Auditoria owner-only: contexto, achados, rodadas ou detalhe]
-    R --> P[Entidades paginadas]
-    P --> V[Compor e validar]
+    D --> R[Fixar revisão]
+    R --> E[Paginar entidades]
+    E --> V[Compor e validar]
     V --> I[IndexedDB]
-    A --> T[Tela de Autoria]
-    IN --> W[Janela vertical limitada e cache por revisão]
-    Q --> T
-    I --> U[Tela de Estudo]
-    U -->|abrir Fontes| C[Citações redigidas da Unidade]
+    I --> S[Estudo]
+    D --> P[Planejamento e Parâmetros]
+    D --> IN[Inspeção paginada]
+    D --> F[Fontes e PDFs]
+    D --> A[Auditoria e correções]
+    D --> VA[Variantes]
+    D --> Q[Pesquisa]
 ```
 
-## Evidência visual corrente
+## Evidência visual
 
-A referência móvel de Estudo permanece a captura em 390 × 844 pixels:
+A captura móvel de Estudo em 390 por 844 px documenta a composição de conteúdo
+e controles usada como referência:
 
-![Unidade de estudo em tela móvel, com conteúdo central e controles
+![Unidade de estudo em tela móvel clara, com conteúdo central e controles
 iconográficos.](screenshots/study/study-card-390-light.png)
 
-As capturas antigas de Autoria não representam a superfície canônica desta
-revisão. A Inspeção vertical já está integrada, mas novas capturas só devem ser
-adotadas depois da verificação da aplicação real em 360, 390 e 430 px e
-desktop; conservar imagem desatualizada como documentação corrente criaria uma
-segunda fonte de verdade.
+A lista móvel de Autoria, também em 390 por 844 px, documenta a entrada dos
+Cursos próprios:
 
-## Gates de migração e promoção
+![Lista de Cursos da Autoria em tela móvel clara, com busca, criação e três
+Cursos.](screenshots/authoring/authoring-courses-390-light.png)
 
-O corte não está hospedado. Os gates restantes são:
+Capturas anteriores de outras superfícies não definem o estado atual. A
+documentação só adota uma nova imagem depois de conferir a aplicação real em
+360, 390 e 430 px e em 1280 px, nos modos claro e escuro, com texto extenso,
+teclado e interação.
 
-1. fornecer equivalência semântica aos componentes antigos ainda bloqueados e
-   decidir explicitamente os poucos dados que não possuem contrato suficiente;
-2. obter preflight integral do importador sobre os oito Cursos reais;
-3. reconstruir o banco local e executar testes de migration, autorização,
-   concorrência e navegador contra o schema resultante;
-4. confirmar ausência de mutações pendentes em dispositivos conhecidos;
-5. executar importação e migrations `1400`, `1500`, `1600`, `1700`, `1800`,
-   `1900`, `2000` e `2100`, nessa ordem, numa única transação com verificação de
-   drift; o runner declara e hasheia as oito antes de `--apply`, sem `db push`
-   separado;
-6. conferir `sourceReferenceHash` entre origem, artefato preparado e
-   verificação pós-corte, além dos hashes e contagens anteriores;
-7. confirmar o SHA-256 comum de domínio e espelho Edge
-   `6EB5E85E34FD77D915276DB8FFC9FA3B82E7257025C661ABDBFC923002E92AD9`;
-8. conferir o inventário vertical regenerado pós-`2100`: 2.186 objetos, dos
-   quais 591 ligados aos oito casos correntes — 90 Auditoria e correções, 272
-   Autoria, 84 Anotações ancoradas, 84 Fontes, 26 Estudo, 31 pessoas/acesso,
-   três transportes e um componentes — e 1.595 no legado físico;
-9. publicar funções, site e APK somente depois da verificação hospedada.
+## Condições restantes para publicação
 
-O importador é ferramenta transitória de desenvolvimento. Ele não entra no
-runtime e será removido depois do corte. Não há leitura dupla, alias, fallback
-ou sincronização paralela. Objetos físicos já isolados do modelo substituído
-serão apagados na etapa final; até lá, sua presença no schema não significa que
-sejam acessíveis ou necessários.
+O código corrente já reúne as capacidades funcionais do Curso vivo. A publicação ainda
+depende dos seguintes resultados operacionais:
 
-## Próximas fatias funcionais
+1. reconstrução limpa do banco e aprovação de migrações, RLS, pgTAP, funções
+   remotas, MCP, navegador e Android;
+2. conferência do inventário, contagens e impressões digitais da migração dos
+   Cursos existentes;
+3. verificação visual real em celular e computador, inclusive sobreposições,
+   área segura, textos extensos e retomada;
+4. comprovação no serviço hospedado de autenticação, Estudo, Autoria, Fontes,
+   Pesquisa, MCP e endereços diretos;
+5. medição final de banco, armazenamento, transferência e funções remotas;
+6. alinhamento de versão, manifesto, site, APK e publicação.
 
-A ordem seguinte preserva paridade vertical: uma fatia só é concluída quando
-possui comportamento compreensível, interface, MCP quando aplicável,
-persistência, autorização e teste.
-
-1. dados brutos, métricas e visualização de pesquisa;
-2. assistência de pesquisa;
-3. remoção física final, validação completa e release.
-
-Parâmetros e política de componentes, Fontes, Âncoras, proveniência por alvo e
-Anotações ancoradas e o ciclo owner-only de auditoria, correção e verificação já
-pertencem ao runtime local deste corte. A retenção das anotações não redefine a
-das materializações ou correções, e nenhuma fatia futura deve reutilizar
-autoridades substituídas.
-
-Backend novo sem uma forma de uso ou inspeção na interface e, quando pertinente,
-no MCP não satisfaz uma fatia. Da mesma forma, uma tela sem persistência e
-autorização reais não conta como capacidade concluída.
+A remoção física remota das estruturas substituídas possui uma validação
+própria. Ela requer exportação, contagens e impressões digitais, restauração em
+ambiente descartável, estratégia de recuperação e autorização específica. Essa
+cautela não impede a validação e a publicação das partes não destrutivas da
+entrega.

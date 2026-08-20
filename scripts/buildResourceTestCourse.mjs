@@ -95,8 +95,7 @@ function studyUnit({ id, position, title, content = [], response = null }) {
     content,
     response,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 
@@ -129,7 +128,7 @@ function moduleForStudyUnits({ id, title, goal, studyUnits, conventions = ["repr
         role: "practice",
         dependsOn: [],
         covers: [],
-        checks: ["sem sobreposição", "alvo de prática dentro da representação", "Play como confirmação"],
+        checks: ["sem sobreposição", "alvo de prática dentro da representação", "confirmação da resposta"],
         errors: [],
         studyUnits
       }]
@@ -250,7 +249,7 @@ const orderingResponse = normalizeInstance({
 });
 
 const responseModules = [
-  moduleForStudyUnits({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e feedback por Play.", studyUnits: [studyUnit({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
+  moduleForStudyUnits({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e retorno após a confirmação.", studyUnits: [studyUnit({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
   moduleForStudyUnits({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", studyUnits: [studyUnit({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), studyUnit({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
   moduleForStudyUnits({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", studyUnits: [studyUnit({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] })
 ];

@@ -15,6 +15,7 @@ const RUN_CHECK_IDS = Object.freeze([
   "83000000-0000-4000-8000-000000000003",
   "84000000-0000-4000-8000-000000000004"
 ]);
+const ANNOTATION_ID = "90000000-0000-4000-8000-000000000009";
 const HASH_A = "a".repeat(64);
 const HASH_B = "b".repeat(64);
 
@@ -355,9 +356,16 @@ function contextPage(options) {
         status: "active",
         kind: "book",
         title: "Fonte verificável",
+        authorship: "Autoria",
+        publicationDate: "2026",
+        identifier: null,
+        language: "pt-BR",
         citationText: "Autoria. Fonte verificável. 2026.",
         url: "https://example.test/fonte",
         editionOrVersion: "2ª edição",
+        origin: "external",
+        availability: "open_access",
+        verificationStatus: "author_verified",
         studyVisibility: "citation",
         relation: "supported_by",
         sourceHash: HASH_A,
@@ -573,6 +581,8 @@ test("deep link de achado abre detalhe e renderiza Before/After reais na 7ª ár
   assert.match(root.audit.innerHTML, />Depois</u);
   assert.match(root.audit.innerHTML, /Texto anterior\./u);
   assert.match(root.audit.innerHTML, /Texto corrigido\./u);
+  assert.match(root.audit.innerHTML, /Unidades afetadas<\/dt><dd>1/u);
+  assert.match(root.audit.innerHTML, /Tempo registrado<\/dt><dd>10 min/u);
   assert.match(root.audit.innerHTML, /Rejeitar correção/u);
   assert.match(root.audit.innerHTML, /Dispensar achado/u);
 });
@@ -580,6 +590,7 @@ test("deep link de achado abre detalhe e renderiza Before/After reais na 7ª ár
 test("apply usa comando versionado, atualiza revisão e nunca cai em audit offline", async () => {
   const writes = [];
   const revisions = [];
+  const navigations = [];
   const root = new FakeRoot();
   const panel = createCourseAuditPanel({
     root,
@@ -588,6 +599,7 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
     navigatorValue: { onLine: true },
     confirmValue: () => true,
     onCourseRevisionChange: (revision) => revisions.push(revision),
+    onNavigate: (hash) => navigations.push(hash),
     controller: {
       async loadCourseAuditCycle(courseId, options) {
         assert.equal(courseId, COURSE_ID);
@@ -611,7 +623,11 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
           },
           finding: null,
           correction: null,
-          suggestedAnnotationActions: []
+          suggestedAnnotationActions: [{
+            annotationId: ANNOTATION_ID,
+            annotationVersion: 3,
+            action: "resolve"
+          }]
         };
       }
     }
@@ -630,6 +646,11 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   });
   assert.deepEqual(revisions, [8]);
   assert.match(root.audit.innerHTML, /Aplicada/u);
+  const suggestionRoute = `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${ANNOTATION_ID}`;
+  assert.match(root.audit.innerHTML, /Revisar sugestão de resolução/u);
+  assert.match(root.audit.innerHTML, /Observação v3/u);
+  assert.equal(deepLinkClick(root, suggestionRoute), true);
+  assert.deepEqual(navigations, [suggestionRoute]);
 
   const offlineRoot = new FakeRoot();
   let reads = 0;

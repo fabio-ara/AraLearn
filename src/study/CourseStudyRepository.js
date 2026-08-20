@@ -180,9 +180,7 @@ export class CourseStudyRepository {
       contract: COURSE_DOCUMENT_CONTRACT,
       courses: this.courseList.map((descriptor) => {
         const loaded = this.loadedCourseById.get(descriptor.courseId);
-        return clone(loaded?.revision === descriptor.revision
-          ? loaded.course
-          : descriptorCourse(descriptor));
+        return clone(loaded?.course || descriptorCourse(descriptor));
       })
     };
   }
@@ -223,7 +221,9 @@ export class CourseStudyRepository {
       retained.add(descriptor.courseId);
       const loaded = this.loadedCourseById.get(descriptor.courseId);
       if (!listed.offline && loaded && loaded.revision !== descriptor.revision) {
-        this.loadedCourseById.delete(descriptor.courseId);
+        loaded.offline = false;
+        loaded.stale = true;
+        loaded.readOnly = true;
       } else if (!listed.offline && loaded) {
         loaded.offline = false;
         loaded.stale = false;
@@ -282,12 +282,17 @@ export class CourseStudyRepository {
       if (!course || course.id !== courseId) {
         throw new TypeError("O documento carregado não corresponde ao Curso listado.");
       }
+      const resultRevision = Number(result.revision ?? result.course?.revision ?? descriptor.revision);
+      if (!Number.isSafeInteger(resultRevision) || resultRevision < 1) {
+        throw new TypeError("A versão do documento carregado é inválida.");
+      }
       loaded = {
-        revision: descriptor.revision,
+        revision: resultRevision,
         course: clone(course),
         offline: result.offline === true,
-        stale: result.stale === true,
-        readOnly: result.readOnly === true || result.offline === true
+        stale: result.stale === true || resultRevision !== descriptor.revision,
+        readOnly: result.readOnly === true || result.offline === true ||
+          resultRevision !== descriptor.revision
       };
       this.loadedCourseById.set(courseId, loaded);
     }

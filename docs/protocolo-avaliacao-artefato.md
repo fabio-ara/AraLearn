@@ -29,7 +29,7 @@ O protocolo evita quatro atalhos:
 O AraLearn reúne resultados que não podem ser tratados como uma única variável:
 
 - correção e segurança do software;
-- resiliência offline e sincronização;
+- resiliência sem conexão e sincronização;
 - usabilidade e acessibilidade;
 - retomada após interrupção;
 - qualidade factual, pedagógica e representacional;
@@ -37,19 +37,19 @@ O AraLearn reúne resultados que não podem ser tratados como uma única variáv
 - retenção posterior;
 - transferência para tarefa nova;
 - agência e controle humano;
-- coordenação e colaboração;
+- compreensão de propriedade, acesso e responsabilidade;
 - frugalidade de armazenamento, rede e manutenção.
 
 A pergunta “o AraLearn funciona?” é insuficiente porque não define para quem,
 em qual tarefa, sob qual comparação e segundo qual resultado.
 
-Para delimitar unidades técnicas, **kernel** é o núcleo comum do aplicativo;
-**package** é um módulo de recurso com contrato e mecanismo de renderização próprios;
-**workspace** é um espaço de trabalho com membros e permissões locais; e
-**inteligência artificial (IA)** designa os modelos e serviços que apoiam a
-autoria. **Local-first** designa uma arquitetura em que a operação corrente
-depende da cópia local e a sincronização remota ocorre sem bloquear a
-interação.
+Para delimitar unidades técnicas, **núcleo comum** é a camada que coordena os
+módulos do aplicativo; **pacote de componente** é o módulo versionado que reúne
+contrato, validação e implementação de uma representação ou formato de
+resposta; e **inteligência artificial (IA)** designa os modelos e serviços que
+apoiam a autoria. **Operação local prioritária** designa uma arquitetura em que
+a operação corrente depende da cópia local e a sincronização remota ocorre sem
+bloquear a interação.
 
 ## Duas tradições metodológicas complementares
 
@@ -70,8 +70,8 @@ problema educacional situado
   → revisão da intervenção e da explicação
 ```
 
-Unidades possíveis: pessoa, card, microssequência, percurso, atividade de
-autoria e workspace. Produtos esperados: descrição do contexto, conjectura
+Unidades possíveis: pessoa, Unidade de estudo, Microssequência didática,
+percurso, atividade de autoria e Curso. Produtos esperados: descrição do contexto, conjectura
 C–M–O, evidências, casos negativos, princípio provisório e limite de
 transferência.
 
@@ -88,12 +88,12 @@ problema e relevância
   → desenho e construção
   → demonstração em casos nominais e adversos
   → avaliação
-  → conhecimento de design e limites
+  → conhecimento de desenho e limites
 ```
 
-Unidades possíveis: kernel, package, catálogo, contrato, fluxo, operação,
+Unidades possíveis: núcleo comum, pacote de componente, catálogo, contrato, fluxo, operação,
 persistência e sincronização. Produtos esperados: versão reproduzível,
-requisito, evidência técnica, avaliação de utilidade e contribuição de design.
+requisito, evidência técnica, avaliação de utilidade e contribuição de desenho.
 
 ### Por que não escolher apenas uma
 
@@ -103,7 +103,7 @@ requisito, evidência técnica, avaliação de utilidade e contribuição de des
   iteração como pesquisa educacional ou usar trilhas com perguntas diferentes.
 - **Decisão:** articular DBR e DSR sem fundi-las.
 - **Fundamentação:** DBR examina intervenção situada; DSR examina artefato e
-  conhecimento de design ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)).
+  conhecimento de desenho ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)).
 - **Operacionalização:** cada dado registra a trilha, a pergunta e a função que
   desempenha.
 - **Consequência:** uma falha de uso pode gerar requisito técnico, e uma falha
@@ -122,18 +122,18 @@ Antes da coleta, preencher:
 | contexto | quem, onde, com qual domínio, dispositivo, rede e experiência? |
 | mecanismo | que propriedade do desenho se espera que opere? |
 | resultado | que fenômeno será observado e como foi definido? |
-| comparação | qual alternativa, baseline, critério ou estado anterior? |
+| comparação | qual alternativa, referência, critério ou estado anterior? |
 | rivais | que outras explicações poderiam produzir o mesmo resultado? |
 | enfraquecimento | que achado exigiria rever ou abandonar a hipótese? |
-| unidade de análise | pessoa, tarefa, card, sequência, curso, workspace ou componente? |
-| versão | quais commit, build, contratos, packages, conteúdo e modelo de IA? |
+| unidade de análise | pessoa, tarefa, Unidade de estudo, sequência, Curso ou componente? |
+| versão | quais são as revisões do Git, do artefato executável, dos contratos, dos pacotes de componente, do conteúdo e do modelo de IA? |
 | risco | que dano, exposição, custo ou consequência precisa ser controlado? |
 
 ### Exemplo de formulação responsável
 
 Pergunta vaga:
 
-> O modo offline melhora a aprendizagem?
+> O funcionamento sem conexão melhora a aprendizagem?
 
 Pergunta delimitada:
 
@@ -145,27 +145,29 @@ A segunda pergunta ainda não mede aprendizagem. Ela investiga retomada. Uma
 tarefa posterior de compreensão ou retenção precisaria ser planejada
 separadamente.
 
-### Quando a avaliação usa variantes parametrizadas
+### Quando a avaliação usa variantes comparáveis
 
-O registro experimental do AraLearn sustenta a cadeia técnica da intervenção,
-mas não substitui o projeto de pesquisa. Antes de gerar variantes, o protocolo
+O AraLearn registra Cursos independentes criados a partir de um mesmo
+planejamento, com diferenças declaradas de parâmetros ou da política de
+componentes. Essa relação sustenta a descrição técnica da intervenção, mas não
+constitui experimento. Antes de usar variantes numa investigação, o protocolo
 particular precisa identificar:
 
-- a publicação aprovada que forma a base comum;
-- cada fator como definição e valor interpretáveis;
-- as condições completas que de fato serão usadas;
-- o escopo e os invariantes que não podem mudar;
-- a regra de atribuição e, quando aplicável, algoritmo/seed versionados;
-- política e revisão de consentimento;
-- instrumentos, outcomes, momentos e procedimento de análise;
-- diferenças que exigem correção, aceite explícito ou invalidação.
+- o planejamento comum e sua revisão;
+- as revisões de cada Curso no vínculo e na exposição;
+- cada diferença pretendida como definição e valor interpretáveis;
+- os invariantes e os desvios não declarados que afetam a comparação;
+- a população e a regra de atribuição, quando houver;
+- a política de consentimento;
+- os instrumentos, desfechos, momentos e procedimentos de análise;
+- as perdas, os dados ausentes e os critérios de correção ou invalidação.
 
-O freeze conserva a revisão entregue; não garante que a intervenção foi
-recebida, compreendida ou usada conforme planejado. A auditoria de conformidade
-confirma apenas as regras que conseguiu verificar. Por isso, fidelity checks,
-perdas, desvios, efeitos adversos e explicações rivais continuam no protocolo
-de avaliação. Veja [Experimentos instrucionais
-parametrizados](experimentos-instrucionais-parametrizados.md).
+Cada variante continua sendo um Curso mutável. A relação preserva o ponto de
+partida e permite comparar fatos atuais, mas não congela a exposição, não
+atribui participantes e não controla fidelidade. O protocolo precisa registrar
+a revisão realmente apresentada e tratar desvios, efeitos adversos e
+explicações rivais. Veja [Variantes comparáveis de um
+Curso](experimentos-instrucionais-parametrizados.md).
 
 ## Progressão de episódios de avaliação
 
@@ -175,13 +177,13 @@ todo estudo precisa percorrer todos os episódios.
 
 | Episódio | Trilha | Finalidade e ambiente | Pergunta principal | Evidência mínima | Critério para avançar |
 | --- | --- | --- | --- | --- | --- |
-| E0 — argumento e inspeção | DSR | formativa, artificial | problema, mecanismo e risco são coerentes? | revisão conceitual, contrato e caso adverso | hipótese e requisitos explícitos |
-| E1 — verificação técnica | DSR | formativa, artificial | a versão implementa o comportamento? | testes, análise, medição e inspeção visual | falhas críticas resolvidas e build reproduzível |
-| E2 — avaliação de especialistas | DSR/DBR | formativa, artificial | conteúdo e representação são academicamente válidos? | rubrica, justificativas e divergências | erros conceituais e representacionais graves corrigidos |
-| E3 — jornada formativa | DSR | formativa, artificial ou situada | pessoas compreendem e operam o fluxo? | sucesso, erro, ajuda, verbalização e entrevista | jornada crítica executável e compreendida |
-| E4 — ciclo situado | DBR | formativa, naturalística | como o mecanismo opera no uso real? | dados de processo, produto, entrevista e casos negativos | conjectura C–M–O revisada |
-| E5 — avaliação de resultado | DBR/DSR | somativa, naturalística ou comparativa | a versão atende ao resultado delimitado? | análise predefinida, incerteza e limites | conclusão condicionada à versão e contexto |
-| E6 — acompanhamento | DBR/DSR | somativa, naturalística | resultado, custo e governança se sustentam no tempo? | retenção, transferência, incidentes e custo | decisão longitudinal de manter, alterar ou remover |
+| E0: argumento e inspeção | DSR | formativa, artificial | problema, mecanismo e risco são coerentes? | revisão conceitual, contrato e caso adverso | hipótese e requisitos explícitos |
+| E1: verificação técnica | DSR | formativa, artificial | a versão implementa o comportamento? | testes, análise, medição e inspeção visual | falhas críticas resolvidas e artefato reproduzível |
+| E2: avaliação de especialistas | DSR/DBR | formativa, artificial | conteúdo e representação são academicamente válidos? | rubrica, justificativas e divergências | erros conceituais e representacionais graves corrigidos |
+| E3: jornada formativa | DSR | formativa, artificial ou situada | pessoas compreendem e operam o fluxo? | sucesso, erro, ajuda, verbalização e entrevista | jornada crítica executável e compreendida |
+| E4: ciclo situado | DBR | formativa, naturalística | como o mecanismo opera no uso real? | dados de processo, produto, entrevista e casos negativos | conjectura C–M–O revisada |
+| E5: avaliação de resultado | DBR/DSR | somativa, naturalística ou comparativa | a versão atende ao resultado delimitado? | análise predefinida, incerteza e limites | conclusão condicionada à versão e contexto |
+| E6: acompanhamento | DBR/DSR | somativa, naturalística | resultado, custo e governança se sustentam no tempo? | retenção, transferência, incidentes e custo | decisão longitudinal de manter, alterar ou remover |
 
 Não se avança por calendário. Perda de dados, alteração de escopo pela IA,
 inacessibilidade ou conteúdo oculto devolvem o artefato à verificação técnica,
@@ -191,10 +193,10 @@ mesmo que outras medidas sejam favoráveis.
 
 ### Perfis relevantes
 
-O público de design prioritário inclui adultos que conciliam estudo e trabalho,
+O público prioritário no desenho inclui adultos que conciliam estudo e trabalho,
 com variação de experiência digital, área de conhecimento, dispositivo e
-conectividade. Outros papéis — especialistas, docentes, autores, revisores e
-administradores — respondem a perguntas distintas.
+conectividade. Outros papéis, como especialistas, docentes, autores, revisores
+e administradores, respondem a perguntas distintas.
 
 Uma pessoa especialista não substitui uma novata quando a pergunta trata de
 pressupostos ocultos; uma pessoa novata não substitui especialista na avaliação
@@ -217,10 +219,10 @@ de convenção acadêmica.
 
 ### Continuidade e estudo
 
-1. localizar um percurso sem instrução de bastidor;
+1. localizar um percurso sem orientação verbal externa;
 2. iniciar e continuar conteúdo previamente sincronizado sem conexão;
 3. interromper em ponto definido e retomar depois do intervalo;
-4. alternar entre exposição, prática, feedback e nova tentativa;
+4. alternar entre exposição, prática, retorno e nova resposta;
 5. revelar resposta somente por ação explícita;
 6. resolver tarefa equivalente e problema de transferência em momentos
    separados.
@@ -234,35 +236,44 @@ de convenção acadêmica.
 5. identificar condensação, fragmentação, redundância e salto;
 6. comparar explicação simples e profunda com resumo superficial.
 
-### Representações e recursos
+### Representações e componentes
+
+O catálogo corrente contém 32 pacotes, sendo 29 de conteúdo e três de resposta.
+A amostra deve cobrir funções distintas desse conjunto, em vez de repetir
+apenas variações do mesmo tipo.
 
 1. interpretar exposição simples e caso acadêmico complexo;
-2. comparar representação especializada, recurso geral e texto para a mesma
+2. comparar representação especializada, componente geral e texto para a mesma
    operação;
 3. preencher lacunas independentes e digitar dentro do objeto;
 4. ordenar ou associar somente quando essa é a operação pretendida;
 5. testar temas, larguras móveis, teclado, toque e tecnologia assistiva;
-6. editar apenas rótulos textuais e selecionar alvos para assistência;
-7. combinar recursos sem atenção dividida ou ambiguidade.
+6. propor uma correção focal sem alterar a hierarquia da Unidade;
+7. articular componentes sem atenção dividida ou ambiguidade.
 
 ### Autoria assistida por IA
 
-1. localizar recurso por intenção antes de consultar contrato;
+1. localizar componente por intenção antes de consultar contrato;
 2. produzir uma parte, auditar e revisar a escolha;
-3. editar texto sem expor estrutura interna;
-4. solicitar mudança, rejeitar, iterar, desfazer e restaurar;
+3. carregar o contexto focal antes de registrar uma auditoria;
+4. propor uma correção, rejeitar ou aplicar, verificar e reverter quando
+   necessário;
 5. introduzir deliberadamente esquema de dados válido com erro factual;
-6. testar ausência de recurso ideal sem bloquear a autoria;
-7. testar tentativa de alteração fora do escopo;
+6. registrar a ausência de componente adequado e aplicar a política explícita
+   de bloqueio ou aproximação;
+7. testar uma solicitação de alteração fora do escopo;
 8. registrar modelo, provedor, parâmetros, contexto e custo.
 
-### Governança e colaboração
+### Propriedade, acesso e autoria
 
-1. criar workspace, convidar, alterar papel e revogar;
-2. identificar autoria e responsabilidade de uma mudança;
-3. registrar observação, reencontrar resposta e compreender reparo;
-4. distinguir percurso pessoal, composição compartilhada e coleção de referência;
-5. explicar que dados existem, para que servem e quem pode acessá-los.
+1. compartilhar um Curso para Estudo, confirmar que o acesso não concede
+   Autoria e depois revogá-lo;
+2. identificar autoria, origem e revisão de uma mudança;
+3. registrar uma Observação, reencontrar a resposta e compreender a correção
+   vinculada;
+4. distinguir conteúdo do Curso, estado pessoal, Fontes e dados da Autoria;
+5. anexar e reabrir um PDF na revisão correta da Fonte, sob acesso autorizado;
+6. explicar quais dados existem, para que servem e quem pode acessá-los.
 
 ## Resultados e instrumentos candidatos
 
@@ -274,11 +285,11 @@ de convenção acadêmica.
 | compreensão | explicação, discriminação e aplicação | item aberto, rubrica e entrevista | imediato | confiança ou conclusão |
 | retenção | desempenho posterior equivalente | tarefa adiada | intervalo justificado | repetição imediata |
 | transferência | aplicação a problema estruturalmente novo | problema de generalização e rubrica | imediato ou adiado | troca de valores |
-| feedback literacy | interpretação, julgamento e ação | cenário e tarefa subsequente | durante e adiado | recebimento da mensagem |
+| competência para interpretar e usar feedback | interpretação, julgamento e ação | cenário e tarefa subsequente | durante e adiado | recebimento da mensagem |
 | agência e controle | escolha justificada, rejeição e reversão | tarefa, entrevista e instrumento apropriado | durante e imediato | número de opções |
 | qualidade pedagógica | cobertura, progressão e prática pertinente | rubrica e análise independente | por versão | fluência ou volume |
-| qualidade representacional | fidelidade, legibilidade e adequação | especialista + tarefa com público | por recurso e caso | screenshot isolado |
-| frugalidade | bytes, payload, latência, falha e custo | instrumentação técnica agregada | build e longitudinal | comportamento pessoal |
+| qualidade representacional | fidelidade, legibilidade e adequação | especialista + tarefa com público | por representação e caso | captura de tela isolada |
+| frugalidade | bytes, volume transferido, latência, falha e custo | instrumentação técnica agregada | por versão e longitudinalmente | comportamento pessoal |
 
 Instrumentos padronizados só devem ser adotados depois de verificar construto,
 licença, idioma, população e evidências psicométricas. Traduzir uma escala não
@@ -321,7 +332,7 @@ O plano deve declarar:
 - forma de selecionar exemplos e casos negativos;
 - relação entre falas, ações, artefatos e contexto.
 
-Triangulação combina manifestações para responder à mesma pergunta; não serve
+Triangulação relaciona manifestações para responder à mesma pergunta; não serve
 para fabricar concordância. Saturação só deve ser alegada quando definida e
 sustentada pelo desenho.
 
@@ -337,7 +348,7 @@ O plano deve declarar:
 - tamanho de efeito e incerteza;
 - desvios do plano.
 
-Cards da mesma pessoa não se tornam observações independentes por estarem em
+Unidades da mesma pessoa não se tornam observações independentes por estarem em
 linhas diferentes. A estrutura dos dados precisa ser modelada.
 
 ## Ética, privacidade e segurança
@@ -354,25 +365,27 @@ linhas diferentes. A estrutura dos dados precisa ser modelada.
   exposição de dados ou consequência não prevista;
 - oferecer canal de esclarecimento e informação compreensível.
 
-Os princípios de transparência, controle e responsabilidade em analytics e IA
+Os princípios de transparência, controle e responsabilidade na análise de dados educacionais e na IA
 fornecem base para essas decisões ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
 
 ## Versionamento e reprodutibilidade
 
 Cada episódio registra:
 
-- commit, build, versão web ou APK, esquemas de dados, catálogo e packages;
+- revisão do Git, versão web ou APK, esquemas de dados, catálogo e pacotes de componente;
 - revisão do curso e do conteúdo usado;
+- revisões das Fontes, Âncoras e atribuições usadas pelo conteúdo;
 - módulos de instrução, conhecimento recuperado, modelo, provedor e parâmetros;
-- dispositivo, viewport, sistema, rede e cache relevante;
+- dispositivo, largura de tela, sistema, rede e cópia local relevante;
 - roteiro, instrumentos e materiais;
 - plano de análise e desvios;
 - dados autorizados, dicionário e transformações;
 - achados, incertezas, casos negativos e decisão;
 - custo técnico e armazenamento introduzido.
 
-Um resultado pertence à versão avaliada. Mudança substancial de modelo, prompt,
-package, fluxo ou conteúdo exige análise de comparabilidade ou novo episódio.
+Um resultado pertence à versão avaliada. Mudança substancial de modelo,
+instrução enviada ao modelo, pacote de componente, fluxo ou conteúdo exige
+análise de comparabilidade ou novo episódio.
 
 ## Ameaças à validade
 
@@ -386,7 +399,7 @@ package, fluxo ou conteúdo exige análise de comparabilidade ou novo episódio.
 - efeito de prática pela repetição da tarefa;
 - mudança de modelo de IA entre condições;
 - mistura entre avaliação formativa e somativa;
-- tratamento de cards como observações independentes;
+- tratamento de Unidades como observações independentes;
 - viés de confirmação após investimento no artefato;
 - publicação seletiva de sucessos.
 
@@ -416,13 +429,15 @@ fontes centrais são DBR ([Design-Based Research Collective (2003)](referencias.
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)), posicionamento da contribuição
 ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)) e estratégias de avaliação
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
-## Evidência exportada pela superfície Resultados
 
-Ao usar dados do AraLearn em uma avaliação, registre `schemaVersion`,
-`datasetSetRef`, escopo, revisões de protocolo/variante, dicionário da métrica,
-denominador, ausências e instante da exportação. Preserve a tabela que sustentou
-o gráfico. Relate alterações de protocolo e versões congeladas separadamente.
-Os resumos n/média/mínimo/máximo ou frequências são descritivos; testes
-inferenciais e alegações causais exigem plano externo, pressupostos e revisão
-próprios. Não use click, tempo, tentativa, velocidade ou revelação como proxies
-automáticos de aprendizagem.
+## Evidência exportada pela área Pesquisa
+
+Ao usar dados do AraLearn em uma avaliação, registre o contrato, o Curso e sua
+revisão, os conjuntos consultados, os filtros, o instante de corte, a definição
+da métrica, o denominador, as ausências e o instante da exportação. Preserve a
+tabela que sustentou o gráfico e percorra todas as páginas sob o mesmo recorte.
+
+As métricas correntes contam fatos por conjunto, tipo e estado. São descrições
+do processo de Autoria. Testes inferenciais e alegações causais exigem plano
+externo, pressupostos e revisão próprios. Clique, tempo, número de respostas, velocidade
+ou resposta revelada não funcionam como medidas automáticas de aprendizagem.

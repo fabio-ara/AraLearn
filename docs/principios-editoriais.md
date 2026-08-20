@@ -1,199 +1,146 @@
 # Princípios editoriais da documentação
 
-Esta documentação tem duas funções: orientar operações no AraLearn e ensinar
-os fundamentos usados para projetá-lo. Ela não pressupõe formação prévia em
-educação, engenharia de software, bancos de dados ou inteligência artificial.
-Também não substitui manuais das tecnologias adotadas: explica os conceitos e
-as decisões que são necessários para compreender o produto.
+A documentação do AraLearn orienta o uso do produto e explica os fundamentos
+de suas decisões. Cada texto deve ser compreensível para seu público sem exigir
+formação prévia em educação, engenharia de software, bancos de dados ou
+inteligência artificial.
 
-## Progressão da explicação
+## Explicar a partir do problema
 
-Um capítulo conceitual segue, sempre que o assunto permitir, esta sequência:
+Conceitos técnicos e pedagógicos ganham sentido quando o leitor conhece o
+problema a que respondem. Por isso, uma explicação conceitual apresenta, quando
+forem pertinentes:
 
-1. **problema:** qual necessidade precisa ser atendida;
-2. **conceito:** o que significa o termo técnico ou pedagógico empregado;
-3. **alternativas:** quais soluções plausíveis foram consideradas;
-4. **decisão:** qual solução o AraLearn adota e em que escopo;
-5. **consequências:** o que a decisão permite, limita ou torna mais custoso;
-6. **evidência:** como a afirmação é sustentada ou como poderá ser avaliada.
+1. a necessidade observada;
+2. o conceito usado para compreendê-la;
+3. as alternativas relevantes;
+4. a decisão adotada e seu alcance;
+5. as consequências e os limites da decisão;
+6. a evidência disponível.
 
-Essa organização evita duas falhas comuns. A primeira é apresentar uma sigla
-antes de explicar o problema que ela resolve. A segunda é descrever a
-implementação como se a simples existência do código demonstrasse a adequação
-pedagógica da decisão.
+Essa progressão também distingue três afirmações diferentes: algo pode estar
+previsto na literatura, implementado no produto ou demonstrado em uma
+avaliação. Uma dessas condições não implica automaticamente as demais.
 
-## Tipos de documento
+## Adequar o texto à tarefa do leitor
 
-Cada texto declara ou deixa clara sua função predominante:
+Cada documento tem uma função predominante:
 
-- **apresentação:** delimita o produto, seus compromissos e seus limites;
-- **guia operacional:** conduz uma tarefa por pré-requisitos, passos, resultado
-  esperado, comportamento offline e recuperação de falhas;
-- **capítulo conceitual:** ensina fundamentos, alternativas e justificativas;
-- **referência:** define termos, contratos, campos ou estados para consulta;
-- **avaliação:** liga proposições a evidências e informa o que ainda não foi
-  demonstrado;
-- **registro de estado:** descreve somente capacidades correntes, evidências e
-  lacunas, sem misturá-las com instruções de uso ou planejamento futuro.
+- uma apresentação delimita o produto, sua finalidade e seus compromissos;
+- um guia conduz uma tarefa e explica o resultado esperado, inclusive diante
+  de falhas ou ausência de conexão;
+- um capítulo conceitual desenvolve fundamentos, alternativas e justificativas;
+- uma referência define termos, campos, contratos e estados para consulta;
+- um texto de avaliação relaciona proposições, métodos, evidências e limites;
+- um registro corrente informa capacidades e lacunas verificadas.
 
-Misturar esses gêneros torna a leitura imprevisível. Um guia não deve exigir
-que a pessoa reconstrua o procedimento a partir de uma discussão arquitetural;
-uma referência de contrato não deve esconder regras normativas em uma
-narrativa histórica.
+A forma acompanha essa função. Um guia oferece instruções executáveis na ordem
+em que a pessoa precisa delas. Um capítulo conceitual desenvolve relações e
+argumentos. Uma referência favorece a localização precisa de uma regra.
 
-### Materiais executáveis de autoria
+## Manter uma fonte para cada informação
 
-Alguns arquivos em [`authoring/`](../authoring/README.md) não são capítulos
-para estudo: são instruções e conhecimentos preparados para caber no contexto
-de clientes e modelos de linguagem. Neles, concisão e ausência de ambiguidade
-são requisitos operacionais. A documentação humana explica os mesmos conceitos
-com progressão e justificativa; os materiais executáveis conservam apenas o
-necessário para orientar uma operação. Essa separação evita transformar um
-manual didático em prompt e evita consumir contexto do modelo com exposições
-que não mudam sua decisão.
+Informações que mudam devem ter um lugar principal. Outros documentos podem
+resumi-las ou apontar para elas, mas evitam manter versões concorrentes do
+mesmo conteúdo.
 
-## Um proprietário para cada tipo de informação
+| Informação | Fonte principal |
+| --- | --- |
+| finalidade e compromissos do produto | [Visão do produto](visao-do-produto.md) |
+| capacidade corrente e limites conhecidos | [Estado atual](estado-atual-e-roadmap.md) |
+| percurso de leitura | [Índice da documentação](README.md) |
+| procedimento de uso | guia do público ou da área correspondente |
+| justificativa conceitual | capítulo conceitual do assunto |
+| vocabulário aprovado | [glossário técnico](glossario-tecnico.md) ou glossário de construtos |
+| relação entre alegação, implementação e teste | matriz de conformidade aplicável |
 
-Cada afirmação mutável tem um único lugar canônico. Outros textos podem apontar
-para ele, mas não mantêm uma segunda versão da mesma informação:
+Uma mudança de comportamento deve alcançar, no mesmo ciclo, o guia afetado, a
+explicação conceitual, a referência do contrato e a evidência correspondente.
+A documentação corrente descreve o produto como ele existe, enquanto o
+histórico de versões conserva os estados anteriores.
 
-| Tipo de informação | Proprietário | O que não pertence ali |
-| --- | --- | --- |
-| finalidade e compromissos do produto | `docs/visao-do-produto.md` | estado técnico ou tarefas futuras |
-| capacidade corrente, evidência e lacuna | `docs/estado-atual-e-roadmap.md` | agenda, cronologia ou instrução de uso |
-| percurso de leitura da documentação | `docs/README.md` | explicação duplicada dos capítulos |
-| procedimento que uma pessoa executa agora | guia operacional do assunto | arquitetura futura ou diário de implementação |
-| justificativa conceitual e alternativas | capítulo conceitual do assunto | procedimento operacional completo |
-| vocabulário aprovado | glossário técnico ou de construtos correspondente | aliases históricos e nomes provisórios apresentados como sinônimos |
-| ligação entre alegação, código e teste | matriz de conformidade aplicável | narrativa histórica de tarefas |
-| história do modelo substituído | Git, issues encerradas e evidências datadas | código ativo ou documentação corrente |
-| trabalho futuro e decisão ainda aberta | issues do GitHub | documentação apresentada como realidade atual |
-| operação privada, credenciais, recuperação e release | manual do repositório privado | conteúdo público ou arquitetura pedagógica duplicada |
-| instrução executável para clientes de autoria | `authoring/` | capítulo didático para pessoas |
-
-Relatórios de checkpoint, checklists ligados a uma tarefa e cópias narrativas de
-uma matriz não permanecem na documentação pública depois do ciclo. Evidência
-reproduzível pode permanecer em `docs/evidence/`; procedimentos reutilizáveis
-são incorporados ao guia ou roteiro estável correspondente; o restante já está
-preservado pelo Git.
-
-## Três bases de evidência
+## Sustentar as afirmações
 
 ### Literatura e normas
 
-Uma afirmação pedagógica ou metodológica deve remeter à literatura que a
-fundamenta. Uma afirmação sobre um protocolo ou padrão técnico deve, quando
-possível, apontar para a especificação ou documentação primária. A
-[lista de referências](referencias.md) oferece leitura direta; o arquivo
-[BibTeX](referencias.bib) conserva os metadados canônicos para processamento
-bibliográfico.
+Afirmações pedagógicas e metodológicas remetem à literatura que as fundamenta.
+Afirmações sobre protocolos ou padrões técnicos apontam, quando possível, para
+a especificação ou documentação primária. A [lista de
+referências](referencias.md) oferece leitura direta, e o arquivo
+[BibTeX](referencias.bib) conserva os metadados bibliográficos.
 
-A citação mostra de onde veio uma ideia; não transforma automaticamente uma
-decisão de produto em resultado científico. Quando a literatura oferece
-resultados condicionais ou divergentes, o texto deve conservar essas
+Uma citação identifica a origem de uma ideia. Quando os resultados publicados
+dependem de contexto ou divergem entre si, o texto deve conservar essas
 condições.
 
 ### Implementação verificável
 
-Afirmações como “o aplicativo grava a operação antes de sincronizá-la” ou “o
-contrato rejeita uma referência inexistente” podem ser confrontadas com código,
-schemas, migrations e testes. A [matriz de conformidade
-técnica](matriz-conformidade-tecnica.md) registra os pontos de verificação mais
+Afirmações sobre o funcionamento do aplicativo podem ser confrontadas com o
+código, o modelo de dados e os testes. A [matriz de conformidade
+técnica](matriz-conformidade-tecnica.md) reúne os pontos de verificação mais
 importantes.
 
-Uma propriedade implementada demonstra comportamento do sistema sob as
-condições testadas. Ela não demonstra compreensão, aprendizagem ou usabilidade
-por pessoas.
+O comportamento observado sob condições testadas demonstra uma propriedade do
+sistema. Conclusões sobre compreensão, aprendizagem ou usabilidade exigem
+avaliação com pessoas e métodos adequados.
 
 ### Hipóteses e resultados empíricos
 
 Proposições sobre aprendizagem, esforço percebido, retomada e trabalho autoral
-permanecem hipóteses enquanto não houver estudo adequado. A documentação deve
-informar a população, a tarefa, os instrumentos, a análise e os limites de
-generalização antes de apresentar um resultado empírico. O [protocolo de
-avaliação](protocolo-avaliacao-artefato.md) organiza essa passagem.
+permanecem hipóteses até serem avaliadas. Ao apresentar um resultado empírico,
+a documentação informa população, tarefa, instrumentos, análise e limites de
+generalização. O [protocolo de avaliação](protocolo-avaliacao-artefato.md)
+organiza esse trabalho.
 
-## Vocabulário
+## Usar o vocabulário do produto
 
-Um termo especializado é definido na primeira ocorrência relevante. A forma
-expandida precede a sigla: por exemplo, **Model Context Protocol (MCP)**. O
-[glossário técnico](glossario-tecnico.md) aprofunda distinções e oferece uma
-referência comum, mas não é pré-requisito para ler outros capítulos.
+Um termo especializado é apresentado depois do conceito que ajuda a nomear. Um
+protocolo aberto que conecta assistentes a ferramentas, por exemplo, recebe em
+seguida seu nome: **Model Context Protocol (MCP)**. O [glossário técnico](glossario-tecnico.md)
+aprofunda distinções, mas sua leitura não deve ser requisito para compreender
+os demais capítulos.
 
-Identificadores literais de contratos, ferramentas e campos aparecem em
-formatação de código somente quando a grafia exata importa. Na explicação
-conceitual, usam-se termos em português. Palavras internas do processo de
-desenvolvimento, números de tarefas e referências à conversa que originou uma
-decisão não pertencem ao texto público.
+Identificadores literais de campos, contratos e ferramentas aparecem como
+código somente quando a grafia exata importa. Na explicação para pessoas,
+preferem-se os termos do produto em português: Unidade de estudo, componente
+didático, representação externa, formato de resposta, pacote de componente e
+núcleo de execução.
 
-O vocabulário do produto é uma decisão técnica e científica. Um nome só é
-adotado depois de confrontar o conceito com as áreas pertinentes — por exemplo,
-engenharia de software, design instrucional, ciência da aprendizagem,
-psicometria ou metodologia de pesquisa — e de registrar definição, escopo,
-alternativas e fontes. Costume interno e antiguidade no código não justificam
-um termo.
+Nomes de botões e áreas aparecem em **negrito** e devem coincidir com a
+interface. Termos internos de implementação só entram quando são necessários
+para explicar um contrato público ou uma decisão técnica.
 
-### Corte limpo ao substituir um modelo
+## Escolher a profundidade necessária
 
-Uma substituição conceitual não mantém compatibilidade interna com o modelo
-retirado. No mesmo corte devem desaparecer:
+Uma explicação de engenharia ensina o suficiente para compreender a decisão do
+produto. Ao tratar da persistência local, por exemplo, interessa esclarecer por
+que há dados estruturados no dispositivo, como eles preservam a continuidade e
+quais falhas permanecem possíveis. A sintaxe usada para abrir o banco local só
+é relevante quando integra um contrato público.
 
-- nomes antigos de interface, rotas e mensagens;
-- arquivos, funções, classes, schemas, tabelas, campos e ferramentas MCP
-  correspondentes;
-- aliases, adapters, dual read, dual write e fallbacks;
-- testes e exemplos que ainda tornem executável ou ensinável o fluxo removido;
-- documentação que apresente a arquitetura anterior como opção corrente.
+O mesmo critério vale para a pedagogia. Um conceito deve ser ligado ao
+comportamento que orienta e aos limites de sua aplicação, em vez de aparecer
+como uma sequência isolada de definições.
 
-Quando dados existentes precisarem sobreviver, uma transformação controlada os
-leva ao contrato novo uma única vez. Ela não se torna uma camada permanente do
-runtime. Depois da validação e do corte, a implementação anterior fica
-disponível somente no histórico do Git e nas evidências datadas. Segurança,
-integridade referencial e recuperação operacional continuam obrigatórias; não
-são justificativa para conservar dois modelos simultaneamente.
+## Escrever exemplos e instruções úteis
 
-A conclusão exige uma busca de resíduos em todo o repositório, inspeção do
-schema ativo, execução dos testes e verificação visual. Renomear apenas o texto
-da interface enquanto identificadores e comportamentos antigos continuam
-ativos não é adequação vocabular.
+Um exemplo precisa revelar a regra que pretende ensinar. Exemplos simples
+demais podem ocultar problemas de escala; casos muito particulares podem soar
+como uma restrição inexistente. Quando uma regra afeta telas pequenas, textos
+extensos ou uso sem conexão, o exemplo deve tornar essa condição visível.
 
-## Profundidade relevante
+Instruções descrevem ações observáveis e resultados reconhecíveis. Mensagens
+para estudantes e autores usam o vocabulário da atividade, sem expor detalhes
+internos do desenvolvimento.
 
-Explicar engenharia não significa ensinar toda a linguagem de programação. O
-nível adequado é aquele que permite compreender a decisão do produto. Um
-capítulo sobre persistência, por exemplo, deve ensinar:
+## Revisar clareza e precisão
 
-- por que o AraLearn precisa de dados locais estruturados;
-- o que IndexedDB oferece;
-- por que um armazenamento simples de preferências seria insuficiente;
-- como transações, filas e revisão interagem;
-- quais falhas e custos permanecem.
+A verificação automática encontra links quebrados, problemas na hierarquia de
+títulos, documentos ausentes e algumas contradições conhecidas. Ela
+complementa a leitura humana, que avalia progressão, naturalidade, precisão e
+coerência com o produto.
 
-Não precisa ensinar a sintaxe de uma função JavaScript que abre o banco, salvo
-quando a sintaxe for parte do contrato público ou da operação documentada.
-
-## Exemplos e linguagem de interface
-
-Exemplos devem ser neutros e suficientes para revelar a regra explicada. Um
-exemplo excessivamente simples pode esconder problemas de escala; um exemplo
-particular apresentado como regra pode restringir indevidamente o uso do
-sistema.
-
-Nomes de botões e telas aparecem em **negrito** e devem coincidir com a
-interface. Instruções autorreferentes como “observe este resource” são evitadas
-quando o próprio objeto pode comunicar sua função. Vocabulário de bastidor não
-é usado como mensagem ao estudante.
-
-## Manutenção
-
-Uma mudança de comportamento exige revisar, no mesmo ciclo:
-
-1. o guia operacional afetado;
-2. o capítulo que justifica a decisão;
-3. a referência de contrato ou estado, se houver;
-4. a matriz de evidências aplicável;
-5. os materiais de configuração derivados.
-
-A auditoria automática verifica links, hierarquia de títulos, documentos
-obrigatórios e algumas contradições conhecidas. Essa auditoria reduz regressões
-editoriais, mas não substitui revisão humana de clareza, progressão e precisão.
+Antes da publicação, a revisão também confronta afirmações de capacidade com a
+interface, os contratos e os testes correspondentes. O texto final registra o
+estado verificável do AraLearn e reserva afirmações pedagógicas mais amplas
+para as evidências que possam sustentá-las.

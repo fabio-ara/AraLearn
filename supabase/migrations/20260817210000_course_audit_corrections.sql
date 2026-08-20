@@ -61,8 +61,10 @@ end;
 $course_audit_corrections_preflight$;
 
 -- O mesmo lock que protege a criação também reafirma o preflight materializado
--- pelo runner. observation_threads é apenas telemetria; referências de correção
--- nessa tabela, e todos os outros 25 blockers, precisam continuar vazios.
+-- pelo runner. observation_threads é apenas telemetria e
+-- authoring_materialization_states conserva os contadores isolados validados
+-- pela migration 1400; referências de correção e os demais blockers precisam
+-- continuar vazios.
 lock table public.courses in share row exclusive mode;
 lock table private.course_entities in share row exclusive mode;
 lock table private.course_instructional_plans in share row exclusive mode;
@@ -147,7 +149,8 @@ begin
   ) counts;
   if exists(
     select 1 from jsonb_each_text(v_counts) item
-    where item.key<>'observation_threads' and item.value::bigint<>0
+    where item.key not in('observation_threads','materialization_states')
+      and item.value::bigint<>0
   ) or (select count(*) from jsonb_object_keys(v_counts))<>26 then
     raise exception 'Blockers legados de auditoria/desenho reapareceram: %.',v_counts
       using errcode='55000';
@@ -772,13 +775,21 @@ set search_path=pg_catalog,private as $function$
   select coalesce(jsonb_agg(jsonb_build_object(
     'sourceId',source.source_id,'sourceRevision',source.revision,
     'status',source.status,'kind',source.kind,'title',source.title,
+    'authorship',source.authorship,'publicationDate',source.publication_date,
+    'identifier',source.identifier,'language',source.language,
     'citationText',source.citation_text,'url',source.url,
     'editionOrVersion',source.edition_or_version,
+    'origin',source.origin,'availability',source.availability,
+    'verificationStatus',source.verification_status,
     'studyVisibility',source.study_visibility,'relation',link.value->>'relation',
     'sourceHash',private.course_audit_json_hash_v1(jsonb_build_object(
       'status',source.status,'kind',source.kind,'title',source.title,
+      'authorship',source.authorship,'publicationDate',source.publication_date,
+      'identifier',source.identifier,'language',source.language,
       'citationText',source.citation_text,'url',source.url,
       'editionOrVersion',source.edition_or_version,
+      'origin',source.origin,'availability',source.availability,
+      'verificationStatus',source.verification_status,
       'studyVisibility',source.study_visibility
     )),
     'anchors',coalesce((

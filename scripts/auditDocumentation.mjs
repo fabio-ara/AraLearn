@@ -123,7 +123,7 @@ function markdownFiles(root) {
   const files = [];
   const readme = path.join(root, "README.md");
   if (fs.existsSync(readme)) files.push(readme);
-  for (const directory of ["docs", "authoring"]) {
+  for (const directory of ["docs"]) {
     files.push(...walkFiles(path.join(root, directory), (file) => file.endsWith(".md")));
   }
   return [...new Set(files)].sort();
@@ -131,7 +131,7 @@ function markdownFiles(root) {
 
 function neutralityFiles(root, markdown) {
   const files = new Set(markdown);
-  for (const directory of ["docs", "authoring", "public", "src/ui", "supabase/fixtures/catalog", "tests/fixtures/course-catalog"]) {
+  for (const directory of ["docs", "public", "src/ui", "supabase/fixtures/catalog", "tests/fixtures/course-catalog"]) {
     for (const file of walkFiles(path.join(root, directory), (target) => TEXT_EXTENSIONS.has(path.extname(target)))) {
       files.add(file);
     }
@@ -200,10 +200,6 @@ function markdownLinkTargets(indexFile, source) {
     targets.add(path.resolve(path.dirname(indexFile), pathPart));
   }
   return targets;
-}
-
-function isGeneratedKnowledgeBundle(root, file) {
-  return relativePath(root, file).startsWith("docs/downloads/authoring/aralearn-chatgpt-knowledge-");
 }
 
 function isGeneratedDocumentation(root, file) {
@@ -509,7 +505,6 @@ function auditBibliographicCitations({ root, markdown, sources, errors }) {
 }
 
 function auditHeadingStructure({ root, file, source, errors }) {
-  if (isGeneratedKnowledgeBundle(root, file)) return;
   const headings = headingList(source);
   const firstLevel = headings.filter((heading) => heading.depth === 1);
   if (firstLevel.length !== 1) {
@@ -536,7 +531,7 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
   for (const file of markdown) {
     const source = sources.get(file);
     auditHeadingStructure({ root, file, source, errors });
-    if (relativePath(root, file).startsWith("docs/") && !isGeneratedKnowledgeBundle(root, file)) {
+    if (relativePath(root, file).startsWith("docs/")) {
       const title = headingList(source).find((heading) => heading.depth === 1)?.title;
       if (title) {
         const key = slugText(title);
@@ -602,6 +597,6 @@ if (path.resolve(process.argv[1] || "") === path.resolve(scriptPath)) {
     console.error(errors.join("\n"));
     process.exitCode = 1;
   } else {
-    console.log("Documentação pública, materiais de autoria e textos de interface auditados.");
+    console.log("Documentação pública e textos de interface auditados.");
   }
 }

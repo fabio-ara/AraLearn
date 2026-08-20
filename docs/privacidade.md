@@ -1,342 +1,282 @@
 # Privacidade e tratamento de dados
 
-## Para que este documento serve
+Este documento descreve os dados usados pelo AraLearn, sua finalidade e as
+regras técnicas de acesso. Uma instituição que implante o sistema precisa
+acrescentar base jurídica, prazos de retenção, responsáveis, condições dos
+provedores e canais de atendimento aplicáveis ao seu contexto.
 
-O AraLearn conserva apenas os dados necessários para identificar uma pessoa,
-autorizar o acesso a um Curso, retomar o Estudo e continuar a Autoria. Esta
-descrição se refere ao comportamento implementado no código. Uma instituição
-que implante o sistema precisa acrescentar sua base jurídica, seus prazos de
-retenção, seus responsáveis e seus canais de atendimento.
-
-Privacidade não é apenas esconder campos na interface. Ela depende de
-minimização de dados, finalidade explícita, isolamento no banco e informação
-compreensível para quem participa de uma atividade educacional
-([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
+Privacidade depende de minimização, finalidade, isolamento no banco e
+informação compreensível. Ocultar um campo na interface, sozinho, não protege o
+dado ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
 [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
 ## Conceitos essenciais
 
 **Dado pessoal** é uma informação que identifica uma pessoa ou pode ser
-relacionada a ela. No AraLearn, exemplos são o endereço de e-mail da conta, o
-identificador interno, o nome de apresentação e a imagem de perfil.
+relacionada a ela. No AraLearn, isso inclui e-mail da conta, identificador
+interno, nome de apresentação e foto de perfil.
 
-**Proprietário do Curso** é a única pessoa autorizada a alterar o planejamento
-e o conteúdo desse Curso. A propriedade também permite conceder a outras
-pessoas acesso direto ao Estudo.
+**Proprietário do Curso** é a pessoa autorizada a alterar o planejamento e o
+conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
-**Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. Não
-transforma a pessoa em coautora e não permite que ela abra o Curso na Autoria.
+**Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. A pessoa
+que recebeu acesso continua fora da Autoria desse Curso.
 
-**Estado pessoal de Estudo** é o conjunto de informações da própria pessoa
-necessário para continuar sua atividade: ponto de retomada, unidades
-concluídas e marcações **Rever**. O documento v2 não contém observações, não é o
-conteúdo do Curso e não é compartilhado entre estudantes.
+**Estado pessoal de Estudo** reúne posição de retomada, Unidades concluídas e
+marcas **Rever**. Ele pertence à pessoa e ao Curso e fica separado do conteúdo.
 
-**Anotação ancorada** é o registro protegido de uma Observação ligada a um alvo
-do Curso. Ela usa persistência própria porque precisa chegar à caixa de entrada
-do proprietário sem revelar a estudantes os registros de colegas.
-
-**Auditoria e correção** formam um ciclo privado do proprietário sobre uma
-Unidade focal. Rodadas, achados, vínculos com Observações e correções possuem
-autoridades separadas e nunca são projetados para estudantes.
+**Anotação ancorada** registra uma Observação ligada a um alvo do Curso. Cada
+estudante lê somente as próprias; o proprietário recebe a caixa de entrada
+necessária à triagem.
 
 **Réplica local** é a cópia mantida no dispositivo para abertura rápida e uso
-sem conexão. Ela não substitui uma cópia de segurança: uma alteração ainda não
-sincronizada pode existir somente naquele dispositivo.
+sem conexão. Uma alteração ainda não sincronizada pode existir somente nessa
+cópia, que não substitui uma cópia de segurança.
 
-## Quais dados são tratados
+## Dados e finalidades
 
-| Finalidade | Dados | Onde ficam |
+| Finalidade | Dados | Armazenamento |
 |---|---|---|
-| autenticar a conta | e-mail, credencial e sessão | Supabase Auth e armazenamento seguro da sessão no dispositivo |
-| apresentar a pessoa | identificador, nome de apresentação opcional e referência do avatar | PostgreSQL |
-| exibir o avatar | arquivo JPEG, PNG ou WebP de até 512 KiB | bucket privado `person-avatars` |
-| identificar o Curso | proprietário, título, objetivo, orientações e composição didática | PostgreSQL |
-| documentar Fontes e proveniência | revisões de Fonte, metadados, URL, Âncoras, trecho privado de verificação e atribuições por alvo | PostgreSQL privado; arquivos externos não são copiados para o Storage |
-| autorizar o Estudo | Curso, pessoa favorecida, concedente e momento da concessão | PostgreSQL |
-| retomar o Estudo | posição, conclusões e marcações **Rever** | PostgreSQL e réplica local |
-| registrar e triar Observações | alvo, origem/canal, texto corrente, categoria, estado, classificação, resposta, versões e metadados mínimos | PostgreSQL privado; cache e outbox próprios no dispositivo |
-| auditar e corrigir uma Unidade | critério, resultado, evidência, IDs/versões de Observações selecionadas, versões de achado e correção e checkpoint focal | PostgreSQL privado e owner-only; nenhum cache ou outbox no dispositivo |
-| aplicar alterações com segurança | revisão esperada, identificador do pedido, evento e recibo técnico temporário | PostgreSQL privado |
+| autenticar a conta | e-mail, credencial e sessão | Supabase Auth e sessão no dispositivo |
+| apresentar a pessoa | identificador, nome opcional e referência da foto | PostgreSQL |
+| exibir a foto | JPEG, PNG ou WebP de até 512 KiB | área privada `person-avatars` |
+| manter um Curso | proprietário, plano, orientações, composição e revisões | PostgreSQL |
+| documentar proveniência | Fonte, metadados, endereço, Âncoras, trecho de verificação e atribuições | PostgreSQL privado |
+| anexar documentos de Fonte | PDF, tamanho, resumo criptográfico e vínculo com a revisão | área privada `course-source-pdfs` e PostgreSQL |
+| autorizar Estudo | Curso, conta com acesso, proprietário e data da concessão | PostgreSQL |
+| retomar Estudo | posição, conclusões e marcas **Rever** | PostgreSQL e réplica local |
+| registrar Observações | alvo, origem, texto, categoria, estado, resposta, Fontes consideradas, versões e instantes | PostgreSQL privado; cópia e fila no dispositivo |
+| auditar e corrigir | critério, evidência, vínculos, versões e estados anterior e proposto da Unidade focal | PostgreSQL privado do proprietário |
+| comparar Variantes | ponto comum, Cursos membros, diferenças declaradas e fatos observados | PostgreSQL privado do proprietário |
+| consultar Pesquisa | fatos derivados da Autoria, dicionário, métricas descritivas e paginação | PostgreSQL; projeção restrita ao proprietário |
+| repetir uma alteração com segurança | revisão esperada, identificador do pedido, evento e recibo temporário | PostgreSQL privado |
 
-### Identidade humana mínima
+## Conta, perfil e localização por e-mail
 
-Uma conta recebe automaticamente um perfil vazio vinculado ao identificador do
-Auth. O sistema não inventa um nome a partir do endereço de e-mail. A própria
-pessoa pode depois informar um nome de apresentação e escolher um avatar.
+Uma conta recebe um perfil vazio ligado ao identificador de autenticação. O
+sistema não deriva nome de apresentação do endereço de e-mail. A pessoa escolhe
+se deseja informar nome e foto.
 
-O endereço de e-mail continua no serviço de autenticação. Ele não é copiado
-para o perfil público do produto.
+Para conceder acesso, o proprietário digita o e-mail exato de uma conta
+existente. O serviço usa o valor somente para localizar essa identidade. Não há
+busca parcial, diretório ou sugestão de contas. A relação gravada conserva
+identificadores internos; o e-mail não entra nos eventos nem na resposta da
+operação.
 
-### Localização por e-mail para conceder acesso
+Uma pessoa pode ver o próprio perfil. Numa relação de Curso compartilhado:
 
-O proprietário digita o endereço exato da pessoa a quem quer conceder acesso.
-O banco usa esse valor apenas para localizar uma conta já existente. Não há
-pesquisa parcial, lista de diretório nem sugestão de contas.
+- o proprietário vê o perfil das pessoas às quais concedeu acesso;
+- a pessoa com acesso vê o perfil do proprietário;
+- pessoas com acesso não recebem perfis umas das outras.
 
-Depois da operação, a relação de acesso conserva identificadores internos, e
-não o e-mail. Eventos e recibos técnicos de concessão ou revogação também não
-armazenam nem devolvem o endereço digitado. A interface passa a mostrar o nome
-de apresentação e o avatar permitidos pela relação direta entre as pessoas.
+O banco aplica regras de segurança por linha, chamadas **Row Level Security
+(RLS)**. A área privada de fotos repete a mesma autorização. Cada envio usa uma
+chave nova dentro da pasta da própria conta e não cria endereço público.
 
-### Quem pode ver perfil e avatar
+## Propriedade e acesso ao Curso
 
-Uma pessoa pode ver o próprio perfil. Em relação a um Curso compartilhado:
+Todo Curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
+e composição, usar as ferramentas autorais, consultar Pesquisa e Variantes e
+gerir acessos. Uma pessoa com acesso recebe somente a projeção de Estudo, que
+exclui orientações privadas e estado autoral.
 
-- o proprietário pode ver o perfil das pessoas às quais concedeu acesso;
-- cada pessoa favorecida pode ver o perfil do proprietário;
-- uma pessoa favorecida não pode ver as demais pessoas favorecidas.
+Conceder ou revogar acesso exige confirmação humana. A revogação encerra novas
+leituras e alterações no servidor, mas preserva o estado pessoal remoto. Na
+próxima validação conectada, o dispositivo dessa pessoa remove cabeçalho,
+composição, listas, Fontes projetadas e Anotações locais daquele Curso. Se o
+acesso for concedido novamente, o estado pessoal preservado pode voltar a ser
+usado.
 
-Essa regra é aplicada no banco por **Row Level Security** (RLS), e não apenas
-pela ausência de um botão. O bucket de avatar é privado e repete a mesma regra.
+Dados já entregues a um dispositivo podem permanecer fisicamente nele enquanto
+estiver desconectado. A revogação técnica não recolhe retroativamente esses
+bytes.
 
-O caminho de um avatar tem a forma `<identificador-da-pessoa>/<uuid>.<extensão>`.
-Cada envio cria uma chave nova e não sobrescreve silenciosamente um arquivo
-existente. O upload é autenticado e vai diretamente ao Storage; não existe URL
-pública nem função intermediária apenas para transportar os bytes.
+## Fontes, Âncoras e PDFs
 
-### Propriedade e compartilhamento do Curso
+Somente o proprietário acessa catálogo, histórico, Fontes ocultas, referências
+pendentes de comprovação, trecho privado de verificação, PDFs e controles de
+edição. Estudo solicita a proveniência de uma Unidade quando a pessoa abre
+**Fontes** e recebe apenas a projeção autorizada:
 
-Todo Curso nasce privado. A pessoa proprietária é a única que pode:
+- **Não mostrar no Estudo** omite a Fonte;
+- **Mostrar citação** apresenta identificação e localização sem endereço;
+- **Mostrar citação e link** também pode apresentar o endereço;
+- histórico, trecho privado, identidade de quem alterou, canal, PDF e controles autorais permanecem
+  ausentes.
 
-- vê-lo na Autoria;
-- alterar planejamento ou composição;
-- usar as ferramentas autorais do MCP sobre ele;
-- listar, conceder ou revogar acessos ao Estudo.
+Os PDFs usam caminhos formados pela identidade do Curso e pelo resumo
+criptográfico do conteúdo. Arquivos idênticos dentro do mesmo Curso compartilham
+os bytes, enquanto os vínculos preservam as revisões de Fonte corretas. Antes de
+registrar o vínculo, a API lê o objeto privado com a credencial do servidor e
+confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivos
+vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada revisão
+até oito anexos e o Curso até 64 MiB de conteúdo único.
 
-Uma pessoa favorecida pode listar e abrir o Curso apenas no Estudo. A resposta
-de Estudo não contém orientações privadas de Autoria nem estado autoral.
+Criar uma variante pode reutilizar a referência ao mesmo objeto privado em vez
+de duplicar os bytes. A leitura continua condicionada à propriedade do Curso
+que participa da comparação.
 
-### Fontes na Autoria e no Estudo
+A exportação de proveniência contém o alvo, as relações, as revisões, as
+Âncoras e metadados dos anexos. Ela omite identificadores pessoais de quem
+realizou as operações. Depois de baixado, o arquivo passa a depender também dos
+cuidados adotados fora do AraLearn.
 
-Somente a pessoa proprietária acessa catálogo, histórico, Fonte oculta, legado
-não resolvido, trecho de verificação, ator e controles de edição. O Estudo não
-recebe esse conjunto ao abrir o Curso. Quando a pessoa abre **Fontes** numa
-Unidade, uma RPC revalida o acesso e entrega apenas a projeção autorizada:
+Uma nota, contestação ou solicitação de reformulação pode apontar para a Fonte
+ou para uma Âncora. Esses registros seguem o mesmo controle privado das demais
+Anotações ancoradas. Quando a autoria responde com uma reformulação, a resposta
+identifica somente as revisões de Fonte e de Âncora consideradas; o PDF e seu
+conteúdo não são copiados para a Anotação. A exportação dessas Observações
+contém os mesmos alvos, versões e vínculos que a interface apresenta.
 
-- Fonte `hidden` ou `unresolved_legacy` é omitida;
-- `citation` apresenta citação e localização, mas URL nula;
-- `citation_and_link` pode apresentar também a URL;
-- histórico, trecho privado, ator, canal e edição permanecem ausentes.
+## Estado pessoal sem telemetria comportamental
 
-A projeção vale para a Unidade e revisão correntes. Revogação, 404 ou outra
-perda de autoridade aciona a mesma purga local do Curso. O AraLearn conserva
-metadados e links, não uma cópia dos bytes apontados pela Fonte; o site externo
-possui tratamento de dados próprio quando o link é aberto.
+O estado pessoal responde a perguntas funcionais: onde continuar, quais
+Unidades já foram avançadas e quais foram marcadas para rever. Ele não registra
+automaticamente tempo de permanência, cada toque, cada envio ou respostas
+anteriores.
 
-Conceder ou revogar exige confirmação humana explícita. Revogar remove o acesso
-ao conteúdo, mas preserva no servidor o estado pessoal daquela pessoa. Na
-próxima validação com conexão, uma resposta de acesso negado elimina do
-dispositivo o cabeçalho, as entidades, as listas, o cache e a outbox de
-anotações daquele Curso. Isso
-impede que uma cópia antiga continue aparecendo como autorizada. Se o acesso
-for concedido novamente, o estado pessoal remoto pode voltar a ser usado.
+A fila **Rever** é montada no servidor a partir das marcas da própria pessoa e
+chega ao dispositivo em páginas. Atividade de outros estudantes não altera a
+versão privada desse estado nem aparece como conflito entre abas.
 
-### Estado pessoal e fila Rever
+Esses registros não equivalem a atenção, esforço, compreensão ou aprendizagem.
+O [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) desenvolve os
+limites de interpretação.
 
-O estado pessoal pertence ao par pessoa–Curso. Ele contém dados funcionais de
-continuidade, e não uma telemetria completa de comportamento. A implementação
-canônica não registra automaticamente tempo de permanência, cada toque, cada
-tentativa ou uma inferência de atenção.
+## Anotações ancoradas e identidade protegida
 
-A fila **Rever** é montada no servidor a partir das marcações da própria pessoa
-e chega ao cliente em páginas pequenas. O aplicativo não precisa baixar todos
-os Cursos para descobrir quais unidades foram marcadas.
+Cada estudante lê somente as próprias Anotações. O proprietário lê as
+Anotações do Curso para triagem. A interface autoral identifica a contribuição
+estudantil por um rótulo protegido, como “Estudante 7A3F”, sem apresentar o
+identificador interno da conta ou o e-mail.
 
-### Anotações ancoradas e identidade protegida
+Enquanto uma Anotação está aberta, considerada ou resolvida, o servidor conserva
+o texto corrente, a síntese e a resposta necessários à função. Eventos de
+revisão guardam resumos criptográficos e metadados limitados, em vez de versões
+anteriores do texto integral.
 
-Cada estudante lê somente as próprias anotações. O proprietário lê todas as
-anotações do Curso para triagem; coestudantes nunca leem registros uns dos
-outros. No DTO owner-only, a identidade protegida é
-`contributor={kind:'protected_person',role,ref,label}`. `ref` é o pseudônimo
-aleatório persistido `person-` seguido de 16 dígitos hexadecimais; não é
-derivado de Curso/UUID, não é UUID ou e-mail e não é reversível pelo contrato.
-Conhecer o UUID do roster não permite correlacioná-lo. A interface mostra
-somente o `label` pseudônimo protegido, por exemplo “Estudante 7A3F”; não mostra
-`ref`, UUID ou e-mail.
+Retirar uma Anotação redige imediatamente texto, síntese e resposta e mantém um
+registro de exclusão. Esse registro e o recibo de repetição expiram logicamente
+em até 14 dias. A limpeza física ocorre de forma oportunista, em lotes, quando o
+Curso volta a ser lido ou alterado. Como não há tarefa periódica dedicada, um
+Curso inativo pode conservar a linha física por mais tempo, embora ela já não
+seja legível, paginável nem contada nas cotas funcionais.
 
-O contador global do conjunto é entregue somente ao proprietário. Estudo usa
-um contador monotônico privado por pessoa e Curso, junto do `protected_ref`
-aleatório persistido: atividade de terceiros não o altera nem pode ser inferida pela
-paginação, pelo cache ou pela coordenação entre abas. Essa relação possui RLS
-forçada e nenhum grant direto; ela coordena a projeção self-only, não guarda
-texto e não cria outra autoridade de domínio. Para preservar monotonicidade do
-cache, a linha fica até a exclusão da pessoa ou do Curso e não participa do TTL
-de conteúdo, tombstone ou recibo.
+Anotações ativas ou resolvidas não expiram apenas pela idade. A instituição
+responsável precisa definir a retenção operacional. O AraLearn não cria uma
+cópia de pesquisa por padrão; qualquer reutilização exige finalidade,
+minimização, governança e autorização adequadas.
 
-Enquanto o estado é aberto, considerado ou resolvido e o Curso existe, o
-servidor conserva texto corrente, síntese e resposta necessários à função.
-Eventos de revisão guardam hashes e metadados limitados, não versões anteriores
-do texto bruto. Retirar redige imediatamente texto, síntese e resposta e cria
-um tombstone. Tombstone e recibo expiram logicamente em até 14 dias: deixam de
-ser legíveis, pagináveis, contar quota ou admitir replay. A limpeza física da
-linha e dos eventos é oportunista quando o Curso é lido ou alterado e processa
-por toque um lote de até 128 tombstones e 256 recibos expirados. Um Curso
-inativo pode conservar lixo físico porque não existe cron nem promessa de hard
-delete em até 14 dias.
+## Auditoria, correções, Variantes e Pesquisa
 
-Excluir a conta retira e redige imediatamente suas contribuições, que seguem a
-mesma janela de limpeza. Excluir o Curso remove suas anotações por cascade.
-Registros ativos ou resolvidos não expiram automaticamente por idade: a
-instituição precisa declarar sua política de retenção operacional.
+Somente o proprietário consulta e altera rodadas, achados, correções e
+comparações. Estudantes não recebem listas, contagens, evidências nem links
+dessas áreas.
 
-O AraLearn não cria cópia de pesquisa por padrão. Qualquer reutilização exige
-protocolo explícito, minimização, governança e nova autorização aplicável.
-Quantidade, ausência, categoria, estado, resposta, resolução e timestamps não
-medem aprendizagem, dificuldade, atenção, qualidade ou eficácia pedagógica; o
-instante capturado é uma pista de contexto, não duração de sessão.
+Um achado ligado a uma Observação guarda apenas identidade e versão da Anotação,
+sem copiar texto, resposta, pseudônimo ou identidade pessoal. Quando a Anotação
+é retirada, o vínculo deixa de ser navegável; depois da limpeza física, a
+relação desaparece e preserva a rodada, o achado e a correção.
 
-### Privacidade de auditoria, achados e correções
+Uma correção guarda apenas os estados anterior e proposto da Unidade focal e de
+suas atribuições de Fontes. Aplicar e reverter mudam o Curso e criam atividade;
+registrar auditoria, decidir, propor ou verificar preserva a composição.
 
-Somente o proprietário do Curso lê ou altera o ciclo. As relações privadas de
-rodadas, versões de achado, junção achado–Anotação e versões de correção usam
-RLS forçada e não possuem grants diretos. Estudantes não recebem contador,
-lista, deep link, evidência ou estado desse ciclo.
+Pesquisa projeta fatos já registrados para o proprietário. Os conjuntos cobrem
+atividade do Curso, produção por Partes, desenho, Fontes, Observações, auditorias
+e Variantes. A exportação conserva códigos estáveis e limites de interpretação.
+Ela não inclui o e-mail digitado para acesso nem transforma Anotações em uma
+base de pesquisa identificada.
 
-A junção guarda apenas a identidade e a versão da Anotação selecionada. Não
-copia texto, síntese, resposta, pseudônimo, papel ou identidade pessoal. Se a
-Anotação for retirada, enquanto o tombstone ainda existir a projeção do achado
-indica `available: false` e `deepLink: null`. Quando a limpeza física apagar a
-Anotação, `ON DELETE CASCADE` remove somente a junção: o vínculo e o ID deixam
-as projeções futuras, mas rodada, achado e correção continuam preservados.
+## Autoria conversacional
 
-Uma sugestão de resolver ou reabrir a Anotação não produz mudança implícita.
-Ela exige outra ação humana ou comando de Anotações com a versão corrente. Isso
-preserva a autoridade e a retenção próprias da Observação.
+Um protocolo aberto conecta assistentes às ferramentas de Autoria: o **Model
+Context Protocol (MCP)**. Essa integração recebe apenas Cursos próprios da
+pessoa autenticada. Cursos
+compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
+mesmas regras de propriedade, revisão e confirmação usadas pela interface são
+aplicadas pelo servidor.
 
-Evidência factual positiva referencia somente Fonte e Âncora ativas na revisão
-exata. O ciclo não copia o arquivo da Fonte nem transforma `quoted_from` em
-prova geral: essa relação só verifica fidelidade de citação; afirmações exigem
-`supported_by`.
-
-Correções guardam snapshots focais `before|after` do conteúdo e das atribuições
-de Fontes da Unidade, não uma cópia integral do Curso ou da conversa. Somente
-aplicação e rollback criam evento de Curso e reutilizam o recibo técnico já
-existente. Registrar auditoria, decidir, propor, rejeitar ou verificar não cria
-atividade de conteúdo.
-
-Auditoria e correções são online-only. O IndexedDB não contém store, cache
-autoritativo, réplica ou outbox delas. As rotas profundas continuam sujeitas à
-sessão e à propriedade; possuir um `findingId`, `auditRunId` ou `correctionId`
-não concede acesso.
-
-### Autoria, eventos e recibos
-
-Uma alteração de Curso informa a revisão que foi lida. O servidor só grava a
-mudança se essa revisão ainda for a corrente. Esse controle, chamado
-**compare-and-swap** (CAS), evita que uma escrita apague silenciosamente outra
-mais recente.
-
-Um identificador de pedido permite repetir com segurança uma solicitação após
-falha de rede. O recibo técnico tem prazo de validade e registra somente o
-necessário para reconhecer a repetição. Os eventos canônicos registram a
-operação e um resumo limitado; não são uma cópia de conversa, não formam um
-segundo Curso e não devem conter e-mail.
-
-### Assistência por MCP
-
-O MCP de Autoria recebe apenas Cursos pertencentes à pessoa autenticada. Um
-Curso compartilhado para Estudo não aparece em listagens, links profundos ou
-leituras autorais. As mesmas regras de alteração e de acesso usadas pela
-interface são aplicadas no servidor.
-
-Quando um provedor externo de modelo de linguagem participa do processo, o
-conteúdo enviado também fica sujeito às regras desse provedor. A pessoa deve
-evitar inserir segredos ou dados pessoais desnecessários e revisar a proposta
-antes de incorporá-la. Sistemas assistidos exigem finalidade delimitada,
-supervisão humana e comunicação de limitações
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+Quando um provedor externo de modelo de linguagem participa, o conteúdo enviado
+também fica sujeito às regras desse provedor. A pessoa deve evitar segredos e
+dados pessoais desnecessários, delimitar a finalidade e revisar a proposta
+antes de incorporá-la ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
 [UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
-## O que permanece no dispositivo
+## Dados no dispositivo
 
-O navegador e o aplicativo Android mantêm:
+O navegador e o aplicativo Android mantêm sessão autenticada, listas resumidas,
+composições já abertas, estado pessoal, alterações pendentes, Anotações e
+arquivos estáticos da interface.
 
-- sessão autenticada;
-- cache de listas, cabeçalhos e páginas de composição de Cursos;
-- estado pessoal e alterações que aguardam sincronização;
-- cache, outbox e handoff transitório de Anotações ancoradas;
-- arquivos estáticos necessários ao funcionamento da interface.
-
-Rodadas, achados, correções, checkpoints e seus vínculos não entram nessa lista.
-
-O IndexedDB permite transações e sobrevive ao fechamento da página. Limpar os
-dados do aplicativo pode apagar uma alteração que ainda não chegou ao servidor.
-Sair da conta encerra a sessão, mas não significa, por si só, que todo dado do
-dispositivo ou do servidor foi excluído.
+Rodadas, achados, correções, comparações e fatos de Pesquisa permanecem no
+servidor. Limpar os dados do aplicativo pode apagar mudanças ainda não
+sincronizadas. Sair encerra a sessão, mas não equivale a excluir todos os dados
+do dispositivo ou do servidor.
 
 ## Operações controladas pela pessoa
 
-### Alterar nome ou avatar
+### Alterar nome ou foto
 
-1. Abra a área de conta.
-2. Edite o nome de apresentação ou escolha uma imagem JPEG, PNG ou WebP de até
-   512 KiB.
-3. Salve a alteração.
-
-O novo avatar recebe uma chave própria. Somente a própria pessoa pode enviar ou
-remover objetos em sua pasta.
+Em **Conta e aparência**, edite o nome ou escolha uma imagem JPEG, PNG ou WebP
+de até 512 KiB. Somente a própria pessoa envia ou remove objetos de sua pasta.
 
 ### Conceder acesso ao Estudo
 
-1. Abra um Curso próprio na Autoria e escolha **Pessoas**.
-2. Informe o e-mail exato de uma conta existente.
-3. Confira o Curso e o destinatário apresentados na confirmação.
-4. Confirme a concessão.
-
-O destinatário passa a ver o Curso no Estudo, mas não na Autoria.
+Em um Curso próprio, abra **Pessoas**, informe o e-mail exato de uma conta,
+confira o destinatário na confirmação e conclua. O destinatário passa a ver o
+Curso em Estudo, e a propriedade permanece inalterada.
 
 ### Revogar acesso ao Estudo
 
-1. Na área **Pessoas** do Curso, escolha a pessoa.
-2. Leia o aviso de que o estado pessoal será preservado.
-3. Confirme a revogação.
-
-A autorização termina imediatamente no servidor. Um dispositivo offline ainda
-pode conter uma réplica antiga, que é purgada quando a autorização for validada
-novamente com conexão.
+Em **Pessoas**, escolha a conta e confirme a revogação. O servidor encerra a
+autorização e preserva o estado pessoal para uma eventual nova concessão.
 
 ### Excluir a própria conta
 
-A exclusão é uma ação humana destrutiva e não é exposta ao MCP.
+A exclusão exige conexão, confirmação humana e a frase exata `EXCLUIR MINHA
+CONTA`. Ela não é oferecida às ferramentas conversacionais.
 
-1. Abra a área de conta.
-2. Escolha **Excluir conta**.
-3. Digite exatamente `EXCLUIR MINHA CONTA`.
-4. Confirme somente se a exclusão for intencional.
+O aplicativo envia uma única solicitação confirmada à API. A API autentica a
+pessoa, deriva seus Cursos e caminhos privados, remove os avatares e PDFs
+correspondentes e só então solicita a exclusão relacional com a mesma sessão. O
+banco recusa a operação enquanto algum objeto permanecer e confirma a ausência
+no momento da exclusão. Uma falha intermediária conserva a conta e permite
+repetir a solicitação.
 
-O cliente remove primeiro os objetos privados de avatar. O banco recusa apagar
-a conta enquanto ainda houver um desses objetos. Depois, a conta do Auth é
-excluída e as relações dependentes seguem as regras de integridade do banco:
-perfil, Cursos próprios, composição, acessos e estados vinculados a Cursos
-removidos deixam de existir. Contribuições em Cursos alheios são retiradas e
-redigidas imediatamente e expiram logicamente na janela de 14 dias; a limpeza
-física é oportunista. A réplica local é limpa somente depois da resposta de
-sucesso do servidor.
+Depois, a conta de autenticação, o perfil, os Cursos próprios, suas composições,
+acessos e estados dependentes são removidos. Contribuições em Cursos alheios são
+retiradas e redigidas imediatamente e seguem a janela de limpeza lógica de 14
+dias. A réplica local é limpa depois da resposta de sucesso.
 
-A operação exige conexão e não oferece restauração automática. Logs técnicos,
-backups e retenções do provedor de infraestrutura podem seguir prazos próprios;
-por isso uma implantação não deve prometer eliminação instantânea dessas
-camadas sem verificar sua política operacional.
+A operação não oferece restauração automática. Registros técnicos, cópias de
+segurança e retenções do provedor podem seguir prazos próprios, que a instituição
+responsável deve declarar.
 
-## Limites e responsabilidades institucionais
+Uma URL de envio de PDF emitida antes da exclusão pode permanecer válida por
+até duas horas. Uma sessão emitida anteriormente também pode conservar validade
+até expirar e enviar um novo avatar. Se esses meios forem usados depois que a
+conta deixou de existir, não criam vínculo nem reabrem a conta, mas podem deixar
+um objeto sem proprietário. A operação deve repetir o inventário de PDFs e
+avatares depois das duas janelas e remover somente o caminho cuja ausência de
+vínculo tenha sido comprovada.
 
-O código controla acesso técnico, mas não decide sozinho se determinado uso de
-dados educacionais é ética ou juridicamente adequado. A instituição responsável
-deve informar finalidade, base jurídica, retenção, contato, procedimento de
-incidente e condições de uso de provedores externos.
+## Responsabilidades da instituição
 
-Dados exportados ou copiados para fora do AraLearn deixam de ser protegidos
-pelas políticas RLS deste sistema. Uma autorização técnica para consultar um
-dado também não autoriza reutilizá-lo para outra finalidade.
+As regras técnicas de acesso não determinam sozinhas se um tratamento é ética ou
+juridicamente adequado. A instituição deve informar finalidade, base jurídica,
+retenção, contato, resposta a incidentes e condições dos provedores externos.
 
-## Como comunicar um problema de privacidade
+Dados exportados ou copiados para fora do AraLearn deixam de estar protegidos
+pelas políticas de linha do sistema. Permissão para consultar um dado também não
+autoriza sua reutilização para outra finalidade.
 
-1. Registre versão, dispositivo, operação e resultado observado.
-2. Substitua nomes, e-mails, tokens e conteúdo privado por exemplos fictícios.
-3. Use o canal da instituição responsável pela instalação.
-4. Para um defeito no código público, use o rastreador de issues do repositório.
+## Comunicar um problema de privacidade
 
-Se uma credencial tiver sido exposta, revogue-a ou substitua-a. Apenas editar
-uma mensagem ou um arquivo não garante que cópias anteriores tenham sido
-eliminadas.
+Ao relatar um problema, registre versão, dispositivo, operação e resultado.
+Substitua nomes, e-mails, credenciais e conteúdo privado por exemplos fictícios.
+Use o canal da instituição responsável pela instalação; para defeitos no código
+público, use o rastreador do repositório.
+
+Se uma credencial tiver sido exposta, revogue-a ou substitua-a. Editar uma
+mensagem ou um arquivo não elimina necessariamente as cópias já produzidas.

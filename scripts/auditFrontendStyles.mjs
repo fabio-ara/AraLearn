@@ -70,13 +70,14 @@ async function read(path) {
 }
 
 export async function auditFrontendRepository() {
-  const [tokens, styles, baseline, packageRenderer, home, lesson] = await Promise.all([
+  const [tokens, styles, baseline, packageRenderer, home, study, authoring] = await Promise.all([
     read("../public/styles-tokens.css"),
     read("../public/styles.css"),
     read("../public/styles-shell-baseline.css"),
     read("../src/render/renderPackageStudyUnit.js"),
     read("../src/ui/renderHomeScreen.js"),
-    read("../src/ui/renderLessonScreen.js")
+    read("../src/study/CourseStudyScreen.js"),
+    read("../src/ui/CourseAuthoringSurface.js")
   ]);
   const legacySubmissionSelectors = matches(
     styles,
@@ -92,7 +93,7 @@ export async function auditFrontendRepository() {
     styles: auditStyleText(styles),
     shellBaseline: auditStyleText(baseline),
     packageRenderer: auditUiSourceText(packageRenderer),
-    uiMarkup: auditUiSourceText([home, lesson].join("\n")),
+    uiMarkup: auditUiSourceText([home, study, authoring].join("\n")),
     runtimeStyles,
     legacySubmissionSelectors,
     sourceBytes: Object.freeze({

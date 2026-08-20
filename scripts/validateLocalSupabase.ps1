@@ -163,6 +163,10 @@ try {
     'supabase/functions/aralearn-course-api/index.ts'
   )
 
+  Invoke-CheckedCommand 'Testes pgTAP do banco local' 'npx.cmd' @(
+    '--yes', 'supabase@2.109.1', 'test', 'db'
+  )
+
   Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
     '--yes', 'supabase@2.109.1', 'db', 'lint', '--local', '--level', 'warning', '--fail-on', 'warning'
   )

@@ -1,7 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
-import { validateCourseEntityContent } from
-  "../aralearn/runtime/domain/courseEntities.js";
 import {
   CourseAuthoringPlanError,
   normalizeCourseAuthoringPlanCommand
@@ -33,8 +31,10 @@ import {
   normalizeCourseVariantDetachCommand,
   normalizeCourseVariantRead
 } from "../aralearn/runtime/domain/courseVariants.js";
-import { RESOURCE_PACKAGE_REGISTRY } from
-  "../aralearn/runtime/resources/catalog/resourceCatalog.js";
+import {
+  CourseAuthoringAnalyticsError,
+  normalizeCourseAuthoringAnalyticsQuery
+} from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
 
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -55,12 +55,10 @@ const ENTITY_CHILD_FIELDS = Object.freeze({
   study_unit: Object.freeze([])
 });
 const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/u;
-const KNOWN_COMPONENT_REFS = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
-  ({ id, version }) => `${id}@${version}`
-);
 const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const VARIANT_COMPARISON_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
+const AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 function fail(code, message, details = null, status = 422) {
   throw new AuthoringApiError(status, code, message, details);
@@ -196,6 +194,15 @@ function normalizeCourseAuditCycleDomain(normalize) {
   } catch (error) {
     if (!(error instanceof CourseAuditCycleError)) throw error;
     throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+function normalizeCourseAuthoringAnalyticsDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuthoringAnalyticsError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message);
   }
 }
 
@@ -405,6 +412,52 @@ function courseSourcesQuery(request) {
   };
 }
 
+function courseSourceAttachmentAccessQuery(request) {
+  const url = new URL(request.url);
+  const fields = [...url.searchParams.keys()];
+  const allowed = new Set([
+    "expectedRevision", "operation", "sourceId", "sourceRevision",
+    "contentHash", "byteSize", "mediaType"
+  ]);
+  const unknown = fields.find((field) => !allowed.has(field));
+  const operation = String(url.searchParams.get("operation") || "").trim();
+  const sourceId = url.searchParams.get("sourceId");
+  const contentHash = String(url.searchParams.get("contentHash") || "").trim();
+  const sourceRevision = Number(url.searchParams.get("sourceRevision"));
+  const byteSize = url.searchParams.has("byteSize")
+    ? Number(url.searchParams.get("byteSize"))
+    : null;
+  const mediaType = url.searchParams.get("mediaType");
+  if (unknown || new Set(fields).size !== fields.length ||
+      !["prepare_upload", "download"].includes(operation) ||
+      sourceId == null || sourceId.length < 1 || sourceId.length > 4_096 ||
+      [...sourceId].length > 2_048 ||
+      new TextEncoder().encode(sourceId).byteLength > 8_192 ||
+      hasControlCharacter(sourceId) || !/^[a-f0-9]{64}$/u.test(contentHash) ||
+      !Number.isSafeInteger(sourceRevision) || sourceRevision < 1 ||
+      byteSize !== null && (!Number.isSafeInteger(byteSize) || byteSize < 1 ||
+        byteSize > 20 * 1024 * 1024) ||
+      operation === "prepare_upload" &&
+        (byteSize === null || mediaType !== "application/pdf") ||
+      operation === "download" && (byteSize !== null || mediaType !== null)) {
+    fail("invalid_course_source_attachment_access", "O acesso ao anexo de Fonte é inválido.", {
+      field: unknown || "query"
+    });
+  }
+  return {
+    expectedRevision: positiveInteger(
+      url.searchParams.get("expectedRevision"),
+      "expectedRevision"
+    ),
+    operation,
+    sourceId,
+    sourceRevision,
+    contentHash,
+    byteSize,
+    mediaType
+  };
+}
+
 function courseAnchoredAnnotationsQuery(request, courseId) {
   const url = new URL(request.url);
   if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
@@ -581,6 +634,59 @@ function courseVariantComparisonQuery(request, comparisonSetId) {
   }));
 }
 
+function courseAuthoringAnalyticsQuery(request) {
+  const url = new URL(request.url);
+  if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
+      AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES) {
+    fail(
+      "course_authoring_analytics_query_too_large",
+      "Os filtros de Pesquisa excedem o limite transportável de 8 KiB.",
+      null,
+      414
+    );
+  }
+  const fields = [...url.searchParams.keys()];
+  const listFields = new Set(["dataset", "channel", "origin", "state"]);
+  const allowed = new Set([
+    "expectedRevision", ...listFields, "from", "to", "limit", "cursor"
+  ]);
+  const unknown = fields.find((field) => !allowed.has(field));
+  const duplicatedScalar = [...new Set(fields)].find((field) =>
+    !listFields.has(field) && url.searchParams.getAll(field).length > 1
+  );
+  if (unknown || duplicatedScalar ||
+      url.searchParams.getAll("expectedRevision").length !== 1) {
+    fail(
+      "invalid_course_authoring_analytics_query",
+      "A leitura de Pesquisa recebeu filtros incompatíveis.",
+      { field: unknown || duplicatedScalar || "expectedRevision" }
+    );
+  }
+  const datasets = url.searchParams.getAll("dataset");
+  const query = normalizeCourseAuthoringAnalyticsDomain(() =>
+    normalizeCourseAuthoringAnalyticsQuery({
+      ...(datasets.length ? { datasets } : {}),
+      channels: url.searchParams.getAll("channel"),
+      origins: url.searchParams.getAll("origin"),
+      states: url.searchParams.getAll("state"),
+      from: url.searchParams.get("from"),
+      to: url.searchParams.get("to"),
+      limit: positiveInteger(url.searchParams.get("limit"), "limit", {
+        defaultValue: 100,
+        maximum: 200
+      }),
+      cursor: url.searchParams.get("cursor")
+    })
+  );
+  return {
+    expectedCourseRevision: positiveInteger(
+      url.searchParams.get("expectedRevision"),
+      "expectedRevision"
+    ),
+    query
+  };
+}
+
 function courseVariantComparisonsQuery(request) {
   const url = new URL(request.url);
   if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
@@ -629,7 +735,7 @@ function validateEntityIdentity(value, index) {
   return { entityType, entityId };
 }
 
-function validateEntity(value, index) {
+function validateEntity(value, index, validateCourseEntityContent) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     fail("invalid_course_entity", "A entidade do Curso é inválida.", { index });
   }
@@ -696,7 +802,7 @@ function validateCreate(body, request) {
   };
 }
 
-function validateCompositionChange(body, request) {
+async function validateCompositionChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedRevision", "upserts", "deletes",
     "sourceAttributionApplications"
@@ -705,7 +811,12 @@ function validateCompositionChange(body, request) {
   if (!Array.isArray(body.upserts) || !Array.isArray(body.deletes)) {
     fail("invalid_course_command", "Upserts e exclusões precisam ser listas.");
   }
-  const upserts = body.upserts.map(validateEntity);
+  const { validateCourseEntityContent } = await import(
+    "../aralearn/runtime/domain/courseEntities.js"
+  );
+  const upserts = body.upserts.map((value, index) =>
+    validateEntity(value, index, validateCourseEntityContent)
+  );
   const deletes = body.deletes.map(validateEntityIdentity);
   if (!upserts.length && !deletes.length) {
     fail("invalid_course_command", "Informe entidades para inserir, alterar ou excluir.");
@@ -831,13 +942,19 @@ function validateCourseAuditCycleChange(body, request) {
   };
 }
 
-function validateCourseDesignChange(body, request, courseId) {
+async function validateCourseDesignChange(body, request, courseId) {
   exactFields(body, new Set([
     "requestId", "expectedCourseRevision", "command"
   ]));
+  const { RESOURCE_PACKAGE_REGISTRY } = await import(
+    "../aralearn/runtime/resources/catalog/resourceCatalog.js"
+  );
+  const knownComponentRefs = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
+    ({ id, version }) => `${id}@${version}`
+  );
   const command = normalizeCourseDesignDomain(() => normalizeCourseDesignCommand(
     jsonObject(body.command, "command", 32 * 1024),
-    { knownComponentRefs: KNOWN_COMPONENT_REFS }
+    { knownComponentRefs }
   ));
   if (command.scope?.kind === "course" && command.scope.ref !== courseId) {
     fail(
@@ -890,13 +1007,15 @@ function validateMaterializationStep(value, index) {
   };
 }
 
-function validateEntityChanges(value) {
+function validateEntityChanges(value, validateCourseEntityContent) {
   const changes = jsonObject(value, "payload.entityChanges", 256 * 1024);
   exactFields(changes, new Set(["upserts", "deletes"]));
   if (!Array.isArray(changes.upserts) || !Array.isArray(changes.deletes)) {
     fail("invalid_course_command", "As alterações da etapa precisam ser listas.");
   }
-  const upserts = changes.upserts.map(validateEntity);
+  const upserts = changes.upserts.map((entry, index) =>
+    validateEntity(entry, index, validateCourseEntityContent)
+  );
   const deletes = changes.deletes.map(validateEntityIdentity);
   if (upserts.length > 64 || deletes.length > 64 || upserts.length + deletes.length > 64) {
     fail("invalid_course_command", "A etapa excede 64 alterações de entidade.");
@@ -915,7 +1034,7 @@ function studyUnitComponentRefs(content) {
   ))].sort((left, right) => left.localeCompare(right, "en"));
 }
 
-function validateDesignApplication(value, entityChanges, { allowed }) {
+function validateDesignApplication(value, entityChanges, { allowed, knownComponentRefs }) {
   if (value === null) {
     return null;
   }
@@ -933,7 +1052,7 @@ function validateDesignApplication(value, entityChanges, { allowed }) {
   }
   const application = normalizeCourseDesignDomain(() => normalizeCourseDesignApplication(
     jsonObject(value, "payload.designApplication", 16 * 1024),
-    { knownComponentRefs: KNOWN_COMPONENT_REFS }
+    { knownComponentRefs }
   ));
   const changedStudyUnits = new Map(entityChanges.upserts
     .filter(({ entityType }) => entityType === "study_unit")
@@ -1002,7 +1121,7 @@ function validateSourceAttributionApplication(value, entityChanges, { allowed })
   return application;
 }
 
-function validateMaterializationChange(body, request) {
+async function validateMaterializationChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedCourseRevision", "expectedMaterializationVersion",
     "operation", "payload"
@@ -1057,7 +1176,14 @@ function validateMaterializationChange(body, request) {
     if (!new Set(["completed", "failed"]).has(status)) {
       fail("invalid_course_command", "O estado da etapa é inválido.");
     }
-    const entityChanges = validateEntityChanges(payload.entityChanges);
+    const [entityRuntime, resourceRuntime] = await Promise.all([
+      import("../aralearn/runtime/domain/courseEntities.js"),
+      import("../aralearn/runtime/resources/catalog/resourceCatalog.js")
+    ]);
+    const entityChanges = validateEntityChanges(
+      payload.entityChanges,
+      entityRuntime.validateCourseEntityContent
+    );
     const resultFacts = jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024);
     const duplicatedFact = [
       "designApplication", "sourceAttributionApplication", "entityChanges", "content"
@@ -1069,7 +1195,10 @@ function validateMaterializationChange(body, request) {
       );
     }
     const designApplication = validateDesignApplication(payload.designApplication, entityChanges, {
-      allowed: status === "completed"
+      allowed: status === "completed",
+      knownComponentRefs: resourceRuntime.RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
+        ({ id, version }) => `${id}@${version}`
+      )
     });
     const sourceAttributionApplication = validateSourceAttributionApplication(
       payload.sourceAttributionApplication,
@@ -1262,6 +1391,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseSourceAttachmentAccess") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseSourceAttachmentAccess({
+        principal,
+        courseId: route.courseId,
+        ...courseSourceAttachmentAccessQuery(request),
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "getCourseAnchoredAnnotations") {
     assertPrincipal(principal);
     const options = courseAnchoredAnnotationsQuery(request, route.courseId);
@@ -1283,6 +1424,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         principal,
         courseId: route.courseId,
         ...courseAuditCycleQuery(request),
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "getCourseAuthoringAnalytics") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseAuthoringAnalytics({
+        principal,
+        courseId: route.courseId,
+        ...courseAuthoringAnalyticsQuery(request),
         deadlineAt
       })
     };
@@ -1414,7 +1567,7 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
   }
   if (route.name === "applyCourseDesignCommand") {
     assertPrincipal(principal, { write: true });
-    const value = validateCourseDesignChange(
+    const value = await validateCourseDesignChange(
       await readCourseJsonBody(request),
       request,
       route.courseId
@@ -1490,7 +1643,7 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
   }
   if (route.name === "advanceCourseAuthoringPartMaterialization") {
     assertPrincipal(principal, { write: true });
-    const value = validateMaterializationChange(await readCourseJsonBody(request), request);
+    const value = await validateMaterializationChange(await readCourseJsonBody(request), request);
     return {
       requestId: value.requestId,
       data: await adapter.advanceCourseAuthoringPartMaterialization({
@@ -1505,7 +1658,7 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
   }
   if (route.name === "commitCourseComposition") {
     assertPrincipal(principal, { write: true });
-    const value = validateCompositionChange(await readCourseJsonBody(request), request);
+    const value = await validateCompositionChange(await readCourseJsonBody(request), request);
     return {
       requestId: value.requestId,
       data: await adapter.commitCourseComposition({

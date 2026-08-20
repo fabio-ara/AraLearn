@@ -6,6 +6,7 @@ import { createCourseAuditPanel } from "./CourseAuditPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import { createCourseVariantsPanel } from "./CourseVariantsPanel.js";
+import { createCourseAnalyticsPanel } from "./CourseAnalyticsPanel.js";
 import {
   buildCourseAuthoringRoute,
   isCourseAuthoringRouteCandidate,
@@ -369,9 +370,12 @@ function renderSectionNavigation(course, section) {
     { key: "inspection", label: "Inspeção", icon: "preview" },
     { key: "observations", label: "Auditoria e correções", icon: "prompt" },
     { key: "variants", label: "Variantes", icon: "tags" },
+    ...(canAccessPlanning(course)
+      ? [{ key: "research", label: "Pesquisa", icon: "progress" }]
+      : []),
     { key: "people", label: "Pessoas", icon: "account-add" }
   ];
-  return `<nav class="course-authoring-sections ${definitions.length === 7 ? "has-seven" : "has-standard"}"` +
+  return '<nav class="course-authoring-sections has-standard"' +
     ' aria-label="Áreas do Curso">' +
     definitions.map((definition) => {
       const active = definition.key === section;
@@ -787,7 +791,8 @@ function renderPart(state, part, index, parts) {
     ? part.microsequences[Math.ceil(part.microsequences.length / 2) - 1].id
     : "";
   const previousPart = index > 0 ? parts[index - 1] : null;
-  return `<article class="course-authoring-part" data-status="${escapeHtml(part.status)}">` +
+  return `<article class="course-authoring-part" data-status="${escapeHtml(part.status)}"` +
+    ` data-course-authoring-part-card="${escapeHtml(part.id)}" tabindex="-1">` +
     '<header><div class="course-authoring-part-heading">' +
     `<span>Parte ${index + 1}</span><h4>${escapeHtml(part.title)}</h4>` +
     `<p class="course-authoring-part-status">${escapeHtml(PART_STATUS_LABELS[part.status])}</p></div>` +
@@ -820,7 +825,7 @@ function renderPart(state, part, index, parts) {
     renderActionButton({
       action: "materialize-part",
       icon: "prompt",
-      label: "Levar pedido ao chat conectado",
+      label: "Copiar pedido para o ChatGPT",
       data,
       disabled: state.writeBusy || state.materializationBusyPartId === part.id,
       className: "course-authoring-chat-action"
@@ -993,6 +998,16 @@ function renderCourseSection(state) {
   }
   if (state.section === "variants" && state.course) {
     return '<div class="course-variants-host" data-course-variants-host></div>';
+  }
+  if (state.section === "research" && state.course) {
+    if (!canAccessPlanning(state.course)) {
+      return statusPanel({
+        kind: "error",
+        title: "Pesquisa indisponível",
+        message: "Somente a pessoa proprietária pode consultar os fatos de Autoria deste Curso."
+      });
+    }
+    return '<div class="course-analytics-host" data-course-analytics-host></div>';
   }
   if (state.loading && !state.outline) {
     return '<p class="course-authoring-loading" role="status">Carregando Curso…</p>';
@@ -1198,6 +1213,7 @@ export function createCourseAuthoringSurface({
   let inspectionSequence = null;
   let auditPanel = null;
   let variantsPanel = null;
+  let analyticsPanel = null;
   let sourcesPanel = null;
   let targetSourcesPanel = null;
   const knownCourses = new Map();
@@ -1267,6 +1283,7 @@ export function createCourseAuthoringSurface({
     auditPanel = null;
   }
   function destroyVariantsPanel() { variantsPanel?.destroy?.(); variantsPanel = null; }
+  function destroyAnalyticsPanel() { analyticsPanel?.destroy?.(); analyticsPanel = null; }
 
   function destroySourcesPanels() {
     sourcesPanel?.destroy?.();
@@ -1367,7 +1384,7 @@ export function createCourseAuthoringSurface({
         controller,
         course: state.course,
         routeTarget: state.routeTarget,
-        onNavigate: (hash) => navigate(hash),
+        onNavigate: (hash, options) => navigate(hash, options),
         onEditSources: (target) => openTargetSources(target),
         windowValue,
         documentValue,
@@ -1430,18 +1447,45 @@ export function createCourseAuthoringSurface({
     catch (error) { host.innerHTML = statusPanel({ kind: "error", title: "Variantes indisponíveis", message: writeFailureMessage(error) }); }
   }
 
+  function mountAnalyticsPanel() {
+    if (state.view !== "course" || state.section !== "research" || !state.course ||
+        !canAccessPlanning(state.course)) return;
+    const host = root.querySelector?.("[data-course-analytics-host]");
+    if (!host) return;
+    try {
+      analyticsPanel = createCourseAnalyticsPanel({ root: host, controller, course: state.course });
+      void analyticsPanel.open();
+    } catch (error) {
+      host.innerHTML = statusPanel({
+        kind: "error",
+        title: "Pesquisa indisponível",
+        message: writeFailureMessage(error)
+      });
+    }
+  }
+
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
     destroyInspectionSequence();
     destroyAuditPanel();
     destroyVariantsPanel();
+    destroyAnalyticsPanel();
     destroySourcesPanels();
     root.innerHTML = renderCourseAuthoringSurface(state);
     root.setAttribute?.("aria-busy", String(state.loading));
     mountInspectionSequence();
     mountAuditPanel();
     mountVariantsPanel();
+    mountAnalyticsPanel();
     mountSourcesPanels();
+    if (state.section === "planning" && state.routeTarget?.kind === "authoring_part") {
+      globalThis.queueMicrotask?.(() => {
+        const target = [...(root.querySelectorAll?.("[data-course-authoring-part-card]") || [])]
+          .find((node) => node.dataset.courseAuthoringPartCard === state.routeTarget.id);
+        target?.scrollIntoView?.({ block: "center", behavior: "auto" });
+        target?.focus?.({ preventScroll: true });
+      });
+    }
     if (focus && typeof root.querySelector === "function") {
       globalThis.queueMicrotask?.(() => root.querySelector(focus)?.focus());
     }
@@ -1901,7 +1945,10 @@ export function createCourseAuthoringSurface({
     return `${locationValue.pathname || ""}${locationValue.search || ""}${hash}` || hash;
   }
 
-  function navigate(hash, { replace = false } = {}) {
+  function navigate(hash, { replace = false, returnTo = "" } = {}) {
+    if (!replace && returnTo && typeof historyValue?.replaceState === "function") {
+      historyValue.replaceState(historyValue.state ?? null, "", locationUrl(returnTo));
+    }
     if (replace && typeof historyValue?.replaceState === "function") {
       historyValue.replaceState(historyValue.state ?? null, "", locationUrl(hash));
       if (locationValue.hash !== hash) locationValue.hash = hash;
@@ -1939,6 +1986,9 @@ export function createCourseAuthoringSurface({
     state.loading = false;
     destroyInspectionSequence();
     destroyAuditPanel();
+    destroyVariantsPanel();
+    destroyAnalyticsPanel();
+    destroySourcesPanels();
     if (hashListening && typeof windowValue?.removeEventListener === "function") {
       windowValue.removeEventListener("hashchange", handleHashChange);
       hashListening = false;
@@ -1963,6 +2013,9 @@ export function createCourseAuthoringSurface({
     const route = parseCourseAuthoringRoute(locationValue.hash || "");
     if (route?.section === "observations" && auditPanel) {
       return auditPanel.refresh();
+    }
+    if (route?.section === "research" && analyticsPanel) {
+      return analyticsPanel.refresh();
     }
     if (route?.section === "inspection" && inspectionSequence && state.course) {
       const sequence = inspectionSequence;
@@ -2215,17 +2268,16 @@ export function createCourseAuthoringSurface({
     };
     state.materializationBusyPartId = part.id;
     state.writeFailure = "";
-    state.writeMessage = "Entregando pedido ao chat conectado…";
+    state.writeMessage = "Copiando pedido para o ChatGPT…";
     render();
     try {
       const result = await controller.requestPartMaterialization(structuredClone(retained));
-      if (!["chat", "clipboard"].includes(result?.delivery)) {
-        throw new TypeError("O chat conectado não confirmou a entrega do pedido.");
+      if (result?.delivery !== "clipboard") {
+        throw new TypeError("Não foi possível confirmar a cópia do pedido.");
       }
       state.pendingMaterializationCommand = null;
-      state.writeMessage = result.message || (result.delivery === "chat"
-        ? "Pedido entregue ao chat conectado."
-        : "Pedido copiado para levar ao chat conectado.");
+      state.writeMessage = result.message ||
+        "Pedido copiado. Cole no ChatGPT para solicitar a materialização.";
       return true;
     } catch (error) {
       const ambiguous = ambiguousWriteFailure(error);
@@ -2978,7 +3030,7 @@ export function createCourseAuthoringSurface({
             partId,
             newPartId: createUuid(),
             newPartPosition: part.position + 1,
-            title: `${part.title} — continuação`,
+            title: `${part.title}: continuação`,
             intent: part.intent || "",
             microsequenceIds: movedMicrosequenceIds
           });

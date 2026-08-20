@@ -7,7 +7,10 @@ const CLASS_NAME = /\.([a-z][\w-]*)/giu;
 const SIMPLE_CSS_RULE = /([^{}]+)\{([^{}]*)\}/gu;
 const LITERAL_COLOR = /(?<!&)#[\da-f]{3,8}\b|rgba?\(|hsla?\(/giu;
 const INTERFACE_GLYPH = /[\u2600-\u27bf]|\p{Extended_Pictographic}|&#(?!(?:10|39);)\d+;/gu;
-const DYNAMIC_MODIFIER = /^(?:has-|is-|kind-|tone-)/u;
+const DYNAMIC_MODIFIER = /^(?:is-|kind-|mark-|tone-)/u;
+const EXTERNAL_RUNTIME_CLASSES = new Set([
+  "vega-embed"
+]);
 
 async function filesBelow(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -63,7 +66,7 @@ export function auditCssResidues(css, referencedClasses) {
         (className) => referencedClasses.has(className)
       )) return false;
       const structuralClasses = branchClasses.filter((className) => (
-        !DYNAMIC_MODIFIER.test(className)
+        !DYNAMIC_MODIFIER.test(className) && !EXTERNAL_RUNTIME_CLASSES.has(className)
       ));
       return structuralClasses.length > 0 && structuralClasses.some(
         (className) => !referencedClasses.has(className)
@@ -148,39 +151,54 @@ export async function auditFrontendResidues({ root = path.resolve(".") } = {}) {
   const interfaceSource = (await Promise.all(
     interfaceFiles.map((file) => readFile(file, "utf8"))
   )).join("\n");
-  const cssPath = path.join(root, "public", "styles.css");
-  const css = await readFile(cssPath, "utf8");
-  const audit = auditCssResidues(css, referencedClassNames(source));
+  const styles = await Promise.all([
+    "styles.css",
+    "course-authoring.css"
+  ].map(async (fileName) => {
+    const cssPath = path.join(root, "public", fileName);
+    const css = await readFile(cssPath, "utf8");
+    const audit = auditCssResidues(css, referencedClassNames(source));
+    return { cssPath, css, ...audit };
+  }));
+  const orphanRules = styles.flatMap((style) => style.orphanRules);
+  const orphanBranches = styles.flatMap((style) => style.orphanBranches);
+  const partialOrphanRules = styles.flatMap((style) => style.partialOrphanRules);
+  const colorRules = styles.flatMap((style) => style.colorRules);
   return {
-    cssPath,
-    css,
+    styles,
     report: Object.freeze({
       sourceFiles: sourceFiles.length,
-      orphanRules: audit.orphanRules.length,
-      orphanBranches: audit.orphanBranches.length,
-      orphanBranchSelectors: audit.orphanBranches,
-      orphanSelectors: Object.freeze(audit.orphanRules.map((rule) => rule.selector)),
-      colorRules: audit.colorRules.length,
-      literalColors: audit.literalColors,
+      styleFiles: styles.length,
+      orphanRules: orphanRules.length,
+      orphanBranches: orphanBranches.length,
+      orphanBranchSelectors: Object.freeze(orphanBranches),
+      orphanSelectors: Object.freeze(orphanRules.map((rule) => rule.selector)),
+      colorRules: colorRules.length,
+      literalColors: styles.reduce((total, style) => total + style.literalColors, 0),
       interfaceGlyphs: auditInterfaceGlyphs(interfaceSource),
-      legacySubmissionSelectors: audit.orphanRules.filter((rule) => (
+      legacySubmissionSelectors: orphanRules.filter((rule) => (
         rule.classes.some((className) => className.startsWith("catalog-submission"))
       )).length
     }),
-    orphanRules: audit.orphanRules,
-    partialOrphanRules: audit.partialOrphanRules
+    orphanRules,
+    partialOrphanRules
   };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
   const audit = await auditFrontendResidues();
   if (process.argv.includes("--write")) {
-    const pruned = pruneOrphanCssRules(
-      audit.css,
-      audit.orphanRules,
-      audit.partialOrphanRules
-    );
-    await writeFile(audit.cssPath, pruned, "utf8");
+    for (const style of audit.styles) {
+      const pruned = pruneOrphanCssRules(
+        style.css,
+        style.orphanRules,
+        style.partialOrphanRules
+      );
+      await writeFile(style.cssPath, pruned, "utf8");
+    }
   }
   process.stdout.write(`${JSON.stringify(audit.report, null, 2)}\n`);
+  if (!process.argv.includes("--write") && audit.report.orphanBranches > 0) {
+    process.exitCode = 1;
+  }
 }

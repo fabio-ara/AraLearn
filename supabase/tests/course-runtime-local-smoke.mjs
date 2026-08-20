@@ -9,6 +9,13 @@ import {
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 
 const APPLICATION_ORIGIN = "http://127.0.0.1:4182";
+const COURSE_SOURCE_PDF_BUCKET = "course-source-pdfs";
+const PERSON_AVATAR_BUCKET = "person-avatars";
+const COURSE_SOURCE_PDF_MAX_BYTES = 20 * 1024 * 1024;
+const COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES = 64 * 1024 * 1024;
+const COURSE_SOURCE_PDF_PATH_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-f0-9]{64}\.pdf$/u;
+const textEncoder = new TextEncoder();
 
 function readLocalSupabaseStatus() {
   const windows = process.platform === "win32";
@@ -165,6 +172,103 @@ async function removeLocalUser(userId) {
   );
 }
 
+function minimalPdfBytes(byteSize = 512, marker = "smoke") {
+  assert(
+    Number.isSafeInteger(byteSize) && byteSize >= 256 &&
+      byteSize <= COURSE_SOURCE_PDF_MAX_BYTES,
+    "O PDF em memória precisa respeitar o limite por arquivo.",
+  );
+  assert.match(marker, /^[a-z0-9-]{1,40}$/u);
+  const prefix = textEncoder.encode(
+    "%PDF-1.4\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+    `% ${marker} `,
+  );
+  let fillerLength = 0;
+  let trailer = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const xrefOffset = prefix.byteLength + fillerLength + 1;
+    trailer = textEncoder.encode(
+      "xref\n0 2\n" +
+      "0000000000 65535 f \n" +
+      "0000000009 00000 n \n" +
+      "trailer\n<< /Size 2 /Root 1 0 R >>\n" +
+      `startxref\n${xrefOffset}\n%%EOF\n`,
+    );
+    const nextFillerLength = byteSize - prefix.byteLength - 1 - trailer.byteLength;
+    assert(nextFillerLength >= 0, "O tamanho solicitado não comporta o PDF mínimo.");
+    if (nextFillerLength === fillerLength) break;
+    fillerLength = nextFillerLength;
+  }
+  const xrefOffset = prefix.byteLength + fillerLength + 1;
+  trailer = textEncoder.encode(
+    "xref\n0 2\n" +
+    "0000000000 65535 f \n" +
+    "0000000009 00000 n \n" +
+    "trailer\n<< /Size 2 /Root 1 0 R >>\n" +
+    `startxref\n${xrefOffset}\n%%EOF\n`,
+  );
+  assert.equal(prefix.byteLength + fillerLength + 1 + trailer.byteLength, byteSize);
+  const bytes = new Uint8Array(byteSize);
+  bytes.set(prefix, 0);
+  bytes.fill(0x20, prefix.byteLength, prefix.byteLength + fillerLength);
+  bytes[prefix.byteLength + fillerLength] = 0x0a;
+  bytes.set(trailer, xrefOffset);
+  return bytes;
+}
+
+async function sha256Hex(bytes) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return [...digest].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function uploadSignedPdf(signedUrl, bytes) {
+  assert.match(String(signedUrl || ""), /^https?:\/\//u);
+  const form = new FormData();
+  form.append("cacheControl", "3600");
+  form.append("", new Blob([bytes], { type: "application/pdf" }), "source.pdf");
+  const response = await fetch(signedUrl, {
+    method: "PUT",
+    headers: { "x-upsert": "false" },
+    body: form,
+  });
+  const responsePayload = await payload(response);
+  assert(response.ok,
+    `upload assinado do PDF: HTTP ${response.status}: ${JSON.stringify(responsePayload)}`);
+}
+
+async function downloadPrivatePdf(storagePath, token) {
+  const response = await fetch(
+    `${projectUrl}/storage/v1/object/authenticated/${COURSE_SOURCE_PDF_BUCKET}/${storagePath}`,
+    {
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  return {
+    response,
+    bytes: response.ok ? new Uint8Array(await response.arrayBuffer()) : null,
+  };
+}
+
+async function removeLocalPdfObjects(storagePaths) {
+  const prefixes = [...new Set(storagePaths)];
+  if (prefixes.length === 0) return;
+  assert(prefixes.every((value) => COURSE_SOURCE_PDF_PATH_PATTERN.test(value)),
+    "A limpeza de PDFs recebeu um path fora do Curso criado pelo smoke.");
+  const result = await request(`/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}`, {
+    method: "DELETE",
+    token: serverApiKey,
+    body: { prefixes },
+  });
+  assert(
+    [200, 404].includes(result.response.status),
+    failureMessage("limpar PDFs locais do smoke", result),
+  );
+}
+
 function itemForCourse(list, courseId) {
   return list?.items?.find((item) => item.courseId === courseId) || null;
 }
@@ -220,6 +324,7 @@ const ownerEmail = `course-owner-${suffix}@aralearn.local`;
 const learnerEmail = `course-learner-${suffix}@aralearn.local`;
 let owner = null;
 let learner = null;
+const uploadedPdfPaths = [];
 
 try {
   owner = await createConfirmedUser(ownerEmail, password);
@@ -515,9 +620,16 @@ try {
       source: {
         kind: "web_page",
         title: "Referência verificada do smoke",
+        authorship: "AraLearn",
+        publicationDate: "2026-08-17",
+        identifier: null,
+        language: "pt-BR",
         citationText: "AraLearn. Referência verificada do smoke, 2026.",
         url: "https://example.test/aralearn/source-smoke",
         editionOrVersion: "2026-08-17",
+        origin: "external",
+        availability: "open_access",
+        verificationStatus: "author_verified",
         studyVisibility: "citation_and_link",
       },
     },
@@ -1066,6 +1178,231 @@ try {
   assert.equal(secondInspectionPage.data.hasPrevious, true);
   assert.equal(secondInspectionPage.data.hasMore, false);
 
+  const comparisonSetId = crypto.randomUUID();
+  const comparedParameterId =
+    "new_analysis_unit_ceiling_per_expository_study_unit";
+  const createdVariants = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 17,
+    operation: "update_course_variants",
+    variantCommand: {
+      type: "create_comparison_variants",
+      comparisonSetId,
+      expectedCourseRevision: 17,
+      variants: [{
+        label: "Z",
+        title: "Curso de smoke — variante Z",
+        goal: "Materializar o planejamento comum pela estratégia A.",
+        parameterDifferences: [],
+        componentPolicyDifference: null,
+      }, {
+        label: "A",
+        title: "Curso de smoke — variante A",
+        goal: "Materializar o planejamento comum pela estratégia B.",
+        parameterDifferences: [{
+          scopeKind: "course",
+          scopeId: "course",
+          parameterId: comparedParameterId,
+          value: 4,
+          rationale: "Comparar numericamente as duas materializações.",
+        }],
+        componentPolicyDifference: null,
+      }],
+    },
+  }, ownerToken);
+  assert.equal(createdVariants.data.comparisonSetId, comparisonSetId);
+  assert.equal(createdVariants.data.sourceCourseRevision, 17);
+  assert.equal(createdVariants.data.members.length, 2);
+  const variantAId = createdVariants.data.members.find(
+    ({ label }) => label === "Z",
+  )?.courseId;
+  const variantBId = createdVariants.data.members.find(
+    ({ label }) => label === "A",
+  )?.courseId;
+  assert.deepEqual(
+    createdVariants.data.members.map(({ position, label }) => ({ position, label })),
+    [{ position: 0, label: "Z" }, { position: 1, label: "A" }],
+    "A criação precisa conservar a ordem declarada mesmo quando os rótulos têm outra ordem lexical.",
+  );
+  assert.match(String(variantAId || ""), /^[0-9a-f-]{36}$/iu);
+  assert.match(String(variantBId || ""), /^[0-9a-f-]{36}$/iu);
+  assert.notEqual(variantAId, variantBId);
+
+  const variantAUnit = structuredClone(materializedStudyUnits[0]);
+  const materializedVariantA = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId: variantAId,
+    expectedRevision: 1,
+    operation: "commit_course_composition",
+    upserts: [variantAUnit],
+    deletes: [],
+    sourceAttributionApplications: [{
+      studyUnitId: variantAUnit.entityId,
+      sourceLinks: [],
+    }],
+  }, ownerToken);
+  assert.equal(materializedVariantA.data.revision, 2);
+  assert.equal(materializedVariantA.data.upsertedCount, 1);
+
+  const comparedVariants = await courseAction("lerCurso", {
+    courseId,
+    view: "variant_comparison",
+    comparisonSetId,
+    expectedRevision: 17,
+  }, ownerToken);
+  assert.equal(
+    comparedVariants.data.planning.checkpointHash,
+    createdVariants.data.checkpointHash,
+  );
+  assert.equal(comparedVariants.data.planning.courseRevision, 17);
+  assert.equal(comparedVariants.data.planning.planVersion, planVersion);
+  assert.deepEqual(
+    comparedVariants.data.members.map(({ position, label }) => ({ position, label })),
+    [{ position: 0, label: "Z" }, { position: 1, label: "A" }],
+    "A releitura precisa conservar a primeira variante como referência.",
+  );
+  assert.equal(comparedVariants.data.differences.referenceCourseId, variantAId);
+  const variantAFacts = comparedVariants.data.members.find(
+    ({ courseId: memberCourseId }) => memberCourseId === variantAId,
+  );
+  const variantBFacts = comparedVariants.data.members.find(
+    ({ courseId: memberCourseId }) => memberCourseId === variantBId,
+  );
+  assert.equal(variantAFacts.currentCourseRevision, 2);
+  assert.equal(variantAFacts.materialization.studyUnitCount, 1);
+  assert.equal(variantBFacts.currentCourseRevision, 1);
+  assert.equal(variantBFacts.materialization.studyUnitCount, 0);
+  assert.equal(
+    variantAFacts.effectiveParameters.find(
+      ({ scopeKind, scopeId, parameterId }) => scopeKind === "course" &&
+        scopeId === "course" && parameterId === comparedParameterId,
+    )?.value,
+    3,
+  );
+  assert.equal(
+    variantBFacts.effectiveParameters.find(
+      ({ scopeKind, scopeId, parameterId }) => scopeKind === "course" &&
+        scopeId === "course" && parameterId === comparedParameterId,
+    )?.value,
+    4,
+  );
+  assert(
+    comparedVariants.data.differences.observedExpected.some(
+      ({ courseId: differenceCourseId, kind, key, actualValue }) =>
+        differenceCourseId === variantBId && kind === "parameter" &&
+        key === comparedParameterId && actualValue === 4,
+    ),
+    "A comparação precisa confirmar a diferença numérica declarada.",
+  );
+  assert(
+    comparedVariants.data.differences.factual.some(
+      ({ kind, expectedValue, actualValue }) => kind === "study_units" &&
+        expectedValue?.count !== actualValue?.count,
+    ),
+    "A comparação precisa mostrar a materialização independente das Unidades.",
+  );
+
+  const variantGrant = await courseAction("gerirPessoas", {
+    operation: "grant_access",
+    requestId: crypto.randomUUID(),
+    courseId: variantAId,
+    email: learnerEmail,
+    confirmed: true,
+  }, ownerToken);
+  assert.equal(variantGrant.data.changed, true);
+  const sharedVariant = await rpc("get_course_v1", {
+    p_course_id: variantAId,
+  }, learnerToken);
+  assert.equal(sharedVariant.courseId, variantAId);
+  assert.equal(sharedVariant.ownership, "shared");
+  const sharedVariantEntities = await rpc("list_course_entities_v1", {
+    p_course_id: variantAId,
+    p_expected_revision: 2,
+    p_limit: 100,
+    p_after_entity_type: null,
+    p_after_entity_id: null,
+  }, learnerToken);
+  assert.equal(
+    sharedVariantEntities.items.some(
+      ({ entityType, entityId }) => entityType === "study_unit" &&
+        entityId === variantAUnit.entityId,
+    ),
+    true,
+  );
+  assertDenied(await request("/rest/v1/rpc/get_course_v1", {
+    method: "POST",
+    token: learnerToken,
+    body: { p_course_id: variantBId },
+  }), "a variante não compartilhada permanece privada");
+
+  const detachedVariant = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_course_variants",
+    variantCommand: {
+      type: "detach_comparison_variant",
+      comparisonSetId,
+      courseId: variantAId,
+    },
+  }, ownerToken);
+  assert.equal(detachedVariant.data.courseId, variantAId);
+  assert.equal(detachedVariant.data.changed, true);
+  const sharedVariantAfterDetach = await rpc("get_course_v1", {
+    p_course_id: variantAId,
+  }, learnerToken);
+  assert.equal(sharedVariantAfterDetach.courseId, variantAId);
+  const comparisonAfterDetach = await courseAction("lerCurso", {
+    courseId,
+    view: "variant_comparison",
+    comparisonSetId,
+    expectedRevision: 17,
+  }, ownerToken, 404);
+  assert.equal(comparisonAfterDetach.ok, false);
+  assert.equal(comparisonAfterDetach.error.code, "PT404");
+  const oneMemberComparisonList = await courseAction("lerCurso", {
+    courseId,
+    view: "variant_comparisons",
+    expectedRevision: 17,
+  }, ownerToken);
+  const oneMemberComparison = oneMemberComparisonList.data.items.find(
+    ({ comparisonSetId: listedSetId }) => listedSetId === comparisonSetId,
+  );
+  assert.deepEqual({
+    memberCount: oneMemberComparison?.memberCount,
+    attachedCount: oneMemberComparison?.attachedCount,
+    detachedCount: oneMemberComparison?.detachedCount,
+  }, { memberCount: 2, attachedCount: 1, detachedCount: 1 });
+
+  const detachedLastVariant = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_course_variants",
+    variantCommand: {
+      type: "detach_comparison_variant",
+      comparisonSetId,
+      courseId: variantBId,
+    },
+  }, ownerToken);
+  assert.equal(detachedLastVariant.data.changed, true);
+  const emptyComparisonList = await courseAction("lerCurso", {
+    courseId,
+    view: "variant_comparisons",
+    expectedRevision: 17,
+  }, ownerToken);
+  const emptyComparison = emptyComparisonList.data.items.find(
+    ({ comparisonSetId: listedSetId }) => listedSetId === comparisonSetId,
+  );
+  assert.deepEqual({
+    memberCount: emptyComparison?.memberCount,
+    attachedCount: emptyComparison?.attachedCount,
+    detachedCount: emptyComparison?.detachedCount,
+  }, { memberCount: 2, attachedCount: 0, detachedCount: 2 });
+  const preservedVariantAfterDetach = await rpc("get_course_v1", {
+    p_course_id: variantBId,
+  }, ownerToken);
+  assert.equal(preservedVariantAfterDetach.courseId, variantBId);
+
   const learnerBeforeGrant = await rpc("list_courses_v1", {
     p_query: null,
     p_limit: 24,
@@ -1307,6 +1644,8 @@ try {
       annotationId: learnerAnnotationId,
       expectedAnnotationVersion: protectedLearnerAnnotation.annotationVersion,
       ownerResponse: "Revisei a formulação e registrei a explicação.",
+      responseKind: "answer",
+      consideredSourceLinks: [],
     },
   }, ownerToken);
   assert.equal(answeredAnnotation.data.annotation.ownerResponse.text,
@@ -1995,10 +2334,385 @@ try {
   assertDenied(revokedAnnotations, "revogação retira leitura de observações");
   assert.equal(revokedAnnotations.payload?.code, "PT404");
 
+  const pdfDescriptor = async (byteSize, marker) => {
+    const bytes = minimalPdfBytes(byteSize, marker);
+    return {
+      bytes,
+      contentHash: await sha256Hex(bytes),
+      byteSize: bytes.byteLength,
+      mediaType: "application/pdf",
+    };
+  };
+  const preparePdf = (descriptor, expectedRevision) => courseAction("lerCurso", {
+    courseId,
+    view: "course_source_attachment",
+    attachmentOperation: "prepare_upload",
+    expectedRevision,
+    sourceId,
+    sourceRevision: 1,
+    contentHash: descriptor.contentHash,
+    byteSize: descriptor.byteSize,
+    mediaType: descriptor.mediaType,
+  }, ownerToken);
+  const attachPdf = (access, expectedRevision, expectedStatus = 200) => courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "attach_pdf",
+      sourceId,
+      sourceRevision: 1,
+      attachment: access.attachment,
+    },
+  }, ownerToken, expectedStatus);
+
+  let pdfCourseRevision = auditCourseRevision;
+  const declaredPdf = await pdfDescriptor(512, "declared");
+  const tamperedPdf = await pdfDescriptor(512, "tampered");
+  const preparedTamperedPdf = await preparePdf(declaredPdf, pdfCourseRevision);
+  uploadedPdfPaths.push(preparedTamperedPdf.data.attachment.storagePath);
+  await uploadSignedPdf(preparedTamperedPdf.data.signedUrl, tamperedPdf.bytes);
+  const rejectedTamperedPdf = await attachPdf(
+    preparedTamperedPdf.data,
+    pdfCourseRevision,
+    422,
+  );
+  assert.equal(rejectedTamperedPdf.error?.code, "invalid_course_source_pdf");
+
+  const invalidHeaderBytes = minimalPdfBytes(512, "invalid-header");
+  invalidHeaderBytes.set(textEncoder.encode("NOTPD"), 0);
+  const invalidHeaderPdf = {
+    bytes: invalidHeaderBytes,
+    contentHash: await sha256Hex(invalidHeaderBytes),
+    byteSize: invalidHeaderBytes.byteLength,
+    mediaType: "application/pdf",
+  };
+  const preparedInvalidHeaderPdf = await preparePdf(invalidHeaderPdf, pdfCourseRevision);
+  uploadedPdfPaths.push(preparedInvalidHeaderPdf.data.attachment.storagePath);
+  await uploadSignedPdf(preparedInvalidHeaderPdf.data.signedUrl, invalidHeaderPdf.bytes);
+  const rejectedInvalidHeaderPdf = await attachPdf(
+    preparedInvalidHeaderPdf.data,
+    pdfCourseRevision,
+    422,
+  );
+  assert.equal(rejectedInvalidHeaderPdf.error?.code, "invalid_course_source_pdf");
+
+  const sourcesAfterRejectedPdfs = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: pdfCourseRevision,
+    mode: "source",
+    sourceId,
+    limit: 1,
+  }, ownerToken);
+  assert.deepEqual(sourcesAfterRejectedPdfs.data.items[0].attachments, []);
+  assert.deepEqual(sourcesAfterRejectedPdfs.data.pdfStorage, {
+    uniqueBytes: 0,
+    maxUniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
+  });
+
+  const primaryPdf = await pdfDescriptor(512, "primary");
+  const preparedPrimaryPdf = await preparePdf(primaryPdf, pdfCourseRevision);
+  assert.equal(preparedPrimaryPdf.data.operation, "prepare_upload");
+  assert.equal(preparedPrimaryPdf.data.storageOriginCourseId, courseId);
+  assert.equal(preparedPrimaryPdf.data.uploadRequired, true);
+  assert.equal(preparedPrimaryPdf.data.alreadyLinked, false);
+  assert.deepEqual(preparedPrimaryPdf.data.attachment, {
+    contentHash: primaryPdf.contentHash,
+    byteSize: primaryPdf.byteSize,
+    mediaType: primaryPdf.mediaType,
+    storagePath: `${courseId}/${primaryPdf.contentHash}.pdf`,
+  });
+  uploadedPdfPaths.push(preparedPrimaryPdf.data.attachment.storagePath);
+  await uploadSignedPdf(preparedPrimaryPdf.data.signedUrl, primaryPdf.bytes);
+  const attachedPrimaryPdf = await attachPdf(preparedPrimaryPdf.data, pdfCourseRevision);
+  assert.equal(attachedPrimaryPdf.data.changed, true);
+  assert.deepEqual(attachedPrimaryPdf.data.change, {
+    type: "attach_pdf",
+    subjectId: sourceId,
+    revision: 1,
+  });
+  pdfCourseRevision = attachedPrimaryPdf.data.courseRevision;
+
+  const deduplicatedPrimaryPdf = await preparePdf(primaryPdf, pdfCourseRevision);
+  assert.equal(deduplicatedPrimaryPdf.data.uploadRequired, false);
+  assert.equal(deduplicatedPrimaryPdf.data.alreadyLinked, true);
+  assert.equal(deduplicatedPrimaryPdf.data.signedUrl, null);
+  assert.equal(deduplicatedPrimaryPdf.data.expiresAt, null);
+  const duplicateConfirmation = await attachPdf(
+    deduplicatedPrimaryPdf.data,
+    pdfCourseRevision,
+  );
+  assert.equal(duplicateConfirmation.data.changed, false);
+  assert.equal(duplicateConfirmation.data.change, null);
+  assert.equal(duplicateConfirmation.data.courseRevision, pdfCourseRevision);
+
+  const authorizedDownload = await courseAction("lerCurso", {
+    courseId,
+    view: "course_source_attachment",
+    attachmentOperation: "download",
+    expectedRevision: pdfCourseRevision,
+    sourceId,
+    sourceRevision: 1,
+    contentHash: primaryPdf.contentHash,
+  }, ownerToken);
+  assert.equal(authorizedDownload.data.storageOriginCourseId, courseId);
+  assert.equal(authorizedDownload.data.alreadyLinked, true);
+  const signedDownloadResponse = await fetch(authorizedDownload.data.signedUrl);
+  assert.equal(signedDownloadResponse.status, 200);
+  assert.deepEqual(
+    new Uint8Array(await signedDownloadResponse.arrayBuffer()),
+    primaryPdf.bytes,
+  );
+  const ownerPrivateDownload = await downloadPrivatePdf(
+    preparedPrimaryPdf.data.attachment.storagePath,
+    ownerToken,
+  );
+  assert.equal(ownerPrivateDownload.response.status, 200);
+  assert.deepEqual(ownerPrivateDownload.bytes, primaryPdf.bytes);
+  const deniedPrivateDownload = await downloadPrivatePdf(
+    preparedPrimaryPdf.data.attachment.storagePath,
+    learnerToken,
+  );
+  assert(
+    [400, 401, 403, 404].includes(deniedPrivateDownload.response.status),
+    `RLS do PDF aceitou terceiro sem acesso: HTTP ${deniedPrivateDownload.response.status}`,
+  );
+  const deniedAttachmentAccess = await request(
+    "/functions/v1/aralearn-course-api/app/lerCurso",
+    {
+      method: "POST",
+      token: learnerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        courseId,
+        view: "course_source_attachment",
+        attachmentOperation: "download",
+        expectedRevision: pdfCourseRevision,
+        sourceId,
+        sourceRevision: 1,
+        contentHash: primaryPdf.contentHash,
+      },
+    },
+  );
+  assertDenied(deniedAttachmentAccess, "terceiro sem acesso não obtém URL do PDF");
+
+  for (const [index, byteSize] of [
+    COURSE_SOURCE_PDF_MAX_BYTES,
+    COURSE_SOURCE_PDF_MAX_BYTES,
+    COURSE_SOURCE_PDF_MAX_BYTES,
+    4 * 1024 * 1024 - primaryPdf.byteSize,
+  ].entries()) {
+    const descriptor = await pdfDescriptor(byteSize, `quota-${index + 1}`);
+    const prepared = await preparePdf(descriptor, pdfCourseRevision);
+    assert.equal(prepared.data.uploadRequired, true);
+    uploadedPdfPaths.push(prepared.data.attachment.storagePath);
+    await uploadSignedPdf(prepared.data.signedUrl, descriptor.bytes);
+    const attached = await attachPdf(prepared.data, pdfCourseRevision);
+    assert.equal(attached.data.changed, true);
+    pdfCourseRevision = attached.data.courseRevision;
+  }
+  const fullPdfCatalog = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: pdfCourseRevision,
+    mode: "catalog",
+    limit: 10,
+  }, ownerToken);
+  assert.deepEqual(fullPdfCatalog.data.pdfStorage, {
+    uniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
+    maxUniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
+  });
+  const fullPdfDetail = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: pdfCourseRevision,
+    mode: "source",
+    sourceId,
+    limit: 1,
+  }, ownerToken);
+  assert.equal(fullPdfDetail.data.items[0].attachments.length, 5);
+  assert.equal(
+    fullPdfDetail.data.items[0].attachments.some(
+      ({ contentHash }) => contentHash === primaryPdf.contentHash,
+    ),
+    true,
+  );
+
+  const overQuotaPdf = await pdfDescriptor(512, "over-quota");
+  const rejectedQuota = await request(
+    "/functions/v1/aralearn-course-api/app/lerCurso",
+    {
+      method: "POST",
+      token: ownerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        courseId,
+        view: "course_source_attachment",
+        attachmentOperation: "prepare_upload",
+        expectedRevision: pdfCourseRevision,
+        sourceId,
+        sourceRevision: 1,
+        contentHash: overQuotaPdf.contentHash,
+        byteSize: overQuotaPdf.byteSize,
+        mediaType: overQuotaPdf.mediaType,
+      },
+    },
+  );
+  assert.equal(rejectedQuota.response.status, 422, failureMessage("cota de PDFs", rejectedQuota));
+  assert.equal(rejectedQuota.payload?.error?.code, "invalid_course_command");
+
+  const primaryStoragePath = `${courseId}/${primaryPdf.contentHash}.pdf`;
+  const learnerPdfDelete = await request(`/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}`, {
+    method: "DELETE",
+    token: learnerToken,
+    body: { prefixes: [primaryStoragePath] },
+  });
+  assert.equal(
+    learnerPdfDelete.response.status,
+    200,
+    failureMessage("pessoa com acesso de Estudo não remove PDF", learnerPdfDelete),
+  );
+  assert.deepEqual(learnerPdfDelete.payload, []);
+  const preservedAfterLearnerDelete = await downloadPrivatePdf(
+    primaryStoragePath,
+    ownerToken,
+  );
+  assert.equal(
+    preservedAfterLearnerDelete.response.status,
+    200,
+    "Uma pessoa com acesso de Estudo não pode remover o PDF do proprietário.",
+  );
+  const ownerPdfDelete = await request(
+    `/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}`,
+    {
+      method: "DELETE",
+      token: ownerToken,
+      body: { prefixes: [primaryStoragePath] },
+    },
+  );
+  assert.equal(
+    ownerPdfDelete.response.status,
+    200,
+    failureMessage("proprietário não remove PDF vinculado diretamente", ownerPdfDelete),
+  );
+  assert.deepEqual(ownerPdfDelete.payload, []);
+  const preservedAfterOwnerDelete = await downloadPrivatePdf(
+    primaryStoragePath,
+    ownerToken,
+  );
+  assert.equal(
+    preservedAfterOwnerDelete.response.status,
+    200,
+    "A sessão proprietária conseguiu apagar diretamente um PDF vinculado.",
+  );
+
+  const forcedMissingPdf = await request(
+    `/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}`,
+    {
+      method: "DELETE",
+      token: serverApiKey,
+      body: { prefixes: [primaryStoragePath] },
+    },
+  );
+  assert.equal(
+    forcedMissingPdf.response.status,
+    200,
+    failureMessage("simular objeto vinculado ausente", forcedMissingPdf),
+  );
+  const rejectedMissingLinkedPdf = await request(
+    "/functions/v1/aralearn-course-api/app/lerCurso",
+    {
+      method: "POST",
+      token: ownerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        courseId,
+        view: "course_source_attachment",
+        attachmentOperation: "prepare_upload",
+        expectedRevision: pdfCourseRevision,
+        sourceId,
+        sourceRevision: 1,
+        contentHash: primaryPdf.contentHash,
+        byteSize: primaryPdf.byteSize,
+        mediaType: primaryPdf.mediaType,
+      },
+    },
+  );
+  assert.equal(
+    rejectedMissingLinkedPdf.response.status,
+    503,
+    failureMessage("PDF vinculado ausente não reabre upload", rejectedMissingLinkedPdf),
+  );
+  assert.equal(rejectedMissingLinkedPdf.payload?.error?.code, "course_service_unavailable");
+
+  const avatarObjectPath = `${owner.id}/${crypto.randomUUID()}.webp`;
+  const avatarUpload = await fetch(
+    `${projectUrl}/storage/v1/object/${PERSON_AVATAR_BUCKET}/${avatarObjectPath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${ownerToken}`,
+        "Content-Type": "image/webp",
+        "x-upsert": "false",
+      },
+      body: new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0x57, 0x45, 0x42, 0x50]),
+    },
+  );
+  const avatarUploadPayload = await payload(avatarUpload);
+  assert.equal(
+    avatarUpload.status,
+    200,
+    `criar avatar para exclusão integral: HTTP ${avatarUpload.status}: ${JSON.stringify(avatarUploadPayload)}`,
+  );
+
+  const deletedAccount = await courseAction("excluirMinhaConta", {
+    confirmation: "EXCLUIR MINHA CONTA",
+  }, ownerToken);
+  assert.deepEqual(deletedAccount.data, {
+    contract: "aralearn.account-deletion.v1",
+    status: "deleted",
+  });
+  const repeatedAccountDeletion = await courseAction("excluirMinhaConta", {
+    confirmation: "EXCLUIR MINHA CONTA",
+  }, ownerToken);
+  assert.deepEqual(repeatedAccountDeletion.data, deletedAccount.data);
+  const remainingPdfs = await request(`/storage/v1/object/list/${COURSE_SOURCE_PDF_BUCKET}`, {
+    method: "POST",
+    token: serverApiKey,
+    body: {
+      prefix: `${courseId}/`,
+      limit: 100,
+      offset: 0,
+      sortBy: { column: "name", order: "asc" },
+    },
+  });
+  assert.equal(remainingPdfs.response.status, 200, failureMessage("listar PDFs restantes", remainingPdfs));
+  assert.deepEqual(remainingPdfs.payload, []);
+  const remainingAvatars = await request(`/storage/v1/object/list/${PERSON_AVATAR_BUCKET}`, {
+    method: "POST",
+    token: serverApiKey,
+    body: {
+      prefix: `${owner.id}/`,
+      limit: 100,
+      offset: 0,
+      sortBy: { column: "name", order: "asc" },
+    },
+  });
+  assert.equal(
+    remainingAvatars.response.status,
+    200,
+    failureMessage("listar avatares restantes", remainingAvatars),
+  );
+  assert.deepEqual(remainingAvatars.payload, []);
+
   console.log(
-    "Smoke local de Curso: Fontes, observações situadas, citações, RLS e estado pessoal aprovados.",
+    "Smoke local de Curso: PDFs imutáveis, exclusão integral, Fontes, observações, citações, RLS e estado pessoal aprovados.",
   );
 } finally {
+  await removeLocalPdfObjects(uploadedPdfPaths);
   await removeLocalUser(learner?.id);
   await removeLocalUser(owner?.id);
 }

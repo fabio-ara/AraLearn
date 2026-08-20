@@ -25,7 +25,6 @@ declare
     'authoring_pedagogical_blueprints',
     'authoring_pedagogical_blueprint_bindings',
     'authoring_microsequence_design_bindings',
-    'authoring_materialization_states',
     'authoring_materialization_manifests'
   ]::text[];
   v_expected text[] := array[
@@ -120,6 +119,8 @@ begin
       'lock table private.%I in share row exclusive mode',v_relation
     );
   end loop;
+  -- authoring_materialization_states fica fora desta lista: a migration 1400
+  -- já valida seus contadores isolados e os preserva para a limpeza legada.
   foreach v_relation in array v_legacy_relations
   loop
     execute format('select count(*) from private.%I', v_relation) into v_count;

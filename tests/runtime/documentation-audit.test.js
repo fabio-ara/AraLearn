@@ -16,7 +16,6 @@ test("documentação pública possui links, índice e exemplos neutros", () => {
 function temporaryDocumentation() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-doc-audit-"));
   fs.mkdirSync(path.join(temporaryRoot, "docs", "nested"), { recursive: true });
-  fs.mkdirSync(path.join(temporaryRoot, "authoring", "platforms"), { recursive: true });
   fs.mkdirSync(path.join(temporaryRoot, "src", "ui"), { recursive: true });
   fs.writeFileSync(
     path.join(temporaryRoot, "README.md"),
@@ -50,7 +49,7 @@ function temporaryDocumentation() {
       "[Matriz de conformidade técnica](matriz-conformidade-tecnica.md)",
       "[Princípios editoriais](principios-editoriais.md)",
       "[Estado corrente](estado-atual-e-roadmap.md)",
-      "[Inventário editorial](inventario-documentacao.md)",
+      "[Cobertura da documentação](inventario-documentacao.md)",
       "[Origens](origens-do-aralearn.md)",
       "[Revisão de literatura](revisao-de-literatura.md)",
       "",
@@ -93,7 +92,7 @@ function temporaryDocumentation() {
   );
   fs.writeFileSync(
     path.join(temporaryRoot, "docs", "inventario-documentacao.md"),
-    "# Inventário editorial\n",
+    "# Cobertura da documentação\n",
     "utf8"
   );
   fs.writeFileSync(
@@ -118,7 +117,6 @@ function temporaryDocumentation() {
     "utf8"
   );
   fs.writeFileSync(path.join(temporaryRoot, "docs", "nested", "detalhe.md"), "# Detalhe\n", "utf8");
-  fs.writeFileSync(path.join(temporaryRoot, "authoring", "README.md"), "# Autoria\n", "utf8");
   return temporaryRoot;
 }
 
@@ -315,19 +313,16 @@ test("auditoria detecta afirmações factuais legadas em prosa autoral", (contex
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(
-    path.join(temporaryRoot, "authoring", "README.md"),
+    path.join(temporaryRoot, "docs", "guia.md"),
     [
-      "# Autoria",
+      "# Guia",
       "",
       "A assistência por API no aplicativo repara recursos selecionados, repara um",
       "card inteiro ou cria exatamente um card.",
+      "",
+      "Os cursos oficiais ficam uma única vez no banco compartilhado.",
       ""
     ].join("\n"),
-    "utf8"
-  );
-  fs.writeFileSync(
-    path.join(temporaryRoot, "docs", "guia.md"),
-    "# Guia\n\nOs cursos oficiais ficam uma única vez\nno banco compartilhado.\n",
     "utf8"
   );
 
@@ -335,18 +330,18 @@ test("auditoria detecta afirmações factuais legadas em prosa autoral", (contex
   assert.ok(
     errors.some(
       (error) =>
-        error === "authoring/README.md:3: afirmação legada incorreta sobre a cardinalidade da assistência"
+        error === "docs/guia.md:3: afirmação legada incorreta sobre a cardinalidade da assistência"
     )
   );
   assert.ok(
     errors.some(
       (error) =>
-        error === "docs/guia.md:3: afirmação legada incorreta sobre o armazenamento dos cursos oficiais"
+        error === "docs/guia.md:6: afirmação legada incorreta sobre o armazenamento dos cursos oficiais"
     )
   );
 });
 
-test("auditoria não confunde histórico, material gerado ou literais com afirmações atuais", (context) => {
+test("auditoria não confunde histórico ou literais com afirmações atuais", (context) => {
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(
@@ -391,27 +386,19 @@ test("auditoria não confunde histórico, material gerado ou literais com afirma
     ].join("\n"),
     "utf8"
   );
-  const generatedDirectory = path.join(temporaryRoot, "docs", "downloads", "authoring");
-  fs.mkdirSync(generatedDirectory, { recursive: true });
-  fs.writeFileSync(
-    path.join(generatedDirectory, "aralearn-chatgpt-knowledge-core.md"),
-    "# Material gerado\n\nOs cursos oficiais ficam uma única vez no banco compartilhado.\n",
-    "utf8"
-  );
-
   assert.deepEqual(auditDocumentation({ root: temporaryRoot }), []);
 });
 
-test("auditoria percorre documentação e materiais de autoria aninhados", (context) => {
+test("auditoria percorre documentação aninhada", (context) => {
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(
-    path.join(temporaryRoot, "authoring", "platforms", "setup.md"),
-    "# Configuração\n\n[Ausente](../../missing.md)\n",
+    path.join(temporaryRoot, "docs", "nested", "setup.md"),
+    "# Configuração\n\n[Ausente](missing.md)\n",
     "utf8"
   );
   const errors = auditDocumentation({ root: temporaryRoot });
-  assert.ok(errors.some((error) => error.includes("authoring/platforms/setup.md:3: link inexistente")));
+  assert.ok(errors.some((error) => error.includes("docs/nested/setup.md:3: link inexistente")));
 });
 
 test("auditoria alcança texto de interface e fixture publicada não classificada", (context) => {

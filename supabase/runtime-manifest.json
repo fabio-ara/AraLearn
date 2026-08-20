@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260817210000",
+  "schemaRevision": "20260820101500",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -22,11 +22,16 @@
     "course-component-policy-v1",
     "course-sources-v1",
     "course-source-provenance-v1",
+    "course-source-pdf-attachments-v1",
     "course-anchored-annotations-v1",
     "course-annotation-subject-classification-v1",
     "course-personal-state-v2",
     "course-audit-cycle-v1",
     "course-authoring-corrections-v1",
-    "course-audit-annotation-links-v1"
+    "course-audit-annotation-links-v1",
+    "course-variant-comparisons-v1",
+    "course-variant-comparison-list-v1",
+    "course-authoring-analytics-v1",
+    "course-variant-factual-comparison-v1"
   ]
 }

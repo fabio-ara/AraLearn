@@ -61,12 +61,14 @@
     },
     {
       "courseId": "10000000-0000-4000-8000-000000000007",
-      "sourceKind": "publication_only",
+      "sourceKind": "root_and_publication",
+      "liveDocumentRef": 1,
       "artifactVariant": "plane_without_axes"
     },
     {
       "courseId": "10000000-0000-4000-8000-000000000008",
-      "sourceKind": "publication_only",
+      "sourceKind": "root_and_publication",
+      "liveDocumentRef": 1,
       "artifactVariant": "graph_and_relation_without_names"
     }
   ]

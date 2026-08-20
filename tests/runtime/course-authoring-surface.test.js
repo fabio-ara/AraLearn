@@ -557,7 +557,7 @@ function controllerFixture(overrides = {}) {
       };
     },
     async requestPartMaterialization() {
-      return { delivery: "chat" };
+      return { delivery: "clipboard" };
     },
     async clearCourse() {
       return undefined;
@@ -791,7 +791,7 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
     /<details class="course-authoring-recent-activity">[\s\S]*Relação entre grandezas\.[\s\S]*<\/details>/u
   );
   assert.match(root.innerHTML, />Ver etapas</u);
-  assert.match(root.innerHTML, /Levar pedido ao chat/u);
+  assert.match(root.innerHTML, /Copiar pedido para o ChatGPT/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
 });
@@ -1754,7 +1754,7 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
   assert.equal(calls[2].partId, PART_ID);
   assert.match(calls[2].newPartId, /^[0-9a-f-]{36}$/u);
   assert.equal(calls[2].newPartPosition, 1);
-  assert.equal(calls[2].title, "Relações iniciais — continuação");
+  assert.equal(calls[2].title, "Relações iniciais: continuação");
   assert.equal(calls[2].intent, "Materializar exemplos fundamentais.");
   assert.deepEqual(calls[2].microsequenceIds, ["micro-b"]);
 
@@ -1902,7 +1902,7 @@ test("pedido de materialização entrega texto natural e deep link sem fingir ex
     controller: controllerFixture({
       async requestPartMaterialization(value) {
         deliveries.push(structuredClone(value));
-        return { delivery: "chat" };
+        return { delivery: "clipboard" };
       }
     }),
     locationValue: {
@@ -1937,7 +1937,7 @@ test("pedido de materialização entrega texto natural e deep link sem fingir ex
   assert.match(deliveries[0].requestText, /Relações iniciais/u);
   assert.match(deliveries[0].requestText, /Registre somente o que for realmente produzido/u);
   assert.doesNotMatch(deliveries[0].requestText, /fila|já materializ/iu);
-  assert.match(root.innerHTML, /Pedido entregue ao chat conectado/u);
+  assert.match(root.innerHTML, /Pedido copiado.*Cole no ChatGPT/us);
   assert.doesNotMatch(root.innerHTML, /Parte materializada/u);
 });
 
@@ -2262,7 +2262,7 @@ test("renderer escapa conteúdo e CSS mantém enquadramento mobile-first sem rol
   assert.doesNotMatch(css, /overflow-y/iu);
 });
 
-test("Curso próprio expõe Auditoria, correções e Variantes sem embutir dados no envelope", () => {
+test("Curso próprio expõe Auditoria, Variantes e Pesquisa sem embutir dados no envelope", () => {
   const course = {
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -2286,6 +2286,7 @@ test("Curso próprio expõe Auditoria, correções e Variantes sem embutir dados
   assert.match(markup, /<span>Fontes<\/span>/u);
   assert.match(markup, /<span>Auditoria e correções<\/span>/u);
   assert.match(markup, /<span>Variantes<\/span>/u);
+  assert.match(markup, /<span>Pesquisa<\/span>/u);
   assert.match(markup, /data-course-sources-host/u);
   assert.doesNotMatch(markup, /studyUnit\.sources/u);
 });

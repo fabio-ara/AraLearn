@@ -266,9 +266,16 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
       source: {
         kind: "web_page",
         title: "Fonte verificada pelo MCP hospedado",
+        authorship: "AraLearn",
+        publicationDate: "2026-08-17",
+        identifier: null,
+        language: "pt-BR",
         citationText: "AraLearn. Fonte verificada pelo MCP hospedado, 2026.",
         url: "https://example.test/aralearn/mcp-hosted-source",
         editionOrVersion: "2026-08-17",
+        origin: "external",
+        availability: "open_access",
+        verificationStatus: "author_verified",
         studyVisibility: "citation_and_link"
       }
     }

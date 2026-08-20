@@ -35,26 +35,18 @@ if ([string]$packageManifest.version -cne $expectedAndroidVersionName) {
 }
 $expectedAndroidCertificateSha256 = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
 $requiredRuntimeModules = @(
-  'src/assist/cardassistancescope.js',
-  'src/generation/engine/cardauthoringschema.js',
-  'src/generation/providers/providerregistry.js',
-  'src/generation/providers/providertransport.js',
-  'src/generation/runtime/cardassistanceconfig.js',
-  'src/generation/runtime/cardassistancelaunchconfig.js',
-  'src/generation/runtime/cardassistanceruntime.js',
-  'src/generation/validation/cardassistancesemantics.js',
+  'src/persistence/authsessionstore.js',
+  'src/persistence/courselocalstore.js',
   'src/resources/kernel/packageRegistry.js',
   'src/resources/packages/index.js',
-  'src/ui/authoringassistantpanel.js',
-  'src/ui/cardassistanceuistate.js',
+  'src/study/coursestudyapplication.js',
+  'src/study/coursestudybridge.js',
+  'src/study/coursestudyrepository.js',
+  'src/study/coursestudyscreen.js',
+  'src/supabase/courseapiclient.js',
+  'src/supabase/coursecontroller.js',
+  'src/ui/courseauthoringsurface.js',
   'src/ui/oauthauthorizationconsent.js'
-)
-$requiredAuthoringAssets = @(
-  'docs/downloads/authoring/aralearn-authoring-chatgpt.zip',
-  'docs/downloads/authoring/aralearn-chatgpt-system-prompt.md',
-  'docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md',
-  'docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md',
-  'docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml'
 )
 
 function Add-Issue {
@@ -103,7 +95,9 @@ function Test-ArtifactPathForLegacy {
   $normalized = $Path.Replace('\', '/').ToLowerInvariant()
   if (
     $normalized -match '(^|/)(?:authoringapiclient|personalintegrationclient|personalintegrationspanel|interventionscopeguard)\.js$' -or
-    $normalized -match '(^|/)src/generation/(?:bottomup|topdown)(/|$)' -or
+    $normalized -match '(^|/)src/(?:assist|generation)(/|$)' -or
+    $normalized -match '(^|/)src/(?:persistence/workspacedesignofflinestore|supabase/(?:authoringworkspaceclient|learningspaces|remotecoursecatalog)|ui/(?:authoringworkspacesurface|learningspacespanel|lessoneditorapp|renderlessonscreen))\.js$' -or
+    $normalized -match '(^|/)docs/downloads/authoring(/|$)' -or
     $normalized -match '(^|/)aralearn-chatgpt-knowledge\.md$'
   ) {
     Add-Issue 'artifact.legacy-module' $Location 'Módulo ou material legado de autoria encontrado.'
@@ -117,7 +111,7 @@ function Test-TextForLegacySurface {
   )
 
   if (
-    $Text -match '(?i)\baralearn-authoring-api\b' -or
+    $Text -match '(?i)\baralearn-authoring-(?:action|api)\b' -or
     $Text -match '(?i)\bX-AraLearn-API-Key\b' -or
     $Text -match '(?i)\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})' -or
     $Text -match '(?i)\bARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET\b' -or
@@ -189,20 +183,13 @@ function Test-RequiredRuntimePaths {
   param(
     [Parameter(Mandatory)]$AvailablePaths,
     [Parameter(Mandatory)][string]$LocationPrefix,
-    [string]$RuntimePrefix = '',
-    [string]$PublicPrefix = ''
+    [string]$RuntimePrefix = ''
   )
 
   foreach ($relativePath in $requiredRuntimeModules) {
     $expectedPath = "$RuntimePrefix$relativePath".ToLowerInvariant()
     if (-not $AvailablePaths.Contains($expectedPath)) {
-      Add-Issue 'artifact.required-runtime' "$LocationPrefix/$expectedPath" 'Módulo obrigatório da assistência atômica ou do OAuth ausente.'
-    }
-  }
-  foreach ($relativePath in $requiredAuthoringAssets) {
-    $expectedPath = "$PublicPrefix$relativePath".ToLowerInvariant()
-    if (-not $AvailablePaths.Contains($expectedPath)) {
-      Add-Issue 'artifact.required-authoring-asset' "$LocationPrefix/$expectedPath" 'Material obrigatório do GPT com MCP OAuth ausente.'
+      Add-Issue 'artifact.required-runtime' "$LocationPrefix/$expectedPath" 'Módulo obrigatório do runtime canônico de Curso ausente.'
     }
   }
 }
@@ -320,11 +307,9 @@ function Test-RuntimeConfigurationContent {
   )
 
   $configuredOrigin = ''
-  $assistOrigins = @()
   if ($RuntimeConfigPresent) {
     $urlMatch = [regex]::Match($RuntimeConfigText, '"supabaseUrl"\s*:\s*"([^"]*)"')
     $keyMatch = [regex]::Match($RuntimeConfigText, '"supabasePublishableKey"\s*:\s*"([^"]*)"')
-    $assistMatch = [regex]::Match($RuntimeConfigText, '"assistAllowedOrigins"\s*:\s*(\[[\s\S]*?\])')
     $url = if ($urlMatch.Success) { $urlMatch.Groups[1].Value } else { '' }
     $key = if ($keyMatch.Success) { $keyMatch.Groups[1].Value } else { '' }
     $urlIsValid = Test-AraLearnProjectUrl -Url $url -AllowLocal
@@ -344,29 +329,6 @@ function Test-RuntimeConfigurationContent {
     if ($urlIsValid) {
       $configuredOrigin = ([Uri]$url).GetLeftPart([UriPartial]::Authority)
     }
-    if ($assistMatch.Success) {
-      try {
-        $assistOrigins = @($assistMatch.Groups[1].Value | ConvertFrom-Json)
-        foreach ($origin in $assistOrigins) {
-          $uri = [Uri]$origin
-          $localAndroidOrigin = $Platform -eq 'android' -and
-            $uri.Scheme -eq 'http' -and
-            @('127.0.0.1', 'localhost') -contains $uri.Host
-          if (
-            -not $uri.IsAbsoluteUri -or
-            ($uri.Scheme -ne 'https' -and -not $localAndroidOrigin) -or
-            $uri.AbsolutePath -ne '/'
-          ) {
-            Add-Issue 'config.assist-origin' $RuntimeConfigLocation 'Origem pública de assistência inválida.'
-          }
-        }
-      }
-      catch {
-        Add-Issue 'config.assist-origin' $RuntimeConfigLocation 'Lista de origens de assistência inválida.'
-        $assistOrigins = @()
-      }
-    }
-
     $expectedUrl = [string]($env:ARALEARN_SUPABASE_URL ?? '')
     $expectedKey = [string]($env:ARALEARN_SUPABASE_PUBLISHABLE_KEY ?? '')
     if ($expectedUrl -and $url.TrimEnd('/') -ne $expectedUrl.TrimEnd('/')) {
@@ -389,11 +351,6 @@ function Test-RuntimeConfigurationContent {
     }
     if ($configuredOrigin -and -not $IndexText.Contains($configuredOrigin)) {
       Add-Issue 'csp.origin' $IndexLocation 'CSP não contém a origem configurada do Supabase.'
-    }
-    foreach ($origin in $assistOrigins) {
-      if (-not $IndexText.Contains([string]$origin)) {
-        Add-Issue 'csp.assist-origin' $IndexLocation 'CSP não contém uma origem de assistência declarada no runtime.'
-      }
     }
   }
   else {
@@ -464,12 +421,9 @@ function Test-RuntimeDirectory {
   }
 
   if ($RequireCurrentRuntime) {
-    $publicRelative = ConvertTo-AraLearnRelativePath -Root $Root -Path $PublicRoot
-    $publicPrefix = if ($publicRelative -eq '.') { '' } else { "$($publicRelative.TrimEnd('/'))/" }
     Test-RequiredRuntimePaths `
       -AvailablePaths $availablePaths `
-      -LocationPrefix $Name `
-      -PublicPrefix $publicPrefix
+      -LocationPrefix $Name
   }
 
   $runtimeConfigPath = Join-Path $PublicRoot 'runtime-config.js'
@@ -587,8 +541,7 @@ function Test-ApkArchive {
       Test-RequiredRuntimePaths `
         -AvailablePaths $availablePaths `
         -LocationPrefix 'apk' `
-        -RuntimePrefix 'assets/www/' `
-        -PublicPrefix 'assets/www/public/'
+        -RuntimePrefix 'assets/www/'
     }
     Test-RuntimeConfigurationContent `
       -Name 'apk' `

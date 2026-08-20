@@ -64,6 +64,7 @@ create table private.course_variant_comparison_sets (
 create table private.course_variant_comparison_members (
   comparison_set_id uuid not null references private.course_variant_comparison_sets(id) on delete cascade,
   course_id uuid not null references public.courses(id) on delete cascade,
+  position smallint not null,
   label text not null,
   declared_parameter_differences jsonb not null default '[]'::jsonb,
   declared_component_policy_difference jsonb,
@@ -71,7 +72,9 @@ create table private.course_variant_comparison_members (
   detached_at timestamptz,
   created_at timestamptz not null default now(),
   primary key(comparison_set_id, course_id),
+  constraint course_variant_member_position_unique_v1 unique(comparison_set_id, position),
   unique(comparison_set_id, label),
+  constraint course_variant_member_position_v1 check(position between 0 and 7),
   constraint course_variant_member_label_v1 check(
     label = btrim(label) and char_length(label) between 1 and 80
     and label !~ '[[:cntrl:]]'
@@ -143,7 +146,6 @@ security definer
 set search_path = pg_catalog, public, private, auth, extensions
 as $function$
 declare
-  v_source_course public.courses%rowtype;
   v_source_plan private.course_instructional_plans%rowtype;
   v_target_course_id uuid := extensions.gen_random_uuid();
   v_difference jsonb;
@@ -173,8 +175,6 @@ begin
     raise exception 'Clonagem de variante inválida.' using errcode = '22023';
   end if;
 
-  select * into strict v_source_course
-  from public.courses course where course.id = p_source_course_id;
   select * into strict v_source_plan
   from private.course_instructional_plans plan
   where plan.course_id = p_source_course_id;
@@ -311,12 +311,15 @@ begin
   -- Fonte e Âncora são fatos de proveniência, não materializações. As revisões
   -- são copiadas sem Storage; os vínculos são recompostos contra o alvo novo.
   insert into private.course_source_revisions(
-    course_id,source_id,revision,status,kind,title,citation_text,url,
-    edition_or_version,study_visibility,actor_id
+    course_id,source_id,revision,status,kind,title,authorship,publication_date,
+    identifier,language,citation_text,url,edition_or_version,origin,availability,
+    verification_status,study_visibility,actor_id
   )
   select v_target_course_id,source.source_id,source.revision,source.status,
-    source.kind,source.title,source.citation_text,source.url,
-    source.edition_or_version,source.study_visibility,
+    source.kind,source.title,source.authorship,source.publication_date,
+    source.identifier,source.language,source.citation_text,source.url,
+    source.edition_or_version,source.origin,source.availability,
+    source.verification_status,source.study_visibility,
     case when source.status = 'unresolved_legacy' then null else p_actor_id end
   from private.course_source_revisions source
   where source.course_id = p_source_course_id;
@@ -500,6 +503,7 @@ declare
   v_checkpoint_id uuid;
   v_comparison_set_id uuid;
   v_variant jsonb;
+  v_position smallint;
   v_course_id uuid;
   v_result jsonb;
   v_receipt private.course_change_receipts%rowtype;
@@ -644,7 +648,10 @@ begin
     v_comparison_set_id,p_actor_id,v_checkpoint_id,p_source_course_id,
     v_source_course.revision
   );
-  for v_variant in select value from jsonb_array_elements(p_command->'variants')
+  for v_variant,v_position in
+    select variant.value,(variant.ordinality-1)::smallint
+    from jsonb_array_elements(p_command->'variants')
+      with ordinality variant(value,ordinality)
   loop
     v_course_id := private.clone_course_variant_from_source_v1(
       p_actor_id,p_source_course_id,v_variant->>'title',v_variant->>'goal',
@@ -653,16 +660,16 @@ begin
         then null else v_variant->'componentPolicyDifference' end
     );
     insert into private.course_variant_comparison_members(
-      comparison_set_id,course_id,label,declared_parameter_differences,
+      comparison_set_id,course_id,position,label,declared_parameter_differences,
       declared_component_policy_difference,attached_course_revision
     ) values(
-      v_comparison_set_id,v_course_id,v_variant->>'label',
+      v_comparison_set_id,v_course_id,v_position,v_variant->>'label',
       v_variant->'parameterDifferences',
       case when v_variant->'componentPolicyDifference' = 'null'::jsonb
         then null else v_variant->'componentPolicyDifference' end,1
     );
     v_members := v_members || jsonb_build_array(jsonb_build_object(
-      'courseId',v_course_id,'label',v_variant->>'label',
+      'courseId',v_course_id,'position',v_position,'label',v_variant->>'label',
       'title',v_variant->>'title','goal',v_variant->>'goal','revision',1
     ));
   end loop;
@@ -736,12 +743,11 @@ begin
     and comparison_set.source_course_id = p_source_course_id;
 
   select coalesce(jsonb_agg(jsonb_build_object(
-    'courseId',course.id,'label',member.label,
+    'courseId',course.id,'position',member.active_position,'label',member.label,
     'title',course.title,'goal',course.goal,
     'attachedCourseRevision',member.attached_course_revision,
     'currentCourseRevision',course.revision,
     'changedSinceAttached',course.revision <> member.attached_course_revision,
-    'detachedAt',member.detached_at,
     'parameterDifferences',member.declared_parameter_differences,
     'componentPolicyDifference',member.declared_component_policy_difference,
     'materialization',jsonb_build_object(
@@ -760,10 +766,22 @@ begin
         from private.course_authoring_part_materializations materialization
         where materialization.course_id = course.id)
     )
-  ) order by member.label),'[]'::jsonb) into v_members
-  from private.course_variant_comparison_members member
-  join public.courses course on course.id = member.course_id
-  where member.comparison_set_id = v_comparison_set.id;
+  ) order by member.active_position,course.id),'[]'::jsonb) into v_members
+  from (
+    select membership.*,
+      (row_number() over(
+        order by membership.position,membership.course_id
+      )-1)::smallint as active_position
+    from private.course_variant_comparison_members membership
+    where membership.comparison_set_id = v_comparison_set.id
+      and membership.detached_at is null
+  ) member
+  join public.courses course on course.id = member.course_id;
+
+  if jsonb_array_length(v_members) = 0 then
+    raise exception 'A comparação não possui variantes ativas.'
+      using errcode = 'PT404';
+  end if;
 
   return jsonb_build_object(
     'contract','aralearn.course-variant-comparison.v1',
@@ -970,6 +988,20 @@ begin
       and constraint_value.confdeltype = 'c'
   ) then
     raise exception 'Membro de variante não permite a exclusão do Curso.'
+      using errcode = '55000';
+  end if;
+  if not exists(
+    select 1 from pg_constraint constraint_value
+    where constraint_value.conrelid = 'private.course_variant_comparison_members'::regclass
+      and constraint_value.conname = 'course_variant_member_position_unique_v1'
+      and constraint_value.contype = 'u'
+  ) or not exists(
+    select 1 from pg_constraint constraint_value
+    where constraint_value.conrelid = 'private.course_variant_comparison_members'::regclass
+      and constraint_value.conname = 'course_variant_member_position_v1'
+      and constraint_value.contype = 'c'
+  ) then
+    raise exception 'A ordem das variantes comparáveis não está protegida.'
       using errcode = '55000';
   end if;
 end;

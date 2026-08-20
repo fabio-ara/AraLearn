@@ -297,6 +297,86 @@ test("compõe a tela de Estudo de Cursos e isola estado pessoal por courseId", a
   assert.equal(remoteStates.has(COURSE_B), true);
 });
 
+test("mantém a composição carregada até a revisão anunciada ser validada", async () => {
+  const previousCourse = course(COURSE_A, "a");
+  const currentCourse = structuredClone(previousCourse);
+  currentCourse.title = "Curso atualizado";
+  let announcedRevision = 3;
+  let currentCompositionIsValid = false;
+  const loadOptions = [];
+  const repository = new CourseStudyRepository({
+    bridge: {
+      async listAccessibleCourses() {
+        return {
+          items: [{
+            courseId: COURSE_A,
+            title: announcedRevision === 3 ? previousCourse.title : currentCourse.title,
+            goal: previousCourse.goal,
+            revision: announcedRevision,
+            moduleCount: 1,
+            lessonCount: 1,
+            microsequenceCount: 1,
+            studyUnitCount: 1,
+            completedStudyUnitCount: 0
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async loadCourse(_courseId, options) {
+        loadOptions.push(structuredClone(options));
+        if (announcedRevision === 4 && currentCompositionIsValid) {
+          return {
+            revision: 4,
+            document: { contract: "aralearn.course.v1", courses: [currentCourse] }
+          };
+        }
+        return {
+          revision: 3,
+          document: { contract: "aralearn.course.v1", courses: [previousCourse] },
+          stale: announcedRevision !== 3,
+          readOnly: announcedRevision !== 3
+        };
+      },
+      async clearCourse() {}
+    },
+    api: {
+      async listCourseReviewItems() {
+        return { items: [], hasMore: false, nextCursor: null };
+      },
+      async loadPersonalState() { return null; },
+      async mutatePersonalState() { throw new Error("não usado"); }
+    },
+    cache: cache()
+  });
+
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+  announcedRevision = 4;
+  await repository.refreshCourses();
+
+  assert.equal(repository.loadProject().courses[0].title, previousCourse.title);
+  assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), {
+    offline: false,
+    stale: true,
+    readOnly: true
+  });
+
+  const preserved = await repository.loadCourse(COURSE_A);
+  assert.equal(preserved.title, previousCourse.title);
+  assert.deepEqual(loadOptions.at(-1), { verifiedRevision: 4 });
+  assert.equal(repository.loadProject().courses[0].title, previousCourse.title);
+
+  currentCompositionIsValid = true;
+  const promoted = await repository.loadCourse(COURSE_A);
+  assert.equal(promoted.title, currentCourse.title);
+  assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), {
+    offline: false,
+    stale: false,
+    readOnly: false
+  });
+});
+
 test("carrega a fila Rever por páginas somente quando solicitado", async () => {
   const courseValue = course(COURSE_A, "a");
   const cursors = [];

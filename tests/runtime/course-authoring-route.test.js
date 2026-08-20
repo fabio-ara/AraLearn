@@ -13,7 +13,8 @@ const LETTERED_COURSE_ID = "abcdefab-cdef-4abc-8def-abcdefabcdef";
 
 test("rota canônica preserva courseId, seção real e um único alvo compatível", () => {
   for (const section of [
-    "planning", "parameters", "sources", "structure", "inspection", "observations", "variants", "people"
+    "planning", "parameters", "sources", "structure", "inspection", "observations", "variants",
+    "research", "people"
   ]) {
     const hash = buildCourseAuthoringRoute(COURSE_ID, { section });
     assert.equal(hash, `#/authoring/courses/${COURSE_ID}?section=${section}`);
@@ -36,6 +37,22 @@ test("rota canônica preserva courseId, seção real e um único alvo compatíve
       section: "inspection",
       target: { kind, id }
     });
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "planning",
+    authoringPartId: LETTERED_COURSE_ID
+  })), {
+    courseId: COURSE_ID,
+    section: "planning",
+    target: { kind: "authoring_part", id: LETTERED_COURSE_ID }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "research",
+    studyUnitId: "unidade-1"
+  })), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: { kind: "study_unit", id: "unidade-1" }
   });
   assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
     section: "inspection",

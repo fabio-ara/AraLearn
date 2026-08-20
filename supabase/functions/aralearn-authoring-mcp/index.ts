@@ -3,7 +3,8 @@ import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
 import { CourseSupabaseAdapter } from "../_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import {
   readSupabaseServerEnvironment,
-  resolveMcpOAuthEndpoints
+  resolveMcpOAuthEndpoints,
+  resolvePublicSupabaseUrl
 } from "../_shared/aralearn-authoring/supabaseEnvironment.js";
 
 const serverEnvironment = readSupabaseServerEnvironment((name: string) => Deno.env.get(name));
@@ -22,6 +23,7 @@ const publicAppUrl = String(
 
 const adapter = new CourseSupabaseAdapter({
   supabaseUrl: serverEnvironment.supabaseUrl,
+  publicSupabaseUrl: resolvePublicSupabaseUrl(serverEnvironment),
   oauthIssuer: authorizationServer,
   serverApiKey: serverEnvironment.serverApiKey,
   publishableKey: serverEnvironment.publishableKey,

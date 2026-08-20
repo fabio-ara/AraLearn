@@ -9,9 +9,12 @@ import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
   "../../src/domain/courseDesignParameters.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
   "../../src/resources/catalog/resourceCatalog.js";
+import { courseVariantComparisonFixture } from
+  "../support/courseVariantComparisonFixture.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
+const OTHER_COURSE_ID = "20000000-0000-4000-8000-000000000009";
 const PLAN_ID = "30000000-0000-4000-8000-000000000003";
 const PART_ID = "40000000-0000-4000-8000-000000000004";
 const MATERIALIZATION_ID = "50000000-0000-4000-8000-000000000005";
@@ -33,12 +36,14 @@ const ANNOTATION_ID = "80000000-0000-4000-8000-000000000008";
 
 function anchoredAnnotation({
   channel = "authoring_interface",
+  targetKind = "study_unit",
   targetId = "unit-a",
   contributorKind = "protected_person"
 } = {}) {
   const path = [
     { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
-    { kind: "study_unit", id: targetId, label: "Unidade", version: 2 }
+    { kind: targetKind, id: targetId,
+      label: targetKind === "source" ? "Fonte" : "Unidade", version: 2 }
   ];
   return {
     contract: "aralearn.course-anchored-annotation.v1",
@@ -53,7 +58,7 @@ function anchoredAnnotation({
       label: contributorKind === "self" ? "Você" : "Pessoa autora"
     },
     target: {
-      kind: "study_unit",
+      kind: targetKind,
       id: targetId,
       observedPath: path,
       currentAvailable: true,
@@ -104,7 +109,8 @@ function anchoredAnnotation({
   };
 }
 
-function anchoredQuery({ mode = "inbox", targetId = null } = {}) {
+function anchoredQuery({ mode = "inbox", targetKind = "study_unit", targetId = null,
+  includeDescendants = false } = {}) {
   return {
     mode,
     origins: [],
@@ -114,8 +120,8 @@ function anchoredQuery({ mode = "inbox", targetId = null } = {}) {
     includeUncategorized: true,
     subjectIds: [],
     hierarchy: targetId === null ? null : {
-      target: { kind: "study_unit", id: targetId },
-      includeDescendants: false
+      target: { kind: targetKind, id: targetId },
+      includeDescendants
     },
     annotationId: null
   };
@@ -219,6 +225,80 @@ test("configuração de serviço recusa schemes executáveis nos deep links", ()
     supabaseUrl: "http://127.0.0.1:54321",
     publicAppUrl: "http://127.0.0.1:4173/AraLearn/"
   }));
+});
+
+test("Pesquisa usa uma RPC limitada e acrescenta dicionário e links fora do banco", async () => {
+  const calls = [];
+  const query = {
+    datasets: ["sources"],
+    channels: [],
+    origins: [],
+    states: [],
+    from: null,
+    to: null,
+    limit: 40,
+    cursor: null
+  };
+  const value = adapter(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return json({
+      contract: "aralearn.course-authoring-analytics-rows.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      generatedAt: "2026-08-20T09:00:00.000Z",
+      query,
+      facts: [{
+        factId: "source:source-a:1",
+        dataset: "sources",
+        kind: "source_revision_created",
+        occurredAt: "2026-08-20T08:30:00.000Z",
+        courseRevision: 7,
+        channel: "authoring_interface",
+        origin: "author",
+        state: "active",
+        subject: { kind: "source", id: "source-a", label: "Fonte A" },
+        related: null,
+        values: { source_revision: 1 },
+        missingData: [],
+        deepLink: null
+      }],
+      summary: {
+        factCount: 1,
+        missingCourseRevisionCount: 0,
+        byDataset: [{ key: "sources", value: 1 }],
+        byKind: [{
+          dataset: "sources",
+          kind: "source_revision_created",
+          state: "active",
+          value: 1
+        }]
+      },
+      nextCursor: null
+    });
+  });
+  const page = await value.getCourseAuthoringAnalytics({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    query
+  });
+
+  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v1$/u);
+  assert.deepEqual(calls[0].body, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_course_revision: 7,
+    p_query: query
+  });
+  assert.equal(page.contract, "aralearn.course-authoring-analytics.v1");
+  assert.equal(page.metrics[0].id, "facts_by_kind");
+  assert.equal(
+    page.facts[0].deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+      "?section=sources&sourceId=source-a"
+  );
+  assert.equal(page.deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}?section=research`);
 });
 
 function auditCheck(dimension = "factual_quality", result = "failed", checkId =
@@ -327,9 +407,16 @@ function auditContextPage({
         status: "active",
         kind: "document",
         title: "Fonte focal",
+        authorship: "Autoria",
+        publicationDate: "2026",
+        identifier: null,
+        language: "pt-BR",
         citationText: null,
         url: null,
         editionOrVersion: null,
+        origin: "author_provided",
+        availability: "private",
+        verificationStatus: "author_verified",
         studyVisibility: "hidden",
         relation: "supported_by",
         sourceHash: "d".repeat(64),
@@ -1021,6 +1108,80 @@ test("observações owner preservam projeção protegida, links literais e parâ
   assert.equal(result.items[0].deepLink, "https://sql.example/observacao-literal");
 });
 
+test("Adapter consulta Fonte e envia a proveniência declarada da reformulação", async () => {
+  const calls = [];
+  const query = anchoredQuery({
+    mode: "target",
+    targetKind: "source",
+    targetId: "source-a",
+    includeDescendants: true
+  });
+  const consideredSourceLinks = [{
+    sourceId: "source-a",
+    sourceRevision: 2,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-a", anchorRevision: 3 }]
+  }];
+  const responseItem = anchoredAnnotation({
+    targetKind: "source",
+    targetId: "source-a",
+    contributorKind: "self"
+  });
+  responseItem.annotationVersion = 2;
+  responseItem.ownerResponse = {
+    text: "Interpretação reformulada.",
+    kind: "reformulation",
+    consideredSourceLinks,
+    updatedAt: "2026-08-20T12:00:00.000Z"
+  };
+  responseItem.timestamps.respondedAt = "2026-08-20T12:00:00.000Z";
+  const value = adapter(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (/get_owned_course_anchored_annotations_for_actor_v1$/u.test(url)) {
+      return json(anchoredPage(query, anchoredAnnotation({
+        targetKind: "source",
+        targetId: "source-a"
+      })));
+    }
+    return json(anchoredChange(responseItem, {
+      requestId: "request-source-reformulation-1"
+    }));
+  });
+
+  await value.getCourseAnchoredAnnotations({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 7,
+    annotationSetVersion: null,
+    query,
+    cursor: null,
+    limit: 24
+  });
+  assert.equal(calls[0].body.p_target_kind, "source");
+  assert.equal(calls[0].body.p_target_id, "source-a");
+  assert.equal(calls[0].body.p_include_descendants, true);
+
+  const command = {
+    type: "respond_to_anchored_annotation",
+    annotationId: ANNOTATION_ID,
+    expectedAnnotationVersion: 1,
+    ownerResponse: "Interpretação reformulada.",
+    responseKind: "reformulation",
+    consideredSourceLinks
+  };
+  const result = await value.executeCourseAnchoredAnnotationCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-source-reformulation-1",
+    expectedCourseRevision: null,
+    command
+  });
+  assert.deepEqual(calls[1].body.p_command, command);
+  assert.deepEqual(result.annotation.ownerResponse.consideredSourceLinks,
+    consideredSourceLinks);
+});
+
 test("observações owner limitam cada resposta a 262144 bytes", async () => {
   const value = adapter(async () => new Response("{}", {
     status: 200,
@@ -1501,6 +1662,129 @@ test("autentica sessão do aplicativo sem resolver governança paralela", async 
   assert.match(calls[0].url, /\/auth\/v1\/user$/u);
 });
 
+test("exclusão da conta usa o JWT pessoal no RPC e tolera repetição após resposta perdida", async () => {
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, init, body: JSON.parse(init.body) });
+    if (calls.length === 1) {
+      return json({ code: "PGRST000", message: "Resposta perdida" }, 503);
+    }
+    return json({ contract: "aralearn.account-deletion.v1", status: "deleted" });
+  }, { attempts: 2 });
+
+  const result = await value.deleteMyAccount({
+    accessToken: "session-delete",
+    confirmation: "EXCLUIR MINHA CONTA"
+  });
+  assert.deepEqual(result, {
+    contract: "aralearn.account-deletion.v1",
+    status: "deleted"
+  });
+  assert.equal(calls.length, 2);
+  for (const call of calls) {
+    assert.match(call.url, /\/rest\/v1\/rpc\/delete_my_account_v1$/u);
+    assert.equal(call.init.headers.apikey, "sb_publishable_test");
+    assert.equal(call.init.headers.Authorization, "Bearer session-delete");
+    assert.deepEqual(call.body, { p_confirmation: "EXCLUIR MINHA CONTA" });
+  }
+});
+
+test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa autenticada", async () => {
+  const calls = [];
+  let deletionCalls = 0;
+  const pdfName = `${"a".repeat(64)}.pdf`;
+  const avatarName = `${AUDIT_RUN_ID}.webp`;
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, init, body });
+    if (url.endsWith("/rest/v1/rpc/delete_my_account_v1")) {
+      deletionCalls += 1;
+      return deletionCalls === 1
+        ? json({ code: "AR001", message: "Remova os PDFs privados dos Cursos." }, 500)
+        : json({ contract: "aralearn.account-deletion.v1", status: "deleted" });
+    }
+    if (url.endsWith("/auth/v1/user")) return json({ id: USER_ID });
+    if (url.endsWith("/rest/v1/rpc/list_owned_courses_for_actor_v1")) {
+      return body.p_before_id == null
+        ? json({
+            contract: "aralearn.course-list.v1",
+            items: [{ courseId: COURSE_ID }],
+            hasMore: true,
+            nextCursor: {
+              beforeUpdatedAt: "2026-08-20T12:00:00Z",
+              beforeId: COURSE_ID
+            }
+          })
+        : json({
+            contract: "aralearn.course-list.v1",
+            items: [{ courseId: OTHER_COURSE_ID }],
+            hasMore: false,
+            nextCursor: null
+          });
+    }
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
+      return json(body.prefix === `${COURSE_ID}/` ? [{ name: pdfName }] : []);
+    }
+    if (url.endsWith("/storage/v1/object/list/person-avatars")) {
+      return json([{ name: avatarName }]);
+    }
+    if (url.endsWith("/storage/v1/object/course-source-pdfs") ||
+        url.endsWith("/storage/v1/object/person-avatars")) {
+      return json({});
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  const result = await value.deleteMyAccount({
+    accessToken: "session-delete",
+    confirmation: "EXCLUIR MINHA CONTA"
+  });
+  assert.equal(result.status, "deleted");
+  assert.equal(deletionCalls, 2);
+
+  const userCalls = calls.filter(({ url }) =>
+    url.endsWith("/delete_my_account_v1") || url.endsWith("/auth/v1/user"));
+  for (const call of userCalls) {
+    assert.equal(call.init.headers.apikey, "sb_publishable_test");
+    assert.equal(call.init.headers.Authorization, "Bearer session-delete");
+  }
+  const privilegedCalls = calls.filter(({ url }) =>
+    url.includes("list_owned_courses_for_actor_v1") || url.includes("/storage/v1/object/"));
+  assert.ok(privilegedCalls.length >= 1);
+  for (const call of privilegedCalls) {
+    assert.equal(call.init.headers.apikey, "sb_secret_test");
+    assert.equal(call.init.headers.Authorization, undefined);
+  }
+  const coursePages = calls.filter(({ url }) => url.endsWith("list_owned_courses_for_actor_v1"));
+  assert.deepEqual(coursePages.map(({ body }) => [body.p_actor_id, body.p_before_id]), [
+    [USER_ID, null],
+    [USER_ID, COURSE_ID]
+  ]);
+  const deletes = calls.filter(({ init, url }) =>
+    init.method === "DELETE" && url.includes("/storage/v1/object/"));
+  assert.deepEqual(deletes.map(({ body }) => body), [
+    { prefixes: [`${COURSE_ID}/${pdfName}`] },
+    { prefixes: [`${USER_ID}/${avatarName}`] }
+  ]);
+});
+
+test("exclusão não apaga Storage diante de violação relacional alheia", async () => {
+  const calls = [];
+  const value = adapter(async (url) => {
+    calls.push(url);
+    return json({ code: "23514", message: "Constraint relacional não satisfeita." }, 400);
+  });
+
+  await assert.rejects(
+    () => value.deleteMyAccount({
+      accessToken: "session-delete",
+      confirmation: "EXCLUIR MINHA CONTA"
+    }),
+    (error) => error.status === 422 && error.code === "invalid_course_command"
+  );
+  assert.deepEqual(calls, ["https://project.example/rest/v1/rpc/delete_my_account_v1"]);
+});
+
 test("lista por RPC de Curso e acrescenta deep link fora do banco", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {
@@ -1798,15 +2082,23 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
     courseRevision: 5,
     mode: "catalog",
     query: { sourceId: null, targetId: null, targetKind: null },
+    pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
     items: [{
       sourceId: "source-a",
       revision: 1,
       status: "active",
       kind: "web_page",
       title: "Fonte A",
+      authorship: "Autoria",
+      publicationDate: "2026",
+      identifier: null,
+      language: "pt-BR",
       citationText: "Fonte A, 2026.",
       url: "https://example.test/fonte-a",
       editionOrVersion: null,
+      origin: "external",
+      availability: "open_access",
+      verificationStatus: "author_verified",
       studyVisibility: "citation_and_link",
       anchorCount: 0,
       createdAt: "2026-08-17T10:00:00Z"
@@ -1997,6 +2289,311 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
         sourceId: legacySourceId,
         expectedSourceRevision: 1
       }
+    }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+});
+
+test("Adapter assina Storage após autorização e só confirma bytes PDF verificados", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\nfixture");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const storageOriginCourseId = "90000000-0000-4000-8000-000000000009";
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const calls = [];
+  let uploaded = false;
+  let linked = false;
+  const rawAccess = (operation) => ({
+    contract: "aralearn.course-source-attachment-access.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    operation,
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    storageOriginCourseId: operation === "download"
+      ? storageOriginCourseId
+      : COURSE_ID,
+    attachment: {
+      contentHash,
+      byteSize: pdfBytes.byteLength,
+      mediaType: "application/pdf",
+      storagePath: operation === "download"
+        ? `${storageOriginCourseId}/${contentHash}.pdf`
+        : storagePath
+    },
+    uploadRequired: operation === "prepare_upload" && !uploaded,
+    alreadyLinked: operation === "download" || linked,
+    signedUrl: null,
+    expiresAt: null
+  });
+  const value = adapter(async (url, init) => {
+    const body = init.body ? JSON.parse(init.body) : null;
+    calls.push({ url, method: init.method, headers: init.headers, body });
+    if (url.endsWith("/get_course_source_attachment_access_for_actor_v1")) {
+      return json(rawAccess(body.p_operation));
+    }
+    if (url.includes("/storage/v1/object/upload/sign/course-source-pdfs/")) {
+      return json({ url: "/object/upload/sign/course-source-pdfs/file.pdf?token=upload-token" });
+    }
+    if (url.includes("/storage/v1/object/sign/course-source-pdfs/")) {
+      return json({ signedURL: "/object/sign/course-source-pdfs/file.pdf?token=download-token" });
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: {
+          "Content-Length": String(pdfBytes.byteLength),
+          "Content-Type": "application/pdf"
+        }
+      });
+    }
+    if (url.endsWith("/attach_course_source_pdf_for_actor_v1")) {
+      linked = true;
+      return json({
+        contract: "aralearn.course-source-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-source-pdf-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 }
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  }, { publicSupabaseUrl: "http://127.0.0.1:54321" });
+  const principal = { actorId: USER_ID, authenticationKind: "application" };
+  const prepared = await value.getCourseSourceAttachmentAccess({
+    principal,
+    courseId: COURSE_ID,
+    expectedRevision: 5,
+    operation: "prepare_upload",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash,
+    byteSize: pdfBytes.byteLength,
+    mediaType: "application/pdf"
+  });
+  assert.equal(prepared.uploadRequired, true);
+  assert.match(prepared.signedUrl, /token=upload-token/u);
+  assert.equal(new URL(prepared.signedUrl).origin, "http://127.0.0.1:54321");
+  assert.deepEqual(calls[0].body, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_course_revision: 5,
+    p_operation: "prepare_upload",
+    p_source_id: "source-pdf",
+    p_source_revision: 2,
+    p_content_hash: contentHash,
+    p_byte_size: pdfBytes.byteLength,
+    p_media_type: "application/pdf"
+  });
+  assert.match(calls[1].url, new RegExp(`${COURSE_ID}/${contentHash}\\.pdf$`, "u"));
+  assert.equal(new Headers(calls[1].headers).get("apikey"), "sb_secret_test");
+
+  const downloaded = await value.getCourseSourceAttachmentAccess({
+    principal,
+    courseId: COURSE_ID,
+    expectedRevision: 5,
+    operation: "download",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash
+  });
+  assert.match(downloaded.signedUrl, /token=download-token/u);
+  assert.equal(new URL(downloaded.signedUrl).origin, "http://127.0.0.1:54321");
+  assert.equal(new URL(downloaded.signedUrl).searchParams.has("download"), true);
+  assert.deepEqual(calls[3].body, { expiresIn: 60 });
+  assert.match(calls[3].url, new RegExp(`${storageOriginCourseId}/${contentHash}\\.pdf$`, "u"));
+
+  uploaded = true;
+  const changed = await value.executeCourseSourceCommand({
+    principal,
+    courseId: COURSE_ID,
+    requestId: "request-source-pdf-1",
+    expectedCourseRevision: 5,
+    command: {
+      type: "attach_pdf",
+      sourceId: "source-pdf",
+      sourceRevision: 2,
+      attachment: rawAccess("prepare_upload").attachment
+    }
+  });
+  assert.equal(changed.changed, true);
+  assert.match(calls.at(-1).url, /attach_course_source_pdf_for_actor_v1$/u);
+  assert.equal(calls.at(-1).body.p_channel, "application");
+  const verifiedObjectCall = calls.find(({ url }) =>
+    url.includes("/storage/v1/object/authenticated/course-source-pdfs/"));
+  assert(verifiedObjectCall);
+  assert.equal(verifiedObjectCall.method, "GET");
+  assert.equal(new Headers(verifiedObjectCall.headers).get("apikey"), "sb_secret_test");
+  assert.equal(new Headers(verifiedObjectCall.headers).get("cache-control"), "no-store");
+});
+
+test("Adapter recusa conteúdo adulterado, cabeçalho inválido e objeto acima de 20 MiB", async () => {
+  const declaredPdf = new TextEncoder().encode("%PDF-1.7\nalpha");
+  const otherPdf = new TextEncoder().encode("%PDF-1.7\nbravo");
+  const invalidHeader = new TextEncoder().encode("NOTPD1.7\nalpha");
+  assert.equal(otherPdf.byteLength, declaredPdf.byteLength);
+  assert.equal(invalidHeader.byteLength, declaredPdf.byteLength);
+
+  const cases = [
+    {
+      label: "hash divergente",
+      declaredBytes: declaredPdf,
+      objectBytes: otherPdf,
+      contentLength: otherPdf.byteLength
+    },
+    {
+      label: "cabeçalho inválido",
+      declaredBytes: invalidHeader,
+      objectBytes: invalidHeader,
+      contentLength: invalidHeader.byteLength
+    },
+    {
+      label: "objeto acima do limite",
+      declaredBytes: declaredPdf,
+      objectBytes: declaredPdf,
+      contentLength: 20 * 1024 * 1024 + 1
+    }
+  ];
+
+  for (const [caseIndex, current] of cases.entries()) {
+    const contentHash = createHash("sha256").update(current.declaredBytes).digest("hex");
+    const attachment = {
+      contentHash,
+      byteSize: current.declaredBytes.byteLength,
+      mediaType: "application/pdf",
+      storagePath: `${COURSE_ID}/${contentHash}.pdf`
+    };
+    let attachRpcCalled = false;
+    const value = adapter(async (url) => {
+      if (url.endsWith("/get_course_source_attachment_access_for_actor_v1")) {
+        return json({
+          contract: "aralearn.course-source-attachment-access.v1",
+          courseId: COURSE_ID,
+          courseRevision: 5,
+          operation: "prepare_upload",
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          storageOriginCourseId: COURSE_ID,
+          attachment,
+          uploadRequired: false,
+          alreadyLinked: false,
+          signedUrl: null,
+          expiresAt: null
+        });
+      }
+      if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+        return new Response(current.objectBytes, {
+          headers: {
+            "Content-Length": String(current.contentLength),
+            "Content-Type": "application/pdf"
+          }
+        });
+      }
+      if (url.endsWith("/attach_course_source_pdf_for_actor_v1")) {
+        attachRpcCalled = true;
+      }
+      assert.fail(`Requisição inesperada em ${current.label}: ${url}`);
+    });
+    await assert.rejects(
+      () => value.executeCourseSourceCommand({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        requestId: `request-pdf-invalid-${caseIndex}`,
+        expectedCourseRevision: 5,
+        command: {
+          type: "attach_pdf",
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          attachment
+        }
+      }),
+      (error) => error.status === 422 && error.code === "invalid_course_source_pdf",
+      current.label
+    );
+    assert.equal(attachRpcCalled, false, current.label);
+  }
+});
+
+test("replay de PDF alcança o recibo após a revisão avançar sem reler o objeto", async () => {
+  const contentHash = "a".repeat(64);
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push(url);
+    if (url.endsWith("/get_course_source_attachment_access_for_actor_v1")) {
+      return json({ code: "40001", message: "O Curso mudou." }, 409);
+    }
+    if (url.endsWith("/attach_course_source_pdf_for_actor_v1")) {
+      const body = JSON.parse(init.body);
+      assert.equal(body.p_request_id, "request-source-pdf-replay-1");
+      return json({
+        contract: "aralearn.course-source-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: body.p_request_id,
+        idempotent: true,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 }
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.executeCourseSourceCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-source-pdf-replay-1",
+    expectedCourseRevision: 5,
+    command: {
+      type: "attach_pdf",
+      sourceId: "source-pdf",
+      sourceRevision: 2,
+      attachment: {
+        contentHash,
+        byteSize: 1_024,
+        mediaType: "application/pdf",
+        storagePath: `${COURSE_ID}/${contentHash}.pdf`
+      }
+    }
+  });
+  assert.equal(result.idempotent, true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls.some((url) => url.includes("/storage/v1/object/")), false);
+});
+
+test("Adapter entrega o DTO factual de variantes sem projeção paralela", async () => {
+  const comparisonSetId = "81000000-0000-4000-8000-000000000008";
+  const expected = courseVariantComparisonFixture({
+    sourceCourseId: COURSE_ID,
+    comparisonSetId,
+    courseRevision: 7
+  });
+  let call = null;
+  const value = adapter(async (url, init) => {
+    call = { url, body: JSON.parse(init.body) };
+    return json(expected);
+  });
+  const result = await value.getCourseVariantComparison({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    comparisonSetId,
+    expectedCourseRevision: 7
+  });
+  assert.deepEqual(result, expected);
+  assert.match(call.url, /get_owned_course_variant_comparison_for_actor_v1$/u);
+  assert.deepEqual(call.body, {
+    p_actor_id: USER_ID,
+    p_source_course_id: COURSE_ID,
+    p_expected_course_revision: 7,
+    p_comparison_set_id: comparisonSetId
+  });
+
+  const invalid = structuredClone(expected);
+  invalid.members[0].references.fingerprint = "não é hash";
+  await assert.rejects(
+    adapter(async () => json(invalid)).getCourseVariantComparison({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      comparisonSetId,
+      expectedCourseRevision: 7
     }),
     (error) => error.status === 503 && error.code === "course_service_unavailable"
   );
@@ -2347,6 +2944,64 @@ test("leitura retomável usa RPC owner-only e rejeita campos fora do DTO", async
   const overlappingPolicyAdapter = adapter(async () => json(overlappingPolicy));
   await assert.rejects(
     () => overlappingPolicyAdapter.getCourseAuthoringPartMaterialization({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }),
+    /leitura da materialização/u
+  );
+});
+
+test("leitura retomável redige aplicações internas sem ocultar os fatos públicos", async () => {
+  const fixture = runningMaterialization();
+  const completedStep = fixture.materialization.steps[0];
+  Object.assign(completedStep, {
+    status: "completed",
+    version: 2,
+    resultFacts: {
+      studyUnitCount: 1,
+      designApplication: { sealed: true },
+      sourceAttributionApplication: { sealed: true }
+    },
+    updatedAt: "2026-08-17T10:01:00Z",
+    completedAt: "2026-08-17T10:01:00Z"
+  });
+  const pendingStep = {
+    id: "50000000-0000-4000-8000-000000000005",
+    position: 1,
+    kind: "validation",
+    targetDidacticMicrosequenceId: null,
+    productionPosition: null,
+    status: "pending",
+    version: 1,
+    resultFacts: {},
+    updatedAt: "2026-08-17T10:00:00Z",
+    completedAt: null
+  };
+  fixture.courseRevision = 6;
+  fixture.materialization.version = 2;
+  fixture.materialization.updatedAt = "2026-08-17T10:01:00Z";
+  fixture.materialization.steps = [completedStep, pendingStep];
+  fixture.materialization.nextPendingStep = pendingStep;
+
+  const value = adapter(async () => json(fixture));
+  const result = await value.getCourseAuthoringPartMaterialization({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID
+  });
+  assert.deepEqual(result.materialization.steps[0].resultFacts, {
+    studyUnitCount: 1
+  });
+  assert.equal(JSON.stringify(result).includes("designApplication"), false);
+  assert.equal(JSON.stringify(result).includes("sourceAttributionApplication"), false);
+
+  const invalid = structuredClone(fixture);
+  invalid.materialization.steps[0].resultFacts.content = { duplicated: true };
+  await assert.rejects(
+    () => adapter(async () => json(invalid)).getCourseAuthoringPartMaterialization({
       principal: { actorId: USER_ID },
       courseId: COURSE_ID,
       authoringPartId: PART_ID,
