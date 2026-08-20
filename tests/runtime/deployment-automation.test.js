@@ -182,7 +182,10 @@ test("planos de implantação cobrem somente os três perfis suportados", {
   skip: !powerShellAvailable
 }, () => {
   const expectedSteps = {
-    GitHubPagesManagedSupabase: ["github-variables", "verify-artifact", "publish", "verify-published"],
+    GitHubPagesManagedSupabase: [
+      "github-variables", "verify-artifact", "integrate-main", "verify-hosted",
+      "publish", "verify-published"
+    ],
     StaticHostManagedSupabase: ["build", "verify-artifact", "upload", "verify-published"],
     LocalDevelopment: ["start-supabase", "reset-local", "stop"]
   };
@@ -223,6 +226,26 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     assert.match(apply.command, /-DeployAuthoringFunctions/u);
     assert.match(apply.command, /-PublicAppUrl https:\/\//u);
   }
+
+  const githubPlan = parseJsonOutput(
+    runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"])
+  );
+  const githubStepIds = githubPlan.steps.map(({ id }) => id);
+  const position = (id) => githubStepIds.indexOf(id);
+  assert.ok(position("validate") < position("integrate-main"));
+  assert.ok(position("integrate-main") < position("database-apply"));
+  assert.ok(position("database-apply") < position("verify-hosted"));
+  assert.ok(position("verify-hosted") < position("publish"));
+  assert.ok(position("publish") < position("verify-published"));
+
+  const githubAndroidPlan = parseJsonOutput(runScript(scripts.plan, [
+    "-Profile", "GitHubPagesManagedSupabase", "-IncludeAndroid", "-AsJson"
+  ]));
+  const githubAndroidStepIds = githubAndroidPlan.steps.map(({ id }) => id);
+  assert.ok(
+    githubAndroidStepIds.indexOf("android-verify") <
+      githubAndroidStepIds.indexOf("integrate-main")
+  );
 });
 
 test("executor de implantação verifica cada comando nativo antes de avançar", () => {

@@ -2059,6 +2059,10 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_owner_response_v1[check]",
+      "caseId": "course-anchored-annotations"
+    },
+    {
       "object": "constraint:private.course_anchored_annotations/course_anchored_annotations_pkey[primary_key]",
       "caseId": "course-anchored-annotations"
     },
@@ -2976,6 +2980,14 @@
     },
     {
       "object": "constraint:private.course_variant_comparison_members/course_variant_member_label_v1[check]",
+      "caseId": "course-variant-comparisons"
+    },
+    {
+      "object": "constraint:private.course_variant_comparison_members/course_variant_member_position_unique_v1[unique]",
+      "caseId": "course-variant-comparisons"
+    },
+    {
+      "object": "constraint:private.course_variant_comparison_members/course_variant_member_position_v1[check]",
       "caseId": "course-variant-comparisons"
     },
     {
@@ -4200,6 +4212,10 @@
     },
     {
       "object": "function:private.course_annotation_hash_v1(p_value jsonb)",
+      "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.course_annotation_source_links_resolved_v1(p_course_id uuid, p_links jsonb)",
       "caseId": "course-anchored-annotations"
     },
     {
@@ -6872,6 +6888,10 @@
     },
     {
       "object": "index:private.course_variant_comparison_members/course_variant_comparison_members_pkey",
+      "caseId": "course-variant-comparisons"
+    },
+    {
+      "object": "index:private.course_variant_comparison_members/course_variant_member_position_unique_v1",
       "caseId": "course-variant-comparisons"
     },
     {
