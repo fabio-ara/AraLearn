@@ -311,6 +311,20 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   );
 });
 
+test("CI só considera a API de Cursos pronta depois de alcançar seu handler", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  const readiness = source.slice(
+    source.indexOf("COURSE_API_URL="),
+    source.indexOf("npm run test:supabase:smoke")
+  );
+  assert.match(readiness, /--request GET/u);
+  assert.match(readiness, /\[ "\$status_code" = 405 \]/u);
+  assert.match(readiness, /"code":"method_not_allowed"/u);
+  assert.match(readiness, /content-type: application\/json; charset=utf-8/u);
+  assert.match(readiness, /access-control-allow-origin: http:\/\/127\.0\.0\.1:4182/u);
+  assert.doesNotMatch(readiness, /--request OPTIONS|Access-Control-Request-Method/u);
+});
+
 test("smoke real de Curso cobre proveniência redigida sem enviar a chave como Bearer", () => {
   const source = fs.readFileSync(scripts.courseRuntimeSmoke, "utf8");
   assert.match(source, /resolveSupabaseAdministrativeEnvironment/u);
