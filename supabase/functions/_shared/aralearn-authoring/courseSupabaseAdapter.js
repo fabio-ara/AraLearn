@@ -7,9 +7,11 @@ import {
   normalizeCourseAuthoringPlanCommand
 } from "../aralearn/runtime/domain/courseAuthoringPlan.js";
 import {
+  COURSE_COMPONENT_CATALOG_VERSION,
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   CourseDesignParametersError,
   normalizeCourseAuthoringGuidanceInterpretation,
+  normalizeCourseComponentPolicy,
   normalizeCourseDesignChange,
   normalizeCourseDesignParameterValue,
   normalizeCourseDesignRead
@@ -470,7 +472,7 @@ function normalizeInspectionPage(
   };
 }
 
-function normalizeEffectiveComponentPolicy(value, resourceRuntime) {
+function normalizeEffectiveComponentPolicy(value) {
   if (!exactRecord(value, new Set([
     "changeId", "policy", "origin", "reason", "sourceScope"
   ])) || value.changeId != null && !decimalIdentity(value.changeId) ||
@@ -489,7 +491,7 @@ function normalizeEffectiveComponentPolicy(value, resourceRuntime) {
   }
   let policy;
   try {
-    policy = normalizeComponentPolicy(value.policy, resourceRuntime);
+    policy = normalizeCourseComponentPolicy(value.policy);
   } catch {
     invalidMaterializationRead();
   }
@@ -508,8 +510,7 @@ function normalizeEffectiveComponentPolicy(value, resourceRuntime) {
 
 function normalizeMaterializationDesignContext(
   value,
-  { courseId, authoringPartId },
-  resourceRuntime
+  { courseId, authoringPartId }
 ) {
   const sourceContext = normalizeCourseSourcesDatabaseValue(() =>
     normalizeCourseSourceContext(value)
@@ -524,7 +525,7 @@ function normalizeMaterializationDesignContext(
       String(sourceContext.courseId || "").trim().toLowerCase() !== courseId ||
       String(sourceContext.authoringPartId || "").trim().toLowerCase() !== authoringPartId ||
       !positiveSafeInteger(sourceContext.courseRevision) ||
-      sourceContext.componentCatalogVersion !== resourceRuntime.RESOURCE_CATALOG.catalogVersion ||
+      sourceContext.componentCatalogVersion !== COURSE_COMPONENT_CATALOG_VERSION ||
       !Array.isArray(sourceContext.instructionalAnalysisUnits) ||
       sourceContext.instructionalAnalysisUnits.length > 256 ||
       !Array.isArray(sourceContext.evidenceRequirements) ||
@@ -683,7 +684,7 @@ function normalizeMaterializationDesignContext(
       evidenceRequirementIds: [...target.evidenceRequirementIds],
       parameters,
       guidanceRevisionIds: [...target.guidanceRevisionIds],
-      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy, resourceRuntime),
+      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy),
       sourceAttributions
     };
   });
@@ -747,8 +748,7 @@ function normalizeMaterializationStep(value) {
 
 function normalizePartMaterialization(
   value,
-  { courseId, authoringPartId, materializationId },
-  resourceRuntime
+  { courseId, authoringPartId, materializationId }
 ) {
   const topFields = new Set([
     "contract", "courseId", "courseRevision", "authoringPartId", "materialization"
@@ -782,7 +782,7 @@ function normalizePartMaterialization(
   const designContext = normalizeMaterializationDesignContext(source.designContext, {
     courseId,
     authoringPartId
-  }, resourceRuntime);
+  });
   const steps = source.steps.map(normalizeMaterializationStep);
   if (steps.some((step, index) => step.position !== index) ||
       new Set(steps.map((step) => step.id)).size !== steps.length) {
@@ -861,7 +861,7 @@ function normalizeMaterializationChange(value, {
   operation,
   channel,
   stepId = null
-}, resourceRuntime) {
+}) {
   if (!exactRecord(value, MATERIALIZATION_CHANGE_FIELDS) ||
       value.contract !== "aralearn.course-authoring-materialization-change.v1" ||
       String(value.courseId || "").trim().toLowerCase() !== courseId ||
@@ -906,7 +906,7 @@ function normalizeMaterializationChange(value, {
   const designContext = normalizeMaterializationDesignContext(source.designContext, {
     courseId,
     authoringPartId
-  }, resourceRuntime);
+  });
 
   let step = null;
   if (value.step != null) {
@@ -2741,14 +2741,11 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt }
     ));
-    const resourceRuntime = await import(
-      "../aralearn/runtime/resources/catalog/resourceCatalog.js"
-    );
     return normalizePartMaterialization(result, {
       courseId,
       authoringPartId,
       materializationId
-    }, resourceRuntime);
+    });
   }
 
   async listCourseEntities({
@@ -3363,9 +3360,6 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt, timeoutMs: 40_000 }
     ));
-    const resourceRuntime = await import(
-      "../aralearn/runtime/resources/catalog/resourceCatalog.js"
-    );
     const normalized = normalizeMaterializationChange(result, {
       courseId,
       authoringPartId,
@@ -3373,7 +3367,7 @@ export class CourseSupabaseAdapter {
       operation,
       channel: authoringChannel(principal),
       stepId: operation === "record_step" ? payload.stepId : null
-    }, resourceRuntime);
+    });
     return withDeepLink(normalized, this.publicAppUrl, "planning");
   }
 

@@ -375,6 +375,58 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
   );
 });
 
+test("repete uma vez a operação idempotente quando a Edge reinicia", async () => {
+  const requests = [];
+  const { client } = clientWithFetch(async (url, init) => {
+    requests.push({ url, body: JSON.parse(init.body) });
+    if (requests.length === 1) {
+      return jsonResponse({ message: "An invalid response was received from the upstream server" }, 502);
+    }
+    return jsonResponse({ ok: true, data: { changed: true } });
+  });
+
+  assert.deepEqual(await client.executeCourseAction("alterarCurso", {
+    requestId: "request-course-edge-retry-1"
+  }), { changed: true });
+  assert.equal(requests.length, 2);
+  assert.deepEqual(requests[1], requests[0]);
+});
+
+test("não repete alteração sem identidade diante de resposta ambígua", async () => {
+  let requestCount = 0;
+  const { client } = clientWithFetch(async () => {
+    requestCount += 1;
+    return jsonResponse({ message: "An invalid response was received from the upstream server" }, 502);
+  });
+
+  await assert.rejects(
+    client.executeCourseAction("gerirPessoas", { operation: "update_profile" }),
+    (error) => error.status === 502
+  );
+  assert.equal(requestCount, 1);
+});
+
+test("não repete resposta transitória que contém erro de aplicação", async () => {
+  let requestCount = 0;
+  const { client } = clientWithFetch(async () => {
+    requestCount += 1;
+    return jsonResponse({
+      error: {
+        code: "course_service_unavailable",
+        message: "O Curso não está disponível."
+      }
+    }, 503);
+  });
+
+  await assert.rejects(
+    client.executeCourseAction("alterarCurso", {
+      requestId: "request-course-no-application-retry-1"
+    }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+  assert.equal(requestCount, 1);
+});
+
 test("parâmetros usam a mesma operação Edge do MCP com escopo concreto e CAS", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
