@@ -1,18 +1,18 @@
 # Implantação do AraLearn
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
-de borda, site estático e aplicativo Android. A versão 0.0.23 só está pronta
-quando o ambiente hospedado oferece a revisão de esquema exigida e os artefatos
-foram produzidos a partir da mesma revisão validada do Git.
+de borda, site estático e aplicativo Android. O banco, as funções correntes, o
+site e o APK assinado da versão 0.0.23 são produzidos a partir da mesma revisão
+validada do Git e usam a revisão de esquema `20260820101500`.
 
 Essa revisão instala a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
 catálogo de 32 componentes didáticos.
 
-Na atualização de 0.0.22 para 0.0.23, o contrato antigo deve permanecer ativo
-enquanto a revisão nova entra em `main` e conclui a validação ampla. O corte do
-banco começa somente com essa revisão aprovada e inicia a janela de manutenção
-descrita adiante.
+Na atualização de 0.0.22 para 0.0.23, o contrato antigo permaneceu ativo
+enquanto a revisão nova entrou em `main` e concluiu a validação ampla. O corte
+do banco começou somente com essa revisão aprovada e abriu a janela de
+manutenção descrita adiante. Instalações Android 0.0.22 precisam ser atualizadas.
 
 ## Ambientes apoiados
 
@@ -199,6 +199,10 @@ aralearn-course-api
 aralearn-authoring-mcp
 ```
 
+Depois da aprovação do Pages 0.0.23, o ambiente hospedado conserva somente
+essas duas funções correntes. Os pontos de entrada da versão anterior foram
+retirados e o manifesto, o site e o OAuth MCP foram verificados novamente.
+
 Em seguida valida CORS do Pages e o fluxo OAuth hospedado. Os pontos de entrada
 da versão 0.0.22 permanecem implantados até o novo site entrar no ar, mas o
 banco pós-corte já não oferece seus contratos. Site e APK 0.0.22 ficam
@@ -291,7 +295,8 @@ Para uma entrega que muda o contrato remoto, a sequência segura é:
 8. comprovar o manifesto e os testes hospedados;
 9. disparar manualmente Pages e Android para o mesmo SHA já aprovado;
 10. verificar o endereço publicado, a Release e o APK baixado;
-11. retirar as três funções substituídas e repetir a verificação hospedada.
+11. retirar as funções substituídas ainda implantadas e repetir a verificação
+    hospedada.
 
 O site só é promovido depois de os serviços remotos aceitarem seu manifesto. A
 Release Android só parte de uma validação verde da ponta corrente de `main`.
@@ -300,17 +305,10 @@ verificação hospedada; depois do corte, a execução manual reutiliza a valida
 já aprovada para o mesmo SHA. Essa ordem reduz a indisponibilidade do cliente
 conectado `0.0.22` ao intervalo entre o corte e a publicação efetiva.
 
-Depois que o Pages 0.0.23 estiver acessível e aprovado, retire os pontos de
-entrada que serviam exclusivamente à versão anterior:
-
-```powershell
-npx.cmd --yes supabase@2.109.1 functions delete aralearn-course-revisions --project-ref <project-ref> --yes
-npx.cmd --yes supabase@2.109.1 functions delete aralearn-authoring-action --project-ref <project-ref> --yes
-npx.cmd --yes supabase@2.109.1 functions delete aralearn-authoring-api --project-ref <project-ref> --yes
-```
-
-Repita o verificador do site, do manifesto e do MCP depois da retirada. Se o
-site novo não puder ser confirmado, mantenha essas funções disponíveis.
+Depois que o novo Pages estiver acessível e aprovado, liste as funções
+hospedadas e retire apenas pontos de entrada sem consumidor na revisão
+corrente. Repita o verificador do site, do manifesto e do MCP depois da
+retirada. Se o site novo não puder ser confirmado, não inicie essa etapa.
 
 ## Recuperação
 
@@ -332,7 +330,7 @@ restauração e token ligado ao inventário são condições da execução. Ince
 nessa etapa bloqueia somente a remoção destrutiva, não a publicação já segura
 do restante.
 
-## Critérios de conclusão da entrega 0.0.23
+## Estado de conclusão da entrega 0.0.23
 
 | Critério | Evidência de aprovação |
 |---|---|
@@ -340,8 +338,8 @@ do restante.
 | banco local | recriação completa, inventário, análise, concorrência e testes de funcionamento aprovados |
 | interface | testes no navegador e inspeção real em celular e computador |
 | artefatos | verificadores de Pages e Android sem segredo ou configuração divergente |
-| banco hospedado | migrações em paridade e manifesto `20260820101500` |
-| funções hospedadas | CORS da API e OAuth MCP aprovados |
-| site | fluxo Pages verde e endereço publicado verificado |
-| Android | validação verde, certificado esperado e Release `v0.0.23` com APK |
-| limpeza destrutiva | inventário, cópia e restauração comprovados; pode permanecer pendente isoladamente |
+| banco hospedado | aprovado: migrações em paridade, oito Cursos, 5.056 entidades e manifesto `20260820101500` |
+| funções hospedadas | aprovado: CORS da API e OAuth MCP |
+| site | aprovado: Pages 0.0.23 e 122 recursos publicados verificados |
+| Android | aprovado: validação verde, certificado esperado e publicação `v0.0.23` com APK |
+| limpeza destrutiva | isolada: inventário, cópia anterior e restauração comprovados; remoção física não executada |

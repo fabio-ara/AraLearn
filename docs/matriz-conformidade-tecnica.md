@@ -43,7 +43,7 @@ declarados fazem parte desse contrato.
 |---|---|---|---|
 | fonte possui proveniência revisável e identidade estável | `courseSources.js`, relações de fonte e revisão | `course-sources.test.js`, `course-sources-panel.test.js` | demonstrado; revisões anteriores permanecem endereçáveis |
 | âncoras ligam fonte a alvos do Curso | relações de âncora e atribuição | `course-anchored-annotations-pglite.test.js`, testes de fonte | demonstrado; citações não dependem de texto copiado no estado pessoal |
-| PDF é privado e vinculado depois do envio | API de Cursos, `course_source_attachments`, bucket `course-source-pdfs` | `course-source-attachments-pglite.test.js`, testes da API e segurança | demonstrado em duas fases com URL assinada |
+| PDF é privado e vinculado depois do envio | API de Cursos, `course_source_attachments`, bucket `course-source-pdfs` | `course-source-attachments-pglite.test.js`, testes da API, segurança e jornada hospedada | demonstrado em duas fases com URL assinada; bytes adulterados são recusados antes do vínculo |
 | conhecimento do caminho concede acesso ao PDF | vínculo relacional e autorização da API | `course-security.test.js`, teste local de funcionamento | fora do contrato; acesso exige a propriedade do Curso vinculado |
 | cotas do aplicativo limitam anexos | domínio de fontes e RPCs | testes de fonte e anexos | demonstrado: 20 MiB por PDF, 64 MiB únicos por Curso e oito anexos por detalhe |
 | variantes podem reaproveitar objeto imutável | vínculos autorizados por Curso e hash da origem | testes de anexos e variantes | demonstrado; cada Curso conserva vínculo próprio |
@@ -54,7 +54,7 @@ declarados fazem parte desse contrato.
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
 | auditoria registra ciclo, achado, decisão, correção e vínculo com Anotação | `courseAuditCycle.js`, `CourseAuditPanel.js`, relações privadas | `course-audit-cycle.test.js`, `course-audit-corrections-pglite.test.js`, teste de auditoria no navegador | demonstrado; escrita exclusiva do proprietário e com conexão |
-| comparação cria Cursos independentes a partir de ponto de controle comum | `courseVariants.js`, relações de ponto de controle, conjunto e membro | `course-variants.test.js`, `course-variants-pglite.test.js`, `course-variants-panel.test.js` | demonstrado para dois a oito membros |
+| comparação cria Cursos independentes a partir de ponto de controle comum | `courseVariants.js`, relações de ponto de controle, conjunto e membro | `course-variants.test.js`, `course-variants-pglite.test.js`, `course-variants-panel.test.js`, jornada hospedada Z/A | demonstrado para dois a oito membros; a posição inicial define a referência |
 | variantes copiam Unidades já materializadas | operação de criação de variante | testes de variantes | fora do contrato; cada Curso materializa suas próprias Unidades |
 | comparação distingue declaração, observação e desvio factual | domínio e painel de variantes | testes de variantes e painel | demonstrado; não há atribuição de participantes nem inferência causal |
 | Pesquisa lê projeção factual das autoridades correntes | `courseAuthoringAnalytics.js`, RPC exclusiva do proprietário e `CourseAnalyticsPanel.js` | `course-authoring-analytics-domain.test.js`, `course-authoring-analytics-pglite.test.js`, `course-analytics-panel.test.js` | demonstrado em sete conjuntos, até duzentas linhas por página |
@@ -81,15 +81,15 @@ declarados fazem parte desse contrato.
 | função com credencial administrativa aceita identidade declarada pelo corpo | funções de entrada e RPCs exclusivas do proprietário | testes de API, MCP, adaptador e segurança | fora do contrato; a função valida o token e a função SQL comprova a pessoa |
 | MCP usa OAuth 2.1 com PKCE | Auth OAuth Server, gancho de token e função MCP | `local-mcp-oauth-smoke.test.js`, teste local e hospedado | demonstrado; servidor valida sessão, emissor, destinatário, recurso, cliente, sujeito e validade temporal; cliente valida estado e código PKCE |
 | origens de produção são exatas | segredos CORS e `deploySupabase.ps1` | `deployment-automation.test.js` | demonstrado; HTTP somente em desenvolvimento local |
-| buckets são privados | políticas de Storage e URLs assinadas | testes de segurança, anexos e teste local de funcionamento | demonstrado para `person-avatars` e `course-source-pdfs` |
+| buckets são privados | políticas de Storage e URLs assinadas | testes de segurança, anexos e jornadas local e hospedada | demonstrado para `person-avatars` e `course-source-pdfs`; terceiro e pessoa com acesso apenas de Estudo não recebem o PDF autoral |
 
 ## Integração e publicação
 
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado na revisão `20260820101500` |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado na revisão `20260820101500`, publicada no Pages 0.0.23 |
 | integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
-| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado para site e APK |
+| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado para o site e o APK assinado da versão 0.0.23 |
 | Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |
 | publicação Android parte da ponta validada de `main` | `.github/workflows/android-release.yml` | `deployment-automation.test.js` | demonstrado; revisão superada e tag existente não são republicadas |
 | limpeza física acompanha toda migração | `scripts/courseCutover/prepareLegacyCleanup.mjs` | `course-legacy-cleanup-plan.test.js`, `course-legacy-cleanup-backup.test.js` | fora do contrato; requer inventário, cópia verificada, restauração e confirmação específicas |

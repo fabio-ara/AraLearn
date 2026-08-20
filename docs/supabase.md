@@ -8,6 +8,10 @@ de usar a credencial administrativa.
 Na entrega 0.0.23, a ordem completa de publicação segue o roteiro de
 [Implantação](implantacao.md).
 
+O projeto hospedado está no plano Free, ativo na região `sa-east-1`, com
+PostgreSQL 17.6 e revisão de esquema `20260820101500`. Depois do corte, o banco
+ocupava 97.053.843 bytes e continha oito Cursos e 5.056 entidades correntes.
+
 ## Componentes usados
 
 | Serviço | Uso no AraLearn |
@@ -18,6 +22,10 @@ Na entrega 0.0.23, a ordem completa de publicação segue o roteiro de
 | Storage | avatares e PDFs privados de fontes |
 | Edge Functions | API de Cursos e servidor MCP |
 | Studio local | inspeção do banco descartável durante desenvolvimento |
+
+O ambiente hospedado conserva somente `aralearn-course-api` e
+`aralearn-authoring-mcp`. As funções da versão 0.0.22 foram retiradas depois da
+verificação do Pages 0.0.23.
 
 O Realtime permanece desabilitado. Sincronização entre abas usa mecanismos do
 navegador, e a reconciliação remota ocorre pelos contratos específicos de cada
@@ -208,12 +216,16 @@ senhas e chaves.
 
 ## Storage privado
 
-O AraLearn usa dois buckets:
+O AraLearn usa dois buckets correntes:
 
 | Bucket | Conteúdo | Regra principal |
 |---|---|---|
 | `person-avatars` | JPEG, PNG ou WebP até 512 KiB | escrita na pasta da própria conta; leitura por relação permitida |
 | `course-source-pdfs` | PDF até 20 MiB | acesso pelo vínculo relacional e por URL assinada |
+
+Os buckets substituídos `course-revisions` e `authoring-artifacts` permanecem
+isolados até a limpeza física autorizada. No corte, continham 20 objetos e
+14.674.570 bytes no total; o uso corrente não os consulta.
 
 O limite global local do Storage é maior para permitir testes, mas as regras do
 aplicativo continuam mais restritas. Para PDFs, o total de conteúdo único por
@@ -246,10 +258,11 @@ aplicação, exige a confirmação literal `APLICAR`, executa `db push`, repete 
 inventário e reprova qualquer aviso da análise hospedada do banco.
 
 Com `-DeployAuthoringFunctions`, ele configura as origens e a URL pública,
-implanta a API de Cursos e o MCP, testa a verificação prévia de CORS do Pages e executa o
-teste OAuth hospedado. As funções substituídas permanecem disponíveis até que
-o Pages da nova versão seja publicado e verificado; a retirada é uma etapa
-posterior e explícita.
+implanta a API de Cursos e o MCP, testa a verificação prévia de CORS do Pages e
+executa o teste OAuth hospedado. Funções substituídas podem permanecer
+implantadas durante a janela de atualização, mas deixam de ser compatíveis com
+o banco depois do corte. Sua retirada é explícita e ocorre somente depois da
+verificação do Pages novo.
 
 Uma nova origem pode ser acrescentada com `-AllowedOrigin`. O valor deve ser
 uma origem HTTPS sem caminho, consulta ou fragmento; HTTP é aceito somente em
@@ -289,11 +302,19 @@ npm.cmd run deployment:verify-hosted
 ```
 
 O verificador consulta o manifesto remoto com a chave pública, compara revisão,
-versão e capacidades e recusa configuração administrativa. Os testes
-hospedados complementam essa leitura com autenticação real, CORS e execução do
-MCP.
+versão e capacidades e recusa configuração administrativa. Na publicação
+0.0.23, o manifesto, o CORS e o OAuth MCP foram aprovados. Uma jornada separada
+usou três identidades temporárias para verificar acesso de Estudo, negação a
+terceiro, PDF íntegro e adulterado, Variantes e Pesquisa, com remoção integral
+dos dados de ensaio.
 
-Antes de promover, confira também uso e limites atuais no painel do projeto.
-Banco, Storage, tráfego e Edge Functions têm cotas próprias. Referências
-oficiais: [limites de Edge Functions](https://supabase.com/docs/guides/functions/limits)
-e [planos do Supabase](https://supabase.com/pricing).
+O plano Free admite 500 MB de banco por projeto, 1 GB de Storage, 500 mil
+invocações de funções e 5 GB de transferência incluída na organização. No
+estado medido, banco e Storage ocupavam cerca de 18,5% e 1,4% dessas cotas. Uma
+sequência hospedada de 41 chamadas MCP respondeu sem erro, com mediana de 291 ms
+e percentil 95 de 587 ms. Transferência mensal e crescimento precisam continuar
+sob acompanhamento; uma medição pontual não projeta uso continuado.
+
+Referências oficiais: [cotas e cobrança](https://supabase.com/docs/guides/platform/billing-on-supabase),
+[tamanho do banco](https://supabase.com/docs/guides/platform/database-size) e
+[transferência do Storage](https://supabase.com/docs/guides/storage/serving/bandwidth).
