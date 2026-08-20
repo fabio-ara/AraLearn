@@ -48,6 +48,9 @@ const RFC3339_PATTERN =
 const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
+const MCP_OAUTH_SECURITY_SCHEMES = Object.freeze([
+  Object.freeze({ type: "oauth2", scopes: Object.freeze(["openid"]) })
+]);
 
 const objectSchema = (properties, required = Object.keys(properties)) => ({
   type: "object",
@@ -2923,7 +2926,18 @@ export function authoringApplicationToolDefinition(name) {
 export function authoringMcpToolsForPrincipal(principal) {
   return COURSE_MCP_TOOLS.filter((definition) =>
     authoringMcpToolIsAllowed(definition.name, principal)
-  ).map((definition) => structuredClone(definition));
+  ).map((definition) => {
+    const tool = structuredClone(definition);
+    const securitySchemes = structuredClone(MCP_OAUTH_SECURITY_SCHEMES);
+    return {
+      ...tool,
+      securitySchemes,
+      _meta: {
+        ...(tool._meta || {}),
+        securitySchemes: structuredClone(securitySchemes)
+      }
+    };
+  });
 }
 
 export function authoringMcpToolIsAllowed(name, principal) {

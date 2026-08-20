@@ -157,7 +157,12 @@ assert.deepEqual(listed.tools.map(({ name }) => name), [
   "gerirPessoas",
   "consultarComponentesDidaticos"
 ]);
-assert.ok(listed.tools.every((entry) => entry.securitySchemes?.[0]?.type === "oauth2"));
+assert.ok(listed.tools.every((entry) =>
+  entry.securitySchemes?.[0]?.type === "oauth2" &&
+  entry.securitySchemes?.[0]?.scopes?.length === 1 &&
+  entry.securitySchemes[0].scopes[0] === "openid" &&
+  JSON.stringify(entry._meta?.securitySchemes) === JSON.stringify(entry.securitySchemes)
+));
 assert.equal(
   listed.tools.some(({ name }) =>
     /workspace|trilha|cole(?:ç|c)[aã]o|publica(?:ç|c)[aã]o/iu.test(name)
