@@ -977,7 +977,7 @@ export class RelationalSyncEngine {
       } catch (error) {
         const currentError = staleCourseSelectionError(error, entry.courseId);
         if (!(currentError instanceof InvalidCourseRevisionError)) throw currentError;
-        await this.store.removeOfficialCourseReplica(entry.courseId);
+        // Preserve a última réplica oficial válida: uma revisão incompatível não pode apagar conteúdo já estudável.
         this.#unavailableCourseRevisions.push({
           courseId: entry.courseId,
           reason: currentError.reason,

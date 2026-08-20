@@ -4,6 +4,39 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.22] - 2026-08-18
+
+### Fixed
+
+- o curso **Dataprev: Analista de Processamento** voltou a ser materializado a
+  partir de uma nova revisão publicada no contrato canônico atual, sem alterar
+  os identificadores usados pelo progresso dos estudantes;
+- o curso **Microsoft Azure AI Fundamentals (AI-900)** também recebeu a revisão
+  canônica que atualiza seus `relation_map` e `plane`, preservando integralmente
+  suas identidades;
+- a publicação do GitHub Pages tolera falhas transitórias de propagação sem
+  esconder erros permanentes de conteúdo, MIME ou disponibilidade;
+- a release Android reconhece a saída real do `apksigner`, deriva a identidade
+  esperada do projeto e, no fluxo automático, só é publicada depois da
+  validação bem-sucedida da revisão ainda corrente na `main`;
+- o job do Supabase local limpa resíduos do runner e repete apenas a
+  inicialização que pode sofrer colisão transitória de porta;
+- os workflows usam as gerações correntes de checkout, Node e Java compatíveis
+  com o runtime Node 24 dos runners do GitHub.
+
+### Removed
+
+- a adaptação em runtime de revisões publicadas antigas; os cursos ativos devem
+  obedecer ao mesmo contrato canônico validado na autoria e na publicação.
+
+## [0.0.21] - 2026-08-18
+
+### Fixed
+
+- a release intermediária passou a reconhecer o certificado V2 emitido pelo
+  `apksigner`, repetir o smoke do Pages durante a propagação e conservar a
+  última réplica oficial válida quando uma revisão remota fosse incompatível.
+
 ## [0.0.20] - 2026-08-16
 
 ### Added
