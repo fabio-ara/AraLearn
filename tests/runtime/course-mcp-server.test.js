@@ -69,7 +69,8 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
   assert.match(initialized.result.instructions, /não os fixe no prompt/iu);
 
   const listed = await handler()(request("tools/list"));
-  const names = (await listed.json()).result.tools.map(({ name }) => name);
+  const tools = (await listed.json()).result.tools;
+  const names = tools.map(({ name }) => name);
   assert.deepEqual(names, [
     "listarCursos",
     "lerCurso",
@@ -79,6 +80,10 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     "consultarComponentesDidaticos"
   ]);
   assert.equal(names.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o/iu.test(name)), false);
+  for (const tool of tools) {
+    assert.deepEqual(tool.securitySchemes, [{ type: "oauth2", scopes: ["openid"] }]);
+    assert.deepEqual(tool._meta.securitySchemes, tool.securitySchemes);
+  }
 });
 
 test("MCP publica conhecimento e componente opcional e lê o plano pela rota compartilhada", async () => {

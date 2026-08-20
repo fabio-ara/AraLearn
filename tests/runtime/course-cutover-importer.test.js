@@ -903,7 +903,7 @@ test("distingue hash dos bytes de hash do JSON canônico", async () => {
   }), (error) => error.code === "artifact_canonical_hash_drift");
 });
 
-test("gera um único script transacional para TEMP, COPY e migration", async () => {
+test("gera o mesmo script transacional e hash com migrations LF ou CRLF", async () => {
   const source = syntheticSources();
   const result = await prepareCourseCutover(source.snapshot, source);
   const taskOperationTerminologyMigration = fs.readFileSync(new URL(
@@ -1020,6 +1020,32 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     courseAuditMigration,
     variantMigrations
   );
+  const migrationWithLineEnding = (value, lineEnding) =>
+    value.replace(/\r\n?/gu, "\n").replaceAll("\n", lineEnding);
+  const buildSqlWithLineEnding = (lineEnding) => buildCourseCutoverSql(
+    result,
+    migrationWithLineEnding(taskOperationTerminologyMigration, lineEnding),
+    migrationWithLineEnding(migration, lineEnding),
+    migrationWithLineEnding(profileAccessMigration, lineEnding),
+    migrationWithLineEnding(authoringPlanMigration, lineEnding),
+    migrationWithLineEnding(studyUnitInspectionMigration, lineEnding),
+    migrationWithLineEnding(courseDesignMigration, lineEnding),
+    migrationWithLineEnding(courseSourcesMigration, lineEnding),
+    migrationWithLineEnding(courseAnnotationsMigration, lineEnding),
+    migrationWithLineEnding(courseAuditMigration, lineEnding),
+    variantMigrations.map((entry) => ({
+      ...entry,
+      sql: migrationWithLineEnding(entry.sql, lineEnding)
+    }))
+  );
+  const lfSql = buildSqlWithLineEnding("\n");
+  const crlfSql = buildSqlWithLineEnding("\r\n");
+  const lfBytes = Buffer.from(lfSql, "utf8");
+  const crlfBytes = Buffer.from(crlfSql, "utf8");
+  const sqlHash = (value) => createHash("sha256").update(value).digest("hex");
+  assert.deepEqual(crlfBytes, lfBytes);
+  assert.equal(sqlHash(crlfBytes), sqlHash(lfBytes));
+  assert.equal(sql, lfSql);
   assert.match(sql, /^\\set ON_ERROR_STOP on\nbegin;/u);
   const copyPosition = sql.indexOf("copy course_content_import_v1(");
   for (const guard of COURSE_CUTOVER_TRANSACTION_GUARDS) {

@@ -1914,6 +1914,10 @@ function sqlText(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
+function normalizeSqlLineEndings(value) {
+  return value.replace(/\r\n?/gu, "\n");
+}
+
 function assertMigrationStagingSchema(migrationSql) {
   const match = migrationSql.match(
     /create temporary table course_content_import_v1\(\s*([\s\S]*?)\s*\)\s*\$ddl\$/u
@@ -1934,8 +1938,9 @@ function transactionBody(migrationSql, label) {
   if (typeof migrationSql !== "string") {
     fail("invalid_cutover_execution", `${label} está ausente.`);
   }
-  const beginMatches = [...migrationSql.matchAll(/^begin;\s*$/gimu)];
-  const commitMatches = [...migrationSql.matchAll(/^commit;\s*$/gimu)];
+  const normalizedMigrationSql = normalizeSqlLineEndings(migrationSql);
+  const beginMatches = [...normalizedMigrationSql.matchAll(/^begin;\s*$/gimu)];
+  const commitMatches = [...normalizedMigrationSql.matchAll(/^commit;\s*$/gimu)];
   if (beginMatches.length !== 1 || commitMatches.length !== 1 ||
       beginMatches[0].index > commitMatches[0].index) {
     fail(
@@ -1953,16 +1958,16 @@ function transactionBody(migrationSql, label) {
     commitStart,
     commitEnd,
     body: (
-      migrationSql.slice(0, beginStart) +
-      migrationSql.slice(beginEnd, commitStart) +
-      migrationSql.slice(commitEnd)
+      normalizedMigrationSql.slice(0, beginStart) +
+      normalizedMigrationSql.slice(beginEnd, commitStart) +
+      normalizedMigrationSql.slice(commitEnd)
     ).trim()
   };
 }
 
 function withoutTransactionGuards(body) {
   const guards = new Set(COURSE_CUTOVER_TRANSACTION_GUARDS);
-  return body.split(/\r?\n/u)
+  return normalizeSqlLineEndings(body).split("\n")
     .filter((line) => !guards.has(line.trim()))
     .join("\n")
     .trim();
