@@ -571,7 +571,7 @@ async function auditRenderedDocument({ repositoryRoot, registry, documentPath })
     return [`${documentPath}: documento derivado ausente; execute audit:terminology -- --render.`];
   }
   const expected = renderControlledVocabulary(registry);
-  return current === expected
+  return current.replace(/\r\n?/gu, "\n") === expected
     ? []
     : [`${documentPath}: documento derivado desatualizado; execute audit:terminology -- --render.`];
 }

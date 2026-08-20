@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   auditTerminology,
+  renderControlledVocabulary,
   validateTerminologyRegistry
 } from "../../scripts/auditTerminology.mjs";
 
@@ -42,6 +43,23 @@ function syntheticRegistry(termOverrides = {}) {
 
 test("o registro corrente é completo e não contém resíduos concluídos", async () => {
   assert.deepEqual(await auditTerminology(), []);
+});
+
+test("o documento derivado aceita as quebras de linha do checkout Windows", async (context) => {
+  const repositoryRoot = await mkdtemp(path.join(os.tmpdir(), "aralearn-terminology-eol-"));
+  context.after(() => rm(repositoryRoot, { recursive: true, force: true }));
+  await mkdir(path.join(repositoryRoot, "docs"), { recursive: true });
+  const registry = syntheticRegistry();
+  await writeFile(
+    path.join(repositoryRoot, "docs", "vocabulario-controlado.md"),
+    renderControlledVocabulary(registry).replaceAll("\n", "\r\n"),
+    "utf8"
+  );
+  assert.deepEqual(await auditTerminology({
+    repositoryRoot,
+    registry,
+    checkRenderedDocument: true
+  }), []);
 });
 
 test("o audit rejeita símbolo abolido fora de migration ou evidência histórica", async (context) => {
