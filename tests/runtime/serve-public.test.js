@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 async function freePort() {
   const probe = net.createServer();
@@ -75,6 +79,40 @@ test("servidor local carrega a configuração publicada quando o ambiente não a
   assert.match(source, /hasCompleteExplicitRuntimeConfig/u);
   assert.match(source, /\|\| !hasCompleteExplicitRuntimeConfig/u);
   assert.match(source, /PUBLISHED_RUNTIME_CONFIG_URL/u);
+});
+
+test("servidor do artefato conserva em memória arquivos já lidos", async () => {
+  const port = await freePort();
+  const scriptPath = fileURLToPath(new URL("../../scripts/servePublic.js", import.meta.url));
+  const artifactRoot = path.join(REPOSITORY_ROOT, ".pages");
+  const fileName = `serve-public-cache-${randomUUID()}.js`;
+  const filePath = path.join(artifactRoot, fileName);
+  fs.mkdirSync(artifactRoot, { recursive: true });
+  fs.writeFileSync(filePath, "export const revision = 1;\n", "utf8");
+  const child = spawn(process.execPath, [scriptPath, "--root", ".pages"], {
+    cwd: REPOSITORY_ROOT,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      ARALEARN_SUPABASE_URL: "https://example.supabase.co",
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_teste_publico"
+    },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  try {
+    await waitUntilReady(child);
+    const first = await fetch(`http://127.0.0.1:${port}/${fileName}`);
+    assert.equal(first.status, 200);
+    assert.equal(await first.text(), "export const revision = 1;\n");
+
+    fs.writeFileSync(filePath, "export const revision = 2;\n", "utf8");
+    const second = await fetch(`http://127.0.0.1:${port}/${fileName}`);
+    assert.equal(second.status, 200);
+    assert.equal(await second.text(), "export const revision = 1;\n");
+  } finally {
+    child.kill();
+    fs.rmSync(filePath, { force: true });
+  }
 });
 
 test("prévia com configuração publicada recusa porta sem CORS da autoria", async () => {
