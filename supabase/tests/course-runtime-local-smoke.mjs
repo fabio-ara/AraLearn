@@ -15,6 +15,8 @@ const COURSE_SOURCE_PDF_MAX_BYTES = 20 * 1024 * 1024;
 const COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES = 64 * 1024 * 1024;
 const COURSE_SOURCE_PDF_PATH_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-f0-9]{64}\.pdf$/u;
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+const COURSE_EDGE_TRANSIENT_STATUSES = new Set([502, 503, 504]);
 const textEncoder = new TextEncoder();
 
 function readLocalSupabaseStatus() {
@@ -97,7 +99,9 @@ async function request(path, {
 }
 
 function failureMessage(label, result) {
-  return `${label}: HTTP ${result.response.status}: ${JSON.stringify(result.payload)}`;
+  const edgeCode = String(result.response.headers.get("sb-error-code") || "").trim();
+  return `${label}: HTTP ${result.response.status}` +
+    `${edgeCode ? ` (${edgeCode})` : ""}: ${JSON.stringify(result.payload)}`;
 }
 
 function assertDenied(result, label) {
@@ -118,15 +122,35 @@ async function rpc(name, body, token, expectedStatus = 200) {
 }
 
 async function courseAction(name, body, token, expectedStatus = 200) {
-  const result = await request(
-    `/functions/v1/aralearn-course-api/app/${encodeURIComponent(name)}`,
-    {
-      method: "POST",
-      token,
-      body,
-      origin: APPLICATION_ORIGIN,
-    },
+  const replayable = expectedStatus === 200 && (
+    name === "lerCurso" || typeof body?.requestId === "string" &&
+      REQUEST_ID_PATTERN.test(body.requestId)
   );
+  let result;
+  for (let attempt = 0; attempt < (replayable ? 2 : 1); attempt += 1) {
+    result = await request(
+      `/functions/v1/aralearn-course-api/app/${encodeURIComponent(name)}`,
+      {
+        method: "POST",
+        token,
+        body,
+        origin: APPLICATION_ORIGIN,
+      },
+    );
+    const responseCode = String(
+      result.payload?.error?.code || result.payload?.code || "",
+    ).trim();
+    if (!COURSE_EDGE_TRANSIENT_STATUSES.has(result.response.status) || responseCode ||
+        attempt === 1) {
+      break;
+    }
+    const edgeCode = String(result.response.headers.get("sb-error-code") || "").trim();
+    process.stderr.write(
+      `A Edge devolveu resposta transitória durante ${name}; nova tentativa após HTTP ` +
+      `${result.response.status}${edgeCode ? ` (${edgeCode})` : ""}.\n`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  }
   assert.equal(
     result.response.status,
     expectedStatus,

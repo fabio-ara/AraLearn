@@ -51,6 +51,8 @@ const AVATAR_EXTENSIONS = Object.freeze({
   "image/webp": "webp"
 });
 const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/u;
+const COURSE_EDGE_RETRY_DELAY_MS = 750;
+const COURSE_EDGE_TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
 function first(value) {
   return Array.isArray(value) && value.length === 1 ? value[0] : value;
@@ -487,6 +489,16 @@ function authenticationFailure(error) {
     "JWT_EXPIRED",
     "PGRST301"
   ]).has(code);
+}
+
+function transientCourseEdgeFailure(error) {
+  return COURSE_EDGE_TRANSIENT_STATUSES.has(Number(error?.status || 0)) &&
+    !String(error?.code || "").trim();
+}
+
+function courseActionCanBeReplayed(actionName, body) {
+  return actionName === "lerCurso" ||
+    typeof body?.requestId === "string" && REQUEST_ID_PATTERN.test(body.requestId);
 }
 
 function courseRevisionChangedError(cause = null) {
@@ -944,10 +956,21 @@ export class CourseApiClient {
         error.status = 401;
         throw error;
       }
-      const response = await this.http.request(
+      const execute = () => this.http.request(
         `/functions/v1/aralearn-course-api/app/${encodeURIComponent(actionName)}`,
         { method: "POST", body, accessToken, timeoutMs: 60_000 }
       );
+      let response;
+      try {
+        response = await execute();
+      } catch (error) {
+        if (!courseActionCanBeReplayed(actionName, body) ||
+            !transientCourseEdgeFailure(error)) {
+          throw error;
+        }
+        await new Promise((resolve) => globalThis.setTimeout(resolve, COURSE_EDGE_RETRY_DELAY_MS));
+        response = await execute();
+      }
       return response?.data ?? null;
     } catch (error) {
       if (authenticationFailure(error)) {
