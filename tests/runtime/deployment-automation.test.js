@@ -287,13 +287,16 @@ test("implantação publica somente MCP OAuth e API de Curso", () => {
   assert.match(source, /Access-Control-Allow-Origin/u);
   assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
   assert.doesNotMatch(source, /secrets unset/u);
+  assert.match(source, /runHostedCourseSourcePdfSmoke\.mjs/u);
   assert.ok(
     source.indexOf("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins") <
       source.indexOf("functions deploy aralearn-authoring-mcp") &&
     source.indexOf("functions deploy aralearn-course-api") <
       source.indexOf("Invoke-WebRequest") &&
     source.indexOf("Invoke-WebRequest") <
-      source.indexOf("runHostedMcpOAuthSmoke.mjs")
+      source.indexOf("runHostedMcpOAuthSmoke.mjs") &&
+    source.indexOf("runHostedMcpOAuthSmoke.mjs") <
+      source.indexOf("runHostedCourseSourcePdfSmoke.mjs")
   );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
