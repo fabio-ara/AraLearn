@@ -21,7 +21,7 @@ conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
 **Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. A pessoa
 que recebeu acesso continua fora da Autoria desse Curso e não pode alterar o
-original. Na candidata 0.0.26, validada localmente e ainda não publicada, uma
+original. Na candidata de clientes 0.0.26, ainda não publicada, uma
 mudança contextual confirmada pode criar outro Curso privado, pertencente a essa
 pessoa.
 

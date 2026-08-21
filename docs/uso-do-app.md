@@ -75,8 +75,8 @@ Use o seletor **Estudo / Autoria** na tela inicial.
 - **Autoria** mostra somente Cursos próprios.
 
 A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
-a pessoa pode estudar, mas não alterar o original. Na candidata 0.0.26,
-validada localmente e ainda não publicada, uma gravação contextual feita em
+a pessoa pode estudar, mas não alterar o original. Na candidata de clientes
+0.0.26, ainda não publicada, uma gravação contextual feita em
 Estudo cria um Curso pessoal privado; ele passa a aparecer em Autoria como Curso
 próprio.
 
@@ -204,7 +204,7 @@ Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
 **Cancelar** abandona somente esse rascunho.
 
-Na candidata 0.0.26, validada localmente e ainda não publicada, a mesma ação
+Na candidata de clientes 0.0.26, ainda não publicada, a mesma ação
 aparece em Estudo para quem recebeu acesso direto. Antes da primeira gravação,
 a interface informa que
 **Salvar na minha cópia** criará um Curso pessoal privado. A operação materializa

@@ -1,16 +1,16 @@
 # Matriz de conformidade técnica
 
 Esta matriz liga propriedades do AraLearn à implementação e à evidência
-executável da linha publicada 0.0.25 e da candidata local 0.0.26. O contrato
+executável da linha publicada de clientes 0.0.25 e da candidata 0.0.26. O contrato
 público das seis ferramentas
-e do recurso MCP permanece 0.0.23, enquanto a API de Cursos e o esquema
-`20260820224424` formam o backend hospedado corrente. O estado “demonstrado”
+e do recurso MCP permanece 0.0.23, enquanto a API de Cursos revisão 9, o MCP
+revisão 124 e o esquema `20260821145358` formam o backend hospedado corrente. O estado “demonstrado”
 indica que a capacidade existe no contrato corrente e possui verificação no
 repositório. Limites declarados fazem parte desse contrato.
 
-As linhas que mencionam a candidata #149 descrevem trabalho ainda não publicado.
-Seus gates locais podem estar demonstrados sem representar o backend, os
-artefatos oficiais ou a revisão publicada.
+As linhas que mencionam a candidata #149 descrevem clientes ainda não
+publicados. Seus gates locais e hospedados podem estar demonstrados sem
+representar Pages, APK ou a revisão integrada em `main`.
 
 ## Curso e composição
 
@@ -114,7 +114,7 @@ artefatos oficiais ou a revisão publicada.
 
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260820224424`; banco e funções foram promovidos antes da 0.0.24 e são reutilizados sem mudança pela 0.0.25 |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260821145358`; Apply, análise limitada aos 88 avisos legados, CORS, OAuth/MCP e `package-library-v1` foram aprovados antes dos clientes 0.0.26 |
 | integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
 | artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado no gate da 0.0.25; os artefatos oficiais são confrontados novamente depois da publicação, e o APK ainda exige ensaio com relay em dispositivo real |
 | Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |

@@ -102,7 +102,7 @@ qual recorte sairá do aplicativo e permite alternar entre a sugestão e o
 conteúdo sem perder o alvo. Aplicar uma sugestão altera o rascunho; salvar a
 Unidade continua sendo uma decisão separada da pessoa.
 
-Na candidata 0.0.26, validada localmente e ainda não publicada, um Curso
+Na candidata de clientes 0.0.26, ainda não publicada, um Curso
 compartilhado apresenta antes da gravação a frase “Ao salvar, o AraLearn criará
 uma cópia privada para você. O Curso compartilhado continuará intacto.” A ação
 correspondente é **Salvar na minha cópia**. Depois da confirmação, a pessoa
@@ -319,7 +319,7 @@ oito combinações de largura e tema, confirmou shell centralizado de no máximo
 foco, abertura e fechamento por `Enter` e mudança de orientação do indicador.
 Uma rodada no Chrome real integra a verificação pós-publicação.
 
-Na candidata local 0.0.26, o Chrome real percorreu a cópia pessoal em 360, 390,
+Na candidata de clientes 0.0.26, o Chrome real percorreu a cópia pessoal em 360, 390,
 430 e 1.280 px, nos temas claro e escuro. O shell mediu respectivamente 360,
 390, 430 e 430 px e permaneceu centralizado em 1.280 px. Seletor e ação
 principal conservaram 44 px, sem overflow ou identificadores técnicos. Depois

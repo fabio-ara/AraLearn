@@ -5,14 +5,15 @@ AraLearn. O navegador usa apenas a URL do projeto e a chave pública. Operaçõe
 autorais privilegiadas passam pelas funções remotas, que validam a pessoa antes
 de usar a credencial administrativa.
 
-Na entrega 0.0.25, o Supabase não muda: permanecem o esquema
-`20260820224424`, a API de Cursos na revisão 5 e o MCP na revisão 120. A ordem
-completa de publicação dos clientes segue o roteiro de
-[Implantação](implantacao.md).
+Na entrega 0.0.25, o Supabase não mudou. Depois dessa publicação, o backend da
+candidata 0.0.26 foi promovido para o esquema `20260821145358`, a API de Cursos
+na revisão 9 e o MCP na revisão 124. A ordem completa de publicação dos clientes
+segue o roteiro de [Implantação](implantacao.md).
 
 Na implantação verificada, o projeto hospedado estava no plano Free, ativo na
 região `sa-east-1`, com PostgreSQL 17.6 e revisão de esquema
-`20260820224424`. A API de Cursos estava na revisão 5 e o MCP, na revisão 120.
+`20260821145358`. A API de Cursos estava ativa na revisão 9 e o MCP, ativo na
+revisão 124.
 Depois do corte 0.0.23, o banco ocupava 97.053.843 bytes e continha oito Cursos
 e 5.056 entidades correntes; esses números continuam sendo a medição pontual
 documentada, não uma leitura permanente do consumo.
@@ -99,12 +100,11 @@ e [privilégios da API de dados](https://supabase.com/docs/guides/api/using-cust
 ## Migrações e manifesto
 
 Migrações versionadas ficam em `supabase/migrations/`. A revisão hospedada
-corrente permanece `20260820224424`. No ramo da entrega #149,
-`supabase/runtime-manifest.json` avança como candidata para `20260821145358` e
-acrescenta `personal-course-copy-edit-v1`. A recriação local, pgTAP 78/78,
-PGlite 45/45, concorrência 1/1 e smoke real local foram aprovados. Promoção e
-verificação hospedada continuam obrigatórias antes de esse manifesto representar
-o ambiente publicado.
+corrente é `20260821145358`. O `supabase/runtime-manifest.json` acrescenta
+`personal-course-copy-edit-v1`. A recriação local, pgTAP 78/78, PGlite 45/45,
+concorrência 1/1 e smoke real local foram aprovados. A promoção em modo Apply,
+a análise hospedada limitada aos 88 avisos legados, o CORS, o smoke OAuth/MCP e
+o verificador público do manifesto e de `package-library-v1` também passaram.
 
 A migração `20260820224424_canonical_study_unit_composition_edits.sql` acrescenta
 uma forma de composição exclusiva do papel de servidor. Ela limita o canal do
@@ -118,7 +118,7 @@ alterado continua exigindo Fonte e Âncora ativas nas revisões exatas. A funç�
 restringe a execução ao `service_role`; `anon`, `authenticated` e `PUBLIC` não
 recebem essa capacidade.
 
-A migração candidata
+A migração
 `20260821145358_personal_course_copy_edit.sql` mantém a operação canônica acima
 exclusiva do proprietário e acrescenta outra função de papel de servidor para a
 primeira gravação de quem possui acesso direto. A função:
@@ -315,6 +315,12 @@ foram implantadas e verificadas antes do Pages e do APK. Os clientes recusam o
 manifesto anterior; inverter essa ordem publicaria uma interface que anuncia
 edição contextual sem o contrato remoto correspondente.
 
+Na promoção do backend da candidata 0.0.26, o modo Apply levou o banco a
+`20260821145358`, a API de Cursos à revisão 9 e o MCP à revisão 124. A análise
+hospedada permaneceu limitada aos 88 avisos legados; CORS, OAuth/MCP e o
+verificador público da revisão e de `package-library-v1` passaram. Pages e Android
+0.0.26 continuam como etapas posteriores.
+
 Uma nova origem pode ser acrescentada com `-AllowedOrigin`. O valor deve ser
 uma origem HTTPS sem caminho, consulta ou fragmento; HTTP é aceito somente em
 `localhost` e `127.0.0.1`.
@@ -353,10 +359,11 @@ npm.cmd run deployment:verify-hosted
 ```
 
 O verificador consulta o manifesto remoto com a chave pública, compara revisão,
-versão e capacidades e recusa configuração administrativa. Na publicação
-0.0.24, o manifesto `20260820224424`, o CORS e o OAuth MCP foram aprovados. O
-teste hospedado percorreu Fonte, Observação, ciclo de auditoria e autoria
-incremental e encerrou sem resíduos. Uma jornada anterior, no corte 0.0.23,
+versão e capacidades e recusa configuração administrativa. Na promoção da
+candidata 0.0.26, o manifesto `20260821145358`, `package-library-v1`, o CORS e o
+OAuth MCP foram aprovados. O teste hospedado da 0.0.24 percorreu Fonte,
+Observação, ciclo de auditoria e autoria incremental e encerrou sem resíduos.
+Uma jornada anterior, no corte 0.0.23,
 usou três identidades temporárias para verificar acesso de Estudo, negação a
 terceiro, PDF íntegro e adulterado, Variantes e Pesquisa, também com remoção
 integral dos dados de ensaio.

@@ -5,11 +5,11 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-A linha corrente é a 0.0.25. Ela reutiliza o ambiente hospedado na revisão
-`20260820224424`, com a API de Cursos na revisão 5 e o MCP na revisão 120; não
-há migração ou implantação de função associada a essa atualização de clientes.
-A candidata local 0.0.26 avança o manifesto para `20260821145358`; ela foi
-validada sobre o Supabase local, mas ainda não representa o ambiente publicado.
+A linha publicada dos clientes é a 0.0.25 e incorpora o manifesto esperado
+`20260820224424`. O ambiente hospedado já foi promovido para
+`20260821145358`, com a API de Cursos na revisão 9 e o MCP na revisão 124. A
+candidata 0.0.26 declara esse contrato remoto, validado localmente e no ambiente
+hospedado; Pages e Android 0.0.26 ainda não foram publicados.
 
 ## O Curso como raiz do domínio
 
@@ -334,10 +334,11 @@ pelas cotas do Curso.
 
 ## Contrato implantável
 
-Na linha publicada, `supabase/runtime-manifest.json` declara a revisão de esquema
-`20260820224424`, a versão de contrato e todas as capacidades obrigatórias. O
-site publica uma cópia desse manifesto. A inicialização compara o contrato
-esperado com o ambiente remoto antes de oferecer operações dependentes dele.
+Na candidata do repositório, `supabase/runtime-manifest.json` declara a revisão
+de esquema `20260821145358`, a versão de contrato e todas as capacidades
+obrigatórias. O backend hospedado já expõe essa revisão; o site 0.0.25 ainda
+publica sua cópia anterior. A inicialização compara o contrato esperado com o
+ambiente remoto antes de oferecer operações dependentes dele.
 
 A promoção exige migrações em paridade, análise do banco, testes de
 concorrência, testes reais de funcionamento da API e do MCP, validação de

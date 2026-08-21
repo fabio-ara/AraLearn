@@ -9,7 +9,7 @@ examinar fatos da produção e conceder acesso.
 
 Na tela inicial, use **Autoria**. A lista **Meus cursos** apresenta somente os
 Cursos da conta autenticada. Um Curso compartilhado aparece em Estudo, mas não
-nessa lista. A candidata 0.0.26, validada localmente e ainda não publicada,
+nessa lista. A candidata de clientes 0.0.26, ainda não publicada,
 mantém o original sob controle do proprietário e permite que a pessoa favorecida
 crie, na primeira gravação contextual, um Curso pessoal privado. Essa nova cópia
 passa a aparecer em Autoria porque pertence à pessoa que a criou.
