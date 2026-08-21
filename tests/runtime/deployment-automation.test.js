@@ -926,6 +926,9 @@ test("PR conserva a prévia web e o APK debug sem promover uma release", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   const candidateOnly = /if: github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'/gu;
   assert.equal(Array.from(source.matchAll(candidateOnly)).length, 2);
+  assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_URL: \$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/gu)).length, 2);
+  assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_PUBLISHABLE_KEY: \$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/gu)).length, 2);
+  assert.equal(Array.from(source.matchAll(/-RequireRuntimeConfig/gu)).length, 2);
   assert.match(source, /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-pages-candidate[\s\S]+path: \.pages/u);
   assert.match(source, /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-android-debug-candidate[\s\S]+path: android\/app\/build\/outputs\/apk\/debug\/app-debug\.apk/u);
   assert.equal(Array.from(source.matchAll(/retention-days: 7/gu)).length, 2);

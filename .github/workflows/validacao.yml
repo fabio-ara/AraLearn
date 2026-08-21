@@ -56,11 +56,16 @@ jobs:
         run: npx playwright install chromium
 
       - name: Gerar e testar o artefato web no navegador
+        env:
+          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run test:e2e
 
       - name: Examinar o runtime web
         shell: pwsh
-        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages
+        run: >-
+          pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
+          -Target Pages -RequireRuntimeConfig
 
       - name: Guardar prévia web da candidata
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
@@ -72,11 +77,16 @@ jobs:
           retention-days: 7
 
       - name: Compilar aplicativo Android
+        env:
+          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run android:debug
 
       - name: Examinar o runtime Android
         shell: pwsh
-        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
+        run: >-
+          pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
+          -Target Android -RequireRuntimeConfig
 
       - name: Guardar APK de teste da candidata
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
