@@ -214,7 +214,7 @@ os termos do serviço escolhido. A autorização ocorre por chamada, depois de a
 pessoa conferir o conteúdo enumerado.
 
 Essa fronteira foi comprovada em HTTP local. Pages ainda precisa do ensaio de
-acesso à rede local. A candidata Android retira a chamada HTTP do WebView por
+acesso à rede local. O Android 0.0.24 retira a chamada HTTP do WebView por
 uma ponte nativa fixa no relay local e mantém `MIXED_CONTENT_NEVER_ALLOW`; o APK
 instalado ainda precisa comprovar esse percurso em dispositivo real. A limitação
 de transporte não autoriza relaxar a política de conteúdo misto nem mover a

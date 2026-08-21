@@ -84,10 +84,11 @@ sugestão focal ao relay local configurado no dispositivo, conferir a prévia e 
 então aplicar. A credencial do provider permanece no relay, fora do AraLearn; a
 conversa contextual é transitória. O ChatGPT conectado por MCP continua sendo a
 via principal para planejar, materializar, discutir e auditar o Curso inteiro.
-O relay foi comprovado no ambiente web local. A candidata Android encaminha a
-chamada por uma ponte nativa fixa para o relay, sem afrouxar a política de
-conteúdo misto do WebView. Pages e o APK real ainda dependem das validações de
-transporte registradas no roadmap.
+O relay foi comprovado no ambiente web local. O aplicativo Android 0.0.24
+encaminha a chamada por uma ponte nativa fixa para o relay, sem afrouxar a
+política de conteúdo misto do WebView. O site e o APK estão publicados; o acesso
+à rede local pelo Pages e o relay no APK instalado ainda dependem das validações
+de transporte registradas no roadmap.
 
 As ferramentas de autoria conectam assistentes ao mesmo Curso por um protocolo
 aberto, o **Model Context Protocol (MCP)**. Elas listam Cursos próprios,
@@ -161,7 +162,8 @@ sincronização](docs/persistencia-relacional.md).
 ## Aplicação web e Android
 
 A mesma aplicação é entregue na web e como pacote de instalação Android (APK)
-nas versões publicadas do repositório. Estudo mantém uma largura confortável
+nas versões publicadas do repositório. A linha corrente é a 0.0.24, sobre o
+manifesto hospedado `20260820224424`. Estudo mantém uma largura confortável
 também no computador. A
 Autoria conserva uma superfície centralizada de até 430 px também no computador
 e usa quatro grupos iconográficos com divulgação progressiva.

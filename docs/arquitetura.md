@@ -5,9 +5,9 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Esta página descreve a candidata implantável do repositório. A linha hospedada
-0.0.23 permanece separada até que banco, funções e clientes sejam promovidos na
-ordem documentada.
+Esta página descreve a linha 0.0.24 publicada. O ambiente hospedado usa a
+revisão `20260820224424`; banco, funções e clientes foram promovidos na ordem
+documentada.
 
 ## O Curso como raiz do domínio
 
@@ -297,7 +297,7 @@ pelas cotas do Curso.
 
 ## Contrato implantável
 
-Na candidata local, `supabase/runtime-manifest.json` declara a revisão de esquema
+Na linha publicada, `supabase/runtime-manifest.json` declara a revisão de esquema
 `20260820224424`, a versão de contrato e todas as capacidades obrigatórias. O
 site publica uma cópia desse manifesto. A inicialização compara o contrato
 esperado com o ambiente remoto antes de oferecer operações dependentes dele.

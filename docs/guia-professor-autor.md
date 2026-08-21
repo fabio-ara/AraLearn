@@ -221,7 +221,7 @@ desenvolvimento, acompanhado de alerta, e não ao percurso de produção.
 Se o texto for grande demais para o recorte seguro, o ícone fica desabilitado e
 o nome acessível explica o limite. Continue com **Editar**: a edição manual não
 depende do relay. A assistência pelo relay ainda aguarda validação no Pages e
-no APK de release. A candidata Android usa uma ponte nativa fixa para manter a
+no APK de release. O Android 0.0.24 usa uma ponte nativa fixa para manter a
 chamada HTTP fora do WebView, mas a instalação e o ensaio em dispositivo real
 continuam pendentes.
 

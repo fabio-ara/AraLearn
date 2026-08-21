@@ -168,8 +168,8 @@ privada, confira se a versão do AraLearn já envia essa classificação corrigi
 se a permissão do navegador foi concedida. Não troque a chave para o cliente para
 contornar o bloqueio.
 
-No Pages, confira também se o navegador autorizou acesso à rede local. A
-candidata Android encaminha a requisição por uma ponte nativa fixa para não
+No Pages, confira também se o navegador autorizou acesso à rede local. O
+Android 0.0.24 encaminha a requisição por uma ponte nativa fixa para não
 depender de conteúdo misto no WebView. Até a instalação e o ensaio do APK em
 dispositivo real, falha nesse percurso não deve ser contornada com tráfego aberto
 nem com chave no aplicativo; use edição manual ou ChatGPT + MCP.

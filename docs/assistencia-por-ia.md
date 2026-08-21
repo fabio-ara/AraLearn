@@ -117,7 +117,7 @@ Unidade. A gravação usa a mesma revisão esperada, autorização e validação
 edição manual.
 
 O APK de release ainda não possui paridade comprovada para esse relay HTTP. A
-candidata encaminha a requisição por uma ponte Android nativa, fixa em
+versão Android 0.0.24 encaminha a requisição por uma ponte nativa, fixa em
 `http://127.0.0.1:4183/v1/chat/completions`, em vez de iniciar HTTPS para HTTP no
 WebView. A política `MIXED_CONTENT_NEVER_ALLOW` permanece ativa. A compilação de
 depuração passou; instalação do APK de release e ensaio em dispositivo real ainda
