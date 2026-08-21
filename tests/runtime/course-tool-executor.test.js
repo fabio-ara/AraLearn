@@ -47,6 +47,64 @@ test("impede escrita sem escopo", async () => {
   );
 });
 
+test("executa cópia pessoal somente pela superfície da aplicação", async () => {
+  const studyUnit = {
+    id: "unit-a",
+    position: 1,
+    title: "Unidade revista",
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  let received = null;
+  const rawArguments = {
+    requestId: "request-personal-copy-0001",
+    sourceCourseId: COURSE_ID,
+    expectedSourceCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit,
+    applicationOrigin: "manual"
+  };
+  const result = await executeCourseTool({
+    adapter: {
+      async commitPersonalCourseCopyEdit(value) {
+        received = value;
+        return { contract: "aralearn.personal-course-copy-edit.v1", changed: true };
+      }
+    },
+    principal: {
+      actorId: COURSE_ID,
+      authenticationKind: "application",
+      scopes: ["authoring:write"]
+    },
+    name: "criarCopiaPessoalDoCurso",
+    rawArguments,
+    surface: "application"
+  });
+
+  assert.equal(received.sourceCourseId, COURSE_ID);
+  assert.equal(received.studyUnit.id, "unit-a");
+  assert.equal(received.applicationOrigin, "manual");
+  assert.equal(result.requestId, rawArguments.requestId);
+  await assert.rejects(
+    () => executeCourseTool({
+      adapter: {},
+      principal: { ...PRINCIPAL, authenticationKind: "oauth" },
+      name: "criarCopiaPessoalDoCurso",
+      rawArguments
+    }),
+    (error) => error.status === 403
+  );
+});
+
 test("conhecimento contém somente invariantes estáveis", () => {
   const resources = listCourseAuthoringKnowledgeResources();
   assert.equal(resources.length, 1);

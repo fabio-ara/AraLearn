@@ -2431,7 +2431,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v7[check]",
+      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v8[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -2737,6 +2737,42 @@
     {
       "object": "constraint:private.course_instructional_plans/course_instructional_plans_version_v1[check]",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_actor_id_fkey[foreign_key]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_actor_source_v1[unique]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_hash_v1[check]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_initial_versions_v1[check]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_origin_v1[check]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_pkey[primary_key]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_source_revision_v1[check]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_study_unit_v1[check]",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "constraint:private.course_personal_copies/course_personal_copies_target_course_id_fkey[foreign_key]",
+      "caseId": "study-course-experience"
     },
     {
       "object": "constraint:private.course_personal_state_receipts/course_personal_state_receipts_course_id_fkey[foreign_key]",
@@ -5171,6 +5207,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.commit_personal_course_copy_edit_for_actor_v1(p_actor_id uuid, p_source_course_id uuid, p_expected_source_revision bigint, p_expected_study_unit_version bigint, p_upsert jsonb, p_application_origin text, p_request_id text)",
+      "caseId": "study-course-experience"
+    },
+    {
       "object": "function:public.compact_sync_history(p_dry_run boolean, p_now timestamp with time zone)",
       "caseId": "pre-course-database-removal"
     },
@@ -6783,6 +6823,14 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "index:private.course_personal_copies/course_personal_copies_actor_source_v1",
+      "caseId": "study-course-experience"
+    },
+    {
+      "object": "index:private.course_personal_copies/course_personal_copies_pkey",
+      "caseId": "study-course-experience"
+    },
+    {
       "object": "index:private.course_personal_state_receipts/course_personal_state_receipts_expiry_v1_idx",
       "caseId": "study-course-experience"
     },
@@ -7735,6 +7783,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "rls:private.course_personal_copies=forced",
+      "caseId": "study-course-experience"
+    },
+    {
       "object": "rls:private.course_personal_state_receipts=disabled",
       "caseId": "study-course-experience"
     },
@@ -8321,6 +8373,10 @@
     {
       "object": "table:private.course_instructional_plans",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "table:private.course_personal_copies",
+      "caseId": "study-course-experience"
     },
     {
       "object": "table:private.course_personal_state_receipts",

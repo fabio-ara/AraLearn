@@ -324,6 +324,18 @@ test("CI só considera a API de Cursos pronta depois de alcançar seu handler", 
     source.indexOf("COURSE_API_URL="),
     source.indexOf("npm run test:supabase:smoke")
   );
+  assert.match(
+    readiness,
+    /COURSE_API_RUNTIME_READY=false[\s\S]+Serving functions on http:\/\/127\.0\.0\.1:54321\/functions\/v1\/<function-name>[\s\S]+COURSE_API_RUNTIME_READY=true/u
+  );
+  assert.match(
+    readiness,
+    /if \[ "\$COURSE_API_RUNTIME_READY" = true \]; then[\s\S]+--request GET/u
+  );
+  assert.match(
+    readiness,
+    /if \[ "\$COURSE_API_RUNTIME_READY" != true \]; then[\s\S]+exit 1/u
+  );
   assert.match(readiness, /--request GET/u);
   assert.match(readiness, /\[ "\$status_code" = 405 \]/u);
   assert.match(readiness, /"code":"method_not_allowed"/u);
@@ -434,8 +446,9 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260820224424");
+  assert.equal(manifest.schemaRevision, "20260821145358");
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);

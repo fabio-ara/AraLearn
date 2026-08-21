@@ -62,6 +62,25 @@ function normalizeStudyUnit(value) {
   return validation.normalized;
 }
 
+function sourceSelection(value, { sourceCourseId, didacticMicrosequenceId, studyUnitId }) {
+  const source = exactObject(value, new Set([
+    "courseId", "moduleId", "lessonId", "microsequenceId", "studyUnitId"
+  ]), "Posição da edição pessoal inválida.");
+  const normalized = {
+    courseId: uuid(source.courseId, "Curso da posição"),
+    moduleId: opaqueId(source.moduleId, "Módulo da posição"),
+    lessonId: opaqueId(source.lessonId, "Lição da posição"),
+    microsequenceId: opaqueId(source.microsequenceId, "Microssequência da posição"),
+    studyUnitId: opaqueId(source.studyUnitId, "Unidade da posição")
+  };
+  if (normalized.courseId !== sourceCourseId ||
+      normalized.microsequenceId !== didacticMicrosequenceId ||
+      normalized.studyUnitId !== studyUnitId) {
+    fail("A posição não corresponde à edição pessoal.");
+  }
+  return normalized;
+}
+
 export function normalizeFocalStudyUnitCompositionIntent(value) {
   const source = exactObject(value, new Set([
     "requestId", "courseId", "expectedCourseRevision", "expectedStudyUnitVersion",
@@ -140,6 +159,122 @@ export function normalizeFocalStudyUnitCompositionReceipt(value, command) {
     studyUnitId: command.studyUnit.id,
     studyUnitVersion: command.expectedStudyUnitVersion + receipt.updatedCount,
     changed: receipt.updatedCount === 1,
+    idempotent: receipt.idempotent,
+    channel: "application",
+    origin: command.origin,
+    updatedAt: receipt.updatedAt
+  };
+}
+
+export function normalizePersonalCourseCopyEditCommand(value) {
+  const source = exactObject(value, new Set([
+    "requestId", "sourceCourseId", "expectedSourceCourseRevision",
+    "expectedStudyUnitVersion", "didacticMicrosequenceId", "studyUnit", "origin"
+  ]), "Edição da cópia pessoal inválida.");
+  return {
+    requestId: requestId(source.requestId),
+    sourceCourseId: uuid(source.sourceCourseId, "Curso de origem"),
+    expectedSourceCourseRevision: positiveInteger(
+      source.expectedSourceCourseRevision,
+      "Revisão do Curso de origem"
+    ),
+    expectedStudyUnitVersion: positiveInteger(
+      source.expectedStudyUnitVersion,
+      "Versão da Unidade de estudo"
+    ),
+    didacticMicrosequenceId: opaqueId(
+      source.didacticMicrosequenceId,
+      "Identidade da microssequência"
+    ),
+    studyUnit: normalizeStudyUnit(source.studyUnit),
+    origin: applicationOrigin(source.origin)
+  };
+}
+
+export function normalizePersonalCourseCopyEditIntent(value) {
+  const source = exactObject(value, new Set([
+    "requestId", "sourceCourseId", "expectedSourceCourseRevision",
+    "expectedStudyUnitVersion", "didacticMicrosequenceId", "studyUnit", "origin",
+    "targetId", "sourceSelection"
+  ]), "Edição pessoal contextual inválida.");
+  const command = normalizePersonalCourseCopyEditCommand({
+    requestId: source.requestId,
+    sourceCourseId: source.sourceCourseId,
+    expectedSourceCourseRevision: source.expectedSourceCourseRevision,
+    expectedStudyUnitVersion: source.expectedStudyUnitVersion,
+    didacticMicrosequenceId: source.didacticMicrosequenceId,
+    studyUnit: source.studyUnit,
+    origin: source.origin
+  });
+  return {
+    ...command,
+    targetId: opaqueId(source.targetId, "Alvo da edição"),
+    sourceSelection: sourceSelection(source.sourceSelection, {
+      sourceCourseId: command.sourceCourseId,
+      didacticMicrosequenceId: command.didacticMicrosequenceId,
+      studyUnitId: command.studyUnit.id
+    })
+  };
+}
+
+export function normalizePersonalCourseCopyEditReceipt(value, commandValue) {
+  const command = normalizePersonalCourseCopyEditCommand(commandValue);
+  const receipt = exactObject(value, new Set([
+    "contract", "operation", "sourceCourseId", "sourceCourseRevision",
+    "targetCourseId", "targetCourseRevision", "studyUnitId", "studyUnitVersion",
+    "applicationOrigin", "channel", "createdCopy", "changed", "idempotent",
+    "updatedAt"
+  ]), "Confirmação da cópia pessoal inválida.");
+  const changed = receipt.changed;
+  if (receipt.contract !== "aralearn.personal-course-copy-edit.v1" ||
+      receipt.operation !== "commit_personal_course_copy_edit" ||
+      uuid(receipt.sourceCourseId, "Curso de origem confirmado") !==
+        command.sourceCourseId ||
+      receipt.sourceCourseRevision !== command.expectedSourceCourseRevision ||
+      receipt.studyUnitId !== command.studyUnit.id ||
+      receipt.applicationOrigin !== command.origin || receipt.channel !== "application" ||
+      typeof receipt.createdCopy !== "boolean" || typeof changed !== "boolean" ||
+      typeof receipt.idempotent !== "boolean" ||
+      typeof receipt.updatedAt !== "string" || Number.isNaN(Date.parse(receipt.updatedAt))) {
+    fail("A confirmação não corresponde à cópia pessoal solicitada.");
+  }
+  if (!changed) {
+    if (receipt.targetCourseId !== null || receipt.targetCourseRevision !== null ||
+        receipt.createdCopy || receipt.studyUnitVersion !==
+          command.expectedStudyUnitVersion) {
+      fail("A confirmação não corresponde à cópia pessoal solicitada.");
+    }
+    return {
+      courseId: null,
+      sourceCourseId: command.sourceCourseId,
+      sourceCourseRevision: command.expectedSourceCourseRevision,
+      courseRevision: null,
+      studyUnitId: command.studyUnit.id,
+      studyUnitVersion: command.expectedStudyUnitVersion,
+      operation: "commit_personal_course_copy_edit",
+      createdCopy: false,
+      changed: false,
+      idempotent: receipt.idempotent,
+      channel: "application",
+      origin: command.origin,
+      updatedAt: receipt.updatedAt
+    };
+  }
+  const targetCourseId = uuid(receipt.targetCourseId, "Cópia pessoal confirmada");
+  if (targetCourseId === command.sourceCourseId || receipt.targetCourseRevision !== 2 ||
+      receipt.studyUnitVersion !== 2 || !receipt.createdCopy) {
+    fail("A confirmação não corresponde à cópia pessoal solicitada.");
+  }
+  return {
+    courseId: targetCourseId,
+    sourceCourseId: command.sourceCourseId,
+    sourceCourseRevision: command.expectedSourceCourseRevision,
+    courseRevision: 2,
+    studyUnitId: command.studyUnit.id,
+    studyUnitVersion: 2,
+    operation: "commit_personal_course_copy_edit",
+    createdCopy: true,
+    changed: true,
     idempotent: receipt.idempotent,
     channel: "application",
     origin: command.origin,

@@ -1,6 +1,6 @@
 begin;
 
-select plan(70);
+select plan(78);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260820224424',
+  '20260821145358',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -23,7 +23,7 @@ select is(
 
 select is(
   jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
-  32,
+  33,
   'o manifesto não omite nem duplica capacidades correntes'
 );
 
@@ -60,7 +60,8 @@ select ok(
     "course-variant-comparison-list-v1",
     "course-authoring-analytics-v1",
     "course-variant-factual-comparison-v1",
-    "contextual-study-unit-edit-v1"
+    "contextual-study-unit-edit-v1",
+    "personal-course-copy-edit-v1"
   ]'::jsonb,
   'o manifesto anuncia todo o contrato de Curso'
 );
@@ -138,6 +139,11 @@ select has_table(
   'course_variant_comparison_members',
   'cada Curso comparado pertence a um conjunto explícito'
 );
+select has_table(
+  'private',
+  'course_personal_copies',
+  'a origem de uma cópia pessoal fica segregada da composição curricular'
+);
 select has_column(
   'private',
   'course_variant_comparison_members',
@@ -170,6 +176,11 @@ select has_function(
   'public', 'commit_course_composition_for_actor_v1',
   array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text', 'text', 'text'],
   'a composição contextual usa versões esperadas e confirmação atômica'
+);
+select has_function(
+  'public', 'commit_personal_course_copy_edit_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'text', 'text'],
+  'a primeira edição compartilhada cria a cópia pessoal atomicamente'
 );
 select ok(
   strpos(
@@ -278,6 +289,18 @@ select function_privs_are(
   'somente a Edge confirma uma edição contextual em nome do proprietário'
 );
 select function_privs_are(
+  'public', 'commit_personal_course_copy_edit_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'text', 'text'],
+  'service_role', array['EXECUTE'],
+  'somente a API cria a cópia pessoal em nome do estudante'
+);
+select function_privs_are(
+  'public', 'commit_personal_course_copy_edit_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'text', 'text'],
+  'authenticated', array[]::text[],
+  'o cliente não escolhe outro ator ao criar a cópia pessoal'
+);
+select function_privs_are(
   'public', 'commit_course_composition_for_actor_v1',
   array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text', 'text', 'text'],
   'authenticated', array[]::text[],
@@ -382,6 +405,50 @@ select is(
   ),
   0::bigint,
   'registros privados vinculados ao usuário usam RLS'
+);
+
+select ok(
+  (
+    select relation_value.relrowsecurity and relation_value.relforcerowsecurity
+    from pg_class relation_value
+    where relation_value.oid='private.course_personal_copies'::regclass
+  ),
+  'a relação de cópia pessoal força RLS como defesa adicional'
+);
+
+select is(
+  (
+    select count(*)
+    from pg_constraint constraint_value
+    join pg_attribute attribute_value
+      on attribute_value.attrelid=constraint_value.conrelid
+     and attribute_value.attnum=any(constraint_value.conkey)
+    where constraint_value.conrelid='private.course_personal_copies'::regclass
+      and constraint_value.contype='f'
+      and attribute_value.attname='source_course_ref'
+  ),
+  0::bigint,
+  'a referência histórica à origem não apaga a cópia com o Curso observado'
+);
+
+select ok(
+  strpos(pg_get_functiondef(
+    'private.list_courses_for_actor_v1(uuid,text,integer,timestamptz,uuid)'::regprocedure
+  ),'''personalCopyCourseId''') > 0
+  and strpos(pg_get_functiondef(
+    'private.list_courses_for_actor_v1(uuid,text,integer,timestamptz,uuid)'::regprocedure
+  ),'''canDerive''') > 0,
+  'a lista distingue a origem compartilhada de sua cópia pessoal'
+);
+
+select ok(
+  strpos(pg_get_functiondef(
+    'private.get_course_for_actor_v1(uuid,uuid,boolean)'::regprocedure
+  ),'''isPersonalCopy''') > 0
+  and strpos(pg_get_functiondef(
+    'private.get_course_for_actor_v1(uuid,uuid,boolean)'::regprocedure
+  ),'''sourceCourseRevision''') > 0,
+  'a leitura contextualiza uma cópia sem expor detalhes de infraestrutura'
 );
 
 select ok(

@@ -64,6 +64,13 @@ próprias sob o mesmo `courseId`.
 autoral confirmada. Serve à concorrência e à leitura coerente; não cria outro
 Curso.
 
+**Cópia pessoal de Curso.** Curso privado criado para a pessoa que editou, em
+Estudo, um Curso recebido por acesso direto. A primeira gravação materializa a
+composição e aplica a mudança no novo Curso; não transfere propriedade do
+original nem copia planejamento, Fontes, PDFs, acessos, progresso ou
+Observações. Distingue-se de réplica local e cópia temporária, que não constituem
+outra autoridade no servidor.
+
 **Composição didática.** Estrutura curricular corrente do Curso:
 Curso, Módulo, Lição, Microssequência didática e Unidade de estudo. Um Tópico
 pode classificar conteúdo dentro da Lição, mas não acrescenta outro nível a

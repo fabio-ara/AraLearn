@@ -100,7 +100,16 @@ mesmo renderer de Estudo e Inspeção. A edição realça apenas os textos que o
 componente autoriza. A assistência abre uma sobreposição de até 430 px, explica
 qual recorte sairá do aplicativo e permite alternar entre a sugestão e o
 conteúdo sem perder o alvo. Aplicar uma sugestão altera o rascunho; salvar a
-Unidade continua sendo uma decisão separada da pessoa autora.
+Unidade continua sendo uma decisão separada da pessoa.
+
+Desde a versão 0.0.26, um Curso compartilhado apresenta antes da gravação a
+frase “Ao salvar, o AraLearn criará
+uma cópia privada para você. O Curso compartilhado continuará intacto.” A ação
+correspondente é **Salvar na minha cópia**. Depois da confirmação, a pessoa
+permanece na mesma Unidade e a
+interface informa **Cópia criada. Você continua nesta Unidade.** A Home usa
+**Compartilhado com você** no original e **Sua cópia** no novo Curso, sem expor
+identificadores ou revisões.
 
 Em produção, a sobreposição apresenta **Serviço local** como informação fixa,
 modelo e pedido como campos principais e endpoint recolhido em **Conexão**. Se
@@ -127,9 +136,10 @@ o mesmo envelope idempotente; cancelar ou descartar limpa esse estado
 transitório de maneira explícita.
 
 O Estudo conserva navegação própria, com foco na Unidade atual, na prática e na
-retomada. Um Curso compartilhado concede Estudo, enquanto a Autoria permanece
-reservada à pessoa proprietária. Semelhança visual entre cartões de navegação
-não comunica permissão.
+retomada. Um Curso compartilhado concede Estudo e não entra na Autoria da pessoa
+favorecida. A cópia pessoal criada por uma gravação passa a ser Curso próprio e,
+por isso, aparece na Autoria dessa pessoa. Semelhança visual entre cartões de
+navegação não comunica permissão.
 
 Sua entrada usa um único combobox de Curso e uma única prévia rica selecionada.
 A prévia reúne objetivo, relação de acesso, progresso, disponibilidade local e
@@ -308,6 +318,13 @@ oito combinações de largura e tema, confirmou shell centralizado de no máximo
 430 px e ausência de corte ou overflow global. A verificação focal de **Rever** confirmou
 foco, abertura e fechamento por `Enter` e mudança de orientação do indicador.
 Uma rodada no Chrome real integra a verificação pós-publicação.
+
+Na versão 0.0.26, o Chrome real percorreu a cópia pessoal em 360, 390, 430 e
+1.280 px, nos temas claro e escuro. O shell mediu respectivamente 360,
+390, 430 e 430 px e permaneceu centralizado em 1.280 px. Seletor e ação
+principal conservaram 44 px, sem overflow ou identificadores técnicos. Depois
+da gravação, **Sua cópia** e **Compartilhado com você** apareceram como duas
+opções distintas.
 
 A matriz visual focal da Autoria na versão 0.0.24 passou 10/10 em 51,4 segundos
 nas quatro larguras e nos dois temas, incluindo Before/After e rodada de

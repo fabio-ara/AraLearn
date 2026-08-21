@@ -303,6 +303,18 @@ test("CI exige metadata 2xx e executa a jornada OAuth completa", () => {
     workflow,
     /oauth-protected-resource[\s\S]+curl --fail --silent --show-error/u
   );
+  assert.match(
+    workflow,
+    /FUNCTIONS_RUNTIME_READY=false[\s\S]+Serving functions on http:\/\/127\.0\.0\.1:54321\/functions\/v1\/<function-name>[\s\S]+FUNCTIONS_RUNTIME_READY=true/u
+  );
+  assert.match(
+    workflow,
+    /if \[ "\$FUNCTIONS_RUNTIME_READY" = true \]; then[\s\S]+"\$MCP_METADATA_URL"[\s\S]+"\$COURSE_API_URL"/u
+  );
+  assert.match(
+    workflow,
+    /if \[ "\$FUNCTIONS_RUNTIME_READY" != true \]; then[\s\S]+exit 1/u
+  );
   assert.match(workflow, /MCP_READY=false[\s\S]+MCP_READY=true/u);
   assert.match(
     workflow,

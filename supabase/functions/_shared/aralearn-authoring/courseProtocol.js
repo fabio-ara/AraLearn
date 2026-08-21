@@ -169,6 +169,15 @@ export function routeCourseRequest(method, pathname) {
   if (variantComparisons && verb === "GET") {
     return { name: "listCourseVariantComparisons", courseId: courseUuid(variantComparisons[1]) };
   }
+  const personalCopyComposition = path.match(
+    /^\/v1\/courses\/([^/]+)\/personal-copy\/composition$/u
+  );
+  if (personalCopyComposition && verb === "POST") {
+    return {
+      name: "commitPersonalCourseCopyEdit",
+      sourceCourseId: courseUuid(personalCopyComposition[1], "sourceCourseId")
+    };
+  }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };

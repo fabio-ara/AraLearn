@@ -70,9 +70,9 @@ test("o inventário pós-corte separa os dez casos correntes do legado físico",
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 2_262);
+  assert.equal(inventory.objects.length, 2_276);
   assert.deepEqual(counts, {
-    "study-course-experience": 26,
+    "study-course-experience": 40,
     "course-authoring-experience": 273,
     "course-source-provenance": 105,
     "course-anchored-annotations": 86,

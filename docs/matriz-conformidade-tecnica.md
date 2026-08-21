@@ -1,9 +1,10 @@
 # Matriz de conformidade técnica
 
 Esta matriz liga propriedades do AraLearn à implementação e à evidência
-executável da versão 0.0.25. O contrato público das seis ferramentas
-e do recurso MCP permanece 0.0.23, enquanto a API de Cursos e o esquema
-`20260820224424` formam o backend hospedado corrente. O estado “demonstrado”
+executável da linha publicada de clientes 0.0.26. O contrato
+público das seis ferramentas
+e do recurso MCP permanece 0.0.23, enquanto a API de Cursos revisão 9, o MCP
+revisão 124 e o esquema `20260821145358` formam o backend hospedado corrente. O estado “demonstrado”
 indica que a capacidade existe no contrato corrente e possui verificação no
 repositório. Limites declarados fazem parte desse contrato.
 
@@ -29,7 +30,7 @@ repositório. Limites declarados fazem parte desse contrato.
 | disponibilidade local é inferida do descritor | documento verificado no controlador e ponte de Estudo | testes de controlador, ponte, repositório e cenário sem conexão | fora do contrato; a prévia consulta a composição íntegra da revisão e revogação purga conteúdo e posição antes do fallback |
 | progresso e itens para rever usam estado pessoal v2 | `CoursePersonalStateRepository.js` e RPCs próprias | `course-personal-state-repository.test.js`, teste local de funcionamento | demonstrado; Anotações não fazem parte desse documento |
 | Anotações possuem dados locais, paginação e fila próprios | `CourseAnnotationRepository.js` | `course-annotation-repository.test.js`, `course-anchored-annotations-pglite.test.js` | demonstrado; limites bloqueiam nova entrada sem descartar comandos existentes |
-| alterações autorais podem ser enfileiradas sem conexão | ausência de fila autoral; API de Cursos exige conexão | controlador, painéis e auditor de persistência | fora do contrato; revisão corrente é necessária para escrever |
+| alterações autorais gerais podem ser enfileiradas sem conexão | ausência de fila autoral universal; API de Cursos exige conexão | controlador, painéis e auditor de persistência | fora do contrato; a versão 0.0.26 conserva apenas o envelope delimitado da primeira gravação pessoal e ainda exige reconexão e revisão corrente para confirmar a escrita |
 | duas abas convergem sem transmitir texto bruto pelo canal | repositórios e `BroadcastChannel` | testes de estado pessoal e Anotações | demonstrado; o canal sinaliza releitura do IndexedDB |
 
 ## Autoria
@@ -43,7 +44,10 @@ repositório. Limites declarados fazem parte desse contrato.
 | operação sem mudança avança a revisão | comparador semântico das operações | `course-tool-executor.test.js`, testes PGlite | fora do contrato; ausência de mudança conserva revisão e evento |
 | a interface oferece todas as capacidades por quatro destinos progressivos | `CourseAuthoringSurface.js` e painéis de Curso | `course-authoring-surface.test.js`, teste de Autoria no navegador e matriz visual focal 10/10 em 51,4 s | Curso, Revisar, Pesquisa e Pessoas revelam Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, discussões, auditoria, correções, Variantes, Analytics e acesso sem nove rótulos permanentes; #152 e #153 mantêm a simplificação e o aceite humano abertos |
 | a Autoria excede 430 px em tela larga | `course-authoring.css` e shell único | matriz 360/390/430/1280 nos dois temas, 10/10 | fora do contrato; computador conserva a mesma superfície centralizada, sem segunda coluna, overflow global ou composição especial |
-| proprietário edita texto da Unidade no renderer corrente | `manualInlineFields.js`, `manualStudyUnitEdit.js`, aplicações de Estudo e Inspeção | `manual-study-unit-edit.test.js`, `manual-study-unit-edit.spec.js` | demonstrado para os 32 componentes; acesso somente de Estudo não recebe edição e prática/progresso permanecem separados |
+| proprietário edita texto da Unidade no renderer corrente | `manualInlineFields.js`, `manualStudyUnitEdit.js`, aplicações de Estudo e Inspeção | `manual-study-unit-edit.test.js`, `manual-study-unit-edit.spec.js` | demonstrado para os 32 componentes; acesso somente de Estudo nunca grava no original e a primeira mudança material tem como destino uma cópia pessoal, com prática e progresso separados |
+| pessoa com acesso edita o Curso original | operação de cópia pessoal, API de Cursos e relação privada | pgTAP 78/78, PGlite 45/45, smoke local e navegador publicado | fora do contrato; demonstrado que a primeira gravação material cria outro Curso privado, continua na Unidade pertinente e deixa o original inalterado |
+| cópia pessoal herda dados pessoais ou autorais laterais | transação `personal-course-copy-edit-v1` e projeções de Estudo | testes SQL, cliente, IndexedDB e navegador da versão 0.0.26 | fora do contrato; demonstrado que somente título, objetivo e entidades curriculares são materializados; planejamento, Fontes, PDFs, acessos, progresso e Observações começam separados |
+| repetição offline ou duas abas criam duas cópias | envelope delimitado no IndexedDB, recibo e unicidade por pessoa e origem | testes de reinício, replay, revogação e concorrência 1/1 | fora do contrato; demonstrado que a mesma intenção é idempotente e intenções diferentes concorrem por uma única cópia, com conflito explícito |
 | assistência por API altera diretamente o Curso | `StudyUnitProviderAssistance.js` e editor manual compartilhado | `study-unit-provider-assistance.test.js`, teste de navegador | fora do contrato; a resposta validada entra primeiro no rascunho e a pessoa decide salvar pela operação corrente |
 | uma sugestão focal altera vários caminhos de uma vez | schema `changes` e validação da candidata | testes de assistência e navegador | fora do contrato; cada pedido aceita zero ou uma mudança em caminho autorizado e até 8.000 tokens de saída |
 | trecho acima do orçamento abre uma chamada fadada ao corte | disponibilidade calculada antes da sobreposição | testes de assistência, renderer e acessibilidade | fora do contrato; acima de 6.000 caracteres por caminho ou 12.000 no contexto, o comando informa o motivo acessível e a edição manual permanece disponível |
@@ -106,9 +110,9 @@ repositório. Limites declarados fazem parte desse contrato.
 
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260820224424`; banco e funções foram promovidos antes da 0.0.24 e são reutilizados sem mudança pela 0.0.25 |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260821145358`; Apply, análise limitada aos 88 avisos legados, CORS, OAuth/MCP e `package-library-v1` passaram antes da publicação dos clientes 0.0.26 |
 | integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
-| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado no gate da 0.0.25; os artefatos oficiais são confrontados novamente depois da publicação, e o APK ainda exige ensaio com relay em dispositivo real |
+| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado no gate e nos artefatos oficiais da 0.0.26; o APK ainda exige ensaio com relay em dispositivo real |
 | Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |
 | publicação Android parte da ponta validada de `main` | `.github/workflows/android-release.yml` | `deployment-automation.test.js` | demonstrado; revisão superada e tag existente não são republicadas |
 | limpeza física acompanha toda migração | `scripts/courseCutover/prepareLegacyCleanup.mjs` | `course-legacy-cleanup-plan.test.js`, `course-legacy-cleanup-backup.test.js` | fora do contrato; requer inventário, cópia verificada, restauração e confirmação específicas |

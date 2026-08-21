@@ -121,7 +121,8 @@ As regras correntes são deliberadamente simples:
 
 - ferramentas de Autoria listam e alteram somente Cursos próprios;
 - Curso compartilhado não aparece no MCP autoral;
-- acesso direto concede somente Estudo;
+- acesso direto concede somente Estudo no Curso original; a cópia pessoal é
+  criada exclusivamente pela aplicação e só depois passa a ser um Curso próprio;
 - mutações exigem escopo de escrita;
 - perfil e acesso continuam sujeitos à identidade da sessão e à propriedade;
 - o servidor nunca confia num identificador enviado pelo cliente para ampliar

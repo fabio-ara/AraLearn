@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import Ajv2020 from "ajv/dist/2020.js";
 
 import {
+  COURSE_APPLICATION_ONLY_TOOLS,
   COURSE_MCP_TOOLS,
+  authoringApplicationToolDefinition,
+  authoringApplicationToolIsAllowed,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal,
   mapAuthoringApplicationToolCall,
@@ -88,6 +91,83 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     assert.equal(definition._meta["openai/outputTemplate"], componentUri);
   }
   assert.equal(COURSE_MCP_TOOLS.find(({ name }) => name === "listarCursos")._meta, undefined);
+  assert.deepEqual(COURSE_APPLICATION_ONLY_TOOLS, [
+    { name: "criarCopiaPessoalDoCurso" }
+  ]);
+  assert.equal(
+    authoringApplicationToolDefinition("criarCopiaPessoalDoCurso")?.name,
+    "criarCopiaPessoalDoCurso"
+  );
+  assert.equal(authoringMcpToolIsAllowed("criarCopiaPessoalDoCurso", {
+    actorId: COURSE_ID,
+    scopes: ["authoring:write"]
+  }), false);
+  assert.equal(authoringApplicationToolIsAllowed("criarCopiaPessoalDoCurso", {
+    actorId: COURSE_ID,
+    scopes: ["authoring:write"]
+  }), true);
+  assert.doesNotMatch(serialized, /criarCopiaPessoalDoCurso/u);
+});
+
+test("cópia pessoal é ação fechada da aplicação e não altera o contrato MCP", () => {
+  const studyUnit = {
+    id: "unit-a",
+    position: 1,
+    title: "Unidade revista",
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  const operation = mapAuthoringApplicationToolCall("criarCopiaPessoalDoCurso", {
+    requestId: "request-personal-copy-0001",
+    sourceCourseId: COURSE_ID,
+    expectedSourceCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit,
+    applicationOrigin: "provider_assistance"
+  });
+
+  assert.deepEqual(operation, {
+    kind: "route",
+    method: "POST",
+    path: `/v1/courses/${COURSE_ID}/personal-copy/composition`,
+    requestId: "request-personal-copy-0001",
+    body: {
+      requestId: "request-personal-copy-0001",
+      sourceCourseId: COURSE_ID,
+      expectedSourceCourseRevision: 4,
+      expectedStudyUnitVersion: 2,
+      didacticMicrosequenceId: "micro-a",
+      studyUnit,
+      applicationOrigin: "provider_assistance"
+    }
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("criarCopiaPessoalDoCurso", operation.body),
+    (error) => error.code === "unknown_tool"
+  );
+  assert.throws(
+    () => mapAuthoringApplicationToolCall("criarCopiaPessoalDoCurso", {
+      ...operation.body,
+      actorId: COURSE_ID
+    }),
+    (error) => error.code === "unknown_tool_argument"
+  );
+  assert.throws(
+    () => mapAuthoringApplicationToolCall("criarCopiaPessoalDoCurso", {
+      ...operation.body,
+      applicationOrigin: "conversa"
+    }),
+    (error) => error.code === "invalid_tool_argument"
+  );
 });
 
 test("leitura exige identidade e escrita também exige escopo", () => {

@@ -1498,6 +1498,114 @@ try {
     p_after_entity_id: null,
   }, learnerToken);
   assert.equal(sharedEntities.items[0]?.entityId, "module-smoke");
+  const sharedStudyUnit = sharedEntities.items.find(
+    ({ entityType, entityId }) => entityType === "study_unit" &&
+      entityId === "study-unit-smoke",
+  );
+  assert(sharedStudyUnit, "A Unidade compartilhada precisa estar disponível para derivação.");
+  const personalCopyUpsert = {
+    entityType: sharedStudyUnit.entityType,
+    entityId: sharedStudyUnit.entityId,
+    parentType: sharedStudyUnit.parentType,
+    parentId: sharedStudyUnit.parentId,
+    position: sharedStudyUnit.position,
+    content: {
+      ...sharedStudyUnit.content,
+      title: "Unidade adaptada na cópia pessoal",
+    },
+  };
+  const personalCopyStudyUnit = {
+    id: sharedStudyUnit.entityId,
+    position: sharedStudyUnit.position,
+    ...sharedStudyUnit.content,
+    title: "Unidade adaptada na cópia pessoal",
+  };
+  assertDenied(await request(
+    "/rest/v1/rpc/commit_personal_course_copy_edit_for_actor_v1",
+    {
+      method: "POST",
+      token: learnerToken,
+      body: {
+        p_actor_id: learner.id,
+        p_source_course_id: courseId,
+        p_expected_source_revision: 17,
+        p_expected_study_unit_version: sharedStudyUnit.version,
+        p_upsert: personalCopyUpsert,
+        p_application_origin: "manual",
+        p_request_id: crypto.randomUUID(),
+      },
+    },
+  ), "A RPC de cópia pessoal é exclusiva do backend");
+  const personalCopyRequest = {
+    requestId: crypto.randomUUID(),
+    sourceCourseId: courseId,
+    expectedSourceCourseRevision: 17,
+    expectedStudyUnitVersion: sharedStudyUnit.version,
+    didacticMicrosequenceId: sharedStudyUnit.parentId,
+    studyUnit: personalCopyStudyUnit,
+    applicationOrigin: "manual",
+  };
+  const personalCopyResponse = await courseAction(
+    "criarCopiaPessoalDoCurso",
+    personalCopyRequest,
+    learnerToken,
+  );
+  const replayedPersonalCopyResponse = await courseAction(
+    "criarCopiaPessoalDoCurso",
+    personalCopyRequest,
+    learnerToken,
+  );
+  const personalCopyReceipt = personalCopyResponse.data;
+  assert.deepEqual(Object.keys(personalCopyReceipt).sort(), [
+    "applicationOrigin", "changed", "channel", "contract", "createdCopy",
+    "idempotent", "operation", "sourceCourseId", "sourceCourseRevision",
+    "studyUnitId", "studyUnitVersion", "targetCourseId",
+    "targetCourseRevision", "updatedAt",
+  ]);
+  assert.equal(personalCopyReceipt.contract, "aralearn.personal-course-copy-edit.v1");
+  assert.equal(personalCopyReceipt.operation, "commit_personal_course_copy_edit");
+  assert.equal(personalCopyReceipt.sourceCourseId, courseId);
+  assert.equal(personalCopyReceipt.sourceCourseRevision, 17);
+  assert.equal(personalCopyReceipt.targetCourseRevision, 2);
+  assert.equal(personalCopyReceipt.studyUnitVersion, 2);
+  assert.equal(personalCopyReceipt.applicationOrigin, "manual");
+  assert.equal(personalCopyReceipt.channel, "application");
+  assert.equal(personalCopyReceipt.createdCopy, true);
+  assert.equal(personalCopyReceipt.changed, true);
+  assert.equal(personalCopyReceipt.idempotent, false);
+  assert.equal(
+    replayedPersonalCopyResponse.data.targetCourseId,
+    personalCopyReceipt.targetCourseId,
+  );
+  assert.equal(replayedPersonalCopyResponse.data.idempotent, true);
+
+  const sharedCourseAfterCopy = await rpc("get_course_v1", {
+    p_course_id: courseId,
+  }, learnerToken);
+  assert.equal(sharedCourseAfterCopy.canDerive, false);
+  assert.equal(
+    sharedCourseAfterCopy.personalCopyCourseId,
+    personalCopyReceipt.targetCourseId,
+  );
+  const personalCopyCourse = await rpc("get_course_v1", {
+    p_course_id: personalCopyReceipt.targetCourseId,
+  }, learnerToken);
+  assert.equal(personalCopyCourse.ownership, "owned");
+  assert.equal(personalCopyCourse.canEdit, true);
+  assert.equal(personalCopyCourse.isPersonalCopy, true);
+  assert.equal(personalCopyCourse.sourceCourseId, courseId);
+  assert.equal(personalCopyCourse.sourceCourseRevision, 17);
+  const learnerOwnedCoursesAfterCopy = await rpc("list_owned_courses_v1", {
+    p_query: null,
+    p_limit: 24,
+    p_before_updated_at: null,
+    p_before_id: null,
+  }, learnerToken);
+  assert.equal(
+    itemForCourse(learnerOwnedCoursesAfterCopy, personalCopyReceipt.targetCourseId)
+      ?.isPersonalCopy,
+    true,
+  );
 
   const sharedCitations = await rpc("get_course_study_citations_v1", {
     p_course_id: courseId,
@@ -2733,7 +2841,7 @@ try {
   assert.deepEqual(remainingAvatars.payload, []);
 
   console.log(
-    "Smoke local de Curso: PDFs imutáveis, exclusão integral, Fontes, observações, citações, RLS e estado pessoal aprovados.",
+    "Smoke local de Curso: cópia pessoal, PDFs imutáveis, exclusão integral, Fontes, observações, citações, RLS e estado pessoal aprovados.",
   );
 } finally {
   await removeLocalPdfObjects(uploadedPdfPaths);

@@ -288,10 +288,11 @@ jobs:
           ## AraLearn ${{ steps.identity.outputs.version }}
 
           - Código de versão Android ${{ steps.identity.outputs.version_code }}.
-          - A entrada de Estudo reúne a escolha do Curso e uma única prévia rica, sem a antiga grade de cartões repetidos.
-          - Começar, Continuar e Retomar levam diretamente ao ponto adequado e preservam a posição local entre retornos e reinícios.
-          - A prévia distingue disponibilidade offline real, falha de carga e acesso revogado sem expor identificadores técnicos.
-          - A interface permanece em uma coluna de até 430 px, inclusive no desktop, com foco, teclado e toque verificados nos dois temas.
+          - O proprietário continua editando o Curso corrente; quem recebeu acesso salva a primeira mudança material em uma cópia pessoal privada.
+          - O Curso compartilhado permanece intacto, e planejamento, Fontes, PDFs, acessos, progresso e Observações começam separados na cópia.
+          - A edição manual e a assistência por API usam a mesma Unidade e mantêm a pessoa no ponto de estudo correspondente depois da transição.
+          - Reinício, reconexão e concorrência entre abas preservam uma única intenção sem expor identificadores técnicos na interface.
+          - A operação de cópia permanece exclusiva da aplicação; as seis ferramentas e as permissões do MCP não mudam.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `

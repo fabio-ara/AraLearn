@@ -1,11 +1,15 @@
 # Implantação do AraLearn
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
-de borda, site estático e aplicativo Android. A linha 0.0.25 usa a revisão
-hospedada `20260820224424`, a API de Cursos na revisão 5 e o MCP na revisão 120.
-Essa atualização altera somente os clientes; não promove migração nem função. O
-contrato público das ferramentas e do recurso MCP permanece 0.0.23; a nova
-origem estruturada existe somente na rota autenticada do aplicativo.
+de borda, site estático e aplicativo Android. A linha publicada dos clientes é a
+0.0.26 e exige o manifesto `20260821145358`. O backend hospedado expõe essa
+revisão, com a API de Cursos ativa na revisão 9 e o MCP
+ativo na revisão 124. O contrato público das ferramentas e do recurso MCP
+permanece 0.0.23; a nova origem estruturada existe somente na rota autenticada
+do aplicativo.
+
+O site e o Android 0.0.26 foram publicados a partir da mesma ponta validada de
+`main`; o Android usa `versionCode` 172.
 
 O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
@@ -223,8 +227,7 @@ preparação corresponde ao estado observado. Todas as etapas rodam em uma
 transação; divergência de resumo criptográfico ou recomposição provoca reversão.
 
 Depois da migração de identidade, repita `migration list` e `db push --dry-run`. O resultado deve
-estar em paridade com `supabase/runtime-manifest.json` na revisão
-`20260820224424`.
+estar em paridade com `supabase/runtime-manifest.json` na revisão corrente.
 
 ## Promoção do esquema e das Edge Functions
 
@@ -302,8 +305,8 @@ npm.cmd run deployment:verify-site -- --url https://<endereco-publicado>/
 
 ## Publicação do Android
 
-`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.25`. O
-`versionCode` desta entrega é 171. O APK usa a mesma URL e chave pública do
+`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.26`. O
+`versionCode` desta entrega é 172. O APK usa a mesma URL e chave pública do
 site.
 
 Uma compilação local de depuração usa:
@@ -317,7 +320,7 @@ O fluxo `.github/workflows/android-release.yml` acompanha uma validação bem
 sucedida da ponta corrente de `main`. Ele confirma versão, estado da tag e da
 Release, configuração pública e identidade histórica de assinatura; repete
 testes e análise estática; produz o APK assinado; verifica o certificado; e cria
-a GitHub Release `v0.0.25` com `AraLearn-0.0.25.apk`.
+a GitHub Release `v0.0.26` com `AraLearn-0.0.26.apk`.
 
 Se `main` avançar durante a compilação, o fluxo não publica a revisão superada.
 Tag sem Release, Release parcial, rascunho, alvo divergente ou APK ausente
@@ -420,4 +423,29 @@ do restante.
 | entrada de Estudo | um combobox, uma prévia rica, **Começar**, **Continuar** e **Retomar**, disponibilidade local comprovada, revogação com fallback e nenhum identificador técnico visível |
 | matriz visual | oito capturas em 360, 390, 430 e 1280 px, nos temas claro e escuro; shell de até 430 px centralizado e sem overflow global |
 | teclado e divulgação progressiva | **Rever** recebe foco, abre e fecha por `Enter` e atualiza a orientação do indicador |
-| pós-publicação | confrontar o Pages e o APK com o SHA validado e repetir a entrada de Estudo no Chrome real |
+| pós-publicação | Pages, APK e entrada de Estudo foram confrontados no Chrome real com o SHA publicado |
+
+## Estado da entrega 0.0.26
+
+O backend foi promovido antes dos clientes, e os quatro canais da entrega usam o
+mesmo contrato.
+
+| Critério | Evidência da versão 0.0.26 |
+|---|---|
+| versões de cliente | npm e Android `0.0.26`; Android `versionCode` 172 |
+| código e contratos | `npm test`: 1.023 aprovações e dez verificações condicionais, 1.033 no total |
+| banco local | recriação até `20260821145358`, pgTAP 78/78, PGlite 45/45 e concorrência 1/1 |
+| backend hospedado | `deploySupabase` em modo Apply aprovou `20260821145358`; API de Cursos ativa na revisão 9 e MCP ativo na revisão 124 |
+| análise e contratos remotos | análise hospedada limitada aos 88 avisos legados; CORS, OAuth/MCP, manifesto público e `package-library-v1` aprovados |
+| integração | smoke real no Supabase local aprovou cópia pessoal, original intacto e isolamento de dados laterais; CI completo aprovado |
+| navegador automatizado | Playwright: 118 aprovações e dois casos condicionais, 120 no total |
+| navegador real local | fluxo completo em 360, 390, 430 e 1.280 px, claro e escuro; shell de 360/390/430/430 px, centralizado em 1.280 px, seletor e ação principal de 44 px, sem overflow ou identificadores; **Sua cópia** e **Compartilhado com você** aparecem como duas opções distintas |
+| sincronização | reinício, reconexão, duas abas, resposta ambígua, revogação e origem removida preservam uma única intenção e reconciliam a confirmação |
+| publicação | backend, Pages, Android e verificação pós-publicação dos clientes concluídos |
+
+A promoção implantou a migração e as funções antes dos clientes e confirmou o
+manifesto hospedado. A verificação posterior confrontou a Home, a permanência na
+Unidade pertinente e a ausência de identificadores técnicos no Chrome real.
+
+O MCP não recebe ferramenta nova nessa promoção. Git, GitHub App e
+`VersionedCourseStore` permanecem fora da Refatoração 2.0.

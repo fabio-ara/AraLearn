@@ -141,6 +141,24 @@ Outro cliente alterou o Curso depois da leitura. Reabra ou releia o Curso,
 compare a intenção com o estado novo e aplique apenas o que ainda faz sentido.
 Não aumente a revisão à mão e não repita a escrita às cegas.
 
+## Salvei um Curso compartilhado e a cópia não apareceu
+
+Desde a versão 0.0.26, uma cópia pessoal só nasce quando **Salvar na minha
+cópia** confirma uma mudança material.
+Abrir o editor, gerar
+uma prévia, cancelar, receber uma falha ou salvar conteúdo idêntico deixa o
+Curso compartilhado intacto e não cria outro Curso.
+
+Se a conexão caiu ou a resposta ficou ambígua, não refaça o texto em outro
+Curso. Reabra a mesma Unidade ou reconecte: o aplicativo conserva o envelope
+delimitado e repete o mesmo pedido. Se outra aba já criou a cópia com uma
+intenção diferente, a interface conserva o rascunho e informa o conflito. Ela
+não deve mostrar o identificador interno do Curso de destino.
+
+Depois da confirmação, a pessoa continua na mesma Unidade de **Sua cópia**. O
+progresso e as Observações do original não são transportados. Fontes, PDFs,
+acessos e planejamento também começam separados.
+
 ## O formulário reapareceu depois de salvar
 
 Se a mensagem disser que a resposta se perdeu e que a operação pode ter sido
@@ -152,6 +170,11 @@ pedido, para recuperar o recibo sem duplicar o efeito.
 Use **Cancelar** ou **Descartar** somente quando quiser abandonar essa intenção.
 O rascunho é transitório da interface e não integra a fila do IndexedDB; evite
 recarregar ou fechar a página antes de concluir a repetição ou o descarte.
+
+A primeira gravação de uma cópia pessoal é a exceção delimitada: seu envelope
+fica no IndexedDB para sobreviver a reinício e reconexão. Descartar essa intenção
+remove o envelope. Conversa, configuração e credencial do provider nunca fazem
+parte dele.
 
 ## A assistência por API não responde
 

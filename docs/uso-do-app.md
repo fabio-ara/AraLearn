@@ -75,7 +75,9 @@ Use o seletor **Estudo / Autoria** na tela inicial.
 - **Autoria** mostra somente Cursos próprios.
 
 A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
-a pessoa pode estudar, e a edição permanece com o proprietário.
+a pessoa pode estudar, mas não alterar o original. Desde a versão 0.0.26, uma
+gravação contextual feita em Estudo cria um Curso pessoal privado; ele passa a
+aparecer em Autoria como Curso próprio.
 
 ## Abrir e percorrer um Curso
 
@@ -201,6 +203,20 @@ Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
 **Cancelar** abandona somente esse rascunho.
 
+Desde a versão 0.0.26, a mesma ação aparece em Estudo para quem recebeu acesso
+direto. Antes da primeira gravação,
+a interface informa que
+**Salvar na minha cópia** criará um Curso pessoal privado. A operação materializa
+a estrutura e o conteúdo correntes, aplica a mudança e continua na mesma Unidade.
+O Curso compartilhado permanece intacto. Planejamento, Fontes, PDFs, acessos,
+progresso e Observações não são copiados; esses registros começam próprios no
+novo Curso.
+
+Abrir o editor, pedir uma sugestão, cancelar, encontrar uma falha ou confirmar
+conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home mostra
+o novo Curso como **Sua cópia** e mantém o original como **Compartilhado com
+você**.
+
 Para obter uma sugestão, ative a edição, selecione o trecho e use
 **Assistência por API**:
 
@@ -291,6 +307,14 @@ editar os campos, essa nova tentativa reutiliza o comando, as versões, as
 identidades geradas e o mesmo identificador de pedido. O servidor devolve o
 recibo anterior em vez de duplicar o efeito. Alterar o formulário inicia uma
 nova intenção e um novo pedido.
+
+Na criação da cópia pessoal, esse envelope delimitado também fica no IndexedDB
+até a confirmação ou o descarte. Ele conserva o Curso de origem, a Unidade, as
+versões esperadas, o rascunho final e a origem manual ou assistida. Não conserva
+a conversa, a configuração nem a credencial do provider. Ao reconectar, o
+AraLearn pode repetir exatamente o mesmo pedido. Duas abas que repetem essa
+intenção recebem o mesmo resultado; intenções diferentes concorrendo pela
+primeira cópia produzem conflito em vez de dois Cursos pessoais.
 
 ## Consultar Estrutura e Inspeção
 
@@ -395,6 +419,12 @@ pela primeira vez** distingue o descritor conhecido de uma composição que aind
 não existe localmente. A seleção e o último ponto visitado permanecem no
 dispositivo; uma segunda aba não desloca a tela já aberta na primeira.
 
+Quando a rede está disponível, mas a atualização remota ainda não terminou, a
+Home informa **Exibindo a versão salva · o AraLearn está atualizando os dados.**
+O texto **Sem conexão** aparece somente quando o navegador realmente está sem
+rede; uma cópia local momentaneamente desatualizada não é apresentada como perda
+de conexão.
+
 Na Autoria, o IndexedDB conserva a lista de Cursos próprios, o cabeçalho, o
 planejamento, a Estrutura, páginas recentes da Inspeção e a posição de retomada.
 Uma leitura local é identificada como desatualizada e somente para consulta. A
@@ -449,6 +479,10 @@ Mudanças estruturais, correções auditáveis e materialização usam operaçõ
 próprias. Cursos também não são
 disponibilizados anonimamente: Estudo exige conta própria ou acesso direto
 concedido pelo proprietário.
+
+A cópia pessoal da versão 0.0.26 usa a persistência relacional e o Storage
+correntes do AraLearn. Ela não introduz Git, repositório, ramo ou versão técnica
+na interface.
 
 Progresso, cliques, rolagem, tempo, marcas e Observações descrevem eventos ou
 estados observáveis. A interpretação como atenção, engajamento, compreensão ou

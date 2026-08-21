@@ -190,6 +190,21 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
+    /value\.createsPersonalCopy === true[\s\S]*?repository\.commitPersonalCourseCopyEdit/u,
+    "A primeira edição do estudante deve usar a operação atômica de cópia pessoal."
+  );
+  assert.match(
+    mainSource,
+    /refreshStudy[\s\S]*?resumePendingManualEdit[\s\S]*?refreshCourses/u,
+    "A reconexão deve confirmar a cópia pessoal pendente antes da atualização comum."
+  );
+  assert.match(
+    mainSource,
+    /createCourseStudyApplication[\s\S]*?await editorApp\.resumePendingManualEdit/u,
+    "A inicialização deve recuperar uma edição pessoal persistida antes de seguir."
+  );
+  assert.match(
+    mainSource,
     /addEventListener\("offline"[\s\S]*?editorApp\?\.setOfflineStatus\?\.\(true\)/u,
     "A perda de conexão deve atualizar o aviso do Estudo sem iniciar uma leitura remota."
   );

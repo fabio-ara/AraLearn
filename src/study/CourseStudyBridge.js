@@ -36,4 +36,35 @@ export class CourseStudyBridge {
     }
     return this.controller.hasVerifiedCourseDocument(courseId, options);
   }
+
+  commitPersonalCourseCopyEdit(value) {
+    if (typeof this.controller.commitPersonalCourseCopyEdit !== "function") {
+      throw new TypeError("A edição em cópia pessoal não está disponível.");
+    }
+    return this.controller.commitPersonalCourseCopyEdit(value);
+  }
+
+  loadPendingPersonalCopyEdit(sourceCourseId = null) {
+    if (typeof this.controller.loadPendingPersonalCopyEdit !== "function") {
+      return Promise.resolve(null);
+    }
+    return this.controller.loadPendingPersonalCopyEdit(sourceCourseId);
+  }
+
+  retryPendingPersonalCopyEdit(sourceCourseId = null) {
+    if (typeof this.controller.retryPendingPersonalCopyEdit !== "function") {
+      throw new TypeError("A retomada da cópia pessoal não está disponível.");
+    }
+    return this.controller.retryPendingPersonalCopyEdit(sourceCourseId);
+  }
+
+  clearPendingPersonalCopyEdit(sourceCourseId = null, expectedRequestId = null) {
+    if (typeof this.controller.clearPendingPersonalCopyEdit !== "function") {
+      return Promise.resolve(false);
+    }
+    return this.controller.clearPendingPersonalCopyEdit(
+      sourceCourseId,
+      expectedRequestId
+    );
+  }
 }

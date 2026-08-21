@@ -5,9 +5,10 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-A linha corrente é a 0.0.25. Ela reutiliza o ambiente hospedado na revisão
-`20260820224424`, com a API de Cursos na revisão 5 e o MCP na revisão 120; não
-há migração ou implantação de função associada a essa atualização de clientes.
+A linha publicada dos clientes é a 0.0.26 e exige o manifesto
+`20260821145358`. O ambiente hospedado expõe essa revisão, com a API de Cursos
+na revisão 9 e o MCP na revisão 124. O contrato foi validado localmente e no
+ambiente hospedado antes da publicação coordenada de Pages e Android.
 
 ## O Curso como raiz do domínio
 
@@ -56,8 +57,9 @@ Na entrada de Estudo, descritores paginados alimentam um único combobox e uma
 única prévia. A seleção não carrega a composição curricular. A ação
 **Começar**, **Continuar** ou **Retomar** resolve a posição pertinente, valida a
 composição e só então entra no Curso. A prévia consulta o documento validado no
-IndexedDB para informar disponibilidade sem conexão; revogação elimina a cópia
-e o ponto local. Esse contrato integra a versão 0.0.25.
+IndexedDB para informar disponibilidade sem conexão; revogação elimina a réplica
+local do Curso compartilhado e o ponto local, sem apagar uma cópia pessoal já
+confirmada. Esse contrato integra a versão 0.0.25.
 
 O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
 `criarCurso`, `alterarCurso`, `gerirPessoas` e
@@ -139,19 +141,47 @@ representação paralela. O renderer declara os caminhos textuais editáveis de
 cada componente; o editor altera apenas esses caminhos, reconcilia respostas
 associadas quando isso é inequívoco e valida novamente o envelope completo.
 
-A gravação envia uma única Unidade, sua Microssequência pai, as revisões
-esperadas do Curso e da Unidade, a proveniência efetiva e uma origem fechada:
-`manual` ou `provider_assistance`. A API autentica o proprietário e a função SQL
-aceita a operação somente pelo papel de servidor. Conteúdo, proveniência, revisão,
-evento e recibo confirmam ou revertem juntos. Ao receber 2xx, o cliente persiste
-primeiro o snapshot focal confirmado e promove Unidade, revisão e versão no
-documento `course.v1`; só depois invalida as projeções anteriores. Estudo e
-Inspeção podem reler a Unidade sem rede como confirmada, com sincronização
-pendente. A escrita não é repetida. A releitura canônica da mesma revisão
-substitui o snapshot; uma revisão superior o elimina como incorporado ou
-superado. Saída local ou remota, revogação, limpeza do Curso ou perda de
-autoridade purgam a cópia. Uma atualização externa rebasa as versões usadas pelo próximo CAS sem
-perder seleção, progresso ou Observações.
+A gravação do proprietário envia uma única Unidade, sua Microssequência pai, as
+revisões esperadas do Curso e da Unidade, a proveniência efetiva e uma origem
+fechada: `manual` ou `provider_assistance`. A API autentica o proprietário e a
+função SQL aceita a operação somente pelo papel de servidor. Conteúdo,
+proveniência, revisão, evento e recibo confirmam ou revertem juntos. Ao receber
+2xx, o cliente persiste primeiro o snapshot focal confirmado e promove Unidade,
+revisão e versão no documento `course.v1`; só depois invalida as projeções
+anteriores. Estudo e Inspeção podem reler a Unidade sem rede como confirmada,
+com sincronização pendente. A escrita não é repetida. A releitura canônica da
+mesma revisão substitui o snapshot; uma revisão superior o elimina como
+incorporado ou superado. Saída local ou remota, revogação, limpeza do Curso ou
+perda de autoridade purgam a réplica. Uma atualização externa rebasa as versões
+usadas pelo próximo CAS sem perder seleção, progresso ou Observações.
+
+### Cópia pessoal em Estudo
+
+A versão 0.0.26 acrescenta um segundo destino à mesma edição contextual.
+Quando a pessoa possui acesso direto, mas não é proprietária, a
+primeira gravação com mudança material materializa um Curso privado pertencente
+a ela e aplica a Unidade editada nesse novo Curso. O original não recebe escrita.
+O cliente muda de Curso preservando Microssequência, Unidade e posição visual.
+
+A cópia conserva título, objetivo, identidades da composição, hierarquia e
+posição necessários para continuar o estudo. Ela inicia planejamento próprio e
+não copia Fontes, Âncoras, PDFs, acessos, estado pessoal ou Observações. Esses
+dados permanecem ligados ao Curso em que foram produzidos. Abrir o editor, gerar
+uma prévia, cancelar, falhar ou enviar conteúdo idêntico não cria outro Curso.
+
+A aplicação usa uma operação estreita separada da composição autoral canônica.
+Ela valida acesso ao original, revisão do Curso, versão e posição da Unidade,
+serializa a criação por pessoa e Curso de origem e grava cópia, primeira edição,
+eventos e recibo na mesma transação. O mesmo pedido pode ser repetido; outra
+intenção concorrente recebe conflito e não cria uma segunda cópia. O MCP e a
+operação do proprietário continuam com a autorização anterior.
+
+Se a conexão falhar ou a resposta ficar ambígua, somente o envelope final dessa
+primeira gravação fica no IndexedDB: origem, seleção, versões, Unidade editada e
+identificador de pedido. Conversa, configuração e credencial do provider não
+integram esse estado. A reconexão repete a mesma intenção e a confirmação promove
+o Curso pessoal. Essa capacidade usa o PostgreSQL, as Edge Functions e o
+IndexedDB correntes; não introduz Git nem uma camada futura de versionamento.
 
 Na primeira tentativa, o controlador fixa em memória a proveniência efetiva sob
 o `requestId` e a assinatura da intenção. Uma repetição depois de resposta
@@ -304,10 +334,11 @@ pelas cotas do Curso.
 
 ## Contrato implantável
 
-Na linha publicada, `supabase/runtime-manifest.json` declara a revisão de esquema
-`20260820224424`, a versão de contrato e todas as capacidades obrigatórias. O
-site publica uma cópia desse manifesto. A inicialização compara o contrato
-esperado com o ambiente remoto antes de oferecer operações dependentes dele.
+No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
+esquema `20260821145358`, a versão de contrato e todas as capacidades
+obrigatórias. O backend hospedado e o site 0.0.26 usam essa revisão. A
+inicialização compara o contrato esperado com o ambiente remoto antes de
+oferecer operações dependentes dele.
 
 A promoção exige migrações em paridade, análise do banco, testes de
 concorrência, testes reais de funcionamento da API e do MCP, validação de

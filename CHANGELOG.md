@@ -4,6 +4,36 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.26] - 2026-08-21
+
+### Alterado
+
+- o proprietário continua editando o Curso corrente; quem recebeu acesso direto
+  pode editar uma Unidade no próprio Estudo, manualmente ou com a assistência
+  complementar por API, e a primeira gravação com mudança material cria um
+  Curso pessoal privado e mantém a pessoa na mesma Unidade;
+- a cópia pessoal recebe a composição didática necessária, mas começa com
+  planejamento, Fontes, PDFs, acessos, progresso e Observações próprios; o
+  Curso compartilhado e os registros ligados a ele permanecem inalterados;
+- a Home distingue **Compartilhado com você** de **Sua cópia**, sem mostrar
+  identificadores, revisões ou detalhes de persistência.
+
+### Corrigido
+
+- abrir o editor, pedir uma prévia à assistência, cancelar, receber falha ou
+  salvar conteúdo sem mudança não cria uma cópia pessoal;
+- a primeira gravação conserva no IndexedDB um envelope delimitado e
+  idempotente quando a conexão falha ou a resposta é ambígua; a reconexão
+  repete o mesmo pedido, enquanto duas intenções concorrentes não criam duas
+  cópias, e a confirmação continua reconciliável se o acesso à origem for
+  revogado;
+- a operação destinada à cópia pessoal permanece exclusiva da aplicação e não
+  amplia as ferramentas autorais do MCP nem a autorização para alterar o Curso
+  original;
+- uma versão salva exibida enquanto os dados são atualizados deixa de ser
+  anunciada como falta de conexão; **Sem conexão** fica reservado ao estado
+  realmente offline.
+
 ## [0.0.25] - 2026-08-21
 
 ### Alterado

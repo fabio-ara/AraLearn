@@ -1,27 +1,33 @@
 # Estado corrente do produto
 
-Esta página registra o estado observado em **2026-08-21**. A linha corrente é
-a versão 0.0.25, sobre o esquema hospedado `20260820224424`. A API de Cursos
-está na revisão 5 e o MCP, na revisão 120. O contrato público das seis
+Esta página registra o estado observado em **2026-08-21**. A linha publicada dos
+clientes é a versão 0.0.26, que exige o manifesto `20260821145358`. O backend
+hospedado expõe essa revisão, com a API de Cursos ativa na revisão 9 e o MCP
+ativo na revisão 124. Pages e Android foram publicados a partir da mesma ponta
+validada de `main`. O contrato público das seis
 ferramentas e do recurso visual MCP permanece 0.0.23. A página distingue
 implementação, ligação entre camadas, acesso, uso e evidência.
 
 O feedback humano posterior ao corte confirmou regressões em Estudo e Autoria.
-A versão 0.0.25 conclui
+A versão 0.0.25 concluiu
 [#148](https://github.com/fabio-ara/AraLearn/issues/148) ao restaurar a seleção
-compacta de Curso, a prévia rica e a retomada persistida. A edição contextual
-para quem apenas estuda permanece na
-[#149](https://github.com/fabio-ara/AraLearn/issues/149). A Autoria expôs carga
+compacta de Curso, a prévia rica e a retomada persistida. A versão 0.0.26
+concluiu [#149](https://github.com/fabio-ara/AraLearn/issues/149) sobre a
+persistência Supabase corrente: a edição contextual de quem estuda cria uma
+cópia pessoal sem alterar o Curso compartilhado. Banco, concorrência, clientes,
+navegador, promoção hospedada, artefatos oficiais e verificação pós-publicação
+passaram. A sequência avança para
+[#150](https://github.com/fabio-ara/AraLearn/issues/150), sem antecipar a
+investigação Git. A Autoria expôs carga
 conceitual e visual incompatível com a identidade do aplicativo. O
 [roadmap #147](https://github.com/fabio-ara/AraLearn/issues/147) substitui o
 planejamento anterior sem declarar seus requisitos concluídos. As issues #148 a
 [#155](https://github.com/fabio-ara/AraLearn/issues/155) terminam e estabilizam a
 Refatoração 2.0 na persistência atual. A investigação Git começa somente depois.
 
-O contrato corrente usa o Curso como identidade comum de Estudo, Autoria,
-Pesquisa e Model Context Protocol (MCP). A revisão de banco declarada no
-manifesto implantável é `20260820224424`; a implantação hospedada foi
-verificada contra essa revisão antes da promoção dos clientes.
+O contrato usa o Curso como identidade comum de Estudo, Autoria, Pesquisa e
+Model Context Protocol (MCP). A revisão hospedada é `20260821145358`, declarada
+pelos clientes 0.0.26 sem implementar Git.
 
 ## Como ler a matriz
 
@@ -49,9 +55,10 @@ aprendizagem, compreensão ou usabilidade humana.
 | estudar o Curso vivo | Sim | Revisão, entidades paginadas, composição validada, IndexedDB e mecanismo de renderização formam um único fluxo | Proprietário e pessoa com acesso direto | Testes focais, navegador e Pages publicado | Navegação curricular, prática, retorno, progresso, marcas de revisão e Fontes visíveis foram exercitados | Sim | Alto | A atualização do APK 0.0.22 permanece obrigatória; o funcionamento não prova eficácia educacional |
 | continuar o estudo sem conexão | Sim | Composição já validada, seleção, ponto visitado, estado pessoal e filas específicas permanecem no dispositivo | Pessoa que já sincronizou o Curso | Testes de reinício, reconexão, duas abas, disponibilidade focal e revogação | A prévia consulta a cópia validada e distingue disponibilidade real no dispositivo de um Curso que exige conexão; revogação purga conteúdo e posição e escolhe outro Curso acessível | Sim | Alto | Um dispositivo desconhecido com escrita antiga não sincronizada não pode ser recuperado depois da migração que remove o armazenamento anterior |
 | criar um Curso privado | Sim | Interface e MCP usam o mesmo domínio, API, transação e revisão | Pessoa autenticada torna-se proprietária | Testes locais | A criação idempotente produz identidade, metadados e plano inicial sob autorização | Sim | Alto | O padrão de 7 a 12 Partes é configurável e não constitui regra pedagógica |
-| operar a Autoria compacta e descobrir tarefas | Parcial | A versão 0.0.25 conserva os casos de uso em quatro grupos progressivos, numa superfície única de até 430 px | Proprietário | Testes nas quatro larguras, artefato anterior publicado e feedback humano que originou a antiga #144 | Limite de largura, navegação por ícones e alcance das capacidades possuem prova automatizada; descoberta espontânea ainda não foi reavaliada | Sim | Alto na linha corrente | #152 e #153 mantêm abertas a simplificação final, a sessão humana por tarefas e a conferência da interface publicada |
-| editar uma Unidade manualmente no contexto | Sim | Estudo e Inspeção usam o mesmo renderer, campos editáveis declarados pelo componente, validação da Unidade e operação autenticada de composição | Somente o proprietário | 136/136 verificações focais, 9/9 cenários integrados e prova vertical real | A edição conserva pai, posição, identidade e proveniência; antes de invalidar projeções, o recibo 2xx promove o snapshot no IndexedDB, preserva progresso e Observações e permite leitura sem rede como confirmada, com sincronização pendente | Sim | Alto | Releitura igual normaliza o snapshot, revisão superior o substitui, logout, limpeza ou revogação o purgam; atualização externa rebasa o CAS sem perder a seleção; a reversão autoral persistida continua no ciclo de correção |
-| pedir uma sugestão focal por API | Parcial | O mesmo editor contextual delimita o trecho, chama o relay local, valida uma mudança esparsa e aplica a sugestão ao rascunho antes da gravação | Somente o proprietário; a credencial do provider fica no relay, fora do AraLearn | Testes de domínio e navegador, duas passagens da prova vertical real, a mais recente 1/1 em 14,2 s, e compilação Android de release; nenhuma chamada paga integra a validação | Produção mostra apenas Serviço local nos hosts previstos e na porta 4183; o navegador distingue loopback de rede local, e o Android usa desde a 0.0.24 uma ponte nativa fixa em `127.0.0.1:4183` sem relaxar a política de conteúdo misto; falha, recorte grande ou indisponibilidade não bloqueiam edição manual, Estudo ou ChatGPT + MCP | Sim, como complemento | Alto na web local | O envelope omite identidades internas, PDFs, Fontes e outras Unidades; Pages ainda exige ensaio de acesso à rede local, e o APK de release instalado precisa de prova em dispositivo real |
+| operar a Autoria compacta e descobrir tarefas | Parcial | A versão 0.0.26 conserva os casos de uso em quatro grupos progressivos, numa superfície única de até 430 px | Proprietário | Testes nas quatro larguras, artefato publicado e feedback humano que originou a antiga #144 | Limite de largura, navegação por ícones e alcance das capacidades possuem prova automatizada; descoberta espontânea ainda não foi reavaliada | Sim | Alto na linha corrente | #152 e #153 mantêm abertas a simplificação final, a sessão humana por tarefas e a conferência da interface publicada |
+| editar uma Unidade manualmente no contexto | Sim | Estudo e Inspeção usam o mesmo renderer, campos editáveis declarados pelo componente, validação da Unidade e operação autenticada de composição | Proprietário no Curso corrente; pessoa com acesso direto somente ao gravar numa cópia pessoal | 136/136 verificações focais, 9/9 cenários integrados e prova vertical real | A edição conserva pai, posição, identidade e proveniência; antes de invalidar projeções, o recibo 2xx promove o snapshot no IndexedDB, preserva progresso e Observações e permite leitura sem rede como confirmada, com sincronização pendente | Sim | Alto | Releitura igual normaliza o snapshot, revisão superior o substitui, logout, limpeza ou revogação o purgam; atualização externa rebasa o CAS sem perder a seleção; a reversão autoral persistida continua no ciclo de correção |
+| criar uma cópia pessoal pela edição em Estudo | Sim | O mesmo renderer envia uma operação exclusiva da aplicação; uma transação cria um Curso privado, copia somente a composição e aplica a mudança inicial | Pessoa com acesso direto, sem escrita sobre o original | Supabase local recriado; pgTAP 78/78, PGlite 45/45, concorrência 1/1, smoke real local e Playwright 118/120 aprovados; `deploySupabase` em modo Apply, análise hospedada limitada aos 88 avisos legados, CORS, OAuth/MCP e verificador público também aprovados; Pages, Android e o percurso pós-publicação passaram | Mantém a mesma Unidade, separa planejamento, Fontes, PDFs, acessos, progresso e Observações e repete o pedido durável sem duplicar a cópia; revogação ou desaparecimento da origem não desfazem uma confirmação já persistida | Sim | Alto | O Chrome real local confirmou o fluxo nas quatro larguras, a ausência de identificadores, os controles de 44 px e a distinção entre **Sua cópia** e **Compartilhado com você**; o percurso pós-publicação confrontou o artefato oficial |
+| pedir uma sugestão focal por API | Parcial | O mesmo editor contextual delimita o trecho, chama o relay local, valida uma mudança esparsa e aplica a sugestão ao rascunho antes da gravação | Proprietário no Curso corrente; desde a 0.0.26, quem estuda usa a mesma prévia e salva apenas na cópia pessoal; a credencial do provider fica no relay | Testes de domínio e navegador da linha publicada, duas passagens da prova vertical real, a mais recente 1/1 em 14,2 s, compilação Android de release e fluxo da cópia pessoal aprovados | Produção mostra apenas Serviço local nos hosts previstos e na porta 4183; o navegador distingue loopback de rede local, e o Android usa desde a 0.0.24 uma ponte nativa fixa em `127.0.0.1:4183` sem relaxar a política de conteúdo misto; prévia, falha, recorte grande ou indisponibilidade não gravam conteúdo | Sim, como complemento | Alto na web local | O envelope omite identidades internas, PDFs, Fontes e outras Unidades; Pages ainda exige ensaio de acesso à rede local, e o APK de release instalado precisa de prova em dispositivo real |
 | planejar e organizar por Partes | Sim | Planejamento, itens, Partes, vínculos de produção e atividade são lidos e alterados pelas duas interfaces | Proprietário | Testes locais | É possível editar campos do plano, criar, reordenar, dividir e unir Partes e mover Microssequências sem apagar conteúdo | Sim | Alto | Parte é unidade operacional; o dimensionamento adequado continua sujeito ao conteúdo e à avaliação |
 | produzir uma Parte com assistência conversacional | Sim | O cliente conectado lê plano, parâmetros, componentes, Fontes e Observações e confirma etapas limitadas no servidor | Proprietário autenticado por OAuth | Testes de domínio, serviço e MCP | Etapas são retomáveis, idempotentes e transacionais; o progresso deriva do conteúdo confirmado | Sim | Alto | A interface visual prepara o pedido, mas não executa a produção sozinha; falta o ensaio final no cliente conversacional hospedado |
 | configurar parâmetros e componentes didáticos | Sim | Área Parâmetros e MCP chamam a mesma resolução por escopo e a mesma operação atômica de política | Proprietário | Testes de domínio, banco, MCP e interface | Valor efetivo, origem, herança, preferência, disponibilidade e bloqueio permanecem inspecionáveis | Sim | Alto | Valores aplicados são fatos declarados de desenho; não medem qualidade ou aprendizagem |
@@ -68,7 +75,7 @@ aprendizagem, compreensão ou usabilidade humana.
 | pedir análise e visualização no cliente conversacional | Sim | A vista de Pesquisa do MCP fornece conteúdo estruturado, representação textual, componente visual opcional e endereços para o AraLearn | Proprietário conectado por OAuth; a forma visual depende do suporte do cliente | Testes locais do servidor MCP e do componente; OAuth hospedado | Tabela e gráfico derivam do mesmo contrato; a operação continua útil sem componente visual | Sim | Alto | Falta a verificação final numa sessão real do cliente conectado |
 | operar dentro dos limites gratuitos do Supabase | Parcial | Paginação, limites de resposta, anexos deduplicados e consultas sob demanda reduzem banco, armazenamento, transferência e funções remotas | Operação administrativa, sem painel próprio | Plano Free confirmado e medidas hospedadas do corte | O banco ocupa 97.053.843 bytes de 500 MB; os objetos ocupam 14.674.570 bytes de 1 GB; 41 chamadas MCP consecutivas responderam com sucesso, com mediana de 291 ms e percentil 95 de 587 ms | Sim | Alto | O limite mensal é de 500 mil invocações e 5 GB de transferência; ainda faltam a medição mensal de transferência e a projeção de crescimento após uso continuado |
 | manter somente a arquitetura corrente | Parcial | O código de execução, a interface, o MCP e os testes correntes usam Curso; módulos substituídos de autoria e sincronização genérica foram retirados | Não é uma capacidade exposta | Busca estática, inventário vertical e corte hospedado | O saldo no repositório é negativo em tabelas conceituais, rotas, módulos, ferramentas e testes; objetos antigos permanecem isolados e sem consumidor corrente | Sim | Alto | A remoção física exige cópia posterior ao corte, restauração, plano exato e autorização específica |
-| publicar a revisão integrada | Sim | Site e Android 0.0.25 declaram o manifesto `20260820224424`; não há migração nem nova função | Os canais oficiais publicam somente a ponta validada de `main` | Suíte final, verificadores de artefato e fluxos oficiais de Pages e Android | A atualização de clientes reutiliza o backend já hospedado, sem promover contrato remoto | Sim | Alto | A verificação pós-publicação confronta endereço, Release, APK e Chrome real; ela não substitui o ensaio do APK instalado nem a avaliação no ChatGPT e com pessoas |
+| publicar a revisão integrada | Sim | Site e Android 0.0.26 declaram o manifesto `20260821145358`, já exposto pelo backend hospedado | Os canais oficiais publicam somente a ponta validada de `main` | Suíte final, verificadores hospedados e fluxos oficiais de Pages e Android | A promoção remota antecedeu os clientes 0.0.26; endereço, Release, APK e Chrome real foram confrontados depois da publicação | Sim | Alto | A verificação dos artefatos não substitui o ensaio do APK instalado nem a avaliação no ChatGPT e com pessoas |
 
 ## Relações do Curso vivo
 
@@ -174,6 +181,13 @@ recusou corte ou overflow global. O segundo cenário levou o foco a **Rever**,
 abriu e fechou a seção por `Enter` e confirmou a mudança de orientação do
 indicador. Essas provas não demonstram compreensão humana. A inspeção no Chrome
 real integra a verificação pós-publicação do mesmo artefato.
+
+A versão 0.0.26 acrescentou uma matriz no Chrome real para o fluxo da
+cópia pessoal. Em 360, 390, 430 e 1.280 px, nos temas claro e escuro, o shell
+mediu 360/390/430/430 px e ficou centralizado na largura maior; seletor e ação
+principal mediram 44 px. Não houve overflow nem identificador técnico, e a Home
+mostrou **Sua cópia** e **Compartilhado com você** como opções distintas. O
+percurso pós-publicação confrontou o mesmo comportamento no artefato oficial.
 
 A matriz anterior da Autoria continua válida para a linha que ela verificou:
 10/10 em 51,4 segundos nas quatro larguras e nos dois temas, incluindo Auditoria

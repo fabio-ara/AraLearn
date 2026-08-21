@@ -78,6 +78,17 @@ function assertPrincipal(principal, { write = false } = {}) {
   throw new AuthoringApiError(403, "insufficient_scope", "A sessão não permite alterar Cursos.");
 }
 
+function assertApplicationPrincipal(principal, { write = false } = {}) {
+  assertPrincipal(principal, { write });
+  if (principal.authenticationKind !== "application") {
+    throw new AuthoringApiError(
+      403,
+      "application_only_operation",
+      "Esta operação pertence somente à interface do AraLearn."
+    );
+  }
+}
+
 function positiveInteger(value, field, { defaultValue = null, maximum = Number.MAX_SAFE_INTEGER } = {}) {
   if ((value == null || value === "") && defaultValue != null) return defaultValue;
   const normalized = Number(value);
@@ -866,6 +877,60 @@ async function validateCompositionChange(body, request) {
     upserts,
     deletes,
     sourceAttributionApplications
+  };
+}
+
+async function validatePersonalCourseCopyEdit(body, request, sourceCourseId) {
+  exactFields(body, new Set([
+    "requestId", "sourceCourseId", "expectedSourceCourseRevision",
+    "expectedStudyUnitVersion", "didacticMicrosequenceId", "studyUnit",
+    "applicationOrigin"
+  ]));
+  const bodySourceCourseId = courseUuid(body.sourceCourseId, "sourceCourseId");
+  if (bodySourceCourseId !== sourceCourseId) {
+    fail(
+      "course_identifier_mismatch",
+      "O Curso informado não corresponde ao endpoint.",
+      { field: "sourceCourseId" }
+    );
+  }
+  const didacticMicrosequenceId = text(
+    body.didacticMicrosequenceId,
+    "didacticMicrosequenceId",
+    { maximum: 240 }
+  );
+  const applicationOrigin = body.applicationOrigin;
+  if (!new Set(["manual", "provider_assistance"]).has(applicationOrigin)) {
+    fail(
+      "invalid_course_composition_origin",
+      "applicationOrigin precisa identificar uma origem conhecida.",
+      { field: "applicationOrigin" }
+    );
+  }
+  const { validateCourseEntityContent } = await import(
+    "../aralearn/runtime/domain/courseEntities.js"
+  );
+  const validation = validateCourseEntityContent("study_unit", body.studyUnit);
+  if (!validation.valid) {
+    fail(
+      "invalid_course_contract",
+      "A Unidade não satisfaz o contrato didático do Curso.",
+      { errors: validation.errors.slice(0, 12) }
+    );
+  }
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedSourceCourseRevision: positiveInteger(
+      body.expectedSourceCourseRevision,
+      "expectedSourceCourseRevision"
+    ),
+    expectedStudyUnitVersion: positiveInteger(
+      body.expectedStudyUnitVersion,
+      "expectedStudyUnitVersion"
+    ),
+    didacticMicrosequenceId,
+    studyUnit: validation.normalized,
+    applicationOrigin
   };
 }
 
@@ -1668,6 +1733,23 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         courseId: route.courseId,
         authoringPartId: route.authoringPartId,
         materializationId: route.materializationId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "commitPersonalCourseCopyEdit") {
+    assertApplicationPrincipal(principal, { write: true });
+    const value = await validatePersonalCourseCopyEdit(
+      await readCourseJsonBody(request),
+      request,
+      route.sourceCourseId
+    );
+    return {
+      requestId: value.requestId,
+      data: await adapter.commitPersonalCourseCopyEdit({
+        principal,
+        sourceCourseId: route.sourceCourseId,
         ...value,
         deadlineAt
       })

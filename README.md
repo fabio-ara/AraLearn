@@ -53,9 +53,15 @@ registrar uma observação situada, como dúvida, possível erro ou trecho confu
 Progresso e marcas de revisão formam o **estado pessoal**, separado do conteúdo
 do Curso. As observações ficam em **Anotações ancoradas** próprias: podem existir
 várias na mesma Unidade e chegam à caixa de entrada do proprietário sem revelar
-registros de outros estudantes. O acesso compartilhado permite estudar e
-conservar dados pessoais de continuidade; a edição permanece com o
-proprietário.
+registros de outros estudantes.
+
+Desde a versão 0.0.26, quem recebeu acesso também pode editar uma Unidade
+manualmente ou com a assistência complementar. A primeira gravação com mudança
+material cria um Curso pessoal privado, identificado na interface como **Sua
+cópia**, e mantém a pessoa na mesma Unidade. O Curso compartilhado não é
+alterado. Planejamento, Fontes, PDFs,
+acessos, progresso e Observações não são transportados para a cópia pessoal;
+cada Curso conserva seus próprios registros.
 
 Quando uma Unidade possui proveniência pública, o botão **Fontes** busca as
 citações ao ser aberto. Estudo recebe apenas a projeção autorizada. Uma Fonte
@@ -164,12 +170,17 @@ sincronização](docs/persistencia-relacional.md).
 ## Aplicação web e Android
 
 A mesma aplicação é entregue na web e como pacote de instalação Android (APK)
-nas versões publicadas do repositório. A linha corrente é a 0.0.25, sobre o
-manifesto hospedado `20260820224424`. Estudo e Autoria conservam uma superfície
-centralizada de até 430 px também no computador. A entrada de Estudo usa um
+nas versões publicadas do repositório. A linha corrente dos clientes é a 0.0.26,
+que exige o manifesto `20260821145358`. O backend hospedado expõe essa revisão,
+com a API de Cursos na revisão 9 e o MCP na revisão 124. Estudo e Autoria
+conservam uma superfície centralizada de até 430 px também no computador. A
+entrada de Estudo usa um
 único seletor de Curso e uma única prévia, sem transformar a biblioteca num
 painel de cartões; a Autoria usa quatro grupos iconográficos com divulgação
 progressiva.
+
+O Android 0.0.26 usa `versionCode` 172. Pages e Android são publicados a partir
+da mesma ponta validada de `main`, depois da verificação do contrato remoto.
 
 ## Estado e limites
 

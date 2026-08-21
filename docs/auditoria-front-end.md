@@ -179,7 +179,12 @@ Estudo e Inspeção instanciam o mesmo editor contextual sobre o mesmo renderer.
 A interface não converte a Unidade em um formulário genérico: ativa somente os
 trechos autorizados pelo contrato do componente, recompõe respostas associadas
 quando a relação é inequívoca e valida o envelope completo antes de salvar.
-Pessoa com acesso apenas a Estudo não recebe os comandos de edição.
+Na versão 0.0.25, a pessoa com acesso apenas a Estudo não recebia os comandos de
+edição. Desde a 0.0.26, esses comandos também estão disponíveis em Estudo, com
+outro destino de gravação: o proprietário altera o Curso corrente; a pessoa
+favorecida usa **Salvar na minha cópia**, que cria um Curso privado sem escrever
+no original.
+Ambos permanecem no mesmo renderer e na mesma Unidade.
 
 A assistência complementar usa o mesmo alvo e o mesmo rascunho. O aviso antes do
 envio enumera pedido, valores textuais editáveis, título da Unidade, papel
@@ -273,9 +278,13 @@ conjunto:
 - Autoria e MCP listam somente Cursos próprios;
 - a RPC de Inspeção é concedida somente a `service_role` e revalida o ator;
 - a função auxiliar privada não possui execução para papéis de cliente;
-- Curso compartilhado permanece acessível apenas em Estudo;
+- Curso compartilhado permanece acessível apenas em Estudo e não recebe escrita
+  da pessoa favorecida;
+- a operação de cópia pessoal exige acesso direto, cria outro Curso
+  sob propriedade dessa pessoa e não integra o MCP;
 - conflito de revisão conserva a intenção e exige releitura;
-- revogação impede nova leitura pela rede e elimina a cópia privada conhecida.
+- revogação impede nova leitura pela rede e elimina a réplica local do Curso
+  compartilhado, sem apagar uma cópia pessoal já confirmada.
 
 Segurança por linha, privilégios e checagem de propriedade são camadas
 complementares. Uma função privilegiada incorreta não é corrigida apenas por
@@ -320,6 +329,7 @@ visual.
 | Autoria compacta, rota e capacidades progressivas | testes da superfície, rota e painéis especializados; devem rejeitar largura acima de 430 px, segunda coluna e nove rótulos permanentes |
 | Autoria integrada no Supabase local | jornada autenticada por `public/main.js`, IndexedDB, API, PostgreSQL, Storage, RLS, OAuth com PKCE e MCP |
 | edição manual contextual | `manual-study-unit-edit.test.js` e `manual-study-unit-edit.spec.js`, inclusive 32 componentes, prática, propriedade, conflito, resposta ambígua, snapshot confirmado e uso sem rede |
+| cópia pessoal pela edição em Estudo | pgTAP 78/78, PGlite 45/45, concorrência 1/1, smoke no Supabase local, testes de operação/IndexedDB e Playwright 118/120; os dois restantes são condicionais |
 | assistência contextual por API | `study-unit-provider-assistance.test.js`, `provider-runtime-security.test.js`, `study-unit-provider-assistance.spec.js` e prova vertical real com relay local |
 | Inspeção, janela, cópia local, ausência de conexão e posição | `course-inspection-sequence.test.js` e testes do controlador |
 | Interface e MCP sob a mesma propriedade | testes de MCP, roteador, adaptador e API |
@@ -340,6 +350,18 @@ cenário `SIGNED_OUT` também mantém uma chamada ao provider pendente e comprov
 aborto, ausência de callback tardio, remoção da sobreposição e da credencial e
 nenhum erro de página. O grupo visual integrado correspondente passou 9/9,
 separadamente da listagem.
+
+Esses números pertencem ao fluxo do proprietário e não aprovam por extensão a
+cópia pessoal. A versão 0.0.26 comprovou separadamente: nenhuma cópia em prévia,
+cancelamento, falha ou ausência de mudança;
+isolamento de progresso, Observações, Fontes, PDFs e planejamento; repetição
+idempotente depois de reinício e reconexão; concorrência entre duas abas;
+revogação da origem; permanência na Unidade pertinente; e ausência de
+identificadores técnicos na interface. O Chrome real local percorreu o fluxo em
+360, 390, 430 e 1.280 px, claro e escuro; o shell mediu 360/390/430/430 px e
+ficou centralizado na largura maior, seletor e ação principal mediram 44 px e
+não houve overflow. **Sua cópia** e **Compartilhado com você** permaneceram
+opções distintas.
 
 Na versão 0.0.25, `npm test` reuniu 999 verificações: 990 passaram e nove
 permaneceram condicionadas ao ambiente. A suíte ponta a ponta reuniu 113 casos

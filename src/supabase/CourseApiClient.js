@@ -29,7 +29,9 @@ import {
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
   normalizeFocalStudyUnitCompositionCommand,
-  normalizeFocalStudyUnitCompositionReceipt
+  normalizeFocalStudyUnitCompositionReceipt,
+  normalizePersonalCourseCopyEditCommand,
+  normalizePersonalCourseCopyEditReceipt
 } from "../domain/courseComposition.js";
 import {
   COURSE_SOURCE_PDF_MAX_BYTES,
@@ -1369,6 +1371,33 @@ export class CourseApiClient {
       applicationOrigin: command.origin
     });
     return normalizeFocalStudyUnitCompositionReceipt(result, command);
+  }
+
+  async commitPersonalCourseCopyEdit(value = {}) {
+    const command = normalizePersonalCourseCopyEditCommand(value);
+    let result;
+    try {
+      result = await this.executeCourseAction("criarCopiaPessoalDoCurso", {
+        requestId: command.requestId,
+        sourceCourseId: command.sourceCourseId,
+        expectedSourceCourseRevision: command.expectedSourceCourseRevision,
+        expectedStudyUnitVersion: command.expectedStudyUnitVersion,
+        didacticMicrosequenceId: command.didacticMicrosequenceId,
+        studyUnit: command.studyUnit,
+        applicationOrigin: command.origin
+      });
+    } catch (error) {
+      if (String(error?.code || "").toLowerCase() === "personal_copy_exists") {
+        const candidate = String(
+          error?.details?.targetCourseId ??
+          error?.response?.details?.targetCourseId ??
+          error?.response?.error?.details?.targetCourseId ?? ""
+        ).trim().toLowerCase();
+        if (UUID_PATTERN.test(candidate)) error.targetCourseId = candidate;
+      }
+      throw error;
+    }
+    return normalizePersonalCourseCopyEditReceipt(result, command);
   }
 
   mutateAuthoringPlan({

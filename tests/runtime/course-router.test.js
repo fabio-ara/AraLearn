@@ -141,6 +141,13 @@ test("roteia somente endpoints canônicos de Curso", () => {
     courseId: COURSE_ID
   });
   assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/personal-copy/composition`
+  ), {
+    name: "commitPersonalCourseCopyEdit",
+    sourceCourseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
     "GET",
     `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
       `/materializations/${MATERIALIZATION_ID}`
@@ -1247,6 +1254,91 @@ test("composição contextual encaminha somente versão e origem fechada", async
       principal: { ...PRINCIPAL, authenticationKind: "application" }
     }),
     (error) => error.code === "unknown_course_command_field"
+  );
+});
+
+test("cópia pessoal valida a Unidade completa e deriva autoridade somente da aplicação", async () => {
+  const studyUnit = {
+    id: "unit-a",
+    position: 1,
+    title: "Unidade revista",
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  const body = {
+    requestId: "request-personal-copy-0001",
+    sourceCourseId: COURSE_ID,
+    expectedSourceCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit,
+    applicationOrigin: "provider_assistance"
+  };
+  const path = `/v1/courses/${COURSE_ID}/personal-copy/composition`;
+  let call = null;
+  const adapter = {
+    async commitPersonalCourseCopyEdit(value) {
+      call = value;
+      return { contract: "aralearn.personal-course-copy-edit.v1", changed: true };
+    }
+  };
+  const principal = {
+    ...PRINCIPAL,
+    authenticationKind: "application"
+  };
+  const result = await executeCourseRoute({
+    request: request(path, { method: "POST", requestId: body.requestId, body }),
+    route: routeCourseRequest("POST", path),
+    adapter,
+    principal
+  });
+
+  assert.equal(result.requestId, body.requestId);
+  assert.equal(call.principal, principal);
+  assert.equal(call.sourceCourseId, COURSE_ID);
+  assert.equal(call.expectedSourceCourseRevision, 4);
+  assert.equal(call.expectedStudyUnitVersion, 2);
+  assert.equal(call.didacticMicrosequenceId, "micro-a");
+  assert.deepEqual(call.studyUnit, studyUnit);
+  assert.equal(call.applicationOrigin, "provider_assistance");
+
+  for (const invalidBody of [
+    { ...body, sourceCourseId: PART_ID },
+    { ...body, actorId: COURSE_ID },
+    { ...body, studyUnit: { ...studyUnit, sourceLinks: [] } },
+    { ...body, studyUnit: { ...studyUnit, position: 0 } },
+    { ...body, applicationOrigin: "prompt" }
+  ]) {
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: request(path, {
+          method: "POST",
+          requestId: invalidBody.requestId,
+          body: invalidBody
+        }),
+        route: routeCourseRequest("POST", path),
+        adapter,
+        principal
+      }),
+      (error) => error.status === 422
+    );
+  }
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(path, { method: "POST", requestId: body.requestId, body }),
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: { ...PRINCIPAL, authenticationKind: "oauth" }
+    }),
+    (error) => error.code === "application_only_operation" && error.status === 403
   );
 });
 

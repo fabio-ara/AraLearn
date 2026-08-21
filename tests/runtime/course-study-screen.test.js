@@ -3,8 +3,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { renderCourseStudyScreen } from "../../src/study/CourseStudyScreen.js";
+import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 
 const fixtureUrl = new URL("../fixtures/package/project-minimal.json", import.meta.url);
+
+function visibleText(html) {
+  return html
+    .replace(/<[^>]*>/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
 
 test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
@@ -71,6 +79,17 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(homeHtml, /<details class="study-review-queue clean-card" open>/u);
   assert.match(homeHtml, /<strong>Rever<\/strong><span class="muted tiny">1<\/span>/u);
   assert.match(homeHtml, /Sem conexão · alterações pessoais ficam salvas neste dispositivo/u);
+
+  const synchronizingHtml = renderCourseStudyScreen({
+    ...common,
+    view: "courses",
+    runtimeStatus: { offline: false, stale: true, readOnly: true }
+  });
+  assert.match(
+    synchronizingHtml,
+    /Exibindo a versão salva · o AraLearn está atualizando os dados/u
+  );
+  assert.doesNotMatch(synchronizingHtml, /Sem conexão/u);
 
   const moreOnlyHtml = renderCourseStudyScreen({
     ...common,
@@ -164,6 +183,133 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada context
   assert.doesNotMatch(html, /Pertence a outro Curso/u);
   assert.doesNotMatch(html, /<details[^>]+study-review-queue[^>]+open/u);
   assert.doesNotMatch(html, /navigation-list-card|courses-home-list|Abrir Curso/u);
+});
+
+test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem expor IDs", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const base = project.courses[0];
+  const owned = {
+    ...structuredClone(base),
+    id: "11111111-1111-4111-8111-111111111111",
+    title: "Curso do autor"
+  };
+  const shared = {
+    ...structuredClone(base),
+    id: "22222222-2222-4222-8222-222222222222",
+    title: "Curso compartilhado"
+  };
+  const personalCopy = {
+    ...structuredClone(base),
+    id: "33333333-3333-4333-8333-333333333333",
+    title: "Minha continuidade"
+  };
+  const technicalHash = "8f3c40a21db746879b8018a67fd2d616c690987f";
+  const sourceCourseId = "44444444-4444-4444-8444-444444444444";
+  const courses = [owned, shared, personalCopy];
+  const permissions = {
+    [owned.id]: { ownership: "owned", canEdit: true },
+    [shared.id]: {
+      ownership: "shared",
+      canEdit: false,
+      canDerive: true,
+      personalCopyCourseId: personalCopy.id,
+      sourceCourseRevision: technicalHash
+    },
+    [personalCopy.id]: {
+      ownership: "owned",
+      canEdit: true,
+      isPersonalCopy: true,
+      sourceCourseId,
+      sourceCourseRevision: technicalHash
+    }
+  };
+
+  const html = renderHomeScreen({
+    project: { ...project, courses },
+    progress: { version: 1, lessons: {} },
+    editorSupport: { coursePermissionsById: permissions },
+    selectedCourseId: personalCopy.id
+  });
+  const text = visibleText(html);
+
+  assert.match(html, />Curso do autor · Seu Curso<\/option>/u);
+  assert.match(html, />Curso compartilhado · Compartilhado com você<\/option>/u);
+  assert.match(html, />Minha continuidade · Sua cópia<\/option>/u);
+  assert.match(html, /home-course-ownership[^>]*>.*Sua cópia/su);
+  assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
+});
+
+test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do autor", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const common = {
+    project,
+    view: "microsequence",
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    microsequenceMode: "play",
+    progress: { version: 1, lessons: {} }
+  };
+  const manualEditor = {
+    enabled: true,
+    editing: true,
+    targetId: "study_unit",
+    draft: { pathValues: {} },
+    saving: false,
+    canUndo: false,
+    canRedo: false,
+    error: ""
+  };
+
+  const sharedHtml = renderCourseStudyScreen({
+    ...common,
+    manualEditor: { ...manualEditor, createsPersonalCopy: true, isPersonalCopy: false }
+  });
+  assert.match(
+    sharedHtml,
+    /Ao salvar, o AraLearn criará uma cópia privada para você\. O Curso compartilhado continuará intacto\./u
+  );
+  assert.match(sharedHtml, /aria-label="Salvar na minha cópia"/u);
+  assert.match(sharedHtml, /<span>Salvar na minha cópia<\/span>/u);
+  assert.doesNotMatch(sharedHtml, /study-personal-copy-badge/u);
+
+  const ownedHtml = renderCourseStudyScreen({
+    ...common,
+    manualEditor: { ...manualEditor, createsPersonalCopy: false, isPersonalCopy: false }
+  });
+  assert.match(ownedHtml, /Edite diretamente no conteúdo\./u);
+  assert.match(ownedHtml, /aria-label="Salvar edição"/u);
+  assert.doesNotMatch(ownedHtml, /Salvar na minha cópia|Sua cópia/u);
+
+  const personalCopyHtml = renderCourseStudyScreen({
+    ...common,
+    manualEditor: {
+      ...manualEditor,
+      editing: false,
+      createsPersonalCopy: false,
+      isPersonalCopy: true
+    }
+  });
+  assert.match(
+    personalCopyHtml,
+    /class="study-personal-copy-badge">Sua cópia<\/span>/u
+  );
+  assert.doesNotMatch(visibleText(personalCopyHtml), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
 });
 
 test("Study revela citações redigidas somente quando o painel lazy está aberto", async () => {
