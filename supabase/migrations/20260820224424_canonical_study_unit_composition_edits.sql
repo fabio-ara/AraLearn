@@ -201,7 +201,6 @@ security definer
 set search_path = pg_catalog,public,private,extensions
 as $function$
 declare
-  v_receipt private.course_change_receipts%rowtype;
   v_entity private.course_entities%rowtype;
   v_upsert jsonb;
   v_result jsonb;
@@ -237,7 +236,7 @@ begin
   perform pg_advisory_xact_lock(hashtextextended(
     'course-change-request:' || p_actor_id::text || ':' || p_request_id,0
   ));
-  select * into v_receipt
+  perform 1
   from private.course_change_receipts receipt
   where receipt.actor_id = p_actor_id
     and receipt.request_id = p_request_id
