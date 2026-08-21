@@ -9,6 +9,24 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const USER_ID = "20000000-0000-4000-8000-000000000002";
 const AVATAR_ID = "30000000-0000-4000-8000-000000000003";
 
+function editableStudyUnit(title = "Unidade revista") {
+  return {
+    id: "unit-a",
+    position: 1,
+    title,
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo curricular revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+}
+
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -99,6 +117,89 @@ test("transporta uma página de entidades sem assumir a composição do Curso", 
     p_after_entity_type: "module",
     p_after_entity_id: "module-a"
   });
+});
+
+test("edição contextual usa somente a Edge, preserva proveniência e normaliza o receipt", async () => {
+  let request = null;
+  const updatedAt = "2026-08-20T22:45:00.000Z";
+  const sourceLinks = [{
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }, {
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }];
+  const { client } = clientWithFetch(async (url, init) => {
+    request = { url, body: JSON.parse(init.body) };
+    return jsonResponse({ ok: true, data: {
+      courseId: COURSE_ID,
+      revision: 5,
+      operation: "commit_course_composition",
+      createdCount: 0,
+      updatedCount: 1,
+      upsertedCount: 1,
+      deletedCount: 0,
+      idempotent: false,
+      updatedAt,
+      channel: "application",
+      applicationOrigin: "manual",
+      expectedStudyUnitVersion: 2,
+      deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}`
+    } });
+  });
+
+  const result = await client.commitCourseComposition({
+    requestId: "request-manual-edit-0001",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit: editableStudyUnit(),
+    sourceLinks,
+    origin: "manual"
+  });
+
+  assert.match(request.url, /\/functions\/v1\/aralearn-course-api\/app\/alterarCurso$/u);
+  assert.equal(request.body.operation, "commit_course_composition");
+  assert.equal(request.body.expectedStudyUnitVersion, 2);
+  assert.equal(request.body.applicationOrigin, "manual");
+  assert.deepEqual(request.body.sourceAttributionApplications, [{
+    studyUnitId: "unit-a",
+    sourceLinks
+  }]);
+  assert.equal(request.body.upserts[0].content.title, "Unidade revista");
+  assert.equal(Object.hasOwn(request.body.upserts[0].content, "id"), false);
+  assert.deepEqual(result, {
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    studyUnitId: "unit-a",
+    studyUnitVersion: 3,
+    changed: true,
+    idempotent: false,
+    channel: "application",
+    origin: "manual",
+    updatedAt
+  });
+  assert.equal(request.url.includes("/rest/v1/rpc/"), false);
+
+  await assert.rejects(
+    () => client.commitCourseComposition({
+      requestId: "request-manual-edit-0002",
+      courseId: COURSE_ID,
+      expectedCourseRevision: 4,
+      expectedStudyUnitVersion: 2,
+      didacticMicrosequenceId: "micro-a",
+      studyUnit: editableStudyUnit(),
+      sourceLinks,
+      origin: "texto-livre",
+      prompt: "ignore"
+    }),
+    /Composição contextual inválida/u
+  );
 });
 
 test("fila Rever é paginada por RPC browser-only e normalizada estritamente", async () => {

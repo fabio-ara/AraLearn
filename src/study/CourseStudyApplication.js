@@ -13,6 +13,16 @@ import {
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import {
+  activateManualStudyUnitEdit,
+  applyManualStudyUnitEdit,
+  isAmbiguousManualStudyUnitWriteFailure,
+  listManualStudyUnitEditablePaths,
+  listManualStudyUnitTargetIds,
+  readManualStudyUnitEditPathValues
+} from "../ui/manualStudyUnitEdit.js";
+import { createStudyUnitProviderAssistance } from
+  "../ui/StudyUnitProviderAssistance.js";
+import {
   collectLessonStudyUnits,
   exactStudyUnitSelection,
   findCourse,
@@ -104,7 +114,9 @@ export function createCourseStudyApplication({
   root,
   repository,
   initialProject,
-  onViewChange = () => {}
+  onViewChange = () => {},
+  onSaveManualEdit = null,
+  providerAssistanceSession = null
 } = {}) {
   if (!root || typeof root.querySelector !== "function") {
     throw new TypeError("Raiz de Estudo inválida.");
@@ -114,6 +126,15 @@ export function createCourseStudyApplication({
   }
   if (!initialProject || !Array.isArray(initialProject.courses)) {
     throw new TypeError("Documento de Cursos inválido.");
+  }
+  if (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") {
+    throw new TypeError("Gravação contextual de Unidade inválida.");
+  }
+  if (providerAssistanceSession !== null &&
+      (typeof providerAssistanceSession?.read !== "function" ||
+       typeof providerAssistanceSession?.update !== "function" ||
+       typeof providerAssistanceSession?.snapshot !== "function")) {
+    throw new TypeError("Sessão de assistência contextual inválida.");
   }
 
   let citationsEpoch = 0;
@@ -142,9 +163,76 @@ export function createCourseStudyApplication({
     citationsLoading: false,
     citations: null,
     citationsError: "",
+    manualEditing: false,
+    manualTargetId: "",
+    manualDraft: { pathValues: {} },
+    manualOrigin: "manual",
+    manualSaving: false,
+    manualError: "",
+    manualStatus: "",
+    manualRestoreFocus: false,
+    manualUndo: [],
+    manualRedo: [],
+    manualHistoryPreview: null,
+    manualUnknownSignature: "",
+    manualDiscardArmed: false,
+    manualVersionByStudyUnit: {},
+    manualCourseRevisionByCourse: {},
     accountProfile: null,
     connectionOffline: globalThis.navigator?.onLine === false
   };
+  let manualInlineController = null;
+  let providerAssistance = null;
+
+  function manualStudyUnitVersionKey(courseId, studyUnitId) {
+    return `${courseId}\u0000${studyUnitId}`;
+  }
+
+  function rebaseManualCompositionOverrides() {
+    const summaries = repository.loadCourseSummaries?.() || [];
+    const summaryByCourse = new Map(summaries.map((summary) => [
+      summary.courseId,
+      summary
+    ]));
+    for (const [key, storedVersion] of
+      Object.entries(state.manualVersionByStudyUnit)) {
+      const separator = key.indexOf("\u0000");
+      const courseId = separator < 0 ? "" : key.slice(0, separator);
+      const studyUnitId = separator < 0 ? key : key.slice(separator + 1);
+      const summary = summaryByCourse.get(courseId);
+      if (!summary) {
+        delete state.manualVersionByStudyUnit[key];
+        continue;
+      }
+      const persisted = repository.loadStudyUnitCompositionContext?.({
+        courseId,
+        studyUnitId
+      });
+      const storedCourseRevision = state.manualCourseRevisionByCourse[courseId];
+      if (persisted && Number.isSafeInteger(persisted.courseRevision) &&
+          Number.isSafeInteger(persisted.studyUnitVersion) &&
+          persisted.courseRevision >= (storedCourseRevision || 0) &&
+          persisted.studyUnitVersion >= storedVersion) {
+        delete state.manualVersionByStudyUnit[key];
+      }
+    }
+    for (const [courseId, storedRevision] of
+      Object.entries(state.manualCourseRevisionByCourse)) {
+      const canonicalRevision = Number(summaryByCourse.get(courseId)?.revision);
+      if (!Number.isSafeInteger(canonicalRevision) || canonicalRevision < 1) {
+        delete state.manualCourseRevisionByCourse[courseId];
+        continue;
+      }
+      const unresolved = Object.keys(state.manualVersionByStudyUnit).some((key) =>
+        key.startsWith(`${courseId}\u0000`)
+      );
+      if (canonicalRevision >= storedRevision && !unresolved) {
+        delete state.manualCourseRevisionByCourse[courseId];
+      } else if (canonicalRevision > storedRevision) {
+        state.manualCourseRevisionByCourse[courseId] = canonicalRevision;
+      }
+    }
+  }
 
   function retainContext(nextProject, previousSelection, previousView) {
     const fallback = firstSelection(nextProject);
@@ -305,6 +393,35 @@ export function createCourseStudyApplication({
     state.observationStale = false;
   }
 
+  function restoreManualHistoryPreview() {
+    const preview = state.manualHistoryPreview;
+    if (!preview) return;
+    const source = preview.direction === "undo" ? state.manualRedo : state.manualUndo;
+    const destination = preview.direction === "undo" ? state.manualUndo : state.manualRedo;
+    if (source.at(-1) === preview.entry) {
+      source.pop();
+      destination.push(preview.entry);
+    }
+    state.manualHistoryPreview = null;
+  }
+
+  function resetManualEditorState({ status = "", keepHistoryPreview = false } = {}) {
+    if (keepHistoryPreview) state.manualHistoryPreview = null;
+    else restoreManualHistoryPreview();
+    manualInlineController?.destroy?.();
+    manualInlineController = null;
+    state.manualEditing = false;
+    state.manualTargetId = "";
+    state.manualDraft = { pathValues: {} };
+    state.manualOrigin = "manual";
+    state.manualSaving = false;
+    state.manualError = "";
+    state.manualStatus = status;
+    state.manualRestoreFocus = false;
+    state.manualUnknownSignature = "";
+    state.manualDiscardArmed = false;
+  }
+
   function resetStudyUnitInteraction() {
     const entry = currentResponseEntry();
     if (entry && state.responseByBlockKey[entry.blockKey]) {
@@ -313,6 +430,7 @@ export function createCourseStudyApplication({
     state.activeGapPrompt = null;
     state.pendingStudyFocus = null;
     state.feedbackOpen = false;
+    resetManualEditorState();
     resetCitations();
     resetObservationSheet();
   }
@@ -324,6 +442,7 @@ export function createCourseStudyApplication({
     state.project = clone(nextProject);
     state.selection = retained.selection;
     state.view = retained.view;
+    rebaseManualCompositionOverrides();
     resetStudyUnitInteraction();
     render({ preserveFocus: false });
     return true;
@@ -390,6 +509,7 @@ export function createCourseStudyApplication({
     try {
       await repository.loadCourse(courseId);
       state.project = clone(repository.loadProject());
+      rebaseManualCompositionOverrides();
       return true;
     } catch (error) {
       root.dispatchEvent(new CustomEvent("aralearn:course-load-error", {
@@ -512,7 +632,439 @@ export function createCourseStudyApplication({
     }
   }
 
+  function manualEditCapability() {
+    const courseId = state.selection.courseId;
+    const summary = (repository.loadCourseSummaries?.() || [])
+      .find((item) => item.courseId === courseId);
+    return Boolean(
+      onSaveManualEdit && summary?.ownership === "owned" && summary.canEdit === true &&
+      state.view === "microsequence" && state.microsequenceMode === "play" && context().studyUnit
+    );
+  }
+
+  function captureManualDraft() {
+    if (!state.manualEditing || !state.manualTargetId) return;
+    if (state.manualTargetId === "study_unit") {
+      const title = root.querySelector?.("[data-study-manual-title]");
+      if (title) state.manualDraft.pathValues.title = title.textContent || "";
+      return;
+    }
+    const container = root.querySelector?.(".runtime-resource-edit-target.is-inline-editing");
+    if (container) state.manualDraft.pathValues = readManualStudyUnitEditPathValues(container);
+  }
+
+  function placeManualCaretAtEnd(field) {
+    const selection = field?.ownerDocument?.getSelection?.();
+    if (!selection || !field?.ownerDocument?.createRange) return;
+    const range = field.ownerDocument.createRange();
+    range.selectNodeContents(field);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function activateManualEditing() {
+    manualInlineController?.destroy?.();
+    manualInlineController = null;
+    if (!state.manualEditing || !state.manualTargetId) return;
+    if (state.manualTargetId === "study_unit") {
+      const title = root.querySelector?.("[data-study-manual-title]");
+      if (state.manualRestoreFocus) {
+        title?.focus?.({ preventScroll: true });
+        placeManualCaretAtEnd(title);
+        state.manualRestoreFocus = false;
+      }
+      return;
+    }
+    const container = root.querySelector?.(".runtime-resource-edit-target.is-inline-editing");
+    if (!container) return;
+    manualInlineController = activateManualStudyUnitEdit(container, state.manualDraft);
+    if (state.manualRestoreFocus) {
+      const field = manualInlineController?.fields?.[0];
+      field?.focus?.({ preventScroll: true });
+      placeManualCaretAtEnd(field);
+      state.manualRestoreFocus = false;
+    }
+  }
+
+  function manualDraftChanged() {
+    const studyUnit = context().studyUnit;
+    if (!state.manualEditing || !studyUnit || !state.manualTargetId) return false;
+    captureManualDraft();
+    const original = new Map(
+      listManualStudyUnitEditablePaths(studyUnit, state.manualTargetId)
+        .map(({ path, value }) => [path, value])
+    );
+    return Object.entries(state.manualDraft.pathValues)
+      .some(([path, value]) => original.has(path) && original.get(path) !== value);
+  }
+
+  function beginManualEdit(targetId = "study_unit", {
+    pathValues = {},
+    origin = "manual",
+    restoreFocus = true,
+    status = ""
+  } = {}) {
+    const studyUnit = context().studyUnit;
+    if (!manualEditCapability() || state.manualSaving || !studyUnit) return false;
+    if (targetId !== "study_unit" &&
+        !listManualStudyUnitTargetIds(studyUnit).includes(targetId)) return false;
+    state.manualEditing = true;
+    state.manualTargetId = targetId;
+    state.manualDraft = { pathValues: clone(pathValues) };
+    state.manualOrigin = origin;
+    state.manualError = "";
+    state.manualStatus = status;
+    state.manualRestoreFocus = restoreFocus;
+    state.feedbackOpen = false;
+    resetCitations();
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  function previewManualDraft({
+    targetId,
+    pathValues,
+    origin = "provider_assistance",
+    restoreFocus = true
+  } = {}) {
+    if (!new Set(["manual", "provider_assistance"]).has(origin) ||
+        !pathValues || typeof pathValues !== "object" || Array.isArray(pathValues)) {
+      throw new TypeError("O rascunho contextual de edição é inválido.");
+    }
+    const current = context().studyUnit;
+    if (!manualEditCapability() || !current || !targetId) {
+      throw new Error("A edição contextual não está disponível nesta Unidade.");
+    }
+    applyManualStudyUnitEdit(current, targetId, { pathValues });
+    return beginManualEdit(targetId, { pathValues, origin, restoreFocus });
+  }
+
+  function ensureProviderAssistance() {
+    if (providerAssistance) return providerAssistance;
+    providerAssistance = createStudyUnitProviderAssistance({
+      documentValue: root.ownerDocument || globalThis.document,
+      windowValue: root.ownerDocument?.defaultView || globalThis.window,
+      session: providerAssistanceSession
+    });
+    return providerAssistance;
+  }
+
+  function studyProviderTriggerFocus() {
+    return Object.freeze({
+      focus(options) {
+        root.querySelector?.("[data-action='study-provider-assistance']")
+          ?.focus?.(options);
+      }
+    });
+  }
+
+  function studyProviderPreviewFocus(targetId) {
+    if (targetId === "study_unit") {
+      return root.querySelector?.("[data-study-manual-title]") || null;
+    }
+    return root.querySelector?.(
+      ".runtime-resource-edit-target.is-inline-editing [data-manual-edit-path]"
+    ) || root.querySelector?.(".runtime-resource-edit-target.is-inline-editing") || null;
+  }
+
+  function openProviderAssistance() {
+    if (!manualEditCapability() || state.manualSaving) return false;
+    if (state.manualUnknownSignature) {
+      state.manualDiscardArmed = true;
+      state.manualError = "Confirme a mesma gravação ou descarte o pedido incerto antes de pedir outra alteração.";
+      render();
+      return false;
+    }
+    if (!state.manualEditing) {
+      beginManualEdit("study_unit", { restoreFocus: false });
+    } else {
+      captureManualDraft();
+    }
+    const studyUnit = context().studyUnit;
+    const targetId = state.manualTargetId || "study_unit";
+    try {
+      return ensureProviderAssistance().open({
+        trigger: studyProviderTriggerFocus(),
+        studyUnit,
+        targetId,
+        pathValues: clone(state.manualDraft.pathValues),
+        baselineOrigin: state.manualOrigin,
+        onFocusPreview: () => studyProviderPreviewFocus(targetId),
+        onPreview: ({ targetId: nextTargetId, pathValues, origin }) =>
+          previewManualDraft({
+            targetId: nextTargetId,
+            pathValues,
+            origin,
+            restoreFocus: false
+          })
+      });
+    } catch (error) {
+      state.manualError = error instanceof Error
+        ? error.message
+        : "A assistência por API não está disponível.";
+      render();
+      return false;
+    }
+  }
+
+  function selectManualTarget(targetId) {
+    const studyUnit = context().studyUnit;
+    if (!state.manualEditing || !studyUnit || state.manualSaving ||
+        targetId === state.manualTargetId) return false;
+    if (state.manualUnknownSignature) {
+      state.manualDiscardArmed = true;
+      state.manualError = "Confirme a mesma gravação ou descarte o pedido incerto antes de mudar de conteúdo.";
+      render();
+      return false;
+    }
+    if (manualDraftChanged()) {
+      state.manualError = "Salve ou cancele a edição atual antes de escolher outro conteúdo.";
+      render();
+      return false;
+    }
+    if (targetId !== "study_unit" &&
+        !listManualStudyUnitTargetIds(studyUnit).includes(targetId)) return false;
+    state.manualTargetId = targetId;
+    state.manualDraft = { pathValues: {} };
+    state.manualError = "";
+    state.manualRestoreFocus = true;
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  function cancelManualEdit({
+    status = "Edição cancelada.",
+    focus = true,
+    confirmUnknownDiscard = false
+  } = {}) {
+    if (state.manualUnknownSignature && !confirmUnknownDiscard) {
+      state.manualDiscardArmed = true;
+      state.manualError = "A gravação pode ter sido aceita. Salve novamente para confirmar ou descarte explicitamente este rascunho.";
+      queueStudyFocus("[data-action='study-manual-discard-unknown']");
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
+    resetManualEditorState({ status });
+    if (focus) queueStudyFocus("[data-action='study-manual-edit']");
+    render({ preserveFocus: false });
+    return true;
+  }
+
+  function replaceCurrentStudyUnit(studyUnit) {
+    const current = context();
+    const index = current.microsequence?.studyUnits?.findIndex(({ id }) =>
+      id === state.selection.studyUnitId
+    );
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error("A Unidade editada deixou de existir.");
+    }
+    current.microsequence.studyUnits[index] = clone(studyUnit);
+    return current.microsequence.studyUnits[index];
+  }
+
+  function manualCompositionContext() {
+    const reference = canonicalReference(state.selection);
+    const persisted = repository.loadStudyUnitCompositionContext?.(reference) || null;
+    const storedVersion = state.manualVersionByStudyUnit[
+      manualStudyUnitVersionKey(reference.courseId, reference.studyUnitId)
+    ];
+    const availableVersions = [storedVersion, persisted?.studyUnitVersion]
+      .filter((value) => Number.isSafeInteger(value) && value >= 1);
+    const expectedVersion = availableVersions.length
+      ? Math.max(...availableVersions)
+      : null;
+    const summaries = repository.loadCourseSummaries?.() || [];
+    const summary = summaries.find(({ courseId }) => courseId === reference.courseId);
+    const availableRevisions = [
+      state.manualCourseRevisionByCourse[reference.courseId],
+      persisted?.courseRevision,
+      summary?.revision
+    ].filter((value) => Number.isSafeInteger(value) && value >= 1);
+    const courseRevision = availableRevisions.length
+      ? Math.max(...availableRevisions)
+      : null;
+    if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1 ||
+        !Number.isSafeInteger(courseRevision) || courseRevision < 1) {
+      throw new Error("A versão canônica desta Unidade não está disponível para edição.");
+    }
+    return {
+      ...reference,
+      courseRevision,
+      expectedVersion,
+      didacticMicrosequenceId: persisted?.didacticMicrosequenceId ||
+        reference.microsequenceId
+    };
+  }
+
+  async function commitManualStudyUnit(studyUnit, origin = "manual") {
+    const composition = manualCompositionContext();
+    const result = await onSaveManualEdit({
+      courseId: composition.courseId,
+      expectedCourseRevision: composition.courseRevision,
+      didacticMicrosequenceId: composition.didacticMicrosequenceId,
+      studyUnitId: composition.studyUnitId,
+      expectedVersion: composition.expectedVersion,
+      studyUnit: clone(studyUnit),
+      origin
+    });
+    if (result != null && (typeof result !== "object" || Array.isArray(result) ||
+        result.courseId && result.courseId !== composition.courseId ||
+        result.studyUnitId && result.studyUnitId !== composition.studyUnitId ||
+        result.origin && result.origin !== origin ||
+        result.reconciled != null && typeof result.reconciled !== "boolean")) {
+      throw new TypeError("A confirmação não corresponde à edição enviada.");
+    }
+    const confirmedStudyUnit = applyManualStudyUnitEdit(
+      result?.studyUnit ?? studyUnit,
+      "study_unit",
+      { pathValues: {} }
+    );
+    if (confirmedStudyUnit.id !== composition.studyUnitId) {
+      throw new TypeError("A Unidade confirmada não corresponde à edição enviada.");
+    }
+    const resultVersion = result?.version ?? result?.studyUnitVersion;
+    const nextVersion = resultVersion == null
+      ? composition.expectedVersion + 1
+      : Number(resultVersion);
+    if (!Number.isSafeInteger(nextVersion) || nextVersion < 1) {
+      throw new TypeError("A versão confirmada da Unidade é inválida.");
+    }
+    const nextCourseRevision = result?.courseRevision == null
+      ? composition.courseRevision
+      : Number(result.courseRevision);
+    if (!Number.isSafeInteger(nextCourseRevision) || nextCourseRevision < 1) {
+      throw new TypeError("A revisão confirmada do Curso é inválida.");
+    }
+    state.manualVersionByStudyUnit[
+      manualStudyUnitVersionKey(composition.courseId, composition.studyUnitId)
+    ] = nextVersion;
+    state.manualCourseRevisionByCourse[composition.courseId] = nextCourseRevision;
+    return {
+      studyUnit: replaceCurrentStudyUnit(confirmedStudyUnit),
+      reconciled: result?.reconciled !== false
+    };
+  }
+
+  async function saveManualEdit() {
+    if (!state.manualEditing || state.manualSaving) return false;
+    const current = context().studyUnit;
+    captureManualDraft();
+    let edited;
+    try {
+      edited = applyManualStudyUnitEdit(current, state.manualTargetId, state.manualDraft);
+    } catch (error) {
+      state.manualError = error instanceof Error ? error.message : "A edição é inválida.";
+      state.manualRestoreFocus = true;
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
+    if (JSON.stringify(current) === JSON.stringify(edited)) {
+      cancelManualEdit({ status: "Nenhuma alteração para salvar." });
+      return true;
+    }
+    const attemptSignature = JSON.stringify({
+      targetId: state.manualTargetId,
+      studyUnit: edited,
+      origin: state.manualOrigin
+    });
+    if (state.manualUnknownSignature && state.manualUnknownSignature !== attemptSignature) {
+      state.manualDiscardArmed = true;
+      state.manualError = "O rascunho mudou depois de uma gravação incerta. Descarte o pedido anterior antes de salvar outra alteração.";
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
+    const before = clone(current);
+    state.manualSaving = true;
+    state.manualError = "";
+    render({ preserveFocus: false, captureDraft: false });
+    try {
+      const committed = await commitManualStudyUnit(edited, state.manualOrigin);
+      const saved = committed.studyUnit;
+      const historyPreview = state.manualHistoryPreview;
+      const previewValue = historyPreview
+        ? historyPreview.direction === "undo"
+          ? historyPreview.entry.before
+          : historyPreview.entry.after
+        : null;
+      const acceptedPreview = previewValue &&
+        JSON.stringify(previewValue) === JSON.stringify(saved);
+      if (!acceptedPreview) {
+        restoreManualHistoryPreview();
+        state.manualUndo.push({
+          studyUnitId: saved.id,
+          targetId: state.manualTargetId,
+          before,
+          after: clone(saved)
+        });
+        if (state.manualUndo.length > 20) state.manualUndo.shift();
+        state.manualRedo = [];
+      }
+      resetManualEditorState({
+        status: committed.reconciled
+          ? "Edição salva."
+          : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
+        keepHistoryPreview: acceptedPreview
+      });
+      resetCitations();
+      const responseKey = currentResponseEntry(saved)?.blockKey;
+      if (responseKey) delete state.responseByBlockKey[responseKey];
+      queueStudyFocus("[data-action='study-manual-edit']");
+      render({ preserveFocus: false, captureDraft: false });
+      return true;
+    } catch (error) {
+      state.manualSaving = false;
+      const ambiguous = isAmbiguousManualStudyUnitWriteFailure(error);
+      state.manualUnknownSignature = ambiguous ? attemptSignature : "";
+      state.manualDiscardArmed = false;
+      state.manualError = ambiguous
+        ? "Não foi possível confirmar se a edição foi salva. Tente Salvar novamente para consultar o mesmo pedido."
+        : error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+      state.manualRestoreFocus = true;
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
+  }
+
+  function moveManualHistory(direction) {
+    if (!manualEditCapability() || state.manualSaving) return false;
+    const source = direction === "undo" ? state.manualUndo : state.manualRedo;
+    const destination = direction === "undo" ? state.manualRedo : state.manualUndo;
+    const entry = source.at(-1);
+    const current = context().studyUnit;
+    if (!entry || entry.studyUnitId !== current?.id) return false;
+    if (state.manualEditing && manualDraftChanged()) {
+      state.manualError = "Salve ou cancele a edição atual antes de continuar.";
+      render();
+      return false;
+    }
+    const desired = direction === "undo" ? entry.before : entry.after;
+    const targetId = entry.targetId || "study_unit";
+    const pathValues = Object.fromEntries(
+      listManualStudyUnitEditablePaths(desired, targetId)
+        .map(({ path, value }) => [path, value])
+    );
+    source.pop();
+    destination.push(entry);
+    state.manualHistoryPreview = { direction, entry };
+    const opened = beginManualEdit(targetId, {
+      pathValues,
+      origin: "manual",
+      status: direction === "undo"
+        ? "Desfazer preparado. Confira e salve."
+        : "Refazer preparado. Confira e salve."
+    });
+    if (!opened) restoreManualHistoryPreview();
+    return opened;
+  }
+
   function goBack() {
+    if (providerAssistance?.handleBack?.()) return true;
+    if (state.manualEditing) {
+      state.manualError = "Salve ou cancele a edição antes de sair da Unidade.";
+      render();
+      return false;
+    }
     if (state.observationSheetOpen) {
       resetObservationSheet();
       render();
@@ -890,6 +1442,76 @@ export function createCourseStudyApplication({
 
   function bindActions() {
     root.querySelector("[data-action='go-back']")?.addEventListener("click", goBack);
+    root.querySelector("[data-action='study-manual-edit']")?.addEventListener(
+      "click",
+      () => beginManualEdit()
+    );
+    root.querySelector("[data-action='study-manual-view']")?.addEventListener(
+      "click",
+      () => state.manualEditing && cancelManualEdit()
+    );
+    root.querySelector("[data-action='study-manual-cancel']")?.addEventListener(
+      "click",
+      () => cancelManualEdit()
+    );
+    root.querySelector("[data-action='study-manual-keep-unknown']")?.addEventListener(
+      "click",
+      () => {
+        state.manualDiscardArmed = false;
+        state.manualError = "Tente Salvar novamente para confirmar a mesma gravação.";
+        queueStudyFocus("[data-action='study-manual-save']");
+        render({ preserveFocus: false });
+      }
+    );
+    root.querySelector("[data-action='study-manual-discard-unknown']")?.addEventListener(
+      "click",
+      () => cancelManualEdit({ confirmUnknownDiscard: true })
+    );
+    root.querySelector("[data-action='study-manual-save']")?.addEventListener(
+      "click",
+      () => void saveManualEdit()
+    );
+    root.querySelector("[data-action='study-manual-undo']")?.addEventListener(
+      "click",
+      () => void moveManualHistory("undo")
+    );
+    root.querySelector("[data-action='study-manual-redo']")?.addEventListener(
+      "click",
+      () => void moveManualHistory("redo")
+    );
+    root.querySelector("[data-action='study-provider-assistance']")?.addEventListener(
+      "click",
+      openProviderAssistance
+    );
+    root.querySelector("[data-study-manual-target]")?.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        selectManualTarget(event.currentTarget.dataset.studyManualTarget);
+      }
+    );
+    root.querySelectorAll("[data-action='toggle-study-unit-assistance-resource']")
+      .forEach((node) => node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectManualTarget(node.dataset.resourceTargetId);
+      }));
+    root.querySelector("[data-study-manual-title]")?.addEventListener("input", (event) => {
+      state.manualDraft.pathValues.title = event.currentTarget.textContent || "";
+    });
+    root.querySelector(".study-reader-screen")?.addEventListener("keydown", (event) => {
+      if (!state.manualEditing || state.manualSaving) return;
+      if (event.target?.matches?.("[data-study-manual-title]") && event.key === "Enter") {
+        event.preventDefault();
+        void saveManualEdit();
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        cancelManualEdit();
+      }
+    });
     root.querySelectorAll("[data-action='open-settings']").forEach((node) =>
       node.addEventListener("click", () => root.dispatchEvent(new CustomEvent(
         "aralearn:open-settings", { bubbles: true }
@@ -1100,7 +1722,8 @@ export function createCourseStudyApplication({
     bindGapInputs(root);
   }
 
-  function render({ preserveFocus = true } = {}) {
+  function render({ preserveFocus = true, captureDraft = true } = {}) {
+    if (captureDraft) captureManualDraft();
     const pendingStudyFocus = state.pendingStudyFocus;
     state.pendingStudyFocus = null;
     const preservedState = preserveFocus || pendingStudyFocus
@@ -1115,6 +1738,7 @@ export function createCourseStudyApplication({
     const byCourseId = Object.fromEntries(state.project.courses.map((course) => {
       const summary = summaries.find((item) => item.courseId === course.id);
       return [course.id, {
+        ownership: summary?.ownership || "shared",
         canEdit: summary?.canEdit === true,
         moduleCount: summary?.moduleCount || 0,
         lessonCount: summary?.lessonCount || 0,
@@ -1131,6 +1755,27 @@ export function createCourseStudyApplication({
     const runtimeStatus = state.connectionOffline
       ? { ...repositoryRuntimeStatus, offline: true, stale: true }
       : repositoryRuntimeStatus;
+    const currentPermission = byCourseId[state.selection.courseId] || {};
+    const manualEnabled = Boolean(
+      onSaveManualEdit && currentPermission.ownership === "owned" &&
+      currentPermission.canEdit === true
+    );
+    if (!manualEnabled && state.manualEditing) resetManualEditorState();
+    const currentStudyUnitId = current.studyUnit?.id || "";
+    const manualEditor = {
+      enabled: manualEnabled,
+      editing: manualEnabled && state.manualEditing,
+      targetId: state.manualTargetId,
+      draft: state.manualDraft,
+      saving: state.manualSaving,
+      error: state.manualError,
+      status: state.manualStatus,
+      canUndo: state.manualUndo.at(-1)?.studyUnitId === currentStudyUnitId,
+      canRedo: state.manualRedo.at(-1)?.studyUnitId === currentStudyUnitId,
+      discardArmed: state.manualDiscardArmed
+    };
+    manualInlineController?.destroy?.();
+    manualInlineController = null;
     root.innerHTML = '<div class="app-shell">' + renderCourseStudyScreen({
       project: state.project,
       view: state.view,
@@ -1153,7 +1798,8 @@ export function createCourseStudyApplication({
       citationsOpen: state.citationsOpen,
       citationsLoading: state.citationsLoading,
       citations: state.citations,
-      citationsError: state.citationsError
+      citationsError: state.citationsError,
+      manualEditor
     }) + (state.observationSheetOpen ? renderStudyUnitObservationSheet({
       items: state.observationItems,
       draft: state.observationDraft,
@@ -1167,6 +1813,7 @@ export function createCourseStudyApplication({
     syncAccountControl();
     bindActions();
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
+      activateManualEditing();
       bindGapInputs(root);
       bindTextGapChoiceActions(root);
     }).catch((error) => {
@@ -1197,6 +1844,7 @@ export function createCourseStudyApplication({
       if (!nextProject || !Array.isArray(nextProject.courses)) {
         throw new TypeError("Documento de Cursos inválido.");
       }
+      if (state.manualEditing) return false;
       resetCitations();
       render();
       const previousSelection = clone(state.selection);
@@ -1213,6 +1861,7 @@ export function createCourseStudyApplication({
       const retained = retainContext(state.project, previousSelection, previousView);
       state.selection = retained.selection;
       state.view = retained.view;
+      rebaseManualCompositionOverrides();
       if (JSON.stringify(previousStudyUnit) !== JSON.stringify(context().studyUnit)) {
         resetStudyUnitInteraction();
       }
@@ -1227,8 +1876,22 @@ export function createCourseStudyApplication({
     openEntityPath(entityPath) {
       return openReviewItem(entityPath);
     },
+    hasPendingManualEdit() {
+      return Boolean(
+        state.manualEditing || state.manualSaving || manualDraftChanged() ||
+        providerAssistance?.opened
+      );
+    },
+    previewManualEdit({
+      targetId,
+      pathValues,
+      origin = "provider_assistance"
+    } = {}) {
+      return previewManualDraft({ targetId, pathValues, origin });
+    },
     handleBack: goBack,
     async refreshPersonalState() {
+      if (state.manualEditing || state.manualSaving || manualDraftChanged()) return false;
       const previousSelection = clone(state.selection);
       const previousView = state.view;
       const previousStudyUnit = clone(context().studyUnit);
@@ -1244,6 +1907,7 @@ export function createCourseStudyApplication({
           const retained = retainContext(state.project, previousSelection, previousView);
           state.selection = retained.selection;
           state.view = retained.view;
+          rebaseManualCompositionOverrides();
         }
         state.connectionOffline =
           repository.loadRuntimeStatus?.(state.selection.courseId)?.offline === true;
@@ -1266,6 +1930,14 @@ export function createCourseStudyApplication({
     },
     flushPersonalState() {
       return repository.flush();
+    },
+    destroy() {
+      providerAssistance?.destroy?.();
+      providerAssistance = null;
+      manualInlineController?.destroy?.();
+      manualInlineController = null;
+      unsubscribeAnnotations?.();
+      unsubscribeAnnotations = null;
     }
   });
 }

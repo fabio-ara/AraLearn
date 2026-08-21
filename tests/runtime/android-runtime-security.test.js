@@ -58,6 +58,22 @@ test("o WebView isola arquivos e proíbe conteúdo misto na release", () => {
   assert.doesNotMatch(activity, /WebSettings\.MIXED_CONTENT_ALWAYS_ALLOW/u);
 });
 
+test("a assistência Android usa ponte assíncrona de origem exata sem liberar conteúdo misto", () => {
+  assert.match(activity, /WebViewCompat\.addWebMessageListener/u);
+  assert.match(activity, /Collections\.singleton\(APP_ORIGIN\)/u);
+  assert.match(activity, /!isMainFrame/u);
+  assert.match(activity, /WebViewFeature\.WEB_MESSAGE_LISTENER/u);
+  assert.match(activity, /http:\/\/127\.0\.0\.1:4183\/v1\/chat\/completions/u);
+  assert.match(activity, /openConnection\(Proxy\.NO_PROXY\)/u);
+  assert.match(activity, /setInstanceFollowRedirects\(false\)/u);
+  assert.match(activity, /setRequestMethod\("POST"\)/u);
+  assert.match(activity, /MAX_LOCAL_ASSIST_REQUEST_BYTES/u);
+  assert.match(activity, /MAX_LOCAL_ASSIST_RESPONSE_BYTES/u);
+  assert.match(activity, /localAssistTasks\.putIfAbsent/u);
+  assert.match(activity, /task\.cancel\(true\)/u);
+  assert.doesNotMatch(activity, /setMixedContentMode\(WebSettings\.MIXED_CONTENT_ALWAYS_ALLOW\)/u);
+});
+
 test("seletores sobrevivem à rotação e a exportação usa somente cache privado restaurável", () => {
   assert.match(
     manifest,

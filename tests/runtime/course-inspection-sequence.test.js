@@ -10,6 +10,7 @@ import {
 } from "../../src/ui/CourseInspectionSequence.js";
 import { renderPackageStudyUnitBlocksWithDock } from
   "../../src/render/renderPackageStudyUnit.js";
+import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
@@ -309,6 +310,26 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
   });
 });
 
+test("observa e libera o rolador real da Autoria em vez da janela", () => {
+  const root = new FakeRoot();
+  const authoringScroller = new FakeWindow();
+  const windowValue = new FakeWindow();
+  root.closest = (selector) => selector === ".course-authoring-root" ? authoringScroller : null;
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture(),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue,
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+
+  assert.equal(authoringScroller.listeners.has("scroll"), true);
+  assert.equal(windowValue.listeners.has("scroll"), false);
+  sequence.destroy();
+  assert.equal(authoringScroller.listeners.has("scroll"), false);
+});
+
 test("pagina de 12 em 12 e conserva uma janela curricular de no máximo 36 artigos", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture();
@@ -550,6 +571,54 @@ test("Inspeção abre atribuição completa da versão exata da Unidade", async 
   sequence.destroy();
 });
 
+test("Unidade delega pedido contextual ao ChatGPT com caminho e deep link exatos", async () => {
+  const root = new FakeRoot();
+  const requests = [];
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture(),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    onRequestChat(request) {
+      requests.push(structuredClone(request));
+      throw new Error("Falha isolada do integrador");
+    },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+
+  assert.match(root.innerHTML, /data-inspection-request-chat/u);
+  assert.match(root.innerHTML, /aria-label="Trabalhar com o ChatGPT sobre Unidade 1"/u);
+  assert.ok(root.innerHTML.includes(renderUiIcon("prompt", "course-authoring-button-icon")));
+  assert.ok(!root.innerHTML.includes(renderUiIcon("sparkles", "course-authoring-button-icon")));
+  assert.doesNotMatch(
+    root.innerHTML,
+    /data-inspection-request-chat[^>]*>[^<]*<span>/u
+  );
+  await assert.doesNotReject(() => root.listeners.get("click")({
+    target: {
+      dataset: { studyUnitId: "unit-01" },
+      closest(selector) {
+        return selector === "[data-inspection-request-chat]" ? this : null;
+      }
+    }
+  }));
+
+  assert.deepEqual(requests, [{
+    target: {
+      type: "study_unit",
+      id: "unit-01",
+      title: "Unidade 1",
+      path: ["Fundamentos", "Relações", "Relações essenciais", "Unidade 1"]
+    },
+    action: "correct_study_unit",
+    instruction: "Revise esta Unidade de estudo comigo. Aponte problemas antes de propor qualquer correção e limite eventuais alterações a este alvo.",
+    deepLink: inspectionItem(1).deepLink
+  }]);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
+  sequence.destroy();
+});
+
 test("Inspeção evita N+1 decorativo e conta somente ao abrir o composer contextual", async () => {
   const root = new FakeRoot();
   const annotationCalls = [];
@@ -620,6 +689,128 @@ test("Inspeção evita N+1 decorativo e conta somente ao abrir o composer contex
   });
   assert.equal(counter.textContent, "2/2.000 caracteres · 5 B/16 KiB");
   sequence.destroy();
+});
+
+test("retirada na Inspeção usa confirmação modal, contém Tab e preserva foco", async () => {
+  const root = new FakeRoot();
+  const focusedSelectors = [];
+  root.querySelector = (selector) => selector.includes("data-observation-action")
+    ? { focus: () => focusedSelectors.push(selector) }
+    : null;
+  const documentListeners = new Map();
+  const documentValue = {
+    activeElement: null,
+    addEventListener(type, listener) { documentListeners.set(type, listener); },
+    removeEventListener(type, listener) {
+      if (documentListeners.get(type) === listener) documentListeners.delete(type);
+    }
+  };
+  const tabMoves = [];
+  const cancelControl = { focus: () => tabMoves.push("cancel") };
+  const confirmControl = { focus: () => tabMoves.push("confirm") };
+  root.querySelectorAll = (selector) => selector.includes("data-inspection-confirmation")
+    ? [cancelControl, confirmControl]
+    : [];
+  documentValue.activeElement = confirmControl;
+  const commands = [];
+  const annotationPage = (options) => {
+    const value = anchoredAnnotation(1);
+    value.capabilities.canWithdraw = true;
+    return {
+      contract: "aralearn.course-anchored-annotation-page.v1",
+      courseId: COURSE_ID,
+      courseRevision: REVISION,
+      annotationSetVersion: 3,
+      query: structuredClone(options.query),
+      summary: {
+        matchingTotal: 1,
+        byOrigin: { learner: 1 },
+        byChannel: { study_interface: 1 },
+        byState: { open: 1 },
+        unclassifiedTotal: 1
+      },
+      items: [value],
+      hasMore: false,
+      nextCursor: null
+    };
+  };
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return annotationPage(options);
+      },
+      async mutateCourseAnchoredAnnotations(input) {
+        commands.push(structuredClone(input.command));
+        return {
+          contract: "aralearn.course-anchored-annotation-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: REVISION,
+          annotationSetVersion: 4,
+          requestId: input.requestId,
+          idempotent: false,
+          changed: true,
+          annotation: null
+        };
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue
+  });
+  await sequence.open();
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-observations]"
+          ? { dataset: { studyUnitId: "unit-01" } }
+          : null;
+      }
+    }
+  });
+  const annotationId = anchoredAnnotation(1).annotationId;
+  const clickObservationAction = (action) => root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-observation-action]"
+          ? { dataset: { observationAction: action, observationId: annotationId } }
+          : null;
+      }
+    }
+  });
+
+  await clickObservationAction("withdraw");
+  assert.match(root.innerHTML, /role="alertdialog"/u);
+  assert.match(root.innerHTML, /class="course-authoring-confirm-backdrop" data-inspection-confirmation-backdrop/u);
+  assert.match(root.innerHTML, /role="alertdialog" aria-modal="true"/u);
+  assert.equal(commands.length, 0);
+  assert.equal(focusedSelectors.at(-1), '[data-observation-action="cancel-confirmation"]');
+  let tabPrevented = false;
+  root.listeners.get("keydown")({ key: "Tab", preventDefault() { tabPrevented = true; } });
+  assert.equal(tabPrevented, true);
+  assert.equal(tabMoves.at(-1), "cancel");
+  root.listeners.get("keydown")({ key: "Escape", preventDefault() {}, stopPropagation() {} });
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  assert.equal(focusedSelectors.at(-1),
+    `[data-observation-action="withdraw"][data-observation-id="${annotationId}"]`);
+
+  await clickObservationAction("withdraw");
+  documentListeners.get("click")({
+    target: {
+      matches: (selector) => selector === "[data-inspection-confirmation-backdrop]",
+      closest: () => null
+    }
+  });
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  await clickObservationAction("withdraw");
+  await clickObservationAction("confirm-withdraw");
+  assert.deepEqual(commands, [{
+    type: "withdraw_anchored_annotation",
+    annotationId,
+    expectedAnnotationVersion: 1
+  }]);
+  sequence.destroy();
+  assert.equal(documentListeners.size, 0);
 });
 
 test("Inspeção agrega sete páginas byte-limited antes de renderizar o contexto", async () => {
@@ -1022,7 +1213,7 @@ test("teclado fecha menus, clique externo os recolhe e reduced motion evita anim
   assert.equal(prevented, true);
 
   menu.open = true;
-  documentListeners.get("pointerdown")({ target: { closest: () => null } });
+  documentListeners.get("click")({ target: { closest: () => null } });
   assert.equal(menu.open, false);
 
   await root.listeners.get("click")({
@@ -1038,4 +1229,229 @@ test("teclado fecha menus, clique externo os recolhe e reduced motion evita anim
   assert.match(root.innerHTML, /aria-posinset="1" aria-setsize="60"/u);
   sequence.destroy();
   assert.equal(documentListeners.size, 0);
+});
+
+test("Inspeção preserva rascunho de criação e edição após validação e restaura o foco", async () => {
+  const root = new FakeRoot();
+  const focused = [];
+  root.querySelector = (selector) => selector === "[data-field='study-unit-observation']"
+    ? { focus: () => focused.push(selector) }
+    : null;
+  const annotation = anchoredAnnotation(1);
+  annotation.capabilities.canRevise = true;
+  const annotationPage = (options) => ({
+    contract: "aralearn.course-anchored-annotation-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: REVISION,
+    annotationSetVersion: 3,
+    query: structuredClone(options.query),
+    summary: {
+      matchingTotal: 1,
+      byOrigin: { learner: 1 },
+      byChannel: { study_interface: 1 },
+      byState: { open: 1 },
+      unclassifiedTotal: 1
+    },
+    items: [structuredClone(annotation)],
+    hasMore: false,
+    nextCursor: null
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadCourseAnchoredAnnotations(_courseId, options) { return annotationPage(options); },
+      async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-observations]"
+          ? { dataset: { studyUnitId: "unit-01" } }
+          : null;
+      }
+    }
+  });
+
+  const invalidText = `<rascunho>&${"x".repeat(2_000)}`;
+  root.listeners.get("change")({
+    target: {
+      value: "suggestion",
+      matches(selector) { return selector === "[data-field='study-unit-observation-category']"; }
+    }
+  });
+  root.listeners.get("input")({
+    target: {
+      value: invalidText,
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; }
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  assert.match(root.innerHTML, /&lt;rascunho&gt;&amp;/u);
+  assert.match(root.innerHTML, /value="suggestion" checked/u);
+  assert.match(root.innerHTML, /A observação pode ter no máximo 2\.000 caracteres/u);
+  assert.equal(focused.at(-1), "[data-field='study-unit-observation']");
+
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-observation-action]"
+          ? { dataset: { observationAction: "edit", observationId: annotation.annotationId } }
+          : null;
+      }
+    }
+  });
+  root.listeners.get("input")({
+    target: {
+      value: invalidText,
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; }
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  assert.match(root.innerHTML, /Editar observação/u);
+  assert.match(root.innerHTML, /&lt;rascunho&gt;&amp;/u);
+  assert.equal(focused.at(-1), "[data-field='study-unit-observation']");
+  sequence.destroy();
+});
+
+test("Inspeção repete pelo composer renderizado a mesma criação ou edição ambígua", async (t) => {
+  for (const mode of ["create", "edit"]) {
+    await t.test(mode === "create" ? "criação" : "edição", async () => {
+      const root = new FakeRoot();
+      let renderedHtml = root.innerHTML;
+      let renderGeneration = 0;
+      Object.defineProperty(root, "innerHTML", {
+        configurable: true,
+        get() { return renderedHtml; },
+        set(value) {
+          renderedHtml = String(value);
+          renderGeneration += 1;
+        }
+      });
+      const requests = [];
+      const annotation = anchoredAnnotation(1);
+      annotation.capabilities.canRevise = true;
+      const pageItems = mode === "edit" ? [annotation] : [];
+      const annotationPage = (options) => ({
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: COURSE_ID,
+        courseRevision: REVISION,
+        annotationSetVersion: 3,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: pageItems.length,
+          byOrigin: { learner: pageItems.length },
+          byChannel: { study_interface: pageItems.length },
+          byState: { open: pageItems.length },
+          unclassifiedTotal: pageItems.length
+        },
+        items: structuredClone(pageItems),
+        hasMore: false,
+        nextCursor: null
+      });
+      const sequence = createCourseInspectionSequence({
+        root,
+        controller: controllerFixture({
+          async loadCourseAnchoredAnnotations(_courseId, options) { return annotationPage(options); },
+          async mutateCourseAnchoredAnnotations(input) {
+            requests.push(structuredClone(input));
+            if (requests.length === 1) {
+              const error = new Error("A conexão caiu depois do envio.");
+              error.code = "network_error";
+              throw error;
+            }
+            return {
+              contract: "aralearn.course-anchored-annotation-change.v1",
+              courseId: COURSE_ID,
+              courseRevision: REVISION,
+              annotationSetVersion: 4,
+              requestId: input.requestId,
+              idempotent: true,
+              changed: false,
+              annotation: null
+            };
+          }
+        }),
+        course: { courseId: COURSE_ID, revision: REVISION },
+        windowValue: new FakeWindow(),
+        documentValue: { activeElement: null }
+      });
+      await sequence.open();
+      await root.listeners.get("click")({
+        target: {
+          closest(selector) {
+            return selector === "[data-inspection-observations]"
+              ? { dataset: { studyUnitId: "unit-01" } }
+              : null;
+          }
+        }
+      });
+      if (mode === "edit") {
+        await root.listeners.get("click")({
+          target: {
+            closest(selector) {
+              return selector === "[data-observation-action]"
+                ? { dataset: { observationAction: "edit", observationId: annotation.annotationId } }
+                : null;
+            }
+          }
+        });
+      }
+      const rawText = mode === "edit"
+        ? "Edição na Inspeção preservada."
+        : "Criação na Inspeção preservada.";
+      root.listeners.get("change")({
+        target: {
+          value: "suggestion",
+          matches(selector) { return selector === "[data-field='study-unit-observation-category']"; }
+        }
+      });
+      root.listeners.get("input")({
+        target: {
+          value: rawText,
+          matches(selector) { return selector === "[data-field='study-unit-observation']"; }
+        }
+      });
+      const composerFromCurrentDom = ({ expectDraft = false } = {}) => {
+        assert.match(root.innerHTML, /data-observation-composer/u);
+        if (expectDraft) assert.match(root.innerHTML, new RegExp(rawText, "u"));
+        return {
+          renderGeneration,
+          matches(selector) { return selector === "[data-observation-composer]"; }
+        };
+      };
+      const firstComposer = composerFromCurrentDom();
+      root.listeners.get("submit")({ preventDefault() {}, target: firstComposer });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      assert.equal(requests.length, 1);
+      assert.match(root.innerHTML, new RegExp(rawText, "u"));
+      assert.match(root.innerHTML, /confirmar exatamente a mesma operação/u);
+      assert.equal(sequence.hasPendingDraft(), true);
+      const retryComposer = composerFromCurrentDom({ expectDraft: true });
+      assert.notEqual(retryComposer.renderGeneration, firstComposer.renderGeneration);
+      assert.notStrictEqual(retryComposer, firstComposer);
+      root.listeners.get("submit")({ preventDefault() {}, target: retryComposer });
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+
+      assert.equal(requests.length, 2);
+      assert.deepEqual(requests[1], requests[0]);
+      assert.equal(requests[0].command.type, mode === "edit"
+        ? "revise_anchored_annotation"
+        : "create_anchored_annotation");
+      assert.equal(sequence.hasPendingDraft(), false);
+      sequence.destroy();
+    });
+  }
 });

@@ -1170,6 +1170,86 @@ test("commit de composição exige versão, conteúdo e escopo de escrita", asyn
   }
 });
 
+test("composição contextual encaminha somente versão e origem fechada", async () => {
+  const sourceLinks = [{
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }, {
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }];
+  const body = {
+    requestId: "request-contextual-edit-0001",
+    expectedRevision: 4,
+    expectedStudyUnitVersion: 2,
+    applicationOrigin: "provider_assistance",
+    upserts: [{
+      entityType: "study_unit",
+      entityId: "unit-a",
+      parentType: "microsequence",
+      parentId: "micro-a",
+      position: 1,
+      content: {
+        title: "Unidade revista",
+        role: "theory",
+        content: [{
+          id: "paragraph-a",
+          package: "aralearn.resource.paragraph",
+          version: "1.0.0",
+          data: { text: "Conteúdo revisto." }
+        }],
+        response: null,
+        feedback: [],
+        topics: []
+      }
+    }],
+    deletes: [],
+    sourceAttributionApplications: [{ studyUnitId: "unit-a", sourceLinks }]
+  };
+  let call = null;
+  const adapter = {
+    async commitCourseComposition(value) {
+      call = value;
+      return { courseId: COURSE_ID, revision: 5 };
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/composition`;
+  const value = request(path, {
+    method: "POST",
+    requestId: body.requestId,
+    body
+  });
+
+  await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("POST", path),
+    adapter,
+    principal: { ...PRINCIPAL, authenticationKind: "application" }
+  });
+
+  assert.equal(call.expectedStudyUnitVersion, 2);
+  assert.equal(call.applicationOrigin, "provider_assistance");
+  assert.deepEqual(call.sourceAttributionApplications[0].sourceLinks, sourceLinks);
+  const leaked = request(path, {
+    method: "POST",
+    requestId: body.requestId,
+    body: { ...body, prompt: "texto livre" }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: leaked,
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: { ...PRINCIPAL, authenticationKind: "application" }
+    }),
+    (error) => error.code === "unknown_course_command_field"
+  );
+});
+
 test("composição rejeita hierarquia, posição e conteúdo incompatíveis antes do banco", async () => {
   const adapter = {
     async commitCourseComposition() {

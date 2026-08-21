@@ -2504,14 +2504,20 @@ function mapCreate(raw) {
 
 function mapChange(raw, {
   requireAnnotationConfirmation = true,
-  requireAuditConfirmation = true
+  requireAuditConfirmation = true,
+  allowApplicationCompositionMetadata = false
 } = {}) {
-  exactFields(raw, new Set([
+  const allowedFields = new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
     "operation", "planCommand", "designCommand", "materializationCommand",
     "sourceCommand", "annotationCommand", "auditCommand", "upserts", "deletes",
     "sourceAttributionApplications", "variantCommand"
-  ]));
+  ]);
+  if (allowApplicationCompositionMetadata) {
+    allowedFields.add("expectedStudyUnitVersion");
+    allowedFields.add("applicationOrigin");
+  }
+  exactFields(raw, allowedFields);
   const requestId = requiredRequestId(raw.requestId);
   const courseId = requiredUuid(raw.courseId, "courseId");
   const operation = requiredText(raw.operation, "operation", { maximum: 40 });
@@ -2526,6 +2532,14 @@ function mapChange(raw, {
     "advance_part_materialization"
   ]).has(operation)) {
     fail("invalid_tool_argument", "operation é inválida.", { field: "operation" });
+  }
+  if (operation !== "commit_course_composition" && (
+    raw.expectedStudyUnitVersion != null || raw.applicationOrigin != null
+  )) {
+    fail(
+      "invalid_tool_argument",
+      "Os metadados da edição pertencem somente à composição contextual."
+    );
   }
   if (operation !== "update_audit_cycle" && raw.auditCommand != null) {
     fail("invalid_tool_argument", "auditCommand pertence somente ao ciclo de auditoria.");
@@ -2724,12 +2738,30 @@ function mapChange(raw, {
     if (upserts.length > 200 || deletes.length > 200) {
       fail("invalid_tool_argument", "A alteração excede 200 entidades por grupo.");
     }
+    const applicationMetadata = allowApplicationCompositionMetadata
+      ? {
+          expectedStudyUnitVersion: positiveInteger(
+            raw.expectedStudyUnitVersion,
+            "expectedStudyUnitVersion"
+          ),
+          applicationOrigin: new Set(["manual", "provider_assistance"]).has(
+            raw.applicationOrigin
+          )
+            ? raw.applicationOrigin
+            : fail(
+                "invalid_tool_argument",
+                "applicationOrigin é inválida.",
+                { field: "applicationOrigin" }
+              )
+        }
+      : {};
     return route("POST", `/v1/courses/${courseId}/composition`, requestId, {
       requestId,
       expectedRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
       upserts,
       deletes,
-      sourceAttributionApplications
+      sourceAttributionApplications,
+      ...applicationMetadata
     });
   }
   if (raw.expectedPlanVersion != null || raw.planCommand != null ||
@@ -2967,7 +2999,8 @@ export function mapAuthoringApplicationToolCall(name, rawArguments) {
   if (name === "alterarCurso") {
     return mapChange(raw, {
       requireAnnotationConfirmation: false,
-      requireAuditConfirmation: false
+      requireAuditConfirmation: false,
+      allowApplicationCompositionMetadata: true
     });
   }
   return mapAuthoringMcpToolCall(name, raw);

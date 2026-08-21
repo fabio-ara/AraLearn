@@ -10,6 +10,7 @@ const TARGET_DEFINITIONS = Object.freeze([
   Object.freeze({ option: "authoringPartId", query: "authoringPartId", kind: "authoring_part", uuid: true }),
   Object.freeze({ option: "moduleId", query: "moduleId", kind: "module" }),
   Object.freeze({ option: "lessonId", query: "lessonId", kind: "lesson" }),
+  Object.freeze({ option: "topicId", query: "topicId", kind: "topic" }),
   Object.freeze({
     option: "didacticMicrosequenceId",
     query: "didacticMicrosequenceId",
@@ -22,7 +23,7 @@ const TARGET_DEFINITIONS = Object.freeze([
   Object.freeze({ option: "sourceId", query: "sourceId", kind: "course_source", source: true })
 ]);
 const BUILD_OPTION_FIELDS = new Set([
-  "section", "authoringPartId", "moduleId", "lessonId", "didacticMicrosequenceId",
+  "section", "authoringPartId", "moduleId", "lessonId", "topicId", "didacticMicrosequenceId",
   "studyUnitId", "annotationId", "findingId", "correctionId", "auditRunId", "sourceId", "anchorId",
   "unassigned"
 ]);
@@ -102,6 +103,7 @@ function targetAllowedForSection(target, section) {
   if (target.kind === "audit_finding") return section === "observations";
   if (target.kind === "audit_run") return section === "observations";
   if (target.kind === "course_source") return section === "sources";
+  if (target.kind === "topic") return section === "structure";
   if (section === "inspection") return true;
   return section === "parameters" && [
     "module", "lesson", "didactic_microsequence"

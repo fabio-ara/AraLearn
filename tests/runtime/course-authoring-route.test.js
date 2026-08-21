@@ -55,6 +55,14 @@ test("rota canônica preserva courseId, seção real e um único alvo compatíve
     target: { kind: "study_unit", id: "unidade-1" }
   });
   assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
+    section: "structure",
+    topicId: "topico-1"
+  })), {
+    courseId: COURSE_ID,
+    section: "structure",
+    target: { kind: "topic", id: "topico-1" }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
     section: "inspection",
     unassigned: true
   })), {
@@ -133,6 +141,7 @@ test("parser rejeita UUID não canônico, parâmetros extras e outros caminhos",
     `#/authoring/courses/${COURSE_ID}?section=map`,
     `#/authoring/courses/${COURSE_ID}?section=content`,
     `#/authoring/courses/${COURSE_ID}?section=parameters&studyUnitId=a`,
+    `#/authoring/courses/${COURSE_ID}?section=inspection&topicId=a`,
     `#/authoring/courses/${COURSE_ID}?section=parameters&authoringPartId=${LETTERED_COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=inspection&annotationId=${LETTERED_COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=observations&studyUnitId=a`,
@@ -175,6 +184,10 @@ test("construtor de rota falha cedo para identidade ou seção inválida", () =>
   );
   assert.throws(
     () => buildCourseAuthoringRoute(COURSE_ID, { section: "structure", moduleId: "a" }),
+    /não pertence à seção/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, { section: "inspection", topicId: "a" }),
     /não pertence à seção/u
   );
   assert.throws(

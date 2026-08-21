@@ -77,6 +77,13 @@ function Test-TextForSecrets {
   if ($Text -match '(?i)SUPABASE_(?:SERVICE_ROLE_KEY|DB_PASSWORD)\s*[=:]\s*["'']?([A-Za-z0-9._-]{12,})') {
     Add-Issue 'secret.environment-value' $Location 'Valor administrativo Supabase encontrado.'
   }
+  if (
+    $Text -match '\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b' -or
+    $Text -match '\bAIza[0-9A-Za-z_-]{30,}\b' -or
+    $Text -match '(?i)(?:OPENAI|GEMINI|GOOGLE|DEEPSEEK)_API_KEY\s*[=:]\s*["'']?[A-Za-z0-9._-]{16,}'
+  ) {
+    Add-Issue 'secret.language-provider' $Location 'Credencial de serviço de linguagem encontrada.'
+  }
 
   foreach ($candidate in [regex]::Matches($Text, 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+')) {
     if ((Get-AraLearnJwtRole -Token $candidate.Value) -eq 'service_role') {
@@ -95,7 +102,7 @@ function Test-ArtifactPathForLegacy {
   $normalized = $Path.Replace('\', '/').ToLowerInvariant()
   if (
     $normalized -match '(^|/)(?:authoringapiclient|personalintegrationclient|personalintegrationspanel|interventionscopeguard)\.js$' -or
-    $normalized -match '(^|/)src/(?:assist|generation)(/|$)' -or
+    $normalized -match '(^|/)src/assist/(?:bottomupassistance(?:runtime|scope)|cardassistance(?:catalog|ledger|localstate|navigation|operations|scope)|contextualauthoringsync|integratedcoursesync)\.js$' -or
     $normalized -match '(^|/)src/(?:persistence/workspacedesignofflinestore|supabase/(?:authoringworkspaceclient|learningspaces|remotecoursecatalog)|ui/(?:authoringworkspacesurface|learningspacespanel|lessoneditorapp|renderlessonscreen))\.js$' -or
     $normalized -match '(^|/)docs/downloads/authoring(/|$)' -or
     $normalized -match '(^|/)aralearn-chatgpt-knowledge\.md$'
@@ -307,6 +314,7 @@ function Test-RuntimeConfigurationContent {
   )
 
   $configuredOrigin = ''
+  $assistOrigins = @()
   if ($RuntimeConfigPresent) {
     $urlMatch = [regex]::Match($RuntimeConfigText, '"supabaseUrl"\s*:\s*"([^"]*)"')
     $keyMatch = [regex]::Match($RuntimeConfigText, '"supabasePublishableKey"\s*:\s*"([^"]*)"')
@@ -337,6 +345,62 @@ function Test-RuntimeConfigurationContent {
     if ($expectedKey -and $key -cne $expectedKey) {
       Add-Issue 'config.publishable-key-mismatch' $RuntimeConfigLocation 'Publishable key do artefato difere da configuração deste processo.'
     }
+
+    $assistMatch = [regex]::Match(
+      $RuntimeConfigText,
+      '"assistAllowedOrigins"\s*:\s*\[([^\]]*)\]'
+    )
+    if ($assistMatch.Success) {
+      $assistOrigins = @([regex]::Matches($assistMatch.Groups[1].Value, '"([^"\\]+)"') | ForEach-Object {
+        $_.Groups[1].Value
+      })
+    }
+    $expectedAssistOrigins = @(
+      'http://127.0.0.1:4183',
+      'http://localhost:4183',
+      'http://10.0.2.2:4183'
+    )
+    $missingExpectedAssistOrigins = @($expectedAssistOrigins | Where-Object {
+      $_ -cnotin $assistOrigins
+    })
+    if (
+      $assistOrigins.Count -ne $expectedAssistOrigins.Count -or
+      $missingExpectedAssistOrigins.Count -gt 0
+    ) {
+      Add-Issue 'config.assist-origins' $RuntimeConfigLocation 'A produção deve permitir somente as três origens locais canônicas da assistência.'
+    }
+    else {
+      $seenAssistOrigins = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+      foreach ($origin in $assistOrigins) {
+        $parsedOrigin = $null
+        try { $parsedOrigin = [Uri]$origin } catch { $parsedOrigin = $null }
+        $localHost = $parsedOrigin -and $parsedOrigin.Host -in @('127.0.0.1', 'localhost', '10.0.2.2')
+        $validProtocol = $parsedOrigin -and (
+          $parsedOrigin.Scheme -ceq 'https' -or
+          ($parsedOrigin.Scheme -ceq 'http' -and $localHost -and $parsedOrigin.Port -eq 4183)
+        )
+        $exactOrigin = $parsedOrigin -and
+          -not $parsedOrigin.UserInfo -and
+          $parsedOrigin.AbsolutePath -ceq '/' -and
+          -not $parsedOrigin.Query -and
+          -not $parsedOrigin.Fragment -and
+          $parsedOrigin.GetLeftPart([UriPartial]::Authority) -ceq $origin
+        if (-not $validProtocol -or -not $exactOrigin -or -not $seenAssistOrigins.Add($origin)) {
+          Add-Issue 'config.assist-origin' $RuntimeConfigLocation 'Origem da assistência inválida, duplicada ou ampla.'
+        }
+      }
+    }
+    $nativeAssistBridgeEnabled = $RuntimeConfigText -match '"nativeAssistBridge"\s*:\s*true'
+    $developmentRuntimeEnabled = $RuntimeConfigText -match '"developmentRuntime"\s*:\s*true'
+    if ($developmentRuntimeEnabled) {
+      Add-Issue 'config.development-runtime' $RuntimeConfigLocation 'O artefato de produção não pode habilitar o runtime de desenvolvimento.'
+    }
+    if ($Platform -eq 'android' -and -not $nativeAssistBridgeEnabled) {
+      Add-Issue 'config.native-assist-bridge' $RuntimeConfigLocation 'O APK deve habilitar a ponte nativa do relay local.'
+    }
+    elseif ($Platform -eq 'web' -and $nativeAssistBridgeEnabled) {
+      Add-Issue 'config.native-assist-bridge' $RuntimeConfigLocation 'O artefato web não pode habilitar a ponte exclusiva do Android.'
+    }
   }
   elseif ($RequireRuntimeConfig) {
     Add-Issue 'config.missing' $RuntimeConfigLocation 'Arquivo de configuração pública ausente.'
@@ -351,6 +415,11 @@ function Test-RuntimeConfigurationContent {
     }
     if ($configuredOrigin -and -not $IndexText.Contains($configuredOrigin)) {
       Add-Issue 'csp.origin' $IndexLocation 'CSP não contém a origem configurada do Supabase.'
+    }
+    foreach ($assistOrigin in $assistOrigins) {
+      if (-not $IndexText.Contains($assistOrigin)) {
+        Add-Issue 'csp.assist-origin' $IndexLocation 'CSP não contém uma origem autorizada para assistência.'
+      }
     }
   }
   else {

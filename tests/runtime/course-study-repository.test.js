@@ -377,6 +377,76 @@ test("mantém a composição carregada até a revisão anunciada ser validada", 
   });
 });
 
+test("expõe o contexto canônico da Unidade carregada para gravação autoral", async () => {
+  const courseValue = course(COURSE_A, "a");
+  const repository = new CourseStudyRepository({
+    bridge: {
+      async listAccessibleCourses() {
+        return {
+          items: [{
+            courseId: COURSE_A,
+            title: courseValue.title,
+            goal: courseValue.goal,
+            revision: 7,
+            ownership: "owned",
+            canEdit: true,
+            moduleCount: 1,
+            lessonCount: 1,
+            microsequenceCount: 1,
+            studyUnitCount: 1,
+            completedStudyUnitCount: 0
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async loadCourse() {
+        return {
+          revision: 7,
+          document: { contract: "aralearn.course.v1", courses: [courseValue] },
+          rows: [{
+            entityType: "study_unit",
+            entityId: "unit-a",
+            parentId: "micro-a",
+            version: 3
+          }]
+        };
+      },
+      async clearCourse() {}
+    },
+    api: {
+      async listCourseReviewItems() {
+        return { items: [], hasMore: false, nextCursor: null };
+      },
+      async loadPersonalState() { return null; },
+      async mutatePersonalState() { throw new Error("Não usado."); }
+    },
+    cache: cache()
+  });
+  const reference = {
+    courseId: COURSE_A,
+    moduleId: "module-a",
+    lessonId: "lesson-a",
+    microsequenceId: "micro-a",
+    studyUnitId: "unit-a"
+  };
+
+  await repository.initialize();
+  assert.equal(repository.loadStudyUnitCompositionContext(reference), null);
+  await repository.loadCourse(COURSE_A);
+  assert.deepEqual(repository.loadStudyUnitCompositionContext(reference), {
+    courseId: COURSE_A,
+    courseRevision: 7,
+    didacticMicrosequenceId: "micro-a",
+    studyUnitId: "unit-a",
+    studyUnitVersion: 3
+  });
+  assert.equal(repository.loadStudyUnitCompositionContext({
+    ...reference,
+    studyUnitId: "unit-inexistente"
+  }), null);
+});
+
 test("carrega a fila Rever por páginas somente quando solicitado", async () => {
   const courseValue = course(COURSE_A, "a");
   const cursors = [];

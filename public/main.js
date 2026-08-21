@@ -1,4 +1,5 @@
 import { AuthSessionStore } from "../src/persistence/AuthSessionStore.js";
+import { createUuid } from "../src/domain/identifiers.js";
 import { CourseLocalStore } from "../src/persistence/CourseLocalStore.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
 import { createCourseStudyApplication } from "../src/study/CourseStudyApplication.js";
@@ -17,6 +18,8 @@ import {
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
+import { createStudyUnitProviderSession } from
+  "../src/ui/StudyUnitProviderAssistance.js";
 
 let authStore = null;
 let courseLocalStore = null;
@@ -25,6 +28,9 @@ let authenticationShutdown = null;
 let activeUserId = null;
 let lifecycleAbortController = null;
 let localConnectionRefreshPending = false;
+let studyUnitProviderSession = null;
+let pendingCompositionCleanup = null;
+let authenticatedApplicationCleanup = null;
 
 function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
@@ -42,8 +48,14 @@ function watchLocalConnection(store) {
 }
 
 async function closeAraLearnLocalConnections() {
+  authenticatedApplicationCleanup?.();
+  authenticatedApplicationCleanup = null;
   lifecycleAbortController?.abort();
   lifecycleAbortController = null;
+  studyUnitProviderSession?.destroy?.();
+  studyUnitProviderSession = null;
+  if (pendingCompositionCleanup) await pendingCompositionCleanup();
+  pendingCompositionCleanup = null;
   if (repository) {
     await repository.close();
     repository = null;
@@ -56,8 +68,13 @@ async function closeAraLearnLocalConnections() {
 
 async function clearAraLearnLocalState() {
   const userId = activeUserId;
+  authenticatedApplicationCleanup?.();
+  authenticatedApplicationCleanup = null;
   lifecycleAbortController?.abort();
   lifecycleAbortController = null;
+  studyUnitProviderSession?.destroy?.();
+  studyUnitProviderSession = null;
+  pendingCompositionCleanup = null;
   if (repository) {
     await repository.close();
     repository = null;
@@ -446,16 +463,16 @@ function clearAuthoringRoute() {
   );
 }
 
-async function deliverPartMaterializationRequest({ requestText } = {}) {
+async function deliverAuthoringRequest({ requestText } = {}) {
   const text = String(requestText || "").trim();
-  if (!text) throw new TypeError("O pedido de materialização está vazio.");
+  if (!text) throw new TypeError("O pedido de Autoria está vazio.");
   if (typeof globalThis.navigator?.clipboard?.writeText !== "function") {
     throw new Error("Não foi possível copiar o pedido para o ChatGPT.");
   }
   await globalThis.navigator.clipboard.writeText(text);
   return {
     delivery: "clipboard",
-    message: "Pedido copiado. Cole no ChatGPT para solicitar a materialização."
+    message: "Pedido copiado. Cole no ChatGPT para continuar a Autoria."
   };
 }
 
@@ -470,8 +487,10 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     api: courseApi,
     store: courseLocalStore,
     ownerOnly: true,
-    deliverMaterializationRequest: deliverPartMaterializationRequest
+    deliverAuthoringRequest
   });
+  pendingCompositionCleanup = () =>
+    authoringController.clearPendingCourseCompositions();
   const studyBridge = new CourseStudyBridge({ controller: studyController });
   repository = new CourseStudyRepository({
     bridge: studyBridge,
@@ -493,12 +512,13 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const project = repository.loadProject();
   root.innerHTML = `
     <div id="aralearn-editor-root"></div>
-    <div id="aralearn-authoring-root" hidden></div>
+    <div id="aralearn-authoring-root" class="course-authoring-root" hidden></div>
     <div id="aralearn-settings-root"></div>
   `;
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const authoringRoot = root.querySelector("#aralearn-authoring-root");
   const settingsRoot = root.querySelector("#aralearn-settings-root");
+  studyUnitProviderSession = createStudyUnitProviderSession();
   let editorApp = null;
   let authoringSurface = null;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
@@ -519,15 +539,40 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     editorApp?.flushPersonalState?.() || Promise.resolve()
   ]).catch(() => undefined);
 
+  let pendingStudyComposition = null;
+  const saveStudyManualEdit = async (value) => {
+    const intent = {
+      courseId: value.courseId,
+      expectedCourseRevision: value.expectedCourseRevision,
+      expectedStudyUnitVersion: value.expectedVersion,
+      didacticMicrosequenceId: value.didacticMicrosequenceId,
+      studyUnit: value.studyUnit,
+      origin: value.origin
+    };
+    const signature = JSON.stringify(intent);
+    if (pendingStudyComposition?.signature !== signature) {
+      pendingStudyComposition = { signature, requestId: createUuid() };
+    }
+    const result = await authoringController.commitCourseComposition({
+      requestId: pendingStudyComposition.requestId,
+      ...intent
+    });
+    pendingStudyComposition = null;
+    return result;
+  };
+
   editorApp = createCourseStudyApplication({
     root: editorRoot,
     repository,
-    initialProject: project
+    initialProject: project,
+    onSaveManualEdit: saveStudyManualEdit,
+    providerAssistanceSession: studyUnitProviderSession
   });
   void settings.loadProfile();
   authoringSurface = createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
+    providerAssistanceSession: studyUnitProviderSession,
     onClose() {
       clearAuthoringRoute();
       authoringRoot.hidden = true;
@@ -547,16 +592,42 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const refreshVisibleApplication = () => authoringSurface?.opened
     ? authoringSurface.refresh()
     : refreshStudy();
+  let visibleRefreshTimer = null;
+  const cleanupApplication = () => {
+    if (visibleRefreshTimer !== null) globalThis.clearTimeout(visibleRefreshTimer);
+    visibleRefreshTimer = null;
+    authoringSurface?.destroy?.();
+    authoringSurface = null;
+    editorApp?.destroy?.();
+    editorApp = null;
+  };
+  authenticatedApplicationCleanup = cleanupApplication;
+  const scheduleVisibleApplicationRefresh = () => {
+    if (document.visibilityState === "hidden") return;
+    if (visibleRefreshTimer !== null) globalThis.clearTimeout(visibleRefreshTimer);
+    visibleRefreshTimer = globalThis.setTimeout(() => {
+      visibleRefreshTimer = null;
+      void refreshVisibleApplication().catch((error) => {
+        console.warn("A área atual será atualizada na próxima conexão.", error);
+      });
+    }, 180);
+  };
   editorRoot.addEventListener("aralearn:open-settings", () => settings.open());
   editorRoot.addEventListener("aralearn:open-authoring", openAuthoring);
 
   lifecycleAbortController = new AbortController();
+  lifecycleAbortController.signal.addEventListener("abort", () => {
+    if (authenticatedApplicationCleanup !== cleanupApplication) return;
+    authenticatedApplicationCleanup = null;
+    cleanupApplication();
+  }, { once: true });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") void bestEffortFlush();
-    else void refreshVisibleApplication().catch((error) => {
-      console.warn("A área atual será atualizada na próxima conexão.", error);
-    });
+    else scheduleVisibleApplicationRefresh();
   }, { signal: lifecycleAbortController.signal });
+  globalThis.addEventListener("focus", scheduleVisibleApplicationRefresh, {
+    signal: lifecycleAbortController.signal
+  });
   globalThis.addEventListener("pagehide", () => void bestEffortFlush(), {
     signal: lifecycleAbortController.signal
   });

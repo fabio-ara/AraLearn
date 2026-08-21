@@ -6,6 +6,12 @@ O cliente traduz a intenção expressa em linguagem natural para leituras e
 operações delimitadas, enquanto o AraLearn verifica propriedade, revisões,
 contratos e relações antes de confirmar uma mudança.
 
+Este percurso pressupõe que a organização já disponibilizou um cliente MCP
+compatível. A prova automatizada local confirma protocolo, OAuth e continuidade
+com a interface, mas não demonstra que um app do AraLearn esteja publicado ou
+instalável no ChatGPT. Por isso, este documento não substitui um tutorial de
+instalação na interface corrente desse produto.
+
 ## Antes de começar
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
@@ -67,10 +73,11 @@ Microssequências existem, atribua a cada uma as unidades de análise e os
 requisitos de evidência que ela precisa desenvolver. Essa atribuição é
 explícita e admite vários itens em vários alvos.
 
-Na interface, **Copiar pedido para o ChatGPT** prepara um texto com a Parte e o
-Curso. Cole esse texto na conversa conectada. A cópia ainda não inicia a
-produção; o estado muda somente depois que o cliente executa e confirma as
-operações do MCP.
+Na interface, a ação **ChatGPT** da Parte abre o compositor com o alvo, o caminho
+e uma intenção inicial. Revise o argumento e use **Copiar pedido**. O texto leva
+Curso, revisão, Parte, endereço de retorno e limites operacionais para a conversa
+conectada. A cópia ainda não inicia a produção; o estado muda somente depois que
+o cliente executa e confirma as operações do MCP.
 
 ## Configurar o desenho
 
@@ -188,10 +195,11 @@ Depois de produzir ou alterar conteúdo:
 4. percorra as Unidades em **Inspeção**;
 5. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
    citações visíveis;
-6. trate divergências em **Auditoria e correções**.
+6. trate divergências em **Discussões e correções**.
 
-A Inspeção reproduz o conteúdo real com as respostas inertes. Ela serve para
-conferência fiel, sem criar outro editor da Unidade.
+A Inspeção reproduz o conteúdo real com as respostas inertes. A edição manual
+e a assistência por API ativam somente os textos autorizados nesse mesmo
+renderer; não existe outra representação ou persistência de Unidade.
 
 ## Registrar e tratar Observações
 

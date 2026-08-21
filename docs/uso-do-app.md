@@ -17,7 +17,7 @@ para Estudo assim que contém Unidades válidas.
 Unidades para rever e registrar Observações próprias.
 
 **Autoria** apresenta somente Cursos próprios. Ela reúne Planejamento,
-Parâmetros, Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes,
+Parâmetros, Fontes, Estrutura, Inspeção, Discussões e correções, Variantes,
 Pesquisa e Pessoas.
 
 Uma **réplica local** é a cópia dos dados necessários à continuidade no
@@ -131,11 +131,21 @@ Módulo, Lição, Microssequência ou a partir de uma Unidade.
 Em Autoria, use **Criar Curso**, informe título e objetivo e salve. O Curso nasce
 privado, com plano vazio e sugestão inicial de 7 a 12 Partes.
 
+Ao abrir o Curso, quatro grupos por ícone revelam as capacidades necessárias:
+**Curso**, **Revisar**, **Pesquisa** e **Pessoas**. Use o nome acessível ou a dica
+do ícone; os nove nomes funcionais não permanecem expostos ao mesmo tempo. A
+superfície conserva até 430 px também no computador.
+
 Em **Planejamento**, edite título, objetivo, público, escopo e faixa de Partes.
 Acrescente, reordene ou retire resultados de aprendizagem pretendidos, unidades
 de análise e requisitos de evidência. Em **Partes**, organize a ordem de
 produção e os vínculos com Microssequências. Essas ações preservam a hierarquia
 curricular e as Unidades já existentes.
+
+A tela apresenta primeiro a próxima ação e o estado de cada Parte. Use o botão
+de organização da Parte para abrir edição, reordenação, divisão, união ou
+exclusão. Contexto e referências do plano permanecem recolhidos até serem
+necessários.
 
 ## Configurar o desenho do Curso
 
@@ -181,17 +191,104 @@ Uma referência anterior pendente de comprovação fica oculta em Estudo. Para
 resolvê-la, preserve a identidade apresentada e acrescente metadados e Âncoras
 comprovados.
 
-## Produzir uma Parte com o ChatGPT
+## Editar uma Unidade no próprio conteúdo
 
-1. Prepare a Parte, sua cobertura e suas Fontes.
-2. Use **Copiar pedido para o ChatGPT**.
-3. Cole o pedido no cliente conectado.
-4. Autorize o trabalho nesse cliente.
-5. Volte ao Planejamento e confira as etapas confirmadas pelo servidor.
+O proprietário pode usar o ícone **Editar** tanto em Estudo quanto na Inspeção.
+Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
+**Salvar**. O AraLearn valida a Unidade inteira e preserva identidade, pai,
+posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
+**Cancelar** abandona somente esse rascunho.
+
+Para obter uma sugestão, ative a edição, selecione o trecho e use
+**Assistência por API**:
+
+1. confira **Serviço local**, já fixo pela instalação;
+2. informe o modelo; abra **Conexão** apenas para conferir o endpoint do relay
+   na porta 4183;
+3. leia o aviso sobre o recorte enviado e escreva o pedido;
+4. confira a sugestão e use **Ver no conteúdo**;
+5. aplique ao rascunho ou descarte;
+6. salve manualmente apenas se o resultado estiver adequado.
+
+O pedido leva valores textuais editáveis, título, papel, tópicos e mensagens
+anteriores. PDFs, Fontes, outras Unidades, `targetId`, `studyUnitId` e o restante
+do Curso ficam fora. A credencial do provider fica no relay, fora do AraLearn;
+fechar a sobreposição limpa a conversa, e sair ou recarregar também elimina a
+configuração. Providers remotos e chave no navegador aparecem somente num
+runtime explícito de desenvolvimento, com alerta, e não são o percurso de
+produção para pessoas leigas. O ChatGPT conectado por MCP continua sendo a via
+principal para trabalhar com o Curso inteiro.
+
+O aviso de cada envio separa essa memória efêmera do tratamento externo. O relay
+pode encaminhar o recorte ao provider configurado, que pode conservar dados
+segundo seus próprios termos; confira destino e conteúdo antes de autorizar.
+
+A sugestão altera no máximo um caminho textual por pedido. Se o trecho exceder
+6.000 caracteres ou o contexto editável completo superar 12.000, o ícone fica
+desabilitado e informa o motivo para tecnologias assistivas; use a edição manual.
+O relay foi comprovado no ambiente HTTP local. Ele ainda depende de ensaio no
+Pages. A candidata Android usa uma ponte nativa fixa para manter a chamada HTTP
+fora do WebView, sem relaxar a política de conteúdo misto, mas a instalação e o
+ensaio em dispositivo real continuam pendentes.
+
+## Trabalhar com o ChatGPT a partir da Autoria
+
+1. Abra a ação **ChatGPT** junto ao objeto sobre o qual quer trabalhar.
+2. Confira o alvo e seu caminho no Curso.
+3. Escolha uma intenção compatível, como planejar, preparar estrutura, revisar,
+   discutir, verificar uma Fonte, corrigir uma Unidade ou materializar uma
+   Parte.
+4. Revise e complete **Seu argumento ou pedido**. Esse campo aceita o contexto,
+   as dúvidas e os critérios que o cliente conversacional deverá considerar.
+5. Use **Copiar pedido**, cole o texto no cliente conectado e autorize ali as
+   operações propostas.
+6. Volte ao AraLearn e confira o estado confirmado.
+
+O compositor acrescenta a identidade e a revisão observada do Curso, o tipo e a
+identidade do alvo, o caminho hierárquico, referências operacionais pertinentes,
+o endereço direto de retorno e limites de segurança. O argumento permanece
+editável antes da cópia. Fechar ou cancelar devolve o foco ao controle que abriu
+o compositor.
 
 Copiar o texto não inicia a produção nem altera o Curso. Quando o cliente
 executa a materialização, **Ver etapas** apresenta o andamento e a próxima ação
 pendente.
+
+O ícone do ChatGPT aparece no cabeçalho do Curso e nos contextos de Módulo,
+Lição, Tópico, Microssequência, Unidade, Parâmetro, Fonte e Âncora. Nesses
+níveis, as intenções disponíveis respeitam o objeto. Materialização continua
+restrita à Parte operacional.
+
+Para uma Parte sem Microssequência vinculada, use **Preparar estrutura**. O
+pedido orienta o cliente a criar apenas Módulos, Lições e Microssequências
+necessários e a vinculá-los ao planejamento. **Materializar Parte** só fica
+disponível depois desse vínculo. **Ver etapas** apresenta o andamento e a
+próxima ação confirmada pelo servidor.
+
+Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
+canônico e atualiza a área visível. Isso também ocorre quando outra janela
+devolve o foco ao aplicativo. Se o navegador não sinalizar a troca de foco, use a ação
+**Atualizar** no cabeçalho do Curso. A atualização preserva o contexto de
+navegação e, na Inspeção, a Unidade e a posição conhecidas.
+
+Se houver um compositor, uma confirmação ou um formulário em edição, a
+atualização automática ou manual é adiada. O AraLearn conserva o argumento e os
+campos já preenchidos e orienta concluir ou cancelar o rascunho antes de tentar
+novamente. Assim, o retorno do ChatGPT não descarta uma contribuição ainda não
+enviada.
+
+Validação local, recomposição do painel e resposta de rede ambígua também
+conservam o formulário aberto e devolvem o foco ao campo pertinente. Esse
+comportamento abrange Parâmetros, Fontes e Âncoras, Variantes, Observações na
+caixa autoral e na Inspeção, além dos editores de rodada, verificação e correção
+da Auditoria. **Descartar** ou **Cancelar** remove o rascunho de propósito.
+
+Se a rede cair depois do envio e não for possível saber se o servidor confirmou
+a mudança, a mensagem oferece a repetição natural pelo mesmo formulário. Sem
+editar os campos, essa nova tentativa reutiliza o comando, as versões, as
+identidades geradas e o mesmo identificador de pedido. O servidor devolve o
+recibo anterior em vez de duplicar o efeito. Alterar o formulário inicia uma
+nova intenção e um novo pedido.
 
 ## Consultar Estrutura e Inspeção
 
@@ -204,11 +301,15 @@ A Inspeção mantém uma janela limitada de Unidades e conserva a posição no
 dispositivo. Ao mudar de revisão, procura a mesma identidade de Unidade.
 **Definir fontes**, **Anotar** e **Auditar** trabalham sobre o alvo exato.
 
-## Usar Auditoria e correções
+## Usar Discussões e correções
 
-Em **Auditoria e correções**, a aba **Observações** reúne as Anotações do Curso.
+Em **Discussões e correções**, a aba **Observações** reúne as Anotações do Curso.
 Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
 resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
+
+**Registrar e copiar** salva primeiro a Observação no Curso e só então prepara
+o pedido situado para o ChatGPT. Assim, uma falha de clipboard não apaga nem
+duplica o argumento já confirmado pelo servidor.
 
 Na aba **Achados**, escolha uma Unidade e carregue seu contexto. Uma rodada pode
 registrar verificações estruturais, pedagógicas, factuais e editoriais. Se um
@@ -217,8 +318,18 @@ focal, preserva o estado anterior e precisa de outra rodada para ser verificada.
 Uma reversão restaura o estado anterior somente enquanto a Unidade ainda
 corresponde à aplicação.
 
-Auditoria e correções exigem conexão. As Observações continuam com cópia e fila
-próprias para uso sem rede.
+Aplicar ou reverter correção abre uma confirmação dentro do AraLearn. O mesmo
+padrão protege retirada de itens ou Partes, união de Partes, aposentadoria de
+Fonte ou Âncora, desvinculação de Variante e mudanças de acesso. A confirmação
+mantém o foco contido, fecha por cancelar, clique externo ou Esc quando a ação
+permite, nomeia o objeto e usa o verbo próprio da consequência, como
+**Retirar**, **Aposentar**, **Desvincular**, **Aplicar** ou **Reverter**. Ao sair,
+ela devolve o foco ao acionador. Confirmar no ChatGPT não provoca uma segunda
+confirmação no AraLearn; a interface apenas relê o resultado persistido.
+
+Discussões e correções exigem conexão na Autoria. A cópia e a fila de Anotações
+próprias pertencem ao percurso de Estudo; a caixa autoral de Observações e as
+operações de auditoria não possuem fila de saída no IndexedDB.
 
 ## Criar e comparar Variantes
 
@@ -260,6 +371,11 @@ Protocol (MCP)**, com autorização individual. Descreva a intenção, deixe o
 cliente localizar e ler o recorte necessário, revise a proposta, autorize a
 alteração e confira o resultado na Autoria e em Estudo.
 
+Ao retornar do cliente conversacional, o AraLearn relê o cabeçalho canônico do
+Curso antes de atualizar Planejamento, Inspeção, Discussões, Fontes, Variantes ou
+Pesquisa. A cópia de um pedido não escreve na API, no PostgreSQL, no Storage nem
+no IndexedDB.
+
 O cliente usa a revisão do Curso e a versão do objeto lido para proteger a
 escrita. A pessoa escolhe a finalidade; o cliente seleciona a ferramenta e a
 operação adequadas. Veja [Autoria por MCP](autoria-mcp.md).
@@ -271,9 +387,25 @@ usam a fila do estado pessoal; Observações usam outra fila e outra cópia loca
 Quando a conexão retorna, cada repositório compara sua versão remota e envia as
 operações pendentes.
 
-Auditoria, correções, gestão de acesso, Autoria conversacional, Variantes e
-Pesquisa dependem do servidor. A tela inicial pode mostrar um Curso conhecido
-sem garantir que uma composição nunca aberta esteja disponível.
+Na Autoria, o IndexedDB conserva a lista de Cursos próprios, o cabeçalho, o
+planejamento, a Estrutura, páginas recentes da Inspeção e a posição de retomada.
+Uma leitura local é identificada como desatualizada e somente para consulta. A
+mudança da revisão remota invalida os derivados da revisão anterior antes de
+uma nova leitura.
+
+Depois que uma edição manual ou assistida recebe confirmação 2xx, o AraLearn
+guarda imediatamente o snapshot confirmado da Unidade e recompõe `course.v1`
+antes de invalidar as projeções anteriores. Progresso, Observações e posição são
+preservados. Estudo e Inspeção podem mostrar essa revisão sem rede como
+confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitura
+igual normaliza a cópia; uma revisão superior a descarta como superada. Sair da
+conta, limpar o Curso ou perder acesso purga esse estado.
+
+Parâmetros, catálogo privado de Fontes, metadados e bytes de PDFs, caixa autoral
+de Observações, auditoria, correções, Variantes, Pesquisa, gestão de acesso e
+mutações autorais dependem do servidor. O Storage não é reproduzido no
+IndexedDB. A tela inicial pode mostrar um Curso conhecido sem garantir que uma
+composição nunca aberta esteja disponível.
 
 Preserve os dados do aplicativo até a sincronização quando houver alterações
 recentes importantes.
@@ -301,8 +433,10 @@ nova tentativa, e a cópia local só é limpa depois da confirmação do servido
 
 ## Limites atuais
 
-A Inspeção não oferece edição livre de toda a estrutura interna de uma Unidade;
-correções focais e materialização usam operações próprias. Cursos também não são
+A edição contextual não altera livremente toda a estrutura interna de uma
+Unidade: somente folhas textuais declaradas pelo componente ficam editáveis.
+Mudanças estruturais, correções auditáveis e materialização usam operações
+próprias. Cursos também não são
 disponibilizados anonimamente: Estudo exige conta própria ou acesso direto
 concedido pelo proprietário.
 

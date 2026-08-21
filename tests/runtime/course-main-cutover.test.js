@@ -112,6 +112,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   const graph = await importGraph(mainPath);
   const mainSource = graph.get(mainPath);
   assert.match(mainSource, /class="account-settings-overlay"/u);
+  assert.match(
+    mainSource,
+    /id="aralearn-authoring-root" class="course-authoring-root" hidden/u,
+    "O host estável da Autoria deve controlar a rolagem da superfície."
+  );
   assert.doesNotMatch(mainSource, forbiddenPublishedSurface);
   for (const visibleAccountContract of [
     "data-profile-form",
@@ -145,8 +150,38 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /visibilitychange[\s\S]*?document\.visibilityState === "hidden"[\s\S]*?else void refreshVisibleApplication\(\)/u,
+    /visibilitychange[\s\S]*?document\.visibilityState === "hidden"[\s\S]*?else scheduleVisibleApplicationRefresh\(\)/u,
     "Retornar ao aplicativo deve buscar alterações pessoais remotas."
+  );
+  assert.match(
+    mainSource,
+    /async function closeAraLearnLocalConnections\(\)[\s\S]*?authenticatedApplicationCleanup\?\.\(\);[\s\S]*?lifecycleAbortController\?\.abort\(\);[\s\S]*?studyUnitProviderSession\?\.destroy\?\.\(\);[\s\S]*?if \(pendingCompositionCleanup\) await pendingCompositionCleanup\(\);[\s\S]*?courseLocalStore\?\.close\(\)/u,
+    "Logout deve purgar snapshots autorais confirmados antes de fechar o IndexedDB."
+  );
+  assert.match(
+    mainSource,
+    /const cleanupApplication = \(\) => \{[\s\S]*?authoringSurface\?\.destroy\?\.\(\);[\s\S]*?editorApp\?\.destroy\?\.\(\);[\s\S]*?authenticatedApplicationCleanup = cleanupApplication/u,
+    "Logout deve destruir Autoria e Estudo antes da sessão efêmera e dos stores."
+  );
+  assert.match(
+    mainSource,
+    /\["SIGNED_OUT_REMOTE", "SESSION_INVALID", "SIGNED_OUT"\][\s\S]*?shutDownAuthenticatedRuntime\(root\)/u,
+    "Logout local ou remoto deve usar o mesmo encerramento autenticado."
+  );
+  assert.match(
+    mainSource,
+    /pendingCompositionCleanup = \(\) =>[\s\S]*?authoringController\.clearPendingCourseCompositions\(\)/u,
+    "O lifecycle autenticado deve usar a limpeza explícita do Controller."
+  );
+  assert.match(
+    mainSource,
+    /addEventListener\("focus", scheduleVisibleApplicationRefresh/u,
+    "Voltar à janela lado a lado deve buscar alterações pessoais remotas."
+  );
+  assert.match(
+    mainSource,
+    /const scheduleVisibleApplicationRefresh[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?refreshVisibleApplication\(\)/u,
+    "A atualização de retorno deve ser agrupada sem perder a releitura da área visível."
   );
   assert.match(
     mainSource,

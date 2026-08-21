@@ -152,6 +152,7 @@ function renderParameterCard(design, definition, resolution, busy) {
       ` rows="3" required>${escapeHtml(local?.reason || "")}</textarea>` +
       '<div class="course-design-form-actions"><button type="submit"' +
       `${busy ? " disabled" : ""}>Salvar neste escopo</button>` +
+      '<button type="reset" class="is-secondary">Descartar</button>' +
       (local
         ? '<button type="button" class="is-secondary" data-course-authoring-action="clear-design-parameter"' +
           ` data-parameter-id="${escapeHtml(definition.id)}"${busy ? " disabled" : ""}>` +
@@ -457,11 +458,32 @@ export function renderCourseDesignPanel(state) {
     });
   }
   const design = state.courseDesign;
+  const currentScope = design.scopeContext.current;
+  const scopePath = [...design.scopeContext.ancestors, currentScope]
+    .map((scope) => scope.label)
+    .join(" › ");
+  const ancestorPath = design.scopeContext.ancestors.map((scope) => scope.label).join(" › ");
+  const chatContext = ancestorPath ? `no contexto de ${ancestorPath}` : "neste Curso";
+  const chatInstruction = `Revise os parâmetros pedagógicos de ${currentScope.label} ${chatContext}. ` +
+    "Explique as escolhas vigentes, possíveis conflitos e efeitos sobre o planejamento e a materialização. " +
+    "Discuta comigo antes de propor qualquer alteração.";
   return '<section class="course-authoring-section course-design"' +
     ' aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-section-heading"><div>' +
     '<h2 id="course-authoring-section-title">Parâmetros</h2>' +
-    '<p>Decisões pedagógicas, orientação e componentes por escopo.</p></div></header>' +
+    '<p>Decisões pedagógicas, orientação e componentes por escopo.</p></div>' +
+    '<button type="button" class="course-authoring-header-action"' +
+    ' data-course-authoring-action="context-chat"' +
+    ` data-target-kind="${escapeHtml(currentScope.kind)}"` +
+    ` data-target-id="${escapeHtml(currentScope.ref)}"` +
+    ` data-target-label="${escapeHtml(currentScope.label)}"` +
+    ` data-target-path="${escapeHtml(scopePath)}"` +
+    ` data-target-deep-link="${escapeHtml(scopeRoute(design.courseId, currentScope))}"` +
+    ' data-target-action="review"' +
+    ` data-target-instruction="${escapeHtml(chatInstruction)}"` +
+    ` aria-label="Revisar parâmetros de ${escapeHtml(currentScope.label)} no ChatGPT"` +
+    ' title="ChatGPT">' + renderUiIcon("prompt", "course-authoring-button-icon") +
+    "</button></header>" +
     (state.designMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.designMessage)}</p>`
       : "") +

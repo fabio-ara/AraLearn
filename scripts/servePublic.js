@@ -2,6 +2,7 @@ import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildAssistAllowedOrigins } from "../src/assist/providerRuntimeSecurity.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -76,6 +77,9 @@ async function loadPublicRuntimeConfig(url) {
   if (!process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY) {
     process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY = String(config.supabasePublishableKey || "");
   }
+  if (!process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS && Array.isArray(config.assistAllowedOrigins)) {
+    process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS = config.assistAllowedOrigins.join(",");
+  }
 }
 
 if (runtimeConfigUrl) await loadPublicRuntimeConfig(runtimeConfigUrl);
@@ -135,10 +139,15 @@ function developmentConfig() {
 
 function developmentRuntimeConfig() {
   const config = developmentConfig();
+  const assistAllowedOrigins = buildAssistAllowedOrigins(
+    process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
+    { includeDirectVendors: true, includeConfiguredOrigins: true }
+  );
   return Buffer.from(
     `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify({
       supabaseUrl: config.projectUrl,
       supabasePublishableKey: config.publishableKey,
+      assistAllowedOrigins,
       developmentRuntime: true
     }, null, 2)});\n`,
     "utf8"
@@ -150,7 +159,11 @@ function applyDevelopmentContentSecurityPolicy(data) {
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) return data;
   const config = developmentConfig();
   const connectSource = [
-    config.projectUrl ? new URL(config.projectUrl).origin : ""
+    config.projectUrl ? new URL(config.projectUrl).origin : "",
+    ...buildAssistAllowedOrigins(
+      process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
+      { includeDirectVendors: true, includeConfiguredOrigins: true }
+    )
   ].filter(Boolean).join(" ");
   return Buffer.from(source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource), "utf8");
 }

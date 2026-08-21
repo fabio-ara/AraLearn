@@ -11,20 +11,35 @@ class FakeRoot {
   constructor() {
     this.innerHTML = "";
     this.listeners = new Map();
+    this.focusedSelectors = [];
   }
 
   addEventListener(type, listener) {
     this.listeners.set(type, listener);
   }
+
+  removeEventListener(type) {
+    this.listeners.delete(type);
+  }
+
+  querySelector(selector) {
+    return { focus: () => this.focusedSelectors.push(selector) };
+  }
 }
 
-function outline() {
+class FakeDocument {
+  constructor() { this.listeners = new Map(); }
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  removeEventListener(type) { this.listeners.delete(type); }
+}
+
+function outline(revision = 7) {
   return {
     contract: "aralearn.course.v1",
     courseId: COURSE_ID,
     title: "Curso",
     goal: "Compreender o tema.",
-    revision: 7,
+    revision,
     ownership: "owned",
     canEdit: true,
     counts: {
@@ -134,11 +149,11 @@ function item() {
   };
 }
 
-function page(query) {
+function page(query, revision = 7) {
   return {
     contract: "aralearn.course-anchored-annotation-page.v1",
     courseId: COURSE_ID,
-    courseRevision: 7,
+    courseRevision: revision,
     annotationSetVersion: 4,
     query: structuredClone(query),
     summary: {
@@ -211,6 +226,46 @@ async function appendFailure(secondPage) {
   return { root, panel, calls };
 }
 
+async function settle() {
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
+function decodeHtml(value) {
+  return String(value || "")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&amp;", "&");
+}
+
+function formFromRenderedHtml(html, attribute) {
+  const form = String(html).match(new RegExp(
+    `<form[^>]*${attribute}[^>]*>([\\s\\S]*?)<\\/form>`,
+    "u"
+  ));
+  assert.ok(form, `formulário ${attribute} deve existir no DOM renderizado`);
+  const fields = {};
+  for (const match of form[1].matchAll(
+    /<textarea[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/textarea>/gu
+  )) {
+    fields[match[1]] = decodeHtml(match[2]);
+  }
+  for (const match of form[1].matchAll(
+    /<select[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/select>/gu
+  )) {
+    const options = [...match[2].matchAll(/<option value="([^"]*)"([^>]*)>/gu)];
+    fields[match[1]] = decodeHtml(
+      (options.find(([, , attributes]) => /\sselected(?:\s|$)/u.test(attributes)) || options[0])?.[1]
+    );
+  }
+  return {
+    fields,
+    matches(selector) { return selector === `[${attribute}]`; }
+  };
+}
+
 test("inbox usa query aninhada, resumo exato e identidade protegida", async () => {
   const root = new FakeRoot();
   const calls = [];
@@ -248,6 +303,92 @@ test("inbox usa query aninhada, resumo exato e identidade protegida", async () =
   assert.doesNotMatch(root.innerHTML, new RegExp(CONTRIBUTOR_REF, "u"));
   assert.doesNotMatch(root.innerHTML, /\S+@\S+|e-?mail|>chat|fórum|thread/iu);
   panel.destroy();
+});
+
+test("retirada exige confirmação modal, contém Tab e preserva foco ao cancelar", async () => {
+  const root = new FakeRoot();
+  const documentValue = new FakeDocument();
+  const tabMoves = [];
+  const cancelControl = { focus: () => tabMoves.push("cancel") };
+  const confirmControl = { focus: () => tabMoves.push("confirm") };
+  root.querySelectorAll = (selector) => selector.includes("data-observation-confirmation")
+    ? [cancelControl, confirmControl]
+    : [];
+  documentValue.activeElement = confirmControl;
+  const commands = [];
+  const withdrawablePage = (query) => {
+    const value = item();
+    value.capabilities.canWithdraw = true;
+    return { ...page(query), items: [value] };
+  };
+  const panel = createCourseObservationsPanel({
+    root,
+    documentValue,
+    routeTarget: { kind: "anchored_annotation", id: ANNOTATION_ID },
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadAuthoringOutline() { return outline(); },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return withdrawablePage(options.query);
+      },
+      async mutateCourseAnchoredAnnotations(input) {
+        commands.push(structuredClone(input.command));
+        return {
+          contract: "aralearn.course-anchored-annotation-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: 7,
+          annotationSetVersion: 5,
+          requestId: input.requestId,
+          idempotent: false,
+          changed: true,
+          annotation: null
+        };
+      }
+    }
+  });
+  await panel.open();
+  const clickAction = (action) => root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-observations-action]"
+          ? { dataset: { observationsAction: action } }
+          : null;
+      }
+    }
+  });
+
+  clickAction("withdraw");
+  assert.match(root.innerHTML, /role="alertdialog"/u);
+  assert.match(root.innerHTML, /class="course-authoring-confirm-backdrop" data-observation-confirmation-backdrop/u);
+  assert.match(root.innerHTML, /role="alertdialog" aria-modal="true"/u);
+  assert.equal(commands.length, 0);
+  assert.equal(root.focusedSelectors.at(-1), '[data-observations-action="cancel-confirmation"]');
+  let tabPrevented = false;
+  root.listeners.get("keydown")({
+    key: "Tab",
+    preventDefault() { tabPrevented = true; }
+  });
+  assert.equal(tabPrevented, true);
+  assert.equal(tabMoves.at(-1), "cancel");
+  root.listeners.get("keydown")({ key: "Escape", preventDefault() {}, stopPropagation() {} });
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  assert.equal(root.focusedSelectors.at(-1), '[data-observations-action="withdraw"]');
+
+  clickAction("withdraw");
+  documentValue.listeners.get("click")({
+    target: { matches: (selector) => selector === "[data-observation-confirmation-backdrop]" }
+  });
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  clickAction("withdraw");
+  clickAction("confirm-withdraw");
+  await settle();
+  assert.deepEqual(commands, [{
+    type: "withdraw_anchored_annotation",
+    annotationId: ANNOTATION_ID,
+    expectedAnnotationVersion: 3
+  }]);
+  panel.destroy();
+  assert.equal(documentValue.listeners.has("click"), false);
 });
 
 test("append da inbox rejeita cursor repetido, página vazia e observação duplicada", async (t) => {
@@ -479,6 +620,410 @@ test("outline permite classificar vazio e criar observação em alvo não StudyU
       ["topic-a", "topic-b"]
     );
     inbox.destroy();
+  } finally {
+    globalThis.FormData = NativeFormData;
+  }
+});
+
+test("inbox relê o catálogo e usa a revisão nova ao voltar do ChatGPT", async () => {
+  const root = new FakeRoot();
+  const revisions = [];
+  let currentRevision = 7;
+  let outlineReads = 0;
+  const panel = createCourseObservationsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadAuthoringOutline() {
+        outlineReads += 1;
+        return outline(currentRevision);
+      },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        revisions.push(options.expectedCourseRevision);
+        return page(options.query, options.expectedCourseRevision);
+      },
+      async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
+    }
+  });
+
+  await panel.open();
+  currentRevision = 8;
+  await panel.refresh(8);
+
+  assert.deepEqual(revisions, [7, 8]);
+  assert.equal(outlineReads, 2);
+});
+
+test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Lição e Microssequência", async () => {
+  const cases = [
+    { index: "0", kind: "course", id: COURSE_ID, title: "Curso", path: "Curso" },
+    {
+      index: "1",
+      kind: "module",
+      id: "module-a",
+      title: "Módulo fora da primeira página",
+      path: "Curso › Módulo fora da primeira página"
+    },
+    {
+      index: "2",
+      kind: "lesson",
+      id: "lesson-a",
+      title: "Lição contextual",
+      path: "Curso › Módulo fora da primeira página › Lição contextual"
+    },
+    {
+      index: "5",
+      kind: "didactic_microsequence",
+      id: "micro-a",
+      title: "Microssequência contextual",
+      path: "Curso › Módulo fora da primeira página › Lição contextual › Microssequência contextual"
+    }
+  ];
+  const NativeFormData = globalThis.FormData;
+  globalThis.FormData = class {
+    constructor(target) { this.fields = target.fields; }
+    get(name) { return this.fields[name] ?? null; }
+  };
+  try {
+    for (const targetCase of cases) {
+      const root = new FakeRoot();
+      const commands = [];
+      const deliveries = [];
+      const order = [];
+      const panel = createCourseObservationsPanel({
+        root,
+        course: { courseId: COURSE_ID, title: "Título vindo da tela", revision: 7 },
+        clock: () => new Date("2026-08-17T15:00:00.000Z"),
+        async onRequestChat(payload) {
+          order.push("callback");
+          deliveries.push(structuredClone(payload));
+          payload.requestText = "alteração externa que não pode vazar";
+        },
+        controller: {
+          async loadAuthoringOutline() { return outline(); },
+          async loadCourseAnchoredAnnotations(_courseId, options) { return page(options.query); },
+          async mutateCourseAnchoredAnnotations(input) {
+            commands.push(structuredClone(input));
+            order.push("backend-confirmed");
+            return {
+              contract: "aralearn.course-anchored-annotation-change.v1",
+              courseId: COURSE_ID,
+              courseRevision: 7,
+              annotationSetVersion: 6,
+              requestId: input.requestId,
+              idempotent: false,
+              changed: true,
+              annotation: null
+            };
+          }
+        }
+      });
+      await panel.open();
+      assert.match(root.innerHTML, />Registrar<\/button>/u);
+      assert.match(root.innerHTML, />Registrar e copiar<\/span><\/button>/u);
+      assert.match(root.innerHTML,
+        /aria-label="Copiar pedido sobre esta Observação para o ChatGPT"/u);
+
+      root.listeners.get("submit")({
+        preventDefault() {},
+        submitter: { dataset: { observationCreateMode: "request-chat" } },
+        target: {
+          fields: {
+            target: targetCase.index,
+            rawText: `Argumento no alvo ${targetCase.kind}.`,
+            category: "suggestion"
+          },
+          matches(selector) { return selector === "[data-observation-create-form]"; }
+        }
+      });
+      await settle();
+
+      assert.equal(commands.length, 1);
+      assert.equal(deliveries.length, 1);
+      assert.deepEqual(order, ["backend-confirmed", "callback"]);
+      assert.deepEqual(commands[0].command.target, {
+        kind: targetCase.kind,
+        id: targetCase.id
+      });
+      const request = deliveries[0].requestText;
+      assert.match(request, /Curso: “Curso”\./u);
+      assert.match(request, /Revisão observada ao copiar: 7\./u);
+      assert.match(request, new RegExp(`Alvo: .*\u201c${targetCase.title}\u201d, identidade ${targetCase.id}`, "u"));
+      assert.match(request, new RegExp(`Caminho: ${targetCase.path}`, "u"));
+      assert.match(request, new RegExp(`Observação vinculada: ${commands[0].command.annotationId}`, "u"));
+      assert.match(request, new RegExp(
+        `section=observations&annotationId=${commands[0].command.annotationId}`,
+        "u"
+      ));
+      assert.match(request, new RegExp(`Argumento no alvo ${targetCase.kind}`, "u"));
+      assert.equal((request.match(/um Retorno da autoria/gu) || []).length, 1);
+      assert.match(root.innerHTML, /Observação registrada e pedido copiado/u);
+      panel.destroy();
+    }
+  } finally {
+    globalThis.FormData = NativeFormData;
+  }
+});
+
+test("falha da cópia não desfaz nem duplica a Observação confirmada", async () => {
+  const root = new FakeRoot();
+  const commands = [];
+  let callbacks = 0;
+  const NativeFormData = globalThis.FormData;
+  globalThis.FormData = class {
+    constructor(target) { this.fields = target.fields; }
+    get(name) { return this.fields[name] ?? null; }
+  };
+  try {
+    const panel = createCourseObservationsPanel({
+      root,
+      course: { courseId: COURSE_ID, revision: 7 },
+      onRequestChat(payload) {
+        callbacks += 1;
+        payload.requestText = "modificado pelo consumidor";
+        throw new Error("Clipboard indisponível.");
+      },
+      controller: {
+        async loadAuthoringOutline() { return outline(); },
+        async loadCourseAnchoredAnnotations(_courseId, options) { return page(options.query); },
+        async mutateCourseAnchoredAnnotations(input) {
+          commands.push(structuredClone(input));
+          return {
+            contract: "aralearn.course-anchored-annotation-change.v1",
+            courseId: COURSE_ID,
+            courseRevision: 7,
+            annotationSetVersion: 6,
+            requestId: input.requestId,
+            idempotent: false,
+            changed: true,
+            annotation: null
+          };
+        }
+      }
+    });
+    await panel.open();
+    root.listeners.get("submit")({
+      preventDefault() {},
+      submitter: { dataset: { observationCreateMode: "request-chat" } },
+      target: {
+        fields: {
+          target: "1",
+          rawText: "Persistir mesmo quando a cópia falhar.",
+          category: "possible_error"
+        },
+        matches(selector) { return selector === "[data-observation-create-form]"; }
+      }
+    });
+    await settle();
+
+    assert.equal(commands.length, 1);
+    assert.equal(callbacks, 1);
+    assert.match(root.innerHTML, /A Observação foi registrada, mas o pedido não foi copiado/u);
+    assert.match(root.innerHTML, /Clipboard indisponível/u);
+
+    const node = {
+      dataset: { observationsAction: "request-chat", annotationId: ANNOTATION_ID },
+      closest(selector) {
+        return selector === "[data-observations-action]" ? this : null;
+      }
+    };
+    root.listeners.get("click")({ target: node });
+    await settle();
+    assert.equal(callbacks, 2);
+    assert.equal(commands.length, 1);
+    assert.match(root.innerHTML, /O pedido não foi copiado/u);
+    panel.destroy();
+  } finally {
+    globalThis.FormData = NativeFormData;
+  }
+});
+
+test("validação preserva rascunhos de criação, edição e Retorno no DOM renderizado", async () => {
+  const NativeFormData = globalThis.FormData;
+  globalThis.FormData = class {
+    constructor(target) { this.fields = target.fields; }
+    get(name) { return this.fields[name] ?? null; }
+  };
+  const invalidText = `<rascunho>&${"x".repeat(2_000)}`;
+  try {
+    const inboxRoot = new FakeRoot();
+    const inbox = createCourseObservationsPanel({
+      root: inboxRoot,
+      course: { courseId: COURSE_ID, revision: 7 },
+      controller: {
+        async loadAuthoringOutline() { return outline(); },
+        async loadCourseAnchoredAnnotations(_courseId, options) { return page(options.query); },
+        async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
+      }
+    });
+    await inbox.open();
+    inboxRoot.listeners.get("submit")({
+      preventDefault() {},
+      target: {
+        fields: { target: "2", category: "suggestion", rawText: invalidText },
+        matches(selector) { return selector === "[data-observation-create-form]"; }
+      }
+    });
+    const recreated = formFromRenderedHtml(inboxRoot.innerHTML, "data-observation-create-form");
+    assert.deepEqual(recreated.fields, {
+      rawText: invalidText,
+      target: "2",
+      category: "suggestion"
+    });
+    assert.match(inboxRoot.innerHTML, /course-observation-author-composer" open/u);
+    assert.equal(
+      inboxRoot.focusedSelectors.at(-1),
+      '[data-observation-create-form] textarea[name="rawText"]'
+    );
+    inbox.destroy();
+
+    const detailRoot = new FakeRoot();
+    const editable = item();
+    editable.capabilities.canRevise = true;
+    const detail = createCourseObservationsPanel({
+      root: detailRoot,
+      routeTarget: { kind: "anchored_annotation", id: ANNOTATION_ID },
+      course: { courseId: COURSE_ID, revision: 7 },
+      controller: {
+        async loadAuthoringOutline() { return outline(); },
+        async loadCourseAnchoredAnnotations(_courseId, options) {
+          return { ...page(options.query), items: [structuredClone(editable)] };
+        },
+        async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
+      }
+    });
+    await detail.open();
+    detailRoot.listeners.get("submit")({
+      preventDefault() {},
+      target: {
+        fields: { category: "", rawText: invalidText },
+        matches(selector) { return selector === "[data-observation-edit-form]"; }
+      }
+    });
+    assert.deepEqual(
+      formFromRenderedHtml(detailRoot.innerHTML, "data-observation-edit-form").fields,
+      { rawText: invalidText, category: "" }
+    );
+    assert.equal(
+      detailRoot.focusedSelectors.at(-1),
+      '[data-observation-edit-form] textarea[name="rawText"]'
+    );
+
+    detailRoot.listeners.get("submit")({
+      preventDefault() {},
+      target: {
+        fields: { ownerResponse: invalidText },
+        matches(selector) { return selector === "[data-observation-response-form]"; }
+      }
+    });
+    assert.deepEqual(
+      formFromRenderedHtml(detailRoot.innerHTML, "data-observation-response-form").fields,
+      { ownerResponse: invalidText }
+    );
+    assert.equal(
+      detailRoot.focusedSelectors.at(-1),
+      '[data-observation-response-form] textarea[name="ownerResponse"]'
+    );
+    detail.destroy();
+  } finally {
+    globalThis.FormData = NativeFormData;
+  }
+});
+
+test("nova tentativa pelo DOM renderizado reutiliza comando e requestId sem duplicar", async (t) => {
+  const NativeFormData = globalThis.FormData;
+  globalThis.FormData = class {
+    constructor(target) { this.fields = target.fields; }
+    get(name) { return this.fields[name] ?? null; }
+  };
+  const cases = [{
+    name: "criação",
+    attribute: "data-observation-create-form",
+    fields: { target: "1", category: "suggestion", rawText: "Argumento autoral preservado." },
+    detail: false,
+    expectedType: "create_anchored_annotation"
+  }, {
+    name: "edição",
+    attribute: "data-observation-edit-form",
+    fields: { category: "confusing", rawText: "Edição autoral preservada." },
+    detail: true,
+    expectedType: "revise_anchored_annotation"
+  }, {
+    name: "Retorno",
+    attribute: "data-observation-response-form",
+    fields: { ownerResponse: "Retorno autoral preservado." },
+    detail: true,
+    expectedType: "respond_to_anchored_annotation"
+  }];
+  try {
+    for (const testCase of cases) {
+      await t.test(testCase.name, async () => {
+        const root = new FakeRoot();
+        const requests = [];
+        const editable = item();
+        editable.capabilities.canRevise = true;
+        const panel = createCourseObservationsPanel({
+          root,
+          routeTarget: testCase.detail
+            ? { kind: "anchored_annotation", id: ANNOTATION_ID }
+            : null,
+          course: { courseId: COURSE_ID, revision: 7 },
+          clock: () => new Date("2026-08-17T15:00:00.000Z"),
+          controller: {
+            async loadAuthoringOutline() { return outline(); },
+            async loadCourseAnchoredAnnotations(_courseId, options) {
+              return {
+                ...page(options.query),
+                items: testCase.detail ? [structuredClone(editable)] : page(options.query).items
+              };
+            },
+            async mutateCourseAnchoredAnnotations(input) {
+              requests.push(structuredClone(input));
+              if (requests.length === 1) {
+                const error = new Error("A conexão caiu depois do envio.");
+                error.code = "network_error";
+                throw error;
+              }
+              return {
+                contract: "aralearn.course-anchored-annotation-change.v1",
+                courseId: COURSE_ID,
+                courseRevision: 7,
+                annotationSetVersion: 6,
+                requestId: input.requestId,
+                idempotent: true,
+                changed: false,
+                annotation: null
+              };
+            }
+          }
+        });
+        await panel.open();
+        const selector = `[${testCase.attribute}]`;
+        root.listeners.get("submit")({
+          preventDefault() {},
+          target: {
+            fields: testCase.fields,
+            matches(value) { return value === selector; }
+          }
+        });
+        await settle();
+
+        assert.equal(requests.length, 1);
+        assert.match(root.innerHTML, /confirmar exatamente a mesma operação/u);
+        assert.equal(panel.hasPendingDraft(), true);
+        const retryForm = formFromRenderedHtml(root.innerHTML, testCase.attribute);
+        assert.deepEqual(retryForm.fields, testCase.fields);
+        root.listeners.get("submit")({ preventDefault() {}, target: retryForm });
+        await settle();
+
+        assert.equal(requests.length, 2);
+        assert.deepEqual(requests[1], requests[0]);
+        assert.equal(requests[0].command.type, testCase.expectedType);
+        assert.match(requests[0].requestId, /^[0-9a-f-]{36}$/u);
+        assert.equal(panel.hasPendingDraft(), false);
+        panel.destroy();
+      });
+    }
   } finally {
     globalThis.FormData = NativeFormData;
   }

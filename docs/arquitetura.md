@@ -5,6 +5,10 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
+Esta página descreve a candidata implantável do repositório. A linha hospedada
+0.0.23 permanece separada até que banco, funções e clientes sejam promovidos na
+ordem documentada.
+
 ## O Curso como raiz do domínio
 
 `public.courses` guarda a raiz identificável do Curso. O conteúdo curricular
@@ -41,10 +45,12 @@ A interface separa responsabilidades sem duplicar o domínio:
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
 
-Na Autoria, o percurso corrente possui nove áreas: Planejamento, Parâmetros,
-Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes, Pesquisa e
-Pessoas. Essas áreas são projeções de contratos do Curso, não documentos
-paralelos.
+Na Autoria, Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Discussões e
+correções, Variantes, Pesquisa e Pessoas são capacidades projetadas dos
+contratos do Curso, não documentos paralelos nem nove destinos permanentes. A
+superfície de até 430 px usa quatro destinos conceituais: Curso, Revisar,
+Pesquisa e Pessoas. Cada um revela as capacidades pelo objeto e pela tarefa
+correntes, com a mesma composição no celular e no computador.
 
 O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
 `criarCurso`, `alterarCurso`, `gerirPessoas` e
@@ -118,6 +124,79 @@ cria evento artificial.
 Esses dois mecanismos resolvem problemas diferentes. A comparação de revisão
 impede sobrescrita concorrente; a idempotência torna segura a repetição causada
 por rede instável.
+
+## Edição contextual da Unidade
+
+O proprietário pode editar uma Unidade na Inspeção ou em Estudo sem criar uma
+representação paralela. O renderer declara os caminhos textuais editáveis de
+cada componente; o editor altera apenas esses caminhos, reconcilia respostas
+associadas quando isso é inequívoco e valida novamente o envelope completo.
+
+A gravação envia uma única Unidade, sua Microssequência pai, as revisões
+esperadas do Curso e da Unidade, a proveniência efetiva e uma origem fechada:
+`manual` ou `provider_assistance`. A API autentica o proprietário e a função SQL
+aceita a operação somente pelo papel de servidor. Conteúdo, proveniência, revisão,
+evento e recibo confirmam ou revertem juntos. Ao receber 2xx, o cliente persiste
+primeiro o snapshot focal confirmado e promove Unidade, revisão e versão no
+documento `course.v1`; só depois invalida as projeções anteriores. Estudo e
+Inspeção podem reler a Unidade sem rede como confirmada, com sincronização
+pendente. A escrita não é repetida. A releitura canônica da mesma revisão
+substitui o snapshot; uma revisão superior o elimina como incorporado ou
+superado. Saída local ou remota, revogação, limpeza do Curso ou perda de
+autoridade purgam a cópia. Uma atualização externa rebasa as versões usadas pelo próximo CAS sem
+perder seleção, progresso ou Observações.
+
+Na primeira tentativa, o controlador fixa em memória a proveniência efetiva sob
+o `requestId` e a assinatura da intenção. Uma repetição depois de resposta
+perdida carrega exatamente esse instantâneo; reutilizar a identidade para outro
+conteúdo é recusado. Esse dado transitório não amplia a réplica IndexedDB.
+
+Uma edição apenas textual pode carregar o conjunto anterior de Fontes,
+inclusive referências históricas, somente quando o JSONB coincide com a
+proveniência efetiva anterior. Criar ou alterar um vínculo exige Fonte e Âncora
+ativas nas revisões exatas. Essa exceção conserva dados migrados; ela não abre
+uma nova via para gravar `legacy_reference`.
+
+A assistência por API é uma entrada complementar desse mesmo editor. O
+navegador envia pedido, valores textuais editáveis, título, papel, tópicos e as
+mensagens anteriores da conversa contextual. O envelope não contém
+`targetId`, `studyUnitId`, PDFs, Fontes ou outras Unidades. A resposta
+estruturada usa `changes`, pode alterar no máximo um caminho permitido por
+pedido e precisa formar uma Unidade válida antes de aparecer como rascunho. O
+transporte admite até 8.000 tokens de saída. Cada valor editável fica limitado
+a 6.000 caracteres e o contexto gravável completo, a 12.000; fora desse limite,
+o controle da assistência fica indisponível com o motivo acessível, enquanto a
+edição manual continua ativa.
+
+Em produção, a única conexão disponível é um relay em `127.0.0.1`, `localhost`
+ou `10.0.2.2`, na porta 4183. A credencial do provider permanece nesse serviço,
+fora do AraLearn. A interface mostra **Serviço local** como valor fixo, pede
+somente modelo e pedido e recolhe o endpoint em **Conexão**. Configuração e
+conversa não entram no Curso nem no IndexedDB. A montagem de produção ignora
+origens adicionais configuradas pelo ambiente e falha se o artefato contiver
+runtime de desenvolvimento, origem extra ou credencial.
+
+No navegador, o adaptador declara `targetAddressSpace` conforme o destino:
+`loopback` para `127.0.0.1` e `localhost`, `local` apenas para `10.0.2.2`. Essa
+distinção evita que um endereço de loopback seja apresentado incorretamente como
+rede local às proteções do navegador.
+
+No Android, uma ponte nativa aceita mensagens apenas do quadro principal na
+origem `https://appassets.androidplatform.net` e chama exclusivamente
+`http://127.0.0.1:4183/v1/chat/completions`. Ela aceita POST JSON sem credencial
+do navegador, limita pedido e resposta a 128 KiB, aplica 45 segundos de espera e
+propaga cancelamento. A chave continua no relay. A ponte não integra o artefato
+do Pages.
+
+Um runtime explicitamente identificado como desenvolvimento pode liberar
+OpenAI, Gemini e DeepSeek diretos e o campo de chave, sempre com alerta de que o
+navegador não protege credenciais duradouras. Nesse modo, cada provider continua
+preso à sua própria origem exata, e a chave segue somente no cabeçalho.
+
+Ao sair da conta ou encerrar a aplicação, a superfície de Estudo ou Autoria é
+destruída e a chamada ao provider é cancelada antes de apagar a sessão e fechar
+os armazenamentos locais. Uma resposta tardia não pode executar callback, reabrir
+a sobreposição nem restaurar configuração ou credencial em memória.
 
 ## Fontes, ancoragens e PDFs
 
@@ -207,6 +286,8 @@ pelas cotas do Curso.
 | réplica local | `src/persistence/CourseLocalStore.js` e repositórios de Curso |
 | acesso remoto e coordenação | `src/supabase/CourseApiClient.js`, `src/supabase/CourseController.js` |
 | Estudo e Autoria | `src/study/`, `src/ui/` |
+| edição contextual | `src/ui/manualStudyUnitEdit.js`, `src/ui/manualInlineFields.js`, `src/domain/courseComposition.js` |
+| assistência complementar | `src/assist/`, `src/generation/providers/`, `src/ui/StudyUnitProviderAssistance.js` |
 | catálogo e renderização | `src/resources/`, `src/render/` |
 | cliente Supabase e sessão | `src/supabase/` |
 | funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/` |
@@ -216,8 +297,8 @@ pelas cotas do Curso.
 
 ## Contrato implantável
 
-`supabase/runtime-manifest.json` declara a revisão de esquema
-`20260820101500`, a versão de contrato e todas as capacidades obrigatórias. O
+Na candidata local, `supabase/runtime-manifest.json` declara a revisão de esquema
+`20260820224424`, a versão de contrato e todas as capacidades obrigatórias. O
 site publica uma cópia desse manifesto. A inicialização compara o contrato
 esperado com o ambiente remoto antes de oferecer operações dependentes dele.
 

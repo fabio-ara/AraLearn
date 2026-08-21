@@ -92,3 +92,20 @@ test("move valores entre chaves atomicamente", async () => {
   assert.equal(await store.getCache("personal:v1"), null);
   store.close();
 });
+
+test("atualiza todas as projeções de um prefixo sem tocar outros registros", async () => {
+  const store = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
+  await store.putCache("course.v1.list:a", { revision: 1 });
+  await store.putCache("course.v1.list:b", { revision: 2 });
+  await store.putCache("course.v1.header:a", { preserve: true });
+
+  const updated = await store.updateCachePrefix("course.v1.list:", (value, key) =>
+    key.endsWith(":a") ? { revision: value.revision + 4 } : null
+  );
+
+  assert.equal(updated, 2);
+  assert.deepEqual(await store.getCache("course.v1.list:a"), { revision: 5 });
+  assert.equal(await store.getCache("course.v1.list:b"), null);
+  assert.deepEqual(await store.getCache("course.v1.header:a"), { preserve: true });
+  store.close();
+});

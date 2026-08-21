@@ -1,96 +1,132 @@
 # Roteiro de aceitação humana da Autoria
 
-Este roteiro é para uma pessoa que nunca usou o AraLearn. Resultados
-automatizados não substituem a observação das tarefas e das explicações dadas
-pela participante. A prioridade é celular; repita o núcleo da sessão também em
-uma tela larga.
+Este roteiro avalia se uma pessoa que nunca usou o AraLearn descobre e conclui
+as tarefas reais de autoria. A sessão não ensina a arquitetura da interface e
+não pede que a participante memorize nomes de áreas. Resultados automatizados
+complementam a observação humana, mas não a substituem.
+
+O feedback que motivou esta revisão é evidência de regressão do produto. A
+avaliação, portanto, mede a recuperação da identidade compacta de Estudo e da
+baixa carga cognitiva, não preferência estética.
+
+## Verificação antes da sessão
+
+Antes de envolver uma participante, reprovar a revisão se qualquer uma destas
+condições ocorrer:
+
+- a superfície de Autoria ultrapassa 430 px em 360, 390, 430 ou 1280 px;
+- o aplicativo usa canvas de 760 px, segunda coluna, dashboard expandido ou
+  composição exclusiva para desktop;
+- nove destinos ou rótulos de áreas ficam expostos simultaneamente;
+- um botão somente por ícone não possui `aria-label` e `title` ou tooltip;
+- a página cria rolagem horizontal global;
+- Estudo perdeu navegação, renderer, prática, progresso, temas, estado offline,
+  reconexão ou acessibilidade;
+- uma ação já confirmada e concluída no ChatGPT exige outra confirmação no
+  AraLearn.
+
+Verificar a aplicação real em claro e escuro. Em telas largas, a mesma
+superfície de até 430 px deve permanecer centralizada; desktop não recebe uma
+arquitetura visual diferente.
 
 ## Preparação
 
 - usar uma conta de teste sem conhecimento prévio dos termos internos;
-- entregar celular em 360, 390 e 430 px e repetir o núcleo da sessão em
-  computador de 1280 px;
-- preparar um Curso próprio com plano, Microssequência materializada e mais de
-  55 Fontes; incluir Fonte ativa, aposentada, oculta, somente citação, citação e
-  link e referência legada não resolvida; anexar também um PDF válido a uma
-  revisão de Fonte;
-- preparar também uma conta com acesso somente a Estudo;
-- preparar anotações abertas, consideradas e resolvidas em mais de um alvo,
-  inclusive duas da mesma conta na mesma Unidade;
-- preparar uma rodada limpa, uma rodada com achado factual aberto, uma proposta
-  focal pronta para aplicar e um ponto de controle que possa ser revertido;
-  incluir uma Anotação retirada ainda como registro de retirada e outra cujo
-  vínculo já foi limpo;
-- preparar um conjunto de Variantes com diferença declarada e um desvio não
-  declarado, além de fatos suficientes para gráfico, tabela e exportação em
-  Pesquisa;
-- não explicar MCP, esquema, revisão, CAS, UUID ou nomes internos de relação;
-- pedir que a pessoa fale em voz alta o que acha que cada tela significa.
+- entregar celular em 360, 390 e 430 px e repetir o núcleo em computador de
+  1280 px;
+- preparar um Curso próprio com planejamento, Partes em estados diferentes e
+  uma Unidade recém-materializada pelo ChatGPT;
+- incluir parâmetros herdados e locais, Fontes com e sem link, uma Âncora, um
+  PDF válido e mais resultados do que cabem na primeira página;
+- preparar Observações abertas e resolvidas, uma auditoria com achado, uma
+  correção pronta, uma nova verificação e um ponto de controle reversível;
+- preparar Variantes, uma diferença não declarada, fatos para gráfico, tabela e
+  exportação, além de outra conta com acesso somente a Estudo;
+- disponibilizar o relay local de teste na porta 4183 para a assistência
+  contextual, com toda credencial fora do AraLearn e dos registros da sessão;
+- repetir a chamada a partir do Pages HTTPS e do APK de release; registrar a
+  permissão de acesso à rede local no navegador, a passagem pela ponte nativa no
+  Android, a manutenção do bloqueio de conteúdo misto no WebView e a mensagem de
+  recuperação em vez de contornar silenciosamente a política do cliente;
+- exercitar também conexão instável, retomada após reconexão e duas abas;
+- não explicar MCP, Partes, nomes de áreas, esquema, revisão, CAS, UUID,
+  relações internas ou localização dos controles;
+- pedir que a pessoa fale em voz alta o que procura, o que acha que acontecerá
+  e por que escolheu cada ação.
 
-## Tarefas e registro
+## Regra de condução
 
-| Tarefa | Resultado esperado sem ajuda técnica | Registrar |
+Apresente somente a intenção de cada tarefa. Não diga por qual tela, menu ou
+área a pessoa deve passar. Se ela pedir ajuda, registre o ponto exato e ofereça
+apenas a menor pista necessária para continuar. Uma tarefa concluída depois de
+ensinar a taxonomia da interface não comprova descoberta.
+
+Para cada tarefa, registre dispositivo, tema, condição de conexão, primeiro
+caminho tentado, hesitação, retorno perdido, texto ou ícone interpretado de
+forma incorreta, ajuda solicitada, resultado e comentário espontâneo.
+
+## Tarefas de descoberta
+
+| Intenção apresentada à participante | Resultado esperado sem ensinar a interface | Evidência principal |
 | --- | --- | --- |
-| 1. Diferenciar Estudo e Autoria | a pessoa explica qual entrada usa para aprender e qual usa para construir um curso | escolha inicial, hesitação e vocabulário usado |
-| 2. Localizar um Curso | abre o Curso pelo título e retorna a ele depois de navegar | ações realizadas, tempo e qualquer explicação necessária |
-| 3. Reconhecer as nove áreas | diferencia Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes, Pesquisa e Pessoas pelo propósito | interpretações erradas de ícones, rótulos ou ordem |
-| 4. Ler o estado de produção | distingue o que está planejado, parcialmente materializado, materializado ou exige atenção | interpretações erradas de ícones, rótulos ou cores |
-| 5. Consultar e restaurar herança | abre Parâmetros, entende origem e valor efetivo e remove uma decisão local sem escrever texto técnico | controles não encontrados, receio de alterar ou termos incompreendidos |
-| 6. Percorrer catálogo grande | encontra uma Fonte depois de avançar e voltar páginas sem perder seleção ou contexto | paginação invisível, resultado inesperado ou perda da seleção |
-| 7. Criar e revisar uma Fonte | preenche formulário natural, entende que revisar preserva histórico, anexa e reabre o PDF da revisão correta e consegue aposentar sem confundir com apagar | necessidade de JSON ou identificadores, ambiguidade de revisão, anexo associado à revisão errada ou medo de perda histórica |
-| 8. Criar uma Âncora | escolhe página, tempo, fragmento ou trecho e entende que a localização pertence à revisão exata | termos técnicos, limites obscuros ou escolha de localização inexata |
-| 9. Definir Fontes no Planejamento | substitui conscientemente o conjunto completo de um item e escolhe relação e Âncora para cada Fonte | vínculo sem Âncora, perda de ordem ou impressão de adição parcial |
-| 10. Definir Fontes na Inspeção | abre a Unidade correta, reconhece o alvo e salva o conjunto completo sem ativar respostas | perda de contexto curricular, edição da Unidade por engano ou resultado inerte pouco claro |
-| 11. Criar uma Observação autoral | anota Curso ou alvo curricular, entende que podem existir várias e que isso não edita o conteúdo | expectativa de substituição, correção automática ou estado “incorporada” |
-| 12. Triar a caixa de entrada | usa síntese, filtros e link profundo; considera, responde, resolve e reabre sem confundir estado com reparo | filtro ou alvo incompreendido, resposta interpretada como edição, identificação pessoal exposta |
-| 13. Observar no Estudo e sem conexão | a conta de Estudo cria duas anotações na mesma Unidade, vê somente as próprias e reconhece o estado de sincronização | registro de colega visível, rascunho perdido em outra aba ou estado de entrega confundido com triagem |
-| 14. Encontrar uma rodada limpa | abre Achados, filtra pela Unidade e encontra a execução sem achado; no detalhe compreende verificações e evidências | rodada limpa invisível, lista confundida com achados ou evidência incompreensível |
-| 15. Auditar e compreender o achado | parte de uma Unidade focal, distingue diagnóstico de correção e entende as quatro dimensões | expectativa de mudança automática, critério obscuro ou alvo perdido |
-| 16. Revisar e aplicar correção focal | confere conteúdo/Fontes antes e depois, entende que a árvore não muda e reconhece a confirmação explícita | confirmação involuntária, impressão de editor livre ou efeito fora da Unidade |
-| 17. Verificar em outra rodada | entende por que o achado aguarda nova execução e só o considera resolvido quando o critério focal passou | resolução declarativa, confusão entre aplicar e verificar ou evidência factual insuficiente |
-| 18. Reverter pelo ponto de controle | reconhece o estado anterior e posterior, confirma a reversão e percebe que o histórico permanece | expectativa de apagar histórico ou restaurar quando o conteúdo já mudou |
-| 19. Compreender privacidade e conexão | vê Anotação retirada indisponível, vínculo limpo ausente e nenhum texto ou pessoa copiado; sem conexão, entende que auditoria não possui fila | identidade exposta, link ainda ativo, impressão de perda do achado ou expectativa de aplicar sem conexão |
-| 20. Compreender legado não resolvido | reconhece que faltam metadados, não espera link inventado e resolve mantendo a mesma referência | criação de duplicata, mudança da identidade ou suposição de Fonte completa |
-| 21. Conferir a projeção de Estudo | a conta de Estudo vê citação sem link, citação com link e localização; não vê Fonte oculta/não resolvida, histórico, trecho privado, auditoria nem edição | qualquer dado privado exposto, pedido antes de abrir Fontes ou expectativa de editar |
-| 22. Comparar Variantes | abre um conjunto, distingue diferença declarada, desvio não declarado e dado ausente, e entende que desvincular não apaga o Curso | comparação tomada como experimento, Curso confundido com versão congelada ou exclusão presumida |
-| 23. Consultar Pesquisa | aplica um filtro, confere o mesmo recorte no gráfico e na tabela, abre a definição da métrica e exporta os fatos | gráfico sem tabela equivalente, denominador ignorado ou contagem interpretada como efeito de aprendizagem |
-| 24. Voltar entre Estudo e Autoria | retorna ao mesmo Curso e contexto sem confundir autoridade de leitura e edição | perda de contexto, atalhos ocultos ou navegação redundante |
+| “Entre no lugar em que você construiria um curso e abra o Curso pelo título.” | diferencia Estudo de Autoria, localiza o Curso e consegue voltar a ele | escolha inicial, passos e vocabulário usado |
+| “Encontre o que o ChatGPT acabou de produzir e diga onde isso fica no Curso.” | chega à Parte e à Unidade recém-materializadas, entende o estado e não perde posição na hierarquia | caminho seguido, posição preservada e interpretação do progresso |
+| “Percorra o conteúdo acima e abaixo desta Unidade e volte exatamente a ela.” | navega por Curso, módulo, lição, Microssequência e Unidade sem decorar subsistemas | retorno exato, contexto visível e número de desvios |
+| “Corrija manualmente um trecho simples desta Unidade.” | encontra edição contextual, limita o escopo, usa prévia, aplica e consegue desfazer | alvo alterado, renderer validado e ausência de edição paralela |
+| “Peça à assistência do aplicativo uma alteração focal e confira antes de aceitar.” | encontra o relay local por divulgação progressiva, distingue pedido de aplicação e mantém o Curso utilizável em falha ou cota | escopo mínimo sem identidades internas, prévia, descarte/aplicação e credencial ausente do AraLearn |
+| “Tente pedir assistência neste terminal extenso e, se não puder, corrija-o de outra forma.” | entende o motivo acessível do bloqueio sem concluir que perdeu a autoria e encontra a edição manual | limite de 6.000/12.000, nome acessível do controle e conclusão manual |
+| “Deixe uma observação exatamente sobre o ponto que merece revisão.” | registra Observação situada e entende que ela não altera automaticamente o conteúdo | alvo, texto, estado de sincronização e expectativa declarada |
+| “Descubra qual configuração vale aqui, de onde ela veio e troque ou restaure a decisão.” | consulta valor efetivo, origem e herança sem identificador ou texto técnico | controle encontrado, receio de alterar e resultado após restauração |
+| “Confira a origem deste conteúdo e abra a evidência no ponto indicado.” | encontra Fonte, revisão, Âncora e PDF corretos; distingue ausência de link de ausência de proveniência | revisão aberta, localização e interpretação dos limites da Fonte |
+| “Acompanhe este problema desde o diagnóstico até a confirmação de que foi corrigido.” | distingue achado, proposta, comparação, aplicação, nova verificação e reversão | sequência escolhida, escopo focal e compreensão do histórico |
+| “Compare estas duas formas do Curso e depois chegue aos dados que sustentam a comparação.” | encontra Variantes, diferença declarada, desvio, gráfico, tabela, definição, denominador e exportação | recorte igual nas representações e limites da conclusão |
+| “Dê acesso de Estudo a outra pessoa e confira o que ela pode ver.” | administra acesso em contexto secundário e preserva privacidade, autoria e projeção de Estudo | concessão/revogação, dados ocultos e autoridade compreendida |
+| “Continue depois de perder a conexão e de abrir o mesmo Curso em outra aba.” | preserva última revisão válida, rascunhos e posição; entende sincronização e retoma sem duplicar | estado offline, reconexão, conflito e resultado final |
+| “Peça no ChatGPT uma alteração e acompanhe o resultado no AraLearn.” | chat e Autoria mostram o mesmo Curso, escopo e revisão; o resultado aparece sem segunda confirmação | recibo, endereço direto, atualização e ausência de mutação duplicada |
+
+## Perguntas finais
+
+Pergunte sem mostrar a navegação nem sugerir os termos esperados:
+
+1. “Quando você usaria Estudo, Autoria, ChatGPT ou a assistência deste
+   aplicativo?”
+2. “Como você voltaria ao conteúdo que acabou de ser produzido?”
+3. “O que você consegue mudar diretamente e o que prefere pedir à assistência?”
+4. “Como você saberia qual configuração está valendo neste ponto?”
+5. “Como verificaria a fonte e os limites de uma afirmação?”
+6. “Qual é a diferença entre observar, diagnosticar, corrigir e verificar?”
+7. “Como chegaria aos dados de uma comparação e o que eles não permitem
+   concluir?”
+8. “Que palavras, ícones ou passagens pareceram difíceis de descobrir?”
+
+Não pergunte “para que serve cada área”. A interface é aprovada quando a pessoa
+encontra e compreende tarefas, mesmo que nunca nomeie a organização interna.
 
 ## Critério de decisão
 
 O fluxo falha se uma tarefa comum exigir explicação externa de arquitetura,
-identificador, contrato ou operação de banco. Também falha se a pessoa não
-conseguir descobrir uma ação essencial por meio de rótulo, hierarquia visual ou
-retorno sobre o estado.
+identificador, contrato ou banco; se a participante perder o contexto do Curso;
+se aprender a contornar a interface substituir a descoberta; ou se texto e
+navegação simultâneos aumentarem a carga até ela abandonar a intenção original.
 
-Registre cada dificuldade como observação com: tarefa, dispositivo, condição de
-conexão, ação realizada, texto ou controle que causou a dúvida, ajuda solicitada e
-resultado. Corrija a interface antes de alegar simplicidade; não treine a pessoa
-para contornar a interface.
+Registre cada dificuldade como Observação datada e trate recorrência ou bloqueio
+como defeito de produto. Corrija a interface antes de alegar simplicidade. Um
+resultado humano positivo é necessário para os critérios de simplicidade das
+issues [#114](https://github.com/fabio-ara/AraLearn/issues/114),
+[#129](https://github.com/fabio-ara/AraLearn/issues/129) e
+[#144](https://github.com/fabio-ara/AraLearn/issues/144).
 
-## Fechamento da sessão
+Os achados também alimentam
+[#120](https://github.com/fabio-ara/AraLearn/issues/120),
+[#128](https://github.com/fabio-ara/AraLearn/issues/128) e
+[#131](https://github.com/fabio-ara/AraLearn/issues/131), que permanecem abertas
+enquanto seus critérios dependerem do ChatGPT conectado, de medidas reais do
+modelo ou de avaliação humana. A
+[#130](https://github.com/fabio-ara/AraLearn/issues/130) continua dependente do
+cutover da #129, das medidas operacionais, da documentação final e da limpeza
+física autorizada.
 
-Pergunte, sem sugerir a resposta:
-
-1. “Quando você usaria Estudo e quando usaria Autoria?”
-2. “Para que serve cada uma das nove áreas?”
-3. “O que você acha que acontece quando revisa ou aposenta uma Fonte?”
-4. “O que uma Âncora prova e o que ela não prova?”
-5. “Por que algumas Fontes aparecem sem link ou não aparecem no Estudo?”
-6. “O que muda, e o que permanece igual, ao responder ou resolver uma Observação?”
-7. “Qual é a diferença entre auditar, aplicar uma correção e verificá-la?”
-8. “Como você encontraria uma rodada sem achados e conferiria suas evidências?”
-9. “O que a reversão restaura e o que ela preserva como histórico?”
-10. “O que a comparação de Variantes permite concluir e o que permanece fora dela?”
-11. “Como você conferiria no gráfico e na tabela o recorte usado em Pesquisa?”
-12. “Que palavras, botões ou telas pareceram técnicas demais?”
-
-Registre as observações como evidência datada e compare celular e computador. Um
-resultado humano positivo é necessário para declarar o critério de simplicidade
-atendido; a ausência de teste humano deve continuar visível no
-[estado corrente](estado-atual-e-roadmap.md). A sessão de pesquisa também exige
-revisão especializada sobre validade das medidas e proteção dos participantes;
-aprovação da interface não substitui revisão ética ou científica.
-
-Não trate Observação como achado nem resposta como correção. A sessão deve
-confirmar que a pessoa percebe as autoridades e etapas separadas do ciclo.
+A sessão de pesquisa também exige revisão especializada sobre validade das
+medidas e proteção das pessoas. Aprovação da interface não demonstra eficácia
+educacional. Observação não é achado, resposta não é correção, comparação não é
+experimento e progresso não é aprendizagem comprovada.

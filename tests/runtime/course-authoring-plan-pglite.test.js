@@ -27,6 +27,10 @@ const courseSourcesMigrationUrl = new URL(
   "../../supabase/migrations/20260817190000_course_sources_provenance.sql",
   import.meta.url
 );
+const contextualCompositionMigrationUrl = new URL(
+  "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
+  import.meta.url
+);
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const LEARNER = "00000000-0000-4000-8000-000000000002";
@@ -421,6 +425,22 @@ async function applyCourseDesignMigration(database, {
 
 async function applyCourseSourcesMigration(database) {
   await database.exec(await fs.readFile(courseSourcesMigrationUrl, "utf8"));
+}
+
+async function applyContextualCompositionMigration(database) {
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  manifest.schemaRevision = "20260820101500";
+  const literal = JSON.stringify(manifest).replaceAll("'", "''");
+  await database.exec(`
+    create or replace function public.get_aralearn_runtime_manifest()
+    returns jsonb language sql stable security definer
+    set search_path=pg_catalog as $manifest$
+      select '${literal}'::jsonb
+    $manifest$;
+  `);
+  await database.exec(await fs.readFile(contextualCompositionMigrationUrl, "utf8"));
 }
 
 function materializationApplication({
@@ -3280,6 +3300,284 @@ test("#123 converte todas as referências legacy sem trim, dedupe ou mudança de
         ::regprocedure::oid
     ),'course-access:') > 0 as value
   `), true);
+  await database.close();
+});
+
+test("edição contextual preserva carry legacy exato sob CAS e audita origem", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  const references = [
+    "fonte antiga a", "fonte antiga b", "fonte antiga a", "fonte antiga c"
+  ];
+  await database.query(`
+    update private.course_entities
+    set content=content || jsonb_build_object('sources',$2::jsonb)
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, references]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId: references[0],
+    expectedSourceRevision: 1,
+    source: sourceDocument({
+      title: "Fonte antiga resolvida",
+      origin: "imported_legacy"
+    })
+  }, "contextual-source-resolve-01");
+  await executeCourseSourceCommand(database, 5, {
+    type: "retire_source",
+    sourceId: references[0],
+    expectedSourceRevision: 2
+  }, "contextual-source-retire-01");
+  const legacyLinks = await scalar(database, `
+    select private.course_effective_source_links_v1(
+      $1,'study_unit','card-a'
+    ) as value
+  `, [COURSE]);
+  assert.deepEqual(
+    legacyLinks.map(({ sourceId, relation }) => ({ sourceId, relation })),
+    references.map((sourceId) => ({ sourceId, relation: "legacy_reference" }))
+  );
+  assert.equal(await scalar(database, `
+    select status as value from private.course_source_revisions
+    where course_id=$1 and source_id=$2 order by revision desc limit 1
+  `, [COURSE, references[0]]), "retired");
+
+  await applyContextualCompositionMigration(database);
+  const currentContent = await scalar(database, `
+    select content as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  const revisedContent = { ...currentContent, title: "Unidade editada manualmente" };
+  const upsert = [{
+    entityType: "study_unit",
+    entityId: "card-a",
+    parentType: "microsequence",
+    parentId: "micro-a",
+    position: 1,
+    content: revisedContent
+  }];
+  const application = [{ studyUnitId: "card-a", sourceLinks: legacyLinks }];
+  await database.query(`
+    insert into public.course_access(course_id,user_id,granted_by)
+    values($1,$2,$3)
+  `, [COURSE, LEARNER, OWNER]);
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,6,1,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','manual','contextual-shared-denied-01'
+    ) as value
+  `, [LEARNER, COURSE, upsert, application]), /não autorizada/iu);
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,6,2,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','manual','contextual-stale-unit-01'
+    ) as value
+  `, [OWNER, COURSE, upsert, application]), /Unidade mudou/iu);
+  const changed = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,6,1,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','manual','contextual-manual-edit-01'
+    ) as value
+  `, [OWNER, COURSE, upsert, application]);
+
+  assert.equal(changed.revision, 7);
+  assert.equal(changed.channel, "application");
+  assert.equal(changed.applicationOrigin, "manual");
+  assert.equal(changed.expectedStudyUnitVersion, 1);
+  assert.deepEqual(await scalar(database, `
+    select private.course_effective_source_links_v1(
+      $1,'study_unit','card-a'
+    ) as value
+  `, [COURSE]), legacyLinks);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'channel',summary->>'channel',
+      'origin',summary->>'applicationOrigin'
+    ) as value
+    from private.course_events where course_id=$1 and revision=7
+  `, [COURSE]), { channel: "application", origin: "manual" });
+
+  const replay = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,6,1,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','manual','contextual-manual-edit-01'
+    ) as value
+  `, [OWNER, COURSE, upsert, application]);
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.revision, 7);
+  assert.equal(replay.applicationOrigin, "manual");
+
+  const eventBeforeNoOp = await scalar(database, `
+    select summary as value from private.course_events
+    where course_id=$1 and revision=7
+  `, [COURSE]);
+  const noOp = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,7,2,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','provider_assistance','contextual-noop-different-origin-01'
+    ) as value
+  `, [OWNER, COURSE, upsert, application]);
+  assert.equal(noOp.revision, 7);
+  assert.equal(noOp.updatedCount, 0);
+  assert.equal(noOp.applicationOrigin, "provider_assistance");
+  assert.deepEqual(await scalar(database, `
+    select summary as value from private.course_events
+    where course_id=$1 and revision=7
+  `, [COURSE]), eventBeforeNoOp);
+
+  const reordered = [legacyLinks[1], legacyLinks[0], ...legacyLinks.slice(2)];
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,7,2,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','provider_assistance','contextual-tampered-order-01'
+    ) as value
+  `, [OWNER, COURSE, [{
+    ...upsert[0],
+    content: { ...revisedContent, title: "Não pode persistir" }
+  }], [{ studyUnitId: "card-a", sourceLinks: reordered }]]),
+  /proveniência histórica divergiu/iu);
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,7,2,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','provider_assistance','contextual-tampered-link-01'
+    ) as value
+  `, [OWNER, COURSE, [{
+    ...upsert[0],
+    content: { ...revisedContent, title: "Também não pode persistir" }
+  }], [{
+    studyUnitId: "card-a",
+    sourceLinks: [
+      { ...legacyLinks[0], relation: "inspired_by" },
+      ...legacyLinks.slice(1)
+    ]
+  }]]), /proveniência histórica divergiu/iu);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_array(course.revision,entity.version,entity.content->>'title')
+      as value
+    from public.courses course
+    join private.course_entities entity on entity.course_id=course.id
+    where course.id=$1 and entity.entity_type='study_unit'
+      and entity.entity_id='card-a'
+  `, [COURSE]), [7, 2, "Unidade editada manualmente"]);
+
+  await executeCourseSourceCommand(database, 7, {
+    type: "save_source",
+    sourceId: "source-canonical-carry",
+    expectedSourceRevision: 0,
+    source: sourceDocument({
+      title: "Fonte canônica histórica",
+      citationText: "AUTOR. Fonte canônica histórica.",
+      url: "https://example.test/canonical-carry"
+    })
+  }, "contextual-canonical-source-01");
+  await executeCourseSourceCommand(database, 8, {
+    type: "save_anchor",
+    anchorId: "anchor-canonical-carry",
+    sourceId: "source-canonical-carry",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: {
+      kind: "text_quote",
+      exact: "Trecho canônico conferido.",
+      prefix: null,
+      suffix: null
+    },
+    verificationExcerpt: "Trecho canônico conferido."
+  }, "contextual-canonical-anchor-01");
+  const canonicalLinks = [{
+    sourceId: "source-canonical-carry",
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-canonical-carry", anchorRevision: 1 }]
+  }];
+  await executeCourseSourceCommand(database, 9, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 2,
+    sourceLinks: canonicalLinks
+  }, "contextual-canonical-assign-01");
+  await executeCourseSourceCommand(database, 10, {
+    type: "retire_source",
+    sourceId: "source-canonical-carry",
+    expectedSourceRevision: 1
+  }, "contextual-canonical-retire-01");
+  const canonicalCarry = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,11,2,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','provider_assistance','contextual-canonical-carry-01'
+    ) as value
+  `, [OWNER, COURSE, [{
+    ...upsert[0],
+    content: { ...revisedContent, title: "Unidade assistida com carry canônico" }
+  }], [{ studyUnitId: "card-a", sourceLinks: canonicalLinks }]]);
+  assert.equal(canonicalCarry.revision, 12);
+  assert.equal(canonicalCarry.applicationOrigin, "provider_assistance");
+  assert.deepEqual(await scalar(database, `
+    select private.course_effective_source_links_v1(
+      $1,'study_unit','card-a'
+    ) as value
+  `, [COURSE]), canonicalLinks);
+  assert.equal(await scalar(database, `
+    select status as value from private.course_source_revisions
+    where course_id=$1 and source_id='source-canonical-carry'
+    order by revision desc limit 1
+  `, [COURSE]), "retired");
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,12,3,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application','provider_assistance','contextual-canonical-tamper-01'
+    ) as value
+  `, [OWNER, COURSE, [{
+    ...upsert[0],
+    content: { ...revisedContent, title: "Adulteração canônica" }
+  }], [{
+    studyUnitId: "card-a",
+    sourceLinks: [{ ...canonicalLinks[0], relation: "adapted_from" }]
+  }]]), /Fonte atual, ativa/iu);
+  const mcpResult = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,12,null,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'mcp',null,'contextual-mcp-shape-01'
+    ) as value
+  `, [OWNER, COURSE, [{
+    ...upsert[0],
+    content: { ...revisedContent, title: "Unidade alterada pelo MCP" }
+  }], [{ studyUnitId: "card-a", sourceLinks: canonicalLinks }]]);
+  assert.deepEqual(Object.keys(mcpResult).sort(), [
+    "courseId", "createdCount", "deletedCount", "idempotent", "operation",
+    "revision", "updatedAt", "updatedCount", "upsertedCount"
+  ]);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'channel',result->>'channel',
+      'hasOrigin',result ? 'applicationOrigin',
+      'origin',result->'applicationOrigin',
+      'hasExpectedVersion',result ? 'expectedStudyUnitVersion'
+    ) as value
+    from private.course_change_receipts
+    where actor_id=$1 and request_id='contextual-mcp-shape-01'
+  `, [OWNER]), {
+    channel: "mcp",
+    hasOrigin: true,
+    origin: null,
+    hasExpectedVersion: true
+  });
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'channel',summary->>'channel',
+      'hasApplicationOrigin',summary ? 'applicationOrigin'
+    ) as value
+    from private.course_events where course_id=$1 and revision=13
+  `, [COURSE]), { channel: "mcp", hasApplicationOrigin: false });
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260820224424");
   await database.close();
 });
 

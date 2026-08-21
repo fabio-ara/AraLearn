@@ -30,9 +30,22 @@ identificador de pedido para que a repetição causada por falha de rede recuper
 o mesmo resultado. O plano sugere inicialmente de 7 a 12 Partes; a pessoa autora
 pode alterar essa faixa conforme o trabalho real.
 
-## Compreender as nove áreas
+## Trabalhar pelo contexto do Curso
 
-Ao abrir um Curso, a barra iconográfica oferece nove áreas.
+Ao abrir um Curso, a barra compacta mostra quatro destinos conceituais: Curso,
+Revisar, Pesquisa e Pessoas. Cada objeto oferece as ações que fazem sentido
+naquele ponto. Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Discussões
+e correções, Variantes, Pesquisa e Pessoas continuam disponíveis, mas não
+aparecem como nove áreas que você precisa aprender antes de começar.
+
+Celular e computador usam a mesma superfície de até 430 px, centralizada em
+telas maiores. O conteúdo usa um único rolador vertical; tabelas e comparações
+largas possuem rolagem horizontal própria. Botões frequentes priorizam ícones e
+oferecem nome acessível e dica; texto aparece quando esclarece uma decisão ou
+um estado.
+
+As seções abaixo descrevem capacidades que você encontra pelo contexto. Elas não
+correspondem necessariamente a destinos permanentes na navegação.
 
 ### Planejamento
 
@@ -43,6 +56,10 @@ de autoria e atividade recente confirmada pelo servidor.
 O controle de edição altera título, objetivo, público, escopo e faixa sugerida
 de Partes. As três listas do plano aceitam linguagem natural e oferecem ações
 para acrescentar, editar, reordenar e remover itens.
+
+A tela mostra primeiro a próxima ação, o objetivo e o estado das Partes.
+Contexto, referências e controles de organização ficam recolhidos até serem
+necessários, sem retirar edição, reordenação, divisão, união ou retirada.
 
 Uma **Parte de autoria** possui título, intenção operacional e posição na ordem
 de produção. Ela pode ser criada, editada, reordenada, dividida ou unida. As
@@ -154,11 +171,61 @@ uma mudança do Curso, a Inspeção relê a revisão e procura a mesma Unidade. 
 componentes são apresentados como em Estudo, mas suas respostas ficam
 desativadas.
 
-A partir de uma Unidade, use **Anotar**, **Definir fontes** ou **Auditar**. Essas
-ações trabalham sobre a identidade exata da Unidade sem transformar a Inspeção
-em editor livre de composição.
+A partir de uma Unidade, use os ícones **Editar**, **Assistência por API**,
+**Anotar**, **Definir fontes** ou **Auditar**. Essas ações trabalham sobre a
+identidade exata da Unidade. A edição fica restrita aos textos declarados pelo
+componente e não transforma a Inspeção em um editor livre da estrutura.
 
-### Auditoria e correções
+### Editar uma Unidade no conteúdo
+
+O proprietário encontra os mesmos comandos em Estudo e na Inspeção. Para uma
+alteração manual:
+
+1. use o ícone **Editar** na Unidade;
+2. escolha o título ou o trecho textual permitido;
+3. edite diretamente no conteúdo renderizado;
+4. confira resposta associada, retorno e aparência;
+5. use **Salvar** ou cancele o rascunho.
+
+**Desfazer** e **Refazer** atuam no rascunho da sessão. Uma alteração salva é
+uma nova revisão do Curso; quando for necessário conservar uma reversão
+persistida e auditável, use o ciclo de correção.
+
+Ao receber a confirmação do servidor, o aplicativo atualiza a cópia local da
+Unidade e do Curso antes de invalidar as projeções anteriores, preservando
+progresso, Observações e posição. Estudo e Inspeção podem abrir esse resultado
+sem rede como confirmado, com sincronização pendente, e não repetem a escrita.
+Uma revisão remota posterior prevalece; logout, limpeza do Curso ou revogação de
+acesso removem a cópia correspondente.
+
+Para pedir uma sugestão focal, ative a edição, escolha o trecho e use
+**Assistência por API**. Na instalação de produção, **Serviço local** já aparece
+fixo; informe o modelo e escreva o pedido. O endpoint fica em **Conexão**, e a
+chave do provider é configurada no relay,
+fora do AraLearn. O aviso informa o que sairá do aplicativo: pedido, valores
+textuais editáveis, título, papel, tópicos e mensagens anteriores. PDFs, Fontes,
+outras Unidades e identidades internas não são enviados.
+
+Confira também o destino indicado no aviso. A conversa é efêmera no AraLearn,
+mas o relay a encaminha ao provider configurado, que pode conservar dados de
+acordo com seus próprios termos. Autorize somente depois de revisar esse recorte.
+
+Examine a sugestão, use **Ver no conteúdo** para conferir o mesmo renderer e
+escolha **Aplicar ao rascunho** ou **Descartar sugestão**. Aplicar ainda não
+grava o Curso; conclua com **Salvar** no editor manual. A configuração permanece
+somente na memória da sessão e é eliminada ao sair, recarregar ou encerrar a
+aplicação. Fechar a sobreposição elimina a conversa e a candidata. Providers
+remotos e entrada direta de chave pertencem somente ao runtime explícito de
+desenvolvimento, acompanhado de alerta, e não ao percurso de produção.
+
+Se o texto for grande demais para o recorte seguro, o ícone fica desabilitado e
+o nome acessível explica o limite. Continue com **Editar**: a edição manual não
+depende do relay. A assistência pelo relay ainda aguarda validação no Pages e
+no APK de release. A candidata Android usa uma ponte nativa fixa para manter a
+chamada HTTP fora do WebView, mas a instalação e o ensaio em dispositivo real
+continuam pendentes.
+
+### Discussões e correções
 
 Esta área reúne as abas **Observações** e **Achados**.
 
@@ -195,8 +262,9 @@ Uma conclusão factual positiva exige Fonte e Âncora ativas na revisão exata.
 **Sustenta o conteúdo** vale para afirmações; **Citação direta** comprova apenas
 a fidelidade da citação.
 
-Auditoria e correções exigem conexão. Observações mantêm persistência e fila
-próprias para continuar funcionando sem rede.
+Discussões e correções exigem conexão na Autoria. A cópia e a fila de Anotações
+próprias sustentam o percurso de Estudo, mas não transformam a caixa autoral de
+Observações, a auditoria ou as correções em operações sem rede.
 
 ### Variantes
 
@@ -239,6 +307,10 @@ Para conceder:
 3. informe o e-mail exato de uma conta existente;
 4. confira a confirmação e conclua.
 
+A confirmação abre dentro do AraLearn, informa o alcance da mudança e devolve o
+foco ao controle anterior ao ser concluída ou cancelada. O mesmo padrão é usado
+na revogação e nas demais alterações sensíveis da Autoria.
+
 O serviço usa o e-mail para localizar a conta, sem pesquisa parcial ou sugestão
 de diretório. A pessoa passa a encontrar o Curso em Estudo e conserva estado
 pessoal próprio. A concessão não transfere propriedade, não permite editar e
@@ -271,6 +343,28 @@ percurso seguro de autoria é:
 4. usar a revisão do Curso e a versão do objeto como condições da escrita;
 5. reler o resultado e abrir o link visual devolvido.
 
+A ação contextual **ChatGPT** reduz o trabalho de transportar esse contexto.
+Ela abre um compositor com o alvo e seu caminho, uma lista de intenções
+compatíveis e o campo **Seu argumento ou pedido**. O AraLearn acrescenta Curso,
+revisão observada, endereço direto de retorno, referências e limites de
+segurança quando a pessoa usa **Copiar pedido**. Copiar ou cancelar não altera o
+Curso nem sua cópia local.
+
+Depois do trabalho no cliente conectado, volte à guia ou focalize a janela do
+AraLearn. A área visível relê o cabeçalho canônico e o estado pertinente. Use a
+ação **Atualizar** do cabeçalho se o navegador não sinalizar o retorno. Uma
+alteração já confirmada no cliente não exige confirmação duplicada na interface.
+
+Se houver um compositor, uma confirmação ou um formulário em edição, essa
+releitura é adiada. O AraLearn conserva os campos e o argumento e pede que a
+pessoa conclua ou cancele o rascunho antes de atualizar novamente.
+
+Os formulários de Parâmetros, Fontes, Variantes, Observações, Inspeção e
+Auditoria também conservam campos, controles abertos e foco quando uma
+validação pede correção ou uma resposta de rede se perde. Nesse último caso,
+tentar novamente sem editar repete exatamente o pedido anterior e permite ao
+servidor devolver o mesmo recibo, sem criar uma segunda alteração.
+
 Se outra edição mudar o Curso antes da escrita, o servidor recusa a revisão
 antiga. O cliente deve reler o estado, reconciliar a intenção e apresentar a
 nova proposta. A [Autoria por MCP](autoria-mcp.md) documenta as ferramentas,
@@ -281,12 +375,16 @@ operações, paginação e confirmações disponíveis.
 Para preparar a produção:
 
 1. descreva a intenção de cada Parte e organize a ordem de trabalho;
-2. vincule as Microssequências que pertencem a cada Parte;
-3. atribua, em **Parâmetros**, as unidades de análise e os requisitos de
+2. se a estrutura ainda estiver vazia, use **Preparar** na Parte, revise o
+   argumento e copie o pedido para criar e vincular somente os Módulos, Lições e
+   Microssequências necessários;
+3. vincule as Microssequências que pertencem a cada Parte;
+4. atribua, em **Parâmetros**, as unidades de análise e os requisitos de
    evidência de cada Microssequência;
-4. resolva, em **Fontes**, o catálogo, as Âncoras e as atribuições pertinentes;
-5. use **Copiar pedido para o ChatGPT** na Parte escolhida;
-6. cole o pedido no cliente conectado e acompanhe as etapas confirmadas pelo
+5. resolva, em **Fontes**, o catálogo, as Âncoras e as atribuições pertinentes;
+6. use a ação **ChatGPT** na Parte, confira a intenção **Materializar Parte** e
+   complete o argumento;
+7. copie o pedido para o cliente conectado e acompanhe as etapas confirmadas pelo
    servidor.
 
 Copiar o pedido não altera o Curso. Quando o cliente executa a materialização,
@@ -303,9 +401,11 @@ o desenho aplicado e a proveniência correspondente.
 
 ## Limites da interface
 
-A Inspeção não oferece edição livre e direta de toda a estrutura interna de uma
-Unidade. Alterações focais passam pelo ciclo de correção; mudanças estruturais e
-materialização usam as operações autorizadas do MCP. O acesso público e anônimo
+A edição contextual não oferece mudança livre de toda a estrutura interna de
+uma Unidade. Ela altera somente folhas textuais declaradas pelo componente e
+passa pela validação e pela gravação canônicas. Alterações estruturais e
+materialização usam as operações autorizadas do MCP; correções que exigem
+histórico e reversão usam o ciclo de auditoria. O acesso público e anônimo
 a Cursos também não faz parte do modelo de compartilhamento: a distribuição
 corrente usa contas e concessões diretas para Estudo.
 

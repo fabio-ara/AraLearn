@@ -1,6 +1,6 @@
 begin;
 
-select plan(66);
+select plan(70);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260820101500',
+  '20260820224424',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -23,7 +23,7 @@ select is(
 
 select is(
   jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
-  31,
+  32,
   'o manifesto não omite nem duplica capacidades correntes'
 );
 
@@ -59,7 +59,8 @@ select ok(
     "course-variant-comparisons-v1",
     "course-variant-comparison-list-v1",
     "course-authoring-analytics-v1",
-    "course-variant-factual-comparison-v1"
+    "course-variant-factual-comparison-v1",
+    "contextual-study-unit-edit-v1"
   ]'::jsonb,
   'o manifesto anuncia todo o contrato de Curso'
 );
@@ -167,8 +168,17 @@ select has_function(
 );
 select has_function(
   'public', 'commit_course_composition_for_actor_v1',
-  array['uuid', 'uuid', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text'],
-  'a composição usa revisão esperada e confirmação atômica'
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text', 'text', 'text'],
+  'a composição contextual usa versões esperadas e confirmação atômica'
+);
+select ok(
+  strpos(
+    pg_get_functiondef(
+      'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+    ),
+    'if p_channel = ''mcp'' then'
+  ) > 0,
+  'a composição conserva o shape público anterior no canal MCP'
 );
 select has_function(
   'public', 'manage_course_access_for_actor_v1',
@@ -260,6 +270,24 @@ select function_privs_are(
   'public', 'create_course_for_actor_v1', array['uuid', 'text', 'text', 'text'],
   'authenticated', array[]::text[],
   'o cliente autenticado não pode escolher outro ator na criação'
+);
+select function_privs_are(
+  'public', 'commit_course_composition_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text', 'text', 'text'],
+  'service_role', array['EXECUTE'],
+  'somente a Edge confirma uma edição contextual em nome do proprietário'
+);
+select function_privs_are(
+  'public', 'commit_course_composition_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text', 'text', 'text'],
+  'authenticated', array[]::text[],
+  'o cliente autenticado não contorna a Edge na edição contextual'
+);
+select function_privs_are(
+  'public', 'commit_course_composition_for_actor_v1',
+  array['uuid', 'uuid', 'bigint', 'jsonb', 'jsonb', 'jsonb', 'text'],
+  'service_role', array[]::text[],
+  'o núcleo legado da composição não permanece executável pelo serviço'
 );
 select function_privs_are(
   'public', 'get_owned_course_authoring_analytics_for_actor_v1',

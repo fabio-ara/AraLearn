@@ -33,12 +33,17 @@ function fact(id, label, value = 1) {
   };
 }
 
-function page({ cursor = null, nextCursor = null, facts = [fact("annotation:a", "Observação A")] } = {}) {
+function page({
+  cursor = null,
+  nextCursor = null,
+  facts = [fact("annotation:a", "Observação A")],
+  revision = 7
+} = {}) {
   return {
     contract: COURSE_AUTHORING_ANALYTICS_CONTRACT,
     dictionaryVersion: COURSE_AUTHORING_ANALYTICS_DICTIONARY_VERSION,
     courseId: COURSE_ID,
-    courseRevision: 7,
+    courseRevision: revision,
     generatedAt: "2026-08-20T09:00:00.000Z",
     query: {
       datasets: ["activity", "materializations", "design", "sources", "annotations", "audits", "variants"],
@@ -97,6 +102,27 @@ test("Pesquisa mostra gráfico e tabela equivalentes, revisão, ausência e limi
   assert.match(root.innerHTML, /<dt>Unidade<\/dt><dd>Contagem<\/dd>/u);
   panel.destroy();
   assert.equal(root.innerHTML, "");
+});
+
+test("Pesquisa adota a revisão relida antes de atualizar após a volta do ChatGPT", async () => {
+  const root = new FakeRoot();
+  const revisions = [];
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadCourseAuthoringAnalytics(_courseId, { expectedCourseRevision }) {
+        revisions.push(expectedCourseRevision);
+        return page({ revision: expectedCourseRevision });
+      }
+    }
+  });
+
+  await panel.open();
+  await panel.refresh(8);
+
+  assert.deepEqual(revisions, [7, 8]);
+  assert.match(root.innerHTML, /Revisão 8/u);
 });
 
 test("CSV e JSON exportam todas as páginas do mesmo recorte", async () => {

@@ -288,9 +288,10 @@ jobs:
           ## AraLearn ${{ steps.identity.outputs.version }}
 
           - Código de versão Android ${{ steps.identity.outputs.version_code }}.
-          - Estudo, Autoria e MCP passam a operar o mesmo Curso vivo e versionado.
-          - Planejamento, Fontes, Pesquisa, Auditoria, Variantes e acesso direto acompanham a revisão do Curso.
-          - O contrato remoto anterior foi substituído; instalações 0.0.22 precisam desta atualização para voltar a sincronizar.
+          - A Autoria oferece navegação compacta e responsiva entre Curso, estrutura, parâmetros, fontes, observações, inspeção, auditoria e variantes.
+          - Comandos contextuais para o ChatGPT respeitam o escopo selecionado e preservam o controle completo na interface.
+          - Rascunhos, foco e identidades de comando sobrevivem a atualizações e respostas ambíguas, evitando perda ou duplicação de trabalho.
+          - A réplica IndexedDB reconcilia revisões observadas no backend e no MCP ao retornar à Autoria.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `

@@ -8,6 +8,8 @@ import {
 import { normalizeCourseSourceCommand } from "../domain/courseSources.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { downloadTextFile } from "./downloadTextFile.js";
+import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
+import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import {
   mergeCourseSourceCatalogPages,
   normalizeCourseSourceChange,
@@ -115,32 +117,44 @@ function validAnchorId(value) {
     new TextEncoder().encode(value).byteLength <= 960 && !containsControlCharacters(value);
 }
 
+function formFieldError(message, fieldName) {
+  const error = new TypeError(message);
+  error.fieldName = fieldName;
+  return error;
+}
+
 function optionalFormValue(form, name, label = null, maximum = null) {
   const value = String(form?.elements?.[name]?.value || "").trim();
   if (value && maximum != null && !formValueWithinLimit(value, maximum)) {
-    throw new TypeError(`${label} é inválido.`);
+    throw formFieldError(`${label} é inválido.`, name);
   }
   return value || null;
 }
 
 function requiredFormValue(form, name, label, maximum = 16_384) {
   const value = optionalFormValue(form, name);
-  if (!value) throw new TypeError(`${label} é obrigatório.`);
-  if (!formValueWithinLimit(value, maximum)) throw new TypeError(`${label} é inválido.`);
+  if (!value) throw formFieldError(`${label} é obrigatório.`, name);
+  if (!formValueWithinLimit(value, maximum)) {
+    throw formFieldError(`${label} é inválido.`, name);
+  }
   return value;
 }
 
 function literalRequiredFormValue(form, name, label, maximum = 16_384) {
   const value = String(form?.elements?.[name]?.value ?? "");
-  if (!value) throw new TypeError(`${label} é obrigatório.`);
-  if (!formValueWithinLimit(value, maximum)) throw new TypeError(`${label} é inválido.`);
+  if (!value) throw formFieldError(`${label} é obrigatório.`, name);
+  if (!formValueWithinLimit(value, maximum)) {
+    throw formFieldError(`${label} é inválido.`, name);
+  }
   return value;
 }
 
 function literalOptionalFormValue(form, name, label, maximum = 16_384) {
   const value = String(form?.elements?.[name]?.value ?? "");
   if (!value) return null;
-  if (!formValueWithinLimit(value, maximum)) throw new TypeError(`${label} é inválido.`);
+  if (!formValueWithinLimit(value, maximum)) {
+    throw formFieldError(`${label} é inválido.`, name);
+  }
   return value;
 }
 
@@ -148,7 +162,7 @@ function integerFormValue(form, name, label, { minimum = 0, maximum = Number.MAX
   const raw = String(form?.elements?.[name]?.value || "").trim();
   const value = Number(raw);
   if (!/^\d+$/u.test(raw) || !Number.isSafeInteger(value) || value < minimum || value > maximum) {
-    throw new TypeError(`${label} é inválido.`);
+    throw formFieldError(`${label} é inválido.`, name);
   }
   return value;
 }
@@ -159,7 +173,7 @@ function secondsFormValue(form, name, label) {
   const milliseconds = Math.round(seconds * 1_000);
   if (!raw || !Number.isFinite(seconds) || seconds < 0 || !Number.isSafeInteger(milliseconds) ||
       milliseconds > 2_147_483_647) {
-    throw new TypeError(`${label} é inválido.`);
+    throw formFieldError(`${label} é inválido.`, name);
   }
   return milliseconds;
 }
@@ -193,7 +207,7 @@ function ambiguousWriteFailure(error) {
     "failed_to_fetch", "gateway_timeout", "network_error", "network_unavailable", "offline",
     "request_timeout", "service_unavailable"
   ].includes(code) || /(?:failed to fetch|fetch failed|network|offline|connection|socket|timeout)/u
-    .test(message) || (status == null && !code);
+    .test(message) || (status == null && !code && !(error instanceof TypeError));
 }
 
 function errorMessage(error) {
@@ -234,6 +248,24 @@ function renderNotice(state) {
     : "");
 }
 
+function renderSourceConfirmation(state) {
+  const confirmation = state.confirmation;
+  if (!confirmation) return "";
+  const confirmAction = confirmation.action || "confirm-retirement";
+  return '<div class="course-authoring-confirm-backdrop" data-source-confirmation-backdrop>' +
+    '<section class="course-authoring-confirm-dialog" data-source-confirmation role="alertdialog"' +
+    ' aria-modal="true" aria-labelledby="course-source-confirmation-title"' +
+    ' aria-describedby="course-source-confirmation-message">' +
+    `<h2 id="course-source-confirmation-title">${escapeHtml(confirmation.title)}</h2>` +
+    `<p id="course-source-confirmation-message">${escapeHtml(confirmation.message)}</p>` +
+    '<div class="course-authoring-confirm-actions">' +
+    '<button type="button" class="course-authoring-secondary" data-source-action="cancel-confirmation">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
+    `<button type="button" class="is-danger" data-source-action="${escapeHtml(confirmAction)}"${state.busy ? " disabled" : ""}>` +
+    `${renderUiIcon("trash", "course-authoring-button-icon")}<span>${escapeHtml(confirmation.confirmLabel)}</span>` +
+    "</button></div></section></div>";
+}
+
 function sourceObservationTargetLabel(item, source) {
   if (item.target.kind === "source") return "Fonte";
   const anchor = source.anchors.find(({ anchorId }) => anchorId === item.target.id);
@@ -271,11 +303,21 @@ function renderSourceObservation(item, source) {
 
 function renderSourceObservationForm(state, source) {
   if (source.status !== "active") return "";
+  const editor = state.observationEditor?.sourceId === source.sourceId
+    ? state.observationEditor
+    : null;
+  const values = editor?.draft || {
+    observationKind: "note",
+    targetId: "",
+    rawText: ""
+  };
   const anchorOptions = source.anchors.filter(({ status }) => status === "active").map((anchor) =>
-    `<option value="${escapeHtml(anchor.anchorId)}">Âncora · ${escapeHtml(selectorLabel(anchor.selector))}</option>`
+    `<option value="${escapeHtml(anchor.anchorId)}"${values.targetId === anchor.anchorId ? " selected" : ""}>` +
+      `Âncora · ${escapeHtml(selectorLabel(anchor.selector))}</option>`
   ).join("");
   const kindOptions = Object.entries(SOURCE_OBSERVATION_KINDS).map(([value, entry]) =>
-    `<option value="${value}">${escapeHtml(entry.label)}</option>`
+    `<option value="${value}"${values.observationKind === value ? " selected" : ""}>` +
+      `${escapeHtml(entry.label)}</option>`
   ).join("");
   return '<form class="course-source-form course-source-observation-form" data-source-form="observation">' +
     '<h4>Registrar observação</h4>' +
@@ -283,10 +325,11 @@ function renderSourceObservationForm(state, source) {
     `<select id="course-source-observation-kind" name="observationKind" required>${kindOptions}</select></div>` +
     '<div><label for="course-source-observation-target">Alvo</label>' +
     '<select id="course-source-observation-target" name="targetId">' +
-    `<option value="">Fonte · ${escapeHtml(sourceTitle(source))}</option>${anchorOptions}</select></div></div>` +
+    `<option value=""${values.targetId ? "" : " selected"}>Fonte · ${escapeHtml(sourceTitle(source))}</option>` +
+    `${anchorOptions}</select></div></div>` +
     '<label for="course-source-observation-text">Observação</label>' +
     '<textarea id="course-source-observation-text" name="rawText" maxlength="2000" rows="4" required ' +
-    'placeholder="Registre a nota, a interpretação contestada ou o que precisa ser reformulado."></textarea>' +
+    `placeholder="Registre a nota, a interpretação contestada ou o que precisa ser reformulado.">${escapeHtml(values.rawText)}</textarea>` +
     '<div class="course-source-form-actions"><button type="submit"' +
     `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}<span>Registrar</span></button></div></form>`;
 }
@@ -317,12 +360,9 @@ function renderSourceObservations(state, source) {
       : "") + "</section>";
 }
 
-function renderSourceForm(state) {
-  const editor = state.sourceEditor;
-  if (!editor) return "";
-  const source = editor.source;
+function sourceDraft(source = null) {
   const resolving = source?.status === "unresolved_legacy";
-  const values = editor.draft || {
+  return {
     sourceId: source?.sourceId || "",
     kind: source?.kind === "other" && resolving ? "document" : source?.kind || "web_page",
     title: source?.title || "",
@@ -338,6 +378,31 @@ function renderSourceForm(state) {
     verificationStatus: source?.verificationStatus || "unverified",
     studyVisibility: resolving ? "hidden" : source?.studyVisibility || "citation"
   };
+}
+
+function formDraft(form, current, names) {
+  return Object.fromEntries(names.map((name) => [
+    name,
+    form?.elements?.[name] == null
+      ? String(current?.[name] ?? "")
+      : String(form.elements[name].value ?? "")
+  ]));
+}
+
+function sourceDraftFromForm(form, current) {
+  return formDraft(form, current, [
+    "sourceId", "kind", "title", "authorship", "publicationDate", "identifier", "language",
+    "citationText", "url", "editionOrVersion", "origin", "availability", "verificationStatus",
+    "studyVisibility"
+  ]);
+}
+
+function renderSourceForm(state) {
+  const editor = state.sourceEditor;
+  if (!editor) return "";
+  const source = editor.source;
+  const resolving = source?.status === "unresolved_legacy";
+  const values = editor.draft || sourceDraft(source);
   const kindOptions = Object.entries(SOURCE_KINDS).map(([value, label]) =>
     `<option value="${value}"${values.kind === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
@@ -436,6 +501,17 @@ function anchorDraft(anchor = null) {
   };
 }
 
+function anchorDraftFromForm(form, current) {
+  return formDraft(form, current, [
+    "selectorKind", "startPage", "endPage", "startTime", "endTime", "fragment", "exact",
+    "prefix", "suffix", "verificationExcerpt"
+  ]);
+}
+
+function observationDraftFromForm(form, current) {
+  return formDraft(form, current, ["observationKind", "targetId", "rawText"]);
+}
+
 function renderAnchorForm(state) {
   const editor = state.anchorEditor;
   if (!editor) return "";
@@ -470,7 +546,10 @@ function selectorLabel(selector) {
 }
 
 function renderAnchor(anchor, sourceRevision, state) {
+  const source = state.detail?.items?.[0] || null;
+  const current = sourceRevision === source?.revision;
   const editable = sourceRevision === state.detail?.items?.[0]?.revision && anchor.status === "active";
+  const canRequestChat = state.canRequestChat && current && anchor.status === "active";
   const deepLinked = state.initialAnchorMatch?.sourceRevision === sourceRevision &&
     state.initialAnchorMatch?.anchorId === anchor.anchorId &&
     state.initialAnchorMatch?.anchorRevision === anchor.revision;
@@ -483,9 +562,17 @@ function renderAnchor(anchor, sourceRevision, state) {
     (anchor.verificationExcerpt
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
-    (editable ? '<div class="course-source-compact-actions">' +
+    (editable || canRequestChat ? '<div class="course-source-compact-actions">' +
+      (canRequestChat
+        ? `<button type="button" data-source-action="request-chat-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}"` +
+          ` data-source-revision="${sourceRevision}" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(selectorLabel(anchor.selector))}"` +
+          ` title="Trabalhar com o ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
+        : "") +
+      (editable
+        ?
       `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Revisar âncora" title="Revisar âncora">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
-      `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div>`
+          `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
+        : "") + "</div>"
       : "") + "</article>";
 }
 
@@ -523,11 +610,18 @@ function renderSourceRevision(source, index, state) {
   return `<article class="course-source-revision${deepLinked ? " is-deep-linked" : ""}">` +
     '<header><div>' + sourceStatusMarkup(source) +
     `<h3>${escapeHtml(sourceTitle(source))}</h3><p>${escapeHtml(source.sourceId)} · revisão ${source.revision}</p></div>` +
-    (current && source.status !== "retired" ? '<div class="course-source-compact-actions">' +
+    (current && (state.canRequestChat || source.status !== "retired")
+      ? '<div class="course-source-compact-actions">' +
+      (state.canRequestChat
+        ? `<button type="button" data-source-action="request-chat-source" data-source-id="${escapeHtml(source.sourceId)}"` +
+          ` data-source-revision="${source.revision}" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(sourceTitle(source))}"` +
+          ` title="Trabalhar com o ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
+        : "") +
+      (source.status !== "retired" ?
       `<button type="button" data-source-action="edit-source" aria-label="${source.status === "unresolved_legacy" ? "Resolver" : "Revisar"} fonte" title="${source.status === "unresolved_legacy" ? "Resolver" : "Revisar"} fonte">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
       (source.status === "active"
         ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
-        : "") + "</div>" : "") + "</header>" +
+        : "") : "") + "</div>" : "") + "</header>" +
     (source.status === "unresolved_legacy"
       ? '<p class="course-source-unresolved">Este identificador foi preservado da migração. Título, autoria, link e âncoras ainda não foram comprovados.</p>'
       : '<dl class="course-source-metadata">' +
@@ -558,10 +652,12 @@ function renderSourceRevision(source, index, state) {
 
 function renderSourceDetail(state) {
   if (state.detailLoading && !state.detail) {
-    return '<p class="course-authoring-loading" role="status">Carregando fonte…</p>';
+    return renderNotice(state) +
+      '<p class="course-authoring-loading" role="status">Carregando fonte…</p>';
   }
   if (state.detailFailure && !state.detail) {
-    return `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.detailFailure)}</p>` +
+    return renderNotice(state) +
+      `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.detailFailure)}</p>` +
       '<button type="button" data-source-action="retry-detail">Tentar novamente</button>';
   }
   const items = state.detail?.items || [];
@@ -569,7 +665,7 @@ function renderSourceDetail(state) {
     '<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo">' +
     `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button><div><p>Fonte versionada</p>` +
     `<h2 id="course-source-detail-title">${escapeHtml(items[0] ? sourceTitle(items[0]) : state.selectedSourceId)}</h2></div></header>` +
-    renderNotice(state) + renderSourceForm(state) +
+    renderNotice(state) + renderSourceConfirmation(state) + renderSourceForm(state) +
     (items.length
       ? `<div class="course-source-revisions">${items.map((source, index) => renderSourceRevision(source, index, state)).join("")}</div>`
       : '<p class="course-source-empty">A fonte não possui revisões disponíveis.</p>') +
@@ -709,13 +805,15 @@ function renderTargetPanel(state) {
     ? `<div class="course-source-target-links">${state.sourceLinks.map((link, index) =>
         renderTargetLink(state, link, index)).join("")}</div>`
     : '<p class="course-source-empty">Nenhuma fonte vinculada. O conjunto vazio será salvo explicitamente.</p>';
-  return '<section class="course-source-target-dialog" role="dialog" aria-modal="true" aria-labelledby="course-source-target-title">' +
+  return '<section class="course-source-target-dialog" data-source-target-dialog tabindex="-1"' +
+    ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title"' +
+    ' aria-describedby="course-source-target-description">' +
     '<header><div><p>Atribuição completa</p>' +
     `<h2 id="course-source-target-title">Fontes de ${escapeHtml(state.targetLabel || "este item")}</h2></div>` +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
-    '<p class="course-source-intro">Salvar substitui o conjunto inteiro deste item. Fontes removidas continuam no histórico.</p>' +
-    renderNotice(state) +
+    '<p class="course-source-intro" id="course-source-target-description">Salvar substitui o conjunto inteiro deste item. Fontes removidas continuam no histórico.</p>' +
+    renderNotice(state) + renderSourceConfirmation(state) +
     (state.targetLoading
       ? '<p class="course-authoring-loading" role="status">Carregando atribuição…</p>'
       : state.targetFailure
@@ -835,7 +933,9 @@ export function createCourseSourcesPanel({
   targetLabel = "",
   initialSourceId = null,
   initialAnchorId = null,
-  confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
+  onRequestChat = null,
+  onNavigate = null,
+  documentValue = root?.ownerDocument || globalThis.document || null,
   downloadUrl = (url) => {
     const anchor = globalThis.document?.createElement?.("a");
     if (!anchor) throw new TypeError("O navegador não oferece download de arquivos.");
@@ -859,6 +959,12 @@ export function createCourseSourcesPanel({
     initialSourceId, initialAnchorId
   };
   assertDependencies(root, controller, options);
+  if (onRequestChat !== null && typeof onRequestChat !== "function") {
+    throw new TypeError("Integração contextual com o ChatGPT inválida.");
+  }
+  if (onNavigate !== null && typeof onNavigate !== "function") {
+    throw new TypeError("Navegação contextual de Fontes inválida.");
+  }
   if (typeof downloadUrl !== "function") throw new TypeError("Abertura de anexo inválida.");
   if (typeof downloadJson !== "function" || typeof now !== "function") {
     throw new TypeError("Exportação de proveniência inválida.");
@@ -876,6 +982,7 @@ export function createCourseSourcesPanel({
     initialSourceId,
     initialAnchorId,
     initialAnchorMatch: null,
+    canRequestChat: mode === "catalog" && typeof onRequestChat === "function",
     detail: null,
     detailLoading: false,
     detailFailure: "",
@@ -902,12 +1009,257 @@ export function createCourseSourcesPanel({
     annotationsLoading: false,
     annotationsFailure: "",
     pendingAnnotation: null,
-    pendingAttachment: null
+    observationEditor: null,
+    pendingAttachment: null,
+    confirmation: null
   };
 
   function render() {
     if (!state.opened) return;
     root.innerHTML = renderCourseSourcesPanel(state);
+    if (state.mode === "target" && !state.confirmation) {
+      focus("[data-source-target-dialog]");
+    }
+  }
+
+  function captureSourceDraft(form) {
+    if (!state.sourceEditor || !form?.matches?.('[data-source-form="source"]')) return false;
+    const current = state.sourceEditor.draft || sourceDraft(state.sourceEditor.source);
+    state.sourceEditor.draft = sourceDraftFromForm(form, current);
+    return true;
+  }
+
+  function captureAnchorDraft(form) {
+    if (!state.anchorEditor || !form?.matches?.('[data-source-form="anchor"]')) return false;
+    const current = state.anchorEditor.draft || anchorDraft(state.anchorEditor.anchor);
+    state.anchorEditor.draft = anchorDraftFromForm(form, current);
+    return true;
+  }
+
+  function captureObservationDraft(form, focusField = "") {
+    if (!form?.matches?.('[data-source-form="observation"]')) return false;
+    const source = state.detail?.items?.[0] || null;
+    if (!source || source.status !== "active") return false;
+    const current = state.observationEditor?.sourceId === source.sourceId
+      ? state.observationEditor
+      : {
+        sourceId: source.sourceId,
+        draft: null,
+        annotationId: null,
+        capturedAt: null,
+        focusField: ""
+      };
+    current.draft = observationDraftFromForm(form, current.draft || {
+      observationKind: "note",
+      targetId: "",
+      rawText: ""
+    });
+    if (focusField) current.focusField = focusField;
+    state.observationEditor = current;
+    return true;
+  }
+
+  function captureEditorDraftFromControl(control) {
+    const form = control?.form || control?.closest?.("form[data-source-form]");
+    return captureSourceDraft(form) || captureAnchorDraft(form) ||
+      captureObservationDraft(form, control?.name || "");
+  }
+
+  function focus(selector) {
+    root.querySelector?.(selector)?.focus?.({ preventScroll: true });
+  }
+
+  function focusEditorField(kind, fieldName) {
+    if (!/^(?:source|anchor|observation)$/u.test(kind) ||
+        !/^[a-z][a-zA-Z0-9]*$/u.test(fieldName || "")) {
+      return false;
+    }
+    focus(`[data-source-form="${kind}"] [name="${fieldName}"]`);
+    return true;
+  }
+
+  function restoreObservationDraftFocus() {
+    const editor = state.observationEditor;
+    if (!editor || editor.sourceId !== state.selectedSourceId) return false;
+    return focusEditorField("observation", editor.focusField || "rawText");
+  }
+
+  function focusByIdentity({ selector, datasetKey, datasetValue } = {}) {
+    if (!selector || !datasetKey || typeof root.querySelectorAll !== "function") return false;
+    const control = [...root.querySelectorAll(selector)].find((candidate) =>
+      String(candidate?.dataset?.[datasetKey] ?? "") === String(datasetValue ?? ""));
+    control?.focus?.({ preventScroll: true });
+    return Boolean(control);
+  }
+
+  function targetLinksChanged() {
+    return state.mode === "target" &&
+      JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks);
+  }
+
+  function focusTargetOpener() {
+    if (typeof documentValue?.querySelectorAll !== "function") return false;
+    const identity = state.targetKind === "plan_item"
+      ? {
+          selector: '[data-course-authoring-action="edit-plan-item-sources"]',
+          datasetKey: "itemId"
+        }
+      : {
+          selector: "[data-inspection-edit-sources]",
+          datasetKey: "studyUnitId"
+        };
+    const control = [...documentValue.querySelectorAll(identity.selector)].find((candidate) =>
+      String(candidate?.dataset?.[identity.datasetKey] ?? "") === String(state.targetId));
+    if (!control) return false;
+    let details = control.closest?.("details") || null;
+    while (details) {
+      details.open = true;
+      details = details.parentElement?.closest?.("details") || null;
+    }
+    control.focus?.({ preventScroll: true });
+    return true;
+  }
+
+  function closeTarget() {
+    if (state.mode !== "target") return false;
+    onClose();
+    globalThis.queueMicrotask?.(() => focusTargetOpener());
+    return true;
+  }
+
+  function requestTargetClose() {
+    if (state.mode !== "target" || state.busy) return false;
+    if (!targetLinksChanged() && !state.pendingCommand) return closeTarget();
+    const awaitingConfirmation = Boolean(state.pendingCommand);
+    requestConfirmation({
+      action: "confirm-target-discard",
+      title: awaitingConfirmation ? "Abandonar confirmação?" : "Descartar alterações?",
+      message: awaitingConfirmation
+        ? "A resposta da gravação não chegou. A operação pode ter sido aplicada; fechar abandona a repetição segura deste mesmo pedido."
+        : "As mudanças neste conjunto de Fontes ainda não foram salvas.",
+      confirmLabel: awaitingConfirmation ? "Fechar mesmo assim" : "Descartar",
+      returnFocusSelector: '[data-source-action="close-target"]'
+    });
+    return true;
+  }
+
+  function cancelConfirmation({ restoreFocus = true } = {}) {
+    const confirmation = state.confirmation;
+    if (!confirmation) return false;
+    state.confirmation = null;
+    render();
+    if (restoreFocus && confirmation.returnFocusIdentity) {
+      focusByIdentity(confirmation.returnFocusIdentity);
+    } else if (restoreFocus) focus(confirmation.returnFocusSelector);
+    return true;
+  }
+
+  function requestConfirmation(confirmation) {
+    state.confirmation = confirmation;
+    render();
+    focus('[data-source-action="cancel-confirmation"]');
+  }
+
+  function confirmRetirement() {
+    const confirmation = state.confirmation;
+    if (!confirmation || state.busy) return;
+    state.confirmation = null;
+    void runCommand(confirmation.command, confirmation.draft);
+  }
+
+  function confirmTargetDiscard() {
+    if (state.confirmation?.action !== "confirm-target-discard" || state.busy) return;
+    state.confirmation = null;
+    closeTarget();
+  }
+
+  function handleKeyDown(event) {
+    if (state.confirmation && event.key === "Tab") {
+      trapAuthoringConfirmationTab({
+        event,
+        root,
+        confirmationSelector: "[data-source-confirmation]",
+        documentValue
+      });
+      return;
+    }
+    if (!state.confirmation && state.mode === "target" && event.key === "Tab") {
+      trapAuthoringConfirmationTab({
+        event,
+        root,
+        confirmationSelector: "[data-source-target-dialog]",
+        documentValue
+      });
+      return;
+    }
+    if (event.key !== "Escape") return;
+    const handled = state.confirmation ? cancelConfirmation() : requestTargetClose();
+    if (handled) {
+      event.preventDefault?.();
+      event.stopPropagation?.();
+    }
+  }
+
+  function handleDocumentClick(event) {
+    if (state.confirmation && event.target?.matches?.("[data-source-confirmation-backdrop]")) {
+      cancelConfirmation();
+      return;
+    }
+    if (!state.confirmation && state.mode === "target" &&
+        event.target?.matches?.(".course-source-target-overlay")) {
+      requestTargetClose();
+    }
+  }
+
+  function invokeSafely(callback, value) {
+    if (typeof callback !== "function") return false;
+    try {
+      Promise.resolve(callback(value)).catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function routeToSource(sourceId, anchorId = null) {
+    return buildCourseAuthoringRoute(state.courseId, {
+      section: "sources",
+      sourceId,
+      ...(anchorId ? { anchorId } : {})
+    });
+  }
+
+  function requestSourceChat(source) {
+    if (!source || typeof onRequestChat !== "function") return false;
+    const deepLink = routeToSource(source.sourceId);
+    return invokeSafely(onRequestChat, {
+      target: {
+        type: "source",
+        id: source.sourceId,
+        title: sourceTitle(source),
+        path: ["Fontes", sourceTitle(source)]
+      },
+      action: "verify_source",
+      instruction: "Confira esta Fonte comigo, incluindo identidade, metadados, disponibilidade e aderência das evidências. Aponte divergências antes de propor alterações.",
+      deepLink
+    });
+  }
+
+  function requestAnchorChat(source, anchor) {
+    if (!source || !anchor || typeof onRequestChat !== "function") return false;
+    const title = selectorLabel(anchor.selector);
+    const deepLink = routeToSource(source.sourceId, anchor.anchorId);
+    return invokeSafely(onRequestChat, {
+      target: {
+        type: "source_anchor",
+        id: anchor.anchorId,
+        title,
+        path: ["Fontes", sourceTitle(source), title]
+      },
+      action: "discuss",
+      instruction: "Discuta esta Âncora comigo e confira se o localizador e o trecho de verificação sustentam o uso pretendido da Fonte. Não altere outros escopos.",
+      deepLink
+    });
   }
 
   function readOptions(readMode, values = {}) {
@@ -1224,10 +1576,19 @@ export function createCourseSourcesPanel({
     onCourseRevisionChange(nextRevision);
   }
 
-  async function refreshAfterChange(change) {
-    state.message = change.idempotent
+  function sourceChangeMessage(change) {
+    return change.idempotent
       ? "A operação já estava confirmada."
       : change.changed ? "Alteração salva." : "Nada mudou.";
+  }
+
+  function reportConfirmedRefreshFailure(confirmedMessage) {
+    state.message = confirmedMessage;
+    state.failure = "A escrita foi confirmada, mas a lista está desatualizada. Recarregue Fontes para conferir o estado salvo.";
+  }
+
+  async function refreshAfterChange(change) {
+    state.message = sourceChangeMessage(change);
     state.failure = "";
     state.sourceEditor = null;
     state.anchorEditor = null;
@@ -1235,12 +1596,15 @@ export function createCourseSourcesPanel({
     state.targetCurrentDetails.clear();
     applyCourseRevision(change.courseRevision);
     if (state.mode === "target") {
-      await Promise.all([loadCatalog(), loadTarget()]);
-    } else {
-      const selectedSourceId = state.selectedSourceId;
-      await loadCatalog();
-      if (selectedSourceId) await loadDetail(selectedSourceId);
+      const refreshed = await Promise.all([loadCatalog(), loadTarget()]);
+      return refreshed.every(Boolean);
     }
+    const selectedSourceId = state.selectedSourceId;
+    const catalogRefreshed = await loadCatalog();
+    const detailRefreshed = selectedSourceId
+      ? Boolean(await loadDetail(selectedSourceId))
+      : true;
+    return catalogRefreshed && detailRefreshed;
   }
 
   async function runCommand(command, draft) {
@@ -1266,8 +1630,9 @@ export function createCourseSourcesPanel({
     state.failure = "";
     state.message = "Salvando…";
     render();
+    let result;
     try {
-      const result = normalizeCourseSourceChange(
+      result = normalizeCourseSourceChange(
         await controller.mutateCourseSources({
           requestId: pending.requestId,
           courseId: state.courseId,
@@ -1276,25 +1641,33 @@ export function createCourseSourcesPanel({
         }),
         { expectedCourseId: state.courseId, expectedRequestId: pending.requestId }
       );
-      if (!state.opened) return false;
-      state.pendingCommand = null;
-      await refreshAfterChange(result);
-      if (state.mode === "target") onTargetSaved(result);
-      return true;
     } catch (error) {
       if (!state.opened) return false;
-      if (!ambiguousWriteFailure(error)) state.pendingCommand = null;
+      const ambiguous = ambiguousWriteFailure(error);
+      if (!ambiguous) state.pendingCommand = null;
       state.message = "";
-      state.failure = ambiguousWriteFailure(error)
+      state.failure = ambiguous
         ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
         : errorMessage(error);
+      state.busy = false;
+      render();
       return false;
-    } finally {
-      if (state.opened) {
-        state.busy = false;
-        render();
-      }
     }
+    if (!state.opened) return false;
+    state.pendingCommand = null;
+    if (state.mode === "target") {
+      state.initialSourceLinks = structuredClone(state.sourceLinks);
+    }
+    const refreshed = await refreshAfterChange(result).catch(() => false);
+    if (!state.opened) return true;
+    if (!refreshed) {
+      reportConfirmedRefreshFailure(sourceChangeMessage(result));
+    } else if (state.mode === "target") {
+      onTargetSaved(result);
+    }
+    state.busy = false;
+    render();
+    return true;
   }
 
   async function uploadPdf(file, pending = null) {
@@ -1305,7 +1678,8 @@ export function createCourseSourcesPanel({
       render();
       return false;
     }
-    const operation = pending || {
+    const retained = pending || state.pendingAttachment;
+    const operation = retained || {
       requestId: createUuid(),
       sourceId: source.sourceId,
       sourceRevision: source.revision,
@@ -1316,11 +1690,12 @@ export function createCourseSourcesPanel({
     state.failure = "";
     state.message = "Enviando e confirmando o PDF…";
     render();
+    let result;
     try {
       if (typeof controller.uploadCourseSourcePdf !== "function") {
         throw new TypeError("O envio de PDF não está disponível.");
       }
-      const result = normalizeCourseSourceChange(await controller.uploadCourseSourcePdf({
+      result = normalizeCourseSourceChange(await controller.uploadCourseSourcePdf({
         requestId: operation.requestId,
         courseId: state.courseId,
         expectedCourseRevision: state.courseRevision,
@@ -1331,25 +1706,26 @@ export function createCourseSourcesPanel({
         expectedCourseId: state.courseId,
         expectedRequestId: operation.requestId
       });
-      if (!state.opened) return false;
-      state.pendingAttachment = null;
-      await refreshAfterChange(result);
-      return true;
     } catch (error) {
       if (!state.opened) return false;
-      const ambiguous = !(error instanceof TypeError) && ambiguousWriteFailure(error);
+      const ambiguous = ambiguousWriteFailure(error);
       if (!ambiguous) state.pendingAttachment = null;
       state.message = "";
       state.failure = ambiguous
         ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
         : errorMessage(error);
+      state.busy = false;
+      render();
       return false;
-    } finally {
-      if (state.opened) {
-        state.busy = false;
-        render();
-      }
     }
+    if (!state.opened) return false;
+    state.pendingAttachment = null;
+    const refreshed = await refreshAfterChange(result).catch(() => false);
+    if (!state.opened) return true;
+    if (!refreshed) reportConfirmedRefreshFailure(sourceChangeMessage(result));
+    state.busy = false;
+    render();
+    return true;
   }
 
   async function downloadAttachment(sourceRevision, contentHash) {
@@ -1405,15 +1781,21 @@ export function createCourseSourcesPanel({
     if (kind === "time_range") {
       const startMilliseconds = secondsFormValue(form, "startTime", "O início");
       const endMilliseconds = secondsFormValue(form, "endTime", "O fim");
-      if (endMilliseconds <= startMilliseconds) throw new TypeError("O fim deve vir depois do início.");
+      if (endMilliseconds <= startMilliseconds) {
+        throw formFieldError("O fim deve vir depois do início.", "endTime");
+      }
       return { kind, startMilliseconds, endMilliseconds };
     }
     if (kind === "uri_fragment") {
       const fragment = requiredFormValue(form, "fragment", "O identificador do trecho", 2_048);
-      if (fragment.startsWith("#")) throw new TypeError("Informe o identificador sem #.");
+      if (fragment.startsWith("#")) {
+        throw formFieldError("Informe o identificador sem #.", "fragment");
+      }
       return { kind, fragment };
     }
-    if (kind !== "text_quote") throw new TypeError("O tipo de âncora é inválido.");
+    if (kind !== "text_quote") {
+      throw formFieldError("O tipo de âncora é inválido.", "selectorKind");
+    }
     return {
       kind,
       exact: literalRequiredFormValue(form, "exact", "O trecho exato", 4_000),
@@ -1423,12 +1805,15 @@ export function createCourseSourcesPanel({
   }
 
   async function submitSource(form) {
+    captureSourceDraft(form);
     const existing = state.sourceEditor?.source || null;
     const sourceId = existing
       ? existing.sourceId
       : requiredFormValue(form, "sourceId", "A identidade estável", 240);
     const url = optionalFormValue(form, "url", "O link canônico", 2_048);
-    if (url && !safeHttpUrl(url)) throw new TypeError("Use um link HTTPS válido.");
+    if (url && !safeHttpUrl(url)) {
+      throw formFieldError("Use um link HTTPS válido.", "url");
+    }
     const source = {
       kind: requiredFormValue(form, "kind", "O tipo", 32),
       title: requiredFormValue(form, "title", "O título", 300),
@@ -1445,7 +1830,10 @@ export function createCourseSourcesPanel({
       studyVisibility: requiredFormValue(form, "studyVisibility", "A visibilidade", 32)
     };
     if (source.studyVisibility !== "hidden" && !source.citationText) {
-      throw new TypeError("Informe uma citação para tornar a fonte visível no Estudo.");
+      throw formFieldError(
+        "Informe uma citação para tornar a fonte visível no Estudo.",
+        "citationText"
+      );
     }
     const command = {
       type: "save_source",
@@ -1457,12 +1845,15 @@ export function createCourseSourcesPanel({
   }
 
   async function submitAnchor(form) {
+    captureAnchorDraft(form);
     const source = state.detail?.items?.[0];
-    const existing = state.anchorEditor?.anchor || null;
+    const editor = state.anchorEditor;
+    const existing = editor?.anchor || null;
     if (!source || source.status !== "active") throw new TypeError("A fonte ativa não está disponível.");
+    if (!existing && editor && !editor.anchorId) editor.anchorId = createUuid();
     const command = {
       type: "save_anchor",
-      anchorId: existing?.anchorId || createUuid(),
+      anchorId: existing?.anchorId || editor?.anchorId || createUuid(),
       sourceId: source.sourceId,
       sourceRevision: source.revision,
       expectedAnchorRevision: existing?.revision || 0,
@@ -1495,6 +1886,7 @@ export function createCourseSourcesPanel({
       state.message = "";
       state.failure = errorMessage(error);
       render();
+      restoreObservationDraftFocus();
       return false;
     }
     state.pendingAnnotation = pending;
@@ -1502,8 +1894,9 @@ export function createCourseSourcesPanel({
     state.failure = "";
     state.message = "Registrando observação…";
     render();
+    let result;
     try {
-      const result = normalizeCourseAnchoredAnnotationChange(
+      result = normalizeCourseAnchoredAnnotationChange(
         await controller.mutateCourseAnchoredAnnotations({
           requestId: pending.requestId,
           courseId: state.courseId,
@@ -1517,32 +1910,45 @@ export function createCourseSourcesPanel({
           result.annotation?.annotationId !== pending.command.annotationId) {
         throw new TypeError("A confirmação da observação não corresponde ao pedido.");
       }
-      state.pendingAnnotation = null;
-      state.message = result.idempotent
-        ? "A observação já estava registrada."
-        : "Observação registrada.";
-      state.failure = "";
-      if (state.selectedSourceId === pending.sourceId) {
-        await loadAnnotations(pending.sourceId);
-      }
-      return true;
     } catch (error) {
       if (!state.opened) return false;
-      if (!ambiguousWriteFailure(error)) state.pendingAnnotation = null;
+      const ambiguous = ambiguousWriteFailure(error);
+      if (!ambiguous) state.pendingAnnotation = null;
       state.message = "";
-      state.failure = ambiguousWriteFailure(error)
+      state.failure = ambiguous
         ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
         : errorMessage(error);
+      state.busy = false;
+      render();
+      restoreObservationDraftFocus();
       return false;
-    } finally {
-      if (state.opened) {
-        state.busy = false;
-        render();
+    }
+    state.pendingAnnotation = null;
+    if (state.observationEditor?.sourceId === pending.sourceId) {
+      state.observationEditor = null;
+    }
+    const confirmedMessage = result.idempotent
+      ? "A observação já estava registrada."
+      : "Observação registrada.";
+    state.message = confirmedMessage;
+    state.failure = "";
+    let refreshed = true;
+    if (state.selectedSourceId === pending.sourceId) {
+      try {
+        refreshed = await loadAnnotations(pending.sourceId);
+      } catch {
+        refreshed = false;
       }
     }
+    if (!state.opened) return true;
+    if (!refreshed) reportConfirmedRefreshFailure(confirmedMessage);
+    state.busy = false;
+    render();
+    return true;
   }
 
   async function submitObservation(form) {
+    captureObservationDraft(form);
     const source = state.detail?.items?.[0];
     if (!source || source.status !== "active") {
       throw new TypeError("A revisão ativa da Fonte não está disponível.");
@@ -1554,21 +1960,26 @@ export function createCourseSourcesPanel({
       32
     );
     const observation = SOURCE_OBSERVATION_KINDS[observationKind];
-    if (!observation) throw new TypeError("A intenção da observação é inválida.");
+    if (!observation) {
+      throw formFieldError("A intenção da observação é inválida.", "observationKind");
+    }
     const anchorId = optionalFormValue(form, "targetId", "A Âncora", 240) || "";
     if (anchorId && !source.anchors.some((anchor) =>
       anchor.anchorId === anchorId && anchor.status === "active")) {
-      throw new TypeError("A Âncora escolhida não está ativa nesta Fonte.");
+      throw formFieldError("A Âncora escolhida não está ativa nesta Fonte.", "targetId");
     }
+    const editor = state.observationEditor;
+    if (editor && !editor.annotationId) editor.annotationId = createUuid();
+    if (editor && !editor.capturedAt) editor.capturedAt = now();
     const command = {
       type: "create_anchored_annotation",
-      annotationId: createUuid(),
+      annotationId: editor?.annotationId || createUuid(),
       target: anchorId
         ? { kind: "source_anchor", id: anchorId }
         : { kind: "source", id: source.sourceId },
       rawText: literalRequiredFormValue(form, "rawText", "A observação", 2_000),
       category: observation.category,
-      capturedAt: now(),
+      capturedAt: editor?.capturedAt || now(),
       briefSummary: null
     };
     return runAnnotationCommand(command, command);
@@ -1605,24 +2016,33 @@ export function createCourseSourcesPanel({
       void submitSource(event.target).catch((error) => {
         state.failure = errorMessage(error);
         render();
+        focusEditorField("source", error?.fieldName);
       });
     } else if (event.target.matches?.('[data-source-form="anchor"]')) {
       event.preventDefault();
       void submitAnchor(event.target).catch((error) => {
         state.failure = errorMessage(error);
         render();
+        focusEditorField("anchor", error?.fieldName);
       });
     } else if (event.target.matches?.('[data-source-form="observation"]')) {
       event.preventDefault();
       void submitObservation(event.target).catch((error) => {
         state.failure = errorMessage(error);
         render();
+        focusEditorField("observation", error?.fieldName || "rawText");
       });
     }
   });
 
+  root.addEventListener("input", (event) => {
+    if (!state.opened) return;
+    captureEditorDraftFromControl(event.target);
+  });
+
   root.addEventListener("change", (event) => {
     if (!state.opened) return;
+    captureEditorDraftFromControl(event.target);
     if (event.target.matches?.("[data-source-pdf-input]")) {
       const file = event.target.files?.[0] || null;
       if (file) void uploadPdf(file);
@@ -1630,10 +2050,11 @@ export function createCourseSourcesPanel({
     }
     if (event.target.matches?.("[data-source-anchor-kind]") && state.anchorEditor) {
       state.anchorEditor.draft = {
-        ...anchorDraft(state.anchorEditor.anchor),
+        ...(state.anchorEditor.draft || anchorDraft(state.anchorEditor.anchor)),
         selectorKind: event.target.value
       };
       render();
+      focusEditorField("anchor", "selectorKind");
       return;
     }
     if (event.target.matches?.("[data-source-target-anchor]")) {
@@ -1665,7 +2086,13 @@ export function createCourseSourcesPanel({
     if (!node || (typeof root.contains === "function" && !root.contains(node))) return;
     event.preventDefault();
     const action = node.dataset.sourceAction;
-    if (action === "add-source") {
+    if (action === "cancel-confirmation") {
+      cancelConfirmation();
+    } else if (action === "confirm-retirement") {
+      confirmRetirement();
+    } else if (action === "confirm-target-discard") {
+      confirmTargetDiscard();
+    } else if (action === "add-source") {
       state.sourceEditor = { source: null, draft: null };
       state.failure = "";
       render();
@@ -1676,8 +2103,18 @@ export function createCourseSourcesPanel({
     } else if (action === "open-source") {
       state.sourceEditor = null;
       state.anchorEditor = null;
-      void loadDetail(String(node.dataset.sourceId || ""));
+      const sourceId = String(node.dataset.sourceId || "");
+      if (state.observationEditor?.sourceId !== sourceId) state.observationEditor = null;
+      if (typeof onNavigate === "function") {
+        invokeSafely(onNavigate, routeToSource(sourceId));
+      } else {
+        void loadDetail(sourceId);
+      }
     } else if (action === "close-detail") {
+      if (typeof onNavigate === "function") {
+        invokeSafely(onNavigate, buildCourseAuthoringRoute(state.courseId, { section: "sources" }));
+        return;
+      }
       state.selectedSourceId = "";
       state.detail = null;
       state.detailFailure = "";
@@ -1688,8 +2125,23 @@ export function createCourseSourcesPanel({
       state.initialAnchorMatch = null;
       state.sourceEditor = null;
       state.anchorEditor = null;
+      state.observationEditor = null;
       render();
       if (!state.catalog) void loadCatalog();
+    } else if (action === "request-chat-source") {
+      const sourceId = String(node.dataset.sourceId || "");
+      const sourceRevision = Number(node.dataset.sourceRevision);
+      const source = state.detail?.items.find((item) =>
+        item.sourceId === sourceId && item.revision === sourceRevision);
+      requestSourceChat(source);
+    } else if (action === "request-chat-anchor") {
+      const source = state.detail?.items?.[0] || null;
+      const sourceRevision = Number(node.dataset.sourceRevision);
+      const anchorId = String(node.dataset.anchorId || "");
+      const anchor = source?.revision === sourceRevision
+        ? source.anchors.find((item) => item.anchorId === anchorId)
+        : null;
+      requestAnchorChat(source, anchor);
     } else if (action === "retry-detail" && state.selectedSourceId) {
       void (state.initialSourceId === state.selectedSourceId
         ? loadInitialDetail()
@@ -1704,15 +2156,20 @@ export function createCourseSourcesPanel({
       render();
     } else if (action === "retire-source") {
       const source = state.detail?.items?.[0];
-      if (!source || source.status !== "active" || !confirmValue(
-        "Aposentar esta fonte? O histórico e as atribuições existentes serão preservados."
-      )) return;
+      if (!source || source.status !== "active") return;
       const command = {
         type: "retire_source",
         sourceId: source.sourceId,
         expectedSourceRevision: source.revision
       };
-      void runCommand(command, command);
+      requestConfirmation({
+        title: "Aposentar fonte?",
+        message: "O histórico e as atribuições existentes serão preservados.",
+        confirmLabel: "Aposentar",
+        command,
+        draft: command,
+        returnFocusSelector: '[data-source-action="retire-source"]'
+      });
     } else if (action === "add-anchor") {
       state.anchorEditor = { anchor: null, draft: null };
       state.failure = "";
@@ -1733,9 +2190,19 @@ export function createCourseSourcesPanel({
     } else if (action === "retire-anchor") {
       const anchorId = String(node.dataset.anchorId || "");
       const expectedAnchorRevision = Number(node.dataset.anchorRevision);
-      if (!confirmValue("Aposentar esta âncora? As atribuições históricas serão preservadas.")) return;
       const command = { type: "retire_anchor", anchorId, expectedAnchorRevision };
-      void runCommand(command, command);
+      requestConfirmation({
+        title: "Aposentar âncora?",
+        message: "As atribuições históricas serão preservadas.",
+        confirmLabel: "Aposentar",
+        command,
+        draft: command,
+        returnFocusIdentity: {
+          selector: '[data-source-action="retire-anchor"]',
+          datasetKey: "anchorId",
+          datasetValue: anchorId
+        }
+      });
     } else if (action === "load-more-sources" && state.catalog?.nextCursor && !state.catalogLoading) {
       void loadCatalog({ cursor: state.catalog.nextCursor, append: true });
     } else if (action === "retry-catalog") {
@@ -1798,7 +2265,7 @@ export function createCourseSourcesPanel({
       }
       render();
     } else if (action === "close-target") {
-      onClose();
+      requestTargetClose();
     } else if (action === "add-target-source") {
       const sourceId = String(node.dataset.sourceId || "");
       const source = state.catalog?.items.find((item) => item.sourceId === sourceId);
@@ -1847,6 +2314,9 @@ export function createCourseSourcesPanel({
     }
   });
 
+  root.addEventListener("keydown", handleKeyDown);
+  documentValue?.addEventListener?.("click", handleDocumentClick);
+
   async function open() {
     if (state.opened) return true;
     state.opened = true;
@@ -1863,8 +2333,20 @@ export function createCourseSourcesPanel({
   function destroy() {
     state.opened = false;
     ++epoch;
+    documentValue?.removeEventListener?.("click", handleDocumentClick);
+    root.removeEventListener?.("keydown", handleKeyDown);
     root.innerHTML = "";
   }
 
-  return Object.freeze({ open, destroy });
+  function hasPendingDraft() {
+    const targetChanged = state.mode === "target" &&
+      JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks);
+    return Boolean(
+      state.pendingCommand || state.pendingAnnotation || state.pendingAttachment ||
+      state.confirmation || state.sourceEditor?.draft || state.anchorEditor?.draft ||
+      state.observationEditor?.draft || targetChanged
+    );
+  }
+
+  return Object.freeze({ open, hasPendingDraft, destroy });
 }

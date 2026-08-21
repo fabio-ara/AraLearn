@@ -225,9 +225,14 @@ export class CourseStudyRepository {
         loaded.stale = true;
         loaded.readOnly = true;
       } else if (!listed.offline && loaded) {
-        loaded.offline = false;
-        loaded.stale = false;
-        loaded.readOnly = false;
+        if (loaded.offline === true || loaded.stale === true || loaded.readOnly === true) {
+          loaded.stale = true;
+          loaded.readOnly = true;
+        } else {
+          loaded.offline = false;
+          loaded.stale = false;
+          loaded.readOnly = false;
+        }
       }
     }
     for (const [courseId, personal] of this.personalByCourseId) {
@@ -274,7 +279,10 @@ export class CourseStudyRepository {
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
     if (!descriptor) throw new Error("O Curso solicitado não está acessível.");
     let loaded = this.loadedCourseById.get(courseId);
-    if (!loaded || loaded.revision !== descriptor.revision) {
+    if (!loaded || loaded.revision !== descriptor.revision || (
+      this.listRuntimeStatus.offline !== true &&
+      (loaded.offline === true || loaded.stale === true || loaded.readOnly === true)
+    )) {
       const result = await this.bridge.loadCourse(courseId, {
         verifiedRevision: descriptor.revision
       });
@@ -289,6 +297,7 @@ export class CourseStudyRepository {
       loaded = {
         revision: resultRevision,
         course: clone(course),
+        rows: Array.isArray(result.rows) ? clone(result.rows) : [],
         offline: result.offline === true,
         stale: result.stale === true || resultRevision !== descriptor.revision,
         readOnly: result.readOnly === true || result.offline === true ||
@@ -394,6 +403,24 @@ export class CourseStudyRepository {
       completedStudyUnitCount: Number(item.completedStudyUnitCount || 0),
       updatedAt: item.updatedAt
     }));
+  }
+
+  loadStudyUnitCompositionContext(reference) {
+    const courseId = courseIdFromReference(reference);
+    const studyUnitId = studyUnitIdFromReference(reference);
+    const loaded = this.loadedCourseById.get(courseId);
+    const row = loaded?.rows?.find((candidate) =>
+      candidate?.entityType === "study_unit" && candidate.entityId === studyUnitId
+    );
+    if (!loaded || !row || !Number.isSafeInteger(row.version) || row.version < 1 ||
+        typeof row.parentId !== "string" || !row.parentId) return null;
+    return clone({
+      courseId,
+      courseRevision: loaded.revision,
+      didacticMicrosequenceId: row.parentId,
+      studyUnitId,
+      studyUnitVersion: row.version
+    });
   }
 
   loadRuntimeStatus(courseIdentity = "") {

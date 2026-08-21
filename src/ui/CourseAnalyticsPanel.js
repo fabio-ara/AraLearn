@@ -701,7 +701,14 @@ export function createCourseAnalyticsPanel({
   render();
   return {
     open: () => load(),
-    refresh: () => load(),
+    refresh: (nextCourseRevision = state.course.revision) => {
+      const revision = Number(nextCourseRevision);
+      if (!Number.isSafeInteger(revision) || revision < 1) {
+        return Promise.reject(new TypeError("A revisão do Curso para atualizar a Pesquisa é inválida."));
+      }
+      state.course = { ...state.course, revision };
+      return load();
+    },
     export: (format) => exportFacts(format),
     destroy() {
       root.removeEventListener("submit", onSubmit);
