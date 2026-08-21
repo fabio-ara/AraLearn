@@ -334,6 +334,138 @@ function renderSourceObservationForm(state, source) {
     `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}<span>Registrar</span></button></div></form>`;
 }
 
+function observationClassificationForExport(value) {
+  return {
+    method: value.method,
+    methodVersion: value.methodVersion,
+    taxonomyRevision: value.taxonomyRevision,
+    subjects: value.subjects.map((subject) => ({
+      topicId: subject.topicId,
+      label: subject.label,
+      topicVersion: subject.topicVersion
+    }))
+  };
+}
+
+function observationSourceLinksForExport(value) {
+  return value.map((link) => ({
+    sourceId: link.sourceId,
+    sourceRevision: link.sourceRevision,
+    relation: link.relation,
+    anchors: link.anchors.map((anchorValue) => ({
+      anchorId: anchorValue.anchorId,
+      anchorRevision: anchorValue.anchorRevision
+    }))
+  }));
+}
+
+function sourceObservationForExport(item) {
+  return {
+    annotationId: item.annotationId,
+    annotationVersion: item.annotationVersion,
+    provenance: {
+      origin: item.provenance.origin,
+      channel: item.provenance.channel
+    },
+    contributor: {
+      kind: item.contributor.kind,
+      role: item.contributor.role
+    },
+    target: {
+      kind: item.target.kind,
+      id: item.target.id,
+      currentAvailable: item.target.currentAvailable
+    },
+    observedRevision: {
+      certainty: item.observedRevision.certainty,
+      courseRevision: item.observedRevision.courseRevision,
+      targetVersion: item.observedRevision.targetVersion
+    },
+    rawText: item.rawText,
+    category: item.category,
+    briefSummary: item.briefSummary,
+    subjectClassification: {
+      status: item.subjectClassification.status,
+      automatic: observationClassificationForExport(item.subjectClassification.automatic),
+      effective: observationClassificationForExport(item.subjectClassification.effective),
+      correctedAt: item.subjectClassification.correctedAt
+    },
+    state: item.state,
+    ownerResponse: item.ownerResponse === null ? null : {
+      text: item.ownerResponse.text,
+      kind: item.ownerResponse.kind,
+      consideredSourceLinks: observationSourceLinksForExport(
+        item.ownerResponse.consideredSourceLinks
+      ),
+      updatedAt: item.ownerResponse.updatedAt
+    },
+    timestamps: {
+      capturedAt: item.timestamps.capturedAt,
+      createdAt: item.timestamps.createdAt,
+      updatedAt: item.timestamps.updatedAt,
+      firstConsideredAt: item.timestamps.firstConsideredAt,
+      respondedAt: item.timestamps.respondedAt,
+      resolvedAt: item.timestamps.resolvedAt,
+      withdrawnAt: item.timestamps.withdrawnAt
+    }
+  };
+}
+
+function observationQueryForExport(query) {
+  return {
+    mode: query.mode,
+    origins: [...query.origins],
+    channels: [...query.channels],
+    states: [...query.states],
+    categories: [...query.categories],
+    includeUncategorized: query.includeUncategorized,
+    subjectIds: [...query.subjectIds],
+    hierarchy: query.hierarchy === null ? null : {
+      target: {
+        kind: query.hierarchy.target.kind,
+        id: query.hierarchy.target.id
+      },
+      includeDescendants: query.hierarchy.includeDescendants
+    },
+    annotationId: query.annotationId
+  };
+}
+
+function buildSourceObservationsExport(state, exportedAt) {
+  return {
+    contract: "aralearn.course-source-observations-export.v2",
+    exportedAt,
+    dataNotice: {
+      classification: "personal_or_pseudonymized_operational_data",
+      message: "Exportação operacional privada. Pode conter dados pessoais no texto livre ou nos rótulos e inclui identificadores internos e horários; não é um conjunto anônimo.",
+      included: {
+        freeText: "Texto livre da observação, do resumo, da resposta e rótulos de assunto, quando houver.",
+        internalIdentifiers: "Identificadores internos do Curso, da Fonte, da Observação e dos assuntos relacionados.",
+        timestamps: "Horários de criação e do ciclo da observação."
+      },
+      excluded: [
+        "E-mail e nome do perfil da conta.",
+        "Referência e rótulo protegidos da pessoa contribuinte.",
+        "Caminhos internos e links de navegação.",
+        "Capacidades calculadas para a interface."
+      ]
+    },
+    courseId: state.courseId,
+    courseRevision: state.courseRevision,
+    sourceId: state.selectedSourceId,
+    annotationSetVersion: state.annotations.annotationSetVersion,
+    query: observationQueryForExport(state.annotations.query),
+    summary: {
+      matchingTotal: state.annotations.summary.matchingTotal,
+      byOrigin: { ...state.annotations.summary.byOrigin },
+      byChannel: { ...state.annotations.summary.byChannel },
+      byState: { ...state.annotations.summary.byState },
+      unclassifiedTotal: state.annotations.summary.unclassifiedTotal
+    },
+    items: state.annotations.items.map(sourceObservationForExport)
+  };
+}
+
 function renderSourceObservations(state, source) {
   if (state.annotationsLoading && !state.annotations) {
     return '<section class="course-source-observations"><h4>Observações</h4>' +
@@ -349,6 +481,9 @@ function renderSourceObservations(state, source) {
       : "") + "</header>" +
     (state.annotationsFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.annotationsFailure)}</p>`
+      : "") +
+    (!state.annotationsLoading && state.annotations && !state.annotations.hasMore
+      ? '<p class="course-authoring-notice">Exportação operacional privada: o arquivo inclui texto livre, identificadores internos e horários. Ele não é anônimo.</p>'
       : "") +
     renderSourceObservationForm(state, source) +
     (items.length
@@ -2227,17 +2362,10 @@ export function createCourseSourcesPanel({
     } else if (action === "export-observations" && state.annotations &&
         !state.annotations.hasMore) {
       try {
-        downloadJson({
-          contract: "aralearn.course-source-observations-export.v1",
-          exportedAt: now(),
-          courseId: state.courseId,
-          courseRevision: state.courseRevision,
-          sourceId: state.selectedSourceId,
-          annotationSetVersion: state.annotations.annotationSetVersion,
-          query: state.annotations.query,
-          summary: state.annotations.summary,
-          items: state.annotations.items
-        }, `aralearn-observacoes-fonte-${state.courseId}.json`);
+        downloadJson(
+          buildSourceObservationsExport(state, now()),
+          `aralearn-observacoes-fonte-${state.courseId}.json`
+        );
         state.failure = "";
         state.message = "A exportação das observações foi preparada para salvamento.";
       } catch (error) {

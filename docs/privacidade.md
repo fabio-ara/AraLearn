@@ -5,10 +5,30 @@ regras técnicas de acesso. Uma instituição que implante o sistema precisa
 acrescentar base jurídica, prazos de retenção, responsáveis, condições dos
 provedores e canais de atendimento aplicáveis ao seu contexto.
 
+Ele não declara conformidade com a LGPD ou com o RGPD. A linha publicada
+0.0.26 ainda precede os controles descritos como **candidatos** nesta revisão;
+eles só passam a representar o ambiente
+hospedado depois da promoção conjunta do banco, das funções e dos clientes.
+
 Privacidade depende de minimização, finalidade, isolamento no banco e
 informação compreensível. Ocultar um campo na interface, sozinho, não protege o
 dado ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
 [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
+
+## Natureza das regras
+
+Quatro tipos de afirmação precisam permanecer distintos:
+
+| Natureza | O que este documento pode afirmar |
+| --- | --- |
+| requisito jurídico condicionado | quando LGPD ou RGPD se aplicam, finalidade, necessidade/minimização, transparência, segurança e direitos do titular precisam ser atendidos; o código não escolhe sozinho o responsável nem a base jurídica |
+| boa prática de engenharia | separar identidade, reduzir projeções, limitar acesso, sanear erros, definir retenção e testar negativas diminui riscos concretos, mas não produz um selo jurídico |
+| decisão de produto | manter Pessoas somente na aplicação, fazer o nome opcional e distinguir saída de limpeza local são escolhas do AraLearn que podem ser revistas com evidência de uso |
+| questão jurídica ou ética aberta | controlador, operadores, bases, transferências, protocolo de pesquisa, população, menores, retenções institucionais e pareceres dependem da implantação e de decisão humana competente |
+
+Consentimento não é tratado como base universal. Conta necessária ao serviço,
+assistência por provider, fatos operacionais e participação voluntária em
+pesquisa são tratamentos diferentes.
 
 ## Conceitos essenciais
 
@@ -61,6 +81,31 @@ apenas estado do dispositivo. Os termos não são intercambiáveis.
 | consultar Pesquisa | fatos derivados da Autoria, dicionário, métricas descritivas e paginação | PostgreSQL; projeção restrita ao proprietário |
 | repetir uma alteração com segurança | revisão esperada, identificador do pedido, evento e recibo temporário | PostgreSQL privado |
 
+### Registro técnico das classes
+
+Este registro descreve o padrão técnico candidato. O prazo institucional final
+continua aberto quando indicado.
+
+| Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
+| --- | --- | --- | --- | --- | --- |
+| conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem dataset de pesquisa |
+| perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não no MCP público |
+| Curso e autoria | conteúdo, plano, revisões, eventos e recibos para criar e investigar o artefato | pode conter dado pessoal em texto livre; UUIDs ligados à conta e horários correlacionáveis são dados pessoais e não se tornam pseudônimos apenas pelo formato | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos de mudança expiram em 14 dias na candidata | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
+| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador ou MCP |
+| estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
+| Observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada redige de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
+| Analytics da Autoria | IDs, hashes, canal, origem, estado, contagens e horários para descrever o processo | pessoal/pseudonimizado enquanto houver correlação; não é anonimizado por retirar o nome | PostgreSQL; proprietário do Curso | prazo institucional ainda aberto | exportável com aviso; não mede aprendizagem nem constitui dataset anônimo |
+| PDFs e avatares | documentos de Fonte e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | PDFs não entram nos exports correntes nem são enviados ao provider por padrão |
+| assistência por provider | pedido, texto editável selecionado, título, papel, tópicos e até oito turnos para produzir uma sugestão focal | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provider escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provider | não é dataset de pesquisa; envio exige aviso por chamada |
+| pesquisa | protocolo, pseudônimo específico, medidas e eventual tabela de reidentificação | pessoal pseudonimizado enquanto reidentificável; pode tornar-se sensível conforme a pergunta | plano de dados segregado e acesso definido pelo protocolo, ainda não implantado como infraestrutura genérica | conforme protocolo, retirada e obrigação institucional | exportação somente nos termos do protocolo; resultados publicados exigem avaliação de reidentificação |
+| registros e limpeza | contagens de tentativas, datas de expiração e contagens de remoção para segurança e ciclo de vida | ator é identificador pessoal da conta; horários e contagens permanecem correlacionáveis; nenhuma coluna de e-mail integra o contador de concessões | tabelas privadas e rotina administrativa | janela de concessão, 30 dias; demais prazos por classe | contagens operacionais não integram export comum nem autorizam pesquisa |
+
+Nenhuma categoria sensível é coletada como requisito do produto. Se uma futura
+pesquisa tratar saúde, religião, origem racial ou étnica, opinião política,
+biometria ou outra categoria especialmente protegida, a implantação precisa
+parar no gate jurídico e ético antes da coleta. O mesmo vale para pesquisa com
+crianças e adolescentes.
+
 ## Conta, perfil e localização por e-mail
 
 Uma conta recebe um perfil vazio ligado ao identificador de autenticação. O
@@ -72,6 +117,19 @@ existente. O serviço usa o valor somente para localizar essa identidade. Não h
 busca parcial, diretório ou sugestão de contas. A relação gravada conserva
 identificadores internos; o e-mail não entra nos eventos nem na resposta da
 operação.
+
+Na revisão candidata, a resposta de concessão é sempre a mesma para conta
+existente, inexistente, própria, já favorecida ou tentativa limitada. Ela apenas
+informa que a solicitação foi aceita; o recibo não contém o resultado nem a
+relação criada. O proprietário autorizado ainda pode encontrar uma relação que
+realmente exista numa leitura posterior; a medida reduz o oráculo
+direto de enumeração, sem fingir sigilo absoluto da própria lista de acesso.
+
+O banco admite dez tentativas por ator em cada janela de dez minutos. A
+repetição idêntica recupera primeiro o recibo anterior. A tabela de limitação
+guarda ator, começo e fim da janela e contadores agregados de tentativa,
+concessão, ausência, inalteração e limitação. Não guarda e-mail nem resumo
+criptográfico do e-mail e fica elegível à limpeza depois de 30 dias.
 
 Uma pessoa pode ver o próprio perfil. Numa relação de Curso compartilhado:
 
@@ -131,6 +189,28 @@ confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivo
 vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada revisão
 até oito anexos e o Curso até 64 MiB de conteúdo único.
 
+Na revisão candidata, o preparo de envio cria uma intenção privada válida por dez
+minutos para o ator, Curso, caminho, impressão digital, tamanho, tipo, Fonte e
+revisões exatos. O navegador envia o PDF ao endpoint autenticado do Storage com
+a sessão corrente; a política também exige que o `session_id` ainda exista e
+não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
+mesmo bloqueio usado pela exclusão da conta. A inserção consome a intenção. Não
+é emitida nova URL assinada de upload. Uma URL v1 emitida pela versão 0.0.26
+antes do corte, porém, é uma credencial independente da sessão e pode continuar
+aceita por até duas horas. A fronteira anterior só se encerra depois dessa
+expiração, além da janela dos JWTs antigos.
+
+O resumo criptográfico e o cabeçalho só podem ser confirmados depois que os
+bytes chegam. Se um objeto de mesmo tamanho e tipo não corresponder ao PDF
+preparado, a API recusa o vínculo. O objeto permanece sem uso e aparece no
+inventário administrativo de órfãos; esse inventário não autoriza apagamento
+automático.
+
+O download continua usando uma URL assinada válida por 60 segundos. Uma URL já
+emitida não pode ser revogada individualmente e pode continuar funcionando até
+o fim dessa janela. Ela não deve ser persistida nem usada como identidade do
+arquivo.
+
 Criar uma variante pode reutilizar a referência ao mesmo objeto privado em vez
 de duplicar os bytes. A leitura continua condicionada à propriedade do Curso
 que participa da comparação.
@@ -144,8 +224,12 @@ Uma nota, contestação ou solicitação de reformulação pode apontar para a F
 ou para uma Âncora. Esses registros seguem o mesmo controle privado das demais
 Anotações ancoradas. Quando a autoria responde com uma reformulação, a resposta
 identifica somente as revisões de Fonte e de Âncora consideradas; o PDF e seu
-conteúdo não são copiados para a Anotação. A exportação dessas Observações
-contém os mesmos alvos, versões e vínculos que a interface apresenta.
+conteúdo não são copiados para a Anotação. A exportação v2 dessas Observações
+conserva texto, alvo, versões, vínculos, identificadores operacionais e horários
+necessários ao uso privado. Ela remove `contributor.ref`, o rótulo protegido da
+pessoa, os caminhos observado e corrente, links profundos e capacidades da
+interface. O próprio arquivo e a interface informam que o conteúdo continua
+pessoal ou pseudonimizado e não é um conjunto anônimo de pesquisa.
 
 ## Estado pessoal sem telemetria comportamental
 
@@ -176,10 +260,19 @@ anteriores do texto integral.
 
 Retirar uma Anotação redige imediatamente texto, síntese e resposta e mantém um
 registro de exclusão. Esse registro e o recibo de repetição expiram logicamente
-em até 14 dias. A limpeza física ocorre de forma oportunista, em lotes, quando o
-Curso volta a ser lido ou alterado. Como não há tarefa periódica dedicada, um
-Curso inativo pode conservar a linha física por mais tempo, embora ela já não
-seja legível, paginável nem contada nas cotas funcionais.
+em até 14 dias. A revisão candidata mantém os lotes oportunistas e acrescenta uma
+rotina privada diária, às 03:17, para que um Curso inativo não seja a única
+causa de atraso físico. Cada execução processa até 512 linhas por classe e
+devolve contagens separadas de Anotações retiradas, recibos de Anotação,
+recibos de mudança de Curso, recibos de estado pessoal, intenções de PDF e
+janelas de concessão. O limite pode ser ajustado entre 1 e 1.000 e a repetição
+sem itens vencidos produz contagens zero.
+
+Os prazos correntes são 14 dias para a linha redigida e para recibos de
+Anotação e de mudança de Curso, sete dias para recibos de estado pessoal, dez
+minutos para intenção de upload e 30 dias para a janela agregada de concessão.
+Esses prazos técnicos não decidem a retenção institucional de logs, backups,
+conteúdo, autoria ou pesquisa.
 
 Anotações ativas ou resolvidas não expiram apenas pela idade. A instituição
 responsável precisa definir a retenção operacional. O AraLearn não cria uma
@@ -207,6 +300,13 @@ e Variantes. A exportação conserva códigos estáveis e limites de interpreta�
 Ela não inclui o e-mail digitado para acesso nem transforma Anotações em uma
 base de pesquisa identificada.
 
+Retirar nome e e-mail não torna esses fatos anônimos. Identificadores de Curso,
+objeto ou pedido, resumos criptográficos e horários podem permitir correlação
+com a operação ou com outros conjuntos. Enquanto essa relação for razoavelmente
+possível, Analytics e suas exportações devem ser tratados como dados pessoais
+pseudonimizados. A área **Pesquisa** é uma projeção operacional do proprietário,
+não um plano de dados de participantes autorizado por protocolo.
+
 ## Autoria conversacional
 
 Um protocolo aberto conecta assistentes às ferramentas de Autoria: o **Model
@@ -216,12 +316,70 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
+Na revisão candidata, o catálogo MCP público possui cinco ferramentas. Perfil,
+avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
+da aplicação autenticada; e-mail e referência protegida não integram ferramenta
+ou erro público do MCP.
+
+A mesma candidata anuncia somente o escopo OAuth `offline_access`; código e
+refresh token não produzem `id_token`. O access token do MCP usa aliases
+pareados e distintos para pessoa e sessão, sem UUID da pessoa, e-mail ou perfil,
+e não funciona como sessão do aplicativo. O JWT conserva
+`aralearn_session_id`, o UUID real da sessão de origem necessário à RPC. Esse
+identificador é correlacionável; a credencial inteira continua sendo pessoal ou
+pseudonimizada e não é anônima. A Edge Function valida a assinatura
+ES256 com chave EC P-256 pela JWKS do Auth. Em seguida, uma RPC exclusiva do papel
+de serviço resolve a pessoa e confirma que sessão de origem, cliente e
+consentimento ainda estão ativos. O bearer é recusado diretamente pelo GoTrue,
+pela API de dados e pelo Storage.
+
+No corte, consentimentos e sessões OAuth anteriores são revogados. Isso impede
+renovação e exige novo consentimento, mas um ID token `openid` já emitido
+permanece válido até `exp`. A fronteira anterior não deve ser anunciada como
+fechada antes de transcorrer o maior prazo entre a duração JWT configurada e as
+duas horas das URLs v1 de upload já emitidas, contado a partir da promoção e
+acrescido de margem operacional. Depois dessa janela, as negativas hospedadas e
+o inventário de objetos sem vínculo precisam ser repetidos.
+
+A caixa de entrada e a leitura por alvo de Observações usam uma projeção
+fechada com síntese, estado, origem, papel, versões e identificador operacional.
+Ela omite texto integral, `contributor.ref`, rótulo protegido da pessoa,
+caminhos, links, IDs internos do alvo, horários e texto da resposta autoral. O
+detalhe e o contexto de auditoria com Observações selecionadas só incluem
+`rawText` quando o cliente declara `includeObservationText: true`. A resposta
+registra o destinatário e a finalidade desse envio; as demais omissões continuam
+valendo.
+
+Fontes também usam uma projeção própria no MCP. Ela preserva as referências de
+domínio necessárias à autoria, mas omite UUID de ator, identidade de atribuição,
+resumo interno do alvo, Curso de origem do objeto e caminho do Storage. Preparar
+o envio de PDF exige a sessão da aplicação e não integra a ferramenta MCP. Para
+abrir um anexo, o cliente precisa declarar
+`includeAttachmentDownloadUrl: true`; somente então recebe a URL assinada, com
+`dataDisclosure` que a identifica como credencial temporária de 60 segundos.
+O mesmo disclosure enumera os campos livres potencialmente pessoais incluídos
+na revisão autoral: título, autoria declarada, citação, endereço, identificador,
+edição ou versão, trecho de verificação e, quando presentes, `exact`, `prefix`,
+`suffix` ou `fragment` dos seletores de Âncora. O painel de Fontes do Estudo já
+pode mostrar título, citação, edição ou versão, endereço e o recorte representado
+pelo seletor. O detalhe solicitado pelo cliente MCP também pode receber os
+demais campos autorais enumerados; o trecho de verificação não é exibido no
+Estudo.
+
 Na assistência complementar de produção, o pedido sai do dispositivo somente
 para um relay em `127.0.0.1`, `localhost` ou `10.0.2.2`, na porta 4183. A chave
 do provider fica nesse relay e não entra no AraLearn. O aviso anterior à chamada
 enumera o conteúdo: pedido, valores textuais editáveis, título, papel, tópicos e
 mensagens anteriores daquela conversa. PDFs, Fontes, outras Unidades,
 `targetId`, `studyUnitId` e o restante do Curso não são enviados.
+
+O envelope é montado por lista fechada, e campos extras presentes na Unidade
+não são serializados. Erros públicos do provider preservam código e orientação
+úteis, mas não refletem segredo, e-mail, cabeçalho de autorização ou corpo bruto.
+As Edge Functions não registram corpo, cabeçalhos ou exceções brutas no console;
+workflows também recusam rastreamento e impressão direta de credenciais. O texto
+editável escolhido ainda pode conter dado pessoal por decisão da pessoa, razão
+pela qual o aviso e a revisão por chamada continuam necessários.
 
 O navegador classifica `127.0.0.1` e `localhost` como loopback e `10.0.2.2`
 como rede local ao pedir acesso. Essa informação de transporte não amplia o
@@ -266,6 +424,12 @@ O navegador e o aplicativo Android mantêm sessão autenticada, listas resumidas
 composições já abertas, estado pessoal, alterações pendentes, Anotações e
 arquivos estáticos da interface.
 
+A revisão candidata persiste da sessão somente `access_token`, `refresh_token`,
+tipo, expiração e `user.id`. E-mail, nome, identidades externas e o restante do
+objeto retornado pelo Auth não são duplicados nesse registro; uma sessão legada
+é reduzida na primeira leitura. Tokens continuam sendo segredos e não deixam de
+ser dados pessoais por essa minimização.
+
 Durante a primeira gravação de uma cópia pessoal, o IndexedDB pode conservar o
 Curso e a seleção de origem, as versões esperadas, a Unidade final, a origem da
 edição e um identificador de pedido. Esse recorte existe para repetição
@@ -277,18 +441,37 @@ servidor. Limpar os dados do aplicativo pode apagar mudanças ainda não
 sincronizadas. Sair encerra a sessão, mas não equivale a excluir todos os dados
 do dispositivo ou do servidor.
 
+O logout comum tenta sincronizar as filas e preserva, por decisão de produto,
+Cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela
+conta. Uma alteração ainda aberta somente na memória do editor será perdida; a
+interface informa isso e pede confirmação antes de sair. **Remover dados deste
+dispositivo** apaga somente o namespace da conta ativa e mantém a sessão;
+**Sair e remover dados deste dispositivo** encerra a sessão e apaga esse mesmo
+namespace. As duas ações alertam sobre progresso, Observações e edições ainda
+pendentes. Dados de outra conta no mesmo perfil do navegador não são removidos.
+
 ## Operações controladas pela pessoa
 
 ### Alterar nome ou foto
 
 Em **Conta e aparência**, edite o nome ou escolha uma imagem JPEG, PNG ou WebP
 de até 512 KiB. Somente a própria pessoa envia ou remove objetos de sua pasta.
+Se o upload terminar e a atualização do perfil não devolver confirmação, o
+aplicativo relê o perfil antes de qualquer rollback. Uma referência já
+confirmada preserva a foto; uma ausência confirmada permite remover o objeto sem
+vínculo. Se a releitura ou a limpeza falhar, a tela informa a ambiguidade,
+conserva a chave do objeto durante a sessão e impede outro envio até confirmar o
+vínculo ou removê-lo com segurança. O inventário administrativo continua
+classificando o objeto; ele não autoriza um expurgo automático.
 
 ### Conceder acesso ao Estudo
 
 Em um Curso próprio, abra **Pessoas**, informe o e-mail exato de uma conta,
-confira o destinatário na confirmação e conclua. O destinatário passa a ver o
-Curso em Estudo, e a propriedade permanece inalterada.
+confira o valor na confirmação e conclua. A resposta genérica não confirma se o
+endereço possui conta nem se a relação mudou. Quando a conta existe e a
+concessão é válida, o destinatário passa a ver o Curso em Estudo, e a
+propriedade permanece inalterada. Depois de dez tentativas em dez minutos, novas
+solicitações daquela conta aguardam a próxima janela, com a mesma resposta.
 
 ### Revogar acesso ao Estudo
 
@@ -304,36 +487,79 @@ O aplicativo envia uma única solicitação confirmada à API. A API autentica a
 pessoa, deriva seus Cursos e caminhos privados, remove os avatares e PDFs
 correspondentes e só então solicita a exclusão relacional com a mesma sessão. O
 banco recusa a operação enquanto algum objeto permanecer e confirma a ausência
-no momento da exclusão. Uma falha intermediária conserva a conta e permite
-repetir a solicitação.
+no momento da exclusão. Depois que a limpeza física começa, uma falha pode
+conservar a conta embora alguns PDFs ou a foto já tenham sido removidos. A
+interface distingue esse estado, informa a remoção possível e reconhece que a
+conta pode já ter sido excluída ou ainda aguardar a etapa final. Repetir a
+operação idempotente confirma ou conclui o resultado; a tela não apresenta o
+estado ambíguo como uma tentativa sem efeito.
+
+Essa primeira recusa também conserva a sessão necessária para a própria API
+terminar a limpeza do Storage. Na chamada final da revisão candidata, a transação
+remove todas as sessões da conta imediatamente antes de remover o usuário do
+Auth. As políticas de novos avatares e novos PDFs exigem `session_id` ainda
+presente e não vencido. Essas escritas usam o mesmo bloqueio transacional da
+exclusão: um envio concluído primeiro volta a ser encontrado pela verificação
+de objetos, enquanto uma exclusão concluída primeiro invalida a sessão antes
+que o envio possa prosseguir. Assim, um token residual não reabre a janela de
+escrita autenticada. A URL assinada de upload v1 já emitida antes do corte é a
+exceção transitória: ela não depende da sessão e precisa expirar por até duas
+horas antes de a fronteira antiga ser declarada fechada.
 
 Depois, a conta de autenticação, o perfil, os Cursos próprios, suas composições,
 acessos e estados dependentes são removidos. Contribuições em Cursos alheios são
 retiradas e redigidas imediatamente e seguem a janela de limpeza lógica de 14
 dias. Uma cópia pessoal é Curso próprio e segue essa mesma exclusão. A réplica
-local é limpa depois da resposta de sucesso.
+local é limpa depois da resposta de sucesso. Essa resposta remota é terminal:
+se outra aba bloquear a exclusão do IndexedDB, a conta continua excluída e a
+interface oferece somente repetir a limpeza local. Ela não repete a exclusão
+remota nem descreve esse caso como conta preservada.
 
 A operação não oferece restauração automática. Registros técnicos, cópias de
 segurança e retenções do provedor podem seguir prazos próprios, que a instituição
 responsável deve declarar.
 
-Uma URL de envio de PDF emitida antes da exclusão pode permanecer válida por
-até duas horas. Uma sessão emitida anteriormente também pode conservar validade
-até expirar e enviar um novo avatar. Se esses meios forem usados depois que a
-conta deixou de existir, não criam vínculo nem reabrem a conta, mas podem deixar
-um objeto sem proprietário. A operação deve repetir o inventário de PDFs e
-avatares depois das duas janelas e remover somente o caminho cuja ausência de
-vínculo tenha sido comprovada.
+O envio de PDF candidato não usa URL assinada: exige sessão viva e intenção de
+dez minutos consumida na inserção. O download já assinado pode continuar legível
+por até 60 segundos porque o Supabase não revoga uma URL individual antes da
+expiração. A rotina administrativa inventaria, sem apagar, `avatar_owner_missing`,
+`avatar_profile_unlinked`, `pdf_course_missing`, `pdf_unlinked` e
+`pdf_object_missing`. Uma remoção posterior exige conferir vínculos, backups,
+retenções e a classe do objeto; inventariar não autoriza exclusão automática.
+
+Durante o corte, o contrato v1 é emitido e aceito somente para o download
+legado do Android 0.0.26. O contrato v2 fica reservado a `prepare_upload`
+autenticado; como o cliente antigo espera uma URL assinada v1, seu upload falha
+fechado. Essa compatibilidade não usa `User-Agent` e só pode ser retirada por
+uma decisão explícita de encerrar o suporte ao 0.0.26.
 
 ## Roadmap de proteção desde a concepção
 
-A proteção de dados no [roadmap corrente](https://github.com/fabio-ara/AraLearn/issues/147)
-possui duas frentes. A issue [#150](https://github.com/fabio-ara/AraLearn/issues/150)
-corrige riscos concretos no produto atual, como exportação, limpeza local,
-retenção e fronteiras do MCP. Somente depois da baseline 2.0, a
-[#156](https://github.com/fabio-ara/AraLearn/issues/156) fixa as fronteiras do
-eventual artefato versionado antes do ensaio Git. Essas medidas são proteção
+A proteção de dados possui duas frentes. A revisão candidata corrige riscos
+concretos no produto atual, como exportação, limpeza local, retenção e
+fronteiras do MCP. Somente depois da baseline 2.0, uma revisão própria fixará as
+fronteiras do eventual artefato versionado antes do ensaio Git. Essas medidas são proteção
 desde a concepção e não constituem declaração de conformidade com LGPD ou RGPD.
+
+## Decisões abertas e gates
+
+Antes de uma implantação, a instituição precisa definir controlador,
+operadores, finalidades, bases jurídicas, região, transferências, fornecedores,
+retenção de logs e backups, canal de direitos e resposta a incidentes. Os
+avisos correntes do Auth sobre proteção contra senhas vazadas e opções de MFA
+precisam ser avaliados contra população, risco e operação real; habilitar todo
+recurso disponível mecanicamente não substitui essa análise.
+
+Pesquisa com monitoramento sistemático, grande escala, cruzamento extensivo,
+perfilamento, decisão automatizada relevante, menores ou dados sensíveis deve
+parar antes da coleta e exigir avaliação jurídica e ética sobre RIPD/AIPD,
+protocolo, Comissão de Ética e Encarregado de Proteção de Dados. A infraestrutura
+de Analytics do produto não autoriza silenciosamente esse uso.
+
+Uma futura tabela que relacione participante e identidade real deve ficar
+segregada, com pseudônimo diferente por protocolo, acesso restrito, retenção
+própria e exclusão de Git, exports comuns e providers de IA. Enquanto essa
+relação existir, `participant_id` continua sendo dado pessoal pseudonimizado.
 
 ## Responsabilidades da instituição
 
@@ -354,3 +580,26 @@ público, use o rastreador do repositório.
 
 Se uma credencial tiver sido exposta, revogue-a ou substitua-a. Editar uma
 mensagem ou um arquivo não elimina necessariamente as cópias já produzidas.
+
+## Fontes oficiais
+
+O desenho técnico foi confrontado com a [LGPD
+compilada](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm),
+as orientações da ANPD sobre [direitos dos
+titulares](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares)
+e [tratamento acadêmico e
+pesquisa](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-tratamento-de-dados-pessoais-para-fins-academicos-e-para-a-realizacao-de-estudos-e-pesquisas),
+o [RGPD no EUR-Lex](https://eur-lex.europa.eu/legal-content/PT/TXT/?uri=CELEX:32016R0679)
+e as [orientações do EDPB sobre proteção desde a
+concepção](https://www.edpb.europa.eu/documents/guideline/guidelines-42019-on-article-25-data-protection-design-and-by-default_en).
+
+Para pesquisa no contexto da Universidade de Lisboa, permanecem como fontes a
+[Comissão de Ética do IE](https://www.ie.ulisboa.pt/comissao-de-etica), suas
+[boas práticas de investigação](https://www.ie.ulisboa.pt/sites/default/files/documents/document/default/boas-praticas-investigacao-etica-no-ieulisboa-junho-2022.pdf)
+e o [Encarregado de Proteção de Dados da
+ULisboa](https://www.ulisboa.pt/info/regulamento-geral-de-protecao-de-dados).
+Para os controles sobre Storage e sessão, consulte a documentação oficial do
+Supabase sobre [controle de acesso do
+Storage](https://supabase.com/docs/guides/storage/security/access-control),
+[URLs assinadas](https://supabase.com/docs/guides/storage/serving/downloads) e
+[sessões](https://supabase.com/docs/guides/auth/sessions).

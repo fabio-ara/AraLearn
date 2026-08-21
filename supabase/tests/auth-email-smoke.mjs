@@ -29,7 +29,15 @@ function createSessionStore() {
       return state.get(key) ?? null;
     },
     async putSyncState(key, value) {
-      state.set(key, structuredClone(value));
+      if (value == null) state.delete(key);
+      else state.set(key, structuredClone(value));
+    },
+    async updateSyncState(key, update) {
+      const current = state.has(key) ? structuredClone(state.get(key)) : null;
+      const next = update(current);
+      if (next == null) state.delete(key);
+      else state.set(key, structuredClone(next));
+      return next == null ? null : structuredClone(next);
     }
   };
 }
@@ -176,7 +184,7 @@ try {
     historyValue: { replaceState() {} }
   });
   const confirmedSession = await confirmedAuth.initialize();
-  assert.equal(confirmedSession?.user?.email, email);
+  assert.equal(confirmedSession?.user?.id, userId);
 
   await confirmedAuth.requestPasswordReset({ email, redirectTo: redirectUrl });
   const recoveryState = await store.getSyncState(AUTH_PKCE_STATE_KEY);

@@ -35,8 +35,9 @@ validação.
 
 ## Superfície do MCP
 
-As seis ferramentas agrupam capacidades relacionadas, sem criar uma ferramenta
-para cada objeto:
+Na revisão candidata de privacidade, cinco ferramentas públicas agrupam capacidades
+relacionadas, sem criar uma ferramenta para cada objeto. O ambiente hospedado
+0.0.26 ainda oferece seis até a promoção:
 
 | Ferramenta | Responsabilidade |
 | --- | --- |
@@ -44,8 +45,11 @@ para cada objeto:
 | `lerCurso` | ler uma vista delimitada e versionada |
 | `criarCurso` | criar a raiz privada do Curso |
 | `alterarCurso` | alterar plano, desenho, Fontes, Observações, auditoria, variantes, composição ou materialização |
-| `gerirPessoas` | ler perfil, atualizar nome ou avatar e gerir acesso direto ao Estudo |
 | `consultarComponentesDidaticos` | descobrir, inspecionar, validar, auditar e apresentar componentes |
+
+Perfil, avatar e acesso direto são operações exclusivas da aplicação
+autenticada. O e-mail-alvo de uma concessão não integra nenhum prompt ou
+payload MCP.
 
 `alterarCurso` aceita estas operações públicas:
 
@@ -163,9 +167,11 @@ conjunto ordenado de atribuições de um item do plano ou de uma Unidade. Cada
 vínculo declara relação e Âncoras exatas.
 
 PDFs ficam em armazenamento privado e são ligados a uma revisão de Fonte por
-impressão digital, tamanho e tipo. A preparação devolve um endereço temporário para envio
-direto; a confirmação transacional verifica o objeto antes de criar o vínculo.
-A leitura também usa endereço temporário e autorização corrente.
+impressão digital, tamanho e tipo. A preparação cria uma intenção privada de dez
+minutos para o ator, caminho e revisões exatos. O envio direto usa a sessão
+autenticada e consome a intenção; a confirmação transacional verifica o objeto
+antes de criar o vínculo. A leitura usa uma URL assinada de 60 segundos e uma
+URL já emitida continua válida até expirar.
 
 Uma exportação de proveniência reúne o alvo, as atribuições, as revisões das
 Fontes, as Âncoras e os metadados dos anexos. O arquivo não contém o PDF nem
@@ -194,6 +200,12 @@ Uma Observação preserva texto, alvo, revisão observada, origem, canal,
 classificação e estado. A leitura por MCP pode mostrar caixa de entrada, alvo ou
 detalhe. Criar uma Observação pela conversa exige alvo, síntese breve e
 confirmação humana.
+
+Caixa de entrada e alvo usam uma projeção fechada sem texto integral,
+`contributor.ref`, rótulo protegido, caminhos, links, horários exatos ou IDs internos. O detalhe
+e o contexto de auditoria com Observações selecionadas exigem a declaração
+`includeObservationText: true`; a resposta registra que o texto foi enviado ao
+cliente MCP conectado e continua omitindo as referências pessoais e internas.
 
 O ciclo de auditoria deriva o contexto de uma Unidade e registra uma rodada
 imutável. Achado, proposta de correção, aplicação, verificação e reversão são

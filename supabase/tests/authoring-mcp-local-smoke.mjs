@@ -9,6 +9,9 @@ const projectUrl = String(
 const accessToken = String(
   process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN || ""
 ).trim();
+const applicationAccessToken = String(
+  process.env.ARALEARN_APP_SESSION_TOKEN || ""
+).trim();
 const publishableKey = String(
   process.env.SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_ANON_KEY
@@ -81,7 +84,7 @@ const metadataResponse = await fetch(
 assert.equal(metadataResponse.status, 200);
 const metadata = await metadataResponse.json();
 assert.equal(metadata.resource, edgeUrl);
-assert.deepEqual(metadata.scopes_supported, ["openid"]);
+assert.deepEqual(metadata.scopes_supported, ["offline_access"]);
 assert.deepEqual(metadata.authorization_servers, [`${projectUrl}/auth/v1`]);
 
 const rejectedAnonymous = await fetch(edgeUrl, {
@@ -110,6 +113,15 @@ if (!accessToken) {
   );
 } else {
   assert(publishableKey, "O smoke autenticado exige a chave publicável local.");
+  assert(
+    applicationAccessToken,
+    "A leitura de Estudo exige a sessão normal provisionada para o mesmo usuário."
+  );
+  assert.notEqual(
+    accessToken,
+    applicationAccessToken,
+    "O bearer OAuth do MCP não pode ser reutilizado como sessão normal do aplicativo."
+  );
   assert.notEqual(
     accessToken,
     String(
@@ -157,7 +169,7 @@ if (!accessToken) {
       method: "POST",
       headers: {
         apikey: publishableKey,
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${applicationAccessToken}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(body)
@@ -181,7 +193,6 @@ if (!accessToken) {
     "lerCurso",
     "criarCurso",
     "alterarCurso",
-    "gerirPessoas",
     "consultarComponentesDidaticos"
   ]);
   assert.equal(
@@ -805,12 +816,15 @@ if (!accessToken) {
     sourceId,
     limit: 10
   });
-  assert.equal(sourceDetail.contract, "aralearn.course-sources.v1");
+  assert.equal(sourceDetail.contract, "aralearn.mcp-course-sources.v1");
   assert.equal(sourceDetail.items[0].anchors[0].anchorId, anchorId);
   assert.equal(
     sourceDetail.items[0].anchors[0].verificationExcerpt,
     "Trecho privado verificado pelo MCP local."
   );
+  assert.equal(Object.hasOwn(sourceDetail, "courseId"), false);
+  assert.equal(Object.hasOwn(sourceDetail.items[0], "actorId"), false);
+  assert.equal(Object.hasOwn(sourceDetail.items[0].anchors[0], "actorId"), false);
 
   const firstStudyUnitRow = compositionRows.find(
     ({ entityType, entityId }) => entityType === "study_unit"
@@ -877,6 +891,9 @@ if (!accessToken) {
   });
   assert.equal(attributedTarget.items[0].effective, true);
   assert.deepEqual(attributedTarget.items[0].sourceLinks, [sourceLink]);
+  assert.equal(Object.hasOwn(attributedTarget.items[0], "attributionId"), false);
+  assert.equal(Object.hasOwn(attributedTarget.items[0], "actorId"), false);
+  assert.equal(Object.hasOwn(attributedTarget.items[0], "targetHash"), false);
 
   const atomicStudyUnitRow = {
     ...firstStudyUnitRow,
@@ -1087,7 +1104,8 @@ if (!accessToken) {
   assert.equal(createdAnnotation.annotation.annotationId, annotationId);
   assert.equal(createdAnnotation.annotation.provenance.origin, "author");
   assert.equal(createdAnnotation.annotation.provenance.channel, "authoring_chat");
-  assert.equal(createdAnnotation.annotation.rawText, annotationCommand.rawText);
+  assert.equal(Object.hasOwn(createdAnnotation.annotation, "rawText"), false);
+  assert.equal(createdAnnotation.dataDisclosure.rawObservationTextIncluded, false);
   const replayedAnnotation = await tool("alterarCurso", {
     requestId: annotationRequestId,
     courseId: created.courseId,
@@ -1113,13 +1131,20 @@ if (!accessToken) {
   });
   assert.equal(
     annotationPage.contract,
-    "aralearn.course-anchored-annotation-page.v1"
+    "aralearn.mcp-anchored-annotation-page.v1"
   );
   assert.equal(annotationPage.summary.byChannel.authoring_chat, 1);
-  assert.equal(
-    annotationPage.items.find(({ annotationId: id }) => id === annotationId)?.rawText,
-    annotationCommand.rawText
+  const projectedAnnotation = annotationPage.items.find(
+    ({ annotationId: id }) => id === annotationId
   );
+  assert.equal(projectedAnnotation.briefSummary, annotationCommand.briefSummary);
+  assert.equal(Object.hasOwn(projectedAnnotation, "rawText"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.contributor, "ref"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.contributor, "label"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.target, "observedPath"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.target, "deepLink"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation, "deepLink"), false);
+  assert.equal(annotationPage.dataDisclosure.rawObservationTextIncluded, false);
 
   let auditCourseRevision = designChange.courseRevision;
   const auditContextPage = await tool("lerCurso", {
@@ -1130,6 +1155,7 @@ if (!accessToken) {
     mode: "context",
     targetStudyUnitId: "study-unit-mcp-smoke-1",
     annotationIds: [annotationId],
+    includeObservationText: true,
     limit: 1
   });
   assert.equal(
@@ -1352,6 +1378,7 @@ if (!accessToken) {
     mode: "context",
     targetStudyUnitId: "study-unit-mcp-smoke-1",
     annotationIds: [annotationId],
+    includeObservationText: true,
     limit: 1
   });
   assert.deepEqual(
@@ -1368,9 +1395,6 @@ if (!accessToken) {
     own.items.some(({ courseId }) => courseId === created.courseId),
     true
   );
-  const profile = await tool("gerirPessoas", { operation: "read_profile" });
-  assert.match(String(profile.userId || ""), /^[0-9a-f-]{36}$/iu);
-
   console.log(
     "Smoke MCP local: OAuth, Partes, retomada, Estudo, Fonte, observação e ciclo de auditoria aprovados."
   );

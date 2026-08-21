@@ -246,19 +246,38 @@ async function sha256Hex(bytes) {
   return [...digest].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-async function uploadSignedPdf(signedUrl, bytes) {
-  assert.match(String(signedUrl || ""), /^https?:\/\//u);
-  const form = new FormData();
-  form.append("cacheControl", "3600");
-  form.append("", new Blob([bytes], { type: "application/pdf" }), "source.pdf");
-  const response = await fetch(signedUrl, {
-    method: "PUT",
-    headers: { "x-upsert": "false" },
-    body: form,
+async function requestAuthenticatedPdfUpload(
+  storagePath,
+  bytes,
+  token,
+  mediaType = "application/pdf",
+) {
+  assert.match(storagePath, COURSE_SOURCE_PDF_PATH_PATTERN);
+  assert.match(String(token || ""), /^[^.]+\.[^.]+\.[^.]+$/u);
+  assert.equal(typeof mediaType, "string");
+  const response = await fetch(
+    `${projectUrl}/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}/${storagePath}`,
+    {
+    method: "POST",
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": mediaType,
+      "cache-control": "max-age=3600",
+      "x-upsert": "false",
+    },
+    body: bytes,
   });
-  const responsePayload = await payload(response);
-  assert(response.ok,
-    `upload assinado do PDF: HTTP ${response.status}: ${JSON.stringify(responsePayload)}`);
+  return { response, payload: await payload(response) };
+}
+
+async function uploadAuthenticatedPdf(storagePath, bytes, token) {
+  const result = await requestAuthenticatedPdfUpload(storagePath, bytes, token);
+  assert(
+    result.response.ok,
+    `upload autenticado do PDF: HTTP ${result.response.status}: ` +
+      `${JSON.stringify(result.payload)}`,
+  );
 }
 
 async function downloadPrivatePdf(storagePath, token) {
@@ -1334,7 +1353,13 @@ try {
     email: learnerEmail,
     confirmed: true,
   }, ownerToken);
-  assert.equal(variantGrant.data.changed, true);
+  assert.deepEqual(variantGrant.data, {
+    contract: "aralearn.course-access-grant-request.v1",
+    courseId: variantAId,
+    operation: "grant_access",
+    accepted: true,
+    idempotent: false,
+  });
   const sharedVariant = await rpc("get_course_v1", {
     p_course_id: variantAId,
   }, learnerToken);
@@ -1435,6 +1460,40 @@ try {
   }, learnerToken);
   assert.equal(itemForCourse(learnerBeforeGrant, courseId), null);
 
+  const opaqueGrantRequestId = crypto.randomUUID();
+  const opaqueMissingGrant = await courseAction("gerirPessoas", {
+    operation: "grant_access",
+    requestId: opaqueGrantRequestId,
+    courseId,
+    email: `missing-${suffix}@example.test`,
+    confirmed: true,
+  }, ownerToken);
+  assert.deepEqual(opaqueMissingGrant.data, {
+    contract: "aralearn.course-access-grant-request.v1",
+    courseId,
+    operation: "grant_access",
+    accepted: true,
+    idempotent: false,
+  });
+  const opaqueGrantReplay = await courseAction("gerirPessoas", {
+    operation: "grant_access",
+    requestId: opaqueGrantRequestId,
+    courseId,
+    email: learnerEmail,
+    confirmed: true,
+  }, ownerToken);
+  assert.deepEqual(opaqueGrantReplay.data, {
+    ...opaqueMissingGrant.data,
+    idempotent: true,
+  });
+  const learnerAfterOpaqueGrant = await rpc("list_courses_v1", {
+    p_query: null,
+    p_limit: 24,
+    p_before_updated_at: null,
+    p_before_id: null,
+  }, learnerToken);
+  assert.equal(itemForCourse(learnerAfterOpaqueGrant, courseId), null);
+
   const grant = await courseAction("gerirPessoas", {
     operation: "grant_access",
     requestId: crypto.randomUUID(),
@@ -1442,8 +1501,13 @@ try {
     email: learnerEmail,
     confirmed: true,
   }, ownerToken);
-  assert.equal(grant.data.changed, true);
-  assert.equal(grant.data.person.userId, learner.id);
+  assert.deepEqual(grant.data, {
+    contract: "aralearn.course-access-grant-request.v1",
+    courseId,
+    operation: "grant_access",
+    accepted: true,
+    idempotent: false,
+  });
 
   const ownerSeesLearnerProfile = await request(
     `/rest/v1/person_profiles?select=user_id,display_name&user_id=eq.${learner.id}`,
@@ -2500,11 +2564,37 @@ try {
   }, ownerToken, expectedStatus);
 
   let pdfCourseRevision = auditCourseRevision;
+  const exactIntentPdf = await pdfDescriptor(512, "exact-intent");
+  const preparedExactIntentPdf = await preparePdf(exactIntentPdf, pdfCourseRevision);
+  const wrongSizePdfUpload = await requestAuthenticatedPdfUpload(
+    preparedExactIntentPdf.data.attachment.storagePath,
+    minimalPdfBytes(513, "wrong-size"),
+    ownerToken,
+  );
+  assertDenied(
+    wrongSizePdfUpload,
+    "intent de PDF rejeita tamanho diferente do declarado",
+  );
+  const wrongMediaTypePdfUpload = await requestAuthenticatedPdfUpload(
+    preparedExactIntentPdf.data.attachment.storagePath,
+    exactIntentPdf.bytes,
+    ownerToken,
+    "application/octet-stream",
+  );
+  assertDenied(
+    wrongMediaTypePdfUpload,
+    "intent de PDF rejeita tipo diferente do declarado",
+  );
+
   const declaredPdf = await pdfDescriptor(512, "declared");
   const tamperedPdf = await pdfDescriptor(512, "tampered");
   const preparedTamperedPdf = await preparePdf(declaredPdf, pdfCourseRevision);
   uploadedPdfPaths.push(preparedTamperedPdf.data.attachment.storagePath);
-  await uploadSignedPdf(preparedTamperedPdf.data.signedUrl, tamperedPdf.bytes);
+  await uploadAuthenticatedPdf(
+    preparedTamperedPdf.data.attachment.storagePath,
+    tamperedPdf.bytes,
+    ownerToken,
+  );
   const rejectedTamperedPdf = await attachPdf(
     preparedTamperedPdf.data,
     pdfCourseRevision,
@@ -2522,7 +2612,11 @@ try {
   };
   const preparedInvalidHeaderPdf = await preparePdf(invalidHeaderPdf, pdfCourseRevision);
   uploadedPdfPaths.push(preparedInvalidHeaderPdf.data.attachment.storagePath);
-  await uploadSignedPdf(preparedInvalidHeaderPdf.data.signedUrl, invalidHeaderPdf.bytes);
+  await uploadAuthenticatedPdf(
+    preparedInvalidHeaderPdf.data.attachment.storagePath,
+    invalidHeaderPdf.bytes,
+    ownerToken,
+  );
   const rejectedInvalidHeaderPdf = await attachPdf(
     preparedInvalidHeaderPdf.data,
     pdfCourseRevision,
@@ -2544,8 +2638,26 @@ try {
     maxUniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
   });
 
+  const pendingAccountDeletionPdf = await pdfDescriptor(512, "pending-account-delete");
+  const preparedPendingAccountDeletionPdf = await preparePdf(
+    pendingAccountDeletionPdf,
+    pdfCourseRevision,
+  );
+  assert.equal(
+    preparedPendingAccountDeletionPdf.data.contract,
+    "aralearn.course-source-attachment-access.v2",
+  );
+  assert.equal(preparedPendingAccountDeletionPdf.data.uploadRequired, true);
+  assert.equal(preparedPendingAccountDeletionPdf.data.signedUrl, null);
+  assert.equal(preparedPendingAccountDeletionPdf.data.expiresAt, null);
+  uploadedPdfPaths.push(preparedPendingAccountDeletionPdf.data.attachment.storagePath);
+
   const primaryPdf = await pdfDescriptor(512, "primary");
   const preparedPrimaryPdf = await preparePdf(primaryPdf, pdfCourseRevision);
+  assert.equal(
+    preparedPrimaryPdf.data.contract,
+    "aralearn.course-source-attachment-access.v2",
+  );
   assert.equal(preparedPrimaryPdf.data.operation, "prepare_upload");
   assert.equal(preparedPrimaryPdf.data.storageOriginCourseId, courseId);
   assert.equal(preparedPrimaryPdf.data.uploadRequired, true);
@@ -2556,8 +2668,14 @@ try {
     mediaType: primaryPdf.mediaType,
     storagePath: `${courseId}/${primaryPdf.contentHash}.pdf`,
   });
+  assert.equal(preparedPrimaryPdf.data.signedUrl, null);
+  assert.equal(preparedPrimaryPdf.data.expiresAt, null);
   uploadedPdfPaths.push(preparedPrimaryPdf.data.attachment.storagePath);
-  await uploadSignedPdf(preparedPrimaryPdf.data.signedUrl, primaryPdf.bytes);
+  await uploadAuthenticatedPdf(
+    preparedPrimaryPdf.data.attachment.storagePath,
+    primaryPdf.bytes,
+    ownerToken,
+  );
   const attachedPrimaryPdf = await attachPdf(preparedPrimaryPdf.data, pdfCourseRevision);
   assert.equal(attachedPrimaryPdf.data.changed, true);
   assert.deepEqual(attachedPrimaryPdf.data.change, {
@@ -2589,6 +2707,10 @@ try {
     sourceRevision: 1,
     contentHash: primaryPdf.contentHash,
   }, ownerToken);
+  assert.equal(
+    authorizedDownload.data.contract,
+    "aralearn.course-source-attachment-access.v1",
+  );
   assert.equal(authorizedDownload.data.storageOriginCourseId, courseId);
   assert.equal(authorizedDownload.data.alreadyLinked, true);
   const signedDownloadResponse = await fetch(authorizedDownload.data.signedUrl);
@@ -2630,17 +2752,24 @@ try {
   );
   assertDenied(deniedAttachmentAccess, "terceiro sem acesso não obtém URL do PDF");
 
+  const unlinkedReservedPdfBytes = exactIntentPdf.byteSize + declaredPdf.byteSize +
+    invalidHeaderPdf.byteSize + pendingAccountDeletionPdf.byteSize;
+  const reservedPdfBytesBeforeQuotaFill = unlinkedReservedPdfBytes + primaryPdf.byteSize;
   for (const [index, byteSize] of [
     COURSE_SOURCE_PDF_MAX_BYTES,
     COURSE_SOURCE_PDF_MAX_BYTES,
     COURSE_SOURCE_PDF_MAX_BYTES,
-    4 * 1024 * 1024 - primaryPdf.byteSize,
+    4 * 1024 * 1024 - reservedPdfBytesBeforeQuotaFill,
   ].entries()) {
     const descriptor = await pdfDescriptor(byteSize, `quota-${index + 1}`);
     const prepared = await preparePdf(descriptor, pdfCourseRevision);
     assert.equal(prepared.data.uploadRequired, true);
     uploadedPdfPaths.push(prepared.data.attachment.storagePath);
-    await uploadSignedPdf(prepared.data.signedUrl, descriptor.bytes);
+    await uploadAuthenticatedPdf(
+      prepared.data.attachment.storagePath,
+      descriptor.bytes,
+      ownerToken,
+    );
     const attached = await attachPdf(prepared.data, pdfCourseRevision);
     assert.equal(attached.data.changed, true);
     pdfCourseRevision = attached.data.courseRevision;
@@ -2653,7 +2782,7 @@ try {
     limit: 10,
   }, ownerToken);
   assert.deepEqual(fullPdfCatalog.data.pdfStorage, {
-    uniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
+    uniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES - unlinkedReservedPdfBytes,
     maxUniqueBytes: COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES,
   });
   const fullPdfDetail = await courseAction("lerCurso", {
@@ -2740,6 +2869,28 @@ try {
     "A sessão proprietária conseguiu apagar diretamente um PDF vinculado.",
   );
 
+  const learnerLogout = await request("/auth/v1/logout?scope=local", {
+    method: "POST",
+    token: learnerToken,
+  });
+  assert.equal(
+    learnerLogout.response.status,
+    204,
+    failureMessage("revogar sessão da pessoa estudante", learnerLogout),
+  );
+  const staleSessionAccountDeletion = await request(
+    "/rest/v1/rpc/delete_my_account_v1",
+    {
+      method: "POST",
+      token: learnerToken,
+      body: { p_confirmation: "EXCLUIR MINHA CONTA" },
+    },
+  );
+  assertDenied(
+    staleSessionAccountDeletion,
+    "JWT de sessão revogada não exclui conta ainda existente",
+  );
+
   const forcedMissingPdf = await request(
     `/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}`,
     {
@@ -2800,6 +2951,17 @@ try {
     `criar avatar para exclusão integral: HTTP ${avatarUpload.status}: ${JSON.stringify(avatarUploadPayload)}`,
   );
 
+  const accountDeletionWithStorage = await request(
+    "/rest/v1/rpc/delete_my_account_v1",
+    {
+      method: "POST",
+      token: ownerToken,
+      body: { p_confirmation: "EXCLUIR MINHA CONTA" },
+    },
+  );
+  assert.equal(accountDeletionWithStorage.response.ok, false);
+  assert.equal(accountDeletionWithStorage.payload?.code, "AR001");
+
   const deletedAccount = await courseAction("excluirMinhaConta", {
     confirmation: "EXCLUIR MINHA CONTA",
   }, ownerToken);
@@ -2807,6 +2969,39 @@ try {
     contract: "aralearn.account-deletion.v1",
     status: "deleted",
   });
+
+  const stalePdfUpload = await requestAuthenticatedPdfUpload(
+    preparedPendingAccountDeletionPdf.data.attachment.storagePath,
+    pendingAccountDeletionPdf.bytes,
+    ownerToken,
+  );
+  assertDenied(
+    stalePdfUpload,
+    "JWT residual não grava PDF depois da exclusão da conta",
+  );
+  const staleAvatarPath = `${owner.id}/${crypto.randomUUID()}.webp`;
+  const staleAvatarResponse = await fetch(
+    `${projectUrl}/storage/v1/object/${PERSON_AVATAR_BUCKET}/${staleAvatarPath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${ownerToken}`,
+        "Content-Type": "image/webp",
+        "x-upsert": "false",
+      },
+      body: new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0x57, 0x45, 0x42, 0x50]),
+    },
+  );
+  const staleAvatarUpload = {
+    response: staleAvatarResponse,
+    payload: await payload(staleAvatarResponse),
+  };
+  assertDenied(
+    staleAvatarUpload,
+    "JWT residual não grava avatar depois da exclusão da conta",
+  );
+
   const repeatedAccountDeletion = await courseAction("excluirMinhaConta", {
     confirmation: "EXCLUIR MINHA CONTA",
   }, ownerToken);

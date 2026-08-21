@@ -1,15 +1,12 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const SCOPE_LABELS = Object.freeze({
-  openid: "Confirmar sua identidade",
-  email: "Ler seu endereço de e-mail",
-  profile: "Ler as informações básicas do perfil",
-  phone: "Ler seu número de telefone"
+  offline_access: "Manter a conexão ativa até você revogá-la"
 });
 export const OAUTH_AUTHORING_PERMISSION_LABELS = Object.freeze([
   "Ler seus Cursos, planejamento e conteúdo na Autoria",
   "Criar Cursos privados e alterar metadados, planejamento e conteúdo",
-  "Ler e atualizar seu perfil e gerir acesso direto para Estudo após confirmação",
+  "Consultar Observações; incluir o texto somente quando você pedir explicitamente",
   "Consultar contratos e validar os componentes didáticos instalados"
 ]);
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
@@ -47,8 +44,13 @@ export function redirectToOAuthClient(rawUrl, locationValue = globalThis.locatio
   return target;
 }
 
-function scopeItems(scope) {
-  return [...new Set(text(scope).split(/\s+/u).filter(Boolean))];
+export function assertOAuthAuthoringScope(scope) {
+  if (text(scope) !== "offline_access") {
+    throw new Error(
+      "A conexão pediu permissões incompatíveis com a autoria protegida do AraLearn."
+    );
+  }
+  return Object.freeze(["offline_access"]);
 }
 
 function decisionButton({ action, icon, label, primary = false }) {
@@ -118,12 +120,13 @@ export async function renderOAuthAuthorizationConsent({
         || !details?.client || typeof details.client !== "object") {
       throw new Error("O servidor OAuth devolveu uma solicitação incompatível.");
     }
+    assertOAuthAuthoringScope(details.scope);
   } catch (error) {
     renderFailure(root, error);
     return { redirected: false, error };
   }
 
-  const scopes = scopeItems(details.scope);
+  const scopes = assertOAuthAuthoringScope(details.scope);
   root.innerHTML = `
     <main class="auth-shell">
       <section class="auth-card">
@@ -139,7 +142,7 @@ export async function renderOAuthAuthorizationConsent({
               <dd data-oauth-user-email></dd>
             </div>
             <div>
-              <dt>Identidade solicitada</dt>
+              <dt>Continuidade solicitada</dt>
               <dd><ul data-oauth-scopes></ul></dd>
             </div>
             <div>
@@ -148,6 +151,8 @@ export async function renderOAuthAuthorizationConsent({
             </div>
           </dl>
           <p class="auth-copy oauth-consent-note">
+            A credencial vale somente para a autoria conectada: não permite alterar sua conta,
+            consultar a API de dados nem usar o armazenamento diretamente.
             O aplicativo externo não recebe sua senha nem credenciais administrativas.
             Você pode negar a solicitação sem alterar seus cursos.
           </p>
@@ -177,11 +182,6 @@ export async function renderOAuthAuthorizationConsent({
   for (const scope of scopes) {
     const item = root.ownerDocument.createElement("li");
     item.textContent = SCOPE_LABELS[scope] || scope;
-    scopeList.append(item);
-  }
-  if (scopes.length === 0) {
-    const item = root.ownerDocument.createElement("li");
-    item.textContent = "Confirmar a conexão solicitada";
     scopeList.append(item);
   }
   const permissionList = root.querySelector("[data-oauth-authoring-permissions]");

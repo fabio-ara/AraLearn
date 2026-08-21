@@ -49,7 +49,7 @@ const ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 const MCP_OAUTH_SECURITY_SCHEMES = Object.freeze([
-  Object.freeze({ type: "oauth2", scopes: Object.freeze(["openid"]) })
+  Object.freeze({ type: "oauth2", scopes: Object.freeze(["offline_access"]) })
 ]);
 
 const objectSchema = (properties, required = Object.keys(properties)) => ({
@@ -1009,13 +1009,6 @@ const courseChangeAnnotations = Object.freeze({
   openWorldHint: false
 });
 
-const peopleAnnotations = Object.freeze({
-  readOnlyHint: false,
-  destructiveHint: true,
-  idempotentHint: true,
-  openWorldHint: false
-});
-
 export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "listarCursos",
@@ -1032,7 +1025,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos. Consulte anchored_annotations para manifestações humanas, instructional_plan para Partes, course_design para parâmetros, course_sources para proveniência, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos fora das projeções de Observações. Consulte anchored_annotations para manifestações humanas: inbox e target omitem o texto integral, referências e rótulos pessoais, caminhos e links internos; detail exige includeObservationText=true e envia o texto da Observação ao cliente MCP conectado para uma triagem autoral específica, mantendo as demais omissões. Use course_sources para proveniência sem identidades pessoais nem caminhos do Storage. O download de um PDF exige includeAttachmentDownloadUrl=true e envia ao cliente MCP conectado uma credencial temporária de 60 segundos. Use instructional_plan para Partes, course_design para parâmetros, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
@@ -1062,7 +1055,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         "catalog", "source", "target", "inbox", "detail", "context", "findings", "runs"
       ] }),
       sourceId: legacySourceIdSchema,
-      attachmentOperation: stringSchema({ enum: ["prepare_upload", "download"] }),
+      attachmentOperation: stringSchema({ enum: ["download"] }),
       sourceRevision: { type: "integer", minimum: 1 },
       contentHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
       byteSize: { type: "integer", minimum: 1, maximum: 20 * 1024 * 1024 },
@@ -1100,6 +1093,12 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       },
       includeDescendants: { type: "boolean" },
       annotationId: uuidSchema,
+      includeObservationText: { type: "boolean", const: true },
+      includeAttachmentDownloadUrl: {
+        type: "boolean",
+        const: true,
+        description: "Confirma o envio ao cliente MCP conectado de uma URL assinada de download, válida por 60 segundos e utilizável como credencial temporária."
+      },
       targetStudyUnitId: anchoredAnnotationOpaqueIdSchema,
       findingId: uuidSchema,
       correctionId: uuidSchema,
@@ -1113,7 +1112,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         items: stringSchema({ enum: [...COURSE_AUDIT_SEVERITIES] })
       },
       annotationIds: {
-        type: "array", maxItems: 12, uniqueItems: true, items: uuidSchema
+        type: "array", minItems: 1, maxItems: 12, uniqueItems: true, items: uuidSchema
       },
       comparisonSetId: uuidSchema,
       datasets: {
@@ -1247,7 +1246,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         then: {
           required: [
             "expectedRevision", "attachmentOperation", "sourceId",
-            "sourceRevision", "contentHash"
+            "sourceRevision", "contentHash", "includeAttachmentDownloadUrl"
           ],
           ...forbidFields([
             "authoringPartId", "materializationId", "limit", "cursor", "scope",
@@ -1258,17 +1257,11 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             "findingId", "correctionId", "auditRunId", "dimensions", "severities",
             "annotationIds", "comparisonSetId"
           ]),
-          allOf: [{
-            if: {
-              properties: { attachmentOperation: { const: "prepare_upload" } },
-              required: ["attachmentOperation"]
-            },
-            then: { required: ["byteSize", "mediaType"] },
-            else: forbidFields(["byteSize", "mediaType"])
-          }]
+          ...forbidFields(["byteSize", "mediaType"])
         },
         else: forbidFields([
-          "attachmentOperation", "sourceRevision", "contentHash", "byteSize", "mediaType"
+          "attachmentOperation", "sourceRevision", "contentHash", "byteSize", "mediaType",
+          "includeAttachmentDownloadUrl"
         ])
       }, {
         if: {
@@ -1311,10 +1304,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           }, {
             if: { properties: { mode: { const: "detail" } }, required: ["mode"] },
             then: {
-              required: ["annotationId"],
+              required: ["annotationId", "includeObservationText"],
               ...forbidFields(["targetKind", "targetId", "includeDescendants"])
             },
-            else: forbidFields(["annotationId"])
+            else: forbidFields(["annotationId", "includeObservationText"])
           }, {
             if: { required: ["targetKind"] },
             then: { required: ["targetId"] }
@@ -1378,25 +1371,31 @@ export const COURSE_MCP_TOOLS = Object.freeze([
               ...forbidFields([
                 "findingId", "correctionId", "auditRunId", "states", "dimensions", "severities",
                 "cursor"
-              ])
+              ]),
+              allOf: [{
+                if: { required: ["annotationIds"] },
+                then: { required: ["includeObservationText"] },
+                else: forbidFields(["includeObservationText"])
+              }]
             }
           }, {
             if: { properties: { mode: { const: "findings" } }, required: ["mode"] },
             then: { ...forbidFields([
-              "findingId", "correctionId", "auditRunId", "annotationIds"
+              "findingId", "correctionId", "auditRunId", "annotationIds",
+              "includeObservationText"
             ]) }
           }, {
             if: { properties: { mode: { const: "runs" } }, required: ["mode"] },
             then: { ...forbidFields([
               "findingId", "correctionId", "auditRunId", "states", "dimensions",
-              "severities", "annotationIds"
+              "severities", "annotationIds", "includeObservationText"
             ]) }
           }, {
             if: { properties: { mode: { const: "detail" } }, required: ["mode"] },
             then: {
               ...forbidFields([
                 "targetStudyUnitId", "states", "dimensions", "severities",
-                "annotationIds", "cursor"
+                "annotationIds", "cursor", "includeObservationText"
               ]),
               oneOf: [{
                 required: ["findingId"],
@@ -1412,6 +1411,12 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           "auditSetVersion", "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
           "dimensions", "severities", "annotationIds"
         ])
+      }, {
+        if: {
+          properties: { view: { enum: ["anchored_annotations", "audit_cycle"] } },
+          required: ["view"]
+        },
+        else: forbidFields(["includeObservationText"])
       }, {
         if: {
           properties: { view: { const: "research" } },
@@ -1726,29 +1731,6 @@ export const COURSE_MCP_TOOLS = Object.freeze([
     annotations: courseChangeAnnotations
   }),
   Object.freeze({
-    name: "gerirPessoas",
-    title: "Gerir perfil e acesso ao Curso",
-    description: "Lê ou atualiza o perfil humano mínimo e lista, concede ou revoga acesso direto para Estudo. Não pesquisa diretórios. Conceder exige o e-mail exato; conceder e revogar exigem confirmed=true depois de confirmação humana clara.",
-    inputSchema: objectSchema({
-      operation: stringSchema({
-        enum: ["read_profile", "update_profile", "list_access", "grant_access", "revoke_access"]
-      }),
-      requestId: requestIdSchema,
-      courseId: uuidSchema,
-      email: stringSchema({ minLength: 3, maxLength: 254 }),
-      userId: uuidSchema,
-      displayName: stringSchema({ minLength: 1, maxLength: 120 }),
-      avatarObjectKey: {
-        anyOf: [stringSchema({
-          pattern: "^[0-9a-f-]{36}/[0-9a-f-]{36}\\.(jpg|png|webp)$"
-        }), { type: "null" }]
-      },
-      confirmed: { type: "boolean", const: true }
-    }, ["operation"]),
-    outputSchema,
-    annotations: peopleAnnotations
-  }),
-  Object.freeze({
     name: "consultarComponentesDidaticos",
     title: "Consultar componentes didáticos",
     description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto.",
@@ -1806,8 +1788,9 @@ export const COURSE_MCP_TOOLS = Object.freeze([
 ]);
 
 const BY_NAME = new Map(COURSE_MCP_TOOLS.map((definition) => [definition.name, definition]));
-const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso", "gerirPessoas"]);
+const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso"]);
 export const COURSE_APPLICATION_ONLY_TOOLS = Object.freeze([
+  Object.freeze({ name: "gerirPessoas" }),
   Object.freeze({ name: "criarCopiaPessoalDoCurso" })
 ]);
 const APPLICATION_BY_NAME = new Map([
@@ -2010,7 +1993,11 @@ function mapList(raw) {
   return route("GET", `/v1/courses${searchParams({ query, limit, beforeUpdatedAt, beforeId })}`);
 }
 
-function mapRead(raw) {
+function mapRead(raw, {
+  requireObservationTextDisclosure = true,
+  requireAttachmentDownloadUrlDisclosure = true,
+  allowAttachmentUploadPreparation = false
+} = {}) {
   exactFields(raw, new Set([
     "courseId", "view", "authoringPartId", "materializationId",
     "expectedRevision", "limit", "cursor", "scope", "anchorStudyUnitId",
@@ -2019,6 +2006,7 @@ function mapRead(raw) {
     "includeUncategorized", "subjectIds", "includeDescendants", "annotationId",
     "auditSetVersion", "targetStudyUnitId", "findingId", "correctionId", "auditRunId",
     "dimensions", "severities", "annotationIds", "comparisonSetId",
+    "includeObservationText", "includeAttachmentDownloadUrl",
     "attachmentOperation", "sourceRevision", "contentHash", "byteSize", "mediaType",
     "datasets", "from", "to"
   ]));
@@ -2067,12 +2055,27 @@ function mapRead(raw) {
   if (view !== "variant_comparison" && raw.comparisonSetId != null) {
     fail("invalid_tool_argument", "comparisonSetId pertence somente às variantes.");
   }
+  if (!["anchored_annotations", "audit_cycle"].includes(view) &&
+      raw.includeObservationText != null) {
+    fail(
+      "invalid_tool_argument",
+      "includeObservationText pertence somente às leituras de Observações.",
+      { field: "includeObservationText" }
+    );
+  }
   const attachmentFields = [
     raw.attachmentOperation, raw.sourceRevision, raw.contentHash, raw.byteSize,
     raw.mediaType
   ];
   if (view !== "course_source_attachment" && attachmentFields.some((value) => value != null)) {
     fail("invalid_tool_argument", "A leitura recebeu campos de anexo incompatíveis.");
+  }
+  if (view !== "course_source_attachment" && raw.includeAttachmentDownloadUrl != null) {
+    fail(
+      "invalid_tool_argument",
+      "includeAttachmentDownloadUrl pertence somente ao download de um anexo PDF.",
+      { field: "includeAttachmentDownloadUrl" }
+    );
   }
   if (view === "research") {
     if (raw.authoringPartId != null || raw.materializationId != null ||
@@ -2146,11 +2149,27 @@ function mapRead(raw) {
         !hierarchyPresent && raw.includeDescendants != null) {
       fail("invalid_tool_argument", "O filtro hierárquico de observações está incompleto.");
     }
+    const mode = raw.mode == null
+      ? "inbox"
+      : requiredText(raw.mode, "mode", { maximum: 16 });
+    if (requireObservationTextDisclosure && mode === "detail" &&
+        raw.includeObservationText !== true) {
+      fail(
+        "observation_text_disclosure_required",
+        "A leitura de detalhe exige declarar includeObservationText=true porque o texto da Observação será enviado ao cliente MCP conectado.",
+        { field: "includeObservationText" }
+      );
+    }
+    if (mode !== "detail" && raw.includeObservationText != null) {
+      fail(
+        "invalid_tool_argument",
+        "includeObservationText pertence somente à leitura de detalhe de uma Observação.",
+        { field: "includeObservationText" }
+      );
+    }
     const query = normalizeCourseAnchoredAnnotationDomain(() =>
       normalizeCourseAnchoredAnnotationQuery({
-        mode: raw.mode == null
-          ? "inbox"
-          : requiredText(raw.mode, "mode", { maximum: 16 }),
+        mode,
         origins: raw.origins ?? [],
         channels: raw.channels ?? [],
         states: raw.states ?? [],
@@ -2209,14 +2228,32 @@ function mapRead(raw) {
         annotationFields.some((value) => value != null)) {
       fail("invalid_tool_argument", "A leitura de auditoria recebeu campos incompatíveis.");
     }
+    const mode = raw.mode == null
+      ? "findings"
+      : requiredText(raw.mode, "mode", { maximum: 16 });
+    const annotationIds = raw.annotationIds ?? [];
+    if (requireObservationTextDisclosure && mode === "context" &&
+        annotationIds.length > 0 && raw.includeObservationText !== true) {
+      fail(
+        "observation_text_disclosure_required",
+        "O contexto de auditoria com Observações exige declarar includeObservationText=true porque os textos serão enviados ao cliente MCP conectado.",
+        { field: "includeObservationText" }
+      );
+    }
+    if ((mode !== "context" || annotationIds.length === 0) &&
+        raw.includeObservationText != null) {
+      fail(
+        "invalid_tool_argument",
+        "includeObservationText pertence somente ao contexto de auditoria com Observações selecionadas.",
+        { field: "includeObservationText" }
+      );
+    }
     const options = normalizeCourseAuditCycleDomain(() =>
       normalizeCourseAuditCycleReadOptions({
         expectedCourseRevision: raw.expectedRevision,
         auditSetVersion: raw.auditSetVersion ?? null,
         query: {
-          mode: raw.mode == null
-            ? "findings"
-            : requiredText(raw.mode, "mode", { maximum: 16 }),
+          mode,
           targetStudyUnitId: raw.targetStudyUnitId ?? null,
           findingId: raw.findingId ?? null,
           correctionId: raw.correctionId ?? null,
@@ -2224,7 +2261,7 @@ function mapRead(raw) {
           states: raw.states ?? [],
           dimensions: raw.dimensions ?? [],
           severities: raw.severities ?? [],
-          annotationIds: raw.annotationIds ?? []
+          annotationIds
         },
         cursor: raw.cursor ?? null,
         limit: raw.limit ?? 12
@@ -2301,6 +2338,13 @@ function mapRead(raw) {
         field: "attachmentOperation"
       });
     }
+    if (operation === "prepare_upload" && !allowAttachmentUploadPreparation) {
+      fail(
+        "application_session_required",
+        "O envio de PDF exige a sessão autenticada da aplicação.",
+        { field: "attachmentOperation" }
+      );
+    }
     const contentHash = requiredText(raw.contentHash, "contentHash", { maximum: 64 });
     if (!/^[a-f0-9]{64}$/u.test(contentHash)) {
       fail("invalid_tool_argument", "contentHash é inválido.", { field: "contentHash" });
@@ -2314,6 +2358,25 @@ function mapRead(raw) {
     if (operation === "prepare_upload" && mediaType !== "application/pdf" ||
         operation === "download" && (raw.byteSize != null || raw.mediaType != null)) {
       fail("invalid_tool_argument", "Os metadados do anexo são inválidos.");
+    }
+    if (operation === "download" && requireAttachmentDownloadUrlDisclosure &&
+        raw.includeAttachmentDownloadUrl !== true) {
+      fail(
+        "attachment_download_url_disclosure_required",
+        "O download exige declarar includeAttachmentDownloadUrl=true porque uma URL assinada, válida por 60 segundos, será enviada ao cliente MCP conectado.",
+        { field: "includeAttachmentDownloadUrl" }
+      );
+    }
+    const attachmentDownloadDisclosureSupplied =
+      raw.includeAttachmentDownloadUrl != null;
+    if (attachmentDownloadDisclosureSupplied && (
+      operation !== "download" || !requireAttachmentDownloadUrlDisclosure
+    )) {
+      fail(
+        "invalid_tool_argument",
+        "includeAttachmentDownloadUrl pertence somente ao download solicitado pela superfície MCP.",
+        { field: "includeAttachmentDownloadUrl" }
+      );
     }
     return route("GET", `/v1/courses/${courseId}/source-attachments/access${searchParams({
       expectedRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
@@ -3055,14 +3118,21 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
   if (name === "lerCurso") return mapRead(raw);
   if (name === "criarCurso") return mapCreate(raw);
   if (name === "alterarCurso") return mapChange(raw);
-  if (name === "gerirPessoas") return mapPeople(raw);
   if (name === "consultarComponentesDidaticos") return mapResourceLibrary(raw);
   throw new AuthoringApiError(404, "unknown_tool", "Ferramenta de autoria inexistente.");
 }
 
 export function mapAuthoringApplicationToolCall(name, rawArguments) {
   const raw = object(rawArguments ?? {}, "arguments");
+  if (name === "gerirPessoas") return mapPeople(raw);
   if (name === "criarCopiaPessoalDoCurso") return mapPersonalCourseCopy(raw);
+  if (name === "lerCurso") {
+    return mapRead(raw, {
+      requireObservationTextDisclosure: false,
+      requireAttachmentDownloadUrlDisclosure: false,
+      allowAttachmentUploadPreparation: true
+    });
+  }
   if (name === "alterarCurso") {
     return mapChange(raw, {
       requireAnnotationConfirmation: false,

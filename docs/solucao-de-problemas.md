@@ -31,6 +31,14 @@ Essa limpeza remove a cópia local e operações ainda não sincronizadas. Não 
 se houver progresso, marcas ou observações feitas sem conexão que precisam ser
 preservados.
 
+Em **Conta e aparência**, o logout comum preserva Cursos offline, estado pessoal
+e filas ou rascunhos que já estejam gravados no dispositivo. A confirmação
+avisa que uma alteração ainda aberta somente no editor será perdida. **Remover
+dados deste dispositivo** mantém a sessão e apaga somente o namespace local da
+conta ativa; **Sair e remover dados deste dispositivo** faz as duas operações.
+Nenhuma delas apaga dados já enviados ao servidor, e dados locais de outra conta
+no mesmo navegador permanecem.
+
 ## Um Curso não aparece
 
 Em **Estudo**, devem aparecer Cursos próprios e com acesso direto. Em
@@ -221,10 +229,21 @@ máximo 20 MiB. O envio só termina depois que o objeto no Storage privado é
 confirmado pela API de Cursos. Se a rede falhar após o envio, use **Confirmar o
 mesmo PDF** em vez de escolher outro arquivo.
 
+Na revisão candidata, o preparo cria uma intenção de dez minutos e o envio usa
+a sessão autenticada. Se a sessão foi encerrada, expirou ou foi revogada,
+autentique-se e prepare outra intenção; não tente reutilizar endereço de upload.
+
 Para abrir um anexo, releia a Fonte e solicite um novo endereço assinado. O
-endereço expira e não deve ser guardado como identidade do arquivo. Confira
+endereço expira em 60 segundos, não pode ser revogado individualmente durante
+essa janela e não deve ser guardado como identidade do arquivo. Confira
 também a cota de 64 MiB de conteúdo único por Curso e o limite de oito anexos
 por Fonte.
+
+Durante o corte candidato, o Android 0.0.26 ainda baixa pelo contrato v1, mas
+não consegue enviar: `prepare_upload` devolve v2 autenticado e o cliente antigo
+falha fechado. Atualize o aplicativo para enviar novos PDFs. O download v1 não
+é escolhido por `User-Agent` e só será removido depois de uma decisão explícita
+de encerrar o suporte ao 0.0.26.
 
 ## O Estudo não mostra uma Fonte ou um link
 
@@ -238,12 +257,19 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. verifique a descoberta das seis ferramentas;
+3. verifique a descoberta das ferramentas: seis no ambiente hospedado 0.0.26 e
+   cinco depois da promoção candidata;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;
 6. confira se cliente e interface apontam para o mesmo ambiente.
 
 Uma concessão de acesso permite Estudo, não Autoria remota.
+
+Depois da promoção candidata, todas as conexões MCP anteriores precisam repetir
+o consentimento com o escopo `offline_access`. O fluxo não emite `id_token`. Se
+o bearer funcionar no MCP, mas for recusado diretamente no GoTrue, na API de
+dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
+credencial exclusiva do recurso MCP, não uma sessão da aplicação.
 
 ## A alteração do MCP não aparece na interface
 
@@ -277,7 +303,10 @@ diferença entre Variantes não demonstra efeito de aprendizagem.
 
 Somente o proprietário pode gerir **Pessoas**. O destinatário precisa ter uma
 conta localizada pelo e-mail exato, e a confirmação explícita é obrigatória.
-O serviço não pesquisa diretório nem concede papel de edição.
+O serviço não pesquisa diretório nem concede papel de edição. A resposta é
+genérica e não confirma se a conta existe ou se a relação mudou. Depois de dez
+tentativas em dez minutos, aguarde a janela seguinte; repetir endereços para
+descobrir cadastros não é um uso apoiado.
 
 ## A foto de perfil não é aceita
 
@@ -292,6 +321,15 @@ A exclusão exige a frase exata `EXCLUIR MINHA CONTA`. O aplicativo envia uma
 próprios. O banco recusa a exclusão enquanto algum desses objetos permanecer.
 Tente novamente com conexão estável. Não use exclusão como forma de sair: ela
 remove Cursos próprios e dados relacionados de modo irreversível.
+
+Na conclusão candidata, o banco revoga todas as sessões antes de remover o
+usuário do Auth. Um download de PDF já assinado ainda pode funcionar por até 60
+segundos. O inventário posterior apenas classifica possíveis objetos órfãos; a
+remoção exige outra decisão segura sobre vínculo, retenção e backup.
+
+Se a interface informar que a conta foi excluída, mas a limpeza local ficou
+bloqueada por outra aba, feche a outra instância e repita apenas a limpeza do
+dispositivo. A exclusão remota já é terminal e não deve ser enviada novamente.
 
 ## O desenvolvimento local não inicia
 

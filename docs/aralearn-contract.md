@@ -19,6 +19,12 @@ o mesmo documento de maneiras incompatíveis.
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
 
+A linha hospedada continua nos contratos da versão 0.0.26, em que o v1 de PDF
+ainda cobre upload e download por URL assinada. A coexistência v1/v2 da tabela,
+a projeção minimizada do MCP e a credencial OAuth confinada descritas abaixo
+pertencem à candidata 0.0.27 de privacidade e ainda não representam o ambiente
+publicado.
+
 O sistema separa responsabilidades de conteúdo, proveniência, observação e
 auditoria:
 
@@ -30,9 +36,14 @@ auditoria:
 | `aralearn.resource-library.v1` | descoberta, inspeção e validação do catálogo de pacotes |
 | `aralearn.course-sources.v1` | catálogo privado, revisões, Âncoras e atribuições de Fontes na Autoria |
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
-| `aralearn.course-source-attachment-access.v1` | autorização temporária de envio ou abertura de PDF privado de uma Fonte |
+| `aralearn.course-source-attachment-access.v1` | abertura temporária de PDF mantida somente para a leitura legada do Android 0.0.26 |
+| `aralearn.course-source-attachment-access.v2` | preparação de envio autenticado de PDF privado de uma Fonte |
+| `aralearn.mcp-course-sources.v1` | projeção autoral de Fontes sem identidades pessoais, resumo interno do alvo nem caminhos do Storage |
+| `aralearn.mcp-course-source-attachment-access.v1` | metadados do anexo e, somente após declaração explícita, URL assinada de 60 segundos para o cliente MCP |
+| `aralearn.course-access-grant-request.v1` | confirmação imediata e genérica de uma solicitação de acesso ao Estudo |
 | `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
 | `aralearn.course-anchored-annotation-page.v1`, `aralearn.course-anchored-annotation.v1` e `aralearn.course-anchored-annotation-change.v1` | página, item protegido e recibo de Anotações ancoradas |
+| `aralearn.mcp-anchored-annotation-page.v1` e `aralearn.mcp-anchored-annotation-change.v1` | projeção minimizada para o cliente MCP, sem referência protegida, caminhos ou texto comum |
 | `aralearn.course-audit-context.v1` | contexto focal corrente que pode ser auditado |
 | `aralearn.course-instructional-audit-run.v1`, `aralearn.course-audit-finding.v1` e `aralearn.course-authoring-correction.v1` | rodada imutável, achado versionado e ponto de controle da correção |
 | `aralearn.course-audit-cycle-page.v1` e `aralearn.course-audit-cycle-change.v1` | leitura paginada/detalhada e recibo estrito do ciclo |
@@ -194,6 +205,83 @@ transação das entidades. Uma etapa de materialização só pode aplicar Fontes
 Âncoras seladas a partir dos itens do plano e confirma conteúdo, atribuições,
 evento e recibo atomicamente.
 
+Na revisão candidata, `prepare_upload` emite somente
+`aralearn.course-source-attachment-access.v2`. A resposta devolve o caminho e
+uma intenção privada de dez minutos, com `signedUrl` e `expiresAt` nulos. O
+navegador faz POST autenticado no bucket; a política exige sessão viva e
+consome a intenção na inserção. O backend não emite v1 para essa operação e não
+restaura a URL assinada de upload. Isso não recolhe uma URL v1 já emitida pela
+versão 0.0.26: ela continua independente da sessão até expirar, por no máximo
+duas horas, e integra a janela obrigatória do corte.
+
+`download` emite temporariamente
+`aralearn.course-source-attachment-access.v1`, com URL assinada de 60 segundos,
+para que o Android 0.0.26 já instalado continue abrindo anexos. O normalizador
+aceita v1 somente quando a operação é `download`; o upload do cliente 0.0.26
+recebe v2, que ele não interpreta, e falha de modo fechado. Essa transição não
+inspeciona `User-Agent` nem versão do cliente. A resposta v1 de leitura só pode
+ser removida depois de uma decisão explícita de encerrar o suporte ao Android
+0.0.26. Uma URL de download emitida não pode ser revogada individualmente antes
+de expirar.
+
+O MCP não recebe o contrato interno de Fontes. A projeção
+`aralearn.mcp-course-sources.v1` omite ator, identidade de atribuição, resumo do
+alvo, Curso de origem do objeto e caminho do Storage. Preparar upload permanece
+exclusivo da aplicação autenticada. O download MCP exige
+`includeAttachmentDownloadUrl: true` antes de acessar o adaptador e responde
+com `aralearn.mcp-course-source-attachment-access.v1`; `dataDisclosure` registra
+que a URL incluída é uma credencial temporária de 60 segundos. No detalhe de
+Fontes, o disclosure enumera título, autoria declarada, identificador, citação,
+endereço, edição ou versão, trecho de verificação e valores textuais dos
+seletores `text_quote` e `uri_fragment` como texto livre potencialmente pessoal,
+conforme os tipos de seletor efetivamente presentes.
+
+### Solicitação de acesso sem resposta enumerável
+
+`aralearn.course-access-grant-request.v1` contém apenas `courseId`, a operação
+`grant_access`, `accepted: true` e a indicação de repetição idempotente. A
+resposta imediata tem a mesma forma para conta existente, inexistente, própria,
+já favorecida ou tentativa limitada. Cada ator pode fazer dez tentativas em dez
+minutos; os contadores agregados não guardam e-mail nem resumo criptográfico do
+e-mail.
+
+Esse contrato reduz o oráculo na chamada de concessão, mas não torna a relação
+futura indistinguível. O proprietário autorizado pode reler a lista de Pessoas
+e perceber que um acesso passou a existir. Esse é um risco residual aceito da
+gestão direta corrente; o contrato não cria convite pendente nem outra entidade
+para ocultá-lo.
+
+### Credencial de recurso do MCP
+
+Na revisão candidata, os metadados OAuth anunciam exatamente o escopo
+`offline_access`. A troca do código e a renovação emitem access token e refresh
+token, sem `id_token`. O access token é uma credencial para o recurso MCP, não
+uma sessão reutilizável da aplicação: `sub` e `session_id` são aliases pareados,
+distintos entre si e derivados para o cliente OAuth, sem UUID da pessoa,
+metadados do perfil ou e-mail.
+
+O JWT ainda contém `aralearn_session_id`, o UUID real da sessão de origem usado
+exclusivamente na resolução de vida pelo servidor. Esse identificador técnico é
+correlacionável e continua sendo dado pessoal ou pseudonimizado; portanto, a
+credencial inteira não é anônima nem plenamente desvinculável entre clientes que
+partam da mesma sessão. Ela permanece um segredo e nunca integra respostas ou
+logs públicos.
+
+A Edge Function verifica a assinatura ES256 com chave EC P-256 publicada na
+JWKS do emissor, além de emissor, destinatário, tempos, cliente e escopo exato.
+Depois, uma função SQL exclusiva do papel de serviço resolve a pessoa a partir
+da sessão de origem e exige que sessão, cliente e consentimento OAuth ainda
+estejam vivos. O mesmo bearer é recusado quando usado diretamente no GoTrue, na
+API de dados ou no Storage.
+
+O corte revoga consentimentos e sessões OAuth anteriores, que usavam
+`openid`, mas não consegue recolher um ID token já emitido. Esse token continua
+criptograficamente válido até `exp`. Por isso, a fronteira só pode ser declarada
+fechada depois da janela operacional de ao menos uma duração completa da
+expiração JWT configurada após a promoção do backend, acrescida de margem
+operacional, e da repetição das negativas. O roteiro está em
+[Implantação](implantacao.md).
+
 ### Anotações ancoradas fora do conteúdo e do estado pessoal
 
 Uma Anotação ancorada liga uma manifestação a Curso, Módulo, Lição, Tópico,
@@ -242,8 +330,10 @@ Retirada redige texto, síntese e resposta imediatamente. Registros de retirada
 e recibos expiram logicamente em até 14 dias: deixam de ser legíveis,
 pagináveis, contar cota ou admitir repetição. A limpeza física é oportunista durante
 leituras ou mutações do Curso e processa, a cada operação, até 128 registros de
-retirada e 256 recibos expirados; um Curso inativo pode conservar dados físicos
-expirados porque não há tarefa periódica nem prazo de remoção física.
+retirada e 256 recibos expirados. Na revisão candidata, uma rotina diária também
+processa até 512 linhas de cada classe e devolve contagens; assim a limpeza não
+depende apenas de atividade no Curso. Anotações ativas e resolvidas continuam
+sem expiração automática por idade.
 Eventos guardam resumos criptográficos e metadados pequenos, nunca o texto
 anterior. Categoria,
 resposta, resolução e timestamps não autorizam inferência de aprendizagem,
@@ -257,6 +347,11 @@ intenção representacional, Fontes/Âncoras e até 12 Anotações selecionadas.
 rodada registra verificações públicas nas dimensões estrutural, pedagógica, factual e
 editorial; o servidor acrescenta a conformidade estrutural às três verificações
 humanos.
+
+O contrato interno pode conter o texto autorizado das Observações. A projeção
+MCP o omite por padrão e só acrescenta `rawText` quando
+`includeObservationText: true`; referência e rótulo protegidos, caminhos,
+links, horários e texto da resposta autoral permanecem fora.
 
 Rodadas são imutáveis e permanecem enumeráveis quando não geram achado. A
 leitura `audit_cycle` usa `context|findings|runs|detail`; achados e rodadas são

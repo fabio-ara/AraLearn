@@ -3,15 +3,60 @@ import test from "node:test";
 
 import {
   OAUTH_AUTHORING_PERMISSION_LABELS,
+  assertOAuthAuthoringScope,
   readOAuthAuthorizationId,
+  renderOAuthAuthorizationConsent,
   redirectToOAuthClient
 } from "../../src/ui/OAuthAuthorizationConsent.js";
+
+test("consentimento aceita somente continuidade sem token de identidade", () => {
+  assert.deepEqual(assertOAuthAuthoringScope("offline_access"), ["offline_access"]);
+  for (const scope of ["openid", "email", "offline_access openid", "", "offline_access offline_access"]) {
+    assert.throws(
+      () => assertOAuthAuthoringScope(scope),
+      /permissões incompatíveis/u
+    );
+  }
+});
+
+test("consentimento incompatível falha antes de oferecer ou enviar aprovação", async () => {
+  let decisions = 0;
+  const errorNode = { textContent: "" };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      return selector === "[data-oauth-consent-error]" ? errorNode : null;
+    }
+  };
+  const result = await renderOAuthAuthorizationConsent({
+    root,
+    authorizationId: "authorization-123",
+    authClient: {
+      async getOAuthAuthorizationDetails() {
+        return {
+          authorization_id: "authorization-123",
+          scope: "offline_access openid",
+          client: { id: "client-123", name: "Cliente" },
+          user: { email: "pessoa@example.test" }
+        };
+      },
+      async decideOAuthAuthorization() {
+        decisions += 1;
+      }
+    }
+  });
+  assert.equal(decisions, 0);
+  assert.equal(result.redirected, false);
+  assert.match(errorNode.textContent, /permissões incompatíveis/u);
+  assert.match(root.innerHTML, /Não foi possível revisar a conexão/u);
+  assert.doesNotMatch(root.innerHTML, /data-oauth-decision/u);
+});
 
 test("consentimento explicita a autoridade de autoria efetivamente concedida", () => {
   assert.deepEqual(OAUTH_AUTHORING_PERMISSION_LABELS, [
     "Ler seus Cursos, planejamento e conteúdo na Autoria",
     "Criar Cursos privados e alterar metadados, planejamento e conteúdo",
-    "Ler e atualizar seu perfil e gerir acesso direto para Estudo após confirmação",
+    "Consultar Observações; incluir o texto somente quando você pedir explicitamente",
     "Consultar contratos e validar os componentes didáticos instalados"
   ]);
 });

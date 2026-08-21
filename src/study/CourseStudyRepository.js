@@ -1240,8 +1240,12 @@ export class CourseStudyRepository {
     return snapshots;
   }
 
-  async close() {
-    await this.flush();
+  async close({ flush = true } = {}) {
+    if (typeof flush !== "boolean") {
+      throw new TypeError("Política de encerramento do Estudo inválida.");
+    }
+    if (flush) await this.flush();
+    else await this.#studyNavigationWrite;
     for (const annotations of this.annotationsByCourseId.values()) annotations.close();
     this.annotationsByCourseId.clear();
     this.personalByCourseId.clear();

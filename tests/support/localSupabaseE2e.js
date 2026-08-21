@@ -174,7 +174,7 @@ export async function authorizeLocalMcpSession(config, {
       discovery.token_endpoint !== `${issuer}/oauth/token` ||
       discovery.registration_endpoint !== `${issuer}/oauth/clients/register` ||
       !discovery.code_challenge_methods_supported?.includes("S256") ||
-      !discovery.scopes_supported?.includes("openid")) {
+      !discovery.scopes_supported?.includes("offline_access")) {
     throw new Error("O discovery OAuth local não anuncia o contrato necessário ao MCP.");
   }
 
@@ -207,7 +207,7 @@ export async function authorizeLocalMcpSession(config, {
     response_type: "code",
     client_id: clientId,
     redirect_uri: MCP_REDIRECT_URI,
-    scope: "openid",
+    scope: "offline_access",
     state,
     resource: resourceUrl,
     code_challenge: challenge,
@@ -272,9 +272,15 @@ export async function authorizeLocalMcpSession(config, {
   );
   const accessToken = String(grant?.access_token || "");
   const claims = jwtClaims(accessToken);
-  if (claims.iss !== issuer || claims.sub !== userId || claims.client_id !== clientId ||
+  const uuidPattern = /^[0-9a-f-]{36}$/iu;
+  if (grant?.id_token != null || claims.iss !== issuer || claims.client_id !== clientId ||
+      claims.scope !== "offline_access" || claims.sub === userId ||
+      claims.session_id === claims.aralearn_session_id ||
+      !uuidPattern.test(String(claims.sub || "")) ||
+      !uuidPattern.test(String(claims.session_id || "")) ||
+      !uuidPattern.test(String(claims.aralearn_session_id || "")) ||
       !audienceIncludes(claims.aud, resourceUrl)) {
-    throw new Error("O access token OAuth não foi destinado à pessoa e ao MCP esperados.");
+    throw new Error("O access token OAuth não foi blindado para o MCP esperado.");
   }
   lifecycle.oauthGrantCreated = true;
   lifecycle.accessToken = accessToken;

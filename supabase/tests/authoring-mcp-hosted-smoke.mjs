@@ -124,7 +124,7 @@ const metadataResponse = await fetch(
 assert.equal(metadataResponse.status, 200, "Protected-resource metadata indisponível.");
 const metadata = await metadataResponse.json();
 assert.equal(metadata.resource, edgeUrl);
-assert.deepEqual(metadata.scopes_supported, ["openid"]);
+assert.deepEqual(metadata.scopes_supported, ["offline_access"]);
 assert.deepEqual(metadata.authorization_servers, [`${projectUrl}/auth/v1`]);
 
 const discoveryResponse = await fetch(
@@ -154,13 +154,12 @@ assert.deepEqual(listed.tools.map(({ name }) => name), [
   "lerCurso",
   "criarCurso",
   "alterarCurso",
-  "gerirPessoas",
   "consultarComponentesDidaticos"
 ]);
 assert.ok(listed.tools.every((entry) =>
   entry.securitySchemes?.[0]?.type === "oauth2" &&
   entry.securitySchemes?.[0]?.scopes?.length === 1 &&
-  entry.securitySchemes[0].scopes[0] === "openid" &&
+  entry.securitySchemes[0].scopes[0] === "offline_access" &&
   JSON.stringify(entry._meta?.securitySchemes) === JSON.stringify(entry.securitySchemes)
 ));
 assert.equal(
@@ -170,8 +169,6 @@ assert.equal(
   false
 );
 
-const profile = await tool("gerirPessoas", { operation: "read_profile" });
-assert.match(String(profile.userId || ""), /^[0-9a-f-]{36}$/iu);
 const componentSearch = await tool("consultarComponentesDidaticos", {
   operation: "search",
   query: "explicação progressiva em prosa",
@@ -317,12 +314,15 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
     sourceId,
     limit: 10
   });
-  assert.equal(sourceDetail.contract, "aralearn.course-sources.v1");
+  assert.equal(sourceDetail.contract, "aralearn.mcp-course-sources.v1");
   assert.equal(sourceDetail.items[0].anchors[0].anchorId, anchorId);
   assert.equal(
     sourceDetail.items[0].anchors[0].verificationExcerpt,
     "Trecho privado verificado pelo MCP hospedado."
   );
+  assert.equal(Object.hasOwn(sourceDetail, "courseId"), false);
+  assert.equal(Object.hasOwn(sourceDetail.items[0], "actorId"), false);
+  assert.equal(Object.hasOwn(sourceDetail.items[0].anchors[0], "actorId"), false);
 
   const firstStudyUnitRow = compositionRows.find(
     ({ entityType, entityId }) => entityType === "study_unit"
@@ -392,6 +392,9 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
   });
   assert.equal(attributedTarget.items[0].effective, true);
   assert.deepEqual(attributedTarget.items[0].sourceLinks, [sourceLink]);
+  assert.equal(Object.hasOwn(attributedTarget.items[0], "attributionId"), false);
+  assert.equal(Object.hasOwn(attributedTarget.items[0], "actorId"), false);
+  assert.equal(Object.hasOwn(attributedTarget.items[0], "targetHash"), false);
 
   const atomicStudyUnitRow = {
     ...firstStudyUnitRow,
@@ -586,7 +589,8 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
   assert.equal(createdAnnotation.annotation.annotationId, annotationId);
   assert.equal(createdAnnotation.annotation.provenance.origin, "author");
   assert.equal(createdAnnotation.annotation.provenance.channel, "authoring_chat");
-  assert.equal(createdAnnotation.annotation.rawText, annotationCommand.rawText);
+  assert.equal(Object.hasOwn(createdAnnotation.annotation, "rawText"), false);
+  assert.equal(createdAnnotation.dataDisclosure.rawObservationTextIncluded, false);
   const replayedAnnotation = await tool("alterarCurso", {
     requestId: annotationRequestId,
     courseId: created.courseId,
@@ -611,13 +615,20 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
   });
   assert.equal(
     annotationPage.contract,
-    "aralearn.course-anchored-annotation-page.v1"
+    "aralearn.mcp-anchored-annotation-page.v1"
   );
   assert.equal(annotationPage.summary.byChannel.authoring_chat, 1);
-  assert.equal(
-    annotationPage.items.find(({ annotationId: id }) => id === annotationId)?.rawText,
-    annotationCommand.rawText
+  const projectedAnnotation = annotationPage.items.find(
+    ({ annotationId: id }) => id === annotationId
   );
+  assert.equal(projectedAnnotation.briefSummary, annotationCommand.briefSummary);
+  assert.equal(Object.hasOwn(projectedAnnotation, "rawText"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.contributor, "ref"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.contributor, "label"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.target, "observedPath"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation.target, "deepLink"), false);
+  assert.equal(Object.hasOwn(projectedAnnotation, "deepLink"), false);
+  assert.equal(annotationPage.dataDisclosure.rawObservationTextIncluded, false);
 
   let auditCourseRevision = designChange.courseRevision;
   const auditContextPage = await tool("lerCurso", {
@@ -628,6 +639,7 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
     mode: "context",
     targetStudyUnitId: "study-unit-hosted-smoke-1",
     annotationIds: [annotationId],
+    includeObservationText: true,
     limit: 1
   });
   assert.equal(
@@ -826,6 +838,7 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
     mode: "context",
     targetStudyUnitId: "study-unit-hosted-smoke-1",
     annotationIds: [annotationId],
+    includeObservationText: true,
     limit: 1
   });
   assert.deepEqual(

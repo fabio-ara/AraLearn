@@ -11,6 +11,16 @@ function requestPromise(request) {
   });
 }
 
+function databaseDeletionPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Não foi possível remover o cache de Cursos."));
+    request.onblocked = () => reject(new Error(
+      "O cache de Cursos ainda está aberto em outra aba. Feche-a e tente novamente."
+    ));
+  });
+}
+
 function transactionPromise(transaction) {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
@@ -59,7 +69,7 @@ export class CourseLocalStore {
     if (!indexedDb || typeof indexedDb.deleteDatabase !== "function") {
       throw new TypeError("IndexedDB indisponível.");
     }
-    return requestPromise(indexedDb.deleteDatabase(databaseName(userId)));
+    return databaseDeletionPromise(indexedDb.deleteDatabase(databaseName(userId)));
   }
 
   constructor({ indexedDb, database, name }) {

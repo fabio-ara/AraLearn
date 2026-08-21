@@ -2517,9 +2517,13 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
     email: "student@example.test",
     confirmed: true
   });
-  assert.match(root.innerHTML, /Pessoa estudante/u);
-  assert.match(root.innerHTML, /Acesso concedido/u);
+  assert.doesNotMatch(root.innerHTML, /Pessoa estudante/u);
+  assert.match(root.innerHTML, /Solicitação recebida/u);
+  assert.match(root.innerHTML, /não informa se o endereço corresponde a uma conta/u);
+  assert.match(root.innerHTML, /Use Atualizar Curso depois/u);
   assert.doesNotMatch(root.innerHTML, /student@example\.test/u);
+  await surface.refresh();
+  assert.match(root.innerHTML, /Pessoa estudante/u);
 
   root.listeners.get("click")({
     preventDefault() {},

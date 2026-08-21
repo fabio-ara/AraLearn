@@ -446,9 +446,15 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260821145358");
+  assert.equal(manifest.schemaRevision, "20260821191340");
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("current-data-lifecycle-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("isolated-mcp-oauth-principal-v1"), true);
+  assert.equal(
+    manifest.requiredFeatures.includes("authenticated-course-source-pdf-upload-v1"),
+    true
+  );
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
@@ -461,7 +467,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
 });
 
-test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de seis tools", () => {
+test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de cinco tools", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     for (const toolName of [
@@ -469,7 +475,6 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
       "lerCurso",
       "criarCurso",
       "alterarCurso",
-      "gerirPessoas",
       "consultarComponentesDidaticos"
     ]) {
       assert.match(source, new RegExp(`"${toolName}"`, "u"));
@@ -500,7 +505,9 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
     assert.match(source, /type:\s*"create_anchored_annotation"/u);
     assert.match(source, /anchored_annotation_confirmation_required/u);
     assert.match(source, /provenance\.channel,\s*"authoring_chat"/u);
-    assert.match(source, /aralearn\.course-anchored-annotation-page\.v1/u);
+    assert.match(source, /aralearn\.mcp-anchored-annotation-page\.v1/u);
+    assert.match(source, /includeObservationText:\s*true/u);
+    assert.match(source, /contributor,\s*"label"/u);
     assert.match(source, /replayedAnnotation\.idempotent,\s*true/u);
     assert.match(source, /view:\s*"audit_cycle"/u);
     assert.match(source, /operation:\s*"update_audit_cycle"/u);

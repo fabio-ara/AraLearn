@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260821145358",
+  "schemaRevision": "20260821191340",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -8,6 +8,7 @@
     "direct-course-access-v1",
     "course-cas-idempotency-v1",
     "oauth-only-authoring-mcp",
+    "isolated-mcp-oauth-principal-v1",
     "package-library-v1",
     "package-contract-discovery-v1",
     "person-profile-v1",
@@ -34,6 +35,8 @@
     "course-authoring-analytics-v1",
     "course-variant-factual-comparison-v1",
     "contextual-study-unit-edit-v1",
-    "personal-course-copy-edit-v1"
+    "personal-course-copy-edit-v1",
+    "current-data-lifecycle-v1",
+    "authenticated-course-source-pdf-upload-v1"
   ]
 }

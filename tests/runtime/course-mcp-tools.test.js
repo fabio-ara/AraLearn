@@ -71,7 +71,6 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     "lerCurso",
     "criarCurso",
     "alterarCurso",
-    "gerirPessoas",
     "consultarComponentesDidaticos"
   ]);
   const serialized = JSON.stringify(COURSE_MCP_TOOLS);
@@ -92,8 +91,18 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
   }
   assert.equal(COURSE_MCP_TOOLS.find(({ name }) => name === "listarCursos")._meta, undefined);
   assert.deepEqual(COURSE_APPLICATION_ONLY_TOOLS, [
+    { name: "gerirPessoas" },
     { name: "criarCopiaPessoalDoCurso" }
   ]);
+  assert.equal(authoringApplicationToolDefinition("gerirPessoas")?.name, "gerirPessoas");
+  assert.equal(authoringMcpToolIsAllowed("gerirPessoas", {
+    actorId: COURSE_ID,
+    scopes: ["authoring:write"]
+  }), false);
+  assert.equal(authoringApplicationToolIsAllowed("gerirPessoas", {
+    actorId: COURSE_ID,
+    scopes: ["authoring:write"]
+  }), true);
   assert.equal(
     authoringApplicationToolDefinition("criarCopiaPessoalDoCurso")?.name,
     "criarCopiaPessoalDoCurso"
@@ -863,8 +872,15 @@ test("schema MCP discrimina os três modos de observações sem cruzá-los com F
   assert.equal(validate({
     ...base,
     mode: "detail",
-    annotationId: "60000000-0000-4000-8000-000000000006"
+    annotationId: "60000000-0000-4000-8000-000000000006",
+    includeObservationText: true
   }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...base,
+    mode: "detail",
+    annotationId: "60000000-0000-4000-8000-000000000006"
+  }), false);
+  assert.equal(validate({ ...base, mode: "inbox", includeObservationText: true }), false);
   assert.equal(validate({
     ...base,
     view: "course_sources",
@@ -904,6 +920,7 @@ test("MCP lê e altera o ciclo de auditoria sem criar ferramenta nem rota parale
     mode: "context",
     targetStudyUnitId: "unit-a",
     annotationIds: [annotationId],
+    includeObservationText: true,
     limit: 1
   }), {
     kind: "route",
@@ -1133,6 +1150,18 @@ test("schema MCP fecha modos e os sete comandos públicos do ciclo de auditoria"
     targetStudyUnitId: "unit-a"
   };
   assert.equal(validateRead(context), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({ ...context, annotationIds: [FINDING_ID] }), false);
+  assert.equal(validateRead({
+    ...context,
+    annotationIds: [FINDING_ID],
+    includeObservationText: true
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    ...context,
+    annotationIds: [],
+    includeObservationText: true
+  }), false);
+  assert.equal(validateRead({ ...context, includeObservationText: true }), false);
   assert.equal(validateRead({ ...context, states: ["open"] }), false);
   assert.equal(validateRead({
     ...context,
@@ -1516,9 +1545,23 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
   }), false);
 });
 
-test("MCP prepara acesso e confirma anexo PDF pelo contrato único de Fontes", () => {
+test("preparo de anexo exige a aplicação e MCP só mapeia download após disclosure explícito", () => {
   const contentHash = "a".repeat(64);
-  const read = mapAuthoringMcpToolCall("lerCurso", {
+  assert.throws(
+    () => mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "course_source_attachment",
+      expectedRevision: 4,
+      attachmentOperation: "prepare_upload",
+      sourceId: "source-pdf",
+      sourceRevision: 2,
+      contentHash,
+      byteSize: 1_024,
+      mediaType: "application/pdf"
+    }),
+    (error) => error.code === "application_session_required"
+  );
+  const read = mapAuthoringApplicationToolCall("lerCurso", {
     courseId: COURSE_ID,
     view: "course_source_attachment",
     expectedRevision: 4,
@@ -1560,7 +1603,7 @@ test("MCP prepara acesso e confirma anexo PDF pelo contrato único de Fontes", (
   const tools = Object.fromEntries(COURSE_MCP_TOOLS.map((tool) => [tool.name, tool]));
   const validateRead = ajv.compile(tools.lerCurso.inputSchema);
   const validateChange = ajv.compile(tools.alterarCurso.inputSchema);
-  assert.equal(validateRead({
+  const download = {
     courseId: COURSE_ID,
     view: "course_source_attachment",
     expectedRevision: 4,
@@ -1568,17 +1611,47 @@ test("MCP prepara acesso e confirma anexo PDF pelo contrato único de Fontes", (
     sourceId: "source-pdf",
     sourceRevision: 2,
     contentHash
+  };
+  assert.equal(validateRead(download), false);
+  assert.equal(validateRead({
+    ...download,
+    includeAttachmentDownloadUrl: true
   }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    ...download,
+    includeAttachmentDownloadUrl: true,
+    byteSize: 1_024
+  }), false);
   assert.equal(validateRead({
     courseId: COURSE_ID,
     view: "course_source_attachment",
     expectedRevision: 4,
-    attachmentOperation: "download",
+    attachmentOperation: "prepare_upload",
     sourceId: "source-pdf",
     sourceRevision: 2,
     contentHash,
-    byteSize: 1_024
+    byteSize: 1_024,
+    mediaType: "application/pdf",
+    includeAttachmentDownloadUrl: true
   }), false);
+  assert.throws(
+    () => mapAuthoringMcpToolCall("lerCurso", download),
+    (error) => error.code === "attachment_download_url_disclosure_required" &&
+      !String(error.message).includes(contentHash)
+  );
+  const mappedDownload = mapAuthoringMcpToolCall("lerCurso", {
+    ...download,
+    includeAttachmentDownloadUrl: true
+  });
+  assert.equal(mappedDownload.path,
+    `/v1/courses/${COURSE_ID}/source-attachments/access?expectedRevision=4` +
+    `&operation=download&sourceId=source-pdf&sourceRevision=2` +
+    `&contentHash=${contentHash}`);
+  assert.equal(mappedDownload.path.includes("includeAttachmentDownloadUrl"), false);
+  assert.equal(
+    mapAuthoringApplicationToolCall("lerCurso", download).path,
+    mappedDownload.path
+  );
   assert.equal(validateChange({
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
@@ -1611,8 +1684,11 @@ test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais e
   }]);
 });
 
-test("perfil e acesso direto ao Estudo usam uma única ferramenta sem diretório", () => {
-  assert.deepEqual(mapAuthoringMcpToolCall("gerirPessoas", {
+test("perfil e acesso direto ao Estudo permanecem na aplicação e fora do MCP público", () => {
+  assert.throws(() => mapAuthoringMcpToolCall("gerirPessoas", {
+    operation: "read_profile"
+  }), (error) => error.code === "unknown_tool");
+  assert.deepEqual(mapAuthoringApplicationToolCall("gerirPessoas", {
     operation: "read_profile"
   }), {
     kind: "route",
@@ -1621,7 +1697,7 @@ test("perfil e acesso direto ao Estudo usam uma única ferramenta sem diretório
     requestId: null,
     body: null
   });
-  assert.deepEqual(mapAuthoringMcpToolCall("gerirPessoas", {
+  assert.deepEqual(mapAuthoringApplicationToolCall("gerirPessoas", {
     operation: "update_profile",
     displayName: "Pesquisadora",
     avatarObjectKey: `${COURSE_ID}/20000000-0000-4000-8000-000000000002.webp`
@@ -1629,11 +1705,11 @@ test("perfil e acesso direto ao Estudo usam uma única ferramenta sem diretório
     displayName: "Pesquisadora",
     avatarObjectKey: `${COURSE_ID}/20000000-0000-4000-8000-000000000002.webp`
   });
-  assert.equal(mapAuthoringMcpToolCall("gerirPessoas", {
+  assert.equal(mapAuthoringApplicationToolCall("gerirPessoas", {
     operation: "list_access",
     courseId: COURSE_ID
   }).path, `/v1/courses/${COURSE_ID}/access`);
-  assert.deepEqual(mapAuthoringMcpToolCall("gerirPessoas", {
+  assert.deepEqual(mapAuthoringApplicationToolCall("gerirPessoas", {
     operation: "grant_access",
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
@@ -1644,7 +1720,7 @@ test("perfil e acesso direto ao Estudo usam uma única ferramenta sem diretório
     email: "pessoa@example.com",
     confirmed: true
   });
-  assert.equal(mapAuthoringMcpToolCall("gerirPessoas", {
+  assert.equal(mapAuthoringApplicationToolCall("gerirPessoas", {
     operation: "revoke_access",
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
@@ -1653,7 +1729,7 @@ test("perfil e acesso direto ao Estudo usam uma única ferramenta sem diretório
   }).path, `/v1/courses/${COURSE_ID}/access/20000000-0000-4000-8000-000000000002`);
 
   assert.throws(
-    () => mapAuthoringMcpToolCall("gerirPessoas", {
+    () => mapAuthoringApplicationToolCall("gerirPessoas", {
       operation: "grant_access",
       requestId: REQUEST_ID,
       courseId: COURSE_ID,
@@ -1705,6 +1781,38 @@ test("MCP lê a inbox situada e preserva filtros e cursor sem aliases", () => {
   assert.equal(url.searchParams.get("cursor"), "Y3Vyc29yLTE=");
   assert.equal(Object.hasOwn(operation, "body"), true);
   assert.equal(operation.body, null);
+});
+
+test("MCP exige disclosure explícito antes de ler o texto integral de Observação", () => {
+  const annotationId = "60000000-0000-4000-8000-000000000006";
+  assert.throws(() => mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "anchored_annotations",
+    expectedRevision: 7,
+    mode: "detail",
+    annotationId
+  }), (error) => error.code === "observation_text_disclosure_required");
+  const operation = mapAuthoringMcpToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "anchored_annotations",
+    expectedRevision: 7,
+    mode: "detail",
+    annotationId,
+    includeObservationText: true
+  });
+  const url = new URL(`https://aralearn.invalid${operation.path}`);
+  assert.equal(url.searchParams.get("mode"), "detail");
+  assert.equal(url.searchParams.get("annotationId"), annotationId);
+  assert.equal(url.searchParams.has("includeObservationText"), false);
+
+  const applicationOperation = mapAuthoringApplicationToolCall("lerCurso", {
+    courseId: COURSE_ID,
+    view: "anchored_annotations",
+    expectedRevision: 7,
+    mode: "detail",
+    annotationId
+  });
+  assert.equal(applicationOperation.path, operation.path);
 });
 
 test("MCP recusa query de observações que ultrapassa o request-target de 8 KiB", () => {
@@ -1884,7 +1992,7 @@ test("MCP usa o mesmo fato de Fonte e exige referências na reformulação", () 
 });
 
 test("schema MCP condiciona revisão do Curso sem aumentar o registro de tools", () => {
-  assert.equal(COURSE_MCP_TOOLS.length, 6);
+  assert.equal(COURSE_MCP_TOOLS.length, 5);
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
     .inputSchema;
   const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);

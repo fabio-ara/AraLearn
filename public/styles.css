@@ -642,10 +642,10 @@ textarea {
 }
 
 .account-settings-footer .icon-ghost {
-  min-width: 34px;
-  min-height: 34px;
-  width: 34px;
-  height: 34px;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
   border-radius: 10px;
 }
 
@@ -3445,6 +3445,66 @@ input:-webkit-autofill:focus {
   color: var(--text-primary);
   background: var(--input-surface);
   font: inherit;
+}
+
+.account-device-data {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.account-device-data h2,
+.account-device-data p {
+  margin: 0;
+}
+
+.account-device-data h2 {
+  font-size: var(--type-sm);
+}
+
+.account-device-data p {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1.45;
+}
+
+.account-device-data-actions {
+  display: grid;
+  gap: 7px;
+}
+
+.account-device-data-actions button {
+  width: 100%;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  font: inherit;
+  font-size: var(--type-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-device-data-actions button:hover {
+  background: var(--action-secondary-hover);
+}
+
+.account-device-data-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.account-device-data-actions button.is-danger {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
 }
 
 .account-danger-zone {

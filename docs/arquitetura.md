@@ -10,6 +10,11 @@ A linha publicada dos clientes é a 0.0.26 e exige o manifesto
 na revisão 9 e o MCP na revisão 124. O contrato foi validado localmente e no
 ambiente hospedado antes da publicação coordenada de Pages e Android.
 
+A candidata 0.0.27 ainda não publicada mantém a topologia relacional e
+acrescenta minimização de sessão e MCP,
+retenção periódica e upload autenticado de PDFs. Até sua promoção, os números
+de revisão acima continuam descrevendo o ambiente hospedado.
+
 ## O Curso como raiz do domínio
 
 `public.courses` guarda a raiz identificável do Curso. O conteúdo curricular
@@ -61,11 +66,13 @@ IndexedDB para informar disponibilidade sem conexão; revogação elimina a rép
 local do Curso compartilhado e o ponto local, sem apagar uma cópia pessoal já
 confirmada. Esse contrato integra a versão 0.0.25.
 
-O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
-`criarCurso`, `alterarCurso`, `gerirPessoas` e
+O MCP conserva cinco ferramentas estáveis: `listarCursos`, `lerCurso`,
+`criarCurso`, `alterarCurso` e
 `consultarComponentesDidaticos`. Fontes, auditoria, variantes e Pesquisa são
 visões ou operações dessas ferramentas. O contrato não cria uma ferramenta
-nova para cada painel da interface.
+nova para cada painel da interface. Perfil, avatar e acesso direto pertencem à
+aplicação autenticada; o e-mail usado para conceder acesso não é enviado ao
+cliente MCP.
 
 ## Fluxo entre navegador e serviços
 
@@ -78,7 +85,8 @@ navegador → IndexedDB → Edge Function ou MCP → PostgreSQL e Storage
 O sentido da seta indica a passagem da solicitação, não uma fila universal.
 Cada trecho tem uma função distinta:
 
-1. o navegador mantém sessão, navegação e estado transitório da interface;
+1. o navegador mantém uma projeção mínima da sessão, navegação e estado
+   transitório da interface;
 2. o IndexedDB conserva a última composição íntegra, listas leves, posição de
    leitura, progresso, itens marcados para rever e filas próprias de Anotações;
 3. a API de Cursos recebe alterações autorais do navegador com a sessão da
@@ -109,6 +117,19 @@ revisão nova só substitui o ponteiro da composição válida depois que todas 
 páginas foram reunidas e validadas. Se a candidata estiver incompleta ou
 inválida, a revisão anterior continua disponível como leitura desatualizada e
 somente leitura, inclusive depois de reiniciar o aplicativo.
+
+O logout comum fecha as conexões, mas preserva esse banco por decisão de produto
+para manter o estudo offline, as filas e os rascunhos que já estavam
+persistidos. Uma alteração aberta somente no formulário não integra essa
+garantia e exige confirmação de perda antes da saída. As ações explícitas de
+limpeza removem somente `aralearn-course-v1-<identificador-da-conta>` da conta
+ativa; a opção com saída também elimina a sessão. A sessão candidata persiste
+somente tokens, tipo, expiração e `user.id`, sem duplicar e-mail ou perfil.
+
+Na exclusão de conta, a confirmação remota é o ponto terminal. Se outra aba
+bloquear a remoção do IndexedDB depois desse sucesso, a conta já não existe e a
+interface oferece somente repetir a limpeza local; ela não tenta excluir a
+conta novamente nem apresenta o estado como falha remota.
 
 A inspeção autoral também é paginada. O cliente conserva no máximo quatro
 páginas ou 8 MiB por Curso e limita a quantidade renderizada. Esse recorte
@@ -245,13 +266,27 @@ vez de sobrescrever sua proveniência.
 Ancoragens ligam trechos do Curso às fontes. Atribuições e Anotações podem
 referir-se a essas âncoras sem incorporar uma cópia opaca do documento.
 
-PDFs ficam no bucket privado `course-source-pdfs`. O navegador faz a verificação
-inicial do cabeçalho, calcula SHA-256 e solicita à API uma URL assinada de
-envio. Antes de confirmar o vínculo relacional, a API lê o objeto com a
+PDFs ficam no bucket privado `course-source-pdfs`. Na revisão candidata, o
+navegador faz a verificação inicial do cabeçalho, calcula SHA-256 e solicita à
+API uma intenção de envio válida por dez minutos. O upload usa a sessão
+autenticada diretamente no endpoint do Storage, confronta caminho, tamanho e
+tipo e consome a intenção na inserção. A escrita participa do mesmo bloqueio da
+exclusão da conta. Antes de confirmar o vínculo relacional, a API lê o objeto com a
 credencial do servidor e confere os bytes reais: limite, tamanho declarado,
 cabeçalho `%PDF-` e SHA-256. O caminho físico segue
 `<curso-de-origem>/<sha256>.pdf`; acesso depende do vínculo autorizado no
 banco, não do conhecimento desse caminho.
+
+Um upload cujo conteúdo não corresponde ao resumo preparado não recebe vínculo.
+O inventário administrativo o classifica como órfão para uma decisão posterior,
+sem apagar automaticamente um objeto cuja classe e retenção ainda precisam ser
+confirmadas.
+
+O corte conserva uma única compatibilidade de leitura: `download` responde com
+o contrato v1 para o Android 0.0.26 já instalado. `prepare_upload` responde
+somente com v2 e nunca devolve URL assinada, de modo que o upload antigo falha
+fechado. Essa distinção vem da operação, não de `User-Agent`; retirar v1 exige
+uma decisão explícita de encerrar o suporte ao 0.0.26.
 
 Cada objeto aceita até 20 MiB. Um Curso pode vincular até 64 MiB de conteúdo
 único e o detalhe de uma fonte retorna no máximo oito anexos. Conteúdo idêntico
@@ -280,6 +315,10 @@ identificadores pessoais, e-mail, texto bruto e instantâneos integrais.
 Gráficos possuem tabela equivalente; exportação CSV ou JSON percorre todas as
 páginas solicitadas.
 
+IDs, hashes e horários ainda podem ser correlacionados com pessoas e operações.
+Por isso a projeção é tratada como pessoal ou pseudonimizada enquanto houver
+meio razoável de fazer essa relação, e não como conjunto anônimo.
+
 ## Componentes didáticos
 
 O catálogo corrente contém 32 pacotes versionados: 29 de conteúdo e três de
@@ -304,16 +343,33 @@ qualquer operação privilegiada, a função valida o token recebido e repassa a
 identidade ao contrato SQL exclusivo do proprietário. O navegador nunca recebe
 essa credencial.
 
-O servidor MCP aceita OAuth 2.1 com PKCE e valida emissor, destinatário,
-recurso, cliente, sujeito e validade temporal do token. O cliente confere o
-estado da autorização antes de trocar o código. A API de Cursos exige origem
-permitida e sessão Supabase. As origens públicas são configuradas de modo
-exato, sem curingas de produção.
+Na revisão candidata, o servidor MCP aceita OAuth 2.1 com PKCE e anuncia
+somente o escopo `offline_access`; a troca e a renovação não emitem `id_token`.
+O access token usa aliases pareados distintos em `sub` e `session_id` e não é
+uma sessão da aplicação. Ele conserva `aralearn_session_id`, o identificador
+real e correlacionável da sessão de origem necessário à RPC, sem expor o UUID da
+pessoa; por isso a credencial inteira não é anônima. A Edge Function valida
+ES256 com chave EC P-256 pela
+JWKS do emissor, além de emissor, destinatário, tempos, cliente e escopo. Uma
+RPC exclusiva do papel de serviço resolve a pessoa e exige sessão de origem,
+cliente e consentimento ainda vivos. O mesmo bearer é recusado diretamente no
+GoTrue, na API de dados e no Storage.
+
+O corte revoga consentimentos e sessões OAuth anteriores. Um ID token
+`openid` já emitido, porém, continua válido até `exp`; a fronteira não pode ser
+declarada fechada antes de transcorrer o maior prazo entre a duração JWT
+configurada e duas horas das URLs v1 de upload emitidas antes da promoção, com
+margem operacional, e de as negativas hospedadas e o inventário de órfãos serem
+repetidos. A API de Cursos exige origem permitida e sessão Supabase comum. As
+origens públicas são configuradas
+de modo exato, sem curingas de produção.
 
 Os buckets `person-avatars` e `course-source-pdfs` são privados. URLs assinadas
-têm duração limitada. O envio de avatar usa a pasta da própria conta e valida
-JPEG, PNG ou WebP até 512 KiB. O envio de PDF passa pelo fluxo em duas etapas e
-pelas cotas do Curso.
+têm duração limitada; o download de PDF expira em 60 segundos e uma URL emitida
+continua válida até esse prazo. O envio de avatar usa a pasta da própria conta e
+valida JPEG, PNG ou WebP até 512 KiB. Na candidata, avatar e PDF também exigem
+uma sessão ainda presente no Auth; o PDF passa pelo fluxo autenticado em duas
+etapas e pelas cotas do Curso.
 
 ## Mapa do código
 

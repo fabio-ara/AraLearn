@@ -69,7 +69,7 @@ Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas de Curs
   assertEquals(response.headers.get("mcp-session-id"), null);
 });
 
-Deno.test("gateway MCP mantém seis tools e anuncia observações e ciclo de auditoria", async () => {
+Deno.test("gateway MCP mantém cinco tools e anuncia observações e ciclo de auditoria", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: adapter(),
     allowedOrigins: new Set([origin]),
@@ -84,7 +84,6 @@ Deno.test("gateway MCP mantém seis tools e anuncia observações e ciclo de aud
     "lerCurso",
     "criarCurso",
     "alterarCurso",
-    "gerirPessoas",
     "consultarComponentesDidaticos"
   ]);
   const read = tools.find(({ name }) => name === "lerCurso") as {

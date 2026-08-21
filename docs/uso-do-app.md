@@ -4,6 +4,11 @@ Este guia reúne as operações disponíveis no site e no aplicativo Android. O
 [Guia do estudante](guia-estudante.md) e o [Guia do professor e
 autor](guia-professor-autor.md) desenvolvem os dois percursos em separado.
 
+A linha publicada permanece na versão 0.0.26. As novas ações de limpeza local,
+o upload autenticado de PDF e as respostas genéricas de acesso descritos como
+candidatos pertencem à 0.0.27 e só passam a representar Pages e Android depois
+da promoção coordenada.
+
 ## Conceitos para começar
 
 Uma **conta** autentica uma pessoa. O perfil contém nome e foto opcionais e
@@ -61,7 +66,11 @@ remover uma imagem e salve o perfil.
 
 A foto fica em armazenamento privado. Ao substituí-la, o aplicativo primeiro
 registra a nova referência e depois remove o objeto anterior. Uma falha nessa
-segunda etapa é informada para que a remoção possa ser refeita.
+segunda etapa é informada para que a remoção possa ser refeita. Se salvar o
+perfil perder a resposta depois do envio, o aplicativo relê o perfil e não
+apaga uma foto que já tenha virado a referência ativa. Quando não consegue
+confirmar o resultado, a tela preserva o objeto e pede **Salvar** novamente para
+confirmar o vínculo ou removê-lo antes de escolher outro arquivo.
 
 Na mesma área, escolha o tema do sistema, claro ou escuro. A preferência fica no
 dispositivo e não altera nenhum Curso.
@@ -172,7 +181,9 @@ estudante.
 
 Em **Fontes**, crie registros, acrescente revisões, aposente fontes e consulte o
 histórico. Uma revisão pode ter Âncoras por página, tempo, fragmento de endereço
-ou trecho textual. O trecho de verificação permanece privado.
+ou trecho textual. O trecho de verificação não aparece no Estudo. Como faz parte
+do detalhe autoral da Fonte, ele também é enviado ao cliente MCP conectado
+quando esse detalhe é solicitado; evite dados pessoais desnecessários.
 
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
 interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora
@@ -184,6 +195,12 @@ consideradas.
 Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
 64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
 **Baixar PDF** para consultar o arquivo autorizado.
+
+Na transição candidata, o Android 0.0.26 continua apto a baixar PDFs pelo
+contrato v1, mas seu envio antigo falha de modo fechado. O cliente novo usa o
+contrato v2 e uma sessão ativa para enviar. Essa compatibilidade de leitura não
+depende de identificação do aparelho e permanece até uma decisão explícita de
+encerrar o suporte ao 0.0.26.
 
 Toda nova atribuição exige uma Âncora ativa da revisão exata. Use **Definir
 fontes** em um item do Planejamento ou numa Unidade da Inspeção. Salvar substitui
@@ -382,9 +399,14 @@ de aprendizagem ou efeito exige outro desenho de pesquisa.
 ## Conceder e revogar acesso
 
 Em **Pessoas**, use **Conceder acesso**, informe o e-mail exato de uma conta
-existente e confirme. A pessoa passa a encontrar o Curso em Estudo. A concessão
+e confirme. Na revisão candidata, a resposta imediata é a mesma exista ou não a
+conta, inclusive quando o endereço é próprio, o acesso já existe ou o limite foi
+atingido. Há dez tentativas por pessoa autenticada em dez minutos. Quando a
+concessão é válida, a pessoa passa a encontrar o Curso em Estudo. A concessão
 mantém propriedade e edição com o autor e não cria organização nem cópia do
-Curso.
+Curso. A releitura posterior da lista pode mostrar o acesso efetivamente criado;
+a resposta genérica reduz a enumeração imediata, mas não elimina esse risco
+residual.
 
 Para revogar, use a ação junto ao nome e confirme. O servidor encerra o acesso.
 Uma cópia anteriormente baixada é removida na próxima validação conectada do
@@ -454,8 +476,15 @@ recentes importantes.
 
 Em **Conta e aparência**, use **Sair**. Se houver uma interrupção, o aplicativo
 permite repetir a saída.
-Sair encerra a sessão, mas a cópia local dos Cursos pode permanecer no
-dispositivo; considere isso ao usar aparelho compartilhado.
+Sair encerra a sessão, mas Cursos, estado pessoal e filas já gravados localmente
+podem permanecer no dispositivo. A confirmação avisa que uma alteração ainda
+aberta e não salva será perdida. Considere essas duas condições ao usar aparelho
+compartilhado.
+
+Na revisão candidata, **Remover dados deste dispositivo** apaga somente os
+dados persistidos da conta ativa e mantém a sessão. **Sair e remover dados deste
+dispositivo** encerra a sessão e apaga o mesmo namespace. Nenhuma dessas ações
+preserva texto que ainda exista apenas num formulário aberto.
 
 ## Excluir a conta
 
@@ -469,7 +498,13 @@ os avatares e PDFs correspondentes. O banco recusa a exclusão enquanto algum
 desses objetos permanecer. Depois, remove a conta, os Cursos próprios e as
 relações dependentes; contribuições em Cursos alheios são retiradas e redigidas
 conforme a política de retenção. Uma falha intermediária conserva a conta para
-nova tentativa, e a cópia local só é limpa depois da confirmação do servidor.
+nova tentativa. Se a limpeza do Storage já tiver começado, alguns PDFs ou a foto
+podem ter sido removidos e a conta pode já ter sido excluída ou ainda aguardar a
+etapa final. A tela informa essa ambiguidade; repetir **Excluir conta** confirma
+ou conclui a mesma operação. A cópia local só é limpa depois da confirmação do servidor.
+Depois dessa confirmação, porém, o resultado remoto é terminal. Se outra aba
+bloquear a limpeza local, a conta já foi excluída e a interface permite repetir
+somente a remoção dos dados do dispositivo.
 
 ## Limites atuais
 

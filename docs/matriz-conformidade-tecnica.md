@@ -1,12 +1,13 @@
 # Matriz de conformidade técnica
 
 Esta matriz liga propriedades do AraLearn à implementação e à evidência
-executável da linha publicada de clientes 0.0.26. O contrato
-público das seis ferramentas
-e do recurso MCP permanece 0.0.23, enquanto a API de Cursos revisão 9, o MCP
-revisão 124 e o esquema `20260821145358` formam o backend hospedado corrente. O estado “demonstrado”
+executável. A linha publicada de clientes 0.0.26 ainda usa a API de Cursos
+revisão 9, o MCP revisão 124 e o esquema `20260821145358`. A revisão candidata
+possui cinco ferramentas públicas, servidor MCP 0.0.27 e esquema
+`20260821191340`; o recurso visual permanece 0.0.23. O estado “demonstrado”
 indica que a capacidade existe no contrato corrente e possui verificação no
-repositório. Limites declarados fazem parte desse contrato.
+repositório; “candidata” informa que a promoção ainda não ocorreu. Limites
+declarados fazem parte desse contrato.
 
 ## Curso e composição
 
@@ -25,6 +26,8 @@ repositório. Limites declarados fazem parte desse contrato.
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
 | cada conta usa um banco IndexedDB próprio | `CourseLocalStore.js` | `course-local-store.test.js`, `auth-session-store.test.js` | demonstrado em `aralearn-course-v1-<user-id>` |
+| sessão local duplica o objeto completo do usuário | `SupabaseAuthClient.js`, `AuthSessionStore.js` | `supabase-auth.test.js` | fora do contrato candidato; persiste apenas tokens, tipo, expiração e `user.id`, e reduz sessão legada na primeira leitura |
+| logout comum apaga automaticamente o cache offline | `public/main.js`, `CourseLocalStore.js` | `course-main-cutover.test.js`, `course-local-store.test.js` | fora do contrato candidato; sair preserva somente Curso, fila e rascunhos já persistidos, com confirmação de perda para formulário aberto, enquanto duas ações explícitas limpam somente a conta ativa |
 | conteúdo já promovido pode ser estudado sem rede | `CourseStudyApplication.js` e repositório local | `course-study-bridge.test.js`, `course-study-screen.test.js`, teste de Estudo no navegador | demonstrado; autenticação inicial e primeiro carregamento exigem rede |
 | seleção e posição exigem baixar todos os Cursos | envelope de navegação no `CourseStudyRepository.js` | testes de repositório, tela e navegador | fora do contrato; descritores alimentam a prévia e somente a entrada carrega o Curso selecionado |
 | disponibilidade local é inferida do descritor | documento verificado no controlador e ponte de Estudo | testes de controlador, ponte, repositório e cenário sem conexão | fora do contrato; a prévia consulta a composição íntegra da revisão e revogação purga conteúdo e posição antes do fallback |
@@ -61,7 +64,7 @@ repositório. Limites declarados fazem parte desse contrato.
 |---|---|---|---|
 | fonte possui proveniência revisável e identidade estável | `courseSources.js`, relações de fonte e revisão | `course-sources.test.js`, `course-sources-panel.test.js` | demonstrado; revisões anteriores permanecem endereçáveis |
 | âncoras ligam fonte a alvos do Curso | relações de âncora e atribuição | `course-anchored-annotations-pglite.test.js`, testes de fonte | demonstrado; citações não dependem de texto copiado no estado pessoal |
-| PDF é privado e vinculado depois do envio | API de Cursos, `course_source_attachments`, bucket `course-source-pdfs` | `course-source-attachments-pglite.test.js`, testes da API, segurança e jornada hospedada | demonstrado em duas fases com URL assinada; bytes adulterados são recusados antes do vínculo |
+| PDF é privado e vinculado depois do envio | API de Cursos, intenção de upload, `course_source_attachments`, bucket `course-source-pdfs` | `course-source-attachments-pglite.test.js`, `course-data-lifecycle-pglite.test.js`, testes da API e segurança | candidata em duas fases: v2 prepara intenção de dez minutos e POST com sessão viva; v1 permanece somente no download do Android 0.0.26; upload antigo falha fechado e retirar v1 exige encerrar explicitamente esse suporte |
 | conhecimento do caminho concede acesso ao PDF | vínculo relacional e autorização da API | `course-security.test.js`, teste local de funcionamento | fora do contrato; acesso exige a propriedade do Curso vinculado |
 | cotas do aplicativo limitam anexos | domínio de fontes e RPCs | testes de fonte e anexos | demonstrado: 20 MiB por PDF, 64 MiB únicos por Curso e oito anexos por detalhe |
 | variantes podem reaproveitar objeto imutável | vínculos autorizados por Curso e hash da origem | testes de anexos e variantes | demonstrado; cada Curso conserva vínculo próprio |
@@ -84,7 +87,8 @@ repositório. Limites declarados fazem parte desse contrato.
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
 | navegador e MCP executam o mesmo contrato de Curso | `courseRouter.js`, `courseToolExecutor.js`, `courseSupabaseAdapter.js` | `course-router.test.js`, `course-tool-executor.test.js`, `course-supabase-adapter.test.js` | demonstrado; transportes diferem, regra e autorização convergem |
-| MCP oferece seis ferramentas estáveis | `courseMcpTools.js`, `mcpServer.js` | `course-mcp-tools.test.js`, `course-mcp-server.test.js` | demonstrado; capacidades novas entram como visões ou operações quando cabem |
+| MCP oferece cinco ferramentas públicas; gestão de Pessoas permanece na aplicação | `courseMcpTools.js`, `mcpServer.js` | `course-mcp-tools.test.js`, `course-mcp-server.test.js` | candidata; capacidades novas entram como visões ou operações quando cabem |
+| Observações no MCP usam projeção mínima e opt-in de texto | `courseToolExecutor.js`, `mcpServer.js` | `course-tool-executor.test.js`, `course-mcp-server.test.js` | candidata; inbox omite texto, referência/rótulo protegidos, paths, links, IDs internos e horários; detail/auditoria só acrescentam `rawText` com `includeObservationText: true` e disclosure |
 | recurso visual MCP corresponde à versão 0.0.23 | `courseMcpAppResource.js` | `course-mcp-app-resource.test.js`, `course-mcp-app-resource.spec.js` | protocolo, temas, tamanho, encerramento, prévia, Pesquisa e Variantes verificados localmente; sessão no cliente conectado permanece pendente |
 | cliente escolhe vários pacotes para uma instância | catálogo e `courseContract.js` | validação do corpus e testes de pacotes | fora do contrato; cada instância usa um `package@version` |
 | navegador e Edge usam catálogo idêntico | código gerado em `_shared/aralearn/runtime` | `resources:sync-edge --check`, testes globais | demonstrado; divergência reprova a validação |
@@ -97,7 +101,7 @@ repositório. Limites declarados fazem parte desse contrato.
 | cliente público recebe credencial administrativa | configuração pública e verificadores de artefato | `supabase-server-environment.test.js`, `deployment-automation.test.js` | fora do contrato; somente URL e chave pública entram em site e APK |
 | tabelas expostas exigem privilégio e segurança por linha | migrações, privilégios e políticas | `course-security.test.js`, teste PostgREST/RLS, análise do banco | demonstrado para os contratos públicos correntes |
 | função com credencial administrativa aceita identidade declarada pelo corpo | funções de entrada e RPCs exclusivas do proprietário | testes de API, MCP, adaptador e segurança | fora do contrato; a função valida o token e a função SQL comprova a pessoa |
-| MCP usa OAuth 2.1 com PKCE | Auth OAuth Server, gancho de token e função MCP | `local-mcp-oauth-smoke.test.js`, teste local e hospedado | demonstrado; servidor valida sessão, emissor, destinatário, recurso, cliente, sujeito e validade temporal; cliente valida estado e código PKCE |
+| MCP usa OAuth 2.1 com PKCE | Auth OAuth Server, gancho de token, verificador JWKS e RPC de principal | `local-mcp-oauth-smoke.test.js`, `oauth-jwt-verifier.test.js`, smoke local e hospedado | candidata: escopo exato `offline_access`, sem `id_token`, aliases pareados, ES256/EC P-256 e sessão/consentimento vivos; `aralearn_session_id` continua correlacionável; bearer direto é negado em GoTrue, API de dados e Storage; após promoção, aguardar o maior prazo entre `jwt_expiry` e duas horas das URLs v1 de upload, mais margem, e repetir negativas e inventário |
 | origens de produção são exatas | segredos CORS e `deploySupabase.ps1` | `deployment-automation.test.js` | demonstrado; HTTP somente em desenvolvimento local |
 | produção envia diretamente a um provider remoto | `providerRuntimeSecurity.js`, configuração e adaptadores | `provider-runtime-security.test.js`, `study-unit-provider-assistance.test.js` | fora do contrato; produção oferece somente relay nos três hosts locais previstos e na porta 4183, com chave fora do AraLearn; acesso remoto direto exige runtime explícito de desenvolvimento |
 | credencial de assistência entra em armazenamento ou artefato | relay local, sessão efêmera de desenvolvimento e verificadores de publicação | testes de assistência, publicação e automação | fora do contrato; produção não recebe a chave; no desenvolvimento ela segue apenas no cabeçalho e não aparece em corpo, URL, Web Storage, IndexedDB, banco ou bundle |
@@ -105,6 +109,11 @@ repositório. Limites declarados fazem parte desse contrato.
 | resposta do provider conclui depois do logout | destruição da superfície, cancelamento e descarte da sessão | cenário integrado `SIGNED_OUT` | fora do contrato; a chamada é abortada antes de apagar a sessão e fechar os armazenamentos, sem callback tardio, sobreposição, credencial restaurada ou erro de página |
 | relay da assistência possui paridade entre web local, Pages e Android | política de conteúdo, classificação de endereço, configuração, ponte nativa e WebView | duas provas verticais locais, 21/21 verificações de endereço, compilação Android, 28/28 testes de implantação, verificador de artefato e aceite hospedado | parcial; a prova web mais recente passou 1/1 em 14,2 s e a compilação de depuração passou; o navegador usa `loopback` para `127.0.0.1`/`localhost` e `local` para `10.0.2.2`; a ponte chama somente `127.0.0.1:4183`, entra no APK, não entra no Pages e não relaxa `MIXED_CONTENT_NEVER_ALLOW`; Pages ainda precisa provar acesso à rede local, e o APK de release instalado precisa ser exercitado em dispositivo real |
 | buckets são privados | políticas de Storage e URLs assinadas | testes de segurança, anexos e jornadas local e hospedada | demonstrado para `person-avatars` e `course-source-pdfs`; terceiro e pessoa com acesso apenas de Estudo não recebem o PDF autoral |
+| sessão revogada bloqueia nova escrita sensível | validação de `session_id`, políticas de avatar/PDF e exclusão de conta | `course-data-lifecycle-pglite.test.js`, smoke local | candidata; a exclusão preserva a sessão durante a limpeza necessária e revoga todas imediatamente antes de `auth.users`; download assinado já emitido pode durar 60 segundos |
+| falha de limpeza local reabre uma exclusão remota confirmada | estado terminal da interface e `deleteDatabase` com tratamento de bloqueio | `course-main-cutover.test.js`, `course-local-store.test.js`, `auth-session-store.test.js` | fora do contrato candidato; depois do sucesso remoto, outra aba pode exigir retry somente do IndexedDB, mas a conta permanece excluída e a API não é chamada novamente |
+| falha depois que a exclusão começou parece uma tentativa sem efeito | erro retomável distinto após a limpeza de Storage e repetição idempotente | `course-supabase-adapter.test.js`, `course-main-cutover.test.js` | fora do contrato candidato; a tela informa que arquivos podem ter sido removidos, conserva a conta e permite concluir a transação relacional sem repetir uma remoção já feita |
+| erros e logs não refletem credencial, e-mail ou corpo bruto | `toolErrorEnvelope.js`, Edge Functions e workflows | `tool-error-envelope.test.js`, `privacy-operational-boundaries.test.js` | candidata; diagnóstico público usa allowlist e a verificação estática reprova console em Edge e rastreamento de segredos em workflows |
+| retenção física independe da abertura do Curso | `run_current_data_retention_v1`, `pg_cron`, inventário de órfãos | `course-data-lifecycle-pglite.test.js`, smoke local | candidata; job diário às 03:17, limite padrão 512 por classe e contagens idempotentes; inventário não remove objetos |
 
 ## Integração e publicação
 

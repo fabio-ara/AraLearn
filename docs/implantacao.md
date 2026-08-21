@@ -11,6 +11,21 @@ do aplicativo.
 O site e o Android 0.0.26 foram publicados a partir da mesma ponta validada de
 `main`; o Android usa `versionCode` 172.
 
+A candidata 0.0.27 ainda não foi promovida. Ela exige o esquema
+`20260821191340`, as duas Edge Functions correspondentes, cinco ferramentas MCP
+públicas, uma nova credencial OAuth de recurso e clientes com upload autenticado
+de PDF. Não use a documentação dessa candidata para inferir que esses controles
+já estão no ambiente hospedado.
+
+A revisão local final aprovou 1.067 testes e manteve 13 casos condicionais, num
+total de 1.080; o Playwright aprovou 118 cenários e manteve dois condicionais,
+num total de 120. O banco recriado aprovou 103 testes pgTAP, 13 provas reais de
+concorrência, o smoke de Curso e o fluxo OAuth/MCP com renovação e negativas no
+GoTrue, na API de dados e no Storage. O site candidato examinou 131 arquivos; os
+runtimes Android e os APKs de depuração e release examinaram 130 e 223 arquivos,
+respectivamente. Essas provas liberam a integração, não substituem os gates
+hospedados nem a espera de expiração descrita adiante.
+
 O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
 catálogo de 32 componentes didáticos. A versão 0.0.24 acrescenta a gravação
@@ -130,7 +145,15 @@ confirmação, recuperação e troca segura de senha. Em Auth, cadastre:
 - `http://127.0.0.1:4182/**` para desenvolvimento;
 - `https://appassets.androidplatform.net/**` e `aralearn://auth/callback` para Android;
 - OAuth Server com registro dinâmico e caminho de autorização `/`;
-- chave JWT assimétrica e `public.aralearn_mcp_access_token_hook` como gancho de token.
+- chave JWT assimétrica EC P-256, emitida como ES256, e
+  `public.aralearn_mcp_access_token_hook` como gancho de token.
+
+Antes do corte candidato, registre a duração de expiração JWT efetivamente
+configurada no projeto e o instante da última possibilidade de emitir uma URL
+assinada v1 de upload. A janela mínima posterior à promoção é o maior prazo
+entre essa duração JWT e duas horas: um ID token `openid` antigo pode ser aceito
+diretamente pelo GoTrue até `exp`, e uma URL v1 já emitida continua escrevendo
+sem consultar a sessão até a própria expiração.
 
 A URL pública do aplicativo e as origens permitidas das funções são promovidas
 por `deploySupabase.ps1`. Origens de produção usam HTTPS e não contêm caminho,
@@ -271,6 +294,72 @@ npm.cmd run deployment:verify-hosted
 Esse verificador não usa chave administrativa. Ele comprova a revisão, a versão
 e as capacidades que o próximo artefato exigirá.
 
+Na promoção da revisão candidata, confirme ainda:
+
+1. `pg_cron` disponível e o job único `aralearn-current-data-retention-v1`
+   agendado diariamente às 03:17;
+2. manifesto com `current-data-lifecycle-v1` e
+   `authenticated-course-source-pdf-upload-v1`;
+3. upload de PDF autenticado com intenção de dez minutos e download assinado de
+   60 segundos;
+4. negativa de inserção por token cuja sessão foi revogada;
+5. inventário de órfãos de avatar e PDF executado apenas como leitura;
+6. cinco ferramentas no MCP, sem gestão de Pessoas, e projeção minimizada de
+   Observações;
+7. metadados OAuth com `scopes_supported` igual a `offline_access`, sem outro
+   escopo, e trocas por código e refresh token sem `id_token`;
+8. access token com `sub` e `session_id` pareados e distintos, sem UUID da
+   pessoa, perfil ou e-mail, além da verificação ES256 com chave EC P-256 pela
+   JWKS do emissor; `aralearn_session_id` permanece como identificador
+   operacional correlacionável da sessão de origem e não pode aparecer em
+   resposta ou log;
+9. resolução da pessoa somente pela RPC de serviço, com sessão de origem,
+   cliente e consentimento OAuth ainda vivos;
+10. negativas reais do mesmo bearer contra GoTrue, API de dados e Storage,
+    seguidas de uma chamada MCP aprovada;
+11. consentimentos e sessões OAuth anteriores revogados, sem encerrar as
+    sessões comuns da aplicação;
+12. resposta genérica e limite de dez tentativas de concessão por ator em dez
+    minutos, sem e-mail nos contadores ou logs, reconhecendo que uma releitura
+    posterior da lista pode revelar o acesso efetivamente criado;
+13. logout preservando somente dados e filas que já estavam persistidos, com
+    confirmação de perda para alteração aberta e ainda não salva;
+14. exclusão remota confirmada tratada como terminal, inclusive quando a
+    limpeza local fica bloqueada e precisa ser repetida isoladamente.
+
+O corte revoga todos os consentimentos e remove as sessões OAuth anteriores;
+seus refresh tokens deixam de sustentar uma renovação. As sessões comuns da
+aplicação permanecem. Clientes MCP precisam repetir o consentimento com o
+escopo exato `offline_access`, e a resposta nova não contém `id_token`.
+
+Essa revogação não recolhe JWTs OAuth já assinados. Em particular, um ID token
+`openid` anterior permanece válido até o próprio `exp`. Anote o instante em que
+o backend candidato entrou e mantenha a fronteira em estado de transição por
+pelo menos o maior prazo entre a duração JWT registrada antes do corte e duas
+horas de validade máxima das URLs v1 de upload já emitidas, acrescido de margem
+operacional. Depois dessa janela, repita as negativas de GoTrue, API de dados e
+Storage e confronte o inventário de objetos sem vínculo. A entrega e a fronteira
+anterior não podem ser declaradas concluídas antes desse prazo, mesmo que os
+testes imediatamente posteriores à promoção passem.
+
+Uma rotação da chave de assinatura pode invalidar esses JWTs antes de `exp`, mas
+também afeta todas as sessões da aplicação. Ela exige plano próprio de saída,
+recuperação e comunicação e não faz parte automaticamente desta entrega.
+
+O banco precisa entrar antes dos clientes porque o contrato v2 de PDF não é
+compatível com o upload assinado anterior. Durante a transição, o backend emite
+v1 somente para `download`, preservando a abertura de anexos no Android 0.0.26,
+e emite v2 somente para `prepare_upload` autenticado. O upload do 0.0.26 recebe
+um contrato desconhecido e falha de modo fechado; nenhuma URL assinada de
+upload v1 volta a ser emitida. Publique os clientes novos logo após a
+verificação hospedada. Remova o download v1 somente depois de uma decisão
+explícita de encerrar o suporte ao Android 0.0.26, nunca por `User-Agent` ou
+detecção de versão.
+
+Proteção contra senha vazada, MFA, prazos institucionais e tratamento de backups
+permanecem decisões explícitas da implantação, não passos automáticos deste
+roteiro.
+
 ## Publicação do site
 
 O fluxo `.github/workflows/pages.yml` recebe somente uma revisão de `main` já
@@ -305,9 +394,9 @@ npm.cmd run deployment:verify-site -- --url https://<endereco-publicado>/
 
 ## Publicação do Android
 
-`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.26`. O
-`versionCode` desta entrega é 172. O APK usa a mesma URL e chave pública do
-site.
+Na revisão candidata, `package.json` e `android/app/build.gradle.kts` declaram
+`0.0.27`; o `versionCode` é 173. O Android publicado permanece na 0.0.26, com
+`versionCode` 172. O APK candidato usa a mesma URL e chave pública do site.
 
 Uma compilação local de depuração usa:
 
@@ -319,8 +408,9 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
 O fluxo `.github/workflows/android-release.yml` acompanha uma validação bem
 sucedida da ponta corrente de `main`. Ele confirma versão, estado da tag e da
 Release, configuração pública e identidade histórica de assinatura; repete
-testes e análise estática; produz o APK assinado; verifica o certificado; e cria
-a GitHub Release `v0.0.26` com `AraLearn-0.0.26.apk`.
+testes e análise estática; produz o APK assinado; verifica o certificado; e,
+quando a candidata estiver integrada, cria a GitHub Release `v0.0.27` com
+`AraLearn-0.0.27.apk`.
 
 Se `main` avançar durante a compilação, o fluxo não publica a revisão superada.
 Tag sem Release, Release parcial, rascunho, alvo divergente ou APK ausente
@@ -364,8 +454,18 @@ Na promoção da 0.0.24, a etapa 7 incluiu obrigatoriamente
 `20260820224424_canonical_study_unit_composition_edits.sql` e a implantação da
 API de Cursos que expõe a rota contextual. O verificador hospedado precisa
 observar `contextual-study-unit-edit-v1` antes de qualquer cliente correspondente
-ser publicado. A versão pública do recurso e das seis ferramentas MCP pode continuar
-0.0.23 porque sua forma não mudou.
+ser publicado. Naquele corte, a versão pública do recurso e do catálogo MCP pôde
+continuar 0.0.23 porque sua forma não havia mudado.
+
+Na promoção candidata, registre também quatro marcos separados: o
+instante, a duração JWT e a validade máxima das URLs v1 observados antes do
+corte; a promoção do esquema e das funções; a publicação dos clientes capazes
+de enviar PDF por sessão; e o fim da janela conjunta de expiração dos ID tokens
+e das URLs v1 de upload antigas. Os testes imediatos liberam a publicação dos
+clientes, mas o último marco, seguido das negativas hospedadas e da conferência
+do inventário de órfãos, é condição para declarar fechada a antiga fronteira. A
+retirada futura do download v1 é outro corte e depende de encerrar
+explicitamente o suporte ao Android 0.0.26.
 
 ## Recuperação
 

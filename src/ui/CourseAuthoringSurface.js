@@ -2087,6 +2087,7 @@ export function createCourseAuthoringSurface({
     method,
     startedMessage,
     successMessage,
+    refreshAfterSuccess = true,
     afterSuccess = () => {}
   }) {
     if (!state.course || state.peopleBusy) return false;
@@ -2110,7 +2111,7 @@ export function createCourseAuthoringSurface({
       await controller[method](structuredClone(pending.request));
       state.pendingPeopleCommand = null;
       afterSuccess();
-      await loadPeople(courseId);
+      if (refreshAfterSuccess) await loadPeople(courseId);
       state.peopleMessage = successMessage;
       return true;
     } catch (error) {
@@ -4124,7 +4125,8 @@ export function createCourseAuthoringSurface({
             request: { courseId, email, confirmed: true },
             method: "grantCourseAccess",
             startedMessage: "Concedendo acesso…",
-            successMessage: "Acesso concedido.",
+            successMessage: "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Use Atualizar Curso depois para conferir o acesso.",
+            refreshAfterSuccess: false,
             afterSuccess() {
               state.grantOpen = false;
               state.grantDraftEmail = "";

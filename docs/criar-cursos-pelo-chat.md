@@ -16,8 +16,9 @@ instalação na interface corrente desse produto.
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
 2. Autorize sua conta individual por OAuth.
-3. Confirme a descoberta das seis ferramentas e do recurso
-   `aralearn://authoring/invariants`.
+3. Confirme a descoberta das ferramentas e do recurso
+   `aralearn://authoring/invariants`: o ambiente hospedado 0.0.26 ainda anuncia
+   seis; a revisão candidata anuncia cinco depois da promoção.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
    propor alterações.
 
@@ -132,7 +133,7 @@ Unidade não recebe um campo paralelo `sources`.
 Na área **Fontes**, a pessoa proprietária também pode:
 
 - anexar PDFs privados à revisão ativa da Fonte;
-- baixar um anexo por endereço temporário autorizado;
+- baixar um anexo por URL assinada de 60 segundos;
 - acompanhar a cota de PDFs do Curso;
 - exportar a proveniência de um alvo em JSON, preservando identidades,
   revisões, relações e Âncoras.
@@ -141,6 +142,11 @@ Cada PDF aceita até 20 MiB, cada revisão de Fonte aceita até oito anexos e o
 Curso aceita até 64 MiB de conteúdo PDF único. Arquivos com os mesmos bytes são
 reutilizados dentro do Curso quando impressão digital, tamanho, tipo e autorização
 coincidem.
+
+O envio de PDF é uma operação da aplicação autenticada, não do cliente
+conversacional: o preparo cria uma intenção de dez minutos, o Storage exige uma
+sessão ainda viva e a inserção consome essa intenção. O MCP pode consultar os
+metadados autorizados, mas não recebe o arquivo nem uma credencial de upload.
 
 ## Descobrir componentes conforme a intenção
 

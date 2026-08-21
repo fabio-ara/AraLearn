@@ -743,6 +743,74 @@ test("flush purga Curso revogado após mutação offline pendente e libera ciclo
   assert.deepEqual(repository.loadReviewItems(), []);
 });
 
+test("limpeza local fecha o Estudo sem reenviar pendências, enquanto a saída comum faz flush", async () => {
+  const createRepositoryWithPendingProgress = async () => {
+    const courseValue = course(COURSE_A, "a");
+    const state = { acceptMutation: false, mutationCalls: 0 };
+    const repository = new CourseStudyRepository({
+      bridge: {
+        async listAccessibleCourses() {
+          return {
+            items: [{
+              courseId: COURSE_A,
+              title: courseValue.title,
+              goal: courseValue.goal,
+              revision: 1,
+              studyUnitCount: 1,
+              completedStudyUnitCount: 0
+            }],
+            hasMore: false,
+            nextCursor: null
+          };
+        },
+        async loadCourse() {
+          return { document: { contract: "aralearn.course.v1", courses: [courseValue] } };
+        },
+        async clearCourse() {}
+      },
+      api: {
+        async listCourseReviewItems() {
+          return { items: [], hasMore: false, nextCursor: null };
+        },
+        async loadPersonalState() { return null; },
+        async mutatePersonalState({ courseId }) {
+          state.mutationCalls += 1;
+          if (!state.acceptMutation) throw new TypeError("Failed to fetch");
+          return {
+            courseId,
+            revision: 1,
+            updatedAt: "2026-08-17T12:00:00.000Z",
+            idempotent: false
+          };
+        }
+      },
+      cache: cache(),
+      clock: () => "2026-08-17T12:00:00.000Z"
+    });
+    await repository.initialize();
+    await repository.loadCourse(COURSE_A);
+    await repository.setStudyUnitCompleted({
+      courseId: COURSE_A,
+      moduleId: "module-a",
+      lessonId: "lesson-a",
+      microsequenceId: "micro-a",
+      studyUnitId: "unit-a"
+    }, true);
+    assert.equal(state.mutationCalls, 1);
+    return { repository, state };
+  };
+
+  const destructive = await createRepositoryWithPendingProgress();
+  destructive.state.acceptMutation = true;
+  await destructive.repository.close({ flush: false });
+  assert.equal(destructive.state.mutationCalls, 1);
+
+  const ordinary = await createRepositoryWithPendingProgress();
+  ordinary.state.acceptMutation = true;
+  await ordinary.repository.close();
+  assert.equal(ordinary.state.mutationCalls, 2);
+});
+
 test("citações são buscadas somente por Unidade carregada e vinculadas à revisão do Curso", async () => {
   const calls = [];
   const clearedCourses = [];

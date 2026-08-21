@@ -12,6 +12,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "direct-course-access-v1",
   "course-cas-idempotency-v1",
   "oauth-only-authoring-mcp",
+  "isolated-mcp-oauth-principal-v1",
   "package-library-v1",
   "package-contract-discovery-v1",
   "person-profile-v1",
@@ -38,7 +39,9 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-analytics-v1",
   "course-variant-factual-comparison-v1",
   "contextual-study-unit-edit-v1",
-  "personal-course-copy-edit-v1"
+  "personal-course-copy-edit-v1",
+  "current-data-lifecycle-v1",
+  "authenticated-course-source-pdf-upload-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -243,7 +246,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260821145358" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260821191340" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -294,6 +297,9 @@ async function validateManifest() {
   );
   const personalCourseCopyMigration = await read(
     "supabase/migrations/20260821145358_personal_course_copy_edit.sql"
+  );
+  const dataLifecycleMigration = await read(
+    "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -358,6 +364,21 @@ async function validateManifest() {
       ) ||
       !personalCourseCopyMigration.includes(
         "commit_personal_course_copy_edit_for_actor_v1"
+      ) ||
+      !dataLifecycleMigration.includes(
+        "$advance_current_data_lifecycle_manifest$"
+      ) ||
+      !dataLifecycleMigration.includes(
+        "to_jsonb('20260821191340'::text)"
+      ) ||
+      !dataLifecycleMigration.includes(
+        "current-data-lifecycle-v1"
+      ) ||
+      !dataLifecycleMigration.includes(
+        "authenticated-course-source-pdf-upload-v1"
+      ) ||
+      !dataLifecycleMigration.includes(
+        "isolated-mcp-oauth-principal-v1"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -377,7 +398,8 @@ async function validateManifest() {
         !completeVariantComparisonMigration.includes(`'${feature}'`) &&
         !avatarPathMigration.includes(`'${feature}'`) &&
         !contextualCompositionMigration.includes(`'${feature}'`) &&
-        !personalCourseCopyMigration.includes(`'${feature}'`)) {
+        !personalCourseCopyMigration.includes(`'${feature}'`) &&
+        !dataLifecycleMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -511,11 +533,12 @@ async function validateEdgeAndMcp() {
     "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js"
   )).href);
   const names = toolsModule.COURSE_MCP_TOOLS.map(({ name }) => name);
-  for (const required of [
+  const expected = [
     "listarCursos", "lerCurso", "criarCurso", "alterarCurso",
-    "gerirPessoas", "consultarComponentesDidaticos"
-  ]) {
-    if (!names.includes(required)) fail(`O MCP não oferece ${required}.`);
+    "consultarComponentesDidaticos"
+  ];
+  if (JSON.stringify(names) !== JSON.stringify(expected)) {
+    fail("O catálogo MCP não corresponde às cinco ferramentas públicas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

@@ -37,7 +37,8 @@ function userFromAccessToken(accessToken) {
   try {
     const source = parts[1].replaceAll("-", "+").replaceAll("_", "/");
     const payload = JSON.parse(globalThis.atob(source + "=".repeat((4 - source.length % 4) % 4)));
-    return payload?.sub ? { id: payload.sub, ...(payload.email ? { email: payload.email } : {}) } : null;
+    const id = text(payload?.sub);
+    return id ? { id } : null;
   } catch {
     return null;
   }
@@ -45,14 +46,13 @@ function userFromAccessToken(accessToken) {
 
 function normalizeSession(rawSession, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!rawSession || typeof rawSession !== "object" || !text(rawSession.access_token)) return null;
+  const userId = text(rawSession.user?.id) || userFromAccessToken(rawSession.access_token)?.id || "";
   return {
     access_token: text(rawSession.access_token),
     refresh_token: text(rawSession.refresh_token),
     token_type: text(rawSession.token_type) || "bearer",
     expires_at: sessionExpiry(rawSession, nowSeconds),
-    user: rawSession.user && typeof rawSession.user === "object"
-      ? structuredClone(rawSession.user)
-      : userFromAccessToken(rawSession.access_token)
+    user: userId ? { id: userId } : null
   };
 }
 
@@ -149,7 +149,12 @@ export class SupabaseAuthClient {
       ? globalThis.BroadcastChannel
       : null
   } = {}) {
-    if (!sessionStore || typeof sessionStore.getSyncState !== "function" || typeof sessionStore.putSyncState !== "function") {
+    if (
+      !sessionStore ||
+      typeof sessionStore.getSyncState !== "function" ||
+      typeof sessionStore.putSyncState !== "function" ||
+      typeof sessionStore.updateSyncState !== "function"
+    ) {
       throw new TypeError("O armazenamento relacional de sessão é obrigatório.");
     }
     this.http = new SupabaseHttpClient({ projectUrl, publishableKey, fetchImpl });
@@ -272,10 +277,15 @@ export class SupabaseAuthClient {
       }
     }
 
-    const stored = await this.sessionStore.getSyncState(AUTH_SESSION_STATE_KEY);
-    this.session = normalizeSession(stored?.value ?? stored, this.nowSeconds());
+    this.session = await this.sessionStore.updateSyncState(
+      AUTH_SESSION_STATE_KEY,
+      (stored) => normalizeSession(stored?.value ?? stored, this.nowSeconds())
+    );
     this.http.setAccessToken(this.session?.access_token || null);
     if (!this.session) return null;
+    // Sessões gravadas por versões anteriores podem conter o objeto inteiro do usuário.
+    // A primeira leitura as reduz atomicamente à mesma projeção mínima usada nas
+    // novas gravações, sem regravar uma sessão renovada ou removida por outra aba.
 
     if (this.session.expires_at && this.session.expires_at <= this.nowSeconds() + 60) {
       if (!this.session.refresh_token) {
@@ -400,11 +410,12 @@ export class SupabaseAuthClient {
       method: "PUT",
       body: { password: String(password || "") }
     });
-    this.session.user = user?.user ?? user;
+    const updatedUser = user?.user ?? user;
+    this.session.user = { id: text(updatedUser?.id) || this.session.user?.id || "" };
     this.recoveryMode = false;
     await this.persistSession(this.session);
     this.emit("PASSWORD_UPDATED");
-    return this.session.user;
+    return this.getSession()?.user || null;
   }
 
   async refreshSession() {

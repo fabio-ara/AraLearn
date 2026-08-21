@@ -13,8 +13,10 @@ export const COURSE_SOURCE_CHANGE_CONTRACT = "aralearn.course-source-change.v1";
 export const COURSE_STUDY_CITATIONS_CONTRACT = "aralearn.course-study-citations.v1";
 export const COURSE_SOURCE_CONTEXT_CONTRACT = "aralearn.course-source-context.v1";
 export const COURSE_DESIGN_CONTEXT_V2_CONTRACT = "aralearn.course-design-context.v2";
-export const COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT =
+export const COURSE_SOURCE_ATTACHMENT_ACCESS_V1_CONTRACT =
   "aralearn.course-source-attachment-access.v1";
+export const COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT =
+  "aralearn.course-source-attachment-access.v2";
 export const COURSE_SOURCE_PDF_MEDIA_TYPE = "application/pdf";
 export const COURSE_SOURCE_PDF_MAX_BYTES = 20 * 1024 * 1024;
 export const COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES = 64 * 1024 * 1024;
@@ -311,7 +313,11 @@ export function normalizeCourseSourceAttachmentAccess(value) {
     "sourceRevision", "storageOriginCourseId", "attachment", "uploadRequired",
     "alreadyLinked", "signedUrl", "expiresAt"
   ], "invalid_course_source_attachment_access", "O acesso ao anexo PDF");
-  if (access.contract !== COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT ||
+  const compatibleDownload = access.operation === "download" &&
+    access.contract === COURSE_SOURCE_ATTACHMENT_ACCESS_V1_CONTRACT;
+  const supportedContract = access.contract === COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT ||
+    compatibleDownload;
+  if (!supportedContract ||
       !["prepare_upload", "download"].includes(access.operation) ||
       typeof access.uploadRequired !== "boolean" ||
       typeof access.alreadyLinked !== "boolean") {
@@ -334,9 +340,9 @@ export function normalizeCourseSourceAttachmentAccess(value) {
       access.operation === "download" && (access.uploadRequired || !access.alreadyLinked) ||
       access.alreadyLinked && access.uploadRequired ||
       access.operation === "prepare_upload" &&
-        access.uploadRequired !== (access.signedUrl !== null) ||
+        (access.signedUrl !== null || access.expiresAt !== null) ||
       access.operation === "download" && access.signedUrl === null ||
-      (access.signedUrl === null) !== (access.expiresAt === null)) {
+      access.operation === "download" && access.expiresAt === null) {
     fail("invalid_course_source_attachment_access", "O acesso ao anexo é inconsistente.");
   }
   return {

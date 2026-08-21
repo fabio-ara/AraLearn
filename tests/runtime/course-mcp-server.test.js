@@ -65,6 +65,7 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     clientInfo: { name: "teste", version: "1" }
   }));
   const initialized = await initialize.json();
+  assert.equal(initialized.result.serverInfo.version, "0.0.27");
   assert.match(initialized.result.instructions, /Curso vivo e mutável/iu);
   assert.match(initialized.result.instructions, /não os fixe no prompt/iu);
 
@@ -76,12 +77,12 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     "lerCurso",
     "criarCurso",
     "alterarCurso",
-    "gerirPessoas",
     "consultarComponentesDidaticos"
   ]);
+  assert.equal(names.includes("gerirPessoas"), false);
   assert.equal(names.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o/iu.test(name)), false);
   for (const tool of tools) {
-    assert.deepEqual(tool.securitySchemes, [{ type: "oauth2", scopes: ["openid"] }]);
+    assert.deepEqual(tool.securitySchemes, [{ type: "oauth2", scopes: ["offline_access"] }]);
     assert.deepEqual(tool._meta.securitySchemes, tool.securitySchemes);
   }
 });
@@ -164,6 +165,98 @@ test("MCP lê a materialização retomável sem duplicar o DTO no texto", async 
   assert.match(payload.result.content[0].text, new RegExp(`Parte: ${PART_ID}`, "u"));
   assert.match(payload.result.content[0].text, /Uma Fonte ainda precisa de revisão/u);
   assert.match(payload.result.content[0].text, /primeira Microssequência foi preservada/u);
+});
+
+test("MCP minimiza Observações e sinaliza quando o detalhe envia texto bruto", async () => {
+  const annotationId = "70000000-0000-4000-8000-000000000007";
+  const protectedRef = "person-feedfacefeedface";
+  const rawText = "Relato integral known.person@example.test";
+  const annotation = {
+    annotationId,
+    annotationVersion: 2,
+    provenance: { origin: "learner", channel: "study_interface" },
+    contributor: {
+      kind: "protected_person", role: "learner", ref: protectedRef, label: "Estudante FEED"
+    },
+    target: {
+      kind: "study_unit",
+      id: "internal-study-unit",
+      observedPath: [{ kind: "course", id: COURSE_ID, label: "Curso", version: 3 }, {
+        kind: "study_unit", id: "internal-study-unit", label: "Unidade", version: 2
+      }],
+      currentAvailable: true,
+      currentPath: [{ kind: "course", id: COURSE_ID, label: "Curso", version: 3 }, {
+        kind: "study_unit", id: "internal-study-unit", label: "Unidade", version: 2
+      }],
+      deepLink: "https://app.example/#/authoring?section=observations"
+    },
+    observedRevision: { certainty: "known", courseRevision: 3, targetVersion: 2 },
+    rawText,
+    category: "confusing",
+    briefSummary: "Dúvida localizada",
+    subjectClassification: {
+      status: "classified",
+      effective: { subjects: [{ topicId: "internal-topic", label: "Tema", topicVersion: 1 }] }
+    },
+    state: "open",
+    ownerResponse: null,
+    timestamps: { capturedAt: null, updatedAt: "2026-08-21T12:00:00Z" },
+    capabilities: {
+      canRevise: false, canWithdraw: false, canConsider: true, canRespond: true,
+      canResolve: true, canReopen: false, canCorrectSubjects: true
+    },
+    deepLink: "https://app.example/#/authoring?annotation=opaque"
+  };
+  const page = {
+    contract: "aralearn.course-anchored-annotation-page.v1",
+    courseId: COURSE_ID,
+    courseRevision: 3,
+    annotationSetVersion: 4,
+    query: {},
+    summary: {
+      matchingTotal: 1,
+      byOrigin: { learner: 1 },
+      byChannel: { study_interface: 1 },
+      byState: { open: 1 },
+      unclassifiedTotal: 0
+    },
+    items: [annotation],
+    hasMore: false,
+    nextCursor: null
+  };
+  const adapter = { async getCourseAnchoredAnnotations() { return page; } };
+  const inboxResponse = await handler(adapter)(request("tools/call", {
+    name: "lerCurso",
+    arguments: { courseId: COURSE_ID, view: "anchored_annotations", expectedRevision: 3 }
+  }));
+  const inbox = (await inboxResponse.json()).result;
+  const inboxSerialized = JSON.stringify(inbox);
+  assert.equal(inbox.structuredContent.data.dataDisclosure.rawObservationTextIncluded, false);
+  assert.match(inbox.content[0].text, /omite o texto integral/iu);
+  for (const protectedValue of [
+    protectedRef, "Estudante FEED", rawText, "internal-study-unit", "internal-topic"
+  ]) {
+    assert.equal(inboxSerialized.includes(protectedValue), false, protectedValue);
+  }
+
+  const detailResponse = await handler(adapter)(request("tools/call", {
+    name: "lerCurso",
+    arguments: {
+      courseId: COURSE_ID,
+      view: "anchored_annotations",
+      expectedRevision: 3,
+      mode: "detail",
+      annotationId,
+      includeObservationText: true
+    }
+  }));
+  const detail = (await detailResponse.json()).result;
+  assert.equal(detail.structuredContent.data.items[0].rawText, rawText);
+  assert.equal(detail.structuredContent.data.dataDisclosure.rawObservationTextIncluded, true);
+  assert.match(detail.content[0].text, /envia ao cliente MCP conectado/iu);
+  for (const protectedValue of [protectedRef, "Estudante FEED", COURSE_ID]) {
+    assert.equal(JSON.stringify(detail).includes(protectedValue), false, protectedValue);
+  }
 });
 
 test("MCP devolve recibo legível da conclusão com contagens e link", async () => {
@@ -454,7 +547,7 @@ test("MCP torna recuperável o conflito de versão do Curso sem instruções sub
   })(request("tools/call", {
     name: "alterarCurso",
     arguments: {
-      requestId: "request-course-stale-0002",
+      requestId: " request-course-stale-0002 ",
       courseId: COURSE_ID,
       expectedRevision: 3,
       expectedPlanVersion: 2,
@@ -467,8 +560,153 @@ test("MCP torna recuperável o conflito de versão do Curso sem instruções sub
 
   assert.equal(response.status, 200);
   assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.requestId, "request-course-stale-0002");
   assert.equal(result.structuredContent.error.code, "stale_course_state");
   assert.equal(result.structuredContent.error.recovery.strategy, "reread_and_retry");
   assert.equal(result.structuredContent.error.recovery.requestIdMode, "new");
   assert.doesNotMatch(JSON.stringify(result), /workspace|trilha|salvarCards/iu);
+});
+
+test("MCP mantém a URL assinada somente no campo estruturado autorizado", async () => {
+  const contentHash = "a".repeat(64);
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const signedUrl =
+    "https://storage.example.test/object/source.pdf?token=temporary-download-secret";
+  let calls = 0;
+  const adapter = {
+    async getCourseSourceAttachmentAccess() {
+      calls += 1;
+      return {
+        contract: "aralearn.course-source-attachment-access.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        operation: "download",
+        sourceId: "source-pdf",
+        sourceRevision: 2,
+        storageOriginCourseId: COURSE_ID,
+        attachment: {
+          contentHash,
+          byteSize: 1_024,
+          mediaType: "application/pdf",
+          storagePath
+        },
+        uploadRequired: false,
+        alreadyLinked: true,
+        signedUrl,
+        expiresAt: "2026-08-21T12:01:00Z"
+      };
+    }
+  };
+  const argumentsWithoutDisclosure = {
+    courseId: COURSE_ID,
+    view: "course_source_attachment",
+    expectedRevision: 4,
+    attachmentOperation: "download",
+    sourceId: "source-pdf",
+    sourceRevision: 2,
+    contentHash
+  };
+
+  const deniedResponse = await handler(adapter)(request("tools/call", {
+    name: "lerCurso",
+    arguments: argumentsWithoutDisclosure
+  }));
+  const denied = (await deniedResponse.json()).result;
+  assert.equal(denied.isError, true);
+  assert.equal(
+    denied.structuredContent.error.code,
+    "attachment_download_url_disclosure_required"
+  );
+  assert.equal(calls, 0);
+  assert.equal(JSON.stringify(denied).includes(signedUrl), false);
+
+  const allowedResponse = await handler(adapter)(request("tools/call", {
+    name: "lerCurso",
+    arguments: {
+      ...argumentsWithoutDisclosure,
+      includeAttachmentDownloadUrl: true
+    }
+  }));
+  const allowed = (await allowedResponse.json()).result;
+  const data = allowed.structuredContent.data;
+  assert.equal(calls, 1);
+  assert.equal(data.signedUrl, signedUrl);
+  assert.equal(data.dataDisclosure.attachmentDownloadUrlIncluded, true);
+  assert.equal(data.dataDisclosure.attachmentDownloadUrlExpiresInSeconds, 60);
+  assert.equal(allowed.content[0].text.includes(signedUrl), false);
+  assert.equal(allowed.content[0].text.includes("temporary-download-secret"), false);
+  assert.equal(JSON.stringify(data).includes(storagePath), false);
+  assert.equal(Object.hasOwn(data, "storageOriginCourseId"), false);
+});
+
+test("MCP não reflete token, e-mail, Authorization ou payload bruto em erros", async () => {
+  const sentinels = [
+    "known.person@example.test",
+    "Bearer token-that-must-not-leak",
+    "Authorization: Bearer token-that-must-not-leak",
+    "raw personal payload from an observation"
+  ];
+  const response = await handler({
+    async getCourse() {
+      throw new AuthoringApiError(
+        422,
+        "invalid_course_contract",
+        "O Curso não corresponde ao contrato.",
+        {
+          field: "course",
+          value: sentinels[0],
+          reason: sentinels[1],
+          Authorization: sentinels[2],
+          rawPayload: sentinels[3]
+        }
+      );
+    }
+  })(request("tools/call", {
+    name: "lerCurso",
+    arguments: { courseId: COURSE_ID }
+  }));
+  const payload = await response.json();
+  const serialized = JSON.stringify(payload);
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "invalid_course_contract");
+  for (const sentinel of sentinels) assert.equal(serialized.includes(sentinel), false, sentinel);
+
+  const invalidParams = await handler()(request("tools/list", {
+    Authorization: sentinels[1]
+  }));
+  assert.equal(JSON.stringify(await invalidParams.json()).includes("Authorization"), false);
+  const invalidMethod = await handler()(request(sentinels[0]));
+  assert.equal(JSON.stringify(await invalidMethod.json()).includes(sentinels[0]), false);
+
+  const hostileField = sentinels[0];
+  const unknownArgument = await handler()(request("tools/call", {
+    name: "lerCurso",
+    arguments: { courseId: COURSE_ID, [hostileField]: "valor" }
+  }));
+  const unknownPayload = await unknownArgument.json();
+  const unknownResult = unknownPayload.result;
+  assert.equal(unknownResult.isError, true);
+  assert.equal(unknownResult.structuredContent.error.message,
+    "O comando contém um campo não reconhecido.");
+  assert.equal(unknownResult.content[0].text,
+    "unknown_tool_argument: O comando contém um campo não reconhecido.");
+  assert.equal(JSON.stringify(unknownPayload).includes(hostileField), false);
+
+  const hostileRequestId = sentinels[1];
+  const invalidRequestId = await handler()(request("tools/call", {
+    name: "criarCurso",
+    arguments: {
+      requestId: hostileRequestId,
+      title: "Curso seguro",
+      objective: "Não refletir entrada hostil."
+    }
+  }));
+  const invalidRequestIdPayload = await invalidRequestId.json();
+  const invalidRequestIdResult = invalidRequestIdPayload.result;
+  assert.equal(invalidRequestIdResult.isError, true);
+  assert.equal(invalidRequestIdResult.structuredContent.requestId, null);
+  assert.equal(invalidRequestIdResult.structuredContent.error.code, "invalid_tool_argument");
+  assert.equal(invalidRequestIdResult.structuredContent.error.recovery.requestIdMode, "none");
+  assert.equal(JSON.stringify(invalidRequestIdPayload).includes(hostileRequestId), false);
 });

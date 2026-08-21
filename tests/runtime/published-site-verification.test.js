@@ -11,7 +11,7 @@ import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntime
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.26";
+const VERSION = "0.0.27";
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>
@@ -118,7 +118,7 @@ test("verifica integralmente um site publicado usando somente GET", async () => 
   assert.ok(calls.every(({ options }) => options.headers["Cache-Control"] === "no-cache"));
   assert.ok(calls.every(({ options }) => !("Authorization" in options.headers)));
   assert.ok(calls.some(({ url }) => url.includes("auth_state=aralearn-publication-check")));
-  assert.ok(calls.some(({ url }) => url.includes("aralearn-publication-check=0.0.26-")));
+  assert.ok(calls.some(({ url }) => url.includes("aralearn-publication-check=0.0.27-")));
   assert.doesNotMatch(JSON.stringify(result), /sb_publishable_/u);
 });
 
@@ -278,14 +278,14 @@ test("recusa manifesto cacheado de outra versão ou revisão divergente", async 
     const { fetchImpl } = createPublishedSiteFetch({
       overrides: {
         "/AraLearn/asset-manifest.json": {
-          body: { version: "0.0.25", revision: REVISION, assets: ASSETS },
+          body: { version: "0.0.26", revision: REVISION, assets: ASSETS },
           type: "application/json"
         }
       }
     });
     await assert.rejects(
       () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
-      /versão esperada 0\.0\.26/
+      /versão esperada 0\.0\.27/
     );
   });
 

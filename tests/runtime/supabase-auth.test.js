@@ -20,12 +20,39 @@ function response(status, body) {
 
 function createSessionStore() {
   const state = new Map();
+  let writeQueue = Promise.resolve();
+  const write = async (operation) => {
+    const previous = writeQueue;
+    let release;
+    writeQueue = new Promise((resolve) => { release = resolve; });
+    await previous;
+    try {
+      return operation();
+    } finally {
+      release();
+    }
+  };
   return {
     async getSyncState(key) {
       return state.get(key) ?? null;
     },
     async putSyncState(key, value) {
-      state.set(key, structuredClone(value));
+      return write(() => {
+        if (value == null) state.delete(key);
+        else state.set(key, structuredClone(value));
+      });
+    },
+    async updateSyncState(key, update) {
+      return write(() => {
+        const current = state.has(key) ? structuredClone(state.get(key)) : null;
+        const next = update(current);
+        if (next && typeof next.then === "function") {
+          throw new TypeError("A atualização de sessão deve ser síncrona.");
+        }
+        if (next == null) state.delete(key);
+        else state.set(key, structuredClone(next));
+        return next == null ? null : structuredClone(next);
+      });
     },
     state
   };
@@ -138,10 +165,11 @@ test("cliente HTTP preserva código e mensagem do envelope de erro da Edge Funct
 
 test("login persiste a sessão e envia apenas a chave pública no cabeçalho", async () => {
   const requests = [];
+  const store = createSessionStore();
   const auth = new SupabaseAuthClient({
     projectUrl: "https://projeto.supabase.co",
     publishableKey: "public-key",
-    sessionStore: createSessionStore(),
+    sessionStore: store,
     fetchImpl: async (url, options) => {
       requests.push({ url, options });
       return response(200, session());
@@ -158,6 +186,81 @@ test("login persiste a sessão e envia apenas a chave pública no cabeçalho", a
     email: "pessoa@example.com",
     password: "segredo"
   });
+  assert.deepEqual(await store.getSyncState("auth.session"), {
+    access_token: "access-token",
+    refresh_token: "refresh-token",
+    token_type: "bearer",
+    expires_at: 1_700_003_600,
+    user: { id: "user-1" }
+  });
+});
+
+test("inicialização reduz uma sessão legada ao identificador necessário", async () => {
+  const store = createSessionStore();
+  await store.putSyncState("auth.session", session({
+    expires_at: 1_700_003_600,
+    expires_in: undefined,
+    provider_token: "token-do-provider",
+    user: {
+      id: "user-1",
+      email: "pessoa@example.com",
+      phone: "+5511999999999",
+      user_metadata: { display_name: "Pessoa" }
+    }
+  }));
+  const auth = new SupabaseAuthClient({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    sessionStore: store,
+    fetchImpl: async () => { throw new Error("não deveria consultar a rede"); },
+    clock: () => 1_700_000_000_000
+  });
+
+  assert.deepEqual(await auth.initialize(), {
+    access_token: "access-token",
+    refresh_token: "refresh-token",
+    token_type: "bearer",
+    expires_at: 1_700_003_600,
+    user: { id: "user-1" }
+  });
+  const persisted = await store.getSyncState("auth.session");
+  assert.deepEqual(persisted, auth.getSession());
+  assert.doesNotMatch(JSON.stringify(persisted), /example\.com|display_name|provider_token|5511/u);
+});
+
+test("inicialização não sobrescreve uma sessão renovada por outra aba", async () => {
+  const oldSession = session({
+    access_token: "access-old",
+    refresh_token: "refresh-old",
+    expires_at: 1_700_003_600,
+    expires_in: undefined
+  });
+  const renewedSession = session({
+    access_token: "access-new",
+    refresh_token: "refresh-new",
+    expires_at: 1_700_007_200,
+    expires_in: undefined
+  });
+  const store = createSessionStore();
+  await store.putSyncState("auth.session", renewedSession);
+  store.getSyncState = async () => structuredClone(oldSession);
+
+  const auth = new SupabaseAuthClient({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    sessionStore: store,
+    fetchImpl: async () => { throw new Error("não deveria consultar a rede"); },
+    clock: () => 1_700_000_000_000
+  });
+
+  assert.deepEqual(await auth.initialize(), {
+    access_token: "access-new",
+    refresh_token: "refresh-new",
+    token_type: "bearer",
+    expires_at: 1_700_007_200,
+    user: { id: "user-1" }
+  });
+  assert.deepEqual(await store.updateSyncState("auth.session", (current) => current), auth.getSession());
 });
 
 test("cadastro, reenvio e recuperação passam redirect_to na URL do GoTrue", async () => {

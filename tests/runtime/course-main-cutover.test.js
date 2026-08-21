@@ -123,6 +123,8 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     "data-profile-avatar-file",
     "controller.uploadAvatar",
     "controller.updatePersonProfile",
+    "data-settings-clear-device",
+    "data-settings-signout-clear",
     "data-settings-delete-account",
     "controller.deleteMyAccount"
   ]) {
@@ -132,6 +134,110 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
       `A operação de conta ${visibleAccountContract} não possui consumo humano visível.`
     );
   }
+  assert.match(
+    mainSource,
+    /Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo\. Alterações ainda abertas e não salvas serão perdidas/u,
+    "A saída comum deve explicar que os dados locais da conta permanecem."
+  );
+  assert.match(
+    mainSource,
+    /data-settings-signout\][\s\S]*?Sair desta conta\?[\s\S]*?Alterações ainda abertas e não salvas serão perdidas[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?repository\?\.flush\(\)[\s\S]*?authClient\.signOut\(\)/u,
+    "A saída comum precisa confirmar a perda do estado que existe somente em memória."
+  );
+  assert.match(
+    mainSource,
+    /data-settings-clear-device[\s\S]*?Remover dados deste dispositivo[\s\S]*?data-settings-signout-clear[\s\S]*?Sair e remover dados deste dispositivo/u,
+    "A conta deve oferecer limpeza local independente e limpeza junto da saída."
+  );
+  assert.match(
+    mainSource,
+    /section class="account-device-data" aria-labelledby="account-device-data-title"[\s\S]*?h2 id="account-device-data-title"/u,
+    "Os controles de dados locais precisam de um nome de seção acessível."
+  );
+  assert.match(
+    mainSource,
+    /data-settings-clear-device[\s\S]*?rascunhos ou edições pendentes serão perdidos[\s\S]*?clearAraLearnLocalState\(\{ removeSession: false \}\)/u,
+    "A limpeza independente precisa confirmar a perda local e preservar a sessão."
+  );
+  assert.match(
+    mainSource,
+    /async function clearAraLearnLocalState[\s\S]*?repository\.close\(\{ flush: false \}\)[\s\S]*?CourseLocalStore\.deleteDatabase[\s\S]*?if \(removeSession\) await AuthSessionStore\.deleteDatabase/u,
+    "A limpeza local precisa desconectar sem envio remoto, apagar somente a conta ativa e preservar opcionalmente a sessão."
+  );
+  assert.match(
+    mainSource,
+    /data-settings-signout-clear[\s\S]*?rascunhos ou edições pendentes serão perdidos[\s\S]*?removeLocalDataOnShutdown = true[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?authClient\.signOut\(\)/u,
+    "A saída com limpeza deve escolher o mesmo encerramento antes de emitir SIGNED_OUT."
+  );
+  assert.match(
+    mainSource,
+    /if \(removeLocalDataOnShutdown\) await clearAraLearnLocalState\(\);[\s\S]*?else await closeAraLearnLocalConnections\(\);/u,
+    "SIGNED_OUT deve possuir uma única cadeia de encerramento para preservar ou remover dados locais."
+  );
+  const accountDeletionHandler = mainSource.match(
+    /\[data-settings-delete-account\][\s\S]*?\[data-settings-close\]/u
+  )?.[0] || "";
+  assert.match(
+    accountDeletionHandler,
+    /irreversível: exclui sua conta, Cursos próprios, cópias pessoais e PDFs enviados[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?controller\.deleteMyAccount\(\{ confirmation \}\)[\s\S]*?clearAraLearnLocalState\(\)/u,
+    "A exclusão da conta deve limpar o dispositivo somente depois da confirmação remota."
+  );
+  assert.match(
+    mainSource,
+    /function renderDeletedAccountCleanupFailure[\s\S]*?Sua conta foi excluída\.[\s\S]*?data-account-cleanup-retry[\s\S]*?clearAraLearnLocalState\(\)/u,
+    "Falha local posterior não pode reclassificar como falha uma conta já excluída no servidor."
+  );
+  assert.match(
+    accountDeletionHandler,
+    /controller\.deleteMyAccount\(\{ confirmation \}\)[\s\S]*?catch \(error\)[\s\S]*?return;[\s\S]*?Conta excluída\. Removendo dados deste dispositivo[\s\S]*?onDeletedAccountCleanupFailure/u,
+    "O commit remoto e a limpeza local precisam possuir estados de falha separados."
+  );
+  assert.match(
+    accountDeletionHandler,
+    /error\?\.code === "account_deletion_in_progress"[\s\S]*?onQuiescedFailure\(\{[\s\S]*?Alguns arquivos podem ter sido removidos[\s\S]*?pode já ter sido excluída ou ainda aguardar a etapa final[\s\S]*?actionLabel: "Confirmar ou concluir a exclusão"[\s\S]*?controller\.deleteMyAccount\(\{ confirmation \}\)[\s\S]*?clearAraLearnLocalState\(\)/u,
+    "Uma falha posterior à limpeza de Storage precisa entrar em recuperação sem fingir que nada foi removido."
+  );
+  assert.match(
+    mainSource,
+    /function renderQuiescedOperationRecovery[\s\S]*?data-quiesced-recovery-reload[\s\S]*?globalThis\.location\.reload\(\)/u,
+    "Uma operação que já destruiu a superfície precisa oferecer recarga terminal."
+  );
+  for (const quiescedFailureContract of [
+    /data-settings-clear-device[\s\S]*?clearAraLearnLocalState\(\{ removeSession: false \}\)[\s\S]*?catch \(error\)[\s\S]*?onQuiescedFailure/u,
+    /data-settings-signout-clear[\s\S]*?authClient\.signOut\(\)[\s\S]*?catch \(error\)[\s\S]*?onQuiescedFailure/u,
+    /data-settings-signout\][\s\S]*?repository\?\.flush\(\)[\s\S]*?authClient\.signOut\(\)[\s\S]*?catch \(error\)[\s\S]*?onQuiescedFailure/u
+  ]) {
+    assert.match(
+      mainSource,
+      quiescedFailureContract,
+      "Falha posterior à quiescência não pode devolver uma aplicação destruída como se estivesse ativa."
+    );
+  }
+  assert.doesNotMatch(
+    accountDeletionHandler,
+    /repository\?\.flush/u,
+    "A exclusão da conta não deve enviar pendências locais imediatamente antes de apagá-las."
+  );
+  assert.match(
+    mainSource,
+    /account-settings-sheet[\s\S]*?role="dialog"[\s\S]*?tabindex="-1"[\s\S]*?const restoreSettingsFocus[\s\S]*?currentOpener\?\.focus[\s\S]*?overlay\.addEventListener\("keydown"[\s\S]*?event\.key === "Escape"[\s\S]*?event\.key !== "Tab"/u,
+    "Configurações precisa conter o foco, fechar por Esc e devolver o foco ao acionador."
+  );
+  assert.match(
+    mainSource,
+    /let pendingAvatarCleanupObjectKey = null[\s\S]*?const retryPendingAvatarCleanup[\s\S]*?controller\.deleteOwnAvatar\(objectKey\)[\s\S]*?if \(!await retryPendingAvatarCleanup\(\)\)[\s\S]*?antes de outro envio/u,
+    "Um avatar sem vínculo precisa bloquear outro envio até uma tentativa explícita de limpeza."
+  );
+  assert.match(
+    mainSource,
+    /const confirmedProfile = await loadProfile\(\{ force: true \}\)[\s\S]*?confirmedProfile\?\.avatarObjectKey === uploadedObjectKey[\s\S]*?Perfil salvo; a confirmação anterior foi recuperada[\s\S]*?if \(!confirmedProfile\)[\s\S]*?pendingAvatarResolution = \{[\s\S]*?O objeto foi preservado[\s\S]*?controller\.deleteOwnAvatar\(uploadedObjectKey\)/u,
+    "Uma resposta perdida precisa reler o perfil e só apagar o upload quando a ausência do vínculo foi confirmada."
+  );
+  assert.match(
+    mainSource,
+    /const resolvePendingAvatarUpload[\s\S]*?loadProfile\(\{ force: true \}\)[\s\S]*?confirmedProfile\.avatarObjectKey === pending\.objectKey[\s\S]*?pendingAvatarCleanupObjectKey = pending\.objectKey[\s\S]*?if \(!await resolvePendingAvatarUpload\(\)\) return/u,
+    "Um upload ambíguo precisa ser reconciliado antes de qualquer novo envio."
+  );
   for (const continuityContract of [
     "await editorApp?.replaceProject(nextProject)",
     "authoringSurface?.opened",
@@ -155,7 +261,7 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /async function closeAraLearnLocalConnections\(\)[\s\S]*?authenticatedApplicationCleanup\?\.\(\);[\s\S]*?lifecycleAbortController\?\.abort\(\);[\s\S]*?studyUnitProviderSession\?\.destroy\?\.\(\);[\s\S]*?if \(pendingCompositionCleanup\) await pendingCompositionCleanup\(\);[\s\S]*?courseLocalStore\?\.close\(\)/u,
+    /function quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?cleanupApplication\?\.\(\);[\s\S]*?lifecycleAbortController\?\.abort\(\);[\s\S]*?studyUnitProviderSession\?\.destroy\?\.\(\);[\s\S]*?async function closeAraLearnLocalConnections\(\)[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\);[\s\S]*?if \(pendingCompositionCleanup\) await pendingCompositionCleanup\(\);[\s\S]*?courseLocalStore\?\.close\(\)/u,
     "Logout deve purgar snapshots autorais confirmados antes de fechar o IndexedDB."
   );
   assert.match(
@@ -250,6 +356,13 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
       forbiddenPublishedSurface,
       `${normalizedRelative(filePath)} conserva uma superfície ou cópia do produto substituído.`
     );
+    if (filePath === stylesPath) {
+      assert.match(
+        source,
+        /\.account-device-data-actions button \{[\s\S]*?min-height: var\(--tap\);/u,
+        "As ações de dados locais precisam preservar o alvo tátil mínimo."
+      );
+    }
   }
 
   await execute(process.execPath, [

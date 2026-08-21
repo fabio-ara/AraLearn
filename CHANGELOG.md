@@ -4,6 +4,40 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.27] - 2026-08-21
+
+### Alterado
+
+- **Conta e aparência** separa o logout comum, a remoção dos dados locais da
+  conta ativa, o logout com remoção local e a exclusão irreversível da conta;
+- o catálogo público do MCP passa a cinco ferramentas autorais, enquanto
+  Perfil e gestão de Pessoas permanecem exclusivos da aplicação autenticada;
+- a autorização MCP usa somente `offline_access`, não emite `id_token` e
+  apresenta aliases pareados ao recurso; a função de borda valida assinatura,
+  sessão, cliente e consentimento vivos antes de executar uma ferramenta;
+- o envio de PDF usa intenção privada de dez minutos e requisição autenticada,
+  com limite de 20 MiB por arquivo, oito anexos por revisão de Fonte e 64 MiB
+  de conteúdo único por Curso; o contrato v1 permanece apenas no download
+  legado do Android 0.0.26;
+- a limpeza diária passa a tratar, em lotes limitados, registros retirados,
+  recibos, intenções de PDF e janelas de concessão, além de inventariar órfãos
+  sem removê-los automaticamente.
+
+### Corrigido
+
+- projeções MCP, exportações de Observações, cargas enviadas ao provider, erros
+  e registros operacionais deixam de expor campos que não pertencem ao caso de
+  uso autorizado;
+- a resposta imediata de concessão de acesso deixa de revelar se o e-mail
+  possui conta ou se a relação mudou e passa a admitir dez tentativas por conta
+  a cada dez minutos;
+- logout e limpeza local distinguem dados já persistidos de alterações abertas
+  somente no formulário; depois da confirmação remota, a exclusão da conta
+  permanece terminal mesmo se outra aba bloquear a limpeza do dispositivo;
+- o orçamento de PDFs considera conteúdo já vinculado, objetos físicos e
+  intenções ainda válidas, sem cobrar duas vezes os mesmos bytes dentro do
+  Curso.
+
 ## [0.0.26] - 2026-08-21
 
 ### Alterado

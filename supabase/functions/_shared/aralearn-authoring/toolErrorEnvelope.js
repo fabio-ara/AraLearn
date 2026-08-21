@@ -1,43 +1,85 @@
 import { asAuthoringApiError } from "./errors.js";
 
 const ERROR_ISSUE_LIMIT = 20;
+const UNKNOWN_FIELD_MESSAGE = /campo desconhecido|não pertence (?:ao comando|à ferramenta)/iu;
+const DIAGNOSTIC_PATH = /^[A-Za-z][A-Za-z0-9_.[\]/*-]{0,159}$/u;
+const DIAGNOSTIC_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const SAFE_NUMERIC_DETAIL_KEYS = new Set([
+  "expectedRevision", "actualRevision", "currentRevision"
+]);
 
-function errorIssues(error) {
-  const details = error.details;
+function publicErrorMessage(error) {
+  if (UNKNOWN_FIELD_MESSAGE.test(String(error.message || ""))) {
+    return "O comando contém um campo não reconhecido.";
+  }
+  return String(error.message);
+}
+
+function projectedDiagnostic(value, key) {
+  if (typeof value === "number" && SAFE_NUMERIC_DETAIL_KEYS.has(key) &&
+      Number.isSafeInteger(value) && value >= 0) {
+    return value;
+  }
+  if (typeof value !== "string") return undefined;
+  if (key === "targetCourseId") return UUID.test(value) ? value.toLowerCase() : undefined;
+  if (new Set(["field", "path", "rule"]).has(key)) {
+    return DIAGNOSTIC_PATH.test(value) ? value : undefined;
+  }
+  if (new Set(["parameterId", "studyUnitId"]).has(key)) {
+    return DIAGNOSTIC_ID.test(value) ? value : undefined;
+  }
+  return undefined;
+}
+
+function projectDiagnosticObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const projected = {};
+  for (const key of [
+    "field", "path", "rule", "parameterId", "studyUnitId", "targetCourseId",
+    ...SAFE_NUMERIC_DETAIL_KEYS
+  ]) {
+    const normalized = projectedDiagnostic(value[key], key);
+    if (normalized !== undefined) projected[key] = normalized;
+  }
+  return Object.keys(projected).length ? projected : undefined;
+}
+
+function errorIssues(error, details, message) {
   const source = Array.isArray(details?.errors) && details.errors.length
     ? details.errors
-    : details?.path || details?.field || details?.reason
+    : details?.path || details?.field
       ? [details]
       : [];
   const issues = source.slice(0, ERROR_ISSUE_LIMIT).map((issue) => {
     const path = String(issue?.path || issue?.field || "");
     return {
       path,
-      message: String(issue?.message || error.message),
-      ...(issue?.reason == null ? {} : { reason: String(issue.reason) }),
+      message,
       ...(issue?.rule == null ? {} : { rule: String(issue.rule) })
     };
   });
   if (issues.length || !new Set([400, 422]).has(error.status)) return issues;
   return [{
     path: "",
-    message: String(error.message),
-    ...(details?.reason == null ? {} : { reason: String(details.reason) }),
+    message,
     ...(details?.rule == null ? {} : { rule: String(details.rule) })
   }];
 }
 
-function compactErrorDetails(details) {
-  if (!details || typeof details !== "object" || Array.isArray(details)) {
-    return details;
+function compactErrorDetails(details, message) {
+  if (UNKNOWN_FIELD_MESSAGE.test(message)) return undefined;
+  const projected = projectDiagnosticObject(details) || {};
+  if (Array.isArray(details?.errors)) {
+    const errors = details.errors
+      .slice(0, ERROR_ISSUE_LIMIT)
+      .map(projectDiagnosticObject)
+      .filter(Boolean);
+    if (errors.length) projected.errors = errors;
+    projected.errorCount = details.errors.length;
+    projected.truncated = details.errors.length > ERROR_ISSUE_LIMIT;
   }
-  if (!Array.isArray(details.errors)) return details;
-  return {
-    ...details,
-    errors: details.errors.slice(0, ERROR_ISSUE_LIMIT),
-    errorCount: details.errors.length,
-    truncated: details.errors.length > ERROR_ISSUE_LIMIT
-  };
+  return Object.keys(projected).length ? projected : undefined;
 }
 
 function errorRecovery(error, issues, requestId) {
@@ -126,13 +168,13 @@ export function toolErrorData(
   { requestId = null } = {}
 ) {
   const normalized = asAuthoringApiError(error);
-  const issues = errorIssues(normalized);
+  const message = publicErrorMessage(normalized);
+  const details = compactErrorDetails(normalized.details, normalized.message);
+  const issues = errorIssues(normalized, details, message);
   return {
     code: normalized.code,
-    message: normalized.message,
-    ...(normalized.details === undefined
-      ? {}
-      : { details: compactErrorDetails(normalized.details) }),
+    message,
+    ...(details === undefined ? {} : { details }),
     issues,
     recovery: errorRecovery(normalized, issues, requestId)
   };

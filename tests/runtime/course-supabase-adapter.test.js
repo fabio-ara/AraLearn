@@ -26,6 +26,10 @@ const AUDIT_CORRECTION_ID = "33333333-3333-5333-8333-333333333333";
 const AUDIT_ANNOTATION_ID = "44444444-4444-5444-8444-444444444444";
 const MCP_RESOURCE =
   "https://project.example/functions/v1/aralearn-authoring-mcp";
+const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
+const MCP_PAIRWISE_SUBJECT = "91000000-0000-5000-8000-000000000009";
+const MCP_PAIRWISE_SESSION_ID = "92000000-0000-5000-8000-000000000009";
+const MCP_SOURCE_SESSION_ID = "93000000-0000-4000-8000-000000000009";
 
 function jwt(payload) {
   return [
@@ -45,13 +49,34 @@ const APPLICATION_TOKEN = jwt({
 });
 const MCP_TOKEN = jwt({
   aud: MCP_RESOURCE,
-  client_id: "90000000-0000-4000-8000-000000000009",
+  client_id: MCP_CLIENT_ID,
   exp: 2_000_000_000,
   iat: 1_700_000_000,
   iss: "https://project.example/auth/v1",
   role: "authenticated",
   sub: USER_ID
 });
+
+function protectedMcpClaims(overrides = {}) {
+  const now = Math.floor(Date.now() / 1_000);
+  return {
+    aal: "aal1",
+    aralearn_session_id: MCP_SOURCE_SESSION_ID,
+    aud: MCP_RESOURCE,
+    client_id: MCP_CLIENT_ID,
+    email: "",
+    exp: now + 3_600,
+    iat: now - 30,
+    is_anonymous: false,
+    iss: "https://project.example/auth/v1",
+    phone: "",
+    role: "authenticated",
+    scope: "offline_access",
+    session_id: MCP_PAIRWISE_SESSION_ID,
+    sub: MCP_PAIRWISE_SUBJECT,
+    ...overrides
+  };
+}
 
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -1705,6 +1730,82 @@ test("recusa token OAuth do MCP antes de consultar a identidade do aplicativo", 
   assert.equal(calls, 0);
 });
 
+test("autentica o MCP pela assinatura e pela autorização viva sem reutilizar o bearer no Auth", async () => {
+  const calls = [];
+  const verifierCalls = [];
+  const value = adapter(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, init, body });
+    return json({
+      contract: "aralearn.mcp-oauth-principal.v1",
+      actorId: USER_ID,
+      oauthClientId: MCP_CLIENT_ID
+    });
+  }, {
+    oauthJwtVerifier: {
+      async verify(token, options) {
+        verifierCalls.push({ token, options });
+        return protectedMcpClaims();
+      }
+    }
+  });
+
+  const principal = await value.resolvePrincipal({
+    kind: "oauth",
+    credential: "token-assinado",
+    resource: MCP_RESOURCE
+  }, { deadlineAt: 2_000_000_000_000 });
+
+  assert.deepEqual(principal, {
+    actorId: USER_ID,
+    authenticationKind: "oauth",
+    scopes: ["authoring:read", "authoring:write"],
+    oauthClientId: MCP_CLIENT_ID
+  });
+  assert.deepEqual(verifierCalls, [{
+    token: "token-assinado",
+    options: { deadlineAt: 2_000_000_000_000 }
+  }]);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /\/rest\/v1\/rpc\/resolve_mcp_oauth_principal_v1$/u);
+  assert.equal(calls[0].init.headers.apikey, "sb_secret_test");
+  assert.equal(calls[0].init.headers.Authorization, undefined);
+  assert.deepEqual(calls[0].body, {
+    p_pairwise_sub: MCP_PAIRWISE_SUBJECT,
+    p_pairwise_session_id: MCP_PAIRWISE_SESSION_ID,
+    p_client_id: MCP_CLIENT_ID,
+    p_source_session_id: MCP_SOURCE_SESSION_ID
+  });
+  assert.equal(calls.some(({ url }) => url.endsWith("/auth/v1/user")), false);
+});
+
+test("recusa scope de identidade antes do RPC e converte revogação em token inválido", async () => {
+  let calls = 0;
+  const scopeValue = adapter(async () => {
+    calls += 1;
+    return json(null);
+  }, {
+    oauthJwtVerifier: { async verify() { return protectedMcpClaims({ scope: "openid" }); } }
+  });
+  await assert.rejects(
+    () => scopeValue.resolvePrincipal({
+      kind: "oauth", credential: "token", resource: MCP_RESOURCE
+    }),
+    (error) => error.status === 401 && error.code === "invalid_oauth_token"
+  );
+  assert.equal(calls, 0);
+
+  const revoked = adapter(async () => json({ code: "42501", message: "revogado" }, 403), {
+    oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } }
+  });
+  await assert.rejects(
+    () => revoked.resolvePrincipal({
+      kind: "oauth", credential: "token", resource: MCP_RESOURCE
+    }),
+    (error) => error.status === 401 && error.code === "invalid_oauth_token"
+  );
+});
+
 test("exclusão da conta usa o JWT pessoal no RPC e tolera repetição após resposta perdida", async () => {
   const calls = [];
   const value = adapter(async (url, init) => {
@@ -1814,6 +1915,101 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
     { prefixes: [`${COURSE_ID}/${pdfName}`] },
     { prefixes: [`${USER_ID}/${avatarName}`] }
   ]);
+});
+
+test("exclusão sem resposta terminal conserva replay explícito antes de limpar o dispositivo", async () => {
+  let deletionCalls = 0;
+  const value = adapter(async (url) => {
+    assert.match(url, /\/rest\/v1\/rpc\/delete_my_account_v1$/u);
+    deletionCalls += 1;
+    if (deletionCalls <= 2) {
+      return json({ code: "PGRST000", message: "Resposta indisponível." }, 503);
+    }
+    return json({ contract: "aralearn.account-deletion.v1", status: "deleted" });
+  }, { attempts: 2 });
+
+  await assert.rejects(
+    () => value.deleteMyAccount({
+      accessToken: APPLICATION_TOKEN,
+      confirmation: "EXCLUIR MINHA CONTA"
+    }),
+    (error) => error.status === 503 && error.code === "account_deletion_in_progress"
+  );
+  assert.equal(deletionCalls, 2);
+
+  assert.deepEqual(await value.deleteMyAccount({
+    accessToken: APPLICATION_TOKEN,
+    confirmation: "EXCLUIR MINHA CONTA"
+  }), {
+    contract: "aralearn.account-deletion.v1",
+    status: "deleted"
+  });
+  assert.equal(deletionCalls, 3);
+});
+
+test("exclusão iniciada informa ambiguidade retomável se a resposta do commit se perder", async () => {
+  const calls = [];
+  let deletionCalls = 0;
+  let deletionRetried = false;
+  let accountDeleted = false;
+  const pdfName = `${"b".repeat(64)}.pdf`;
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, init, body });
+    if (url.endsWith("/rest/v1/rpc/delete_my_account_v1")) {
+      deletionCalls += 1;
+      if (deletionCalls === 1) {
+        return json({ code: "AR001", message: "Remova os PDFs privados." }, 500);
+      }
+      if (!deletionRetried) {
+        deletionRetried = true;
+        accountDeleted = true;
+        return json({ code: "PGRST000", message: "Resposta indisponível." }, 503);
+      }
+      assert.equal(accountDeleted, true, "o replay deve confirmar um commit já realizado");
+      return json({ contract: "aralearn.account-deletion.v1", status: "deleted" });
+    }
+    if (url.endsWith("/auth/v1/user")) return json({ id: USER_ID });
+    if (url.endsWith("/rest/v1/rpc/list_owned_courses_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-list.v1",
+        items: [{ courseId: COURSE_ID }],
+        hasMore: false,
+        nextCursor: null
+      });
+    }
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
+      return json([{ name: pdfName }]);
+    }
+    if (url.endsWith("/storage/v1/object/list/person-avatars")) return json([]);
+    if (url.endsWith("/storage/v1/object/course-source-pdfs")) return json({});
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  await assert.rejects(
+    () => value.deleteMyAccount({
+      accessToken: APPLICATION_TOKEN,
+      confirmation: "EXCLUIR MINHA CONTA"
+    }),
+    (error) => error.status === 503 &&
+      error.code === "account_deletion_in_progress" &&
+      /pode já ter sido excluída ou ainda aguardar a etapa final/u.test(error.message)
+  );
+  const deletesAfterFailure = calls.filter(({ init, url }) =>
+    init.method === "DELETE" && url.includes("/storage/v1/object/"));
+  assert.equal(deletesAfterFailure.length, 1);
+
+  const result = await value.deleteMyAccount({
+    accessToken: APPLICATION_TOKEN,
+    confirmation: "EXCLUIR MINHA CONTA"
+  });
+  assert.deepEqual(result, {
+    contract: "aralearn.account-deletion.v1",
+    status: "deleted"
+  });
+  assert.equal(deletionCalls, 3);
+  assert.equal(calls.filter(({ init, url }) =>
+    init.method === "DELETE" && url.includes("/storage/v1/object/")).length, 1);
 });
 
 test("exclusão não apaga Storage diante de violação relacional alheia", async () => {
@@ -2345,7 +2541,7 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   );
 });
 
-test("Adapter assina Storage após autorização e só confirma bytes PDF verificados", async () => {
+test("Adapter autoriza upload autenticado e só assina download depois da autorização", async () => {
   const pdfBytes = new TextEncoder().encode("%PDF-1.7\nfixture");
   const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
   const storageOriginCourseId = "90000000-0000-4000-8000-000000000009";
@@ -2354,7 +2550,9 @@ test("Adapter assina Storage após autorização e só confirma bytes PDF verifi
   let uploaded = false;
   let linked = false;
   const rawAccess = (operation) => ({
-    contract: "aralearn.course-source-attachment-access.v1",
+    contract: operation === "download"
+      ? "aralearn.course-source-attachment-access.v1"
+      : "aralearn.course-source-attachment-access.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
     operation,
@@ -2381,9 +2579,6 @@ test("Adapter assina Storage após autorização e só confirma bytes PDF verifi
     calls.push({ url, method: init.method, headers: init.headers, body });
     if (url.endsWith("/get_course_source_attachment_access_for_actor_v1")) {
       return json(rawAccess(body.p_operation));
-    }
-    if (url.includes("/storage/v1/object/upload/sign/course-source-pdfs/")) {
-      return json({ url: "/object/upload/sign/course-source-pdfs/file.pdf?token=upload-token" });
     }
     if (url.includes("/storage/v1/object/sign/course-source-pdfs/")) {
       return json({ signedURL: "/object/sign/course-source-pdfs/file.pdf?token=download-token" });
@@ -2423,8 +2618,8 @@ test("Adapter assina Storage após autorização e só confirma bytes PDF verifi
     mediaType: "application/pdf"
   });
   assert.equal(prepared.uploadRequired, true);
-  assert.match(prepared.signedUrl, /token=upload-token/u);
-  assert.equal(new URL(prepared.signedUrl).origin, "http://127.0.0.1:54321");
+  assert.equal(prepared.signedUrl, null);
+  assert.equal(prepared.expiresAt, null);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
     p_course_id: COURSE_ID,
@@ -2436,9 +2631,6 @@ test("Adapter assina Storage após autorização e só confirma bytes PDF verifi
     p_byte_size: pdfBytes.byteLength,
     p_media_type: "application/pdf"
   });
-  assert.match(calls[1].url, new RegExp(`${COURSE_ID}/${contentHash}\\.pdf$`, "u"));
-  assert.equal(new Headers(calls[1].headers).get("apikey"), "sb_secret_test");
-
   const downloaded = await value.getCourseSourceAttachmentAccess({
     principal,
     courseId: COURSE_ID,
@@ -2449,10 +2641,11 @@ test("Adapter assina Storage após autorização e só confirma bytes PDF verifi
     contentHash
   });
   assert.match(downloaded.signedUrl, /token=download-token/u);
+  assert.equal(downloaded.contract, "aralearn.course-source-attachment-access.v1");
   assert.equal(new URL(downloaded.signedUrl).origin, "http://127.0.0.1:54321");
   assert.equal(new URL(downloaded.signedUrl).searchParams.has("download"), true);
-  assert.deepEqual(calls[3].body, { expiresIn: 60 });
-  assert.match(calls[3].url, new RegExp(`${storageOriginCourseId}/${contentHash}\\.pdf$`, "u"));
+  assert.deepEqual(calls[2].body, { expiresIn: 60 });
+  assert.match(calls[2].url, new RegExp(`${storageOriginCourseId}/${contentHash}\\.pdf$`, "u"));
 
   uploaded = true;
   const changed = await value.executeCourseSourceCommand({
@@ -2518,7 +2711,7 @@ test("Adapter recusa conteúdo adulterado, cabeçalho inválido e objeto acima d
     const value = adapter(async (url) => {
       if (url.endsWith("/get_course_source_attachment_access_for_actor_v1")) {
         return json({
-          contract: "aralearn.course-source-attachment-access.v1",
+          contract: "aralearn.course-source-attachment-access.v2",
           courseId: COURSE_ID,
           courseRevision: 5,
           operation: "prepare_upload",
