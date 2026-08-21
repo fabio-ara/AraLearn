@@ -26,7 +26,14 @@ export class CourseStudyBridge {
     };
   }
 
-  clearCourse(courseId) {
-    return this.controller.clearCourse(courseId);
+  clearCourse(courseId, options = {}) {
+    return this.controller.clearCourse(courseId, options);
+  }
+
+  hasOfflineCourse(courseId, options = {}) {
+    if (typeof this.controller.hasVerifiedCourseDocument !== "function") {
+      return Promise.resolve(false);
+    }
+    return this.controller.hasVerifiedCourseDocument(courseId, options);
   }
 }

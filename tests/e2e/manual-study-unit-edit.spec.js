@@ -225,12 +225,7 @@ async function openStudyUnit(page, ownership) {
     });
     await globalThis.__manualStudyApp.openCourse("course-fixture-minimal");
   }, { project: fixture, ownership });
-  await page.locator('[data-action="open-module"]').click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence"]').click();
-  await page.locator(
-    '[data-action="open-study-unit"][data-study-unit-id="card-fixture-minimal-complete"]'
-  ).click();
+  await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
 }
 
 async function openInspectionUnit(page, ownership) {
@@ -502,6 +497,139 @@ test("owner edita a prática no Estudo sem alterar progresso; compartilhado perm
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Assistência por API" })).toHaveCount(0);
   await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
+});
+
+test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma Unidade", async ({ page }) => {
+  await page.goto("/");
+  await page.setContent('<!doctype html><html lang="pt-BR"><head>' +
+    STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
+    '</head><body><div id="study-root"></div></body></html>');
+  await page.evaluate(async (projectValue) => {
+    const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
+    const courseA = structuredClone(projectValue.courses[0]);
+    const courseB = structuredClone(projectValue.courses[0]);
+    courseA.id = "course-history-a";
+    courseA.title = "Curso de Ana";
+    courseB.id = "course-history-b";
+    courseB.title = "Curso de Bruno";
+    const canonicalProject = {
+      contract: projectValue.contract,
+      courses: [courseA, courseB]
+    };
+    const revisionByCourse = new Map([
+      [courseA.id, 3],
+      [courseB.id, 5]
+    ]);
+    const versionByCourse = new Map([
+      [courseA.id, 1],
+      [courseB.id, 1]
+    ]);
+    const navigation = {
+      contract: "aralearn.course-study-navigation.v1",
+      selectedCourseId: courseA.id,
+      positions: {},
+      updatedAt: "2026-08-21T12:00:00.000Z"
+    };
+    const summaries = () => canonicalProject.courses.map((course) => ({
+      courseId: course.id,
+      title: course.title,
+      revision: revisionByCourse.get(course.id),
+      ownership: "owned",
+      canEdit: true,
+      moduleCount: 1,
+      lessonCount: 1,
+      studyUnitCount: 2,
+      completedStudyUnitCount: 0,
+      availableOffline: true
+    }));
+    const repository = {
+      loadProgress: () => ({ version: 1, lessons: {} }),
+      loadCourseSummaries: summaries,
+      loadAnnotationsForPath: () => [],
+      loadRuntimeStatus: () => ({}),
+      loadReviewItems: () => [],
+      hasMoreReviewItems: () => false,
+      isStudyUnitMarkedForReview: () => false,
+      loadCourse: async (courseId) => canonicalProject.courses.find(({ id }) => id === courseId),
+      loadProject: () => structuredClone(canonicalProject),
+      loadStudyNavigation: () => structuredClone(navigation),
+      saveStudyNavigation: async ({ selectedCourseId, position }) => {
+        navigation.selectedCourseId = selectedCourseId;
+        navigation.updatedAt = new Date().toISOString();
+        if (position) navigation.positions[selectedCourseId] = {
+          ...structuredClone(position),
+          updatedAt: navigation.updatedAt
+        };
+      },
+      clearStudyNavigationPosition: async (courseId) => {
+        delete navigation.positions[courseId];
+      },
+      loadStudyUnitCompositionContext: (reference) => ({
+        courseId: reference.courseId,
+        courseRevision: revisionByCourse.get(reference.courseId),
+        didacticMicrosequenceId: reference.microsequenceId,
+        studyUnitId: reference.studyUnitId,
+        studyUnitVersion: versionByCourse.get(reference.courseId)
+      }),
+      flush: async () => true
+    };
+    const app = createCourseStudyApplication({
+      root: document.querySelector("#study-root"),
+      repository,
+      initialProject: structuredClone(canonicalProject),
+      onSaveManualEdit: async (request) => {
+        const course = canonicalProject.courses.find(({ id }) => id === request.courseId);
+        const units = course.modules[0].lessons[0].microsequences[0].studyUnits;
+        const unitIndex = units.findIndex(({ id }) => id === request.studyUnitId);
+        units[unitIndex] = structuredClone(request.studyUnit);
+        const courseRevision = request.expectedCourseRevision + 1;
+        const version = request.expectedVersion + 1;
+        revisionByCourse.set(request.courseId, courseRevision);
+        versionByCourse.set(request.courseId, version);
+        return {
+          courseId: request.courseId,
+          courseRevision,
+          studyUnitId: request.studyUnitId,
+          studyUnitVersion: version,
+          studyUnit: structuredClone(request.studyUnit),
+          version,
+          reconciled: true,
+          changed: true,
+          idempotent: false,
+          channel: "application",
+          origin: request.origin,
+          updatedAt: "2026-08-21T12:01:00.000Z"
+        };
+      }
+    });
+    globalThis.__manualHistoryApp = app;
+    await app.openCourse(courseA.id);
+  }, fixture);
+
+  const editCurrentParagraph = async (text) => {
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await page.locator(
+      '[data-resource-target-id="content:card-fixture-minimal-regra-content"]'
+    ).click();
+    await page.locator('[data-manual-edit-path="text"]').fill(text);
+    await page.getByRole("button", { name: "Salvar edição" }).click();
+    await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+  };
+
+  await editCurrentParagraph("Texto salvo somente no Curso de Ana.");
+  await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeVisible();
+
+  await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
+  await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-b");
+  await page.getByRole("button", { name: "Começar Curso de Bruno" }).click();
+  await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeDisabled();
+
+  await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
+  await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-a");
+  await page.getByRole("button", { name: "Retomar Curso de Ana" }).click();
+  await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeVisible();
 });
 
 test("snapshot canônico externo rebasa CAS local sem perder posição nem progresso", async ({ page }) => {

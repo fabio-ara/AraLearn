@@ -11,10 +11,107 @@ const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
 const MAX_LIST_PAGES = 100;
 const REVIEW_PAGE_SIZE = 20;
 const REVIEW_PAGE_CACHE_KEY = "course.v1.review-page";
+const STUDY_NAVIGATION_CACHE_KEY = "course.v1.study-navigation";
+const STUDY_NAVIGATION_CONTRACT = "aralearn.course-study-navigation.v1";
+const STUDY_NAVIGATION_CHANNEL = "aralearn-course-study-navigation-v1";
+const MAX_STUDY_NAVIGATION_POSITIONS = 64;
 const COURSE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const STUDY_NAVIGATION_VIEWS = new Set(["course", "module", "lesson", "microsequence"]);
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
+}
+
+function plainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function nowIso(clock) {
+  const value = clock();
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new TypeError("Relógio de Estudo inválido.");
+  return date.toISOString();
+}
+
+function navigationEntityId(value, label) {
+  const normalized = String(value || "").trim();
+  const containsControlCharacter = [...normalized].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint <= 31 || codePoint === 127;
+  });
+  if (!normalized || normalized.length > 200 || containsControlCharacter) {
+    throw new TypeError(`${label} inválido.`);
+  }
+  return normalized;
+}
+
+function emptyStudyNavigation() {
+  return {
+    contract: STUDY_NAVIGATION_CONTRACT,
+    selectedCourseId: null,
+    positions: {},
+    updatedAt: null
+  };
+}
+
+function normalizeStudyNavigationPosition(value, courseId) {
+  if (!plainObject(value) || Object.keys(value).some((field) =>
+    !new Set(["view", "entityPath", "microsequenceMode", "updatedAt"]).has(field))) {
+    throw new TypeError("Posição de Estudo inválida.");
+  }
+  const view = String(value.view || "").trim();
+  if (!STUDY_NAVIGATION_VIEWS.has(view) || !Array.isArray(value.entityPath) ||
+      value.entityPath.length !== 5) {
+    throw new TypeError("Posição de Estudo inválida.");
+  }
+  const entityPath = value.entityPath.map((item, index) =>
+    navigationEntityId(item, `Caminho de Estudo ${index + 1}`));
+  if (entityPath[0].toLowerCase() !== courseId) {
+    throw new TypeError("A posição pertence a outro Curso.");
+  }
+  entityPath[0] = courseId;
+  const microsequenceMode = String(value.microsequenceMode || "play").trim();
+  if (!new Set(["play", "overview"]).has(microsequenceMode)) {
+    throw new TypeError("Modo de Estudo inválido.");
+  }
+  const updatedAt = String(value.updatedAt || "").trim();
+  if (!updatedAt || !Number.isFinite(new Date(updatedAt).getTime())) {
+    throw new TypeError("Data da posição de Estudo inválida.");
+  }
+  return { view, entityPath, microsequenceMode, updatedAt };
+}
+
+function normalizeStudyNavigation(value) {
+  if (value == null) return emptyStudyNavigation();
+  if (!plainObject(value) || value.contract !== STUDY_NAVIGATION_CONTRACT ||
+      !plainObject(value.positions) ||
+      Object.keys(value).some((field) =>
+        !new Set(["contract", "selectedCourseId", "positions", "updatedAt"]).has(field))) {
+    throw new TypeError("Navegação de Estudo inválida.");
+  }
+  const selectedCourseId = value.selectedCourseId == null
+    ? null
+    : String(value.selectedCourseId || "").trim().toLowerCase();
+  if (selectedCourseId !== null && !COURSE_ID_PATTERN.test(selectedCourseId)) {
+    throw new TypeError("Curso selecionado inválido.");
+  }
+  const entries = Object.entries(value.positions);
+  if (entries.length > MAX_STUDY_NAVIGATION_POSITIONS) {
+    throw new TypeError("A navegação de Estudo excedeu o limite seguro.");
+  }
+  const positions = {};
+  for (const [rawCourseId, position] of entries) {
+    const courseId = String(rawCourseId || "").trim().toLowerCase();
+    if (!COURSE_ID_PATTERN.test(courseId) || courseId !== rawCourseId) {
+      throw new TypeError("Curso da posição de Estudo inválido.");
+    }
+    positions[courseId] = normalizeStudyNavigationPosition(position, courseId);
+  }
+  const updatedAt = value.updatedAt == null ? null : String(value.updatedAt || "").trim();
+  if (updatedAt !== null && !Number.isFinite(new Date(updatedAt).getTime())) {
+    throw new TypeError("Data da navegação de Estudo inválida.");
+  }
+  return { contract: STUDY_NAVIGATION_CONTRACT, selectedCourseId, positions, updatedAt };
 }
 
 function courseIdFromReference(reference) {
@@ -95,7 +192,18 @@ function courseAccessRevoked(error) {
 }
 
 export class CourseStudyRepository {
-  constructor({ bridge, api, cache, clock = () => new Date() } = {}) {
+  #studyNavigationChannel = null;
+  #studyNavigationListeners = new Set();
+  #studyNavigationReload = Promise.resolve();
+  #studyNavigationWrite = Promise.resolve();
+
+  constructor({
+    bridge,
+    api,
+    cache,
+    clock = () => new Date(),
+    windowValue = globalThis.window
+  } = {}) {
     if (!bridge || typeof bridge.listAccessibleCourses !== "function" ||
         typeof bridge.loadCourse !== "function") {
       throw new TypeError("Ponte canônica de Estudo obrigatória.");
@@ -109,6 +217,8 @@ export class CourseStudyRepository {
     this.api = api;
     this.cache = cache;
     this.clock = clock;
+    this.BroadcastChannelValue = windowValue?.BroadcastChannel;
+    this.navigationScope = String(cache.name || "course-cache");
     this.project = { contract: COURSE_DOCUMENT_CONTRACT, courses: [] };
     this.personalByCourseId = new Map();
     this.annotationsByCourseId = new Map();
@@ -118,11 +228,111 @@ export class CourseStudyRepository {
     this.reviewHasMore = false;
     this.reviewCursor = null;
     this.listRuntimeStatus = { offline: false, stale: false, readOnly: false };
+    this.studyNavigation = emptyStudyNavigation();
+    this.offlineCourseRevisionById = new Map();
   }
 
   async initialize() {
+    await this.#readStudyNavigation();
+    if (typeof this.BroadcastChannelValue === "function") {
+      try {
+        this.#studyNavigationChannel = new this.BroadcastChannelValue(
+          STUDY_NAVIGATION_CHANNEL
+        );
+        this.#studyNavigationChannel.addEventListener?.("message", (event) => {
+          if (event?.data?.scope !== this.navigationScope ||
+              event?.data?.type !== "navigation-changed") return;
+          this.#studyNavigationReload = this.#studyNavigationReload.then(async () => {
+            await this.#readStudyNavigation();
+            this.#notifyStudyNavigation();
+          }).catch(() => undefined);
+        });
+      } catch {
+        this.#studyNavigationChannel = null;
+      }
+    }
     await this.refreshCourses();
     return this.loadProject();
+  }
+
+  async #readStudyNavigation() {
+    try {
+      this.studyNavigation = normalizeStudyNavigation(
+        await this.cache.getCache(STUDY_NAVIGATION_CACHE_KEY)
+      );
+    } catch {
+      await this.cache.putCache(STUDY_NAVIGATION_CACHE_KEY, null);
+      this.studyNavigation = emptyStudyNavigation();
+    }
+    return this.studyNavigation;
+  }
+
+  #notifyStudyNavigation() {
+    const snapshot = this.loadStudyNavigation();
+    for (const listener of this.#studyNavigationListeners) {
+      try {
+        listener(snapshot);
+      } catch (error) {
+        console.error("Falha ao atualizar a navegação de Estudo.", error);
+      }
+    }
+  }
+
+  #signalStudyNavigation() {
+    try {
+      this.#studyNavigationChannel?.postMessage?.({
+        type: "navigation-changed",
+        scope: this.navigationScope
+      });
+    } catch {
+      // A persistência local continua válida quando a sinalização entre abas falha.
+    }
+  }
+
+  #enqueueStudyNavigation(operation) {
+    const scheduled = this.#studyNavigationWrite.then(operation, operation);
+    this.#studyNavigationWrite = scheduled.then(() => undefined, () => undefined);
+    return scheduled;
+  }
+
+  #pruneStudyNavigation(accessibleCourseIds) {
+    const allowed = accessibleCourseIds instanceof Set
+      ? accessibleCourseIds
+      : new Set(accessibleCourseIds || []);
+    return this.#enqueueStudyNavigation(async () => {
+      const updatedAt = nowIso(this.clock);
+      const previous = JSON.stringify(this.studyNavigation);
+      let cacheChanged = false;
+      const next = await this.cache.updateCache(STUDY_NAVIGATION_CACHE_KEY, (cached) => {
+        let current;
+        try {
+          current = normalizeStudyNavigation(cached);
+        } catch {
+          current = emptyStudyNavigation();
+        }
+        const positions = Object.fromEntries(Object.entries(current.positions)
+          .filter(([courseId]) => allowed.has(courseId)));
+        const selectedCourseId = allowed.has(current.selectedCourseId)
+          ? current.selectedCourseId
+          : [...allowed][0] || null;
+        const normalized = normalizeStudyNavigation({
+          contract: STUDY_NAVIGATION_CONTRACT,
+          selectedCourseId,
+          positions,
+          updatedAt: selectedCourseId === current.selectedCourseId &&
+            Object.keys(positions).length === Object.keys(current.positions).length
+            ? current.updatedAt
+            : updatedAt
+        });
+        cacheChanged = JSON.stringify(normalized) !== JSON.stringify(current);
+        return normalized;
+      });
+      this.studyNavigation = normalizeStudyNavigation(next);
+      const memoryChanged = JSON.stringify(this.studyNavigation) !== previous;
+      if (memoryChanged) this.#notifyStudyNavigation();
+      if (cacheChanged) this.#signalStudyNavigation();
+      return cacheChanged || memoryChanged;
+    });
   }
 
   async #listAllCourses() {
@@ -185,7 +395,7 @@ export class CourseStudyRepository {
     };
   }
 
-  async #purgeRevokedCourses(courseIds) {
+  async #purgeRevokedCourses(courseIds, { clearLists = true } = {}) {
     const revoked = [...new Set(courseIds)];
     for (const courseId of revoked) {
       const personal = this.personalByCourseId.get(courseId);
@@ -198,11 +408,13 @@ export class CourseStudyRepository {
       this.personalByCourseId.delete(courseId);
       this.annotationsByCourseId.delete(courseId);
       this.loadedCourseById.delete(courseId);
+      this.offlineCourseRevisionById.delete(courseId);
       this.courseList = this.courseList.filter((item) => item.courseId !== courseId);
       this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
-      await this.bridge.clearCourse(courseId);
+      await this.bridge.clearCourse(courseId, { clearLists });
     }
     if (revoked.length) {
+      await this.#pruneStudyNavigation(new Set(this.courseList.map((item) => item.courseId)));
       await this.#cacheReviewPage();
       this.#rebuildProject();
     }
@@ -219,6 +431,10 @@ export class CourseStudyRepository {
     const retained = new Set();
     for (const descriptor of list) {
       retained.add(descriptor.courseId);
+      if (this.offlineCourseRevisionById.has(descriptor.courseId) &&
+          this.offlineCourseRevisionById.get(descriptor.courseId) !== descriptor.revision) {
+        this.offlineCourseRevisionById.delete(descriptor.courseId);
+      }
       const loaded = this.loadedCourseById.get(descriptor.courseId);
       if (!listed.offline && loaded && loaded.revision !== descriptor.revision) {
         loaded.offline = false;
@@ -235,6 +451,24 @@ export class CourseStudyRepository {
         }
       }
     }
+    if (!listed.offline) {
+      const knownCourseIds = new Set([
+        ...this.courseList.map((item) => item.courseId),
+        ...this.loadedCourseById.keys(),
+        ...this.personalByCourseId.keys(),
+        ...this.annotationsByCourseId.keys(),
+        ...this.offlineCourseRevisionById.keys(),
+        ...Object.keys(this.studyNavigation.positions),
+        ...(this.studyNavigation.selectedCourseId
+          ? [this.studyNavigation.selectedCourseId]
+          : [])
+      ]);
+      const revokedCourseIds = [...knownCourseIds].filter((courseId) =>
+        !retained.has(courseId));
+      if (revokedCourseIds.length) {
+        await this.#purgeRevokedCourses(revokedCourseIds, { clearLists: false });
+      }
+    }
     for (const [courseId, personal] of this.personalByCourseId) {
       if (retained.has(courseId)) continue;
       if (listed.offline) continue;
@@ -245,14 +479,22 @@ export class CourseStudyRepository {
         annotations.close();
         this.annotationsByCourseId.delete(courseId);
       }
-      await this.bridge.clearCourse(courseId);
+      await this.bridge.clearCourse(courseId, { clearLists: false });
       this.personalByCourseId.delete(courseId);
       this.loadedCourseById.delete(courseId);
     }
     for (const courseId of this.loadedCourseById.keys()) {
-      if (!retained.has(courseId) && !listed.offline) this.loadedCourseById.delete(courseId);
+      if (!retained.has(courseId) && !listed.offline) {
+        this.loadedCourseById.delete(courseId);
+        this.offlineCourseRevisionById.delete(courseId);
+      }
     }
     this.courseList = clone(list);
+    if (!listed.offline) await this.#pruneStudyNavigation(retained);
+    if (this.studyNavigation.selectedCourseId &&
+        retained.has(this.studyNavigation.selectedCourseId)) {
+      await this.refreshCourseOfflineAvailability(this.studyNavigation.selectedCourseId);
+    }
     try {
       const page = await this.#reviewPage();
       this.reviewItems = page.items;
@@ -283,9 +525,15 @@ export class CourseStudyRepository {
       this.listRuntimeStatus.offline !== true &&
       (loaded.offline === true || loaded.stale === true || loaded.readOnly === true)
     )) {
-      const result = await this.bridge.loadCourse(courseId, {
-        verifiedRevision: descriptor.revision
-      });
+      let result;
+      try {
+        result = await this.bridge.loadCourse(courseId, {
+          verifiedRevision: descriptor.revision
+        });
+      } catch (error) {
+        if (courseAccessRevoked(error)) await this.#purgeRevokedCourses([courseId]);
+        throw error;
+      }
       const course = result.document?.courses?.[0];
       if (!course || course.id !== courseId) {
         throw new TypeError("O documento carregado não corresponde ao Curso listado.");
@@ -305,6 +553,7 @@ export class CourseStudyRepository {
       };
       this.loadedCourseById.set(courseId, loaded);
     }
+    await this.refreshCourseOfflineAvailability(courseId);
     let personal = this.personalByCourseId.get(courseId);
     if (!personal) {
       personal = new CoursePersonalStateRepository({
@@ -314,7 +563,12 @@ export class CourseStudyRepository {
         course: loaded.course,
         clock: this.clock
       });
-      await personal.initialize();
+      try {
+        await personal.initialize();
+      } catch (error) {
+        if (courseAccessRevoked(error)) await this.#purgeRevokedCourses([courseId]);
+        throw error;
+      }
       this.personalByCourseId.set(courseId, personal);
     } else {
       personal.setCourse(loaded.course);
@@ -329,7 +583,12 @@ export class CourseStudyRepository {
         cache: this.cache,
         clock: this.clock
       });
-      await annotations.initialize();
+      try {
+        await annotations.initialize();
+      } catch (error) {
+        if (courseAccessRevoked(error)) await this.#purgeRevokedCourses([courseId]);
+        throw error;
+      }
       this.annotationsByCourseId.set(courseId, annotations);
     } else if (annotations) {
       annotations.setCourseRevision(loaded.revision);
@@ -401,8 +660,119 @@ export class CourseStudyRepository {
       microsequenceCount: Number(item.microsequenceCount || 0),
       studyUnitCount: Number(item.studyUnitCount || 0),
       completedStudyUnitCount: Number(item.completedStudyUnitCount || 0),
+      availableOffline: this.offlineCourseRevisionById.get(item.courseId) === item.revision,
       updatedAt: item.updatedAt
     }));
+  }
+
+  loadStudyNavigation() {
+    return clone(this.studyNavigation);
+  }
+
+  subscribeToStudyNavigation(listener) {
+    if (typeof listener !== "function") {
+      throw new TypeError("Listener da navegação de Estudo inválido.");
+    }
+    this.#studyNavigationListeners.add(listener);
+    return () => this.#studyNavigationListeners.delete(listener);
+  }
+
+  saveStudyNavigation({ selectedCourseId, position = null } = {}) {
+    const normalizedCourseId = String(selectedCourseId || "").trim().toLowerCase();
+    if (!this.courseList.some((item) => item.courseId === normalizedCourseId)) {
+      throw new TypeError("O Curso selecionado não está acessível.");
+    }
+    return this.#enqueueStudyNavigation(async () => {
+      const timestamp = nowIso(this.clock);
+      const next = await this.cache.updateCache(STUDY_NAVIGATION_CACHE_KEY, (cached) => {
+        let current;
+        try {
+          current = normalizeStudyNavigation(cached);
+        } catch {
+          current = emptyStudyNavigation();
+        }
+        const positions = { ...current.positions };
+        if (position !== null) {
+          const entityPath = Array.isArray(position?.entityPath)
+            ? [...position.entityPath]
+            : null;
+          positions[normalizedCourseId] = normalizeStudyNavigationPosition({
+            view: position?.view,
+            entityPath,
+            microsequenceMode: position?.microsequenceMode,
+            updatedAt: timestamp
+          }, normalizedCourseId);
+        }
+        const trimmedPositions = Object.fromEntries(Object.entries(positions)
+          .sort((left, right) => String(right[1].updatedAt).localeCompare(
+            String(left[1].updatedAt)
+          ))
+          .slice(0, MAX_STUDY_NAVIGATION_POSITIONS));
+        return normalizeStudyNavigation({
+          contract: STUDY_NAVIGATION_CONTRACT,
+          selectedCourseId: normalizedCourseId,
+          positions: trimmedPositions,
+          updatedAt: timestamp
+        });
+      });
+      this.studyNavigation = normalizeStudyNavigation(next);
+      this.#notifyStudyNavigation();
+      this.#signalStudyNavigation();
+      return this.loadStudyNavigation();
+    });
+  }
+
+  clearStudyNavigationPosition(courseIdentity, { expectedPosition } = {}) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    if (!courseId) return Promise.resolve(false);
+    const hasExpectedPosition = expectedPosition !== undefined;
+    const normalizedExpected = hasExpectedPosition
+      ? normalizeStudyNavigationPosition(expectedPosition, courseId)
+      : null;
+    return this.#enqueueStudyNavigation(async () => {
+      let cacheChanged = false;
+      const previous = JSON.stringify(this.studyNavigation);
+      const next = await this.cache.updateCache(STUDY_NAVIGATION_CACHE_KEY, (cached) => {
+        let current;
+        try {
+          current = normalizeStudyNavigation(cached);
+        } catch {
+          current = emptyStudyNavigation();
+        }
+        if (!Object.hasOwn(current.positions, courseId)) return current;
+        if (hasExpectedPosition && JSON.stringify(current.positions[courseId]) !==
+            JSON.stringify(normalizedExpected)) return current;
+        const positions = { ...current.positions };
+        delete positions[courseId];
+        cacheChanged = true;
+        return normalizeStudyNavigation({
+          ...current,
+          positions,
+          updatedAt: nowIso(this.clock)
+        });
+      });
+      this.studyNavigation = normalizeStudyNavigation(next);
+      const memoryChanged = JSON.stringify(this.studyNavigation) !== previous;
+      if (memoryChanged) this.#notifyStudyNavigation();
+      if (cacheChanged) this.#signalStudyNavigation();
+      return cacheChanged;
+    });
+  }
+
+  async refreshCourseOfflineAvailability(courseIdentity) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    if (!descriptor) return false;
+    let available;
+    try {
+      available = typeof this.bridge.hasOfflineCourse === "function" &&
+        await this.bridge.hasOfflineCourse(courseId, { revision: descriptor.revision }) === true;
+    } catch {
+      available = false;
+    }
+    if (available) this.offlineCourseRevisionById.set(courseId, descriptor.revision);
+    else this.offlineCourseRevisionById.delete(courseId);
+    return available;
   }
 
   loadStudyUnitCompositionContext(reference) {
@@ -604,6 +974,7 @@ export class CourseStudyRepository {
   }
 
   async flush() {
+    await this.#studyNavigationWrite;
     const snapshots = [];
     const revokedCourseIds = [];
     for (const [courseId, personal] of this.personalByCourseId) {
@@ -631,7 +1002,13 @@ export class CourseStudyRepository {
     for (const annotations of this.annotationsByCourseId.values()) annotations.close();
     this.annotationsByCourseId.clear();
     this.personalByCourseId.clear();
+    this.#studyNavigationChannel?.close?.();
+    this.#studyNavigationChannel = null;
+    this.#studyNavigationListeners.clear();
   }
 }
 
-export { COURSE_DOCUMENT_CONTRACT as COURSE_STUDY_DOCUMENT_CONTRACT };
+export {
+  COURSE_DOCUMENT_CONTRACT as COURSE_STUDY_DOCUMENT_CONTRACT,
+  STUDY_NAVIGATION_CONTRACT as COURSE_STUDY_NAVIGATION_CONTRACT
+};

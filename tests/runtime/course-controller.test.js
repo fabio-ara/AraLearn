@@ -667,6 +667,60 @@ test("é o único componente que pagina, recompõe e sinaliza documento offline"
   assert.equal(cached.readOnly, true);
 });
 
+test("confirma disponibilidade offline somente para a composição verificada e completa", async () => {
+  const store = new MemoryStateStore();
+  const fixture = documentFixture();
+  const { rows } = flattenCourseDocument(fixture);
+  let headerReads = 0;
+  let entityReads = 0;
+  const controller = new CourseController({
+    store,
+    api: {
+      async listCourses() { throw new Error("não usado"); },
+      async getCourse() {
+        headerReads += 1;
+        return {
+          contract: "aralearn.course.v1",
+          courseId: COURSE_ID,
+          title: "Curso",
+          goal: "Aprender.",
+          revision: 3
+        };
+      },
+      async getCourseEntities() {
+        entityReads += 1;
+        return {
+          contract: "aralearn.course-entities.v1",
+          courseId: COURSE_ID,
+          revision: 3,
+          items: rows,
+          hasMore: false,
+          nextCursor: null
+        };
+      }
+    }
+  });
+
+  await controller.loadCourseDocument(COURSE_ID, { entityPageSize: 1 });
+  assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID), true);
+  assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 3 }), true);
+  assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 4 }), false);
+  assert.deepEqual([headerReads, entityReads], [1, 1]);
+
+  store.values.delete(`course.v1.entities:${COURSE_ID}:3:1:start`);
+  assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 3 }), false);
+  assert.deepEqual([headerReads, entityReads], [1, 1]);
+
+  await assert.rejects(
+    () => controller.hasVerifiedCourseDocument("curso-inválido"),
+    /identidade do Curso/u
+  );
+  await assert.rejects(
+    () => controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 0 }),
+    /versão do Curso/u
+  );
+});
+
 test("preserva a última composição válida após revisão inválida e reinício", async () => {
   const indexedDb = new IDBFactory();
   let store = await CourseLocalStore.open(indexedDb, { userId: COURSE_ID });
@@ -856,6 +910,26 @@ test("limpa lista, cabeçalho e todas as páginas de entidades do Curso revogado
 
   await controller.clearCourse(COURSE_ID);
   assert.deepEqual([...store.values.keys()], ["course.v1.header:outro"]);
+});
+
+test("limpa um Curso sem apagar a lista online que acabou de ser reconciliada", async () => {
+  const store = new MemoryStateStore();
+  await store.putCache("course.v1.list::start", {
+    data: courseListPage([courseListItem({ title: "Mantido" })])
+  });
+  await store.putCache(`course.v1.header:${COURSE_B}`, { data: { revision: 2 } });
+  const controller = new CourseController({
+    store,
+    api: {
+      async listCourses() { throw new Error("não usado"); },
+      async getCourse() { throw new Error("não usado"); }
+    }
+  });
+
+  await controller.clearCourse(COURSE_B, { clearLists: false });
+
+  assert.notEqual(await store.getCache("course.v1.list::start"), null);
+  assert.equal(await store.getCache(`course.v1.header:${COURSE_B}`), null);
 });
 
 test("Autoria mantém cache próprio e solicita somente Cursos do proprietário", async () => {

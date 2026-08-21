@@ -22,6 +22,7 @@ import {
 } from "../ui/manualStudyUnitEdit.js";
 import { createStudyUnitProviderAssistance } from
   "../ui/StudyUnitProviderAssistance.js";
+import { readLessonProgressEntry } from "../storage/progressStore.js";
 import {
   collectLessonStudyUnits,
   exactStudyUnitSelection,
@@ -110,6 +111,65 @@ function courseAccessWasRevoked(error) {
   return status === 403 || status === 404 || code === "42501" || code === "PT404";
 }
 
+function positionSelection(project, position) {
+  const path = position?.entityPath;
+  if (!Array.isArray(path) || path.length !== 5) return null;
+  const courseSelection = selectionForCourse(project, path[0]);
+  if (!courseSelection) return null;
+  if (position.view === "course") {
+    return { selection: courseSelection, view: "course", microsequenceMode: "play" };
+  }
+  const moduleSelection = selectionForModule(project, courseSelection, path[1]);
+  if (!moduleSelection) return null;
+  if (position.view === "module") {
+    return { selection: moduleSelection, view: "module", microsequenceMode: "play" };
+  }
+  const lessonSelection = selectionForLesson(project, moduleSelection, path[2]);
+  if (!lessonSelection) return null;
+  if (position.view === "lesson") {
+    return { selection: lessonSelection, view: "lesson", microsequenceMode: "play" };
+  }
+  const exactSelection = exactStudyUnitSelection(project, path);
+  return exactSelection
+    ? {
+        selection: exactSelection,
+        view: "microsequence",
+        microsequenceMode: position.microsequenceMode === "overview" ? "overview" : "play"
+      }
+    : null;
+}
+
+function firstIncompleteSelection(project, progress, courseId) {
+  const course = findCourse(project, courseId);
+  if (!course) return null;
+  let firstIncomplete = null;
+  for (const moduleValue of course.modules || []) {
+    for (const lesson of moduleValue.lessons || []) {
+      const entry = readLessonProgressEntry(progress, {
+        courseId,
+        moduleId: moduleValue.id,
+        lessonId: lesson.id
+      });
+      const completed = new Set(entry?.completedStudyUnitIds || []);
+      for (const studyEntry of collectLessonStudyUnits(lesson)) {
+        if (completed.has(studyEntry.studyUnitId) || firstIncomplete) continue;
+        firstIncomplete = {
+          selection: exactStudyUnitSelection(project, [
+            courseId,
+            moduleValue.id,
+            lesson.id,
+            studyEntry.microsequenceId,
+            studyEntry.studyUnitId
+          ]),
+          view: "microsequence",
+          microsequenceMode: "play"
+        };
+      }
+    }
+  }
+  return firstIncomplete;
+}
+
 export function createCourseStudyApplication({
   root,
   repository,
@@ -141,10 +201,17 @@ export function createCourseStudyApplication({
   let observationsEpoch = 0;
   let observationSignalVersion = 0;
   let unsubscribeAnnotations = null;
+  const initialNavigation = repository.loadStudyNavigation?.() || null;
+  const initialCourseId = initialProject.courses.some((course) =>
+    course.id === initialNavigation?.selectedCourseId)
+    ? initialNavigation.selectedCourseId
+    : initialProject.courses[0]?.id || null;
   const state = {
     project: clone(initialProject),
     view: "courses",
-    selection: firstSelection(initialProject),
+    selection: initialCourseId
+      ? selectionForCourse(initialProject, initialCourseId)
+      : firstSelection(initialProject),
     microsequenceMode: "play",
     responseByBlockKey: {},
     activeGapPrompt: null,
@@ -179,7 +246,11 @@ export function createCourseStudyApplication({
     manualVersionByStudyUnit: {},
     manualCourseRevisionByCourse: {},
     accountProfile: null,
-    connectionOffline: globalThis.navigator?.onLine === false
+    connectionOffline: globalThis.navigator?.onLine === false,
+    homeLoadingCourseId: "",
+    homeError: "",
+    homeNotice: "",
+    reviewQueueOpen: false
   };
   let manualInlineController = null;
   let providerAssistance = null;
@@ -280,6 +351,44 @@ export function createCourseStudyApplication({
       : { selection: lessonSelection, view: "lesson" };
   }
 
+  function currentNavigationPosition() {
+    if (state.view === "courses" || !state.selection ||
+        [
+          state.selection.courseId,
+          state.selection.moduleId,
+          state.selection.lessonId,
+          state.selection.microsequenceId,
+          state.selection.studyUnitId
+        ].some((value) => typeof value !== "string" || !value)) return null;
+    return {
+      view: state.view,
+      entityPath: [
+        state.selection.courseId,
+        state.selection.moduleId,
+        state.selection.lessonId,
+        state.selection.microsequenceId,
+        state.selection.studyUnitId
+      ],
+      microsequenceMode: state.microsequenceMode
+    };
+  }
+
+  function persistStudyNavigation({ includePosition = true } = {}) {
+    const courseId = state.selection?.courseId;
+    if (!courseId || typeof repository.saveStudyNavigation !== "function") return;
+    void repository.saveStudyNavigation({
+      selectedCourseId: courseId,
+      position: includePosition ? currentNavigationPosition() : null
+    }).catch((error) => root.dispatchEvent(new CustomEvent(
+      "aralearn:study-navigation-save-error",
+      { bubbles: true, detail: { error } }
+    )));
+  }
+
+  function savedCoursePosition(courseId) {
+    return repository.loadStudyNavigation?.()?.positions?.[courseId] || null;
+  }
+
   function syncAccountControl() {
     root.querySelectorAll("[data-action='open-settings']").forEach((node) => {
       const avatarUrl = String(state.accountProfile?.avatarUrl || "").trim();
@@ -342,8 +451,8 @@ export function createCourseStudyApplication({
         node.focus();
       }
     };
+    focus();
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(focus);
-    else focus();
   }
 
   function currentStudyFocusTarget() {
@@ -398,11 +507,20 @@ export function createCourseStudyApplication({
     if (!preview) return;
     const source = preview.direction === "undo" ? state.manualRedo : state.manualUndo;
     const destination = preview.direction === "undo" ? state.manualUndo : state.manualRedo;
-    if (source.at(-1) === preview.entry) {
-      source.pop();
+    const sourceIndex = source.lastIndexOf(preview.entry);
+    if (sourceIndex >= 0) {
+      source.splice(sourceIndex, 1);
       destination.push(preview.entry);
     }
     state.manualHistoryPreview = null;
+  }
+
+  function manualHistoryIndex(entries, courseId, studyUnitId) {
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const entry = entries[index];
+      if (entry.courseId === courseId && entry.studyUnitId === studyUnitId) return index;
+    }
+    return -1;
   }
 
   function resetManualEditorState({ status = "", keepHistoryPreview = false } = {}) {
@@ -438,12 +556,23 @@ export function createCourseStudyApplication({
   function reconcileProjectAfterRevocation() {
     const nextProject = repository.loadProject?.();
     if (!nextProject || !Array.isArray(nextProject.courses)) return false;
+    const revokedTitle = context().course?.title || "o Curso selecionado";
+    const previousCourseId = state.selection.courseId;
     const retained = retainContext(nextProject, state.selection, state.view);
     state.project = clone(nextProject);
     state.selection = retained.selection;
     state.view = retained.view;
+    if (previousCourseId && !findCourse(nextProject, previousCourseId)) {
+      state.homeNotice = `Seu acesso a ${revokedTitle} foi encerrado.`;
+      state.homeError = "";
+      persistStudyNavigation({ includePosition: false });
+    }
     rebaseManualCompositionOverrides();
     resetStudyUnitInteraction();
+    if (previousCourseId && !findCourse(nextProject, previousCourseId) &&
+        nextProject.courses.length) {
+      queueStudyFocus("[data-field='home-course-select']");
+    }
     render({ preserveFocus: false });
     return true;
   }
@@ -516,6 +645,15 @@ export function createCourseStudyApplication({
         bubbles: true,
         detail: { courseId, error }
       }));
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) {
+        return false;
+      }
+      state.homeError = state.connectionOffline ||
+        repository.loadRuntimeStatus?.(courseId)?.offline === true
+        ? "Este Curso ainda não está disponível neste dispositivo. Conecte-se para abri-lo pela primeira vez."
+        : courseAccessWasRevoked(error)
+          ? "Seu acesso a este Curso foi encerrado."
+          : "Não foi possível abrir este Curso. Tente novamente.";
       return false;
     } finally {
       root.setAttribute("aria-busy", "false");
@@ -523,12 +661,67 @@ export function createCourseStudyApplication({
   }
 
   async function openCourse(courseId) {
-    if (!await ensureCourseLoaded(courseId)) return false;
+    if (state.homeLoadingCourseId) return false;
+    state.homeLoadingCourseId = courseId;
+    state.homeError = "";
+    state.homeNotice = "";
+    render();
+    try {
+      if (!await ensureCourseLoaded(courseId)) {
+        state.homeLoadingCourseId = "";
+        if (state.homeError && findCourse(state.project, courseId)) {
+          queueStudyFocus("[data-action='open-course']", {
+            "data-course-id": courseId
+          });
+        }
+        render();
+        return false;
+      }
+      const rawSavedPosition = savedCoursePosition(courseId);
+      const saved = positionSelection(state.project, rawSavedPosition);
+      if (rawSavedPosition && !saved) {
+        await repository.clearStudyNavigationPosition?.(courseId, {
+          expectedPosition: rawSavedPosition
+        });
+      }
+      const pending = firstIncompleteSelection(
+        state.project,
+        repository.loadProgress(),
+        courseId
+      );
+      const destination = saved || pending;
+      const selection = destination?.selection || selectionForCourse(state.project, courseId);
+      if (!selection) return false;
+      resetStudyUnitInteraction();
+      state.selection = selection;
+      state.view = destination?.view || "course";
+      state.microsequenceMode = destination?.microsequenceMode || "play";
+      state.homeLoadingCourseId = "";
+      persistStudyNavigation();
+      queueStudyFocus("[data-study-destination-heading]");
+      render({ preserveFocus: false });
+      return true;
+    } finally {
+      if (state.homeLoadingCourseId === courseId) {
+        state.homeLoadingCourseId = "";
+        render();
+      }
+    }
+  }
+
+  async function selectHomeCourse(courseId) {
     const selection = selectionForCourse(state.project, courseId);
-    if (!selection) return false;
+    if (!selection || state.homeLoadingCourseId) return false;
     state.selection = selection;
-    state.view = "course";
-    render({ preserveFocus: false });
+    state.homeError = "";
+    state.homeNotice = "";
+    state.reviewQueueOpen = false;
+    persistStudyNavigation({ includePosition: false });
+    render();
+    if (typeof repository.refreshCourseOfflineAvailability === "function") {
+      await repository.refreshCourseOfflineAvailability(courseId);
+      if (state.view === "courses" && state.selection.courseId === courseId) render();
+    }
     return true;
   }
 
@@ -537,6 +730,7 @@ export function createCourseStudyApplication({
     if (!selection) return false;
     state.selection = selection;
     state.view = "module";
+    persistStudyNavigation();
     render({ preserveFocus: false });
     return true;
   }
@@ -546,6 +740,7 @@ export function createCourseStudyApplication({
     if (!selection) return false;
     state.selection = selection;
     state.view = "lesson";
+    persistStudyNavigation();
     render({ preserveFocus: false });
     return true;
   }
@@ -554,11 +749,12 @@ export function createCourseStudyApplication({
     if (!selectMicrosequence(microsequenceId, studyUnitIndex)) return false;
     state.view = "microsequence";
     state.microsequenceMode = mode === "play" ? "play" : "overview";
+    persistStudyNavigation();
     render({ preserveFocus: false });
     return true;
   }
 
-  function openLessonStudyUnit(entry) {
+  function openLessonStudyUnit(entry, { focusDestination = false } = {}) {
     if (!entry) return false;
     state.selection = {
       ...state.selection,
@@ -574,14 +770,22 @@ export function createCourseStudyApplication({
     state.view = "microsequence";
     state.microsequenceMode = "play";
     resetStudyUnitInteraction();
+    persistStudyNavigation();
+    if (focusDestination) queueStudyFocus("[data-study-destination-heading]");
     render({ preserveFocus: false });
     return true;
   }
 
   async function openReviewItem(entityPath) {
-    if (!await ensureCourseLoaded(entityPath?.[0])) return false;
+    if (!await ensureCourseLoaded(entityPath?.[0])) {
+      if (state.view === "courses" && state.homeError) {
+        queueStudyFocus(".study-review-queue > summary");
+        render({ preserveFocus: false });
+      }
+      return false;
+    }
     const selection = exactStudyUnitSelection(state.project, entityPath);
-    return selection ? openLessonStudyUnit(selection) : false;
+    return selection ? openLessonStudyUnit(selection, { focusDestination: true }) : false;
   }
 
   async function resetCourseProgress(courseId) {
@@ -591,8 +795,17 @@ export function createCourseStudyApplication({
       `Zerar o progresso de ${course?.title || "este Curso"}?`
     );
     if (!accepted) return false;
-    if (!await ensureCourseLoaded(courseId)) return false;
+    if (!await ensureCourseLoaded(courseId)) {
+      if (state.view === "courses" && state.homeError) {
+        queueStudyFocus("[data-action='reset-course-progress']", {
+          "data-course-id": courseId
+        });
+        render({ preserveFocus: false });
+      }
+      return false;
+    }
     await repository.clearCourseProgress(courseId);
+    await repository.clearStudyNavigationPosition?.(courseId);
     render({ preserveFocus: false });
     return true;
   }
@@ -622,9 +835,29 @@ export function createCourseStudyApplication({
 
   async function loadMoreReviewItems() {
     if (typeof repository.loadMoreReviewItems !== "function") return false;
+    const requestedCourseId = state.selection.courseId;
+    const requestedQueue = root.querySelector(".study-review-queue");
     root.setAttribute("aria-busy", "true");
     try {
       await repository.loadMoreReviewItems();
+      if (state.view !== "courses") return true;
+      if (state.selection.courseId !== requestedCourseId) {
+        render();
+        return true;
+      }
+      const currentQueue = root.querySelector(".study-review-queue");
+      if (currentQueue === requestedQueue) {
+        state.reviewQueueOpen = currentQueue.open === true;
+      }
+      const reviewHasMore = repository.hasMoreReviewItems?.() === true;
+      const queueRemains = reviewHasMore || (repository.loadReviewItems?.() || [])
+        .some((item) => Array.isArray(item?.entityPath) &&
+          item.entityPath[0] === requestedCourseId);
+      queueStudyFocus(!queueRemains
+        ? "[data-field='home-course-select']"
+        : state.reviewQueueOpen && reviewHasMore
+          ? "[data-action='load-more-review-items']"
+          : ".study-review-queue > summary");
       render({ preserveFocus: false });
       return true;
     } finally {
@@ -992,13 +1225,15 @@ export function createCourseStudyApplication({
       if (!acceptedPreview) {
         restoreManualHistoryPreview();
         state.manualUndo.push({
+          courseId: state.selection.courseId,
           studyUnitId: saved.id,
           targetId: state.manualTargetId,
           before,
           after: clone(saved)
         });
         if (state.manualUndo.length > 20) state.manualUndo.shift();
-        state.manualRedo = [];
+        state.manualRedo = state.manualRedo.filter(({ courseId }) =>
+          courseId !== state.selection.courseId);
       }
       resetManualEditorState({
         status: committed.reconciled
@@ -1030,9 +1265,14 @@ export function createCourseStudyApplication({
     if (!manualEditCapability() || state.manualSaving) return false;
     const source = direction === "undo" ? state.manualUndo : state.manualRedo;
     const destination = direction === "undo" ? state.manualRedo : state.manualUndo;
-    const entry = source.at(-1);
     const current = context().studyUnit;
-    if (!entry || entry.studyUnitId !== current?.id) return false;
+    const entryIndex = manualHistoryIndex(
+      source,
+      state.selection.courseId,
+      current?.id
+    );
+    if (entryIndex < 0) return false;
+    const entry = source[entryIndex];
     if (state.manualEditing && manualDraftChanged()) {
       state.manualError = "Salve ou cancele a edição atual antes de continuar.";
       render();
@@ -1044,7 +1284,7 @@ export function createCourseStudyApplication({
       listManualStudyUnitEditablePaths(desired, targetId)
         .map(({ path, value }) => [path, value])
     );
-    source.pop();
+    source.splice(entryIndex, 1);
     destination.push(entry);
     state.manualHistoryPreview = { direction, entry };
     const opened = beginManualEdit(targetId, {
@@ -1075,12 +1315,19 @@ export function createCourseStudyApplication({
       render();
       return true;
     }
+    const returningHome = state.view === "course";
     if (state.view === "microsequence") state.view = "lesson";
     else if (state.view === "lesson") state.view = "module";
     else if (state.view === "module") state.view = "course";
     else if (state.view === "course") state.view = "courses";
     else return false;
     state.microsequenceMode = "play";
+    persistStudyNavigation({ includePosition: !returningHome });
+    if (returningHome) {
+      queueStudyFocus("[data-action='open-course']", {
+        "data-course-id": state.selection.courseId
+      });
+    }
     render({ preserveFocus: false });
     return true;
   }
@@ -1520,6 +1767,13 @@ export function createCourseStudyApplication({
       node.addEventListener("click", () => root.dispatchEvent(new CustomEvent(
         "aralearn:open-authoring", { bubbles: true }
       ))));
+    root.querySelector("[data-field='home-course-select']")?.addEventListener(
+      "change",
+      (event) => void selectHomeCourse(event.currentTarget.value)
+    );
+    root.querySelector(".study-review-queue")?.addEventListener("toggle", (event) => {
+      state.reviewQueueOpen = event.currentTarget.open === true;
+    });
     root.querySelectorAll("[data-action='open-course']").forEach((node) =>
       node.addEventListener("click", () => void openCourse(node.getAttribute("data-course-id"))));
     root.querySelectorAll("[data-action='open-review-item']").forEach((node) =>
@@ -1743,7 +1997,8 @@ export function createCourseStudyApplication({
         moduleCount: summary?.moduleCount || 0,
         lessonCount: summary?.lessonCount || 0,
         studyUnitCount: summary?.studyUnitCount || 0,
-        completedStudyUnitCount: summary?.completedStudyUnitCount || 0
+        completedStudyUnitCount: summary?.completedStudyUnitCount || 0,
+        availableOffline: summary?.availableOffline === true
       }];
     }));
     const reference = state.selection.studyUnitId ? canonicalReference(state.selection) : null;
@@ -1762,6 +2017,7 @@ export function createCourseStudyApplication({
     );
     if (!manualEnabled && state.manualEditing) resetManualEditorState();
     const currentStudyUnitId = current.studyUnit?.id || "";
+    const currentCourseId = current.course?.id || "";
     const manualEditor = {
       enabled: manualEnabled,
       editing: manualEnabled && state.manualEditing,
@@ -1770,8 +2026,16 @@ export function createCourseStudyApplication({
       saving: state.manualSaving,
       error: state.manualError,
       status: state.manualStatus,
-      canUndo: state.manualUndo.at(-1)?.studyUnitId === currentStudyUnitId,
-      canRedo: state.manualRedo.at(-1)?.studyUnitId === currentStudyUnitId,
+      canUndo: manualHistoryIndex(
+        state.manualUndo,
+        currentCourseId,
+        currentStudyUnitId
+      ) >= 0,
+      canRedo: manualHistoryIndex(
+        state.manualRedo,
+        currentCourseId,
+        currentStudyUnitId
+      ) >= 0,
       discardArmed: state.manualDiscardArmed
     };
     manualInlineController?.destroy?.();
@@ -1789,8 +2053,14 @@ export function createCourseStudyApplication({
       progress: repository.loadProgress(),
       reviewItems: repository.loadReviewItems?.() || [],
       reviewHasMore: repository.hasMoreReviewItems?.() === true,
+      reviewQueueOpen: state.reviewQueueOpen,
       runtimeStatus,
       coursePermissionsById: byCourseId,
+      selectedCourseId: state.selection.courseId,
+      studyNavigation: repository.loadStudyNavigation?.() || null,
+      homeLoadingCourseId: state.homeLoadingCourseId,
+      homeError: state.homeError,
+      homeNotice: state.homeNotice,
       packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
       observationCount: observationItems.filter(({ state: value }) => value !== "withdrawn").length,
@@ -1851,6 +2121,11 @@ export function createCourseStudyApplication({
       const previousView = state.view;
       const previousStudyUnit = clone(context().studyUnit);
       let refreshedProject = clone(nextProject);
+      if (previousSelection.courseId &&
+          findCourse(refreshedProject, previousSelection.courseId) &&
+          typeof repository.refreshCourseOfflineAvailability === "function") {
+        await repository.refreshCourseOfflineAvailability(previousSelection.courseId);
+      }
       if (previousView !== "courses" && previousSelection.courseId &&
           findCourse(refreshedProject, previousSelection.courseId) &&
           typeof repository.loadCourse === "function") {
@@ -1861,6 +2136,12 @@ export function createCourseStudyApplication({
       const retained = retainContext(state.project, previousSelection, previousView);
       state.selection = retained.selection;
       state.view = retained.view;
+      if (previousSelection.courseId &&
+          !findCourse(state.project, previousSelection.courseId)) {
+        state.homeNotice = "Seu acesso ao Curso selecionado foi encerrado.";
+        state.homeError = "";
+        persistStudyNavigation({ includePosition: false });
+      }
       rebaseManualCompositionOverrides();
       if (JSON.stringify(previousStudyUnit) !== JSON.stringify(context().studyUnit)) {
         resetStudyUnitInteraction();
@@ -1907,6 +2188,12 @@ export function createCourseStudyApplication({
           const retained = retainContext(state.project, previousSelection, previousView);
           state.selection = retained.selection;
           state.view = retained.view;
+          if (previousSelection.courseId &&
+              !findCourse(state.project, previousSelection.courseId)) {
+            state.homeNotice = "Seu acesso ao Curso selecionado foi encerrado.";
+            state.homeError = "";
+            persistStudyNavigation({ includePosition: false });
+          }
           rebaseManualCompositionOverrides();
         }
         state.connectionOffline =
@@ -1924,6 +2211,7 @@ export function createCourseStudyApplication({
     setOfflineStatus(offline = true) {
       const preservedFocus = currentStudyFocusTarget();
       state.connectionOffline = offline === true;
+      if (!state.connectionOffline) state.homeError = "";
       state.pendingStudyFocus ||= preservedFocus;
       render();
       return state.connectionOffline;

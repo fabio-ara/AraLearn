@@ -59,6 +59,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
     ...common,
     view: "courses",
     reviewHasMore: true,
+    reviewQueueOpen: true,
     runtimeStatus: { offline: true, stale: true, readOnly: true },
     reviewItems: [{
       title: "Unidade marcada",
@@ -67,7 +68,102 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
     }]
   });
   assert.match(homeHtml, /data-action="load-more-review-items"[^>]*>.*Mostrar mais/su);
+  assert.match(homeHtml, /<details class="study-review-queue clean-card" open>/u);
+  assert.match(homeHtml, /<strong>Rever<\/strong><span class="muted tiny">1<\/span>/u);
   assert.match(homeHtml, /Sem conexão · alterações pessoais ficam salvas neste dispositivo/u);
+
+  const moreOnlyHtml = renderCourseStudyScreen({
+    ...common,
+    view: "courses",
+    reviewHasMore: true,
+    reviewItems: []
+  });
+  assert.match(moreOnlyHtml, /<strong>Rever<\/strong><span class="muted tiny">mais<\/span>/u);
+});
+
+test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada contextual", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const base = project.courses[0];
+  const courses = [
+    { ...structuredClone(base), id: "11111111-1111-4111-8111-111111111111" },
+    { ...structuredClone(base), id: "22222222-2222-4222-8222-222222222222" },
+    {
+      ...structuredClone(base),
+      id: "33333333-3333-4333-8333-333333333333",
+      title: "Outro Curso"
+    }
+  ];
+  const selected = courses[1];
+  const moduleValue = selected.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const permissions = Object.fromEntries(courses.map((course, index) => [course.id, {
+    ownership: index === 2 ? "shared" : "owned",
+    canEdit: index !== 2,
+    availableOffline: index === 1,
+    moduleCount: 1,
+    lessonCount: 1,
+    studyUnitCount: 1,
+    completedStudyUnitCount: 0
+  }]));
+  const html = renderCourseStudyScreen({
+    project: { ...project, courses },
+    view: "courses",
+    selection: {
+      courseId: selected.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course: selected,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: permissions,
+    selectedCourseId: selected.id,
+    studyNavigation: {
+      positions: {
+        [selected.id]: {
+          view: "microsequence",
+          entityPath: [
+            selected.id,
+            moduleValue.id,
+            lesson.id,
+            microsequence.id,
+            studyUnit.id
+          ],
+          microsequenceMode: "play"
+        }
+      }
+    },
+    runtimeStatus: { offline: false },
+    reviewItems: [{
+      title: "Pertence ao selecionado",
+      entityPath: [selected.id, moduleValue.id, lesson.id, microsequence.id, studyUnit.id]
+    }, {
+      title: "Pertence a outro Curso",
+      entityPath: [courses[0].id, moduleValue.id, lesson.id, microsequence.id, studyUnit.id]
+    }]
+  });
+
+  assert.equal((html.match(/<select\b/gu) || []).length, 1);
+  assert.equal((html.match(/<option\b/gu) || []).length, 3);
+  assert.equal((html.match(/class="progress-card home-course-selector-preview"/gu) || []).length, 1);
+  assert.match(html, /aria-label="Selecionar Curso"/u);
+  assert.match(html, /opção 1/u);
+  assert.match(html, /opção 2/u);
+  assert.match(html, /Disponível neste dispositivo/u);
+  assert.match(html, /aria-label="Retomar [^"]+"/u);
+  assert.match(html, />Retomar<\/span>/u);
+  assert.match(html, /Pertence ao selecionado/u);
+  assert.doesNotMatch(html, /Pertence a outro Curso/u);
+  assert.doesNotMatch(html, /<details[^>]+study-review-queue[^>]+open/u);
+  assert.doesNotMatch(html, /navigation-list-card|courses-home-list|Abrir Curso/u);
 });
 
 test("Study revela citações redigidas somente quando o painel lazy está aberto", async () => {

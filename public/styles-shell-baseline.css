@@ -103,7 +103,6 @@ img[src$="aralearn-mark-monochrome.svg"] {
 }
 
 .icon-ghost,
-.open-main,
 .open-mini {
   min-width: var(--tap);
   min-height: var(--tap);
@@ -123,7 +122,6 @@ img[src$="aralearn-mark-monochrome.svg"] {
   background: var(--surface-raised);
 }
 
-.open-main,
 .open-mini {
   background: var(--action-primary);
   color: var(--text-on-action);
@@ -132,19 +130,12 @@ img[src$="aralearn-mark-monochrome.svg"] {
   box-shadow: var(--shadow-card);
 }
 
-.open-main {
-  font-size: 1.1rem;
-  border-radius: 12px;
-}
-
 .icon-ghost,
-.open-main,
 .open-mini {
   border-radius: 12px;
 }
 
 .icon-ghost:disabled,
-.open-main:disabled,
 .open-mini:disabled {
   opacity: 0.42;
   cursor: not-allowed;
@@ -160,7 +151,6 @@ img[src$="aralearn-mark-monochrome.svg"] {
 }
 
 .course-actions .icon-ghost,
-.course-actions .open-main,
 .lesson-actions .icon-ghost,
 .lesson-actions .open-mini,
 .microsequence-actions .icon-ghost,

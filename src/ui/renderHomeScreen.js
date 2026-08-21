@@ -58,7 +58,7 @@ function metric(icon, value, label) {
   );
 }
 
-function renderCourse(course, progress, permissions = {}) {
+function coursePresentation(course, progress, permissions = {}) {
   const hasLoadedComposition = (course.modules || []).length > 0;
   const total = hasLoadedComposition
     ? countStudyUnits(course)
@@ -73,37 +73,134 @@ function renderCourse(course, progress, permissions = {}) {
     ? countLessons(course)
     : Number(permissions.lessonCount || 0);
   const percentage = total ? Math.round((completed / total) * 100) : 0;
-  const ownership = permissions.canEdit === true ? "Curso próprio" : "Curso compartilhado";
+  const owned = permissions.ownership === "owned" || permissions.canEdit === true;
+  return {
+    course,
+    title: String(course.title || "Curso").trim() || "Curso",
+    goal: String(course.goal || "").trim(),
+    total,
+    completed,
+    moduleCount,
+    lessonCount,
+    percentage,
+    owned,
+    ownershipLabel: owned ? "Seu Curso" : "Compartilhado com você",
+    availableOffline: permissions.availableOffline === true
+  };
+}
+
+function optionLabels(presentations) {
+  const counts = new Map();
+  for (const item of presentations) {
+    const key = `${item.title.toLocaleLowerCase("pt-BR")}\u0000${item.ownershipLabel}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const occurrences = new Map();
+  return presentations.map((item) => {
+    const key = `${item.title.toLocaleLowerCase("pt-BR")}\u0000${item.ownershipLabel}`;
+    const occurrence = (occurrences.get(key) || 0) + 1;
+    occurrences.set(key, occurrence);
+    const suffix = counts.get(key) > 1 ? ` · opção ${occurrence}` : "";
+    return `${item.title} · ${item.ownershipLabel}${suffix}`;
+  });
+}
+
+function resumeContext(course, position) {
+  if (!position || !Array.isArray(position.entityPath)) return "";
+  const [, moduleId, lessonId, microsequenceId, studyUnitId] = position.entityPath;
+  const moduleValue = (course.modules || []).find((item) => entityId(item) === moduleId);
+  const lesson = (moduleValue?.lessons || []).find((item) => entityId(item) === lessonId);
+  const microsequence = (lesson?.microsequences || [])
+    .find((item) => entityId(item) === microsequenceId);
+  const studyUnit = (microsequence?.studyUnits || [])
+    .find((item) => entityId(item) === studyUnitId);
+  if (position.view === "course") return course.title || "Curso";
+  if (position.view === "module") return moduleValue?.title || "";
+  if (position.view === "lesson") return lesson?.title || "";
+  return studyUnit?.title || microsequence?.title || lesson?.title || "";
+}
+
+function renderCoursePreview({
+  presentation,
+  position,
+  runtimeStatus,
+  loading = false,
+  error = ""
+}) {
+  const {
+    course,
+    title,
+    goal,
+    total,
+    completed,
+    moduleCount,
+    lessonCount,
+    percentage,
+    owned,
+    ownershipLabel,
+    availableOffline
+  } = presentation;
+  const context = resumeContext(course, position);
+  const action = position
+    ? "Retomar"
+    : completed > 0
+      ? "Continuar"
+      : "Começar";
+  const actionCopy = position
+    ? context ? `Retoma em ${context}.` : "Retoma o último ponto visitado."
+    : completed > 0
+      ? total > 0 && completed >= total
+        ? "Volta ao panorama deste Curso concluído."
+        : "Continua pela próxima Unidade pendente."
+      : "Começa pela primeira Unidade de estudo.";
+  const offline = runtimeStatus?.offline === true;
+  const unavailableOffline = offline && !availableOffline;
+  const statusCopy = availableOffline
+    ? "Disponível neste dispositivo"
+    : offline
+      ? "Conecte-se para abrir pela primeira vez"
+      : "Disponível com conexão";
+  const buttonCopy = loading ? "Abrindo…" : error ? "Tentar novamente" : action;
+  const accessibleAction = `${buttonCopy} ${title}`;
   return (
-    '<article class="clean-card progress-card navigation-list-card home-course-selector-preview" data-course-id="' +
+    '<article class="progress-card home-course-selector-preview" data-course-id="' +
     escapeHtml(entityId(course)) + '">' +
     '<div class="card-progress-fill" style="width:' + String(percentage) +
-    '%" role="progressbar" aria-label="Progresso do Curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+    '%" role="progressbar" aria-label="Progresso de ' + escapeHtml(title) +
+    '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
     String(percentage) + '"></div>' +
-    '<div class="lesson-copy navigation-main">' +
-    '<div class="structure-title-row navigation-title-row"><h2 class="card-title">' +
-    escapeHtml(course.title || "Curso") + "</h2></div>" +
-    (course.goal ? '<p class="card-subtitle">' + escapeHtml(course.goal) + "</p>" : "") +
+    '<div class="home-course-preview-copy">' +
+    '<p class="home-course-ownership">' +
+    renderUiIcon(owned ? "key" : "account-add", "home-course-origin-icon") +
+    '<span>' + escapeHtml(ownershipLabel) + "</span></p>" +
+    '<h2 class="card-title">' + escapeHtml(title) + "</h2>" +
+    (goal ? '<p class="card-subtitle">' + escapeHtml(goal) + "</p>" : "") +
     '<p class="muted tiny progress-meta">' +
     metric("progress", `${completed}/${total}`, `Progresso: ${completed} de ${total}`) +
     '<span class="progress-meta-separator" aria-hidden="true">·</span>' +
     metric("module", String(moduleCount), "Módulos") +
     '<span class="progress-meta-separator" aria-hidden="true">·</span>' +
     metric("lesson", String(lessonCount), "Lições") +
-    "</p></div>" +
-    '<div class="lesson-actions navigation-actions">' +
-    '<span class="home-course-origin" title="' + escapeHtml(ownership) +
-    '" aria-label="' + escapeHtml(ownership) + '">' +
-    renderUiIcon(permissions.canEdit === true ? "key" : "account-add", "home-course-origin-icon") +
-    "</span>" +
+    '</p><p class="home-course-offline-status">' +
+    renderUiIcon(availableOffline ? "offline" : "cloud", "home-tab-icon") +
+    '<span>' + escapeHtml(statusCopy) + "</span></p>" +
+    '<p class="home-course-entry-context">' + escapeHtml(actionCopy) + "</p></div>" +
+    '<div class="home-course-preview-actions">' +
     (completed > 0
       ? '<button class="icon-ghost study-course-reset" type="button" data-action="reset-course-progress" data-course-id="' +
-        escapeHtml(entityId(course)) + '" title="Zerar progresso do Curso" aria-label="Zerar progresso do Curso">' +
+        escapeHtml(entityId(course)) + '" title="Zerar progresso de ' + escapeHtml(title) +
+        '" aria-label="Zerar progresso de ' + escapeHtml(title) + '">' +
         renderUiIcon("rotate", "home-tab-icon") + "</button>"
       : "") +
-    '<button class="open-main" type="button" data-action="open-course" data-course-id="' +
-    escapeHtml(entityId(course)) + '" title="Abrir Curso" aria-label="Abrir Curso">' +
-    renderUiIcon("play", "home-tab-icon") + "</button></div></article>"
+    '<button class="home-course-entry" type="button" data-action="open-course" data-course-id="' +
+    escapeHtml(entityId(course)) + '" title="' + escapeHtml(accessibleAction) +
+    '" aria-label="' + escapeHtml(accessibleAction) + '"' +
+    (loading || unavailableOffline ? ' disabled aria-disabled="true"' : "") + ">" +
+    renderUiIcon("play", "home-tab-icon") + '<span>' + escapeHtml(buttonCopy) +
+    "</span></button></div>" +
+    (loading
+      ? '<p class="home-course-loading" role="status">Preparando este Curso…</p>'
+      : "") + "</article>"
   );
 }
 
@@ -112,14 +209,23 @@ function validReviewItem(item) {
     item.entityPath.every((value) => typeof value === "string" && value.length > 0);
 }
 
-function renderReviewQueue(reviewItems, hasMore = false) {
-  const items = (Array.isArray(reviewItems) ? reviewItems : []).filter(validReviewItem);
-  if (!items.length) return "";
+function renderReviewQueue(
+  reviewItems,
+  hasMore = false,
+  selectedCourseId = "",
+  open = false
+) {
+  const items = (Array.isArray(reviewItems) ? reviewItems : [])
+    .filter(validReviewItem)
+    .filter((item) => item.entityPath[0] === selectedCourseId);
+  if (!items.length && !hasMore) return "";
   return (
-    '<details class="study-review-queue clean-card" open>' +
+    '<details class="study-review-queue clean-card"' + (open ? " open" : "") + '>' +
     '<summary><span>' + renderUiIcon("review", "home-tab-icon") +
-    '</span><strong>Rever</strong><span class="muted tiny">' + String(items.length) + "</span></summary>" +
-    '<div class="study-review-list">' + items.map((item) => {
+    '</span><strong>Rever</strong><span class="muted tiny">' +
+    escapeHtml(items.length ? String(items.length) : "mais") + "</span></summary>" +
+    '<div class="study-review-list">' + (items.length
+      ? items.map((item) => {
       const [courseId, moduleId, lessonId, microsequenceId, studyUnitId] = item.entityPath;
       const title = String(item.title || "Unidade marcada");
       return (
@@ -132,7 +238,9 @@ function renderReviewQueue(reviewItems, hasMore = false) {
         "</strong>" + (item.context ? '<small>' + escapeHtml(item.context) + "</small>" : "") +
         "</span></button>"
       );
-    }).join("") + (hasMore
+    }).join("")
+      : '<p class="muted tiny study-review-empty">Nenhuma Unidade marcada neste Curso.</p>') +
+    (hasMore
       ? '<button class="open-mini study-review-more" type="button" data-action="load-more-review-items">' +
         renderUiIcon("add", "home-tab-icon") + "<span>Mostrar mais</span></button>"
       : "") + "</div></details>"
@@ -164,15 +272,47 @@ export function renderHomeScreen({
   progress,
   reviewItems = [],
   reviewHasMore = false,
+  reviewQueueOpen = false,
   runtimeStatus = {},
+  selectedCourseId = null,
+  studyNavigation = null,
+  homeLoadingCourseId = "",
+  homeError = "",
+  homeNotice = "",
   editorSupport = {}
 }) {
   const courses = Array.isArray(project?.courses) ? project.courses : [];
-  const courseMarkup = courses.map((course) => renderCourse(
+  const presentations = courses.map((course) => coursePresentation(
     course,
     progress,
     editorSupport.coursePermissionsById?.[course.id] || {}
-  )).join("");
+  ));
+  const selected = presentations.find((item) => entityId(item.course) === selectedCourseId) ||
+    presentations[0] || null;
+  const labels = optionLabels(presentations);
+  const selectedId = selected ? entityId(selected.course) : "";
+  const position = studyNavigation?.positions?.[selectedId] || null;
+  const loading = Boolean(selectedId && homeLoadingCourseId === selectedId);
+  const selectMarkup = selected
+    ? '<section class="clean-card home-course-selector-card" aria-labelledby="home-course-selector-label">' +
+      '<label id="home-course-selector-label" class="home-course-selector-label" for="home-course-select">' +
+      renderUiIcon("study", "home-tab-icon") + '<span>Curso</span></label>' +
+      '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar Curso"' +
+      (loading ? " disabled" : "") + ">" + presentations.map((item, index) =>
+        '<option value="' + escapeHtml(entityId(item.course)) + '"' +
+        (entityId(item.course) === selectedId ? " selected" : "") + ">" +
+        escapeHtml(labels[index]) + "</option>").join("") + "</select>" +
+      '<p class="visually-hidden" role="status" aria-live="polite">Curso selecionado: ' +
+      escapeHtml(selected.title) + ".</p>" +
+      renderCoursePreview({
+        presentation: selected,
+        position,
+        runtimeStatus,
+        loading,
+        error: homeError
+      }) + "</section>"
+    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">Seus Cursos</h2>' +
+      '<p class="empty-state-copy">Nenhum Curso está disponível para estudo nesta conta.</p></section>';
   return (
     '<section class="screen">' + renderTopbar() +
     '<main class="screen-content courses-home-screen navigation-screen">' +
@@ -182,9 +322,12 @@ export function renderHomeScreen({
     '<button type="button" data-action="open-authoring" title="Abrir Autoria">' +
     renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
     renderRuntimeNotice(runtimeStatus) +
-    renderReviewQueue(reviewItems, reviewHasMore) +
-    '<section class="courses-home-list navigation-list">' +
-    (courseMarkup || '<article class="home-course-selector-empty"><p class="empty-state-copy">Nenhum Curso acessível.</p></article>') +
-    "</section></main></section>"
+    (homeNotice ? '<p class="study-home-feedback is-notice" role="status">' +
+      escapeHtml(homeNotice) + "</p>" : "") +
+    (homeError ? '<p class="study-home-feedback is-error" role="alert">' +
+      escapeHtml(homeError) + "</p>" : "") +
+    selectMarkup +
+    renderReviewQueue(reviewItems, reviewHasMore, selectedId, reviewQueueOpen) +
+    "</main></section>"
   );
 }

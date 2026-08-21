@@ -1461,6 +1461,37 @@ export class CourseController {
     };
   }
 
+  async hasVerifiedCourseDocument(courseId, { revision = null } = {}) {
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId)) {
+      throw new TypeError("A identidade do Curso é inválida.");
+    }
+    const cached = cachedPayload(await this.store.getCache(
+      verifiedCompositionCacheKey(normalizedCourseId, this.cachePrefix)
+    ));
+    const cachedRevision = Number(cached?.revision);
+    const entityPageSize = Number(cached?.entityPageSize);
+    const expectedRevision = revision == null ? null : Number(revision);
+    if (expectedRevision != null &&
+        (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1)) {
+      throw new TypeError("A versão do Curso é inválida.");
+    }
+    if (cached?.contract !== VERIFIED_COMPOSITION_CACHE_CONTRACT ||
+        String(cached?.courseId || "").trim().toLowerCase() !== normalizedCourseId ||
+        !Number.isSafeInteger(cachedRevision) || cachedRevision < 1 ||
+        !Number.isSafeInteger(entityPageSize) || entityPageSize < 1 ||
+        entityPageSize > 1_000 ||
+        (expectedRevision != null && cachedRevision !== expectedRevision)) {
+      return false;
+    }
+    return Boolean(await this.#readVerifiedCachedDocument(
+      normalizedCourseId,
+      cachedRevision,
+      entityPageSize,
+      cached.course
+    ));
+  }
+
   async #promoteVerifiedComposition(
     courseId,
     course,
@@ -1607,8 +1638,8 @@ export class CourseController {
     }
   }
 
-  clearCourse(courseId) {
-    return this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+  clearCourse(courseId, { clearLists = true } = {}) {
+    return this.#purgeCoursePrivacyCache(courseId, { clearLists: clearLists !== false });
   }
 
   loadAuthoringPlan(courseId) {
