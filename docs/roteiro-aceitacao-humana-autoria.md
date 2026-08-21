@@ -112,18 +112,18 @@ navegação simultâneos aumentarem a carga até ela abandonar a intenção orig
 Registre cada dificuldade como Observação datada e trate recorrência ou bloqueio
 como defeito de produto. Corrija a interface antes de alegar simplicidade. Um
 resultado humano positivo é necessário para os critérios de simplicidade das
-issues [#114](https://github.com/fabio-ara/AraLearn/issues/114),
-[#129](https://github.com/fabio-ara/AraLearn/issues/129) e
-[#144](https://github.com/fabio-ara/AraLearn/issues/144).
+issues [#152](https://github.com/fabio-ara/AraLearn/issues/152),
+[#153](https://github.com/fabio-ara/AraLearn/issues/153) e do cutover
+[#154](https://github.com/fabio-ara/AraLearn/issues/154), sob o
+[roadmap #147](https://github.com/fabio-ara/AraLearn/issues/147).
 
 Os achados também alimentam
-[#120](https://github.com/fabio-ara/AraLearn/issues/120),
-[#128](https://github.com/fabio-ara/AraLearn/issues/128) e
-[#131](https://github.com/fabio-ara/AraLearn/issues/131), que permanecem abertas
-enquanto seus critérios dependerem do ChatGPT conectado, de medidas reais do
-modelo ou de avaliação humana. A
-[#130](https://github.com/fabio-ara/AraLearn/issues/130) continua dependente do
-cutover da #129, das medidas operacionais, da documentação final e da limpeza
+[#151](https://github.com/fabio-ara/AraLearn/issues/151), que fecha Partes,
+componentes, indicadores e MCP, e
+[#153](https://github.com/fabio-ara/AraLearn/issues/153), que reúne as provas no
+ChatGPT conectado, Pages, Android e descoberta humana. A
+[#155](https://github.com/fabio-ara/AraLearn/issues/155) continua dependente do
+cutover da #154, das medidas operacionais, da documentação final e da limpeza
 física autorizada.
 
 A sessão de pesquisa também exige revisão especializada sobre validade das

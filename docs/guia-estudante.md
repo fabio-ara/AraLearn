@@ -6,13 +6,17 @@ estudo são as mesmas nos dois casos.
 
 ## Compreender a tela inicial
 
-A tela inicial de **Estudo** mostra os Cursos acessíveis. Cada item apresenta
-título, objetivo, progresso, quantidade de Módulos e Lições e um ícone que
-distingue Curso próprio de Curso compartilhado.
+A tela inicial de **Estudo** reúne os Cursos acessíveis num único seletor
+**Curso**. Ao escolher uma opção, aparece uma única prévia com título, objetivo,
+relação de acesso, progresso, quantidade de Módulos e Lições e disponibilidade
+no dispositivo. Identificadores, hashes e revisões técnicas não aparecem nesse
+percurso.
 
-Essa lista usa uma descrição resumida. A composição completa é carregada quando
-o Curso é aberto. Por isso, a primeira abertura de um Curso requer conexão mesmo
-quando seu título já aparece.
+O seletor e a prévia usam descrições resumidas. A composição completa é
+carregada somente quando a pessoa entra no Curso. Por isso, a primeira abertura
+requer conexão mesmo quando o título já aparece. Depois de uma abertura
+validada, a prévia informa **Disponível neste dispositivo**; sem essa cópia, ela
+informa que a conexão é necessária.
 
 A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
 pessoa. O acesso à **Autoria** leva à atividade autoral. Cursos compartilhados
@@ -22,9 +26,10 @@ com o proprietário.
 ## Preparar o dispositivo para estudar sem conexão
 
 1. Entre na conta correta.
-2. Com conexão disponível, abra cada Curso que pretende usar sem rede.
-3. Aguarde a composição aparecer.
-4. Volte à tela inicial e confirme que o Curso continua acessível.
+2. No seletor **Curso**, escolha o Curso que pretende usar sem rede.
+3. Use **Começar**, **Continuar** ou **Retomar**, conforme o rótulo apresentado.
+4. Aguarde a composição aparecer.
+5. Volte à tela inicial e confirme a indicação **Disponível neste dispositivo**.
 
 O AraLearn mantém no banco local do dispositivo a lista conhecida, os Cursos
 abertos e o estado pessoal. Limpar os dados do navegador, reinstalar o
@@ -33,11 +38,13 @@ aguardavam sincronização.
 
 ## Iniciar ou retomar uma sessão
 
-1. Na tela inicial, escolha **Abrir Curso**.
-2. Abra um Módulo.
-3. Abra uma Lição.
-4. Abra uma Microssequência didática.
-5. Examine a lista de Unidades ou comece pela primeira.
+1. Na tela inicial, escolha o Curso no seletor.
+2. Confira a prévia e use a ação principal:
+   - **Começar** leva à primeira Unidade pendente quando ainda não há progresso;
+   - **Continuar** parte do progresso salvo quando não existe um ponto de
+     navegação mais específico;
+   - **Retomar** volta ao último ponto visitado naquele Curso.
+3. Percorra Módulo, Lição ou Microssequência quando quiser mudar de contexto.
 
 Os itens de navegação mostram o progresso de cada nível. Dentro de uma
 Unidade, a barra superior informa o contexto e a posição na Microssequência.
@@ -116,17 +123,19 @@ pendente no dispositivo. Preserve os dados do aplicativo e volte a conectá-lo
 antes de trocar de navegador ou desinstalar quando houver alterações recentes
 importantes.
 
-Ao estudar em dois dispositivos, cada um compara sua versão com a versão remota
-e reconcilia as operações pendentes. Se o acesso ao Curso for revogado, o
+Ao estudar em duas abas ou em dois dispositivos, cada sessão conserva a tela em
+que a pessoa está, enquanto o estado persistido é reconciliado sem deslocar a
+outra sessão durante o uso. Se o acesso ao Curso selecionado for revogado, o
 servidor recusa novas leituras e alterações; na próxima validação conectada, o
-aplicativo remove a cópia privada daquele Curso.
+aplicativo remove a cópia privada, informa a mudança e seleciona outro Curso
+acessível, quando houver.
 
 ## Zerar o progresso de um Curso
 
-Quando há progresso, o item do Curso oferece **Zerar progresso do Curso**. A
-confirmação inclui o título para evitar engano. Essa ação limpa somente o
-progresso do Curso escolhido. O Curso, as marcas **Rever**, as Anotações
-ancoradas e os dados dos demais Cursos permanecem.
+Quando há progresso, a prévia do Curso selecionado oferece **Zerar progresso do
+Curso**. A confirmação inclui o título para evitar engano. Essa ação limpa
+somente o progresso e o ponto de retomada do Curso escolhido. O Curso, as marcas
+**Rever**, as Anotações ancoradas e os dados dos demais Cursos permanecem.
 
 Também há reinícios delimitados dentro do percurso. O rótulo da confirmação
 informa se o alcance começa em um Módulo, Lição, Microssequência ou Unidade.

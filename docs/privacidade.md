@@ -299,6 +299,16 @@ um objeto sem proprietário. A operação deve repetir o inventário de PDFs e
 avatares depois das duas janelas e remover somente o caminho cuja ausência de
 vínculo tenha sido comprovada.
 
+## Roadmap de proteção desde a concepção
+
+A proteção de dados no [roadmap corrente](https://github.com/fabio-ara/AraLearn/issues/147)
+possui duas frentes. A issue [#150](https://github.com/fabio-ara/AraLearn/issues/150)
+corrige riscos concretos no produto atual, como exportação, limpeza local,
+retenção e fronteiras do MCP. Somente depois da baseline 2.0, a
+[#156](https://github.com/fabio-ara/AraLearn/issues/156) fixa as fronteiras do
+eventual artefato versionado antes do ensaio Git. Essas medidas são proteção
+desde a concepção e não constituem declaração de conformidade com LGPD ou RGPD.
+
 ## Responsabilidades da instituição
 
 As regras técnicas de acesso não determinam sozinhas se um tratamento é ética ou

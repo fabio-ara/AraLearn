@@ -5,7 +5,9 @@ AraLearn. O navegador usa apenas a URL do projeto e a chave pública. Operaçõe
 autorais privilegiadas passam pelas funções remotas, que validam a pessoa antes
 de usar a credencial administrativa.
 
-Na entrega 0.0.24, a ordem completa de publicação segue o roteiro de
+Na entrega 0.0.25, o Supabase não muda: permanecem o esquema
+`20260820224424`, a API de Cursos na revisão 5 e o MCP na revisão 120. A ordem
+completa de publicação dos clientes segue o roteiro de
 [Implantação](implantacao.md).
 
 Na implantação verificada, o projeto hospedado estava no plano Free, ativo na

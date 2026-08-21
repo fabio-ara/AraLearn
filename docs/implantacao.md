@@ -1,9 +1,9 @@
 # Implantação do AraLearn
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
-de borda, site estático e aplicativo Android. A linha publicada 0.0.24 usa a
-revisão hospedada `20260820224424`, a API de Cursos na revisão 5 e o MCP na
-revisão 120. Banco e funções foram promovidos antes do site e do APK. O
+de borda, site estático e aplicativo Android. A linha 0.0.25 usa a revisão
+hospedada `20260820224424`, a API de Cursos na revisão 5 e o MCP na revisão 120.
+Essa atualização altera somente os clientes; não promove migração nem função. O
 contrato público das ferramentas e do recurso MCP permanece 0.0.23; a nova
 origem estruturada existe somente na rota autenticada do aplicativo.
 
@@ -88,7 +88,7 @@ permissão de acesso à rede local.
 
 Essa lista, sozinha, não cria paridade no APK de release. O WebView serve a
 aplicação por `https://appassets.androidplatform.net` e conserva
-`MIXED_CONTENT_NEVER_ALLOW`. O Android 0.0.24 encaminha somente a chamada ao relay
+`MIXED_CONTENT_NEVER_ALLOW`. Desde a versão 0.0.24, o Android encaminha somente a chamada ao relay
 local por uma ponte nativa Android, fixa em
 `http://127.0.0.1:4183/v1/chat/completions`, em vez de liberar conteúdo misto no
 WebView. Ela aceita somente POST JSON originado do quadro principal do aplicativo,
@@ -183,9 +183,15 @@ também exige inspeção do produto real. Verifique ao menos:
 - foco visível, navegação por teclado e tabela equivalente aos gráficos;
 - retomada após ficar sem rede e depois reconectar.
 
+Na entrada de Estudo, verifique ainda um único combobox, uma única prévia rica,
+os rótulos **Começar**, **Continuar** e **Retomar**, a disponibilidade local e o
+fallback após revogação. Leve o foco a **Rever**, abra e feche por `Enter` e
+confira a orientação do indicador. A série da 0.0.25 conserva oito capturas nas
+quatro larguras e nos temas claro e escuro.
+
 Na Autoria, repita essa inspeção com a superfície centralizada e limitada a
 430 px também em 1280 px. A presença de uma tela larga não autoriza segunda
-coluna, dashboard ou variação exclusiva para desktop. Exercite também edição
+coluna, painel ou variação exclusiva para desktop. Exercite também edição
 manual, prévia da assistência por API e retorno ao mesmo alvo.
 
 Uma captura isolada demonstra aparência naquele quadro. Interações, foco,
@@ -296,9 +302,9 @@ npm.cmd run deployment:verify-site -- --url https://<endereco-publicado>/
 
 ## Publicação do Android
 
-`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.24`. O
-`versionCode` deve avançar em relação à publicação anterior. O APK usa a mesma
-URL e chave pública do site.
+`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.25`. O
+`versionCode` desta entrega é 171. O APK usa a mesma URL e chave pública do
+site.
 
 Uma compilação local de depuração usa:
 
@@ -311,7 +317,7 @@ O fluxo `.github/workflows/android-release.yml` acompanha uma validação bem
 sucedida da ponta corrente de `main`. Ele confirma versão, estado da tag e da
 Release, configuração pública e identidade histórica de assinatura; repete
 testes e análise estática; produz o APK assinado; verifica o certificado; e cria
-a GitHub Release `v0.0.24` com `AraLearn-0.0.24.apk`.
+a GitHub Release `v0.0.25` com `AraLearn-0.0.25.apk`.
 
 Se `main` avançar durante a compilação, o fluxo não publica a revisão superada.
 Tag sem Release, Release parcial, rascunho, alvo divergente ou APK ausente
@@ -402,3 +408,16 @@ do restante.
 | relay da assistência | duas passagens HTTP locais aprovadas, a mais recente 1/1 em 14,2 s; a compilação Android de release e os 28/28 testes de implantação passaram, com ponte nativa presente no APK e ausente no Pages, sem relaxar `MIXED_CONTENT_NEVER_ALLOW`; instalação do APK, prova em dispositivo real e teste de acesso à rede local no Pages permanecem pendentes |
 | ChatGPT | a versão publicada ainda precisa repetir materialização, retorno ao AraLearn, recurso visual e medidas disponíveis no cliente conectado |
 | aceitação humana | pendente conforme o roteiro por descoberta de tarefas; nomes de áreas não são ensinados previamente |
+
+## Estado da entrega 0.0.25
+
+| Critério | Estado da release |
+|---|---|
+| escopo remoto | sem alteração: manifesto `20260820224424`, API de Cursos revisão 5 e MCP revisão 120 |
+| versões de cliente | npm e Android `0.0.25`; Android `versionCode` 171 |
+| runtime | `npm test`: 990 aprovações e nove verificações condicionais, 999 no total |
+| navegador | Playwright: 111 aprovações e dois casos condicionais, 113 no total |
+| entrada de Estudo | um combobox, uma prévia rica, **Começar**, **Continuar** e **Retomar**, disponibilidade local comprovada, revogação com fallback e nenhum identificador técnico visível |
+| matriz visual | oito capturas em 360, 390, 430 e 1280 px, nos temas claro e escuro; shell de até 430 px centralizado e sem overflow global |
+| teclado e divulgação progressiva | **Rever** recebe foco, abre e fecha por `Enter` e atualiza a orientação do indicador |
+| pós-publicação | confrontar o Pages e o APK com o SHA validado e repetir a entrada de Estudo no Chrome real |

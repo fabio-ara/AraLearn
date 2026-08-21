@@ -409,7 +409,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       ]);
 
       await expect(ownerPage.getByText(COURSE_TITLE, { exact: true })).toBeVisible();
-      await expect(learnerPage.getByText("Nenhum Curso acessível.", { exact: true })).toBeVisible();
+      await expect(learnerPage.getByText(
+        "Nenhum Curso está disponível para estudo nesta conta.",
+        { exact: true }
+      )).toBeVisible();
       await setProfile(ownerPage, "Pessoa proprietária local", { avatar: true });
       await setProfile(learnerPage, "Pessoa estudante local");
       ownerAvatarObjectKey = (await courseAction("gerirPessoas", {
@@ -463,16 +466,12 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await attachScreenshot(ownerPage, testInfo, "acesso-concedido-390.png");
 
       await learnerPage.reload();
-      const learnerCard = learnerPage.locator("[data-course-id]").filter({
-        hasText: COURSE_TITLE
-      }).first();
-      await expect(learnerCard).toBeVisible();
-      await expect(learnerCard.getByLabel("Curso compartilhado")).toBeVisible();
-      await learnerCard.getByRole("button", { name: "Abrir Curso" }).click();
-      await learnerPage.getByRole("button", { name: "Abrir módulo" }).click();
-      await learnerPage.getByRole("button", { name: "Abrir lição" }).click();
-      await learnerPage.getByRole("button", { name: "Abrir microssequência didática" }).click();
-      await learnerPage.getByRole("button", { name: "Abrir unidade" }).first().click();
+      const learnerPreview = learnerPage.locator(".home-course-selector-preview");
+      await expect(learnerPage.getByRole("combobox", { name: "Selecionar Curso" }))
+        .toHaveValue(courseId);
+      await expect(learnerPreview).toContainText(COURSE_TITLE);
+      await expect(learnerPreview).toContainText("Compartilhado com você");
+      await learnerPreview.getByRole("button", { name: `Começar ${COURSE_TITLE}` }).click();
       await expect(learnerPage.getByText(
         "Conteúdo privado liberado somente para a pessoa escolhida.",
         { exact: true }
@@ -541,12 +540,18 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       });
 
       await learnerPage.reload();
-      await expect(learnerPage.getByText("Nenhum Curso acessível.", { exact: true })).toBeVisible();
+      await expect(learnerPage.getByText(
+        "Nenhum Curso está disponível para estudo nesta conta.",
+        { exact: true }
+      )).toBeVisible();
       await learnerPage.waitForLoadState("networkidle");
       learnerFailures.setOffline(true);
       await learnerContext.setOffline(true);
       await expect(learnerPage.getByText(COURSE_TITLE, { exact: true })).toHaveCount(0);
-      await expect(learnerPage.getByText("Nenhum Curso acessível.", { exact: true })).toBeVisible();
+      await expect(learnerPage.getByText(
+        "Nenhum Curso está disponível para estudo nesta conta.",
+        { exact: true }
+      )).toBeVisible();
       await learnerContext.setOffline(false);
       learnerFailures.setOffline(false);
 

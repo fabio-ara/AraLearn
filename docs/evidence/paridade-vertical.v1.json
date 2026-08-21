@@ -2,7 +2,7 @@
   "contract": "aralearn.vertical-parity.v1",
   "purpose": "Registro de desenvolvimento que liga cada capacidade corrente de Curso às superfícies, transportes, persistência e provas que a tornam utilizável.",
   "policy": {
-    "finalStage": "#130",
+    "finalStage": "#155",
     "compatibilityInFinalState": false,
     "legacyAliasesInFinalState": false,
     "fallbacksInFinalState": false,
@@ -470,10 +470,10 @@
     },
     {
       "id": "pre-course-database-removal",
-      "intent": "Isolar os objetos físicos do modelo substituído que ainda aguardam remoção definitiva em #130.",
+      "intent": "Isolar os objetos físicos do modelo substituído que ainda aguardam remoção definitiva em #155.",
       "classification": "remove",
       "status": "scheduled-removal",
-      "removeBy": "#130",
+      "removeBy": "#155",
       "objects": {
         "databaseInternalPatterns": [
           "^(?:table|view|materialized_view|function|bucket|index|constraint|trigger|policy|rls):.+$"

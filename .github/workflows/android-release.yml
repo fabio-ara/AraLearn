@@ -288,10 +288,10 @@ jobs:
           ## AraLearn ${{ steps.identity.outputs.version }}
 
           - Código de versão Android ${{ steps.identity.outputs.version_code }}.
-          - A Autoria oferece navegação compacta e responsiva entre Curso, estrutura, parâmetros, fontes, observações, inspeção, auditoria e variantes.
-          - Comandos contextuais para o ChatGPT respeitam o escopo selecionado e preservam o controle completo na interface.
-          - Rascunhos, foco e identidades de comando sobrevivem a atualizações e respostas ambíguas, evitando perda ou duplicação de trabalho.
-          - A réplica IndexedDB reconcilia revisões observadas no backend e no MCP ao retornar à Autoria.
+          - A entrada de Estudo reúne a escolha do Curso e uma única prévia rica, sem a antiga grade de cartões repetidos.
+          - Começar, Continuar e Retomar levam diretamente ao ponto adequado e preservam a posição local entre retornos e reinícios.
+          - A prévia distingue disponibilidade offline real, falha de carga e acesso revogado sem expor identificadores técnicos.
+          - A interface permanece em uma coluna de até 430 px, inclusive no desktop, com foco, teclado e toque verificados nos dois temas.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `

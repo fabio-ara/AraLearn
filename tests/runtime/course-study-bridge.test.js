@@ -27,7 +27,11 @@ test("a ponte do Estudo delega lista, composição e limpeza a uma única cadeia
         readOnly: true
       };
     },
-    async clearCourse(courseId) { calls.push(["clear", courseId]); }
+    async hasVerifiedCourseDocument(courseId, options) {
+      calls.push(["offline", courseId, options]);
+      return options.revision === 3;
+    },
+    async clearCourse(courseId, options) { calls.push(["clear", courseId, options]); }
   };
   const bridge = new CourseStudyBridge({ controller });
 
@@ -37,12 +41,26 @@ test("a ponte do Estudo delega lista, composição e limpeza a uma única cadeia
   assert.equal(result.revision, 3);
   assert.equal(result.readOnly, true);
   assert.equal(result.document, document);
-  await bridge.clearCourse(COURSE_ID);
+  assert.equal(await bridge.hasOfflineCourse(COURSE_ID, { revision: 3 }), true);
+  await bridge.clearCourse(COURSE_ID, { clearLists: false });
   assert.deepEqual(calls, [
     ["list", { limit: 12 }],
     ["load", COURSE_ID, { entityPageSize: 200 }],
-    ["clear", COURSE_ID]
+    ["offline", COURSE_ID, { revision: 3 }],
+    ["clear", COURSE_ID, { clearLists: false }]
   ]);
+});
+
+test("informa indisponibilidade offline quando o controlador ainda não oferece a consulta", async () => {
+  const bridge = new CourseStudyBridge({
+    controller: {
+      async listCourses() { return { items: [], hasMore: false }; },
+      async loadCourseDocument() { throw new Error("não usado"); },
+      async clearCourse() {}
+    }
+  });
+
+  assert.equal(await bridge.hasOfflineCourse(COURSE_ID, { revision: 3 }), false);
 });
 
 test("recusa controlador parcial para não criar um segundo paginador", () => {

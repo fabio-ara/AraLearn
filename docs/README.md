@@ -17,7 +17,7 @@ científica nem representa endosso institucional.
 
 1. [Visão do produto](visao-do-produto.md): problema educacional, público e
    compromissos;
-2. [Uso do aplicativo](uso-do-app.md): conta, lista de Cursos, Estudo,
+2. [Uso do aplicativo](uso-do-app.md): conta, seleção de Curso, Estudo,
    Autoria e sincronização;
 3. [Guia do estudante](guia-estudante.md): primeiro percurso, retomada,
    revisão, observações e citações redigidas;

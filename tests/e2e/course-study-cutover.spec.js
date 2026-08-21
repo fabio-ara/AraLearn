@@ -6,6 +6,374 @@ const project = JSON.parse(readFileSync(new URL(
   import.meta.url
 ), "utf8"));
 
+async function expectHomeGeometry(page, width, colorMode) {
+  await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
+  await page.evaluate((mode) => {
+    document.documentElement.dataset.colorMode = mode;
+  }, colorMode);
+  const geometry = await page.locator(".app-shell").evaluate((shell) => {
+    const screen = shell.querySelector(".courses-home-screen");
+    const preview = shell.querySelector(".home-course-selector-preview");
+    const controls = [...shell.querySelectorAll(
+      ".home-course-selector-card > select, .home-course-preview-actions button"
+    )];
+    const shellRect = shell.getBoundingClientRect();
+    const previewRect = preview.getBoundingClientRect();
+    return {
+      documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+      shellFits: shellRect.left >= -1 && shellRect.right <= window.innerWidth + 1,
+      shellWidth: shellRect.width,
+      screenFits: screen.scrollWidth <= screen.clientWidth + 1,
+      previewFits: previewRect.left >= shellRect.left - 1 &&
+        previewRect.right <= shellRect.right + 1 &&
+        preview.scrollWidth <= preview.clientWidth + 1,
+      minimumTouch: Math.min(...controls.map((node) => node.getBoundingClientRect().height))
+    };
+  });
+  expect(geometry).toMatchObject({
+    documentFits: true,
+    shellFits: true,
+    screenFits: true,
+    previewFits: true
+  });
+  expect(geometry.shellWidth).toBeLessThanOrEqual(431);
+  expect(geometry.minimumTouch).toBeGreaterThanOrEqual(43);
+}
+
+async function ensureReviewQueueOpen(page) {
+  const queue = page.locator(".study-review-queue");
+  if (!await queue.evaluate((details) => details.open === true)) {
+    await queue.locator("> summary").click();
+  }
+  await expect(queue).toHaveAttribute("open", "");
+}
+
+test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga interna", async ({
+  page
+}) => {
+  await page.route("**/main.js", (route) => route.fulfill({
+    status: 200,
+    contentType: "text/javascript",
+    body: ""
+  }));
+  await page.goto("/");
+  await page.evaluate(async (documentValue) => {
+    document.body.innerHTML = '<main id="study-root"></main>';
+    const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
+    const baseCourse = documentValue.courses[0];
+    const makeCourse = (suffix, title, goal) => {
+      const replacements = [
+        ["course-fixture-minimal", `course-home-${suffix}`],
+        ["module-fixture-minimal", `module-home-${suffix}`],
+        ["lesson-fixture-minimal", `lesson-home-${suffix}`],
+        ["micro-fixture-minimal", `micro-home-${suffix}`],
+        ["card-fixture-minimal-regra", `unit-home-${suffix}-first`],
+        ["card-fixture-minimal-complete", `unit-home-${suffix}-second`]
+      ];
+      let serialized = JSON.stringify(baseCourse);
+      for (const [before, after] of replacements) serialized = serialized.replaceAll(before, after);
+      const course = JSON.parse(serialized);
+      course.title = title;
+      course.goal = goal;
+      course.modules[0].lessons[0].microsequences[0].studyUnits[0]
+        .content[0].data.text = `Conteúdo inicial de ${title}.`;
+      return course;
+    };
+    const fullCourses = [
+      makeCourse("a", "Curso A", "Compreender o primeiro objetivo do Curso A."),
+      makeCourse("b", "Curso B", "Praticar o segundo objetivo do Curso B."),
+      makeCourse("c", "Curso C", "Investigar o terceiro objetivo do Curso C.")
+    ];
+    const thinCourse = (course) => ({
+      id: course.id,
+      title: course.title,
+      goal: course.goal,
+      modules: []
+    });
+    const state = {
+      activeProject: {
+        contract: documentValue.contract,
+        courses: fullCourses.map(thinCourse)
+      },
+      loads: [],
+      offlineChecks: [],
+      availableOffline: {
+        "course-home-a": true,
+        "course-home-b": false,
+        "course-home-c": false
+      },
+      delayCourseId: "",
+      failCourseId: "",
+      revokeCourseId: "",
+      releaseCourseLoad: null,
+      reviewItems: [{
+        title: "Rever regra do Curso A",
+        context: "Curso A · Regra central",
+        entityPath: [
+          "course-home-a",
+          "module-home-a",
+          "lesson-home-a",
+          "micro-home-a",
+          "unit-home-a-first"
+        ]
+      }],
+      reviewHasMore: true,
+      reviewNextItems: [{
+        title: "Rever outro exemplo do Curso A",
+        context: "Curso A · Segundo exemplo",
+        entityPath: [
+          "course-home-a",
+          "module-home-a",
+          "lesson-home-a",
+          "micro-home-a",
+          "unit-home-a-second"
+        ]
+      }],
+      navigation: {
+        contract: "aralearn.course-study-navigation.v1",
+        selectedCourseId: "course-home-a",
+        positions: {},
+        updatedAt: "2026-08-21T12:00:00.000Z"
+      },
+      app: null
+    };
+    const courseCounts = (course) => ({
+      moduleCount: course.modules.length,
+      lessonCount: course.modules.reduce((total, moduleValue) =>
+        total + moduleValue.lessons.length, 0),
+      studyUnitCount: course.modules.reduce((courseTotal, moduleValue) =>
+        courseTotal + moduleValue.lessons.reduce((lessonTotal, lesson) =>
+          lessonTotal + lesson.microsequences.reduce((microTotal, microsequence) =>
+            microTotal + microsequence.studyUnits.length, 0), 0), 0)
+    });
+    const repository = {
+      loadProject: () => structuredClone(state.activeProject),
+      loadCourse: async (courseId) => {
+        state.loads.push(courseId);
+        if (state.delayCourseId === courseId) {
+          await new Promise((resolve) => {
+            state.releaseCourseLoad = () => {
+              state.delayCourseId = "";
+              state.releaseCourseLoad = null;
+              resolve();
+            };
+          });
+        }
+        if (state.failCourseId === courseId) {
+          state.failCourseId = "";
+          throw new Error("Falha simulada ao carregar o Curso.");
+        }
+        if (state.revokeCourseId === courseId) {
+          state.revokeCourseId = "";
+          state.activeProject.courses = state.activeProject.courses
+            .filter((course) => course.id !== courseId);
+          throw Object.assign(new Error("Curso não encontrado."), {
+            status: 404,
+            code: "PT404"
+          });
+        }
+        const fullCourse = fullCourses.find((course) => course.id === courseId);
+        state.activeProject.courses = state.activeProject.courses.map((course) =>
+          course.id === courseId ? structuredClone(fullCourse) : course);
+        return structuredClone(fullCourse);
+      },
+      loadCourseSummaries: () => fullCourses
+        .filter((course) => state.activeProject.courses.some(({ id }) => id === course.id))
+        .map((course, index) => ({
+          courseId: course.id,
+          ownership: index === 0 ? "owned" : "shared",
+          canEdit: index === 0,
+          ...courseCounts(course),
+          completedStudyUnitCount: 0,
+          availableOffline: state.availableOffline[course.id]
+        })),
+      loadProgress: () => ({ version: 1, lessons: {} }),
+      loadReviewItems: () => structuredClone(state.reviewItems),
+      hasMoreReviewItems: () => state.reviewHasMore,
+      loadMoreReviewItems: async () => {
+        state.reviewItems.push(...structuredClone(state.reviewNextItems));
+        state.reviewNextItems = [];
+        state.reviewHasMore = false;
+      },
+      loadAnnotationsForPath: () => [],
+      isStudyUnitMarkedForReview: () => false,
+      loadRuntimeStatus: () => ({ offline: false, stale: false, readOnly: false }),
+      loadStudyUnitCitations: async (reference) => ({
+        contract: "aralearn.course-study-citations.v1",
+        courseId: reference.courseId,
+        courseRevision: 1,
+        studyUnitId: reference.studyUnitId,
+        citations: [{
+          sourceId: "fonte-exclusiva-a",
+          sourceRevision: 1,
+          title: "Fonte exclusiva do Curso anterior",
+          citationText: "Fonte exibida apenas para comprovar o isolamento entre Cursos.",
+          url: null,
+          editionOrVersion: null,
+          anchors: []
+        }]
+      }),
+      loadStudyNavigation: () => structuredClone(state.navigation),
+      saveStudyNavigation: async ({ selectedCourseId, position }) => {
+        state.navigation.selectedCourseId = selectedCourseId;
+        state.navigation.updatedAt = new Date().toISOString();
+        if (position) {
+          state.navigation.positions[selectedCourseId] = {
+            ...structuredClone(position),
+            updatedAt: state.navigation.updatedAt
+          };
+        }
+      },
+      clearStudyNavigationPosition: async (courseId) => {
+        delete state.navigation.positions[courseId];
+      },
+      refreshCourseOfflineAvailability: async (courseId) => {
+        state.offlineChecks.push(courseId);
+        return state.availableOffline[courseId];
+      },
+      flush: async () => undefined
+    };
+    state.mount = () => {
+      state.app?.destroy?.();
+      const root = document.querySelector("#study-root");
+      root.replaceChildren();
+      state.app = createCourseStudyApplication({
+        root,
+        repository,
+        initialProject: structuredClone(state.activeProject)
+      });
+      return state.app;
+    };
+    globalThis.__home148Probe = state;
+    state.mount();
+  }, project);
+
+  const selector = page.getByRole("combobox", { name: "Selecionar Curso" });
+  await expect(selector).toHaveCount(1);
+  await expect(selector.locator("option")).toHaveCount(3);
+  await expect(page.locator(".home-course-selector-preview")).toHaveCount(1);
+  await expect(page.locator(".home-course-selector-preview")).toContainText(
+    "Compreender o primeiro objetivo do Curso A."
+  );
+  await expect(page.locator(".home-course-selector-preview")).toContainText("Seu Curso");
+  await expect(page.locator("body")).not.toContainText("course-home-");
+
+  for (const colorMode of ["light", "dark"]) {
+    for (const width of [360, 390, 430, 1280]) {
+      await expectHomeGeometry(page, width, colorMode);
+    }
+  }
+  await page.evaluate(() => { document.documentElement.dataset.colorMode = "light"; });
+
+  await ensureReviewQueueOpen(page);
+  await page.getByRole("button", { name: "Mostrar mais" }).press("Enter");
+  await expect(page.locator(".study-review-queue")).toHaveAttribute("open", "");
+  await expect(page.getByRole("button", {
+    name: "Abrir para rever: Rever outro exemplo do Curso A"
+  })).toBeVisible();
+  await expect(page.locator(".study-review-queue > summary")).toBeFocused();
+  await page.evaluate(() => { globalThis.__home148Probe.failCourseId = "course-home-a"; });
+  const failedReview = page.getByRole("button", { name: "Abrir para rever: Rever regra do Curso A" });
+  await failedReview.press("Enter");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Não foi possível abrir este Curso. Tente novamente."
+  );
+  await expect(page.locator(".study-review-queue > summary")).toBeFocused();
+  await page.evaluate(() => { globalThis.__home148Probe.loads = []; });
+
+  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([]);
+  await page.getByRole("button", { name: "Tentar novamente Curso A" }).press("Enter");
+  await page.getByRole("button", { name: "Fontes" }).click();
+  await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
+  });
+
+  await selector.selectOption("course-home-b");
+  await expect(selector).toHaveValue("course-home-b");
+  await expect(page.locator(".home-course-selector-preview")).toContainText("Curso B");
+  await expect(page.locator(".home-course-selector-preview"))
+    .toContainText("Compartilhado com você");
+  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual(["course-home-a"]);
+
+  await page.evaluate(() => { globalThis.__home148Probe.delayCourseId = "course-home-b"; });
+  await page.getByRole("button", { name: "Começar Curso B" }).click();
+  await expect(selector).toBeDisabled();
+  await expect(page.getByRole("status", { name: "" }).filter({
+    hasText: "Preparando este Curso…"
+  })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrindo… Curso B" })).toBeDisabled();
+  await page.evaluate(() => globalThis.__home148Probe.releaseCourseLoad());
+  await expect(page.getByText("Conteúdo inicial de Curso B.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([
+    "course-home-a",
+    "course-home-b"
+  ]);
+
+  await page.evaluate(() => {
+    for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
+  });
+  const resumeB = page.getByRole("button", { name: "Retomar Curso B" });
+  await expect(resumeB).toBeVisible();
+  await expect(resumeB).toBeFocused();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__home148Probe.navigation.positions["course-home-b"]?.entityPath?.at(-1)
+  )).toBe("unit-home-b-first");
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__home148Probe.navigation.positions["course-home-b"]?.view
+  )).toBe("course");
+
+  await page.evaluate(() => globalThis.__home148Probe.mount());
+  await expect(selector).toHaveValue("course-home-b");
+  await expect(page.getByRole("button", { name: "Retomar Curso B" })).toBeVisible();
+  await page.getByRole("button", { name: "Retomar Curso B" }).click();
+  await expect(page.getByRole("heading", { name: "Curso B", exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
+  });
+
+  await selector.selectOption("course-home-a");
+  await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(true));
+  await expect(page.getByText("Disponível neste dispositivo", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retomar Curso A" })).toBeEnabled();
+  await selector.selectOption("course-home-c");
+  await expect(page.getByText(
+    "Conecte-se para abrir pela primeira vez",
+    { exact: true }
+  )).toBeVisible();
+  await expect(page.getByRole("button", { name: "Começar Curso C" })).toBeDisabled();
+  await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(false));
+
+  await page.evaluate(() => { globalThis.__home148Probe.failCourseId = "course-home-c"; });
+  await page.getByRole("button", { name: "Começar Curso C" }).press("Enter");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Não foi possível abrir este Curso. Tente novamente."
+  );
+  await expect(page.getByRole("button", { name: "Tentar novamente Curso C" })).toBeFocused();
+
+  await page.evaluate(() => { globalThis.__home148Probe.revokeCourseId = "course-home-c"; });
+  await page.getByRole("button", { name: "Tentar novamente Curso C" }).press("Enter");
+  await expect(page.getByText("Seu acesso a Curso C foi encerrado.", { exact: true })).toBeVisible();
+  await expect(selector.locator("option")).toHaveCount(2);
+  await expect(selector.locator("option", { hasText: "Curso C" })).toHaveCount(0);
+  await expect(page.locator(".home-course-selector-preview")).toHaveCount(1);
+  await expect(selector).toBeFocused();
+
+  await page.evaluate(() => {
+    const probe = globalThis.__home148Probe;
+    probe.navigation.selectedCourseId = "course-home-a";
+    probe.reviewItems = [];
+    probe.reviewNextItems = [];
+    probe.reviewHasMore = true;
+    probe.mount();
+  });
+  await ensureReviewQueueOpen(page);
+  await page.getByRole("button", { name: "Mostrar mais" }).press("Enter");
+  await expect(page.locator(".study-review-queue")).toHaveCount(0);
+  await expect(selector).toBeFocused();
+});
+
 test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime canônico", async ({ page }) => {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
@@ -237,13 +605,9 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     });
   }, project);
 
-  await expect(page.getByRole("button", { name: "Abrir Curso" })).toBeVisible();
-  await page.getByRole("button", { name: "Abrir Curso" }).click();
+  await expect(page.getByRole("button", { name: "Começar Fixture Minimal" })).toBeVisible();
+  await page.getByRole("button", { name: "Começar Fixture Minimal" }).click();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.loadedCourses.length)).toBe(1);
-  await page.getByRole("button", { name: "Abrir módulo" }).click();
-  await page.getByRole("button", { name: "Abrir lição" }).click();
-  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
-  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toBeVisible();
 
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads)).toEqual([]);
@@ -351,8 +715,10 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.getByRole("button", { name: "Fechar" }).click();
   await page.evaluate(() => globalThis.__courseStudyApp.openCourses());
   await expect(page.getByLabel("Progresso: 1 de 2")).toBeVisible();
+  await ensureReviewQueueOpen(page);
   await expect(page.getByRole("button", { name: "Abrir para rever: Unidade remota" })).toBeVisible();
   await page.getByRole("button", { name: "Abrir para rever: Unidade remota" }).click();
+  await expect(page.locator("[data-study-destination-heading]")).toBeFocused();
 
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByText("Se uma delas for falsa", { exact: false })).toBeVisible();
@@ -405,6 +771,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.review.size)).toBe(2);
 
   await page.evaluate(() => globalThis.__courseStudyApp.openCourses());
+  await ensureReviewQueueOpen(page);
   await expect(page.getByRole("button", { name: "Abrir para rever: Unidade marcada" })).toBeVisible();
   await page.getByRole("button", { name: "Abrir para rever: Unidade marcada" }).click();
   await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
@@ -441,9 +808,12 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
 
   await page.evaluate(() => globalThis.__courseStudyApp.openCourses());
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zerar progresso do Curso" }).click();
-  await expect(page.getByRole("button", { name: "Zerar progresso do Curso" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Zerar progresso de Curso atualizado pelo chat" }).click();
+  await expect(page.getByRole("button", {
+    name: "Zerar progresso de Curso atualizado pelo chat"
+  })).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.completed.length)).toBe(0);
+  await ensureReviewQueueOpen(page);
   await page.getByRole("button", { name: "Abrir para rever: Unidade marcada" }).click();
 
   await page.locator("[data-action='text-gap-open-choice']").click();
@@ -466,7 +836,9 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     globalThis.__courseStudyProbe.annotationsRevoked = true;
   });
   await page.getByRole("button", { name: /^Observações/u }).click();
-  await expect(page.getByText("Nenhum Curso acessível.")).toBeVisible();
+  await expect(page.getByText(
+    "Nenhum Curso está disponível para estudo nesta conta."
+  )).toBeVisible();
   await expect(page.locator(".study-observation-sheet")).toHaveCount(0);
   await expect(page.locator(".study-citations-panel")).toHaveCount(0);
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toHaveCount(0);
@@ -508,11 +880,7 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
       }
     });
   }, project);
-  await page.getByRole("button", { name: "Abrir Curso" }).click();
-  await page.getByRole("button", { name: "Abrir módulo" }).click();
-  await page.getByRole("button", { name: "Abrir lição" }).click();
-  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
-  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+  await page.getByRole("button", { name: "Começar Fixture Minimal" }).click();
 
   for (const width of [360, 390, 430, 1280]) {
     await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
@@ -542,7 +910,7 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
   }
 });
 
-test("lista fina carrega o Curso somente quando o progresso é zerado", async ({ page }) => {
+test("zerar progresso mostra falhas de carga e gravação antes de concluir", async ({ page }) => {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
     contentType: "text/javascript",
@@ -558,7 +926,19 @@ test("lista fina carrega o Curso somente quando o progresso é zerado", async ({
       courses: [{ id: course.id, title: course.title, goal: course.goal, modules: [] }]
     };
     let activeProject = initialProject;
-    const probe = { loads: 0, clears: 0 };
+    const firstModule = course.modules[0];
+    const firstLesson = firstModule.lessons[0];
+    const firstStudyUnit = firstLesson.microsequences[0].studyUnits[0];
+    const progress = {
+      version: 1,
+      lessons: {
+        [`${course.id}::${firstModule.id}::${firstLesson.id}`]: {
+          cursorStudyUnitId: firstStudyUnit.id,
+          completedStudyUnitIds: [firstStudyUnit.id]
+        }
+      }
+    };
+    const probe = { loads: 0, clears: 0, fail: true, failClear: true };
     globalThis.__thinStudyProbe = probe;
     createCourseStudyApplication({
       root: document.querySelector("#study-root"),
@@ -567,10 +947,11 @@ test("lista fina carrega o Curso somente quando o progresso é zerado", async ({
         loadProject: () => structuredClone(activeProject),
         loadCourse: async () => {
           probe.loads += 1;
+          if (probe.fail) throw new Error("Falha simulada ao carregar o Curso.");
           activeProject = documentValue;
           return structuredClone(course);
         },
-        loadProgress: () => ({ version: 1, lessons: {} }),
+        loadProgress: () => structuredClone(progress),
         loadReviewItems: () => [],
         loadCourseSummaries: () => [{
           courseId: course.id,
@@ -581,7 +962,11 @@ test("lista fina carrega o Curso somente quando o progresso é zerado", async ({
           studyUnitCount: 3,
           completedStudyUnitCount: 1
         }],
-        clearCourseProgress: async () => { probe.clears += 1; },
+        clearCourseProgress: async () => {
+          if (probe.failClear) throw new Error("Falha simulada ao zerar o progresso.");
+          progress.lessons = {};
+          probe.clears += 1;
+        },
         loadAnnotationsForPath: () => [],
         isStudyUnitMarkedForReview: () => false,
         flush: async () => undefined
@@ -590,11 +975,45 @@ test("lista fina carrega o Curso somente quando o progresso é zerado", async ({
   }, project);
 
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zerar progresso do Curso" }).click();
-  await expect.poll(() => page.evaluate(() => globalThis.__thinStudyProbe)).toEqual({
-    loads: 1,
+  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Não foi possível abrir este Curso. Tente novamente."
+  );
+  await expect(page.getByRole("button", {
+    name: "Zerar progresso de Fixture Minimal"
+  })).toBeFocused();
+  await expect.poll(() => page.evaluate(() => ({
+    loads: globalThis.__thinStudyProbe.loads,
+    clears: globalThis.__thinStudyProbe.clears
+  }))).toEqual({ loads: 1, clears: 0 });
+
+  await page.evaluate(() => { globalThis.__thinStudyProbe.fail = false; });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Não foi possível zerar o progresso. Tente novamente."
+  );
+  await expect(page.getByRole("button", {
+    name: "Zerar progresso de Fixture Minimal"
+  })).toBeFocused();
+  await expect.poll(() => page.evaluate(() => ({
+    loads: globalThis.__thinStudyProbe.loads,
+    clears: globalThis.__thinStudyProbe.clears
+  }))).toEqual({ loads: 2, clears: 0 });
+
+  await page.evaluate(() => { globalThis.__thinStudyProbe.failClear = false; });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await expect.poll(() => page.evaluate(() => ({
+    loads: globalThis.__thinStudyProbe.loads,
+    clears: globalThis.__thinStudyProbe.clears
+  }))).toEqual({
+    loads: 3,
     clears: 1
   });
+  await expect(page.getByRole("button", {
+    name: "Zerar progresso de Fixture Minimal"
+  })).toHaveCount(0);
 });
 
 test("runtime canônico preserva teclado, lacunas, anotações e avanço simples", async ({ page }) => {
@@ -772,11 +1191,7 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
     });
   }, projectValue);
 
-  await page.getByRole("button", { name: "Abrir Curso" }).click();
-  await page.getByRole("button", { name: "Abrir módulo" }).click();
-  await page.getByRole("button", { name: "Abrir lição" }).click();
-  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
-  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+  await page.getByRole("button", { name: "Começar Interações de Estudo" }).click();
 
   const choices = page.locator("[data-action='choice-toggle'][role='radio']");
   const firstChoice = choices.first();

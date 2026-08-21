@@ -115,8 +115,8 @@ seleção, o progresso nem as Observações.
 
 ## Composição paginada
 
-A lista inicial retorna cabeçalhos e progresso, sem carregar milhares de
-Unidades. Ao abrir um Curso, o repositório:
+A consulta inicial retorna cabeçalhos e progresso para alimentar o seletor e a
+prévia, sem carregar milhares de Unidades. Ao entrar num Curso, o repositório:
 
 1. lê o cabeçalho e sua revisão;
 2. solicita as entidades em páginas limitadas;

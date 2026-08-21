@@ -124,7 +124,8 @@ function navigationCard({
 }
 
 function summary(title, description) {
-  return '<section class="clean-card entity-summary-card"><h1 class="card-title">' +
+  return '<section class="clean-card entity-summary-card"><h1 class="card-title"' +
+    ' data-study-destination-heading tabindex="-1">' +
     escapeHtml(title) + "</h1>" +
     (description ? '<p class="card-subtitle">' + escapeHtml(description) + "</p>" : "") +
     "</section>";
@@ -417,7 +418,8 @@ function renderStudyUnit({
     runtimeNotice(runtimeStatus) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
-    '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen">' +
+    '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen"' +
+    ' data-study-destination-heading tabindex="-1">' +
     '<section class="study-reader-context"><div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
     escapeHtml(microsequence.title || lesson.title || "Unidade") + "</span></div>" +
@@ -486,8 +488,14 @@ export function renderCourseStudyScreen({
   progress,
   reviewItems = [],
   reviewHasMore = false,
+  reviewQueueOpen = false,
   runtimeStatus = {},
   coursePermissionsById,
+  selectedCourseId = null,
+  studyNavigation = null,
+  homeLoadingCourseId = "",
+  homeError = "",
+  homeNotice = "",
   packageStudyUnitOptions = {},
   feedbackOpen = false,
   observationCount = 0,
@@ -504,7 +512,13 @@ export function renderCourseStudyScreen({
       progress,
       reviewItems,
       reviewHasMore,
+      reviewQueueOpen,
       runtimeStatus,
+      selectedCourseId,
+      studyNavigation,
+      homeLoadingCourseId,
+      homeError,
+      homeNotice,
       editorSupport: { coursePermissionsById }
     });
   }
