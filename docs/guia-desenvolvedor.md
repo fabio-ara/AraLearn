@@ -188,8 +188,9 @@ comprova a pessoa no corpo da operação. Tabelas expostas exigem tanto privilé
 quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
-os testes correspondentes existirem. O manifesto da entrega 0.0.23 aponta para
-`20260820101500`.
+os testes correspondentes existirem. A linha publicada 0.0.23 aponta para
+`20260820101500`; a candidata local exige `20260820224424` e precisa promover
+banco e funções antes dos clientes 0.0.24.
 
 ## Testes focais
 

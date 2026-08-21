@@ -28,10 +28,103 @@ O percurso habitual é:
 6. conferir o resultado na Autoria e, quando houver conteúdo estudável, no
    Estudo.
 
-O botão **Copiar pedido para o ChatGPT**, disponível numa Parte de autoria,
-leva à área de transferência um pedido contextualizado. Essa cópia prepara a
-conversa. O Curso só muda quando o cliente conectado executa as operações do
-MCP e o servidor as confirma.
+A ação contextual **ChatGPT** abre um compositor no Curso, na Parte e nos demais
+alvos autorais compatíveis. A pessoa confere alvo e caminho, escolhe a intenção
+e escreve seu argumento. **Copiar pedido** acrescenta identidade, revisão,
+endereço de retorno e limites operacionais. Essa cópia prepara a conversa. O
+Curso só muda quando o cliente conectado executa as operações do MCP e o
+servidor as confirma.
+
+## Assistência principal e alteração contextual
+
+ChatGPT + MCP é a assistência principal para planejar, materializar, discutir,
+auditar e pesquisar o Curso. No próprio AraLearn, a pessoa também pode editar
+manualmente folhas simples autorizadas por um componente e usar uma assistência
+complementar configurada por provider/API para uma alteração focal.
+
+As duas ações contextuais partem da Unidade de estudo e do conteúdo
+selecionado. Elas mostram o escopo, produzem uma prévia no renderer corrente e
+permitem aplicar, descartar ou desfazer o rascunho. O envelope completo do
+componente é validado antes da persistência. Uma falha de conexão, cota ou
+serviço não bloqueia Estudo, edição manual ou o fluxo pelo ChatGPT.
+
+Essa capacidade usa Curso, Unidade, revisão, autorização e sincronização
+correntes. Ela não recupera Workspace, publicação, contratos ou persistência
+anteriores e não cria um editor ou chat paralelo. A configuração e as
+credenciais do serviço não integram o conteúdo compartilhado do Curso, os
+recibos MCP ou as exportações.
+
+### O que sai do aplicativo
+
+A interface informa o recorte antes da chamada. O envelope contém o pedido da
+pessoa, os valores textuais editáveis, título, papel instrucional, tópicos da
+Unidade e as mensagens anteriores daquela conversa contextual. PDFs, Fontes,
+outras Unidades, `targetId`, `studyUnitId` e o restante do Curso ficam
+excluídos.
+
+Na instalação de produção, o AraLearn oferece somente o relay local em
+`127.0.0.1`, `localhost` ou `10.0.2.2`, sempre por HTTP na porta 4183. A chave
+do provider é configurada no relay e nunca entra no AraLearn. A política de
+conteúdo e a configuração de runtime declaram apenas essas origens exatas e
+recusam curingas.
+
+Nesse modo, **Serviço local** aparece fixo, sem uma escolha redundante. A pessoa
+informa modelo e pedido; o endpoint permanece recolhido em **Conexão**. A prova
+vertical local percorreu esse relay duas vezes; a repetição mais recente passou
+1/1 em 14,2 segundos. Ela foi executada sobre origem HTTP local e não comprova,
+sozinha, que uma página HTTPS obterá permissão de rede local.
+
+No navegador, `127.0.0.1` e `localhost` são destinos de loopback e recebem
+`targetAddressSpace: "loopback"`; somente `10.0.2.2` recebe `"local"`. A
+classificação anterior como rede local bloqueava a chamada real a `127.0.0.1`.
+A correção passou 21/21 verificações focais.
+
+O aviso distingue a memória efêmera do AraLearn do tratamento externo: o relay
+pode encaminhar a requisição ao provider configurado, e esse serviço pode
+conservar dados segundo seus próprios termos. A pessoa revisa o conteúdo
+enumerado antes de autorizar cada envio.
+
+OpenAI, Gemini e DeepSeek diretos existem apenas num runtime explicitamente
+marcado como desenvolvimento. Esse modo mostra um alerta: uma aplicação no
+navegador não protege chaves duradouras, portanto orienta usar somente credencial
+descartável de teste. Cada provider fica preso à sua origem própria e a chave
+segue somente no cabeçalho, nunca no corpo ou no endereço. Esse percurso não é
+uma instrução de configuração para pessoas leigas nem uma opção de produção.
+
+Modelo, endpoint e conversa permanecem na memória da sessão autenticada,
+compartilhados entre Estudo e Inspeção para evitar configuração repetida.
+Fechar a sobreposição apaga pedido, candidata e mensagens anteriores; sair da
+conta, recarregar a aplicação ou encerrar a sessão apaga também a configuração.
+No modo de desenvolvimento, a chave direta é eliminada junto. Esses valores não
+são gravados em `localStorage`, `sessionStorage`, IndexedDB, PostgreSQL,
+Storage, logs ou artefatos publicados.
+
+No encerramento, a aplicação destrói a superfície de Estudo ou Autoria e cancela
+a chamada ao provider antes de apagar a sessão e fechar os armazenamentos. Uma
+resposta tardia não executa callback, não reabre a sobreposição e não recupera a
+configuração ou a credencial. O cenário integrado `SIGNED_OUT` verifica esse
+comportamento sem erro de página.
+
+O serviço precisa devolver `changes` esparso, com zero ou uma alteração num
+caminho textual autorizado. A saída admite até 8.000 tokens. Caminho adicional,
+segunda alteração, resposta fora do formato ou Unidade inválida é recusado antes
+da prévia. Cada valor editável admite até 6.000 caracteres e o conjunto, até
+12.000. Se o recorte exceder esse limite, como pode ocorrer em código ou
+terminal extensos, o comando fica desabilitado com o motivo no nome acessível;
+a edição manual permanece disponível. A pessoa pode ver a candidata no renderer,
+voltar ao texto original, aplicar ao rascunho e, separadamente, salvar a
+Unidade. A gravação usa a mesma revisão esperada, autorização e validação da
+edição manual.
+
+O APK de release ainda não possui paridade comprovada para esse relay HTTP. A
+candidata encaminha a requisição por uma ponte Android nativa, fixa em
+`http://127.0.0.1:4183/v1/chat/completions`, em vez de iniciar HTTPS para HTTP no
+WebView. A política `MIXED_CONTENT_NEVER_ALLOW` permanece ativa. A compilação de
+depuração passou; instalação do APK de release e ensaio em dispositivo real ainda
+integram o gate Android. O Pages também precisa de ensaio real com as regras de
+acesso à rede local do navegador. Até essas provas, a assistência por API não
+deve ser apresentada como configuração pronta no Android ou no ambiente
+hospedado.
 
 ## Ferramentas e contexto
 
@@ -178,6 +271,9 @@ artificial.
 Conceder ou revogar acesso, criar uma Observação pela conversa, aplicar uma
 correção e executar sua reversão possuem confirmações próprias. Uma decisão
 pedagógica relevante deve aparecer para a pessoa antes da operação que a grava.
+Quando a pessoa já confirmou no ChatGPT e o servidor concluiu a operação, o
+AraLearn relê e apresenta o resultado. Ele não solicita outra confirmação nem
+repete a escrita apenas porque a pessoa abriu o endereço de acompanhamento.
 
 ## Privacidade e funcionamento sem conexão
 

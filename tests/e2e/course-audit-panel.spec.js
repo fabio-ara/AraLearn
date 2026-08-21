@@ -25,6 +25,56 @@ function captureClientErrors(page) {
   return errors;
 }
 
+async function expectCompactAuditSurface(page, viewportWidth) {
+  const geometry = await page.locator(".course-authoring-surface").evaluate((surface) => {
+    const frame = surface.querySelector(".course-authoring-frame");
+    const panel = surface.querySelector(".course-audit-panel");
+    const surfaceRect = surface.getBoundingClientRect();
+    const frameRect = frame.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const macroSelectors = [
+      ".course-audit-panel",
+      ".course-audit-view:not([hidden])",
+      ".course-audit-detail",
+      ".course-audit-run-detail",
+      ".course-audit-run-checks",
+      ".course-audit-preview-grid",
+      ".course-audit-summary",
+      ".course-audit-checkpoint-sources"
+    ].join(",");
+    const macroColumns = [...surface.querySelectorAll(macroSelectors)]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display === "grid" && style.visibility !== "hidden" &&
+          rect.width > 0 && rect.height > 0;
+      })
+      .map((element) => ({
+        className: element.className,
+        columns: getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/u).length
+      }));
+    return {
+      surfaceWidth: surfaceRect.width,
+      frameWidth: frameRect.width,
+      panelWidth: panelRect.width,
+      leftSpace: surfaceRect.left,
+      rightSpace: innerWidth - surfaceRect.right,
+      horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      macroColumns
+    };
+  });
+
+  expect(geometry.surfaceWidth).toBeLessThanOrEqual(430);
+  expect(geometry.frameWidth).toBeLessThanOrEqual(430);
+  expect(geometry.panelWidth).toBeLessThanOrEqual(430);
+  expect(geometry.horizontalOverflow).toBe(false);
+  expect(geometry.macroColumns.length).toBeGreaterThan(0);
+  expect(geometry.macroColumns.filter(({ columns }) => columns !== 1)).toEqual([]);
+  if (viewportWidth > 430) {
+    expect(Math.abs(geometry.leftSpace - geometry.rightSpace)).toBeLessThanOrEqual(1);
+  }
+}
+
 function auditSeed() {
   const sourceId = " Fonte literal ";
   const anchorId = "anchor-literal";
@@ -71,14 +121,17 @@ function auditSeed() {
   };
 }
 
-async function mountAuditPanel(page, { target = "finding" } = {}) {
+async function mountAuditPanel(page, {
+  target = "finding",
+  reconciliationFailure = false
+} = {}) {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
     contentType: "text/javascript",
     body: ""
   }));
   await page.goto("/");
-  await page.evaluate(async ({ seed, target }) => {
+  await page.evaluate(async ({ seed, target, requestedReconciliationFailure }) => {
     document.body.replaceChildren();
     const surface = document.createElement("main");
     surface.className = "course-authoring-surface";
@@ -127,6 +180,8 @@ async function mountAuditPanel(page, { target = "finding" } = {}) {
     const reads = [];
     const writes = [];
     const revisionChanges = [];
+    let mutationConfirmed = false;
+    let reconciliationFailureDelivered = false;
 
     const summary = () => ({
       matchingTotal: 1,
@@ -464,6 +519,13 @@ async function mountAuditPanel(page, { target = "finding" } = {}) {
     const controller = {
       async loadCourseAuditCycle(courseId, options) {
         reads.push({ courseId, options: clone(options) });
+        if (requestedReconciliationFailure && mutationConfirmed &&
+            !reconciliationFailureDelivered) {
+          reconciliationFailureDelivered = true;
+          const error = new Error("A conexão caiu durante a atualização do detalhe.");
+          error.code = "network_error";
+          throw error;
+        }
         return pageEnvelope(options);
       },
       async mutateCourseAuditCycle(input) {
@@ -550,6 +612,7 @@ async function mountAuditPanel(page, { target = "finding" } = {}) {
           rationale: rationale(),
           createdAt: "2026-08-17T12:40:00Z"
         });
+        mutationConfirmed = true;
         return {
           contract: "aralearn.course-audit-cycle-change.v1",
           courseId: seed.ids.course,
@@ -592,8 +655,7 @@ async function mountAuditPanel(page, { target = "finding" } = {}) {
       onNavigate(hash) { window.location.hash = hash; },
       onCourseRevisionChange(revision) { revisionChanges.push(revision); },
       navigatorValue: { onLine: true },
-      windowValue: window,
-      confirmValue: () => true
+      windowValue: window
     });
     globalThis.__courseAuditHarness = {
       panel,
@@ -603,7 +665,11 @@ async function mountAuditPanel(page, { target = "finding" } = {}) {
       revisionChanges
     };
     await panel.open();
-  }, { seed: auditSeed(), target });
+  }, {
+    seed: auditSeed(),
+    target,
+    requestedReconciliationFailure: reconciliationFailure
+  });
   await expect(page.locator(target === "run" ? "[data-audit-run-detail-id]" : "[data-audit-detail-id]"))
     .toBeVisible();
 }
@@ -615,6 +681,7 @@ for (const width of [360, 390, 430, 1280]) {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width, height: width < 600 ? 860 : 900 });
     await mountAuditPanel(page);
+    await expectCompactAuditSurface(page, width);
 
     await expect(page.getByRole("heading", { name: "Auditoria e correções" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Achados" })).toHaveAttribute(
@@ -636,13 +703,8 @@ for (const width of [360, 390, 430, 1280]) {
       const rect = node.getBoundingClientRect();
       return { x: rect.x, y: rect.y, right: rect.right, bottom: rect.bottom };
     }));
-    if (width < 720) {
-      expect(Math.abs(boxes[0].x - boxes[1].x)).toBeLessThanOrEqual(1);
-      expect(boxes[1].y).toBeGreaterThan(boxes[0].bottom);
-    } else {
-      expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThanOrEqual(1);
-      expect(boxes[1].x).toBeGreaterThan(boxes[0].right);
-    }
+    expect(Math.abs(boxes[0].x - boxes[1].x)).toBeLessThanOrEqual(1);
+    expect(boxes[1].y).toBeGreaterThan(boxes[0].bottom);
     expect(await page.evaluate(() =>
       document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     const undersized = await page.locator(
@@ -670,6 +732,7 @@ for (const width of [360, 390, 430, 1280]) {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width, height: width < 600 ? 860 : 900 });
     await mountAuditPanel(page, { target: "run" });
+    await expectCompactAuditSurface(page, width);
 
     await expect(page.getByRole("heading", { name: /Auditoria ·/u })).toBeVisible();
     await expect(page.locator(".course-audit-run-checks .course-audit-check")).toHaveCount(4);
@@ -683,7 +746,7 @@ for (const width of [360, 390, 430, 1280]) {
     );
     const resultColumns = await page.locator(".course-audit-result-counts").first().evaluate((node) =>
       getComputedStyle(node).gridTemplateColumns.split(" ").length);
-    expect(resultColumns).toBe(width < 720 ? 2 : 5);
+    expect(resultColumns).toBe(2);
     expect(await page.evaluate(() =>
       document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
@@ -729,6 +792,38 @@ for (const width of [360, 390, 430, 1280]) {
   });
 }
 
+test("Auditoria confirma a escrita uma vez quando a atualização do detalhe falha", async ({
+  page
+}) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 860 });
+  await mountAuditPanel(page, { reconciliationFailure: true });
+
+  await page.getByRole("button", { name: "Ajustar correção" }).click();
+  const editor = page.getByRole("dialog", { name: "Editar título e folhas da Unidade" });
+  await editor.locator("[data-audit-edit-field]").nth(1)
+    .fill("Texto confirmado antes da falha de leitura.");
+  await editor.getByRole("button", { name: "Salvar proposta" }).click();
+
+  await expect(page.getByRole("status").filter({
+    hasText: "O detalhe será atualizado na próxima sincronização."
+  })).toBeVisible();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole("alert").filter({ hasText: "A conexão caiu" })).toHaveCount(0);
+  await expect(page.getByText(/confirmar exatamente a mesma operação/u)).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuditHarness.writes.length)).toBe(1);
+
+  await page.evaluate(() => globalThis.__courseAuditHarness.panel.refresh(7));
+  await expect(page.getByText(
+    "Texto confirmado antes da falha de leitura.",
+    { exact: true }
+  )).toBeVisible();
+  await expect(page.getByText(/será atualizado na próxima sincronização/u)).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.__courseAuditHarness.writes.length)).toBe(1);
+  expect(clientErrors).toEqual([]);
+});
+
 test("Auditoria ajusta, aplica, verifica e reverte sem perder topics ou Fontes", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 860 });
@@ -751,6 +846,9 @@ test("Auditoria ajusta, aplica, verifica e reverte sem perder topics ou Fontes",
   await expect(page.getByText("Texto ajustado no renderer real.", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Aplicar", exact: true }).click();
+  let confirmation = page.getByRole("alertdialog", { name: "Aplicar correção?" });
+  await expect(confirmation).toHaveAttribute("data-confirmation-tone", "primary");
+  await confirmation.getByRole("button", { name: "Aplicar", exact: true }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuditHarness.writes.length)).toBe(2);
   await expect(page.getByRole("button", { name: "Verificar", exact: true })).toBeVisible();
@@ -775,6 +873,9 @@ test("Auditoria ajusta, aplica, verifica e reverte sem perder topics ou Fontes",
   await expect(page.getByText("Verificação resolveu o achado", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Reverter aplicação" }).click();
+  confirmation = page.getByRole("alertdialog", { name: "Reverter aplicação?" });
+  await expect(confirmation).toHaveAttribute("data-confirmation-tone", "secondary");
+  await confirmation.getByRole("button", { name: "Reverter", exact: true }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuditHarness.writes.length)).toBe(4);
   await expect(page.getByText("Correção revertida", { exact: true }).first()).toBeVisible();

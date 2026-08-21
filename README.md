@@ -69,23 +69,25 @@ Autoria lista somente os Cursos da pessoa autenticada. Um Curso novo nasce
 privado, com título e objetivo. Assim que contém Unidades válidas, já pode ser
 aberto em Estudo pelo proprietário ou por quem recebeu acesso.
 
-Ao abrir um Curso, a interface oferece nove áreas:
+Ao abrir um Curso, a interface conserva a mesma largura compacta de Estudo e
+parte de quatro destinos por ícone. Cada destino revela somente as capacidades
+necessárias à tarefa corrente:
 
-- **Planejamento:** objetivo, público, escopo, resultados pretendidos, unidades
-  de análise, requisitos de evidência e Partes de autoria;
-- **Parâmetros:** decisões pedagógicas, orientações, herança, política de
-  componentes e cobertura de cada Microssequência;
-- **Fontes:** catálogo privado e versionado, Âncoras exatas, PDFs e atribuições
-  ordenadas a itens do plano ou Unidades de estudo;
-- **Estrutura:** hierarquia de Módulos, Lições e Microssequências;
-- **Inspeção:** sequência vertical paginada das Unidades produzidas;
-- **Auditoria e correções:** caixa de entrada das Anotações e ciclo versionado de
-  achado, proposta, aplicação, verificação e reversão;
-- **Variantes:** Cursos independentes criados do mesmo planejamento, com
-  diferenças declaradas e observadas;
-- **Pesquisa:** fatos da Autoria em gráfico e tabela, com dados ausentes,
-  limites e exportação em arquivos CSV ou JSON;
+- **Curso:** Estrutura, Planejamento, Parâmetros e Fontes;
+- **Revisar:** Inspeção, Observações, auditoria e correções;
+- **Pesquisa:** Variantes, Analytics e fatos da Autoria;
 - **Pessoas:** proprietário e acessos diretos concedidos para Estudo.
+
+Na Inspeção, o autor percorre a hierarquia sem perder a Unidade em foco. Pode
+editar ali mesmo as folhas textuais declaradas pelo componente ou pedir uma
+sugestão focal ao relay local configurado no dispositivo, conferir a prévia e só
+então aplicar. A credencial do provider permanece no relay, fora do AraLearn; a
+conversa contextual é transitória. O ChatGPT conectado por MCP continua sendo a
+via principal para planejar, materializar, discutir e auditar o Curso inteiro.
+O relay foi comprovado no ambiente web local. A candidata Android encaminha a
+chamada por uma ponte nativa fixa para o relay, sem afrouxar a política de
+conteúdo misto do WebView. Pages e o APK real ainda dependem das validações de
+transporte registradas no roadmap.
 
 As ferramentas de autoria conectam assistentes ao mesmo Curso por um protocolo
 aberto, o **Model Context Protocol (MCP)**. Elas listam Cursos próprios,
@@ -161,7 +163,8 @@ sincronização](docs/persistencia-relacional.md).
 A mesma aplicação é entregue na web e como pacote de instalação Android (APK)
 nas versões publicadas do repositório. Estudo mantém uma largura confortável
 também no computador. A
-Autoria parte da experiência móvel e usa navegação iconográfica entre as áreas.
+Autoria conserva uma superfície centralizada de até 430 px também no computador
+e usa quatro grupos iconográficos com divulgação progressiva.
 
 ## Estado e limites
 

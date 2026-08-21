@@ -67,6 +67,52 @@ As janelas de retenção são próprias de cada família. Um cliente que ficou
 ausente por tempo indefinido relê a autoridade correspondente, em vez de
 depender de um histórico universal de eventos.
 
+Na interface, uma resposta ambígua mantém em memória o rascunho e o envelope da
+operação. Reenviar o formulário sem modificá-lo conserva comando, versões,
+identidades geradas e identificador de pedido; editar os campos representa uma
+nova intenção. Esse estado é transitório da sessão da Autoria e não amplia o
+contrato do IndexedDB nem cria uma fila autoral sem conexão.
+
+Na edição contextual de Unidade, o primeiro envio também fixa em memória o
+conjunto efetivo de Fontes sob o mesmo `requestId`. Uma nova tentativa da mesma
+intenção reutiliza esse instantâneo, mesmo se a resposta da primeira escrita se
+perdeu; usar a mesma identidade com outro conteúdo é recusado. O controlador
+limita esse conjunto a 16 pedidos e o elimina ao perder autoridade sobre o
+Curso ou encerrar a sessão. O instantâneo não vai para o IndexedDB.
+
+## Gravação contextual da composição
+
+A operação do aplicativo substitui exatamente uma Unidade existente e exige a
+revisão esperada do Curso, a versão esperada da Unidade, a Microssequência pai,
+o envelope validado e a origem `manual` ou `provider_assistance`. Somente a API
+de Cursos autenticada alcança a função SQL concedida ao papel de servidor. A
+função registra o canal `application` e a origem no recibo e no evento, sem
+alterar a forma pública da operação usada pelo MCP.
+
+Conteúdo, atribuição de Fontes, revisão, evento e recibo pertencem à mesma
+transação. Uma edição apenas textual pode carregar a proveniência efetiva
+anterior, inclusive relações históricas ou uma lista vazia, somente quando o
+JSONB recebido coincide com aquele conjunto. Qualquer vínculo novo ou alterado
+precisa usar Fonte e Âncora ativas nas revisões exatas. Assim, a compatibilidade
+preserva o fato legado sem permitir que clientes criem uma nova
+`legacy_reference`.
+
+Depois do recibo 2xx e antes de invalidar as projeções anteriores, o controlador
+persiste no IndexedDB do usuário o snapshot focal confirmado e promove a Unidade,
+a revisão e a versão no documento `course.v1`. Essa promoção preserva progresso,
+Observações e posição. Só então lista, composição anterior, plano, desenho,
+Fontes, Estrutura, Inspeção e páginas de entidades são invalidados e recompostos.
+Estudo e Inspeção podem ler esse estado sem rede mesmo quando a releitura remota
+falha; a interface o apresenta como confirmado, com sincronização pendente, e
+não simula uma segunda gravação.
+
+Uma releitura canônica na mesma revisão substitui o snapshot confirmado e limpa
+o estado transitório. Uma revisão superior o elimina como superado. Saída local
+ou remota, revogação, limpeza do Curso ou outra perda de autoridade purgam a
+projeção. Se uma mudança externa chegar antes da próxima edição, a atualização rebasa revisão
+e versão esperadas para que o CAS não use a fotografia anterior, sem perder a
+seleção, o progresso nem as Observações.
+
 ## Composição paginada
 
 A lista inicial retorna cabeçalhos e progresso, sem carregar milhares de
@@ -98,10 +144,11 @@ aralearn-course-v1-<identificador-da-conta>
 ```
 
 O armazenamento local guarda registros tipados para listas, cabeçalhos, páginas
-candidatas, composição promovida, plano, estrutura, fontes, inspeção, estado
-pessoal, Anotações e posição. A separação lógica é feita por chaves e contratos
-de repositório. A sessão de autenticação fica em `aralearn-auth-v1`, fora do
-banco de Curso.
+candidatas, composição promovida, plano, estrutura, páginas recentes da
+Inspeção, estado pessoal, Anotações de Estudo e posição. O catálogo privado de
+Fontes, seus metadados e os bytes de PDFs permanecem somente no servidor e no
+Storage. A separação lógica é feita por chaves e contratos de repositório. A
+sessão de autenticação fica em `aralearn-auth-v1`, fora do banco de Curso.
 
 Trocar de conta troca o espaço local. Uma conta não consulta a réplica de
 outra, ainda que ambas usem o mesmo navegador. Encerrar sessão remove o acesso
@@ -218,7 +265,7 @@ objetos que não são eliminados automaticamente pelo PostgreSQL.
 ## Evolução do esquema
 
 Migrações em `supabase/migrations/` são a história reproduzível do banco. A
-revisão implantável corrente é `20260820101500`, declarada em
+revisão implantável corrente é `20260820224424`, declarada em
 `supabase/runtime-manifest.json`. Uma migração que acrescenta capacidade deve:
 
 - fazer verificações prévias e falhar diante de estado incompatível;
@@ -248,8 +295,11 @@ Os contratos são exercitados em camadas:
 | recomposição e promoção local | testes de `CourseLocalStore`, controlador e repositório de Estudo |
 | estado pessoal e Anotações | testes dos repositórios, duas abas e retomada de fila |
 | concorrência e idempotência | testes PGlite, PostgreSQL real e chamadas repetidas |
+| edição contextual e proveniência carregada | testes de domínio, controlador, adaptador, roteador, PGlite e paridade IndexedDB |
+| snapshot confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Inspeção e CAS externo |
 | fontes, PDFs e proveniência | testes de domínio, painel, PGlite, Storage e segurança |
 | auditoria, variantes e Pesquisa | testes de domínio, painéis, roteador e PGlite |
+| Autoria integrada | jornada autenticada por `public/main.js`, IndexedDB, API, PostgreSQL, Storage, RLS, OAuth com PKCE e MCP no Supabase local |
 | esquema implantado | `supabase db reset`, análise do banco, inventário e manifesto hospedado |
 
 O roteiro de ambiente está em [Supabase](supabase.md) e a ordem de promoção em

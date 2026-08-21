@@ -6,6 +6,11 @@ import {
 } from "../render/renderPackageStudyUnit.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
+import { listManualStudyUnitTargetIds } from "../ui/manualStudyUnitEdit.js";
+import { renderStudyUnitAssistanceTrigger } from
+  "../ui/StudyUnitProviderAssistance.js";
+import { studyUnitAssistanceTargetAvailability } from
+  "../assist/studyUnitProviderAssistance.js";
 import { renderHomeScreen } from "../ui/renderHomeScreen.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 
@@ -281,6 +286,83 @@ function renderStudyCitations({ open, loading, value, error }) {
     renderUiIcon("remove-state", "home-tab-icon") + "</button></header>" + content + "</section>";
 }
 
+function renderStudyManualTitle(studyUnit, manualEditor) {
+  if (!manualEditor.editing) {
+    return `<div class="runtime-card-title">${escapeHtml(studyUnit.title || studyUnit.id)}</div>`;
+  }
+  if (manualEditor.targetId !== "study_unit") {
+    return '<button class="runtime-card-title course-inspection-title-edit-target" type="button"' +
+      ' data-study-manual-target="study_unit" aria-label="Editar título" title="Editar título">' +
+      `${escapeHtml(studyUnit.title || studyUnit.id)}</button>`;
+  }
+  const title = Object.hasOwn(manualEditor.draft.pathValues || {}, "title")
+    ? manualEditor.draft.pathValues.title
+    : studyUnit.title;
+  return '<div class="runtime-card-title course-inspection-manual-title"' +
+    ' contenteditable="plaintext-only" role="textbox" aria-multiline="false" spellcheck="true"' +
+    ' data-study-manual-title aria-label="Título da Unidade de estudo" title="Editar título">' +
+    `${escapeHtml(title)}</div>`;
+}
+
+function renderStudyManualToolbar(manualEditor, studyUnit) {
+  if (!manualEditor.enabled) return "";
+  const assistanceAvailability = studyUnitAssistanceTargetAvailability({
+    studyUnit,
+    targetId: manualEditor.editing && manualEditor.targetId
+      ? manualEditor.targetId
+      : "study_unit",
+    currentPathValues: manualEditor.editing ? manualEditor.draft.pathValues : {}
+  });
+  return '<nav class="course-inspection-mode-actions study-manual-mode-actions"' +
+    ' role="group" aria-label="Modo da Unidade de estudo">' +
+    `<button class="icon-ghost" type="button" data-action="study-manual-view"` +
+    ` aria-pressed="${manualEditor.editing ? "false" : "true"}"` +
+    ` aria-label="Visualizar" title="Visualizar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon("preview", "home-tab-icon")}</button>` +
+    `<button class="icon-ghost" type="button" data-action="study-manual-edit"` +
+    ` aria-pressed="${manualEditor.editing ? "true" : "false"}"` +
+    ` aria-label="Editar" title="Editar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon("edit", "home-tab-icon")}</button>` +
+    `<button class="icon-ghost" type="button" data-action="study-manual-undo"` +
+    ` aria-label="Desfazer última edição" title="Desfazer"${manualEditor.canUndo && !manualEditor.saving ? "" : " disabled aria-disabled=\"true\""}>` +
+    `${renderUiIcon("arrow-left", "home-tab-icon")}</button>` +
+    `<button class="icon-ghost" type="button" data-action="study-manual-redo"` +
+    ` aria-label="Refazer edição" title="Refazer"${manualEditor.canRedo && !manualEditor.saving ? "" : " disabled aria-disabled=\"true\""}>` +
+    `${renderUiIcon("arrow-right", "home-tab-icon")}</button>` +
+    renderStudyUnitAssistanceTrigger({
+      context: "study",
+      disabled: manualEditor.saving || !assistanceAvailability.available,
+      unavailableReason: assistanceAvailability.reason,
+      label: manualEditor.editing
+        ? "Assistência por API no trecho selecionado"
+        : "Assistência por API no título"
+    }) + "</nav>";
+}
+
+function renderStudyManualDock(manualEditor) {
+  if (!manualEditor.editing) return "";
+  if (manualEditor.discardArmed) {
+    return '<section class="study-manual-edit-dock" aria-label="Resultado incerto da edição">' +
+      `<p><span role="alert">${escapeHtml(manualEditor.error)}</span></p>` +
+      '<div><button class="icon-ghost" type="button" data-action="study-manual-keep-unknown"' +
+      ' aria-label="Manter rascunho" title="Manter rascunho">' +
+      `${renderUiIcon("arrow-left", "home-tab-icon")}</button>` +
+      '<button class="open-mini" type="button" data-action="study-manual-discard-unknown"' +
+      ' aria-label="Descartar rascunho com resultado incerto" title="Descartar rascunho">' +
+      `${renderUiIcon("remove-state", "home-tab-icon")}<span>Descartar</span></button></div></section>`;
+  }
+  return '<section class="study-manual-edit-dock" aria-label="Edição manual">' +
+    `<p>${manualEditor.error
+      ? `<span role="alert">${escapeHtml(manualEditor.error)}</span>`
+      : "Edite diretamente no conteúdo."}</p>` +
+    '<div><button class="icon-ghost" type="button" data-action="study-manual-cancel"' +
+    ` aria-label="Cancelar edição" title="Cancelar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon("remove-state", "home-tab-icon")}</button>` +
+    '<button class="open-mini" type="button" data-action="study-manual-save"' +
+    ` aria-label="Salvar edição" title="Salvar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon(manualEditor.saving ? "rotate" : "save", "home-tab-icon")}</button></div></section>`;
+}
+
 function renderStudyUnit({
   course,
   lesson,
@@ -295,11 +377,23 @@ function renderStudyUnit({
   citationsOpen,
   citationsLoading,
   citations,
-  citationsError
+  citationsError,
+  manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   const units = microsequence.studyUnits || [];
+  const manualTargetIds = listManualStudyUnitTargetIds(studyUnit);
+  const selectedManualTargets = manualTargetIds.includes(manualEditor.targetId)
+    ? [manualEditor.targetId]
+    : [];
   const runtime = renderPackageStudyUnitBlocksWithDock(studyUnit, {
     omitRepeatedHeading: true,
+    resourceSelectionEnabled: manualEditor.editing,
+    resourceSelectionDisabled: manualEditor.saving,
+    resourceSelectionTargetIds: manualTargetIds,
+    selectedResourceTargetIds: selectedManualTargets,
+    manualEditingTargetId: manualEditor.editing && selectedManualTargets.length
+      ? manualEditor.targetId
+      : "",
     ...packageStudyUnitOptions
   });
   const feedbackEntry = getPackageStudyUnitFeedbackEntry(studyUnit);
@@ -331,8 +425,9 @@ function renderStudyUnit({
     String(units.length ? ((studyUnitIndex + 1) / units.length) * 100 : 0) + '%"></span></div></section>' +
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
-    '<div class="runtime-card-rendered-content"><div class="runtime-card-title">' +
-    escapeHtml(studyUnit.title || studyUnit.id) + '</div><div class="card-sheet-content">' +
+    renderStudyManualToolbar(manualEditor, studyUnit) +
+    '<div class="runtime-card-rendered-content">' + renderStudyManualTitle(studyUnit, manualEditor) +
+    '<div class="card-sheet-content">' +
     runtime.bodyHtml + "</div>" + runtime.dockHtml + "</div></article></section>" +
     renderStudyCitations({
       open: citationsOpen,
@@ -345,6 +440,10 @@ function renderStudyUnit({
     renderUiIcon("study-unit", "study-reader-count-icon") +
     '<span class="study-reader-count-value">' + String(studyUnitIndex + 1) + "/" +
     String(units.length) + "</span></span></div>" +
+    (manualEditor.status
+      ? `<p class="study-manual-status" role="status" aria-live="polite">${escapeHtml(manualEditor.status)}</p>`
+      : "") +
+    (manualEditor.editing ? renderStudyManualDock(manualEditor) :
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
     '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
@@ -369,7 +468,8 @@ function renderStudyUnit({
     renderUiIcon("arrow-left", "home-tab-icon") + "</button>" +
     '<button class="open-mini study-continue-btn" type="button" data-action="next-study-unit"' +
     ' title="Continuar" aria-label="Continuar">' + renderUiIcon("play", "home-tab-icon") +
-    "</button>" + feedbackMarkup + "</div></div></div></section></section></div></section>" +
+    "</button>" + feedbackMarkup + "</div></div></div></section>") +
+    "</section></div></section>" +
     "</main></section>";
 }
 
@@ -395,7 +495,8 @@ export function renderCourseStudyScreen({
   citationsOpen = false,
   citationsLoading = false,
   citations = null,
-  citationsError = ""
+  citationsError = "",
+  manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   if (view === "courses") {
     return renderHomeScreen({
@@ -434,6 +535,7 @@ export function renderCourseStudyScreen({
     citationsOpen,
     citationsLoading,
     citations,
-    citationsError
+    citationsError,
+    manualEditor
   });
 }

@@ -1,7 +1,9 @@
 # Matriz de conformidade técnica
 
 Esta matriz liga propriedades do AraLearn à implementação e à evidência
-executável da entrega 0.0.23. O estado “demonstrado” indica que a capacidade
+executável da candidata 0.0.24. O contrato público das seis ferramentas e do
+recurso MCP permanece 0.0.23, mas a candidata exige a API de Cursos
+correspondente e o esquema `20260820224424`. O estado “demonstrado” indica que a capacidade
 existe no contrato corrente e possui verificação no repositório. Limites
 declarados fazem parte desse contrato.
 
@@ -35,7 +37,15 @@ declarados fazem parte desse contrato.
 | uma Parte pode materializar Unidades de estudo | operações canônicas e `course_entities` | testes de plano, adaptador e executor | demonstrado; materialização registra origem e respeita revisão esperada |
 | operações repetidas não duplicam efeito | recibos e identificadores de pedido nas RPCs | `course-postgres-concurrency.test.js`, testes PGlite e do executor | demonstrado dentro da retenção da família |
 | operação sem mudança avança a revisão | comparador semântico das operações | `course-tool-executor.test.js`, testes PGlite | fora do contrato; ausência de mudança conserva revisão e evento |
-| a interface oferece as nove áreas correntes | `CourseAuthoringSurface.js` e painéis de Curso | `course-authoring-surface.test.js`, teste de Autoria no navegador | demonstrado em Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Auditoria e correções, Variantes, Pesquisa e Pessoas |
+| a interface oferece todas as capacidades por quatro destinos progressivos | `CourseAuthoringSurface.js` e painéis de Curso | `course-authoring-surface.test.js`, teste de Autoria no navegador e matriz visual focal 10/10 em 51,4 s | Curso, Revisar, Pesquisa e Pessoas revelam Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, discussões, auditoria, correções, Variantes, Analytics e acesso sem nove rótulos permanentes; #144 mantém o aceite humano aberto |
+| a Autoria excede 430 px em tela larga | `course-authoring.css` e shell único | matriz 360/390/430/1280 nos dois temas, 10/10 | fora do contrato; computador conserva a mesma superfície centralizada, sem segunda coluna, overflow global ou composição especial |
+| proprietário edita texto da Unidade no renderer corrente | `manualInlineFields.js`, `manualStudyUnitEdit.js`, aplicações de Estudo e Inspeção | `manual-study-unit-edit.test.js`, `manual-study-unit-edit.spec.js` | demonstrado para os 32 componentes; acesso somente de Estudo não recebe edição e prática/progresso permanecem separados |
+| assistência por API altera diretamente o Curso | `StudyUnitProviderAssistance.js` e editor manual compartilhado | `study-unit-provider-assistance.test.js`, teste de navegador | fora do contrato; a resposta validada entra primeiro no rascunho e a pessoa decide salvar pela operação corrente |
+| uma sugestão focal altera vários caminhos de uma vez | schema `changes` e validação da candidata | testes de assistência e navegador | fora do contrato; cada pedido aceita zero ou uma mudança em caminho autorizado e até 8.000 tokens de saída |
+| trecho acima do orçamento abre uma chamada fadada ao corte | disponibilidade calculada antes da sobreposição | testes de assistência, renderer e acessibilidade | fora do contrato; acima de 6.000 caracteres por caminho ou 12.000 no contexto, o comando informa o motivo acessível e a edição manual permanece disponível |
+| edição contextual confirma uma Unidade e sua proveniência atomicamente | `courseComposition.js`, controlador, API, adaptador e migração `20260820224424` | testes de controlador, roteador, adaptador, PGlite e paridade IndexedDB | demonstrado localmente; carga histórica exige igualdade JSONB com o conjunto efetivo anterior, e mudança exige Fonte e Âncora correntes |
+| uma resposta perdida muda a proveniência do replay | instantâneo limitado por `requestId` no `CourseController` | testes de controlador e resposta ambígua no navegador | fora do contrato; a mesma intenção reutiliza o conjunto fixado, e outra intenção com a mesma identidade é recusada |
+| recibo 2xx depende de nova leitura para chegar ao IndexedDB | promoção de snapshot e `course.v1` no controlador | 136/136 verificações focais e 9/9 cenários integrados de Estudo/Inspeção | fora do contrato; antes da invalidação, a cópia confirmada chega a Estudo e Inspeção sem rede e sem repetir escrita; releitura igual normaliza, revisão superior supera e logout, limpeza ou revogação purgam |
 
 ## Fontes e PDFs
 
@@ -81,15 +91,20 @@ declarados fazem parte desse contrato.
 | função com credencial administrativa aceita identidade declarada pelo corpo | funções de entrada e RPCs exclusivas do proprietário | testes de API, MCP, adaptador e segurança | fora do contrato; a função valida o token e a função SQL comprova a pessoa |
 | MCP usa OAuth 2.1 com PKCE | Auth OAuth Server, gancho de token e função MCP | `local-mcp-oauth-smoke.test.js`, teste local e hospedado | demonstrado; servidor valida sessão, emissor, destinatário, recurso, cliente, sujeito e validade temporal; cliente valida estado e código PKCE |
 | origens de produção são exatas | segredos CORS e `deploySupabase.ps1` | `deployment-automation.test.js` | demonstrado; HTTP somente em desenvolvimento local |
+| produção envia diretamente a um provider remoto | `providerRuntimeSecurity.js`, configuração e adaptadores | `provider-runtime-security.test.js`, `study-unit-provider-assistance.test.js` | fora do contrato; produção oferece somente relay nos três hosts locais previstos e na porta 4183, com chave fora do AraLearn; acesso remoto direto exige runtime explícito de desenvolvimento |
+| credencial de assistência entra em armazenamento ou artefato | relay local, sessão efêmera de desenvolvimento e verificadores de publicação | testes de assistência, publicação e automação | fora do contrato; produção não recebe a chave; no desenvolvimento ela segue apenas no cabeçalho e não aparece em corpo, URL, Web Storage, IndexedDB, banco ou bundle |
+| envelope da assistência identifica a Unidade | projeção mínima em `studyUnitProviderAssistance.js` | testes de assistência e segurança | fora do contrato; pedido, valores textuais, título, papel, tópicos e mensagens anteriores são enviados sem `targetId`, `studyUnitId`, PDFs, Fontes ou outras Unidades |
+| resposta do provider conclui depois do logout | destruição da superfície, cancelamento e descarte da sessão | cenário integrado `SIGNED_OUT` | fora do contrato; a chamada é abortada antes de apagar a sessão e fechar os armazenamentos, sem callback tardio, sobreposição, credencial restaurada ou erro de página |
+| relay da assistência possui paridade entre web local, Pages e Android | política de conteúdo, classificação de endereço, configuração, ponte nativa e WebView | duas provas verticais locais, 21/21 verificações de endereço, compilação Android, 28/28 testes de implantação, verificador de artefato e aceite hospedado | parcial; a prova web mais recente passou 1/1 em 14,2 s e a compilação de depuração passou; o navegador usa `loopback` para `127.0.0.1`/`localhost` e `local` para `10.0.2.2`; a ponte chama somente `127.0.0.1:4183`, entra no APK, não entra no Pages e não relaxa `MIXED_CONTENT_NEVER_ALLOW`; Pages ainda precisa provar acesso à rede local, e o APK de release instalado precisa ser exercitado em dispositivo real |
 | buckets são privados | políticas de Storage e URLs assinadas | testes de segurança, anexos e jornadas local e hospedada | demonstrado para `person-avatars` e `course-source-pdfs`; terceiro e pessoa com acesso apenas de Estudo não recebem o PDF autoral |
 
 ## Integração e publicação
 
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado na revisão `20260820101500`, publicada no Pages 0.0.23 |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | gate corrente exige `20260820224424`; a última revisão hospedada comprovada foi `20260820101500`, portanto a promoção do cliente aguarda o backend |
 | integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
-| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado para o site e o APK assinado da versão 0.0.23 |
+| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | verificadores demonstrados localmente; site publicado e APK assinado 0.0.24 permanecem pendentes |
 | Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |
 | publicação Android parte da ponta validada de `main` | `.github/workflows/android-release.yml` | `deployment-automation.test.js` | demonstrado; revisão superada e tag existente não são republicadas |
 | limpeza física acompanha toda migração | `scripts/courseCutover/prepareLegacyCleanup.mjs` | `course-legacy-cleanup-plan.test.js`, `course-legacy-cleanup-backup.test.js` | fora do contrato; requer inventário, cópia verificada, restauração e confirmação específicas |

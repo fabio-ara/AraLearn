@@ -72,7 +72,8 @@
           "course-study-unit-inspection-v1",
           "course-design-parameters-v1",
           "course-authoring-guidance-v1",
-          "course-component-policy-v1"
+          "course-component-policy-v1",
+          "contextual-study-unit-edit-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_events|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_authoring_part_materializations|private\\.course_authoring_part_materialization_steps|private\\.course_design_parameter_definitions|private\\.course_design_parameter_changes|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_revisions|private\\.course_authoring_guidance_interpretations|private\\.course_component_policy_changes)$",
@@ -90,6 +91,7 @@
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPlanningSection" },
         { "path": "src/ui/CourseInspectionSequence.js", "token": "createCourseInspectionSequence" },
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadPartMaterialization" },
+        { "path": "src/ui/CourseInspectionSequence.js", "token": "onSaveManualEdit" },
         { "path": "src/ui/CourseDesignPanel.js", "token": "effectiveRevisions" },
         { "path": "src/ui/CourseDesignPanel.js", "token": "data-course-design-target-items" }
       ],
@@ -99,11 +101,13 @@
         { "path": "src/supabase/CourseController.js", "token": "loadAuthoringStudyUnits" },
         { "path": "src/supabase/CourseController.js", "token": "loadPartMaterialization" },
         { "path": "src/supabase/CourseController.js", "token": "loadCourseDesign" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateCourseDesign" }
+        { "path": "src/supabase/CourseController.js", "token": "mutateCourseDesign" },
+        { "path": "src/supabase/CourseController.js", "token": "commitCourseComposition" }
       ],
       "routes": [
         { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "mapAuthoringMcpToolCall" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "executeCourseRoute" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "executeCourseRoute" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "commitCourseComposition" }
       ],
       "tests": [
         "tests/runtime/course-mcp-tools.test.js",
@@ -111,6 +115,9 @@
         "tests/runtime/course-design-parameters.test.js",
         "tests/runtime/course-inspection-sequence.test.js",
         "tests/runtime/course-controller.test.js",
+        "tests/runtime/course-controller-authoring-indexeddb-parity.test.js",
+        "tests/runtime/course-api-client.test.js",
+        "tests/runtime/manual-study-unit-edit.test.js",
         "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js"
       ],
@@ -232,7 +239,7 @@
       },
       "ui": [
         { "path": "src/ui/CourseAuditPanel.js", "token": "course-audit-panel" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "Auditoria e correções" }
+        { "path": "src/ui/CourseAuditPanel.js", "token": "Auditoria e correções" }
       ],
       "visibleEffects": [
         { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"show-runs\"" },

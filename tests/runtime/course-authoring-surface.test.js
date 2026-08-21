@@ -474,6 +474,7 @@ function partMaterializationFixture(overrides = {}) {
       status: "running",
       version: 3,
       designContext: { focus: "Aplicação concreta" },
+      contextHash: "a".repeat(64),
       resultFacts: {},
       startedAt: "2026-08-17T10:00:00Z",
       updatedAt: "2026-08-17T10:10:00Z",
@@ -592,7 +593,7 @@ test("lista abre diretamente Cursos concretos com destino canônico em um toque"
   assert.doesNotMatch(root.innerHTML, /Compartilhado|Somente leitura/u);
   assert.match(
     root.innerHTML,
-    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "inspection" }).replace("?", "\\?"), "u")
+    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "planning" }).replace("?", "\\?"), "u")
   );
   assert.match(root.innerHTML, /<svg/u);
   assert.doesNotMatch(root.innerHTML, /<textarea|Workspace|Trilha|Coleção|publicação/iu);
@@ -619,6 +620,35 @@ test("lista oferece retorno visível ao Estudo", async () => {
   assert.equal(closed, 1);
   assert.equal(surface.opened, false);
   assert.equal(root.innerHTML, "");
+});
+
+test("rascunho de criação na lista exige cancelamento explícito antes de sair", async () => {
+  const root = new FakeRoot();
+  let closed = 0;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture(),
+    locationValue: { pathname: "/", search: "", hash: "" },
+    windowValue: new FakeWindow(),
+    onClose() { closed += 1; }
+  });
+  await surface.open();
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "open-create" } }) }
+  });
+  assert.equal(surface.close(), "deferred");
+  assert.equal(surface.handleBack(), true);
+  assert.equal(surface.opened, true);
+  assert.equal(closed, 0);
+
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "cancel-create" } }) }
+  });
+  assert.equal(surface.close(), true);
+  assert.equal(surface.opened, false);
+  assert.equal(closed, 1);
 });
 
 test("paginação da lista encaminha o cursor opaco e acrescenta a página seguinte", async () => {
@@ -791,7 +821,9 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
     /<details class="course-authoring-recent-activity">[\s\S]*Relação entre grandezas\.[\s\S]*<\/details>/u
   );
   assert.match(root.innerHTML, />Ver etapas</u);
-  assert.match(root.innerHTML, /Copiar pedido para o ChatGPT/u);
+  assert.match(root.innerHTML, /data-course-authoring-action="materialize-part"/u);
+  assert.match(root.innerHTML, /data-course-authoring-action="context-chat"/u);
+  assert.match(root.innerHTML, /<details class="course-authoring-part-tools"/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
 });
@@ -1137,6 +1169,15 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
       }
     }
   });
+  assert.equal(calls.length, 1, "Restaurar herança deve aguardar confirmação local.");
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest() {
+        return { dataset: { courseAuthoringAction: "confirm-action-confirmation" } };
+      }
+    }
+  });
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(calls.length, 2);
@@ -1153,8 +1194,14 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
   const root = new FakeRoot();
   const calls = [];
   const confirmations = new Map();
+  let closed = 0;
   let revision = 5;
   let design = courseDesignFixture();
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+  };
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
@@ -1218,12 +1265,9 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
         throw error;
       }
     }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
-    },
-    windowValue: new FakeWindow()
+    locationValue,
+    windowValue: new FakeWindow(),
+    onClose() { closed += 1; }
   });
   await surface.open();
   const submit = {
@@ -1246,6 +1290,18 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
   assert.equal(calls.length, 1);
   assert.equal(calls[0].expectedCourseRevision, 5);
   assert.match(root.innerHTML, /confirmar a mesma operação/u);
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "show-list" } }) }
+  });
+  assert.equal(
+    locationValue.hash,
+    buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+  );
+  assert.equal(surface.handleBack(), true);
+  assert.equal(surface.close(), "deferred");
+  assert.equal(surface.opened, true);
+  assert.equal(closed, 0);
 
   root.listeners.get("submit")(submit);
   await new Promise((resolve) => setImmediate(resolve));
@@ -1256,6 +1312,81 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
   assert.equal(confirmations.size, 1);
   assert.match(root.innerHTML, /Parâmetro salvo neste escopo/u);
   assert.match(root.innerHTML, /value="4"/u);
+});
+
+test("desenho mantém o envelope até a releitura e não reaplica escrita já confirmada", async () => {
+  const root = new FakeRoot();
+  let revision = 5;
+  let mutationCalls = 0;
+  let rejectReread;
+  const reread = new Promise((resolve, reject) => { rejectReread = reject; });
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        return {
+          courseId,
+          title: "Fundamentos",
+          goal: "Compreender relações essenciais.",
+          revision,
+          ownership: "owned",
+          canEdit: true
+        };
+      },
+      async loadCourseDesign() {
+        if (mutationCalls > 0) return reread;
+        return courseDesignFixture({ courseRevision: revision });
+      },
+      async mutateCourseDesign(request) {
+        mutationCalls += 1;
+        revision = 6;
+        return {
+          contract: "aralearn.course-design-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: revision,
+          requestId: request.requestId,
+          idempotent: false,
+          changed: true,
+          change: {
+            changeId: "14",
+            type: request.command.type,
+            scope: structuredClone(request.command.scope)
+          }
+        };
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+    },
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches: (selector) => selector === "[data-course-design-parameter]",
+      elements: {
+        parameterId: { value: "new_analysis_unit_ceiling_per_expository_study_unit" },
+        parameterValue: { value: "4" },
+        origin: { value: "author" },
+        reason: { value: "Decisão editorial confirmada." }
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(mutationCalls, 1);
+  assert.equal(surface.close(), "deferred", "O envelope só pode ser limpo após a releitura.");
+  rejectReread(new TypeError("Falha ao reler o desenho"));
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(mutationCalls, 1);
+  assert.match(root.innerHTML, /gravação foi confirmada, mas a tela pode estar desatualizada/u);
+  assert.doesNotMatch(root.innerHTML, /confirmar a mesma operação/u);
+  assert.equal(surface.close(), true, "A confirmação remove o envelope sem pedir nova escrita.");
 });
 
 test("Ver etapas lê uma materialização sob demanda e apresenta a retomada sem JSON", async () => {
@@ -1371,6 +1502,7 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
   const root = new FakeRoot();
   const calls = [];
   const receipts = new Map();
+  let closed = 0;
   const locationValue = { pathname: "/", search: "", hash: "" };
   const surface = createCourseAuthoringSurface({
     root,
@@ -1387,7 +1519,8 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
       }
     }),
     locationValue,
-    windowValue: new FakeWindow()
+    windowValue: new FakeWindow(),
+    onClose() { closed += 1; }
   });
   await surface.open();
   root.listeners.get("click")({
@@ -1416,6 +1549,11 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
   assert.equal(calls.length, 1);
   assert.match(root.innerHTML, /confirmar a mesma operação/u);
   assert.match(root.innerHTML, /data-course-authoring-create/u);
+  assert.equal(await surface.refresh(), "deferred");
+  assert.equal(surface.close(), "deferred");
+  assert.equal(surface.handleBack(), true);
+  assert.equal(surface.opened, true);
+  assert.equal(closed, 0);
 
   root.listeners.get("submit")(submit);
   await new Promise((resolve) => setImmediate(resolve));
@@ -1428,6 +1566,8 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
     locationValue.hash,
     buildCourseAuthoringRoute(SECOND_COURSE_ID, { section: "planning" })
   );
+  assert.equal(surface.close(), true);
+  assert.equal(closed, 1);
 });
 
 test("edita título canônico e plano humano sem JSON nem autoridade duplicada", async () => {
@@ -1543,12 +1683,18 @@ test("repete alteração do plano com o mesmo requestId e payload após perder a
   const root = new FakeRoot();
   const calls = [];
   const confirmations = new Map();
+  let closed = 0;
   let revision = 5;
   let title = "Fundamentos";
   let objective = "Objetivo anterior.";
   let plan = {
     ...authoringPlanFixture(),
     plan: { ...authoringPlanFixture().plan, objective }
+  };
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
   };
   const surface = createCourseAuthoringSurface({
     root,
@@ -1591,12 +1737,9 @@ test("repete alteração do plano com o mesmo requestId e payload após perder a
         throw error;
       }
     }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
+    locationValue,
+    windowValue: new FakeWindow(),
+    onClose() { closed += 1; }
   });
   await surface.open();
   root.listeners.get("click")({
@@ -1632,6 +1775,18 @@ test("repete alteração do plano com o mesmo requestId e payload após perder a
   assert.equal(calls[0].expectedPlanVersion, 3);
   assert.match(root.innerHTML, /confirmar a mesma operação/u);
   assert.match(root.innerHTML, /data-course-authoring-planning/u);
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "show-list" } }) }
+  });
+  assert.equal(
+    locationValue.hash,
+    buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+  );
+  assert.equal(surface.handleBack(), true);
+  assert.equal(surface.close(), "deferred");
+  assert.equal(surface.opened, true);
+  assert.equal(closed, 0);
 
   root.listeners.get("submit")(submit);
   await new Promise((resolve) => setImmediate(resolve));
@@ -1644,6 +1799,81 @@ test("repete alteração do plano com o mesmo requestId e payload após perder a
   assert.equal(confirmations.size, 1);
   assert.match(root.innerHTML, /Planejamento salvo/u);
   assert.doesNotMatch(root.innerHTML, /data-course-authoring-planning/u);
+});
+
+test("planejamento preserva formulário e envelope até concluir a releitura confirmada", async () => {
+  const root = new FakeRoot();
+  let revision = 5;
+  let mutationCalls = 0;
+  let planReads = 0;
+  let rejectReread;
+  const reread = new Promise((resolve, reject) => { rejectReread = reject; });
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        return {
+          courseId,
+          title: "Fundamentos",
+          goal: "Compreender relações essenciais.",
+          revision,
+          ownership: "owned",
+          canEdit: true
+        };
+      },
+      async loadAuthoringPlan() {
+        planReads += 1;
+        if (planReads > 1) return reread;
+        return authoringPlanFixture();
+      },
+      async mutateAuthoringPlan() {
+        mutationCalls += 1;
+        revision = 6;
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    },
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest: () => ({ dataset: { courseAuthoringAction: "open-planning-edit" } })
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches: (selector) => selector === "[data-course-authoring-planning]",
+      elements: {
+        title: { value: "Fundamentos revisados" },
+        objective: { value: "Novo objetivo." },
+        audience: { value: "Público." },
+        scope: { value: "Escopo." },
+        rangeMinimum: { value: "7" },
+        rangeMaximum: { value: "12" },
+        rangeOrigin: { value: "author" }
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(mutationCalls, 1);
+  assert.match(root.innerHTML, /data-course-authoring-planning/u);
+  assert.equal(surface.close(), "deferred", "O envelope só pode ser limpo após a releitura.");
+  rejectReread(new TypeError("Falha ao reler o planejamento"));
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(mutationCalls, 1);
+  assert.match(root.innerHTML, /gravação foi confirmada, mas a tela pode estar desatualizada/u);
+  assert.doesNotMatch(root.innerHTML, /confirmar a mesma operação/u);
+  assert.doesNotMatch(root.innerHTML, /data-course-authoring-planning/u);
+  assert.equal(surface.close(), true);
 });
 
 test("Partes oferecem operações explícitas e preservam a hierarquia didática nos vínculos", async () => {
@@ -1661,8 +1891,7 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
       search: "",
       hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
     },
-    windowValue: new FakeWindow(),
-    confirmValue: () => true
+    windowValue: new FakeWindow()
   });
   await surface.open();
 
@@ -1766,6 +1995,20 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
             courseAuthoringAction: "join-parts",
             partId: SECOND_PART_ID,
             previousPartId: PART_ID
+          }
+        };
+      }
+    }
+  });
+  assert.equal(calls.length, 3, "A união não deve alterar o Curso antes da confirmação local.");
+  assert.match(root.innerHTML, /role="alertdialog"[\s\S]*Unir Partes\?/u);
+  root.listeners.get("click")({
+    target: {
+      closest() {
+        return {
+          dataset: {
+            courseAuthoringAction: "confirm-part-confirmation",
+            partId: SECOND_PART_ID
           }
         };
       }
@@ -1923,22 +2166,182 @@ test("pedido de materialização entrega texto natural e deep link sem fingir ex
       }
     }
   });
+  assert.equal(deliveries.length, 0, "Abrir o compositor não deve copiar nem alterar o Curso.");
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches(selector) { return selector === "[data-course-authoring-chat-form]"; },
+      elements: {
+        action: { value: "materialize_authoring_part" },
+        instruction: {
+          value: "Materialize esta Parte e registre somente o que for confirmado no AraLearn."
+        }
+      }
+    }
+  });
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(deliveries.length, 1);
   assert.match(deliveries[0].requestId, /^[0-9a-f-]{36}$/u);
-  assert.equal(deliveries[0].courseId, COURSE_ID);
-  assert.equal(deliveries[0].authoringPartId, PART_ID);
-  assert.equal(deliveries[0].expectedCourseRevision, 5);
-  assert.equal(
-    deliveries[0].deepLink,
-    `https://example.test/app?theme=dark${buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })}`
+  assert.deepEqual(Object.keys(deliveries[0]).sort(), ["requestId", "requestText"]);
+  assert.match(deliveries[0].requestText, new RegExp(COURSE_ID, "u"));
+  assert.match(deliveries[0].requestText, /Revisão observada ao copiar: 5/u);
+  assert.match(
+    deliveries[0].requestText,
+    new RegExp(
+      `https://example\\.test/app\\?theme=dark${buildCourseAuthoringRoute(COURSE_ID, {
+        section: "planning",
+        authoringPartId: PART_ID
+      }).replaceAll("?", "\\?")}`,
+      "u"
+    )
   );
   assert.match(deliveries[0].requestText, /Relações iniciais/u);
-  assert.match(deliveries[0].requestText, /Registre somente o que for realmente produzido/u);
+  assert.match(
+    deliveries[0].requestText,
+    /Materialize esta Parte e registre somente o que for confirmado no AraLearn/u
+  );
+  assert.match(deliveries[0].requestText, /Limite a produção à Parte identificada/u);
   assert.doesNotMatch(deliveries[0].requestText, /fila|já materializ/iu);
-  assert.match(root.innerHTML, /Pedido copiado.*Cole no ChatGPT/us);
   assert.doesNotMatch(root.innerHTML, /Parte materializada/u);
+});
+
+test("estrutura vazia oferece preparo no ChatGPT e impede pedido de materialização impossível", async () => {
+  const root = new FakeRoot();
+  const deliveries = [];
+  const emptyPlan = structuredClone(authoringPlanFixture());
+  emptyPlan.plan.parts = [{
+    ...emptyPlan.plan.parts[1],
+    position: 0
+  }];
+  emptyPlan.plan.counts = {
+    ...emptyPlan.plan.counts,
+    authoringPartCount: 1,
+    linkedDidacticMicrosequenceCount: 0,
+    studyUnitCount: 0
+  };
+  emptyPlan.recentActivity = [];
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringPlan() {
+        return emptyPlan;
+      },
+      async requestPartMaterialization(value) {
+        deliveries.push(structuredClone(value));
+        return { delivery: "clipboard" };
+      }
+    }),
+    locationValue: {
+      origin: "https://example.test",
+      pathname: "/app",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    },
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+
+  assert.match(root.innerHTML, /Prepare a estrutura/u);
+  assert.match(root.innerHTML, /data-course-authoring-action="prepare-structure"/u);
+  assert.doesNotMatch(root.innerHTML, /data-course-authoring-action="materialize-part"/u);
+  root.listeners.get("click")({
+    target: {
+      closest() {
+        return { dataset: { courseAuthoringAction: "materialize-part", partId: SECOND_PART_ID } };
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(deliveries.length, 0);
+
+  root.listeners.get("click")({
+    target: {
+      closest() {
+        return { dataset: { courseAuthoringAction: "prepare-structure", partId: SECOND_PART_ID } };
+      }
+    }
+  });
+  assert.equal(deliveries.length, 0, "Abrir o compositor não deve copiar o pedido automaticamente.");
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches(selector) { return selector === "[data-course-authoring-chat-form]"; },
+      elements: {
+        action: { value: "prepare_structure" },
+        instruction: { value: "Prepare a estrutura mínima e vincule-a ao planejamento persistido." }
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(deliveries.length, 1);
+  assert.match(deliveries[0].requestText, /Ação: preparar a estrutura/u);
+  assert.match(deliveries[0].requestText, /Vincule as Microssequências às Partes/u);
+  assert.match(deliveries[0].requestText, /Não invente conteúdo ou fatos/u);
+  assert.doesNotMatch(deliveries[0].requestText, /Ação: materializar a Parte/u);
+});
+
+test("Módulo copia pedido contextual com escopo, caminho e retorno canônico", async () => {
+  const root = new FakeRoot();
+  const deliveries = [];
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async requestPartMaterialization(value) {
+        deliveries.push(structuredClone(value));
+        return { delivery: "clipboard" };
+      }
+    }),
+    locationValue: {
+      origin: "https://example.test",
+      pathname: "/app",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "structure" })
+    },
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+  assert.match(root.innerHTML, /aria-label="Revisar Base no ChatGPT"/u);
+
+  root.listeners.get("click")({
+    target: {
+      closest() {
+        return {
+          dataset: {
+            courseAuthoringAction: "context-chat",
+            targetKind: "module",
+            targetId: "module-a",
+            targetLabel: "Base",
+            targetPath: "Base"
+          }
+        };
+      }
+    }
+  });
+  assert.equal(deliveries.length, 0, "Abrir o compositor deve preservar o painel ativo.");
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches(selector) { return selector === "[data-course-authoring-chat-form]"; },
+      elements: {
+        action: { value: "review" },
+        instruction: {
+          value: "Revise este Módulo e discuta comigo antes de propor qualquer alteração."
+        }
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(deliveries.length, 1);
+  assert.match(deliveries[0].requestText, /Ação: revisar/u);
+  assert.match(deliveries[0].requestText, /Alvo: Módulo “Base”, identidade module-a/u);
+  assert.match(deliveries[0].requestText, /Caminho: Base/u);
+  assert.match(
+    deliveries[0].requestText,
+    /section=inspection&moduleId=module-a/u
+  );
+  assert.match(deliveries[0].requestText, /discuta comigo antes de propor qualquer alteração/iu);
 });
 
 test("itens estáveis do plano são editados por nome acadêmico e versão, nunca como JSON", async () => {
@@ -2039,7 +2442,6 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   const root = new FakeRoot();
   const changes = [];
   let people = [];
-  const confirmations = [];
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
@@ -2073,11 +2475,7 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
       search: "",
       hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" })
     },
-    windowValue: new FakeWindow(),
-    confirmValue(message) {
-      confirmations.push(message);
-      return true;
-    }
+    windowValue: new FakeWindow()
   });
 
   assert.equal(await surface.open(), true);
@@ -2100,13 +2498,25 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
       elements: { email: { value: "student@example.test" } }
     }
   });
+  assert.equal(changes.length, 0, "Conceder acesso deve aguardar a confirmação local.");
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest() {
+        return { dataset: { courseAuthoringAction: "confirm-action-confirmation" } };
+      }
+    }
+  });
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(changes[0], ["grant", {
+  assert.equal(changes[0][0], "grant");
+  assert.match(changes[0][1].requestId, /^[0-9a-f-]{36}$/u);
+  assert.deepEqual({ ...changes[0][1], requestId: "<uuid>" }, {
+    requestId: "<uuid>",
     courseId: COURSE_ID,
     email: "student@example.test",
     confirmed: true
-  }]);
+  });
   assert.match(root.innerHTML, /Pessoa estudante/u);
   assert.match(root.innerHTML, /Acesso concedido/u);
   assert.doesNotMatch(root.innerHTML, /student@example\.test/u);
@@ -2125,16 +2535,96 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
       }
     }
   });
+  assert.equal(changes.length, 1, "Revogar acesso deve aguardar a confirmação local.");
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest() {
+        return { dataset: { courseAuthoringAction: "confirm-action-confirmation" } };
+      }
+    }
+  });
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(changes[1], ["revoke", {
+  assert.equal(changes[1][0], "revoke");
+  assert.match(changes[1][1].requestId, /^[0-9a-f-]{36}$/u);
+  assert.deepEqual({ ...changes[1][1], requestId: "<uuid>" }, {
+    requestId: "<uuid>",
     courseId: COURSE_ID,
     userId: "40000000-0000-4000-8000-000000000004",
     confirmed: true
-  }]);
-  assert.equal(confirmations.length, 2);
-  assert.match(confirmations[1], /estado pessoal de Estudo será preservado/u);
+  });
   assert.match(root.innerHTML, /Acesso revogado; o estado pessoal foi preservado/u);
+});
+
+test("resposta ambígua em Pessoas bloqueia navegação e saída até o cancelamento explícito", async () => {
+  const root = new FakeRoot();
+  let closed = 0;
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" })
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async grantCourseAccess() {
+        const error = new TypeError("Failed to fetch");
+        error.code = "network_error";
+        throw error;
+      }
+    }),
+    locationValue,
+    windowValue: new FakeWindow(),
+    onClose() { closed += 1; }
+  });
+
+  await surface.open();
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "open-grant" } }) }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches: (selector) => selector === "[data-course-authoring-grant]",
+      elements: { email: { value: "student@example.test" } }
+    }
+  });
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest: () => ({ dataset: { courseAuthoringAction: "confirm-action-confirmation" } })
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(root.innerHTML, /confirmar a mesma operação/u);
+
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "show-list" } }) }
+  });
+  assert.equal(
+    locationValue.hash,
+    buildCourseAuthoringRoute(COURSE_ID, { section: "people" })
+  );
+  assert.equal(surface.handleBack(), true);
+  assert.equal(surface.close(), "deferred");
+  assert.equal(surface.opened, true);
+  assert.equal(closed, 0);
+
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "cancel-grant" } }) }
+  });
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "show-list" } }) }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(locationValue.hash, "");
+  assert.match(root.innerHTML, /<h1>Meus cursos<\/h1>/u);
 });
 
 test("Estrutura lê um único outline e nunca carrega composição", async () => {
@@ -2233,7 +2723,7 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
   assert.doesNotMatch(revokedRoot.innerHTML, /not found/u);
 });
 
-test("renderer escapa conteúdo e CSS mantém enquadramento mobile-first sem rolagem aninhada", async () => {
+test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de página", async () => {
   const page = normalizeCourseListPage({
     items: [{ courseId: COURSE_ID, title: "<script>alert(1)</script>" }],
     hasMore: false,
@@ -2250,19 +2740,41 @@ test("renderer escapa conteúdo e CSS mantém enquadramento mobile-first sem rol
   assert.match(markup, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u);
 
   const css = await readFile(new URL("../../public/course-authoring.css", import.meta.url), "utf8");
+  const surfaceSource = await readFile(
+    new URL("../../src/ui/CourseAuthoringSurface.js", import.meta.url),
+    "utf8"
+  );
   assert.match(css, /\.course-authoring-surface \{[\s\S]*?box-sizing: border-box/u);
-  assert.match(css, /width: min\(100%, 760px\)/u);
-  assert.match(css, /width: min\(100%, 430px\)/u);
+  assert.match(
+    css,
+    /\.course-authoring-root \{[\s\S]*?height: 100dvh;[\s\S]*?overflow-y: auto;[\s\S]*?overflow-x: clip;[\s\S]*?scrollbar-gutter: stable;[\s\S]*?overscroll-behavior: contain;/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-surface \{[\s\S]*?width: min\(100%, 430px\);[\s\S]*?max-width: 430px;/u
+  );
+  assert.match(css, /\.course-authoring-frame \{[\s\S]*?max-width: 430px;/u);
   assert.match(css, /@media \(max-width: 380px\)/u);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/u);
-  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/u);
-  assert.match(css, /-webkit-line-clamp: 4/u);
+  assert.match(css, /\.course-authoring-primary-navigation \{[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/u);
+  assert.match(
+    css,
+    /\.course-authoring-course-header \{[\s\S]*?grid-template-columns: var\(--tap\) minmax\(0, 1fr\) var\(--tap\)/u
+  );
+  assert.doesNotMatch(css, /-webkit-line-clamp: 4/u);
+  assert.doesNotMatch(css, /\.course-authoring-sections\.has-standard/u);
   assert.match(css, /min-height: var\(--tap\)/u);
-  assert.doesNotMatch(css, /width: min\(100%, (?:560|620)px\)/u);
-  assert.doesNotMatch(css, /overflow-y/iu);
+  assert.doesNotMatch(css, /width: min\(100%, (?:560|620|720|760|820|1180)px\)/u);
+  assert.doesNotMatch(css, /@media \(min-width: (?:640|680|900)px\)/u);
+  assert.doesNotMatch(css, /course-authoring-sidebar-navigation/u);
+  assert.doesNotMatch(
+    surfaceSource,
+    /globalThis\.confirm|confirmValue/u,
+    "A Autoria deve usar confirmações próprias, com foco e contexto preservados."
+  );
 });
 
-test("Curso próprio expõe Auditoria, Variantes e Pesquisa sem embutir dados no envelope", () => {
+test("Curso próprio revela nove capacidades em quatro destinos compactos", () => {
   const course = {
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -2282,11 +2794,28 @@ test("Curso próprio expõe Auditoria, Variantes e Pesquisa sem embutir dados no
     sourceTarget: null
   });
 
-  assert.match(markup, /class="course-authoring-sections has-standard"/u);
+  assert.match(markup, /class="course-authoring-sections"/u);
+  assert.match(markup, /class="course-authoring-primary-navigation"/u);
+  assert.equal((markup.match(/<details class="course-authoring-area-menu/g) || []).length, 4);
+  assert.match(markup, /data-authoring-destination="course"/u);
+  assert.match(markup, /data-authoring-destination="review"/u);
+  assert.match(markup, /data-authoring-destination="research"/u);
+  assert.match(markup, /data-authoring-destination="people"/u);
+  assert.match(markup, /<summary aria-label="Curso: Fontes" title="Curso: Fontes"><svg/u);
+  const summaries = [...markup.matchAll(/<summary[^>]*>[\s\S]*?<\/summary>/gu)]
+    .map(([summary]) => summary);
+  assert.equal(summaries.length, 4);
+  assert.ok(summaries.every((summary) => !summary.includes("<span>")));
+  assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
+  assert.match(markup, /<span>Planejamento<\/span>/u);
+  assert.match(markup, /<span>Estrutura<\/span>/u);
+  assert.match(markup, /<span>Parâmetros<\/span>/u);
   assert.match(markup, /<span>Fontes<\/span>/u);
-  assert.match(markup, /<span>Auditoria e correções<\/span>/u);
+  assert.match(markup, /<span>Inspeção<\/span>/u);
+  assert.match(markup, /<span>Discussões e correções<\/span>/u);
   assert.match(markup, /<span>Variantes<\/span>/u);
   assert.match(markup, /<span>Pesquisa<\/span>/u);
+  assert.match(markup, /<span>Pessoas<\/span>/u);
   assert.match(markup, /data-course-sources-host/u);
   assert.doesNotMatch(markup, /studyUnit\.sources/u);
 });

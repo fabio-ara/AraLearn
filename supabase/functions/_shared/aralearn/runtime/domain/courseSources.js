@@ -579,7 +579,9 @@ export function normalizeCourseSourceCommand(value) {
   };
 }
 
-export function normalizeSourceAttributionApplications(value) {
+export function normalizeSourceAttributionApplications(value, {
+  allowLegacyCarry = false
+} = {}) {
   if (!Array.isArray(value) || value.length > 64) {
     fail("invalid_course_source_attribution_applications", "As aplicações de proveniência precisam formar uma lista de até 64 itens.");
   }
@@ -591,7 +593,12 @@ export function normalizeSourceAttributionApplications(value) {
       fail("duplicate_course_source_attribution_application", "A aplicação repete uma Unidade de estudo.");
     }
     ids.add(studyUnitId);
-    return { studyUnitId, sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks) };
+    return {
+      studyUnitId,
+      sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks, {
+        allowLegacyIds: allowLegacyCarry
+      })
+    };
   });
   byteBound(applications, 196608, "course_source_attribution_applications_too_large", "As aplicações de proveniência");
   return applications;

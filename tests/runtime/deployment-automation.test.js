@@ -3,8 +3,9 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
 import { fileURLToPath } from "node:url";
+import test from "node:test";
+import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntimeSecurity.js";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const packageManifest = JSON.parse(fs.readFileSync(
@@ -102,21 +103,27 @@ function parseJsonOutput(result) {
   return JSON.parse(result.stdout);
 }
 
-function writeSafeArtifact(root) {
+function writeSafeArtifact(root, { nativeAssistBridge = false } = {}) {
   fs.mkdirSync(root, { recursive: true });
   fs.writeFileSync(
     path.join(root, "runtime-config.js"),
     `globalThis.__ARALEARN_ENV__ = ${JSON.stringify({
       supabaseUrl: "https://abcdefghijklmnopqrst.supabase.co",
-      supabasePublishableKey: publishableKey
+      supabasePublishableKey: publishableKey,
+      assistAllowedOrigins: DEFAULT_ASSIST_ALLOWED_ORIGINS,
+      ...(nativeAssistBridge ? { nativeAssistBridge: true } : {})
     })};\n`,
     "utf8"
   );
   fs.writeFileSync(
     path.join(root, "index.html"),
-    `<!doctype html><meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://abcdefghijklmnopqrst.supabase.co;">\n`,
+    `<!doctype html><meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://abcdefghijklmnopqrst.supabase.co ${DEFAULT_ASSIST_ALLOWED_ORIGINS.join(" ")};">\n`,
     "utf8"
   );
+}
+
+function writeSafeAndroidArtifact(root) {
+  writeSafeArtifact(root, { nativeAssistBridge: true });
 }
 
 function packApk(
@@ -427,7 +434,8 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260820101500");
+  assert.equal(manifest.schemaRevision, "20260820224424");
+  assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
@@ -583,7 +591,9 @@ test("verificação bloqueia segredo, catálogo embarcado e CSP ampla sem imprim
     writeSafeArtifact(temporaryRoot);
     const servicePayload = Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url");
     const serviceToken = `eyJhbGciOiJIUzI1NiJ9.${servicePayload}.signature-not-a-secret`;
+    const providerToken = `sk-proj-${"A".repeat(40)}`;
     fs.writeFileSync(path.join(temporaryRoot, "application.js"), `const credential = "${serviceToken}";`, "utf8");
+    fs.writeFileSync(path.join(temporaryRoot, "provider.js"), `const credential = "${providerToken}";`, "utf8");
     fs.writeFileSync(path.join(temporaryRoot, "catalog-courses.json"), "{}", "utf8");
     fs.writeFileSync(
       path.join(temporaryRoot, "index.html"),
@@ -596,9 +606,11 @@ test("verificação bloqueia segredo, catálogo embarcado e CSP ampla sem imprim
     const report = parseJsonOutput(result);
     const codes = new Set(report.issues.map((issue) => issue.code));
     assert.ok(codes.has("secret.service-role-jwt"));
+    assert.ok(codes.has("secret.language-provider"));
     assert.ok(codes.has("artifact.catalog"));
     assert.ok(codes.has("csp.wildcard"));
     assert.doesNotMatch(result.stdout, new RegExp(serviceToken.replaceAll(".", "\\.")));
+    assert.doesNotMatch(result.stdout, new RegExp(providerToken));
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -633,7 +645,7 @@ test("verificação aprova configuração e CSP válidas dentro do APK", {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-safe-"));
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot);
+      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
       fs.writeFileSync(path.join(publicRoot, "application.js"), "const runtime = 'oauth-mcp';\n", "utf8");
     });
 
@@ -675,7 +687,7 @@ test("verificação aprova a identidade atual e as duas saídas conhecidas do ap
     try {
       const apkPath = packApk(
         temporaryRoot,
-        writeSafeArtifact,
+        writeSafeAndroidArtifact,
         { fileName: "app-release.apk" }
       );
       const certificate = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296";
@@ -826,6 +838,34 @@ test("validação limpa e repete somente a inicialização local do Supabase", (
   );
 });
 
+test("validação local atravessa navegador, MCP OAuth, API, IndexedDB e Supabase real", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  assert.match(source, /Instalar dependências da integração local[\s\S]+?run: npm ci/u);
+  assert.match(
+    source,
+    /Instalar Chromium da integração local[\s\S]+?playwright install --with-deps chromium/u
+  );
+  assert.match(source, /functions serve --no-verify-jwt/u);
+  assert.doesNotMatch(source, /functions serve aralearn-authoring-mcp --no-verify-jwt/u);
+  assert.match(source, /--request GET[\s\S]+?"\$COURSE_API_URL"/u);
+  assert.match(source, /course_api_status" = 405/u);
+  assert.match(source, /"code":"method_not_allowed"/u);
+  assert.doesNotMatch(
+    source.slice(source.indexOf("Servir e testar o gateway MCP e a Autoria real")),
+    /--request OPTIONS/u
+  );
+  assert.match(source, /npm run test:authoring:mcp:local:oauth/u);
+  assert.match(source, /export ARALEARN_E2E_REAL_SUPABASE=1/u);
+  assert.match(source, /export ARALEARN_SUPABASE_URL="\$API_URL"/u);
+  assert.match(source, /export ARALEARN_SUPABASE_PUBLISHABLE_KEY="\$ANON_KEY"/u);
+  assert.match(source, /export SUPABASE_SERVICE_ROLE_KEY="\$SERVICE_ROLE_KEY"/u);
+  assert.match(source, /npm run test:authoring:supabase:e2e/u);
+  assert.ok(
+    source.indexOf("supabase@2.109.1 db reset") <
+      source.indexOf("npm run test:authoring:supabase:e2e")
+  );
+});
+
 test("Pages publica somente a revisão aprovada pela validação da main", () => {
   const source = fs.readFileSync(scripts.pagesWorkflow, "utf8");
   assert.match(source, /workflow_run:\s*\n\s*workflows:\s*\n\s*- Validar repositório/u);
@@ -882,6 +922,23 @@ test("validação do repositório usa permissão mínima", () => {
   assert.doesNotMatch(source, /contents: write|actions: write|pages: write|id-token: write/u);
 });
 
+test("PR conserva a prévia web e o APK debug sem promover uma release", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  const candidateOnly = /if: github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'/gu;
+  assert.equal(Array.from(source.matchAll(candidateOnly)).length, 2);
+  assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_URL: \$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/gu)).length, 2);
+  assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_PUBLISHABLE_KEY: \$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/gu)).length, 2);
+  assert.equal(Array.from(source.matchAll(/-RequireRuntimeConfig/gu)).length, 2);
+  assert.match(
+    source,
+    /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-pages-candidate\s*\n\s*path: \.pages\s*\n\s*include-hidden-files: true/u
+  );
+  assert.equal(Array.from(source.matchAll(/include-hidden-files: true/gu)).length, 1);
+  assert.match(source, /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-android-debug-candidate[\s\S]+path: android\/app\/build\/outputs\/apk\/debug\/app-debug\.apk/u);
+  assert.equal(Array.from(source.matchAll(/retention-days: 7/gu)).length, 2);
+  assert.doesNotMatch(source, /actions\/deploy-pages|gh release create|app-release\.apk/u);
+});
+
 test("workflows usam Actions mantidas sobre o runtime atual do GitHub", () => {
   const androidSource = fs.readFileSync(scripts.androidWorkflow, "utf8");
   const pagesSource = fs.readFileSync(scripts.pagesWorkflow, "utf8");
@@ -902,7 +959,7 @@ test("verificação reprova identidade ou certificado incompatíveis com atualiz
   try {
     const apkPath = packApk(
       temporaryRoot,
-      writeSafeArtifact,
+      writeSafeAndroidArtifact,
       { fileName: "app-release.apk" }
     );
     const result = runScript(
@@ -933,7 +990,7 @@ test("verificação inspeciona o runtime aninhado e bloqueia a API estática", {
   try {
     const apkPath = packApk(
       temporaryRoot,
-      writeSafeArtifact,
+      writeSafeAndroidArtifact,
       {
         legacySurfaceText:
           [
@@ -962,7 +1019,7 @@ test("verificação reprova APK sem configuração pública", {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-no-config-"));
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot);
+      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
       fs.rmSync(path.join(publicRoot, "runtime-config.js"));
     });
 
@@ -984,12 +1041,16 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-bad-config-"));
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot);
+      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
       fs.writeFileSync(
         path.join(publicRoot, "runtime-config.js"),
         `globalThis.__ARALEARN_ENV__ = ${JSON.stringify({
           supabaseUrl: "https://abcdefghijklmnopqrst.supabase.co",
-          supabasePublishableKey: "invalid-public-key"
+          supabasePublishableKey: "invalid-public-key",
+          assistAllowedOrigins: [
+            ...DEFAULT_ASSIST_ALLOWED_ORIGINS,
+            "https://api.openai.com"
+          ]
         })};\n`,
         "utf8"
       );
@@ -1008,7 +1069,10 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
     assert.notEqual(result.status, 0);
     const codes = new Set(parseJsonOutput(result).issues.map((issue) => issue.code));
     assert.ok(codes.has("config.publishable-key"));
+    assert.ok(codes.has("config.assist-origins"));
+    assert.ok(codes.has("config.native-assist-bridge"));
     assert.ok(codes.has("csp.origin"));
+    assert.ok(codes.has("csp.assist-origin"));
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -1022,7 +1086,7 @@ test("verificação bloqueia segredos administrativos dentro do APK", {
     const servicePayload = Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url");
     const serviceToken = `eyJhbGciOiJIUzI1NiJ9.${servicePayload}.packaged-service-token`;
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot);
+      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
       fs.writeFileSync(
         path.join(publicRoot, "application.js"),
         `const serverKey = "${serviceToken}";`,

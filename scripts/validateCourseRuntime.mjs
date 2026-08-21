@@ -36,7 +36,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-variant-comparisons-v1",
   "course-variant-comparison-list-v1",
   "course-authoring-analytics-v1",
-  "course-variant-factual-comparison-v1"
+  "course-variant-factual-comparison-v1",
+  "contextual-study-unit-edit-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -45,6 +46,7 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "src/domain/courseAuditCycle.js",
   "src/domain/courseAuthoringAnalytics.js",
   "src/domain/courseAuthoringPlan.js",
+  "src/domain/courseComposition.js",
   "src/domain/courseDesignParameters.js",
   "src/domain/courseEntities.js",
   "src/domain/courseSources.js",
@@ -240,7 +242,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260820101500" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260820224424" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -286,6 +288,9 @@ async function validateManifest() {
   const avatarPathMigration = await read(
     "supabase/migrations/20260820101500_fix_person_avatar_path_validation.sql"
   );
+  const contextualCompositionMigration = await read(
+    "supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
@@ -322,7 +327,22 @@ async function validateManifest() {
       ) ||
       !completeVariantComparisonMigration.includes("'schemaRevision','20260820065720'") ||
       !avatarPathMigration.includes("$advance_person_avatar_path_runtime_manifest$") ||
-      !avatarPathMigration.includes("to_jsonb('20260820101500'::text)")) {
+      !avatarPathMigration.includes("to_jsonb('20260820101500'::text)") ||
+      !contextualCompositionMigration.includes(
+        "$advance_contextual_composition_manifest$"
+      ) ||
+      !contextualCompositionMigration.includes(
+        "to_jsonb('20260820224424'::text)"
+      ) ||
+      !contextualCompositionMigration.includes(
+        "contextual-study-unit-edit-v1"
+      ) ||
+      !contextualCompositionMigration.includes(
+        "if p_channel = 'mcp' then"
+      ) ||
+      !contextualCompositionMigration.includes(
+        "return v_result - 'channel' - 'applicationOrigin'"
+      )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
   for (const feature of REQUIRED_FEATURES) {
@@ -339,7 +359,8 @@ async function validateManifest() {
         !sourcePdfMigration.includes(`'${feature}'`) &&
         !authoringAnalyticsMigration.includes(`'${feature}'`) &&
         !completeVariantComparisonMigration.includes(`'${feature}'`) &&
-        !avatarPathMigration.includes(`'${feature}'`)) {
+        !avatarPathMigration.includes(`'${feature}'`) &&
+        !contextualCompositionMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

@@ -1,13 +1,17 @@
 # Implantação do AraLearn
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
-de borda, site estático e aplicativo Android. O banco, as funções correntes, o
-site e o APK assinado da versão 0.0.23 são produzidos a partir da mesma revisão
-validada do Git e usam a revisão de esquema `20260820101500`.
+de borda, site estático e aplicativo Android. A revisão hospedada anteriormente
+comprovada era `20260820101500`. Esta entrega exige a revisão
+`20260820224424` e as funções de borda correspondentes antes de promover o site
+ou o APK. O contrato público das ferramentas e do recurso MCP permanece 0.0.23;
+a nova origem estruturada existe somente na rota autenticada do aplicativo.
 
-Essa revisão instala a identidade única de Curso, acesso direto somente para
+O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
-catálogo de 32 componentes didáticos.
+catálogo de 32 componentes didáticos. A revisão candidata acrescenta a gravação
+contextual de uma Unidade, com origem auditável e carga estrita da proveniência
+anterior; ela não reinstala a arquitetura anterior ao corte.
 
 Na atualização de 0.0.22 para 0.0.23, o contrato antigo permaneceu ativo
 enquanto a revisão nova entrou em `main` e concluiu a validação ampla. O corte
@@ -61,6 +65,38 @@ Site e APK recebem somente:
 ARALEARN_SUPABASE_URL
 ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
+
+O artefato também publica `assistAllowedOrigins`, uma lista sem credenciais que
+precisa coincidir com `connect-src` na política de conteúdo. As origens padrão
+são somente `127.0.0.1`, `localhost` e `10.0.2.2`, na porta 4183, para o relay
+cuja credencial permanece fora do AraLearn. Não use curingas. Origens diretas de
+OpenAI, Gemini e DeepSeek só entram no runtime explícito de desenvolvimento,
+que também mostra o alerta de credencial descartável. Cada adaptador verifica
+que o provider escolhido corresponde à sua própria origem.
+
+Na montagem de Pages ou Android, `ARALEARN_ASSIST_ALLOWED_ORIGINS` não amplia
+essa lista: o artefato de produção ignora origens configuradas externamente, e o
+verificador reprova `developmentRuntime`, origem adicional, credencial ou campo
+inesperado. Somente o servidor local de desenvolvimento lê essa variável para
+um ensaio explícito.
+
+Para a chamada feita pelo navegador, `127.0.0.1` e `localhost` exigem
+`targetAddressSpace: "loopback"`; `10.0.2.2` exige `"local"`. Usar `local` para
+um endereço de loopback faz o navegador bloquear o relay. Essa classificação
+passou 21/21 verificações focais, mas o Pages ainda exige o ensaio real da
+permissão de acesso à rede local.
+
+Essa lista, sozinha, não cria paridade no APK de release. O WebView serve a
+aplicação por `https://appassets.androidplatform.net` e conserva
+`MIXED_CONTENT_NEVER_ALLOW`. A candidata encaminha somente a chamada ao relay
+local por uma ponte nativa Android, fixa em
+`http://127.0.0.1:4183/v1/chat/completions`, em vez de liberar conteúdo misto no
+WebView. Ela aceita somente POST JSON originado do quadro principal do aplicativo,
+sem credencial do navegador, limita pedido e resposta a 128 KiB, aplica espera
+de 45 segundos e propaga cancelamento. Não enfraqueça essa política nem habilite
+tráfego aberto como atalho. A compilação de depuração passou; a promoção ainda
+precisa instalar e exercer a ponte no APK de release, em dispositivo real, e
+provar o acesso à rede local a partir do Pages HTTPS.
 
 No GitHub, esses valores ficam em `Settings > Secrets and variables > Actions
 > Variables`. A chave precisa ser `sb_publishable_...` ou a chave pública
@@ -147,6 +183,11 @@ também exige inspeção do produto real. Verifique ao menos:
 - foco visível, navegação por teclado e tabela equivalente aos gráficos;
 - retomada após ficar sem rede e depois reconectar.
 
+Na Autoria, repita essa inspeção com a superfície centralizada e limitada a
+430 px também em 1280 px. A presença de uma tela larga não autoriza segunda
+coluna, dashboard ou variação exclusiva para desktop. Exercite também edição
+manual, prévia da assistência por API e retorno ao mesmo alvo.
+
 Uma captura isolada demonstra aparência naquele quadro. Interações, foco,
 rolagem e retomada precisam ser exercitados no navegador.
 
@@ -177,7 +218,7 @@ transação; divergência de resumo criptográfico ou recomposição provoca rev
 
 Depois da migração de identidade, repita `migration list` e `db push --dry-run`. O resultado deve
 estar em paridade com `supabase/runtime-manifest.json` na revisão
-`20260820101500`.
+`20260820224424`.
 
 ## Promoção do esquema e das Edge Functions
 
@@ -255,7 +296,7 @@ npm.cmd run deployment:verify-site -- --url https://<endereco-publicado>/
 
 ## Publicação do Android
 
-`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.23`. O
+`package.json` e `android/app/build.gradle.kts` precisam declarar `0.0.24`. O
 `versionCode` deve avançar em relação à publicação anterior. O APK usa a mesma
 URL e chave pública do site.
 
@@ -270,7 +311,7 @@ O fluxo `.github/workflows/android-release.yml` acompanha uma validação bem
 sucedida da ponta corrente de `main`. Ele confirma versão, estado da tag e da
 Release, configuração pública e identidade histórica de assinatura; repete
 testes e análise estática; produz o APK assinado; verifica o certificado; e cria
-a GitHub Release `v0.0.23` com `AraLearn-0.0.23.apk`.
+a GitHub Release `v0.0.24` com `AraLearn-0.0.24.apk`.
 
 Se `main` avançar durante a compilação, o fluxo não publica a revisão superada.
 Tag sem Release, Release parcial, rascunho, alvo divergente ou APK ausente
@@ -310,6 +351,13 @@ hospedadas e retire apenas pontos de entrada sem consumidor na revisão
 corrente. Repita o verificador do site, do manifesto e do MCP depois da
 retirada. Se o site novo não puder ser confirmado, não inicie essa etapa.
 
+Para a candidata 0.0.24, a etapa 7 inclui obrigatoriamente
+`20260820224424_canonical_study_unit_composition_edits.sql` e a implantação da
+API de Cursos que expõe a rota contextual. O verificador hospedado precisa
+observar `contextual-study-unit-edit-v1` antes de qualquer cliente 0.0.24 ser
+publicado. A versão pública do recurso e das seis ferramentas MCP pode continuar
+0.0.23 porque sua forma não mudou.
+
 ## Recuperação
 
 Uma falha antes do `db push` não altera o banco. Falha na migração transacional
@@ -343,3 +391,14 @@ do restante.
 | site | aprovado: Pages 0.0.23 e 122 recursos publicados verificados |
 | Android | aprovado: validação verde, certificado esperado e publicação `v0.0.23` com APK |
 | limpeza destrutiva | isolada: inventário, cópia anterior e restauração comprovados; remoção física não executada |
+
+## Estado da candidata 0.0.24
+
+| Critério | Estado antes da promoção |
+|---|---|
+| esquema e API | exigem `20260820224424` e as funções da mesma revisão; a última implantação hospedada comprovada ainda é `20260820101500` |
+| clientes | site e Android permanecem candidatos locais; backend deve ser promovido primeiro |
+| interface | limite de 430 px, quatro grupos progressivos, edição manual e assistência por API possuem cobertura local; inspeção final de capturas e execução integral ainda integram o gate |
+| relay da assistência | duas passagens HTTP locais aprovadas, a mais recente 1/1 em 14,2 s; a compilação Android de depuração e os 28/28 testes de implantação passaram, com ponte nativa presente no APK e ausente no Pages, sem relaxar `MIXED_CONTENT_NEVER_ALLOW`; instalação do APK de release, prova em dispositivo real e teste de acesso à rede local no Pages permanecem pendentes |
+| ChatGPT | a sessão hospedada precisa repetir materialização, retorno ao AraLearn, recurso visual e medidas disponíveis |
+| aceitação humana | pendente conforme o roteiro por descoberta de tarefas; nomes de áreas não são ensinados previamente |

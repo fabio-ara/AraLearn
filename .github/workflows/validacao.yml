@@ -56,18 +56,47 @@ jobs:
         run: npx playwright install chromium
 
       - name: Gerar e testar o artefato web no navegador
+        env:
+          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run test:e2e
 
       - name: Examinar o runtime web
         shell: pwsh
-        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages
+        run: >-
+          pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
+          -Target Pages -RequireRuntimeConfig
+
+      - name: Guardar prévia web da candidata
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-pages-candidate
+          path: .pages
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Compilar aplicativo Android
+        env:
+          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run android:debug
 
       - name: Examinar o runtime Android
         shell: pwsh
-        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
+        run: >-
+          pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
+          -Target Android -RequireRuntimeConfig
+
+      - name: Guardar APK de teste da candidata
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-android-debug-candidate
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Analisar aplicativo Android
         working-directory: android
@@ -88,6 +117,12 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+
+      - name: Instalar dependências da integração local
+        run: npm ci
+
+      - name: Instalar Chromium da integração local
+        run: npx playwright install --with-deps chromium
 
       - name: Preparar Deno
         uses: denoland/setup-deno@v2
@@ -303,35 +338,51 @@ jobs:
           set +a
           node ./supabase/tests/auth-email-smoke.mjs
 
-      - name: Servir e testar o gateway MCP de autoria
+      - name: Servir e testar o gateway MCP e a Autoria real
         shell: bash
         run: |
           set -a
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
-          npx --yes supabase@2.109.1 functions serve aralearn-authoring-mcp --no-verify-jwt > /tmp/aralearn-mcp.log 2>&1 &
-          MCP_PID=$!
-          cleanup_mcp() {
+          npx --yes supabase@2.109.1 functions serve --no-verify-jwt > /tmp/aralearn-functions.log 2>&1 &
+          FUNCTIONS_PID=$!
+          cleanup_functions() {
             status=$?
             if [ "$status" -ne 0 ]; then
-              echo "::group::Log do gateway MCP"
-              tail -n 400 /tmp/aralearn-mcp.log \
+              echo "::group::Log das Edge Functions de Curso"
+              tail -n 400 /tmp/aralearn-functions.log \
                 | sed -E 's/(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+/[credencial JWT omitida]/g'
               echo "::endgroup::"
             fi
-            kill "$MCP_PID" 2>/dev/null || true
+            kill "$FUNCTIONS_PID" 2>/dev/null || true
             exit "$status"
           }
-          trap cleanup_mcp EXIT
+          trap cleanup_functions EXIT
           MCP_METADATA_URL='http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource'
+          COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/app/listarCursos'
+          COURSE_API_PROBE_BODY='/tmp/aralearn-course-api-integrated-readiness.json'
+          COURSE_API_PROBE_HEADERS='/tmp/aralearn-course-api-integrated-readiness.headers'
           MCP_READY=false
+          COURSE_API_READY=false
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error --output /dev/null \
               "$MCP_METADATA_URL"; then
               MCP_READY=true
+            fi
+            course_api_status="$(curl --silent --output "$COURSE_API_PROBE_BODY" \
+              --dump-header "$COURSE_API_PROBE_HEADERS" --write-out '%{http_code}' \
+              --request GET --header 'Origin: http://127.0.0.1:4182' \
+              "$COURSE_API_URL" || true)"
+            if [ "$course_api_status" = 405 ] && \
+              grep --fixed-strings --quiet '"code":"method_not_allowed"' "$COURSE_API_PROBE_BODY" && \
+              grep --ignore-case --fixed-strings --quiet \
+                'content-type: application/json; charset=utf-8' "$COURSE_API_PROBE_HEADERS"; then
+              COURSE_API_READY=true
+            fi
+            if [ "$MCP_READY" = true ] && [ "$COURSE_API_READY" = true ]; then
               break
             fi
-            if ! kill -0 "$MCP_PID" 2>/dev/null; then
+            if ! kill -0 "$FUNCTIONS_PID" 2>/dev/null; then
               break
             fi
             sleep 1
@@ -340,7 +391,16 @@ jobs:
             echo "O endpoint de metadata OAuth do MCP não ficou pronto após 60 tentativas." >&2
             exit 1
           fi
+          if [ "$COURSE_API_READY" != true ]; then
+            echo "A API de Curso não ficou pronta junto ao MCP após 60 tentativas." >&2
+            exit 1
+          fi
           npm run test:authoring:mcp:local:oauth
+          export ARALEARN_E2E_REAL_SUPABASE=1
+          export ARALEARN_SUPABASE_URL="$API_URL"
+          export ARALEARN_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          npm run test:authoring:supabase:e2e
 
       - name: Encerrar stack Supabase
         if: always()

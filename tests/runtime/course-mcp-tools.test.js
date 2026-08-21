@@ -368,6 +368,65 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
     sourceAttributionApplications: []
   });
 
+  const broadApplicationComposition = mapAuthoringApplicationToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "commit_course_composition",
+    upserts: [upsert],
+    deletes: [],
+    sourceAttributionApplications: []
+  });
+  assert.deepEqual(broadApplicationComposition.body, composition.body);
+
+  const applicationComposition = mapAuthoringApplicationToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    expectedStudyUnitVersion: 2,
+    applicationOrigin: "provider_assistance",
+    operation: "commit_course_composition",
+    upserts: [{
+      entityType: "study_unit",
+      entityId: "unit-a",
+      parentType: "microsequence",
+      parentId: "micro-a",
+      position: 1,
+      content: { title: "Unidade" }
+    }],
+    deletes: [],
+    sourceAttributionApplications: [{ studyUnitId: "unit-a", sourceLinks: [] }]
+  });
+  assert.equal(applicationComposition.body.expectedStudyUnitVersion, 2);
+  assert.equal(applicationComposition.body.applicationOrigin, "provider_assistance");
+  assert.throws(
+    () => mapAuthoringApplicationToolCall("alterarCurso", {
+      requestId: REQUEST_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      expectedStudyUnitVersion: 2,
+      operation: "commit_course_composition",
+      upserts: [upsert],
+      deletes: [],
+      sourceAttributionApplications: []
+    }),
+    (error) => error.code === "invalid_tool_argument"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("alterarCurso", {
+      requestId: REQUEST_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      expectedStudyUnitVersion: 2,
+      applicationOrigin: "manual",
+      operation: "commit_course_composition",
+      upserts: [],
+      deletes: [],
+      sourceAttributionApplications: []
+    }),
+    (error) => error.code === "unknown_tool_argument"
+  );
+
   const sourceCommand = {
     type: "set_target_sources",
     targetKind: "study_unit",

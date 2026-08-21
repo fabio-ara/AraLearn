@@ -5159,6 +5159,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:public.commit_course_composition_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_expected_study_unit_version bigint, p_upserts jsonb, p_deletes jsonb, p_source_attribution_applications jsonb, p_channel text, p_application_origin text, p_request_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.commit_course_composition_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_upserts jsonb, p_deletes jsonb, p_source_attribution_applications jsonb, p_request_id text)",
       "caseId": "course-authoring-experience"
     },

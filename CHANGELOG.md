@@ -4,6 +4,66 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+### Alterado
+
+- a candidata 0.0.24 limita toda a Autoria a 430 px, inclusive em telas de
+  1280 px, e distribui suas capacidades por quatro grupos progressivos em
+  ícones: Curso, Revisar, Pesquisa e Pessoas;
+- formulários preservam rascunho, seleção e foco ao atualizar dados, trocar de
+  área ou reencontrar a aplicação, sem retirar o acesso aos controles
+  avançados;
+- a edição manual contextual volta a atuar nas folhas textuais que cada
+  componente declara editáveis, tanto na Inspeção quanto em Estudo, usando a
+  Unidade de estudo, o renderer, a validação e a autorização correntes;
+- a assistência complementar por API usa, em produção, um relay local na porta
+  4183, com a credencial fora do AraLearn; chamadas diretas a providers e entrada
+  de chave aparecem somente no runtime explícito de desenvolvimento, com alerta;
+- o pedido dessa assistência omite identidades internas, PDFs, Fontes e outras
+  Unidades, leva apenas pedido, valores textuais editáveis, título, papel, tópicos
+  e mensagens anteriores e mostra a sugestão no renderer antes de salvar;
+- a resposta assistida usa `changes` esparso, com no máximo um caminho por
+  pedido e até 8.000 tokens de saída; trechos acima de 6.000 caracteres por
+  caminho ou 12.000 no contexto desabilitam a assistência com motivo acessível,
+  sem retirar a edição manual;
+- a interface reconcilia revisões recebidas depois de uma resposta ambígua e
+  repete comandos de escrita com a mesma identidade, evitando duplicação de
+  Cursos, Partes, Fontes, Âncoras, observações, variantes e rodadas de
+  auditoria;
+- o manifesto implantável avança para `20260820224424`; a nova operação
+  contextual registra origem manual ou por assistência, preserva a proveniência
+  histórica somente quando o conjunto anterior é carregado sem alteração e
+  exige promover banco e funções antes dos clientes.
+
+### Corrigido
+
+- confirmações da auditoria distinguem aplicação, reversão e descarte e
+  permanecem acessíveis por teclado, toque, clique externo e tecla Esc;
+- textos extensos, menus, barras de rolagem e áreas de toque permanecem
+  utilizáveis entre 360 e 430 px e em telas de computador;
+- um recibo 2xx de edição contextual promove imediatamente no IndexedDB o
+  snapshot confirmado e o documento `course.v1` antes de invalidar as projeções,
+  sem repetir a escrita e preservando progresso, Observações e posição; Estudo e
+  Inspeção o leem sem rede, enquanto releitura igual o normaliza, revisão
+  superior o substitui e logout, limpeza ou revogação purgam a cópia;
+- a réplica IndexedDB acompanha também revisões observadas depois de alterações
+  pelo MCP e rebasa as versões esperadas antes de outra edição contextual, sem
+  perder seleção, progresso ou Observações;
+- sair ou encerrar destrói a superfície ativa e cancela chamadas ao provider
+  antes de apagar a sessão e fechar os armazenamentos; uma resposta tardia não
+  restaura sobreposição, callback, configuração ou credencial.
+- o relay do navegador classifica `127.0.0.1` e `localhost` como loopback e
+  `10.0.2.2` como rede local; a classificação anterior bloqueava a chamada real
+  ao endereço de loopback.
+
+### Limites atuais
+
+- o relay da assistência foi comprovado no ambiente HTTP local. A candidata
+  Android usa uma ponte nativa fixa para não depender de uma chamada HTTPS para
+  HTTP no WebView, sem relaxar `MIXED_CONTENT_NEVER_ALLOW`; Pages ainda precisa
+  do ensaio real de acesso à rede local; a compilação Android de depuração passou,
+  mas a paridade depende do APK de release instalado e do ensaio em dispositivo
+  real.
+
 ## [0.0.23] - 2026-08-20
 
 ### Adicionado

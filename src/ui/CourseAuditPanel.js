@@ -23,6 +23,7 @@ import {
 } from "./courseAuthoringRoute.js";
 import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 
 const PAGE_SIZE = 12;
 const MAX_FINDING_PAGES = 1024;
@@ -110,6 +111,14 @@ const CRITERIA = Object.freeze({
     statement: "A redação e a representação são claras, consistentes e adequadas ao contexto."
   })
 });
+const AUDIT_DRAFT_CONTROL_SELECTOR = [
+  "[name]",
+  "[data-audit-edit-field]",
+  "[data-audit-source-ref]",
+  "[data-audit-plan-ref]",
+  "[data-audit-parameter-ref]",
+  "[data-audit-annotation-ref]"
+].join(",");
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -274,6 +283,89 @@ function renderBadges(finding) {
     "</div>";
 }
 
+function renderAuditChatButton(state, action, accessibleLabel) {
+  if (!state.requestChatEnabled) return "";
+  return '<button type="button" class="course-authoring-header-action"' +
+    ` data-audit-action="${escapeHtml(action)}" aria-label="${escapeHtml(accessibleLabel)}"` +
+    ` title="ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`;
+}
+
+function recordDraftId(context) {
+  return `record:${context.contextHash}`;
+}
+
+function verificationDraftId(finding, correction) {
+  return `verify:${finding.findingId}:${finding.findingVersion}:` +
+    `${correction.correctionId}:${correction.correctionVersion}`;
+}
+
+function correctionDraftId(editor) {
+  return `correction:${editor.correctionId}:${editor.expectedCorrectionVersion}`;
+}
+
+function namedDraftKey(name) {
+  return `name:${name}`;
+}
+
+function editFieldDraftKey(key) {
+  return `edit:${key}`;
+}
+
+function sourceDraftKey({
+  dimension,
+  sourceId,
+  sourceRevision,
+  anchorId,
+  anchorRevision
+}) {
+  return `source:${dimension}:${sourceId}:${sourceRevision}:${anchorId}:${anchorRevision}`;
+}
+
+function planDraftKey({ dimension, planItemId, planVersion }) {
+  return `plan:${dimension}:${planItemId}:${planVersion}`;
+}
+
+function parameterDraftKey({ dimension, parameterId, changeId }) {
+  return `parameter:${dimension}:${parameterId}:${changeId || ""}`;
+}
+
+function annotationDraftKey({ annotationId, annotationVersion }) {
+  return `annotation:${annotationId}:${annotationVersion}`;
+}
+
+function auditDraftControlKey(control) {
+  if (typeof control?.name === "string" && control.name) return namedDraftKey(control.name);
+  const data = control?.dataset || {};
+  if (data.auditEditField !== undefined) return editFieldDraftKey(data.auditEditField);
+  if (data.auditSourceRef !== undefined) return sourceDraftKey(data);
+  if (data.auditPlanRef !== undefined) return planDraftKey(data);
+  if (data.auditParameterRef !== undefined) return parameterDraftKey(data);
+  if (data.auditAnnotationRef !== undefined) return annotationDraftKey(data);
+  return null;
+}
+
+function draftControl(draft, key) {
+  return draft?.controls?.get?.(key) || null;
+}
+
+function draftValue(draft, key, fallback = "") {
+  const control = draftControl(draft, key);
+  return control ? control.value : String(fallback ?? "");
+}
+
+function draftChecked(draft, key, fallback = false) {
+  const control = draftControl(draft, key);
+  return control ? control.checked : fallback;
+}
+
+function selectedAttribute(value, expected) {
+  return value === expected ? " selected" : "";
+}
+
+function checkedAttribute(value) {
+  return value ? " checked" : "";
+}
+
 function renderFindingCard(finding, courseId) {
   return `<article class="course-audit-finding-card" data-audit-finding-id="${escapeHtml(finding.findingId)}">` +
     '<header><div>' + renderBadges(finding) +
@@ -345,41 +437,79 @@ function renderCheck(check, context, courseId) {
     renderPlanAndParameterReferences(check, context) + "</div></section>";
 }
 
-function renderContextReferenceChoices(context, dimension) {
+function renderContextReferenceChoices(context, dimension, draft) {
   const sourceChoices = dimension === "factual_quality"
     ? context.sources.flatMap((source) => source.anchors
       .filter((anchor) => source.status === "active" && anchor.status === "active")
-      .map((anchor) => '<label class="course-audit-reference-choice">' +
-        `<input type="checkbox" data-audit-source-ref data-dimension="${dimension}"` +
-        ` data-source-id="${escapeHtml(source.sourceId)}" data-source-revision="${source.sourceRevision}"` +
-        ` data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.anchorRevision}">` +
-        `<span>${escapeHtml(source.title)} · Âncora ${escapeHtml(anchor.anchorId)}</span></label>`)).join("")
+      .map((anchor) => {
+        const key = sourceDraftKey({
+          dimension,
+          sourceId: source.sourceId,
+          sourceRevision: source.sourceRevision,
+          anchorId: anchor.anchorId,
+          anchorRevision: anchor.anchorRevision
+        });
+        return '<label class="course-audit-reference-choice">' +
+          `<input type="checkbox" data-audit-source-ref data-dimension="${dimension}"` +
+          ` data-source-id="${escapeHtml(source.sourceId)}" data-source-revision="${source.sourceRevision}"` +
+          ` data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.anchorRevision}"` +
+          `${checkedAttribute(draftChecked(draft, key))}>` +
+          `<span>${escapeHtml(source.title)} · Âncora ${escapeHtml(anchor.anchorId)}</span></label>`;
+      })).join("")
     : "";
-  const planChoices = context.plan.items.map((item) =>
-    '<label class="course-audit-reference-choice">' +
-    `<input type="checkbox" data-audit-plan-ref data-dimension="${dimension}"` +
-    ` data-plan-item-id="${escapeHtml(item.planItemId)}" data-plan-version="${item.version}">` +
-    `<span>${escapeHtml(item.statement)}</span></label>`).join("");
-  const parameterChoices = context.design.parameters.map((parameter) =>
-    '<label class="course-audit-reference-choice">' +
-    `<input type="checkbox" data-audit-parameter-ref data-dimension="${dimension}"` +
-    ` data-parameter-id="${escapeHtml(parameter.parameterId)}"` +
-    ` data-change-id="${escapeHtml(parameter.changeId ?? "")}">` +
-    `<span>${escapeHtml(parameter.parameterId)} · ${escapeHtml(summaryValue(parameter.value))}</span></label>`).join("");
-  return '<details class="course-audit-form-references"><summary>Vincular contexto ao critério</summary>' +
+  const planChoices = context.plan.items.map((item) => {
+    const key = planDraftKey({
+      dimension,
+      planItemId: item.planItemId,
+      planVersion: item.version
+    });
+    return '<label class="course-audit-reference-choice">' +
+      `<input type="checkbox" data-audit-plan-ref data-dimension="${dimension}"` +
+      ` data-plan-item-id="${escapeHtml(item.planItemId)}" data-plan-version="${item.version}"` +
+      `${checkedAttribute(draftChecked(draft, key))}>` +
+      `<span>${escapeHtml(item.statement)}</span></label>`;
+  }).join("");
+  const parameterChoices = context.design.parameters.map((parameter) => {
+    const key = parameterDraftKey({
+      dimension,
+      parameterId: parameter.parameterId,
+      changeId: parameter.changeId
+    });
+    return '<label class="course-audit-reference-choice">' +
+      `<input type="checkbox" data-audit-parameter-ref data-dimension="${dimension}"` +
+      ` data-parameter-id="${escapeHtml(parameter.parameterId)}"` +
+      ` data-change-id="${escapeHtml(parameter.changeId ?? "")}"` +
+      `${checkedAttribute(draftChecked(draft, key))}>` +
+      `<span>${escapeHtml(parameter.parameterId)} · ${escapeHtml(summaryValue(parameter.value))}</span></label>`;
+  }).join("");
+  const detailsOpen = draft?.referenceDetailsOpen?.has?.(dimension) ? " open" : "";
+  return `<details class="course-audit-form-references" data-audit-reference-details="${dimension}"${detailsOpen}>` +
+    "<summary>Vincular contexto ao critério</summary>" +
     (sourceChoices ? `<fieldset><legend>Fontes e Âncoras exatas</legend>${sourceChoices}</fieldset>` : "") +
     `<fieldset><legend>Itens do plano</legend>${planChoices || "Nenhum item disponível."}</fieldset>` +
     `<fieldset><legend>Parâmetros efetivos</legend>${parameterChoices || "Nenhum parâmetro disponível."}</fieldset>` +
     "</details>";
 }
 
-function renderChecksForm(context, { verification = false, finding = null, correction = null } = {}) {
+function renderChecksForm(context, {
+  verification = false,
+  finding = null,
+  correction = null,
+  draft = null
+} = {}) {
+  const draftId = verification
+    ? verificationDraftId(finding, correction)
+    : recordDraftId(context);
   const annotations = context.annotations.length
     ? '<fieldset class="course-audit-form-annotations"><legend>Observações que originaram o contexto</legend>' +
-      context.annotations.map((annotation) => '<label class="course-audit-reference-choice">' +
-        `<input type="checkbox" data-audit-annotation-ref data-annotation-id="${escapeHtml(annotation.annotationId)}"` +
-        ` data-annotation-version="${annotation.annotationVersion}" checked>` +
-        `<span>${escapeHtml(annotation.briefSummary || annotation.rawText || annotation.annotationId)}</span></label>`).join("") +
+      context.annotations.map((annotation) => {
+        const key = annotationDraftKey(annotation);
+        return '<label class="course-audit-reference-choice">' +
+          `<input type="checkbox" data-audit-annotation-ref data-annotation-id="${escapeHtml(annotation.annotationId)}"` +
+          ` data-annotation-version="${annotation.annotationVersion}"` +
+          `${checkedAttribute(draftChecked(draft, key, true))}>` +
+          `<span>${escapeHtml(annotation.briefSummary || annotation.rawText || annotation.annotationId)}</span></label>`;
+      }).join("") +
       "</fieldset>"
     : "";
   const checks = COURSE_AUDIT_HUMAN_DIMENSIONS.map((dimension) => {
@@ -388,34 +518,49 @@ function renderChecksForm(context, { verification = false, finding = null, corre
       : null;
     const criterion = focalCriterion || { ...CRITERIA[dimension], version: "1" };
     const locked = focalCriterion ? " readonly aria-readonly=\"true\"" : "";
+    const code = draftValue(draft, namedDraftKey(`criterion-code:${dimension}`), criterion.code);
+    const version = draftValue(draft, namedDraftKey(`criterion-version:${dimension}`), criterion.version);
+    const statement = draftValue(
+      draft,
+      namedDraftKey(`criterion-statement:${dimension}`),
+      criterion.statement
+    );
+    const selectedResult = draftValue(draft, namedDraftKey(`result:${dimension}`), "not_checked");
+    const evidence = draftValue(
+      draft,
+      namedDraftKey(`evidence:${dimension}`),
+      "Não verificado nesta rodada."
+    );
+    const selectedSeverity = draftValue(draft, namedDraftKey(`severity:${dimension}`), "medium");
     return `<fieldset class="course-audit-check-form" data-audit-check-dimension="${dimension}">` +
       `<legend>${escapeHtml(label("dimensions", dimension))}</legend>` +
-      `<label><span>Código do critério</span><input name="criterion-code:${dimension}" required maxlength="120" value="${escapeHtml(criterion.code)}"${locked}></label>` +
-      `<input type="hidden" name="criterion-version:${dimension}" value="${escapeHtml(criterion.version)}">` +
-      `<label><span>Critério público</span><textarea name="criterion-statement:${dimension}" required maxlength="1000"${locked}>${escapeHtml(criterion.statement)}</textarea></label>` +
+      `<label><span>Código do critério</span><input name="criterion-code:${dimension}" required maxlength="120" value="${escapeHtml(code)}"${locked}></label>` +
+      `<input type="hidden" name="criterion-version:${dimension}" value="${escapeHtml(version)}">` +
+      `<label><span>Critério público</span><textarea name="criterion-statement:${dimension}" required maxlength="1000"${locked}>${escapeHtml(statement)}</textarea></label>` +
       (focalCriterion
         ? `<p class="course-audit-meta">Critério focal preservado na versão ${escapeHtml(criterion.version)}.</p>`
         : "") +
       `<label><span>Resultado</span><select name="result:${dimension}">` +
       COURSE_AUDIT_RESULTS.map((result) =>
-        `<option value="${result}"${result === "not_checked" ? " selected" : ""}>${escapeHtml(label("results", result))}</option>`
+        `<option value="${result}"${selectedAttribute(result, selectedResult)}>${escapeHtml(label("results", result))}</option>`
       ).join("") + "</select></label>" +
       `<label><span>${verification ? "Evidência desta verificação" : "Evidência pública"}</span>` +
-      `<textarea name="evidence:${dimension}" required maxlength="2000">Não verificado nesta rodada.</textarea></label>` +
+      `<textarea name="evidence:${dimension}" required maxlength="2000">${escapeHtml(evidence)}</textarea></label>` +
       (!verification
         ? `<label><span>Gravidade se houver achado</span><select name="severity:${dimension}">` +
           COURSE_AUDIT_SEVERITIES.map((severity) =>
-            `<option value="${severity}"${severity === "medium" ? " selected" : ""}>${escapeHtml(label("severities", severity))}</option>`
+            `<option value="${severity}"${selectedAttribute(severity, selectedSeverity)}>${escapeHtml(label("severities", severity))}</option>`
           ).join("") + "</select></label>"
-        : "") + renderContextReferenceChoices(context, dimension) + "</fieldset>";
+        : "") + renderContextReferenceChoices(context, dimension, draft) + "</fieldset>";
   }).join("");
   const verificationFields = verification
     ? '<label><span>Conclusão da verificação</span><select name="verification-outcome">' +
-      '<option value="still_open">O achado continua aberto</option>' +
-      '<option value="resolved">O achado foi resolvido</option></select></label>' +
+      `<option value="still_open"${selectedAttribute("still_open", draftValue(draft, namedDraftKey("verification-outcome"), "still_open"))}>O achado continua aberto</option>` +
+      `<option value="resolved"${selectedAttribute("resolved", draftValue(draft, namedDraftKey("verification-outcome"), "still_open"))}>O achado foi resolvido</option></select></label>` +
       `<p class="course-audit-meta">Achado v${finding.findingVersion} · correção v${correction.correctionVersion}</p>`
     : "";
-  return `<form class="course-audit-round-form" data-audit-form="${verification ? "verify" : "record"}">` +
+  return `<form class="course-audit-round-form" data-audit-form="${verification ? "verify" : "record"}"` +
+    ` data-audit-draft-id="${escapeHtml(draftId)}">` +
     `<header><div><h3>${verification ? "Verificar correção" : "Registrar auditoria"}</h3>` +
     `<p>${verification ? "Uma nova rodada mede o estado atual." : "Os três critérios humanos são explícitos; o servidor acrescenta a conformidade estrutural."}</p></div></header>` +
     annotations + checks + verificationFields +
@@ -446,7 +591,7 @@ function renderContext(state) {
     `<div class="course-audit-preview-grid is-single">${preview(snapshot, target, "Estado atual")}</div>` +
     '<p class="course-audit-structural-note">A interface registra três dimensões humanas. A conformidade estrutural é medida pelo servidor; uma necessidade de dividir a Unidade permanece como achado aberto no v1.</p>' +
     (state.recordOpen
-      ? renderChecksForm(context)
+      ? renderChecksForm(context, { draft: state.formDrafts.get(recordDraftId(context)) })
       : `<div class="course-audit-actions"><button type="button" class="is-primary" data-audit-action="open-record"${disabled(state)}>Registrar auditoria</button></div>`) +
     "</section>";
 }
@@ -501,7 +646,13 @@ function renderCorrection(state, detail) {
   return '<section class="course-audit-correction" data-audit-correction-id="' +
     escapeHtml(correction.correctionId) + '"><header><div><p class="course-audit-caption">Correção autoral</p>' +
     `<h3>${escapeHtml(label("correctionStates", correction.status))} · v${correction.correctionVersion}</h3></div>` +
-    `<span class="course-audit-badge">Base v${correction.target.baseVersion}</span></header>` +
+    '<div class="course-authoring-header-actions">' +
+    `<span class="course-audit-badge">Base v${correction.target.baseVersion}</span>` +
+    renderAuditChatButton(
+      state,
+      "request-chat-correction",
+      `Trabalhar com o ChatGPT sobre a correção v${correction.correctionVersion}`
+    ) + "</div></header>" +
     `<p>${escapeHtml(correction.rationale)}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(correction.deepLink, state.courseId, "Link da correção") + "</div>" +
@@ -562,7 +713,13 @@ function renderDetail(state) {
   return '<section class="course-audit-detail" data-audit-detail-id="' + escapeHtml(finding.findingId) + '">' +
     '<header class="course-audit-detail-heading"><div><p class="course-audit-caption">Achado preservado</p>' +
     `<h3>${escapeHtml(finding.code)}</h3>${renderBadges(finding)}</div>` +
-    '<button type="button" data-audit-action="back-findings">Voltar aos achados</button></header>' +
+    '<div class="course-authoring-header-actions">' +
+    renderAuditChatButton(
+      state,
+      "request-chat-finding",
+      `Trabalhar com o ChatGPT sobre o achado ${finding.code}`
+    ) +
+    '<button type="button" data-audit-action="back-findings">Voltar aos achados</button></div></header>' +
     `<p class="course-audit-path">${escapeHtml(pathLabel(finding.target.path))}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(finding.deepLinks.detail, state.courseId, "Link do achado") +
@@ -576,7 +733,12 @@ function renderDetail(state) {
       : "") +
     renderCorrection(state, detail) + renderFindingActions(state, finding, correction) +
     (state.verifyOpen && state.detailContextPage?.context && correction
-      ? renderChecksForm(state.detailContextPage.context, { verification: true, finding, correction })
+      ? renderChecksForm(state.detailContextPage.context, {
+          verification: true,
+          finding,
+          correction,
+          draft: state.formDrafts.get(verificationDraftId(finding, correction))
+        })
       : "") + renderHistory(detail) + "</section>";
 }
 
@@ -676,7 +838,13 @@ function renderRunDetail(state) {
     `<p class="course-audit-caption">${escapeHtml(label("origins", run.origin))}</p>` +
     `<h3>${escapeHtml(label("runKinds", run.runKind))} · ${escapeHtml(formattedInstant(run.createdAt))}</h3>` +
     `<p class="course-audit-meta">${escapeHtml(run.method.id)} · v${escapeHtml(run.method.version)}</p></div>` +
-    '<button type="button" data-audit-action="back-runs">Voltar às rodadas</button></header>' +
+    '<div class="course-authoring-header-actions">' +
+    renderAuditChatButton(
+      state,
+      "request-chat-run",
+      "Trabalhar com o ChatGPT sobre esta rodada de auditoria"
+    ) +
+    '<button type="button" data-audit-action="back-runs">Voltar às rodadas</button></div></header>' +
     `<p class="course-audit-path">${escapeHtml(pathLabel(run.target.path))}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(selfLink, state.courseId, "Link da rodada") +
@@ -696,19 +864,49 @@ function renderRunDetail(state) {
 function renderEditor(state) {
   const editor = state.editor;
   if (!editor) return "";
+  const draftId = correctionDraftId(editor);
+  const draft = state.formDrafts.get(draftId);
   return '<div class="course-audit-editor-overlay" data-audit-editor-overlay>' +
     '<section class="course-audit-editor-sheet" role="dialog" aria-modal="true" aria-labelledby="course-audit-editor-title">' +
     `<header><p class="course-audit-caption">${editor.expectedCorrectionVersion ? "Ajuste versionado" : "Nova proposta"}</p>` +
     '<h3 id="course-audit-editor-title">Editar título e folhas da Unidade</h3>' +
     '<p>Somente campos declarados pelos packages reais podem ser alterados.</p></header>' +
-    '<form data-audit-form="correction"><div class="course-audit-editor-fields">' +
+    `<form data-audit-form="correction" data-audit-draft-id="${escapeHtml(draftId)}">` +
+    '<div class="course-audit-editor-fields">' +
     editor.fields.map((field) => '<label>' +
       `<span>${escapeHtml(field.label)} <small>${escapeHtml(field.slot === "study_unit" ? "Unidade" : field.slot)}</small></span>` +
-      `<textarea data-audit-edit-field="${escapeHtml(field.key)}"${field.preserveWhitespace ? ' class="preserve-whitespace"' : ""}>${escapeHtml(field.value)}</textarea></label>`
+      `<textarea data-audit-edit-field="${escapeHtml(field.key)}"${field.preserveWhitespace ? ' class="preserve-whitespace"' : ""}>` +
+      `${escapeHtml(draftValue(draft, editFieldDraftKey(field.key), field.value))}</textarea></label>`
     ).join("") + "</div>" +
-    `<label><span>Justificativa da correção</span><textarea name="rationale" required maxlength="2000">${escapeHtml(editor.rationale)}</textarea></label>` +
+    '<label><span>Justificativa da correção</span><textarea name="rationale" required maxlength="2000">' +
+    `${escapeHtml(draftValue(draft, namedDraftKey("rationale"), editor.rationale))}</textarea></label>` +
     '<div class="course-audit-editor-actions"><button type="button" data-audit-action="close-editor">Cancelar</button>' +
     `<button type="submit" class="is-primary"${disabled(state)}>Salvar proposta</button></div></form></section></div>`;
+}
+
+function renderAuditConfirmation(state) {
+  const confirmation = state.confirmation;
+  if (!confirmation) return "";
+  const tone = confirmation.tone || "secondary";
+  const buttonClass = tone === "danger"
+    ? "is-danger"
+    : tone === "primary"
+      ? "is-primary"
+      : "course-authoring-secondary";
+  const icon = confirmation.icon || "remove-state";
+  return '<div class="course-authoring-confirm-backdrop" data-audit-confirmation-backdrop>' +
+    '<section class="course-authoring-confirm-dialog" data-audit-confirmation role="alertdialog"' +
+    ` data-confirmation-tone="${escapeHtml(tone)}"` +
+    ' aria-modal="true" aria-labelledby="course-audit-confirmation-title"' +
+    ' aria-describedby="course-audit-confirmation-message">' +
+    `<h2 id="course-audit-confirmation-title">${escapeHtml(confirmation.title)}</h2>` +
+    `<p id="course-audit-confirmation-message">${escapeHtml(confirmation.message)}</p>` +
+    '<div class="course-authoring-confirm-actions">' +
+    '<button type="button" class="course-authoring-secondary" data-audit-action="cancel-confirmation">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
+    `<button type="button" class="${buttonClass}" data-audit-action="confirm-mutation"${state.busy ? " disabled" : ""}>` +
+    `${renderUiIcon(icon, "course-authoring-button-icon")}<span>${escapeHtml(confirmation.confirmLabel)}</span>` +
+    "</button></div></section></div>";
 }
 
 function renderAuditView(state) {
@@ -743,7 +941,7 @@ function renderAuditView(state) {
           return `<li><a href="${escapeHtml(href)}" data-audit-action="navigate-deep-link">` +
             `${escapeHtml(label)}</a><span>Observação v${suggestion.annotationVersion}</span></li>`;
         }).join("") + "</ul></section>"
-      : "") + content + renderEditor(state);
+      : "") + content + renderAuditConfirmation(state) + renderEditor(state);
 }
 
 function formValue(form, name) {
@@ -806,6 +1004,33 @@ function annotationRefsFromForm(form) {
   }));
 }
 
+function auditMutationOperationDraft(command) {
+  const draft = structuredClone(command);
+  if (["record_audit", "verify_finding"].includes(draft.type)) {
+    draft.auditRunId = "<generated-audit-run>";
+    const checkIds = new Map((draft.checks || []).map(({ checkId }, index) => [
+      checkId,
+      `<generated-check-${index}>`
+    ]));
+    draft.checks = (draft.checks || []).map((check, index) => ({
+      ...check,
+      checkId: checkIds.get(check.checkId) || `<generated-check-${index}>`
+    }));
+    if (draft.type === "record_audit") {
+      draft.findings = (draft.findings || []).map((finding, index) => ({
+        ...finding,
+        findingId: `<generated-finding-${index}>`,
+        checkId: checkIds.get(finding.checkId) || finding.checkId
+      }));
+    }
+  }
+  if (draft.type === "propose_authoring_correction" &&
+      draft.expectedCorrectionVersion === 0) {
+    draft.correctionId = "<generated-correction>";
+  }
+  return draft;
+}
+
 export function createCourseAuditPanel({
   root,
   controller,
@@ -813,9 +1038,10 @@ export function createCourseAuditPanel({
   routeTarget = null,
   onNavigate = () => {},
   onCourseRevisionChange = () => {},
+  onRequestChat = null,
   navigatorValue = globalThis.navigator || null,
   windowValue = globalThis.window || null,
-  confirmValue = globalThis.confirm?.bind(globalThis) || (() => false)
+  documentValue = root?.ownerDocument || globalThis.document || null
 } = {}) {
   if (!root || typeof root.addEventListener !== "function" ||
       typeof controller?.loadCourseAuditCycle !== "function" ||
@@ -823,7 +1049,8 @@ export function createCourseAuditPanel({
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
       routeTarget && !["anchored_annotation", "audit_finding", "audit_run"].includes(routeTarget.kind) ||
-      typeof onNavigate !== "function" || typeof onCourseRevisionChange !== "function") {
+      typeof onNavigate !== "function" || typeof onCourseRevisionChange !== "function" ||
+      onRequestChat !== null && typeof onRequestChat !== "function") {
     throw new TypeError("Dependências de Auditoria e correções são inválidas.");
   }
 
@@ -839,6 +1066,7 @@ export function createCourseAuditPanel({
     destroyed: false,
     courseId: course.courseId,
     courseRevision: course.revision,
+    requestChatEnabled: typeof onRequestChat === "function",
     routeTarget,
     activeView: ["audit_finding", "audit_run"].includes(routeTarget?.kind)
       ? "findings"
@@ -876,7 +1104,11 @@ export function createCourseAuditPanel({
     recordOpen: false,
     verifyOpen: false,
     editor: null,
+    formDrafts: new Map(),
+    dirtyDraftIds: new Set(),
+    draftFocus: null,
     pendingMutation: null,
+    confirmation: null,
     suggestedAnnotationActions: []
   };
 
@@ -898,6 +1130,10 @@ export function createCourseAuditPanel({
     state.runDetailPage = null;
     state.detailContextPage = null;
     state.editor = null;
+    state.formDrafts.clear();
+    state.dirtyDraftIds.clear();
+    state.draftFocus = null;
+    state.confirmation = null;
     state.verifyOpen = false;
     state.recordOpen = false;
     state.auditSetVersion = null;
@@ -910,10 +1146,111 @@ export function createCourseAuditPanel({
     }
   }
 
-  function renderAudit() {
+  function formForDraftControl(control) {
+    const form = control?.closest?.("[data-audit-form][data-audit-draft-id]") ||
+      control?.closest?.("[data-audit-form]");
+    return form?.dataset?.auditDraftId ? form : null;
+  }
+
+  function draftControlSnapshot(control) {
+    const type = String(control?.type || "").toLowerCase();
+    return {
+      value: String(control?.value ?? ""),
+      checked: ["checkbox", "radio"].includes(type) ? Boolean(control.checked) : false
+    };
+  }
+
+  function captureAuditFormDraft(form, focusControl = null) {
+    const draftId = form?.dataset?.auditDraftId;
+    if (!draftId) return null;
+    const previous = state.formDrafts.get(draftId);
+    const controls = new Map(previous?.controls || []);
+    for (const control of form.querySelectorAll?.(AUDIT_DRAFT_CONTROL_SELECTOR) || []) {
+      const key = auditDraftControlKey(control);
+      if (key) controls.set(key, draftControlSnapshot(control));
+    }
+    const referenceDetailsOpen = new Set();
+    for (const details of form.querySelectorAll?.("[data-audit-reference-details]") || []) {
+      if (details.open) referenceDetailsOpen.add(details.dataset.auditReferenceDetails);
+    }
+    state.formDrafts.set(draftId, { controls, referenceDetailsOpen });
+
+    const focusedKey = auditDraftControlKey(focusControl);
+    if (focusedKey) {
+      state.draftFocus = {
+        draftId,
+        controlKey: focusedKey,
+        selectionStart: Number.isInteger(focusControl.selectionStart)
+          ? focusControl.selectionStart
+          : null,
+        selectionEnd: Number.isInteger(focusControl.selectionEnd)
+          ? focusControl.selectionEnd
+          : null
+      };
+    }
+    return draftId;
+  }
+
+  function captureVisibleAuditDrafts() {
+    const activeElement = documentValue?.activeElement || null;
+    const activeForm = formForDraftControl(activeElement);
+    for (const form of auditHost?.querySelectorAll?.(
+      "[data-audit-form][data-audit-draft-id]"
+    ) || []) {
+      captureAuditFormDraft(form, form === activeForm ? activeElement : null);
+    }
+    if (activeElement && auditHost?.contains?.(activeElement) && !activeForm) {
+      state.draftFocus = null;
+    }
+  }
+
+  function restoreAuditDraftFocus() {
+    const focus = state.draftFocus;
+    if (!focus) return;
+    for (const form of auditHost?.querySelectorAll?.(
+      "[data-audit-form][data-audit-draft-id]"
+    ) || []) {
+      if (form.dataset.auditDraftId !== focus.draftId) continue;
+      const control = [...(form.querySelectorAll?.(AUDIT_DRAFT_CONTROL_SELECTOR) || [])]
+        .find((candidate) => auditDraftControlKey(candidate) === focus.controlKey);
+      if (!control) return;
+      control.focus?.({ preventScroll: true });
+      if (focus.selectionStart !== null && focus.selectionEnd !== null) {
+        try {
+          control.setSelectionRange?.(focus.selectionStart, focus.selectionEnd);
+        } catch {
+          // Controles sem seleção textual ainda recebem o foco restaurado.
+        }
+      }
+      return;
+    }
+  }
+
+  function clearFormDraft(draftId) {
+    if (!draftId) return;
+    state.formDrafts.delete(draftId);
+    state.dirtyDraftIds.delete(draftId);
+    if (state.draftFocus?.draftId === draftId) state.draftFocus = null;
+  }
+
+  function markFormDraftDirty(form) {
+    const draftId = form?.dataset?.auditDraftId;
+    if (draftId) state.dirtyDraftIds.add(draftId);
+  }
+
+  function clearFormDraftsByKind(kind) {
+    const prefix = `${kind}:`;
+    for (const draftId of state.formDrafts.keys()) {
+      if (draftId.startsWith(prefix)) clearFormDraft(draftId);
+    }
+  }
+
+  function renderAudit({ captureDrafts = true } = {}) {
     if (state.destroyed || !auditHost) return;
+    if (captureDrafts) captureVisibleAuditDrafts();
     auditHost.innerHTML = renderAuditView(state);
     auditHost.setAttribute?.("aria-busy", String(state.loading || state.busy));
+    restoreAuditDraftFocus();
     void hydrateCourseAuditStudyUnitPreviews(auditHost).catch((error) => {
       if (!state.destroyed) {
         state.error = `Uma prévia não pôde ser materializada: ${errorMessage(error)}`;
@@ -924,6 +1261,37 @@ export function createCourseAuditPanel({
         }
       }
     });
+  }
+
+  function focusAudit(selector) {
+    auditHost?.querySelector?.(selector)?.focus?.({ preventScroll: true });
+  }
+
+  function cancelConfirmation({ restoreFocus = true } = {}) {
+    const confirmation = state.confirmation;
+    if (!confirmation) return false;
+    state.confirmation = null;
+    renderAudit();
+    if (restoreFocus) focusAudit(confirmation.returnFocusSelector);
+    return true;
+  }
+
+  function requestConfirmation(confirmation) {
+    state.confirmation = confirmation;
+    renderAudit();
+    focusAudit('[data-audit-action="cancel-confirmation"]');
+  }
+
+  function confirmMutation() {
+    const confirmation = state.confirmation;
+    if (!confirmation || state.busy) return;
+    state.confirmation = null;
+    void runMutation(confirmation.input, confirmation.successMessage);
+  }
+
+  function handleDocumentClick(event) {
+    if (!state.confirmation || !event.target?.matches?.("[data-audit-confirmation-backdrop]")) return;
+    cancelConfirmation();
   }
 
   function syncView() {
@@ -947,13 +1315,15 @@ export function createCourseAuditPanel({
       routeTarget: state.routeTarget?.kind === "anchored_annotation" ? state.routeTarget : null,
       embedded: true,
       onNavigate,
+      onRequestChat,
+      locationValue: windowValue?.location || null,
       onAuditTarget({ studyUnitId, annotationId }) {
         state.activeView = "findings";
         state.mode = "context";
         syncView();
         void loadContext(studyUnitId, { annotationIds: annotationId ? [annotationId] : [], fresh: true });
       },
-      confirmValue
+      documentValue
     });
     return observationsPanel.open();
   }
@@ -1286,52 +1656,108 @@ export function createCourseAuditPanel({
   }
 
   async function refreshCurrentAfterMutation() {
+    const snapshot = {
+      mode: state.mode,
+      contextPage: state.contextPage,
+      contextAnnotationIds: state.contextAnnotationIds,
+      detailPage: state.detailPage,
+      runDetailPage: state.runDetailPage,
+      detailContextPage: state.detailContextPage,
+      detailContextError: state.detailContextError,
+      findingItems: state.findingItems,
+      summary: state.summary,
+      hasMore: state.hasMore,
+      nextCursor: state.nextCursor,
+      findingPageIndex: state.findingPageIndex,
+      findingPageCursors: state.findingPageCursors,
+      findingPageIds: state.findingPageIds,
+      recordOpen: state.recordOpen,
+      verifyOpen: state.verifyOpen,
+      editor: state.editor
+    };
+    let reconciled;
     if (state.mode === "detail" && state.detailPage?.query.findingId) {
-      return loadDetail(state.detailPage.query.findingId, {
+      reconciled = await loadDetail(state.detailPage.query.findingId, {
         correctionId: state.detailPage.detail?.selectedCorrection?.correctionId ||
           state.detailPage.query.correctionId
       });
-    }
-    if (state.mode === "context" && state.contextPage?.context) {
-      return loadContext(state.contextPage.context.target.studyUnitId, {
+    } else if (state.mode === "context" && state.contextPage?.context) {
+      reconciled = await loadContext(state.contextPage.context.target.studyUnitId, {
         annotationIds: state.contextAnnotationIds
       });
+    } else {
+      reconciled = await loadFindings();
     }
-    return loadFindings();
+    if (!reconciled && !state.destroyed) Object.assign(state, snapshot);
+    return reconciled;
   }
 
-  async function runMutation(input, message) {
+  function pendingMutationMatches(draftId, operationDraft) {
+    return state.pendingMutation?.draftId === draftId &&
+      JSON.stringify(state.pendingMutation.operationDraft) === JSON.stringify(operationDraft);
+  }
+
+  async function runMutation(input, message, {
+    draftId = null,
+    operationDraft = auditMutationOperationDraft(input.command)
+  } = {}) {
     const epoch = ++mutationEpoch;
+    const normalizedDraft = structuredClone(operationDraft);
+    const pending = pendingMutationMatches(draftId, normalizedDraft)
+      ? state.pendingMutation
+      : {
+          input: structuredClone(input),
+          message,
+          draftId,
+          operationDraft: normalizedDraft
+        };
     state.busy = true;
     state.error = "";
     state.message = "";
-    state.pendingMutation = { input: structuredClone(input), message };
+    state.pendingMutation = pending;
     renderAudit();
+    let mutationConfirmed = false;
+    const reconciliationNotice = state.mode === "findings" || state.mode === "runs"
+      ? "A lista será atualizada na próxima sincronização."
+      : "O detalhe será atualizado na próxima sincronização.";
     try {
       assertOnline();
       const change = normalizeCourseAuditCycleChange(
-        await controller.mutateCourseAuditCycle(input)
+        await controller.mutateCourseAuditCycle(structuredClone(pending.input))
       );
       if (state.destroyed || epoch !== mutationEpoch) return false;
-      if (change.courseId !== state.courseId || change.requestId !== input.requestId ||
+      if (change.courseId !== state.courseId ||
+          change.requestId !== pending.input.requestId ||
           change.courseRevision < state.courseRevision) {
         throw new TypeError("A confirmação da auditoria não corresponde ao comando.");
       }
+      mutationConfirmed = true;
       const revisionChanged = change.courseRevision !== state.courseRevision;
       state.courseRevision = change.courseRevision;
       state.auditSetVersion = change.auditSetVersion;
       state.suggestedAnnotationActions = change.suggestedAnnotationActions;
       state.pendingMutation = null;
+      clearFormDraft(pending.draftId);
       const confirmedMessage = change.changed
-        ? `${message} O Estudo só refletirá a observação do próprio estudante após recarregar; achados e evidências permanecem privados.`
+        ? `${pending.message} O Estudo só refletirá a observação do próprio estudante após recarregar; achados e evidências permanecem privados.`
         : "A operação já estava confirmada; nenhuma mudança adicional foi necessária.";
       if (revisionChanged) onCourseRevisionChange(change.courseRevision);
-      await refreshCurrentAfterMutation();
-      state.message = confirmedMessage;
+      const reconciled = await refreshCurrentAfterMutation();
+      state.error = "";
+      state.message = reconciled
+        ? confirmedMessage
+        : `${confirmedMessage} ${reconciliationNotice}`;
       renderAudit();
       return true;
     } catch (error) {
       if (state.destroyed || epoch !== mutationEpoch) return false;
+      if (mutationConfirmed) {
+        state.pendingMutation = null;
+        clearFormDraft(pending.draftId);
+        state.error = "";
+        state.message = `${pending.message} ${reconciliationNotice}`;
+        return true;
+      }
       if (!isAmbiguousNetworkFailure(error)) state.pendingMutation = null;
       if (isPrivacyFailure(error)) clearSensitiveAuditState();
       state.error = isAmbiguousNetworkFailure(error)
@@ -1348,6 +1774,92 @@ export function createCourseAuditPanel({
 
   function currentDetail() {
     return state.detailPage?.detail || null;
+  }
+
+  function deliverAuditChatRequest(descriptor) {
+    if (!state.requestChatEnabled || typeof onRequestChat !== "function") return false;
+    try {
+      void Promise.resolve(onRequestChat(descriptor)).catch((error) => {
+        if (state.destroyed) return;
+        state.error = errorMessage(error);
+        renderAudit();
+      });
+      return true;
+    } catch (error) {
+      state.error = errorMessage(error);
+      renderAudit();
+      return false;
+    }
+  }
+
+  function requestFindingChat() {
+    const finding = currentDetail()?.finding;
+    if (!finding) return false;
+    return deliverAuditChatRequest({
+      target: {
+        type: "audit_finding",
+        id: finding.findingId,
+        title: finding.code,
+        path: `${pathLabel(finding.target.path)} › Achado ${finding.code}`
+      },
+      action: "review",
+      instruction: "Releia o detalhe persistido deste achado, o critério, a evidência pública, as Fontes, " +
+        "Âncoras, Observações, a Unidade e suas versões. Explique divergências e discuta comigo sem " +
+        "alterar o Curso neste pedido.",
+      deepLink: buildCourseAuthoringRoute(state.courseId, {
+        section: "observations",
+        findingId: finding.findingId
+      }),
+      references: { auditRunId: finding.auditRun.auditRunId }
+    });
+  }
+
+  function requestCorrectionChat() {
+    const detail = currentDetail();
+    const finding = detail?.finding;
+    const correction = detail?.selectedCorrection;
+    if (!finding || !correction) return false;
+    return deliverAuditChatRequest({
+      target: {
+        type: "authoring_correction",
+        id: correction.correctionId,
+        title: `Correção v${correction.correctionVersion}`,
+        path: `${pathLabel(finding.target.path)} › Achado ${finding.code} › ` +
+          `Correção v${correction.correctionVersion}`
+      },
+      action: "review",
+      instruction: "Compare a justificativa, os checkpoints anterior e posterior, as Fontes, Âncoras e a " +
+        "versão corrente da Unidade. Explique riscos e divergências sem aplicar, rejeitar, reverter ou " +
+        "verificar a proposta neste pedido.",
+      deepLink: buildCourseAuthoringRoute(state.courseId, {
+        section: "observations",
+        findingId: finding.findingId,
+        correctionId: correction.correctionId
+      }),
+      references: { auditRunId: finding.auditRun.auditRunId }
+    });
+  }
+
+  function requestRunChat() {
+    const run = state.runDetailPage?.runDetail;
+    if (!run) return false;
+    return deliverAuditChatRequest({
+      target: {
+        type: "audit_run",
+        id: run.auditRunId,
+        title: label("runKinds", run.runKind),
+        path: `${pathLabel(run.target.path)} › ${formattedInstant(run.createdAt)}`
+      },
+      action: "review",
+      instruction: "Revise esta rodada preservada, seus critérios, evidências, resultados e achados. " +
+        "Compare a revisão auditada e a versão da Unidade com o estado corrente e discuta comigo sem " +
+        "alterar o Curso neste pedido.",
+      deepLink: buildCourseAuthoringRoute(state.courseId, {
+        section: "observations",
+        auditRunId: run.auditRunId
+      }),
+      references: { auditRunId: run.auditRunId }
+    });
   }
 
   async function openCorrectionEditor() {
@@ -1376,8 +1888,15 @@ export function createCourseAuditPanel({
       return;
     }
     try {
+      const pendingCorrection = state.pendingMutation?.input?.command;
+      const pendingCorrectionId = pendingCorrection?.type === "propose_authoring_correction" &&
+        pendingCorrection.findingId === finding.findingId &&
+        pendingCorrection.expectedFindingVersion === finding.findingVersion &&
+        pendingCorrection.expectedCorrectionVersion === (correction?.correctionVersion || 0)
+        ? pendingCorrection.correctionId
+        : null;
       state.editor = {
-        correctionId: correction?.correctionId || createUuid(),
+        correctionId: correction?.correctionId || pendingCorrectionId || createUuid(),
         expectedCorrectionVersion: correction?.correctionVersion || 0,
         baseContent: structuredClone(snapshot.content),
         sourceLinks: structuredClone(snapshot.sourceLinks),
@@ -1386,9 +1905,12 @@ export function createCourseAuditPanel({
         }),
         rationale: correction?.rationale || ""
       };
+      const hasDraft = state.formDrafts.has(correctionDraftId(state.editor));
       renderAudit();
-      globalThis.queueMicrotask?.(() =>
-        auditHost?.querySelector?.("[data-audit-edit-field]")?.focus?.());
+      if (!hasDraft) {
+        globalThis.queueMicrotask?.(() =>
+          auditHost?.querySelector?.("[data-audit-edit-field]")?.focus?.());
+      }
     } catch (error) {
       state.error = errorMessage(error);
       renderAudit();
@@ -1420,7 +1942,9 @@ export function createCourseAuditPanel({
         findings
       };
       state.recordOpen = false;
-      void runMutation(mutationInput(command), "Auditoria registrada.");
+      void runMutation(mutationInput(command), "Auditoria registrada.", {
+        draftId: form.dataset.auditDraftId || null
+      });
     } catch (error) {
       state.error = errorMessage(error);
       renderAudit();
@@ -1447,7 +1971,9 @@ export function createCourseAuditPanel({
         outcome: formValue(form, "verification-outcome")
       };
       state.verifyOpen = false;
-      void runMutation(mutationInput(command), "Verificação registrada.");
+      void runMutation(mutationInput(command), "Verificação registrada.", {
+        draftId: form.dataset.auditDraftId || null
+      });
     } catch (error) {
       state.error = errorMessage(error);
       renderAudit();
@@ -1477,7 +2003,7 @@ export function createCourseAuditPanel({
       state.editor = null;
       void runMutation(mutationInput(command), editor.expectedCorrectionVersion
         ? "Correção ajustada."
-        : "Correção proposta.");
+        : "Correção proposta.", { draftId: form.dataset.auditDraftId || null });
     } catch (error) {
       state.error = errorMessage(error);
       renderAudit();
@@ -1524,11 +2050,21 @@ export function createCourseAuditPanel({
     const node = event.target.closest?.("[data-audit-action]");
     if (!node || state.destroyed) return;
     const action = node.dataset.auditAction;
-    if (action === "navigate-deep-link") {
+    if (action === "cancel-confirmation") {
+      cancelConfirmation();
+    } else if (action === "confirm-mutation") {
+      confirmMutation();
+    } else if (action === "navigate-deep-link") {
       const hash = deepLinkHash(node.getAttribute("href"), state.courseId);
       if (!hash) return;
       event.preventDefault();
       onNavigate(hash);
+    } else if (action === "request-chat-finding") {
+      requestFindingChat();
+    } else if (action === "request-chat-correction") {
+      requestCorrectionChat();
+    } else if (action === "request-chat-run") {
+      requestRunChat();
     } else if (action === "load-more" && state.hasMore && !state.loading) {
       void loadFindings({ direction: "next" });
     } else if (action === "previous-findings" && state.findingPageIndex > 0 && !state.loading) {
@@ -1558,23 +2094,35 @@ export function createCourseAuditPanel({
       state.recordOpen = true;
       renderAudit();
     } else if (action === "cancel-round") {
+      if (state.recordOpen) clearFormDraftsByKind("record");
+      if (state.verifyOpen) clearFormDraftsByKind("verify");
       state.recordOpen = false;
       state.verifyOpen = false;
-      renderAudit();
+      renderAudit({ captureDrafts: false });
     } else if (action === "close-editor") {
+      if (state.editor) clearFormDraft(correctionDraftId(state.editor));
       state.editor = null;
-      renderAudit();
+      renderAudit({ captureDrafts: false });
     } else if (action === "open-correction-editor") {
       void openCorrectionEditor();
     } else if (action === "dismiss-finding") {
       const finding = currentDetail()?.finding;
-      if (finding && confirmValue("Dispensar este achado? A decisão ficará no histórico.")) {
-        void runMutation(mutationInput({
+      if (finding) {
+        requestConfirmation({
+          title: "Dispensar achado?",
+          message: "A decisão ficará no histórico.",
+          confirmLabel: "Dispensar",
+          tone: "secondary",
+          icon: "remove-state",
+          input: mutationInput({
           type: "decide_finding",
           findingId: finding.findingId,
           expectedFindingVersion: finding.findingVersion,
           decision: "dismiss"
-        }), "Achado dispensado.");
+          }),
+          successMessage: "Achado dispensado.",
+          returnFocusSelector: '[data-audit-action="dismiss-finding"]'
+        });
       }
     } else if (action === "reopen-finding") {
       const finding = currentDetail()?.finding;
@@ -1586,14 +2134,31 @@ export function createCourseAuditPanel({
       }), "Achado reaberto.");
     } else if (action === "reject-correction") {
       const command = refsCommand("reject_authoring_correction");
-      if (command && confirmValue("Rejeitar esta proposta? O achado continuará aberto.")) {
-        void runMutation(mutationInput(command), "Correção rejeitada; o achado permanece aberto.");
+      if (command) {
+        requestConfirmation({
+          title: "Rejeitar proposta?",
+          message: "O achado continuará aberto.",
+          confirmLabel: "Rejeitar",
+          tone: "danger",
+          icon: "trash",
+          input: mutationInput(command),
+          successMessage: "Correção rejeitada; o achado permanece aberto.",
+          returnFocusSelector: '[data-audit-action="reject-correction"]'
+        });
       }
     } else if (action === "apply-correction") {
       const command = refsCommand("apply_authoring_correction");
-      if (command && !isStructuralSplitFinding(currentDetail()?.finding) &&
-          confirmValue("Aplicar esta correção à Unidade atual?")) {
-        void runMutation(mutationInput(command), "Correção aplicada; verifique o resultado antes de resolver o achado.");
+      if (command && !isStructuralSplitFinding(currentDetail()?.finding)) {
+        requestConfirmation({
+          title: "Aplicar correção?",
+          message: "A proposta será aplicada à Unidade atual.",
+          confirmLabel: "Aplicar",
+          tone: "primary",
+          icon: "ready-state",
+          input: mutationInput(command),
+          successMessage: "Correção aplicada; verifique o resultado antes de resolver o achado.",
+          returnFocusSelector: '[data-audit-action="apply-correction"]'
+        });
       }
     } else if (action === "open-verification") {
       const detail = currentDetail();
@@ -1615,15 +2180,40 @@ export function createCourseAuditPanel({
       }
     } else if (action === "rollback-correction") {
       const command = refsCommand("rollback_authoring_correction");
-      if (command && confirmValue("Reverter esta aplicação para o checkpoint anterior?")) {
-        void runMutation(mutationInput(command), "Aplicação revertida.");
+      if (command) {
+        requestConfirmation({
+          title: "Reverter aplicação?",
+          message: "A Unidade voltará ao checkpoint anterior.",
+          confirmLabel: "Reverter",
+          tone: "secondary",
+          icon: "reset",
+          input: mutationInput(command),
+          successMessage: "Aplicação revertida.",
+          returnFocusSelector: '[data-audit-action="rollback-correction"]'
+        });
       }
     } else if (action === "retry-mutation" && state.pendingMutation) {
-      void runMutation(state.pendingMutation.input, state.pendingMutation.message);
+      void runMutation(state.pendingMutation.input, state.pendingMutation.message, {
+        draftId: state.pendingMutation.draftId,
+        operationDraft: state.pendingMutation.operationDraft
+      });
+    }
+  });
+
+  root.addEventListener("input", (event) => {
+    const form = formForDraftControl(event.target);
+    if (form) {
+      captureAuditFormDraft(form, event.target);
+      markFormDraftDirty(form);
     }
   });
 
   root.addEventListener("change", (event) => {
+    const form = formForDraftControl(event.target);
+    if (form) {
+      captureAuditFormDraft(form, event.target);
+      markFormDraftDirty(form);
+    }
     const filter = event.target.dataset?.auditFilter;
     if (!filter || !Object.hasOwn(state.filters, filter)) return;
     state.filters[filter] = event.target.value;
@@ -1634,6 +2224,7 @@ export function createCourseAuditPanel({
     const kind = event.target.dataset?.auditForm;
     if (!kind) return;
     event.preventDefault();
+    captureAuditFormDraft(event.target, documentValue?.activeElement || null);
     if (!state.networkOnline) {
       state.error = "Auditoria exige conexão de rede.";
       renderAudit();
@@ -1646,16 +2237,29 @@ export function createCourseAuditPanel({
 
   root.addEventListener("keydown", (event) => {
     const tab = event.target.closest?.("[data-audit-tab]");
-    if (tab && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+    if (state.confirmation && event.key === "Tab") {
+      trapAuthoringConfirmationTab({
+        event,
+        root: auditHost,
+        confirmationSelector: "[data-audit-confirmation]",
+        documentValue
+      });
+    } else if (event.key === "Escape" && cancelConfirmation()) {
+      event.preventDefault();
+      event.stopPropagation?.();
+    } else if (tab && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
       event.preventDefault();
       const view = tab.dataset.auditTab === "observations" ? "findings" : "observations";
       switchTab(view);
       root.querySelector?.(`[data-audit-tab="${view}"]`)?.focus?.();
     } else if (event.key === "Escape" && state.editor) {
+      clearFormDraft(correctionDraftId(state.editor));
       state.editor = null;
-      renderAudit();
+      renderAudit({ captureDrafts: false });
     }
   });
+
+  documentValue?.addEventListener?.("click", handleDocumentClick);
 
   function handleNetworkChange() {
     state.networkOnline = navigatorValue?.onLine !== false;
@@ -1691,8 +2295,18 @@ export function createCourseAuditPanel({
         });
   }
 
-  async function refresh() {
-    if (state.activeView === "observations") return observationsPanel?.refresh?.() || ensureObservations();
+  async function refresh(nextCourseRevision = state.courseRevision) {
+    const revision = Number(nextCourseRevision);
+    if (!Number.isSafeInteger(revision) || revision < 1) {
+      throw new TypeError("A revisão do Curso para atualizar a Auditoria é inválida.");
+    }
+    if (revision !== state.courseRevision) {
+      state.courseRevision = revision;
+      state.auditSetVersion = null;
+    }
+    if (state.activeView === "observations") {
+      return observationsPanel?.refresh?.(revision) || ensureObservations();
+    }
     if (state.mode === "detail" && state.detailPage?.query.findingId) {
       return loadDetail(state.detailPage.query.findingId, {
         correctionId: state.detailPage.query.correctionId,
@@ -1712,6 +2326,13 @@ export function createCourseAuditPanel({
     return loadFindings({ fresh: true });
   }
 
+  function hasPendingDraft() {
+    return Boolean(
+      state.pendingMutation || state.confirmation || state.dirtyDraftIds.size > 0 ||
+      observationsPanel?.hasPendingDraft?.()
+    );
+  }
+
   function destroy() {
     state.destroyed = true;
     ++listEpoch;
@@ -1721,10 +2342,11 @@ export function createCourseAuditPanel({
     ++mutationEpoch;
     observationsPanel?.destroy?.();
     observationsPanel = null;
+    documentValue?.removeEventListener?.("click", handleDocumentClick);
     windowValue?.removeEventListener?.("online", handleNetworkChange);
     windowValue?.removeEventListener?.("offline", handleNetworkChange);
     root.innerHTML = "";
   }
 
-  return Object.freeze({ open, refresh, destroy });
+  return Object.freeze({ open, refresh, hasPendingDraft, destroy });
 }

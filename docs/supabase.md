@@ -8,9 +8,11 @@ de usar a credencial administrativa.
 Na entrega 0.0.23, a ordem completa de publicação segue o roteiro de
 [Implantação](implantacao.md).
 
-O projeto hospedado está no plano Free, ativo na região `sa-east-1`, com
-PostgreSQL 17.6 e revisão de esquema `20260820101500`. Depois do corte, o banco
-ocupava 97.053.843 bytes e continha oito Cursos e 5.056 entidades correntes.
+Na última implantação verificada, o projeto hospedado estava no plano Free,
+ativo na região `sa-east-1`, com PostgreSQL 17.6 e revisão de esquema
+`20260820101500`. Depois daquele corte, o banco ocupava 97.053.843 bytes e
+continha oito Cursos e 5.056 entidades correntes. A promoção da edição
+contextual exige avançar esse ambiente para a revisão corrente descrita abaixo.
 
 ## Componentes usados
 
@@ -93,9 +95,22 @@ e [privilégios da API de dados](https://supabase.com/docs/guides/api/using-cust
 
 ## Migrações e manifesto
 
-Migrações versionadas ficam em `supabase/migrations/`. A revisão corrente é
-`20260820101500`. `supabase/runtime-manifest.json` associa essa revisão ao
-contrato 1 e às capacidades exigidas pelo aplicativo.
+Migrações versionadas ficam em `supabase/migrations/`. A revisão da candidata é
+`20260820224424`. `supabase/runtime-manifest.json` associa essa revisão ao
+contrato 1 e às capacidades exigidas pelo aplicativo, incluindo a edição
+contextual de Unidade de estudo.
+
+A migração `20260820224424_canonical_study_unit_composition_edits.sql` acrescenta
+uma forma de composição exclusiva do papel de servidor. Ela limita o canal do
+aplicativo a uma Unidade existente, exige revisões do Curso e da Unidade e
+registra `manual` ou `provider_assistance` no recibo e no evento. O canal MCP
+mantém a forma pública anterior de resposta.
+
+O mesmo contrato permite carregar a proveniência efetiva de uma edição textual
+somente quando o JSONB coincide com o conjunto anterior. Um vínculo novo ou
+alterado continua exigindo Fonte e Âncora ativas nas revisões exatas. A função
+restringe a execução ao `service_role`; `anon`, `authenticated` e `PUBLIC` não
+recebem essa capacidade.
 
 Uma mudança de banco completa deve conter:
 
@@ -154,6 +169,12 @@ prevista. Uma origem adicional precisa ser declarada durante a implantação.
 
 O fluxo de PDF também passa por esta função. Ela autoriza a fonte, aplica
 revisão e cotas, emite URL assinada e confirma o vínculo depois do envio.
+
+A edição manual e a sugestão aplicada ao rascunho usam a rota contextual de
+composição da mesma API. O navegador não chama a função SQL diretamente. A API
+valida a sessão; o adaptador envia a identidade comprovada, o canal
+`application`, a origem fechada e as versões esperadas. Conteúdo, atribuição de
+Fontes, revisão, evento e recibo pertencem à mesma transação.
 
 ## Servidor MCP
 
@@ -263,6 +284,11 @@ executa o teste OAuth hospedado. Funções substituídas podem permanecer
 implantadas durante a janela de atualização, mas deixam de ser compatíveis com
 o banco depois do corte. Sua retirada é explícita e ocorre somente depois da
 verificação do Pages novo.
+
+Para a candidata 0.0.24, o banco precisa chegar a `20260820224424` e as duas
+funções precisam ser implantadas e verificadas antes de promover Pages ou APK.
+Os clientes recusam o manifesto anterior; inverter essa ordem publicaria uma
+interface que anuncia edição contextual sem o contrato remoto correspondente.
 
 Uma nova origem pode ser acrescentada com `-AllowedOrigin`. O valor deve ser
 uma origem HTTPS sem caminho, consulta ou fragmento; HTTP é aceito somente em

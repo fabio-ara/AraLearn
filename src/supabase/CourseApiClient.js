@@ -28,6 +28,10 @@ import {
 } from "../domain/courseAuthoringAnalytics.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
+  normalizeFocalStudyUnitCompositionCommand,
+  normalizeFocalStudyUnitCompositionReceipt
+} from "../domain/courseComposition.js";
+import {
   COURSE_SOURCE_PDF_MAX_BYTES,
   COURSE_SOURCE_PDF_MEDIA_TYPE,
   normalizeCourseSourceAttachmentAccess,
@@ -1338,6 +1342,33 @@ export class CourseApiClient {
       title: requiredText(title, "Título do Curso", 300),
       objective: requiredText(objective, "Objetivo do Curso", 2_000)
     });
+  }
+
+  async commitCourseComposition(value = {}) {
+    const command = normalizeFocalStudyUnitCompositionCommand(value);
+    const { id: studyUnitId, position, ...content } = command.studyUnit;
+    const result = await this.executeCourseAction("alterarCurso", {
+      requestId: command.requestId,
+      courseId: command.courseId,
+      expectedRevision: command.expectedCourseRevision,
+      expectedStudyUnitVersion: command.expectedStudyUnitVersion,
+      operation: "commit_course_composition",
+      upserts: [{
+        entityType: "study_unit",
+        entityId: studyUnitId,
+        parentType: "microsequence",
+        parentId: command.didacticMicrosequenceId,
+        position,
+        content
+      }],
+      deletes: [],
+      sourceAttributionApplications: [{
+        studyUnitId,
+        sourceLinks: command.sourceLinks
+      }],
+      applicationOrigin: command.origin
+    });
+    return normalizeFocalStudyUnitCompositionReceipt(result, command);
   }
 
   mutateAuthoringPlan({

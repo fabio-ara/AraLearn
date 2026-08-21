@@ -3832,6 +3832,58 @@ input:-webkit-autofill:focus {
   background: transparent;
 }
 
+.study-manual-mode-actions {
+  align-self: flex-end;
+  margin: 0 0 4px;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+}
+
+.study-manual-mode-actions button {
+  width: var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+}
+
+.study-manual-mode-actions button[aria-pressed="true"] {
+  color: var(--action-primary-hover);
+  background: var(--surface-raised);
+}
+
+.study-manual-edit-dock {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0 var(--safe-bottom-tappable);
+}
+
+.study-manual-edit-dock p,
+.study-manual-status {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  overflow-wrap: anywhere;
+}
+
+.study-manual-edit-dock p [role="alert"] {
+  color: var(--status-danger);
+}
+
+.study-manual-edit-dock > div {
+  display: flex;
+  gap: 5px;
+}
+
+.study-manual-status {
+  min-height: 18px;
+  text-align: center;
+}
+
 .study-action-dock {
   position: relative;
   display: flex;

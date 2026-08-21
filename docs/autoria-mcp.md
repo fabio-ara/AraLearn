@@ -17,9 +17,32 @@ tarefa; o cliente escolhe a ferramenta, valida argumentos, chama o servidor e
 apresenta o resultado. O servidor continua responsável por identidade,
 propriedade, revisão, idempotência e invariantes.
 
-Na interface visual, **Copiar pedido para o ChatGPT** apenas transfere o texto.
-O AraLearn não apresenta essa cópia como execução. A geração e as chamadas MCP
-ocorrem no ChatGPT ou em outro cliente externo conectado pela pessoa.
+Na interface visual, a ação contextual **ChatGPT** abre um compositor. A pessoa
+confere o alvo e seu caminho, escolhe uma intenção compatível e edita o próprio
+argumento. Ao copiar, o AraLearn acrescenta Curso, revisão observada, identidade
+do alvo, endereço direto de retorno, referências pertinentes e limites de
+segurança. O AraLearn não apresenta essa cópia como execução. A geração e as
+chamadas MCP ocorrem no ChatGPT ou em outro cliente externo conectado pela
+pessoa.
+
+Curso, Módulo, Lição, Tópico, Microssequência, Unidade de estudo, Fonte, Âncora
+e Parte de autoria podem ser alvos de conversa. Planejar e preparar estrutura
+pertencem ao Curso ou à Parte; verificar Fonte pertence a Fonte ou Âncora;
+corrigir pertence à Unidade; materializar pertence à Parte. Revisar e discutir
+ficam disponíveis nos alvos em que ajudam a pessoa a argumentar sem iniciar uma
+alteração automática.
+
+Copiar ou cancelar não grava API, PostgreSQL, Storage ou IndexedDB. Depois de
+uma operação confirmada no cliente MCP, voltar à guia ou focalizar a janela do
+AraLearn atualiza o cabeçalho canônico e a área visível. A ação de atualização
+do cabeçalho oferece o mesmo caminho quando o navegador não sinaliza o retorno.
+Essa releitura não pede nova confirmação para uma alteração já confirmada no
+cliente.
+
+Se o compositor, uma confirmação ou um formulário estiver ativo, a releitura é
+adiada. O AraLearn conserva o argumento e os demais campos do rascunho e orienta
+a pessoa a concluir ou cancelar antes de atualizar. Esse adiamento não confirma
+nem desfaz uma operação no servidor.
 
 ## O que é MCP
 
@@ -386,6 +409,19 @@ cada Unidade incluída ou substituída, o pedido leva exatamente uma entrada em
 quando vazio. Entidades, atribuições, revisão, evento e recibo confirmam ou
 revertem juntos.
 
+A API do aplicativo reutiliza essa composição com uma forma mais estreita para
+a edição contextual: exatamente uma Unidade existente, nenhuma exclusão,
+versão esperada da Unidade e origem `manual` ou `provider_assistance`. O
+servidor registra canal e origem no recibo e no evento. A forma de resposta do
+canal MCP permanece inalterada e não recebe esses campos internos.
+
+Para repetir uma edição depois de resposta perdida, a interface conserva sob o
+mesmo `requestId` o conjunto de Fontes lido antes da primeira tentativa. A
+transação aceita referências históricas somente como carga JSONB idêntica da
+proveniência efetiva anterior; vínculo novo ou modificado continua exigindo
+Fonte e Âncora ativas. Essa regra não oferece ao MCP uma forma de criar
+`legacy_reference`.
+
 O início de uma materialização não aceita contexto declarado pelo cliente. O
 servidor resolve e sela parâmetros, orientações, política e atribuições de
 Fontes dos itens do plano para as Microssequências-alvo. O contexto
@@ -573,11 +609,30 @@ node --test tests/runtime/course-mcp-tools.test.js
 node --test tests/runtime/course-tool-executor.test.js
 node --test tests/runtime/course-router.test.js
 npm run test:authoring:mcp:local
+npm run test:authoring:mcp:local:oauth
+npm run test:authoring:supabase:e2e
 ```
 
-O teste integrado local exige Supabase iniciado e credenciais efêmeras. A
-verificação hospedada só deve ser executada depois que as migrações remotas
-estiverem em paridade com `supabase/runtime-manifest.json`.
+O último teste exige Supabase e todas as Edge Functions locais em execução,
+credenciais efêmeras e `ARALEARN_E2E_REAL_SUPABASE=1`. Ele atravessa a interface
+servida por `public/main.js`, IndexedDB, API de Cursos, PostgreSQL, Storage, RLS,
+registro e autorização OAuth com PKCE e chamadas MCP. A mesma jornada cria a
+estrutura mínima, vincula uma Microssequência à Parte, inicia uma materialização,
+registra a etapa de contexto, relê `part_materialization` e comprova a chegada do
+andamento à interface e ao IndexedDB. Abrir **Ver etapas** não envia nova escrita
+nem repete a confirmação já feita no cliente MCP. O teste encerra comprovando a
+remoção dos dados criados. A revisão candidata acrescenta à mesma jornada a
+edição manual, a assistência por relay, os eventos `manual` e
+`provider_assistance`, a releitura da API e do PostgreSQL e a promoção no
+IndexedDB; esse percurso passou novamente 1/1 em 14,2 segundos depois da
+correção da classificação do endereço local no navegador.
+
+Essa prova é local e automatizada. O relay foi exercitado sobre HTTP local; ela
+não comprova o acesso do Pages HTTPS à rede local nem a ponte nativa da candidata
+Android num APK instalado em dispositivo real. A verificação
+hospedada só deve ser executada depois que as migrações remotas estiverem em
+paridade com `supabase/runtime-manifest.json`; nenhuma dessas duas provas, por
+si, demonstra instalação pública ou usabilidade dentro do ChatGPT.
 
 ## Referências normativas e técnicas
 

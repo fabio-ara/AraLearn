@@ -197,10 +197,48 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-Quando um provedor externo de modelo de linguagem participa, o conteúdo enviado
-também fica sujeito às regras desse provedor. A pessoa deve evitar segredos e
-dados pessoais desnecessários, delimitar a finalidade e revisar a proposta
-antes de incorporá-la ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+Na assistência complementar de produção, o pedido sai do dispositivo somente
+para um relay em `127.0.0.1`, `localhost` ou `10.0.2.2`, na porta 4183. A chave
+do provider fica nesse relay e não entra no AraLearn. O aviso anterior à chamada
+enumera o conteúdo: pedido, valores textuais editáveis, título, papel, tópicos e
+mensagens anteriores daquela conversa. PDFs, Fontes, outras Unidades,
+`targetId`, `studyUnitId` e o restante do Curso não são enviados.
+
+O navegador classifica `127.0.0.1` e `localhost` como loopback e `10.0.2.2`
+como rede local ao pedir acesso. Essa informação de transporte não amplia o
+conteúdo enviado nem concede ao AraLearn acesso à credencial do relay.
+
+O aviso também informa que esses valores permanecem apenas na memória efêmera do
+AraLearn, mas podem ser encaminhados pelo relay e retidos pelo provider conforme
+os termos do serviço escolhido. A autorização ocorre por chamada, depois de a
+pessoa conferir o conteúdo enumerado.
+
+Essa fronteira foi comprovada em HTTP local. Pages ainda precisa do ensaio de
+acesso à rede local. A candidata Android retira a chamada HTTP do WebView por
+uma ponte nativa fixa no relay local e mantém `MIXED_CONTENT_NEVER_ALLOW`; o APK
+instalado ainda precisa comprovar esse percurso em dispositivo real. A limitação
+de transporte não autoriza relaxar a política de conteúdo misto nem mover a
+chave para o AraLearn.
+
+Um runtime explicitamente marcado como desenvolvimento pode permitir chamadas
+diretas a OpenAI, Gemini ou DeepSeek. Ele alerta que o navegador não protege
+chaves duradouras, orienta usar somente credencial descartável de teste, fixa cada
+provider à sua origem e envia a chave apenas no cabeçalho. A credencial direta
+permanece em memória até sair, recarregar ou encerrar a sessão; não entra no
+IndexedDB, no PostgreSQL, no Storage nem nos artefatos. Esse modo não é indicado
+como configuração de produção ou percurso para pessoas leigas.
+
+Ao sair da conta, o aplicativo destrói a superfície ativa e cancela a chamada ao
+provider antes de apagar a sessão e fechar os armazenamentos locais. Uma resposta
+tardia não pode executar callback, reabrir a sobreposição nem restaurar a
+configuração ou a credencial em memória. O cenário integrado `SIGNED_OUT`
+confirma aborto, ausência de callback tardio, remoção da sobreposição e da
+credencial e nenhum erro de página.
+
+Mesmo com esse recorte, o conteúdo enviado pelo relay ou pelo modo de
+desenvolvimento fica sujeito às regras do serviço efetivo. A pessoa deve evitar
+segredos e dados pessoais desnecessários, delimitar a finalidade e revisar a proposta antes de incorporá-la
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
 [UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
 ## Dados no dispositivo

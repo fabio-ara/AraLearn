@@ -1,5 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import {
+  DEFAULT_ASSIST_ALLOWED_ORIGINS,
+  readAssistAllowedOrigins
+} from "../src/assist/providerRuntimeSecurity.js";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -214,8 +218,27 @@ export function parsePublicRuntimeConfig(source) {
   if (!publishableKey.startsWith("sb_publishable_") && payload?.role !== "anon") {
     throw new Error("runtime-config.js não contém uma publishable key pública válida.");
   }
+  const allowedFields = new Set([
+    "supabaseUrl",
+    "supabasePublishableKey",
+    "assistAllowedOrigins"
+  ]);
+  const unexpectedFields = Object.keys(config || {}).filter((field) => !allowedFields.has(field));
+  if (unexpectedFields.length) {
+    throw new Error(
+      `runtime-config.js contém campos que não pertencem ao artefato Pages: ${unexpectedFields.join(", ")}.`
+    );
+  }
+  const assistAllowedOrigins = readAssistAllowedOrigins(config);
+  if (assistAllowedOrigins.length !== DEFAULT_ASSIST_ALLOWED_ORIGINS.length ||
+      DEFAULT_ASSIST_ALLOWED_ORIGINS.some((origin) => !assistAllowedOrigins.includes(origin))) {
+    throw new Error(
+      "runtime-config.js deve permitir somente as origens locais canônicas da assistência."
+    );
+  }
   return {
-    projectOrigin: projectUrl.origin
+    projectOrigin: projectUrl.origin,
+    assistAllowedOrigins
   };
 }
 
@@ -227,7 +250,7 @@ function readCsp(indexSource) {
   return content[1] || content[2];
 }
 
-export function validatePublishedCsp(indexSource, projectOrigin) {
+export function validatePublishedCsp(indexSource, projectOrigin, assistAllowedOrigins = []) {
   const csp = readCsp(indexSource);
   const connectDirective = csp
     .split(";")
@@ -241,7 +264,11 @@ export function validatePublishedCsp(indexSource, projectOrigin) {
   if (!sources.includes(projectOrigin)) {
     throw new Error("A CSP não permite a Project URL pública configurada.");
   }
-  const expectedSources = new Set(["'self'", projectOrigin]);
+  const expectedSources = new Set(["'self'", projectOrigin, ...assistAllowedOrigins]);
+  const missingAssistOrigins = assistAllowedOrigins.filter((origin) => !sources.includes(origin));
+  if (missingAssistOrigins.length) {
+    throw new Error("A CSP não contém todas as origens autorizadas para assistência.");
+  }
   const unexpectedSources = sources.filter((source) => !expectedSources.has(source));
   if (unexpectedSources.length) {
     throw new Error("A CSP permite uma origem que não consta da configuração pública.");
@@ -258,6 +285,11 @@ function assertNoSecrets(source, assetPath) {
   }
   if (/SUPABASE_(?:SERVICE_ROLE_KEY|DB_PASSWORD)\s*[=:]\s*["']?[A-Za-z0-9._-]{12,}/iu.test(source)) {
     throw new Error(`${assetPath} contém uma credencial administrativa.`);
+  }
+  if (/\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/gu.test(source) ||
+      /\bAIza[0-9A-Za-z_-]{30,}\b/gu.test(source) ||
+      /(?:OPENAI|GEMINI|GOOGLE|DEEPSEEK)_API_KEY\s*[=:]\s*["']?[A-Za-z0-9._-]{16,}/iu.test(source)) {
+    throw new Error(`${assetPath} contém uma credencial de serviço de linguagem.`);
   }
   const jwtCandidates = source.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gu) || [];
   if (jwtCandidates.some((candidate) => decodeJwtPayload(candidate)?.role === "service_role")) {
@@ -375,7 +407,11 @@ export async function verifyPublishedSite({
   const runtimeSource = await readSuccessfulText(runtimeResponse, "runtime-config.js");
   assertNoSecrets(runtimeSource, "runtime-config.js");
   const runtimeConfig = parsePublicRuntimeConfig(runtimeSource);
-  validatePublishedCsp(indexSource, runtimeConfig.projectOrigin);
+  validatePublishedCsp(
+    indexSource,
+    runtimeConfig.projectOrigin,
+    runtimeConfig.assistAllowedOrigins
+  );
 
   const manifestUrl = cacheBustedUrl(new URL("./asset-manifest.json", baseUrl), publicationCheck);
   const manifestResponse = await request(manifestUrl, { fetchImpl, waitImpl });

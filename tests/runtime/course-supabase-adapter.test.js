@@ -2677,7 +2677,7 @@ test("traduz concorrência do banco sem expor detalhes internos", async () => {
   const value = adapter(async () => json({ code: "40001", message: "private.secret" }, 400));
   await assert.rejects(
     () => value.commitCourseComposition({
-      principal: { actorId: USER_ID },
+      principal: { actorId: USER_ID, authenticationKind: "oauth" },
       courseId: COURSE_ID,
       requestId: "request-change-0001",
       expectedRevision: 2,
@@ -2715,7 +2715,7 @@ test("replay idempotente chega ao receipt mesmo após a revisão avançar", asyn
     assert.fail("Replay não deve reler as entidades da revisão anterior.");
   });
   const result = await value.commitCourseComposition({
-    principal: { actorId: USER_ID },
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
     courseId: COURSE_ID,
     requestId: "request-replay-0001",
     expectedRevision: 2,
@@ -3247,7 +3247,17 @@ test("encaminha somente o segmento alterado sem reler a composição integral", 
   const value = adapter(async (url, init) => {
     calls.push({ url, body: JSON.parse(init.body) });
     assert.match(url, /commit_course_composition_for_actor_v1$/u);
-    return json({ courseId: COURSE_ID, courseRevision: 3, changed: true });
+    return json({
+      courseId: COURSE_ID,
+      revision: 3,
+      operation: "commit_course_composition",
+      createdCount: 0,
+      updatedCount: 1,
+      upsertedCount: 1,
+      deletedCount: 0,
+      idempotent: false,
+      updatedAt: "2026-08-20T22:45:00.000Z"
+    });
   });
   const upserts = [{
     entityType: "module",
@@ -3257,8 +3267,8 @@ test("encaminha somente o segmento alterado sem reler a composição integral", 
     position: 0,
     content: { title: "Módulo A" }
   }];
-  await value.commitCourseComposition({
-    principal: { actorId: USER_ID },
+  const result = await value.commitCourseComposition({
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
     courseId: COURSE_ID,
     requestId: "request-change-segment-0001",
     expectedRevision: 2,
@@ -3269,6 +3279,129 @@ test("encaminha somente o segmento alterado sem reler a composição integral", 
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].body.p_upserts, upserts);
   assert.deepEqual(calls[0].body.p_source_attribution_applications, []);
+  assert.equal(calls[0].body.p_channel, "mcp");
+  assert.deepEqual(Object.keys(result).sort(), [
+    "courseId", "createdCount", "deepLink", "deletedCount", "idempotent",
+    "operation", "revision", "updatedAt", "updatedCount", "upsertedCount"
+  ]);
+});
+
+test("composição da aplicação deriva canal e aceita somente metadado fechado", async () => {
+  let rpc = null;
+  const sourceLinks = [{
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }, {
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }];
+  const value = adapter(async (url, init) => {
+    rpc = { url, body: JSON.parse(init.body) };
+    return json({
+      courseId: COURSE_ID,
+      revision: 5,
+      operation: "commit_course_composition",
+      createdCount: 0,
+      updatedCount: 1,
+      upsertedCount: 1,
+      deletedCount: 0,
+      idempotent: false,
+      updatedAt: "2026-08-20T22:45:00.000Z",
+      channel: "application",
+      applicationOrigin: "manual",
+      expectedStudyUnitVersion: 2
+    });
+  });
+  const input = {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-manual-edit-0001",
+    expectedRevision: 4,
+    expectedStudyUnitVersion: 2,
+    applicationOrigin: "manual",
+    upserts: [{
+      entityType: "study_unit",
+      entityId: "unit-a",
+      parentType: "microsequence",
+      parentId: "micro-a",
+      position: 1,
+      content: { title: "Unidade revista" }
+    }],
+    deletes: [],
+    sourceAttributionApplications: [{ studyUnitId: "unit-a", sourceLinks }]
+  };
+
+  const result = await value.commitCourseComposition(input);
+
+  assert.match(rpc.url, /commit_course_composition_for_actor_v1$/u);
+  assert.equal(rpc.body.p_channel, "application");
+  assert.equal(rpc.body.p_application_origin, "manual");
+  assert.equal(rpc.body.p_expected_study_unit_version, 2);
+  assert.deepEqual(
+    rpc.body.p_source_attribution_applications[0].sourceLinks,
+    sourceLinks
+  );
+  assert.equal(result.channel, "application");
+  assert.match(result.deepLink, /section=planning/u);
+
+  await assert.rejects(
+    () => value.commitCourseComposition({ ...input, applicationOrigin: "prompt livre" }),
+    (error) => error.code === "invalid_course_composition_origin"
+  );
+  await assert.rejects(
+    () => value.commitCourseComposition({
+      ...input,
+      principal: { actorId: USER_ID, authenticationKind: "oauth" }
+    }),
+    (error) => error.code === "invalid_course_composition_origin"
+  );
+});
+
+test("composição ampla da aplicação preserva o contrato sem metadados focais", async () => {
+  let rpc = null;
+  const value = adapter(async (url, init) => {
+    rpc = { url, body: JSON.parse(init.body) };
+    return json({
+      courseId: COURSE_ID,
+      revision: 3,
+      operation: "commit_course_composition",
+      createdCount: 1,
+      updatedCount: 0,
+      upsertedCount: 1,
+      deletedCount: 0,
+      idempotent: false,
+      updatedAt: "2026-08-20T22:45:00.000Z",
+      channel: "application",
+      applicationOrigin: null,
+      expectedStudyUnitVersion: null
+    });
+  });
+  const result = await value.commitCourseComposition({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-broad-application-composition-0001",
+    expectedRevision: 2,
+    upserts: [{
+      entityType: "module",
+      entityId: "module-a",
+      parentType: null,
+      parentId: null,
+      position: 0,
+      content: { title: "Módulo A" }
+    }],
+    deletes: [],
+    sourceAttributionApplications: []
+  });
+
+  assert.match(rpc.url, /commit_course_composition_for_actor_v1$/u);
+  assert.equal(rpc.body.p_channel, "application");
+  assert.equal(rpc.body.p_application_origin, null);
+  assert.equal(rpc.body.p_expected_study_unit_version, null);
+  assert.equal(result.revision, 3);
 });
 
 test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", async () => {

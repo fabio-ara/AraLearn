@@ -65,25 +65,66 @@ para reconhecer Cursos próprios e compartilhados sem baixar a composição
 inteira. Um toque abre o Curso; a ação de voltar retorna à lista sem criar uma
 identidade intermediária.
 
-No Curso próprio, a navegação apresenta nove áreas reais:
+No Curso próprio, a navegação parte de poucos destinos conceituais e revela as
+ações pelo objeto e pela tarefa correntes. Planejamento, Parâmetros, Fontes,
+Estrutura, Inspeção, Discussões e correções, Variantes, Pesquisa e Pessoas são
+capacidades do Curso, não nove áreas que precisam permanecer visíveis ou ser
+memorizadas.
 
-- **Planejamento** reúne o plano vivo, as Partes e a atividade pertinente;
-- **Parâmetros** mostra decisões de desenho, orientações e política de
-  componentes;
-- **Fontes** reúne metadados, Âncoras, vínculos de proveniência e PDFs;
-- **Estrutura** apresenta a hierarquia curricular;
-- **Inspeção** percorre Unidades de estudo na representação usada em Estudo;
-- **Auditoria e correções** acompanha observações, achados, propostas,
-  aplicação e verificação;
-- **Variantes** cria e compara Cursos de origem comum;
-- **Pesquisa** apresenta fatos de Autoria, gráficos, tabelas e exportação;
-- **Pessoas** controla o acesso direto ao Estudo.
+A barra compacta possui quatro grupos por ícone. **Curso** revela Estrutura,
+Planejamento, Parâmetros e Fontes. **Revisar** revela Inspeção, Observações,
+auditoria e correções. **Pesquisa** reúne Variantes, Analytics e fatos autorais.
+**Pessoas** administra o acesso direto ao Estudo. Uma ação situada também pode
+levar diretamente à capacidade necessária sem passar por essa organização.
 
-No celular, essas áreas formam uma faixa compacta e rolável. Apenas o destino
-selecionado ocupa a área principal. No computador, a composição permanece
-centrada e com largura de leitura contida; o espaço adicional não cria um
-painel administrativo paralelo. Rótulos extensos quebram linha dentro do espaço
-previsto, sem reduzir a área interativa ou deslocar controles vizinhos.
+Celular e computador usam a mesma composição de até 430 px, centralizada em
+telas maiores. Não existe barra lateral de desktop, segunda coluna, dashboard
+expandido nem canvas de 760 px. A Autoria possui um único rolador vertical;
+tabelas e comparações largas usam rolagem horizontal local.
+
+Uma ação frequente usa ícone conhecido, nome acessível e dica. A ação principal
+de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
+em controles progressivos, sem desaparecer do produto. Planejamento mostra
+primeiro a próxima ação, o objetivo e o estado das Partes; contexto, referências
+e organização avançada são abertos quando necessários.
+
+A ação contextual do ChatGPT abre um compositor sobre a área corrente, sem
+reconstruir o painel que a pessoa estava consultando. Ele mostra o alvo e o
+caminho hierárquico, limita a intenção às operações cabíveis naquele tipo de
+objeto e oferece um campo amplo para o argumento da pessoa autora. Identidade,
+revisão, endereço direto de retorno, referências e limites operacionais são
+acrescentados pelo AraLearn. A cópia não muda o Curso.
+
+Na Unidade, os comandos compactos de edição manual e assistência por API usam o
+mesmo renderer de Estudo e Inspeção. A edição realça apenas os textos que o
+componente autoriza. A assistência abre uma sobreposição de até 430 px, explica
+qual recorte sairá do aplicativo e permite alternar entre a sugestão e o
+conteúdo sem perder o alvo. Aplicar uma sugestão altera o rascunho; salvar a
+Unidade continua sendo uma decisão separada da pessoa autora.
+
+Em produção, a sobreposição apresenta **Serviço local** como informação fixa,
+modelo e pedido como campos principais e endpoint recolhido em **Conexão**. Se
+um valor editável ultrapassar 6.000 caracteres ou o contexto superar 12.000, o
+ícone da assistência fica desabilitado e seu nome acessível explica o motivo.
+A edição manual continua disponível, inclusive para código ou terminal extensos.
+
+O retorno de outra guia ou janela provoca a releitura do cabeçalho canônico e da
+área visível. Uma ação de atualização permanece disponível no cabeçalho para o
+caso em que o navegador não comunique a mudança de foco. Esse fluxo conserva o
+painel ativo e a posição útil, em vez de exigir que a pessoa reencontre o alvo.
+
+Um compositor, uma confirmação ou um formulário ativo bloqueia essa releitura
+até que a pessoa conclua ou cancele o rascunho. O texto e os campos preenchidos
+permanecem no documento, e uma mensagem explica por que a atualização foi
+adiada. Preservar o trabalho em curso tem precedência sobre substituir a área
+por uma revisão recém-lida.
+
+Recomposições internas seguem a mesma regra. Parâmetros, Fontes, Variantes,
+Observações, Inspeção e Auditoria conservam valores, detalhes progressivos e
+foco após validação local, atualização assíncrona ou falha de rede ambígua. Uma
+nova tentativa sem edição parte do formulário novamente apresentado e conserva
+o mesmo envelope idempotente; cancelar ou descartar limpa esse estado
+transitório de maneira explícita.
 
 O Estudo conserva navegação própria, com foco na Unidade atual, na prática e na
 retomada. Um Curso compartilhado concede Estudo, enquanto a Autoria permanece
@@ -127,10 +168,11 @@ mostra progresso, repetição segura por conteúdo, falha recuperável e uso da
 cota do Curso. A opção de baixar só aparece quando o servidor confirma acesso à
 revisão exata.
 
-Variantes usam comparação lado a lado quando há largura suficiente. No celular,
-a alternância conserva o mesmo aspecto das versões. Diferenças declaradas,
-observadas, imprevistas e factuais recebem nomes distintos, assim como dados
-ausentes e revisões que mudaram desde o ponto comum.
+Variantes usam a mesma composição estreita em qualquer largura. A pessoa alterna
+entre membros e seções sem abrir uma segunda coluna; tabelas comparativas que
+precisam conservar colunas possuem rolagem horizontal apenas dentro do próprio
+quadro. Diferenças declaradas, observadas, imprevistas e factuais recebem nomes
+distintos, assim como dados ausentes e revisões que mudaram desde o ponto comum.
 
 Pesquisa começa pela síntese do recorte consultado. O gráfico sempre possui
 tabela com os mesmos valores, descrição textual, denominador, revisão e
@@ -224,6 +266,12 @@ quando a operação permite. Sobreposições mantêm foco contido e o devolvem a
 controle de origem. Mensagens transitórias não cobrem o controle de avanço nem
 impedem a retomada do estudo.
 
+Confirmações de alterações sensíveis pertencem à superfície do produto. O
+diálogo informa a ação e seu alcance, oferece cancelar e confirmar com rótulos
+específicos para a consequência, mantém o foco contido e não usa a janela nativa
+do navegador. Uma operação já autorizada e confirmada no cliente conversacional
+não abre confirmação duplicada quando o AraLearn relê o estado remoto.
+
 ## Acessibilidade e verificação
 
 A referência técnica é a [WCAG 2.2](https://www.w3.org/TR/WCAG22/). A validação
@@ -232,12 +280,28 @@ conteúdo, teclado, toque, nome, papel e estado acessíveis, alternativa a gesto
 e preferência de movimento reduzido.
 
 As larguras de referência são 360, 390 e 430 px no celular e 1280 px no
-computador. A verificação inclui os modos claro e escuro, textos extensos,
-conteúdo denso, duas abas, perda e retorno de conexão, endereços diretos, área
-segura, rolagem horizontal, clique externo e Esc. O teste ponta a ponta da
-Autoria fica em `tests/e2e/course-authoring-cutover.spec.js`; os cenários de
-auditoria usam `tests/e2e/course-audit-panel.spec.js`. A galeria dos componentes
-é reconstruída por `npm run resources:gallery:visual`.
+computador. A matriz automatizada percorre os destinos compactos e alcança cada
+capacidade por divulgação progressiva, nos modos claro e escuro. Em cada
+combinação, ela verifica o limite de 430 px, o rolador vertical único, a
+ausência de rolagem horizontal da página, o alcance do último conteúdo, nomes
+acessíveis, alvos visíveis de toque e ausência de erro no cliente. Cenários
+focais cobrem textos extensos, duas abas, perda e retorno de conexão, endereços
+diretos, área segura, clique externo, Esc e restauração de foco.
+
+O teste ponta a ponta da Autoria fica em
+`tests/e2e/course-authoring-cutover.spec.js`; os cenários de auditoria usam
+`tests/e2e/course-audit-panel.spec.js`. A galeria dos componentes é reconstruída
+por `npm run resources:gallery:visual`. `npx playwright test --list` enumera 111
+testes em nove arquivos na candidata corrente: 73 no percurso compacto da
+Autoria, seis na edição manual e três na assistência por API. Os nove cenários
+integrados dessas duas últimas capacidades passaram 9/9. A listagem total não
+substitui a execução da matriz nem a inspeção das capturas. A compreensão por
+pessoas leigas continua dependente da sessão humana de aceitação.
+
+A matriz visual focal passou 10/10 em 51,4 segundos nas quatro larguras e nos
+dois temas, incluindo Before/After e rodada de Auditoria em 1280 px. Ela rejeita
+largura acima de 430 px, desalinhamento no computador, segunda coluna principal,
+overflow global e ação do ChatGPT sem nome acessível contextual e tooltip.
 
 A captura móvel corrente de Estudo oferece uma referência visual do conteúdo e
 dos controles:
@@ -253,6 +317,12 @@ Cursos.](screenshots/authoring/authoring-courses-390-light.png)
 Uma captura comprova apenas o conjunto de dados, o modo e o tamanho usados. A
 aprovação visual exige também interação real, console e rede sem erros, foco,
 rolagem, textos extensos e estados intermediários.
+
+Na candidata corrente, a inspeção local também percorreu Cursos em
+360/390/430/1280 px, Planejamento nos temas claro e escuro, Parâmetros, Fontes e
+Auditoria. Esses artefatos temporários confirmaram a superfície única e
+centralizada sem segunda coluna ou overflow aparente, mas não substituem a
+série persistente de todas as larguras e dos dois temas exigida pela #144.
 
 ## Critério de conclusão visual
 

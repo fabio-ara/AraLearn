@@ -141,6 +141,44 @@ Outro cliente alterou o Curso depois da leitura. Reabra ou releia o Curso,
 compare a intenção com o estado novo e aplique apenas o que ainda faz sentido.
 Não aumente a revisão à mão e não repita a escrita às cegas.
 
+## O formulário reapareceu depois de salvar
+
+Se a mensagem disser que a resposta se perdeu e que a operação pode ter sido
+confirmada, confira os valores preservados e tente novamente pelo mesmo botão,
+sem reeditar o formulário. Parâmetros, Fontes, Variantes, Observações, Inspeção
+e Auditoria reutilizam o envelope pendente, inclusive o mesmo identificador de
+pedido, para recuperar o recibo sem duplicar o efeito.
+
+Use **Cancelar** ou **Descartar** somente quando quiser abandonar essa intenção.
+O rascunho é transitório da interface e não integra a fila do IndexedDB; evite
+recarregar ou fechar a página antes de concluir a repetição ou o descarte.
+
+## A assistência por API não responde
+
+Confira se o relay local está ativo, se o modelo foi configurado nele e se o
+endpoint usa `127.0.0.1`, `localhost` ou `10.0.2.2`, por HTTP na porta 4183. A
+chave do provider pertence ao relay, fora do AraLearn. Se a tela mostrar
+providers remotos e campo de chave, a aplicação está num runtime explícito de
+desenvolvimento; use apenas credencial descartável de teste e nunca trate esse
+modo como configuração de produção.
+
+No navegador, `127.0.0.1` e `localhost` precisam ser tratados como loopback;
+`10.0.2.2`, como rede local. Se o console indicar bloqueio de acesso à rede
+privada, confira se a versão do AraLearn já envia essa classificação corrigida e
+se a permissão do navegador foi concedida. Não troque a chave para o cliente para
+contornar o bloqueio.
+
+No Pages, confira também se o navegador autorizou acesso à rede local. A
+candidata Android encaminha a requisição por uma ponte nativa fixa para não
+depender de conteúdo misto no WebView. Até a instalação e o ensaio do APK em
+dispositivo real, falha nesse percurso não deve ser contornada com tráfego aberto
+nem com chave no aplicativo; use edição manual ou ChatGPT + MCP.
+
+Falha, cota, recusa ou resposta fora do formato não altera o Curso. Feche a
+sugestão e continue a edição manual, ou use ChatGPT + MCP para uma tarefa mais
+ampla. Se **Aplicar ao rascunho** já foi usado, confira o conteúdo e ainda use
+**Salvar** para efetivar a mudança; aplicar a candidata não grava por si só.
+
 ## Não consigo salvar uma atribuição de Fontes
 
 Confira se cada Fonte escolhida possui ao menos uma Âncora ativa na revisão
@@ -187,10 +225,16 @@ Uma concessão de acesso permite Estudo, não Autoria remota.
 ## A alteração do MCP não aparece na interface
 
 O MCP e a Autoria usam o mesmo Curso, mas a interface pode conservar uma
-projeção já carregada. Atualize o Curso e confira a nova revisão. Se a leitura
-do servidor contiver a mudança e a tela não, registre console, rede, rota e
-revisão exibida: o defeito está na projeção ou atualização da interface, não
-numa etapa de publicação.
+projeção já carregada. Ao voltar à guia ou focalizar a janela do AraLearn, aguarde
+a releitura da área visível. Se o navegador não sinalizar o retorno, use a ação
+**Atualizar** no cabeçalho do Curso e confira a nova revisão. Se a leitura do
+servidor contiver a mudança e a tela não, registre console, rede, rota e revisão
+exibida: o defeito está na projeção ou atualização da interface, não numa etapa
+de publicação.
+
+Quando houver um compositor, uma confirmação ou um formulário em edição, o
+AraLearn adia a atualização para conservar o rascunho. Conclua ou cancele essa
+edição e use **Atualizar** novamente.
 
 ## Uma Variante não mostra a diferença esperada
 

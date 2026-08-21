@@ -7,18 +7,21 @@ import {
   validatePublishedCsp,
   verifyPublishedSite
 } from "../../scripts/verifyPublishedSite.mjs";
+import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntimeSecurity.js";
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.23";
+const VERSION = "0.0.24";
 const REVISION = "0123456789abcdef0123";
+const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>
 <html lang="pt-BR"><head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ${PROJECT_URL}; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ${PROJECT_URL} ${ASSIST_ORIGINS.join(" ")}; object-src 'none'">
 </head><body><div id="app-root"></div></body></html>`;
 const RUNTIME_CONFIG = `globalThis.__ARALEARN_ENV__ ??= Object.freeze({
   "supabaseUrl": "${PROJECT_URL}",
-  "supabasePublishableKey": "sb_publishable_public-test-value"
+  "supabasePublishableKey": "sb_publishable_public-test-value",
+  "assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}
 });\n`;
 const ASSETS = [
   "./index.html",
@@ -115,30 +118,81 @@ test("verifica integralmente um site publicado usando somente GET", async () => 
   assert.ok(calls.every(({ options }) => options.headers["Cache-Control"] === "no-cache"));
   assert.ok(calls.every(({ options }) => !("Authorization" in options.headers)));
   assert.ok(calls.some(({ url }) => url.includes("auth_state=aralearn-publication-check")));
-  assert.ok(calls.some(({ url }) => url.includes("aralearn-publication-check=0.0.23-")));
+  assert.ok(calls.some(({ url }) => url.includes("aralearn-publication-check=0.0.24-")));
   assert.doesNotMatch(JSON.stringify(result), /sb_publishable_/u);
 });
 
 test("lê a configuração pública sem executar JavaScript e valida a CSP exata", () => {
   assert.deepEqual(parsePublicRuntimeConfig(RUNTIME_CONFIG), {
-    projectOrigin: PROJECT_URL
+    projectOrigin: PROJECT_URL,
+    assistAllowedOrigins: ASSIST_ORIGINS
   });
-  assert.deepEqual(validatePublishedCsp(INDEX, PROJECT_URL).connectSources, ["'self'", PROJECT_URL]);
+  assert.deepEqual(
+    validatePublishedCsp(INDEX, PROJECT_URL, ASSIST_ORIGINS).connectSources,
+    ["'self'", PROJECT_URL, ...ASSIST_ORIGINS]
+  );
   assert.throws(
-    () => validatePublishedCsp(INDEX.replace(PROJECT_URL, "https:"), PROJECT_URL),
+    () => validatePublishedCsp(
+      INDEX.replace(PROJECT_URL, "https:"),
+      PROJECT_URL,
+      ASSIST_ORIGINS
+    ),
     /ampla/
   );
   assert.throws(
-    () => validatePublishedCsp(INDEX.replace(PROJECT_URL, `${PROJECT_URL} https://inesperado.example`), PROJECT_URL),
+    () => validatePublishedCsp(
+      INDEX.replace(PROJECT_URL, `${PROJECT_URL} https://inesperado.example`),
+      PROJECT_URL,
+      ASSIST_ORIGINS
+    ),
     /não consta da configuração pública/
+  );
+  assert.throws(
+    () => validatePublishedCsp(
+      INDEX.replace(` ${ASSIST_ORIGINS[0]}`, ""),
+      PROJECT_URL,
+      ASSIST_ORIGINS
+    ),
+    /todas as origens autorizadas/u
   );
   assert.throws(
     () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace("sb_publishable_public-test-value", "valor-indefinido")),
     /publishable key pública válida/
   );
+  assert.throws(
+    () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
+      `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
+      '"assistAllowedOrigins": []'
+    )),
+    /somente as origens locais canônicas/u
+  );
+  assert.throws(
+    () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
+      `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
+      `"assistAllowedOrigins": ${JSON.stringify([
+        ...ASSIST_ORIGINS,
+        "https://api.openai.com"
+      ])}`
+    )),
+    /somente as origens locais canônicas/u
+  );
+  assert.throws(
+    () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
+      `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
+      `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}, "nativeAssistBridge": true`
+    )),
+    /não pertencem ao artefato Pages: nativeAssistBridge/u
+  );
+  assert.throws(
+    () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
+      `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
+      `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}, "developmentRuntime": true`
+    )),
+    /não pertencem ao artefato Pages: developmentRuntime/u
+  );
 });
 
-test("recusa chave administrativa, connection string e catálogo empacotado", async (context) => {
+test("recusa credenciais, connection string e catálogo empacotado", async (context) => {
   await context.test("chave administrativa", async () => {
     const payload = Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url");
     const secretRuntime = RUNTIME_CONFIG.replace(
@@ -159,6 +213,22 @@ test("recusa chave administrativa, connection string e catálogo empacotado", as
       }
     });
     await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }), /connection string/);
+  });
+
+  await context.test("chave de serviço de linguagem", async () => {
+    const providerKey = `sk-proj-${"A".repeat(40)}`;
+    const { fetchImpl } = createPublishedSiteFetch({
+      overrides: {
+        "/AraLearn/main.js": {
+          body: `const providerKey = "${providerKey}";`,
+          type: "text/javascript"
+        }
+      }
+    });
+    await assert.rejects(
+      () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+      /credencial de serviço de linguagem/u
+    );
   });
 
   await context.test("catálogo JSON", async () => {
@@ -208,14 +278,14 @@ test("recusa manifesto cacheado de outra versão ou revisão divergente", async 
     const { fetchImpl } = createPublishedSiteFetch({
       overrides: {
         "/AraLearn/asset-manifest.json": {
-          body: { version: "0.0.22", revision: REVISION, assets: ASSETS },
+          body: { version: "0.0.23", revision: REVISION, assets: ASSETS },
           type: "application/json"
         }
       }
     });
     await assert.rejects(
       () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
-      /versão esperada 0\.0\.23/
+      /versão esperada 0\.0\.24/
     );
   });
 

@@ -9,8 +9,23 @@ import {
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { renderPackageStudyUnitBlocksWithDock } from
   "../render/renderPackageStudyUnit.js";
+import {
+  activateManualStudyUnitEdit,
+  applyManualStudyUnitEdit,
+  isAmbiguousManualStudyUnitWriteFailure,
+  listManualStudyUnitEditablePaths,
+  listManualStudyUnitTargetIds,
+  readManualStudyUnitEditPathValues
+} from "./manualStudyUnitEdit.js";
+import {
+  createStudyUnitProviderAssistance,
+  renderStudyUnitAssistanceTrigger
+} from "./StudyUnitProviderAssistance.js";
+import { studyUnitAssistanceTargetAvailability } from
+  "../assist/studyUnitProviderAssistance.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
+import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import {
   formatObservationTextBudget,
   isObservationTextOverLimit,
@@ -298,6 +313,37 @@ function statusMessage(error) {
   return "Não foi possível carregar este trecho da Inspeção.";
 }
 
+function ambiguousObservationFailure(error) {
+  const rawStatus = error?.status ?? error?.response?.status;
+  const status = rawStatus == null || rawStatus === "" ? null : Number(rawStatus);
+  const code = String(error?.code || error?.response?.code || "").trim().toLowerCase();
+  const message = String(error?.message || "").trim().toLowerCase();
+  if (error?.ambiguous === true || error?.name === "AbortError" || error?.name === "TimeoutError") {
+    return true;
+  }
+  if (status != null && Number.isFinite(status)) {
+    return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
+  }
+  if ([
+    "40001", "access_revoked", "course_access_revoked", "course_not_found",
+    "course_not_owned", "course_revision_changed", "forbidden",
+    "invalid_course_command", "invalid_tool_argument", "pt404"
+  ].includes(code) || code.startsWith("invalid_")) {
+    return false;
+  }
+  return [
+    "failed_to_fetch", "gateway_timeout", "network_error", "network_unavailable",
+    "offline", "request_timeout", "service_unavailable"
+  ].includes(code) ||
+    /(?:failed to fetch|fetch failed|network|offline|load failed|connection|socket|timeout)/u
+      .test(message) ||
+    (status == null && !code);
+}
+
+function pendingObservationMatches(pending, draft) {
+  return pending != null && JSON.stringify(pending.draft) === JSON.stringify(draft);
+}
+
 function partStateLabel(value) {
   return ({
     planned: "Planejada",
@@ -377,11 +423,135 @@ function renderContext(state, item) {
     ` data-inspection-context-study-unit>Esta Unidade</a></nav></details>`;
 }
 
-function renderStudyUnit(item, totalCount, canEditSources, observationCount = null) {
+function sameStudyUnit(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function renderManualTitle(item, state, editing, targetId) {
+  const title = escapeHtml(item.studyUnit.title);
+  if (!editing) {
+    return `<h3 id="inspection-study-unit-${escapeHtml(item.studyUnit.id)}">${title}</h3>`;
+  }
+  if (targetId !== "study_unit") {
+    return `<button class="course-inspection-title-edit-target" type="button"` +
+      ` data-inspection-manual-target="study_unit" data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
+      ` aria-label="Editar título de ${title}" title="Editar título">${title}</button>`;
+  }
+  const draftTitle = Object.hasOwn(state.manualDraft.pathValues, "title")
+    ? state.manualDraft.pathValues.title
+    : item.studyUnit.title;
+  return `<h3 id="inspection-study-unit-${escapeHtml(item.studyUnit.id)}"` +
+    ' class="course-inspection-manual-title" contenteditable="plaintext-only" role="textbox"' +
+    ' aria-multiline="false" spellcheck="true" data-inspection-manual-title' +
+    ` data-inspection-control-key="manual-title:${escapeHtml(item.studyUnit.id)}"` +
+    ` aria-label="Título da Unidade de estudo" title="Editar título">${escapeHtml(draftTitle)}</h3>`;
+}
+
+function renderManualModeActions(item, state, editing) {
+  const id = escapeHtml(item.studyUnit.id);
+  const assistanceTargetId = editing && state.manualTargetId
+    ? state.manualTargetId
+    : "study_unit";
+  const assistanceAvailability = studyUnitAssistanceTargetAvailability({
+    studyUnit: item.studyUnit,
+    targetId: assistanceTargetId,
+    currentPathValues: editing ? state.manualDraft.pathValues : {}
+  });
+  const canUndo = state.manualUndo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
+  const canRedo = state.manualRedo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
+  return '<nav class="course-inspection-mode-actions" role="group" aria-label="Modo da Unidade de estudo">' +
+    `<button type="button" data-inspection-unit-mode="view" data-study-unit-id="${id}"` +
+    ` aria-pressed="${editing ? "false" : "true"}" aria-label="Visualizar" title="Visualizar"` +
+    `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon("preview", "course-authoring-button-icon")}</button>` +
+    (state.canEditManually
+      ? `<button type="button" data-inspection-unit-mode="edit" data-study-unit-id="${id}"` +
+        ` aria-pressed="${editing ? "true" : "false"}" aria-label="Editar" title="Editar"` +
+        `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
+        `${renderUiIcon("edit", "course-authoring-button-icon")}</button>`
+      : "") +
+    (state.canRequestChat
+      ? `<button type="button" data-inspection-unit-mode="ai" data-study-unit-id="${id}"` +
+        " data-inspection-request-chat" +
+        ` aria-pressed="false" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(item.studyUnit.title)}"` +
+        ' title="Assistência pelo ChatGPT">' +
+        `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
+      : "") +
+    (state.canEditManually
+      ? renderStudyUnitAssistanceTrigger({
+          context: "inspection",
+          studyUnitId: item.studyUnit.id,
+          disabled: state.manualSaving || !assistanceAvailability.available,
+          unavailableReason: assistanceAvailability.reason,
+          label: editing
+            ? "Assistência por API no trecho selecionado"
+            : "Assistência por API no título"
+        })
+      : "") +
+    (state.canEditManually
+      ? `<button type="button" data-inspection-manual-history="undo" data-study-unit-id="${id}"` +
+        ` aria-label="Desfazer última edição" title="Desfazer"${canUndo ? "" : " disabled aria-disabled=\"true\""}>` +
+        `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button>` +
+        `<button type="button" data-inspection-manual-history="redo" data-study-unit-id="${id}"` +
+        ` aria-label="Refazer edição" title="Refazer"${canRedo ? "" : " disabled aria-disabled=\"true\""}>` +
+        `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>`
+      : "") +
+    "</nav>";
+}
+
+function renderManualEditDock(item, state, editing, resourceTargetIds) {
+  if (!editing) return "";
+  const hasTarget = state.manualTargetId === "study_unit" ||
+    resourceTargetIds.includes(state.manualTargetId);
+  if (state.manualDiscardArmed) {
+    return '<footer class="course-inspection-manual-dock" aria-label="Resultado incerto da edição">' +
+      `<p class="course-inspection-manual-error" role="alert">${escapeHtml(state.manualError)}</p>` +
+      '<div>' +
+      '<button type="button" data-inspection-manual-action="keep-unknown"' +
+      ' aria-label="Manter rascunho" title="Manter rascunho">' +
+      `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button>` +
+      '<button type="button" data-inspection-manual-action="discard-unknown"' +
+      ' aria-label="Descartar rascunho com resultado incerto" title="Descartar rascunho">' +
+      `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Descartar</span></button>` +
+      '</div></footer>';
+  }
+  return '<footer class="course-inspection-manual-dock" aria-label="Edição manual">' +
+    `<p>${hasTarget ? "Edite diretamente no conteúdo." : "Toque no título ou em um conteúdo."}</p>` +
+    (state.manualError
+      ? `<p class="course-inspection-manual-error" role="alert">${escapeHtml(state.manualError)}</p>`
+      : "") +
+    '<div>' +
+    `<button type="button" data-inspection-manual-action="cancel" aria-label="Cancelar edição" title="Cancelar"` +
+    `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
+    `<button type="button" data-inspection-manual-action="save" aria-label="Salvar edição" title="Salvar"` +
+    `${!hasTarget || state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon(state.manualSaving ? "rotate" : "save", "course-authoring-button-icon")}</button>` +
+    "</div></footer>";
+}
+
+function renderStudyUnit(
+  item,
+  totalCount,
+  state,
+  observationCount = null
+) {
   const path = item.curriculumPath;
+  const editing = state.manualStudyUnitId === item.studyUnit.id;
+  const resourceTargetIds = listManualStudyUnitTargetIds(item.studyUnit);
+  const selectedResourceTargetIds = resourceTargetIds.includes(state.manualTargetId)
+    ? [state.manualTargetId]
+    : [];
   const runtime = renderPackageStudyUnitBlocksWithDock(item.studyUnit, {
     omitRepeatedHeading: true,
-    blockKeyPrefix: `inspection:${item.studyUnit.id}`
+    blockKeyPrefix: `inspection:${item.studyUnit.id}`,
+    resourceSelectionEnabled: editing,
+    resourceSelectionDisabled: state.manualSaving,
+    resourceSelectionTargetIds: resourceTargetIds,
+    selectedResourceTargetIds,
+    manualEditingTargetId: editing && selectedResourceTargetIds.length
+      ? state.manualTargetId
+      : ""
   });
   const part = item.authoringPart;
   return `<li class="course-inspection-item" data-inspection-study-unit="${escapeHtml(item.studyUnit.id)}"` +
@@ -390,7 +560,7 @@ function renderStudyUnit(item, totalCount, canEditSources, observationCount = nu
     '<header class="course-inspection-item-heading"><div>' +
     `<p>${escapeHtml(path.module.title)} · ${escapeHtml(path.lesson.title)}</p>` +
     `<span>${escapeHtml(path.didacticMicrosequence.title)} · Unidade ${item.ordinal} de ${totalCount}</span>` +
-    `<h3 id="inspection-study-unit-${escapeHtml(item.studyUnit.id)}">${escapeHtml(item.studyUnit.title)}</h3></div>` +
+    `${renderManualTitle(item, state, editing, state.manualTargetId)}</div>` +
     `<details class="course-inspection-item-details"><summary aria-label="Abrir detalhes de ${escapeHtml(item.studyUnit.title)}"` +
     ` title="Abrir detalhes" data-inspection-control-key="details:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("more", "course-authoring-button-icon")}</summary>` +
@@ -403,24 +573,27 @@ function renderStudyUnit(item, totalCount, canEditSources, observationCount = nu
     `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
     ` data-inspection-control-key="copy:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
-    (canEditSources
+    (state.canEditSources
       ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
         ` data-inspection-control-key="sources:${escapeHtml(item.studyUnit.id)}">` +
         `${renderUiIcon("study", "course-authoring-button-icon")}<span>Definir fontes</span></button>`
       : "") +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
+    renderManualModeActions(item, state, editing) +
     `<button type="button" data-inspection-observations data-study-unit-id="${escapeHtml(
       item.studyUnit.id
     )}" data-inspection-control-key="observations:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações${
       observationCount === null ? "" : ` · ${Number(observationCount)}`
-    }</span></button></div>` +
+    }</span></button>` +
+    "</div>" +
     (runtime.dockHtml
       ? '<p class="course-inspection-response-notice">Respostas desativadas durante a inspeção.</p>'
       : "") +
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
     `<div class="card-sheet-content">${runtime.bodyHtml}</div>${runtime.dockHtml}</div>` +
+    renderManualEditDock(item, state, editing, resourceTargetIds) +
     `<footer><span>${escapeHtml(part ? partStateLabel(part.state) : "Materializada")}</span>` +
     `<small>Unidade ${item.ordinal}</small></footer></article></li>`;
 }
@@ -439,6 +612,47 @@ function renderBoundaryButton(direction, state) {
       "course-authoring-button-icon"
     )}<span>${loading ? "Carregando…" : failure ? "Tentar novamente" :
       previous ? "Carregar anteriores" : "Carregar próximas"}</span></button></li>`;
+}
+
+function renderInspectionConfirmation(state) {
+  if (!state.confirmation) return "";
+  return '<div class="course-authoring-confirm-backdrop" data-inspection-confirmation-backdrop>' +
+    '<section class="course-authoring-confirm-dialog" data-inspection-confirmation role="alertdialog"' +
+    ' aria-modal="true" aria-labelledby="course-inspection-confirmation-title"' +
+    ' aria-describedby="course-inspection-confirmation-message">' +
+    '<h2 id="course-inspection-confirmation-title">Retirar observação?</h2>' +
+    '<p id="course-inspection-confirmation-message">Ela permanecerá no histórico como retirada.</p>' +
+    '<div class="course-authoring-confirm-actions">' +
+    '<button type="button" class="course-authoring-secondary" data-observation-action="cancel-confirmation">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
+    '<button type="button" class="is-danger" data-observation-action="confirm-withdraw">' +
+    `${renderUiIcon("trash", "course-authoring-button-icon")}<span>Retirar</span></button>` +
+    "</div></section></div>";
+}
+
+function renderInspectionObservationSheet(state) {
+  if (!state.observationStudyUnitId) return "";
+  const sheet = renderStudyUnitObservationSheet({
+    items: state.observationItems,
+    draft: state.observationDraft,
+    editingId: state.observationEditingId,
+    error: state.observationError,
+    saving: state.observationSaving,
+    loading: state.observationLoading,
+    title: "Observações da Unidade",
+    listLabel: "Observações deste contexto",
+    emptyLabel: "Nenhuma observação neste contexto.",
+    showContributor: true,
+    collectionSummary: state.observationCollectionSummary,
+    canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "observations" })
+  });
+  const confirmation = renderInspectionConfirmation(state);
+  if (!confirmation) return sheet;
+  const inactiveSheet = sheet.replace(
+    '<section class="editor-overlay study-observation-overlay"',
+    '<section class="editor-overlay study-observation-overlay" inert aria-hidden="true"'
+  );
+  return `${inactiveSheet}${confirmation}`;
 }
 
 function renderSequence(state) {
@@ -485,7 +699,7 @@ function renderSequence(state) {
       state.items.map((item) => renderStudyUnit(
         item,
         state.totalCount,
-        state.canEditSources,
+        state,
         Object.hasOwn(state.observationCounts, item.studyUnit.id)
           ? state.observationCounts[item.studyUnit.id]
           : null
@@ -507,21 +721,9 @@ function renderSequence(state) {
     `<button type="button" data-inspection-action="next" data-inspection-control-key="next"` +
     `${!active || (active.ordinal >= state.totalCount && !state.hasMore) ? " disabled aria-disabled=\"true\"" : ""}` +
     ` aria-label="Próxima Unidade">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button></nav>` +
-    notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite"></p>' +
-    (state.observationStudyUnitId ? renderStudyUnitObservationSheet({
-      items: state.observationItems,
-      draft: state.observationDraft,
-      editingId: state.observationEditingId,
-      error: state.observationError,
-      saving: state.observationSaving,
-      loading: state.observationLoading,
-      title: "Observações da Unidade",
-      listLabel: "Observações deste contexto",
-      emptyLabel: "Nenhuma observação neste contexto.",
-      showContributor: true,
-      collectionSummary: state.observationCollectionSummary,
-      canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "observations" })
-    }) : "") + "</section>";
+    notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
+    `${escapeHtml(state.manualStatus)}</p>` +
+    renderInspectionObservationSheet(state) + "</section>";
 }
 
 function annotationTargetQuery(studyUnitId) {
@@ -578,10 +780,12 @@ export function createCourseInspectionSequence({
   routeTarget = null,
   onNavigate = () => {},
   onEditSources = () => {},
+  onRequestChat = null,
+  onSaveManualEdit = null,
   windowValue = globalThis.window || null,
-  documentValue = globalThis.document || null,
+  documentValue = root?.ownerDocument || globalThis.document || null,
   navigatorValue = globalThis.navigator || null,
-  confirmValue = globalThis.confirm?.bind(globalThis) || (() => false)
+  providerAssistanceSession = null
 } = {}) {
   if (!root || typeof root.addEventListener !== "function" ||
       typeof controller?.loadAuthoringStudyUnits !== "function" ||
@@ -589,14 +793,24 @@ export function createCourseInspectionSequence({
       typeof controller?.saveAuthoringInspectionPosition !== "function" ||
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
-      typeof onEditSources !== "function" || typeof confirmValue !== "function") {
+      typeof onNavigate !== "function" || typeof onEditSources !== "function" ||
+      (onRequestChat !== null && typeof onRequestChat !== "function") ||
+      (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") ||
+      (providerAssistanceSession !== null &&
+       (typeof providerAssistanceSession?.read !== "function" ||
+        typeof providerAssistanceSession?.update !== "function" ||
+        typeof providerAssistanceSession?.snapshot !== "function"))) {
     throw new TypeError("Dependências da sequência de Inspeção são inválidas.");
   }
+  const scrollTarget = root.closest?.(".course-authoring-root") || windowValue;
   const requested = inspectionRequestFromTarget(routeTarget);
   const state = {
     courseId: course.courseId,
     pinnedRevision: course.revision,
     canEditSources: course.ownership === "owned" && course.canEdit === true,
+    canRequestChat: typeof onRequestChat === "function",
+    canEditManually: course.ownership === "owned" && course.canEdit === true &&
+      typeof onSaveManualEdit === "function",
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
@@ -628,6 +842,22 @@ export function createCourseInspectionSequence({
     observationLoading: false,
     observationSaving: false,
     observationError: "",
+    pendingObservationMutation: null,
+    restoreObservationFocus: false,
+    confirmation: null,
+    manualStudyUnitId: null,
+    manualTargetId: "",
+    manualDraft: { pathValues: {} },
+    manualOrigin: "manual",
+    manualSaving: false,
+    manualError: "",
+    manualStatus: "",
+    manualRestoreFocus: "",
+    manualUndo: [],
+    manualRedo: [],
+    manualHistoryPreview: null,
+    manualUnknownSignature: "",
+    manualDiscardArmed: false,
     destroyed: false
   };
   let observer = null;
@@ -638,9 +868,44 @@ export function createCourseInspectionSequence({
   let lastInteractionAt = 0;
   let suppressBroadcastStudyUnitId = "";
   let observationEpoch = 0;
+  let manualInlineController = null;
+  let providerAssistance = null;
 
   function markInteraction() {
     lastInteractionAt = Date.now();
+  }
+
+  function focus(selector) {
+    root.querySelector?.(selector)?.focus?.({ preventScroll: true });
+  }
+
+  function cancelConfirmation({ restoreFocus = true } = {}) {
+    const confirmation = state.confirmation;
+    if (!confirmation) return false;
+    state.confirmation = null;
+    render({ restorePosition: false });
+    if (restoreFocus) focus(confirmation.returnFocusSelector);
+    return true;
+  }
+
+  function requestWithdraw(item) {
+    state.confirmation = {
+      command: {
+        type: "withdraw_anchored_annotation",
+        annotationId: item.annotationId,
+        expectedAnnotationVersion: item.annotationVersion
+      },
+      returnFocusSelector: `[data-observation-action="withdraw"][data-observation-id="${item.annotationId}"]`
+    };
+    render({ restorePosition: false });
+    focus('[data-observation-action="cancel-confirmation"]');
+  }
+
+  function confirmWithdraw() {
+    const confirmation = state.confirmation;
+    if (!confirmation || state.observationSaving) return false;
+    state.confirmation = null;
+    return mutateObservation(confirmation.command, "Observação retirada.");
   }
 
   function closeOpenMenus({ except = null, restoreFocus = false } = {}) {
@@ -656,14 +921,43 @@ export function createCourseInspectionSequence({
     return closed;
   }
 
-  function handleDocumentPointerDown(event) {
+  function handleDocumentClick(event) {
+    if (state.confirmation &&
+        event?.target?.matches?.("[data-inspection-confirmation-backdrop]")) {
+      cancelConfirmation();
+    }
     const containingMenu = event?.target?.closest?.(INSPECTION_MENU_SELECTOR) || null;
     closeOpenMenus({ except: containingMenu });
   }
 
   function handleKeyDown(event) {
     markInteraction();
+    if (event?.target?.matches?.("[data-inspection-manual-title]") && event.key === "Enter") {
+      event.preventDefault?.();
+      void saveManualEdit();
+      return;
+    }
+    if (state.confirmation && event?.key === "Tab") {
+      trapAuthoringConfirmationTab({
+        event,
+        root,
+        confirmationSelector: "[data-inspection-confirmation]",
+        documentValue
+      });
+      return;
+    }
     if (event?.key !== "Escape") return;
+    if (cancelConfirmation()) {
+      event.preventDefault?.();
+      event.stopPropagation?.();
+      return;
+    }
+    if (state.manualStudyUnitId && !state.manualSaving) {
+      resetManualEditor({ status: "Edição cancelada.", focusEdit: true });
+      event.preventDefault?.();
+      event.stopPropagation?.();
+      return;
+    }
     const focusedMenu = documentValue?.activeElement?.closest?.(INSPECTION_MENU_SELECTOR) || null;
     const activeMenu = focusedMenu?.open ? focusedMenu :
       [...(root.querySelectorAll?.(INSPECTION_MENU_SELECTOR) || [])]
@@ -713,8 +1007,8 @@ export function createCourseInspectionSequence({
     const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
     if (!element?.getBoundingClientRect) return;
     const delta = element.getBoundingClientRect().top - stickyTop() - Number(snapshot?.offsetFromStickyTop || 0);
-    if ((initial || Math.abs(delta) > 0.5) && typeof windowValue?.scrollBy === "function") {
-      windowValue.scrollBy({ top: delta, left: 0, behavior: "auto" });
+    if ((initial || Math.abs(delta) > 0.5) && typeof scrollTarget?.scrollBy === "function") {
+      scrollTarget.scrollBy({ top: delta, left: 0, behavior: "auto" });
     }
     for (const controlKey of snapshot?.openControlKeys || []) {
       const escapedOpenKey = globalThis.CSS?.escape
@@ -748,6 +1042,7 @@ export function createCourseInspectionSequence({
     root.querySelectorAll?.(
       '.package-instance[data-package^="aralearn.response."], .card-answer-dock'
     ).forEach((container) => {
+      if (container.closest?.(".runtime-resource-edit-target.is-inline-editing")) return;
       container.setAttribute("aria-disabled", "true");
       container.setAttribute("inert", "");
       container.querySelectorAll?.("button, input, select, textarea, [contenteditable]").forEach((control) => {
@@ -778,6 +1073,7 @@ export function createCourseInspectionSequence({
       deactivateResponses();
       await RESOURCE_PACKAGE_REGISTRY.hydrate(root);
       if (state.destroyed) return;
+      activateManualEditing();
       deactivateResponses();
       measureItems();
       observeBoundaries();
@@ -789,14 +1085,38 @@ export function createCourseInspectionSequence({
     }
   }
 
-  function render({ anchor = null, initial = false } = {}) {
+  function render({
+    anchor = null,
+    initial = false,
+    restorePosition = true,
+    captureDraft = true
+  } = {}) {
     if (state.destroyed) return;
+    if (captureDraft) captureManualDraft();
     const snapshot = anchor || captureAnchor();
+    const restoreObservationFocus = state.restoreObservationFocus;
+    state.restoreObservationFocus = false;
+    manualInlineController?.destroy?.();
+    manualInlineController = null;
     root.innerHTML = renderSequence(state);
+    if (state.manualRestoreFocus === "discard-unknown" || state.manualRestoreFocus === "save") {
+      const action = state.manualRestoreFocus === "discard-unknown"
+        ? "discard-unknown"
+        : "save";
+      root.querySelector?.(`[data-inspection-manual-action="${action}"]`)
+        ?.focus?.({ preventScroll: true });
+      state.manualRestoreFocus = "";
+    }
+    if (restoreObservationFocus) {
+      focus("[data-field='study-unit-observation']");
+    }
     root.setAttribute?.("aria-busy", String(state.initialLoading || Boolean(state.loadingDirection)));
     void hydrate().then(() => {
-      restoreAnchor(snapshot, { initial });
+      if (restorePosition) restoreAnchor(snapshot, { initial });
       updateActiveFromViewport();
+      if (!restorePosition && scrollTarget && "scrollTop" in scrollTarget) {
+        scrollTarget.scrollTop = 0;
+      }
     });
   }
 
@@ -962,36 +1282,64 @@ export function createCourseInspectionSequence({
     }
   }
 
-  async function mutateObservation(command, successMessage) {
+  async function mutateObservation(command, successMessage, { operationDraft = command } = {}) {
     if (typeof controller.mutateCourseAnchoredAnnotations !== "function") return false;
     const normalized = normalizeCourseAnchoredAnnotationCommand(command);
+    const draft = structuredClone(operationDraft);
+    if (!pendingObservationMatches(state.pendingObservationMutation, draft)) {
+      state.pendingObservationMutation = null;
+    }
     const expectedCourseRevision = normalized.type === "create_anchored_annotation"
       ? state.pinnedRevision
       : null;
+    const request = state.pendingObservationMutation?.request || {
+      requestId: createUuid(),
+      courseId: state.courseId,
+      expectedCourseRevision,
+      command: normalized
+    };
+    state.pendingObservationMutation ||= {
+      draft,
+      request: structuredClone(request)
+    };
     state.observationSaving = true;
     state.observationError = "";
     render();
+    let mutationConfirmed = false;
     try {
-      normalizeCourseAnchoredAnnotationChange(await controller.mutateCourseAnchoredAnnotations({
-        requestId: createUuid(),
-        courseId: state.courseId,
-        expectedCourseRevision,
-        command: normalized
-      }));
+      const change = normalizeCourseAnchoredAnnotationChange(
+        await controller.mutateCourseAnchoredAnnotations(structuredClone(request))
+      );
+      if (change.courseId !== state.courseId || change.requestId !== request.requestId ||
+          change.annotation && change.annotation.annotationId !== normalized.annotationId) {
+        throw new TypeError("A confirmação não corresponde à observação enviada.");
+      }
+      mutationConfirmed = true;
+      state.pendingObservationMutation = null;
       const studyUnitId = state.observationStudyUnitId;
+      state.observationDraft = { category: null, rawText: "" };
+      state.observationEditingId = null;
       const observations = await loadTargetObservations(studyUnitId);
       state.observationItems = observations.items;
       state.observationCollectionSummary = observations;
       state.observationCounts[studyUnitId] = observations.activeTotal;
-      state.observationDraft = { category: null, rawText: "" };
-      state.observationEditingId = null;
       const status = root.querySelector?.(".course-inspection-copy-status");
       if (status) status.textContent = successMessage;
       return true;
     } catch (error) {
-      state.observationError = error instanceof Error
+      if (mutationConfirmed) {
+        state.observationError = `${successMessage} Não foi possível atualizar a lista agora.`;
+        return true;
+      }
+      const ambiguous = ambiguousObservationFailure(error);
+      if (!ambiguous) state.pendingObservationMutation = null;
+      const detail = error instanceof Error
         ? error.message
         : "Não foi possível alterar a observação.";
+      state.observationError = ambiguous
+        ? `${detail} Tente novamente para confirmar exatamente a mesma operação.`
+        : detail;
+      state.restoreObservationFocus = true;
       return false;
     } finally {
       state.observationSaving = false;
@@ -1004,6 +1352,7 @@ export function createCourseInspectionSequence({
     offset = 0,
     allowRebase = true
   } = {}) {
+    const hasRequestedPosition = Boolean(anchorStudyUnitId);
     const epoch = ++requestEpoch;
     state.initialLoading = true;
     state.initialFailure = "";
@@ -1045,8 +1394,12 @@ export function createCourseInspectionSequence({
         state.initialLoading = false;
         render({
           anchor: { studyUnitId: state.activeStudyUnitId || anchorStudyUnitId, offsetFromStickyTop: offset },
-          initial: true
+          initial: true,
+          restorePosition: hasRequestedPosition
         });
+        if (!hasRequestedPosition && scrollTarget && "scrollTop" in scrollTarget) {
+          scrollTarget.scrollTop = 0;
+        }
       }
     }
   }
@@ -1132,12 +1485,12 @@ export function createCourseInspectionSequence({
       : setTimeout(updateActiveFromViewport, 0);
   }
 
-  function savePositionNow() {
+  function savePositionNow(snapshot = null) {
     if (saveTimer != null) {
       clearTimeout(saveTimer);
       saveTimer = null;
     }
-    const anchor = captureAnchor();
+    const anchor = snapshot || captureAnchor();
     if (!anchor.studyUnitId) return Promise.resolve(false);
     return Promise.resolve(controller.saveAuthoringInspectionPosition(state.courseId, {
       scope: state.scope,
@@ -1185,10 +1538,25 @@ export function createCourseInspectionSequence({
   }
 
   async function navigateFromCurrentPoint(route) {
-    const anchor = captureAnchor();
-    await savePositionNow();
-    const returnItem = state.items.find(({ studyUnit }) =>
-      studyUnit.id === anchor.studyUnitId) || activeItem();
+    updateActiveFromViewport();
+    const returnItem = activeItem();
+    const captured = captureAnchor();
+    const escapedId = returnItem && (globalThis.CSS?.escape
+      ? globalThis.CSS.escape(returnItem.studyUnit.id)
+      : returnItem.studyUnit.id.replace(/["\\]/gu, "\\$&"));
+    const activeElement = escapedId
+      ? root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`)
+      : null;
+    const anchor = returnItem
+      ? {
+          ...captured,
+          studyUnitId: returnItem.studyUnit.id,
+          offsetFromStickyTop: activeElement?.getBoundingClientRect
+            ? activeElement.getBoundingClientRect().top - stickyTop()
+            : captured.offsetFromStickyTop
+        }
+      : captured;
+    await savePositionNow(anchor);
     const returnTo = returnItem
       ? buildCourseAuthoringRoute(state.courseId, {
           section: "inspection",
@@ -1206,7 +1574,487 @@ export function createCourseInspectionSequence({
     return navigateFromCurrentPoint(route);
   }
 
+  function requestChatForItem(item) {
+    if (!item || typeof onRequestChat !== "function") return false;
+    const path = item.curriculumPath;
+    try {
+      Promise.resolve(onRequestChat({
+        target: {
+          type: "study_unit",
+          id: item.studyUnit.id,
+          title: item.studyUnit.title,
+          path: [
+            path.module.title,
+            path.lesson.title,
+            path.didacticMicrosequence.title,
+            item.studyUnit.title
+          ]
+        },
+        action: "correct_study_unit",
+        instruction: "Revise esta Unidade de estudo comigo. Aponte problemas antes de propor qualquer correção e limite eventuais alterações a este alvo.",
+        deepLink: item.deepLink
+      })).catch(() => {});
+    } catch {
+      // O integrador apresenta a própria falha sem interromper a Inspeção.
+    }
+    return true;
+  }
+
+  function restoreManualHistoryPreview() {
+    const preview = state.manualHistoryPreview;
+    if (!preview) return;
+    const source = preview.direction === "undo" ? state.manualRedo : state.manualUndo;
+    const destination = preview.direction === "undo" ? state.manualUndo : state.manualRedo;
+    if (source.at(-1) === preview.entry) {
+      source.pop();
+      destination.push(preview.entry);
+    }
+    state.manualHistoryPreview = null;
+  }
+
+  function resetManualEditor({
+    status = "",
+    focusEdit = false,
+    confirmUnknownDiscard = false,
+    keepHistoryPreview = false
+  } = {}) {
+    const studyUnitId = state.manualStudyUnitId;
+    if (state.manualUnknownSignature && !confirmUnknownDiscard) {
+      state.manualDiscardArmed = true;
+      state.manualError = "A gravação pode ter sido aceita. Salve novamente para confirmar ou descarte explicitamente este rascunho.";
+      state.manualRestoreFocus = "discard-unknown";
+      render({ captureDraft: false });
+      return false;
+    }
+    if (keepHistoryPreview) state.manualHistoryPreview = null;
+    else restoreManualHistoryPreview();
+    manualInlineController?.destroy?.();
+    manualInlineController = null;
+    state.manualStudyUnitId = null;
+    state.manualTargetId = "";
+    state.manualDraft = { pathValues: {} };
+    state.manualOrigin = "manual";
+    state.manualSaving = false;
+    state.manualError = "";
+    state.manualStatus = status;
+    state.manualRestoreFocus = "";
+    state.manualUnknownSignature = "";
+    state.manualDiscardArmed = false;
+    render();
+    if (focusEdit && studyUnitId) {
+      [...(root.querySelectorAll?.('[data-inspection-unit-mode="edit"]') || [])]
+        .find((button) => button.dataset.studyUnitId === studyUnitId)
+        ?.focus?.({ preventScroll: true });
+    }
+    return true;
+  }
+
+  function beginManualEdit(
+    studyUnitId,
+    targetId = "study_unit",
+    { pathValues = {}, origin = "manual", restoreFocus = true, status = "" } = {}
+  ) {
+    if (!state.canEditManually || state.manualSaving) return false;
+    const item = manualItem(studyUnitId);
+    if (!item) return false;
+    state.manualStudyUnitId = studyUnitId;
+    state.manualTargetId = targetId;
+    state.manualDraft = { pathValues: structuredClone(pathValues) };
+    state.manualOrigin = origin;
+    state.manualError = "";
+    state.manualStatus = status;
+    state.manualRestoreFocus = restoreFocus ? "field" : "";
+    render({ captureDraft: false });
+    return true;
+  }
+
+  function previewManualDraft({
+    studyUnitId,
+    targetId,
+    pathValues,
+    origin = "provider_assistance",
+    restoreFocus = true
+  } = {}) {
+    if (!new Set(["manual", "provider_assistance"]).has(origin) ||
+        !isPlainObject(pathValues)) {
+      throw new TypeError("O rascunho contextual de edição é inválido.");
+    }
+    const item = manualItem(canonicalId(studyUnitId, "A Unidade do rascunho"));
+    const normalizedTargetId = String(targetId || "").trim();
+    if (!item || !normalizedTargetId) {
+      throw new TypeError("O alvo do rascunho contextual não existe.");
+    }
+    applyManualStudyUnitEdit(item.studyUnit, normalizedTargetId, { pathValues });
+    return beginManualEdit(item.studyUnit.id, normalizedTargetId, {
+      pathValues,
+      origin,
+      restoreFocus
+    });
+  }
+
+  function ensureProviderAssistance() {
+    if (providerAssistance) return providerAssistance;
+    providerAssistance = createStudyUnitProviderAssistance({
+      documentValue,
+      windowValue,
+      session: providerAssistanceSession
+    });
+    return providerAssistance;
+  }
+
+  function providerTriggerFocus(studyUnitId) {
+    return Object.freeze({
+      focus(options) {
+        [...(root.querySelectorAll?.("[data-inspection-provider-assistance]") || [])]
+          .find((button) => button.dataset.studyUnitId === studyUnitId)
+          ?.focus?.(options);
+      }
+    });
+  }
+
+  function providerPreviewFocus(studyUnitId, targetId) {
+    const escapedId = windowValue?.CSS?.escape
+      ? windowValue.CSS.escape(studyUnitId)
+      : studyUnitId.replace(/["\\]/gu, "\\$&");
+    const unit = root.querySelector?.(
+      `[data-inspection-study-unit="${escapedId}"]`
+    );
+    if (targetId === "study_unit") {
+      return unit?.querySelector?.("[data-inspection-manual-title]") || null;
+    }
+    return unit?.querySelector?.(
+      ".runtime-resource-edit-target.is-inline-editing [data-manual-edit-path]"
+    ) || unit?.querySelector?.(".runtime-resource-edit-target.is-inline-editing") || null;
+  }
+
+  function openProviderAssistance(trigger) {
+    if (!state.canEditManually || state.manualSaving) return false;
+    if (state.manualUnknownSignature) {
+      state.manualDiscardArmed = true;
+      state.manualError = "Confirme a mesma gravação ou descarte o pedido incerto antes de pedir outra alteração.";
+      render({ captureDraft: false });
+      return false;
+    }
+    const studyUnitId = String(trigger?.dataset?.studyUnitId || "");
+    const item = manualItem(studyUnitId);
+    if (!item) return false;
+    if (state.manualStudyUnitId && state.manualStudyUnitId !== studyUnitId &&
+        manualDraftChanged()) {
+      state.manualError = "Salve ou cancele a edição atual antes de usar a assistência.";
+      render();
+      return false;
+    }
+    if (state.manualStudyUnitId !== studyUnitId) {
+      beginManualEdit(studyUnitId, "study_unit", { restoreFocus: false });
+    } else {
+      captureManualDraft();
+    }
+    const current = manualItem(studyUnitId);
+    const targetId = state.manualTargetId || "study_unit";
+    const pathValues = structuredClone(state.manualDraft.pathValues);
+    try {
+      return ensureProviderAssistance().open({
+        trigger: providerTriggerFocus(studyUnitId),
+        studyUnit: current.studyUnit,
+        targetId,
+        pathValues,
+        baselineOrigin: state.manualOrigin,
+        onFocusPreview: () => providerPreviewFocus(studyUnitId, targetId),
+        onPreview: ({ targetId: nextTargetId, pathValues: nextValues, origin }) =>
+          previewManualDraft({
+            studyUnitId,
+            targetId: nextTargetId,
+            pathValues: nextValues,
+            origin,
+            restoreFocus: false
+          })
+      });
+    } catch (error) {
+      state.manualError = error instanceof Error
+        ? error.message
+        : "A assistência por API não está disponível.";
+      render();
+      return false;
+    }
+  }
+
+  function manualDraftChanged() {
+    const item = manualItem();
+    if (!item || !state.manualTargetId) return false;
+    captureManualDraft();
+    const original = new Map(
+      listManualStudyUnitEditablePaths(item.studyUnit, state.manualTargetId)
+        .map(({ path, value }) => [path, value])
+    );
+    return Object.entries(state.manualDraft.pathValues)
+      .some(([path, value]) => original.has(path) && original.get(path) !== value);
+  }
+
+  function selectManualTarget(studyUnitId, targetId) {
+    if (!state.canEditManually || state.manualSaving) return false;
+    if (state.manualUnknownSignature) {
+      state.manualDiscardArmed = true;
+      state.manualError = "Confirme a mesma gravação ou descarte o pedido incerto antes de mudar de conteúdo.";
+      render();
+      return false;
+    }
+    if (state.manualStudyUnitId !== studyUnitId) return beginManualEdit(studyUnitId, targetId);
+    if (state.manualTargetId === targetId) return true;
+    if (manualDraftChanged()) {
+      state.manualError = "Salve ou cancele a edição atual antes de escolher outro conteúdo.";
+      render();
+      return false;
+    }
+    const item = manualItem();
+    if (!item || (targetId !== "study_unit" &&
+        !listManualStudyUnitTargetIds(item.studyUnit).includes(targetId))) return false;
+    state.manualTargetId = targetId;
+    state.manualDraft = { pathValues: {} };
+    state.manualError = "";
+    state.manualRestoreFocus = "field";
+    render({ captureDraft: false });
+    return true;
+  }
+
+  function replaceManualItem(current, studyUnit, version) {
+    const replacement = normalizeInspectionItem({
+      ...current,
+      studyUnit,
+      version,
+      updatedAt: new Date().toISOString()
+    }, state.totalCount);
+    state.items = state.items.map((item) =>
+      item.studyUnit.id === current.studyUnit.id ? replacement : item
+    );
+    return replacement;
+  }
+
+  async function commitManualStudyUnit(current, studyUnit, origin = "manual") {
+    const result = await onSaveManualEdit({
+      courseId: state.courseId,
+      expectedCourseRevision: state.pinnedRevision,
+      didacticMicrosequenceId: current.curriculumPath.didacticMicrosequence.id,
+      studyUnitId: current.studyUnit.id,
+      expectedVersion: current.version,
+      studyUnit: structuredClone(studyUnit),
+      origin
+    });
+    if (result != null && (!isPlainObject(result) ||
+        result.courseId && result.courseId !== state.courseId ||
+        result.studyUnitId && result.studyUnitId !== current.studyUnit.id ||
+        result.origin && result.origin !== origin ||
+        result.reconciled != null && typeof result.reconciled !== "boolean")) {
+      throw new TypeError("A confirmação não corresponde à edição enviada.");
+    }
+    const confirmedStudyUnit = applyManualStudyUnitEdit(
+      result?.studyUnit ?? studyUnit,
+      "study_unit",
+      { pathValues: {} }
+    );
+    if (confirmedStudyUnit.id !== current.studyUnit.id) {
+      throw new TypeError("A Unidade confirmada não corresponde à edição enviada.");
+    }
+    const resultVersion = result?.version ?? result?.studyUnitVersion;
+    const version = resultVersion == null
+      ? current.version + 1
+      : natural(resultVersion, "A versão salva da Unidade", { minimum: 1 });
+    if (result?.courseRevision != null) {
+      state.pinnedRevision = natural(
+        result.courseRevision,
+        "A revisão salva do Curso",
+        { minimum: 1 }
+      );
+    }
+    return {
+      item: replaceManualItem(current, confirmedStudyUnit, version),
+      reconciled: result?.reconciled !== false
+    };
+  }
+
+  async function saveManualEdit() {
+    if (!state.canEditManually || state.manualSaving) return false;
+    const current = manualItem();
+    if (!current || !state.manualTargetId) return false;
+    captureManualDraft();
+    let edited;
+    try {
+      edited = applyManualStudyUnitEdit(
+        current.studyUnit,
+        state.manualTargetId,
+        state.manualDraft
+      );
+    } catch (error) {
+      state.manualError = error instanceof Error
+        ? error.message
+        : "A edição não pôde ser validada.";
+      state.manualRestoreFocus = "field";
+      render({ captureDraft: false });
+      return false;
+    }
+    if (sameStudyUnit(current.studyUnit, edited)) {
+      resetManualEditor({ status: "Nenhuma alteração para salvar.", focusEdit: true });
+      return true;
+    }
+    const attemptSignature = JSON.stringify({
+      targetId: state.manualTargetId,
+      studyUnit: edited,
+      origin: state.manualOrigin
+    });
+    if (state.manualUnknownSignature && state.manualUnknownSignature !== attemptSignature) {
+      state.manualDiscardArmed = true;
+      state.manualError = "O rascunho mudou depois de uma gravação incerta. Descarte o pedido anterior antes de salvar outra alteração.";
+      render({ captureDraft: false });
+      return false;
+    }
+    const before = structuredClone(current.studyUnit);
+    state.manualSaving = true;
+    state.manualError = "";
+    render({ captureDraft: false });
+    try {
+      const committed = await commitManualStudyUnit(current, edited, state.manualOrigin);
+      const saved = committed.item;
+      const historyPreview = state.manualHistoryPreview;
+      const previewValue = historyPreview
+        ? historyPreview.direction === "undo"
+          ? historyPreview.entry.before
+          : historyPreview.entry.after
+        : null;
+      const acceptedPreview = previewValue && sameStudyUnit(previewValue, saved.studyUnit);
+      if (!acceptedPreview) {
+        restoreManualHistoryPreview();
+        state.manualUndo.push({
+          studyUnitId: saved.studyUnit.id,
+          targetId: state.manualTargetId,
+          before,
+          after: structuredClone(saved.studyUnit)
+        });
+        if (state.manualUndo.length > 20) state.manualUndo.shift();
+        state.manualRedo = [];
+      }
+      state.manualUnknownSignature = "";
+      resetManualEditor({
+        status: committed.reconciled
+          ? "Edição salva."
+          : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
+        focusEdit: true,
+        keepHistoryPreview: acceptedPreview
+      });
+      return true;
+    } catch (error) {
+      state.manualSaving = false;
+      const ambiguous = isAmbiguousManualStudyUnitWriteFailure(error);
+      state.manualUnknownSignature = ambiguous ? attemptSignature : "";
+      state.manualDiscardArmed = false;
+      state.manualError = ambiguous
+        ? "Não foi possível confirmar se a edição foi salva. Tente Salvar novamente para consultar o mesmo pedido."
+        : error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+      state.manualRestoreFocus = "field";
+      render({ captureDraft: false });
+      return false;
+    }
+  }
+
+  function moveManualHistory(direction, studyUnitId) {
+    if (!state.canEditManually || state.manualSaving) return false;
+    const source = direction === "undo" ? state.manualUndo : state.manualRedo;
+    const destination = direction === "undo" ? state.manualRedo : state.manualUndo;
+    const entry = source.at(-1);
+    const current = manualItem(studyUnitId);
+    if (!entry || entry.studyUnitId !== studyUnitId || !current) return false;
+    if (state.manualStudyUnitId && manualDraftChanged()) {
+      state.manualError = "Salve ou cancele a edição atual antes de continuar.";
+      render();
+      return false;
+    }
+    const desired = direction === "undo" ? entry.before : entry.after;
+    const targetId = entry.targetId || "study_unit";
+    const pathValues = Object.fromEntries(
+      listManualStudyUnitEditablePaths(desired, targetId)
+        .map(({ path, value }) => [path, value])
+    );
+    source.pop();
+    destination.push(entry);
+    state.manualHistoryPreview = { direction, entry };
+    const opened = beginManualEdit(studyUnitId, targetId, {
+      pathValues,
+      origin: "manual",
+      status: direction === "undo"
+        ? "Desfazer preparado. Confira e salve."
+        : "Refazer preparado. Confira e salve."
+    });
+    if (!opened) restoreManualHistoryPreview();
+    return opened;
+  }
+
   async function handleClick(event) {
+    const providerTrigger = event.target.closest?.("[data-inspection-provider-assistance]");
+    if (providerTrigger) return openProviderAssistance(providerTrigger);
+    const mode = event.target.closest?.("[data-inspection-unit-mode]");
+    if (mode) {
+      const studyUnitId = String(mode.dataset.studyUnitId || "");
+      const value = mode.dataset.inspectionUnitMode;
+      if (value === "edit") return beginManualEdit(studyUnitId);
+      if (value === "view") {
+        if (state.manualStudyUnitId) {
+          resetManualEditor({ status: "Edição cancelada.", focusEdit: false });
+        }
+        return true;
+      }
+      if (value === "ai") {
+        if (state.manualStudyUnitId && manualDraftChanged()) {
+          state.manualError = "Salve ou cancele a edição atual antes de abrir o ChatGPT.";
+          render();
+          return false;
+        }
+        if (state.manualStudyUnitId) resetManualEditor();
+        return requestChatForItem(manualItem(studyUnitId));
+      }
+    }
+    const manualTarget = event.target.closest?.(
+      "[data-inspection-manual-target], [data-action='toggle-study-unit-assistance-resource']"
+    );
+    if (manualTarget) {
+      const unit = manualTarget.closest?.("[data-inspection-study-unit]");
+      const studyUnitId = String(unit?.dataset?.inspectionStudyUnit || "");
+      const targetId = manualTarget.dataset.inspectionManualTarget ||
+        manualTarget.dataset.resourceTargetId || "";
+      return selectManualTarget(studyUnitId, targetId);
+    }
+    const manualAction = event.target.closest?.("[data-inspection-manual-action]");
+    if (manualAction) {
+      const action = manualAction.dataset.inspectionManualAction;
+      if (action === "save") return saveManualEdit();
+      if (action === "keep-unknown") {
+        state.manualDiscardArmed = false;
+        state.manualError = "Tente Salvar novamente para confirmar a mesma gravação.";
+        state.manualRestoreFocus = "save";
+        render();
+        return true;
+      }
+      if (action === "discard-unknown") {
+        resetManualEditor({
+          status: "Edição descartada.",
+          focusEdit: true,
+          confirmUnknownDiscard: true
+        });
+        return true;
+      }
+      resetManualEditor({ status: "Edição cancelada.", focusEdit: true });
+      return true;
+    }
+    const manualHistory = event.target.closest?.("[data-inspection-manual-history]");
+    if (manualHistory) {
+      return moveManualHistory(
+        manualHistory.dataset.inspectionManualHistory,
+        String(manualHistory.dataset.studyUnitId || "")
+      );
+    }
+    const requestChat = event.target.closest?.("[data-inspection-request-chat]");
+    if (requestChat) {
+      const item = state.items.find(({ studyUnit }) =>
+        studyUnit.id === String(requestChat.dataset.studyUnitId || ""));
+      return requestChatForItem(item);
+    }
     const observations = event.target.closest?.("[data-inspection-observations]");
     if (observations) {
       const studyUnitId = String(observations.dataset.studyUnitId || "");
@@ -1224,7 +2072,11 @@ export function createCourseInspectionSequence({
     if (observationAction) {
       const action = observationAction.dataset.observationAction;
       const annotationId = observationAction.dataset.observationId;
-      if (action === "close") {
+      if (action === "cancel-confirmation") {
+        cancelConfirmation();
+      } else if (action === "confirm-withdraw") {
+        return confirmWithdraw();
+      } else if (action === "close") {
         ++observationEpoch;
         state.observationStudyUnitId = null;
         state.observationItems = [];
@@ -1247,13 +2099,7 @@ export function createCourseInspectionSequence({
       } else if (action === "withdraw") {
         const item = state.observationItems.find((candidate) =>
           candidate.annotationId === annotationId);
-        if (item?.capabilities?.canWithdraw && confirmValue("Retirar esta observação?")) {
-          return mutateObservation({
-            type: "withdraw_anchored_annotation",
-            annotationId: item.annotationId,
-            expectedAnnotationVersion: item.annotationVersion
-          }, "Observação retirada.");
-        }
+        if (item?.capabilities?.canWithdraw) requestWithdraw(item);
       }
       return true;
     }
@@ -1314,6 +2160,10 @@ export function createCourseInspectionSequence({
   }
 
   function handleInput(event) {
+    if (event.target.matches?.("[data-inspection-manual-title]")) {
+      state.manualDraft.pathValues.title = event.target.textContent || "";
+      return;
+    }
     if (event.target.matches?.("[data-field='study-unit-observation']")) {
       state.observationDraft.rawText = event.target.value;
       const counter = root.querySelector?.("#study-observation-counter");
@@ -1331,12 +2181,13 @@ export function createCourseInspectionSequence({
     const issue = validateStudyUnitObservationText(rawText);
     if (issue) {
       state.observationError = issue;
+      state.restoreObservationFocus = true;
       render();
       return;
     }
     const editing = state.observationItems.find(({ annotationId }) =>
       annotationId === state.observationEditingId);
-    const command = editing ? {
+    const operationDraft = editing ? {
       type: "revise_anchored_annotation",
       annotationId: editing.annotationId,
       expectedAnnotationVersion: editing.annotationVersion,
@@ -1345,14 +2196,25 @@ export function createCourseInspectionSequence({
       briefSummary: editing.briefSummary
     } : {
       type: "create_anchored_annotation",
-      annotationId: createUuid(),
       target: { kind: "study_unit", id: state.observationStudyUnitId },
       rawText,
       category: state.observationDraft.category,
-      capturedAt: new Date().toISOString(),
       briefSummary: null
     };
-    void mutateObservation(command, editing ? "Observação atualizada." : "Observação adicionada.");
+    const command = pendingObservationMatches(state.pendingObservationMutation, operationDraft)
+      ? structuredClone(state.pendingObservationMutation.request.command)
+      : editing
+        ? operationDraft
+        : {
+          ...operationDraft,
+          annotationId: createUuid(),
+          capturedAt: new Date().toISOString(),
+        };
+    void mutateObservation(
+      command,
+      editing ? "Observação atualizada." : "Observação adicionada.",
+      { operationDraft }
+    );
   }
 
   async function handlePositionSignal(event) {
@@ -1360,7 +2222,8 @@ export function createCourseInspectionSequence({
     if (!isPlainObject(signal) || Object.keys(signal).length !== 3 ||
         signal.courseId !== state.courseId || signal.revision !== state.pinnedRevision ||
         typeof signal.studyUnitId !== "string" ||
-        Date.now() - lastInteractionAt < 1_500 || state.initialLoading || state.loadingDirection) {
+        Date.now() - lastInteractionAt < 1_500 || state.initialLoading || state.loadingDirection ||
+        state.manualStudyUnitId) {
       return;
     }
     let position;
@@ -1385,6 +2248,78 @@ export function createCourseInspectionSequence({
     });
   }
 
+  function manualItem(studyUnitId = state.manualStudyUnitId) {
+    return state.items.find(({ studyUnit }) => studyUnit.id === studyUnitId) || null;
+  }
+
+  function captureManualDraft() {
+    if (!state.manualStudyUnitId || !state.manualTargetId) return;
+    if (state.manualTargetId === "study_unit") {
+      const title = root.querySelector?.("[data-inspection-manual-title]");
+      if (title) state.manualDraft.pathValues.title = title.textContent || "";
+      return;
+    }
+    const unit = root.querySelector?.(
+      `[data-inspection-study-unit="${state.manualStudyUnitId}"]`
+    );
+    const container = unit?.querySelector?.(".runtime-resource-edit-target.is-inline-editing");
+    if (container) state.manualDraft.pathValues = readManualStudyUnitEditPathValues(container);
+  }
+
+  function placeManualCaretAtEnd(field) {
+    const selection = field?.ownerDocument?.getSelection?.();
+    if (!selection || !field?.ownerDocument?.createRange) return;
+    const range = field.ownerDocument.createRange();
+    range.selectNodeContents(field);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function activateManualEditing() {
+    manualInlineController?.destroy?.();
+    manualInlineController = null;
+    if (!state.manualStudyUnitId || !state.manualTargetId) return;
+    const unit = root.querySelector?.(
+      `[data-inspection-study-unit="${state.manualStudyUnitId}"]`
+    );
+    if (!unit) return;
+    if (state.manualTargetId === "study_unit") {
+      const title = unit.querySelector?.("[data-inspection-manual-title]");
+      if (state.manualRestoreFocus === "field") {
+        title?.focus?.({ preventScroll: true });
+        placeManualCaretAtEnd(title);
+        state.manualRestoreFocus = "";
+      }
+      return;
+    }
+    const container = unit.querySelector?.(".runtime-resource-edit-target.is-inline-editing");
+    if (!container) return;
+    manualInlineController = activateManualStudyUnitEdit(container, state.manualDraft);
+    if (state.manualRestoreFocus === "field") {
+      const field = manualInlineController?.fields?.[0];
+      field?.focus?.({ preventScroll: true });
+      placeManualCaretAtEnd(field);
+      state.manualRestoreFocus = "";
+    }
+  }
+
+  function hasPendingDraft() {
+    const editing = state.observationEditingId
+      ? state.observationItems.find(({ annotationId }) =>
+          annotationId === state.observationEditingId)
+      : null;
+    const draftChanged = editing
+      ? state.observationDraft.category !== editing.category ||
+        state.observationDraft.rawText !== (editing.rawText || "")
+      : state.observationDraft.category !== null || state.observationDraft.rawText !== "";
+    return Boolean(
+      state.pendingObservationMutation || state.confirmation ||
+      state.observationSaving || draftChanged || state.manualSaving ||
+      state.manualStudyUnitId || manualDraftChanged() || providerAssistance?.opened
+    );
+  }
+
   root.addEventListener("click", handleClick);
   root.addEventListener("change", handleChange);
   root.addEventListener("input", handleInput);
@@ -1392,8 +2327,8 @@ export function createCourseInspectionSequence({
   root.addEventListener("pointerdown", markInteraction, { passive: true });
   root.addEventListener("keydown", handleKeyDown);
   root.addEventListener("focusin", markInteraction);
-  documentValue?.addEventListener?.("pointerdown", handleDocumentPointerDown, { passive: true });
-  windowValue?.addEventListener?.("scroll", onScroll, { passive: true });
+  documentValue?.addEventListener?.("click", handleDocumentClick);
+  scrollTarget?.addEventListener?.("scroll", onScroll, { passive: true });
   const BroadcastChannelValue = windowValue?.BroadcastChannel;
   if (typeof BroadcastChannelValue === "function") {
     try {
@@ -1405,6 +2340,7 @@ export function createCourseInspectionSequence({
   }
 
   return Object.freeze({
+    hasPendingDraft,
     async open() {
       let position = null;
       if (!routeTarget) {
@@ -1430,6 +2366,14 @@ export function createCourseInspectionSequence({
     },
     loadMore(direction = "forward") {
       return loadDirection(direction);
+    },
+    previewManualEdit({
+      studyUnitId,
+      targetId,
+      pathValues,
+      origin = "provider_assistance"
+    } = {}) {
+      return previewManualDraft({ studyUnitId, targetId, pathValues, origin });
     },
     async refresh(nextRevision = state.pinnedRevision) {
       const revision = natural(nextRevision, "A revisão do Curso", { minimum: 1 });
@@ -1536,7 +2480,11 @@ export function createCourseInspectionSequence({
       state.destroyed = true;
       ++requestEpoch;
       observer?.disconnect?.();
-      windowValue?.removeEventListener?.("scroll", onScroll);
+      manualInlineController?.destroy?.();
+      manualInlineController = null;
+      providerAssistance?.destroy?.();
+      providerAssistance = null;
+      scrollTarget?.removeEventListener?.("scroll", onScroll);
       root.removeEventListener?.("click", handleClick);
       root.removeEventListener?.("change", handleChange);
       root.removeEventListener?.("input", handleInput);
@@ -1544,7 +2492,7 @@ export function createCourseInspectionSequence({
       root.removeEventListener?.("pointerdown", markInteraction);
       root.removeEventListener?.("keydown", handleKeyDown);
       root.removeEventListener?.("focusin", markInteraction);
-      documentValue?.removeEventListener?.("pointerdown", handleDocumentPointerDown);
+    documentValue?.removeEventListener?.("click", handleDocumentClick);
       positionChannel?.removeEventListener?.("message", handlePositionSignal);
       positionChannel?.close?.();
       positionChannel = null;

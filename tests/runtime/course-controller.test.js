@@ -18,7 +18,8 @@ import {
 import {
   ACCESSIBLE_COURSE_IDS_CACHE_KEY,
   ACCESSIBLE_COURSE_IDS_CONTRACT,
-  CourseController
+  CourseController,
+  coursePendingCompositionCacheKey
 } from "../../src/supabase/CourseController.js";
 import { courseVariantComparisonFixture } from
   "../support/courseVariantComparisonFixture.js";
@@ -79,6 +80,24 @@ function courseListPage(items = [courseListItem()], overrides = {}) {
     hasMore: false,
     nextCursor: null,
     ...overrides
+  };
+}
+
+function editableStudyUnit(title = "Unidade revista") {
+  return {
+    id: "unit-a",
+    position: 1,
+    title,
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo curricular revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
   };
 }
 
@@ -817,6 +836,9 @@ test("limpa lista, cabeçalho e todas as páginas de entidades do Curso revogado
   });
   await store.putCache(`course.v1.entities:${COURSE_ID}:2:start`, { data: { items: [] } });
   await store.putCache(`course.v1.entities:${COURSE_ID}:2:next`, { data: { items: [] } });
+  await store.putCache(coursePendingCompositionCacheKey(COURSE_ID), {
+    privateConfirmedContent: true
+  });
   await store.putCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`, {
     courseId: COURSE_ID
   });
@@ -1747,8 +1769,13 @@ test("leitura de materialização é sempre remota e preserva as identidades exp
     key.includes("materialization")), false);
 });
 
-test("pedido de materialização é somente copiado para uso no ChatGPT", async () => {
-  const store = new MemoryStateStore();
+test("pedido genérico é clonado para a cópia sem IndexedDB ou cache e conserva o alias", async () => {
+  const storeCalls = [];
+  const store = {
+    async getCache(key) { storeCalls.push(["get", key]); return null; },
+    async putCache(key) { storeCalls.push(["put", key]); },
+    async deleteCachePrefix(key) { storeCalls.push(["delete", key]); }
+  };
   const deliveries = [];
   const controller = new CourseController({
     store,
@@ -1756,7 +1783,7 @@ test("pedido de materialização é somente copiado para uso no ChatGPT", async 
       async listCourses() { return courseListPage([]); },
       async getCourse() { throw new Error("não usado"); }
     },
-    deliverMaterializationRequest(payload) {
+    deliverAuthoringRequest(payload) {
       deliveries.push(payload);
       return { delivery: "clipboard", message: "Pedido copiado." };
     }
@@ -1765,16 +1792,422 @@ test("pedido de materialização é somente copiado para uso no ChatGPT", async 
     requestId: COURSE_B,
     courseId: COURSE_ID,
     authoringPartId: "30000000-0000-4000-8000-000000000003",
-    requestText: "Materialize esta Parte."
+    requestText: "Revise este Módulo.",
+    context: { target: { type: "module", id: "module-1" } }
   };
 
-  assert.deepEqual(await controller.requestPartMaterialization(payload), {
+  assert.deepEqual(await controller.requestAuthoringRequest(payload), {
     delivery: "clipboard",
     message: "Pedido copiado."
   });
   assert.deepEqual(deliveries, [payload]);
   payload.requestText = "alterado depois";
-  assert.equal(deliveries[0].requestText, "Materialize esta Parte.");
+  payload.context.target.id = "module-2";
+  assert.equal(deliveries[0].requestText, "Revise este Módulo.");
+  assert.equal(deliveries[0].context.target.id, "module-1");
+  assert.deepEqual(storeCalls, []);
+
+  await controller.requestPartMaterialization({ requestText: "Materialize esta Parte." });
+  assert.equal(deliveries[1].requestText, "Materialize esta Parte.");
+  assert.deepEqual(storeCalls, []);
+});
+
+test("edição contextual owner preserva proveniência e invalida todas as projeções afetadas", async () => {
+  const store = new MemoryStateStore();
+  const sourceLinks = [{
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }, {
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }];
+  const calls = [];
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseSources(courseId, options) {
+      calls.push(["sources", courseId, structuredClone(options)]);
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId,
+        courseRevision: 4,
+        mode: "target",
+        query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+        pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: [{
+          attributionId: "30000000-0000-4000-8000-000000000003",
+          targetKind: "study_unit",
+          targetId: "unit-a",
+          targetVersion: 2,
+          targetHash: "a".repeat(64),
+          revision: 3,
+          sourceLinks,
+          actorId: null,
+          createdAt: "2026-08-20T22:40:00.000Z",
+          effective: true
+        }],
+        nextCursor: null
+      };
+    },
+    async commitCourseComposition(value) {
+      calls.push(["commit", structuredClone(value)]);
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        studyUnitId: "unit-a",
+        studyUnitVersion: 3,
+        changed: true,
+        idempotent: false,
+        channel: "application",
+        origin: "manual",
+        updatedAt: "2026-08-20T22:45:00.000Z"
+      };
+    },
+    async loadAuthoringStudyUnits(courseId, options) {
+      calls.push(["reread", courseId, structuredClone(options)]);
+      return {
+        contract: "aralearn.course-study-unit-inspection-page.v1",
+        courseId,
+        courseRevision: 5,
+        scope: { kind: "course", id: null },
+        totalCount: 1,
+        scopeOptions: { authoringParts: [], unassignedStudyUnitCount: 1 },
+        items: [{
+          studyUnit: editableStudyUnit(),
+          version: 3,
+          updatedAt: "2026-08-20T22:45:00.000Z",
+          ordinal: 1,
+          curriculumPath: {
+            module: { id: "module-a", position: 0, title: "Módulo A" },
+            lesson: { id: "lesson-a", position: 0, title: "Lição A" },
+            didacticMicrosequence: {
+              id: "micro-a", position: 0, title: "Microssequência A"
+            }
+          },
+          authoringPart: null
+        }],
+        hasPrevious: false,
+        hasMore: false,
+        previousCursor: null,
+        nextCursor: null,
+        pageBytes: 640
+      };
+    }
+  };
+  const owner = new CourseController({ api, store, ownerOnly: true });
+  const shared = new CourseController({ api, store });
+  const affected = [
+    `course-authoring.v1.list:`,
+    `course-authoring.v1.header:${COURSE_ID}`,
+    `course-authoring.v1.verified-composition:${COURSE_ID}`,
+    `course-authoring.v1.instructional-plan:${COURSE_ID}`,
+    `course-authoring.v1.course-design:${COURSE_ID}:course`,
+    `course-authoring.v1.course-sources:${COURSE_ID}:target`,
+    `course-authoring.v1.outline:${COURSE_ID}`,
+    `course-authoring.v1.entities:${COURSE_ID}:4`,
+    "course.v1.review-page"
+  ];
+  for (const key of affected) await store.putCache(key, { stale: true });
+  const positionKey = `course-authoring.v1.study-unit-inspection-position:${COURSE_ID}`;
+  await store.putCache(positionKey, { preserve: true });
+  const command = {
+    requestId: "request-manual-edit-0001",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit: editableStudyUnit(),
+    origin: "manual"
+  };
+
+  const result = await owner.commitCourseComposition(command);
+
+  assert.equal(result.courseRevision, 5);
+  assert.deepEqual(result.studyUnit, editableStudyUnit());
+  assert.equal(result.version, 3);
+  assert.equal(result.reconciled, true);
+  assert.deepEqual(calls[0], ["sources", COURSE_ID, {
+    expectedRevision: 4,
+    mode: "target",
+    sourceId: null,
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null,
+    limit: 10
+  }]);
+  assert.deepEqual(calls[1][1].sourceLinks, sourceLinks);
+  assert.equal(calls[1][1].origin, "manual");
+  assert.deepEqual(calls[2], ["reread", COURSE_ID, {
+    expectedRevision: 5,
+    scope: { kind: "course", id: null },
+    anchorStudyUnitId: "unit-a",
+    cursor: null,
+    direction: "forward",
+    limit: 1,
+    maxBytes: 64 * 1024
+  }]);
+  for (const key of affected) assert.equal(store.values.has(key), false, key);
+  const refreshedInspection = await store.getCache(
+    `course-authoring.v1.study-unit-inspection:${COURSE_ID}`
+  );
+  assert.equal(refreshedInspection.entries[0].page.courseRevision, 5);
+  assert.equal(refreshedInspection.entries[0].page.items[0].version, 3);
+  assert.deepEqual(await store.getCache(positionKey), { preserve: true });
+  await assert.rejects(
+    () => shared.commitCourseComposition(command),
+    /edição contextual/u
+  );
+});
+
+test("edição contextual de Unidade sem atribuição preserva proveniência vazia", async () => {
+  const store = new MemoryStateStore();
+  let committed = null;
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseSources(courseId) {
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId,
+        courseRevision: 4,
+        mode: "target",
+        query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+        pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: [],
+        nextCursor: null
+      };
+    },
+    async commitCourseComposition(value) {
+      committed = structuredClone(value);
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        studyUnitId: "unit-a",
+        studyUnitVersion: 3,
+        changed: true,
+        idempotent: false,
+        channel: "application",
+        origin: "provider_assistance",
+        updatedAt: "2026-08-20T22:45:00.000Z"
+      };
+    },
+    async loadAuthoringStudyUnits(courseId) {
+      return {
+        contract: "aralearn.course-study-unit-inspection-page.v1",
+        courseId,
+        courseRevision: 5,
+        scope: { kind: "course", id: null },
+        totalCount: 1,
+        scopeOptions: { authoringParts: [], unassignedStudyUnitCount: 1 },
+        items: [{
+          studyUnit: editableStudyUnit(),
+          version: 3,
+          updatedAt: "2026-08-20T22:45:00.000Z",
+          ordinal: 1,
+          curriculumPath: {
+            module: { id: "module-a", position: 0, title: "Módulo A" },
+            lesson: { id: "lesson-a", position: 0, title: "Lição A" },
+            didacticMicrosequence: {
+              id: "micro-a", position: 0, title: "Microssequência A"
+            }
+          },
+          authoringPart: null
+        }],
+        hasPrevious: false,
+        hasMore: false,
+        previousCursor: null,
+        nextCursor: null,
+        pageBytes: 640
+      };
+    }
+  };
+  const controller = new CourseController({ api, store, ownerOnly: true });
+
+  const result = await controller.commitCourseComposition({
+    requestId: "request-provider-edit-0001",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit: editableStudyUnit(),
+    origin: "provider_assistance"
+  });
+
+  assert.deepEqual(committed.sourceLinks, []);
+  assert.equal(result.origin, "provider_assistance");
+  assert.equal(result.version, 3);
+  assert.equal(result.reconciled, true);
+  assert.deepEqual(result.studyUnit, editableStudyUnit());
+});
+
+test("falha transitória da releitura não transforma receipt confirmado em escrita ambígua", async () => {
+  const store = new MemoryStateStore();
+  let commits = 0;
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseSources(courseId) {
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId,
+        courseRevision: 4,
+        mode: "target",
+        query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+        pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: [],
+        nextCursor: null
+      };
+    },
+    async commitCourseComposition() {
+      commits += 1;
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        studyUnitId: "unit-a",
+        studyUnitVersion: 3,
+        changed: true,
+        idempotent: false,
+        channel: "application",
+        origin: "manual",
+        updatedAt: "2026-08-20T22:45:00.000Z"
+      };
+    },
+    async loadAuthoringStudyUnits() { throw networkFailure(); }
+  };
+  const controller = new CourseController({ api, store, ownerOnly: true });
+
+  const result = await controller.commitCourseComposition({
+    requestId: "request-confirmed-read-failure-01",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit: editableStudyUnit(),
+    origin: "manual"
+  });
+
+  assert.equal(commits, 1);
+  assert.equal(result.courseRevision, 5);
+  assert.equal(result.version, 3);
+  assert.equal(result.reconciled, false);
+  assert.deepEqual(result.studyUnit, editableStudyUnit());
+  assert.equal(store.values.has(
+    `course-authoring.v1.study-unit-inspection:${COURSE_ID}`
+  ), false);
+});
+
+test("retry idempotente reutiliza a proveniência anterior sem preflight na revisão já avançada", async () => {
+  const store = new MemoryStateStore();
+  const sourceLinks = [{
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }];
+  let sourceReads = 0;
+  const commits = [];
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseSources(courseId) {
+      sourceReads += 1;
+      if (sourceReads > 1) {
+        throw Object.assign(new Error("revisão antiga"), {
+          code: "course_revision_changed",
+          status: 409
+        });
+      }
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId,
+        courseRevision: 4,
+        mode: "target",
+        query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+        pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: [{
+          attributionId: "30000000-0000-4000-8000-000000000003",
+          targetKind: "study_unit",
+          targetId: "unit-a",
+          targetVersion: 2,
+          targetHash: "a".repeat(64),
+          revision: 3,
+          sourceLinks,
+          actorId: null,
+          createdAt: "2026-08-20T22:40:00.000Z",
+          effective: true
+        }],
+        nextCursor: null
+      };
+    },
+    async commitCourseComposition(value) {
+      commits.push(structuredClone(value));
+      if (commits.length === 1) throw networkFailure();
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        studyUnitId: "unit-a",
+        studyUnitVersion: 3,
+        changed: true,
+        idempotent: true,
+        channel: "application",
+        origin: "manual",
+        updatedAt: "2026-08-20T22:45:00.000Z"
+      };
+    },
+    async loadAuthoringStudyUnits(courseId) {
+      return {
+        contract: "aralearn.course-study-unit-inspection-page.v1",
+        courseId,
+        courseRevision: 5,
+        scope: { kind: "course", id: null },
+        totalCount: 1,
+        scopeOptions: { authoringParts: [], unassignedStudyUnitCount: 1 },
+        items: [{
+          studyUnit: editableStudyUnit(),
+          version: 3,
+          updatedAt: "2026-08-20T22:45:00.000Z",
+          ordinal: 1,
+          curriculumPath: {
+            module: { id: "module-a", position: 0, title: "Módulo A" },
+            lesson: { id: "lesson-a", position: 0, title: "Lição A" },
+            didacticMicrosequence: {
+              id: "micro-a", position: 0, title: "Microssequência A"
+            }
+          },
+          authoringPart: null
+        }],
+        hasPrevious: false,
+        hasMore: false,
+        previousCursor: null,
+        nextCursor: null,
+        pageBytes: 640
+      };
+    }
+  };
+  const controller = new CourseController({ api, store, ownerOnly: true });
+  const command = {
+    requestId: "request-ambiguous-replay-0001",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit: editableStudyUnit(),
+    origin: "manual"
+  };
+
+  await assert.rejects(() => controller.commitCourseComposition(command), /offline/u);
+  const result = await controller.commitCourseComposition(command);
+
+  assert.equal(sourceReads, 1);
+  assert.equal(commits.length, 2);
+  assert.deepEqual(commits[1], commits[0]);
+  assert.deepEqual(commits[1].sourceLinks, sourceLinks);
+  assert.equal(result.idempotent, true);
+  assert.equal(result.reconciled, true);
 });
 
 test("operações de perfil, acesso, avatar e conta são delegadas sem outra camada", async () => {

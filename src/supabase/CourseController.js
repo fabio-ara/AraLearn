@@ -34,6 +34,9 @@ import {
   normalizeCourseStudyCitationsRead
 } from "../domain/courseSources.js";
 import {
+  normalizeFocalStudyUnitCompositionIntent
+} from "../domain/courseComposition.js";
+import {
   COURSE_ANNOTATION_CACHE_CONTRACT,
   COURSE_ANNOTATION_OUTBOX_CONTRACT
 } from "../persistence/CourseAnnotationRepository.js";
@@ -45,6 +48,8 @@ const CACHE_PREFIX = "course.v1";
 const MAX_ENTITY_PAGES = 100;
 const VERIFIED_COMPOSITION_CACHE_CONTRACT =
   "aralearn.course-verified-composition.v1";
+const PENDING_COMPOSITION_CACHE_CONTRACT =
+  "aralearn.course-confirmed-composition-pending.v1";
 const ACCESSIBLE_COURSE_IDS_CACHE_KEY = `${CACHE_PREFIX}.accessible-course-ids`;
 const ACCESSIBLE_COURSE_IDS_CONTRACT = "aralearn.accessible-course-ids.v1";
 const REVIEW_PAGE_CACHE_KEY = `${CACHE_PREFIX}.review-page`;
@@ -69,6 +74,10 @@ function courseCacheKey(courseId, prefix = CACHE_PREFIX) {
 
 function verifiedCompositionCacheKey(courseId, prefix = CACHE_PREFIX) {
   return `${prefix}.verified-composition:${courseId}`;
+}
+
+function pendingCompositionCacheKey(courseId) {
+  return `${PENDING_COMPOSITION_CACHE_CONTRACT}:${courseId}`;
 }
 
 function instructionalPlanCacheKey(courseId, prefix = CACHE_PREFIX) {
@@ -470,6 +479,96 @@ function normalizeInspectionPage(value) {
   };
 }
 
+function normalizePendingCompositionSnapshot(value) {
+  const allowed = new Set([
+    "contract", "requestId", "courseId", "expectedCourseRevision",
+    "courseRevision", "expectedStudyUnitVersion", "didacticMicrosequenceId",
+    "studyUnit", "studyUnitVersion", "origin", "changed", "updatedAt",
+    "savedAt", "inspectionItem", "inspectionScopeOptions"
+  ]);
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      value.contract !== PENDING_COMPOSITION_CACHE_CONTRACT ||
+      Object.keys(value).length !== allowed.size ||
+      Object.keys(value).some((field) => !allowed.has(field)) ||
+      typeof value.changed !== "boolean") {
+    throw new TypeError("Snapshot confirmado pendente inválido.");
+  }
+  const intent = normalizeFocalStudyUnitCompositionIntent({
+    requestId: value.requestId,
+    courseId: value.courseId,
+    expectedCourseRevision: value.expectedCourseRevision,
+    expectedStudyUnitVersion: value.expectedStudyUnitVersion,
+    didacticMicrosequenceId: value.didacticMicrosequenceId,
+    studyUnit: value.studyUnit,
+    origin: value.origin
+  });
+  const courseRevision = Number(value.courseRevision);
+  const studyUnitVersion = Number(value.studyUnitVersion);
+  const expectedCourseRevision = intent.expectedCourseRevision + (value.changed ? 1 : 0);
+  const expectedStudyUnitVersion = intent.expectedStudyUnitVersion + (value.changed ? 1 : 0);
+  const updatedAt = String(value.updatedAt || "");
+  const savedAt = String(value.savedAt || "");
+  if (courseRevision !== expectedCourseRevision ||
+      studyUnitVersion !== expectedStudyUnitVersion ||
+      !updatedAt || Number.isNaN(Date.parse(updatedAt)) ||
+      !savedAt || Number.isNaN(Date.parse(savedAt))) {
+    throw new TypeError("Snapshot confirmado pendente inválido.");
+  }
+  let inspectionItem = null;
+  let inspectionScopeOptions = null;
+  if (value.inspectionItem != null) {
+    const item = structuredClone(value.inspectionItem);
+    if (!item || typeof item !== "object" || Array.isArray(item) ||
+        item.studyUnit?.id !== intent.studyUnit.id ||
+        Number(item.version) !== studyUnitVersion ||
+        item.curriculumPath?.didacticMicrosequence?.id !==
+          intent.didacticMicrosequenceId ||
+        typeof item.deepLink !== "string" || !item.deepLink.trim() ||
+        typeof item.updatedAt !== "string" || Number.isNaN(Date.parse(item.updatedAt))) {
+      throw new TypeError("Item de Inspeção pendente inválido.");
+    }
+    const normalizedItemIntent = normalizeFocalStudyUnitCompositionIntent({
+      ...intent,
+      expectedCourseRevision: courseRevision,
+      expectedStudyUnitVersion: studyUnitVersion,
+      studyUnit: item.studyUnit
+    });
+    inspectionItem = {
+      ...item,
+      studyUnit: normalizedItemIntent.studyUnit,
+      version: studyUnitVersion,
+      updatedAt: item.updatedAt
+    };
+    const options = structuredClone(value.inspectionScopeOptions);
+    if (!options || typeof options !== "object" || Array.isArray(options) ||
+        !Array.isArray(options.authoringParts) ||
+        !Number.isSafeInteger(Number(options.unassignedStudyUnitCount)) ||
+        Number(options.unassignedStudyUnitCount) < 0) {
+      throw new TypeError("Opções de Inspeção pendentes inválidas.");
+    }
+    inspectionScopeOptions = options;
+  } else if (value.inspectionScopeOptions != null) {
+    throw new TypeError("Opções de Inspeção pendentes sem item.");
+  }
+  return {
+    contract: PENDING_COMPOSITION_CACHE_CONTRACT,
+    requestId: intent.requestId,
+    courseId: intent.courseId,
+    expectedCourseRevision: intent.expectedCourseRevision,
+    courseRevision,
+    expectedStudyUnitVersion: intent.expectedStudyUnitVersion,
+    didacticMicrosequenceId: intent.didacticMicrosequenceId,
+    studyUnit: intent.studyUnit,
+    studyUnitVersion,
+    origin: intent.origin,
+    changed: value.changed,
+    updatedAt,
+    savedAt,
+    inspectionItem,
+    inspectionScopeOptions
+  };
+}
+
 function normalizeInspectionPosition(courseId, value) {
   if (value == null) return null;
   const normalizedCourseId = String(courseId || "").trim().toLowerCase();
@@ -556,7 +655,7 @@ export class CourseController {
     api,
     store,
     ownerOnly = false,
-    deliverMaterializationRequest = null,
+    deliverAuthoringRequest = null,
     now = () => new Date().toISOString()
   } = {}) {
     if (!api || typeof api.listCourses !== "function" || typeof api.getCourse !== "function") {
@@ -571,16 +670,480 @@ export class CourseController {
     this.store = store;
     this.ownerOnly = ownerOnly === true;
     this.cachePrefix = this.ownerOnly ? "course-authoring.v1" : CACHE_PREFIX;
-    if (deliverMaterializationRequest != null &&
-        typeof deliverMaterializationRequest !== "function") {
+    if (deliverAuthoringRequest != null && typeof deliverAuthoringRequest !== "function") {
       throw new TypeError("Entrega ao chat inválida.");
     }
-    this.deliverMaterializationRequest = deliverMaterializationRequest;
+    this.deliverAuthoringRequest = deliverAuthoringRequest;
     this.now = now;
     this.accessibleCourseRefresh = null;
+    this.compositionSourceSnapshots = new Map();
+  }
+
+  async #readPendingComposition(courseId) {
+    const key = pendingCompositionCacheKey(courseId);
+    const cached = cachedPayload(await this.store.getCache(key));
+    if (cached == null) return null;
+    try {
+      return normalizePendingCompositionSnapshot(cached);
+    } catch {
+      await this.store.putCache(key, null);
+      return null;
+    }
+  }
+
+  #clearPendingComposition(courseId) {
+    return this.store.putCache(pendingCompositionCacheKey(courseId), null);
+  }
+
+  clearPendingCourseCompositions() {
+    return this.store.deleteCachePrefix(`${PENDING_COMPOSITION_CACHE_CONTRACT}:`);
+  }
+
+  async #readPendingBaseComposition(pending) {
+    const prefixes = [...new Set([CACHE_PREFIX, this.cachePrefix])];
+    for (const prefix of prefixes) {
+      const cached = cachedPayload(await this.store.getCache(
+        verifiedCompositionCacheKey(pending.courseId, prefix)
+      ));
+      const entityPageSize = Number(cached?.entityPageSize);
+      if (cached?.contract !== VERIFIED_COMPOSITION_CACHE_CONTRACT ||
+          cached.courseId !== pending.courseId ||
+          Number(cached.revision) !== pending.expectedCourseRevision ||
+          !Number.isSafeInteger(entityPageSize) || entityPageSize < 1 ||
+          entityPageSize > 1_000) continue;
+      const base = await this.#readVerifiedCachedDocument(
+        pending.courseId,
+        pending.expectedCourseRevision,
+        entityPageSize,
+        cached.course,
+        prefix
+      );
+      if (base) return { ...base, entityPageSize, prefix };
+    }
+    return null;
+  }
+
+  async #ensureCompositionRecoveryBase(intent) {
+    const reference = {
+      courseId: intent.courseId,
+      expectedCourseRevision: intent.expectedCourseRevision
+    };
+    let base = await this.#readPendingBaseComposition(reference);
+    if (!base && typeof this.api.getCourseEntities === "function") {
+      await this.loadCourseDocument(intent.courseId, {
+        verifiedRevision: intent.expectedCourseRevision
+      });
+      base = await this.#readPendingBaseComposition(reference);
+    }
+    if (!base) return null;
+    const row = base.rows.find((candidate) =>
+      candidate?.entityType === "study_unit" &&
+      candidate.entityId === intent.studyUnit.id
+    );
+    if (!row || row.parentId !== intent.didacticMicrosequenceId ||
+        Number(row.version) !== intent.expectedStudyUnitVersion) {
+      throw new TypeError("A composição local de recuperação não corresponde à Unidade editada.");
+    }
+    return base;
+  }
+
+  async #composePendingCourseDocument(pending) {
+    const promotedCache = cachedPayload(await this.store.getCache(
+      verifiedCompositionCacheKey(pending.courseId, CACHE_PREFIX)
+    ));
+    const promotedPageSize = Number(promotedCache?.entityPageSize);
+    if (promotedCache?.contract === VERIFIED_COMPOSITION_CACHE_CONTRACT &&
+        promotedCache.courseId === pending.courseId &&
+        Number(promotedCache.revision) === pending.courseRevision &&
+        Number.isSafeInteger(promotedPageSize) && promotedPageSize >= 1 &&
+        promotedPageSize <= 1_000) {
+      const promoted = await this.#readVerifiedCachedDocument(
+        pending.courseId,
+        pending.courseRevision,
+        promotedPageSize,
+        promotedCache.course,
+        CACHE_PREFIX
+      );
+      const rowIndex = promoted?.rows?.findIndex((candidate) =>
+        candidate?.entityType === "study_unit" &&
+        candidate.entityId === pending.studyUnit.id
+      );
+      const row = promoted?.rows?.[rowIndex];
+      if (promoted && rowIndex >= 0 &&
+          row?.parentId === pending.didacticMicrosequenceId &&
+          Number(row.version) === pending.studyUnitVersion) {
+        const rows = structuredClone(promoted.rows);
+        const content = structuredClone(pending.studyUnit);
+        delete content.id;
+        delete content.position;
+        rows[rowIndex] = {
+          ...rows[rowIndex],
+          position: pending.studyUnit.position,
+          content,
+          version: pending.studyUnitVersion
+        };
+        const document = composeCourseDocument({
+          id: String(promoted.course.courseId || "").trim(),
+          title: String(promoted.course.title || "").trim(),
+          goal: String(promoted.course.goal || "").trim()
+        }, rows);
+        return {
+          ...promoted,
+          rows,
+          document,
+          offline: true,
+          stale: true,
+          readOnly: true,
+          pendingConfirmed: true,
+          cachedAt: pending.savedAt,
+          entityPageSize: promotedPageSize
+        };
+      }
+    }
+    const base = await this.#readPendingBaseComposition(pending);
+    if (!base) return null;
+    const rowIndex = base.rows.findIndex((row) =>
+      row?.entityType === "study_unit" && row.entityId === pending.studyUnit.id
+    );
+    const previous = base.rows[rowIndex];
+    if (rowIndex < 0 || previous?.parentId !== pending.didacticMicrosequenceId ||
+        Number(previous?.version) !== pending.expectedStudyUnitVersion) return null;
+    const content = structuredClone(pending.studyUnit);
+    delete content.id;
+    delete content.position;
+    const rows = structuredClone(base.rows);
+    rows[rowIndex] = {
+      ...rows[rowIndex],
+      position: pending.studyUnit.position,
+      content,
+      version: pending.studyUnitVersion
+    };
+    const course = {
+      ...structuredClone(base.course),
+      revision: pending.courseRevision
+    };
+    const document = composeCourseDocument({
+      id: String(course.courseId || "").trim(),
+      title: String(course.title || "").trim(),
+      goal: String(course.goal || "").trim()
+    }, rows);
+    return {
+      course,
+      rows,
+      document,
+      offline: true,
+      stale: true,
+      readOnly: true,
+      pendingConfirmed: true,
+      cachedAt: pending.savedAt,
+      entityPageSize: base.entityPageSize
+    };
+  }
+
+  async #updateStudyListRevision(pending) {
+    const update = (cached) => {
+      const payload = cachedPayload(cached);
+      if (!payload?.data?.items || !Array.isArray(payload.data.items)) return cached;
+      let changed = false;
+      const items = payload.data.items.map((item) => {
+        if (item?.courseId !== pending.courseId ||
+            Number(item.revision) > pending.courseRevision) return item;
+        changed = true;
+        return {
+          ...item,
+          revision: pending.courseRevision,
+          updatedAt: pending.updatedAt
+        };
+      });
+      if (!changed) return cached;
+      return {
+        ...cached,
+        data: { ...payload.data, items }
+      };
+    };
+    if (typeof this.store.updateCachePrefix === "function") {
+      await this.store.updateCachePrefix(`${CACHE_PREFIX}.list:`, update);
+      return;
+    }
+    const key = listCacheKey("", null, CACHE_PREFIX);
+    const cached = await this.store.getCache(key);
+    if (cached != null) await this.store.putCache(key, update(cached));
+  }
+
+  async #promotePendingStudyComposition(pending) {
+    const composed = await this.#composePendingCourseDocument(pending);
+    if (!composed) return null;
+    const prefix = CACHE_PREFIX;
+    const pageSize = composed.entityPageSize;
+    const entityPrefix = `${prefix}.entities:${pending.courseId}:${pending.courseRevision}:`;
+    await this.store.deleteCachePrefix(entityPrefix);
+    let cursor = null;
+    for (let index = 0; index < composed.rows.length; index += pageSize) {
+      const items = composed.rows.slice(index, index + pageSize);
+      const hasMore = index + pageSize < composed.rows.length;
+      const last = items.at(-1);
+      const nextCursor = hasMore
+        ? { entityType: last.entityType, entityId: last.entityId }
+        : null;
+      await this.store.putCache(
+        entityCacheKey(pending.courseId, pending.courseRevision, pageSize, cursor, prefix),
+        {
+          savedAt: pending.savedAt,
+          data: {
+            contract: "aralearn.course-entities.v1",
+            courseId: pending.courseId,
+            revision: pending.courseRevision,
+            items,
+            hasMore,
+            nextCursor
+          }
+        }
+      );
+      cursor = nextCursor;
+    }
+    const course = {
+      ...structuredClone(composed.course),
+      revision: pending.courseRevision
+    };
+    await this.store.putCache(courseCacheKey(pending.courseId, prefix), {
+      savedAt: pending.savedAt,
+      data: course
+    });
+    await this.#promoteVerifiedComposition(
+      pending.courseId,
+      course,
+      pageSize,
+      prefix
+    );
+    await this.#updateStudyListRevision(pending);
+    return composed;
+  }
+
+  async #capturePendingInspectionRecovery(intent, result) {
+    const cached = cachedPayload(await this.store.getCache(
+      authoringInspectionCacheKey(intent.courseId, this.cachePrefix)
+    ));
+    if (cached?.contract === "aralearn.course-authoring-inspection-cache.v1" &&
+        Array.isArray(cached.entries)) {
+      for (const entry of cached.entries.toReversed()) {
+        let page;
+        try {
+          page = normalizeInspectionPage(entry?.page);
+        } catch {
+          continue;
+        }
+        const item = page.items.find((candidate) =>
+          candidate?.studyUnit?.id === intent.studyUnit.id &&
+          candidate?.curriculumPath?.didacticMicrosequence?.id ===
+            intent.didacticMicrosequenceId
+        );
+        if (!item) continue;
+        return {
+          inspectionItem: {
+            ...structuredClone(item),
+            studyUnit: structuredClone(intent.studyUnit),
+            version: result.studyUnitVersion,
+            updatedAt: result.updatedAt
+          },
+          inspectionScopeOptions: structuredClone(page.scopeOptions)
+        };
+      }
+    }
+    const pendingShape = normalizePendingCompositionSnapshot({
+      contract: PENDING_COMPOSITION_CACHE_CONTRACT,
+      requestId: intent.requestId,
+      courseId: intent.courseId,
+      expectedCourseRevision: intent.expectedCourseRevision,
+      courseRevision: result.courseRevision,
+      expectedStudyUnitVersion: intent.expectedStudyUnitVersion,
+      didacticMicrosequenceId: intent.didacticMicrosequenceId,
+      studyUnit: intent.studyUnit,
+      studyUnitVersion: result.studyUnitVersion,
+      origin: intent.origin,
+      changed: result.changed,
+      updatedAt: result.updatedAt,
+      savedAt: this.now(),
+      inspectionItem: null,
+      inspectionScopeOptions: null
+    });
+    const base = await this.#readPendingBaseComposition(pendingShape);
+    const course = base?.document?.courses?.[0];
+    let ordinal = 0;
+    for (const [modulePosition, moduleValue] of (course?.modules || []).entries()) {
+      for (const [lessonPosition, lesson] of (moduleValue.lessons || []).entries()) {
+        for (const [microsequencePosition, microsequence] of
+          (lesson.microsequences || []).entries()) {
+          for (const studyUnit of microsequence.studyUnits || []) {
+            ordinal += 1;
+            if (studyUnit.id !== intent.studyUnit.id ||
+                microsequence.id !== intent.didacticMicrosequenceId) continue;
+            return {
+              inspectionItem: {
+                studyUnit: structuredClone(intent.studyUnit),
+                version: result.studyUnitVersion,
+                updatedAt: result.updatedAt,
+                ordinal,
+                curriculumPath: {
+                  module: {
+                    id: moduleValue.id,
+                    position: modulePosition,
+                    title: moduleValue.title
+                  },
+                  lesson: {
+                    id: lesson.id,
+                    position: lessonPosition,
+                    title: lesson.title
+                  },
+                  didacticMicrosequence: {
+                    id: microsequence.id,
+                    position: microsequencePosition,
+                    title: microsequence.title
+                  }
+                },
+                authoringPart: null,
+                deepLink: `#/authoring/courses/${intent.courseId}` +
+                  `?section=inspection&studyUnitId=${encodeURIComponent(intent.studyUnit.id)}`
+              },
+              inspectionScopeOptions: {
+                authoringParts: [],
+                unassignedStudyUnitCount: 1
+              }
+            };
+          }
+        }
+      }
+    }
+    return { inspectionItem: null, inspectionScopeOptions: null };
+  }
+
+  async #rememberPendingComposition(intent, result) {
+    const recovery = await this.#capturePendingInspectionRecovery(intent, result);
+    const snapshot = normalizePendingCompositionSnapshot({
+      contract: PENDING_COMPOSITION_CACHE_CONTRACT,
+      requestId: intent.requestId,
+      courseId: intent.courseId,
+      expectedCourseRevision: intent.expectedCourseRevision,
+      courseRevision: result.courseRevision,
+      expectedStudyUnitVersion: intent.expectedStudyUnitVersion,
+      didacticMicrosequenceId: intent.didacticMicrosequenceId,
+      studyUnit: intent.studyUnit,
+      studyUnitVersion: result.studyUnitVersion,
+      origin: intent.origin,
+      changed: result.changed,
+      updatedAt: result.updatedAt,
+      savedAt: this.now(),
+      ...recovery
+    });
+    await this.store.putCache(pendingCompositionCacheKey(intent.courseId), snapshot);
+    return snapshot;
+  }
+
+  #pendingInspectionPage(pending, options) {
+    const item = pending?.inspectionItem;
+    if (!item || options.expectedRevision !== pending.courseRevision || options.cursor != null ||
+        options.anchorStudyUnitId != null &&
+          options.anchorStudyUnitId !== pending.studyUnit.id) return null;
+    const path = item.curriculumPath;
+    const partId = item.authoringPart?.id || null;
+    const scopeMatches = options.scope.kind === "course" ||
+      options.scope.kind === "unassigned" && partId == null ||
+      options.scope.kind === "authoring_part" && partId === options.scope.id ||
+      options.scope.kind === "module" && path?.module?.id === options.scope.id ||
+      options.scope.kind === "lesson" && path?.lesson?.id === options.scope.id ||
+      options.scope.kind === "didactic_microsequence" &&
+        path?.didacticMicrosequence?.id === options.scope.id;
+    if (!scopeMatches) return null;
+    const page = normalizeInspectionPage({
+      contract: AUTHORING_INSPECTION_PAGE_CONTRACT,
+      courseId: pending.courseId,
+      courseRevision: pending.courseRevision,
+      scope: options.scope,
+      totalCount: 1,
+      scopeOptions: structuredClone(pending.inspectionScopeOptions),
+      items: [{ ...structuredClone(item), ordinal: 1 }],
+      hasPrevious: false,
+      hasMore: false,
+      previousCursor: null,
+      nextCursor: null,
+      pageBytes: 0
+    });
+    page.pageBytes = new TextEncoder().encode(JSON.stringify(page)).byteLength;
+    return page;
+  }
+
+  async #overlayPendingCourseList(page) {
+    const items = await Promise.all(page.items.map(async (item) => {
+      if (item.ownership !== "owned" || item.canEdit !== true) return item;
+      const pending = await this.#readPendingComposition(item.courseId);
+      if (!pending || item.revision > pending.courseRevision) return item;
+      return {
+        ...item,
+        revision: pending.courseRevision,
+        updatedAt: pending.updatedAt
+      };
+    }));
+    const changed = items.some((item, index) => item !== page.items[index]);
+    return changed ? { ...page, items, stale: true } : page;
+  }
+
+  async #overlayPendingCourseHeader(courseId, value) {
+    const pending = await this.#readPendingComposition(courseId);
+    if (!pending || Number(value?.revision) > pending.courseRevision) return value;
+    return {
+      ...value,
+      revision: pending.courseRevision,
+      updatedAt: pending.updatedAt,
+      stale: true
+    };
+  }
+
+  async #inspectionReconcilesPending(page) {
+    const pending = await this.#readPendingComposition(page.courseId);
+    if (!pending || page.courseRevision < pending.courseRevision) return false;
+    if (page.courseRevision === pending.courseRevision) {
+      const item = page.items.find(({ studyUnit }) =>
+        studyUnit?.id === pending.studyUnit.id
+      );
+      if (!item || Number(item.version) !== pending.studyUnitVersion ||
+          item.curriculumPath?.didacticMicrosequence?.id !==
+            pending.didacticMicrosequenceId) return false;
+      const reconciled = normalizePendingCompositionSnapshot({
+        ...pending,
+        studyUnit: item.studyUnit,
+        studyUnitVersion: item.version,
+        updatedAt: item.updatedAt,
+        inspectionItem: pending.inspectionItem
+          ? {
+              ...structuredClone(pending.inspectionItem),
+              studyUnit: structuredClone(item.studyUnit),
+              version: item.version,
+              updatedAt: item.updatedAt,
+              curriculumPath: structuredClone(item.curriculumPath)
+            }
+          : null,
+        inspectionScopeOptions: pending.inspectionItem
+          ? pending.inspectionScopeOptions
+          : null
+      });
+      await this.#promotePendingStudyComposition(reconciled);
+    } else {
+      await Promise.all([
+        this.store.deleteCachePrefix(`${CACHE_PREFIX}.list:`),
+        this.store.deleteCachePrefix(courseCacheKey(page.courseId, CACHE_PREFIX)),
+        this.store.deleteCachePrefix(
+          verifiedCompositionCacheKey(page.courseId, CACHE_PREFIX)
+        ),
+        this.store.deleteCachePrefix(`${CACHE_PREFIX}.entities:${page.courseId}:`)
+      ]);
+    }
+    await this.#clearPendingComposition(page.courseId);
+    return true;
   }
 
   async #purgeCoursePrivacyCache(courseId, { clearLists = false } = {}) {
+    for (const [requestId, snapshot] of this.compositionSourceSnapshots) {
+      if (snapshot.courseId === courseId) this.compositionSourceSnapshots.delete(requestId);
+    }
     await Promise.all([
       ...(clearLists ? [this.store.deleteCachePrefix(`${this.cachePrefix}.list:`)] : []),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
@@ -592,6 +1155,7 @@ export class CourseController {
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionPositionKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`),
+      this.store.deleteCachePrefix(pendingCompositionCacheKey(courseId)),
       this.store.deleteCachePrefix(`${COURSE_ANNOTATION_CACHE_CONTRACT}:${courseId}`),
       this.store.deleteCachePrefix(`${COURSE_ANNOTATION_OUTBOX_CONTRACT}:${courseId}`),
       this.store.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`),
@@ -705,7 +1269,7 @@ export class CourseController {
       }
     );
     await this.#observeAccessibleCoursePage(page, { query, cursor });
-    return page;
+    return this.#overlayPendingCourseList(page);
   }
 
   async getCourse(courseId) {
@@ -727,6 +1291,7 @@ export class CourseController {
         authoringInspectionCacheKey(courseId, this.cachePrefix),
         authoringInspectionPositionKey(courseId, this.cachePrefix),
         `${this.cachePrefix}.entities:${courseId}:`,
+        pendingCompositionCacheKey(courseId),
         `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`,
         REVIEW_PAGE_CACHE_KEY
       ]
@@ -744,7 +1309,7 @@ export class CourseController {
         this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
       ]);
     }
-    return result;
+    return this.#overlayPendingCourseHeader(courseId, result);
   }
 
   getCourseEntities(courseId, { revision, cursor = null, limit = 500 } = {}) {
@@ -764,6 +1329,7 @@ export class CourseController {
           courseCacheKey(courseId, this.cachePrefix),
           verifiedCompositionCacheKey(courseId, this.cachePrefix),
           `${this.cachePrefix}.entities:${courseId}:`,
+          pendingCompositionCacheKey(courseId),
           `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`,
           REVIEW_PAGE_CACHE_KEY
         ]
@@ -815,10 +1381,11 @@ export class CourseController {
     courseId,
     revision,
     entityPageSize,
-    preservedCourse = null
+    preservedCourse = null,
+    prefix = this.cachePrefix
   ) {
     const cachedCourse = preservedCourse || cachedPayload(await this.store.getCache(
-      courseCacheKey(courseId, this.cachePrefix)
+      courseCacheKey(courseId, prefix)
     ))?.data;
     if (String(cachedCourse?.courseId || "").trim().toLowerCase() !== courseId ||
         Number(cachedCourse?.revision) !== revision) return null;
@@ -827,7 +1394,7 @@ export class CourseController {
     let cursor = null;
     for (let pageIndex = 0; pageIndex < MAX_ENTITY_PAGES; pageIndex += 1) {
       const page = cachedPayload(await this.store.getCache(
-        entityCacheKey(courseId, revision, entityPageSize, cursor, this.cachePrefix)
+        entityCacheKey(courseId, revision, entityPageSize, cursor, prefix)
       ))?.data;
       if (!validCourseEntityPage(page, courseId, revision)) return null;
       rows.push(...page.items);
@@ -841,7 +1408,7 @@ export class CourseController {
           }, rows);
         } catch {
           await this.store.deleteCachePrefix(
-            `${this.cachePrefix}.entities:${courseId}:${revision}:`
+            `${prefix}.entities:${courseId}:${revision}:`
           );
           return null;
         }
@@ -894,8 +1461,13 @@ export class CourseController {
     };
   }
 
-  async #promoteVerifiedComposition(courseId, course, entityPageSize) {
-    const key = verifiedCompositionCacheKey(courseId, this.cachePrefix);
+  async #promoteVerifiedComposition(
+    courseId,
+    course,
+    entityPageSize,
+    prefix = this.cachePrefix
+  ) {
+    const key = verifiedCompositionCacheKey(courseId, prefix);
     const previous = cachedPayload(await this.store.getCache(key));
     const revision = Number(course.revision);
     await this.store.putCache(key, {
@@ -909,7 +1481,7 @@ export class CourseController {
     const previousRevision = Number(previous?.revision);
     if (Number.isSafeInteger(previousRevision) && previousRevision !== revision) {
       await this.store.deleteCachePrefix(
-        `${this.cachePrefix}.entities:${courseId}:${previousRevision}:`
+        `${prefix}.entities:${courseId}:${previousRevision}:`
       );
     }
   }
@@ -921,22 +1493,39 @@ export class CourseController {
     if (!Number.isSafeInteger(entityPageSize) || entityPageSize < 1 || entityPageSize > 1_000) {
       throw new TypeError("O tamanho da página de entidades é inválido.");
     }
+    const pending = await this.#readPendingComposition(courseId);
+    const requestedRevision = verifiedRevision == null ? null : Number(verifiedRevision);
+    const pendingFallback = pending &&
+      (requestedRevision == null || requestedRevision <= pending.courseRevision)
+      ? await this.#composePendingCourseDocument(pending)
+      : null;
     if (verifiedRevision != null) {
-      const revision = Number(verifiedRevision);
+      const revision = requestedRevision;
       if (!Number.isSafeInteger(revision) || revision < 1) {
         throw new TypeError("A versão verificada do Curso é inválida.");
       }
-      const cached = await this.#readVerifiedCachedDocument(
-        courseId,
-        revision,
-        entityPageSize
-      );
-      if (cached) {
-        await this.#promoteVerifiedComposition(courseId, cached.course, entityPageSize);
-        return cached;
+      if (!pendingFallback) {
+        const cached = await this.#readVerifiedCachedDocument(
+          courseId,
+          revision,
+          entityPageSize
+        );
+        if (cached) {
+          await this.#promoteVerifiedComposition(courseId, cached.course, entityPageSize);
+          if (pending && revision >= pending.courseRevision) {
+            await this.#clearPendingComposition(courseId);
+          }
+          return cached;
+        }
       }
     }
-    const course = await this.getCourse(courseId);
+    let course;
+    try {
+      course = await this.getCourse(courseId);
+    } catch (error) {
+      if (pendingFallback && retryableReadFailure(error)) return pendingFallback;
+      throw error;
+    }
     const revision = Number(course?.revision);
     if (!Number.isSafeInteger(revision) || revision < 1) {
       throw new TypeError("A versão do Curso é inválida.");
@@ -975,6 +1564,12 @@ export class CourseController {
             goal: String(course?.goal || "").trim()
           }, rows);
           await this.#promoteVerifiedComposition(courseId, course, entityPageSize);
+          if (pending && offline !== true && stale !== true &&
+              revision >= pending.courseRevision) {
+            await this.#clearPendingComposition(courseId);
+          }
+          if (pendingFallback && (offline === true || stale === true ||
+              revision < pending.courseRevision)) return pendingFallback;
           return {
             course,
             rows,
@@ -996,6 +1591,8 @@ export class CourseController {
       }
       throw invalidCourseComposition("O Curso excedeu o limite seguro de páginas.");
     } catch (error) {
+      if (pendingFallback && (retryableReadFailure(error) ||
+          isInvalidCourseComposition(error))) return pendingFallback;
       if (!isInvalidCourseComposition(error)) throw error;
       await this.store.deleteCachePrefix(
         `${this.cachePrefix}.entities:${courseId}:${revision}:`
@@ -1027,6 +1624,7 @@ export class CourseController {
           instructionalPlanCacheKey(courseId, this.cachePrefix),
           `${this.cachePrefix}.course-design:${courseId}:`,
           courseSourcesCachePrefix(courseId, this.cachePrefix),
+          pendingCompositionCacheKey(courseId),
           `${this.cachePrefix}.entities:${courseId}:`
         ]
       }
@@ -1287,7 +1885,8 @@ export class CourseController {
           `${this.cachePrefix}.course-design:${courseId}:`,
           courseSourcesCachePrefix(courseId, this.cachePrefix),
           authoringOutlineCacheKey(courseId, this.cachePrefix),
-          authoringInspectionCacheKey(courseId, this.cachePrefix)
+          authoringInspectionCacheKey(courseId, this.cachePrefix),
+          pendingCompositionCacheKey(courseId)
         ]
       }
     );
@@ -1369,6 +1968,7 @@ export class CourseController {
         await this.api.loadAuthoringStudyUnits(normalizedCourseId, normalizedOptions)
       );
       await this.#rememberAuthoringInspectionPage(normalizedCourseId, requestKey, page);
+      await this.#inspectionReconcilesPending(page);
       return { ...structuredClone(page), offline: false, stale: false };
     } catch (error) {
       if (accessWasRevoked(error)) {
@@ -1380,8 +1980,16 @@ export class CourseController {
         requestKey,
         normalize
       );
-      if (!cached) throw error;
-      return cached;
+      if (cached) return cached;
+      const pending = await this.#readPendingComposition(normalizedCourseId);
+      const pendingPage = this.#pendingInspectionPage(pending, normalizedOptions);
+      if (!pendingPage) throw error;
+      await this.#rememberAuthoringInspectionPage(
+        normalizedCourseId,
+        requestKey,
+        pendingPage
+      );
+      return { ...structuredClone(pendingPage), offline: true, stale: true };
     }
   }
 
@@ -1457,6 +2065,147 @@ export class CourseController {
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
     ]);
     return result;
+  }
+
+  async commitCourseComposition(value = {}) {
+    if (!this.ownerOnly || typeof this.api.commitCourseComposition !== "function") {
+      throw new TypeError("A API de Autoria não oferece edição contextual.");
+    }
+    const intent = normalizeFocalStudyUnitCompositionIntent(value);
+    try {
+      const signature = JSON.stringify(intent);
+      let sourceSnapshot = this.compositionSourceSnapshots.get(intent.requestId);
+      if (sourceSnapshot && sourceSnapshot.signature !== signature) {
+        throw new TypeError("A identidade da edição já está vinculada a outro conteúdo.");
+      }
+      if (!sourceSnapshot) {
+        const sources = await this.loadCourseSources(intent.courseId, {
+          expectedRevision: intent.expectedCourseRevision,
+          mode: "target",
+          targetKind: "study_unit",
+          targetId: intent.studyUnit.id,
+          limit: 10
+        });
+        const effective = sources.items.filter(({ effective: active }) => active === true);
+        if (effective.length > 1 || effective.length === 1 &&
+            effective[0].targetVersion !== intent.expectedStudyUnitVersion) {
+          throw new TypeError("A proveniência efetiva não corresponde à Unidade editada.");
+        }
+        sourceSnapshot = {
+          courseId: intent.courseId,
+          signature,
+          sourceLinks: structuredClone(effective[0]?.sourceLinks ?? [])
+        };
+        if (this.compositionSourceSnapshots.size >= 16) {
+          this.compositionSourceSnapshots.delete(
+            this.compositionSourceSnapshots.keys().next().value
+          );
+        }
+        this.compositionSourceSnapshots.set(intent.requestId, sourceSnapshot);
+      }
+      await this.#ensureCompositionRecoveryBase(intent);
+      const result = await this.api.commitCourseComposition({
+        ...intent,
+        sourceLinks: structuredClone(sourceSnapshot.sourceLinks)
+      });
+      if (!result || typeof result !== "object" || Array.isArray(result) ||
+          Object.keys(result).length !== 9 ||
+          result.courseId !== intent.courseId ||
+          result.studyUnitId !== intent.studyUnit.id ||
+          result.studyUnitVersion !== intent.expectedStudyUnitVersion +
+            (result.changed === true ? 1 : 0) ||
+          result.channel !== "application" || result.origin !== intent.origin) {
+        throw new TypeError("A confirmação da edição contextual não corresponde ao pedido.");
+      }
+      const pending = await this.#rememberPendingComposition(intent, result);
+      await this.#promotePendingStudyComposition(pending);
+      await Promise.all([
+        this.store.deleteCachePrefix(
+          instructionalPlanCacheKey(intent.courseId, this.cachePrefix)
+        ),
+        this.store.deleteCachePrefix(
+          `${this.cachePrefix}.course-design:${intent.courseId}:`
+        ),
+        this.store.deleteCachePrefix(courseSourcesCachePrefix(
+          intent.courseId,
+          this.cachePrefix
+        )),
+        this.store.deleteCachePrefix(authoringOutlineCacheKey(
+          intent.courseId,
+          this.cachePrefix
+        )),
+        this.store.deleteCachePrefix(
+          `${this.cachePrefix}.entities:${intent.courseId}:`
+        ),
+        this.store.deleteCachePrefix(REVIEW_PAGE_CACHE_KEY)
+      ]);
+      let reread;
+      try {
+        reread = await this.loadAuthoringStudyUnits(intent.courseId, {
+          expectedRevision: result.courseRevision,
+          scope: { kind: "course", id: null },
+          anchorStudyUnitId: intent.studyUnit.id,
+          direction: "forward",
+          limit: 1,
+          maxBytes: 64 * 1024
+        });
+      } catch (error) {
+        if (!retryableReadFailure(error)) throw error;
+        return {
+          ...result,
+          studyUnit: structuredClone(intent.studyUnit),
+          version: result.studyUnitVersion,
+          reconciled: false
+        };
+      }
+      const committed = reread.items[0];
+      const normalizedCommitted = committed &&
+        normalizeFocalStudyUnitCompositionIntent({
+          ...intent,
+          expectedCourseRevision: result.courseRevision,
+          expectedStudyUnitVersion: committed.version,
+          studyUnit: committed.studyUnit
+        });
+      if (reread.offline !== false || reread.stale !== false) {
+        return {
+          ...result,
+          studyUnit: structuredClone(intent.studyUnit),
+          version: result.studyUnitVersion,
+          reconciled: false
+        };
+      }
+      if (reread.courseRevision !== result.courseRevision ||
+          reread.items.length !== 1 || !normalizedCommitted ||
+          normalizedCommitted.studyUnit.id !== intent.studyUnit.id ||
+          committed.version !== result.studyUnitVersion ||
+          committed.curriculumPath?.didacticMicrosequence?.id !==
+            intent.didacticMicrosequenceId) {
+        await this.store.putCache(pendingCompositionCacheKey(intent.courseId), pending);
+        throw new TypeError("A Unidade relida não corresponde à edição confirmada.");
+      }
+      await this.#clearPendingComposition(intent.courseId);
+      await Promise.all([
+        this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+        this.store.deleteCachePrefix(courseCacheKey(intent.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(
+          verifiedCompositionCacheKey(intent.courseId, this.cachePrefix)
+        ),
+        this.store.deleteCachePrefix(
+          `${this.cachePrefix}.entities:${intent.courseId}:`
+        )
+      ]);
+      return {
+        ...result,
+        studyUnit: normalizedCommitted.studyUnit,
+        version: committed.version,
+        reconciled: true
+      };
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(intent.courseId, { clearLists: true });
+      }
+      throw error;
+    }
   }
 
   async mutateCourseDesign(value = {}) {
@@ -1763,11 +2512,15 @@ export class CourseController {
     return result;
   }
 
-  requestPartMaterialization(payload) {
-    if (!this.deliverMaterializationRequest) {
+  requestAuthoringRequest(payload) {
+    if (!this.deliverAuthoringRequest) {
       throw new Error("Não há meio disponível para copiar este pedido.");
     }
-    return Promise.resolve(this.deliverMaterializationRequest(structuredClone(payload)));
+    return Promise.resolve(this.deliverAuthoringRequest(structuredClone(payload)));
+  }
+
+  requestPartMaterialization(payload) {
+    return this.requestAuthoringRequest(payload);
   }
 
   createCourse(values) {
@@ -1815,5 +2568,7 @@ export {
   ACCESSIBLE_COURSE_IDS_CACHE_KEY,
   ACCESSIBLE_COURSE_IDS_CONTRACT,
   CACHE_PREFIX as COURSE_CACHE_PREFIX,
+  PENDING_COMPOSITION_CACHE_CONTRACT,
+  pendingCompositionCacheKey as coursePendingCompositionCacheKey,
   instructionalPlanCacheKey as courseInstructionalPlanCacheKey
 };

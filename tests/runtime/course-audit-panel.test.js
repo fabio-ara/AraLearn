@@ -24,19 +24,44 @@ class FakeHost {
     this.innerHTML = "";
     this.attributes = new Map();
     this.hidden = false;
+    this.listeners = new Map();
+    this.focusedSelectors = [];
+  }
+
+  addEventListener(type, listener) {
+    this.listeners.set(type, listener);
   }
 
   setAttribute(name, value) {
     this.attributes.set(name, value);
   }
 
-  querySelector() {
+  querySelector(selector) {
+    if (selector.includes("data-audit-action")) {
+      return { focus: () => this.focusedSelectors.push(selector) };
+    }
     return null;
   }
 
   querySelectorAll() {
     return [];
   }
+}
+
+class FakeDocument {
+  constructor() { this.listeners = new Map(); }
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  removeEventListener(type) { this.listeners.delete(type); }
+}
+
+class FakeWindow {
+  constructor() {
+    this.listeners = new Map();
+    this.location = { hash: "" };
+  }
+
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  removeEventListener(type) { this.listeners.delete(type); }
 }
 
 class FakeRoot extends FakeHost {
@@ -546,6 +571,215 @@ function deepLinkClick(root, href) {
   return prevented;
 }
 
+function observationAuditClick(root, {
+  studyUnitId = "unit-a",
+  annotationId = "",
+  annotationVersion = ""
+} = {}) {
+  const node = {
+    dataset: {
+      observationsAction: "audit-target",
+      studyUnitId,
+      annotationId,
+      annotationVersion
+    },
+    closest(selector) {
+      return selector === "[data-observations-action]" ? this : null;
+    }
+  };
+  root.observations.listeners.get("click")({ target: node, preventDefault() {} });
+}
+
+function draftControl({
+  name = "",
+  value = "",
+  type = "textarea",
+  checked = false,
+  dataset = {},
+  documentValue
+} = {}) {
+  return {
+    name,
+    value,
+    type,
+    checked,
+    dataset,
+    selectionStart: typeof value === "string" ? value.length : null,
+    selectionEnd: typeof value === "string" ? value.length : null,
+    focusCalls: 0,
+    closest(selector) {
+      return selector.includes("[data-audit-form]") ? this.form : null;
+    },
+    focus() {
+      this.focusCalls += 1;
+      if (documentValue) documentValue.activeElement = this;
+    },
+    setSelectionRange(start, end) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    }
+  };
+}
+
+function draftForm({ kind, draftId, controls, details = [] }) {
+  const form = {
+    dataset: { auditForm: kind, auditDraftId: draftId },
+    controls,
+    elements: {
+      namedItem(name) { return controls.find((control) => control.name === name) || null; }
+    },
+    querySelectorAll(selector) {
+      if (selector === "[data-audit-edit-field]") {
+        return controls.filter((control) => control.dataset.auditEditField !== undefined);
+      }
+      if (selector === "[data-audit-source-ref]") {
+        return controls.filter((control) => control.dataset.auditSourceRef !== undefined);
+      }
+      if (selector === "[data-audit-plan-ref]") {
+        return controls.filter((control) => control.dataset.auditPlanRef !== undefined);
+      }
+      if (selector === "[data-audit-parameter-ref]") {
+        return controls.filter((control) => control.dataset.auditParameterRef !== undefined);
+      }
+      if (selector === "[data-audit-annotation-ref]") {
+        return controls.filter((control) => control.dataset.auditAnnotationRef !== undefined);
+      }
+      if (selector === "[data-audit-reference-details]") return details;
+      if (selector.includes("[name]") || selector.includes("[data-audit-edit-field]")) {
+        return controls;
+      }
+      return [];
+    }
+  };
+  controls.forEach((control) => { control.form = form; });
+  return form;
+}
+
+function exposeDraftForm(host, form) {
+  host.querySelectorAll = (selector) => selector === "[data-audit-form][data-audit-draft-id]"
+    ? [form]
+    : [];
+}
+
+function submitAuditForm(root, form) {
+  root.listeners.get("submit")({
+    target: form,
+    preventDefault() {}
+  });
+}
+
+function auditRoundForm({
+  kind,
+  draftId,
+  documentValue = null,
+  editorialEvidence = "Evidência editorial preservada."
+}) {
+  const dimensions = ["pedagogical_quality", "factual_quality", "editorial_quality"];
+  const controls = dimensions.flatMap((dimension) => [
+    draftControl({
+      name: `criterion-code:${dimension}`,
+      value: `human_review.${dimension}`,
+      type: "text",
+      documentValue
+    }),
+    draftControl({
+      name: `criterion-version:${dimension}`,
+      value: "1",
+      type: "hidden",
+      documentValue
+    }),
+    draftControl({
+      name: `criterion-statement:${dimension}`,
+      value: `Critério ${dimension}.`,
+      documentValue
+    }),
+    draftControl({
+      name: `result:${dimension}`,
+      value: dimension === "editorial_quality"
+        ? "failed"
+        : dimension === "factual_quality" ? "not_checked" : "passed",
+      type: "select-one",
+      documentValue
+    }),
+    draftControl({
+      name: `evidence:${dimension}`,
+      value: dimension === "editorial_quality"
+        ? editorialEvidence
+        : `Evidência ${dimension}.`,
+      documentValue
+    }),
+    draftControl({
+      name: `severity:${dimension}`,
+      value: "high",
+      type: "select-one",
+      documentValue
+    })
+  ]);
+  if (kind === "verify") {
+    controls.push(draftControl({
+      name: "verification-outcome",
+      value: "still_open",
+      type: "select-one",
+      documentValue
+    }));
+  }
+  return draftForm({ kind, draftId, controls });
+}
+
+function observationSupportController() {
+  return {
+    async loadAuthoringOutline() {
+      return {
+        contract: "aralearn.course.v1",
+        courseId: COURSE_ID,
+        title: "Curso auditado",
+        goal: "Auditar o Curso.",
+        revision: 7,
+        ownership: "owned",
+        canEdit: true,
+        counts: {
+          moduleCount: 0,
+          lessonCount: 0,
+          topicCount: 0,
+          microsequenceCount: 0,
+          studyUnitCount: 0
+        },
+        createdAt: "2026-08-17T09:00:00.000Z",
+        updatedAt: "2026-08-17T10:00:00.000Z",
+        outline: {
+          courseId: COURSE_ID,
+          title: "Curso auditado",
+          goal: "Auditar o Curso.",
+          modules: []
+        },
+        deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+      };
+    },
+    async loadCourseAnchoredAnnotations(_courseId, options) {
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        annotationSetVersion: 0,
+        query: structuredClone(options.query),
+        summary: {
+          matchingTotal: 0,
+          byOrigin: {},
+          byChannel: {},
+          byState: {},
+          unclassifiedTotal: 0
+        },
+        items: [],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async mutateCourseAnchoredAnnotations() {
+      throw new Error("Não deve alterar Observações.");
+    }
+  };
+}
+
 async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
@@ -585,6 +819,109 @@ test("deep link de achado abre detalhe e renderiza Before/After reais na 7ª ár
   assert.match(root.audit.innerHTML, /Tempo registrado<\/dt><dd>10 min/u);
   assert.match(root.audit.innerHTML, /Rejeitar correção/u);
   assert.match(root.audit.innerHTML, /Dispensar achado/u);
+  assert.doesNotMatch(root.audit.innerHTML, /request-chat-(?:finding|correction|run)/u);
+});
+
+test("detalhes de achado, correção e rodada abrem o compositor sem mutar auditoria", async () => {
+  const requests = [];
+  let writes = 0;
+  const root = new FakeRoot();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
+    navigatorValue: { onLine: true },
+    onRequestChat(value) { requests.push(structuredClone(value)); },
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) { return detailPage(options); },
+      async mutateCourseAuditCycle() { writes += 1; throw new Error("Não deve alterar."); }
+    }
+  });
+  await panel.open();
+  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-finding"/u);
+  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-correction"/u);
+  actionClick(root, "request-chat-finding");
+  actionClick(root, "request-chat-correction");
+
+  const runRoot = new FakeRoot();
+  const runPanel = createCourseAuditPanel({
+    root: runRoot,
+    course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
+    routeTarget: { kind: "audit_run", id: CLEAN_RUN_ID },
+    navigatorValue: { onLine: true },
+    onRequestChat(value) { requests.push(structuredClone(value)); },
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) { return runDetailPage(options); },
+      async mutateCourseAuditCycle() { writes += 1; throw new Error("Não deve alterar."); }
+    }
+  });
+  await runPanel.open();
+  assert.match(runRoot.audit.innerHTML, /data-audit-action="request-chat-run"/u);
+  actionClick(runRoot, "request-chat-run");
+
+  assert.equal(writes, 0);
+  assert.deepEqual(requests.map(({ target, action, references }) => ({
+    type: target.type,
+    id: target.id,
+    action,
+    auditRunId: references.auditRunId
+  })), [{
+    type: "audit_finding",
+    id: FINDING_ID,
+    action: "review",
+    auditRunId: RUN_ID
+  }, {
+    type: "authoring_correction",
+    id: CORRECTION_ID,
+    action: "review",
+    auditRunId: RUN_ID
+  }, {
+    type: "audit_run",
+    id: CLEAN_RUN_ID,
+    action: "review",
+    auditRunId: CLEAN_RUN_ID
+  }]);
+  assert.equal(
+    requests[0].deepLink,
+    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}`
+  );
+  assert.equal(
+    requests[1].deepLink,
+    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}` +
+      `&correctionId=${CORRECTION_ID}`
+  );
+  assert.equal(
+    requests[2].deepLink,
+    `#/authoring/courses/${COURSE_ID}?section=observations&auditRunId=${CLEAN_RUN_ID}`
+  );
+  panel.destroy();
+  runPanel.destroy();
+});
+
+test("Auditoria usa a revisão relida ao voltar do ChatGPT sem perder o detalhe", async () => {
+  const revisions = [];
+  const root = new FakeRoot();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
+    navigatorValue: { onLine: true },
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) {
+        revisions.push(options.expectedCourseRevision);
+        return detailPage(options);
+      },
+      async mutateCourseAuditCycle() {
+        throw new Error("Não deve alterar.");
+      }
+    }
+  });
+
+  await panel.open();
+  await panel.refresh(8);
+
+  assert.deepEqual(revisions, [7, 8]);
+  assert.match(root.audit.innerHTML, /Texto corrigido\./u);
 });
 
 test("apply usa comando versionado, atualiza revisão e nunca cai em audit offline", async () => {
@@ -592,12 +929,20 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   const revisions = [];
   const navigations = [];
   const root = new FakeRoot();
+  const documentValue = new FakeDocument();
+  const tabMoves = [];
+  const cancelControl = { focus: () => tabMoves.push("cancel") };
+  const confirmControl = { focus: () => tabMoves.push("confirm") };
+  root.audit.querySelectorAll = (selector) => selector.includes("data-audit-confirmation")
+    ? [cancelControl, confirmControl]
+    : [];
+  documentValue.activeElement = confirmControl;
   const panel = createCourseAuditPanel({
     root,
     course: { courseId: COURSE_ID, revision: 7 },
     routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
     navigatorValue: { onLine: true },
-    confirmValue: () => true,
+    documentValue,
     onCourseRevisionChange: (revision) => revisions.push(revision),
     onNavigate: (hash) => navigations.push(hash),
     controller: {
@@ -634,6 +979,35 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   });
   await panel.open();
   actionClick(root, "apply-correction");
+  assert.match(root.audit.innerHTML, /role="alertdialog"/u);
+  assert.match(root.audit.innerHTML, /class="course-authoring-confirm-backdrop" data-audit-confirmation-backdrop/u);
+  assert.match(root.audit.innerHTML, /role="alertdialog"[^>]*aria-modal="true"/u);
+  assert.match(root.audit.innerHTML, /data-confirmation-tone="primary"/u);
+  assert.equal(writes.length, 0);
+  assert.equal(root.audit.focusedSelectors.at(-1), '[data-audit-action="cancel-confirmation"]');
+  let tabPrevented = false;
+  root.listeners.get("keydown")({
+    key: "Tab",
+    target: { closest: () => null },
+    preventDefault() { tabPrevented = true; }
+  });
+  assert.equal(tabPrevented, true);
+  assert.equal(tabMoves.at(-1), "cancel");
+  root.listeners.get("keydown")({
+    key: "Escape",
+    target: { closest: () => null },
+    preventDefault() {},
+    stopPropagation() {}
+  });
+  assert.doesNotMatch(root.audit.innerHTML, /role="alertdialog"/u);
+  assert.equal(root.audit.focusedSelectors.at(-1), '[data-audit-action="apply-correction"]');
+  actionClick(root, "apply-correction");
+  documentValue.listeners.get("click")({
+    target: { matches: (selector) => selector === "[data-audit-confirmation-backdrop]" }
+  });
+  assert.doesNotMatch(root.audit.innerHTML, /role="alertdialog"/u);
+  actionClick(root, "apply-correction");
+  actionClick(root, "confirm-mutation");
   await settle();
 
   assert.equal(writes.length, 1);
@@ -651,6 +1025,8 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   assert.match(root.audit.innerHTML, /Observação v3/u);
   assert.equal(deepLinkClick(root, suggestionRoute), true);
   assert.deepEqual(navigations, [suggestionRoute]);
+  panel.destroy();
+  assert.equal(documentValue.listeners.has("click"), false);
 
   const offlineRoot = new FakeRoot();
   let reads = 0;
@@ -705,6 +1081,535 @@ test("detalhe carrega contexto pinado, liga Fonte/Âncora literal e abre editor 
   assert.match(root.audit.innerHTML, /Editar título e folhas da Unidade/u);
   assert.match(root.audit.innerHTML, /Editar explicação/u);
   assert.doesNotMatch(root.audit.innerHTML, /\{"title"/u);
+});
+
+test("editor preserva título, folha, justificativa e foco após validação local", async () => {
+  let writes = 0;
+  const root = new FakeRoot();
+  const documentValue = new FakeDocument();
+  const navigatorValue = { onLine: true };
+  const windowValue = new FakeWindow();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
+    navigatorValue,
+    windowValue,
+    documentValue,
+    onRequestChat() {},
+    controller: {
+      async loadCourseAuditCycle(courseId, options) {
+        assert.equal(courseId, COURSE_ID);
+        return options.query.mode === "context"
+          ? contextPage(options)
+          : detailPage(options, { currentAvailable: true });
+      },
+      async mutateCourseAuditCycle() {
+        writes += 1;
+        throw new Error("A validação local deveria impedir a escrita.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  actionClick(root, "open-correction-editor");
+  await settle();
+  const fieldKeys = [...root.audit.innerHTML.matchAll(/data-audit-edit-field="([^"]+)"/gu)]
+    .map((match) => match[1]);
+  assert.equal(fieldKeys[0], "title");
+  assert.ok(fieldKeys.length >= 2);
+
+  const title = draftControl({
+    value: "",
+    dataset: { auditEditField: "title" },
+    documentValue
+  });
+  const leaf = draftControl({
+    value: "Folha <revista> & preservada.",
+    dataset: { auditEditField: fieldKeys[1] },
+    documentValue
+  });
+  const rationale = draftControl({
+    name: "rationale",
+    value: "Justificativa & argumento do autor.",
+    documentValue
+  });
+  const form = draftForm({
+    kind: "correction",
+    draftId: `correction:${CORRECTION_ID}:1`,
+    controls: [title, leaf, rationale]
+  });
+  exposeDraftForm(root.audit, form);
+  documentValue.activeElement = leaf;
+
+  submitAuditForm(root, form);
+
+  assert.equal(writes, 0);
+  assert.match(root.audit.innerHTML, /O título da Unidade é obrigatório/u);
+  assert.match(root.audit.innerHTML, /data-audit-editor-overlay/u);
+  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-finding"/u);
+  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-correction"/u);
+  assert.match(root.audit.innerHTML, /data-audit-edit-field="title"[^>]*><\/textarea>/u);
+  assert.match(root.audit.innerHTML, /Folha &lt;revista&gt; &amp; preservada\.<\/textarea>/u);
+  assert.match(root.audit.innerHTML, /Justificativa &amp; argumento do autor\.<\/textarea>/u);
+  assert.ok(leaf.focusCalls >= 1);
+  assert.equal(documentValue.activeElement, leaf);
+
+  navigatorValue.onLine = false;
+  windowValue.listeners.get("offline")();
+  assert.match(root.audit.innerHTML, /Folha &lt;revista&gt; &amp; preservada\.<\/textarea>/u);
+  assert.match(root.audit.innerHTML, /Justificativa &amp; argumento do autor\.<\/textarea>/u);
+  assert.ok(leaf.focusCalls >= 2);
+});
+
+test("verificação preserva valores, referências abertas e foco ao ficar offline e voltar", async () => {
+  const root = new FakeRoot();
+  const documentValue = new FakeDocument();
+  const navigatorValue = { onLine: true };
+  const windowValue = new FakeWindow();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
+    navigatorValue,
+    windowValue,
+    documentValue,
+    controller: {
+      async loadCourseAuditCycle(courseId, options) {
+        assert.equal(courseId, COURSE_ID);
+        return options.query.mode === "context"
+          ? contextPage(options)
+          : detailPage(options, { status: "applied", currentAvailable: true });
+      },
+      async mutateCourseAuditCycle() {
+        throw new Error("Não deve escrever enquanto offline.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  actionClick(root, "open-verification");
+  const evidence = draftControl({
+    name: "evidence:factual_quality",
+    value: "Evidência <nova> & conferida.",
+    documentValue
+  });
+  const outcome = draftControl({
+    name: "verification-outcome",
+    value: "resolved",
+    type: "select-one",
+    documentValue
+  });
+  const sourceRef = draftControl({
+    type: "checkbox",
+    checked: true,
+    dataset: {
+      auditSourceRef: "",
+      dimension: "factual_quality",
+      sourceId: "fonte-literal",
+      sourceRevision: "2",
+      anchorId: "anchor-a",
+      anchorRevision: "3"
+    },
+    documentValue
+  });
+  const form = draftForm({
+    kind: "verify",
+    draftId: `verify:${FINDING_ID}:1:${CORRECTION_ID}:1`,
+    controls: [evidence, outcome, sourceRef],
+    details: [{
+      open: true,
+      dataset: { auditReferenceDetails: "factual_quality" }
+    }]
+  });
+  exposeDraftForm(root.audit, form);
+  documentValue.activeElement = evidence;
+  root.listeners.get("input")({ target: evidence });
+
+  navigatorValue.onLine = false;
+  windowValue.listeners.get("offline")();
+  assert.match(root.audit.innerHTML, /Auditoria indisponível sem rede/u);
+  assert.match(root.audit.innerHTML, /Evidência &lt;nova&gt; &amp; conferida\.<\/textarea>/u);
+  assert.match(root.audit.innerHTML, /<option value="resolved" selected>O achado foi resolvido/u);
+  assert.match(root.audit.innerHTML, /data-anchor-revision="3" checked/u);
+  assert.match(root.audit.innerHTML, /data-audit-reference-details="factual_quality" open/u);
+  assert.ok(evidence.focusCalls >= 1);
+
+  submitAuditForm(root, form);
+  assert.match(root.audit.innerHTML, /Auditoria exige conexão de rede/u);
+  assert.match(root.audit.innerHTML, /Evidência &lt;nova&gt; &amp; conferida\.<\/textarea>/u);
+  navigatorValue.onLine = true;
+  windowValue.listeners.get("online")();
+  assert.doesNotMatch(root.audit.innerHTML, /Auditoria indisponível sem rede/u);
+  assert.match(root.audit.innerHTML, /Evidência &lt;nova&gt; &amp; conferida\.<\/textarea>/u);
+  assert.match(root.audit.innerHTML, /<option value="resolved" selected/u);
+  assert.ok(evidence.focusCalls >= 3);
+});
+
+test("registro de rodada preserva rascunho e foco nas recomposições online e offline", async () => {
+  const root = new FakeRoot();
+  const documentValue = new FakeDocument();
+  const navigatorValue = { onLine: true };
+  const windowValue = new FakeWindow();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
+    navigatorValue,
+    windowValue,
+    documentValue,
+    controller: {
+      async loadCourseAuditCycle(courseId, options) {
+        assert.equal(courseId, COURSE_ID);
+        return contextPage(options);
+      },
+      async mutateCourseAuditCycle() {
+        throw new Error("Não deve escrever enquanto offline.");
+      },
+      async loadAuthoringOutline() {
+        return {
+          contract: "aralearn.course.v1",
+          courseId: COURSE_ID,
+          title: "Curso auditado",
+          goal: "Auditar o Curso.",
+          revision: 7,
+          ownership: "owned",
+          canEdit: true,
+          counts: {
+            moduleCount: 0,
+            lessonCount: 0,
+            topicCount: 0,
+            microsequenceCount: 0,
+            studyUnitCount: 0
+          },
+          createdAt: "2026-08-17T09:00:00.000Z",
+          updatedAt: "2026-08-17T10:00:00.000Z",
+          outline: {
+            courseId: COURSE_ID,
+            title: "Curso auditado",
+            goal: "Auditar o Curso.",
+            modules: []
+          },
+          deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+        };
+      },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return {
+          contract: "aralearn.course-anchored-annotation-page.v1",
+          courseId: COURSE_ID,
+          courseRevision: 7,
+          annotationSetVersion: 0,
+          query: structuredClone(options.query),
+          summary: {
+            matchingTotal: 0,
+            byOrigin: {},
+            byChannel: {},
+            byState: {},
+            unclassifiedTotal: 0
+          },
+          items: [],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async mutateCourseAnchoredAnnotations() {
+        throw new Error("Não deve alterar Observações.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  observationAuditClick(root);
+  await settle();
+  actionClick(root, "open-record");
+  const evidence = draftControl({
+    name: "evidence:editorial_quality",
+    value: "Argumento editorial do autor.",
+    documentValue
+  });
+  const result = draftControl({
+    name: "result:editorial_quality",
+    value: "uncertain",
+    type: "select-one",
+    documentValue
+  });
+  const severity = draftControl({
+    name: "severity:editorial_quality",
+    value: "critical",
+    type: "select-one",
+    documentValue
+  });
+  const form = draftForm({
+    kind: "record",
+    draftId: `record:${HASH_B}`,
+    controls: [evidence, result, severity]
+  });
+  exposeDraftForm(root.audit, form);
+  documentValue.activeElement = evidence;
+  root.listeners.get("input")({ target: evidence });
+
+  navigatorValue.onLine = false;
+  windowValue.listeners.get("offline")();
+  assert.match(root.audit.innerHTML, /Argumento editorial do autor\.<\/textarea>/u);
+  assert.match(root.audit.innerHTML, /<option value="uncertain" selected>Incerto/u);
+  assert.match(root.audit.innerHTML, /<option value="critical" selected>Crítica/u);
+  assert.ok(evidence.focusCalls >= 1);
+
+  navigatorValue.onLine = true;
+  windowValue.listeners.get("online")();
+  assert.match(root.audit.innerHTML, /Argumento editorial do autor\.<\/textarea>/u);
+  assert.match(root.audit.innerHTML, /<option value="uncertain" selected/u);
+  assert.match(root.audit.innerHTML, /<option value="critical" selected/u);
+  assert.ok(evidence.focusCalls >= 2);
+});
+
+test("cancelar rodada e Esc no editor descartam o rascunho sem recapturar o DOM anterior", async () => {
+  const recordRoot = new FakeRoot();
+  const recordDocument = new FakeDocument();
+  const recordPanel = createCourseAuditPanel({
+    root: recordRoot,
+    course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
+    navigatorValue: { onLine: true },
+    documentValue: recordDocument,
+    controller: {
+      ...observationSupportController(),
+      async loadCourseAuditCycle(_courseId, options) { return contextPage(options); },
+      async mutateCourseAuditCycle() { throw new Error("Não deve alterar."); }
+    }
+  });
+  await recordPanel.open();
+  observationAuditClick(recordRoot);
+  await settle();
+  actionClick(recordRoot, "open-record");
+  const recordForm = auditRoundForm({
+    kind: "record",
+    draftId: `record:${HASH_B}`,
+    documentValue: recordDocument,
+    editorialEvidence: "Rascunho que deve ser descartado."
+  });
+  exposeDraftForm(recordRoot.audit, recordForm);
+  const recordEvidence = recordForm.controls.find(({ name }) =>
+    name === "evidence:editorial_quality");
+  recordDocument.activeElement = recordEvidence;
+  recordRoot.listeners.get("input")({ target: recordEvidence });
+  assert.equal(recordPanel.hasPendingDraft(), true);
+
+  actionClick(recordRoot, "cancel-round");
+  assert.equal(recordPanel.hasPendingDraft(), false);
+  recordRoot.audit.querySelectorAll = () => [];
+  actionClick(recordRoot, "open-record");
+  assert.doesNotMatch(recordRoot.audit.innerHTML, /Rascunho que deve ser descartado/u);
+  assert.match(recordRoot.audit.innerHTML, /Não verificado nesta rodada/u);
+
+  const editorRoot = new FakeRoot();
+  const editorDocument = new FakeDocument();
+  const editorPanel = createCourseAuditPanel({
+    root: editorRoot,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
+    navigatorValue: { onLine: true },
+    documentValue: editorDocument,
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) {
+        return options.query.mode === "context"
+          ? contextPage(options)
+          : detailPage(options, { currentAvailable: true });
+      },
+      async mutateCourseAuditCycle() { throw new Error("Não deve alterar."); }
+    }
+  });
+  await editorPanel.open();
+  actionClick(editorRoot, "open-correction-editor");
+  await settle();
+  const fieldKeys = [...editorRoot.audit.innerHTML.matchAll(/data-audit-edit-field="([^"]+)"/gu)]
+    .map((match) => match[1]);
+  const editorForm = draftForm({
+    kind: "correction",
+    draftId: `correction:${CORRECTION_ID}:1`,
+    controls: [
+      draftControl({
+        value: "Título cancelado",
+        dataset: { auditEditField: fieldKeys[0] },
+        documentValue: editorDocument
+      }),
+      draftControl({
+        value: "Folha cancelada",
+        dataset: { auditEditField: fieldKeys[1] },
+        documentValue: editorDocument
+      }),
+      draftControl({
+        name: "rationale",
+        value: "Justificativa cancelada",
+        documentValue: editorDocument
+      })
+    ]
+  });
+  exposeDraftForm(editorRoot.audit, editorForm);
+  editorDocument.activeElement = editorForm.controls[1];
+  editorRoot.listeners.get("input")({ target: editorForm.controls[1] });
+  editorRoot.listeners.get("keydown")({
+    key: "Escape",
+    target: { closest: () => null },
+    preventDefault() {},
+    stopPropagation() {}
+  });
+  editorRoot.audit.querySelectorAll = () => [];
+  actionClick(editorRoot, "open-correction-editor");
+  await settle();
+  assert.doesNotMatch(editorRoot.audit.innerHTML, /Título cancelado|Folha cancelada|Justificativa cancelada/u);
+  assert.match(editorRoot.audit.innerHTML, /Texto corrigido\./u);
+});
+
+test("submit reaberto de rodada e verificação repete requestId e todos os IDs gerados", async () => {
+  const recordWrites = [];
+  const recordRoot = new FakeRoot();
+  const recordPanel = createCourseAuditPanel({
+    root: recordRoot,
+    course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
+    navigatorValue: { onLine: true },
+    controller: {
+      ...observationSupportController(),
+      async loadCourseAuditCycle(_courseId, options) { return contextPage(options); },
+      async mutateCourseAuditCycle(input) {
+        recordWrites.push(structuredClone(input));
+        throw Object.assign(new TypeError("Failed to fetch"), { code: "failed_to_fetch" });
+      }
+    }
+  });
+  await recordPanel.open();
+  observationAuditClick(recordRoot);
+  await settle();
+  actionClick(recordRoot, "open-record");
+  const firstRecordForm = auditRoundForm({
+    kind: "record",
+    draftId: `record:${HASH_B}`,
+    editorialEvidence: "Mesma evidência de rodada."
+  });
+  exposeDraftForm(recordRoot.audit, firstRecordForm);
+  submitAuditForm(recordRoot, firstRecordForm);
+  await settle();
+  actionClick(recordRoot, "open-record");
+  const secondRecordForm = auditRoundForm({
+    kind: "record",
+    draftId: `record:${HASH_B}`,
+    editorialEvidence: "Mesma evidência de rodada."
+  });
+  exposeDraftForm(recordRoot.audit, secondRecordForm);
+  submitAuditForm(recordRoot, secondRecordForm);
+  await settle();
+  assert.equal(recordWrites.length, 2);
+  assert.deepEqual(recordWrites[1], recordWrites[0]);
+
+  const verificationWrites = [];
+  const verificationRoot = new FakeRoot();
+  const verificationPanel = createCourseAuditPanel({
+    root: verificationRoot,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
+    navigatorValue: { onLine: true },
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) {
+        return options.query.mode === "context"
+          ? contextPage(options)
+          : detailPage(options, { status: "applied", currentAvailable: true });
+      },
+      async mutateCourseAuditCycle(input) {
+        verificationWrites.push(structuredClone(input));
+        throw Object.assign(new TypeError("Failed to fetch"), { code: "failed_to_fetch" });
+      }
+    }
+  });
+  await verificationPanel.open();
+  actionClick(verificationRoot, "open-verification");
+  await settle();
+  const verificationDraftId = `verify:${FINDING_ID}:1:${CORRECTION_ID}:1`;
+  const firstVerificationForm = auditRoundForm({
+    kind: "verify",
+    draftId: verificationDraftId,
+    editorialEvidence: "Mesma evidência de verificação."
+  });
+  exposeDraftForm(verificationRoot.audit, firstVerificationForm);
+  submitAuditForm(verificationRoot, firstVerificationForm);
+  await settle();
+  actionClick(verificationRoot, "open-verification");
+  const secondVerificationForm = auditRoundForm({
+    kind: "verify",
+    draftId: verificationDraftId,
+    editorialEvidence: "Mesma evidência de verificação."
+  });
+  exposeDraftForm(verificationRoot.audit, secondVerificationForm);
+  submitAuditForm(verificationRoot, secondVerificationForm);
+  await settle();
+  assert.equal(verificationWrites.length, 2);
+  assert.deepEqual(verificationWrites[1], verificationWrites[0]);
+});
+
+test("nova correção reaberta após ambiguidade conserva editor, correctionId, requestId e comando", async () => {
+  const writes = [];
+  const root = new FakeRoot();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID },
+    navigatorValue: { onLine: true },
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) {
+        if (options.query.mode === "context") return contextPage(options);
+        const page = detailPage(options, { currentAvailable: true });
+        page.detail.finding.correctionRef = null;
+        page.detail.corrections = [];
+        page.detail.selectedCorrection = null;
+        page.detail.selectedCorrectionHistory = [];
+        return page;
+      },
+      async mutateCourseAuditCycle(input) {
+        writes.push(structuredClone(input));
+        throw Object.assign(new TypeError("Failed to fetch"), { code: "failed_to_fetch" });
+      }
+    }
+  });
+  await panel.open();
+  actionClick(root, "open-correction-editor");
+  await settle();
+  const firstDraftId = /data-audit-draft-id="(correction:[^"]+:0)"/u.exec(
+    root.audit.innerHTML
+  )?.[1];
+  assert.ok(firstDraftId);
+  const fieldKeys = [...root.audit.innerHTML.matchAll(/data-audit-edit-field="([^"]+)"/gu)]
+    .map((match) => match[1]);
+  const correctionForm = (draftId) => draftForm({
+    kind: "correction",
+    draftId,
+    controls: [
+      draftControl({
+        value: "Título proposto",
+        dataset: { auditEditField: fieldKeys[0] }
+      }),
+      draftControl({
+        value: "Folha proposta e preservada.",
+        dataset: { auditEditField: fieldKeys[1] }
+      }),
+      draftControl({ name: "rationale", value: "Razão preservada da nova proposta." })
+    ]
+  });
+  const firstForm = correctionForm(firstDraftId);
+  exposeDraftForm(root.audit, firstForm);
+  submitAuditForm(root, firstForm);
+  await settle();
+  actionClick(root, "open-correction-editor");
+  await settle();
+  const secondDraftId = /data-audit-draft-id="(correction:[^"]+:0)"/u.exec(
+    root.audit.innerHTML
+  )?.[1];
+  assert.equal(secondDraftId, firstDraftId);
+  assert.match(root.audit.innerHTML, /Título proposto/u);
+  assert.match(root.audit.innerHTML, /Folha proposta e preservada\./u);
+  assert.match(root.audit.innerHTML, /Razão preservada da nova proposta\./u);
+  const secondForm = correctionForm(secondDraftId);
+  exposeDraftForm(root.audit, secondForm);
+  submitAuditForm(root, secondForm);
+  await settle();
+  assert.equal(writes.length, 2);
+  assert.deepEqual(writes[1], writes[0]);
 });
 
 test("deep links externos ou javascript são reduzidos ao hash interno validado", async () => {
@@ -764,7 +1669,6 @@ test("divisão estrutural permanece achado aberto e não entra no editor v1", as
     course: { courseId: COURSE_ID, revision: 7 },
     routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
     navigatorValue: { onLine: true },
-    confirmValue: () => true,
     controller: {
       async loadCourseAuditCycle(courseId, options) {
         assert.equal(courseId, COURSE_ID);
@@ -1140,4 +2044,82 @@ test("revogação remove do painel os achados e checkpoints já carregados", asy
   await settle();
   assert.match(root.audit.innerHTML, /Acesso revogado\./u);
   assert.doesNotMatch(root.audit.innerHTML, /Texto anterior\.|Texto corrigido\.|Achado preservado/u);
+});
+
+test("Auditoria repassa opcionalmente a entrega ao ChatGPT para Observações", async () => {
+  const root = new FakeRoot();
+  const onRequestChat = () => {};
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
+    navigatorValue: { onLine: true },
+    onRequestChat,
+    controller: {
+      async loadCourseAuditCycle() { throw new Error("Achados não devem ser lidos."); },
+      async mutateCourseAuditCycle() { throw new Error("Não deve alterar auditoria."); },
+      async loadAuthoringOutline() {
+        return {
+          contract: "aralearn.course.v1",
+          courseId: COURSE_ID,
+          title: "Curso auditado",
+          goal: "Auditar o Curso.",
+          revision: 7,
+          ownership: "owned",
+          canEdit: true,
+          counts: {
+            moduleCount: 0,
+            lessonCount: 0,
+            topicCount: 0,
+            microsequenceCount: 0,
+            studyUnitCount: 0
+          },
+          createdAt: "2026-08-17T09:00:00.000Z",
+          updatedAt: "2026-08-17T10:00:00.000Z",
+          outline: {
+            courseId: COURSE_ID,
+            title: "Curso auditado",
+            goal: "Auditar o Curso.",
+            modules: []
+          },
+          deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+        };
+      },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return {
+          contract: "aralearn.course-anchored-annotation-page.v1",
+          courseId: COURSE_ID,
+          courseRevision: 7,
+          annotationSetVersion: 0,
+          query: structuredClone(options.query),
+          summary: {
+            matchingTotal: 0,
+            byOrigin: {},
+            byChannel: {},
+            byState: {},
+            unclassifiedTotal: 0
+          },
+          items: [],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async mutateCourseAnchoredAnnotations() {
+        throw new Error("Não deve alterar Observações.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  assert.match(root.observations.innerHTML, /Registrar e copiar/u);
+  panel.destroy();
+
+  assert.throws(() => createCourseAuditPanel({
+    root: new FakeRoot(),
+    course: { courseId: COURSE_ID, revision: 7 },
+    onRequestChat: true,
+    controller: {
+      loadCourseAuditCycle() {},
+      mutateCourseAuditCycle() {}
+    }
+  }), /Dependências de Auditoria/u);
 });

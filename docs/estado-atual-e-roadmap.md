@@ -1,13 +1,27 @@
 # Estado corrente do produto
 
-Esta página registra o estado observado em **2026-08-20**, depois do corte do
-banco e da publicação web da versão 0.0.23. Ela distingue implementação,
-ligação entre camadas, acesso, uso e evidência. A coluna correspondente informa
-quando uma conclusão ainda depende do APK, do cliente conectado ou de pessoas.
+Esta página registra o estado observado em **2026-08-20**. A linha publicada
+continua sendo a versão 0.0.23, sobre o esquema `20260820101500`. A candidata
+local 0.0.24 exige o esquema `20260820224424` e nova implantação das funções;
+o contrato público das seis ferramentas e do recurso visual MCP
+permanece 0.0.23. Banco e funções precisam ser promovidos e verificados antes
+do site ou do APK candidatos. A página distingue implementação, ligação entre
+camadas, acesso, uso e evidência.
+
+O feedback humano posterior ao corte identificou uma regressão bloqueadora na
+Autoria: largura e densidade diferentes de Estudo, nove áreas expostas ao mesmo
+tempo e perda da edição contextual manual e por serviço de linguagem. A
+[#144](https://github.com/fabio-ara/AraLearn/issues/144) bloqueia a #129 e
+prevalece sobre qualquer descrição anterior da interface como concluída. O
+reparo local usa uma superfície centralizada de até 430 px, quatro grupos
+progressivos e as capacidades contextuais restauradas no modelo corrente. A
+aceitação permanece aberta até o uso no ChatGPT conectado e a avaliação humana
+por descoberta de tarefas.
 
 O contrato corrente usa o Curso como identidade comum de Estudo, Autoria,
 Pesquisa e Model Context Protocol (MCP). A revisão de banco declarada no
-manifesto é `20260820101500`.
+manifesto implantável é `20260820224424`; a implantação hospedada precisa ser
+verificada contra essa revisão antes da promoção dos clientes.
 
 ## Como ler a matriz
 
@@ -35,6 +49,9 @@ aprendizagem, compreensão ou usabilidade humana.
 | estudar o Curso vivo | Sim | Revisão, entidades paginadas, composição validada, IndexedDB e mecanismo de renderização formam um único fluxo | Proprietário e pessoa com acesso direto | Testes focais, navegador e Pages publicado | Navegação curricular, prática, retorno, progresso, marcas de revisão e Fontes visíveis foram exercitados | Sim | Alto | A atualização do APK 0.0.22 permanece obrigatória; o funcionamento não prova eficácia educacional |
 | continuar o estudo sem conexão | Sim | Composição já validada, estado pessoal e filas específicas permanecem no dispositivo | Pessoa que já sincronizou o Curso | Testes de reinício, reconexão e duas abas | A última revisão válida continua disponível; estado pessoal e Observações retomam o envio sem duplicação | Sim | Alto | Um dispositivo desconhecido com escrita antiga ainda não sincronizada não pode ser recuperado depois da migração que remove o armazenamento anterior |
 | criar um Curso privado | Sim | Interface e MCP usam o mesmo domínio, API, transação e revisão | Pessoa autenticada torna-se proprietária | Testes locais | A criação idempotente produz identidade, metadados e plano inicial sob autorização | Sim | Alto | O padrão de 7 a 12 Partes é configurável e não constitui regra pedagógica |
+| operar a Autoria compacta e descobrir tarefas | Parcial | A candidata local liga os casos de uso em quatro grupos progressivos, numa superfície única de até 430 px | Proprietário | Testes locais nas quatro larguras e feedback humano que originou a #144 | Limite de largura, navegação por ícones e alcance das capacidades possuem prova automatizada; descoberta espontânea ainda não foi reavaliada | Sim | Alto na candidata local | #144 permanece aberta até a sessão humana por tarefas e a conferência da interface publicada |
+| editar uma Unidade manualmente no contexto | Sim | Estudo e Inspeção usam o mesmo renderer, campos editáveis declarados pelo componente, validação da Unidade e operação autenticada de composição | Somente o proprietário | 136/136 verificações focais, 9/9 cenários integrados e prova vertical real | A edição conserva pai, posição, identidade e proveniência; antes de invalidar projeções, o recibo 2xx promove o snapshot no IndexedDB, preserva progresso e Observações e permite leitura sem rede como confirmada, com sincronização pendente | Sim | Alto | Releitura igual normaliza o snapshot, revisão superior o substitui, logout, limpeza ou revogação o purgam; atualização externa rebasa o CAS sem perder a seleção; a reversão autoral persistida continua no ciclo de correção |
+| pedir uma sugestão focal por API | Parcial | O mesmo editor contextual delimita o trecho, chama o relay local, valida uma mudança esparsa e aplica a sugestão ao rascunho antes da gravação | Somente o proprietário; a credencial do provider fica no relay, fora do AraLearn | Testes de domínio e navegador, duas passagens da prova vertical real, a mais recente 1/1 em 14,2 s, e compilação Android de depuração; nenhuma chamada paga integra a validação | Produção mostra apenas Serviço local nos hosts previstos e na porta 4183; o navegador distingue loopback de rede local, e a candidata Android usa uma ponte nativa fixa em `127.0.0.1:4183` sem relaxar a política de conteúdo misto; falha, recorte grande ou indisponibilidade não bloqueiam edição manual, Estudo ou ChatGPT + MCP | Sim, como complemento | Alto na web local | O envelope omite identidades internas, PDFs, Fontes e outras Unidades; Pages ainda exige ensaio de acesso à rede local, e o APK de release instalado precisa de prova em dispositivo real |
 | planejar e organizar por Partes | Sim | Planejamento, itens, Partes, vínculos de produção e atividade são lidos e alterados pelas duas interfaces | Proprietário | Testes locais | É possível editar campos do plano, criar, reordenar, dividir e unir Partes e mover Microssequências sem apagar conteúdo | Sim | Alto | Parte é unidade operacional; o dimensionamento adequado continua sujeito ao conteúdo e à avaliação |
 | produzir uma Parte com assistência conversacional | Sim | O cliente conectado lê plano, parâmetros, componentes, Fontes e Observações e confirma etapas limitadas no servidor | Proprietário autenticado por OAuth | Testes de domínio, serviço e MCP | Etapas são retomáveis, idempotentes e transacionais; o progresso deriva do conteúdo confirmado | Sim | Alto | A interface visual prepara o pedido, mas não executa a produção sozinha; falta o ensaio final no cliente conversacional hospedado |
 | configurar parâmetros e componentes didáticos | Sim | Área Parâmetros e MCP chamam a mesma resolução por escopo e a mesma operação atômica de política | Proprietário | Testes de domínio, banco, MCP e interface | Valor efetivo, origem, herança, preferência, disponibilidade e bloqueio permanecem inspecionáveis | Sim | Alto | Valores aplicados são fatos declarados de desenho; não medem qualidade ou aprendizagem |
@@ -51,7 +68,7 @@ aprendizagem, compreensão ou usabilidade humana.
 | pedir análise e visualização no cliente conversacional | Sim | A vista de Pesquisa do MCP fornece conteúdo estruturado, representação textual, componente visual opcional e endereços para o AraLearn | Proprietário conectado por OAuth; a forma visual depende do suporte do cliente | Testes locais do servidor MCP e do componente; OAuth hospedado | Tabela e gráfico derivam do mesmo contrato; a operação continua útil sem componente visual | Sim | Alto | Falta a verificação final numa sessão real do cliente conectado |
 | operar dentro dos limites gratuitos do Supabase | Parcial | Paginação, limites de resposta, anexos deduplicados e consultas sob demanda reduzem banco, armazenamento, transferência e funções remotas | Operação administrativa, sem painel próprio | Plano Free confirmado e medidas hospedadas do corte | O banco ocupa 97.053.843 bytes de 500 MB; os objetos ocupam 14.674.570 bytes de 1 GB; 41 chamadas MCP consecutivas responderam com sucesso, com mediana de 291 ms e percentil 95 de 587 ms | Sim | Alto | O limite mensal é de 500 mil invocações e 5 GB de transferência; ainda faltam a medição mensal de transferência e a projeção de crescimento após uso continuado |
 | manter somente a arquitetura corrente | Parcial | O código de execução, a interface, o MCP e os testes correntes usam Curso; módulos substituídos de autoria e sincronização genérica foram retirados | Não é uma capacidade exposta | Busca estática, inventário vertical e corte hospedado | O saldo no repositório é negativo em tabelas conceituais, rotas, módulos, ferramentas e testes; objetos antigos permanecem isolados e sem consumidor corrente | Sim | Alto | A remoção física exige cópia posterior ao corte, restauração, plano exato e autorização específica |
-| publicar a revisão integrada | Sim | Manifesto, migrações, funções remotas, Pages e Android usam a versão 0.0.23 | Site e APK são distribuídos pelos canais oficiais | Corte transacional, OAuth hospedado, verificadores do manifesto e dos artefatos e fluxos de publicação | O site publica o renderer de Unidade e suas dependências; o APK assinado conserva versão, configuração e identidade histórica do certificado | Sim | Alto | Instalações Android 0.0.22 precisam ser atualizadas; publicação técnica não substitui avaliação humana |
+| publicar a revisão integrada | Parcial | Site e Android candidatos declaram 0.0.24 e exigem o manifesto `20260820224424`; a linha publicada ainda é 0.0.23 | A futura promoção usa os canais oficiais | Verificadores locais do backend, manifesto e artefatos; publicação candidata ainda não executada | A ordem falha fechada quando o backend não possui a revisão exigida | Sim | Alto | Promover banco e funções primeiro, comprovar o ambiente hospedado e só então promover Pages e Android; publicação técnica não substitui avaliação humana |
 
 ## Relações do Curso vivo
 
@@ -125,16 +142,48 @@ Cursos.](screenshots/authoring/authoring-courses-390-light.png)
 Capturas anteriores de outras superfícies não definem o estado atual. A
 documentação só adota uma nova imagem depois de conferir a aplicação real em
 360, 390 e 430 px e em 1280 px, nos modos claro e escuro, com texto extenso,
-teclado e interação.
+teclado e interação. Em 1280 px, a superfície continua centralizada e limitada
+a 430 px; uma captura larga não autoriza dashboard, segunda coluna ou outra
+composição para desktop.
 
-## Pendências de evidência
+## Evidência automatizada e pendências
 
-O banco, as funções correntes, o Pages e o APK pertencem à versão 0.0.23.
-Permanecem duas verificações independentes:
+O inventário produzido por `npx playwright test --list` na candidata local
+enumera **111 testes em nove arquivos**. Desse total, 73 pertencem ao percurso
+compacto da Autoria, seis à edição manual contextual e três à assistência por
+API. Os nove cenários integrados dessas duas capacidades passaram 9/9. A
+listagem confirma o conjunto coletado, não a aprovação de toda a suíte. Os
+relatórios finais devem registrar separadamente resultado, omissões e
+ambiente de cada gate.
 
-1. exercer o recurso visual e a representação textual numa sessão real do
-   cliente conectado, registrando as medidas disponíveis do modelo;
-2. realizar a sessão humana prevista no roteiro de compreensão da Autoria.
+A matriz visual focal passou 10/10 em 51,4 segundos nas quatro larguras e nos
+dois temas, incluindo Auditoria em 1280 px. Ela comprovou a superfície de até
+430 px centralizada, uma única coluna principal, ausência de overflow global e nome
+acessível contextual com tooltip. O conjunto persistente de capturas e a sessão
+humana por tarefas continuam pendentes na #144.
+
+As issues [#120](https://github.com/fabio-ara/AraLearn/issues/120),
+[#128](https://github.com/fabio-ara/AraLearn/issues/128),
+[#129](https://github.com/fabio-ara/AraLearn/issues/129),
+[#131](https://github.com/fabio-ara/AraLearn/issues/131) e
+[#144](https://github.com/fabio-ara/AraLearn/issues/144) permanecem abertas.
+Seus critérios reais ainda incluem, conforme o caso:
+
+1. promover o esquema `20260820224424` e as funções antes dos clientes e
+   repetir a paridade vertical no ambiente hospedado;
+2. instalar e exercer a ponte nativa do relay no APK de release e
+   comprovar no Pages o acesso HTTPS à rede local;
+3. exercer autoria, materialização, pesquisa, recurso visual e representação
+   textual numa sessão real do ChatGPT conectado, registrando as medidas
+   disponíveis do modelo e das funções;
+4. realizar a sessão humana por descoberta de tarefas prevista no
+   [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md), sem ensinar a
+   organização interna da Autoria.
+
+A issue [#114](https://github.com/fabio-ara/AraLearn/issues/114) continua sendo
+o roadmap e a [#130](https://github.com/fabio-ara/AraLearn/issues/130) depende
+do cutover real da #129, das medidas do plano gratuito, da documentação final e
+da limpeza física autorizada. Nenhuma prova local encerra esses gates externos.
 
 A remoção física das estruturas substituídas continua separada. Ela requer uma
 cópia posterior ao corte, contagens e impressões digitais, restauração em banco

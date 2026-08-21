@@ -805,7 +805,7 @@ function validateCreate(body, request) {
 async function validateCompositionChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedRevision", "upserts", "deletes",
-    "sourceAttributionApplications"
+    "sourceAttributionApplications", "expectedStudyUnitVersion", "applicationOrigin"
   ]));
   const expectedRevision = positiveInteger(body.expectedRevision, "expectedRevision");
   if (!Array.isArray(body.upserts) || !Array.isArray(body.deletes)) {
@@ -828,7 +828,9 @@ async function validateCompositionChange(body, request) {
     fail("payload_too_large", "A alteração de entidades excede o limite.", null, 413);
   }
   const sourceAttributionApplications = normalizeCourseSourcesDomain(() =>
-    normalizeSourceAttributionApplications(body.sourceAttributionApplications)
+    normalizeSourceAttributionApplications(body.sourceAttributionApplications, {
+      allowLegacyCarry: true
+    })
   );
   const studyUnitIds = upserts
     .filter(({ entityType }) => entityType === "study_unit")
@@ -846,6 +848,21 @@ async function validateCompositionChange(body, request) {
   return {
     requestId: requestIdFrom(request, body),
     expectedRevision,
+    expectedStudyUnitVersion: body.expectedStudyUnitVersion == null
+      ? null
+      : positiveInteger(body.expectedStudyUnitVersion, "expectedStudyUnitVersion"),
+    applicationOrigin: body.applicationOrigin == null
+      ? null
+      : (() => {
+          if (!new Set(["manual", "provider_assistance"]).has(body.applicationOrigin)) {
+            fail(
+              "invalid_course_composition_origin",
+              "applicationOrigin precisa identificar uma origem conhecida.",
+              { field: "applicationOrigin" }
+            );
+          }
+          return body.applicationOrigin;
+        })(),
     upserts,
     deletes,
     sourceAttributionApplications

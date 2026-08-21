@@ -3376,23 +3376,57 @@ export class CourseSupabaseAdapter {
     courseId,
     requestId,
     expectedRevision,
+    expectedStudyUnitVersion = null,
+    applicationOrigin = null,
     upserts = [],
     deletes = [],
     sourceAttributionApplications = [],
     deadlineAt = null
   }) {
+    const channel = authoringChannel(principal);
+    const hasExpectedStudyUnitVersion = expectedStudyUnitVersion !== null;
+    const hasApplicationOrigin = applicationOrigin !== null;
+    const contextualApplication = channel === "application" &&
+      hasExpectedStudyUnitVersion && hasApplicationOrigin;
+    const genericApplication = channel === "application" &&
+      !hasExpectedStudyUnitVersion && !hasApplicationOrigin;
+    if (channel === "application" && !genericApplication && (
+      !contextualApplication ||
+      !new Set(["manual", "provider_assistance"]).has(applicationOrigin) ||
+      !Number.isSafeInteger(expectedStudyUnitVersion) || expectedStudyUnitVersion < 1 ||
+      upserts.length !== 1 || upserts[0]?.entityType !== "study_unit" ||
+      deletes.length !== 0
+    ) || channel === "mcp" && (
+      applicationOrigin !== null || expectedStudyUnitVersion !== null
+    )) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_course_composition_origin",
+        "A origem ou o escopo da composição é inválido."
+      );
+    }
     const normalizedApplications = normalizeCourseSourcesInputValue(() =>
-      normalizeSourceAttributionApplications(sourceAttributionApplications)
+      normalizeSourceAttributionApplications(sourceAttributionApplications, {
+        allowLegacyCarry: contextualApplication
+      })
     );
-    const result = first(await this.rpc("commit_course_composition_for_actor_v1", {
+    const rpcInput = {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_expected_revision: expectedRevision,
+      p_expected_study_unit_version: expectedStudyUnitVersion,
       p_upserts: upserts,
       p_deletes: deletes,
       p_source_attribution_applications: normalizedApplications,
+      p_channel: channel,
+      p_application_origin: applicationOrigin,
       p_request_id: requestId
-    }, { deadlineAt, timeoutMs: 40_000 }));
+    };
+    const result = first(await this.rpc(
+      "commit_course_composition_for_actor_v1",
+      rpcInput,
+      { deadlineAt, timeoutMs: 40_000 }
+    ));
     return withDeepLink(result, this.publicAppUrl);
   }
 }

@@ -183,6 +183,44 @@ export class CourseLocalStore {
     await transactionPromise(transaction);
   }
 
+  async updateCachePrefix(prefix, updater) {
+    const normalizedPrefix = cacheKey(prefix);
+    if (typeof updater !== "function") throw new TypeError("Atualizador de cache inválido.");
+    const { transaction, store } = this.#store("readwrite");
+    const request = store.openCursor();
+    let updated = 0;
+    await new Promise((resolve, reject) => {
+      request.onerror = () => reject(request.error || new Error(
+        "Não foi possível atualizar o cache de Cursos."
+      ));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        if (String(cursor.key).startsWith(normalizedPrefix)) {
+          try {
+            const next = updater(structuredClone(cursor.value.value), String(cursor.key));
+            if (next && typeof next.then === "function") {
+              throw new TypeError("O atualizador de cache precisa ser síncrono.");
+            }
+            if (next == null) cursor.delete();
+            else cursor.update({ key: String(cursor.key), value: structuredClone(next) });
+            updated += 1;
+          } catch (error) {
+            transaction.abort();
+            reject(error);
+            return;
+          }
+        }
+        cursor.continue();
+      };
+    });
+    await transactionPromise(transaction);
+    return updated;
+  }
+
   onConnectionInvalidated(listener) {
     if (typeof listener !== "function") throw new TypeError("Listener do cache de Cursos inválido.");
     this.invalidationListeners.add(listener);
