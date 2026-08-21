@@ -3361,6 +3361,49 @@ test("composição da aplicação deriva canal e aceita somente metadado fechado
   );
 });
 
+test("composição ampla da aplicação preserva o contrato sem metadados focais", async () => {
+  let rpc = null;
+  const value = adapter(async (url, init) => {
+    rpc = { url, body: JSON.parse(init.body) };
+    return json({
+      courseId: COURSE_ID,
+      revision: 3,
+      operation: "commit_course_composition",
+      createdCount: 1,
+      updatedCount: 0,
+      upsertedCount: 1,
+      deletedCount: 0,
+      idempotent: false,
+      updatedAt: "2026-08-20T22:45:00.000Z",
+      channel: "application",
+      applicationOrigin: null,
+      expectedStudyUnitVersion: null
+    });
+  });
+  const result = await value.commitCourseComposition({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-broad-application-composition-0001",
+    expectedRevision: 2,
+    upserts: [{
+      entityType: "module",
+      entityId: "module-a",
+      parentType: null,
+      parentId: null,
+      position: 0,
+      content: { title: "Módulo A" }
+    }],
+    deletes: [],
+    sourceAttributionApplications: []
+  });
+
+  assert.match(rpc.url, /commit_course_composition_for_actor_v1$/u);
+  assert.equal(rpc.body.p_channel, "application");
+  assert.equal(rpc.body.p_application_origin, null);
+  assert.equal(rpc.body.p_expected_study_unit_version, null);
+  assert.equal(result.revision, 3);
+});
+
 test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", async () => {
   const calls = [];
   const value = adapter(async (url, init) => {

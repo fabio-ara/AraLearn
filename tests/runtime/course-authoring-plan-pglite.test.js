@@ -3540,6 +3540,20 @@ test("edição contextual preserva carry legacy exato sob CAS e audita origem", 
     studyUnitId: "card-a",
     sourceLinks: [{ ...canonicalLinks[0], relation: "adapted_from" }]
   }]]), /Fonte atual, ativa/iu);
+  const broadApplicationNoOp = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,12,null,$3::jsonb,'[]'::jsonb,$4::jsonb,
+      'application',null,'broad-application-noop-01'
+    ) as value
+  `, [OWNER, COURSE, [{
+    ...upsert[0],
+    content: { ...revisedContent, title: "Unidade assistida com carry canônico" }
+  }], [{ studyUnitId: "card-a", sourceLinks: canonicalLinks }]]);
+  assert.equal(broadApplicationNoOp.revision, 12);
+  assert.equal(broadApplicationNoOp.updatedCount, 0);
+  assert.equal(broadApplicationNoOp.channel, "application");
+  assert.equal(broadApplicationNoOp.applicationOrigin, null);
+  assert.equal(broadApplicationNoOp.expectedStudyUnitVersion, null);
   const mcpResult = await scalar(database, `
     select public.commit_course_composition_for_actor_v1(
       $1,$2,12,null,$3::jsonb,'[]'::jsonb,$4::jsonb,

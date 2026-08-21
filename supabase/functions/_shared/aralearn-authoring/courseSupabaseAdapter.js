@@ -3384,7 +3384,14 @@ export class CourseSupabaseAdapter {
     deadlineAt = null
   }) {
     const channel = authoringChannel(principal);
-    if (channel === "application" && (
+    const hasExpectedStudyUnitVersion = expectedStudyUnitVersion !== null;
+    const hasApplicationOrigin = applicationOrigin !== null;
+    const contextualApplication = channel === "application" &&
+      hasExpectedStudyUnitVersion && hasApplicationOrigin;
+    const genericApplication = channel === "application" &&
+      !hasExpectedStudyUnitVersion && !hasApplicationOrigin;
+    if (channel === "application" && !genericApplication && (
+      !contextualApplication ||
       !new Set(["manual", "provider_assistance"]).has(applicationOrigin) ||
       !Number.isSafeInteger(expectedStudyUnitVersion) || expectedStudyUnitVersion < 1 ||
       upserts.length !== 1 || upserts[0]?.entityType !== "study_unit" ||
@@ -3400,10 +3407,10 @@ export class CourseSupabaseAdapter {
     }
     const normalizedApplications = normalizeCourseSourcesInputValue(() =>
       normalizeSourceAttributionApplications(sourceAttributionApplications, {
-        allowLegacyCarry: channel === "application"
+        allowLegacyCarry: contextualApplication
       })
     );
-    const result = first(await this.rpc("commit_course_composition_for_actor_v1", {
+    const rpcInput = {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_expected_revision: expectedRevision,
@@ -3414,7 +3421,12 @@ export class CourseSupabaseAdapter {
       p_channel: channel,
       p_application_origin: applicationOrigin,
       p_request_id: requestId
-    }, { deadlineAt, timeoutMs: 40_000 }));
+    };
+    const result = first(await this.rpc(
+      "commit_course_composition_for_actor_v1",
+      rpcInput,
+      { deadlineAt, timeoutMs: 40_000 }
+    ));
     return withDeepLink(result, this.publicAppUrl);
   }
 }

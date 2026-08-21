@@ -216,18 +216,21 @@ begin
        or p_expected_study_unit_version is not null
      )
      or p_channel = 'application' and (
-       p_application_origin not in ('manual','provider_assistance')
-       or p_expected_study_unit_version is null
-       or p_expected_study_unit_version < 1
-       or jsonb_typeof(p_upserts) <> 'array'
-       or jsonb_array_length(p_upserts) <> 1
-       or p_upserts->0->>'entityType' <> 'study_unit'
-       or jsonb_typeof(p_deletes) <> 'array'
-       or jsonb_array_length(p_deletes) <> 0
-       or jsonb_typeof(p_source_attribution_applications) <> 'array'
-       or jsonb_array_length(p_source_attribution_applications) <> 1
-       or p_source_attribution_applications->0->>'studyUnitId'
-          <> p_upserts->0->>'entityId'
+       (p_application_origin is null) <>
+         (p_expected_study_unit_version is null)
+       or p_application_origin is not null and (
+         p_application_origin not in ('manual','provider_assistance')
+         or p_expected_study_unit_version < 1
+         or jsonb_typeof(p_upserts) <> 'array'
+         or jsonb_array_length(p_upserts) <> 1
+         or p_upserts->0->>'entityType' <> 'study_unit'
+         or jsonb_typeof(p_deletes) <> 'array'
+         or jsonb_array_length(p_deletes) <> 0
+         or jsonb_typeof(p_source_attribution_applications) <> 'array'
+         or jsonb_array_length(p_source_attribution_applications) <> 1
+         or p_source_attribution_applications->0->>'studyUnitId'
+            <> p_upserts->0->>'entityId'
+       )
      ) then
     raise exception 'Canal, origem ou escopo da composição inválido.'
       using errcode = '22023';
@@ -242,7 +245,8 @@ begin
     and receipt.request_id = p_request_id
     and receipt.expires_at > statement_timestamp();
 
-  if not found and p_channel = 'application' then
+  if not found and p_channel = 'application'
+     and p_application_origin is not null then
     v_upsert := p_upserts->0;
     select * into v_entity
     from private.course_entities entity
@@ -295,7 +299,7 @@ begin
   where receipt.actor_id = p_actor_id and receipt.request_id = p_request_id;
   update private.course_events event_value
   set summary = event_value.summary || jsonb_build_object('channel',p_channel)
-    || case when p_channel = 'application' then jsonb_build_object(
+    || case when p_application_origin is not null then jsonb_build_object(
       'applicationOrigin',p_application_origin
     ) else '{}'::jsonb end
   where event_value.course_id = p_course_id

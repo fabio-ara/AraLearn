@@ -73,6 +73,7 @@ jobs:
         with:
           name: aralearn-pages-candidate
           path: .pages
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 

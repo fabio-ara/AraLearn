@@ -2738,7 +2738,17 @@ function mapChange(raw, {
     if (upserts.length > 200 || deletes.length > 200) {
       fail("invalid_tool_argument", "A alteração excede 200 entidades por grupo.");
     }
-    const applicationMetadata = allowApplicationCompositionMetadata
+    const hasExpectedStudyUnitVersion = raw.expectedStudyUnitVersion != null;
+    const hasApplicationOrigin = raw.applicationOrigin != null;
+    if (allowApplicationCompositionMetadata &&
+        hasExpectedStudyUnitVersion !== hasApplicationOrigin) {
+      fail(
+        "invalid_tool_argument",
+        "A edição contextual precisa informar versão e origem em conjunto."
+      );
+    }
+    const applicationMetadata = allowApplicationCompositionMetadata &&
+      hasExpectedStudyUnitVersion
       ? {
           expectedStudyUnitVersion: positiveInteger(
             raw.expectedStudyUnitVersion,

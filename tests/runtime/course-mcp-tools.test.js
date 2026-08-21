@@ -368,6 +368,17 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
     sourceAttributionApplications: []
   });
 
+  const broadApplicationComposition = mapAuthoringApplicationToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "commit_course_composition",
+    upserts: [upsert],
+    deletes: [],
+    sourceAttributionApplications: []
+  });
+  assert.deepEqual(broadApplicationComposition.body, composition.body);
+
   const applicationComposition = mapAuthoringApplicationToolCall("alterarCurso", {
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
@@ -388,6 +399,19 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
   });
   assert.equal(applicationComposition.body.expectedStudyUnitVersion, 2);
   assert.equal(applicationComposition.body.applicationOrigin, "provider_assistance");
+  assert.throws(
+    () => mapAuthoringApplicationToolCall("alterarCurso", {
+      requestId: REQUEST_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      expectedStudyUnitVersion: 2,
+      operation: "commit_course_composition",
+      upserts: [upsert],
+      deletes: [],
+      sourceAttributionApplications: []
+    }),
+    (error) => error.code === "invalid_tool_argument"
+  );
   assert.throws(
     () => mapAuthoringMcpToolCall("alterarCurso", {
       requestId: REQUEST_ID,

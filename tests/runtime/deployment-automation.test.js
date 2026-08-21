@@ -929,7 +929,11 @@ test("PR conserva a prévia web e o APK debug sem promover uma release", () => {
   assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_URL: \$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/gu)).length, 2);
   assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_PUBLISHABLE_KEY: \$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/gu)).length, 2);
   assert.equal(Array.from(source.matchAll(/-RequireRuntimeConfig/gu)).length, 2);
-  assert.match(source, /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-pages-candidate[\s\S]+path: \.pages/u);
+  assert.match(
+    source,
+    /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-pages-candidate\s*\n\s*path: \.pages\s*\n\s*include-hidden-files: true/u
+  );
+  assert.equal(Array.from(source.matchAll(/include-hidden-files: true/gu)).length, 1);
   assert.match(source, /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-android-debug-candidate[\s\S]+path: android\/app\/build\/outputs\/apk\/debug\/app-debug\.apk/u);
   assert.equal(Array.from(source.matchAll(/retention-days: 7/gu)).length, 2);
   assert.doesNotMatch(source, /actions\/deploy-pages|gh release create|app-release\.apk/u);
