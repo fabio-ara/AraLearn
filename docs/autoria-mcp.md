@@ -5,6 +5,11 @@ Este capítulo ensina como um cliente conversacional opera a Autoria pelo
 visual usa a API de Cursos, enquanto o cliente conversacional usa o MCP; ambos
 leem e alteram o mesmo Curso vivo no PostgreSQL.
 
+O ambiente hospedado da versão 0.0.26 ainda oferece seis ferramentas e o
+contrato OAuth anterior. As referências a cinco ferramentas, escopo
+`offline_access`, aliases pareados e upload autenticado descrevem a candidata
+0.0.27 até que seu corte seja promovido e verificado.
+
 ## O problema que o serviço resolve
 
 Uma conversa é adequada para intenções amplas, como planejar, comparar, revisar
@@ -109,13 +114,35 @@ as funções de serviço permitidas.
 
 ## Autenticação e autorização
 
-Cada cliente usa OAuth com uma conta individual do AraLearn. O token identifica
-a sessão; o servidor ainda revalida a propriedade do Curso em cada operação.
-Uma chave administrativa compartilhada não é credencial de cliente.
+Cada cliente usa OAuth com uma conta individual do AraLearn. Na revisão
+candidata, os metadados anunciam exatamente `offline_access`; a troca do código
+e a renovação devolvem access token e refresh token, sem `id_token`. O access
+token é destinado ao recurso MCP e traz aliases pareados da pessoa e da sessão
+em `sub` e `session_id`, específicos do cliente OAuth; ele não é uma sessão da
+aplicação. O JWT também conserva `aralearn_session_id`, identificador real e
+correlacionável da sessão de origem usado somente pelo servidor para conferir
+vida e consentimento. A credencial inteira continua sendo um segredo, não um
+identificador anônimo. Uma chave administrativa compartilhada não é credencial
+de cliente.
 
 O fluxo interativo usa código de autorização com PKCE S256. O endereço protegido
 publica metadados OAuth em `/.well-known/oauth-protected-resource`, e respostas
 401/403 incluem o desafio necessário para reconectar a conta.
+
+A Edge Function verifica a assinatura ES256 com chave EC P-256 pela JWKS do
+emissor, além de emissor, destinatário, tempos e escopo. Só depois uma RPC de
+serviço resolve a pessoa e confirma que sessão de origem, cliente e
+consentimento OAuth permanecem vivos. O bearer é recusado quando usado
+diretamente no GoTrue, na API de dados ou no Storage. Propriedade do Curso ainda
+é revalidada em cada operação.
+
+O corte revoga consentimentos e sessões OAuth anteriores, por isso clientes
+conectados precisam autorizar novamente. Um ID token `openid` já emitido não é
+recolhido e continua válido até `exp`; a antiga fronteira só pode ser declarada
+fechada depois do maior prazo entre a janela JWT registrada no ambiente e as
+duas horas das URLs v1 de upload emitidas antes do corte, acrescido de margem
+operacional, e das negativas e do inventário repetidos, conforme
+[Implantação](implantacao.md).
 
 As regras correntes são deliberadamente simples:
 
@@ -152,9 +179,10 @@ Lê uma destas projeções:
   atribuídos quando o escopo é uma Microssequência e resumo
   planejado×aplicado;
 - `course_sources`: catálogo de Fontes, detalhe versionado de uma Fonte ou
-  histórico de atribuições de um alvo;
-- `course_source_attachment`: autorização temporária para enviar ou abrir um
-  PDF privado de uma revisão de Fonte;
+  histórico de atribuições de um alvo, em projeção sem identidade de ator nem
+  caminhos do Storage;
+- `course_source_attachment`: leitura temporária de um PDF privado de uma
+  revisão de Fonte, com declaração explícita antes de receber a URL assinada;
 - `anchored_annotations`: caixa de entrada, anotações de um alvo ou detalhe de
   uma Anotação ancorada;
 - `audit_cycle`: contexto focal, achados, rodadas ou detalhe de um achado ou de
@@ -209,31 +237,59 @@ corrente; o detalhe preserva revisões e Âncoras; o alvo preserva atribuições
 somente por acréscimo e indica qual ainda corresponde à versão e ao resumo
 criptográfico atuais.
 
-O objeto lido contém exatamente `contract`, `courseId`, `courseRevision`,
-`mode`, `query`, `items` e `nextCursor`. `query` explicita os três binds e deixa
+No MCP, a resposta usa `aralearn.mcp-course-sources.v1`. Identidades de ator e
+de atribuição, resumo interno do alvo, Curso de origem do objeto e caminhos do
+Storage permanecem fora; `dataDisclosure` registra essas omissões. A aplicação
+autenticada conserva o DTO interno completo para suas próprias telas. Título,
+autoria declarada, identificador, citação, endereço, edição ou versão, trecho de
+verificação e valores textuais dos seletores `text_quote` e `uri_fragment` são
+campos livres potencialmente pessoais que integram o detalhe autoral;
+`dataDisclosure` também os enumera quando esse recorte é enviado ao cliente
+conectado, conforme os tipos de seletor efetivamente presentes.
+
+Na aplicação, o DTO interno contém exatamente `contract`, `courseId`,
+`courseRevision`, `mode`, `query`, `items` e `nextCursor`. A projeção MCP troca
+o contrato por `aralearn.mcp-course-sources.v1`, omite `courseId` e acrescenta
+`pdfStorage` e `dataDisclosure`. Em ambos os recortes, `query` explicita os três binds e deixa
 nulos os que não pertencem ao modo. Cada vínculo de alvo tem
 `{sourceId, sourceRevision, relation, anchors}`; cada referência de Âncora tem
 `{anchorId, anchorRevision}`. Campos adicionais não são extensão tolerada.
 
-`course_source_attachment` exige revisão do Curso, Fonte e revisão da Fonte.
-`prepare_upload` valida tipo, tamanho e resumo criptográfico e devolve uma URL assinada para o
-PDF; `download` autoriza a abertura de um anexo já confirmado. O cliente envia
-o arquivo à URL assinada e só então usa `attach_pdf` para confirmar o vínculo
-relacional. Há limite de 20 MiB por arquivo, 64 MiB de conteúdo único por Curso
-e oito anexos por Fonte.
+`course_source_attachment` exige revisão do Curso, Fonte e revisão da Fonte. Na
+aplicação, `prepare_upload` valida tipo, tamanho e resumo criptográfico e cria
+uma intenção privada de dez minutos para o caminho e as revisões exatas; não
+devolve URL de upload. O aplicativo envia o PDF ao Storage com sua sessão viva,
+e a inserção consome a intenção. O MCP não oferece essa preparação porque seu
+token não é uma sessão do aplicativo. No MCP, `download` exige
+`includeAttachmentDownloadUrl: true` antes da chamada ao adaptador; a resposta
+`aralearn.mcp-course-source-attachment-access.v1` omite caminhos e identidade
+do Curso de Storage, identifica a URL como credencial temporária e a limita a
+60 segundos. Depois do envio feito pela aplicação, `attach_pdf` confirma o
+vínculo relacional. Há limite de 20 MiB por arquivo, 64 MiB de conteúdo único
+por Curso e oito anexos por Fonte.
+
+Na transição candidata, o backend emite v2 somente para `prepare_upload` e v1
+somente para `download`. Isso mantém a leitura no Android 0.0.26 instalado, mas
+faz o upload antigo falhar fechado ao receber v2, sem restaurar a URL assinada.
+A seleção ocorre pela operação, nunca por `User-Agent`. O download v1 só pode
+ser retirado depois da decisão explícita de encerrar o suporte ao 0.0.26.
 
 `anchored_annotations` escolhe `inbox`, `target` ou `detail`. A caixa de entrada
 aceita filtros por origem, canal, estado, categoria, ausência de categoria,
 assuntos e hierarquia com descendentes; o modo alvo exige identidade exata e o
-detalhe exige `annotationId`. A página admite no máximo 24 itens, cursor opaco
+detalhe exige `annotationId` e `includeObservationText: true`. A página admite no máximo 24 itens, cursor opaco
 de até 240 caracteres e resposta de até 256 KiB. Cada item usa
-`aralearn.course-anchored-annotation.v1` e inclui caminho observado e corrente,
-certeza da revisão observada, classificação automática e humana separadas,
-capacidades e links profundos. O contribuidor lido pelo proprietário é protegido por papel
-no formato `contributor={kind:'protected_person',role,ref,label}`. `ref` é o
-pseudônimo aleatório persistido `person-` + 16 hex, não derivado de Curso/UUID,
-nunca UUID ou e-mail e não reversível pelo contrato. A interface mostra somente o `label` pseudônimo protegido, nunca
-`ref`, UUID ou e-mail.
+`aralearn.mcp-anchored-annotation-page.v1`. A projeção comum contém somente
+`annotationId`, versão, origem, canal, espécie e papel da pessoa contribuinte,
+rótulo educacional do alvo, revisão observada, síntese, classificação sem IDs,
+estado e capacidades. Ela não envia `contributor.ref`, o rótulo protegido da
+pessoa, IDs e caminhos do alvo, links profundos nem IDs de Tópico. O texto
+integral da Observação aparece somente no detalhe explicitamente declarado;
+horários exatos permanecem fora. `dataDisclosure` identifica o cliente MCP
+conectado, a finalidade e os campos omitidos. O texto de uma resposta autoral
+anterior também permanece fora do MCP; o recorte informa apenas que ela existe
+e sua espécie. A aplicação autenticada conserva o DTO interno completo para
+suas próprias telas e ações.
 
 Fonte e Âncora são alvos válidos dessa leitura, ao lado dos objetos da
 hierarquia didática. O detalhe de uma Fonte pode, portanto, consultar a mesma
@@ -256,6 +312,11 @@ registro de retirada, ela aparece `available: false` e sem link profundo. Depois
 física prevista pelo ciclo de limpeza das Anotações, a exclusão em cascata remove apenas o
 vínculo e o identificador da projeção; nenhum texto, pseudônimo ou dado pessoal
 foi copiado para rodada, achado ou correção.
+
+Ao pedir que o contexto MCP inclua textos de Observações selecionadas, o
+cliente informa `includeObservationText: true`. Sem essa declaração, a leitura
+é recusada; mesmo com ela, referências pessoais, rótulos protegidos, caminhos e
+links internos permanecem fora da projeção.
 
 `variant_comparisons` lista os conjuntos ligados ao Curso na revisão esperada.
 `variant_comparison` exige `comparisonSetId` e devolve planejamento comum,
@@ -444,9 +505,10 @@ transação reconcilia materialmente os IDs de Unidades, o pai/alvo e os
 O cliente deve reler depois da escrita. Uma resposta de sucesso demonstra que
 a transação foi aceita, não que a mudança é pedagogicamente adequada.
 
-### `gerirPessoas`
+### Gestão de Pessoas permanece na aplicação
 
-Agrupa cinco operações estreitamente relacionadas:
+As cinco operações de perfil e acesso continuam disponíveis somente pela API
+autenticada da aplicação:
 
 | Operação | Efeito |
 | --- | --- |
@@ -456,10 +518,22 @@ Agrupa cinco operações estreitamente relacionadas:
 | `grant_access` | concede Estudo a uma conta localizada por e-mail exato |
 | `revoke_access` | revoga pelo identificador retornado na lista |
 
-Conceder e revogar exigem `confirmed: true` depois de confirmação humana clara
-e usam `requestId`. A ferramenta não pesquisa diretório, não sugere contas e
-não devolve o e-mail. A fotografia é enviada pelo fluxo seguro do Storage; o
-MCP apenas registra ou remove a chave já autorizada.
+Conceder e revogar usam `requestId` e confirmação na interface. A operação não
+pesquisa diretório nem sugere contas. A fotografia é enviada pelo fluxo seguro
+do Storage. Nenhuma dessas operações é anunciada como ferramenta MCP, de modo
+que nome, referência protegida e e-mail-alvo não são enviados ao cliente
+conversacional.
+
+A concessão devolve o mesmo recibo de solicitação para conta existente,
+inexistente, própria, já favorecida ou tentativa limitada. São permitidas dez
+tentativas por ator em dez minutos. A auditoria operacional conserva apenas
+ator, tempos e contadores agregados, sem e-mail ou hash do e-mail, e fica
+elegível à limpeza depois de 30 dias.
+
+Essa igualdade vale para a resposta imediata. Uma releitura posterior da lista
+de Pessoas pode mostrar a relação realmente concedida e, assim, revelar o
+resultado ao proprietário autorizado. O risco residual é explícito; esta
+revisão não introduz convite pendente para escondê-lo.
 
 ### `consultarComponentesDidaticos`
 
@@ -498,9 +572,9 @@ temporário:
 Para Anotações, essa expiração é autoritativa: o recibo deixa de admitir
 repetição no prazo. A remoção física ocorre oportunisticamente durante leituras
 e mutações do Curso, em um lote de até 128 registros de retirada e 256 recibos
-expirados a cada operação;
-um Curso inativo pode conservar dados físicos expirados porque não há tarefa
-periódica nem garantia de remoção física na janela.
+expirados a cada operação. Na revisão candidata, a rotina privada diária acrescenta
+um lote de até 512 itens por classe, devolve contagens e torna a limpeza
+independente da abertura do Curso.
 
 Diante de conflito de revisão, não aumente o número e tente novamente às cegas.
 Releia, compare a intenção com o estado novo e proponha a reconciliação.
@@ -556,7 +630,7 @@ Erros previsíveis incluem:
 - rodada, achado, correção, critério focal ou evidência inválida;
 - confirmação indevida num comando não destrutivo do ciclo de auditoria;
 - entidade, plano, Parte ou etapa de materialização inválida;
-- e-mail sem conta correspondente;
+- solicitação de acesso recebida sem revelar se o e-mail possui conta;
 - confirmação ausente;
 - limite do corpo do pedido ou prazo excedido.
 
@@ -594,7 +668,7 @@ Para conectar um cliente:
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
 3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das seis ferramentas, do recurso de invariantes e, num
+5. confira a descoberta das cinco ferramentas, do recurso de invariantes e, num
    cliente compatível, do recurso visual versionado;
 6. faça primeiro uma leitura sem mutação;
 7. teste criação e alteração somente num Curso de desenvolvimento.

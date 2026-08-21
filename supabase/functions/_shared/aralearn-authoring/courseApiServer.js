@@ -142,14 +142,16 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
           );
         }
         const rawArguments = await readBody(request);
-        requestId = rawArguments.requestId ?? null;
         result = await executeCourseTool({
           adapter,
           principal,
           name: actionName,
           rawArguments,
           deadlineAt,
-          surface: "application"
+          surface: "application",
+          onRequestIdValidated(value) {
+            requestId = value;
+          }
         });
       }
       const payload = { ok: true, requestId: result.requestId, data: result.data ?? null };

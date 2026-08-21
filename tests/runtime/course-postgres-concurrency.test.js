@@ -298,6 +298,420 @@ test("PostgreSQL mantém a ordem pessoa antes de Curso entre anotação e exclus
   }
 });
 
+test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo lock", {
+  skip: postgresGate
+}, async () => {
+  const avatarOwnerId = "00000000-0000-4000-8000-000000001500";
+  const avatarSessionId = "00000000-0000-4000-8000-000000001501";
+  const avatarObjectId = "00000000-0000-4000-8000-000000001502";
+  const avatarObjectName =
+    `${avatarOwnerId}/00000000-0000-4000-8000-000000001503.webp`;
+  const avatarEmail = "storage-lock-avatar-150@aralearn.invalid";
+  const pdfOwnerId = "00000000-0000-4000-8000-000000001510";
+  const pdfSessionId = "00000000-0000-4000-8000-000000001511";
+  const pdfObjectId = "00000000-0000-4000-8000-000000001512";
+  const pdfCourseId = "10000000-0000-4000-8000-000000001510";
+  const pdfHash = "a".repeat(64);
+  const pdfObjectName = `${pdfCourseId}/${pdfHash}.pdf`;
+  const pdfEmail = "storage-lock-pdf-150@aralearn.invalid";
+  const authenticatedContext = (userId, sessionId) => `
+    select set_config('request.jwt.claim.sub','${userId}',true);
+    select set_config('request.jwt.claim.role','authenticated',true);
+    select set_config(
+      'request.jwt.claims',
+      '{"sub":"${userId}","role":"authenticated","session_id":"${sessionId}"}',
+      true
+    );
+  `;
+
+  await createUser(avatarOwnerId, avatarEmail);
+  await createUser(pdfOwnerId, pdfEmail);
+  try {
+    await result(psql(`
+      insert into auth.sessions(id,user_id,created_at,updated_at,not_after)
+      values
+        ('${avatarSessionId}','${avatarOwnerId}',now(),now(),now()+interval '1 hour'),
+        ('${pdfSessionId}','${pdfOwnerId}',now(),now(),now()+interval '1 hour');
+      insert into public.courses(id,owner_id,title,goal)
+      values(
+        '${pdfCourseId}','${pdfOwnerId}',
+        'Curso do lock de PDF','Serializar upload e exclusão de conta'
+      );
+      insert into private.course_source_pdf_upload_intents(
+        actor_id,course_id,storage_path,content_hash,byte_size,media_type,
+        source_id,source_revision,course_revision
+      ) values(
+        '${pdfOwnerId}','${pdfCourseId}','${pdfObjectName}','${pdfHash}',512,
+        'application/pdf','source-lock',1,1
+      );
+    `));
+
+    const avatarWriter = psql([
+      `set application_name='aralearn-avatar-write-lock-probe';
+       begin;
+       set local role authenticated;
+       ${authenticatedContext(avatarOwnerId, avatarSessionId)}
+       insert into storage.objects(
+         id,bucket_id,name,owner,owner_id,metadata
+       ) values(
+         '${avatarObjectId}','person-avatars','${avatarObjectName}',
+         '${avatarOwnerId}','${avatarOwnerId}',
+         '{"size":9,"mimetype":"image/webp"}'::jsonb
+       );`,
+      "select 'avatar-storage-lock-held';",
+      "select pg_sleep(3); commit;"
+    ]);
+    await marker(avatarWriter, "avatar-storage-lock-held");
+
+    const avatarAccountDeletion = psql(`
+      set application_name='aralearn-avatar-account-delete-lock-probe';
+      begin;
+      set local role authenticated;
+      ${authenticatedContext(avatarOwnerId, avatarSessionId)}
+      select public.delete_my_account_v1('EXCLUIR MINHA CONTA');
+      commit;
+    `);
+    await waitForDatabaseCondition(`
+      select (count(*)=1)::integer
+      from pg_stat_activity
+      where application_name='aralearn-avatar-account-delete-lock-probe'
+        and state='active' and wait_event_type='Lock';
+    `);
+    await Promise.all([
+      result(avatarWriter),
+      assert.rejects(
+        result(avatarAccountDeletion),
+        /Remova os objetos privados de avatar/iu
+      )
+    ]);
+    assert.equal(await result(psql(`
+      select (exists(select 1 from auth.users where id='${avatarOwnerId}'))::text
+        ||'|'||(exists(
+          select 1 from storage.objects
+          where bucket_id='person-avatars' and name='${avatarObjectName}'
+        ))::text;
+    `)), "true|true");
+    await result(psql(`
+      begin;
+      set local session_replication_role='replica';
+      delete from storage.objects
+      where bucket_id='person-avatars' and name='${avatarObjectName}';
+      commit;
+    `));
+
+    const pdfAccountDeletion = psql([
+      `set application_name='aralearn-pdf-account-delete-lock-holder';
+       begin;
+       set local role authenticated;
+       ${authenticatedContext(pdfOwnerId, pdfSessionId)}
+       select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
+      "select 'pdf-account-delete-lock-held';",
+      "select pg_sleep(3); commit;"
+    ]);
+    await marker(pdfAccountDeletion, "pdf-account-delete-lock-held");
+
+    const pdfWriter = psql(`
+      set application_name='aralearn-pdf-write-lock-probe';
+      begin;
+      set local role authenticated;
+      ${authenticatedContext(pdfOwnerId, pdfSessionId)}
+      insert into storage.objects(
+        id,bucket_id,name,owner,owner_id,metadata
+      ) values(
+        '${pdfObjectId}','course-source-pdfs','${pdfObjectName}',
+        '${pdfOwnerId}','${pdfOwnerId}',
+        '{"size":512,"mimetype":"application/pdf"}'::jsonb
+      );
+      commit;
+    `);
+    await waitForDatabaseCondition(`
+      select (count(*)=1)::integer
+      from pg_stat_activity
+      where application_name='aralearn-pdf-write-lock-probe'
+        and state='active' and wait_event_type='Lock';
+    `);
+    await Promise.all([
+      result(pdfAccountDeletion),
+      assert.rejects(
+        result(pdfWriter),
+        /row-level security|nova linha viola|new row violates/iu
+      )
+    ]);
+    assert.equal(await result(psql(`
+      select (exists(select 1 from auth.users where id='${pdfOwnerId}'))::text
+        ||'|'||(exists(
+          select 1 from storage.objects
+          where bucket_id='course-source-pdfs' and name='${pdfObjectName}'
+        ))::text;
+    `)), "false|false");
+  } finally {
+    await result(psql(`
+      begin;
+      set local session_replication_role='replica';
+      delete from storage.objects
+      where bucket_id='person-avatars' and name='${avatarObjectName}';
+      delete from storage.objects
+      where bucket_id='course-source-pdfs' and name='${pdfObjectName}';
+      commit;
+    `));
+    await cleanupUser(avatarOwnerId, avatarEmail);
+    await cleanupUser(pdfOwnerId, pdfEmail);
+  }
+});
+
+test("PostgreSQL serializa intents simultâneos contra a mesma cota física de PDF", {
+  skip: postgresGate
+}, async () => {
+  const ownerId = "00000000-0000-4000-8000-000000001540";
+  const courseId = "10000000-0000-4000-8000-000000001540";
+  const email = "pdf-quota-lock-150@aralearn.invalid";
+  const hashes = Object.fromEntries(
+    ["a", "b", "c", "d", "e"].map((digit) => [digit, digit.repeat(64)])
+  );
+  const objectIds = [
+    "00000000-0000-4000-8000-000000001541",
+    "00000000-0000-4000-8000-000000001542",
+    "00000000-0000-4000-8000-000000001543"
+  ];
+  const twentyMiB = 20 * 1024 * 1024;
+  const fourMiB = 4 * 1024 * 1024;
+
+  await createUser(ownerId, email);
+  try {
+    await result(psql(`
+      insert into public.courses(id,owner_id,title,goal)
+      values(
+        '${courseId}','${ownerId}',
+        'Curso da cota concorrente de PDF','Reservar bytes físicos e intents vivos'
+      );
+      insert into private.course_source_revisions(
+        course_id,source_id,revision,status,kind,title,origin,availability,
+        verification_status,study_visibility,actor_id
+      ) values
+        ('${courseId}','source-quota-first',1,'active','document','Fonte A',
+          'author_provided','private','author_verified','hidden','${ownerId}'),
+        ('${courseId}','source-quota-second',1,'active','document','Fonte B',
+          'author_provided','private','author_verified','hidden','${ownerId}');
+      insert into storage.objects(id,bucket_id,name,owner,owner_id,metadata) values
+        ('${objectIds[0]}','course-source-pdfs','${courseId}/${hashes.a}.pdf',
+          '${ownerId}','${ownerId}',
+          '{"size":${twentyMiB},"mimetype":"application/pdf"}'::jsonb),
+        ('${objectIds[1]}','course-source-pdfs','${courseId}/${hashes.b}.pdf',
+          '${ownerId}','${ownerId}',
+          '{"size":${twentyMiB},"mimetype":"application/pdf"}'::jsonb),
+        ('${objectIds[2]}','course-source-pdfs','${courseId}/${hashes.c}.pdf',
+          '${ownerId}','${ownerId}',
+          '{"size":${twentyMiB},"mimetype":"application/pdf"}'::jsonb);
+    `));
+
+    const firstReservation = psql([
+      `set application_name='aralearn-pdf-quota-first-reservation';
+       begin;
+       select set_config('request.jwt.claim.role','service_role',true);
+       select public.get_course_source_attachment_access_for_actor_v1(
+         '${ownerId}','${courseId}',1,'prepare_upload','source-quota-first',1,
+         '${hashes.d}',${fourMiB},'application/pdf'
+       );`,
+      "select 'pdf-quota-first-reserved';",
+      "select pg_sleep(3); commit;"
+    ]);
+    await marker(firstReservation, "pdf-quota-first-reserved");
+
+    const secondReservation = psql(`
+      set application_name='aralearn-pdf-quota-second-reservation';
+      begin;
+      select set_config('request.jwt.claim.role','service_role',true);
+      select public.get_course_source_attachment_access_for_actor_v1(
+        '${ownerId}','${courseId}',1,'prepare_upload','source-quota-second',1,
+        '${hashes.e}',1,'application/pdf'
+      );
+      commit;
+    `);
+    await waitForDatabaseCondition(`
+      select (count(*)=1)::integer
+      from pg_stat_activity
+      where application_name='aralearn-pdf-quota-second-reservation'
+        and state='active' and wait_event_type='Lock';
+    `);
+    await Promise.all([
+      result(firstReservation),
+      assert.rejects(result(secondReservation), /cota de 64 MiB/iu)
+    ]);
+    assert.equal(await result(psql(`
+      select private.course_source_pdf_reserved_bytes_v1('${courseId}')::text
+        ||'|'||(select count(*)::text
+          from private.course_source_pdf_upload_intents intent
+          where intent.course_id='${courseId}'
+            and intent.content_hash in('${hashes.d}','${hashes.e}'));
+    `)), "67108864|1");
+  } finally {
+    await result(psql(`
+      begin;
+      set local session_replication_role='replica';
+      delete from storage.objects
+      where bucket_id='course-source-pdfs'
+        and name like '${courseId}/%';
+      commit;
+    `));
+    await cleanupUser(ownerId, email);
+  }
+});
+
+test("PostgreSQL não recria acesso quando concessão ou revogação perde para a exclusão", {
+  skip: postgresGate
+}, async () => {
+  const ownerId = "00000000-0000-4000-8000-000000001520";
+  const grantTargetId = "00000000-0000-4000-8000-000000001521";
+  const grantSessionId = "00000000-0000-4000-8000-000000001522";
+  const revokeTargetId = "00000000-0000-4000-8000-000000001523";
+  const revokeSessionId = "00000000-0000-4000-8000-000000001524";
+  const courseId = "10000000-0000-4000-8000-000000001520";
+  const ownerEmail = "access-lock-owner-150@aralearn.invalid";
+  const grantEmail = "access-lock-grant-150@aralearn.invalid";
+  const revokeEmail = "access-lock-revoke-150@aralearn.invalid";
+  const grantRequestId = "privacy:access-lock:grant:150";
+  const revokeRequestId = "privacy:access-lock:revoke:150";
+  const authenticatedContext = (userId, sessionId) => `
+    select set_config('request.jwt.claim.sub','${userId}',true);
+    select set_config('request.jwt.claim.role','authenticated',true);
+    select set_config(
+      'request.jwt.claims',
+      '{"sub":"${userId}","role":"authenticated","session_id":"${sessionId}"}',
+      true
+    );
+  `;
+
+  await createUser(ownerId, ownerEmail);
+  await createUser(grantTargetId, grantEmail);
+  await createUser(revokeTargetId, revokeEmail);
+  try {
+    await result(psql(`
+      insert into auth.sessions(id,user_id,created_at,updated_at,not_after)
+      values
+        ('${grantSessionId}','${grantTargetId}',now(),now(),now()+interval '1 hour'),
+        ('${revokeSessionId}','${revokeTargetId}',now(),now(),now()+interval '1 hour');
+      insert into public.courses(id,owner_id,title,goal)
+      values(
+        '${courseId}','${ownerId}',
+        'Curso do lock de acesso','Serializar acesso e exclusão de conta'
+      );
+      insert into public.course_access(course_id,user_id,granted_by)
+      values('${courseId}','${revokeTargetId}','${ownerId}');
+    `));
+
+    const grantTargetDeletion = psql([
+      `set application_name='aralearn-grant-target-delete-lock-holder';
+       begin;
+       set local role authenticated;
+       ${authenticatedContext(grantTargetId, grantSessionId)}
+       select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
+      "select 'grant-target-delete-lock-held';",
+      "select pg_sleep(3); commit;"
+    ]);
+    await marker(grantTargetDeletion, "grant-target-delete-lock-held");
+    const concurrentGrant = psql(`
+      set application_name='aralearn-concurrent-grant-lock-probe';
+      begin;
+      set local role service_role;
+      select set_config('request.jwt.claim.role','service_role',true);
+      select public.manage_course_access_for_actor_v1(
+        '${ownerId}','${courseId}','grant_access','${grantEmail}',null,true,
+        '${grantRequestId}'
+      );
+      commit;
+    `);
+    await waitForDatabaseCondition(`
+      select (count(*)=1)::integer
+      from pg_stat_activity
+      where application_name='aralearn-concurrent-grant-lock-probe'
+        and state='active' and wait_event_type='Lock';
+    `);
+    const [, grantOutput] = await Promise.all([
+      result(grantTargetDeletion),
+      result(concurrentGrant)
+    ]);
+    const grantResult = JSON.parse(grantOutput.split(/\r?\n/u).at(-1));
+    assert.deepEqual(grantResult, {
+      contract: "aralearn.course-access-grant-request.v1",
+      courseId,
+      operation: "grant_access",
+      accepted: true,
+      idempotent: false
+    });
+    assert.equal(await result(psql(`
+      select
+        (exists(select 1 from auth.users where id='${grantTargetId}'))::text
+        ||'|'||(exists(
+          select 1 from public.course_access
+          where course_id='${courseId}' and user_id='${grantTargetId}'
+        ))::text
+        ||'|'||(exists(
+          select 1 from private.course_events
+          where course_id='${courseId}'
+            and summary::text like '%${grantTargetId}%'
+        ))::text
+        ||'|'||(exists(
+          select 1 from private.course_change_receipts
+          where actor_id='${ownerId}' and request_id='${grantRequestId}'
+            and result::text like '%${grantTargetId}%'
+        ))::text;
+    `)), "false|false|false|false");
+
+    const revokeTargetDeletion = psql([
+      `set application_name='aralearn-revoke-target-delete-lock-holder';
+       begin;
+       set local role authenticated;
+       ${authenticatedContext(revokeTargetId, revokeSessionId)}
+       select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
+      "select 'revoke-target-delete-lock-held';",
+      "select pg_sleep(3); commit;"
+    ]);
+    await marker(revokeTargetDeletion, "revoke-target-delete-lock-held");
+    const concurrentRevoke = psql(`
+      set application_name='aralearn-concurrent-revoke-lock-probe';
+      begin;
+      set local role service_role;
+      select set_config('request.jwt.claim.role','service_role',true);
+      select public.manage_course_access_for_actor_v1(
+        '${ownerId}','${courseId}','revoke_access',null,'${revokeTargetId}',true,
+        '${revokeRequestId}'
+      );
+      commit;
+    `);
+    await waitForDatabaseCondition(`
+      select (count(*)=1)::integer
+      from pg_stat_activity
+      where application_name='aralearn-concurrent-revoke-lock-probe'
+        and state='active' and wait_event_type='Lock';
+    `);
+    await Promise.all([
+      result(revokeTargetDeletion),
+      assert.rejects(result(concurrentRevoke), /Perfil inexistente/iu)
+    ]);
+    assert.equal(await result(psql(`
+      select
+        (exists(select 1 from auth.users where id='${revokeTargetId}'))::text
+        ||'|'||(exists(
+          select 1 from public.course_access
+          where course_id='${courseId}' and user_id='${revokeTargetId}'
+        ))::text
+        ||'|'||(exists(
+          select 1 from private.course_events
+          where course_id='${courseId}'
+            and summary::text like '%${revokeTargetId}%'
+        ))::text
+        ||'|'||(exists(
+          select 1 from private.course_change_receipts
+          where actor_id='${ownerId}' and request_id='${revokeRequestId}'
+        ))::text;
+    `)), "false|false|false|false");
+  } finally {
+    await cleanupUser(grantTargetId, grantEmail);
+    await cleanupUser(revokeTargetId, revokeEmail);
+    await cleanupUser(ownerId, ownerEmail);
+  }
+});
+
 test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
   skip: postgresGate
 }, async () => {

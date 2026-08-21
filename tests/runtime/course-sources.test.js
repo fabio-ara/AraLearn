@@ -74,7 +74,7 @@ function pdfStorage(uniqueBytes = 0) {
   return { uniqueBytes, maxUniqueBytes: 64 * 1024 * 1024 };
 }
 
-test("anexo PDF sela hash, caminho, limite e acesso assinado da revisão exata", () => {
+test("anexo PDF sela hash, caminho, limite e transporte autorizado da revisão exata", () => {
   assert.deepEqual(normalizeCourseSourceAttachment(attachment()), attachment());
   assert.deepEqual(normalizeCourseSourceCommand({
     type: "attach_pdf",
@@ -99,7 +99,7 @@ test("anexo PDF sela hash, caminho, limite e acesso assinado da revisão exata",
   );
 
   const download = {
-    contract: "aralearn.course-source-attachment-access.v1",
+    contract: "aralearn.course-source-attachment-access.v2",
     courseId: IDS.course,
     courseRevision: 7,
     operation: "download",
@@ -113,6 +113,30 @@ test("anexo PDF sela hash, caminho, limite e acesso assinado da revisão exata",
     expiresAt: "2026-08-20T12:01:00.000Z"
   };
   assert.deepEqual(normalizeCourseSourceAttachmentAccess(download), download);
+  const compatibleDownload = {
+    ...download,
+    contract: "aralearn.course-source-attachment-access.v1"
+  };
+  assert.deepEqual(
+    normalizeCourseSourceAttachmentAccess(compatibleDownload),
+    compatibleDownload
+  );
+  const upload = {
+    ...download,
+    operation: "prepare_upload",
+    alreadyLinked: false,
+    uploadRequired: true,
+    signedUrl: null,
+    expiresAt: null
+  };
+  assert.deepEqual(normalizeCourseSourceAttachmentAccess(upload), upload);
+  assert.throws(
+    () => normalizeCourseSourceAttachmentAccess({
+      ...upload,
+      contract: "aralearn.course-source-attachment-access.v1"
+    }),
+    (error) => error.code === "invalid_course_source_attachment_access"
+  );
   const inherited = {
     ...download,
     courseId: "10000000-0000-4000-8000-000000000099"

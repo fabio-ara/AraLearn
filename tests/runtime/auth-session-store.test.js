@@ -24,6 +24,29 @@ test("persiste somente o estado de autenticação em namespace próprio", async 
   second.close();
 });
 
+test("atualiza a sessão em uma única transação entre abas", async () => {
+  const indexedDb = new IDBFactory();
+  const first = await AuthSessionStore.open(indexedDb);
+  const second = await AuthSessionStore.open(indexedDb);
+  await first.putSyncState("auth.session", { access_token: "old", legacy: "remove" });
+
+  const minimized = first.updateSyncState("auth.session", (current) => ({
+    access_token: current.access_token
+  }));
+  const renewed = second.putSyncState("auth.session", {
+    access_token: "new",
+    refresh_token: "new-refresh"
+  });
+  await Promise.all([minimized, renewed]);
+
+  assert.deepEqual(await first.getSyncState("auth.session"), {
+    access_token: "new",
+    refresh_token: "new-refresh"
+  });
+  first.close();
+  second.close();
+});
+
 test("notifica substituição de versão e recusa operações na conexão antiga", async () => {
   const indexedDb = new IDBFactory();
   const store = await AuthSessionStore.open(indexedDb);
@@ -33,4 +56,16 @@ test("notifica substituição de versão e recusa operações na conexão antiga
 
   assert.match(invalidation.message, /substituída/u);
   await assert.rejects(() => store.getSyncState("auth.session"), /substituída/u);
+});
+
+test("exclusão avisa quando outra aba ainda mantém a sessão aberta", async () => {
+  const indexedDb = new IDBFactory();
+  const blocked = await AuthSessionStore.open(indexedDb);
+  blocked.database.onversionchange = () => undefined;
+
+  await assert.rejects(
+    AuthSessionStore.deleteDatabase(indexedDb),
+    /ainda está aberta em outra aba/u
+  );
+  blocked.close();
 });

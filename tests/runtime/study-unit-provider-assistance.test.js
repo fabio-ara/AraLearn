@@ -111,14 +111,17 @@ test("runtime autenticado injeta a mesma sessão efêmera em Estudo e Autoria e 
     source,
     /createCourseAuthoringSurface\(\{[\s\S]*?providerAssistanceSession:\s*studyUnitProviderSession[\s\S]*?\}\)/u
   );
-  assert.ok((source.match(/studyUnitProviderSession\?\.destroy\?\.\(\)/gu) || []).length >= 2);
+  assert.match(
+    source,
+    /function quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?cleanupApplication\?\.\(\)[\s\S]*?lifecycleAbortController\?\.abort\(\)[\s\S]*?studyUnitProviderSession\?\.destroy\?\.\(\)/u
+  );
   assert.match(
     source,
     /const cleanupApplication = \(\) => \{[\s\S]*?authoringSurface\?\.destroy\?\.\(\)[\s\S]*?editorApp\?\.destroy\?\.\(\)[\s\S]*?authenticatedApplicationCleanup = cleanupApplication/u
   );
   assert.match(
     source,
-    /async function closeAraLearnLocalConnections\(\)[\s\S]*?authenticatedApplicationCleanup\?\.\(\)[\s\S]*?studyUnitProviderSession\?\.destroy\?\.\(\)/u
+    /data-settings-signout-clear[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?authClient\.signOut\(\)[\s\S]*?data-settings-signout[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?repository\?\.flush\(\)[\s\S]*?authClient\.signOut\(\)/u
   );
   assert.match(
     source,
@@ -436,10 +439,13 @@ test("produção aceita somente relay local sem credencial no navegador", () => 
   });
 });
 
-test("prompt limita o contexto ao texto autorizado e nunca envia PDF, Fonte ou blob", () => {
+test("prompt usa allowlist e nunca envia identidade, credencial, PDF, Fonte ou payload auxiliar", () => {
   const unit = studyUnit();
   unit.internalPdf = { blob: "PDF-BRUTO", url: "https://fonte.example/artigo.pdf" };
   unit.sourceLinks = [{ sourceId: "fonte-secreta" }];
+  unit.accountEmail = "known.person@example.test";
+  unit.authorizationHeader = "Authorization: Bearer token-auxiliar";
+  unit.rawPayload = "raw personal payload outside the selected text";
   const built = buildStudyUnitAssistancePrompt({
     studyUnit: unit,
     targetId: "content:paragraph",
@@ -454,7 +460,10 @@ test("prompt limita o contexto ao texto autorizado e nunca envia PDF, Fonte ou b
   assert.deepEqual(Object.keys(envelope.writableTarget), ["pathValues"]);
   assert.deepEqual(Object.keys(envelope.readOnlyContext), ["title", "role", "topics"]);
   assert.equal(envelope.priorConversation.length, STUDY_UNIT_ASSISTANCE_LIMITS.maximumConversationTurns);
-  assert.doesNotMatch(built.prompt, /PDF-BRUTO|fonte-secreta|artigo\.pdf/u);
+  assert.doesNotMatch(
+    built.prompt,
+    /PDF-BRUTO|fonte-secreta|artigo\.pdf|known\.person@example\.test|token-auxiliar|raw personal payload/u
+  );
   for (const expected of [
     "pedido", "texto editável selecionado", "título", "papel", "tópicos",
     "mensagens anteriores", "PDFs", "Fontes", "identidades internas", "outras Unidades",
@@ -519,8 +528,14 @@ test("no-op é informado e nunca grava por conta própria", async () => {
   assert.equal(saves, 0);
 });
 
-test("falha transitória de rede tem somente um retry e erro não revela segredo", async () => {
+test("falha transitória tem somente um retry e erro não reflete segredo, e-mail ou corpo", async () => {
   const secret = "segredo-nao-vaza-em-erro";
+  const sensitiveFailure = [
+    secret,
+    "known.person@example.test",
+    "Authorization: Bearer provider-token",
+    "raw personal payload from selected text"
+  ];
   const config = normalizeStudyUnitProviderConfig({
     providerId: "openai",
     model: "gpt-5-mini",
@@ -538,7 +553,7 @@ test("falha transitória de rede tem somente um retry e erro não revela segredo
     retryDelayMs: 0,
     fetchImpl: async () => {
       calls += 1;
-      if (calls === 1) throw new TypeError(`falha interna ${secret}`);
+      if (calls === 1) throw new TypeError(`falha interna ${sensitiveFailure.join(" | ")}`);
       return jsonResponse(providerOutput("openai", {
         message: "Ok", changes: [{ path: "text", value: "Novo" }]
       }));
@@ -556,7 +571,7 @@ test("falha transitória de rede tem somente um retry e erro não revela segredo
       retryDelayMs: 0,
       fetchImpl: async () => {
         calls += 1;
-        throw new TypeError(`falha interna ${secret}`);
+        throw new TypeError(`falha interna ${sensitiveFailure.join(" | ")}`);
       }
     });
   } catch (error) {
@@ -564,7 +579,10 @@ test("falha transitória de rede tem somente um retry e erro não revela segredo
   }
   assert.equal(calls, 2);
   assert.equal(caught.code, "provider_network_failure");
-  assert.doesNotMatch(`${caught.message}${caught.stack}`, new RegExp(secret, "u"));
+  const diagnostic = `${caught.message}${caught.stack}`;
+  for (const sentinel of sensitiveFailure) {
+    assert.equal(diagnostic.includes(sentinel), false, sentinel);
+  }
 });
 
 test("resposta acima do teto é cancelada antes de ser materializada em memória", async () => {

@@ -30,7 +30,7 @@ $RequiredApplicationOrigins = @(
 function Invoke-AraLearnSupabase {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
 
-  & npx.cmd --yes supabase@2.109.1 @Arguments
+  & npx.cmd --yes supabase@2.115.0 @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "A Supabase CLI falhou: supabase $($Arguments -join ' ')."
   }
@@ -39,7 +39,7 @@ function Invoke-AraLearnSupabase {
 function Invoke-AraLearnDatabaseLintGate {
   $lintJsonPath = [System.IO.Path]::GetTempFileName()
   try {
-    & npx.cmd --yes supabase@2.109.1 db lint --linked --level warning `
+    & npx.cmd --yes supabase@2.115.0 db lint --linked --level warning `
       --output-format json > $lintJsonPath
     $lintExitCode = $LASTEXITCODE
     if ($lintExitCode -ne 0) {
@@ -187,6 +187,12 @@ try {
     & node .\scripts\runHostedMcpOAuthSmoke.mjs
     if ($LASTEXITCODE -ne 0) {
       throw 'O smoke hospedado do runtime de Cursos falhou; as funções antigas foram preservadas.'
+    }
+
+    Write-Host 'Validando o upload autenticado e o download de PDF hospedados...'
+    & node .\scripts\runHostedCourseSourcePdfSmoke.mjs
+    if ($LASTEXITCODE -ne 0) {
+      throw 'O smoke hospedado de PDF falhou; a implantação requer correção.'
     }
 
     Write-Host 'As funções da versão publicada foram preservadas até a verificação do novo site.'

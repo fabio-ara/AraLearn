@@ -220,6 +220,11 @@ function captureBrowserFailures(page) {
   });
   page.on("pageerror", (error) => record(`page: ${error.message}`));
   page.on("requestfailed", (requestValue) => {
+    const failureText = String(requestValue.failure()?.errorText || "");
+    if (failureText.includes("ERR_ABORTED") &&
+        requestValue.url().includes("list_courses_v1")) {
+      return;
+    }
     record(`network: ${requestValue.method()} ${requestValue.url()} ${requestValue.failure()?.errorText}`);
   });
   page.on("response", (response) => {
@@ -279,10 +284,40 @@ async function browserSignIn(page, email) {
 }
 
 async function setProfile(page, displayName, { avatar = false } = {}) {
-  await page.getByRole("button", { name: "Conta e aparência" }).click();
+  const settingsTrigger = page.getByRole("button", { name: "Conta e aparência" });
+  await settingsTrigger.click();
   await expect(page.locator("[data-profile-avatar-fallback]")).toBeVisible();
   await expect(page.getByRole("button", { name: "Escolher foto" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dados neste dispositivo" })).toBeVisible();
+  await expect(page.getByText(
+    "Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo. Alterações ainda abertas e não salvas serão perdidas.",
+    { exact: true }
+  )).toBeVisible();
+  for (const name of [
+    "Remover dados deste dispositivo",
+    "Sair e remover dados deste dispositivo"
+  ]) {
+    const button = page.getByRole("button", { name, exact: true });
+    await expect(button).toBeVisible();
+    expect((await button.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+  await expect.poll(() => page.locator("[data-settings]").evaluate((overlay) => ({
+    overlayFits: overlay.scrollWidth <= overlay.clientWidth + 1,
+    documentFits: document.documentElement.scrollWidth <= innerWidth + 1
+  }))).toEqual({ overlayFits: true, documentFits: true });
   const status = page.locator("[data-settings-status]");
+  await expect(status).toHaveText("");
+  const closeSettings = page.getByRole("button", { name: "Fechar" });
+  await expect(closeSettings).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Sair", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(closeSettings).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeHidden();
+  await expect(settingsTrigger).toBeFocused();
+  await settingsTrigger.click();
+  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
   await expect(status).toHaveText("");
   await page.getByLabel("Nome").fill(displayName);
   if (avatar) {
@@ -302,6 +337,14 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   } else {
     await expect(page.locator("[data-profile-avatar-image]")).toBeHidden();
   }
+  const signOutDialogPromise = page.waitForEvent("dialog");
+  await page.getByRole("button", { name: "Sair", exact: true }).click();
+  const signOutDialog = await signOutDialogPromise;
+  expect(signOutDialog.message()).toBe(
+    "Sair desta conta? Cursos e dados já salvos permanecerão neste dispositivo. Alterações ainda abertas e não salvas serão perdidas."
+  );
+  await signOutDialog.dismiss();
+  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
   await page.getByRole("button", { name: "Fechar" }).click();
 }
 
@@ -449,18 +492,33 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await ownerPage.getByRole("button", { name: "Autoria", exact: true }).click();
       await expect(ownerPage.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
       await ownerPage.getByRole("link", { name: `Abrir ${COURSE_TITLE}` }).click();
+      await expect(ownerPage.locator(
+        ".course-authoring-surface[data-view='course'][data-section='planning']"
+      )).toHaveAttribute("aria-busy", "false");
+      await expect(ownerPage.getByRole("heading", { name: "Planejamento" })).toBeVisible();
+      await ownerPage.locator("[data-authoring-destination='people'] > summary").click();
       await ownerPage.getByRole("link", { name: "Pessoas" }).click();
       await expect(ownerPage.getByRole("heading", { name: "Pessoas" })).toBeVisible();
       await expect(ownerPage.getByText("Somente você tem acesso.", { exact: true })).toBeVisible();
       await ownerPage.getByRole("button", { name: "Conceder acesso" }).click();
       await ownerPage.getByLabel("E-mail exato").fill(learner.email);
-      ownerPage.once("dialog", async (dialog) => {
-        expect(dialog.message()).toContain(`Conceder a ${learner.email} acesso`);
-        await dialog.accept();
-      });
       await ownerPage.locator("[data-course-authoring-grant]")
         .getByRole("button", { name: "Conceder acesso" }).click();
-      await expect(ownerPage.getByText("Acesso concedido.", { exact: true })).toBeVisible();
+      const grantConfirmation = ownerPage.getByRole("alertdialog", {
+        name: "Confirmar ação"
+      });
+      await expect(grantConfirmation).toContainText(
+        `Conceder a ${learner.email} acesso`
+      );
+      await grantConfirmation.getByRole("button", { name: "Conceder acesso" }).click();
+      await expect(ownerPage.getByText(
+        "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Use Atualizar Curso depois para conferir o acesso.",
+        { exact: true }
+      )).toBeVisible();
+      await ownerPage.getByRole("button", { name: "Atualizar Curso" }).click();
+      await expect(ownerPage.locator(
+        ".course-authoring-surface[data-view='course'][data-section='people']"
+      )).toHaveAttribute("aria-busy", "false");
       await expect(ownerPage.getByText("Pessoa estudante local", { exact: true })).toBeVisible();
       await expectNoHorizontalOverflow(ownerPage, ".course-authoring-surface");
       await attachScreenshot(ownerPage, testInfo, "acesso-concedido-390.png");
@@ -516,13 +574,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await ownerPage.setViewportSize({ width: 1280, height: 900 });
       await expectNoHorizontalOverflow(ownerPage, ".course-authoring-surface");
       await attachScreenshot(ownerPage, testInfo, "pessoas-1280.png");
-      ownerPage.once("dialog", async (dialog) => {
-        expect(dialog.message()).toContain("O estado pessoal de Estudo será preservado.");
-        await dialog.accept();
-      });
       await ownerPage.getByRole("button", {
         name: "Revogar acesso de Pessoa estudante local"
       }).click();
+      const revokeConfirmation = ownerPage.getByRole("alertdialog", {
+        name: "Confirmar ação"
+      });
+      await expect(revokeConfirmation).toContainText(
+        "O estado pessoal de Estudo será preservado."
+      );
+      await revokeConfirmation.getByRole("button", { name: "Revogar acesso" }).click();
       await expect(ownerPage.getByText(
         "Acesso revogado; o estado pessoal foi preservado.",
         { exact: true }

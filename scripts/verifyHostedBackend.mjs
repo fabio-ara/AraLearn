@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
 const REQUEST_TIMEOUT_MS = 20_000;
+const MCP_PATH = "/functions/v1/aralearn-authoring-mcp";
+const SUPPORTED_JWT_KEYS = new Set(["EC:ES256:P-256"]);
 
 function requiredText(value, label) {
   const normalized = typeof value === "string" ? value.trim() : "";
@@ -106,6 +108,39 @@ export function compareRuntimeManifest(expected, actual) {
   };
 }
 
+export function validateHostedOAuthBoundary({ projectUrl, jwks, metadata }) {
+  const keys = Array.isArray(jwks?.keys) ? jwks.keys : [];
+  const algorithms = [...new Set(keys.filter((key) => {
+    const signature = `${key?.kty || ""}:${key?.alg || ""}:${key?.crv || ""}`;
+    return SUPPORTED_JWT_KEYS.has(signature) && typeof key?.kid === "string" && key.kid &&
+      (key.use == null || key.use === "sig") &&
+      (key.key_ops == null || (Array.isArray(key.key_ops) && key.key_ops.includes("verify")));
+  }).map(({ alg }) => alg))].sort();
+  if (keys.length < 1 || keys.length > 16 || algorithms.length < 1) {
+    throw new Error("O Auth hospedado não anuncia uma chave assimétrica compatível para o MCP.");
+  }
+  const resource = `${projectUrl}${MCP_PATH}`;
+  if (metadata?.resource !== resource ||
+      !Array.isArray(metadata?.authorization_servers) ||
+      metadata.authorization_servers.length !== 1 ||
+      metadata.authorization_servers[0] !== `${projectUrl}/auth/v1` ||
+      !Array.isArray(metadata?.scopes_supported) ||
+      metadata.scopes_supported.length !== 1 ||
+      metadata.scopes_supported[0] !== "offline_access") {
+    throw new Error("O MCP hospedado não anuncia a fronteira OAuth protegida corrente.");
+  }
+  return { algorithms, resource, scope: "offline_access" };
+}
+
+async function responseJson(response, label) {
+  const source = await response.text();
+  const payload = parseJsonOrNull(source);
+  if (!response.ok || !payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error(`${label} falhou (HTTP ${response.status}).`);
+  }
+  return payload;
+}
+
 export async function verifyHostedBackend({
   projectUrl,
   publishableKey,
@@ -137,7 +172,25 @@ export async function verifyHostedBackend({
         : `A verificação do banco falhou (HTTP ${response.status}).`
     );
   }
-  return compareRuntimeManifest(expected, payload);
+  const runtime = compareRuntimeManifest(expected, payload);
+  const [jwksResponse, metadataResponse] = await Promise.all([
+    fetchImpl(`${publicConfiguration.projectUrl}/auth/v1/.well-known/jwks.json`, {
+      headers: { Accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    }),
+    fetchImpl(`${publicConfiguration.projectUrl}${MCP_PATH}/.well-known/oauth-protected-resource`, {
+      headers: { Accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    })
+  ]);
+  const oauth = validateHostedOAuthBoundary({
+    projectUrl: publicConfiguration.projectUrl,
+    jwks: await responseJson(jwksResponse, "A leitura do JWKS hospedado"),
+    metadata: await responseJson(metadataResponse, "A leitura da metadata OAuth do MCP")
+  });
+  return { ...runtime, oauth };
 }
 
 async function main() {

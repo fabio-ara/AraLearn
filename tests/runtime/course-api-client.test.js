@@ -893,12 +893,19 @@ test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo c
   let revision = 4;
   let linked = false;
   const { client } = clientWithFetch(async (url, init) => {
-    if (init.body instanceof FormData) {
+    if (init.body === pdf) {
       calls.push({ kind: "upload", url, init });
-      assert.equal(init.method, "PUT");
-      assert.equal(init.headers["x-upsert"], "false");
-      assert.equal(init.body.get("cacheControl"), "3600");
-      assert.equal(init.body.get("").size, pdf.size);
+      assert.equal(init.method, "POST");
+      assert.equal(init.headers.get("x-upsert"), "false");
+      assert.equal(init.headers.get("Authorization"), "Bearer token");
+      assert.equal(init.headers.get("apikey"), "publishable");
+      assert.equal(init.headers.get("Content-Type"), "application/pdf");
+      assert.equal(init.headers.get("cache-control"), "3600");
+      assert.match(url, new RegExp(
+        `/storage/v1/object/course-source-pdfs/${COURSE_ID}/${contentHash}\\.pdf$`,
+        "u"
+      ));
+      assert.equal(init.body.size, pdf.size);
       return new Response("{}", { status: 200 });
     }
     const body = JSON.parse(init.body);
@@ -916,7 +923,7 @@ test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo c
         mediaType: "application/pdf"
       });
       return jsonResponse({ ok: true, data: {
-        contract: "aralearn.course-source-attachment-access.v1",
+        contract: "aralearn.course-source-attachment-access.v2",
         courseId: COURSE_ID,
         courseRevision: revision,
         operation: "prepare_upload",
@@ -926,10 +933,8 @@ test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo c
         attachment: { contentHash, byteSize: pdf.size, mediaType: "application/pdf", storagePath },
         uploadRequired: !linked,
         alreadyLinked: linked,
-        signedUrl: linked
-          ? null
-          : "https://project.invalid/storage/v1/object/upload/sign/course-source-pdfs/path?token=upload-token",
-        expiresAt: linked ? null : "2026-08-20T14:00:00.000Z"
+        signedUrl: null,
+        expiresAt: null
       }});
     }
     if (body.operation === "update_course_sources") {
@@ -1002,6 +1007,7 @@ test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo c
     contentHash
   });
   assert.equal(download.operation, "download");
+  assert.equal(download.contract, "aralearn.course-source-attachment-access.v1");
   assert.deepEqual(downloadBody, {
     courseId: COURSE_ID,
     view: "course_source_attachment",
@@ -1251,6 +1257,34 @@ test("exclusão da conta delega toda a limpeza à rota autenticada do aplicativo
   assert.match(calls[0].url, /\/functions\/v1\/aralearn-course-api\/app\/excluirMinhaConta$/u);
   assert.deepEqual(calls[0].body, { confirmation: "EXCLUIR MINHA CONTA" });
   assert.equal(calls[0].headers.get("Authorization"), "Bearer token");
+});
+
+test("exclusão classifica perda de transporte como retomável sem apagar dados locais", async () => {
+  for (const transportFailure of [
+    () => { throw new TypeError("fetch failed"); },
+    () => jsonResponse({ message: "upstream indisponível" }, 502)
+  ]) {
+    let calls = 0;
+    const { client } = clientWithFetch(async () => {
+      calls += 1;
+      return transportFailure();
+    });
+    await assert.rejects(
+      () => client.deleteMyAccount({ confirmation: "EXCLUIR MINHA CONTA" }),
+      (error) => error.status === 503 &&
+        error.code === "account_deletion_in_progress" &&
+        /confirmar ou concluir/u.test(error.message)
+    );
+    assert.equal(calls, 1, "o navegador não repete automaticamente uma exclusão ambígua");
+  }
+});
+
+test("exclusão com resposta 2xx inválida preserva o replay explícito", async () => {
+  const { client } = clientWithFetch(async () => jsonResponse({ ok: true, data: null }));
+  await assert.rejects(
+    () => client.deleteMyAccount({ confirmation: "EXCLUIR MINHA CONTA" }),
+    (error) => error.code === "account_deletion_in_progress" && error.cause instanceof TypeError
+  );
 });
 
 function anchoredAnnotationFixture({

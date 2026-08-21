@@ -12,6 +12,8 @@ import {
 
 const LOCAL_APP_ORIGIN = "http://127.0.0.1:4182";
 const CLIENT_REDIRECT_URI = "https://mcp-smoke.aralearn.invalid/callback";
+const MCP_OAUTH_SCOPE = "offline_access";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 function localEnvironmentFromStatus(environment = process.env) {
   if (
@@ -25,14 +27,14 @@ function localEnvironmentFromStatus(environment = process.env) {
     status = JSON.parse(execFileSync(
       useWindowsCommandShell ? (process.env.ComSpec || "cmd.exe") : "npx",
       useWindowsCommandShell
-        ? ["/d", "/s", "/c", "npx --yes supabase@2.109.1 status --output json"]
-        : ["--yes", "supabase@2.109.1", "status", "--output", "json"],
+        ? ["/d", "/s", "/c", "npx --yes supabase@2.115.0 status --output json"]
+        : ["--yes", "supabase@2.115.0", "status", "--output", "json"],
       { cwd: path.resolve(fileURLToPath(import.meta.url), "..", ".."), encoding: "utf8" }
     ));
   } catch (error) {
     throw new Error(
       "Não foi possível obter as credenciais da stack Supabase local. "
-      + "Inicie-a com 'npx --yes supabase@2.109.1 start' ou defina SUPABASE_URL, "
+      + "Inicie-a com 'npx --yes supabase@2.115.0 start' ou defina SUPABASE_URL, "
       + "SUPABASE_SERVICE_ROLE_KEY e SUPABASE_ANON_KEY.",
       { cause: error }
     );
@@ -133,6 +135,394 @@ function oauthUserHeaders(publishableKey, accessToken, {
   };
 }
 
+function assertMcpAccessTokenClaims(accessToken, {
+  clientId,
+  projectUrl,
+  resourceUrl,
+  userId,
+  nowSeconds,
+  label = "Access token OAuth"
+}) {
+  const claims = jwtClaims(accessToken);
+  const expectedIssuer = `${projectUrl}/auth/v1`;
+  assert.equal(claims.iss, expectedIssuer, `${label}: issuer inesperado.`);
+  assert(
+    audienceIncludes(claims.aud, resourceUrl),
+    `${label}: audience não aponta para o MCP.`
+  );
+  assert.equal(claims.client_id, clientId, `${label}: client_id inesperado.`);
+  assert.equal(claims.scope, MCP_OAUTH_SCOPE, `${label}: scope inesperado.`);
+  assert.equal(claims.role, "authenticated", `${label}: role inesperado.`);
+  assert.equal(claims.is_anonymous, false, `${label}: token anônimo.`);
+  assert(Number.isFinite(claims.iat) && claims.iat <= nowSeconds() + 30);
+  assert(Number.isFinite(claims.exp) && claims.exp > nowSeconds());
+
+  const pairwiseSubject = String(claims.sub || "");
+  const pairwiseSession = String(claims.session_id || "");
+  const sourceSession = String(claims.aralearn_session_id || "");
+  for (const [name, value] of [
+    ["sub", pairwiseSubject],
+    ["session_id", pairwiseSession],
+    ["aralearn_session_id", sourceSession]
+  ]) {
+    assert.match(value, UUID_PATTERN, `${label}: ${name} não é UUID.`);
+    assert.notEqual(value, userId, `${label}: ${name} expôs a identidade real.`);
+    assert.notEqual(value, clientId, `${label}: ${name} reutilizou client_id.`);
+  }
+  assert.notEqual(pairwiseSubject, pairwiseSession, `${label}: aliases colidiram.`);
+  assert.notEqual(pairwiseSubject, sourceSession, `${label}: sub expôs a sessão-fonte.`);
+  assert.notEqual(pairwiseSession, sourceSession, `${label}: session_id expôs a sessão-fonte.`);
+  assert.equal(claims.email, "", `${label}: email não foi removido.`);
+  assert.equal(claims.phone, "", `${label}: telefone não foi removido.`);
+  for (const key of [
+    "app_metadata",
+    "user_metadata",
+    "identities",
+    "aralearn_actor_id"
+  ]) {
+    assert.equal(Object.hasOwn(claims, key), false, `${label}: claim ${key} indevida.`);
+  }
+  const allowedClaims = new Set([
+    "aal",
+    "aralearn_session_id",
+    "aud",
+    "client_id",
+    "email",
+    "exp",
+    "iat",
+    "is_anonymous",
+    "iss",
+    "nbf",
+    "phone",
+    "role",
+    "scope",
+    "session_id",
+    "sub"
+  ]);
+  assert.deepEqual(
+    Object.keys(claims).filter((key) => !allowedClaims.has(key)),
+    [],
+    `${label}: claims adicionais não minimizadas.`
+  );
+  assert.equal(JSON.stringify(claims).includes(userId), false);
+  return claims;
+}
+
+function storageObjectPath(value) {
+  return String(value || "")
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+async function rejectedOAuthBoundary(fetchImpl, url, init, label, {
+  forbiddenValues = [],
+  allowStorageEnvelope = false,
+  allowEmptyNoop = false
+} = {}) {
+  const response = await fetchImpl(url, init);
+  const payload = await responsePayload(response);
+  const payloadStatus = Number(payload?.statusCode);
+  const storageDenied =
+    allowStorageEnvelope
+    && response.status === 400
+    && new Set([401, 403]).has(payloadStatus)
+    && String(payload?.code || "") === "AccessDenied";
+  const emptyNoop = allowEmptyNoop
+    && response.status === 200
+    && (
+      (Array.isArray(payload) && payload.length === 0)
+      || (payload && typeof payload === "object" && Object.keys(payload).length === 0)
+    );
+  assert(
+    new Set([401, 403]).has(response.status) || storageDenied || emptyNoop,
+    `${label}: esperada recusa 401/403, recebido HTTP ${response.status}${
+      safeFailure(payload) ? ` — ${safeFailure(payload)}` : ""
+    }.`
+  );
+  const serialized = JSON.stringify(payload);
+  for (const value of forbiddenValues) {
+    if (!String(value || "")) continue;
+    assert.equal(
+      serialized.includes(String(value)),
+      false,
+      `${label}: a resposta de recusa expôs dados protegidos.`
+    );
+  }
+  return { response, payload };
+}
+
+async function verifyMcpOAuthGoTrueIsolation({
+  provision,
+  accessToken,
+  fetchImpl,
+  label = "bearer OAuth do MCP"
+}) {
+  const oauthHeaders = oauthUserHeaders(provision.publishableKey, accessToken);
+  const applicationHeaders = oauthUserHeaders(
+    provision.publishableKey,
+    provision.userAccessToken
+  );
+  const applicationUser = async (requestLabel) => {
+    const { payload } = await requestJson(
+      fetchImpl,
+      `${provision.projectUrl}/auth/v1/user`,
+      { headers: applicationHeaders },
+      requestLabel
+    );
+    assert.equal(payload?.id, provision.userId, `${requestLabel}: identidade inesperada.`);
+    return payload;
+  };
+  await applicationUser(`Sessão normal antes da prova de ${label}`);
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/user`,
+    { headers: oauthHeaders },
+    `Auth GET /user com ${label}`,
+    { forbiddenValues: [provision.userId] }
+  );
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/oauth/userinfo`,
+    { headers: oauthHeaders },
+    `Auth GET /oauth/userinfo com ${label}`,
+    { forbiddenValues: [provision.userId] }
+  );
+  const metadataSentinel = "oauth-mcp-metadata-must-not-change";
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/user`,
+    {
+      method: "PUT",
+      headers: { ...oauthHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ data: { oauth_auth_probe: metadataSentinel } })
+    },
+    `Auth PUT /user com ${label}`,
+    { forbiddenValues: [provision.userId, metadataSentinel] }
+  );
+  const userAfterUpdate = await applicationUser(
+    `Sessão normal após a recusa do PUT /user com ${label}`
+  );
+  assert.notEqual(userAfterUpdate.user_metadata?.oauth_auth_probe, metadataSentinel);
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/user/oauth/grants`,
+    { headers: oauthHeaders },
+    `Auth GET /user/oauth/grants com ${label}`,
+    { forbiddenValues: [provision.userId, provision.clientId] }
+  );
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/factors`,
+    {
+      method: "POST",
+      headers: { ...oauthHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ factor_type: "totp", friendly_name: "probe descartável" })
+    },
+    `Auth POST /factors com ${label}`,
+    { forbiddenValues: [provision.userId] }
+  );
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/reauthenticate`,
+    { headers: oauthHeaders },
+    `Auth GET /reauthenticate com ${label}`,
+    { forbiddenValues: [provision.userId] }
+  );
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/logout?scope=local`,
+    { method: "POST", headers: oauthHeaders },
+    `Auth POST /logout com ${label}`,
+    { forbiddenValues: [provision.userId] }
+  );
+  await applicationUser(`Sessão normal após a recusa do logout com ${label}`);
+}
+
+export async function verifyLocalMcpOAuthIsolation({
+  provision,
+  fetchImpl = globalThis.fetch,
+  createId = randomUUID,
+  allowHosted = false
+} = {}) {
+  assert.equal(typeof fetchImpl, "function", "fetch indisponível para a fronteira OAuth.");
+  const projectUrl = String(provision?.projectUrl || "").trim();
+  const explicitlyAllowedHostedProject =
+    allowHosted === true
+    && !isLocalSupabaseUrl(projectUrl)
+    && /^https:\/\/[^/]+$/u.test(projectUrl);
+  assert(
+    projectUrl
+    && (isLocalSupabaseUrl(projectUrl) || explicitlyAllowedHostedProject),
+    "A prova destrutiva da fronteira OAuth só pode usar a stack Supabase local."
+  );
+  const accessToken = String(provision.accessToken || "").trim();
+  const publishableKey = String(provision.publishableKey || "").trim();
+  const serverApiKey = String(provision.serverApiKey || "").trim();
+  const userId = String(provision.userId || "").trim();
+  assert(accessToken && publishableKey && serverApiKey && userId);
+
+  await verifyMcpOAuthGoTrueIsolation({
+    provision,
+    accessToken,
+    fetchImpl
+  });
+  const oauthHeaders = oauthUserHeaders(publishableKey, accessToken);
+
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/rest/v1/rpc/delete_my_account_v1`,
+    {
+      method: "POST",
+      headers: { ...oauthHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_confirmation: "EXCLUIR MINHA CONTA" })
+    },
+    "Data API RPC com o bearer OAuth do MCP",
+    { forbiddenValues: [userId] }
+  );
+
+  await rejectedOAuthBoundary(
+    fetchImpl,
+    `${provision.projectUrl}/rest/v1/person_profiles?select=user_id&user_id=eq.${
+      encodeURIComponent(userId)
+    }`,
+    { headers: oauthHeaders },
+    "Data API SELECT com o bearer OAuth do MCP",
+    { forbiddenValues: [userId] }
+  );
+
+  const seededObjectPath = `${userId}/${createId()}.webp`;
+  const attemptedObjectPath = `${userId}/${createId()}.webp`;
+  const bucketUrl = `${provision.projectUrl}/storage/v1/object/person-avatars`;
+  const seededObjectUrl = `${bucketUrl}/${storageObjectPath(seededObjectPath)}`;
+  const attemptedObjectUrl = `${bucketUrl}/${storageObjectPath(attemptedObjectPath)}`;
+  const authenticatedObjectUrl =
+    `${provision.projectUrl}/storage/v1/object/authenticated/person-avatars/${
+      storageObjectPath(seededObjectPath)
+    }`;
+  const applicationHeaders = {
+    ...oauthUserHeaders(publishableKey, provision.userAccessToken),
+    "Content-Type": "image/webp",
+    "x-upsert": "false"
+  };
+  let storageCleanupFailure = null;
+  try {
+    await requestJson(
+      fetchImpl,
+      seededObjectUrl,
+      {
+        method: "POST",
+        headers: applicationHeaders,
+        body: new Uint8Array([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80])
+      },
+      "Preparação local do objeto sentinela da fronteira OAuth"
+    );
+
+    await rejectedOAuthBoundary(
+      fetchImpl,
+      `${provision.projectUrl}/storage/v1/object/list/person-avatars`,
+      {
+        method: "POST",
+        headers: { ...oauthHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefix: `${userId}/`, limit: 1, offset: 0 })
+      },
+      "Storage list com o bearer OAuth do MCP",
+      { forbiddenValues: [userId], allowStorageEnvelope: true }
+    );
+    await rejectedOAuthBoundary(
+      fetchImpl,
+      authenticatedObjectUrl,
+      { headers: oauthHeaders },
+      "Storage GET com o bearer OAuth do MCP",
+      { forbiddenValues: [userId], allowStorageEnvelope: true }
+    );
+    await rejectedOAuthBoundary(
+      fetchImpl,
+      attemptedObjectUrl,
+      {
+        method: "POST",
+        headers: {
+          ...oauthHeaders,
+          "Content-Type": "image/webp",
+          "x-upsert": "false"
+        },
+        body: new Uint8Array([82, 73, 70, 70, 87, 69, 66, 80])
+      },
+      "Storage POST com o bearer OAuth do MCP",
+      { forbiddenValues: [userId], allowStorageEnvelope: true }
+    );
+    await rejectedOAuthBoundary(
+      fetchImpl,
+      bucketUrl,
+      {
+        method: "DELETE",
+        headers: { ...oauthHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefixes: [seededObjectPath] })
+      },
+      "Storage DELETE com o bearer OAuth do MCP",
+      {
+        forbiddenValues: [userId],
+        allowStorageEnvelope: true,
+        // O Storage pode representar um DELETE filtrado pelo RLS como sucesso
+        // vazio. O inventário service-role logo abaixo prova que nenhum objeto
+        // foi removido, que é a fronteira material desta operação.
+        allowEmptyNoop: true
+      }
+    );
+
+    const { payload: serviceObjects } = await requestJson(
+      fetchImpl,
+      `${provision.projectUrl}/storage/v1/object/list/person-avatars`,
+      {
+        method: "POST",
+        headers: supabaseServerHeaders(serverApiKey),
+        body: JSON.stringify({ prefix: `${userId}/`, limit: 10, offset: 0 })
+      },
+      "Inventário administrativo dos objetos sentinela após as recusas OAuth"
+    );
+    assert(Array.isArray(serviceObjects));
+    const serviceObjectNames = serviceObjects.map(({ name }) => String(name || ""));
+    assert(
+      serviceObjectNames.some((name) => (
+        name === seededObjectPath || seededObjectPath.endsWith(`/${name}`)
+      )),
+      "O DELETE OAuth removeu o objeto sentinela."
+    );
+    assert.equal(
+      serviceObjectNames.some((name) => (
+        name === attemptedObjectPath || attemptedObjectPath.endsWith(`/${name}`)
+      )),
+      false,
+      "O POST OAuth persistiu o objeto cuja escrita foi recusada."
+    );
+    await requestJson(
+      fetchImpl,
+      authenticatedObjectUrl,
+      { headers: supabaseServerHeaders(serverApiKey, { contentType: false }) },
+      "Confirmação de que o DELETE OAuth não removeu o objeto sentinela"
+    );
+  } finally {
+    try {
+      await requestJson(
+        fetchImpl,
+        bucketUrl,
+        {
+          method: "DELETE",
+          headers: supabaseServerHeaders(serverApiKey),
+          body: JSON.stringify({
+            prefixes: [seededObjectPath, attemptedObjectPath]
+          })
+        },
+        "Limpeza dos objetos sentinela da fronteira OAuth",
+        { acceptedStatuses: [200, 204, 404] }
+      );
+    } catch (error) {
+      storageCleanupFailure = error;
+    }
+  }
+  if (storageCleanupFailure) throw storageCleanupFailure;
+}
+
 function oauthConfiguration(environment, { allowHosted = false } = {}) {
   const normalized = normalizedEnvironment(environment);
   const configuration = resolveSupabaseServerEnvironment(normalized);
@@ -211,8 +601,8 @@ export async function provisionLocalMcpOAuthToken({
     "O OAuth Server local não anunciou PKCE S256."
   );
   assert(
-    discovery?.scopes_supported?.includes("openid"),
-    "O OAuth Server local não anunciou o escopo openid."
+    discovery?.scopes_supported?.includes(MCP_OAUTH_SCOPE),
+    `O OAuth Server local não anunciou o escopo ${MCP_OAUTH_SCOPE}.`
   );
 
   const runId = createId().replaceAll("-", "");
@@ -286,7 +676,7 @@ export async function provisionLocalMcpOAuthToken({
     response_type: "code",
     client_id: lifecycle.clientId,
     redirect_uri: CLIENT_REDIRECT_URI,
-    scope: "openid",
+    scope: MCP_OAUTH_SCOPE,
     state,
     resource: configuration.resourceUrl,
     code_challenge: challenge,
@@ -339,7 +729,11 @@ export async function provisionLocalMcpOAuthToken({
   assert.equal(details?.authorization_id, authorizationId);
   assert.equal(details?.client?.id, lifecycle.clientId);
   assert.equal(details?.user?.id, lifecycle.userId);
-  assert.match(String(details?.scope || ""), /(?:^|\s)openid(?:\s|$)/u);
+  assert.equal(
+    details?.scope,
+    MCP_OAUTH_SCOPE,
+    "O consentimento OAuth anunciou escopos além da fronteira MCP."
+  );
 
   const { payload: consent } = await requestJson(
     fetchImpl,
@@ -380,22 +774,76 @@ export async function provisionLocalMcpOAuthToken({
   );
   lifecycle.oauthGrantCreated = true;
   const accessToken = String(grant?.access_token || "");
-  const claims = jwtClaims(accessToken);
-  assert.equal(claims.iss, `${configuration.projectUrl}/auth/v1`);
-  assert.equal(claims.sub, lifecycle.userId);
-  assert.equal(claims.client_id, lifecycle.clientId);
-  assert(
-    audienceIncludes(claims.aud, configuration.resourceUrl),
-    "O hook não destinou o access token ao endpoint MCP."
+  const refreshToken = String(grant?.refresh_token || "");
+  assert(refreshToken, "O OAuth Server não emitiu refresh token.");
+  assert.equal(
+    Object.hasOwn(grant || {}, "id_token"),
+    false,
+    "O fluxo MCP não pode emitir ID token."
   );
-  assert(Number.isFinite(claims.iat) && claims.iat <= nowSeconds() + 30);
-  assert(Number.isFinite(claims.exp) && claims.exp > nowSeconds());
+  if (grant?.scope != null) assert.equal(grant.scope, MCP_OAUTH_SCOPE);
+  assertMcpAccessTokenClaims(accessToken, {
+    clientId: lifecycle.clientId,
+    projectUrl: configuration.projectUrl,
+    resourceUrl: configuration.resourceUrl,
+    userId: lifecycle.userId,
+    nowSeconds,
+    label: "Access token OAuth inicial"
+  });
   assert.notEqual(
     accessToken,
     configuration.serverApiKey,
     "A credencial administrativa não pode ser reutilizada como bearer do MCP."
   );
-  return { ...lifecycle, accessToken };
+  return { ...lifecycle, accessToken, refreshToken };
+}
+
+export async function refreshLocalMcpOAuthToken({
+  provision,
+  fetchImpl = globalThis.fetch,
+  nowSeconds = () => Math.floor(Date.now() / 1000)
+} = {}) {
+  assert.equal(typeof fetchImpl, "function", "fetch indisponível para renovar o OAuth.");
+  const refreshToken = String(provision?.refreshToken || "").trim();
+  assert(refreshToken, "Refresh token OAuth ausente.");
+  const { payload: grant } = await requestJson(
+    fetchImpl,
+    `${provision.projectUrl}/auth/v1/oauth/token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: provision.clientId,
+        resource: provision.resourceUrl
+      })
+    },
+    "Renovação do token OAuth MCP"
+  );
+  const accessToken = String(grant?.access_token || "");
+  const nextRefreshToken = String(grant?.refresh_token || "");
+  assert(accessToken && nextRefreshToken, "A renovação OAuth não devolveu o par de tokens.");
+  assert.notEqual(accessToken, provision.accessToken, "A renovação reutilizou o access token.");
+  assert.notEqual(nextRefreshToken, refreshToken, "A renovação não rotacionou o refresh token.");
+  assert.equal(
+    Object.hasOwn(grant || {}, "id_token"),
+    false,
+    "A renovação MCP não pode emitir ID token."
+  );
+  if (grant?.scope != null) assert.equal(grant.scope, MCP_OAUTH_SCOPE);
+  assertMcpAccessTokenClaims(accessToken, {
+    clientId: provision.clientId,
+    projectUrl: provision.projectUrl,
+    resourceUrl: provision.resourceUrl,
+    userId: provision.userId,
+    nowSeconds,
+    label: "Access token OAuth renovado"
+  });
+  return {
+    accessToken,
+    refreshToken: nextRefreshToken
+  };
 }
 
 export async function provisionHostedMcpOAuthToken(options = {}) {
@@ -483,7 +931,8 @@ export async function cleanupLocalMcpOAuthProvision({
 
 async function executeAuthenticatedSmoke(accessToken, {
   projectUrl = "",
-  publishableKey = ""
+  publishableKey = "",
+  applicationAccessToken = ""
 } = {}) {
   const previousToken =
     process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN;
@@ -491,10 +940,14 @@ async function executeAuthenticatedSmoke(accessToken, {
     process.env.ARALEARN_AUTHORING_MCP_REQUIRE_OAUTH;
   const previousProjectUrl = process.env.SUPABASE_URL;
   const previousPublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const previousApplicationToken = process.env.ARALEARN_APP_SESSION_TOKEN;
   process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN = accessToken;
   process.env.ARALEARN_AUTHORING_MCP_REQUIRE_OAUTH = "1";
   if (projectUrl) process.env.SUPABASE_URL = projectUrl;
   if (publishableKey) process.env.SUPABASE_PUBLISHABLE_KEY = publishableKey;
+  if (applicationAccessToken) {
+    process.env.ARALEARN_APP_SESSION_TOKEN = applicationAccessToken;
+  }
   try {
     const smokeUrl = new URL(
       "../supabase/tests/authoring-mcp-local-smoke.mjs",
@@ -524,13 +977,54 @@ async function executeAuthenticatedSmoke(accessToken, {
     } else {
       process.env.SUPABASE_PUBLISHABLE_KEY = previousPublishableKey;
     }
+    if (previousApplicationToken === undefined) {
+      delete process.env.ARALEARN_APP_SESSION_TOKEN;
+    } else {
+      process.env.ARALEARN_APP_SESSION_TOKEN = previousApplicationToken;
+    }
   }
+}
+
+export async function executeRefreshedMcpProbe(accessToken, {
+  projectUrl = "",
+  origin = LOCAL_APP_ORIGIN,
+  fetchImpl = globalThis.fetch
+} = {}) {
+  const edgeUrl = `${String(projectUrl || "").replace(/\/+$/u, "")}/functions/v1/aralearn-authoring-mcp`;
+  const { payload } = await requestJson(
+    fetchImpl,
+    edgeUrl,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json, text/event-stream",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Origin: origin,
+        "MCP-Protocol-Version": "2025-11-25"
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "aralearn-refreshed-oauth-smoke", version: "1" }
+        }
+      })
+    },
+    "MCP com o access token renovado"
+  );
+  assert.equal(payload?.error, undefined, payload?.error?.message);
+  assert.equal(payload?.result?.protocolVersion, "2025-11-25");
 }
 
 export async function runLocalMcpOAuthSmoke({
   environment = process.env,
   fetchImpl = globalThis.fetch,
   executeSmoke = executeAuthenticatedSmoke,
+  executeRefreshSmoke = executeRefreshedMcpProbe,
   createId = randomUUID,
   createBytes = randomBytes,
   nowSeconds
@@ -546,9 +1040,32 @@ export async function runLocalMcpOAuthSmoke({
       ...(nowSeconds ? { nowSeconds } : {}),
       lifecycle
     });
+    await verifyLocalMcpOAuthIsolation({
+      provision,
+      fetchImpl,
+      createId
+    });
     await executeSmoke(provision.accessToken, {
       projectUrl: provision.projectUrl,
-      publishableKey: provision.publishableKey
+      publishableKey: provision.publishableKey,
+      applicationAccessToken: provision.userAccessToken
+    });
+    const refreshed = await refreshLocalMcpOAuthToken({
+      provision,
+      fetchImpl,
+      ...(nowSeconds ? { nowSeconds } : {})
+    });
+    await verifyMcpOAuthGoTrueIsolation({
+      provision,
+      accessToken: refreshed.accessToken,
+      fetchImpl,
+      label: "bearer OAuth renovado do MCP"
+    });
+    await executeRefreshSmoke(refreshed.accessToken, {
+      projectUrl: provision.projectUrl,
+      publishableKey: provision.publishableKey,
+      applicationAccessToken: provision.userAccessToken,
+      fetchImpl
     });
   } catch (error) {
     primaryFailure = error;

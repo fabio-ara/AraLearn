@@ -31,6 +31,7 @@ let localConnectionRefreshPending = false;
 let studyUnitProviderSession = null;
 let pendingCompositionCleanup = null;
 let authenticatedApplicationCleanup = null;
+let removeLocalDataOnShutdown = false;
 
 function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
@@ -47,13 +48,18 @@ function watchLocalConnection(store) {
   return store.onConnectionInvalidated(() => reloadAfterLocalConnectionReplacement());
 }
 
-async function closeAraLearnLocalConnections() {
-  authenticatedApplicationCleanup?.();
+function quiesceAraLearnAuthenticatedInteractions() {
+  const cleanupApplication = authenticatedApplicationCleanup;
   authenticatedApplicationCleanup = null;
+  cleanupApplication?.();
   lifecycleAbortController?.abort();
   lifecycleAbortController = null;
   studyUnitProviderSession?.destroy?.();
   studyUnitProviderSession = null;
+}
+
+async function closeAraLearnLocalConnections() {
+  quiesceAraLearnAuthenticatedInteractions();
   if (pendingCompositionCleanup) await pendingCompositionCleanup();
   pendingCompositionCleanup = null;
   if (repository) {
@@ -66,17 +72,12 @@ async function closeAraLearnLocalConnections() {
   authStore = null;
 }
 
-async function clearAraLearnLocalState() {
+async function clearAraLearnLocalState({ removeSession = true } = {}) {
   const userId = activeUserId;
-  authenticatedApplicationCleanup?.();
-  authenticatedApplicationCleanup = null;
-  lifecycleAbortController?.abort();
-  lifecycleAbortController = null;
-  studyUnitProviderSession?.destroy?.();
-  studyUnitProviderSession = null;
+  quiesceAraLearnAuthenticatedInteractions();
   pendingCompositionCleanup = null;
   if (repository) {
-    await repository.close();
+    await repository.close({ flush: false });
     repository = null;
   }
   courseLocalStore?.close();
@@ -84,7 +85,7 @@ async function clearAraLearnLocalState() {
   authStore?.close();
   authStore = null;
   if (userId) await CourseLocalStore.deleteDatabase(globalThis.indexedDB, { userId });
-  await AuthSessionStore.deleteDatabase(globalThis.indexedDB);
+  if (removeSession) await AuthSessionStore.deleteDatabase(globalThis.indexedDB);
 }
 
 function renderShutdownFailure(root, error) {
@@ -111,13 +112,84 @@ function renderShutdownFailure(root, error) {
   });
 }
 
+function renderDeletedAccountCleanupFailure(root, error) {
+  root.innerHTML = `
+    <main class="auth-shell">
+      <section class="auth-card" aria-live="assertive">
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
+        <p class="auth-recovery-title">Sua conta foi excluída.</p>
+        <p>Alguns dados deste dispositivo ainda precisam ser removidos.</p>
+        <p class="auth-status" data-kind="error" data-account-cleanup-error></p>
+        <div class="auth-actions"><button class="auth-icon-button is-primary" type="button" data-account-cleanup-retry title="Tentar remover novamente" aria-label="Tentar remover novamente">${renderUiIcon("trash", "auth-button-icon")}</button></div>
+      </section>
+    </main>
+  `;
+  root.querySelector("[data-account-cleanup-error]").textContent =
+    error instanceof Error ? error.message : String(error);
+  root.querySelector("[data-account-cleanup-retry]")?.addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    try {
+      await clearAraLearnLocalState();
+      globalThis.location.reload();
+    } catch (retryError) {
+      renderDeletedAccountCleanupFailure(root, retryError);
+    }
+  });
+}
+
+function renderQuiescedOperationRecovery(root, {
+  title = "A ação foi interrompida.",
+  message = "Recarregue o AraLearn para reconstruir a sessão e continuar.",
+  error = null,
+  actionLabel = "Recarregar",
+  action = null
+} = {}) {
+  root.innerHTML = `
+    <main class="auth-shell">
+      <section class="auth-card" role="alert">
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
+        <p class="auth-recovery-title" data-quiesced-recovery-title></p>
+        <p data-quiesced-recovery-message></p>
+        <p class="auth-status" data-kind="error" data-quiesced-recovery-error></p>
+        <div class="auth-actions"><button class="auth-icon-button is-primary" type="button" data-quiesced-recovery-reload title="Recarregar" aria-label="Recarregar">${renderUiIcon("progress", "auth-button-icon")}</button></div>
+      </section>
+    </main>
+  `;
+  root.querySelector("[data-quiesced-recovery-title]").textContent = title;
+  root.querySelector("[data-quiesced-recovery-message]").textContent = message;
+  root.querySelector("[data-quiesced-recovery-error]").textContent =
+    error instanceof Error ? error.message : String(error || "");
+  const actionButton = root.querySelector("[data-quiesced-recovery-reload]");
+  actionButton?.setAttribute("title", actionLabel);
+  actionButton?.setAttribute("aria-label", actionLabel);
+  actionButton?.addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    if (!action) {
+      globalThis.location.reload();
+      return;
+    }
+    try {
+      await action();
+    } catch (actionError) {
+      renderQuiescedOperationRecovery(root, {
+        title,
+        message,
+        error: actionError,
+        actionLabel,
+        action
+      });
+    }
+  });
+}
+
 function shutDownAuthenticatedRuntime(root) {
   if (authenticationShutdown) return authenticationShutdown;
   authenticationShutdown = (async () => {
     root.setAttribute("aria-busy", "true");
     root.classList.add("is-signing-out");
     try {
-      await closeAraLearnLocalConnections();
+      if (removeLocalDataOnShutdown) await clearAraLearnLocalState();
+      else await closeAraLearnLocalConnections();
     } catch (error) {
       authenticationShutdown = null;
       root.removeAttribute("aria-busy");
@@ -217,13 +289,15 @@ function updateStartupLoading(root, percent) {
 
 function renderSettings(root, authClient, controller, {
   onProfileChange = () => {},
+  onQuiescedFailure = ({ error } = {}) => renderQuiescedOperationRecovery(root, { error }),
+  onDeletedAccountCleanupFailure = (error) => renderDeletedAccountCleanupFailure(root, error),
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
   promptValue = globalThis.prompt?.bind(globalThis) || (() => null)
 } = {}) {
   root.innerHTML = `
     <section class="account-settings-overlay" data-settings hidden aria-label="Configurações">
       <div class="account-settings-backdrop" data-settings-close></div>
-      <div class="account-settings-sheet courses-home-screen" role="dialog" aria-modal="true" aria-label="Conta e aparência">
+      <div class="account-settings-sheet courses-home-screen" role="dialog" aria-modal="true" aria-label="Conta e aparência" tabindex="-1">
         <header class="account-settings-header">
           <div class="account-settings-title-row">
             <h1 class="account-settings-title">Conta e aparência</h1>
@@ -245,9 +319,18 @@ function renderSettings(root, authClient, controller, {
               <button class="icon-ghost is-primary" type="submit" data-profile-save title="Salvar perfil" aria-label="Salvar perfil">${renderUiIcon("save", "account-settings-action-icon")}</button>
             </div>
           </form>
+          <section class="account-device-data" aria-labelledby="account-device-data-title">
+            <h2 id="account-device-data-title">Dados neste dispositivo</h2>
+            <p>Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo. Alterações ainda abertas e não salvas serão perdidas.</p>
+            <p>Remover os dados deste dispositivo mantém a conta conectada e não apaga dados já enviados ao AraLearn.</p>
+            <div class="account-device-data-actions">
+              <button type="button" data-settings-clear-device>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados deste dispositivo</span></button>
+              <button class="is-danger" type="button" data-settings-signout-clear>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair e remover dados deste dispositivo</span></button>
+            </div>
+          </section>
           <div class="account-danger-zone">
             <button class="icon-ghost is-danger" type="button" data-settings-delete-account title="Excluir conta" aria-label="Excluir conta">${renderUiIcon("trash", "account-settings-action-icon")}</button>
-            <span>Excluir conta e dados ativos</span>
+            <span>Excluir conta, Cursos próprios e cópias pessoais</span>
           </div>
         </div>
         <p class="account-settings-status" data-settings-status role="status" aria-live="polite"></p>
@@ -266,6 +349,7 @@ function renderSettings(root, authClient, controller, {
     </section>
   `;
   const overlay = root.querySelector("[data-settings]");
+  const sheet = root.querySelector(".account-settings-sheet");
   const status = root.querySelector("[data-settings-status]");
   const profileName = root.querySelector("[data-profile-name]");
   const profileFile = root.querySelector("[data-profile-avatar-file]");
@@ -274,7 +358,30 @@ function renderSettings(root, authClient, controller, {
   let profile = null;
   let avatarUrl = "";
   let selectedFile = null;
+  let pendingAvatarCleanupObjectKey = null;
+  let pendingAvatarResolution = null;
   let profileLoading = null;
+  let settingsOpener = null;
+
+  const focusableSettingsControls = () => [...sheet.querySelectorAll([
+    "button:not([disabled])",
+    "input:not([disabled]):not([type='hidden'])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "a[href]",
+    "[tabindex]:not([tabindex='-1'])"
+  ].join(","))].filter((control) => !control.hidden && !control.closest("[hidden]"));
+
+  const restoreSettingsFocus = () => {
+    const documentValue = root.ownerDocument || globalThis.document;
+    const currentOpener = settingsOpener && settingsOpener.isConnected !== false
+      ? settingsOpener
+      : [...documentValue.querySelectorAll("[data-action='open-settings']")]
+        .find((candidate) => candidate.getClientRects?.().length > 0) ||
+        documentValue.querySelector("[data-action='open-settings']");
+    settingsOpener = null;
+    currentOpener?.focus?.({ preventScroll: true });
+  };
 
   const replaceAvatarUrl = (nextUrl) => {
     if (avatarUrl && avatarUrl !== nextUrl) globalThis.URL?.revokeObjectURL?.(avatarUrl);
@@ -327,10 +434,42 @@ function renderSettings(root, authClient, controller, {
       button.setAttribute("aria-pressed", String(selected));
     });
   };
-  const close = () => {
+  const close = ({ restoreFocus = true } = {}) => {
+    if (overlay.hidden) return false;
     overlay.hidden = true;
     status.textContent = "";
+    if (restoreFocus) restoreSettingsFocus();
+    else settingsOpener = null;
+    return true;
   };
+  overlay.addEventListener("keydown", (event) => {
+    if (overlay.hidden) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = focusableSettingsControls();
+    if (!controls.length) {
+      event.preventDefault();
+      sheet.focus({ preventScroll: true });
+      return;
+    }
+    const documentValue = root.ownerDocument || globalThis.document;
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && (documentValue.activeElement === first ||
+        !sheet.contains(documentValue.activeElement))) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && (documentValue.activeElement === last ||
+        !sheet.contains(documentValue.activeElement))) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+  });
   root.querySelector("[data-profile-avatar-choose]")?.addEventListener("click", () => {
     profileFile.click();
   });
@@ -339,6 +478,38 @@ function renderSettings(root, authClient, controller, {
     if (!selectedFile) return;
     replaceAvatarUrl(globalThis.URL?.createObjectURL?.(selectedFile) || "");
   });
+  const retryPendingAvatarCleanup = async () => {
+    if (!pendingAvatarCleanupObjectKey) return true;
+    const objectKey = pendingAvatarCleanupObjectKey;
+    const removed = await controller.deleteOwnAvatar(objectKey)
+      .then(() => true)
+      .catch(() => false);
+    if (removed && pendingAvatarCleanupObjectKey === objectKey) {
+      pendingAvatarCleanupObjectKey = null;
+    }
+    return removed;
+  };
+  const resolvePendingAvatarUpload = async () => {
+    if (!pendingAvatarResolution) return true;
+    const pending = pendingAvatarResolution;
+    const confirmedProfile = await loadProfile({ force: true });
+    if (!confirmedProfile) {
+      status.dataset.kind = "warning";
+      status.textContent = "Ainda não foi possível confirmar se a foto enviada foi vinculada. Use Salvar novamente antes de outro envio.";
+      return false;
+    }
+    pendingAvatarResolution = null;
+    if (confirmedProfile.avatarObjectKey === pending.objectKey) {
+      selectedFile = null;
+      profileFile.value = "";
+      if (pending.previousObjectKey && pending.previousObjectKey !== pending.objectKey) {
+        pendingAvatarCleanupObjectKey = pending.previousObjectKey;
+      }
+    } else {
+      pendingAvatarCleanupObjectKey = pending.objectKey;
+    }
+    return true;
+  };
   root.querySelector("[data-profile-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const displayName = String(profileName.value || "").trim();
@@ -353,6 +524,12 @@ function renderSettings(root, authClient, controller, {
     let avatarCleanupPending = false;
     status.textContent = "Salvando perfil…";
     try {
+      if (!await resolvePendingAvatarUpload()) return;
+      if (!await retryPendingAvatarCleanup()) {
+        status.dataset.kind = "warning";
+        status.textContent = "A foto não vinculada ainda precisa ser removida. Use Salvar novamente para repetir a limpeza antes de outro envio.";
+        return;
+      }
       if (selectedFile) {
         uploadedObjectKey = (await controller.uploadAvatar(selectedFile)).objectKey;
       }
@@ -368,17 +545,54 @@ function renderSettings(root, authClient, controller, {
         avatarCleanupPending = !await controller.deleteOwnAvatar(previousAvatarObjectKey)
           .then(() => true)
           .catch(() => false);
+        if (avatarCleanupPending) {
+          pendingAvatarCleanupObjectKey = previousAvatarObjectKey;
+        }
       }
       await loadProfile({ force: true });
+      status.dataset.kind = avatarCleanupPending ? "warning" : "success";
       status.textContent = avatarCleanupPending
-        ? "Perfil salvo; a limpeza da foto anterior ficou pendente."
+        ? "Perfil salvo; a foto anterior ainda precisa ser removida. Use Salvar novamente para repetir a limpeza."
         : "Perfil salvo.";
     } catch (error) {
+      let uploadedAvatarCleanupPending = false;
       if (uploadedObjectKey && !profileUpdated) {
-        await controller.deleteOwnAvatar(uploadedObjectKey).catch(() => undefined);
+        const confirmedProfile = await loadProfile({ force: true });
+        if (confirmedProfile?.avatarObjectKey === uploadedObjectKey) {
+          selectedFile = null;
+          profileFile.value = "";
+          if (previousAvatarObjectKey && previousAvatarObjectKey !== uploadedObjectKey) {
+            pendingAvatarCleanupObjectKey = previousAvatarObjectKey;
+            avatarCleanupPending = !await retryPendingAvatarCleanup();
+          }
+          status.dataset.kind = avatarCleanupPending ? "warning" : "success";
+          status.textContent = avatarCleanupPending
+            ? "Perfil salvo; a resposta se perdeu e a foto anterior ainda precisa ser removida. Use Salvar novamente para repetir a limpeza."
+            : "Perfil salvo; a confirmação anterior foi recuperada.";
+          return;
+        }
+        if (!confirmedProfile) {
+          pendingAvatarResolution = {
+            objectKey: uploadedObjectKey,
+            previousObjectKey: previousAvatarObjectKey
+          };
+          status.dataset.kind = "warning";
+          status.textContent = "Não foi possível confirmar se a foto enviada foi vinculada. O objeto foi preservado; use Salvar novamente para confirmar ou limpar antes de outro envio.";
+          return;
+        }
+        uploadedAvatarCleanupPending = !await controller.deleteOwnAvatar(uploadedObjectKey)
+          .then(() => true)
+          .catch(() => false);
+        if (uploadedAvatarCleanupPending) pendingAvatarCleanupObjectKey = uploadedObjectKey;
       }
-      await loadProfile({ force: true });
-      status.textContent = error instanceof Error ? error.message : "Não foi possível salvar o perfil.";
+      if (!uploadedObjectKey || profileUpdated) await loadProfile({ force: true });
+      const failureMessage = error instanceof Error
+        ? error.message
+        : "Não foi possível salvar o perfil.";
+      status.dataset.kind = uploadedAvatarCleanupPending ? "warning" : "error";
+      status.textContent = uploadedAvatarCleanupPending
+        ? `${failureMessage} A foto enviada não foi vinculada e ainda precisa ser removida. Use Salvar novamente para repetir a limpeza antes de outro envio.`
+        : failureMessage;
     }
   });
   root.querySelector("[data-profile-avatar-remove]")?.addEventListener("click", async () => {
@@ -392,28 +606,56 @@ function renderSettings(root, authClient, controller, {
       const removed = await controller.deleteOwnAvatar(previousAvatarObjectKey)
         .then(() => true)
         .catch(() => false);
+      if (!removed) pendingAvatarCleanupObjectKey = previousAvatarObjectKey;
+      status.dataset.kind = removed ? "success" : "warning";
       status.textContent = removed
         ? "Foto removida."
-        : "A foto saiu do perfil; a limpeza do objeto ficou pendente.";
+        : "A foto saiu do perfil, mas o objeto ainda precisa ser removido. Use Salvar novamente para repetir a limpeza.";
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : "Não foi possível remover a foto.";
     }
   });
   root.querySelector("[data-settings-delete-account]")?.addEventListener("click", async (event) => {
     const confirmation = promptValue(
-      "Esta ação exclui a conta e os dados ativos. Digite EXCLUIR MINHA CONTA para continuar."
+      "Esta ação é irreversível: exclui sua conta, Cursos próprios, cópias pessoais e PDFs enviados. Digite EXCLUIR MINHA CONTA para continuar."
     );
     if (confirmation !== "EXCLUIR MINHA CONTA") return;
     event.currentTarget.disabled = true;
     status.textContent = "Excluindo conta…";
+    quiesceAraLearnAuthenticatedInteractions();
     try {
-      await repository?.flush();
       await controller.deleteMyAccount({ confirmation });
+    } catch (error) {
+      const deletionInProgress = error?.code === "account_deletion_in_progress";
+      onQuiescedFailure({
+        title: deletionInProgress
+          ? "A exclusão precisa ser confirmada."
+          : "Não foi possível confirmar a exclusão.",
+        message: deletionInProgress
+          ? "Alguns arquivos podem ter sido removidos, e a conta pode já ter sido excluída ou ainda aguardar a etapa final. Use a ação abaixo para confirmar ou concluir com a mesma sessão."
+          : "A sessão foi interrompida com segurança. Recarregue o AraLearn antes de tentar novamente.",
+        error,
+        ...(deletionInProgress ? {
+          actionLabel: "Confirmar ou concluir a exclusão",
+          async action() {
+            await controller.deleteMyAccount({ confirmation });
+            try {
+              await clearAraLearnLocalState();
+              globalThis.location.reload();
+            } catch (cleanupError) {
+              onDeletedAccountCleanupFailure(cleanupError);
+            }
+          }
+        } : {})
+      });
+      return;
+    }
+    status.textContent = "Conta excluída. Removendo dados deste dispositivo…";
+    try {
       await clearAraLearnLocalState();
       globalThis.location.reload();
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : "Não foi possível excluir a conta.";
-      event.currentTarget.disabled = false;
+      onDeletedAccountCleanupFailure(error);
     }
   });
   root.querySelectorAll("[data-settings-close]").forEach((button) => {
@@ -425,25 +667,81 @@ function renderSettings(root, authClient, controller, {
       syncTheme();
     });
   });
-  root.querySelector("[data-settings-signout]")?.addEventListener("click", async (event) => {
-    event.currentTarget.disabled = true;
-    status.textContent = "";
+  const localDataControls = [
+    root.querySelector("[data-settings-clear-device]"),
+    root.querySelector("[data-settings-signout-clear]"),
+    root.querySelector("[data-settings-signout]")
+  ].filter(Boolean);
+  const setLocalDataControlsDisabled = (disabled) => {
+    localDataControls.forEach((button) => { button.disabled = disabled; });
+  };
+  root.querySelector("[data-settings-clear-device]")?.addEventListener("click", async () => {
+    if (!confirmValue(
+      "Remover os dados desta conta neste dispositivo? Cursos salvos para uso offline, progresso ainda não sincronizado e rascunhos ou edições pendentes serão perdidos. A conta continuará conectada; os dados de outras contas e os dados já enviados ao AraLearn permanecem."
+    )) return;
+    setLocalDataControlsDisabled(true);
+    status.textContent = "Removendo os dados desta conta neste dispositivo…";
+    try {
+      await clearAraLearnLocalState({ removeSession: false });
+      globalThis.location.reload();
+    } catch (error) {
+      onQuiescedFailure({
+        title: "A limpeza local foi interrompida.",
+        message: "Alguns dados podem já ter sido removidos. Recarregue o AraLearn para reconstruir a sessão antes de tentar novamente.",
+        error
+      });
+    }
+  });
+  root.querySelector("[data-settings-signout-clear]")?.addEventListener("click", async () => {
+    if (!confirmValue(
+      "Sair e remover os dados desta conta neste dispositivo? Cursos salvos para uso offline, progresso ainda não sincronizado e rascunhos ou edições pendentes serão perdidos. Os dados de outras contas permanecem."
+    )) return;
+    removeLocalDataOnShutdown = true;
+    setLocalDataControlsDisabled(true);
+    status.textContent = "Saindo e removendo os dados desta conta neste dispositivo…";
+    quiesceAraLearnAuthenticatedInteractions();
+    try {
+      await authClient.signOut();
+    } catch (error) {
+      removeLocalDataOnShutdown = false;
+      onQuiescedFailure({
+        title: "A saída foi interrompida.",
+        message: "Recarregue o AraLearn para confirmar a sessão e o estado dos dados deste dispositivo.",
+        error
+      });
+    }
+  });
+  root.querySelector("[data-settings-signout]")?.addEventListener("click", async () => {
+    if (!confirmValue(
+      "Sair desta conta? Cursos e dados já salvos permanecerão neste dispositivo. Alterações ainda abertas e não salvas serão perdidas."
+    )) return;
+    setLocalDataControlsDisabled(true);
+    status.textContent = "Saindo. Os dados já salvos desta conta permanecerão neste dispositivo.";
+    quiesceAraLearnAuthenticatedInteractions();
     try {
       await repository?.flush();
       await authClient.signOut();
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : "Não foi possível sair.";
-      event.currentTarget.disabled = false;
+      onQuiescedFailure({
+        title: "A saída foi interrompida.",
+        message: "A sessão pode continuar ativa. Recarregue o AraLearn antes de tentar novamente.",
+        error
+      });
     }
   });
   syncTheme();
   return Object.freeze({
     loadProfile,
     open() {
+      const documentValue = root.ownerDocument || globalThis.document;
+      const activeElement = documentValue.activeElement;
+      settingsOpener = activeElement && !overlay.contains(activeElement)
+        ? activeElement
+        : null;
       syncTheme();
       overlay.hidden = false;
       void loadProfile();
-      root.querySelector("[data-settings-close]")?.focus();
+      root.querySelector("button[data-settings-close]")?.focus({ preventScroll: true });
     },
     close,
     handleBack() {
@@ -524,6 +822,12 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
+    },
+    onQuiescedFailure(details) {
+      renderQuiescedOperationRecovery(root, details);
+    },
+    onDeletedAccountCleanupFailure(error) {
+      renderDeletedAccountCleanupFailure(root, error);
     }
   });
 

@@ -18,6 +18,11 @@ Depois do corte 0.0.23, o banco ocupava 97.053.843 bytes e continha oito Cursos
 e 5.056 entidades correntes; esses números continuam sendo a medição pontual
 documentada, não uma leitura permanente do consumo.
 
+A candidata 0.0.27 ainda não publicada avança o esquema para
+`20260821191340` e acrescenta `current-data-lifecycle-v1` e
+`authenticated-course-source-pdf-upload-v1`. Os números hospedados acima
+continuam sendo a autoridade até a promoção.
+
 ## Componentes usados
 
 | Serviço | Uso no AraLearn |
@@ -39,7 +44,7 @@ família.
 
 ## Versões e configuração local
 
-O projeto usa Supabase CLI 2.109.1, PostgreSQL 17, Node.js 22, Java 17 e Deno
+O projeto usa Supabase CLI 2.115.0, PostgreSQL 17, Node.js 22, Java 17 e Deno
 2.x. Os comandos versionados invocam a CLI com a versão fixa para que a máquina
 local e a integração contínua executem o mesmo contrato.
 
@@ -56,8 +61,8 @@ O arquivo `supabase/config.toml` define:
 Docker precisa estar em execução. Para recriar o ambiente:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 start
-npx.cmd --yes supabase@2.109.1 db reset
+npx.cmd --yes supabase@2.115.0 start
+npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
@@ -70,7 +75,7 @@ OAuth.
 Ao terminar:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 stop
+npx.cmd --yes supabase@2.115.0 stop
 ```
 
 ## Esquemas e exposição
@@ -94,17 +99,33 @@ As relações privadas não recebem acesso direto de `anon` ou `authenticated`.
 Funções públicas expõem operações estreitas e verificam a identidade novamente
 no PostgreSQL.
 
+Na revisão candidata, inserts de avatar e PDF conferem também se o
+`session_id` do JWT permanece em `auth.sessions` e se `not_after` ainda não
+venceu. Essas escritas e a exclusão da conta compartilham o mesmo bloqueio
+transacional. A exclusão conserva a sessão quando ainda precisa remover objetos
+e, somente na transação final, apaga todas as sessões imediatamente antes de
+`auth.users`. Isso fecha novas escritas com um token de sessão revogada; uma URL
+de download já assinada ainda pode durar até 60 segundos.
+
+Depois que essa transação responde com sucesso, a exclusão remota é terminal.
+Uma falha posterior ao apagar o IndexedDB, inclusive bloqueio por outra aba,
+admite somente repetir a limpeza local; não autoriza repetir a operação remota
+nem afirmar que a conta foi preservada.
+
 Orientação oficial: [segurança por linha](https://supabase.com/docs/guides/database/postgres/row-level-security)
 e [privilégios da API de dados](https://supabase.com/docs/guides/api/using-custom-schemas).
 
 ## Migrações e manifesto
 
 Migrações versionadas ficam em `supabase/migrations/`. A revisão hospedada
-corrente é `20260821145358`. O `supabase/runtime-manifest.json` acrescenta
-`personal-course-copy-edit-v1`. A recriação local, pgTAP 78/78, PGlite 45/45,
-concorrência 1/1 e smoke real local foram aprovados. A promoção em modo Apply,
-a análise hospedada limitada aos 88 avisos legados, o CORS, o smoke OAuth/MCP e
-o verificador público do manifesto e de `package-library-v1` também passaram.
+corrente é `20260821145358`; sua promoção em modo Apply, a análise limitada aos
+88 avisos legados, o CORS, o smoke OAuth/MCP e o verificador público de
+`package-library-v1` passaram para a versão 0.0.26.
+
+O `supabase/runtime-manifest.json` do branch candidato declara
+`20260821191340`. A recriação local desse estado aprovou pgTAP 103/103,
+concorrência PostgreSQL 13/13, os testes PGlite, o smoke de Curso e o fluxo
+OAuth/MCP real. Essa evidência ainda não representa o backend hospedado.
 
 A migração `20260820224424_canonical_study_unit_composition_edits.sql` acrescenta
 uma forma de composição exclusiva do papel de servidor. Ela limita o canal do
@@ -133,8 +154,8 @@ primeira gravação de quem possui acesso direto. A função:
 
 A relação não concede ao cliente acesso direto às tabelas privadas. A API de
 Cursos deriva o ator do JWT e chama a função com credencial de servidor; a
-interface nunca envia `actorId`. As seis ferramentas do MCP e suas permissões
-permanecem inalteradas. Essa migração trabalha exclusivamente na arquitetura
+interface nunca envia `actorId`. Naquela migração, o catálogo MCP e suas permissões
+permaneceram inalterados. Essa migração trabalha exclusivamente na arquitetura
 Supabase atual e não implementa Git ou `VersionedCourseStore`.
 
 Uma mudança de banco completa deve conter:
@@ -149,6 +170,27 @@ Uma mudança de banco completa deve conter:
 O manifesto é consumido pelo aplicativo, pelos verificadores de implantação e
 pela cópia publicada no site. Alterá-lo sem instalar o contrato correspondente
 faz o ambiente parecer compatível quando não é.
+
+### Ciclo de dados candidato
+
+`20260821191340_harden_current_data_lifecycle.sql` introduz controles sobre a
+arquitetura atual, sem criar Git ou infraestrutura de pesquisa:
+
+- concessão por e-mail com resposta genérica e até dez tentativas por ator em
+  dez minutos; replay idêntico é resolvido antes do limite;
+- contadores agregados por ator, sem e-mail nem hash de e-mail, removíveis após
+  30 dias;
+- rotina privada diária às 03:17, com limite padrão de 512 por classe e
+  contagens de Anotações retiradas, recibos, intenções de PDF e janelas de
+  concessão;
+- revogação de todas as sessões imediatamente antes de excluir o usuário Auth;
+- inventário limitado de órfãos de avatar e PDF, sem remoção automática.
+
+Os prazos técnicos mantidos são 14 dias para Anotações retiradas, recibos de
+Anotação e recibos de mudança de Curso; sete dias para recibos de estado
+pessoal; dez minutos para intenções de PDF; e 30 dias para janelas agregadas de
+concessão. Logs, backups, conteúdo autoral e pesquisa dependem da política da
+implantação.
 
 Para conferir o histórico remoto sem escrever:
 
@@ -192,8 +234,14 @@ A função atende somente as origens exatas configuradas em
 WebView Android; desenvolvimento inclui `localhost` e `127.0.0.1` na porta
 prevista. Uma origem adicional precisa ser declarada durante a implantação.
 
-O fluxo de PDF também passa por esta função. Ela autoriza a fonte, aplica
-revisão e cotas, emite URL assinada e confirma o vínculo depois do envio.
+O fluxo de PDF também passa por esta função. Na revisão candidata, ela autoriza
+a Fonte, aplica revisão e cotas e cria uma intenção exata de dez minutos. O
+navegador faz POST no Storage com a sessão corrente; a política confere
+`session_id`, validade da sessão, caminho, tamanho, tipo e intenção, que é
+consumida na inserção. A função confirma o cabeçalho e o SHA-256 antes de criar
+o vínculo. Um objeto incompatível de mesmo tamanho e tipo fica sem vínculo e é
+classificado pelo inventário administrativo, sem exclusão automática. O download
+continua assinado por 60 segundos.
 
 A edição manual e a sugestão aplicada ao rascunho usam a rota contextual de
 composição da mesma API. O navegador não chama a função SQL diretamente. A API
@@ -210,11 +258,32 @@ MCP Apps estável 2026-01-26. As duas versões identificam camadas distintas do
 mesmo atendimento.
 
 O cliente usa OAuth 2.1 com PKCE. O Supabase Auth atua como servidor de
-autorização; o gancho `aralearn_mcp_access_token_hook` acrescenta as
-informações necessárias ao token. O servidor consulta a sessão no Auth e
-verifica emissor, destinatário, recurso, cliente, sujeito e validade temporal
-antes de executar uma ferramenta. O cliente confere estado e código PKCE no
-retorno da autorização.
+autorização. Na revisão candidata, os metadados anunciam somente
+`offline_access`; a troca por código e a renovação não emitem `id_token`. O
+gancho `aralearn_mcp_access_token_hook` substitui `sub` e `session_id` por
+aliases pareados distintos para o cliente e retira UUID da pessoa, e-mail,
+perfil e metadados. O resultado é uma credencial de recurso para o MCP, não uma
+sessão da aplicação. O JWT preserva `aralearn_session_id`, UUID real e
+correlacionável da sessão de origem usado pela RPC de vida. Ele não aparece em
+respostas ou logs públicos, mas impede tratar a credencial inteira como anônima
+ou plenamente desvinculável.
+
+A função verifica a assinatura ES256 com chave EC P-256 pela JWKS do emissor,
+além de emissor, destinatário, tempos, cliente e escopo exato. Só depois o
+adaptador chama `resolve_mcp_oauth_principal_v1` com papel de serviço. Essa RPC
+resolve a pessoa pela sessão de origem e exige usuário, perfil, sessão, cliente
+e consentimento ainda ativos. O bearer com `client_id` é bloqueado pela
+pré-requisição da API de dados; as políticas do Storage recusam sua sessão
+pareada, e o GoTrue não encontra usuário nem sessão pelos aliases.
+
+A migração candidata revoga consentimentos e remove sessões OAuth anteriores,
+sem encerrar sessões comuns da aplicação. Isso também elimina a continuidade
+por refresh token, mas não recolhe um ID token `openid` já assinado, que
+permanece válido até `exp`. A implantação deve aguardar pelo menos a duração JWT
+configurada ou duas horas desde a última emissão possível de URL v1 de upload,
+o que for maior, com margem operacional. Depois, precisa repetir as negativas e
+conferir o inventário de objetos sem vínculo antes de declarar a fronteira
+fechada.
 
 A função aceita CORS somente para as origens de
 `ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS`. A URL pública do aplicativo vem de
@@ -230,6 +299,11 @@ O navegador e o MCP convergem em `courseRouter`, `courseToolExecutor` e
 idempotência e forma da resposta iguais entre as duas entradas.
 
 Referência oficial: [Supabase Auth como servidor OAuth 2.1](https://supabase.com/docs/guides/auth/oauth-server).
+
+Proteção contra senhas vazadas e MFA permanecem decisões de implantação. Os
+avisos do advisor devem ser confrontados com risco, população, recuperação de
+conta e operação institucional; não constituem, isoladamente, uma prova de
+conformidade nem uma ordem para habilitar todo mecanismo disponível.
 
 ## Chaves e segredos
 
@@ -260,6 +334,11 @@ Segredos de banco, assinatura Android, sessão de teste e token da CLI ficam em
 cofres, variáveis efêmeras ou entrada padrão. Logs de falha devem omitir JWTs,
 senhas e chaves.
 
+Na revisão candidata, envelopes públicos projetam somente diagnósticos
+estruturais permitidos e não refletem e-mail, cabeçalho de autorização, token ou
+corpo bruto. Uma verificação estática também reprova `console` nas Edge
+Functions e rastreamento ou impressão direta de credenciais nos workflows.
+
 ## Storage privado
 
 O AraLearn usa dois buckets correntes:
@@ -267,7 +346,7 @@ O AraLearn usa dois buckets correntes:
 | Bucket | Conteúdo | Regra principal |
 |---|---|---|
 | `person-avatars` | JPEG, PNG ou WebP até 512 KiB | escrita na pasta da própria conta; leitura por relação permitida |
-| `course-source-pdfs` | PDF até 20 MiB | acesso pelo vínculo relacional e por URL assinada |
+| `course-source-pdfs` | PDF até 20 MiB | 0.0.26: upload e download assinados; candidata: upload autenticado com intenção de dez minutos e download assinado por 60 segundos |
 
 Os buckets substituídos `course-revisions` e `authoring-artifacts` permanecem
 isolados até a limpeza física autorizada. No corte, continham 20 objetos e
@@ -277,9 +356,19 @@ O limite global local do Storage é maior para permitir testes, mas as regras do
 aplicativo continuam mais restritas. Para PDFs, o total de conteúdo único por
 Curso é 64 MiB e o detalhe de uma fonte retorna até oito anexos.
 
-URLs assinadas expiram. Atualização de objeto não é usada no envio de PDF; um
+URLs de download assinadas expiram, mas uma URL já emitida não pode ser
+revogada individualmente antes dos 60 segundos. Atualização de objeto não é
+usada no envio de PDF; um
 novo conteúdo recebe novo resumo criptográfico. A confirmação relacional depois do envio torna
 o vínculo visível ao Curso.
+
+No corte candidato, `download` emite v1 somente para preservar a leitura do
+Android 0.0.26, enquanto `prepare_upload` emite apenas v2 autenticado e nunca
+uma URL assinada. O upload antigo falha fechado ao receber v2. Essa
+compatibilidade depende da operação, não de `User-Agent`, e a retirada de v1
+exige uma decisão explícita de encerrar o suporte ao 0.0.26. Uma URL v1 de
+upload emitida antes do corte não é revogada por essa mudança e pode permanecer
+ativa por até duas horas; nenhum cliente recebe outra depois da promoção.
 
 Políticas de `storage.objects` e verificações da API resolvem camadas distintas.
 No fluxo padrão do Supabase, um envio com sobrescrita também exige permissões de

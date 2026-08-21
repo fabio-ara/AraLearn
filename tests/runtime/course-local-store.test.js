@@ -6,8 +6,10 @@ import {
   CourseLocalStore,
   COURSE_LOCAL_DATABASE_PREFIX
 } from "../../src/persistence/CourseLocalStore.js";
+import { AuthSessionStore } from "../../src/persistence/AuthSessionStore.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
+const OTHER_USER_ID = "10000000-0000-4000-8000-000000000002";
 
 test("abre namespace novo por usuário sem ler o banco relacional anterior", async () => {
   const indexedDb = new IDBFactory();
@@ -41,13 +43,43 @@ test("grava, lê e invalida apenas o prefixo solicitado", async () => {
 
 test("exclusão do namespace é explícita e isolada", async () => {
   const indexedDb = new IDBFactory();
+  const sessionStore = await AuthSessionStore.open(indexedDb);
   const store = await CourseLocalStore.open(indexedDb, { userId: USER_ID });
+  const otherStore = await CourseLocalStore.open(indexedDb, { userId: OTHER_USER_ID });
+  await sessionStore.putSyncState("auth.session", {
+    access_token: "token-local",
+    user: { id: USER_ID }
+  });
   await store.putCache("course.v1.header:a", { revision: 1 });
+  await otherStore.putCache("course.v1.header:b", { revision: 7 });
+  sessionStore.close();
   store.close();
+  otherStore.close();
   await CourseLocalStore.deleteDatabase(indexedDb, { userId: USER_ID });
+  const reopenedSession = await AuthSessionStore.open(indexedDb);
   const reopened = await CourseLocalStore.open(indexedDb, { userId: USER_ID });
+  const otherReopened = await CourseLocalStore.open(indexedDb, { userId: OTHER_USER_ID });
+  assert.deepEqual(await reopenedSession.getSyncState("auth.session"), {
+    access_token: "token-local",
+    user: { id: USER_ID }
+  });
   assert.equal(await reopened.getCache("course.v1.header:a"), null);
+  assert.deepEqual(await otherReopened.getCache("course.v1.header:b"), { revision: 7 });
+  reopenedSession.close();
   reopened.close();
+  otherReopened.close();
+});
+
+test("exclusão avisa quando outra aba ainda mantém o cache aberto", async () => {
+  const indexedDb = new IDBFactory();
+  const blocked = await CourseLocalStore.open(indexedDb, { userId: USER_ID });
+  blocked.database.onversionchange = () => undefined;
+
+  await assert.rejects(
+    CourseLocalStore.deleteDatabase(indexedDb, { userId: USER_ID }),
+    /ainda está aberto em outra aba/u
+  );
+  blocked.close();
 });
 
 test("notifica quando outra versão substitui a conexão", async () => {

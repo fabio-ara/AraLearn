@@ -35,7 +35,7 @@ test("o registro corrente cobre UI, ferramentas, Edge, manifesto e testes", asyn
   assert.deepEqual(await auditVerticalParity({ repositoryRoot }), []);
 });
 
-test("o registro usa somente as seis ferramentas canônicas de Curso", async () => {
+test("o registro usa somente as cinco ferramentas públicas canônicas de Curso", async () => {
   const current = await registry();
   const registered = current.cases.flatMap((caseRecord) =>
     caseRecord.objects?.mcpTools || []
@@ -62,7 +62,7 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário pós-corte separa os dez casos correntes do legado físico", async () => {
+test("o inventário pós-corte separa os onze casos correntes do legado físico", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
@@ -70,15 +70,16 @@ test("o inventário pós-corte separa os dez casos correntes do legado físico",
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 2_276);
+  assert.equal(inventory.objects.length, 2_303);
   assert.deepEqual(counts, {
     "study-course-experience": 40,
     "course-authoring-experience": 273,
-    "course-source-provenance": 105,
+    "course-source-provenance": 117,
     "course-anchored-annotations": 86,
     "course-audit-corrections": 90,
     "course-variant-comparisons": 51,
     "course-authoring-research": 1,
+    "current-data-lifecycle": 15,
     "person-profile-and-course-access": 31,
     "didactic-component-runtime": 1,
     "course-shared-transports": 3,
@@ -87,7 +88,7 @@ test("o inventário pós-corte separa os dez casos correntes do legado físico",
   const currentCaseIds = current.cases
     .filter(({ status }) => status === "current")
     .map(({ id }) => id);
-  assert.equal(currentCaseIds.length, 10);
+  assert.equal(currentCaseIds.length, 11);
   assert.deepEqual(
     new Set(inventory.objects.map(({ caseId }) => caseId)),
     new Set([...currentCaseIds, "pre-course-database-removal"])
@@ -96,6 +97,14 @@ test("o inventário pós-corte separa os dez casos correntes do legado físico",
   assert.equal(
     assignments.get("table:private.course_source_revisions"),
     "course-source-provenance"
+  );
+  assert.equal(
+    assignments.get("table:private.course_source_pdf_upload_intents"),
+    "course-source-provenance"
+  );
+  assert.equal(
+    assignments.get("table:private.course_access_grant_rate_limits"),
+    "current-data-lifecycle"
   );
   assert.equal(
     assignments.get("table:private.course_anchored_annotations"),
@@ -137,7 +146,7 @@ test("o workflow compara o inventário completo logo após reconstruir o banco",
     path.join(repositoryRoot, ".github/workflows/validacao.yml"),
     "utf8"
   );
-  const resetIndex = workflow.indexOf("npx --yes supabase@2.109.1 db reset");
+  const resetIndex = workflow.indexOf("npx --yes supabase@2.115.0 db reset");
   const parityIndex = workflow.indexOf("- name: Conferir paridade vertical no banco real");
   const lintIndex = workflow.indexOf("- name: Conferir o lint do banco");
   assert.ok(resetIndex >= 0 && parityIndex > resetIndex && lintIndex > parityIndex);

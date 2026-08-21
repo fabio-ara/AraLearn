@@ -717,7 +717,7 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
   });
   const response = await handler(request("/app/alterarCurso", {
     body: {
-      requestId: "request-course-stale-0001",
+      requestId: " request-course-stale-0001 ",
       courseId: COURSE_ID,
       expectedRevision: 1,
       expectedPlanVersion: 1,
@@ -728,6 +728,7 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
   const payload = await response.json();
 
   assert.equal(response.status, 409);
+  assert.equal(payload.requestId, "request-course-stale-0001");
   assert.equal(payload.error.code, "stale_course_state");
   assert.deepEqual(payload.error.recovery, {
     strategy: "reread_and_retry",
@@ -739,4 +740,37 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
     ]
   });
   assert.doesNotMatch(JSON.stringify(payload), /workspace|trilha|salvarCards/iu);
+});
+
+test("Edge da aplicação nunca reflete requestId hostil rejeitado pelo mapper", async () => {
+  const hostileRequestId = "Bearer token-that-must-not-leak";
+  let createCalls = 0;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
+      },
+      async createCourse() {
+        createCalls += 1;
+      }
+    }
+  });
+  const response = await handler(request("/app/criarCurso", {
+    body: {
+      requestId: hostileRequestId,
+      title: "Curso seguro",
+      objective: "Não refletir entrada hostil."
+    }
+  }));
+  const payload = await response.json();
+  const serialized = JSON.stringify(payload);
+
+  assert.equal(response.status, 422);
+  assert.equal(createCalls, 0);
+  assert.equal(payload.requestId, null);
+  assert.equal(payload.error.code, "invalid_tool_argument");
+  assert.equal(payload.error.recovery.requestIdMode, "none");
+  assert.equal(serialized.includes(hostileRequestId), false);
+  assert.equal(serialized.includes("token-that-must-not-leak"), false);
 });

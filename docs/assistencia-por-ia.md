@@ -62,6 +62,13 @@ Unidade e as mensagens anteriores daquela conversa contextual. PDFs, Fontes,
 outras Unidades, `targetId`, `studyUnitId` e o restante do Curso ficam
 excluídos.
 
+Esse envelope é uma lista fechada: propriedades auxiliares adicionadas à
+Unidade não atravessam o provider. Erros públicos também não refletem chave,
+e-mail, cabeçalho de autorização ou corpo recebido. A validação negativa impede
+console de Edge com corpo, cabeçalhos ou exceção bruta. O texto selecionado pode
+conter dado pessoal por seu próprio conteúdo, portanto a lista fechada não
+substitui o aviso e a revisão humana por chamada.
+
 Na instalação de produção, o AraLearn oferece somente o relay local em
 `127.0.0.1`, `localhost` ou `10.0.2.2`, sempre por HTTP na porta 4183. A chave
 do provider é configurada no relay e nunca entra no AraLearn. A política de
@@ -136,14 +143,18 @@ hospedado.
 
 ## Ferramentas e contexto
 
-O MCP oferece seis ferramentas estáveis:
+Na revisão candidata de privacidade, o MCP oferece cinco ferramentas estáveis. O
+ambiente hospedado 0.0.26 ainda oferece seis até a promoção coordenada:
 
 - `listarCursos` localiza Cursos próprios;
 - `lerCurso` lê uma vista delimitada do estado corrente;
 - `criarCurso` cria a raiz privada de um Curso;
 - `alterarCurso` reúne as operações autorais do Curso;
-- `gerirPessoas` cuida do perfil e do acesso direto ao Estudo;
 - `consultarComponentesDidaticos` descobre, inspeciona e valida componentes.
+
+Perfil, avatar e concessão ou revogação de acesso continuam disponíveis na
+aplicação autenticada. Essas operações, inclusive o e-mail exato necessário a
+uma concessão, não integram o catálogo MCP público.
 
 `lerCurso` evita carregar o Curso inteiro quando a decisão exige apenas um
 recorte. As vistas correntes são:
@@ -154,8 +165,8 @@ recorte. As vistas correntes são:
 | `outline` | hierarquia compacta |
 | `instructional_plan` | plano, Partes, vínculos e atividade recente |
 | `course_design` | parâmetros, orientações, política de componentes e itens atribuídos ao alvo |
-| `course_sources` | Fontes, revisões, Âncoras, anexos e atribuições |
-| `course_source_attachment` | preparação de envio ou leitura autorizada de um PDF |
+| `course_sources` | Fontes, revisões, Âncoras, anexos e atribuições, sem identidade de ator nem caminhos do Storage |
+| `course_source_attachment` | leitura autorizada de um PDF após declaração explícita da URL temporária |
 | `anchored_annotations` | caixa de entrada, alvo ou detalhe de Observações |
 | `part_materialization` | execução retomável e etapas da produção de uma Parte |
 | `study_units` | Unidades em ordem curricular, com a mesma composição da Inspeção |
@@ -214,10 +225,16 @@ essas referências a itens do plano ou Unidades. Uma atribuição informa a
 relação da Fonte com o alvo, como sustentação, adaptação, citação, contraste ou
 necessidade de verificação.
 
-PDFs privados são enviados diretamente ao armazenamento de objetos por um
-endereço temporário e só passam a integrar a Fonte depois da confirmação do
-servidor. A leitura exige autorização e a atribuição pode ser exportada em JSON
-com identidades, revisões, relações e Âncoras exatas.
+PDFs privados são enviados diretamente ao armazenamento de objetos com sessão
+autenticada e uma intenção exata de dez minutos. Eles só passam a integrar a
+Fonte depois da confirmação do servidor. A leitura usa URL assinada de 60
+segundos; uma URL já emitida permanece válida até expirar. A atribuição pode ser
+exportada em JSON com identidades, revisões, relações e Âncoras exatas.
+
+O preparo do envio pertence somente à aplicação autenticada. No MCP, Fontes
+entram por uma projeção sem identidades pessoais nem caminhos do Storage, e o
+download exige `includeAttachmentDownloadUrl: true`. A resposta identifica a
+URL assinada como credencial temporária enviada ao cliente conectado.
 
 Uma citação torna a origem localizável. Ela não atesta, sozinha, a qualidade da
 Fonte nem a verdade da afirmação.
@@ -228,6 +245,15 @@ Observações registram manifestações situadas de quem estuda ou de quem cria 
 Curso. A assistência pode consultar a caixa de entrada, registrar uma
 Observação autoral após confirmar alvo e síntese, e ajudar na triagem. O texto
 da conversa não é copiado integralmente.
+
+Na caixa de entrada e na leitura por alvo, o MCP recebe somente a projeção
+necessária à triagem: síntese, estado, origem, papel, versão e `annotationId`.
+Texto integral, `contributor.ref`, rótulo protegido, caminhos, links, IDs
+internos, horários e texto da resposta autoral ficam de fora. O detalhe de uma
+Observação, ou seu uso explícito no contexto de auditoria, exige
+`includeObservationText: true`; somente `rawText` é acrescentado e a resposta
+informa que o texto foi enviado ao cliente MCP conectado. A aplicação continua
+usando o contrato interno completo sob sua própria autorização.
 
 A auditoria trata uma Unidade nas dimensões estrutural, pedagógica, factual e
 editorial. Cada rodada conserva critérios, resultados e evidências públicos.

@@ -9,6 +9,16 @@ function requestPromise(request) {
   });
 }
 
+function databaseDeletionPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Não foi possível remover a sessão local."));
+    request.onblocked = () => reject(new Error(
+      "A sessão local ainda está aberta em outra aba. Feche-a e tente novamente."
+    ));
+  });
+}
+
 function transactionPromise(transaction) {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
@@ -46,7 +56,7 @@ export class AuthSessionStore {
     if (!indexedDb || typeof indexedDb.deleteDatabase !== "function") {
       throw new TypeError("IndexedDB indisponível.");
     }
-    return requestPromise(indexedDb.deleteDatabase(DATABASE_NAME));
+    return databaseDeletionPromise(indexedDb.deleteDatabase(DATABASE_NAME));
   }
 
   constructor({ database }) {
@@ -87,6 +97,25 @@ export class AuthSessionStore {
     if (value == null) store.delete(normalizedKey);
     else store.put({ key: normalizedKey, value: structuredClone(value) });
     await transactionPromise(transaction);
+  }
+
+  async updateSyncState(key, update) {
+    if (typeof update !== "function") {
+      throw new TypeError("Atualização de sessão inválida.");
+    }
+    const normalizedKey = stateKey(key);
+    const { transaction, store } = this.#store("readwrite");
+    const row = await requestPromise(store.get(normalizedKey));
+    const current = row ? structuredClone(row.value) : null;
+    const next = update(current);
+    if (next && typeof next.then === "function") {
+      transaction.abort();
+      throw new TypeError("A atualização de sessão deve ser síncrona.");
+    }
+    if (next == null) store.delete(normalizedKey);
+    else store.put({ key: normalizedKey, value: structuredClone(next) });
+    await transactionPromise(transaction);
+    return next == null ? null : structuredClone(next);
   }
 
   onConnectionInvalidated(listener) {

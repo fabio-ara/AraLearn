@@ -288,11 +288,12 @@ jobs:
           ## AraLearn ${{ steps.identity.outputs.version }}
 
           - Código de versão Android ${{ steps.identity.outputs.version_code }}.
-          - O proprietário continua editando o Curso corrente; quem recebeu acesso salva a primeira mudança material em uma cópia pessoal privada.
-          - O Curso compartilhado permanece intacto, e planejamento, Fontes, PDFs, acessos, progresso e Observações começam separados na cópia.
-          - A edição manual e a assistência por API usam a mesma Unidade e mantêm a pessoa no ponto de estudo correspondente depois da transição.
-          - Reinício, reconexão e concorrência entre abas preservam uma única intenção sem expor identificadores técnicos na interface.
-          - A operação de cópia permanece exclusiva da aplicação; as seis ferramentas e as permissões do MCP não mudam.
+          - Conta e aparência separa logout, remoção dos dados locais, logout com remoção local e exclusão irreversível da conta.
+          - O MCP publica cinco ferramentas autorais; Perfil e gestão de Pessoas permanecem exclusivos da aplicação autenticada.
+          - O OAuth do MCP usa somente offline_access, sem ID token, e a função de borda valida assinatura, sessão, cliente e consentimento vivos.
+          - Projeções do MCP, exportações de Observações, cargas do provider, erros e registros operacionais expõem somente os campos necessários.
+          - PDFs usam intenção privada e envio autenticado com limites por arquivo, revisão e Curso; o Android 0.0.26 conserva apenas o download legado.
+          - A retenção técnica processa lotes limitados e inventaria órfãos sem removê-los automaticamente.
           - O APK foi verificado contra o certificado histórico antes da publicação.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `

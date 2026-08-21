@@ -1331,7 +1331,7 @@ test("Controller owner encaminha upload e download do PDF exato e invalida o Cur
     change: { type: "attach_pdf", subjectId: sourceId, revision: 2 }
   };
   const access = {
-    contract: "aralearn.course-source-attachment-access.v1",
+    contract: "aralearn.course-source-attachment-access.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
     operation: "download",

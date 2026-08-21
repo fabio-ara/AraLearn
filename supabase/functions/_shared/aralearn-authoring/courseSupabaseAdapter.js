@@ -1,6 +1,7 @@
 import { AuthoringApiError } from "./errors.js";
 import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
+import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
 import {
   applyCourseAuthoringPlanCommand,
   normalizeCourseAuthoringPlan,
@@ -116,7 +117,6 @@ const CONTEXT_HASH_PATTERN = /^[a-f0-9]{64}$/u;
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
 const PERSON_AVATAR_BUCKET = "person-avatars";
-const COURSE_SOURCE_UPLOAD_EXPIRY_SECONDS = 2 * 60 * 60;
 const COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS = 60;
 const COURSE_SOURCE_PDF_VERIFICATION_TIMEOUT_MS = 20_000;
 const ACCOUNT_DELETION_CONFIRMATION = "EXCLUIR MINHA CONTA";
@@ -149,6 +149,16 @@ function accountDeletionUnavailable() {
     503,
     "account_deletion_unavailable",
     "Não foi possível confirmar a limpeza segura da conta."
+  );
+}
+
+function accountDeletionInProgress() {
+  return new AuthoringApiError(
+    503,
+    "account_deletion_in_progress",
+    "A exclusão já começou e alguns arquivos podem ter sido removidos. " +
+      "A conta pode já ter sido excluída ou ainda aguardar a etapa final; " +
+      "tente novamente para confirmar ou concluir."
   );
 }
 
@@ -1076,20 +1086,50 @@ function audienceIncludes(audience, expected) {
 }
 
 function assertMcpClaims(claims, { issuer, resource, now = Math.floor(Date.now() / 1_000) }) {
-  const clientId = claimText(claims?.client_id);
-  if (claimText(claims?.iss) !== issuer ||
-      !audienceIncludes(claims?.aud, resource) ||
-      !clientId || !claimText(claims?.sub) ||
-      !Number.isFinite(claims?.iat) || claims.iat > now + 30 ||
-      !Number.isFinite(claims?.exp) || claims.exp <= now ||
-      (claims?.nbf != null && (!Number.isFinite(claims.nbf) || claims.nbf > now + 30))) {
+  const clientId = strictUuid(claims?.client_id);
+  const pairwiseSubject = strictUuid(claims?.sub);
+  const pairwiseSessionId = strictUuid(claims?.session_id);
+  const sourceSessionId = strictUuid(claims?.aralearn_session_id);
+  const allowedFields = new Set([
+    "aal", "aralearn_session_id", "aud", "client_id", "email", "exp", "iat",
+    "is_anonymous", "iss", "nbf", "phone", "role", "scope", "session_id", "sub"
+  ]);
+  if (!claims || typeof claims !== "object" || Array.isArray(claims) ||
+      Object.keys(claims).some((field) => !allowedFields.has(field)) ||
+      claimText(claims?.iss) !== issuer || claims?.aud !== resource ||
+      !clientId || !pairwiseSubject || !pairwiseSessionId || !sourceSessionId ||
+      new Set([clientId, pairwiseSubject, pairwiseSessionId, sourceSessionId]).size !== 4 ||
+      claims?.scope !== "offline_access" || claims?.role !== "authenticated" ||
+      !new Set(["aal1", "aal2"]).has(claims?.aal) ||
+      claims?.is_anonymous !== false || claims?.email !== "" || claims?.phone !== "" ||
+      claims?.app_metadata != null || claims?.user_metadata != null || claims?.amr != null ||
+      !Number.isSafeInteger(claims?.iat) || claims.iat > now + 30 ||
+      !Number.isSafeInteger(claims?.exp) || claims.exp <= now ||
+      claims.exp <= claims.iat || claims.exp - claims.iat > 7_200 ||
+      (claims?.nbf != null && (!Number.isSafeInteger(claims.nbf) || claims.nbf > now + 30))) {
     throw new AuthoringApiError(
       401,
       "invalid_oauth_token",
       "O access token não foi emitido para este recurso MCP."
     );
   }
-  return clientId;
+  return { clientId, pairwiseSessionId, pairwiseSubject, sourceSessionId };
+}
+
+function normalizeMcpOAuthPrincipal(value, expectedClientId) {
+  const result = first(value);
+  const actorId = strictUuid(result?.actorId);
+  const oauthClientId = strictUuid(result?.oauthClientId);
+  if (!exactRecord(result, new Set(["contract", "actorId", "oauthClientId"])) ||
+      result.contract !== "aralearn.mcp-oauth-principal.v1" ||
+      !actorId || oauthClientId !== expectedClientId) {
+    throw new AuthoringApiError(
+      401,
+      "invalid_oauth_token",
+      "O access token não corresponde a uma autorização MCP ativa."
+    );
+  }
+  return { actorId, oauthClientId };
 }
 
 function retryableStatus(status) {
@@ -1920,6 +1960,7 @@ export class CourseSupabaseAdapter {
    *   publishableKey?: string,
    *   publicAppUrl?: string,
    *   fetchImpl?: typeof globalThis.fetch,
+   *   oauthJwtVerifier?: {verify(token: string, options?: {deadlineAt?: number|null}): Promise<object>},
    *   attempts?: number,
    *   requestTimeoutMs?: number,
    *   responseLimitBytes?: number
@@ -1933,6 +1974,7 @@ export class CourseSupabaseAdapter {
     publishableKey,
     publicAppUrl,
     fetchImpl = globalThis.fetch,
+    oauthJwtVerifier = null,
     attempts = 3,
     requestTimeoutMs = 8_000,
     responseLimitBytes = DEFAULT_RESPONSE_LIMIT_BYTES
@@ -1944,6 +1986,15 @@ export class CourseSupabaseAdapter {
     this.publishableKey = String(publishableKey || "").trim();
     this.publicAppUrl = requiredUrl(publicAppUrl, "URL pública do AraLearn");
     this.fetchImpl = fetchImpl;
+    this.oauthJwtVerifier = oauthJwtVerifier || new SupabaseOAuthJwtVerifier({
+      // No ambiente local, o issuer público aponta ao host do navegador e não
+      // é alcançável de dentro do contêiner Edge. A chave vem da mesma instância
+      // confiável usada pelo adapter; as claims continuam confrontadas abaixo
+      // contra o issuer público exato anunciado ao cliente.
+      issuer: `${this.supabaseUrl}/auth/v1`,
+      fetchImpl,
+      requestTimeoutMs
+    });
     this.attempts = attempts;
     this.requestTimeoutMs = requestTimeoutMs;
     this.responseLimitBytes = Number(responseLimitBytes);
@@ -2215,46 +2266,76 @@ export class CourseSupabaseAdapter {
     } catch (error) {
       if (!(error instanceof AuthoringApiError && error.status === 422 &&
           error.code === "account_storage_not_empty")) {
+        if (error instanceof AuthoringApiError &&
+            (error.status === 408 || error.status === 429 || error.status >= 500)) {
+          throw accountDeletionInProgress();
+        }
         throw error;
       }
     }
 
-    const principal = await this.resolveApplicationPrincipal(token, { deadlineAt });
-    const actorId = accountUuid(principal.actorId);
-    const courseIds = await this.#ownedCourseIdsForAccount(principal, { deadlineAt });
-    for (const courseId of courseIds) {
+    try {
+      const principal = await this.resolveApplicationPrincipal(token, { deadlineAt });
+      const actorId = accountUuid(principal.actorId);
+      const courseIds = await this.#ownedCourseIdsForAccount(principal, { deadlineAt });
+      for (const courseId of courseIds) {
+        await this.#deleteAccountStoragePrefix(
+          COURSE_SOURCE_ATTACHMENT_BUCKET,
+          `${courseId}/`,
+          { deadlineAt }
+        );
+      }
       await this.#deleteAccountStoragePrefix(
-        COURSE_SOURCE_ATTACHMENT_BUCKET,
-        `${courseId}/`,
+        PERSON_AVATAR_BUCKET,
+        `${actorId}/`,
         { deadlineAt }
       );
+      return await this.#deleteAccountWithJwt(token, confirmation, { deadlineAt });
+    } catch {
+      // Depois de AR001, a limpeza física é deliberadamente retomável. Não se
+      // pode afirmar se o commit final ocorreu nem apresentar o estado como se
+      // nenhuma exclusão tivesse acontecido.
+      throw accountDeletionInProgress();
     }
-    await this.#deleteAccountStoragePrefix(
-      PERSON_AVATAR_BUCKET,
-      `${actorId}/`,
-      { deadlineAt }
-    );
-    return this.#deleteAccountWithJwt(token, confirmation, { deadlineAt });
   }
 
   async resolvePrincipal(authentication, { deadlineAt = null } = {}) {
     if (authentication?.kind !== "oauth") {
       throw new AuthoringApiError(401, "oauth_required", "Conecte sua conta para usar a autoria.");
     }
-    const user = await this.#userForJwt(authentication.credential, { deadlineAt });
-    const claims = decodeJwtClaims(authentication.credential);
-    const oauthClientId = assertMcpClaims(claims, {
+    const claims = await this.oauthJwtVerifier.verify(authentication.credential, { deadlineAt });
+    const identity = assertMcpClaims(claims, {
       issuer: this.oauthIssuer,
       resource: String(authentication.resource || "").trim()
     });
-    if (claimText(claims.sub) !== String(user.id)) {
-      throw new AuthoringApiError(401, "invalid_oauth_token", "O token não corresponde à sessão.");
+    let resolved;
+    try {
+      resolved = normalizeMcpOAuthPrincipal(await this.rpc(
+        "resolve_mcp_oauth_principal_v1",
+        {
+          p_pairwise_sub: identity.pairwiseSubject,
+          p_pairwise_session_id: identity.pairwiseSessionId,
+          p_client_id: identity.clientId,
+          p_source_session_id: identity.sourceSessionId
+        },
+        { deadlineAt, retry: false, responseLimitBytes: 16 * 1024 }
+      ), identity.clientId);
+    } catch (error) {
+      if (error instanceof AuthoringApiError &&
+          new Set([401, 403, 404]).has(error.status)) {
+        throw new AuthoringApiError(
+          401,
+          "invalid_oauth_token",
+          "O access token não corresponde a uma autorização MCP ativa."
+        );
+      }
+      throw error;
     }
     return {
-      actorId: String(user.id),
+      actorId: resolved.actorId,
       authenticationKind: "oauth",
       scopes: ["authoring:read", "authoring:write"],
-      oauthClientId
+      oauthClientId: resolved.oauthClientId
     };
   }
 
@@ -2462,21 +2543,7 @@ export class CourseSupabaseAdapter {
     const publicStorageBaseUrl = `${this.publicSupabaseUrl}/storage/v1`;
     let signedUrl = null;
     let expiresAt = null;
-    if (operation === "prepare_upload" && raw?.uploadRequired === true) {
-      const signed = await this.#request(
-        `${storageBaseUrl}/object/upload/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
-          storageObjectPath(raw?.attachment?.storagePath),
-        {
-          method: "POST",
-          headers: supabaseServerHeaders(this.serverApiKey),
-          body: "{}"
-        },
-        { retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
-      );
-      signedUrl = signedStorageUrl(publicStorageBaseUrl, signed?.url);
-      expiresAt = new Date(Date.now() + COURSE_SOURCE_UPLOAD_EXPIRY_SECONDS * 1_000)
-        .toISOString();
-    } else if (operation === "download") {
+    if (operation === "download") {
       const signed = await this.#request(
         `${storageBaseUrl}/object/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
           storageObjectPath(raw?.attachment?.storagePath),

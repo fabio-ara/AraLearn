@@ -1,6 +1,6 @@
 begin;
 
-select plan(78);
+select plan(103);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260821145358',
+  '20260821191340',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -23,7 +23,7 @@ select is(
 
 select is(
   jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
-  33,
+  36,
   'o manifesto não omite nem duplica capacidades correntes'
 );
 
@@ -35,6 +35,7 @@ select ok(
     "direct-course-access-v1",
     "course-cas-idempotency-v1",
     "oauth-only-authoring-mcp",
+    "isolated-mcp-oauth-principal-v1",
     "package-library-v1",
     "package-contract-discovery-v1",
     "person-profile-v1",
@@ -61,7 +62,9 @@ select ok(
     "course-authoring-analytics-v1",
     "course-variant-factual-comparison-v1",
     "contextual-study-unit-edit-v1",
-    "personal-course-copy-edit-v1"
+    "personal-course-copy-edit-v1",
+    "current-data-lifecycle-v1",
+    "authenticated-course-source-pdf-upload-v1"
   ]'::jsonb,
   'o manifesto anuncia todo o contrato de Curso'
 );
@@ -493,6 +496,7 @@ select ok(
       and policy.tablename = 'objects'
       and policy.policyname = 'course_source_pdfs_owner_select_v1'
       and strpos(policy.qual,'can_read_course_source_pdf_v1') > 0
+      and strpos(policy.qual,'current_auth_session_is_active_v1') > 0
       and strpos(policy.qual,'courses') = 0
   ),
   'a leitura do PDF delega a autorização sem consultar Cursos sob authenticated'
@@ -507,6 +511,337 @@ select ok(
       and policy.policyname = 'course_source_pdfs_owner_delete_v1'
   ),
   'PDF vinculado não pode ser removido diretamente por sessão autenticada'
+);
+
+select has_table(
+  'private',
+  'course_access_grant_rate_limits',
+  'a limitação de concessões mantém apenas contagens agregadas por ator'
+);
+
+select has_table(
+  'private',
+  'course_source_pdf_upload_intents',
+  'o upload autenticado depende de uma intenção exata e temporária'
+);
+
+select has_function(
+  'public',
+  'derive_mcp_oauth_pairwise_id_v1',
+  array['text','uuid','uuid'],
+  'o token MCP deriva aliases distintos por domínio e cliente'
+);
+
+select has_function(
+  'public',
+  'aralearn_mcp_access_token_hook',
+  array['jsonb'],
+  'o Auth aplica a projeção mínima ao access token OAuth'
+);
+
+select has_function(
+  'public',
+  'resolve_mcp_oauth_principal_v1',
+  array['uuid','uuid','uuid','uuid'],
+  'a Edge resolve aliases assinados contra a sessão OAuth viva'
+);
+
+select function_privs_are(
+  'public','derive_mcp_oauth_pairwise_id_v1',array['text','uuid','uuid'],
+  'supabase_auth_admin',array['EXECUTE'],
+  'somente o Auth deriva os aliases durante a emissão'
+);
+
+select function_privs_are(
+  'public','aralearn_mcp_access_token_hook',array['jsonb'],
+  'supabase_auth_admin',array['EXECUTE'],
+  'somente o Auth executa o hook de access token'
+);
+
+select function_privs_are(
+  'public','resolve_mcp_oauth_principal_v1',array['uuid','uuid','uuid','uuid'],
+  'service_role',array['EXECUTE'],
+  'somente o serviço resolve o principal OAuth'
+);
+
+select function_privs_are(
+  'public','resolve_mcp_oauth_principal_v1',array['uuid','uuid','uuid','uuid'],
+  'authenticated',array[]::text[],
+  'a sessão comum não escolhe aliases para resolver outro ator'
+);
+
+select function_privs_are(
+  'public','resolve_mcp_oauth_principal_v1',array['uuid','uuid','uuid','uuid'],
+  'anon',array[]::text[],
+  'uma sessão anônima não resolve principals OAuth'
+);
+
+select ok(
+  strpos(
+    pg_get_functiondef(
+      'public.aralearn_mcp_access_token_hook(jsonb)'::regprocedure
+    ),
+    'offline_access'
+  )>0
+  and strpos(
+    pg_get_functiondef(
+      'public.aralearn_mcp_access_token_hook(jsonb)'::regprocedure
+    ),
+    '''aralearn_session_id'''
+  )>0
+  and strpos(
+    pg_get_functiondef(
+      'public.aralearn_mcp_access_token_hook(jsonb)'::regprocedure
+    ),
+    '''aralearn_actor_id'''
+  )=0
+  and strpos(
+    pg_get_functiondef(
+      'public.aralearn_mcp_access_token_hook(jsonb)'::regprocedure
+    ),
+    '''user_metadata'''
+  )=0
+  and strpos(
+    pg_get_functiondef(
+      'public.derive_mcp_oauth_pairwise_id_v1(text,uuid,uuid)'::regprocedure
+    ),
+    'SECURITY DEFINER'
+  )>0,
+  'o bearer usa offline_access, aliases pairwise e não carrega pessoa ou metadados'
+);
+
+select ok(
+  strpos(
+    pg_get_functiondef(
+      'public.resolve_mcp_oauth_principal_v1(uuid,uuid,uuid,uuid)'::regprocedure
+    ),
+    'session_value.id=p_source_session_id'
+  )>0
+  and strpos(
+    pg_get_functiondef(
+      'public.resolve_mcp_oauth_principal_v1(uuid,uuid,uuid,uuid)'::regprocedure
+    ),
+    'oauth_consents'
+  )>0
+  and strpos(
+    pg_get_functiondef(
+      'public.resolve_mcp_oauth_principal_v1(uuid,uuid,uuid,uuid)'::regprocedure
+    ),
+    'offline_access'
+  )>0,
+  'a resolução usa lookup indexado e confronta cliente, sessão, escopo e consentimento'
+);
+
+select has_function(
+  'private',
+  'current_auth_session_is_active_v1',
+  array[]::text[],
+  'políticas sensíveis validam a sessão corrente no banco'
+);
+
+select has_function(
+  'public',
+  'enforce_aralearn_data_api_token_v1',
+  array[]::text[],
+  'a Data API possui uma barreira central para tokens OAuth do MCP'
+);
+
+select ok(
+  exists(
+    select 1
+    from pg_roles role_value,
+      unnest(coalesce(role_value.rolconfig,array[]::text[])) setting_value
+    where role_value.rolname='authenticator'
+      and setting_value=
+        'pgrst.db_pre_request=public.enforce_aralearn_data_api_token_v1'
+  )
+  and strpos(
+    pg_get_functiondef(
+      'public.enforce_aralearn_data_api_token_v1()'::regprocedure
+    ),
+    'client_id'
+  )>0,
+  'PostgREST recusa client_id antes de despachar tabelas e RPCs'
+);
+
+select has_function(
+  'private',
+  'lock_current_account_storage_write_v1',
+  array[]::text[],
+  'uploads e exclusão da conta compartilham o mesmo lock'
+);
+
+select ok(
+  strpos(
+    pg_get_functiondef(
+      'private.current_auth_session_is_active_v1()'::regprocedure
+    ),
+    'session_value.not_after'
+  ) > 0
+  and strpos(
+    pg_get_functiondef(
+      'private.current_auth_session_is_active_v1()'::regprocedure
+    ),
+    'client_id'
+  ) > 0
+  and strpos(
+    pg_get_functiondef(
+      'private.current_auth_session_is_active_v1()'::regprocedure
+    ),
+    'raise exception'
+  ) > 0,
+  'sessão viva inclui validade temporal e recusa explicitamente bearer OAuth do MCP'
+);
+
+select has_function(
+  'private',
+  'run_current_data_retention_v1',
+  array['integer'],
+  'a retenção corrente pode ser executada independentemente da abertura de Curso'
+);
+
+select has_function(
+  'private',
+  'inventory_current_data_orphans_v1',
+  array['integer'],
+  'órfãos são inventariados sem exclusão especulativa'
+);
+
+select ok(
+  strpos(
+    pg_get_functiondef(
+      'public.manage_course_access_for_actor_v1(uuid,uuid,text,text,uuid,boolean,text)'::regprocedure
+    ),
+    'aralearn.course-access-grant-request.v1'
+  ) > 0
+  and strpos(
+    pg_get_functiondef(
+      'public.manage_course_access_for_actor_v1(uuid,uuid,text,text,uuid,boolean,text)'::regprocedure
+    ),
+    'account-delete:'
+  ) > 0
+  and strpos(
+    split_part(
+      split_part(
+        pg_get_functiondef(
+          'public.manage_course_access_for_actor_v1(uuid,uuid,text,text,uuid,boolean,text)'::regprocedure
+        ),
+        'v_hash :=',
+        2
+      ),
+      'PERFORM pg_advisory_xact_lock',
+      1
+    ),
+    'v_target_email'
+  ) = 0,
+  'a concessão responde genericamente, não inclui e-mail no hash e serializa com a exclusão do alvo'
+);
+
+select ok(
+  exists(
+    select 1
+    from pg_policies policy
+    where policy.schemaname = 'storage'
+      and policy.tablename = 'objects'
+      and policy.policyname = 'course_source_pdfs_owner_insert_v1'
+      and strpos(policy.with_check, 'can_upload_course_source_pdf_v1') > 0
+      and strpos(policy.with_check, 'metadata') > 0
+  )
+  and strpos(
+    pg_get_functiondef(
+      'private.can_upload_course_source_pdf_v1(text,jsonb)'::regprocedure
+    ),
+    'contentLength'
+  ) > 0,
+  'o upload de PDF autentica tamanho e tipo contra a autorização exata do banco'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_policies policy
+    where policy.schemaname = 'storage'
+      and policy.tablename = 'objects'
+      and policy.policyname in (
+        'person_avatars_direct_relation_select_v1',
+        'person_avatars_self_delete_v1'
+      )
+      and strpos(
+        coalesce(policy.with_check, policy.qual, ''),
+        'current_auth_session_is_active_v1'
+      ) > 0
+  ) = 2
+  and exists(
+    select 1
+    from pg_policies policy
+    where policy.schemaname = 'storage'
+      and policy.tablename = 'objects'
+      and policy.policyname = 'person_avatars_self_insert_v1'
+      and strpos(
+        policy.with_check,
+        'lock_current_account_storage_write_v1'
+      ) > 0
+  )
+  and strpos(
+    pg_get_functiondef(
+      'private.lock_current_account_storage_write_v1()'::regprocedure
+    ),
+    'pg_advisory_xact_lock'
+  ) < strpos(
+    pg_get_functiondef(
+      'private.lock_current_account_storage_write_v1()'::regprocedure
+    ),
+    'current_auth_session_is_active_v1'
+  ),
+  'avatar confronta a sessão depois de disputar o lock de exclusão'
+);
+
+select ok(
+  exists(
+    select 1
+    from cron.job job
+    where job.jobname = 'aralearn-current-data-retention-v1'
+      and job.schedule = '17 3 * * *'
+      and job.command = 'select private.run_current_data_retention_v1(512);'
+  ),
+  'a limpeza limitada possui execução diária independente do uso de Cursos'
+);
+
+select ok(
+  strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'delete from auth.sessions'
+  ) > 0
+  and strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'delete from auth.sessions'
+  ) < strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'delete from auth.users'
+  )
+  and strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'client_id'
+  ) > 0,
+  'a exclusão exige sessão da aplicação e revoga sessões antes da conta'
+);
+
+select ok(
+  strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'current_auth_session_is_active_v1'
+  ) > strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'if not exists'
+  )
+  and strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'current_auth_session_is_active_v1'
+  ) < strpos(
+    pg_get_functiondef('public.delete_my_account_v1(text)'::regprocedure),
+    'storage.objects'
+  ),
+  'a exclusão idempotente aceita conta ausente e exige sessão viva enquanto ela existe'
 );
 
 select * from finish();

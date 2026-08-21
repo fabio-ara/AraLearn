@@ -89,12 +89,12 @@ try {
 
   if ($Profile -eq 'LocalDevelopment') {
     if ($npxAvailable) {
-      $supabaseVersion = @(& npx.cmd --yes supabase@2.109.1 --version 2>&1)
-      if ($LASTEXITCODE -eq 0 -and ($supabaseVersion -join ' ') -match '2\.109\.1') {
-        Add-Check -Id 'tool.supabase-cli' -Status ok -Message 'Supabase CLI 2.109.1 disponível pelo npx.'
+      $supabaseVersion = @(& npx.cmd --yes supabase@2.115.0 --version 2>&1)
+      if ($LASTEXITCODE -eq 0 -and ($supabaseVersion -join ' ') -match '2\.115\.0') {
+        Add-Check -Id 'tool.supabase-cli' -Status ok -Message 'Supabase CLI 2.115.0 disponível pelo npx.'
       }
       else {
-        Add-Check -Id 'tool.supabase-cli' -Status blocked -Message 'Não foi possível executar a Supabase CLI 2.109.1 pelo npx.'
+        Add-Check -Id 'tool.supabase-cli' -Status blocked -Message 'Não foi possível executar a Supabase CLI 2.115.0 pelo npx.'
       }
     }
 

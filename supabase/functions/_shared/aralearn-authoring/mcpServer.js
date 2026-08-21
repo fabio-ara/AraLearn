@@ -19,10 +19,10 @@ import {
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.23" });
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.27" });
 const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
-const MCP_OAUTH_SCOPES = Object.freeze(["openid"]);
+const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -482,7 +482,30 @@ function summarizeMaterialization(value) {
   return parts.join(" ");
 }
 
+function summarizeMcpAnnotations(value) {
+  const count = Array.isArray(value?.items)
+    ? value.items.length
+    : value?.annotation
+      ? 1
+      : 0;
+  const disclosure = value?.dataDisclosure || {};
+  const parts = [value?.contract === "aralearn.mcp-anchored-annotation-change.v1"
+    ? "A operação de Observação foi concluída."
+    : `${count} ${count === 1 ? "Observação foi lida" : "Observações foram lidas"}.`];
+  parts.push(disclosure.rawObservationTextIncluded === true
+    ? "O detalhe inclui o texto da Observação para esta triagem autoral e o envia ao cliente MCP conectado; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
+    : "O recorte omite o texto integral, referências e rótulos pessoais, caminhos e links internos.");
+  appendPageSummary(parts, value);
+  return parts.join(" ").slice(0, 12000);
+}
+
 function summarizeToolResult(name, value) {
+  if (new Set([
+    "aralearn.mcp-anchored-annotation-page.v1",
+    "aralearn.mcp-anchored-annotation-change.v1"
+  ]).has(value?.contract)) {
+    return summarizeMcpAnnotations(value);
+  }
   if (new Set([
     "aralearn.course-authoring-materialization-change.v1",
     "aralearn.course-authoring-part-materialization.v1"
@@ -504,7 +527,7 @@ function summarizeToolResult(name, value) {
   }
   const action = name === "criarCurso"
     ? "O Curso foi criado."
-    : name === "alterarCurso" || name === "gerirPessoas"
+    : name === "alterarCurso"
       ? "A alteração foi concluída."
       : name === "consultarComponentesDidaticos"
         ? "A biblioteca de componentes didáticos foi consultada."
@@ -518,6 +541,11 @@ function summarizeToolResult(name, value) {
   appendLimitations(parts, value);
   const warning = firstText(value?.warning, value?.summary?.warning);
   if (warning) parts.push(`Atenção: ${warning}`);
+  if (value?.dataDisclosure?.purpose === "author_audit_context") {
+    parts.push(value.dataDisclosure.rawObservationTextIncluded === true
+      ? "O contexto inclui os textos das Observações selecionadas para esta auditoria autoral e os envia ao cliente MCP conectado; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
+      : "O contexto omite os textos das Observações, referências e rótulos pessoais, caminhos e links internos.");
+  }
   const deepLink = firstText(value?.deepLink, value?.course?.deepLink);
   if (deepLink) parts.push(`Abrir no AraLearn: ${deepLink}`);
   return parts.join(" ").slice(0, 12000);
@@ -541,13 +569,14 @@ function toolFailure(
   challenge = null
 ) {
   const normalized = asAuthoringApiError(error);
+  const publicError = toolErrorData(normalized, { requestId });
   const structuredContent = {
     ok: false,
     requestId,
-    error: toolErrorData(normalized, { requestId })
+    error: publicError
   };
   return {
-    content: [{ type: "text", text: `${normalized.code}: ${normalized.message}` }],
+    content: [{ type: "text", text: `${publicError.code}: ${publicError.message}` }],
     structuredContent,
     isError: true,
     ...(challenge
@@ -561,14 +590,16 @@ async function executeTool({
   principal,
   name,
   rawArguments,
-  deadlineAt
+  deadlineAt,
+  onRequestIdValidated
 }) {
   const result = await executeCourseTool({
     adapter,
     principal,
     name,
     rawArguments,
-    deadlineAt
+    deadlineAt,
+    onRequestIdValidated
   });
   return toolSuccess(result.requestId, name, result.data);
 }
@@ -615,7 +646,7 @@ async function dispatchMcpRequest(envelope, context) {
   if (method === "tools/list") {
     const unknown = Object.keys(params).find((field) => field !== "cursor");
     if (unknown) {
-      return jsonRpcError(id, -32602, "Parâmetros inválidos para tools/list.", { field: unknown });
+      return jsonRpcError(id, -32602, "Parâmetros inválidos para tools/list.");
     }
     if (params.cursor != null) {
       return jsonRpcError(id, -32602, "A lista de ferramentas não usa paginação.", {
@@ -631,9 +662,7 @@ async function dispatchMcpRequest(envelope, context) {
   if (method === "resources/list") {
     const unknown = Object.keys(params).find((field) => field !== "cursor");
     if (unknown || params.cursor != null) {
-      return jsonRpcError(id, -32602, "A lista de conhecimentos não usa parâmetros.", {
-        ...(unknown ? { field: unknown } : { field: "cursor" })
-      });
+      return jsonRpcError(id, -32602, "A lista de conhecimentos não usa parâmetros.");
     }
     return {
       jsonrpc: JSON_RPC_VERSION,
@@ -653,9 +682,7 @@ async function dispatchMcpRequest(envelope, context) {
     const resource = readCourseAuthoringKnowledgeResource(params.uri) ||
       readCourseMcpAppResource(params.uri);
     if (!resource) {
-      return jsonRpcError(id, -32002, "Resource MCP inexistente.", {
-        uri: params.uri
-      });
+      return jsonRpcError(id, -32002, "Resource MCP inexistente.");
     }
     return {
       jsonrpc: JSON_RPC_VERSION,
@@ -668,13 +695,12 @@ async function dispatchMcpRequest(envelope, context) {
       return jsonRpcError(id, -32602, "tools/call exige o nome da ferramenta.");
     }
     if (!authoringMcpToolDefinition(params.name)) {
-      return jsonRpcError(id, -32602, "Ferramenta de autoria inexistente.", { name: params.name });
+      return jsonRpcError(id, -32602, "Ferramenta de autoria inexistente.");
     }
     const rawArguments = params.arguments ?? {};
     if (!rawArguments || typeof rawArguments !== "object" || Array.isArray(rawArguments)) {
       return jsonRpcError(id, -32602, "tools/call exige arguments como objeto.");
     }
-    const requestId = rawArguments.requestId ?? null;
     if (!authoringMcpToolIsAllowed(
       params.name,
       context.principal,
@@ -688,15 +714,19 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(requestId, denied, context.oauthChallenge)
+        result: toolFailure(null, denied, context.oauthChallenge)
       };
     }
+    let requestId = null;
     try {
       const result = await executeTool({
         ...context,
         name: params.name,
         rawArguments,
-        deadlineAt: Date.now() + 40_000
+        deadlineAt: Date.now() + 40_000,
+        onRequestIdValidated(value) {
+          requestId = value;
+        }
       });
       return { jsonrpc: JSON_RPC_VERSION, id, result };
     } catch (error) {
@@ -712,7 +742,7 @@ async function dispatchMcpRequest(envelope, context) {
       };
     }
   }
-  return jsonRpcError(id, -32601, "Método JSON-RPC inexistente.", { method });
+  return jsonRpcError(id, -32601, "Método JSON-RPC inexistente.");
 }
 
 function transportErrorResponse(error, cors = {}, resourceUrl = "") {

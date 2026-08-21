@@ -1939,6 +1939,22 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "constraint:private.course_access_grant_rate_limits/course_access_grant_rate_limits_actor_id_fkey[foreign_key]",
+      "caseId": "current-data-lifecycle"
+    },
+    {
+      "object": "constraint:private.course_access_grant_rate_limits/course_access_grant_rate_limits_counts_v1[check]",
+      "caseId": "current-data-lifecycle"
+    },
+    {
+      "object": "constraint:private.course_access_grant_rate_limits/course_access_grant_rate_limits_pkey[primary_key]",
+      "caseId": "current-data-lifecycle"
+    },
+    {
+      "object": "constraint:private.course_access_grant_rate_limits/course_access_grant_rate_limits_window_v1[check]",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "constraint:private.course_anchored_annotation_events/course_anchored_annotation_events_actor_id_fkey[foreign_key]",
       "caseId": "course-anchored-annotations"
     },
@@ -2964,6 +2980,26 @@
     },
     {
       "object": "constraint:private.course_source_attributions/course_source_attributions_target_v1[check]",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "constraint:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_actor_id_fkey[foreign_key]",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "constraint:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_course_id_fkey[foreign_key]",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "constraint:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_expiry_v1[check]",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "constraint:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_pkey[primary_key]",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "constraint:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_values_v1[check]",
       "caseId": "course-source-provenance"
     },
     {
@@ -4131,6 +4167,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.can_upload_course_source_pdf_v1(p_storage_path text, p_metadata jsonb)",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "function:private.canonical_authoring_parameter_value_v1(p_value jsonb)",
       "caseId": "pre-course-database-removal"
     },
@@ -4233,6 +4273,10 @@
     {
       "object": "function:private.consolidate_catalog_root_v1(p_workspace_id uuid, p_workspace_course_id text, p_catalog_course_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.consume_course_source_pdf_upload_intent_v1()",
+      "caseId": "course-source-provenance"
     },
     {
       "object": "function:private.copy_authoring_experiment_workspace_table_v1(p_table text, p_source_workspace_id uuid, p_target_workspace_id uuid, p_workspace_course_id text, p_scope_microsequence_ids text[])",
@@ -4455,6 +4499,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:private.course_source_pdf_reserved_bytes_v1(p_course_id uuid)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:private.course_source_pdf_unique_bytes_v1(p_course_id uuid)",
       "caseId": "course-source-provenance"
     },
@@ -4485,6 +4533,10 @@
     {
       "object": "function:private.create_person_profile_v1()",
       "caseId": "person-profile-and-course-access"
+    },
+    {
+      "object": "function:private.current_auth_session_is_active_v1()",
+      "caseId": "current-data-lifecycle"
     },
     {
       "object": "function:private.current_authoring_entity_path_v1(p_workspace_id uuid, p_entity_type text, p_entity_id text)",
@@ -4679,6 +4731,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:private.inventory_current_data_orphans_v1(p_limit integer)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:private.issue_authoring_experiment_enrollment_code_v1(p_experiment_id uuid, p_protocol_revision integer, p_expires_at timestamp with time zone)",
       "caseId": "pre-course-database-removal"
     },
@@ -4729,6 +4785,10 @@
     {
       "object": "function:private.lock_course_write(p_course_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.lock_current_account_storage_write_v1()",
+      "caseId": "current-data-lifecycle"
     },
     {
       "object": "function:private.maintain_sync_history_v5()",
@@ -4921,6 +4981,10 @@
     {
       "object": "function:private.revoke_workspace_publications_from_member_v1(p_workspace_id uuid, p_user_id uuid, p_course_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:private.run_current_data_retention_v1(p_limit integer)",
+      "caseId": "current-data-lifecycle"
     },
     {
       "object": "function:private.safe_sync_watermark(p_now timestamp with time zone)",
@@ -5263,12 +5327,20 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:public.derive_mcp_oauth_pairwise_id_v1(p_domain text, p_source_id uuid, p_client_id uuid)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:public.detach_course_variant_for_actor_v1(p_actor_id uuid, p_source_course_id uuid, p_comparison_set_id uuid, p_course_id uuid, p_request_id text)",
       "caseId": "course-variant-comparisons"
     },
     {
       "object": "function:public.discard_unpublished_catalog_materialization_v1(p_actor_id uuid, p_workspace_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:public.enforce_aralearn_data_api_token_v1()",
+      "caseId": "current-data-lifecycle"
     },
     {
       "object": "function:public.exchange_authoring_action_oauth_code_v4(p_client_id uuid, p_client_secret_hash text, p_code_hash text, p_redirect_uri text, p_access_token_hash text, p_refresh_token_hash text, p_grant_id uuid)",
@@ -5769,6 +5841,10 @@
     {
       "object": "function:public.resolve_catalog_artifact_publisher_v4(p_contract_key text, p_requested_owner_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:public.resolve_mcp_oauth_principal_v1(p_pairwise_sub uuid, p_pairwise_session_id uuid, p_client_id uuid, p_source_session_id uuid)",
+      "caseId": "current-data-lifecycle"
     },
     {
       "object": "function:public.resume_or_reserve_authoring_workspace_v1(p_actor_id uuid, p_course_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text)",
@@ -6543,6 +6619,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "index:private.course_access_grant_rate_limits/course_access_grant_rate_limits_pkey",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "index:private.course_anchored_annotation_events/course_anchored_annotation_events_annotation_v1_idx",
       "caseId": "course-anchored-annotations"
     },
@@ -6924,6 +7004,18 @@
     },
     {
       "object": "index:private.course_source_attributions/course_source_attributions_target_v1_idx",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "index:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_expiry_v1_idx",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "index:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_pkey",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "index:private.course_source_pdf_upload_intents/course_source_pdf_upload_intents_quota_v1_idx",
       "caseId": "course-source-provenance"
     },
     {
@@ -7691,6 +7783,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "rls:private.course_access_grant_rate_limits=forced",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "rls:private.course_anchored_annotation_events=forced",
       "caseId": "course-anchored-annotations"
     },
@@ -7820,6 +7916,10 @@
     },
     {
       "object": "rls:private.course_source_attributions=forced",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "rls:private.course_source_pdf_upload_intents=forced",
       "caseId": "course-source-provenance"
     },
     {
@@ -8283,6 +8383,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "table:private.course_access_grant_rate_limits",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "table:private.course_anchored_annotation_events",
       "caseId": "course-anchored-annotations"
     },
@@ -8412,6 +8516,10 @@
     },
     {
       "object": "table:private.course_source_attributions",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "table:private.course_source_pdf_upload_intents",
       "caseId": "course-source-provenance"
     },
     {

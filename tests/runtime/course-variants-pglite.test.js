@@ -16,12 +16,28 @@ const completionMigrationUrl = new URL(
   "../../supabase/migrations/20260820065720_complete_course_variant_comparison.sql",
   import.meta.url
 );
+const personalCopyMigrationUrl = new URL(
+  "../../supabase/migrations/20260821145358_personal_course_copy_edit.sql",
+  import.meta.url
+);
 const OWNER = "11111111-1111-4111-8111-111111111111";
 const COURSE = "22222222-2222-4222-8222-222222222222";
 const CHECKPOINT = "33333333-3333-4333-8333-333333333333";
 const SET = "44444444-4444-4444-8444-444444444444";
 const VARIANT_A = "55555555-5555-4555-8555-555555555555";
 const VARIANT_B = "66666666-6666-4666-8666-666666666666";
+
+test("PDF compartilhado permanece restrito a variantes do mesmo proprietário", async () => {
+  const baseMigration = await fs.readFile(migrationUrl, "utf8");
+  const completionMigration = await fs.readFile(completionMigrationUrl, "utf8");
+  const personalCopyMigration = await fs.readFile(personalCopyMigrationUrl, "utf8");
+  assert.match(baseMigration, /perform private\.require_course_access_v1\(\s*p_source_course_id,p_actor_id,true\s*\)/u);
+  assert.match(baseMigration, /values\(v_target_course_id,p_actor_id,btrim\(p_title\)/u);
+  assert.match(baseMigration, /private\.clone_course_variant_from_source_v1\(\s*p_actor_id,p_source_course_id/u);
+  assert.match(baseMigration, /revoke all on function private\.clone_course_variant_from_source_v1\(/u);
+  assert.match(completionMigration, /select v_target_course_id,attachment\.source_id/u);
+  assert.doesNotMatch(personalCopyMigration, /course_source_attachments/u);
+});
 
 test("leitura comparativa permanece volátil enquanto protege o Curso com FOR SHARE", async () => {
   const migration = await fs.readFile(completionMigrationUrl, "utf8");

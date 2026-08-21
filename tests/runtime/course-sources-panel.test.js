@@ -375,6 +375,17 @@ test("Fonte registra nota, contestação e reformulação e exporta a mesma prov
     }
   );
   reformulated.annotationVersion = 2;
+  reformulated.provenance = { origin: "learner", channel: "study_interface" };
+  reformulated.contributor = {
+    kind: "protected_person",
+    role: "learner",
+    ref: "person-0123456789abcdef",
+    label: "Participante protegido"
+  };
+  reformulated.target.observedPath[0].label = "CAMINHO_INTERNO_SENTINELA";
+  reformulated.target.currentPath[0].label = "CAMINHO_INTERNO_SENTINELA";
+  reformulated.target.deepLink = "?interno=CAMINHO_INTERNO_SENTINELA";
+  reformulated.deepLink = "?interno=CAMINHO_INTERNO_SENTINELA";
   reformulated.ownerResponse = {
     text: "A formulação agora distingue os dois conceitos.",
     kind: "reformulation",
@@ -459,6 +470,8 @@ test("Fonte registra nota, contestação e reformulação e exporta a mesma prov
   assert.match(root.innerHTML, /Contestar interpretação/u);
   assert.match(root.innerHTML, /Solicitar reformulação/u);
   assert.match(root.innerHTML, /Fontes e Âncoras consideradas/u);
+  assert.match(root.innerHTML, /Exportação operacional privada/u);
+  assert.match(root.innerHTML, /não é anônimo/u);
 
   for (const values of [
     {
@@ -495,10 +508,37 @@ test("Fonte registra nota, contestação e reformulação e exporta a mesma prov
   click(root, "export-observations");
   assert.equal(exports.length, 1);
   assert.equal(exports[0].value.contract,
-    "aralearn.course-source-observations-export.v1");
-  assert.deepEqual(exports[0].value.items.find(({ annotationId }) =>
+    "aralearn.course-source-observations-export.v2");
+  assert.equal(
+    exports[0].value.dataNotice.classification,
+    "personal_or_pseudonymized_operational_data"
+  );
+  assert.match(exports[0].value.dataNotice.message, /texto livre/u);
+  assert.match(exports[0].value.dataNotice.message, /identificadores internos/u);
+  assert.match(exports[0].value.dataNotice.message, /horários/u);
+  assert.match(exports[0].value.dataNotice.message, /não é um conjunto anônimo/u);
+  const exportedObservation = exports[0].value.items.find(({ annotationId }) =>
     annotationId === reformulated.annotationId
-  ).ownerResponse.consideredSourceLinks, consideredSourceLinks);
+  );
+  assert.deepEqual(exportedObservation.contributor, {
+    kind: "protected_person",
+    role: "learner"
+  });
+  assert.equal(Object.hasOwn(exportedObservation.contributor, "ref"), false);
+  assert.equal(Object.hasOwn(exportedObservation.target, "observedPath"), false);
+  assert.equal(Object.hasOwn(exportedObservation.target, "currentPath"), false);
+  assert.equal(Object.hasOwn(exportedObservation.target, "deepLink"), false);
+  assert.equal(Object.hasOwn(exportedObservation, "deepLink"), false);
+  assert.equal(Object.hasOwn(exportedObservation, "capabilities"), false);
+  assert.equal(exportedObservation.rawText, reformulated.rawText);
+  assert.equal(exportedObservation.target.id, "source-01");
+  assert.equal(exportedObservation.timestamps.createdAt, "2026-08-20T12:00:00.000Z");
+  assert.deepEqual(exportedObservation.ownerResponse.consideredSourceLinks,
+    consideredSourceLinks);
+  assert.doesNotMatch(
+    JSON.stringify(exports[0].value),
+    /person-0123456789abcdef|CAMINHO_INTERNO_SENTINELA/u
+  );
 });
 
 test("histórico da Fonte preserva a consulta literal e carrega uma revisão por página", async () => {

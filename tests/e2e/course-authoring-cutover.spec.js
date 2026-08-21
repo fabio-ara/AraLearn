@@ -4208,8 +4208,11 @@ test("Pessoas repete a mesma concessão após commit com resposta ambígua", asy
     name: "Conceder acesso",
     exact: true
   }).click();
-  await expect(page.getByText("Pessoa recém-convidada", { exact: true })).toHaveCount(1);
-  await expect(page.getByText("Acesso concedido.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pessoa recém-convidada", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(
+    "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Use Atualizar Curso depois para conferir o acesso.",
+    { exact: true }
+  )).toBeVisible();
 
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
   expect(probe.peopleMutations).toHaveLength(2);

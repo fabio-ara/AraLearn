@@ -287,13 +287,16 @@ test("implantação publica somente MCP OAuth e API de Curso", () => {
   assert.match(source, /Access-Control-Allow-Origin/u);
   assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
   assert.doesNotMatch(source, /secrets unset/u);
+  assert.match(source, /runHostedCourseSourcePdfSmoke\.mjs/u);
   assert.ok(
     source.indexOf("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins") <
       source.indexOf("functions deploy aralearn-authoring-mcp") &&
     source.indexOf("functions deploy aralearn-course-api") <
       source.indexOf("Invoke-WebRequest") &&
     source.indexOf("Invoke-WebRequest") <
-      source.indexOf("runHostedMcpOAuthSmoke.mjs")
+      source.indexOf("runHostedMcpOAuthSmoke.mjs") &&
+    source.indexOf("runHostedMcpOAuthSmoke.mjs") <
+      source.indexOf("runHostedCourseSourcePdfSmoke.mjs")
   );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
@@ -309,7 +312,7 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /test:supabase:smoke/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
-  assert.match(source, /supabase@2\.109\.1', 'test', 'db'/u);
+  assert.match(source, /supabase@2\.115\.0', 'test', 'db'/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.doesNotMatch(
@@ -446,9 +449,15 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260821145358");
+  assert.equal(manifest.schemaRevision, "20260821191340");
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("current-data-lifecycle-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("isolated-mcp-oauth-principal-v1"), true);
+  assert.equal(
+    manifest.requiredFeatures.includes("authenticated-course-source-pdf-upload-v1"),
+    true
+  );
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
@@ -461,7 +470,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
 });
 
-test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de seis tools", () => {
+test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de cinco tools", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     for (const toolName of [
@@ -469,7 +478,6 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
       "lerCurso",
       "criarCurso",
       "alterarCurso",
-      "gerirPessoas",
       "consultarComponentesDidaticos"
     ]) {
       assert.match(source, new RegExp(`"${toolName}"`, "u"));
@@ -500,7 +508,9 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
     assert.match(source, /type:\s*"create_anchored_annotation"/u);
     assert.match(source, /anchored_annotation_confirmation_required/u);
     assert.match(source, /provenance\.channel,\s*"authoring_chat"/u);
-    assert.match(source, /aralearn\.course-anchored-annotation-page\.v1/u);
+    assert.match(source, /aralearn\.mcp-anchored-annotation-page\.v1/u);
+    assert.match(source, /includeObservationText:\s*true/u);
+    assert.match(source, /contributor,\s*"label"/u);
     assert.match(source, /replayedAnnotation\.idempotent,\s*true/u);
     assert.match(source, /view:\s*"audit_cycle"/u);
     assert.match(source, /operation:\s*"update_audit_cycle"/u);
@@ -530,6 +540,10 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
 test("diagnóstico valida configuração pública sem revelar seu valor", {
   skip: !powerShellAvailable
 }, () => {
+  const diagnoseSource = fs.readFileSync(scripts.diagnose, "utf8");
+  assert.match(diagnoseSource, /npx\.cmd --yes supabase@2\.115\.0 --version/u);
+  assert.match(diagnoseSource, /-match '2\\\.115\\\.0'/u);
+
   const safe = runScript(
     scripts.diagnose,
     ["-Profile", "GitHubPagesManagedSupabase", "-RequireRuntimeConfig", "-AsJson"],
@@ -838,16 +852,16 @@ test("Android expõe callback móvel e salvamento textual local restrito", () =>
 test("validação limpa e repete somente a inicialização local do Supabase", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   assert.match(source, /cancel-in-progress: true/u);
-  assert.match(source, /supabase@2\.109\.1 stop --no-backup/u);
-  assert.doesNotMatch(source, /supabase@2\.109\.1 stop --all/u);
+  assert.match(source, /supabase@2\.115\.0 stop --no-backup/u);
+  assert.doesNotMatch(source, /supabase@2\.115\.0 stop --all/u);
   assert.match(source, /for attempt in 1 2 3/u);
-  assert.match(source, /if npx --yes supabase@2\.109\.1 start/u);
+  assert.match(source, /if npx --yes supabase@2\.115\.0 start/u);
   assert.match(source, /ss -ltnp '\( sport = :54322 \)'/u);
   assert.match(source, /sleep \$\(\(attempt \* 3\)\)/u);
-  assert.match(source, /npx --yes supabase@2\.109\.1 test db/u);
+  assert.match(source, /npx --yes supabase@2\.115\.0 test db/u);
   assert.ok(
-    source.indexOf("supabase@2.109.1 db reset") <
-      source.indexOf("supabase@2.109.1 test db")
+    source.indexOf("supabase@2.115.0 db reset") <
+      source.indexOf("supabase@2.115.0 test db")
   );
 });
 
@@ -874,7 +888,7 @@ test("validação local atravessa navegador, MCP OAuth, API, IndexedDB e Supabas
   assert.match(source, /export SUPABASE_SERVICE_ROLE_KEY="\$SERVICE_ROLE_KEY"/u);
   assert.match(source, /npm run test:authoring:supabase:e2e/u);
   assert.ok(
-    source.indexOf("supabase@2.109.1 db reset") <
+    source.indexOf("supabase@2.115.0 db reset") <
       source.indexOf("npm run test:authoring:supabase:e2e")
   );
 });

@@ -50,6 +50,11 @@ const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const AVATAR_BUCKET = "person-avatars";
+const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
+const COURSE_SOURCE_PDF_STORAGE_PATH = new RegExp(
+  `^${UUID_PATTERN.source.slice(1, -1)}/[a-f0-9]{64}\\.pdf$`,
+  "u"
+);
 const AVATAR_MAX_BYTES = 512 * 1024;
 const AVATAR_EXTENSIONS = Object.freeze({
   "image/jpeg": "jpg",
@@ -314,18 +319,9 @@ function pdfHeaderIsValid(value) {
     bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d;
 }
 
-async function storageErrorPayload(response) {
-  const textValue = await response.text().catch(() => "");
-  try {
-    return textValue ? JSON.parse(textValue) : null;
-  } catch {
-    return textValue;
-  }
-}
-
-function storageObjectExists(response, body) {
+function storageObjectExists(status, body) {
   const message = String(body?.message || body?.error || body || "").toLowerCase();
-  return response.status === 409 || response.status === 400 &&
+  return status === 409 || status === 400 &&
     /(?:already exists|resource exists|duplicate)/u.test(message);
 }
 
@@ -526,6 +522,38 @@ function storageObjectPath(objectKey) {
   const normalized = String(objectKey || "").trim().toLowerCase();
   if (!AVATAR_OBJECT_KEY.test(normalized)) {
     throw new TypeError("Objeto de avatar inválido.");
+  }
+  return normalized.split("/").map(encodeURIComponent).join("/");
+}
+
+function accountDeletionMayBeAmbiguous(error) {
+  const status = Number(error?.status ?? error?.response?.status ?? 0);
+  const code = String(error?.code || error?.response?.code || "").trim().toLowerCase();
+  return status === 0 || status === 408 || status === 429 || status >= 500 ||
+    new Set([
+      "request_timeout",
+      "service_timeout",
+      "course_service_unavailable",
+      "account_deletion_in_progress"
+    ]).has(code);
+}
+
+function accountDeletionInProgressError(cause = null) {
+  const error = new Error(
+    "A exclusão pode já ter sido concluída ou ainda aguardar a etapa final; " +
+    "tente novamente para confirmar ou concluir."
+  );
+  error.name = "AccountDeletionInProgressError";
+  error.status = 503;
+  error.code = "account_deletion_in_progress";
+  if (cause) error.cause = cause;
+  return error;
+}
+
+function courseSourcePdfStoragePath(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!COURSE_SOURCE_PDF_STORAGE_PATH.test(normalized)) {
+    throw new TypeError("Objeto PDF de Fonte inválido.");
   }
   return normalized.split("/").map(encodeURIComponent).join("/");
 }
@@ -1106,21 +1134,37 @@ export class CourseApiClient {
       mediaType
     });
     if (access.uploadRequired) {
-      const form = new FormData();
-      form.append("cacheControl", "3600");
-      form.append("", file);
-      const response = await this.fetchImpl.call(globalThis, access.signedUrl, {
-        method: "PUT",
-        headers: { "x-upsert": "false" },
-        body: form,
-        cache: "no-store"
-      });
-      if (!response.ok) {
-        const body = await storageErrorPayload(response);
-        if (!storageObjectExists(response, body)) {
-          const error = new Error(String(body?.message || "Não foi possível enviar o PDF."));
-          error.status = response.status;
-          error.code = String(body?.errorCode || body?.code || "storage_upload_failed");
+      const accessToken = await this.authClient.getAccessToken();
+      if (!accessToken) {
+        throw Object.assign(new Error("Entre novamente para continuar."), {
+          status: 401,
+          code: "AUTH_REQUIRED"
+        });
+      }
+      try {
+        await this.http.request(
+          `/storage/v1/object/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
+            courseSourcePdfStoragePath(access.attachment.storagePath),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": mediaType,
+              "cache-control": "3600",
+              "x-upsert": "false"
+            },
+            body: file,
+            rawBody: true,
+            accessToken,
+            timeoutMs: 60_000
+          }
+        );
+      } catch (error) {
+        if (!storageObjectExists(Number(error?.status || 0), error?.response)) {
+          if (authenticationFailure(error)) {
+            await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
+            this.authClient.emit?.("SESSION_INVALID");
+            error.authRequired = true;
+          }
           throw error;
         }
       }
@@ -1690,11 +1734,20 @@ export class CourseApiClient {
     if (confirmation !== "EXCLUIR MINHA CONTA") {
       throw new TypeError("A confirmação de exclusão da conta é inválida.");
     }
-    const result = await this.executeCourseAction("excluirMinhaConta", { confirmation });
+    let result;
+    try {
+      result = await this.executeCourseAction("excluirMinhaConta", { confirmation });
+    } catch (error) {
+      if (!accountDeletionMayBeAmbiguous(error)) throw error;
+      if (error?.code === "account_deletion_in_progress") throw error;
+      throw accountDeletionInProgressError(error);
+    }
     if (!result || typeof result !== "object" || Array.isArray(result) ||
         Object.keys(result).length !== 2 ||
         result.contract !== "aralearn.account-deletion.v1" || result.status !== "deleted") {
-      throw new TypeError("A confirmação de exclusão da conta é inválida.");
+      throw accountDeletionInProgressError(
+        new TypeError("A confirmação de exclusão da conta é inválida.")
+      );
     }
     return structuredClone(result);
   }
