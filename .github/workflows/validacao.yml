@@ -62,12 +62,30 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages
 
+      - name: Guardar prévia web da candidata
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-pages-candidate
+          path: .pages
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Compilar aplicativo Android
         run: npm run android:debug
 
       - name: Examinar o runtime Android
         shell: pwsh
         run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
+
+      - name: Guardar APK de teste da candidata
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-android-debug-candidate
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Analisar aplicativo Android
         working-directory: android
