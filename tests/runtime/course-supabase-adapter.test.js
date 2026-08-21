@@ -24,6 +24,34 @@ const AUDIT_RUN_ID = "11111111-1111-5111-8111-111111111111";
 const AUDIT_FINDING_ID = "22222222-2222-5222-8222-222222222222";
 const AUDIT_CORRECTION_ID = "33333333-3333-5333-8333-333333333333";
 const AUDIT_ANNOTATION_ID = "44444444-4444-5444-8444-444444444444";
+const MCP_RESOURCE =
+  "https://project.example/functions/v1/aralearn-authoring-mcp";
+
+function jwt(payload) {
+  return [
+    Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(JSON.stringify(payload)).toString("base64url"),
+    "assinatura-de-teste"
+  ].join(".");
+}
+
+const APPLICATION_TOKEN = jwt({
+  aud: "authenticated",
+  exp: 2_000_000_000,
+  iat: 1_700_000_000,
+  iss: "https://project.example/auth/v1",
+  role: "authenticated",
+  sub: USER_ID
+});
+const MCP_TOKEN = jwt({
+  aud: MCP_RESOURCE,
+  client_id: "90000000-0000-4000-8000-000000000009",
+  exp: 2_000_000_000,
+  iat: 1_700_000_000,
+  iss: "https://project.example/auth/v1",
+  role: "authenticated",
+  sub: USER_ID
+});
 
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -1651,7 +1679,7 @@ test("autentica sessão do aplicativo sem resolver governança paralela", async 
     calls.push({ url, init });
     return json({ id: USER_ID });
   });
-  const principal = await value.resolveApplicationPrincipal("session-token");
+  const principal = await value.resolveApplicationPrincipal(APPLICATION_TOKEN);
 
   assert.deepEqual(principal, {
     actorId: USER_ID,
@@ -1660,20 +1688,38 @@ test("autentica sessão do aplicativo sem resolver governança paralela", async 
   });
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /\/auth\/v1\/user$/u);
+  assert.equal(calls[0].init.headers.Authorization, `Bearer ${APPLICATION_TOKEN}`);
+});
+
+test("recusa token OAuth do MCP antes de consultar a identidade do aplicativo", async () => {
+  let calls = 0;
+  const value = adapter(async () => {
+    calls += 1;
+    return json({ id: USER_ID });
+  });
+
+  await assert.rejects(
+    () => value.resolveApplicationPrincipal(MCP_TOKEN),
+    (error) => error.status === 401 && error.code === "invalid_application_token"
+  );
+  assert.equal(calls, 0);
 });
 
 test("exclusão da conta usa o JWT pessoal no RPC e tolera repetição após resposta perdida", async () => {
   const calls = [];
   const value = adapter(async (url, init) => {
-    calls.push({ url, init, body: JSON.parse(init.body) });
-    if (calls.length === 1) {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, init, body });
+    if (url.endsWith("/auth/v1/user")) return json({ id: USER_ID });
+    const rpcCalls = calls.filter((call) => call.url.endsWith("/delete_my_account_v1"));
+    if (rpcCalls.length === 1) {
       return json({ code: "PGRST000", message: "Resposta perdida" }, 503);
     }
     return json({ contract: "aralearn.account-deletion.v1", status: "deleted" });
   }, { attempts: 2 });
 
   const result = await value.deleteMyAccount({
-    accessToken: "session-delete",
+    accessToken: APPLICATION_TOKEN,
     confirmation: "EXCLUIR MINHA CONTA"
   });
   assert.deepEqual(result, {
@@ -1681,10 +1727,12 @@ test("exclusão da conta usa o JWT pessoal no RPC e tolera repetição após res
     status: "deleted"
   });
   assert.equal(calls.length, 2);
-  for (const call of calls) {
+  const rpcCalls = calls.filter((call) => call.url.endsWith("/delete_my_account_v1"));
+  assert.equal(rpcCalls.length, 2);
+  for (const call of rpcCalls) {
     assert.match(call.url, /\/rest\/v1\/rpc\/delete_my_account_v1$/u);
     assert.equal(call.init.headers.apikey, "sb_publishable_test");
-    assert.equal(call.init.headers.Authorization, "Bearer session-delete");
+    assert.equal(call.init.headers.Authorization, `Bearer ${APPLICATION_TOKEN}`);
     assert.deepEqual(call.body, { p_confirmation: "EXCLUIR MINHA CONTA" });
   }
 });
@@ -1736,7 +1784,7 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
   });
 
   const result = await value.deleteMyAccount({
-    accessToken: "session-delete",
+    accessToken: APPLICATION_TOKEN,
     confirmation: "EXCLUIR MINHA CONTA"
   });
   assert.equal(result.status, "deleted");
@@ -1746,7 +1794,7 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
     url.endsWith("/delete_my_account_v1") || url.endsWith("/auth/v1/user"));
   for (const call of userCalls) {
     assert.equal(call.init.headers.apikey, "sb_publishable_test");
-    assert.equal(call.init.headers.Authorization, "Bearer session-delete");
+    assert.equal(call.init.headers.Authorization, `Bearer ${APPLICATION_TOKEN}`);
   }
   const privilegedCalls = calls.filter(({ url }) =>
     url.includes("list_owned_courses_for_actor_v1") || url.includes("/storage/v1/object/"));
@@ -1772,17 +1820,20 @@ test("exclusão não apaga Storage diante de violação relacional alheia", asyn
   const calls = [];
   const value = adapter(async (url) => {
     calls.push(url);
+    if (url.endsWith("/auth/v1/user")) return json({ id: USER_ID });
     return json({ code: "23514", message: "Constraint relacional não satisfeita." }, 400);
   });
 
   await assert.rejects(
     () => value.deleteMyAccount({
-      accessToken: "session-delete",
+      accessToken: APPLICATION_TOKEN,
       confirmation: "EXCLUIR MINHA CONTA"
     }),
     (error) => error.status === 422 && error.code === "invalid_course_command"
   );
-  assert.deepEqual(calls, ["https://project.example/rest/v1/rpc/delete_my_account_v1"]);
+  assert.deepEqual(calls, [
+    "https://project.example/rest/v1/rpc/delete_my_account_v1"
+  ]);
 });
 
 test("lista por RPC de Curso e acrescenta deep link fora do banco", async () => {
@@ -3402,6 +3453,202 @@ test("composição ampla da aplicação preserva o contrato sem metadados focais
   assert.equal(rpc.body.p_application_origin, null);
   assert.equal(rpc.body.p_expected_study_unit_version, null);
   assert.equal(result.revision, 3);
+});
+
+test("cópia pessoal envia um único upsert sem identidade nem proveniência do cliente", async () => {
+  let rpc = null;
+  const value = adapter(async (url, init) => {
+    rpc = { url, body: JSON.parse(init.body) };
+    return json({
+      contract: "aralearn.personal-course-copy-edit.v1",
+      operation: "commit_personal_course_copy_edit",
+      sourceCourseId: COURSE_ID,
+      sourceCourseRevision: 4,
+      targetCourseId: OTHER_COURSE_ID,
+      targetCourseRevision: 2,
+      studyUnitId: "unit-a",
+      studyUnitVersion: 2,
+      applicationOrigin: "manual",
+      channel: "application",
+      createdCopy: true,
+      changed: true,
+      idempotent: false,
+      updatedAt: "2026-08-21T12:00:00.000Z"
+    });
+  });
+  const studyUnit = {
+    id: "unit-a",
+    position: 1,
+    title: "Unidade revista",
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  const result = await value.commitPersonalCourseCopyEdit({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    sourceCourseId: COURSE_ID,
+    requestId: "request-personal-copy-0001",
+    expectedSourceCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit,
+    applicationOrigin: "manual"
+  });
+
+  assert.match(rpc.url, /commit_personal_course_copy_edit_for_actor_v1$/u);
+  assert.deepEqual(rpc.body, {
+    p_actor_id: USER_ID,
+    p_source_course_id: COURSE_ID,
+    p_expected_source_revision: 4,
+    p_expected_study_unit_version: 2,
+    p_upsert: {
+      entityType: "study_unit",
+      entityId: "unit-a",
+      parentType: "microsequence",
+      parentId: "micro-a",
+      position: 1,
+      content: {
+        title: "Unidade revista",
+        role: "theory",
+        content: studyUnit.content,
+        response: null,
+        feedback: [],
+        topics: []
+      }
+    },
+    p_application_origin: "manual",
+    p_request_id: "request-personal-copy-0001"
+  });
+  assert.deepEqual(result, {
+    contract: "aralearn.personal-course-copy-edit.v1",
+    operation: "commit_personal_course_copy_edit",
+    sourceCourseId: COURSE_ID,
+    sourceCourseRevision: 4,
+    targetCourseId: OTHER_COURSE_ID,
+    targetCourseRevision: 2,
+    studyUnitId: "unit-a",
+    studyUnitVersion: 2,
+    applicationOrigin: "manual",
+    channel: "application",
+    createdCopy: true,
+    changed: true,
+    idempotent: false,
+    updatedAt: "2026-08-21T12:00:00.000Z"
+  });
+  await assert.rejects(
+    () => value.commitPersonalCourseCopyEdit({
+      principal: { actorId: USER_ID, authenticationKind: "oauth" },
+      sourceCourseId: COURSE_ID,
+      requestId: "request-personal-copy-0002",
+      expectedSourceCourseRevision: 4,
+      expectedStudyUnitVersion: 2,
+      didacticMicrosequenceId: "micro-a",
+      studyUnit,
+      applicationOrigin: "manual"
+    }),
+    (error) => error.code === "invalid_personal_course_copy_edit"
+  );
+});
+
+test("cópia pessoal traduz conflito conhecido e rejeita detalhes ou respostas inválidos", async () => {
+  const studyUnit = {
+    id: "unit-a",
+    position: 1,
+    title: "Unidade revista",
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  const input = {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    sourceCourseId: COURSE_ID,
+    requestId: "request-personal-copy-0001",
+    expectedSourceCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit,
+    applicationOrigin: "manual"
+  };
+  const conflict = adapter(async () => json({
+    code: "P1490",
+    message: "personal copy already exists",
+    details: OTHER_COURSE_ID,
+    hint: null
+  }, 400));
+  await assert.rejects(
+    () => conflict.commitPersonalCourseCopyEdit(input),
+    (error) => error.status === 409 && error.code === "personal_copy_exists" &&
+      error.details?.targetCourseId === OTHER_COURSE_ID &&
+      !error.message.includes(OTHER_COURSE_ID)
+  );
+
+  const malformedConflict = adapter(async () => json({
+    code: "P1490",
+    message: "personal copy already exists",
+    details: "target=segredo",
+    hint: null
+  }, 400));
+  await assert.rejects(
+    () => malformedConflict.commitPersonalCourseCopyEdit(input),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+
+  const noOp = adapter(async () => json({
+    contract: "aralearn.personal-course-copy-edit.v1",
+    operation: "commit_personal_course_copy_edit",
+    sourceCourseId: COURSE_ID,
+    sourceCourseRevision: 4,
+    targetCourseId: null,
+    targetCourseRevision: null,
+    studyUnitId: "unit-a",
+    studyUnitVersion: 2,
+    applicationOrigin: "manual",
+    channel: "application",
+    createdCopy: false,
+    changed: false,
+    idempotent: false,
+    updatedAt: "2026-08-21T12:00:00.000Z"
+  }));
+  assert.equal(
+    (await noOp.commitPersonalCourseCopyEdit(input)).targetCourseId,
+    null
+  );
+
+  const invalidResponse = adapter(async () => json({
+    contract: "aralearn.personal-course-copy-edit.v1",
+    operation: "commit_personal_course_copy_edit",
+    sourceCourseId: COURSE_ID,
+    sourceCourseRevision: 4,
+    targetCourseId: OTHER_COURSE_ID,
+    targetCourseRevision: 2,
+    studyUnitId: "unit-a",
+    studyUnitVersion: 2,
+    applicationOrigin: "manual",
+    channel: "application",
+    createdCopy: true,
+    changed: true,
+    idempotent: false,
+    updatedAt: "2026-08-21T12:00:00.000Z",
+    actorId: USER_ID
+  }));
+  await assert.rejects(
+    () => invalidResponse.commitPersonalCourseCopyEdit(input),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
 });
 
 test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", async () => {

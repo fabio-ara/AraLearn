@@ -3,11 +3,23 @@ import assert from "node:assert/strict";
 
 import { createCourseApiHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseApiServer.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { CourseSupabaseAdapter } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 const ORIGIN = "https://app.example";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
 const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
+const MCP_RESOURCE =
+  "https://project.example/functions/v1/aralearn-authoring-mcp";
+
+function jwt(payload) {
+  return [
+    Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(JSON.stringify(payload)).toString("base64url"),
+    "assinatura-de-teste"
+  ].join(".");
+}
 
 function request(path, { method = "POST", body = {}, token = "session" } = {}) {
   return new Request(`https://edge.example/functions/v1/aralearn-course-api${path}`, {
@@ -99,6 +111,78 @@ test("expõe leitura autenticada do plano instrucional no aplicativo", async () 
   assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
   assert.equal(payload.data.courseId, COURSE_ID);
   assert.equal(payload.data.plan.version, 1);
+});
+
+test("rota /app aceita sessão comum e recusa o token OAuth destinado ao MCP", async () => {
+  const applicationToken = jwt({
+    aud: "authenticated",
+    exp: 2_000_000_000,
+    iat: 1_700_000_000,
+    iss: "https://project.example/auth/v1",
+    role: "authenticated",
+    sub: COURSE_ID
+  });
+  const mcpToken = jwt({
+    aud: MCP_RESOURCE,
+    client_id: "40000000-0000-4000-8000-000000000004",
+    exp: 2_000_000_000,
+    iat: 1_700_000_000,
+    iss: "https://project.example/auth/v1",
+    role: "authenticated",
+    sub: COURSE_ID
+  });
+  let identityCalls = 0;
+  let operationCalls = 0;
+  const principalAdapter = new CourseSupabaseAdapter({
+    supabaseUrl: "https://project.example",
+    serverApiKey: "sb_secret_test",
+    publishableKey: "sb_publishable_test",
+    publicAppUrl: "https://app.example",
+    attempts: 1,
+    fetchImpl: async (url, init) => {
+      identityCalls += 1;
+      assert.match(url, /\/auth\/v1\/user$/u);
+      assert.equal(init.headers.Authorization, `Bearer ${applicationToken}`);
+      return new Response(JSON.stringify({ id: COURSE_ID }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  });
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      resolveApplicationPrincipal: (...args) =>
+        principalAdapter.resolveApplicationPrincipal(...args),
+      async getCourseInstructionalPlan({ courseId }) {
+        operationCalls += 1;
+        return {
+          contract: "aralearn.course-instructional-plan.v1",
+          courseId,
+          courseRevision: 1,
+          plan: { version: 1, parts: [] },
+          recentActivity: []
+        };
+      }
+    }
+  });
+  const body = { courseId: COURSE_ID, view: "instructional_plan" };
+
+  const accepted = await handler(request("/app/lerCurso", {
+    body,
+    token: applicationToken
+  }));
+  assert.equal(accepted.status, 200);
+
+  const rejected = await handler(request("/app/lerCurso", {
+    body,
+    token: mcpToken
+  }));
+  const rejectedPayload = await rejected.json();
+  assert.equal(rejected.status, 401);
+  assert.equal(rejected.headers.get("www-authenticate"), "Bearer");
+  assert.equal(rejectedPayload.error.code, "invalid_application_token");
+  assert.equal(identityCalls, 1);
+  assert.equal(operationCalls, 1);
 });
 
 test("expõe a mesma leitura retomável da materialização ao aplicativo", async () => {
@@ -230,6 +314,92 @@ test("preserva o envelope CAS do plano até o adaptador", async () => {
   assert.equal(call.expectedCourseRevision, 5);
   assert.equal(call.expectedPlanVersion, 3);
   assert.deepEqual(call.command, { type: "update_plan", audience: "Docentes" });
+});
+
+test("expõe criação da cópia pessoal somente como ação autenticada do aplicativo", async () => {
+  const studyUnit = {
+    id: "unit-a",
+    position: 1,
+    title: "Unidade revista",
+    role: "theory",
+    content: [{
+      id: "paragraph-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo revisto." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  let call = null;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return {
+          actorId: COURSE_ID,
+          authenticationKind: "application",
+          scopes: ["authoring:write"]
+        };
+      },
+      async commitPersonalCourseCopyEdit(value) {
+        call = value;
+        return {
+          contract: "aralearn.personal-course-copy-edit.v1",
+          targetCourseId: PART_ID,
+          changed: true
+        };
+      }
+    }
+  });
+  const body = {
+    requestId: "request-personal-copy-0001",
+    sourceCourseId: COURSE_ID,
+    expectedSourceCourseRevision: 4,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit,
+    applicationOrigin: "manual"
+  };
+  const response = await handler(request("/app/criarCopiaPessoalDoCurso", { body }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.requestId, body.requestId);
+  assert.equal(payload.data.targetCourseId, PART_ID);
+  assert.equal(call.principal.actorId, COURSE_ID);
+  assert.equal(call.sourceCourseId, COURSE_ID);
+  assert.equal(call.studyUnit.id, "unit-a");
+  assert.equal(Object.hasOwn(call, "actorId"), false);
+
+  const conflictHandler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return {
+          actorId: COURSE_ID,
+          authenticationKind: "application",
+          scopes: ["authoring:write"]
+        };
+      },
+      async commitPersonalCourseCopyEdit() {
+        throw new AuthoringApiError(
+          409,
+          "personal_copy_exists",
+          "Você já possui uma cópia pessoal deste Curso.",
+          { targetCourseId: PART_ID }
+        );
+      }
+    }
+  });
+  const conflictResponse = await conflictHandler(
+    request("/app/criarCopiaPessoalDoCurso", { body })
+  );
+  const conflictPayload = await conflictResponse.json();
+  assert.equal(conflictResponse.status, 409);
+  assert.equal(conflictPayload.error.code, "personal_copy_exists");
+  assert.equal(conflictPayload.error.details.targetCourseId, PART_ID);
 });
 
 test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async () => {

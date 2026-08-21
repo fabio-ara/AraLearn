@@ -98,10 +98,13 @@ e [privilégios da API de dados](https://supabase.com/docs/guides/api/using-cust
 
 ## Migrações e manifesto
 
-Migrações versionadas ficam em `supabase/migrations/`. A revisão hospedada corrente é
-`20260820224424`. `supabase/runtime-manifest.json` associa essa revisão ao
-contrato 1 e às capacidades exigidas pelo aplicativo, incluindo a edição
-contextual de Unidade de estudo.
+Migrações versionadas ficam em `supabase/migrations/`. A revisão hospedada
+corrente permanece `20260820224424`. No ramo da entrega #149,
+`supabase/runtime-manifest.json` avança como candidata para `20260821145358` e
+acrescenta `personal-course-copy-edit-v1`. A recriação local, pgTAP 78/78,
+PGlite 45/45, concorrência 1/1 e smoke real local foram aprovados. Promoção e
+verificação hospedada continuam obrigatórias antes de esse manifesto representar
+o ambiente publicado.
 
 A migração `20260820224424_canonical_study_unit_composition_edits.sql` acrescenta
 uma forma de composição exclusiva do papel de servidor. Ela limita o canal do
@@ -114,6 +117,25 @@ somente quando o JSONB coincide com o conjunto anterior. Um vínculo novo ou
 alterado continua exigindo Fonte e Âncora ativas nas revisões exatas. A função
 restringe a execução ao `service_role`; `anon`, `authenticated` e `PUBLIC` não
 recebem essa capacidade.
+
+A migração candidata
+`20260821145358_personal_course_copy_edit.sql` mantém a operação canônica acima
+exclusiva do proprietário e acrescenta outra função de papel de servidor para a
+primeira gravação de quem possui acesso direto. A função:
+
+1. exige acesso compartilhado e compara a revisão do Curso e a versão da Unidade;
+2. não cria cópia quando o conteúdo não mudou;
+3. serializa a criação por pessoa e Curso de origem;
+4. cria um Curso privado, copia somente as entidades curriculares e aplica a
+   mudança na mesma transação;
+5. registra a relação privada e um recibo idempotente;
+6. recusa execução direta por `anon`, `authenticated` e `PUBLIC`.
+
+A relação não concede ao cliente acesso direto às tabelas privadas. A API de
+Cursos deriva o ator do JWT e chama a função com credencial de servidor; a
+interface nunca envia `actorId`. As seis ferramentas do MCP e suas permissões
+permanecem inalteradas. Essa migração trabalha exclusivamente na arquitetura
+Supabase atual e não implementa Git ou `VersionedCourseStore`.
 
 Uma mudança de banco completa deve conter:
 

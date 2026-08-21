@@ -1,8 +1,10 @@
 # Guia do estudante
 
 Este guia apresenta o percurso de Estudo. Um Curso pode pertencer à própria
-pessoa ou ter sido compartilhado diretamente pelo proprietário; as ações de
-estudo são as mesmas nos dois casos.
+pessoa ou ter sido compartilhado diretamente pelo proprietário. Leitura,
+prática e continuidade usam o mesmo percurso; a gravação contextual difere
+porque altera o Curso próprio e cria uma cópia pessoal quando a origem é
+compartilhada.
 
 ## Compreender a tela inicial
 
@@ -19,9 +21,12 @@ validada, a prévia informa **Disponível neste dispositivo**; sem essa cópia, 
 informa que a conexão é necessária.
 
 A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
-pessoa. O acesso à **Autoria** leva à atividade autoral. Cursos compartilhados
-ficam somente em Estudo porque a concessão permite praticar, mas mantém a edição
-com o proprietário.
+pessoa. O acesso à **Autoria** leva à atividade autoral. Um Curso compartilhado
+fica em Estudo e continua sob responsabilidade do proprietário. Na candidata
+0.0.26, validada localmente e ainda não publicada, a pessoa pode usar **Editar**
+nesse percurso sem alterar o original: a primeira gravação com mudança material
+cria um Curso pessoal privado, que passa a aparecer como **Sua cópia** e também
+pertence à sua Autoria.
 
 ## Preparar o dispositivo para estudar sem conexão
 
@@ -140,12 +145,24 @@ somente o progresso e o ponto de retomada do Curso escolhido. O Curso, as marcas
 Também há reinícios delimitados dentro do percurso. O rótulo da confirmação
 informa se o alcance começa em um Módulo, Lição, Microssequência ou Unidade.
 
-## Quando solicitar uma alteração
+## Editar ou solicitar uma alteração
 
-Estudo preserva título, estrutura e conteúdo do Curso. Se o Curso for seu, abra
-**Autoria** para examiná-lo. Se for compartilhado, registre uma observação
-situada e use os canais definidos pelo proprietário para conversar sobre uma
-alteração.
+Se o Curso for seu, **Editar** grava a Unidade no próprio Curso. Se ele foi
+compartilhado, o aviso explica que **Salvar na minha cópia** criará um Curso
+pessoal privado e deixará o original intacto. A edição manual e a assistência
+por API usam o mesmo conteúdo e a mesma prévia. Pedir uma sugestão, cancelar ou
+sair sem uma mudança material não cria a cópia.
+
+Depois da primeira gravação, o AraLearn continua na mesma Unidade da nova cópia.
+A estrutura e o conteúdo corrente são materializados nela, mas planejamento,
+Fontes, PDFs, acessos, progresso e Observações começam separados. A cópia aparece
+como **Sua cópia**; o Curso de origem continua como **Compartilhado com você**.
+
+Se a conexão cair antes da confirmação, o rascunho e o pedido delimitado ficam
+pendentes no dispositivo. Ao reconectar, o aplicativo repete a mesma intenção
+sem criar outra cópia. Um conflito em outra aba conserva o rascunho para
+recuperação. Também é possível registrar uma observação situada no Curso em que
+a pessoa estiver estudando e conversar com o proprietário pelos canais definidos.
 
 ## Como interpretar o estado de estudo
 

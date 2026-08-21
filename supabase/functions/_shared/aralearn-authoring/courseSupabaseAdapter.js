@@ -180,6 +180,83 @@ function accountDeletionResult(value) {
   return { contract: result.contract, status: result.status };
 }
 
+const PERSONAL_COURSE_COPY_EDIT_FIELDS = new Set([
+  "contract", "operation", "sourceCourseId", "sourceCourseRevision",
+  "targetCourseId", "targetCourseRevision", "studyUnitId", "studyUnitVersion",
+  "applicationOrigin", "channel", "createdCopy", "changed", "idempotent",
+  "updatedAt"
+]);
+
+function strictUuid(value) {
+  return typeof value === "string" && value === value.trim().toLowerCase() &&
+    UUID_PATTERN.test(value)
+    ? value
+    : null;
+}
+
+function invalidPersonalCourseCopyResponse() {
+  return new AuthoringApiError(
+    503,
+    "course_service_unavailable",
+    "O serviço devolveu uma cópia pessoal inválida."
+  );
+}
+
+function normalizePersonalCourseCopyEdit(value, expected) {
+  const result = first(value);
+  const sourceCourseId = strictUuid(result?.sourceCourseId);
+  const rawTargetCourseId = result?.targetCourseId;
+  const targetCourseId = rawTargetCourseId == null
+    ? null
+    : strictUuid(rawTargetCourseId);
+  const targetCourseRevision = result?.targetCourseRevision == null
+    ? null
+    : result.targetCourseRevision;
+  const targetIsAbsent = rawTargetCourseId === null && targetCourseRevision === null;
+  const targetIsPresent = rawTargetCourseId !== null && targetCourseId !== null &&
+    positiveSafeInteger(targetCourseRevision);
+  const mutationShapeValid = result?.changed === true
+    ? targetIsPresent && targetCourseRevision === 2 && result.studyUnitVersion === 2 &&
+      result.createdCopy === true
+    : result?.changed === false
+      ? targetIsAbsent && result.studyUnitVersion === expected.expectedStudyUnitVersion &&
+        result.createdCopy === false
+      : false;
+  if (!exactRecord(result, PERSONAL_COURSE_COPY_EDIT_FIELDS) ||
+      result.contract !== "aralearn.personal-course-copy-edit.v1" ||
+      result.operation !== "commit_personal_course_copy_edit" ||
+      sourceCourseId !== expected.sourceCourseId ||
+      result.sourceCourseRevision !== expected.expectedSourceCourseRevision ||
+      !mutationShapeValid ||
+      targetCourseId === sourceCourseId ||
+      result.studyUnitId !== expected.studyUnitId ||
+      !positiveSafeInteger(result.studyUnitVersion) ||
+      result.applicationOrigin !== expected.applicationOrigin ||
+      result.channel !== "application" ||
+      typeof result.createdCopy !== "boolean" ||
+      typeof result.changed !== "boolean" ||
+      typeof result.idempotent !== "boolean" ||
+      !validTimestamp(result.updatedAt)) {
+    throw invalidPersonalCourseCopyResponse();
+  }
+  return {
+    contract: result.contract,
+    operation: result.operation,
+    sourceCourseId,
+    sourceCourseRevision: result.sourceCourseRevision,
+    targetCourseId,
+    targetCourseRevision,
+    studyUnitId: result.studyUnitId,
+    studyUnitVersion: result.studyUnitVersion,
+    applicationOrigin: result.applicationOrigin,
+    channel: result.channel,
+    createdCopy: result.createdCopy,
+    changed: result.changed,
+    idempotent: result.idempotent,
+    updatedAt: result.updatedAt
+  };
+}
+
 function positiveSafeInteger(value) {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
 }
@@ -1056,6 +1133,17 @@ function databaseError(status, body) {
       "account_storage_not_empty",
       "A exclusão aguarda a limpeza dos objetos privados da conta."
     );
+  }
+  if (code === "P1490") {
+    const targetCourseId = strictUuid(body?.details);
+    return targetCourseId
+      ? new AuthoringApiError(
+          409,
+          "personal_copy_exists",
+          "Você já possui uma cópia pessoal deste Curso.",
+          { targetCourseId }
+        )
+      : invalidPersonalCourseCopyResponse();
   }
   if (code === "23514" && databaseMessage.startsWith("requestId reutilizado")) {
     return new AuthoringApiError(
@@ -2071,10 +2159,39 @@ export class CourseSupabaseAdapter {
     return user;
   }
 
+  #applicationActorFromClaims(jwt) {
+    const claims = decodeJwtClaims(jwt);
+    if (claimText(claims?.client_id) ||
+        !audienceIncludes(claims?.aud, "authenticated")) {
+      throw new AuthoringApiError(
+        401,
+        "invalid_application_token",
+        "A sessão não foi emitida para a interface do AraLearn."
+      );
+    }
+    const actorId = claimText(claims?.sub).toLowerCase();
+    if (!UUID_PATTERN.test(actorId)) {
+      throw new AuthoringApiError(
+        401,
+        "invalid_application_token",
+        "A sessão não identifica uma conta válida."
+      );
+    }
+    return actorId;
+  }
+
   async resolveApplicationPrincipal(jwt, { deadlineAt = null } = {}) {
+    const actorId = this.#applicationActorFromClaims(jwt);
     const user = await this.#userForJwt(jwt, { deadlineAt });
+    if (actorId !== String(user.id).toLowerCase()) {
+      throw new AuthoringApiError(
+        401,
+        "invalid_application_token",
+        "A sessão não corresponde à conta autenticada."
+      );
+    }
     return {
-      actorId: String(user.id),
+      actorId,
       authenticationKind: "application",
       scopes: ["authoring:read", "authoring:write"]
     };
@@ -2092,6 +2209,7 @@ export class CourseSupabaseAdapter {
         "A confirmação de exclusão da conta é inválida."
       );
     }
+    this.#applicationActorFromClaims(token);
     try {
       return await this.#deleteAccountWithJwt(token, confirmation, { deadlineAt });
     } catch (error) {
@@ -3428,5 +3546,76 @@ export class CourseSupabaseAdapter {
       { deadlineAt, timeoutMs: 40_000 }
     ));
     return withDeepLink(result, this.publicAppUrl);
+  }
+
+  async commitPersonalCourseCopyEdit({
+    principal,
+    sourceCourseId,
+    requestId,
+    expectedSourceCourseRevision,
+    expectedStudyUnitVersion,
+    didacticMicrosequenceId,
+    studyUnit,
+    applicationOrigin,
+    deadlineAt = null
+  }) {
+    if (authoringChannel(principal) !== "application" ||
+        strictUuid(sourceCourseId) !== sourceCourseId ||
+        !positiveSafeInteger(expectedSourceCourseRevision) ||
+        !positiveSafeInteger(expectedStudyUnitVersion) ||
+        typeof didacticMicrosequenceId !== "string" ||
+        !didacticMicrosequenceId || didacticMicrosequenceId !== didacticMicrosequenceId.trim() ||
+        [...didacticMicrosequenceId].length > 240 ||
+        !new Set(["manual", "provider_assistance"]).has(applicationOrigin)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_personal_course_copy_edit",
+        "A edição da cópia pessoal é inválida."
+      );
+    }
+    const { validateCourseEntityContent } = await import(
+      "../aralearn/runtime/domain/courseEntities.js"
+    );
+    const validation = validateCourseEntityContent("study_unit", studyUnit);
+    if (!validation.valid) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_course_contract",
+        "A Unidade não satisfaz o contrato didático do Curso.",
+        { errors: validation.errors.slice(0, 12) }
+      );
+    }
+    const normalizedStudyUnit = validation.normalized;
+    const content = { ...normalizedStudyUnit };
+    delete content.id;
+    delete content.position;
+    const upsert = {
+      entityType: "study_unit",
+      entityId: normalizedStudyUnit.id,
+      parentType: "microsequence",
+      parentId: didacticMicrosequenceId,
+      position: normalizedStudyUnit.position,
+      content
+    };
+    const raw = await this.rpc(
+      "commit_personal_course_copy_edit_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_source_course_id: sourceCourseId,
+        p_expected_source_revision: expectedSourceCourseRevision,
+        p_expected_study_unit_version: expectedStudyUnitVersion,
+        p_upsert: upsert,
+        p_application_origin: applicationOrigin,
+        p_request_id: requestId
+      },
+      { deadlineAt, timeoutMs: 40_000 }
+    );
+    return normalizePersonalCourseCopyEdit(raw, {
+      sourceCourseId,
+      expectedSourceCourseRevision,
+      expectedStudyUnitVersion,
+      studyUnitId: normalizedStudyUnit.id,
+      applicationOrigin
+    });
   }
 }

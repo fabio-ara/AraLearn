@@ -120,7 +120,10 @@ editáveis e pela validação.
 O mesmo Curso pode ser observado em dois contextos complementares:
 
 - no **Estudo**, a pessoa lê, pratica, recebe retorno, marca uma Unidade para
-  rever e registra uma observação;
+  rever e registra uma observação. Na candidata 0.0.26, validada localmente e
+  ainda não publicada, também pode editar uma Unidade; quando o Curso é
+  compartilhado, a primeira gravação cria um Curso pessoal privado sem alterar o
+  original;
 - na **Autoria**, a pessoa proprietária planeja, produz e inspeciona o Curso,
   mantém sua proveniência, tria Anotações, audita correções, compara variantes,
   consulta fatos da produção e concede acesso direto para Estudo. Um protocolo

@@ -39,9 +39,13 @@ function topbar(title, backTitle = "Voltar") {
 
 function runtimeNotice(status) {
   if (status?.offline !== true && status?.stale !== true) return "";
+  const offline = status?.offline === true;
   return '<p class="study-runtime-notice" role="status">' +
-    renderUiIcon("offline", "home-tab-icon") +
-    '<span>Sem conexão · alterações pessoais ficam salvas neste dispositivo.</span></p>';
+    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") +
+    '<span>' + (offline
+      ? "Sem conexão · alterações pessoais ficam salvas neste dispositivo."
+      : "Exibindo a versão salva · o AraLearn está atualizando os dados.") +
+    "</span></p>";
 }
 
 function progressEntry(course, moduleValue, lesson, progress) {
@@ -352,16 +356,24 @@ function renderStudyManualDock(manualEditor) {
       ' aria-label="Descartar rascunho com resultado incerto" title="Descartar rascunho">' +
       `${renderUiIcon("remove-state", "home-tab-icon")}<span>Descartar</span></button></div></section>`;
   }
-  return '<section class="study-manual-edit-dock" aria-label="Edição manual">' +
+  return '<section class="study-manual-edit-dock' +
+    (manualEditor.createsPersonalCopy ? " is-personal-copy" : "") +
+    '" aria-label="Edição manual">' +
     `<p>${manualEditor.error
       ? `<span role="alert">${escapeHtml(manualEditor.error)}</span>`
-      : "Edite diretamente no conteúdo."}</p>` +
+      : manualEditor.createsPersonalCopy
+        ? "Ao salvar, o AraLearn criará uma cópia privada para você. O Curso compartilhado continuará intacto."
+        : "Edite diretamente no conteúdo."}</p>` +
     '<div><button class="icon-ghost" type="button" data-action="study-manual-cancel"' +
     ` aria-label="Cancelar edição" title="Cancelar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
     `${renderUiIcon("remove-state", "home-tab-icon")}</button>` +
     '<button class="open-mini" type="button" data-action="study-manual-save"' +
-    ` aria-label="Salvar edição" title="Salvar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
-    `${renderUiIcon(manualEditor.saving ? "rotate" : "save", "home-tab-icon")}</button></div></section>`;
+    ` aria-label="${manualEditor.createsPersonalCopy ? "Salvar na minha cópia" : "Salvar edição"}"` +
+    ` title="${manualEditor.createsPersonalCopy ? "Salvar na minha cópia" : "Salvar"}"` +
+    `${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
+    `${renderUiIcon(manualEditor.saving ? "rotate" : "save", "home-tab-icon")}` +
+    (manualEditor.createsPersonalCopy ? "<span>Salvar na minha cópia</span>" : "") +
+    "</button></div></section>";
 }
 
 function renderStudyUnit({
@@ -422,7 +434,10 @@ function renderStudyUnit({
     ' data-study-destination-heading tabindex="-1">' +
     '<section class="study-reader-context"><div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
-    escapeHtml(microsequence.title || lesson.title || "Unidade") + "</span></div>" +
+    escapeHtml(microsequence.title || lesson.title || "Unidade") + "</span>" +
+    (manualEditor.isPersonalCopy
+      ? '<span class="study-personal-copy-badge">Sua cópia</span>'
+      : "") + "</div>" +
     '<div class="study-reader-progress"><span style="width:' +
     String(units.length ? ((studyUnitIndex + 1) / units.length) * 100 : 0) + '%"></span></div></section>' +
     '<section class="card-portrait editor-card-portrait study-stage">' +
@@ -496,6 +511,7 @@ export function renderCourseStudyScreen({
   homeLoadingCourseId = "",
   homeError = "",
   homeNotice = "",
+  homePendingPersonalCopyDiscard = false,
   packageStudyUnitOptions = {},
   feedbackOpen = false,
   observationCount = 0,
@@ -519,6 +535,7 @@ export function renderCourseStudyScreen({
       homeLoadingCourseId,
       homeError,
       homeNotice,
+      homePendingPersonalCopyDiscard,
       editorSupport: { coursePermissionsById }
     });
   }

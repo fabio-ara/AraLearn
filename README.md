@@ -53,9 +53,15 @@ registrar uma observação situada, como dúvida, possível erro ou trecho confu
 Progresso e marcas de revisão formam o **estado pessoal**, separado do conteúdo
 do Curso. As observações ficam em **Anotações ancoradas** próprias: podem existir
 várias na mesma Unidade e chegam à caixa de entrada do proprietário sem revelar
-registros de outros estudantes. O acesso compartilhado permite estudar e
-conservar dados pessoais de continuidade; a edição permanece com o
-proprietário.
+registros de outros estudantes.
+
+Na candidata 0.0.26, validada localmente e ainda não publicada, quem recebeu
+acesso também pode editar uma Unidade manualmente ou com a assistência
+complementar. A primeira gravação com mudança material cria um Curso pessoal
+privado, identificado na interface como **Sua cópia**, e mantém a pessoa na
+mesma Unidade. O Curso compartilhado não é alterado. Planejamento, Fontes, PDFs,
+acessos, progresso e Observações não são transportados para a cópia pessoal;
+cada Curso conserva seus próprios registros.
 
 Quando uma Unidade possui proveniência pública, o botão **Fontes** busca as
 citações ao ser aberto. Estudo recebe apenas a projeção autorizada. Uma Fonte
@@ -170,6 +176,10 @@ centralizada de até 430 px também no computador. A entrada de Estudo usa um
 único seletor de Curso e uma única prévia, sem transformar a biblioteca num
 painel de cartões; a Autoria usa quatro grupos iconográficos com divulgação
 progressiva.
+
+A candidata local 0.0.26 declara o manifesto `20260821145358` e o Android
+`versionCode` 172. Ela somente substituirá a linha corrente depois da promoção
+do contrato remoto, da publicação coordenada e da verificação dos artefatos.
 
 ## Estado e limites
 

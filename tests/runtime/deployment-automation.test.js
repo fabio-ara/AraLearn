@@ -434,8 +434,9 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260820224424");
+  assert.equal(manifest.schemaRevision, "20260821145358");
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);

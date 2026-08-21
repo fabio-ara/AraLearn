@@ -71,7 +71,7 @@ Na interface, uma resposta ambígua mantém em memória o rascunho e o envelope 
 operação. Reenviar o formulário sem modificá-lo conserva comando, versões,
 identidades geradas e identificador de pedido; editar os campos representa uma
 nova intenção. Esse estado é transitório da sessão da Autoria e não amplia o
-contrato do IndexedDB nem cria uma fila autoral sem conexão.
+contrato geral do IndexedDB nem cria uma fila autoral universal.
 
 Na edição contextual de Unidade, o primeiro envio também fixa em memória o
 conjunto efetivo de Fontes sob o mesmo `requestId`. Uma nova tentativa da mesma
@@ -112,6 +112,30 @@ ou remota, revogação, limpeza do Curso ou outra perda de autoridade purgam a
 projeção. Se uma mudança externa chegar antes da próxima edição, a atualização rebasa revisão
 e versão esperadas para que o CAS não use a fotografia anterior, sem perder a
 seleção, o progresso nem as Observações.
+
+### Primeira gravação de uma cópia pessoal
+
+Na candidata 0.0.26 existe uma exceção delimitada ao estado transitório em
+memória. Se quem possui apenas acesso direto salva uma mudança em
+Estudo, o repositório conserva no IndexedDB o envelope necessário para criar sua
+cópia pessoal: Curso de origem, seleção exata, revisões esperadas, Unidade final,
+origem `manual` ou `provider_assistance` e identificador do pedido. Só pode haver
+uma intenção pendente dessa família por vez. Conversa, endpoint, modelo e
+credencial do provider ficam fora.
+
+O servidor verifica primeiro se houve mudança material. Sem mudança, devolve um
+recibo sem criar Curso, plano, entidades ou relação. Havendo mudança, uma única
+transação cria o Curso privado da pessoa, um plano inicial vazio, copia somente
+as entidades da composição e aplica a Unidade editada. Fontes, Âncoras, PDFs,
+acessos, progresso, marcas para rever e Observações não são copiados.
+
+Uma relação privada associa pessoa, Curso de origem e Curso pessoal. A restrição
+garante no máximo uma cópia por pessoa e origem. O mesmo envelope devolve o
+recibo anterior; duas intenções diferentes concorrendo pela primeira gravação
+resultam em uma confirmação e um conflito. Depois da confirmação, o cliente
+promove o novo `course.v1`, volta à mesma Unidade e remove o envelope pendente.
+O estado pessoal e as Observações passam a usar a identidade do novo Curso, sem
+herdar os registros do original.
 
 ## Composição paginada
 
@@ -253,8 +277,10 @@ preservam definições, denominadores e dados ausentes.
 ## Acesso e exclusão
 
 O proprietário concede ou revoga acesso ao Curso por relações explícitas. Uma
-conta compartilhada recebe apenas a leitura necessária ao Estudo. Operações de
-Autoria, auditoria, comparação e Pesquisa verificam propriedade no contrato
+conta compartilhada recebe a leitura necessária ao Estudo e não recebe escrita
+no Curso original. A operação candidata da #149 pode criar um Curso pessoal
+privado na primeira gravação contextual; as demais operações de Autoria,
+auditoria, comparação e Pesquisa continuam verificando propriedade no contrato
 SQL, mesmo quando são chamadas por uma função com credencial administrativa.
 
 Exclusão da própria conta passa por uma operação dedicada. Restrições e ações

@@ -37,7 +37,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-variant-comparison-list-v1",
   "course-authoring-analytics-v1",
   "course-variant-factual-comparison-v1",
-  "contextual-study-unit-edit-v1"
+  "contextual-study-unit-edit-v1",
+  "personal-course-copy-edit-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -242,7 +243,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260820224424" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260821145358" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -290,6 +291,9 @@ async function validateManifest() {
   );
   const contextualCompositionMigration = await read(
     "supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql"
+  );
+  const personalCourseCopyMigration = await read(
+    "supabase/migrations/20260821145358_personal_course_copy_edit.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -342,6 +346,18 @@ async function validateManifest() {
       ) ||
       !contextualCompositionMigration.includes(
         "return v_result - 'channel' - 'applicationOrigin'"
+      ) ||
+      !personalCourseCopyMigration.includes(
+        "$advance_personal_course_copy_edit_manifest$"
+      ) ||
+      !personalCourseCopyMigration.includes(
+        "to_jsonb('20260821145358'::text)"
+      ) ||
+      !personalCourseCopyMigration.includes(
+        "personal-course-copy-edit-v1"
+      ) ||
+      !personalCourseCopyMigration.includes(
+        "commit_personal_course_copy_edit_for_actor_v1"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -360,7 +376,8 @@ async function validateManifest() {
         !authoringAnalyticsMigration.includes(`'${feature}'`) &&
         !completeVariantComparisonMigration.includes(`'${feature}'`) &&
         !avatarPathMigration.includes(`'${feature}'`) &&
-        !contextualCompositionMigration.includes(`'${feature}'`)) {
+        !contextualCompositionMigration.includes(`'${feature}'`) &&
+        !personalCourseCopyMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

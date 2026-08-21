@@ -301,9 +301,11 @@ definidos pela finalidade. A solução precisa permitir revogação, atribuiçã
 proporcionalidade.
 
 **Decisão.** Cada Curso possui uma pessoa proprietária, e o acesso direto concede
-somente Estudo. Fontes, Âncoras, eventos e correções preservam proveniência. A
-área Pesquisa expõe fatos autorais sem dados identificadores e contagens
-descritivas, sem criar telemetria comportamental por conveniência.
+somente Estudo no original. Na candidata #149, uma edição contextual feita por
+quem estuda cria outro Curso privado, sob sua propriedade, sem escrever na
+origem. Fontes, Âncoras, eventos e correções preservam proveniência. A área
+Pesquisa expõe fatos autorais sem dados identificadores e contagens descritivas,
+sem criar telemetria comportamental por conveniência.
 
 **Fundamentação.** A ética da análise de dados educacionais exige finalidade, transparência e
 responsabilidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).

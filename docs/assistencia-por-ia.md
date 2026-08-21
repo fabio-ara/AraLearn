@@ -116,6 +116,15 @@ voltar ao texto original, aplicar ao rascunho e, separadamente, salvar a
 Unidade. A gravação usa a mesma revisão esperada, autorização e validação da
 edição manual.
 
+Na candidata 0.0.26, validada localmente e ainda não publicada, quem estuda um
+Curso compartilhado usa essa mesma assistência no mesmo renderer. A prévia
+continua sem efeito persistente.
+Somente **Salvar na minha cópia**, depois da revisão humana, cria o Curso pessoal
+privado e grava a Unidade nele. O original, as Fontes, os PDFs, o planejamento,
+o progresso e as Observações não são alterados nem copiados. O envelope local
+que permite repetir uma gravação ambígua contém apenas a intenção final
+necessária; conversa, configuração e credencial do provider permanecem fora.
+
 O APK de release ainda não possui paridade comprovada para esse relay HTTP. A
 versão Android 0.0.24 encaminha a requisição por uma ponte nativa, fixa em
 `http://127.0.0.1:4183/v1/chat/completions`, em vez de iniciar HTTPS para HTTP no

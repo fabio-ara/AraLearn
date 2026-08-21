@@ -31,6 +31,10 @@ const contextualCompositionMigrationUrl = new URL(
   "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
   import.meta.url
 );
+const personalCourseCopyMigrationUrl = new URL(
+  "../../supabase/migrations/20260821145358_personal_course_copy_edit.sql",
+  import.meta.url
+);
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const LEARNER = "00000000-0000-4000-8000-000000000002";
@@ -441,6 +445,28 @@ async function applyContextualCompositionMigration(database) {
     $manifest$;
   `);
   await database.exec(await fs.readFile(contextualCompositionMigrationUrl, "utf8"));
+}
+
+async function applyPersonalCourseCopyMigration(database) {
+  await database.exec(`
+    do $normalize_receipt_constraint$
+    declare
+      v_name text;
+    begin
+      select constraint_value.conname into v_name
+      from pg_constraint constraint_value
+      where constraint_value.conrelid='private.course_change_receipts'::regclass
+        and constraint_value.conname like 'course_change_receipts_operation_v%';
+      if v_name <> 'course_change_receipts_operation_v7' then
+        execute format(
+          'alter table private.course_change_receipts rename constraint %I to course_change_receipts_operation_v7',
+          v_name
+        );
+      end if;
+    end;
+    $normalize_receipt_constraint$;
+  `);
+  await database.exec(await fs.readFile(personalCourseCopyMigrationUrl, "utf8"));
 }
 
 function materializationApplication({
@@ -5699,5 +5725,382 @@ test("#123 cerca citações densas no último payload legível sem revisão parc
   assert.deepEqual(await scalar(database, `
     select public.get_course_study_citations_v1($1,6,'card-a') as value
   `, [COURSE]), hiddenSeventhPayload);
+  await database.close();
+});
+
+test("#149 cria uma cópia pessoal mínima, idempotente e independente da origem", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await applyContextualCompositionMigration(database);
+  await applyPersonalCourseCopyMigration(database);
+  await database.query(`
+    insert into public.course_access(course_id,user_id,granted_by)
+    values($1,$2,$3)
+  `, [COURSE, LEARNER, OWNER]);
+  await database.query(`
+    update private.course_instructional_plans
+    set audience='Audiência privada do autor'
+    where course_id=$1
+  `, [COURSE]);
+  const sourcePlanId = await scalar(database, `
+    select id as value from private.course_instructional_plans
+    where course_id=$1
+  `, [COURSE]);
+  await database.query(`
+    insert into private.course_instructional_plan_items(
+      id,course_id,instructional_plan_id,item_kind,position,statement
+    ) values($1,$2,$3,'intended_learning_outcome',0,'Planejamento privado')
+  `, [PLAN_ITEM, COURSE, sourcePlanId]);
+  await actor(database, LEARNER, "service_role");
+
+  const sourceRevision = await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]);
+  const sourceUnit = await scalar(database, `
+    select jsonb_build_object(
+      'entityType',entity_type,'entityId',entity_id,
+      'parentType',parent_type,'parentId',parent_id,
+      'position',position,'content',content,'version',version
+    ) as value
+    from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  const noOpUpsert = {
+    entityType: sourceUnit.entityType,
+    entityId: sourceUnit.entityId,
+    parentType: sourceUnit.parentType,
+    parentId: sourceUnit.parentId,
+    position: sourceUnit.position,
+    content: sourceUnit.content
+  };
+  const courseCountBefore = await scalar(database, `
+    select count(*)::integer as value from public.courses
+  `);
+  const noOp = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'manual','personal-copy-noop-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, noOpUpsert]);
+  assert.deepEqual(noOp, {
+    contract: "aralearn.personal-course-copy-edit.v1",
+    operation: "commit_personal_course_copy_edit",
+    sourceCourseId: COURSE,
+    sourceCourseRevision: sourceRevision,
+    targetCourseId: null,
+    targetCourseRevision: null,
+    studyUnitId: "card-a",
+    studyUnitVersion: sourceUnit.version,
+    applicationOrigin: "manual",
+    channel: "application",
+    createdCopy: false,
+    changed: false,
+    idempotent: false,
+    updatedAt: noOp.updatedAt
+  });
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from public.courses
+  `), courseCountBefore);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_personal_copies
+  `), 0);
+  const noOpReplay = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'manual','personal-copy-noop-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, noOpUpsert]);
+  assert.equal(noOpReplay.idempotent, true);
+  assert.equal(noOpReplay.targetCourseId, null);
+
+  await assert.rejects(() => scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'manual','personal-copy-stale-course-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision + 1, sourceUnit.version, noOpUpsert]),
+  (error) => error.code === "40001" && /Curso mudou/iu.test(error.message));
+  await assert.rejects(() => scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'manual','personal-copy-stale-unit-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version + 1, noOpUpsert]),
+  (error) => error.code === "40001" && /Unidade mudou/iu.test(error.message));
+  await assert.rejects(() => scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'manual','personal-copy-owner-01'
+    ) as value
+  `, [OWNER, COURSE, sourceRevision, sourceUnit.version, noOpUpsert]),
+  (error) => error.code === "42501" && /Curso original/iu.test(error.message));
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from public.courses
+  `), courseCountBefore);
+
+  const changedUpsert = {
+    ...noOpUpsert,
+    content: { ...sourceUnit.content, title: "Unidade adaptada pelo estudante" }
+  };
+  const sourceSnapshot = await scalar(database, `
+    select jsonb_build_object(
+      'course',to_jsonb(course),'entities',(
+        select jsonb_agg(to_jsonb(entity) order by entity.entity_type,entity.entity_id)
+        from private.course_entities entity where entity.course_id=course.id
+      )
+    ) as value from public.courses course where course.id=$1
+  `, [COURSE]);
+  const created = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'provider_assistance','personal-copy-create-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, changedUpsert]);
+  assert.deepEqual(Object.keys(created).sort(), [
+    "applicationOrigin", "changed", "channel", "contract", "createdCopy",
+    "idempotent", "operation", "sourceCourseId", "sourceCourseRevision",
+    "studyUnitId", "studyUnitVersion", "targetCourseId",
+    "targetCourseRevision", "updatedAt"
+  ]);
+  assert.equal(created.contract, "aralearn.personal-course-copy-edit.v1");
+  assert.equal(created.operation, "commit_personal_course_copy_edit");
+  assert.equal(created.sourceCourseId, COURSE);
+  assert.equal(created.sourceCourseRevision, sourceRevision);
+  assert.equal(created.targetCourseRevision, 2);
+  assert.equal(created.studyUnitVersion, 2);
+  assert.equal(created.applicationOrigin, "provider_assistance");
+  assert.equal(created.channel, "application");
+  assert.equal(created.createdCopy, true);
+  assert.equal(created.changed, true);
+  assert.equal(created.idempotent, false);
+  const targetCourseId = created.targetCourseId;
+
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'course',to_jsonb(course),'entities',(
+        select jsonb_agg(to_jsonb(entity) order by entity.entity_type,entity.entity_id)
+        from private.course_entities entity where entity.course_id=course.id
+      )
+    ) as value from public.courses course where course.id=$1
+  `, [COURSE]), sourceSnapshot);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'ownerId',course.owner_id,'title',course.title,'goal',course.goal,
+      'revision',course.revision,
+      'planAudience',plan.audience,'planScope',plan.instructional_scope,
+      'planMin',plan.preferred_authoring_part_min,
+      'planMax',plan.preferred_authoring_part_max,
+      'planOrigin',plan.part_count_origin,'planVersion',plan.version
+    ) as value
+    from public.courses course
+    join private.course_instructional_plans plan on plan.course_id=course.id
+    where course.id=$1
+  `, [targetCourseId]), {
+    ownerId: LEARNER,
+    title: sourceSnapshot.course.title,
+    goal: sourceSnapshot.course.goal,
+    revision: 2,
+    planAudience: "",
+    planScope: "",
+    planMin: 7,
+    planMax: 12,
+    planOrigin: "automatic",
+    planVersion: 1
+  });
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'total',count(*),
+      'versionOne',count(*) filter(where version=1),
+      'versionTwo',count(*) filter(where version=2),
+      'editedTitle',max(content->>'title') filter(
+        where entity_type='study_unit' and entity_id='card-a'
+      )
+    ) as value
+    from private.course_entities where course_id=$1
+  `, [targetCourseId]), {
+    total: sourceSnapshot.entities.length,
+    versionOne: sourceSnapshot.entities.length - 1,
+    versionTwo: 1,
+    editedTitle: "Unidade adaptada pelo estudante"
+  });
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'planItems',(select count(*) from private.course_instructional_plan_items where course_id=$1),
+      'parts',(select count(*) from private.course_authoring_parts where course_id=$1),
+      'sourceRevisions',(select count(*) from private.course_source_revisions where course_id=$1),
+      'sourceLinks',(select count(*) from private.course_source_attribution_sources where course_id=$1),
+      'anchorLinks',(select count(*) from private.course_source_attribution_anchors where course_id=$1),
+      'access',(select count(*) from public.course_access where course_id=$1),
+      'personalState',(select count(*) from public.course_personal_states where course_id=$1)
+    ) as value
+  `, [targetCourseId]), {
+    planItems: 0,
+    parts: 0,
+    sourceRevisions: 0,
+    sourceLinks: 0,
+    anchorLinks: 0,
+    access: 0,
+    personalState: 0
+  });
+  const targetEvents = await scalar(database, `
+    select jsonb_agg(jsonb_build_object(
+      'revision',revision,'operation',operation,'summary',summary
+    ) order by revision) as value
+    from private.course_events where course_id=$1
+  `, [targetCourseId]);
+  assert.deepEqual(targetEvents.map((event) => ({
+    revision: event.revision,
+    operation: event.operation,
+    changeKind: event.summary.changeKind,
+    applicationOrigin: event.summary.applicationOrigin ?? null
+  })), [
+    {
+      revision: 1,
+      operation: "create_course",
+      changeKind: "personal_course_copy_initialized",
+      applicationOrigin: "provider_assistance"
+    },
+    {
+      revision: 2,
+      operation: "replace_course_composition",
+      changeKind: "course_composition_replaced",
+      applicationOrigin: "provider_assistance"
+    }
+  ]);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'mappingCount',(select count(*) from private.course_personal_copies where target_course_id=$1),
+      'outerReceipts',(select count(*) from private.course_change_receipts
+        where actor_id=$2 and request_id='personal-copy-create-01'
+          and operation='commit_personal_course_copy_edit'),
+      'innerReceipts',(select count(*) from private.course_change_receipts
+        where actor_id=$2 and request_id='personal-copy-create-01'
+          and operation='commit_course_composition')
+    ) as value
+  `, [targetCourseId, LEARNER]), {
+    mappingCount: 1,
+    outerReceipts: 1,
+    innerReceipts: 0
+  });
+
+  const sourceProjection = await scalar(database, `
+    select private.get_course_for_actor_v1($1,$2,false) as value
+  `, [LEARNER, COURSE]);
+  assert.equal(sourceProjection.canEdit, false);
+  assert.equal(sourceProjection.canDerive, false);
+  assert.equal(sourceProjection.isPersonalCopy, false);
+  assert.equal(sourceProjection.personalCopyCourseId, targetCourseId);
+  assert.equal(sourceProjection.sourceCourseId, null);
+  const targetProjection = await scalar(database, `
+    select private.get_course_for_actor_v1($1,$2,false) as value
+  `, [LEARNER, targetCourseId]);
+  assert.equal(targetProjection.canEdit, true);
+  assert.equal(targetProjection.canDerive, false);
+  assert.equal(targetProjection.isPersonalCopy, true);
+  assert.equal(targetProjection.personalCopyCourseId, null);
+  assert.equal(targetProjection.sourceCourseId, COURSE);
+  assert.equal(targetProjection.sourceCourseRevision, sourceRevision);
+  const listed = await scalar(database, `
+    select private.list_courses_for_actor_v1($1,null,24,null,null) as value
+  `, [LEARNER]);
+  assert.equal(listed.items.find(({ courseId }) => courseId === COURSE)
+    .personalCopyCourseId, targetCourseId);
+  assert.equal(listed.items.find(({ courseId }) => courseId === targetCourseId)
+    .isPersonalCopy, true);
+  const owned = await scalar(database, `
+    select public.list_owned_courses_for_actor_v1($1,null,24,null,null) as value
+  `, [LEARNER]);
+  assert.equal(owned.items.length, 1);
+  assert.equal(owned.items[0].courseId, targetCourseId);
+  assert.equal(owned.items[0].isPersonalCopy, true);
+  assert.equal(owned.items[0].sourceCourseId, COURSE);
+
+  const secondRequestReplay = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'provider_assistance','personal-copy-create-02'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, changedUpsert]);
+  assert.equal(secondRequestReplay.idempotent, true);
+  assert.equal(secondRequestReplay.targetCourseId, targetCourseId);
+  const conflictingUpsert = {
+    ...changedUpsert,
+    content: { ...changedUpsert.content, title: "Outra derivação concorrente" }
+  };
+  await assert.rejects(() => scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'manual','personal-copy-conflict-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, conflictingUpsert]),
+  (error) => error.code === "P1490" && error.detail === targetCourseId &&
+    !error.message.includes(targetCourseId));
+
+  await database.query(`
+    update private.course_change_receipts
+    set created_at=statement_timestamp()-interval '13 days',
+      expires_at=statement_timestamp()-interval '1 second'
+    where actor_id=$1 and request_id='personal-copy-create-01'
+  `, [LEARNER]);
+  const expiredReceiptReplay = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'provider_assistance','personal-copy-create-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, changedUpsert]);
+  assert.equal(expiredReceiptReplay.idempotent, true);
+  assert.equal(expiredReceiptReplay.targetCourseId, targetCourseId);
+
+  await database.query(`
+    delete from public.course_access where course_id=$1 and user_id=$2
+  `, [COURSE, LEARNER]);
+  await database.query(`
+    update private.course_change_receipts
+    set created_at=statement_timestamp()-interval '13 days',
+      expires_at=statement_timestamp()-interval '1 second'
+    where actor_id=$1 and request_id='personal-copy-create-01'
+  `, [LEARNER]);
+  const revokedReplay = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'provider_assistance','personal-copy-create-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, changedUpsert]);
+  assert.equal(revokedReplay.targetCourseId, targetCourseId);
+  assert.equal(revokedReplay.idempotent, true);
+
+  await database.query("delete from public.courses where id=$1", [COURSE]);
+  await database.query(`
+    update private.course_change_receipts
+    set created_at=statement_timestamp()-interval '13 days',
+      expires_at=statement_timestamp()-interval '1 second'
+    where actor_id=$1 and request_id='personal-copy-create-01'
+  `, [LEARNER]);
+  const deletedSourceReplay = await scalar(database, `
+    select public.commit_personal_course_copy_edit_for_actor_v1(
+      $1,$2,$3,$4,$5::jsonb,'provider_assistance','personal-copy-create-01'
+    ) as value
+  `, [LEARNER, COURSE, sourceRevision, sourceUnit.version, changedUpsert]);
+  assert.equal(deletedSourceReplay.targetCourseId, targetCourseId);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from public.courses where id=$1
+  `, [COURSE]), 0);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from public.courses where id=$1
+  `, [targetCourseId]), 1);
+  assert.equal(await scalar(database, `
+    select source_course_ref=$1 as value from private.course_personal_copies
+    where target_course_id=$2
+  `, [COURSE, targetCourseId]), true);
+
+  await database.query("delete from public.courses where id=$1", [targetCourseId]);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_personal_copies
+  `), 0);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_change_receipts
+    where actor_id=$1 and operation='commit_personal_course_copy_edit'
+  `, [LEARNER]), 0);
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260821145358");
   await database.close();
 });

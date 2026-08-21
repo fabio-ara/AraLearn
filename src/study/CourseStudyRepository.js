@@ -5,7 +5,12 @@ import {
 import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
 import { CourseAnnotationRepository } from "../persistence/CourseAnnotationRepository.js";
 import { normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
-import { findCourse } from "./CourseStudyNavigation.js";
+import { createUuid } from "../domain/identifiers.js";
+import {
+  exactStudyUnitSelection,
+  findCourse,
+  selectionForCourse
+} from "./CourseStudyNavigation.js";
 
 const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
 const MAX_LIST_PAGES = 100;
@@ -20,6 +25,29 @@ const STUDY_NAVIGATION_VIEWS = new Set(["course", "module", "lesson", "microsequ
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
+}
+
+function selectionForStudyUnitIdentity(project, courseId, studyUnitId) {
+  const course = findCourse(project, courseId);
+  for (const moduleValue of course?.modules || []) {
+    for (const lesson of moduleValue.lessons || []) {
+      for (const microsequence of lesson.microsequences || []) {
+        const studyUnitIndex = (microsequence.studyUnits || [])
+          .findIndex(({ id }) => id === studyUnitId);
+        if (studyUnitIndex >= 0) {
+          return {
+            courseId,
+            moduleId: moduleValue.id,
+            lessonId: lesson.id,
+            microsequenceId: microsequence.id,
+            studyUnitId,
+            studyUnitIndex
+          };
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function plainObject(value) {
@@ -217,6 +245,8 @@ export class CourseStudyRepository {
     this.api = api;
     this.cache = cache;
     this.clock = clock;
+    this.windowValue = windowValue;
+    this.navigatorValue = windowValue?.navigator ?? null;
     this.BroadcastChannelValue = windowValue?.BroadcastChannel;
     this.navigationScope = String(cache.name || "course-cache");
     this.project = { contract: COURSE_DOCUMENT_CONTRACT, courses: [] };
@@ -552,6 +582,9 @@ export class CourseStudyRepository {
           resultRevision !== descriptor.revision
       };
       this.loadedCourseById.set(courseId, loaded);
+      if (!loaded.readOnly && result.course?.canEdit === true) {
+        descriptor.canEdit = true;
+      }
     }
     await this.refreshCourseOfflineAvailability(courseId);
     let personal = this.personalByCourseId.get(courseId);
@@ -581,7 +614,9 @@ export class CourseStudyRepository {
         courseRevision: loaded.revision,
         api: this.api,
         cache: this.cache,
-        clock: this.clock
+        clock: this.clock,
+        windowValue: this.windowValue,
+        navigatorValue: this.navigatorValue
       });
       try {
         await annotations.initialize();
@@ -655,6 +690,13 @@ export class CourseStudyRepository {
       revision: item.revision,
       ownership: item.ownership,
       canEdit: item.ownership === "owned" && item.canEdit === true,
+      canDerive: item.canDerive === true,
+      isPersonalCopy: item.isPersonalCopy === true,
+      personalCopyCourseId: item.personalCopyCourseId ?? null,
+      ...(item.sourceCourseId == null ? {} : {
+        sourceCourseId: item.sourceCourseId,
+        sourceCourseRevision: item.sourceCourseRevision
+      }),
       moduleCount: Number(item.moduleCount || 0),
       lessonCount: Number(item.lessonCount || 0),
       microsequenceCount: Number(item.microsequenceCount || 0),
@@ -791,6 +833,207 @@ export class CourseStudyRepository {
       studyUnitId,
       studyUnitVersion: row.version
     });
+  }
+
+  loadPendingPersonalCopyEdit(sourceCourseId = null) {
+    if (typeof this.bridge.loadPendingPersonalCopyEdit !== "function") {
+      return Promise.resolve(null);
+    }
+    return this.bridge.loadPendingPersonalCopyEdit(sourceCourseId);
+  }
+
+  clearPendingPersonalCopyEdit(sourceCourseId = null, expectedRequestId = null) {
+    if (typeof this.bridge.clearPendingPersonalCopyEdit !== "function") {
+      return Promise.resolve(false);
+    }
+    return this.bridge.clearPendingPersonalCopyEdit(
+      sourceCourseId,
+      expectedRequestId
+    );
+  }
+
+  async transitionToPersonalCopy(receipt, sourceSelection = receipt?.sourceSelection) {
+    if (!plainObject(receipt) || !plainObject(sourceSelection)) {
+      throw new TypeError("Transição para a cópia pessoal inválida.");
+    }
+    if (receipt.changed !== true) {
+      return {
+        project: this.loadProject(),
+        selection: clone(sourceSelection)
+      };
+    }
+    const sourceCourseId = String(receipt.sourceCourseId || "").trim().toLowerCase();
+    const targetCourseId = String(receipt.courseId || "").trim().toLowerCase();
+    const sourceDescriptor = this.courseList.find((item) =>
+      item.courseId === sourceCourseId);
+    const existing = this.courseList.find((item) => item.courseId === targetCourseId);
+    const receivedCourse = receipt.document?.courses?.[0];
+    if (!COURSE_ID_PATTERN.test(sourceCourseId) || !COURSE_ID_PATTERN.test(targetCourseId) ||
+        targetCourseId === sourceCourseId ||
+        !sourceDescriptor && !existing && receivedCourse?.id !== targetCourseId ||
+        !Number.isSafeInteger(receipt.courseRevision) || receipt.courseRevision < 1 ||
+        String(sourceSelection.courseId || "").trim().toLowerCase() !== sourceCourseId ||
+        String(sourceSelection.studyUnitId || "").trim() !== receipt.studyUnitId) {
+      throw new TypeError("Transição para a cópia pessoal inválida.");
+    }
+    if (sourceDescriptor) {
+      sourceDescriptor.personalCopyCourseId = targetCourseId;
+      sourceDescriptor.canDerive = false;
+    }
+    const targetDescriptor = {
+      ...clone(sourceDescriptor || {}),
+      ...clone(existing || {}),
+      courseId: targetCourseId,
+      title: existing?.title || receivedCourse?.title || sourceDescriptor?.title || "Curso",
+      goal: existing?.goal ?? receivedCourse?.goal ?? sourceDescriptor?.goal ?? null,
+      revision: receipt.courseRevision,
+      ownership: "owned",
+      canEdit: receipt.readOnly !== true,
+      canDerive: false,
+      isPersonalCopy: true,
+      personalCopyCourseId: null,
+      sourceCourseId,
+      sourceCourseRevision: receipt.sourceCourseRevision,
+      completedStudyUnitCount: Number(existing?.completedStudyUnitCount || 0),
+      updatedAt: receipt.updatedAt
+    };
+    if (existing) Object.assign(existing, targetDescriptor);
+    else this.courseList.unshift(targetDescriptor);
+
+    const hasPromotedComposition = receivedCourse?.id === targetCourseId &&
+      Array.isArray(receipt.rows);
+    if (hasPromotedComposition) {
+      const loaded = {
+        revision: receipt.courseRevision,
+        course: clone(receivedCourse),
+        rows: clone(receipt.rows),
+        offline: receipt.offline === true,
+        stale: receipt.stale === true || receipt.reconciled === false,
+        readOnly: receipt.readOnly === true || receipt.reconciled === false
+      };
+      this.loadedCourseById.set(targetCourseId, loaded);
+      let personalStateConfirmed = false;
+      if (!this.personalByCourseId.has(targetCourseId)) {
+        const personal = new CoursePersonalStateRepository({
+          courseId: targetCourseId,
+          api: this.api,
+          cache: this.cache,
+          course: loaded.course,
+          clock: this.clock
+        });
+        try {
+          await personal.initialize({ refresh: true });
+          this.personalByCourseId.set(targetCourseId, personal);
+          personalStateConfirmed = true;
+        } catch (error) {
+          if (networkFailure(error)) this.personalByCourseId.set(targetCourseId, personal);
+          // O snapshot curricular confirmado continua utilizável; o estado pessoal retoma depois.
+        }
+      } else {
+        try {
+          await this.personalByCourseId.get(targetCourseId).refresh();
+          personalStateConfirmed = true;
+        } catch (error) {
+          if (!networkFailure(error)) throw error;
+        }
+      }
+      const targetPersonal = this.personalByCourseId.get(targetCourseId);
+      if (targetPersonal && personalStateConfirmed) {
+        const completedStudyUnitCount = Object.values(targetPersonal.loadProgress().lessons)
+          .reduce((total, entry) => total + entry.completedStudyUnitIds.length, 0);
+        targetDescriptor.completedStudyUnitCount = completedStudyUnitCount;
+        const targetSummary = this.courseList.find(({ courseId }) =>
+          courseId === targetCourseId);
+        if (targetSummary) targetSummary.completedStudyUnitCount = completedStudyUnitCount;
+      }
+      if (!this.annotationsByCourseId.has(targetCourseId) &&
+          typeof this.api.getMyCourseAnchoredAnnotations === "function" &&
+          typeof this.api.executeMyCourseAnchoredAnnotationCommand === "function") {
+        const annotations = new CourseAnnotationRepository({
+          courseId: targetCourseId,
+          courseRevision: loaded.revision,
+          api: this.api,
+          cache: this.cache,
+          clock: this.clock,
+          windowValue: this.windowValue,
+          navigatorValue: this.navigatorValue
+        });
+        try {
+          await annotations.initialize();
+          this.annotationsByCourseId.set(targetCourseId, annotations);
+        } catch (error) {
+          if (networkFailure(error)) {
+            this.annotationsByCourseId.set(targetCourseId, annotations);
+          } else {
+            annotations.close();
+          }
+        }
+      }
+    }
+    this.#rebuildProject();
+    if (!hasPromotedComposition) await this.loadCourse(targetCourseId);
+    const path = [
+      targetCourseId,
+      sourceSelection.moduleId,
+      sourceSelection.lessonId,
+      sourceSelection.microsequenceId,
+      sourceSelection.studyUnitId
+    ];
+    const selection = exactStudyUnitSelection(this.project, path) ||
+      selectionForStudyUnitIdentity(this.project, targetCourseId, receipt.studyUnitId) ||
+      selectionForCourse(this.project, targetCourseId);
+    if (!selection) {
+      throw new TypeError("A cópia pessoal confirmada não está mais acessível.");
+    }
+    return {
+      project: this.loadProject(),
+      selection
+    };
+  }
+
+  async commitPersonalCourseCopyEdit(value = {}) {
+    if (typeof this.bridge.commitPersonalCourseCopyEdit !== "function") {
+      throw new TypeError("A edição em cópia pessoal não está disponível.");
+    }
+    if (!plainObject(value) || !plainObject(value.sourceSelection)) {
+      throw new TypeError("Edição em cópia pessoal inválida.");
+    }
+    const sourceSelection = {
+      courseId: value.sourceSelection.courseId,
+      moduleId: value.sourceSelection.moduleId,
+      lessonId: value.sourceSelection.lessonId,
+      microsequenceId: value.sourceSelection.microsequenceId,
+      studyUnitId: value.sourceSelection.studyUnitId
+    };
+    const receipt = await this.bridge.commitPersonalCourseCopyEdit({
+      requestId: value.requestId ?? createUuid(),
+      sourceCourseId: value.sourceCourseId,
+      expectedSourceCourseRevision: value.expectedSourceCourseRevision,
+      expectedStudyUnitVersion: value.expectedStudyUnitVersion,
+      didacticMicrosequenceId: value.didacticMicrosequenceId,
+      studyUnit: value.studyUnit,
+      origin: value.applicationOrigin,
+      targetId: value.targetId,
+      sourceSelection,
+      ...(value.replacesPendingRequestId
+        ? { replacesPendingRequestId: value.replacesPendingRequestId }
+        : {})
+    });
+    const transitioned = await this.transitionToPersonalCopy(receipt, sourceSelection);
+    return { ...receipt, ...transitioned };
+  }
+
+  async retryPendingPersonalCopyEdit(sourceCourseId = null) {
+    if (typeof this.bridge.retryPendingPersonalCopyEdit !== "function") {
+      throw new TypeError("A retomada da cópia pessoal não está disponível.");
+    }
+    const receipt = await this.bridge.retryPendingPersonalCopyEdit(sourceCourseId);
+    if (!receipt) return null;
+    const transitioned = await this.transitionToPersonalCopy(
+      receipt,
+      receipt.sourceSelection
+    );
+    return { ...receipt, ...transitioned };
   }
 
   loadRuntimeStatus(courseIdentity = "") {

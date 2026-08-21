@@ -9,8 +9,10 @@ examinar fatos da produção e conceder acesso.
 
 Na tela inicial, use **Autoria**. A lista **Meus cursos** apresenta somente os
 Cursos da conta autenticada. Um Curso compartilhado aparece em Estudo, mas não
-nessa lista, pois o acesso compartilhado permite praticar e conserva a edição
-com o proprietário.
+nessa lista. A candidata 0.0.26, validada localmente e ainda não publicada,
+mantém o original sob controle do proprietário e permite que a pessoa favorecida
+crie, na primeira gravação contextual, um Curso pessoal privado. Essa nova cópia
+passa a aparecer em Autoria porque pertence à pessoa que a criou.
 
 A lista é paginada e pode ser pesquisada por título, objetivo e orientações
 privadas. Cursos já conhecidos pelo dispositivo podem continuar visíveis
@@ -313,12 +315,16 @@ na revogação e nas demais alterações sensíveis da Autoria.
 
 O serviço usa o e-mail para localizar a conta, sem pesquisa parcial ou sugestão
 de diretório. A pessoa passa a encontrar o Curso em Estudo e conserva estado
-pessoal próprio. A concessão não transfere propriedade, não permite editar e
-não duplica o Curso.
+pessoal próprio. A concessão não transfere propriedade nem autoriza alterar o
+Curso original. Na entrega #149, a abertura e a prática também não duplicam o
+Curso; somente a primeira gravação contextual com mudança material cria uma
+cópia pessoal privada da pessoa favorecida.
 
 Para revogar, use a ação ao lado da pessoa e confirme. O servidor bloqueia novas
 leituras e alterações remotas. Uma cópia já baixada pode permanecer fisicamente
-no dispositivo até que ele volte a validar o acesso com conexão.
+no dispositivo até que ele volte a validar o acesso com conexão. Uma cópia
+pessoal já confirmada é outro Curso, pertencente à pessoa que a criou; a
+revogação do acesso ao original não a apaga.
 
 ## Configurar nome e foto
 

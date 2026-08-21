@@ -1807,6 +1807,17 @@ export const COURSE_MCP_TOOLS = Object.freeze([
 
 const BY_NAME = new Map(COURSE_MCP_TOOLS.map((definition) => [definition.name, definition]));
 const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso", "gerirPessoas"]);
+export const COURSE_APPLICATION_ONLY_TOOLS = Object.freeze([
+  Object.freeze({ name: "criarCopiaPessoalDoCurso" })
+]);
+const APPLICATION_BY_NAME = new Map([
+  ...BY_NAME,
+  ...COURSE_APPLICATION_ONLY_TOOLS.map((definition) => [definition.name, definition])
+]);
+const APPLICATION_WRITE_TOOLS = new Set([
+  ...WRITE_TOOLS,
+  ...COURSE_APPLICATION_ONLY_TOOLS.map(({ name }) => name)
+]);
 
 function fail(code, message, details = null) {
   throw new AuthoringApiError(422, code, message, details);
@@ -2502,6 +2513,48 @@ function mapCreate(raw) {
   });
 }
 
+function mapPersonalCourseCopy(raw) {
+  exactFields(raw, new Set([
+    "requestId", "sourceCourseId", "expectedSourceCourseRevision",
+    "expectedStudyUnitVersion", "didacticMicrosequenceId", "studyUnit",
+    "applicationOrigin"
+  ]));
+  const requestId = requiredRequestId(raw.requestId);
+  const sourceCourseId = requiredUuid(raw.sourceCourseId, "sourceCourseId");
+  const applicationOrigin = raw.applicationOrigin;
+  if (!new Set(["manual", "provider_assistance"]).has(applicationOrigin)) {
+    fail(
+      "invalid_tool_argument",
+      "applicationOrigin é inválida.",
+      { field: "applicationOrigin" }
+    );
+  }
+  return route(
+    "POST",
+    `/v1/courses/${sourceCourseId}/personal-copy/composition`,
+    requestId,
+    {
+      requestId,
+      sourceCourseId,
+      expectedSourceCourseRevision: positiveInteger(
+        raw.expectedSourceCourseRevision,
+        "expectedSourceCourseRevision"
+      ),
+      expectedStudyUnitVersion: positiveInteger(
+        raw.expectedStudyUnitVersion,
+        "expectedStudyUnitVersion"
+      ),
+      didacticMicrosequenceId: requiredOpaqueText(
+        raw.didacticMicrosequenceId,
+        "didacticMicrosequenceId",
+        240
+      ),
+      studyUnit: boundedJsonObject(raw.studyUnit, "studyUnit", 480 * 1024),
+      applicationOrigin
+    }
+  );
+}
+
 function mapChange(raw, {
   requireAnnotationConfirmation = true,
   requireAuditConfirmation = true,
@@ -2962,7 +3015,7 @@ export function authoringMcpToolDefinition(name) {
 }
 
 export function authoringApplicationToolDefinition(name) {
-  return authoringMcpToolDefinition(name);
+  return APPLICATION_BY_NAME.get(String(name || "")) || null;
 }
 
 export function authoringMcpToolsForPrincipal(principal) {
@@ -2990,7 +3043,10 @@ export function authoringMcpToolIsAllowed(name, principal) {
 }
 
 export function authoringApplicationToolIsAllowed(name, principal) {
-  return authoringMcpToolIsAllowed(name, principal);
+  if (!principal?.actorId || !APPLICATION_BY_NAME.has(name)) return false;
+  if (!APPLICATION_WRITE_TOOLS.has(name)) return true;
+  const scopes = new Set(Array.isArray(principal.scopes) ? principal.scopes : []);
+  return scopes.has("authoring:write");
 }
 
 export function mapAuthoringMcpToolCall(name, rawArguments) {
@@ -3006,6 +3062,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
 
 export function mapAuthoringApplicationToolCall(name, rawArguments) {
   const raw = object(rawArguments ?? {}, "arguments");
+  if (name === "criarCopiaPessoalDoCurso") return mapPersonalCourseCopy(raw);
   if (name === "alterarCurso") {
     return mapChange(raw, {
       requireAnnotationConfirmation: false,
@@ -3016,8 +3073,8 @@ export function mapAuthoringApplicationToolCall(name, rawArguments) {
   return mapAuthoringMcpToolCall(name, raw);
 }
 
-function validateOutput(name, envelope) {
-  if (!BY_NAME.has(name)) throw new TypeError("Ferramenta de autoria inexistente.");
+function validateOutput(name, envelope, definitions = BY_NAME) {
+  if (!definitions.has(name)) throw new TypeError("Ferramenta de autoria inexistente.");
   if (!envelope || typeof envelope !== "object" || Array.isArray(envelope) ||
       envelope.ok !== true || !("data" in envelope)) {
     throw new TypeError("A resposta da ferramenta não corresponde ao contrato.");
@@ -3033,5 +3090,5 @@ export function validateAuthoringMcpToolOutput(name, value) {
 }
 
 export function validateAuthoringApplicationToolOutput(name, value) {
-  return validateOutput(name, value);
+  return validateOutput(name, value, APPLICATION_BY_NAME);
 }

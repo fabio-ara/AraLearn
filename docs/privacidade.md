@@ -20,7 +20,15 @@ interno, nome de apresentação e foto de perfil.
 conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
 **Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. A pessoa
-que recebeu acesso continua fora da Autoria desse Curso.
+que recebeu acesso continua fora da Autoria desse Curso e não pode alterar o
+original. Na candidata 0.0.26, validada localmente e ainda não publicada, uma
+mudança contextual confirmada pode criar outro Curso privado, pertencente a essa
+pessoa.
+
+**Cópia pessoal de Curso** é esse novo Curso, criado somente na primeira
+gravação material. Ele recebe a composição didática necessária para continuar na
+mesma Unidade, mas não recebe planejamento, Fontes, PDFs, acessos, progresso ou
+Observações do original.
 
 **Estado pessoal de Estudo** reúne posição de retomada, Unidades concluídas e
 marcas **Rever**. Ele pertence à pessoa e ao Curso e fica separado do conteúdo.
@@ -32,6 +40,9 @@ necessária à triagem.
 **Réplica local** é a cópia mantida no dispositivo para abertura rápida e uso
 sem conexão. Uma alteração ainda não sincronizada pode existir somente nessa
 cópia, que não substitui uma cópia de segurança.
+
+A cópia pessoal é uma autoridade persistida no servidor; a réplica local é
+apenas estado do dispositivo. Os termos não são intercambiáveis.
 
 ## Dados e finalidades
 
@@ -78,14 +89,23 @@ chave nova dentro da pasta da própria conta e não cria endereço público.
 Todo Curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
 e composição, usar as ferramentas autorais, consultar Pesquisa e Variantes e
 gerir acessos. Uma pessoa com acesso recebe somente a projeção de Estudo, que
-exclui orientações privadas e estado autoral.
+exclui orientações privadas e estado autoral. Na operação candidata da #149,
+essa projeção permite enviar uma única Unidade editada ao servidor para criar um
+Curso pessoal privado; ela não concede escrita sobre o original.
+
+A relação entre pessoa, origem e cópia pessoal permanece numa tabela privada do
+PostgreSQL, sem acesso direto pelo cliente. Ela é dado operacional relacionado à
+conta. A interface usa rótulos humanos e não mostra identificadores, revisões ou
+detalhes da relação. A cópia não recebe a lista de pessoas favorecidas, o estado
+pessoal, as Observações, as Fontes ou os PDFs da origem.
 
 Conceder ou revogar acesso exige confirmação humana. A revogação encerra novas
 leituras e alterações no servidor, mas preserva o estado pessoal remoto. Na
 próxima validação conectada, o dispositivo dessa pessoa remove cabeçalho,
 composição, listas, Fontes projetadas e Anotações locais daquele Curso. Se o
 acesso for concedido novamente, o estado pessoal preservado pode voltar a ser
-usado.
+usado. Se uma cópia pessoal já foi confirmada, ela continua pertencendo à pessoa
+que a criou e não é apagada pela revogação do acesso ao original.
 
 Dados já entregues a um dispositivo podem permanecer fisicamente nele enquanto
 estiver desconectado. A revogação técnica não recolhe retroativamente esses
@@ -247,6 +267,12 @@ O navegador e o aplicativo Android mantêm sessão autenticada, listas resumidas
 composições já abertas, estado pessoal, alterações pendentes, Anotações e
 arquivos estáticos da interface.
 
+Durante a primeira gravação de uma cópia pessoal, o IndexedDB pode conservar o
+Curso e a seleção de origem, as versões esperadas, a Unidade final, a origem da
+edição e um identificador de pedido. Esse recorte existe para repetição
+idempotente após falha ou reinício e é removido na confirmação ou no descarte.
+Ele não inclui conversa, endpoint, modelo ou credencial do provider.
+
 Rodadas, achados, correções, comparações e fatos de Pesquisa permanecem no
 servidor. Limpar os dados do aplicativo pode apagar mudanças ainda não
 sincronizadas. Sair encerra a sessão, mas não equivale a excluir todos os dados
@@ -285,7 +311,8 @@ repetir a solicitação.
 Depois, a conta de autenticação, o perfil, os Cursos próprios, suas composições,
 acessos e estados dependentes são removidos. Contribuições em Cursos alheios são
 retiradas e redigidas imediatamente e seguem a janela de limpeza lógica de 14
-dias. A réplica local é limpa depois da resposta de sucesso.
+dias. Uma cópia pessoal é Curso próprio e segue essa mesma exclusão. A réplica
+local é limpa depois da resposta de sucesso.
 
 A operação não oferece restauração automática. Registros técnicos, cópias de
 segurança e retenções do provedor podem seguir prazos próprios, que a instituição

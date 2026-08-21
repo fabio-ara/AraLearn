@@ -1273,6 +1273,9 @@ input:-webkit-autofill:focus {
 }
 
 .study-reader-line {
+  align-items: center;
+  display: flex;
+  gap: 6px;
   min-height: 20px;
   min-width: 0;
 }
@@ -1290,6 +1293,7 @@ input:-webkit-autofill:focus {
 
 .study-reader-course-title {
   display: block;
+  flex: 1 1 auto;
   color: var(--resource-text);
   font-family: var(--font-display);
   font-size: var(--type-sm);
@@ -3876,6 +3880,34 @@ input:-webkit-autofill:focus {
   gap: 5px;
 }
 
+.study-manual-edit-dock.is-personal-copy {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.study-manual-edit-dock.is-personal-copy > div {
+  justify-content: flex-end;
+}
+
+.study-manual-edit-dock [data-action="study-manual-save"],
+.study-home-discard-pending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  height: var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 12px;
+  white-space: normal;
+  text-align: center;
+}
+
+.study-home-discard-pending {
+  justify-self: end;
+}
+
 .study-manual-status {
   min-height: 18px;
   text-align: center;
@@ -5006,6 +5038,21 @@ input:-webkit-autofill:focus {
 .home-course-origin-icon {
   width: 16px;
   height: 16px;
+}
+
+.study-personal-copy-badge {
+  align-items: center;
+  background: var(--action-primary-subtle);
+  border: 1px solid var(--action-primary);
+  border-radius: 999px;
+  color: var(--action-primary-hover);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: 24px;
+  padding: 4px 8px;
 }
 
 .home-course-selector-preview .card-subtitle {

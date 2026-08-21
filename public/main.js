@@ -529,6 +529,9 @@ async function renderAuthenticatedApplication(root, config, authClient) {
 
   const refreshStudy = async () => {
     await repository.flush();
+    if (await editorApp?.resumePendingManualEdit?.()) {
+      return repository.loadProject();
+    }
     const nextProject = await repository.refreshCourses();
     await editorApp?.replaceProject(nextProject);
     await editorApp?.refreshPersonalState?.();
@@ -541,6 +544,19 @@ async function renderAuthenticatedApplication(root, config, authClient) {
 
   let pendingStudyComposition = null;
   const saveStudyManualEdit = async (value) => {
+    if (value.createsPersonalCopy === true) {
+      return repository.commitPersonalCourseCopyEdit({
+        sourceCourseId: value.courseId,
+        expectedSourceCourseRevision: value.expectedCourseRevision,
+        expectedStudyUnitVersion: value.expectedVersion,
+        didacticMicrosequenceId: value.didacticMicrosequenceId,
+        studyUnit: value.studyUnit,
+        applicationOrigin: value.origin,
+        targetId: value.targetId,
+        sourceSelection: value.sourceSelection,
+        replacesPendingRequestId: value.replacesPendingRequestId || null
+      });
+    }
     const intent = {
       courseId: value.courseId,
       expectedCourseRevision: value.expectedCourseRevision,
@@ -567,6 +583,9 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     initialProject: project,
     onSaveManualEdit: saveStudyManualEdit,
     providerAssistanceSession: studyUnitProviderSession
+  });
+  await editorApp.resumePendingManualEdit?.().catch((error) => {
+    console.warn("A edição pessoal pendente poderá ser retomada na próxima conexão.", error);
   });
   void settings.loadProfile();
   authoringSurface = createCourseAuthoringSurface({

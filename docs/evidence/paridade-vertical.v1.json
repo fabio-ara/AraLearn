@@ -13,18 +13,21 @@
   "cases": [
     {
       "id": "study-course-experience",
-      "intent": "Encontrar um Curso acessível, percorrer sua hierarquia, estudar suas unidades e conservar progresso e marcações pessoais de revisão.",
+      "intent": "Encontrar um Curso acessível, percorrer sua hierarquia, estudar suas unidades, conservar progresso e marcações pessoais de revisão e, quando o Curso for compartilhado, continuar uma edição numa cópia pessoal própria.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
         "manifestFeatures": [
-          "course-personal-state-v2"
+          "course-personal-state-v2",
+          "personal-course-copy-edit-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.course_personal_states|private\\.course_personal_state_receipts)$",
+          "^table:private\\.course_personal_copies$",
           "^function:private\\.(?:valid_course_personal_state_v2|list_course_review_items_for_actor_v1)\\(.*\\)$",
-          "^function:public\\.(?:list_course_review_items_v1|load_course_personal_state_v2|mutate_course_personal_state_v2)\\(.*\\)$"
+          "^function:public\\.(?:list_course_review_items_v1|load_course_personal_state_v2|mutate_course_personal_state_v2)\\(.*\\)$",
+          "^function:public\\.commit_personal_course_copy_edit_for_actor_v1\\(.*\\)$"
         ]
       },
       "ui": [
@@ -33,22 +36,28 @@
       ],
       "visibleEffects": [
         { "path": "src/study/CourseStudyApplication.js", "token": "renderCourseStudyScreen" },
+        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"study-manual-edit\"" },
         { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"reset-course-progress\"" }
       ],
       "persistence": [
         { "path": "src/persistence/CoursePersonalStateRepository.js", "token": "class CoursePersonalStateRepository" },
-        { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" }
+        { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" },
+        { "path": "src/supabase/CourseController.js", "token": "commitPersonalCourseCopyEdit" }
       ],
       "routes": [
         { "path": "src/supabase/CourseApiClient.js", "token": "load_course_personal_state_v2" },
-        { "path": "src/supabase/CourseApiClient.js", "token": "mutate_course_personal_state_v2" }
+        { "path": "src/supabase/CourseApiClient.js", "token": "mutate_course_personal_state_v2" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "commitPersonalCourseCopyEdit" }
       ],
       "tests": [
         "tests/runtime/course-study-repository.test.js",
         "tests/runtime/course-personal-state-repository.test.js",
+        "tests/runtime/course-personal-copy-client.test.js",
+        "tests/runtime/course-authoring-plan-pglite.test.js",
+        "tests/e2e/manual-study-unit-edit.spec.js",
         "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "O estado pessoal mínimo só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência de progresso e Rever são mecanismos internos dessa mesma capacidade, não produtos separados."
+      "justification": "O estado pessoal mínimo só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência de progresso e Rever são mecanismos internos dessa mesma capacidade, não produtos separados. A edição de um Curso compartilhado materializa uma única cópia pessoal independente, preserva o Curso de origem e permite continuar o Estudo no resultado sem conceder edição sobre a origem."
     },
     {
       "id": "course-authoring-experience",

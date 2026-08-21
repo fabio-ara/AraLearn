@@ -74,6 +74,7 @@ function coursePresentation(course, progress, permissions = {}) {
     : Number(permissions.lessonCount || 0);
   const percentage = total ? Math.round((completed / total) * 100) : 0;
   const owned = permissions.ownership === "owned" || permissions.canEdit === true;
+  const personalCopy = owned && permissions.isPersonalCopy === true;
   return {
     course,
     title: String(course.title || "Curso").trim() || "Curso",
@@ -84,7 +85,12 @@ function coursePresentation(course, progress, permissions = {}) {
     lessonCount,
     percentage,
     owned,
-    ownershipLabel: owned ? "Seu Curso" : "Compartilhado com você",
+    personalCopy,
+    ownershipLabel: personalCopy
+      ? "Sua cópia"
+      : owned
+        ? "Seu Curso"
+        : "Compartilhado com você",
     availableOffline: permissions.availableOffline === true
   };
 }
@@ -137,6 +143,7 @@ function renderCoursePreview({
     lessonCount,
     percentage,
     owned,
+    personalCopy,
     ownershipLabel,
     availableOffline
   } = presentation;
@@ -171,7 +178,7 @@ function renderCoursePreview({
     String(percentage) + '"></div>' +
     '<div class="home-course-preview-copy">' +
     '<p class="home-course-ownership">' +
-    renderUiIcon(owned ? "key" : "account-add", "home-course-origin-icon") +
+    renderUiIcon(personalCopy ? "copy" : owned ? "key" : "account-add", "home-course-origin-icon") +
     '<span>' + escapeHtml(ownershipLabel) + "</span></p>" +
     '<h2 class="card-title">' + escapeHtml(title) + "</h2>" +
     (goal ? '<p class="card-subtitle">' + escapeHtml(goal) + "</p>" : "") +
@@ -262,9 +269,13 @@ function renderTopbar() {
 
 function renderRuntimeNotice(status) {
   if (status?.offline !== true && status?.stale !== true) return "";
+  const offline = status?.offline === true;
   return '<p class="study-runtime-notice" role="status">' +
-    renderUiIcon("offline", "home-tab-icon") +
-    '<span>Sem conexão · alterações pessoais ficam salvas neste dispositivo.</span></p>';
+    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") +
+    '<span>' + (offline
+      ? "Sem conexão · alterações pessoais ficam salvas neste dispositivo."
+      : "Exibindo a versão salva · o AraLearn está atualizando os dados.") +
+    "</span></p>";
 }
 
 export function renderHomeScreen({
@@ -279,6 +290,7 @@ export function renderHomeScreen({
   homeLoadingCourseId = "",
   homeError = "",
   homeNotice = "",
+  homePendingPersonalCopyDiscard = false,
   editorSupport = {}
 }) {
   const courses = Array.isArray(project?.courses) ? project.courses : [];
@@ -326,6 +338,10 @@ export function renderHomeScreen({
       escapeHtml(homeNotice) + "</p>" : "") +
     (homeError ? '<p class="study-home-feedback is-error" role="alert">' +
       escapeHtml(homeError) + "</p>" : "") +
+    (homePendingPersonalCopyDiscard
+      ? '<button class="open-mini study-home-discard-pending" type="button"' +
+        ' data-action="discard-pending-personal-copy">Descartar alteração guardada</button>'
+      : "") +
     selectMarkup +
     renderReviewQueue(reviewItems, reviewHasMore, selectedId, reviewQueueOpen) +
     "</main></section>"

@@ -111,6 +111,35 @@ function courseAccessWasRevoked(error) {
   return status === 403 || status === 404 || code === "42501" || code === "PT404";
 }
 
+function personalCopyBaseChanged(error) {
+  const code = String(error?.code || error?.response?.code || "").toLowerCase();
+  return new Set(["stale_course_state", "40001", "course_revision_changed"])
+    .has(code);
+}
+
+function selectionForStudyUnitIdentity(project, courseId, studyUnitId) {
+  const course = findCourse(project, courseId);
+  for (const moduleValue of course?.modules || []) {
+    for (const lesson of moduleValue.lessons || []) {
+      for (const microsequence of lesson.microsequences || []) {
+        const studyUnitIndex = (microsequence.studyUnits || [])
+          .findIndex(({ id }) => id === studyUnitId);
+        if (studyUnitIndex >= 0) {
+          return {
+            courseId,
+            moduleId: moduleValue.id,
+            lessonId: lesson.id,
+            microsequenceId: microsequence.id,
+            studyUnitId,
+            studyUnitIndex
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function positionSelection(project, position) {
   const path = position?.entityPath;
   if (!Array.isArray(path) || path.length !== 5) return null;
@@ -243,6 +272,10 @@ export function createCourseStudyApplication({
     manualHistoryPreview: null,
     manualUnknownSignature: "",
     manualDiscardArmed: false,
+    manualPendingPersonalCopy: false,
+    manualPendingPersonalCopySourceCourseId: "",
+    manualPendingPersonalCopyRequestId: "",
+    manualReplacesPendingPersonalCopyRequestId: "",
     manualVersionByStudyUnit: {},
     manualCourseRevisionByCourse: {},
     accountProfile: null,
@@ -250,6 +283,8 @@ export function createCourseStudyApplication({
     homeLoadingCourseId: "",
     homeError: "",
     homeNotice: "",
+    homePendingPersonalCopyDiscard: false,
+    homePendingPersonalCopyRequestId: "",
     reviewQueueOpen: false
   };
   let manualInlineController = null;
@@ -538,6 +573,10 @@ export function createCourseStudyApplication({
     state.manualRestoreFocus = false;
     state.manualUnknownSignature = "";
     state.manualDiscardArmed = false;
+    state.manualPendingPersonalCopy = false;
+    state.manualPendingPersonalCopySourceCourseId = "";
+    state.manualPendingPersonalCopyRequestId = "";
+    state.manualReplacesPendingPersonalCopyRequestId = "";
   }
 
   function resetStudyUnitInteraction() {
@@ -875,12 +914,20 @@ export function createCourseStudyApplication({
     }
   }
 
+  function coursePermission(courseId = state.selection.courseId) {
+    return (repository.loadCourseSummaries?.() || [])
+      .find((item) => item.courseId === courseId) || null;
+  }
+
   function manualEditCapability() {
-    const courseId = state.selection.courseId;
-    const summary = (repository.loadCourseSummaries?.() || [])
-      .find((item) => item.courseId === courseId);
+    const summary = coursePermission();
     return Boolean(
-      onSaveManualEdit && summary?.ownership === "owned" && summary.canEdit === true &&
+      onSaveManualEdit && (
+        (summary?.ownership === "owned" && summary.canEdit === true) ||
+        (summary?.ownership === "shared" && (
+          summary.canDerive === true || state.manualPendingPersonalCopy
+        ))
+      ) &&
       state.view === "microsequence" && state.microsequenceMode === "play" && context().studyUnit
     );
   }
@@ -940,6 +987,408 @@ export function createCourseStudyApplication({
     );
     return Object.entries(state.manualDraft.pathValues)
       .some(([path, value]) => original.has(path) && original.get(path) !== value);
+  }
+
+  function manualAttemptSignature(targetId, studyUnit, origin) {
+    return JSON.stringify({ targetId, studyUnit, origin });
+  }
+
+  function manualPathValues(studyUnit, targetId) {
+    return Object.fromEntries(
+      listManualStudyUnitEditablePaths(studyUnit, targetId)
+        .map(({ path, value }) => [path, value])
+    );
+  }
+
+  function personalCopyConflict(error) {
+    return String(error?.code || "").toLowerCase() === "personal_copy_exists" &&
+      typeof error?.targetCourseId === "string" && error.targetCourseId;
+  }
+
+  function showPendingPersonalCopyResolution(message, pending = null) {
+    resetStudyUnitInteraction();
+    state.selection = selectionForCourse(state.project, state.selection?.courseId) ||
+      firstSelection(state.project);
+    state.view = "courses";
+    state.homeNotice = "";
+    state.homeError = message;
+    state.homePendingPersonalCopyDiscard = true;
+    state.homePendingPersonalCopyRequestId = pending?.requestId || "";
+    queueStudyFocus("[data-action='discard-pending-personal-copy']");
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  async function rebasePersonalCopyConflict(error, editedStudyUnit, {
+    targetId: requestedTargetId = state.manualTargetId,
+    origin: requestedOrigin = state.manualOrigin,
+    sourceSelection: requestedSourceSelection = canonicalReference(state.selection),
+    pending: requestedPending = error?.pending || null
+  } = {}) {
+    const targetCourseId = personalCopyConflict(error);
+    if (!targetCourseId || typeof repository.refreshCourses !== "function" ||
+        typeof repository.loadCourse !== "function") return false;
+    const sourceSelection = clone(requestedSourceSelection);
+    const targetId = requestedTargetId;
+    const origin = requestedOrigin;
+    if (!targetId || !sourceSelection?.courseId) return false;
+    try {
+      const listed = await repository.refreshCourses();
+      state.project = clone(listed);
+      await repository.loadCourse(targetCourseId);
+      const project = clone(repository.loadProject());
+      const targetSelection = exactStudyUnitSelection(project, [
+        targetCourseId,
+        sourceSelection.moduleId,
+        sourceSelection.lessonId,
+        sourceSelection.microsequenceId,
+        sourceSelection.studyUnitId
+      ]) || selectionForStudyUnitIdentity(
+        project,
+        targetCourseId,
+        sourceSelection.studyUnitId
+      );
+      if (!targetSelection) {
+        state.project = project;
+        return showPendingPersonalCopyResolution(
+          "Sua cópia existe, mas a Unidade desta alteração deixou de existir. Descarte o rascunho ou continue pela cópia atual.",
+          requestedPending
+        );
+      }
+      const targetMicrosequence = findMicrosequence(
+        project,
+        targetCourseId,
+        targetSelection.moduleId,
+        targetSelection.lessonId,
+        targetSelection.microsequenceId
+      );
+      const targetStudyUnit = targetMicrosequence?.studyUnits?.find(({ id }) =>
+        id === sourceSelection.studyUnitId);
+      if (!targetStudyUnit || (
+        targetId !== "study_unit" &&
+        !listManualStudyUnitTargetIds(targetStudyUnit).includes(targetId)
+      )) {
+        state.project = project;
+        return showPendingPersonalCopyResolution(
+          "Sua cópia existe, mas o conteúdo desta alteração deixou de existir. Descarte o rascunho ou continue pela cópia atual.",
+          requestedPending
+        );
+      }
+      resetStudyUnitInteraction();
+      state.project = project;
+      state.selection = targetSelection;
+      state.view = "microsequence";
+      state.microsequenceMode = "play";
+      state.manualEditing = true;
+      state.manualTargetId = targetId;
+      state.manualDraft = {
+        pathValues: manualPathValues(editedStudyUnit, targetId)
+      };
+      state.manualOrigin = origin;
+      state.manualPendingPersonalCopy = true;
+      state.manualPendingPersonalCopySourceCourseId = sourceSelection.courseId;
+      state.manualPendingPersonalCopyRequestId = requestedPending?.requestId || "";
+      state.manualReplacesPendingPersonalCopyRequestId = "";
+      state.manualError = "Sua cópia já existia. Revise esta alteração na cópia e salve novamente.";
+      state.manualRestoreFocus = true;
+      persistStudyNavigation();
+      render({ preserveFocus: false, captureDraft: false });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function restorePendingPersonalCopyEdit(pending, message, {
+    retrySameRequest = true
+  } = {}) {
+    if (!pending?.sourceSelection || !pending?.studyUnit || !pending?.targetId) return false;
+    const sourceCourseId = pending.sourceCourseId;
+    if (!findCourse(state.project, sourceCourseId) ||
+        !exactStudyUnitSelection(state.project, [
+          sourceCourseId,
+          pending.sourceSelection.moduleId,
+          pending.sourceSelection.lessonId,
+          pending.sourceSelection.microsequenceId,
+          pending.sourceSelection.studyUnitId
+        ])) {
+      if (!await ensureCourseLoaded(sourceCourseId)) return false;
+    }
+    const exactSelection = exactStudyUnitSelection(state.project, [
+      sourceCourseId,
+      pending.sourceSelection.moduleId,
+      pending.sourceSelection.lessonId,
+      pending.sourceSelection.microsequenceId,
+      pending.sourceSelection.studyUnitId
+    ]);
+    const sourceSelection = exactSelection || selectionForStudyUnitIdentity(
+      state.project,
+      sourceCourseId,
+      pending.sourceSelection.studyUnitId
+    );
+    if (!sourceSelection) {
+      return showPendingPersonalCopyResolution(
+        "A Unidade da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
+        pending
+      );
+    }
+    const sourceMicrosequence = findMicrosequence(
+      state.project,
+      sourceCourseId,
+      sourceSelection.moduleId,
+      sourceSelection.lessonId,
+      sourceSelection.microsequenceId
+    );
+    const sourceStudyUnit = sourceMicrosequence?.studyUnits?.find(({ id }) =>
+      id === sourceSelection.studyUnitId);
+    if (!sourceStudyUnit || (
+      pending.targetId !== "study_unit" &&
+      !listManualStudyUnitTargetIds(sourceStudyUnit).includes(pending.targetId)
+    )) {
+      return showPendingPersonalCopyResolution(
+        "O conteúdo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
+        pending
+      );
+    }
+    const pathChanged = !exactSelection;
+    const canRetrySameRequest = retrySameRequest && !pathChanged;
+    resetStudyUnitInteraction();
+    state.selection = sourceSelection;
+    state.view = "microsequence";
+    state.microsequenceMode = "play";
+    state.manualEditing = true;
+    state.manualTargetId = pending.targetId;
+    state.manualDraft = {
+      pathValues: manualPathValues(pending.studyUnit, pending.targetId)
+    };
+    state.manualOrigin = pending.origin;
+    state.manualUnknownSignature = canRetrySameRequest
+      ? manualAttemptSignature(pending.targetId, pending.studyUnit, pending.origin)
+      : "";
+    state.manualPendingPersonalCopy = true;
+    state.manualPendingPersonalCopySourceCourseId = sourceCourseId;
+    state.manualPendingPersonalCopyRequestId = pending.requestId;
+    state.manualReplacesPendingPersonalCopyRequestId = canRetrySameRequest
+      ? ""
+      : pending.requestId;
+    state.manualError = message;
+    state.manualRestoreFocus = false;
+    state.homePendingPersonalCopyDiscard = false;
+    state.homePendingPersonalCopyRequestId = "";
+    persistStudyNavigation();
+    queueStudyFocus("[data-action='study-manual-save']");
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  async function rebaseStalePersonalCopyEdit(error, pending) {
+    if (!personalCopyBaseChanged(error) || !pending?.sourceCourseId ||
+        typeof repository.refreshCourses !== "function" ||
+        typeof repository.loadCourse !== "function") return false;
+    try {
+      const listed = await repository.refreshCourses();
+      state.project = clone(listed);
+      await repository.loadCourse(pending.sourceCourseId);
+      state.project = clone(repository.loadProject());
+    } catch {
+      return false;
+    }
+    const currentSelection = selectionForStudyUnitIdentity(
+      state.project,
+      pending.sourceCourseId,
+      pending.studyUnit.id
+    );
+    if (!currentSelection) {
+      return showPendingPersonalCopyResolution(
+        "A Unidade da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
+        pending
+      );
+    }
+    const currentMicrosequence = findMicrosequence(
+      state.project,
+      pending.sourceCourseId,
+      currentSelection.moduleId,
+      currentSelection.lessonId,
+      currentSelection.microsequenceId
+    );
+    const currentStudyUnit = currentMicrosequence?.studyUnits?.find(({ id }) =>
+      id === pending.studyUnit.id);
+    if (!currentStudyUnit || (
+      pending.targetId !== "study_unit" &&
+      !listManualStudyUnitTargetIds(currentStudyUnit).includes(pending.targetId)
+    )) {
+      return showPendingPersonalCopyResolution(
+        "O conteúdo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
+        pending
+      );
+    }
+    state.project = clone(repository.loadProject());
+    return restorePendingPersonalCopyEdit({
+      ...clone(pending),
+      didacticMicrosequenceId: currentSelection.microsequenceId,
+      sourceSelection: canonicalReference(currentSelection)
+    }, "O Curso mudou. Revise a alteração sobre a Unidade atual e salve novamente.", {
+      retrySameRequest: false
+    });
+  }
+
+  async function discardPendingPersonalCopyFromHome() {
+    try {
+      const cleared = await repository.clearPendingPersonalCopyEdit?.(
+        null,
+        state.homePendingPersonalCopyRequestId || null
+      );
+      if (!cleared) {
+        const currentPending = await repository.loadPendingPersonalCopyEdit?.();
+        if (currentPending) {
+          state.homePendingPersonalCopyRequestId = currentPending.requestId;
+          state.homeError = "Outra versão desta alteração está guardada. Confira a mensagem e descarte novamente se desejar.";
+          render({ preserveFocus: false, captureDraft: false });
+          return false;
+        }
+      }
+    } catch {
+      state.homeError = "Não foi possível descartar a alteração guardada neste dispositivo.";
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
+    state.homePendingPersonalCopyDiscard = false;
+    state.homePendingPersonalCopyRequestId = "";
+    state.homeError = "";
+    state.homeNotice = "Alteração guardada descartada.";
+    queueStudyFocus("[data-field='home-course-select']");
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  function acceptRecoveredPersonalCopy(result, pending) {
+    if (!result?.project || !Array.isArray(result.project.courses) ||
+        result.changed !== true || typeof result.courseId !== "string") return false;
+    const sourceSelection = pending?.sourceSelection || result.sourceSelection;
+    const reportedSelection = result.selection?.courseId === result.courseId
+      ? result.selection
+      : null;
+    const targetSelection = reportedSelection || exactStudyUnitSelection(result.project, [
+      result.courseId,
+      sourceSelection?.moduleId,
+      sourceSelection?.lessonId,
+      sourceSelection?.microsequenceId,
+      sourceSelection?.studyUnitId
+    ]) || selectionForStudyUnitIdentity(
+      result.project,
+      result.courseId,
+      result.studyUnitId || sourceSelection?.studyUnitId
+    );
+    if (!targetSelection) return false;
+    resetStudyUnitInteraction();
+    state.project = clone(result.project);
+    state.selection = targetSelection;
+    state.view = targetSelection.studyUnitId ? "microsequence" : "course";
+    state.microsequenceMode = "play";
+    if (Number.isSafeInteger(result.studyUnitVersion)) {
+      state.manualVersionByStudyUnit[
+        manualStudyUnitVersionKey(result.courseId, targetSelection.studyUnitId)
+      ] = result.studyUnitVersion;
+    }
+    if (Number.isSafeInteger(result.courseRevision)) {
+      state.manualCourseRevisionByCourse[result.courseId] = result.courseRevision;
+    }
+    state.manualStatus = targetSelection.studyUnitId
+      ? "Cópia criada. Você continua nesta Unidade."
+      : "Sua cópia foi retomada na versão atual.";
+    state.homePendingPersonalCopyDiscard = false;
+    state.homePendingPersonalCopyRequestId = "";
+    persistStudyNavigation();
+    queueStudyFocus("[data-study-destination-heading]");
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  async function resumePendingPersonalCopyEdit({ retry = true } = {}) {
+    if (typeof repository.loadPendingPersonalCopyEdit !== "function") return false;
+    const pending = await repository.loadPendingPersonalCopyEdit();
+    if (!pending) return false;
+    if (retry && globalThis.navigator?.onLine !== false &&
+        typeof repository.retryPendingPersonalCopyEdit === "function") {
+      try {
+        const result = await repository.retryPendingPersonalCopyEdit(
+          pending.sourceCourseId
+        );
+        if (result?.changed === false) {
+          state.homeNotice = "A alteração pendente não mudou o Curso.";
+          render();
+          return true;
+        }
+        if (acceptRecoveredPersonalCopy(result, pending)) return true;
+      } catch (error) {
+        if (await rebasePersonalCopyConflict(error, pending.studyUnit, {
+          targetId: pending.targetId,
+          origin: pending.origin,
+          sourceSelection: pending.sourceSelection,
+          pending
+        })) return true;
+        if (await rebaseStalePersonalCopyEdit(error, pending)) return true;
+        if (courseAccessWasRevoked(error)) {
+          let remainingPending = null;
+          try {
+            const cleared = await repository.clearPendingPersonalCopyEdit?.(
+              pending.sourceCourseId,
+              pending.requestId
+            );
+            if (!cleared) {
+              remainingPending = await repository.loadPendingPersonalCopyEdit?.() || null;
+            }
+          } catch {
+            remainingPending = pending;
+          }
+          let nextProject;
+          try {
+            nextProject = await repository.refreshCourses?.();
+          } catch {
+            nextProject = {
+              ...clone(state.project),
+              courses: state.project.courses.filter(({ id }) =>
+                id !== pending.sourceCourseId)
+            };
+          }
+          if (nextProject && Array.isArray(nextProject.courses)) {
+            resetStudyUnitInteraction();
+            state.project = {
+              ...clone(nextProject),
+              courses: nextProject.courses.filter(({ id }) =>
+                id !== pending.sourceCourseId)
+            };
+            state.selection = firstSelection(state.project);
+            state.view = "courses";
+            state.homeError = remainingPending
+              ? "Seu acesso ao Curso compartilhado foi encerrado. Há outra alteração guardada; descarte-a ou tente confirmá-la novamente."
+              : "";
+            state.homeNotice = remainingPending
+              ? ""
+              : "Seu acesso ao Curso compartilhado foi encerrado.";
+            state.homePendingPersonalCopyDiscard = Boolean(remainingPending);
+            state.homePendingPersonalCopyRequestId = remainingPending?.requestId || "";
+            await repository.clearStudyNavigationPosition?.(pending.sourceCourseId);
+            if (state.selection?.courseId) {
+              persistStudyNavigation({ includePosition: false });
+            }
+            queueStudyFocus(remainingPending
+              ? "[data-action='discard-pending-personal-copy']"
+              : "[data-field='home-course-select']");
+            render({ preserveFocus: false, captureDraft: false });
+            return true;
+          }
+        }
+        return restorePendingPersonalCopyEdit(
+          pending,
+          "A alteração ainda não pôde ser confirmada. Tente salvar novamente quando houver conexão."
+        );
+      }
+    }
+    return restorePendingPersonalCopyEdit(
+      pending,
+      "A alteração está guardada neste dispositivo. Conecte-se e salve novamente para criar sua cópia."
+    );
   }
 
   function beginManualEdit(targetId = "study_unit", {
@@ -1076,7 +1525,7 @@ export function createCourseStudyApplication({
     return true;
   }
 
-  function cancelManualEdit({
+  async function cancelManualEdit({
     status = "Edição cancelada.",
     focus = true,
     confirmUnknownDiscard = false
@@ -1088,10 +1537,79 @@ export function createCourseStudyApplication({
       render({ preserveFocus: false, captureDraft: false });
       return false;
     }
+    let pendingToResume = null;
+    if (state.manualPendingPersonalCopy &&
+        typeof repository.clearPendingPersonalCopyEdit === "function") {
+      const pendingSourceCourseId =
+        state.manualPendingPersonalCopySourceCourseId || state.selection.courseId;
+      try {
+        if (!state.manualPendingPersonalCopyRequestId) {
+          pendingToResume = await repository.loadPendingPersonalCopyEdit?.() || null;
+        } else {
+          const cleared = await repository.clearPendingPersonalCopyEdit(
+            pendingSourceCourseId,
+            state.manualPendingPersonalCopyRequestId
+          );
+          const currentPending = !cleared
+            ? await repository.loadPendingPersonalCopyEdit?.()
+            : null;
+          if (currentPending?.sourceCourseId === pendingSourceCourseId) {
+            state.manualPendingPersonalCopySourceCourseId =
+              currentPending.sourceCourseId;
+            state.manualPendingPersonalCopyRequestId = currentPending.requestId;
+            state.manualReplacesPendingPersonalCopyRequestId = "";
+            state.manualError = "Outra versão deste rascunho está guardada. Revise-a ou descarte-a explicitamente.";
+            render({ preserveFocus: false, captureDraft: false });
+            return false;
+          }
+        }
+      } catch {
+        state.manualError = "Não foi possível descartar o rascunho guardado neste dispositivo.";
+        render({ preserveFocus: false, captureDraft: false });
+        return false;
+      }
+    }
+    if (pendingToResume) {
+      resetManualEditorState({ status: "" });
+      const resumed = await restorePendingPersonalCopyEdit(
+        pendingToResume,
+        "Edição atual cancelada. A alteração que já estava guardada foi retomada."
+      );
+      if (resumed) return true;
+      status = "Edição cancelada. A outra alteração continua guardada neste dispositivo.";
+    }
     resetManualEditorState({ status });
     if (focus) queueStudyFocus("[data-action='study-manual-edit']");
     render({ preserveFocus: false });
     return true;
+  }
+
+  async function discardUnknownManualEdit() {
+    try {
+      if (state.manualPendingPersonalCopy &&
+          state.manualPendingPersonalCopyRequestId &&
+          typeof repository.clearPendingPersonalCopyEdit === "function") {
+        const pendingSourceCourseId =
+          state.manualPendingPersonalCopySourceCourseId || state.selection.courseId;
+        const cleared = await repository.clearPendingPersonalCopyEdit(
+          pendingSourceCourseId,
+          state.manualPendingPersonalCopyRequestId
+        );
+        const currentPending = !cleared
+          ? await repository.loadPendingPersonalCopyEdit?.()
+          : null;
+        if (currentPending?.sourceCourseId === pendingSourceCourseId) {
+          state.manualError = "Outra versão deste rascunho está guardada. Retome-a antes de descartar.";
+          render({ preserveFocus: false, captureDraft: false });
+          return false;
+        }
+      }
+    } catch {
+      state.manualError = "Não foi possível descartar o rascunho guardado neste dispositivo.";
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
+    return cancelManualEdit({ confirmUnknownDiscard: true });
   }
 
   function replaceCurrentStudyUnit(studyUnit) {
@@ -1142,6 +1660,10 @@ export function createCourseStudyApplication({
 
   async function commitManualStudyUnit(studyUnit, origin = "manual") {
     const composition = manualCompositionContext();
+    const sourceSelection = canonicalReference(state.selection);
+    const permission = coursePermission(composition.courseId);
+    const createsPersonalCopy = permission?.ownership === "shared" &&
+      (permission.canDerive === true || state.manualPendingPersonalCopy);
     const result = await onSaveManualEdit({
       courseId: composition.courseId,
       expectedCourseRevision: composition.courseRevision,
@@ -1149,14 +1671,90 @@ export function createCourseStudyApplication({
       studyUnitId: composition.studyUnitId,
       expectedVersion: composition.expectedVersion,
       studyUnit: clone(studyUnit),
-      origin
+      origin,
+      targetId: state.manualTargetId,
+      sourceSelection,
+      createsPersonalCopy,
+      replacesPendingRequestId: createsPersonalCopy
+        ? state.manualReplacesPendingPersonalCopyRequestId || null
+        : null
     });
+    const targetCourseId = result?.courseId || composition.courseId;
+    const movedToPersonalCopy = targetCourseId !== composition.courseId;
     if (result != null && (typeof result !== "object" || Array.isArray(result) ||
-        result.courseId && result.courseId !== composition.courseId ||
+        movedToPersonalCopy && (
+          !createsPersonalCopy || result.sourceCourseId !== composition.courseId ||
+          !result.project || !Array.isArray(result.project.courses)
+        ) ||
         result.studyUnitId && result.studyUnitId !== composition.studyUnitId ||
         result.origin && result.origin !== origin ||
         result.reconciled != null && typeof result.reconciled !== "boolean")) {
       throw new TypeError("A confirmação não corresponde à edição enviada.");
+    }
+    if (createsPersonalCopy && result?.createdCopy === false && result?.changed === false) {
+      return {
+        studyUnit: context().studyUnit,
+        reconciled: true,
+        createdCopy: false,
+        noOp: true
+      };
+    }
+    if (movedToPersonalCopy) {
+      const reportedSelection = result.selection?.courseId === targetCourseId
+        ? result.selection
+        : null;
+      const validatedReportedSelection = reportedSelection?.studyUnitId
+        ? exactStudyUnitSelection(result.project, [
+            targetCourseId,
+            reportedSelection.moduleId,
+            reportedSelection.lessonId,
+            reportedSelection.microsequenceId,
+            reportedSelection.studyUnitId
+          ])
+        : reportedSelection
+          ? selectionForCourse(result.project, targetCourseId)
+          : null;
+      const targetSelection = validatedReportedSelection ||
+        exactStudyUnitSelection(result.project, [
+        targetCourseId,
+        sourceSelection.moduleId,
+        sourceSelection.lessonId,
+        sourceSelection.microsequenceId,
+        sourceSelection.studyUnitId
+        ]) || selectionForStudyUnitIdentity(
+          result.project,
+          targetCourseId,
+          sourceSelection.studyUnitId
+        ) || selectionForCourse(result.project, targetCourseId);
+      if (!targetSelection) {
+        throw new TypeError("A cópia confirmada não está mais acessível.");
+      }
+      state.project = clone(result.project);
+      state.selection = targetSelection;
+      state.view = targetSelection.studyUnitId ? "microsequence" : "course";
+      state.microsequenceMode = "play";
+      state.feedbackOpen = false;
+      resetCitations();
+      resetObservationSheet();
+      persistStudyNavigation();
+    }
+    const personalCopyAlreadyAdvanced = movedToPersonalCopy &&
+      result.idempotent === true && Number(result.courseRevision) > 2;
+    if (movedToPersonalCopy && (
+      result.studyUnit === null || !state.selection.studyUnitId ||
+      personalCopyAlreadyAdvanced
+    )) {
+      if (Number.isSafeInteger(Number(result.courseRevision))) {
+        state.manualCourseRevisionByCourse[targetCourseId] =
+          Number(result.courseRevision);
+      }
+      return {
+        studyUnit: null,
+        reconciled: result?.reconciled !== false,
+        createdCopy: result?.createdCopy === true,
+        noOp: false,
+        superseded: true
+      };
     }
     const confirmedStudyUnit = applyManualStudyUnitEdit(
       result?.studyUnit ?? studyUnit,
@@ -1180,12 +1778,14 @@ export function createCourseStudyApplication({
       throw new TypeError("A revisão confirmada do Curso é inválida.");
     }
     state.manualVersionByStudyUnit[
-      manualStudyUnitVersionKey(composition.courseId, composition.studyUnitId)
+      manualStudyUnitVersionKey(targetCourseId, composition.studyUnitId)
     ] = nextVersion;
-    state.manualCourseRevisionByCourse[composition.courseId] = nextCourseRevision;
+    state.manualCourseRevisionByCourse[targetCourseId] = nextCourseRevision;
     return {
       studyUnit: replaceCurrentStudyUnit(confirmedStudyUnit),
-      reconciled: result?.reconciled !== false
+      reconciled: result?.reconciled !== false,
+      createdCopy: movedToPersonalCopy && result?.createdCopy === true,
+      noOp: false
     };
   }
 
@@ -1203,14 +1803,14 @@ export function createCourseStudyApplication({
       return false;
     }
     if (JSON.stringify(current) === JSON.stringify(edited)) {
-      cancelManualEdit({ status: "Nenhuma alteração para salvar." });
+      await cancelManualEdit({ status: "Nenhuma alteração para salvar." });
       return true;
     }
-    const attemptSignature = JSON.stringify({
-      targetId: state.manualTargetId,
-      studyUnit: edited,
-      origin: state.manualOrigin
-    });
+    const attemptSignature = manualAttemptSignature(
+      state.manualTargetId,
+      edited,
+      state.manualOrigin
+    );
     if (state.manualUnknownSignature && state.manualUnknownSignature !== attemptSignature) {
       state.manualDiscardArmed = true;
       state.manualError = "O rascunho mudou depois de uma gravação incerta. Descarte o pedido anterior antes de salvar outra alteração.";
@@ -1218,11 +1818,47 @@ export function createCourseStudyApplication({
       return false;
     }
     const before = clone(current);
+    const permission = coursePermission();
+    state.manualPendingPersonalCopy = state.manualPendingPersonalCopy || (
+      permission?.ownership === "shared" && permission.canDerive === true
+    );
     state.manualSaving = true;
     state.manualError = "";
     render({ preserveFocus: false, captureDraft: false });
     try {
       const committed = await commitManualStudyUnit(edited, state.manualOrigin);
+      let pendingCleanupFailed = false;
+      if (state.manualPendingPersonalCopySourceCourseId &&
+          state.manualPendingPersonalCopyRequestId &&
+          typeof repository.clearPendingPersonalCopyEdit === "function") {
+        try {
+          await repository.clearPendingPersonalCopyEdit(
+            state.manualPendingPersonalCopySourceCourseId,
+            state.manualPendingPersonalCopyRequestId
+          );
+        } catch {
+          pendingCleanupFailed = true;
+        }
+      }
+      if (committed.noOp) {
+        resetManualEditorState({
+          status: pendingCleanupFailed
+            ? "Nenhuma alteração foi necessária, mas o rascunho local ainda precisa ser descartado."
+            : "Nenhuma alteração para salvar."
+        });
+        queueStudyFocus("[data-action='study-manual-edit']");
+        render({ preserveFocus: false, captureDraft: false });
+        return true;
+      }
+      if (committed.superseded) {
+        resetManualEditorState({
+          status: "Sua cópia já avançou. Você está na versão atual."
+        });
+        resetCitations();
+        queueStudyFocus("[data-study-destination-heading]");
+        render({ preserveFocus: false, captureDraft: false });
+        return true;
+      }
       const saved = committed.studyUnit;
       const historyPreview = state.manualHistoryPreview;
       const previewValue = historyPreview
@@ -1246,9 +1882,13 @@ export function createCourseStudyApplication({
           courseId !== state.selection.courseId);
       }
       resetManualEditorState({
-        status: committed.reconciled
-          ? "Edição salva."
-          : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
+        status: pendingCleanupFailed
+          ? "Edição salva. O rascunho local será reconciliado na próxima abertura."
+          : committed.createdCopy
+            ? "Cópia criada. Você continua nesta Unidade."
+            : committed.reconciled
+              ? "Edição salva."
+            : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
         keepHistoryPreview: acceptedPreview
       });
       resetCitations();
@@ -1259,7 +1899,34 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.manualSaving = false;
+      if (await rebasePersonalCopyConflict(error, edited)) return false;
+      if (personalCopyBaseChanged(error) && state.manualPendingPersonalCopy) {
+        const pending = await repository.loadPendingPersonalCopyEdit?.(
+          state.selection.courseId
+        );
+        if (await rebaseStalePersonalCopyEdit(error, pending)) return false;
+      }
       const ambiguous = isAmbiguousManualStudyUnitWriteFailure(error);
+      if (state.manualPendingPersonalCopy) {
+        try {
+          const pending = await repository.loadPendingPersonalCopyEdit?.();
+          const pendingMatchesAttempt = pending &&
+            pending.sourceCourseId === (
+              state.manualPendingPersonalCopySourceCourseId || state.selection.courseId
+            ) && manualAttemptSignature(
+              pending.targetId,
+              pending.studyUnit,
+              pending.origin
+            ) === attemptSignature;
+          if (pendingMatchesAttempt) {
+            state.manualPendingPersonalCopySourceCourseId = pending.sourceCourseId;
+            state.manualPendingPersonalCopyRequestId = pending.requestId;
+            state.manualReplacesPendingPersonalCopyRequestId = "";
+          }
+        } catch {
+          // O erro original continua sendo a informação útil para a pessoa.
+        }
+      }
       state.manualUnknownSignature = ambiguous ? attemptSignature : "";
       state.manualDiscardArmed = false;
       state.manualError = ambiguous
@@ -1705,11 +2372,13 @@ export function createCourseStudyApplication({
     );
     root.querySelector("[data-action='study-manual-view']")?.addEventListener(
       "click",
-      () => state.manualEditing && cancelManualEdit()
+      () => {
+        if (state.manualEditing) void cancelManualEdit();
+      }
     );
     root.querySelector("[data-action='study-manual-cancel']")?.addEventListener(
       "click",
-      () => cancelManualEdit()
+      () => void cancelManualEdit()
     );
     root.querySelector("[data-action='study-manual-keep-unknown']")?.addEventListener(
       "click",
@@ -1722,7 +2391,7 @@ export function createCourseStudyApplication({
     );
     root.querySelector("[data-action='study-manual-discard-unknown']")?.addEventListener(
       "click",
-      () => cancelManualEdit({ confirmUnknownDiscard: true })
+      () => void discardUnknownManualEdit()
     );
     root.querySelector("[data-action='study-manual-save']")?.addEventListener(
       "click",
@@ -1766,7 +2435,7 @@ export function createCourseStudyApplication({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        cancelManualEdit();
+        void cancelManualEdit();
       }
     });
     root.querySelectorAll("[data-action='open-settings']").forEach((node) =>
@@ -1780,6 +2449,10 @@ export function createCourseStudyApplication({
     root.querySelector("[data-field='home-course-select']")?.addEventListener(
       "change",
       (event) => void selectHomeCourse(event.currentTarget.value)
+    );
+    root.querySelector("[data-action='discard-pending-personal-copy']")?.addEventListener(
+      "click",
+      () => void discardPendingPersonalCopyFromHome()
     );
     root.querySelector(".study-review-queue")?.addEventListener("toggle", (event) => {
       state.reviewQueueOpen = event.currentTarget.open === true;
@@ -2004,6 +2677,9 @@ export function createCourseStudyApplication({
       return [course.id, {
         ownership: summary?.ownership || "shared",
         canEdit: summary?.canEdit === true,
+        canDerive: summary?.canDerive === true,
+        isPersonalCopy: summary?.isPersonalCopy === true,
+        personalCopyCourseId: summary?.personalCopyCourseId || null,
         moduleCount: summary?.moduleCount || 0,
         lessonCount: summary?.lessonCount || 0,
         studyUnitCount: summary?.studyUnitCount || 0,
@@ -2022,8 +2698,12 @@ export function createCourseStudyApplication({
       : repositoryRuntimeStatus;
     const currentPermission = byCourseId[state.selection.courseId] || {};
     const manualEnabled = Boolean(
-      onSaveManualEdit && currentPermission.ownership === "owned" &&
-      currentPermission.canEdit === true
+      onSaveManualEdit && (
+        (currentPermission.ownership === "owned" && currentPermission.canEdit === true) ||
+        (currentPermission.ownership === "shared" && (
+          currentPermission.canDerive === true || state.manualPendingPersonalCopy
+        ))
+      )
     );
     if (!manualEnabled && state.manualEditing) resetManualEditorState();
     const currentStudyUnitId = current.studyUnit?.id || "";
@@ -2046,7 +2726,10 @@ export function createCourseStudyApplication({
         currentCourseId,
         currentStudyUnitId
       ) >= 0,
-      discardArmed: state.manualDiscardArmed
+      discardArmed: state.manualDiscardArmed,
+      createsPersonalCopy: currentPermission.ownership === "shared" &&
+        (currentPermission.canDerive === true || state.manualPendingPersonalCopy),
+      isPersonalCopy: currentPermission.isPersonalCopy === true
     };
     manualInlineController?.destroy?.();
     manualInlineController = null;
@@ -2071,6 +2754,7 @@ export function createCourseStudyApplication({
       homeLoadingCourseId: state.homeLoadingCourseId,
       homeError: state.homeError,
       homeNotice: state.homeNotice,
+      homePendingPersonalCopyDiscard: state.homePendingPersonalCopyDiscard,
       packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
       observationCount: observationItems.filter(({ state: value }) => value !== "withdrawn").length,
@@ -2166,6 +2850,9 @@ export function createCourseStudyApplication({
     openCourse,
     openEntityPath(entityPath) {
       return openReviewItem(entityPath);
+    },
+    resumePendingManualEdit(options) {
+      return resumePendingPersonalCopyEdit(options);
     },
     hasPendingManualEdit() {
       return Boolean(
