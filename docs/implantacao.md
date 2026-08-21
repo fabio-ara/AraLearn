@@ -17,8 +17,8 @@ públicas, uma nova credencial OAuth de recurso e clientes com upload autenticad
 de PDF. Não use a documentação dessa candidata para inferir que esses controles
 já estão no ambiente hospedado.
 
-A revisão local final aprovou 1.067 testes e manteve 13 casos condicionais, num
-total de 1.080; o Playwright aprovou 118 cenários e manteve dois condicionais,
+A revisão local final aprovou 1.073 testes e manteve 13 casos condicionais, num
+total de 1.086; o Playwright aprovou 118 cenários e manteve dois condicionais,
 num total de 120. O banco recriado aprovou 103 testes pgTAP, 13 provas reais de
 concorrência, o smoke de Curso e o fluxo OAuth/MCP com renovação e negativas no
 GoTrue, na API de dados e no Storage. O site candidato examinou 131 arquivos; os
