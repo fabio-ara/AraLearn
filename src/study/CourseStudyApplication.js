@@ -804,7 +804,17 @@ export function createCourseStudyApplication({
       }
       return false;
     }
-    await repository.clearCourseProgress(courseId);
+    try {
+      await repository.clearCourseProgress(courseId);
+    } catch (error) {
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
+      state.homeError = "Não foi possível zerar o progresso. Tente novamente.";
+      queueStudyFocus("[data-action='reset-course-progress']", {
+        "data-course-id": courseId
+      });
+      render({ preserveFocus: false });
+      return false;
+    }
     await repository.clearStudyNavigationPosition?.(courseId);
     render({ preserveFocus: false });
     return true;

@@ -910,7 +910,7 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
   }
 });
 
-test("zerar progresso mostra a falha de carga e só altera o Curso depois do retry", async ({ page }) => {
+test("zerar progresso mostra falhas de carga e gravação antes de concluir", async ({ page }) => {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
     contentType: "text/javascript",
@@ -926,7 +926,19 @@ test("zerar progresso mostra a falha de carga e só altera o Curso depois do ret
       courses: [{ id: course.id, title: course.title, goal: course.goal, modules: [] }]
     };
     let activeProject = initialProject;
-    const probe = { loads: 0, clears: 0, fail: true };
+    const firstModule = course.modules[0];
+    const firstLesson = firstModule.lessons[0];
+    const firstStudyUnit = firstLesson.microsequences[0].studyUnits[0];
+    const progress = {
+      version: 1,
+      lessons: {
+        [`${course.id}::${firstModule.id}::${firstLesson.id}`]: {
+          cursorStudyUnitId: firstStudyUnit.id,
+          completedStudyUnitIds: [firstStudyUnit.id]
+        }
+      }
+    };
+    const probe = { loads: 0, clears: 0, fail: true, failClear: true };
     globalThis.__thinStudyProbe = probe;
     createCourseStudyApplication({
       root: document.querySelector("#study-root"),
@@ -939,7 +951,7 @@ test("zerar progresso mostra a falha de carga e só altera o Curso depois do ret
           activeProject = documentValue;
           return structuredClone(course);
         },
-        loadProgress: () => ({ version: 1, lessons: {} }),
+        loadProgress: () => structuredClone(progress),
         loadReviewItems: () => [],
         loadCourseSummaries: () => [{
           courseId: course.id,
@@ -950,7 +962,11 @@ test("zerar progresso mostra a falha de carga e só altera o Curso depois do ret
           studyUnitCount: 3,
           completedStudyUnitCount: 1
         }],
-        clearCourseProgress: async () => { probe.clears += 1; },
+        clearCourseProgress: async () => {
+          if (probe.failClear) throw new Error("Falha simulada ao zerar o progresso.");
+          progress.lessons = {};
+          probe.clears += 1;
+        },
         loadAnnotationsForPath: () => [],
         isStudyUnitMarkedForReview: () => false,
         flush: async () => undefined
@@ -974,13 +990,30 @@ test("zerar progresso mostra a falha de carga e só altera o Curso depois do ret
   await page.evaluate(() => { globalThis.__thinStudyProbe.fail = false; });
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Não foi possível zerar o progresso. Tente novamente."
+  );
+  await expect(page.getByRole("button", {
+    name: "Zerar progresso de Fixture Minimal"
+  })).toBeFocused();
+  await expect.poll(() => page.evaluate(() => ({
+    loads: globalThis.__thinStudyProbe.loads,
+    clears: globalThis.__thinStudyProbe.clears
+  }))).toEqual({ loads: 2, clears: 0 });
+
+  await page.evaluate(() => { globalThis.__thinStudyProbe.failClear = false; });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
   await expect.poll(() => page.evaluate(() => ({
     loads: globalThis.__thinStudyProbe.loads,
     clears: globalThis.__thinStudyProbe.clears
   }))).toEqual({
-    loads: 2,
+    loads: 3,
     clears: 1
   });
+  await expect(page.getByRole("button", {
+    name: "Zerar progresso de Fixture Minimal"
+  })).toHaveCount(0);
 });
 
 test("runtime canônico preserva teclado, lacunas, anotações e avanço simples", async ({ page }) => {
