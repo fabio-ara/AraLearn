@@ -227,7 +227,7 @@ A sugestão altera no máximo um caminho textual por pedido. Se o trecho exceder
 6.000 caracteres ou o contexto editável completo superar 12.000, o ícone fica
 desabilitado e informa o motivo para tecnologias assistivas; use a edição manual.
 O relay foi comprovado no ambiente HTTP local. Ele ainda depende de ensaio no
-Pages. A candidata Android usa uma ponte nativa fixa para manter a chamada HTTP
+Pages. O Android 0.0.24 usa uma ponte nativa fixa para manter a chamada HTTP
 fora do WebView, sem relaxar a política de conteúdo misto, mas a instalação e o
 ensaio em dispositivo real continuam pendentes.
 

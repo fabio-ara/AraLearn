@@ -85,7 +85,7 @@ como linha de comparação funcional. O objetivo não foi recuperar sua
 arquitetura, mas identificar comportamentos úteis perdidos durante o corte e
 reimplementá-los sobre o domínio vigente.
 
-| Capacidade observada na 0.0.20 | Decisão na candidata corrente |
+| Capacidade observada na 0.0.20 | Decisão na versão 0.0.24 |
 | --- | --- |
 | edição diretamente nos textos renderizados do Card | restaurada nos campos textuais declarados pelos componentes da Unidade de estudo, usando o renderer corrente em Estudo e Inspeção |
 | assistência contextual com serviço de linguagem configurado no aplicativo | restaurada como sugestão focal complementar; produção usa relay local com a credencial externa, recorte mínimo, prévia e validação antes de aplicar ao rascunho |
@@ -334,7 +334,7 @@ recebem a revisão canônica, mostram o andamento e abrem **Ver etapas** sem nov
 confirmação nem escrita. O encerramento comprova ausência de resíduos dos
 usuários, Cursos, entidades, materializações, objetos, clientes OAuth e
 consentimentos criados pelo ensaio. Essa evidência é local e automatizada; não
-comprova o app público do ChatGPT, o ambiente hospedado candidato nem
+comprova o app público do ChatGPT, a versão hospedada nem
 compreensão humana.
 
 A matriz visual focal passou 10/10 em 51,4 segundos: 360, 390, 430 e 1280 px nos
@@ -344,7 +344,7 @@ principal, ausência de overflow global e nome acessível contextual com tooltip
 na ação do ChatGPT. O ESLint também passou. Essa execução não altera a distinção anterior:
 os 111 casos listados continuam sendo inventário, não resultado integral.
 
-O mesmo roteiro vertical inclui, na candidata, a edição manual, a assistência
+O mesmo roteiro vertical inclui, na versão 0.0.24, a edição manual, a assistência
 pelo relay local e a releitura da revisão salva na interface, API, PostgreSQL
 e IndexedDB. Ele confronta os eventos `manual` e `provider_assistance` e inspeciona
 o pedido do relay para excluir Fonte, PDF e identidades internas. O roteiro local

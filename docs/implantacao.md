@@ -1,15 +1,15 @@
 # Implantação do AraLearn
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
-de borda, site estático e aplicativo Android. A revisão hospedada anteriormente
-comprovada era `20260820101500`. Esta entrega exige a revisão
-`20260820224424` e as funções de borda correspondentes antes de promover o site
-ou o APK. O contrato público das ferramentas e do recurso MCP permanece 0.0.23;
-a nova origem estruturada existe somente na rota autenticada do aplicativo.
+de borda, site estático e aplicativo Android. A linha publicada 0.0.24 usa a
+revisão hospedada `20260820224424`, a API de Cursos na revisão 5 e o MCP na
+revisão 120. Banco e funções foram promovidos antes do site e do APK. O
+contrato público das ferramentas e do recurso MCP permanece 0.0.23; a nova
+origem estruturada existe somente na rota autenticada do aplicativo.
 
 O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
-catálogo de 32 componentes didáticos. A revisão candidata acrescenta a gravação
+catálogo de 32 componentes didáticos. A versão 0.0.24 acrescenta a gravação
 contextual de uma Unidade, com origem auditável e carga estrita da proveniência
 anterior; ela não reinstala a arquitetura anterior ao corte.
 
@@ -88,14 +88,14 @@ permissão de acesso à rede local.
 
 Essa lista, sozinha, não cria paridade no APK de release. O WebView serve a
 aplicação por `https://appassets.androidplatform.net` e conserva
-`MIXED_CONTENT_NEVER_ALLOW`. A candidata encaminha somente a chamada ao relay
+`MIXED_CONTENT_NEVER_ALLOW`. O Android 0.0.24 encaminha somente a chamada ao relay
 local por uma ponte nativa Android, fixa em
 `http://127.0.0.1:4183/v1/chat/completions`, em vez de liberar conteúdo misto no
 WebView. Ela aceita somente POST JSON originado do quadro principal do aplicativo,
 sem credencial do navegador, limita pedido e resposta a 128 KiB, aplica espera
 de 45 segundos e propaga cancelamento. Não enfraqueça essa política nem habilite
-tráfego aberto como atalho. A compilação de depuração passou; a promoção ainda
-precisa instalar e exercer a ponte no APK de release, em dispositivo real, e
+tráfego aberto como atalho. A compilação de depuração passou; a validação externa
+ainda precisa instalar e exercer a ponte no APK de release, em dispositivo real, e
 provar o acesso à rede local a partir do Pages HTTPS.
 
 No GitHub, esses valores ficam em `Settings > Secrets and variables > Actions
@@ -351,11 +351,11 @@ hospedadas e retire apenas pontos de entrada sem consumidor na revisão
 corrente. Repita o verificador do site, do manifesto e do MCP depois da
 retirada. Se o site novo não puder ser confirmado, não inicie essa etapa.
 
-Para a candidata 0.0.24, a etapa 7 inclui obrigatoriamente
+Na promoção da 0.0.24, a etapa 7 incluiu obrigatoriamente
 `20260820224424_canonical_study_unit_composition_edits.sql` e a implantação da
 API de Cursos que expõe a rota contextual. O verificador hospedado precisa
-observar `contextual-study-unit-edit-v1` antes de qualquer cliente 0.0.24 ser
-publicado. A versão pública do recurso e das seis ferramentas MCP pode continuar
+observar `contextual-study-unit-edit-v1` antes de qualquer cliente correspondente
+ser publicado. A versão pública do recurso e das seis ferramentas MCP pode continuar
 0.0.23 porque sua forma não mudou.
 
 ## Recuperação
@@ -392,13 +392,13 @@ do restante.
 | Android | aprovado: validação verde, certificado esperado e publicação `v0.0.23` com APK |
 | limpeza destrutiva | isolada: inventário, cópia anterior e restauração comprovados; remoção física não executada |
 
-## Estado da candidata 0.0.24
+## Estado da entrega 0.0.24
 
-| Critério | Estado antes da promoção |
+| Critério | Estado corrente |
 |---|---|
-| esquema e API | exigem `20260820224424` e as funções da mesma revisão; a última implantação hospedada comprovada ainda é `20260820101500` |
-| clientes | site e Android permanecem candidatos locais; backend deve ser promovido primeiro |
-| interface | limite de 430 px, quatro grupos progressivos, edição manual e assistência por API possuem cobertura local; inspeção final de capturas e execução integral ainda integram o gate |
-| relay da assistência | duas passagens HTTP locais aprovadas, a mais recente 1/1 em 14,2 s; a compilação Android de depuração e os 28/28 testes de implantação passaram, com ponte nativa presente no APK e ausente no Pages, sem relaxar `MIXED_CONTENT_NEVER_ALLOW`; instalação do APK de release, prova em dispositivo real e teste de acesso à rede local no Pages permanecem pendentes |
-| ChatGPT | a sessão hospedada precisa repetir materialização, retorno ao AraLearn, recurso visual e medidas disponíveis |
+| esquema e API | aprovados: `20260820224424`, API de Cursos revisão 5 e MCP revisão 120 hospedados e verificados antes dos clientes |
+| clientes | site e Android 0.0.24 publicados pelos canais oficiais a partir da mesma revisão validada |
+| interface | limite de 430 px, quatro grupos progressivos, edição manual e assistência por API possuem cobertura automatizada e integram os artefatos publicados; a descoberta humana continua pendente |
+| relay da assistência | duas passagens HTTP locais aprovadas, a mais recente 1/1 em 14,2 s; a compilação Android de release e os 28/28 testes de implantação passaram, com ponte nativa presente no APK e ausente no Pages, sem relaxar `MIXED_CONTENT_NEVER_ALLOW`; instalação do APK, prova em dispositivo real e teste de acesso à rede local no Pages permanecem pendentes |
+| ChatGPT | a versão publicada ainda precisa repetir materialização, retorno ao AraLearn, recurso visual e medidas disponíveis no cliente conectado |
 | aceitação humana | pendente conforme o roteiro por descoberta de tarefas; nomes de áreas não são ensinados previamente |

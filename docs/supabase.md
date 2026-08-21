@@ -5,14 +5,15 @@ AraLearn. O navegador usa apenas a URL do projeto e a chave pública. Operaçõe
 autorais privilegiadas passam pelas funções remotas, que validam a pessoa antes
 de usar a credencial administrativa.
 
-Na entrega 0.0.23, a ordem completa de publicação segue o roteiro de
+Na entrega 0.0.24, a ordem completa de publicação segue o roteiro de
 [Implantação](implantacao.md).
 
-Na última implantação verificada, o projeto hospedado estava no plano Free,
-ativo na região `sa-east-1`, com PostgreSQL 17.6 e revisão de esquema
-`20260820101500`. Depois daquele corte, o banco ocupava 97.053.843 bytes e
-continha oito Cursos e 5.056 entidades correntes. A promoção da edição
-contextual exige avançar esse ambiente para a revisão corrente descrita abaixo.
+Na implantação verificada, o projeto hospedado estava no plano Free, ativo na
+região `sa-east-1`, com PostgreSQL 17.6 e revisão de esquema
+`20260820224424`. A API de Cursos estava na revisão 5 e o MCP, na revisão 120.
+Depois do corte 0.0.23, o banco ocupava 97.053.843 bytes e continha oito Cursos
+e 5.056 entidades correntes; esses números continuam sendo a medição pontual
+documentada, não uma leitura permanente do consumo.
 
 ## Componentes usados
 
@@ -95,7 +96,7 @@ e [privilégios da API de dados](https://supabase.com/docs/guides/api/using-cust
 
 ## Migrações e manifesto
 
-Migrações versionadas ficam em `supabase/migrations/`. A revisão da candidata é
+Migrações versionadas ficam em `supabase/migrations/`. A revisão hospedada corrente é
 `20260820224424`. `supabase/runtime-manifest.json` associa essa revisão ao
 contrato 1 e às capacidades exigidas pelo aplicativo, incluindo a edição
 contextual de Unidade de estudo.
@@ -285,10 +286,10 @@ implantadas durante a janela de atualização, mas deixam de ser compatíveis co
 o banco depois do corte. Sua retirada é explícita e ocorre somente depois da
 verificação do Pages novo.
 
-Para a candidata 0.0.24, o banco precisa chegar a `20260820224424` e as duas
-funções precisam ser implantadas e verificadas antes de promover Pages ou APK.
-Os clientes recusam o manifesto anterior; inverter essa ordem publicaria uma
-interface que anuncia edição contextual sem o contrato remoto correspondente.
+Na promoção da 0.0.24, o banco chegou a `20260820224424` e as duas funções
+foram implantadas e verificadas antes do Pages e do APK. Os clientes recusam o
+manifesto anterior; inverter essa ordem publicaria uma interface que anuncia
+edição contextual sem o contrato remoto correspondente.
 
 Uma nova origem pode ser acrescentada com `-AllowedOrigin`. O valor deve ser
 uma origem HTTPS sem caminho, consulta ou fragmento; HTTP é aceito somente em
@@ -329,10 +330,12 @@ npm.cmd run deployment:verify-hosted
 
 O verificador consulta o manifesto remoto com a chave pública, compara revisão,
 versão e capacidades e recusa configuração administrativa. Na publicação
-0.0.23, o manifesto, o CORS e o OAuth MCP foram aprovados. Uma jornada separada
+0.0.24, o manifesto `20260820224424`, o CORS e o OAuth MCP foram aprovados. O
+teste hospedado percorreu Fonte, Observação, ciclo de auditoria e autoria
+incremental e encerrou sem resíduos. Uma jornada anterior, no corte 0.0.23,
 usou três identidades temporárias para verificar acesso de Estudo, negação a
-terceiro, PDF íntegro e adulterado, Variantes e Pesquisa, com remoção integral
-dos dados de ensaio.
+terceiro, PDF íntegro e adulterado, Variantes e Pesquisa, também com remoção
+integral dos dados de ensaio.
 
 O plano Free admite 500 MB de banco por projeto, 1 GB de Storage, 500 mil
 invocações de funções e 5 GB de transferência incluída na organização. No

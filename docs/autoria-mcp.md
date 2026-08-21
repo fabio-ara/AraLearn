@@ -621,15 +621,15 @@ estrutura mínima, vincula uma Microssequência à Parte, inicia uma materializa
 registra a etapa de contexto, relê `part_materialization` e comprova a chegada do
 andamento à interface e ao IndexedDB. Abrir **Ver etapas** não envia nova escrita
 nem repete a confirmação já feita no cliente MCP. O teste encerra comprovando a
-remoção dos dados criados. A revisão candidata acrescenta à mesma jornada a
+remoção dos dados criados. A versão 0.0.24 acrescenta à mesma jornada a
 edição manual, a assistência por relay, os eventos `manual` e
 `provider_assistance`, a releitura da API e do PostgreSQL e a promoção no
 IndexedDB; esse percurso passou novamente 1/1 em 14,2 segundos depois da
 correção da classificação do endereço local no navegador.
 
 Essa prova é local e automatizada. O relay foi exercitado sobre HTTP local; ela
-não comprova o acesso do Pages HTTPS à rede local nem a ponte nativa da candidata
-Android num APK instalado em dispositivo real. A verificação
+não comprova o acesso do Pages HTTPS à rede local nem a ponte nativa do
+Android 0.0.24 num APK instalado em dispositivo real. A verificação
 hospedada só deve ser executada depois que as migrações remotas estiverem em
 paridade com `supabase/runtime-manifest.json`; nenhuma dessas duas provas, por
 si, demonstra instalação pública ou usabilidade dentro do ChatGPT.

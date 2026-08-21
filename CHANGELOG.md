@@ -4,9 +4,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.24] - 2026-08-20
+
 ### Alterado
 
-- a candidata 0.0.24 limita toda a Autoria a 430 px, inclusive em telas de
+- a versão 0.0.24 limita toda a Autoria a 430 px, inclusive em telas de
   1280 px, e distribui suas capacidades por quatro grupos progressivos em
   ícones: Curso, Revisar, Pesquisa e Pessoas;
 - formulários preservam rascunho, seleção e foco ao atualizar dados, trocar de
@@ -29,7 +31,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   repete comandos de escrita com a mesma identidade, evitando duplicação de
   Cursos, Partes, Fontes, Âncoras, observações, variantes e rodadas de
   auditoria;
-- o manifesto implantável avança para `20260820224424`; a nova operação
+- o manifesto hospedado avança para `20260820224424`; a nova operação
   contextual registra origem manual ou por assistência, preserva a proveniência
   histórica somente quando o conjunto anterior é carregado sem alteração e
   exige promover banco e funções antes dos clientes.
@@ -57,11 +59,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Limites atuais
 
-- o relay da assistência foi comprovado no ambiente HTTP local. A candidata
+- o relay da assistência foi comprovado no ambiente HTTP local. O aplicativo
   Android usa uma ponte nativa fixa para não depender de uma chamada HTTPS para
   HTTP no WebView, sem relaxar `MIXED_CONTENT_NEVER_ALLOW`; Pages ainda precisa
-  do ensaio real de acesso à rede local; a compilação Android de depuração passou,
-  mas a paridade depende do APK de release instalado e do ensaio em dispositivo
+  do ensaio real de acesso à rede local; o APK de release foi compilado e
+  publicado, mas a paridade depende de sua instalação e do ensaio em dispositivo
   real.
 
 ## [0.0.23] - 2026-08-20

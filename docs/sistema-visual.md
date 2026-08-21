@@ -292,7 +292,7 @@ O teste ponta a ponta da Autoria fica em
 `tests/e2e/course-authoring-cutover.spec.js`; os cenários de auditoria usam
 `tests/e2e/course-audit-panel.spec.js`. A galeria dos componentes é reconstruída
 por `npm run resources:gallery:visual`. `npx playwright test --list` enumera 111
-testes em nove arquivos na candidata corrente: 73 no percurso compacto da
+testes em nove arquivos na versão 0.0.24: 73 no percurso compacto da
 Autoria, seis na edição manual e três na assistência por API. Os nove cenários
 integrados dessas duas últimas capacidades passaram 9/9. A listagem total não
 substitui a execução da matriz nem a inspeção das capturas. A compreensão por
@@ -318,7 +318,7 @@ Uma captura comprova apenas o conjunto de dados, o modo e o tamanho usados. A
 aprovação visual exige também interação real, console e rede sem erros, foco,
 rolagem, textos extensos e estados intermediários.
 
-Na candidata corrente, a inspeção local também percorreu Cursos em
+Na versão 0.0.24, a inspeção local também percorreu Cursos em
 360/390/430/1280 px, Planejamento nos temas claro e escuro, Parâmetros, Fontes e
 Auditoria. Esses artefatos temporários confirmaram a superfície única e
 centralizada sem segunda coluna ou overflow aparente, mas não substituem a

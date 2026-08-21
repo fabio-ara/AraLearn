@@ -1,11 +1,11 @@
 # Matriz de conformidade técnica
 
 Esta matriz liga propriedades do AraLearn à implementação e à evidência
-executável da candidata 0.0.24. O contrato público das seis ferramentas e do
-recurso MCP permanece 0.0.23, mas a candidata exige a API de Cursos
-correspondente e o esquema `20260820224424`. O estado “demonstrado” indica que a capacidade
-existe no contrato corrente e possui verificação no repositório. Limites
-declarados fazem parte desse contrato.
+executável da versão publicada 0.0.24. O contrato público das seis ferramentas
+e do recurso MCP permanece 0.0.23, enquanto a API de Cursos e o esquema
+`20260820224424` formam o backend hospedado corrente. O estado “demonstrado”
+indica que a capacidade existe no contrato corrente e possui verificação no
+repositório. Limites declarados fazem parte desse contrato.
 
 ## Curso e composição
 
@@ -43,7 +43,7 @@ declarados fazem parte desse contrato.
 | assistência por API altera diretamente o Curso | `StudyUnitProviderAssistance.js` e editor manual compartilhado | `study-unit-provider-assistance.test.js`, teste de navegador | fora do contrato; a resposta validada entra primeiro no rascunho e a pessoa decide salvar pela operação corrente |
 | uma sugestão focal altera vários caminhos de uma vez | schema `changes` e validação da candidata | testes de assistência e navegador | fora do contrato; cada pedido aceita zero ou uma mudança em caminho autorizado e até 8.000 tokens de saída |
 | trecho acima do orçamento abre uma chamada fadada ao corte | disponibilidade calculada antes da sobreposição | testes de assistência, renderer e acessibilidade | fora do contrato; acima de 6.000 caracteres por caminho ou 12.000 no contexto, o comando informa o motivo acessível e a edição manual permanece disponível |
-| edição contextual confirma uma Unidade e sua proveniência atomicamente | `courseComposition.js`, controlador, API, adaptador e migração `20260820224424` | testes de controlador, roteador, adaptador, PGlite e paridade IndexedDB | demonstrado localmente; carga histórica exige igualdade JSONB com o conjunto efetivo anterior, e mudança exige Fonte e Âncora correntes |
+| edição contextual confirma uma Unidade e sua proveniência atomicamente | `courseComposition.js`, controlador, API, adaptador e migração `20260820224424` | testes de controlador, roteador, adaptador, PGlite, paridade IndexedDB e funcionamento hospedado | demonstrado localmente e no backend hospedado; carga histórica exige igualdade JSONB com o conjunto efetivo anterior, e mudança exige Fonte e Âncora correntes |
 | uma resposta perdida muda a proveniência do replay | instantâneo limitado por `requestId` no `CourseController` | testes de controlador e resposta ambígua no navegador | fora do contrato; a mesma intenção reutiliza o conjunto fixado, e outra intenção com a mesma identidade é recusada |
 | recibo 2xx depende de nova leitura para chegar ao IndexedDB | promoção de snapshot e `course.v1` no controlador | 136/136 verificações focais e 9/9 cenários integrados de Estudo/Inspeção | fora do contrato; antes da invalidação, a cópia confirmada chega a Estudo e Inspeção sem rede e sem repetir escrita; releitura igual normaliza, revisão superior supera e logout, limpeza ou revogação purgam |
 
@@ -102,9 +102,9 @@ declarados fazem parte desse contrato.
 
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | gate corrente exige `20260820224424`; a última revisão hospedada comprovada foi `20260820101500`, portanto a promoção do cliente aguarda o backend |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260820224424`; banco e funções foram promovidos e verificados antes dos clientes 0.0.24 |
 | integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
-| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | verificadores demonstrados localmente; site publicado e APK assinado 0.0.24 permanecem pendentes |
+| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado nos artefatos publicados 0.0.24; o APK ainda precisa de ensaio com relay em dispositivo real |
 | Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |
 | publicação Android parte da ponta validada de `main` | `.github/workflows/android-release.yml` | `deployment-automation.test.js` | demonstrado; revisão superada e tag existente não são republicadas |
 | limpeza física acompanha toda migração | `scripts/courseCutover/prepareLegacyCleanup.mjs` | `course-legacy-cleanup-plan.test.js`, `course-legacy-cleanup-backup.test.js` | fora do contrato; requer inventário, cópia verificada, restauração e confirmação específicas |
