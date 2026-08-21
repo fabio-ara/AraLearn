@@ -301,8 +301,8 @@ definidos pela finalidade. A solução precisa permitir revogação, atribuiçã
 proporcionalidade.
 
 **Decisão.** Cada Curso possui uma pessoa proprietária, e o acesso direto concede
-somente Estudo no original. Na candidata #149, uma edição contextual feita por
-quem estuda cria outro Curso privado, sob sua propriedade, sem escrever na
+somente Estudo no original. Desde a versão 0.0.26, uma edição contextual feita
+por quem estuda cria outro Curso privado, sob sua propriedade, sem escrever na
 origem. Fontes, Âncoras, eventos e correções preservam proveniência. A área
 Pesquisa expõe fatos autorais sem dados identificadores e contagens descritivas,
 sem criar telemetria comportamental por conveniência.

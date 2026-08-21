@@ -143,8 +143,8 @@ Não aumente a revisão à mão e não repita a escrita às cegas.
 
 ## Salvei um Curso compartilhado e a cópia não apareceu
 
-Na candidata de clientes 0.0.26, ainda não publicada, uma cópia
-pessoal só nasce quando **Salvar na minha cópia** confirma uma mudança material.
+Desde a versão 0.0.26, uma cópia pessoal só nasce quando **Salvar na minha
+cópia** confirma uma mudança material.
 Abrir o editor, gerar
 uma prévia, cancelar, receber uma falha ou salvar conteúdo idêntico deixa o
 Curso compartilhado intacto e não cria outro Curso.

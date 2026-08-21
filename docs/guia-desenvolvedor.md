@@ -188,10 +188,9 @@ comprova a pessoa no corpo da operação. Tabelas expostas exigem tanto privilé
 quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
-os testes correspondentes existirem. A linha publicada dos clientes 0.0.25
-continua apontando para `20260820224424`; o backend hospedado já está em
-`20260821145358`, com a API de Cursos na revisão 9 e o MCP na revisão 124, à
-espera da publicação dos clientes 0.0.26.
+os testes correspondentes existirem. A linha publicada dos clientes 0.0.26
+aponta para `20260821145358`, a mesma revisão exposta pelo backend hospedado,
+com a API de Cursos na revisão 9 e o MCP na revisão 124.
 
 ## Testes focais
 

@@ -115,7 +115,7 @@ seleção, o progresso nem as Observações.
 
 ### Primeira gravação de uma cópia pessoal
 
-Na candidata 0.0.26 existe uma exceção delimitada ao estado transitório em
+Desde a versão 0.0.26 existe uma exceção delimitada ao estado transitório em
 memória. Se quem possui apenas acesso direto salva uma mudança em
 Estudo, o repositório conserva no IndexedDB o envelope necessário para criar sua
 cópia pessoal: Curso de origem, seleção exata, revisões esperadas, Unidade final,
@@ -278,7 +278,7 @@ preservam definições, denominadores e dados ausentes.
 
 O proprietário concede ou revoga acesso ao Curso por relações explícitas. Uma
 conta compartilhada recebe a leitura necessária ao Estudo e não recebe escrita
-no Curso original. A operação candidata da #149 pode criar um Curso pessoal
+no Curso original. A operação de cópia pessoal pode criar um Curso pessoal
 privado na primeira gravação contextual; as demais operações de Autoria,
 auditoria, comparação e Pesquisa continuam verificando propriedade no contrato
 SQL, mesmo quando são chamadas por uma função com credencial administrativa.

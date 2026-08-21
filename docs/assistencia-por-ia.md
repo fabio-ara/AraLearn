@@ -116,9 +116,8 @@ voltar ao texto original, aplicar ao rascunho e, separadamente, salvar a
 Unidade. A gravação usa a mesma revisão esperada, autorização e validação da
 edição manual.
 
-Na candidata de clientes 0.0.26, ainda não publicada, quem estuda um
-Curso compartilhado usa essa mesma assistência no mesmo renderer. A prévia
-continua sem efeito persistente.
+Desde a versão 0.0.26, quem estuda um Curso compartilhado usa essa mesma
+assistência no mesmo renderer. A prévia continua sem efeito persistente.
 Somente **Salvar na minha cópia**, depois da revisão humana, cria o Curso pessoal
 privado e grava a Unidade nele. O original, as Fontes, os PDFs, o planejamento,
 o progresso e as Observações não são alterados nem copiados. O envelope local

@@ -5,10 +5,10 @@ AraLearn. O navegador usa apenas a URL do projeto e a chave pública. Operaçõe
 autorais privilegiadas passam pelas funções remotas, que validam a pessoa antes
 de usar a credencial administrativa.
 
-Na entrega 0.0.25, o Supabase não mudou. Depois dessa publicação, o backend da
-candidata 0.0.26 foi promovido para o esquema `20260821145358`, a API de Cursos
-na revisão 9 e o MCP na revisão 124. A ordem completa de publicação dos clientes
-segue o roteiro de [Implantação](implantacao.md).
+Na entrega 0.0.25, o Supabase não mudou. Antes da publicação dos clientes
+0.0.26, o backend foi promovido para o esquema `20260821145358`, a API de Cursos
+na revisão 9 e o MCP na revisão 124. A ordem completa segue o roteiro de
+[Implantação](implantacao.md).
 
 Na implantação verificada, o projeto hospedado estava no plano Free, ativo na
 região `sa-east-1`, com PostgreSQL 17.6 e revisão de esquema
@@ -315,11 +315,11 @@ foram implantadas e verificadas antes do Pages e do APK. Os clientes recusam o
 manifesto anterior; inverter essa ordem publicaria uma interface que anuncia
 edição contextual sem o contrato remoto correspondente.
 
-Na promoção do backend da candidata 0.0.26, o modo Apply levou o banco a
+Na promoção do backend da versão 0.0.26, o modo Apply levou o banco a
 `20260821145358`, a API de Cursos à revisão 9 e o MCP à revisão 124. A análise
 hospedada permaneceu limitada aos 88 avisos legados; CORS, OAuth/MCP e o
-verificador público da revisão e de `package-library-v1` passaram. Pages e Android
-0.0.26 continuam como etapas posteriores.
+verificador público da revisão e de `package-library-v1` passaram. Pages e
+Android 0.0.26 foram publicados depois dessa confirmação.
 
 Uma nova origem pode ser acrescentada com `-AllowedOrigin`. O valor deve ser
 uma origem HTTPS sem caminho, consulta ou fragmento; HTTP é aceito somente em
@@ -360,7 +360,7 @@ npm.cmd run deployment:verify-hosted
 
 O verificador consulta o manifesto remoto com a chave pública, compara revisão,
 versão e capacidades e recusa configuração administrativa. Na promoção da
-candidata 0.0.26, o manifesto `20260821145358`, `package-library-v1`, o CORS e o
+versão 0.0.26, o manifesto `20260821145358`, `package-library-v1`, o CORS e o
 OAuth MCP foram aprovados. O teste hospedado da 0.0.24 percorreu Fonte,
 Observação, ciclo de auditoria e autoria incremental e encerrou sem resíduos.
 Uma jornada anterior, no corte 0.0.23,

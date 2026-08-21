@@ -21,9 +21,8 @@ conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
 **Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. A pessoa
 que recebeu acesso continua fora da Autoria desse Curso e não pode alterar o
-original. Na candidata de clientes 0.0.26, ainda não publicada, uma
-mudança contextual confirmada pode criar outro Curso privado, pertencente a essa
-pessoa.
+original. Desde a versão 0.0.26, uma mudança contextual confirmada pode criar
+outro Curso privado, pertencente a essa pessoa.
 
 **Cópia pessoal de Curso** é esse novo Curso, criado somente na primeira
 gravação material. Ele recebe a composição didática necessária para continuar na
@@ -89,8 +88,8 @@ chave nova dentro da pasta da própria conta e não cria endereço público.
 Todo Curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
 e composição, usar as ferramentas autorais, consultar Pesquisa e Variantes e
 gerir acessos. Uma pessoa com acesso recebe somente a projeção de Estudo, que
-exclui orientações privadas e estado autoral. Na operação candidata da #149,
-essa projeção permite enviar uma única Unidade editada ao servidor para criar um
+exclui orientações privadas e estado autoral. Na operação de cópia pessoal, essa
+projeção permite enviar uma única Unidade editada ao servidor para criar um
 Curso pessoal privado; ela não concede escrita sobre o original.
 
 A relação entre pessoa, origem e cópia pessoal permanece numa tabela privada do

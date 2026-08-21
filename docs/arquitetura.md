@@ -5,11 +5,10 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-A linha publicada dos clientes é a 0.0.25 e incorpora o manifesto esperado
-`20260820224424`. O ambiente hospedado já foi promovido para
-`20260821145358`, com a API de Cursos na revisão 9 e o MCP na revisão 124. A
-candidata 0.0.26 declara esse contrato remoto, validado localmente e no ambiente
-hospedado; Pages e Android 0.0.26 ainda não foram publicados.
+A linha publicada dos clientes é a 0.0.26 e exige o manifesto
+`20260821145358`. O ambiente hospedado expõe essa revisão, com a API de Cursos
+na revisão 9 e o MCP na revisão 124. O contrato foi validado localmente e no
+ambiente hospedado antes da publicação coordenada de Pages e Android.
 
 ## O Curso como raiz do domínio
 
@@ -58,8 +57,9 @@ Na entrada de Estudo, descritores paginados alimentam um único combobox e uma
 única prévia. A seleção não carrega a composição curricular. A ação
 **Começar**, **Continuar** ou **Retomar** resolve a posição pertinente, valida a
 composição e só então entra no Curso. A prévia consulta o documento validado no
-IndexedDB para informar disponibilidade sem conexão; revogação elimina a cópia
-e o ponto local. Esse contrato integra a versão 0.0.25.
+IndexedDB para informar disponibilidade sem conexão; revogação elimina a réplica
+local do Curso compartilhado e o ponto local, sem apagar uma cópia pessoal já
+confirmada. Esse contrato integra a versão 0.0.25.
 
 O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
 `criarCurso`, `alterarCurso`, `gerirPessoas` e
@@ -157,7 +157,7 @@ usadas pelo próximo CAS sem perder seleção, progresso ou Observações.
 
 ### Cópia pessoal em Estudo
 
-A candidata 0.0.26 acrescenta um segundo destino à mesma edição contextual.
+A versão 0.0.26 acrescenta um segundo destino à mesma edição contextual.
 Quando a pessoa possui acesso direto, mas não é proprietária, a
 primeira gravação com mudança material materializa um Curso privado pertencente
 a ela e aplica a Unidade editada nesse novo Curso. O original não recebe escrita.
@@ -334,11 +334,11 @@ pelas cotas do Curso.
 
 ## Contrato implantável
 
-Na candidata do repositório, `supabase/runtime-manifest.json` declara a revisão
-de esquema `20260821145358`, a versão de contrato e todas as capacidades
-obrigatórias. O backend hospedado já expõe essa revisão; o site 0.0.25 ainda
-publica sua cópia anterior. A inicialização compara o contrato esperado com o
-ambiente remoto antes de oferecer operações dependentes dele.
+No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
+esquema `20260821145358`, a versão de contrato e todas as capacidades
+obrigatórias. O backend hospedado e o site 0.0.26 usam essa revisão. A
+inicialização compara o contrato esperado com o ambiente remoto antes de
+oferecer operações dependentes dele.
 
 A promoção exige migrações em paridade, análise do banco, testes de
 concorrência, testes reais de funcionamento da API e do MCP, validação de

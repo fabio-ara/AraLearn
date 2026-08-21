@@ -2,14 +2,14 @@
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
 de borda, site estático e aplicativo Android. A linha publicada dos clientes é a
-0.0.25 e incorpora o manifesto esperado `20260820224424`. O backend hospedado
-já está em `20260821145358`, com a API de Cursos ativa na revisão 9 e o MCP
+0.0.26 e exige o manifesto `20260821145358`. O backend hospedado expõe essa
+revisão, com a API de Cursos ativa na revisão 9 e o MCP
 ativo na revisão 124. O contrato público das ferramentas e do recurso MCP
 permanece 0.0.23; a nova origem estruturada existe somente na rota autenticada
 do aplicativo.
 
-A candidata de clientes 0.0.26 declara o manifesto hospedado, npm e Android
-`0.0.26` e `versionCode` 172. Pages e APK 0.0.26 ainda não foram publicados.
+O site e o Android 0.0.26 foram publicados a partir da mesma ponta validada de
+`main`; o Android usa `versionCode` 172.
 
 O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
@@ -425,28 +425,27 @@ do restante.
 | teclado e divulgação progressiva | **Rever** recebe foco, abre e fecha por `Enter` e atualiza a orientação do indicador |
 | pós-publicação | Pages, APK e entrada de Estudo foram confrontados no Chrome real com o SHA publicado |
 
-## Candidata de clientes da entrega #149
+## Estado da entrega 0.0.26
 
-O backend da #149 já foi promovido; a linha publicada dos clientes permanece
-0.0.25.
+O backend foi promovido antes dos clientes, e os quatro canais da entrega usam o
+mesmo contrato.
 
-| Critério | Evidência da candidata 0.0.26 |
+| Critério | Evidência da versão 0.0.26 |
 |---|---|
 | versões de cliente | npm e Android `0.0.26`; Android `versionCode` 172 |
 | código e contratos | `npm test`: 1.023 aprovações e dez verificações condicionais, 1.033 no total |
 | banco local | recriação até `20260821145358`, pgTAP 78/78, PGlite 45/45 e concorrência 1/1 |
 | backend hospedado | `deploySupabase` em modo Apply aprovou `20260821145358`; API de Cursos ativa na revisão 9 e MCP ativo na revisão 124 |
 | análise e contratos remotos | análise hospedada limitada aos 88 avisos legados; CORS, OAuth/MCP, manifesto público e `package-library-v1` aprovados |
-| integração | smoke real no Supabase local aprovou cópia pessoal, original intacto e isolamento de dados laterais; CI verde no SHA `8bcabdf2` |
+| integração | smoke real no Supabase local aprovou cópia pessoal, original intacto e isolamento de dados laterais; CI completo aprovado |
 | navegador automatizado | Playwright: 118 aprovações e dois casos condicionais, 120 no total |
 | navegador real local | fluxo completo em 360, 390, 430 e 1.280 px, claro e escuro; shell de 360/390/430/430 px, centralizado em 1.280 px, seletor e ação principal de 44 px, sem overflow ou identificadores; **Sua cópia** e **Compartilhado com você** aparecem como duas opções distintas |
 | sincronização | reinício, reconexão, duas abas, resposta ambígua, revogação e origem removida preservam uma única intenção e reconciliam a confirmação |
-| publicação | backend concluído; Pages, Android e verificação pós-publicação dos clientes permanecem pendentes |
+| publicação | backend, Pages, Android e verificação pós-publicação dos clientes concluídos |
 
 A promoção implantou a migração e as funções antes dos clientes e confirmou o
-manifesto hospedado. A etapa seguinte publica Pages e Android. A verificação
-posterior confronta o SHA, a Home, a permanência na Unidade pertinente e a
-ausência de identificadores técnicos no Chrome real.
+manifesto hospedado. A verificação posterior confrontou a Home, a permanência na
+Unidade pertinente e a ausência de identificadores técnicos no Chrome real.
 
 O MCP não recebe ferramenta nova nessa promoção. Git, GitHub App e
 `VersionedCourseStore` permanecem fora da Refatoração 2.0.

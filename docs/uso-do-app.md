@@ -75,10 +75,9 @@ Use o seletor **Estudo / Autoria** na tela inicial.
 - **Autoria** mostra somente Cursos próprios.
 
 A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
-a pessoa pode estudar, mas não alterar o original. Na candidata de clientes
-0.0.26, ainda não publicada, uma gravação contextual feita em
-Estudo cria um Curso pessoal privado; ele passa a aparecer em Autoria como Curso
-próprio.
+a pessoa pode estudar, mas não alterar o original. Desde a versão 0.0.26, uma
+gravação contextual feita em Estudo cria um Curso pessoal privado; ele passa a
+aparecer em Autoria como Curso próprio.
 
 ## Abrir e percorrer um Curso
 
@@ -204,8 +203,8 @@ Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
 **Cancelar** abandona somente esse rascunho.
 
-Na candidata de clientes 0.0.26, ainda não publicada, a mesma ação
-aparece em Estudo para quem recebeu acesso direto. Antes da primeira gravação,
+Desde a versão 0.0.26, a mesma ação aparece em Estudo para quem recebeu acesso
+direto. Antes da primeira gravação,
 a interface informa que
 **Salvar na minha cópia** criará um Curso pessoal privado. A operação materializa
 a estrutura e o conteúdo correntes, aplica a mudança e continua na mesma Unidade.
@@ -481,8 +480,9 @@ próprias. Cursos também não são
 disponibilizados anonimamente: Estudo exige conta própria ou acesso direto
 concedido pelo proprietário.
 
-A cópia pessoal da #149 usa a persistência relacional e o Storage correntes do
-AraLearn. Ela não introduz Git, repositório, ramo ou versão técnica na interface.
+A cópia pessoal da versão 0.0.26 usa a persistência relacional e o Storage
+correntes do AraLearn. Ela não introduz Git, repositório, ramo ou versão técnica
+na interface.
 
 Progresso, cliques, rolagem, tempo, marcas e Observações descrevem eventos ou
 estados observáveis. A interpretação como atenção, engajamento, compreensão ou

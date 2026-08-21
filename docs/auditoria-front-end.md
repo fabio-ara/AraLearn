@@ -179,10 +179,11 @@ Estudo e Inspeção instanciam o mesmo editor contextual sobre o mesmo renderer.
 A interface não converte a Unidade em um formulário genérico: ativa somente os
 trechos autorizados pelo contrato do componente, recompõe respostas associadas
 quando a relação é inequívoca e valida o envelope completo antes de salvar.
-Na linha publicada, a pessoa com acesso apenas a Estudo não recebe os comandos
-de edição. A candidata #149 restaura esses comandos em Estudo e muda o destino
-da gravação: o proprietário altera o Curso corrente; a pessoa favorecida usa
-**Salvar na minha cópia**, que cria um Curso privado sem escrever no original.
+Na versão 0.0.25, a pessoa com acesso apenas a Estudo não recebia os comandos de
+edição. Desde a 0.0.26, esses comandos também estão disponíveis em Estudo, com
+outro destino de gravação: o proprietário altera o Curso corrente; a pessoa
+favorecida usa **Salvar na minha cópia**, que cria um Curso privado sem escrever
+no original.
 Ambos permanecem no mesmo renderer e na mesma Unidade.
 
 A assistência complementar usa o mesmo alvo e o mesmo rascunho. O aviso antes do
@@ -279,10 +280,11 @@ conjunto:
 - a função auxiliar privada não possui execução para papéis de cliente;
 - Curso compartilhado permanece acessível apenas em Estudo e não recebe escrita
   da pessoa favorecida;
-- a operação candidata de cópia pessoal exige acesso direto, cria outro Curso
+- a operação de cópia pessoal exige acesso direto, cria outro Curso
   sob propriedade dessa pessoa e não integra o MCP;
 - conflito de revisão conserva a intenção e exige releitura;
-- revogação impede nova leitura pela rede e elimina a cópia privada conhecida.
+- revogação impede nova leitura pela rede e elimina a réplica local do Curso
+  compartilhado, sem apagar uma cópia pessoal já confirmada.
 
 Segurança por linha, privilégios e checagem de propriedade são camadas
 complementares. Uma função privilegiada incorreta não é corrigida apenas por
@@ -349,9 +351,9 @@ aborto, ausência de callback tardio, remoção da sobreposição e da credencia
 nenhum erro de página. O grupo visual integrado correspondente passou 9/9,
 separadamente da listagem.
 
-Esses números pertencem ao fluxo publicado do proprietário e não aprovam por
-extensão a cópia pessoal. A candidata 0.0.26 comprovou separadamente no ambiente
-local: nenhuma cópia em prévia, cancelamento, falha ou ausência de mudança;
+Esses números pertencem ao fluxo do proprietário e não aprovam por extensão a
+cópia pessoal. A versão 0.0.26 comprovou separadamente: nenhuma cópia em prévia,
+cancelamento, falha ou ausência de mudança;
 isolamento de progresso, Observações, Fontes, PDFs e planejamento; repetição
 idempotente depois de reinício e reconexão; concorrência entre duas abas;
 revogação da origem; permanência na Unidade pertinente; e ausência de

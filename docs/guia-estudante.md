@@ -22,9 +22,9 @@ informa que a conexão é necessária.
 
 A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
 pessoa. O acesso à **Autoria** leva à atividade autoral. Um Curso compartilhado
-fica em Estudo e continua sob responsabilidade do proprietário. Na candidata de
-clientes 0.0.26, ainda não publicada, a pessoa pode usar **Editar**
-nesse percurso sem alterar o original: a primeira gravação com mudança material
+fica em Estudo e continua sob responsabilidade do proprietário. Desde a versão
+0.0.26, a pessoa pode usar **Editar** nesse percurso sem alterar o original: a
+primeira gravação com mudança material
 cria um Curso pessoal privado, que passa a aparecer como **Sua cópia** e também
 pertence à sua Autoria.
 
@@ -132,8 +132,9 @@ Ao estudar em duas abas ou em dois dispositivos, cada sessão conserva a tela em
 que a pessoa está, enquanto o estado persistido é reconciliado sem deslocar a
 outra sessão durante o uso. Se o acesso ao Curso selecionado for revogado, o
 servidor recusa novas leituras e alterações; na próxima validação conectada, o
-aplicativo remove a cópia privada, informa a mudança e seleciona outro Curso
-acessível, quando houver.
+aplicativo remove o conteúdo local do Curso compartilhado, informa a mudança e
+seleciona outro Curso acessível, quando houver. Uma cópia pessoal já confirmada
+permanece como Curso privado da pessoa.
 
 ## Zerar o progresso de um Curso
 
