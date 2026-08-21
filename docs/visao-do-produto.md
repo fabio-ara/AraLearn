@@ -127,10 +127,11 @@ O mesmo Curso pode ser observado em dois contextos complementares:
   aberto, o **Model Context Protocol (MCP)**, conecta o assistente de autoria ao
   aplicativo.
 
-Uma alteração não precisa transportar todos os Cursos. A lista inicial é fina
-e a composição é lida em páginas sob uma revisão fixa. O contexto enviado a um
-serviço de linguagem é montado para o Curso e o alvo pertinentes, e a resposta
-precisa satisfazer contratos estruturais antes de ser gravada.
+Uma alteração não precisa transportar todos os Cursos. A entrada inicial recebe
+descritores finos para selecionar um Curso; a composição é lida em páginas sob
+uma revisão fixa somente na entrada. O contexto enviado a um serviço de
+linguagem é montado para o Curso e o alvo pertinentes, e a resposta precisa
+satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
 é uma ferramenta de autoria sob responsabilidade humana. Recomendações para

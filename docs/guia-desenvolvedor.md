@@ -188,9 +188,9 @@ comprova a pessoa no corpo da operação. Tabelas expostas exigem tanto privilé
 quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
-os testes correspondentes existirem. A linha publicada 0.0.24 aponta para
-`20260820224424`; essa promoção do banco e das funções precedeu os clientes da
-mesma versão.
+os testes correspondentes existirem. A linha 0.0.25 continua apontando para
+`20260820224424`; o banco e as funções foram promovidos na 0.0.24 e não mudam
+nesta atualização de clientes.
 
 ## Testes focais
 

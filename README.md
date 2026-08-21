@@ -40,9 +40,10 @@ produto ainda precisa ser distinguida de evidência sobre aprendizagem. O
 ## Como se estuda
 
 Depois de entrar, a pessoa encontra os Cursos que possui e aqueles aos quais
-recebeu acesso. A lista inicial traz título, objetivo, contagens e progresso. A
-composição completa é buscada quando o Curso é aberto e fica armazenada no
-dispositivo para retomada.
+recebeu acesso. Um único seletor e uma única prévia apresentam título, objetivo,
+relação de acesso, contagens, progresso e disponibilidade local do Curso
+escolhido. A ação **Começar**, **Continuar** ou **Retomar** busca a composição
+completa quando necessário e a conserva no dispositivo.
 
 Estudo percorre Curso, Módulo, Lição, Microssequência didática e Unidade de
 estudo. O controle principal confirma uma resposta quando necessário, apresenta
@@ -84,9 +85,10 @@ sugestão focal ao relay local configurado no dispositivo, conferir a prévia e 
 então aplicar. A credencial do provider permanece no relay, fora do AraLearn; a
 conversa contextual é transitória. O ChatGPT conectado por MCP continua sendo a
 via principal para planejar, materializar, discutir e auditar o Curso inteiro.
-O relay foi comprovado no ambiente web local. O aplicativo Android 0.0.24
-encaminha a chamada por uma ponte nativa fixa para o relay, sem afrouxar a
-política de conteúdo misto do WebView. O site e o APK estão publicados; o acesso
+O relay foi comprovado no ambiente web local. Desde a versão 0.0.24, o
+aplicativo Android encaminha a chamada por uma ponte nativa fixa para o relay,
+sem afrouxar a política de conteúdo misto do WebView. O site e o APK estão
+publicados; o acesso
 à rede local pelo Pages e o relay no APK instalado ainda dependem das validações
 de transporte registradas no roadmap.
 
@@ -162,11 +164,12 @@ sincronização](docs/persistencia-relacional.md).
 ## Aplicação web e Android
 
 A mesma aplicação é entregue na web e como pacote de instalação Android (APK)
-nas versões publicadas do repositório. A linha corrente é a 0.0.24, sobre o
-manifesto hospedado `20260820224424`. Estudo mantém uma largura confortável
-também no computador. A
-Autoria conserva uma superfície centralizada de até 430 px também no computador
-e usa quatro grupos iconográficos com divulgação progressiva.
+nas versões publicadas do repositório. A linha corrente é a 0.0.25, sobre o
+manifesto hospedado `20260820224424`. Estudo e Autoria conservam uma superfície
+centralizada de até 430 px também no computador. A entrada de Estudo usa um
+único seletor de Curso e uma única prévia, sem transformar a biblioteca num
+painel de cartões; a Autoria usa quatro grupos iconográficos com divulgação
+progressiva.
 
 ## Estado e limites
 

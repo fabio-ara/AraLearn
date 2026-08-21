@@ -13,8 +13,9 @@ Um **Curso vivo** é o mesmo objeto em Estudo, Autoria e ferramentas
 conversacionais. O conteúdo pode mudar sob a mesma identidade e fica disponível
 para Estudo assim que contém Unidades válidas.
 
-**Estudo** permite abrir Cursos próprios ou compartilhados, avançar, marcar
-Unidades para rever e registrar Observações próprias.
+**Estudo** permite selecionar Cursos próprios ou compartilhados, começar,
+continuar ou retomar o percurso, marcar Unidades para rever e registrar
+Observações próprias.
 
 **Autoria** apresenta somente Cursos próprios. Ela reúne Planejamento,
 Parâmetros, Fontes, Estrutura, Inspeção, Discussões e correções, Variantes,
@@ -69,7 +70,8 @@ dispositivo e não altera nenhum Curso.
 
 Use o seletor **Estudo / Autoria** na tela inicial.
 
-- **Estudo** mostra todos os Cursos acessíveis.
+- **Estudo** reúne todos os Cursos acessíveis num seletor e apresenta uma prévia
+  rica do Curso selecionado.
 - **Autoria** mostra somente Cursos próprios.
 
 A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
@@ -77,11 +79,11 @@ a pessoa pode estudar, e a edição permanece com o proprietário.
 
 ## Abrir e percorrer um Curso
 
-1. Em Estudo, use **Abrir Curso**.
-2. Escolha um Módulo.
-3. Escolha uma Lição.
-4. Escolha uma Microssequência didática.
-5. Abra uma Unidade de estudo.
+1. Em Estudo, escolha uma opção no seletor **Curso**.
+2. Confira título, objetivo, relação de acesso, progresso e disponibilidade na
+   prévia selecionada.
+3. Use **Começar**, **Continuar** ou **Retomar**, conforme o estado real.
+4. Percorra Módulo, Lição ou Microssequência quando quiser mudar de contexto.
 
 Na primeira abertura, o aplicativo baixa a composição em páginas, confirma que
 todas pertencem à mesma revisão e valida o documento. Depois, mantém uma cópia
@@ -119,9 +121,9 @@ estudantes não a recebem.
 
 ## Zerar o progresso
 
-Quando há progresso, o item do Curso oferece **Zerar progresso do Curso**.
-Confira o título na confirmação. A ação limpa o progresso daquele Curso e
-preserva conteúdo, marcas **Rever**, Anotações e outros Cursos.
+Quando há progresso, a prévia selecionada oferece **Zerar progresso do Curso**.
+Confira o título na confirmação. A ação limpa o progresso e o ponto de retomada
+daquele Curso e preserva conteúdo, marcas **Rever**, Anotações e outros Cursos.
 
 Dentro do percurso, controles de reinício delimitam o alcance pelo rótulo:
 Módulo, Lição, Microssequência ou a partir de uma Unidade.
@@ -227,9 +229,9 @@ A sugestão altera no máximo um caminho textual por pedido. Se o trecho exceder
 6.000 caracteres ou o contexto editável completo superar 12.000, o ícone fica
 desabilitado e informa o motivo para tecnologias assistivas; use a edição manual.
 O relay foi comprovado no ambiente HTTP local. Ele ainda depende de ensaio no
-Pages. O Android 0.0.24 usa uma ponte nativa fixa para manter a chamada HTTP
-fora do WebView, sem relaxar a política de conteúdo misto, mas a instalação e o
-ensaio em dispositivo real continuam pendentes.
+Pages. Desde a versão 0.0.24, o Android usa uma ponte nativa fixa para manter a
+chamada HTTP fora do WebView, sem relaxar a política de conteúdo misto, mas a
+instalação e o ensaio em dispositivo real continuam pendentes.
 
 ## Trabalhar com o ChatGPT a partir da Autoria
 
@@ -387,6 +389,12 @@ usam a fila do estado pessoal; Observações usam outra fila e outra cópia loca
 Quando a conexão retorna, cada repositório compara sua versão remota e envia as
 operações pendentes.
 
+Na tela inicial, **Disponível neste dispositivo** confirma que a composição
+validada do Curso selecionado pode ser aberta sem rede. **Conecte-se para abrir
+pela primeira vez** distingue o descritor conhecido de uma composição que ainda
+não existe localmente. A seleção e o último ponto visitado permanecem no
+dispositivo; uma segunda aba não desloca a tela já aberta na primeira.
+
 Na Autoria, o IndexedDB conserva a lista de Cursos próprios, o cabeçalho, o
 planejamento, a Estrutura, páginas recentes da Inspeção e a posição de retomada.
 Uma leitura local é identificada como desatualizada e somente para consulta. A
@@ -404,8 +412,10 @@ conta, limpar o Curso ou perder acesso purga esse estado.
 Parâmetros, catálogo privado de Fontes, metadados e bytes de PDFs, caixa autoral
 de Observações, auditoria, correções, Variantes, Pesquisa, gestão de acesso e
 mutações autorais dependem do servidor. O Storage não é reproduzido no
-IndexedDB. A tela inicial pode mostrar um Curso conhecido sem garantir que uma
-composição nunca aberta esteja disponível.
+IndexedDB. A tela inicial pode mostrar um Curso conhecido, mas a própria prévia
+distingue esse caso de uma composição já disponível no dispositivo. Perder a
+autoridade sobre o Curso elimina a cópia e o ponto de retomada; a tela informa a
+mudança e escolhe outro Curso acessível, quando houver.
 
 Preserve os dados do aplicativo até a sincronização quando houver alterações
 recentes importantes.

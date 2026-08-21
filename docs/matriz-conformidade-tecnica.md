@@ -1,7 +1,7 @@
 # Matriz de conformidade técnica
 
 Esta matriz liga propriedades do AraLearn à implementação e à evidência
-executável da versão publicada 0.0.24. O contrato público das seis ferramentas
+executável da versão 0.0.25. O contrato público das seis ferramentas
 e do recurso MCP permanece 0.0.23, enquanto a API de Cursos e o esquema
 `20260820224424` formam o backend hospedado corrente. O estado “demonstrado”
 indica que a capacidade existe no contrato corrente e possui verificação no
@@ -16,6 +16,8 @@ repositório. Limites declarados fazem parte desse contrato.
 | composição extensa é lida em páginas de uma revisão | RPCs de lista e composição, `CourseStudyRepository.js` | `course-study-repository.test.js`, teste local de funcionamento | demonstrado; revisão divergente invalida a candidata |
 | uma candidata inválida não substitui a última composição íntegra | `CourseLocalStore.js`, `CourseController.js` | `course-local-store.test.js`, `course-controller.test.js` | demonstrado no processo e após reinício; revisão anterior fica somente para leitura |
 | inspeção autoral limita rede, memória e documento visual | RPC de inspeção, `CourseInspectionSequence.js` | `course-inspection-sequence.test.js`, `course-authoring-surface.test.js` | demonstrado; quatro páginas ou 8 MiB por Curso na réplica de inspeção |
+| a entrada de Estudo repete um cartão para cada Curso | `renderHomeScreen.js` e `CourseStudyApplication.js` | `course-study-screen.test.js`, `course-study-cutover.spec.js` e oito capturas | fora do contrato; um combobox controla uma única prévia rica, sem UUID, hash ou revisão técnica visível |
+| a entrada adota uma composição mais larga no computador | shell compartilhado e estilos da Home | matriz 360/390/430/1280 nos dois temas | fora do contrato; shell centralizado de até 430 px, uma coluna e nenhum overflow global |
 
 ## Persistência pessoal
 
@@ -23,6 +25,8 @@ repositório. Limites declarados fazem parte desse contrato.
 |---|---|---|---|
 | cada conta usa um banco IndexedDB próprio | `CourseLocalStore.js` | `course-local-store.test.js`, `auth-session-store.test.js` | demonstrado em `aralearn-course-v1-<user-id>` |
 | conteúdo já promovido pode ser estudado sem rede | `CourseStudyApplication.js` e repositório local | `course-study-bridge.test.js`, `course-study-screen.test.js`, teste de Estudo no navegador | demonstrado; autenticação inicial e primeiro carregamento exigem rede |
+| seleção e posição exigem baixar todos os Cursos | envelope de navegação no `CourseStudyRepository.js` | testes de repositório, tela e navegador | fora do contrato; descritores alimentam a prévia e somente a entrada carrega o Curso selecionado |
+| disponibilidade local é inferida do descritor | documento verificado no controlador e ponte de Estudo | testes de controlador, ponte, repositório e cenário sem conexão | fora do contrato; a prévia consulta a composição íntegra da revisão e revogação purga conteúdo e posição antes do fallback |
 | progresso e itens para rever usam estado pessoal v2 | `CoursePersonalStateRepository.js` e RPCs próprias | `course-personal-state-repository.test.js`, teste local de funcionamento | demonstrado; Anotações não fazem parte desse documento |
 | Anotações possuem dados locais, paginação e fila próprios | `CourseAnnotationRepository.js` | `course-annotation-repository.test.js`, `course-anchored-annotations-pglite.test.js` | demonstrado; limites bloqueiam nova entrada sem descartar comandos existentes |
 | alterações autorais podem ser enfileiradas sem conexão | ausência de fila autoral; API de Cursos exige conexão | controlador, painéis e auditor de persistência | fora do contrato; revisão corrente é necessária para escrever |
@@ -102,9 +106,9 @@ repositório. Limites declarados fazem parte desse contrato.
 
 | Propriedade | Implementação | Evidência | Estado e limite |
 |---|---|---|---|
-| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260820224424`; banco e funções foram promovidos e verificados antes dos clientes 0.0.24 |
+| aplicativo confirma o contrato remoto antes de publicar | `runtime-manifest.json`, verificador hospedado e fluxo Pages | `hosted-backend-verifier.test.js`, `deployment:verify-hosted` | demonstrado para `20260820224424`; banco e funções foram promovidos antes da 0.0.24 e são reutilizados sem mudança pela 0.0.25 |
 | integração contínua recria o banco e confere inventário exato | `.github/workflows/validacao.yml`, auditoria de paridade | `vertical-parity-audit.test.js`, execução Supabase do fluxo | demonstrado; diferença de objeto, política ou bucket reprova |
-| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado nos artefatos publicados 0.0.24; o APK ainda precisa de ensaio com relay em dispositivo real |
+| artefatos são examinados contra segredo e configuração indevida | `verifyDeploymentArtifacts.ps1` | `deployment-automation.test.js`, fluxos Pages e Android | demonstrado no gate da 0.0.25; os artefatos oficiais são confrontados novamente depois da publicação, e o APK ainda exige ensaio com relay em dispositivo real |
 | Pages publica qualquer ramo | `.github/workflows/pages.yml` | `deployment-automation.test.js` | fora do contrato; publicação automática parte de `main` |
 | publicação Android parte da ponta validada de `main` | `.github/workflows/android-release.yml` | `deployment-automation.test.js` | demonstrado; revisão superada e tag existente não são republicadas |
 | limpeza física acompanha toda migração | `scripts/courseCutover/prepareLegacyCleanup.mjs` | `course-legacy-cleanup-plan.test.js`, `course-legacy-cleanup-backup.test.js` | fora do contrato; requer inventário, cópia verificada, restauração e confirmação específicas |

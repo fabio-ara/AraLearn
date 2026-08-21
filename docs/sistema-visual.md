@@ -131,6 +131,12 @@ retomada. Um Curso compartilhado concede Estudo, enquanto a Autoria permanece
 reservada à pessoa proprietária. Semelhança visual entre cartões de navegação
 não comunica permissão.
 
+Sua entrada usa um único combobox de Curso e uma única prévia rica selecionada.
+A prévia reúne objetivo, relação de acesso, progresso, disponibilidade local e
+a ação **Começar**, **Continuar** ou **Retomar**. Ela não se multiplica numa
+grade de cartões e não mostra UUID, hash ou revisão técnica. A composição
+permanece centralizada e limitada a 430 px também em 1280 px.
+
 ## Inspeção vertical
 
 A Inspeção é uma sequência curricular finita, não uma rolagem infinita. Ela
@@ -291,20 +297,35 @@ diretos, área segura, clique externo, Esc e restauração de foco.
 O teste ponta a ponta da Autoria fica em
 `tests/e2e/course-authoring-cutover.spec.js`; os cenários de auditoria usam
 `tests/e2e/course-audit-panel.spec.js`. A galeria dos componentes é reconstruída
-por `npm run resources:gallery:visual`. `npx playwright test --list` enumera 111
-testes em nove arquivos na versão 0.0.24: 73 no percurso compacto da
-Autoria, seis na edição manual e três na assistência por API. Os nove cenários
-integrados dessas duas últimas capacidades passaram 9/9. A listagem total não
-substitui a execução da matriz nem a inspeção das capturas. A compreensão por
-pessoas leigas continua dependente da sessão humana de aceitação.
+por `npm run resources:gallery:visual`. Na versão 0.0.25, `npm test` reuniu 999
+verificações, com 990 aprovações e nove casos condicionados ao ambiente. A suíte
+ponta a ponta reuniu 113 casos em nove arquivos, com 111 aprovações e dois casos
+condicionais. A compreensão por pessoas leigas continua dependente da sessão
+humana de aceitação.
 
-A matriz visual focal passou 10/10 em 51,4 segundos nas quatro larguras e nos
-dois temas, incluindo Before/After e rodada de Auditoria em 1280 px. Ela rejeita
+Os dois cenários focais da entrada de Estudo passaram. A matriz percorreu as
+oito combinações de largura e tema, confirmou shell centralizado de no máximo
+430 px e ausência de corte ou overflow global. A verificação focal de **Rever** confirmou
+foco, abertura e fechamento por `Enter` e mudança de orientação do indicador.
+Uma rodada no Chrome real integra a verificação pós-publicação.
+
+A matriz visual focal da Autoria na versão 0.0.24 passou 10/10 em 51,4 segundos
+nas quatro larguras e nos dois temas, incluindo Before/After e rodada de
+Auditoria em 1280 px. Ela rejeita
 largura acima de 430 px, desalinhamento no computador, segunda coluna principal,
 overflow global e ação do ChatGPT sem nome acessível contextual e tooltip.
 
-A captura móvel corrente de Estudo oferece uma referência visual do conteúdo e
-dos controles:
+A entrada de Estudo possui a seguinte série persistente:
+
+| Largura | Tema claro | Tema escuro |
+|---:|---|---|
+| 360 px | [captura](screenshots/study/study-home-360-light.png) | [captura](screenshots/study/study-home-360-dark.png) |
+| 390 px | [captura](screenshots/study/study-home-390-light.png) | [captura](screenshots/study/study-home-390-dark.png) |
+| 430 px | [captura](screenshots/study/study-home-430-light.png) | [captura](screenshots/study/study-home-430-dark.png) |
+| 1280 px | [captura](screenshots/study/study-home-1280-light.png) | [captura](screenshots/study/study-home-1280-dark.png) |
+
+A captura móvel anterior continua como referência do conteúdo e dos controles
+dentro de uma Unidade:
 
 ![Unidade de estudo em tela móvel clara, com conteúdo central e controles
 iconográficos.](screenshots/study/study-card-390-light.png)

@@ -33,7 +33,9 @@ Uma alegação só é confirmada dentro do alcance da evidência usada.
 ```text
 Shell
 ├── Estudo
-│   └── Curso → Módulo → Lição → Microssequência → Unidade de estudo
+│   ├── seleção de Curso → prévia selecionada
+│   └── Começar, Continuar ou Retomar
+│       └── Curso → Módulo → Lição → Microssequência → Unidade de estudo
 ├── Autoria
 │   └── Curso próprio
 │       ├── poucos destinos conceituais compactos
@@ -50,15 +52,32 @@ próprios; receber acesso direto não concede edição. O seletor Estudo/Autoria
 muda a tarefa sem criar outra identidade de Curso.
 
 O vocabulário visível usa Curso, Parte, Módulo, Lição, Microssequência e Unidade
-de estudo. Revisão CAS, cursor, hashes e nomes de RPC pertencem ao protocolo e
-só aparecem quando necessários ao diagnóstico.
+de estudo. Revisão CAS, cursor, hashes, UUIDs e nomes de RPC pertencem ao
+protocolo e não aparecem na interface comum. Um diagnóstico protegido pode
+registrá-los fora do percurso apresentado à pessoa.
 
 ## 3. Tela inicial, Estudo e estado pessoal
 
-A tela inicial usa listas finas paginadas. Um item informa o necessário para localizar
-e abrir o Curso, sem baixar milhares de Unidades. Ao entrar em Estudo, o cliente
-fixa uma revisão, lê páginas de entidades, recusa mistura entre revisões,
-recompõe `aralearn.course.v1` e só então substitui a cópia local válida.
+A tela inicial recebe descritores paginados, mas não os apresenta como um
+painel de cartões. Um único combobox escolhe o Curso e uma única prévia rica
+apresenta título, objetivo, relação de acesso, progresso, quantidade de Módulos
+e Lições, disponibilidade no dispositivo e a ação principal. A troca do
+combobox não baixa milhares de Unidades. A composição é carregada somente
+quando a pessoa usa **Começar**, **Continuar** ou **Retomar**.
+
+**Começar** leva à primeira Unidade pendente quando ainda não há progresso.
+**Continuar** usa o progresso persistido quando não existe um ponto de navegação
+mais específico. **Retomar** usa a última posição válida visitada no Curso. Ao
+entrar, o cliente fixa uma revisão, lê páginas de entidades, recusa mistura
+entre revisões, recompõe `aralearn.course.v1` e só então substitui a cópia local
+válida.
+
+O seletor e a posição ficam no IndexedDB. Voltar à tela inicial, atualizar ou
+abrir outra aba conserva a escolha útil sem deslocar a tela que já está ativa
+na outra sessão. Se a autoridade sobre o Curso selecionado for revogada, a
+cópia e a posição são purgadas, a interface informa a perda de acesso e escolhe
+outro Curso acessível, quando houver. A superfície usa a mesma composição de no
+máximo 430 px entre 360 e 1280 px.
 
 O percurso de Estudo apresenta uma Unidade por vez. Resposta e feedback são
 locais ao ciclo corrente; avançar não espera a persistência remota. Progresso e
@@ -66,10 +85,12 @@ marcas para rever formam o estado pessoal v2. Anotações ancoradas próprias us
 persistência separada; nenhum desses fluxos incrementa a revisão autoral do
 Curso apenas por continuidade ou triagem.
 
-Sem rede, conteúdo íntegro já carregado pode continuar em Estudo. Estado pessoal
-e Anotações ancoradas possuem filas separadas para uso sem conexão. Alteração autoral fora
-desse contrato não simula sucesso quando o servidor ou a revisão corrente não
-estão disponíveis.
+Sem rede, conteúdo íntegro já carregado pode continuar em Estudo. A prévia
+consulta a evidência real dessa composição validada e distingue
+**Disponível neste dispositivo** de um Curso que ainda exige conexão. Estado
+pessoal e Anotações ancoradas possuem filas separadas para uso sem conexão.
+Alteração autoral fora desse contrato não simula sucesso quando o servidor ou a
+revisão corrente não estão disponíveis.
 
 O proprietário coordena a caixa de entrada pela versão global. Estudo coordena
 cópia local, paginação e duas abas por uma versão monotônica privada da própria
@@ -293,6 +314,7 @@ visual.
 
 | Jornada | Evidência principal |
 | --- | --- |
+| entrada de Estudo, seleção, retomada e disponibilidade local | testes de `CourseStudy*`, controlador, IndexedDB e navegador nas quatro larguras e nos dois temas |
 | Estudo, progresso e revisão | testes de `CourseStudy*` e estado pessoal v2 |
 | Observações próprias, uso sem conexão e duas abas | testes da folha de Unidade e de `CourseAnnotationRepository` |
 | Autoria compacta, rota e capacidades progressivas | testes da superfície, rota e painéis especializados; devem rejeitar largura acima de 430 px, segunda coluna e nove rótulos permanentes |
@@ -319,12 +341,11 @@ aborto, ausência de callback tardio, remoção da sobreposição e da credencia
 nenhum erro de página. O grupo visual integrado correspondente passou 9/9,
 separadamente da listagem.
 
-O inventário corrente de `npx playwright test --list` possui 111 testes em nove
-arquivos: 73 no percurso compacto de
-`tests/e2e/course-authoring-cutover.spec.js`, seis no arquivo de edição manual
-e três no arquivo da assistência por API. Esses nove cenários integrados passaram
-9/9. Enumerar os 111 casos não significa que toda a suíte foi aprovada; o
-relatório do gate precisa registrar resultado e ambiente. A prova vertical separada cria
+Na versão 0.0.25, `npm test` reuniu 999 verificações: 990 passaram e nove
+permaneceram condicionadas ao ambiente. A suíte ponta a ponta reuniu 113 casos
+em nove arquivos: 111 passaram e dois permaneceram condicionais. Enumerar ou
+condicionar um caso não equivale a aprová-lo; o relatório do gate conserva cada
+resultado e seu ambiente. A prova vertical separada cria
 duas identidades no Supabase local, percorre a interface pública real, grava
 Curso, Parte, estrutura, Fonte e PDF, confronta PostgreSQL e Storage e confirma
 negativas de RLS. Depois completa OAuth com PKCE, usa `lerCurso` e
@@ -337,12 +358,20 @@ consentimentos criados pelo ensaio. Essa evidência é local e automatizada; nã
 comprova o app público do ChatGPT, a versão hospedada nem
 compreensão humana.
 
-A matriz visual focal passou 10/10 em 51,4 segundos: 360, 390, 430 e 1280 px nos
+A entrada restaurada de Estudo passou nos dois cenários focais. A matriz
+percorreu 360, 390, 430 e 1280 px nos temas claro e escuro, gerou oito capturas
+persistentes e confirmou shell centralizado de no máximo 430 px, uma coluna e
+ausência de corte ou overflow global. O cenário de **Rever** confirmou foco,
+abertura e fechamento por `Enter` e mudança de orientação do indicador. A
+inspeção no Chrome real pertence à verificação pós-publicação do mesmo artefato.
+
+A matriz visual focal da Autoria na versão 0.0.24 passou 10/10 em 51,4 segundos:
+360, 390, 430 e 1280 px nos
 temas claro e escuro, além de Before/After e rodada de Auditoria em 1280 px. Ela
 mede largura máxima de 430 px, centralização no computador, uma única coluna
 principal, ausência de overflow global e nome acessível contextual com tooltip
-na ação do ChatGPT. O ESLint também passou. Essa execução não altera a distinção anterior:
-os 111 casos listados continuam sendo inventário, não resultado integral.
+na ação do ChatGPT. O ESLint também passou. Essa execução permanece evidência
+histórica da superfície que verificou e não substitui os resultados da 0.0.25.
 
 O mesmo roteiro vertical inclui, na versão 0.0.24, a edição manual, a assistência
 pelo relay local e a releitura da revisão salva na interface, API, PostgreSQL
@@ -361,7 +390,7 @@ credencial no cliente e separação dos artefatos Android e Pages; não substitu
 o ensaio do Pages com acesso real à rede local nem a instalação do APK de release
 com relay real em dispositivo.
 
-A inspeção visual local desta revisão percorreu a lista de Cursos em 360, 390,
+A inspeção visual local da versão 0.0.24 percorreu a lista de Cursos da Autoria em 360, 390,
 430 e 1280 px; Planejamento em 390 px claro e 1280 px escuro; Parâmetros e Fontes
 em 1280 px claro; e Auditoria e correções em 360, 390 e 430 px. Nessas capturas,
 a superfície permaneceu única, centralizada e sem corte, coluna adicional ou

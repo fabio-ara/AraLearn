@@ -4,6 +4,35 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.25] - 2026-08-21
+
+### Alterado
+
+- a entrada de Estudo volta a apresentar um combobox de Curso e uma única
+  prévia rica, com título, objetivo, relação de acesso, progresso, estrutura e
+  disponibilidade neste dispositivo;
+- **Começar**, **Continuar** e **Retomar** levam diretamente à primeira Unidade
+  pendente ou à última posição válida, sem baixar a composição dos demais
+  Cursos;
+- a fila **Rever** fica recolhida depois da prévia e possui indicação visual,
+  foco por teclado e itens limitados ao Curso selecionado.
+
+### Corrigido
+
+- a seleção e a posição de estudo sobrevivem a retorno, recarga e uso offline,
+  sem deslocar a aba ativa quando outra aba muda de Curso;
+- mudança de revisão, reconexão e revogação revalidam a cópia local, eliminam
+  conteúdo inacessível e escolhem um Curso autorizado sem apagar a lista válida
+  dos demais;
+- troca de Curso limpa Fontes, observações e estado editorial contextuais, e o
+  histórico manual permanece isolado mesmo quando dois Cursos reutilizam o
+  identificador de uma Unidade;
+- falhas ao entrar, abrir um item para rever ou zerar progresso aparecem na Home
+  e devolvem o foco a um controle utilizável;
+- a Home deixa de misturar o cartão de navegação com a antiga subseção de
+  prévia; a composição final preserva uma coluna de até 430 px em 360, 390, 430
+  e 1280 px, nos temas claro e escuro.
+
 ## [0.0.24] - 2026-08-20
 
 ### Alterado

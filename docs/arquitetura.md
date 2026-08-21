@@ -5,9 +5,9 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Esta página descreve a linha 0.0.24 publicada. O ambiente hospedado usa a
-revisão `20260820224424`; banco, funções e clientes foram promovidos na ordem
-documentada.
+A linha corrente é a 0.0.25. Ela reutiliza o ambiente hospedado na revisão
+`20260820224424`, com a API de Cursos na revisão 5 e o MCP na revisão 120; não
+há migração ou implantação de função associada a essa atualização de clientes.
 
 ## O Curso como raiz do domínio
 
@@ -39,7 +39,7 @@ A interface separa responsabilidades sem duplicar o domínio:
 
 | Superfície | Responsabilidade |
 |---|---|
-| Home | listar Cursos acessíveis e abrir a última composição íntegra |
+| Home | selecionar um Curso acessível, apresentar uma prévia rica e entrar pela posição pertinente |
 | Estudo | apresentar Unidades, progresso, revisão e Anotações |
 | Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
@@ -51,6 +51,13 @@ contratos do Curso, não documentos paralelos nem nove destinos permanentes. A
 superfície de até 430 px usa quatro destinos conceituais: Curso, Revisar,
 Pesquisa e Pessoas. Cada um revela as capacidades pelo objeto e pela tarefa
 correntes, com a mesma composição no celular e no computador.
+
+Na entrada de Estudo, descritores paginados alimentam um único combobox e uma
+única prévia. A seleção não carrega a composição curricular. A ação
+**Começar**, **Continuar** ou **Retomar** resolve a posição pertinente, valida a
+composição e só então entra no Curso. A prévia consulta o documento validado no
+IndexedDB para informar disponibilidade sem conexão; revogação elimina a cópia
+e o ponto local. Esse contrato integra a versão 0.0.25.
 
 O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
 `criarCurso`, `alterarCurso`, `gerirPessoas` e
