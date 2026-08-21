@@ -13,6 +13,7 @@
     "test:authoring:mcp:local:oauth": "node ./scripts/runLocalMcpOAuthSmoke.mjs",
     "test:authoring:mcp:hosted:oauth": "node ./scripts/runHostedMcpOAuthSmoke.mjs",
     "test:authoring:mcp:hosted": "node ./supabase/tests/authoring-mcp-hosted-smoke.mjs",
+    "test:course:hosted:pdf": "node ./scripts/runHostedCourseSourcePdfSmoke.mjs",
     "test:authoring:mcp": "node --test ./tests/runtime/course-mcp-server.test.js ./tests/runtime/course-mcp-tools.test.js",
     "test:authoring:supabase:e2e": "playwright test tests/e2e/course-authoring-supabase-local.spec.js --config=playwright.authoring-supabase-local.config.js",
     "test:e2e": "node ./scripts/runE2eTests.mjs",
