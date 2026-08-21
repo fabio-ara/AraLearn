@@ -405,8 +405,8 @@ function validatePolicy(registry, findings) {
       findings.push(`Registro: ${field} deve ser false; o estado final não conserva legado.`);
     }
   }
-  if (policy.finalStage !== "#130" || policy.temporaryMigrationRequiresRemoval !== true) {
-    findings.push("Registro: toda transição deve declarar remoção até #130.");
+  if (policy.finalStage !== "#155" || policy.temporaryMigrationRequiresRemoval !== true) {
+    findings.push("Registro: toda transição deve declarar remoção até #155.");
   }
   if (typeof policy.databaseInventoryPath !== "string" || !policy.databaseInventoryPath) {
     findings.push("Registro: databaseInventoryPath exato é obrigatório.");
@@ -431,8 +431,8 @@ function validateCaseShape(caseRecord, ids, findings) {
     findings.push(`${caseRecord.id}: classificação inválida (${caseRecord.classification}).`);
   }
   if (["migration-temporary", "remove"].includes(caseRecord.classification)
-      && caseRecord.removeBy !== "#130") {
-    findings.push(`${caseRecord.id}: transição ou remoção sem removeBy #130.`);
+      && caseRecord.removeBy !== "#155") {
+    findings.push(`${caseRecord.id}: transição ou remoção sem removeBy #155.`);
   }
   if (!["migration-temporary", "remove"].includes(caseRecord.classification)
       && Object.hasOwn(caseRecord, "removeBy")) {

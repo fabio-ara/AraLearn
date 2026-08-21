@@ -368,7 +368,7 @@ a superfície permaneceu única, centralizada e sem corte, coluna adicional ou
 overflow aparente, com os quatro destinos iconográficos. Os arquivos de todas as
 larguras são artefatos temporários da suíte e podem ser sobrescritos. O conjunto
 persistente de capturas em todas as larguras e nos dois temas, assim como a
-aceitação humana, continua pendente na #144.
+aceitação humana, continua pendente nas issues #152 e #153.
 
 ## 10. Critérios de aprovação
 

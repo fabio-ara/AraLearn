@@ -322,7 +322,7 @@ Na versão 0.0.24, a inspeção local também percorreu Cursos em
 360/390/430/1280 px, Planejamento nos temas claro e escuro, Parâmetros, Fontes e
 Auditoria. Esses artefatos temporários confirmaram a superfície única e
 centralizada sem segunda coluna ou overflow aparente, mas não substituem a
-série persistente de todas as larguras e dos dois temas exigida pela #144.
+série persistente de todas as larguras e dos dois temas exigida por #152 e #153.
 
 ## Critério de conclusão visual
 

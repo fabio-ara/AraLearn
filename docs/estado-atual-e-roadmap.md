@@ -1,20 +1,19 @@
 # Estado corrente do produto
 
-Esta página registra o estado observado em **2026-08-20**. A linha publicada é
+Esta página registra o estado observado em **2026-08-21**. A linha publicada é
 a versão 0.0.24, sobre o esquema hospedado `20260820224424`. A API de Cursos
 está na revisão 5 e o MCP, na revisão 120. O contrato público das seis
 ferramentas e do recurso visual MCP permanece 0.0.23. A página distingue
 implementação, ligação entre camadas, acesso, uso e evidência.
 
-O feedback humano posterior ao corte identificou uma regressão bloqueadora na
-Autoria: largura e densidade diferentes de Estudo, nove áreas expostas ao mesmo
-tempo e perda da edição contextual manual e por serviço de linguagem. A
-[#144](https://github.com/fabio-ara/AraLearn/issues/144) bloqueia a #129 e
-prevalece sobre qualquer descrição anterior da interface como concluída. O
-reparo publicado usa uma superfície centralizada de até 430 px, quatro grupos
-progressivos e as capacidades contextuais restauradas no modelo corrente. A
-aceitação permanece aberta até o uso no ChatGPT conectado e a avaliação humana
-por descoberta de tarefas.
+O feedback humano posterior ao corte confirmou regressões em Estudo e Autoria.
+Estudo perdeu a seleção compacta de Curso, a prévia rica e a edição contextual
+para quem apenas estuda. A Autoria expôs carga conceitual e visual incompatível
+com a identidade do aplicativo. O [roadmap #147](https://github.com/fabio-ara/AraLearn/issues/147)
+substitui o planejamento anterior sem declarar seus requisitos concluídos. As
+issues [#148](https://github.com/fabio-ara/AraLearn/issues/148) a
+[#155](https://github.com/fabio-ara/AraLearn/issues/155) terminam e estabilizam a
+Refatoração 2.0 na persistência atual. A investigação Git começa somente depois.
 
 O contrato corrente usa o Curso como identidade comum de Estudo, Autoria,
 Pesquisa e Model Context Protocol (MCP). A revisão de banco declarada no
@@ -47,7 +46,7 @@ aprendizagem, compreensão ou usabilidade humana.
 | estudar o Curso vivo | Sim | Revisão, entidades paginadas, composição validada, IndexedDB e mecanismo de renderização formam um único fluxo | Proprietário e pessoa com acesso direto | Testes focais, navegador e Pages publicado | Navegação curricular, prática, retorno, progresso, marcas de revisão e Fontes visíveis foram exercitados | Sim | Alto | A atualização do APK 0.0.22 permanece obrigatória; o funcionamento não prova eficácia educacional |
 | continuar o estudo sem conexão | Sim | Composição já validada, estado pessoal e filas específicas permanecem no dispositivo | Pessoa que já sincronizou o Curso | Testes de reinício, reconexão e duas abas | A última revisão válida continua disponível; estado pessoal e Observações retomam o envio sem duplicação | Sim | Alto | Um dispositivo desconhecido com escrita antiga ainda não sincronizada não pode ser recuperado depois da migração que remove o armazenamento anterior |
 | criar um Curso privado | Sim | Interface e MCP usam o mesmo domínio, API, transação e revisão | Pessoa autenticada torna-se proprietária | Testes locais | A criação idempotente produz identidade, metadados e plano inicial sob autorização | Sim | Alto | O padrão de 7 a 12 Partes é configurável e não constitui regra pedagógica |
-| operar a Autoria compacta e descobrir tarefas | Parcial | A versão 0.0.24 liga os casos de uso em quatro grupos progressivos, numa superfície única de até 430 px | Proprietário | Testes nas quatro larguras, artefato publicado e feedback humano que originou a #144 | Limite de largura, navegação por ícones e alcance das capacidades possuem prova automatizada; descoberta espontânea ainda não foi reavaliada | Sim | Alto na linha publicada | #144 permanece aberta até a sessão humana por tarefas e a conferência da interface publicada |
+| operar a Autoria compacta e descobrir tarefas | Parcial | A versão 0.0.24 liga os casos de uso em quatro grupos progressivos, numa superfície única de até 430 px | Proprietário | Testes nas quatro larguras, artefato publicado e feedback humano que originou a antiga #144 | Limite de largura, navegação por ícones e alcance das capacidades possuem prova automatizada; descoberta espontânea ainda não foi reavaliada | Sim | Alto na linha publicada | #152 e #153 mantêm abertas a simplificação final, a sessão humana por tarefas e a conferência da interface publicada |
 | editar uma Unidade manualmente no contexto | Sim | Estudo e Inspeção usam o mesmo renderer, campos editáveis declarados pelo componente, validação da Unidade e operação autenticada de composição | Somente o proprietário | 136/136 verificações focais, 9/9 cenários integrados e prova vertical real | A edição conserva pai, posição, identidade e proveniência; antes de invalidar projeções, o recibo 2xx promove o snapshot no IndexedDB, preserva progresso e Observações e permite leitura sem rede como confirmada, com sincronização pendente | Sim | Alto | Releitura igual normaliza o snapshot, revisão superior o substitui, logout, limpeza ou revogação o purgam; atualização externa rebasa o CAS sem perder a seleção; a reversão autoral persistida continua no ciclo de correção |
 | pedir uma sugestão focal por API | Parcial | O mesmo editor contextual delimita o trecho, chama o relay local, valida uma mudança esparsa e aplica a sugestão ao rascunho antes da gravação | Somente o proprietário; a credencial do provider fica no relay, fora do AraLearn | Testes de domínio e navegador, duas passagens da prova vertical real, a mais recente 1/1 em 14,2 s, e compilação Android de release; nenhuma chamada paga integra a validação | Produção mostra apenas Serviço local nos hosts previstos e na porta 4183; o navegador distingue loopback de rede local, e o Android 0.0.24 usa uma ponte nativa fixa em `127.0.0.1:4183` sem relaxar a política de conteúdo misto; falha, recorte grande ou indisponibilidade não bloqueiam edição manual, Estudo ou ChatGPT + MCP | Sim, como complemento | Alto na web local | O envelope omite identidades internas, PDFs, Fontes e outras Unidades; Pages ainda exige ensaio de acesso à rede local, e o APK de release instalado precisa de prova em dispositivo real |
 | planejar e organizar por Partes | Sim | Planejamento, itens, Partes, vínculos de produção e atividade são lidos e alterados pelas duas interfaces | Proprietário | Testes locais | É possível editar campos do plano, criar, reordenar, dividir e unir Partes e mover Microssequências sem apagar conteúdo | Sim | Alto | Parte é unidade operacional; o dimensionamento adequado continua sujeito ao conteúdo e à avaliação |
@@ -158,14 +157,13 @@ A matriz visual focal passou 10/10 em 51,4 segundos nas quatro larguras e nos
 dois temas, incluindo Auditoria em 1280 px. Ela comprovou a superfície de até
 430 px centralizada, uma única coluna principal, ausência de overflow global e nome
 acessível contextual com tooltip. O conjunto persistente de capturas e a sessão
-humana por tarefas continuam pendentes na #144.
+humana por tarefas continuam pendentes nas issues
+[#152](https://github.com/fabio-ara/AraLearn/issues/152) e
+[#153](https://github.com/fabio-ara/AraLearn/issues/153).
 
-As issues [#120](https://github.com/fabio-ara/AraLearn/issues/120),
-[#128](https://github.com/fabio-ara/AraLearn/issues/128),
-[#129](https://github.com/fabio-ara/AraLearn/issues/129),
-[#131](https://github.com/fabio-ara/AraLearn/issues/131) e
-[#144](https://github.com/fabio-ara/AraLearn/issues/144) permanecem abertas.
-Seus critérios reais ainda incluem, conforme o caso:
+As antigas #114, #120, #128, #129, #130, #131 e #144 foram encerradas como
+**substituídas**, não como concluídas. Seus critérios executáveis foram
+redistribuídos pela cadeia nativa da #147. Na fase corrente, ainda é necessário:
 
 1. instalar e exercer a ponte nativa do relay no APK de release e
    comprovar no Pages o acesso HTTPS à rede local;
@@ -176,10 +174,13 @@ Seus critérios reais ainda incluem, conforme o caso:
    [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md), sem ensinar a
    organização interna da Autoria.
 
-A issue [#114](https://github.com/fabio-ara/AraLearn/issues/114) continua sendo
-o roadmap e a [#130](https://github.com/fabio-ara/AraLearn/issues/130) depende
-do cutover real da #129, das medidas do plano gratuito, da documentação final e
-da limpeza física autorizada. Nenhuma prova local encerra esses gates externos.
+O cutover corrente está em
+[#154](https://github.com/fabio-ara/AraLearn/issues/154) e a estabilização com
+limpeza autorizada, em [#155](https://github.com/fabio-ara/AraLearn/issues/155).
+As issues [#156](https://github.com/fabio-ara/AraLearn/issues/156) e
+[#157](https://github.com/fabio-ara/AraLearn/issues/157) apenas fixam fronteiras
+e investigam Git com dados sintéticos depois dessa baseline. As #158–#168 são
+condicionais à aprovação do ensaio. Nenhuma prova local encerra gates externos.
 
 A remoção física das estruturas substituídas continua separada. Ela requer uma
 cópia posterior ao corte, contagens e impressões digitais, restauração em banco
