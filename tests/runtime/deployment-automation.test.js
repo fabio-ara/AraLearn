@@ -309,7 +309,7 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /test:supabase:smoke/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
-  assert.match(source, /supabase@2\.109\.1', 'test', 'db'/u);
+  assert.match(source, /supabase@2\.115\.0', 'test', 'db'/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.doesNotMatch(
@@ -537,6 +537,10 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
 test("diagnóstico valida configuração pública sem revelar seu valor", {
   skip: !powerShellAvailable
 }, () => {
+  const diagnoseSource = fs.readFileSync(scripts.diagnose, "utf8");
+  assert.match(diagnoseSource, /npx\.cmd --yes supabase@2\.115\.0 --version/u);
+  assert.match(diagnoseSource, /-match '2\\\.115\\\.0'/u);
+
   const safe = runScript(
     scripts.diagnose,
     ["-Profile", "GitHubPagesManagedSupabase", "-RequireRuntimeConfig", "-AsJson"],
@@ -845,16 +849,16 @@ test("Android expõe callback móvel e salvamento textual local restrito", () =>
 test("validação limpa e repete somente a inicialização local do Supabase", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   assert.match(source, /cancel-in-progress: true/u);
-  assert.match(source, /supabase@2\.109\.1 stop --no-backup/u);
-  assert.doesNotMatch(source, /supabase@2\.109\.1 stop --all/u);
+  assert.match(source, /supabase@2\.115\.0 stop --no-backup/u);
+  assert.doesNotMatch(source, /supabase@2\.115\.0 stop --all/u);
   assert.match(source, /for attempt in 1 2 3/u);
-  assert.match(source, /if npx --yes supabase@2\.109\.1 start/u);
+  assert.match(source, /if npx --yes supabase@2\.115\.0 start/u);
   assert.match(source, /ss -ltnp '\( sport = :54322 \)'/u);
   assert.match(source, /sleep \$\(\(attempt \* 3\)\)/u);
-  assert.match(source, /npx --yes supabase@2\.109\.1 test db/u);
+  assert.match(source, /npx --yes supabase@2\.115\.0 test db/u);
   assert.ok(
-    source.indexOf("supabase@2.109.1 db reset") <
-      source.indexOf("supabase@2.109.1 test db")
+    source.indexOf("supabase@2.115.0 db reset") <
+      source.indexOf("supabase@2.115.0 test db")
   );
 });
 
@@ -881,7 +885,7 @@ test("validação local atravessa navegador, MCP OAuth, API, IndexedDB e Supabas
   assert.match(source, /export SUPABASE_SERVICE_ROLE_KEY="\$SERVICE_ROLE_KEY"/u);
   assert.match(source, /npm run test:authoring:supabase:e2e/u);
   assert.ok(
-    source.indexOf("supabase@2.109.1 db reset") <
+    source.indexOf("supabase@2.115.0 db reset") <
       source.indexOf("npm run test:authoring:supabase:e2e")
   );
 });

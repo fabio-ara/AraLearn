@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   cleanupLocalMcpOAuthProvision,
-  provisionHostedMcpOAuthToken
+  executeRefreshedMcpProbe,
+  provisionHostedMcpOAuthToken,
+  refreshLocalMcpOAuthToken,
+  verifyLocalMcpOAuthIsolation
 } from "./runLocalMcpOAuthSmoke.mjs";
 
 const REPOSITORY_ROOT = path.resolve(fileURLToPath(import.meta.url), "..", "..");
@@ -18,8 +21,8 @@ function runSupabase(argumentsValue) {
   return execFileSync(
     windows ? (process.env.ComSpec || "cmd.exe") : "npx",
     windows
-      ? ["/d", "/s", "/c", `npx --yes supabase@2.109.1 ${argumentsValue.join(" ")}`]
-      : ["--yes", "supabase@2.109.1", ...argumentsValue],
+      ? ["/d", "/s", "/c", `npx --yes supabase@2.115.0 ${argumentsValue.join(" ")}`]
+      : ["--yes", "supabase@2.115.0", ...argumentsValue],
     { cwd: REPOSITORY_ROOT, encoding: "utf8" }
   );
 }
@@ -83,29 +86,85 @@ async function executeHostedSmoke(accessToken, projectUrl) {
   }
 }
 
-const environment = await hostedEnvironment();
-const lifecycle = {};
-let primaryFailure = null;
-try {
-  const provision = await provisionHostedMcpOAuthToken({
-    environment,
-    lifecycle
-  });
-  await executeHostedSmoke(provision.accessToken, provision.projectUrl);
-} catch (error) {
-  primaryFailure = error;
+export async function runHostedMcpOAuthSmoke({
+  environment = null,
+  fetchImpl = globalThis.fetch,
+  executeSmoke = executeHostedSmoke,
+  executeRefreshSmoke = executeRefreshedMcpProbe,
+  provisionToken = provisionHostedMcpOAuthToken,
+  verifyIsolation = verifyLocalMcpOAuthIsolation,
+  refreshToken = refreshLocalMcpOAuthToken,
+  cleanupProvision = cleanupLocalMcpOAuthProvision,
+  createId = randomUUID,
+  createBytes = randomBytes,
+  nowSeconds
+} = {}) {
+  const resolvedEnvironment = environment || await hostedEnvironment();
+  const lifecycle = {};
+  let primaryFailure = null;
+  try {
+    const provision = await provisionToken({
+      environment: resolvedEnvironment,
+      fetchImpl,
+      lifecycle,
+      createId,
+      createBytes,
+      ...(nowSeconds ? { nowSeconds } : {})
+    });
+    await verifyIsolation({
+      provision,
+      fetchImpl,
+      createId,
+      allowHosted: true
+    });
+    await executeSmoke(provision.accessToken, provision.projectUrl);
+
+    const refreshed = await refreshToken({
+      provision,
+      fetchImpl,
+      ...(nowSeconds ? { nowSeconds } : {})
+    });
+    const refreshedProvision = { ...provision, ...refreshed };
+    await verifyIsolation({
+      provision: refreshedProvision,
+      fetchImpl,
+      createId,
+      allowHosted: true
+    });
+    await executeRefreshSmoke(refreshed.accessToken, {
+      projectUrl: provision.projectUrl,
+      origin: HOSTED_ORIGIN,
+      fetchImpl
+    });
+  } catch (error) {
+    primaryFailure = error;
+  }
+
+  let cleanupFailure = null;
+  try {
+    await cleanupProvision({
+      provision: lifecycle,
+      fetchImpl
+    });
+  } catch (error) {
+    cleanupFailure = error;
+  }
+  if (primaryFailure && cleanupFailure) {
+    throw new AggregateError(
+      [primaryFailure, cleanupFailure],
+      "O smoke hospedado e sua limpeza falharam."
+    );
+  }
+  if (primaryFailure) throw primaryFailure;
+  if (cleanupFailure) throw cleanupFailure;
 }
 
-let cleanupFailure = null;
-try {
-  await cleanupLocalMcpOAuthProvision({ provision: lifecycle });
-} catch (error) {
-  cleanupFailure = error;
+const entryPoint = process.argv[1]
+  ? path.resolve(process.argv[1])
+  : "";
+if (entryPoint === fileURLToPath(import.meta.url)) {
+  await runHostedMcpOAuthSmoke();
+  console.log(
+    "Smoke MCP hospedado: OAuth inicial e renovado, fronteiras, autoria e limpeza aprovados."
+  );
 }
-if (primaryFailure && cleanupFailure) {
-  throw new AggregateError([primaryFailure, cleanupFailure], "O smoke hospedado e sua limpeza falharam.");
-}
-if (primaryFailure) throw primaryFailure;
-if (cleanupFailure) throw cleanupFailure;
-
-console.log("Smoke MCP hospedado: OAuth, autoria incremental e limpeza aprovados.");

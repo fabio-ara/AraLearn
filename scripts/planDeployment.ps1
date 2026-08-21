@@ -122,16 +122,16 @@ switch ($Profile) {
       'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile LocalDevelopment -Authoring'
     Add-Step 'dependencies' 'Instalar dependências do repositório' automatic 'Restaura as versões fixadas no package-lock.json.' 'npm.cmd ci'
     Add-Step 'start-supabase' 'Iniciar o Supabase local' automatic 'Inicia serviços locais em Docker; não acessa o projeto hospedado.' `
-      'npx.cmd --yes supabase@2.109.1 start'
+      'npx.cmd --yes supabase@2.115.0 start'
     Add-Step 'reset-local' 'Criar o banco local do zero' automatic 'Aplica migrations e seed apenas no stack local descartável.' `
-      'npx.cmd --yes supabase@2.109.1 db reset'
+      'npx.cmd --yes supabase@2.115.0 db reset'
     Add-Step 'database-tests' 'Testar o stack local' automatic 'Executa lint, pgTAP, Auth por e-mail, PostgREST, RLS, gateway MCP e leitura de revisões contra o banco recriado.' `
       'pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1'
     Add-Step 'application-tests' 'Testar a aplicação' automatic 'Valida runtime, contrato e código sem usar credenciais hospedadas.' `
       'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Core'
     Add-Step 'run' 'Abrir o aplicativo local' automatic 'Use as configurações públicas informadas pelo Supabase local e inicie o servidor.' 'npm.cmd run dev'
     Add-Step 'stop' 'Encerrar o stack local' automatic 'Descarta os contêineres de teste sem criar backup local.' `
-      'npx.cmd --yes supabase@2.109.1 stop --no-backup'
+      'npx.cmd --yes supabase@2.115.0 stop --no-backup'
   }
 }
 

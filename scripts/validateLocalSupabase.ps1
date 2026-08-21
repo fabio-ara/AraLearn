@@ -31,9 +31,9 @@ function Invoke-CheckedCommand {
 }
 
 function Get-LocalSupabaseStatus {
-  $source = @(& npx.cmd --yes supabase@2.109.1 status -o json 2>&1) -join "`n"
+  $source = @(& npx.cmd --yes supabase@2.115.0 status -o json 2>&1) -join "`n"
   if ($LASTEXITCODE -ne 0) {
-    throw 'O Supabase local não respondeu. Execute npx.cmd --yes supabase@2.109.1 start.'
+    throw 'O Supabase local não respondeu. Execute npx.cmd --yes supabase@2.115.0 start.'
   }
   $objectStart = $source.IndexOf('{')
   if ($objectStart -lt 0) {
@@ -58,7 +58,7 @@ function Start-LocalEdgeFunction {
   $stderr = Join-Path $temporaryRoot "$Name.stderr.log"
   $arguments = @(
     '--yes',
-    'supabase@2.109.1',
+    'supabase@2.115.0',
     'functions',
     'serve',
     $Name,
@@ -164,11 +164,11 @@ try {
   )
 
   Invoke-CheckedCommand 'Testes pgTAP do banco local' 'npx.cmd' @(
-    '--yes', 'supabase@2.109.1', 'test', 'db'
+    '--yes', 'supabase@2.115.0', 'test', 'db'
   )
 
   Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
-    '--yes', 'supabase@2.109.1', 'db', 'lint', '--local', '--level', 'warning', '--fail-on', 'warning'
+    '--yes', 'supabase@2.115.0', 'db', 'lint', '--local', '--level', 'warning', '--fail-on', 'warning'
   )
 
   $courseApiHandle = Start-LocalEdgeFunction -Name 'aralearn-course-api'

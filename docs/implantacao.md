@@ -61,7 +61,7 @@ O desenvolvimento e a publicação usam:
 
 - Git e GitHub CLI para integração e acompanhamento dos fluxos;
 - Node.js 22 e `npm ci` para dependências reproduzíveis;
-- Docker e Supabase CLI 2.109.1 para o banco local;
+- Docker e Supabase CLI 2.115.0 para o banco local;
 - Deno 2.x para as Edge Functions;
 - Java 17 e Android SDK para o APK;
 - PowerShell 7 para os roteiros de validação e implantação.
@@ -172,8 +172,8 @@ Instale dependências e recrie o banco local:
 
 ```powershell
 npm.cmd ci
-npx.cmd --yes supabase@2.109.1 start
-npx.cmd --yes supabase@2.109.1 db reset
+npx.cmd --yes supabase@2.115.0 start
+npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 

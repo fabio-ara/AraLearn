@@ -44,7 +44,7 @@ família.
 
 ## Versões e configuração local
 
-O projeto usa Supabase CLI 2.109.1, PostgreSQL 17, Node.js 22, Java 17 e Deno
+O projeto usa Supabase CLI 2.115.0, PostgreSQL 17, Node.js 22, Java 17 e Deno
 2.x. Os comandos versionados invocam a CLI com a versão fixa para que a máquina
 local e a integração contínua executem o mesmo contrato.
 
@@ -61,8 +61,8 @@ O arquivo `supabase/config.toml` define:
 Docker precisa estar em execução. Para recriar o ambiente:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 start
-npx.cmd --yes supabase@2.109.1 db reset
+npx.cmd --yes supabase@2.115.0 start
+npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
@@ -75,7 +75,7 @@ OAuth.
 Ao terminar:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 stop
+npx.cmd --yes supabase@2.115.0 stop
 ```
 
 ## Esquemas e exposição

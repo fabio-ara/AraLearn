@@ -138,9 +138,9 @@ jobs:
       - name: Iniciar stack Supabase
         shell: bash
         run: |
-          npx --yes supabase@2.109.1 stop --no-backup || true
+          npx --yes supabase@2.115.0 stop --no-backup || true
           for attempt in 1 2 3; do
-            if npx --yes supabase@2.109.1 start; then
+            if npx --yes supabase@2.115.0 start; then
               exit 0
             fi
             if [ "$attempt" -eq 3 ]; then
@@ -150,21 +150,21 @@ jobs:
             echo "::warning::Falha transitória ao iniciar Supabase (tentativa $attempt/3); limpando a stack local."
             ss -ltnp '( sport = :54322 )' || true
             docker ps --format 'table {{.ID}}\t{{.Names}}\t{{.Ports}}' || true
-            npx --yes supabase@2.109.1 stop --no-backup || true
+            npx --yes supabase@2.115.0 stop --no-backup || true
             sleep $((attempt * 3))
           done
 
       - name: Reaplicar migration e seed
-        run: npx --yes supabase@2.109.1 db reset
+        run: npx --yes supabase@2.115.0 db reset
 
       - name: Executar testes pgTAP
-        run: npx --yes supabase@2.109.1 test db
+        run: npx --yes supabase@2.115.0 test db
 
       - name: Conferir paridade vertical no banco real
         shell: bash
         run: |
           set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          eval "$(npx --yes supabase@2.115.0 status -o env)"
           set +a
           {
             psql "$DB_URL" -At -F '|' -c "
@@ -263,7 +263,7 @@ jobs:
           lint_json="$(mktemp)"
           trap 'rm -f "$lint_json"' EXIT
           set +e
-          npx --yes supabase@2.109.1 db lint --local --level warning \
+          npx --yes supabase@2.115.0 db lint --local --level warning \
             --output-format json > "$lint_json"
           lint_status=$?
           set -e
@@ -277,7 +277,7 @@ jobs:
         run: |
           command -v psql
           set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          eval "$(npx --yes supabase@2.115.0 status -o env)"
           set +a
           export ARALEARN_TEST_DATABASE_URL="$DB_URL"
           node --test ./tests/runtime/course-postgres-concurrency.test.js
@@ -286,9 +286,9 @@ jobs:
         shell: bash
         run: |
           set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          eval "$(npx --yes supabase@2.115.0 status -o env)"
           set +a
-          npx --yes supabase@2.109.1 functions serve aralearn-course-api --no-verify-jwt > /tmp/aralearn-course-api.log 2>&1 &
+          npx --yes supabase@2.115.0 functions serve aralearn-course-api --no-verify-jwt > /tmp/aralearn-course-api.log 2>&1 &
           COURSE_API_PID=$!
           cleanup_course_api() {
             status=$?
@@ -349,7 +349,7 @@ jobs:
         shell: bash
         run: |
           set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          eval "$(npx --yes supabase@2.115.0 status -o env)"
           set +a
           node ./supabase/tests/auth-email-smoke.mjs
 
@@ -357,9 +357,9 @@ jobs:
         shell: bash
         run: |
           set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          eval "$(npx --yes supabase@2.115.0 status -o env)"
           set +a
-          npx --yes supabase@2.109.1 functions serve --no-verify-jwt > /tmp/aralearn-functions.log 2>&1 &
+          npx --yes supabase@2.115.0 functions serve --no-verify-jwt > /tmp/aralearn-functions.log 2>&1 &
           FUNCTIONS_PID=$!
           cleanup_functions() {
             status=$?
@@ -432,4 +432,4 @@ jobs:
 
       - name: Encerrar stack Supabase
         if: always()
-        run: npx --yes supabase@2.109.1 stop --no-backup
+        run: npx --yes supabase@2.115.0 stop --no-backup

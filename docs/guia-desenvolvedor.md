@@ -31,8 +31,8 @@ Somente a URL e a chave pública chegam ao navegador. Para trabalhar com o banco
 local, Docker e Supabase CLI são necessários:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 start
-npx.cmd --yes supabase@2.109.1 db reset
+npx.cmd --yes supabase@2.115.0 start
+npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
@@ -177,8 +177,8 @@ restrições, índices, privilégios e segurança por linha junto com a capacida
 Recrie o banco do zero após a alteração:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 db reset
-npx.cmd --yes supabase@2.109.1 db lint --local --level warning --output-format json |
+npx.cmd --yes supabase@2.115.0 db reset
+npx.cmd --yes supabase@2.115.0 db lint --local --level warning --output-format json |
   node .\scripts\auditLegacyDbLint.mjs -
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```

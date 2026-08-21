@@ -25,8 +25,8 @@ function readLocalSupabaseStatus() {
     const output = execFileSync(
       windows ? (process.env.ComSpec || "cmd.exe") : "npx",
       windows
-        ? ["/d", "/s", "/c", "npx --yes supabase@2.109.1 status -o json"]
-        : ["--yes", "supabase@2.109.1", "status", "-o", "json"],
+        ? ["/d", "/s", "/c", "npx --yes supabase@2.115.0 status -o json"]
+        : ["--yes", "supabase@2.115.0", "status", "-o", "json"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     );
     const objectStart = output.indexOf("{");

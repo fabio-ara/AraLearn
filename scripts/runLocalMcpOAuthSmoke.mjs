@@ -27,14 +27,14 @@ function localEnvironmentFromStatus(environment = process.env) {
     status = JSON.parse(execFileSync(
       useWindowsCommandShell ? (process.env.ComSpec || "cmd.exe") : "npx",
       useWindowsCommandShell
-        ? ["/d", "/s", "/c", "npx --yes supabase@2.109.1 status --output json"]
-        : ["--yes", "supabase@2.109.1", "status", "--output", "json"],
+        ? ["/d", "/s", "/c", "npx --yes supabase@2.115.0 status --output json"]
+        : ["--yes", "supabase@2.115.0", "status", "--output", "json"],
       { cwd: path.resolve(fileURLToPath(import.meta.url), "..", ".."), encoding: "utf8" }
     ));
   } catch (error) {
     throw new Error(
       "Não foi possível obter as credenciais da stack Supabase local. "
-      + "Inicie-a com 'npx --yes supabase@2.109.1 start' ou defina SUPABASE_URL, "
+      + "Inicie-a com 'npx --yes supabase@2.115.0 start' ou defina SUPABASE_URL, "
       + "SUPABASE_SERVICE_ROLE_KEY e SUPABASE_ANON_KEY.",
       { cause: error }
     );
@@ -342,11 +342,18 @@ async function verifyMcpOAuthGoTrueIsolation({
 export async function verifyLocalMcpOAuthIsolation({
   provision,
   fetchImpl = globalThis.fetch,
-  createId = randomUUID
+  createId = randomUUID,
+  allowHosted = false
 } = {}) {
   assert.equal(typeof fetchImpl, "function", "fetch indisponível para a fronteira OAuth.");
+  const projectUrl = String(provision?.projectUrl || "").trim();
+  const explicitlyAllowedHostedProject =
+    allowHosted === true
+    && !isLocalSupabaseUrl(projectUrl)
+    && /^https:\/\/[^/]+$/u.test(projectUrl);
   assert(
-    provision?.projectUrl && isLocalSupabaseUrl(provision.projectUrl),
+    projectUrl
+    && (isLocalSupabaseUrl(projectUrl) || explicitlyAllowedHostedProject),
     "A prova destrutiva da fronteira OAuth só pode usar a stack Supabase local."
   );
   const accessToken = String(provision.accessToken || "").trim();
@@ -978,8 +985,9 @@ async function executeAuthenticatedSmoke(accessToken, {
   }
 }
 
-async function executeRefreshedMcpProbe(accessToken, {
+export async function executeRefreshedMcpProbe(accessToken, {
   projectUrl = "",
+  origin = LOCAL_APP_ORIGIN,
   fetchImpl = globalThis.fetch
 } = {}) {
   const edgeUrl = `${String(projectUrl || "").replace(/\/+$/u, "")}/functions/v1/aralearn-authoring-mcp`;
@@ -992,7 +1000,7 @@ async function executeRefreshedMcpProbe(accessToken, {
         Accept: "application/json, text/event-stream",
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
-        Origin: LOCAL_APP_ORIGIN,
+        Origin: origin,
         "MCP-Protocol-Version": "2025-11-25"
       },
       body: JSON.stringify({

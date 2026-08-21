@@ -146,7 +146,7 @@ test("o workflow compara o inventário completo logo após reconstruir o banco",
     path.join(repositoryRoot, ".github/workflows/validacao.yml"),
     "utf8"
   );
-  const resetIndex = workflow.indexOf("npx --yes supabase@2.109.1 db reset");
+  const resetIndex = workflow.indexOf("npx --yes supabase@2.115.0 db reset");
   const parityIndex = workflow.indexOf("- name: Conferir paridade vertical no banco real");
   const lintIndex = workflow.indexOf("- name: Conferir o lint do banco");
   assert.ok(resetIndex >= 0 && parityIndex > resetIndex && lintIndex > parityIndex);
