@@ -613,6 +613,7 @@ test("PostgreSQL serializa duas primeiras edições sobre a mesma origem compart
       "select pg_sleep(1);",
       "commit;"
     ]);
+    const firstResult = result(first);
     await marker(first, "personal-copy-lock-held");
     const second = psql(`
       select set_config('request.jwt.claim.role','service_role',false);
@@ -623,7 +624,7 @@ test("PostgreSQL serializa duas primeiras edições sobre a mesma origem compart
       );
     `);
     await assert.rejects(result(second), /Já existe uma cópia pessoal|P1490/iu);
-    await result(first);
+    await firstResult;
     assert.equal(await result(psql(`
       select count(*) from private.course_personal_copies
       where actor_id='${learnerId}' and source_course_ref='${sourceCourseId}';
