@@ -362,24 +362,33 @@ jobs:
           COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/app/listarCursos'
           COURSE_API_PROBE_BODY='/tmp/aralearn-course-api-integrated-readiness.json'
           COURSE_API_PROBE_HEADERS='/tmp/aralearn-course-api-integrated-readiness.headers'
+          FUNCTIONS_RUNTIME_READY=false
           MCP_READY=false
           COURSE_API_READY=false
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error --output /dev/null \
-              "$MCP_METADATA_URL"; then
-              MCP_READY=true
+            if grep --fixed-strings --quiet \
+              'Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>' \
+              /tmp/aralearn-functions.log; then
+              FUNCTIONS_RUNTIME_READY=true
             fi
-            course_api_status="$(curl --silent --output "$COURSE_API_PROBE_BODY" \
-              --dump-header "$COURSE_API_PROBE_HEADERS" --write-out '%{http_code}' \
-              --request GET --header 'Origin: http://127.0.0.1:4182' \
-              "$COURSE_API_URL" || true)"
-            if [ "$course_api_status" = 405 ] && \
-              grep --fixed-strings --quiet '"code":"method_not_allowed"' "$COURSE_API_PROBE_BODY" && \
-              grep --ignore-case --fixed-strings --quiet \
-                'content-type: application/json; charset=utf-8' "$COURSE_API_PROBE_HEADERS"; then
-              COURSE_API_READY=true
+            if [ "$FUNCTIONS_RUNTIME_READY" = true ]; then
+              if curl --fail --silent --show-error --output /dev/null \
+                "$MCP_METADATA_URL"; then
+                MCP_READY=true
+              fi
+              course_api_status="$(curl --silent --output "$COURSE_API_PROBE_BODY" \
+                --dump-header "$COURSE_API_PROBE_HEADERS" --write-out '%{http_code}' \
+                --request GET --header 'Origin: http://127.0.0.1:4182' \
+                "$COURSE_API_URL" || true)"
+              if [ "$course_api_status" = 405 ] && \
+                grep --fixed-strings --quiet '"code":"method_not_allowed"' "$COURSE_API_PROBE_BODY" && \
+                grep --ignore-case --fixed-strings --quiet \
+                  'content-type: application/json; charset=utf-8' "$COURSE_API_PROBE_HEADERS"; then
+                COURSE_API_READY=true
+              fi
             fi
-            if [ "$MCP_READY" = true ] && [ "$COURSE_API_READY" = true ]; then
+            if [ "$FUNCTIONS_RUNTIME_READY" = true ] && \
+              [ "$MCP_READY" = true ] && [ "$COURSE_API_READY" = true ]; then
               break
             fi
             if ! kill -0 "$FUNCTIONS_PID" 2>/dev/null; then
@@ -387,6 +396,10 @@ jobs:
             fi
             sleep 1
           done
+          if [ "$FUNCTIONS_RUNTIME_READY" != true ]; then
+            echo "O processo corrente das Edge Functions não confirmou que ficou pronto após 60 tentativas." >&2
+            exit 1
+          fi
           if [ "$MCP_READY" != true ]; then
             echo "O endpoint de metadata OAuth do MCP não ficou pronto após 60 tentativas." >&2
             exit 1
