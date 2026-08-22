@@ -3,89 +3,85 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Atlas guiado do AraLearn</title>
+  <title>Atlas visual do AraLearn</title>
   <link rel="stylesheet" href="atlas.css">
+  <link rel="stylesheet" href="graph.css">
 </head>
 <body>
-  <header class="atlas-header">
+  <header class="graph-header">
     <div>
-      <strong>AraLearn · Atlas guiado</strong>
+      <strong>AraLearn · Atlas visual</strong>
       <small>Âncora funcional: <code>75e0a8e</code> · 21/08/2026</small>
     </div>
-    <button id="mapButton" class="quiet-button" type="button">Mapa</button>
+    <div class="graph-legend">
+      <span><i class="legend-line"></i> navegação</span>
+      <span><i class="legend-line dashed"></i> condição / estado / contexto</span>
+    </div>
   </header>
 
-  <nav class="journeys" aria-label="Percursos">
-    <button data-journey="entrada" type="button">Entrada</button>
-    <button data-journey="estudo" type="button">Estudo</button>
-    <button data-journey="autoria" type="button">Autoria</button>
-    <button data-journey="mcp" type="button">ChatGPT / MCP</button>
-    <button data-journey="conta" type="button">Conta</button>
-  </nav>
-
-  <main class="atlas-main">
-    <div class="step-heading">
-      <div>
-        <span id="journeyName" class="eyebrow"></span>
-        <h1 id="screenTitle"></h1>
-        <p id="screenPath" class="path"></p>
-      </div>
-      <div id="badges" class="badges"></div>
-    </div>
-
-    <section class="workspace">
-      <div class="mock-column">
-        <div class="phone-frame">
-          <div id="phone" class="phone"></div>
+  <main class="graph-shell">
+    <section class="graph-pane" aria-label="Grafo de telas">
+      <div class="graph-toolbar">
+        <div class="graph-focus">
+          <button data-graph-focus="all" type="button">Tudo</button>
+          <button data-graph-focus="entrada" class="active" type="button">Entrada</button>
+          <button data-graph-focus="estudo" type="button">Estudo</button>
+          <button data-graph-focus="autoria" type="button">Autoria</button>
+          <button data-graph-focus="mcp" type="button">ChatGPT / MCP</button>
+          <button data-graph-focus="conta" type="button">Conta</button>
         </div>
-        <p class="mock-note">Rascunho de estrutura e fluxo. Não representa acabamento visual final.</p>
+        <div class="graph-zoom">
+          <button id="graphZoomOut" type="button" title="Diminuir zoom">−</button>
+          <span id="graphZoomLabel">100%</span>
+          <button id="graphZoomIn" type="button" title="Aumentar zoom">＋</button>
+          <button id="graphFocusSelected" type="button">Focar selecionado</button>
+          <button id="graphFitAll" type="button">Visão geral</button>
+        </div>
       </div>
 
-      <article class="guide" aria-live="polite">
-        <section>
-          <h2>O que é esta tela?</h2>
-          <p id="what"></p>
-        </section>
-        <section>
-          <h2>O que a pessoa faz aqui?</h2>
-          <p id="does"></p>
-        </section>
-        <section>
-          <h2>O que acontece depois?</h2>
-          <p id="after"></p>
-        </section>
-        <section id="whySection">
-          <h2>Por que está organizada assim?</h2>
-          <p id="why"></p>
-        </section>
-        <div id="related" class="related"></div>
-        <details class="evidence">
-          <summary>Evidência no AraLearn atual</summary>
-          <div id="evidence"></div>
-        </details>
-      </article>
+      <div id="graphViewport" class="graph-viewport" tabindex="0" aria-label="Mapa de telas. Arraste para mover e use a roda para zoom.">
+        <svg id="graphSvg" class="graph-svg" role="img" aria-label="Grafo de telas do AraLearn"></svg>
+      </div>
+      <p class="graph-hint">Clique em um card. O número da seta reaparece circulado no controle correspondente do mock à direita.</p>
     </section>
+
+    <aside class="graph-detail">
+      <div class="step-heading">
+        <div>
+          <span id="journeyName" class="eyebrow"></span>
+          <h1 id="screenTitle"></h1>
+          <p id="screenPath" class="path"></p>
+        </div>
+        <div id="badges" class="badges"></div>
+      </div>
+
+      <div class="phone-frame"><div id="phone" class="phone"></div></div>
+
+      <section class="graph-actions">
+        <h2>Saídas desta tela</h2>
+        <div id="flowActions"></div>
+      </section>
+
+      <article class="guide">
+        <section><h2>O que é esta tela?</h2><p id="what"></p></section>
+        <section><h2>O que a pessoa faz aqui?</h2><p id="does"></p></section>
+        <section><h2>O que acontece depois?</h2><p id="after"></p></section>
+        <section id="whySection"><h2>Por que está organizada assim?</h2><p id="why"></p></section>
+        <div id="related" class="related"></div>
+        <details class="evidence"><summary>Evidência no AraLearn atual</summary><div id="evidence"></div></details>
+      </article>
+    </aside>
   </main>
 
-  <footer class="tour-controls">
-    <button id="prevButton" class="nav-button" type="button">← Anterior</button>
-    <span id="counter"></span>
-    <button id="nextButton" class="nav-button primary" type="button">Próxima →</button>
-  </footer>
-
-  <div id="mapOverlay" class="map-overlay" hidden>
-    <div class="map-card">
-      <header>
-        <div>
-          <strong>Mapa do atlas</strong>
-          <p>Use só quando quiser saltar. O percurso normal é Anterior / Próxima.</p>
-        </div>
-        <button id="closeMap" class="quiet-button" type="button">Fechar</button>
-      </header>
-      <div id="mapContents" class="map-contents"></div>
-    </div>
+  <div class="compatibility" hidden>
+    <nav><button data-journey="entrada"></button><button data-journey="estudo"></button><button data-journey="autoria"></button><button data-journey="mcp"></button><button data-journey="conta"></button></nav>
+    <button id="mapButton"></button>
+    <button id="prevButton"></button><span id="counter"></span><button id="nextButton"></button>
+    <div id="mapOverlay" hidden><button id="closeMap"></button><div id="mapContents"></div></div>
   </div>
 
   <script src="atlas.js"></script>
+  <script src="graph-layout.js"></script>
+  <script src="graph-ui.js"></script>
 </body>
 </html>
