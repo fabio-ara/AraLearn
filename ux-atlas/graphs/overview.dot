@@ -1,0 +1,26 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.5", ranksep="0.8", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=12, margin="0.15,0.09"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.7];
+
+  login [label="Entrar"];
+  study_home [label="Estudo"];
+  author_courses [label="Autoria"];
+  author_course [label="Curso"];
+  design [label="Desenho"];
+  inspection [label="Inspeção"];
+  mcp_handoff [label="ChatGPT / MCP"];
+  variants [label="Variantes"];
+  analytics [label="Pesquisa"];
+  settings [label="Conta"];
+
+  login -> study_home [label="1"];
+  study_home -> author_courses [label="1"];
+  study_home -> settings [label="2"];
+  author_courses -> author_course [label="1"];
+  author_course -> design [label="1"];
+  author_course -> inspection [label="2"];
+  author_course -> mcp_handoff [label="3", style=dashed, class="external"];
+  author_course -> variants [label="4"];
+  author_course -> analytics [label="5"];
+}
