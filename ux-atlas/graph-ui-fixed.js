@@ -250,7 +250,7 @@ graphViewport.addEventListener("pointermove",event=>{
   const rect=graphViewport.getBoundingClientRect();
   const dx=event.clientX-drag.x,dy=event.clientY-drag.y;
   if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
-  setGraphView({x:drag.view.x-dx*(drag.view.w/rect.width),y:drag.view.y-dy*(drag.view.h/rect.height),w:drag.view.w,h:dragView.h});
+  setGraphView({x:drag.view.x-dx*(drag.view.w/rect.width),y:drag.view.y-dy*(drag.view.h/rect.height),w:drag.view.w,h:drag.view.h});
 });
 function endDrag(event){
   drag=null;graphViewport.classList.remove("dragging");
