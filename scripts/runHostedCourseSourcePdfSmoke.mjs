@@ -103,6 +103,7 @@ function normalizeHostedEnvironment(environment) {
   );
   return {
     ...configuration,
+    projectRef: projectUrl.hostname.slice(0, 20),
     projectUrl: projectUrl.origin
   };
 }
@@ -497,53 +498,51 @@ async function deleteAccountThroughApplication({ configuration, fetchImpl, lifec
   lifecycle.accountDeleted = true;
 }
 
-async function inspectResiduals({ configuration, fetchImpl, lifecycle }) {
-  const residuals = { course: false, object: false, user: false };
-  if (lifecycle.courseId) {
-    const { payload: courses } = await requestJson(
-      fetchImpl,
-      `${configuration.projectUrl}/rest/v1/courses?select=id&id=eq.${
-        encodeURIComponent(lifecycle.courseId)
-      }&limit=1`,
-      { headers: supabaseServerHeaders(configuration.serverApiKey, { contentType: false }) },
-      "Inventário do Curso efêmero"
-    );
-    ensure(Array.isArray(courses), "O inventário do Curso efêmero é inválido.");
-    residuals.course = courses.length !== 0;
-
-    const { payload: objects } = await requestJson(
-      fetchImpl,
-      `${configuration.projectUrl}/storage/v1/object/list/${COURSE_SOURCE_PDF_BUCKET}`,
-      {
-        method: "POST",
-        headers: supabaseServerHeaders(configuration.serverApiKey),
-        body: JSON.stringify({
-          prefix: `${lifecycle.courseId}/`,
-          limit: 100,
-          offset: 0,
-          sortBy: { column: "name", order: "asc" }
-        })
-      },
-      "Inventário dos PDFs efêmeros"
-    );
-    ensure(Array.isArray(objects), "O inventário dos PDFs efêmeros é inválido.");
-    residuals.object = objects.length !== 0;
+export function inspectHostedCourseSourcePdfResiduals({
+  configuration,
+  lifecycle,
+  executeSupabase = runSupabase
+}) {
+  const projectRef = text(configuration?.projectRef);
+  ensure(/^[a-z0-9]{20}$/u.test(projectRef), "O project ref do inventário é inválido.");
+  const courseId = lifecycle?.courseId
+    ? validateUuid(lifecycle.courseId, "O Curso do inventário é inválido.")
+    : "00000000-0000-4000-8000-000000000000";
+  const userId = lifecycle?.userId
+    ? validateUuid(lifecycle.userId, "A conta do inventário é inválida.")
+    : "00000000-0000-4000-8000-000000000000";
+  const query = `
+select jsonb_build_object(
+  'courseCount', (select count(*) from public.courses where id = '${courseId}'::uuid),
+  'objectCount', (
+    select count(*) from storage.objects
+    where bucket_id = '${COURSE_SOURCE_PDF_BUCKET}'
+      and name like '${courseId}/%'
+  ),
+  'userCount', (select count(*) from auth.users where id = '${userId}'::uuid)
+) as residuals;
+`;
+  let result;
+  try {
+    result = JSON.parse(executeSupabase(
+      ["db", "query", "--linked", "--project-ref", projectRef, "--output", "json"],
+      { input: query }
+    ));
+  } catch {
+    throw new Error("O banco hospedado não forneceu o inventário do smoke PDF.");
   }
-  if (lifecycle.userId) {
-    const { response } = await requestJson(
-      fetchImpl,
-      `${configuration.projectUrl}/auth/v1/admin/users/${
-        encodeURIComponent(lifecycle.userId)
-      }`,
-      {
-        headers: supabaseServerHeaders(configuration.serverApiKey, { contentType: false })
-      },
-      "Inventário da conta efêmera",
-      [200, 404]
-    );
-    residuals.user = response.status === 200;
-  }
-  return residuals;
+  const counts = result?.rows?.[0]?.residuals;
+  ensure(
+    counts && [counts.courseCount, counts.objectCount, counts.userCount].every(
+      (value) => Number.isSafeInteger(value) && value >= 0
+    ),
+    "O banco hospedado devolveu um inventário inválido."
+  );
+  return {
+    course: counts.courseCount !== 0,
+    object: counts.objectCount !== 0,
+    user: counts.userCount !== 0
+  };
 }
 
 async function administrativeFallbackCleanup({ configuration, fetchImpl, lifecycle }) {
@@ -560,27 +559,6 @@ async function administrativeFallbackCleanup({ configuration, fetchImpl, lifecyc
         },
         "Limpeza administrativa dos PDFs efêmeros",
         [200, 404]
-      );
-    } catch (error) {
-      failures.push(error);
-    }
-  }
-  if (lifecycle.courseId) {
-    try {
-      await requestJson(
-        fetchImpl,
-        `${configuration.projectUrl}/rest/v1/courses?id=eq.${
-          encodeURIComponent(lifecycle.courseId)
-        }`,
-        {
-          method: "DELETE",
-          headers: {
-            ...supabaseServerHeaders(configuration.serverApiKey, { contentType: false }),
-            Prefer: "return=minimal"
-          }
-        },
-        "Limpeza administrativa do Curso efêmero",
-        [200, 204, 404]
       );
     } catch (error) {
       failures.push(error);
@@ -607,7 +585,12 @@ async function administrativeFallbackCleanup({ configuration, fetchImpl, lifecyc
   return failures;
 }
 
-async function cleanupAndVerify({ configuration, fetchImpl, lifecycle }) {
+async function cleanupAndVerify({
+  configuration,
+  fetchImpl,
+  inspectResiduals,
+  lifecycle
+}) {
   const failures = [];
   try {
     await deleteAccountThroughApplication({ configuration, fetchImpl, lifecycle });
@@ -617,7 +600,7 @@ async function cleanupAndVerify({ configuration, fetchImpl, lifecycle }) {
 
   let residuals;
   try {
-    residuals = await inspectResiduals({ configuration, fetchImpl, lifecycle });
+    residuals = await inspectResiduals({ configuration, lifecycle });
   } catch (error) {
     failures.push(error);
     residuals = { course: true, object: true, user: true };
@@ -633,11 +616,7 @@ async function cleanupAndVerify({ configuration, fetchImpl, lifecycle }) {
       lifecycle
     }));
     try {
-      const finalResiduals = await inspectResiduals({
-        configuration,
-        fetchImpl,
-        lifecycle
-      });
+      const finalResiduals = await inspectResiduals({ configuration, lifecycle });
       if (Object.values(finalResiduals).some(Boolean)) {
         failures.push(new Error("A limpeza de recuperação deixou resíduo hospedado."));
       }
@@ -654,11 +633,13 @@ export async function runHostedCourseSourcePdfSmoke({
   environment = process.env,
   fetchImpl = globalThis.fetch,
   createId = randomUUID,
-  createBytes = randomBytes
+  createBytes = randomBytes,
+  inspectResiduals = inspectHostedCourseSourcePdfResiduals
 } = {}) {
   ensure(typeof fetchImpl === "function", "fetch não está disponível para o smoke hospedado.");
   ensure(typeof createId === "function", "O gerador de identidades do smoke é inválido.");
   ensure(typeof createBytes === "function", "O gerador criptográfico do smoke é inválido.");
+  ensure(typeof inspectResiduals === "function", "O inventário hospedado é inválido.");
   const configuration = normalizeHostedEnvironment(environment);
   const lifecycle = {
     accessToken: null,
@@ -688,7 +669,7 @@ export async function runHostedCourseSourcePdfSmoke({
 
   let cleanupFailure = null;
   try {
-    await cleanupAndVerify({ configuration, fetchImpl, lifecycle });
+    await cleanupAndVerify({ configuration, fetchImpl, inspectResiduals, lifecycle });
   } catch (error) {
     cleanupFailure = error;
   }
@@ -708,7 +689,7 @@ export async function runHostedCourseSourcePdfSmoke({
   });
 }
 
-function runSupabase(argumentsValue) {
+function runSupabase(argumentsValue, { input } = {}) {
   const windows = process.platform === "win32";
   try {
     return execFileSync(
@@ -722,7 +703,8 @@ function runSupabase(argumentsValue) {
       {
         cwd: REPOSITORY_ROOT,
         encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
+        input,
+        stdio: ["pipe", "pipe", "pipe"]
       }
     );
   } catch {
