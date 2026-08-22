@@ -138,11 +138,10 @@ diretamente no GoTrue, na API de dados ou no Storage. Propriedade do Curso ainda
 
 O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores, por isso
 clientes conectados precisam autorizar novamente. Um ID token `openid` já
-emitido não foi recolhido e continuou válido até `exp`; a antiga fronteira foi
-declarada fechada somente depois do maior prazo entre a janela JWT registrada no
-ambiente e as duas horas das URLs v1 de upload emitidas antes do corte,
-acrescido de margem operacional, e das negativas e do inventário repetidos,
-conforme
+emitido não foi recolhido e continuou válido até `exp`. Essa validade residual
+foi registrada no corte; as negativas com credenciais novas e o inventário
+foram verificados, e podem ser repetidos depois da expiração natural sem
+bloquear a publicação dos clientes novos, conforme
 [Implantação](implantacao.md).
 
 As regras correntes são deliberadamente simples:

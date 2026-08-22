@@ -196,8 +196,9 @@ não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
 mesmo bloqueio usado pela exclusão da conta. A inserção consome a intenção. Não
 é emitida nova URL assinada de upload. Uma URL v1 emitida pela versão 0.0.26
 antes do corte, porém, é uma credencial independente da sessão e pode continuar
-aceita por até duas horas. A fronteira anterior só se encerra depois dessa
-expiração, além da janela dos JWTs antigos.
+aceita por até duas horas. Essa validade residual é registrada e pode ser
+confrontada depois da expiração, sem impedir a publicação do cliente que já não
+recebe URL v1 de upload.
 
 O resumo criptográfico e o cabeçalho só podem ser confirmados depois que os
 bytes chegam. Se um objeto de mesmo tamanho e tipo não corresponder ao PDF
@@ -334,11 +335,10 @@ pela API de dados e pelo Storage.
 
 No corte da 0.0.27, consentimentos e sessões OAuth anteriores foram revogados.
 Isso impede renovação e exige novo consentimento, mas um ID token `openid` já
-emitido continuou válido até `exp`. A fronteira anterior foi declarada fechada
-somente depois do maior prazo entre a duração JWT configurada e as duas horas
-das URLs v1 de upload já emitidas, contado a partir da promoção e acrescido de
-margem operacional. Depois dessa janela, as negativas hospedadas e o inventário
-de objetos sem vínculo foram repetidos.
+emitido continuou válido até `exp`. A promoção registrou essa validade residual,
+executou as negativas hospedadas com a credencial nova e confrontou o inventário
+de objetos sem vínculo. A expiração natural pode ser verificada posteriormente;
+ela não bloqueia a publicação do cliente que usa a fronteira nova.
 
 A caixa de entrada e a leitura por alvo de Observações usam uma projeção
 fechada com síntese, estado, origem, papel, versões e identificador operacional.
@@ -502,8 +502,9 @@ exclusão: um envio concluído primeiro volta a ser encontrado pela verificaçã
 de objetos, enquanto uma exclusão concluída primeiro invalida a sessão antes
 que o envio possa prosseguir. Assim, um token residual não reabre a janela de
 escrita autenticada. A URL assinada de upload v1 já emitida antes do corte é a
-exceção transitória: ela não depende da sessão e precisa expirar por até duas
-horas antes de a fronteira antiga ser declarada fechada.
+exceção transitória: ela não depende da sessão e pode permanecer válida por até
+duas horas. O inventário posterior permite confirmar sua expiração sem bloquear
+a publicação do upload autenticado novo.
 
 Depois, a conta de autenticação, o perfil, os Cursos próprios, suas composições,
 acessos e estados dependentes são removidos. Contribuições em Cursos alheios são

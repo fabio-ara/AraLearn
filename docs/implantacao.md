@@ -18,7 +18,7 @@ concorrência, o smoke de Curso e o fluxo OAuth/MCP com renovação e negativas 
 GoTrue, na API de dados e no Storage. O site da 0.0.27 examinou 131 arquivos; os
 runtimes Android e os APKs de depuração e release examinaram 130 e 223 arquivos,
 respectivamente. Essas provas sustentaram a integração; os gates hospedados e a
-espera de expiração descrita adiante também foram concluídos.
+verificação imediata da fronteira nova também foram concluídos.
 
 O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
@@ -148,7 +148,9 @@ possibilidade de emitir uma URL
 assinada v1 de upload. A janela mínima posterior à promoção é o maior prazo
 entre essa duração JWT e duas horas: um ID token `openid` antigo pode ser aceito
 diretamente pelo GoTrue até `exp`, e uma URL v1 já emitida continua escrevendo
-sem consultar a sessão até a própria expiração.
+sem consultar a sessão até a própria expiração. Esses prazos orientam uma
+verificação posterior da drenagem, mas não bloqueiam a publicação dos clientes
+que já usam a fronteira nova.
 
 A URL pública do aplicativo e as origens permitidas das funções são promovidas
 por `deploySupabase.ps1`. Origens de produção usam HTTPS e não contêm caminho,
@@ -329,12 +331,10 @@ escopo exato `offline_access`, e a resposta nova não contém `id_token`.
 
 Essa revogação não recolhe JWTs OAuth já assinados. Em particular, um ID token
 `openid` anterior permaneceu válido até o próprio `exp`. Foi anotado o instante
-em que o backend 0.0.27 entrou, e a fronteira permaneceu em estado de transição por
-pelo menos o maior prazo entre a duração JWT registrada antes do corte e duas
-horas de validade máxima das URLs v1 de upload já emitidas, acrescido de margem
-operacional. Depois dessa janela, as negativas de GoTrue, API de dados e Storage
-foram repetidas e o inventário de objetos sem vínculo foi confrontado. A entrega
-e a fronteira anterior só foram declaradas concluídas depois desse prazo.
+em que o backend 0.0.27 entrou. As negativas de GoTrue, API de dados e Storage
+foram executadas com a credencial nova, e o inventário de objetos sem vínculo foi
+confrontado. A validade natural das credenciais antigas permanece registrada
+para uma verificação posterior, sem bloquear a publicação da fronteira nova.
 
 Uma rotação da chave de assinatura pode invalidar esses JWTs antes de `exp`, mas
 também afeta todas as sessões da aplicação. Ela exige plano próprio de saída,
@@ -450,13 +450,12 @@ observar `contextual-study-unit-edit-v1` antes de qualquer cliente correspondent
 ser publicado. Naquele corte, a versão pública do recurso e do catálogo MCP pôde
 continuar 0.0.23 porque sua forma não havia mudado.
 
-Na promoção da 0.0.27, foram registrados quatro marcos separados: o instante, a
-duração JWT e a validade máxima das URLs v1 observados antes do corte; a
-promoção do esquema e das funções; a publicação dos clientes capazes de enviar
-PDF por sessão; e o fim da janela conjunta de expiração dos ID tokens e das
-URLs v1 de upload antigas. Depois do último marco, as negativas hospedadas e o
-inventário de órfãos foram conferidos antes de declarar fechada a antiga
-fronteira. A
+Na promoção da 0.0.27, foram registrados separadamente o instante, a duração JWT
+e a validade máxima das URLs v1 observados antes do corte; a promoção do esquema
+e das funções; e a publicação dos clientes capazes de enviar PDF por sessão.
+As negativas hospedadas e o inventário de órfãos foram conferidos no corte. O
+fim da validade residual pode ser confrontado depois, sem bloquear o cliente
+que já não emite URL v1 nem `id_token`. A
 retirada futura do download v1 é outro corte e depende de encerrar
 explicitamente o suporte ao Android 0.0.26.
 

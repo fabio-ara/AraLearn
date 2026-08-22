@@ -211,7 +211,8 @@ navegador faz POST autenticado no bucket; a política exige sessão viva e
 consome a intenção na inserção. O backend não emite v1 para essa operação e não
 restaura a URL assinada de upload. Isso não recolhe uma URL v1 já emitida pela
 versão 0.0.26: ela continua independente da sessão até expirar, por no máximo
-duas horas, e integra a janela obrigatória do corte.
+duas horas. Essa validade residual é registrada e verificada no inventário,
+sem impedir a publicação do cliente que deixa de emitir a credencial antiga.
 
 `download` emite temporariamente
 `aralearn.course-source-attachment-access.v1`, com URL assinada de 60 segundos,
@@ -275,10 +276,10 @@ API de dados ou no Storage.
 
 O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores, que usavam
 `openid`, mas não recolheu um ID token já emitido. Esse token continuou
-criptograficamente válido até `exp`. Por isso, a fronteira foi declarada fechada
-somente depois da janela operacional de ao menos uma duração completa da
-expiração JWT configurada após a promoção do backend, acrescida de margem
-operacional, e da repetição das negativas. O roteiro está em
+criptograficamente válido até `exp`. A promoção registrou essa validade
+residual, repetiu as negativas com credenciais novas e manteve disponível uma
+verificação posterior da expiração e do inventário. Essa verificação não é um
+bloqueio para publicar os clientes que já usam a fronteira nova. O roteiro está em
 [Implantação](implantacao.md).
 
 ### Anotações ancoradas fora do conteúdo e do estado pessoal
