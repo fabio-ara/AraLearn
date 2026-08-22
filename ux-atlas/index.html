@@ -39,7 +39,7 @@
         </div>
       </div>
 
-      <div id="graphViewport" class="graph-viewport" tabindex="0" aria-label="Mapa de telas. Arraste para mover e use a roda para zoom.">
+      <div id="graphViewportNew" class="graph-viewport" tabindex="0" aria-label="Mapa de telas. Arraste para mover e use a roda para zoom.">
         <svg id="graphSvg" class="graph-svg" role="img" aria-label="Grafo de telas do AraLearn"></svg>
       </div>
       <p class="graph-hint">Clique em um card. O número da seta reaparece circulado no controle correspondente do mock à direita.</p>
@@ -80,8 +80,18 @@
     <div id="mapOverlay" hidden><button id="closeMap"></button><div id="mapContents"></div></div>
   </div>
 
+  <div id="legacyGraphCompat" hidden aria-hidden="true">
+    <div id="graphViewport"></div>
+    <svg id="flowGraph" viewBox="0 0 100 100"></svg>
+    <span id="zoomLabel"></span>
+    <button id="zoomIn"></button>
+    <button id="zoomOut"></button>
+    <button id="resetGraph"></button>
+    <button id="focusSelected"></button>
+  </div>
+
   <script src="atlas.js"></script>
   <script src="graph-layout.js"></script>
-  <script src="graph-ui.js"></script>
+  <script src="graph-ui-fixed.js"></script>
 </body>
 </html>
