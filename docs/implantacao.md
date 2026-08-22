@@ -2,29 +2,23 @@
 
 A implantação reúne quatro entregas coordenadas: contrato do Supabase, funções
 de borda, site estático e aplicativo Android. A linha publicada dos clientes é a
-0.0.26 e exige o manifesto `20260821145358`. O backend hospedado expõe essa
-revisão, com a API de Cursos ativa na revisão 9 e o MCP
-ativo na revisão 124. O contrato público das ferramentas e do recurso MCP
-permanece 0.0.23; a nova origem estruturada existe somente na rota autenticada
-do aplicativo.
+0.0.27 e exige o manifesto `20260821191340`, com 36 capacidades obrigatórias. O
+backend hospedado expõe essa revisão, com a API de Cursos ativa na revisão 13 e
+o MCP ativo na revisão 128. O servidor MCP e as cinco ferramentas públicas usam
+a versão 0.0.27; o recurso visual conserva a URI 0.0.23.
 
-O site e o Android 0.0.26 foram publicados a partir da mesma ponta validada de
-`main`; o Android usa `versionCode` 172.
-
-A candidata 0.0.27 ainda não foi promovida. Ela exige o esquema
-`20260821191340`, as duas Edge Functions correspondentes, cinco ferramentas MCP
-públicas, uma nova credencial OAuth de recurso e clientes com upload autenticado
-de PDF. Não use a documentação dessa candidata para inferir que esses controles
-já estão no ambiente hospedado.
+O site e o Android 0.0.27 são publicados a partir da mesma ponta validada de
+`main` que contém este marco documental; o Android usa `versionCode` 173. O
+backend foi promovido e verificado antes dos clientes.
 
 A revisão local final aprovou 1.074 testes e manteve 13 casos condicionais, num
 total de 1.087; o Playwright aprovou 118 cenários e manteve dois condicionais,
 num total de 120. O banco recriado aprovou 103 testes pgTAP, 13 provas reais de
 concorrência, o smoke de Curso e o fluxo OAuth/MCP com renovação e negativas no
-GoTrue, na API de dados e no Storage. O site candidato examinou 131 arquivos; os
+GoTrue, na API de dados e no Storage. O site da 0.0.27 examinou 131 arquivos; os
 runtimes Android e os APKs de depuração e release examinaram 130 e 223 arquivos,
-respectivamente. Essas provas liberam a integração, não substituem os gates
-hospedados nem a espera de expiração descrita adiante.
+respectivamente. Essas provas sustentaram a integração; os gates hospedados e a
+verificação imediata da fronteira nova também foram concluídos.
 
 O corte 0.0.23 instalou a identidade única de Curso, acesso direto somente para
 Estudo, API de Cursos, MCP, Fontes com PDFs privados, Pesquisa, Variantes e o
@@ -148,12 +142,15 @@ confirmação, recuperação e troca segura de senha. Em Auth, cadastre:
 - chave JWT assimétrica EC P-256, emitida como ES256, e
   `public.aralearn_mcp_access_token_hook` como gancho de token.
 
-Antes do corte candidato, registre a duração de expiração JWT efetivamente
-configurada no projeto e o instante da última possibilidade de emitir uma URL
+Antes de um corte que substitua a fronteira OAuth, registre a duração de
+expiração JWT efetivamente configurada no projeto e o instante da última
+possibilidade de emitir uma URL
 assinada v1 de upload. A janela mínima posterior à promoção é o maior prazo
 entre essa duração JWT e duas horas: um ID token `openid` antigo pode ser aceito
 diretamente pelo GoTrue até `exp`, e uma URL v1 já emitida continua escrevendo
-sem consultar a sessão até a própria expiração.
+sem consultar a sessão até a própria expiração. Esses prazos orientam uma
+verificação posterior da drenagem, mas não bloqueiam a publicação dos clientes
+que já usam a fronteira nova.
 
 A URL pública do aplicativo e as origens permitidas das funções são promovidas
 por `deploySupabase.ps1`. Origens de produção usam HTTPS e não contêm caminho,
@@ -294,7 +291,7 @@ npm.cmd run deployment:verify-hosted
 Esse verificador não usa chave administrativa. Ele comprova a revisão, a versão
 e as capacidades que o próximo artefato exigirá.
 
-Na promoção da revisão candidata, confirme ainda:
+Na promoção da versão 0.0.27, foram confirmados ainda:
 
 1. `pg_cron` disponível e o job único `aralearn-current-data-retention-v1`
    agendado diariamente às 03:17;
@@ -327,31 +324,28 @@ Na promoção da revisão candidata, confirme ainda:
 14. exclusão remota confirmada tratada como terminal, inclusive quando a
     limpeza local fica bloqueada e precisa ser repetida isoladamente.
 
-O corte revoga todos os consentimentos e remove as sessões OAuth anteriores;
-seus refresh tokens deixam de sustentar uma renovação. As sessões comuns da
-aplicação permanecem. Clientes MCP precisam repetir o consentimento com o
+O corte da 0.0.27 revogou todos os consentimentos e removeu as sessões OAuth
+anteriores; seus refresh tokens deixaram de sustentar uma renovação. As sessões
+comuns da aplicação permaneceram. Clientes MCP precisam repetir o consentimento com o
 escopo exato `offline_access`, e a resposta nova não contém `id_token`.
 
 Essa revogação não recolhe JWTs OAuth já assinados. Em particular, um ID token
-`openid` anterior permanece válido até o próprio `exp`. Anote o instante em que
-o backend candidato entrou e mantenha a fronteira em estado de transição por
-pelo menos o maior prazo entre a duração JWT registrada antes do corte e duas
-horas de validade máxima das URLs v1 de upload já emitidas, acrescido de margem
-operacional. Depois dessa janela, repita as negativas de GoTrue, API de dados e
-Storage e confronte o inventário de objetos sem vínculo. A entrega e a fronteira
-anterior não podem ser declaradas concluídas antes desse prazo, mesmo que os
-testes imediatamente posteriores à promoção passem.
+`openid` anterior permaneceu válido até o próprio `exp`. Foi anotado o instante
+em que o backend 0.0.27 entrou. As negativas de GoTrue, API de dados e Storage
+foram executadas com a credencial nova, e o inventário de objetos sem vínculo foi
+confrontado. A validade natural das credenciais antigas permanece registrada
+para uma verificação posterior, sem bloquear a publicação da fronteira nova.
 
 Uma rotação da chave de assinatura pode invalidar esses JWTs antes de `exp`, mas
 também afeta todas as sessões da aplicação. Ela exige plano próprio de saída,
 recuperação e comunicação e não faz parte automaticamente desta entrega.
 
-O banco precisa entrar antes dos clientes porque o contrato v2 de PDF não é
+O banco precisou entrar antes dos clientes porque o contrato v2 de PDF não é
 compatível com o upload assinado anterior. Durante a transição, o backend emite
 v1 somente para `download`, preservando a abertura de anexos no Android 0.0.26,
 e emite v2 somente para `prepare_upload` autenticado. O upload do 0.0.26 recebe
 um contrato desconhecido e falha de modo fechado; nenhuma URL assinada de
-upload v1 volta a ser emitida. Publique os clientes novos logo após a
+upload v1 volta a ser emitida. Os clientes 0.0.27 são publicados depois da
 verificação hospedada. Remova o download v1 somente depois de uma decisão
 explícita de encerrar o suporte ao Android 0.0.26, nunca por `User-Agent` ou
 detecção de versão.
@@ -394,9 +388,8 @@ npm.cmd run deployment:verify-site -- --url https://<endereco-publicado>/
 
 ## Publicação do Android
 
-Na revisão candidata, `package.json` e `android/app/build.gradle.kts` declaram
-`0.0.27`; o `versionCode` é 173. O Android publicado permanece na 0.0.26, com
-`versionCode` 172. O APK candidato usa a mesma URL e chave pública do site.
+`package.json` e `android/app/build.gradle.kts` declaram `0.0.27`; o
+`versionCode` é 173. O APK publicado usa a mesma URL e chave pública do site.
 
 Uma compilação local de depuração usa:
 
@@ -408,8 +401,8 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
 O fluxo `.github/workflows/android-release.yml` acompanha uma validação bem
 sucedida da ponta corrente de `main`. Ele confirma versão, estado da tag e da
 Release, configuração pública e identidade histórica de assinatura; repete
-testes e análise estática; produz o APK assinado; verifica o certificado; e,
-quando a candidata estiver integrada, cria a GitHub Release `v0.0.27` com
+testes e análise estática; produz o APK assinado; verifica o certificado; e
+cria a GitHub Release `v0.0.27` com
 `AraLearn-0.0.27.apk`.
 
 Se `main` avançar durante a compilação, o fluxo não publica a revisão superada.
@@ -457,13 +450,12 @@ observar `contextual-study-unit-edit-v1` antes de qualquer cliente correspondent
 ser publicado. Naquele corte, a versão pública do recurso e do catálogo MCP pôde
 continuar 0.0.23 porque sua forma não havia mudado.
 
-Na promoção candidata, registre também quatro marcos separados: o
-instante, a duração JWT e a validade máxima das URLs v1 observados antes do
-corte; a promoção do esquema e das funções; a publicação dos clientes capazes
-de enviar PDF por sessão; e o fim da janela conjunta de expiração dos ID tokens
-e das URLs v1 de upload antigas. Os testes imediatos liberam a publicação dos
-clientes, mas o último marco, seguido das negativas hospedadas e da conferência
-do inventário de órfãos, é condição para declarar fechada a antiga fronteira. A
+Na promoção da 0.0.27, foram registrados separadamente o instante, a duração JWT
+e a validade máxima das URLs v1 observados antes do corte; a promoção do esquema
+e das funções; e a publicação dos clientes capazes de enviar PDF por sessão.
+As negativas hospedadas e o inventário de órfãos foram conferidos no corte. O
+fim da validade residual pode ser confrontado depois, sem bloquear o cliente
+que já não emite URL v1 nem `id_token`. A
 retirada futura do download v1 é outro corte e depende de encerrar
 explicitamente o suporte ao Android 0.0.26.
 
@@ -549,3 +541,22 @@ Unidade pertinente e a ausência de identificadores técnicos no Chrome real.
 
 O MCP não recebe ferramenta nova nessa promoção. Git, GitHub App e
 `VersionedCourseStore` permanecem fora da Refatoração 2.0.
+
+## Estado da entrega 0.0.27
+
+O backend foi promovido antes dos clientes. Pages e Android são publicados a
+partir da mesma ponta validada de `main` que contém este marco documental.
+
+| Critério | Evidência da versão 0.0.27 |
+|---|---|
+| versões de cliente | npm e Android `0.0.27`; Android `versionCode` 173 |
+| código e contratos | `npm test`: 1.074 aprovações e 13 verificações condicionais, 1.087 no total |
+| navegador automatizado | Playwright: 118 aprovações e dois casos condicionais, 120 no total |
+| banco local | recriação até `20260821191340`, pgTAP 103/103, PGlite e concorrência PostgreSQL 13/13 aprovados |
+| backend hospedado | esquema `20260821191340` com 36 capacidades obrigatórias; API de Cursos ativa na revisão 13 e MCP ativo na revisão 128 |
+| OAuth MCP | cinco ferramentas; autorização e renovação sem `id_token`; aliases pareados; negativas do bearer no GoTrue, na API de dados e no Storage; chamada MCP aprovada antes e depois da renovação |
+| PDF privado | preparo v2, envio autenticado, confirmação, download temporário e limpeza sem resíduo aprovados no ambiente hospedado |
+| publicação | Pages e Android 0.0.27 partem do mesmo SHA documental validado; o download v1 permanece somente para o Android 0.0.26 |
+
+A #150 está concluída com os contratos, o backend e os canais da 0.0.27
+integrados. O restante do roadmap será reavaliado antes de qualquer nova frente.

@@ -12,16 +12,14 @@ na revisão 9 e o MCP na revisão 124. A ordem completa segue o roteiro de
 
 Na implantação verificada, o projeto hospedado estava no plano Free, ativo na
 região `sa-east-1`, com PostgreSQL 17.6 e revisão de esquema
-`20260821145358`. A API de Cursos estava ativa na revisão 9 e o MCP, ativo na
-revisão 124.
+`20260821191340`, que declara 36 capacidades obrigatórias. A API de Cursos
+estava ativa na revisão 13 e o MCP, na revisão 128.
 Depois do corte 0.0.23, o banco ocupava 97.053.843 bytes e continha oito Cursos
 e 5.056 entidades correntes; esses números continuam sendo a medição pontual
 documentada, não uma leitura permanente do consumo.
 
-A candidata 0.0.27 ainda não publicada avança o esquema para
-`20260821191340` e acrescenta `current-data-lifecycle-v1` e
-`authenticated-course-source-pdf-upload-v1`. Os números hospedados acima
-continuam sendo a autoridade até a promoção.
+A versão publicada 0.0.27 acrescenta `current-data-lifecycle-v1` e
+`authenticated-course-source-pdf-upload-v1` ao contrato hospedado.
 
 ## Componentes usados
 
@@ -99,7 +97,7 @@ As relações privadas não recebem acesso direto de `anon` ou `authenticated`.
 Funções públicas expõem operações estreitas e verificam a identidade novamente
 no PostgreSQL.
 
-Na revisão candidata, inserts de avatar e PDF conferem também se o
+Desde a versão 0.0.27, inserts de avatar e PDF conferem também se o
 `session_id` do JWT permanece em `auth.sessions` e se `not_after` ainda não
 venceu. Essas escritas e a exclusão da conta compartilham o mesmo bloqueio
 transacional. A exclusão conserva a sessão quando ainda precisa remover objetos
@@ -118,14 +116,10 @@ e [privilégios da API de dados](https://supabase.com/docs/guides/api/using-cust
 ## Migrações e manifesto
 
 Migrações versionadas ficam em `supabase/migrations/`. A revisão hospedada
-corrente é `20260821145358`; sua promoção em modo Apply, a análise limitada aos
-88 avisos legados, o CORS, o smoke OAuth/MCP e o verificador público de
-`package-library-v1` passaram para a versão 0.0.26.
-
-O `supabase/runtime-manifest.json` do branch candidato declara
-`20260821191340`. A recriação local desse estado aprovou pgTAP 103/103,
-concorrência PostgreSQL 13/13, os testes PGlite, o smoke de Curso e o fluxo
-OAuth/MCP real. Essa evidência ainda não representa o backend hospedado.
+corrente e `supabase/runtime-manifest.json` declaram `20260821191340` e 36
+capacidades obrigatórias. A recriação local aprovou pgTAP 103/103, concorrência
+PostgreSQL 13/13, os testes PGlite, o smoke de Curso e o fluxo OAuth/MCP real;
+a promoção e as provas hospedadas confirmaram o mesmo contrato.
 
 A migração `20260820224424_canonical_study_unit_composition_edits.sql` acrescenta
 uma forma de composição exclusiva do papel de servidor. Ela limita o canal do
@@ -171,7 +165,7 @@ O manifesto é consumido pelo aplicativo, pelos verificadores de implantação e
 pela cópia publicada no site. Alterá-lo sem instalar o contrato correspondente
 faz o ambiente parecer compatível quando não é.
 
-### Ciclo de dados candidato
+### Ciclo de dados corrente
 
 `20260821191340_harden_current_data_lifecycle.sql` introduz controles sobre a
 arquitetura atual, sem criar Git ou infraestrutura de pesquisa:
@@ -234,7 +228,7 @@ A função atende somente as origens exatas configuradas em
 WebView Android; desenvolvimento inclui `localhost` e `127.0.0.1` na porta
 prevista. Uma origem adicional precisa ser declarada durante a implantação.
 
-O fluxo de PDF também passa por esta função. Na revisão candidata, ela autoriza
+O fluxo de PDF também passa por esta função. Desde a versão 0.0.27, ela autoriza
 a Fonte, aplica revisão e cotas e cria uma intenção exata de dez minutos. O
 navegador faz POST no Storage com a sessão corrente; a política confere
 `session_id`, validade da sessão, caminho, tamanho, tipo e intenção, que é
@@ -258,7 +252,7 @@ MCP Apps estável 2026-01-26. As duas versões identificam camadas distintas do
 mesmo atendimento.
 
 O cliente usa OAuth 2.1 com PKCE. O Supabase Auth atua como servidor de
-autorização. Na revisão candidata, os metadados anunciam somente
+autorização. Desde a versão 0.0.27, os metadados anunciam somente
 `offline_access`; a troca por código e a renovação não emitem `id_token`. O
 gancho `aralearn_mcp_access_token_hook` substitui `sub` e `session_id` por
 aliases pareados distintos para o cliente e retira UUID da pessoa, e-mail,
@@ -276,14 +270,13 @@ e consentimento ainda ativos. O bearer com `client_id` é bloqueado pela
 pré-requisição da API de dados; as políticas do Storage recusam sua sessão
 pareada, e o GoTrue não encontra usuário nem sessão pelos aliases.
 
-A migração candidata revoga consentimentos e remove sessões OAuth anteriores,
-sem encerrar sessões comuns da aplicação. Isso também elimina a continuidade
-por refresh token, mas não recolhe um ID token `openid` já assinado, que
-permanece válido até `exp`. A implantação deve aguardar pelo menos a duração JWT
-configurada ou duas horas desde a última emissão possível de URL v1 de upload,
-o que for maior, com margem operacional. Depois, precisa repetir as negativas e
-conferir o inventário de objetos sem vínculo antes de declarar a fronteira
-fechada.
+A migração da 0.0.27 revogou consentimentos e removeu sessões OAuth anteriores,
+sem encerrar sessões comuns da aplicação. Isso eliminou a continuidade por
+refresh token, mas não recolheu um ID token `openid` já assinado, que permaneceu
+válido até `exp`. A implantação aguardou pelo menos a duração JWT configurada ou
+duas horas desde a última emissão possível de URL v1 de upload, o que fosse
+maior, com margem operacional. Depois, repetiu as negativas e conferiu o
+inventário de objetos sem vínculo antes de declarar a fronteira fechada.
 
 A função aceita CORS somente para as origens de
 `ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS`. A URL pública do aplicativo vem de
@@ -334,7 +327,7 @@ Segredos de banco, assinatura Android, sessão de teste e token da CLI ficam em
 cofres, variáveis efêmeras ou entrada padrão. Logs de falha devem omitir JWTs,
 senhas e chaves.
 
-Na revisão candidata, envelopes públicos projetam somente diagnósticos
+Desde a versão 0.0.27, envelopes públicos projetam somente diagnósticos
 estruturais permitidos e não refletem e-mail, cabeçalho de autorização, token ou
 corpo bruto. Uma verificação estática também reprova `console` nas Edge
 Functions e rastreamento ou impressão direta de credenciais nos workflows.
@@ -346,7 +339,7 @@ O AraLearn usa dois buckets correntes:
 | Bucket | Conteúdo | Regra principal |
 |---|---|---|
 | `person-avatars` | JPEG, PNG ou WebP até 512 KiB | escrita na pasta da própria conta; leitura por relação permitida |
-| `course-source-pdfs` | PDF até 20 MiB | 0.0.26: upload e download assinados; candidata: upload autenticado com intenção de dez minutos e download assinado por 60 segundos |
+| `course-source-pdfs` | PDF até 20 MiB | 0.0.26: upload e download assinados; 0.0.27: upload autenticado com intenção de dez minutos e download assinado por 60 segundos |
 
 Os buckets substituídos `course-revisions` e `authoring-artifacts` permanecem
 isolados até a limpeza física autorizada. No corte, continham 20 objetos e
@@ -362,8 +355,8 @@ usada no envio de PDF; um
 novo conteúdo recebe novo resumo criptográfico. A confirmação relacional depois do envio torna
 o vínculo visível ao Curso.
 
-No corte candidato, `download` emite v1 somente para preservar a leitura do
-Android 0.0.26, enquanto `prepare_upload` emite apenas v2 autenticado e nunca
+Na compatibilidade mantida pela 0.0.27, `download` emite v1 somente para
+preservar a leitura do Android 0.0.26, enquanto `prepare_upload` emite apenas v2 autenticado e nunca
 uma URL assinada. O upload antigo falha fechado ao receber v2. Essa
 compatibilidade depende da operação, não de `User-Agent`, e a retirada de v1
 exige uma decisão explícita de encerrar o suporte ao 0.0.26. Uma URL v1 de
@@ -409,6 +402,12 @@ Na promoção do backend da versão 0.0.26, o modo Apply levou o banco a
 hospedada permaneceu limitada aos 88 avisos legados; CORS, OAuth/MCP e o
 verificador público da revisão e de `package-library-v1` passaram. Pages e
 Android 0.0.26 foram publicados depois dessa confirmação.
+
+Na promoção do backend da versão 0.0.27, o modo Apply levou o banco a
+`20260821191340`, com 36 capacidades obrigatórias, a API de Cursos à revisão 13
+e o MCP à revisão 128. O catálogo hospedado passou a cinco ferramentas. CORS,
+manifesto, rotina de retenção, inventário, OAuth com autorização e renovação e o
+fluxo autenticado de PDF foram verificados antes dos clientes.
 
 Uma nova origem pode ser acrescentada com `-AllowedOrigin`. O valor deve ser
 uma origem HTTPS sem caminho, consulta ou fragmento; HTTP é aceito somente em
@@ -456,6 +455,13 @@ Uma jornada anterior, no corte 0.0.23,
 usou três identidades temporárias para verificar acesso de Estudo, negação a
 terceiro, PDF íntegro e adulterado, Variantes e Pesquisa, também com remoção
 integral dos dados de ensaio.
+
+Na 0.0.27, o verificador hospedado confirmou `20260821191340`, as 36
+capacidades e as revisões 13 e 128 das Edge Functions. O smoke OAuth percorreu
+autorização, chamada MCP, renovação e nova chamada MCP sem `id_token`; o mesmo
+bearer foi recusado pelo GoTrue, pela API de dados e pelo Storage. O smoke de PDF
+percorreu preparo v2, envio autenticado, confirmação, download temporário e
+limpeza sem resíduo.
 
 O plano Free admite 500 MB de banco por projeto, 1 GB de Storage, 500 mil
 invocações de funções e 5 GB de transferência incluída na organização. No

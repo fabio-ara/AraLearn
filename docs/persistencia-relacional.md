@@ -291,8 +291,8 @@ objetos que não são eliminados automaticamente pelo PostgreSQL.
 ## Evolução do esquema
 
 Migrações em `supabase/migrations/` são a história reproduzível do banco. A
-revisão hospedada corrente é `20260821145358`; a candidata implantável declarada
-em `supabase/runtime-manifest.json` é `20260821191340`. Uma migração que
+revisão hospedada corrente e a revisão implantável declarada em
+`supabase/runtime-manifest.json` são `20260821191340`. Uma migração que
 acrescenta capacidade deve:
 
 - fazer verificações prévias e falhar diante de estado incompatível;

@@ -103,12 +103,11 @@ aberto, o **Model Context Protocol (MCP)**. Elas listam Cursos próprios,
 percorrem sua composição, criam e alteram
 Cursos, consultam e vinculam Fontes, operam auditoria e correções e consultam a
 biblioteca de componentes didáticos. O protocolo oferece cinco ferramentas
-estáveis na candidata 0.0.27 de privacidade; diferentes leituras e alterações
+estáveis desde a versão 0.0.27; diferentes leituras e alterações
 entram como operações tipadas. Revisões e identificadores de pedido protegem edições
-concorrentes e repetições causadas por falhas de rede. O ambiente hospedado da
-versão 0.0.26 ainda expõe seis ferramentas. Depois do corte candidato, Perfil e
-acesso permanecem na aplicação autenticada e não atravessam o catálogo MCP
-público.
+concorrentes e repetições causadas por falhas de rede. A versão 0.0.26 oferecia
+seis ferramentas. Na linha publicada 0.0.27, Perfil e acesso permanecem na
+aplicação autenticada e não atravessam o catálogo MCP público.
 
 O planejamento por Partes é persistido e editável em linguagem natural. A faixa
 inicial de 7 a 12 Partes é uma sugestão configurável. Cada Parte referencia
@@ -173,19 +172,20 @@ sincronização](docs/persistencia-relacional.md).
 ## Aplicação web e Android
 
 A mesma aplicação é entregue na web e como pacote de instalação Android (APK)
-nas versões publicadas do repositório. A linha publicada dos clientes é a 0.0.26,
-que exige o manifesto `20260821145358`. O backend hospedado expõe essa revisão,
-com a API de Cursos na revisão 9 e o MCP na revisão 124. Estudo e Autoria
+nas versões publicadas do repositório. A linha publicada dos clientes é a 0.0.27,
+que exige o manifesto `20260821191340`, com 36 capacidades obrigatórias. O
+backend hospedado expõe essa revisão, com a API de Cursos na revisão 13 e o MCP
+na revisão 128. Estudo e Autoria
 conservam uma superfície centralizada de até 430 px também no computador. A
 entrada de Estudo usa um
 único seletor de Curso e uma única prévia, sem transformar a biblioteca num
 painel de cartões; a Autoria usa quatro grupos iconográficos com divulgação
 progressiva.
 
-O Android publicado 0.0.26 usa `versionCode` 172. O código em preparação
-declara a candidata 0.0.27 e `versionCode` 173. A validação local integral da
-candidata foi concluída; integração, promoção coordenada e verificação dos
-canais ainda são necessárias antes de ela representar Pages ou Android.
+O Android 0.0.27 usa `versionCode` 173. Pages e Android são publicados a partir
+da mesma ponta validada de `main` que contém este marco documental. A validação
+local integral, a promoção do backend e as provas hospedadas de OAuth e PDF
+foram concluídas antes da publicação dos clientes.
 
 ## Estado e limites
 

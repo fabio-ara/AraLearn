@@ -19,11 +19,10 @@ o mesmo documento de maneiras incompatíveis.
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
 
-A linha hospedada continua nos contratos da versão 0.0.26, em que o v1 de PDF
-ainda cobre upload e download por URL assinada. A coexistência v1/v2 da tabela,
-a projeção minimizada do MCP e a credencial OAuth confinada descritas abaixo
-pertencem à candidata 0.0.27 de privacidade e ainda não representam o ambiente
-publicado.
+A linha publicada 0.0.27 usa o contrato v2 no preparo do upload autenticado de
+PDF e conserva o v1 somente para o download legado do Android 0.0.26. A
+coexistência v1/v2, a projeção minimizada do MCP e a credencial OAuth confinada
+descritas abaixo integram o ambiente hospedado.
 
 O sistema separa responsabilidades de conteúdo, proveniência, observação e
 auditoria:
@@ -205,14 +204,15 @@ transação das entidades. Uma etapa de materialização só pode aplicar Fontes
 Âncoras seladas a partir dos itens do plano e confirma conteúdo, atribuições,
 evento e recibo atomicamente.
 
-Na revisão candidata, `prepare_upload` emite somente
+Desde a versão 0.0.27, `prepare_upload` emite somente
 `aralearn.course-source-attachment-access.v2`. A resposta devolve o caminho e
 uma intenção privada de dez minutos, com `signedUrl` e `expiresAt` nulos. O
 navegador faz POST autenticado no bucket; a política exige sessão viva e
 consome a intenção na inserção. O backend não emite v1 para essa operação e não
 restaura a URL assinada de upload. Isso não recolhe uma URL v1 já emitida pela
 versão 0.0.26: ela continua independente da sessão até expirar, por no máximo
-duas horas, e integra a janela obrigatória do corte.
+duas horas. Essa validade residual é registrada e verificada no inventário,
+sem impedir a publicação do cliente que deixa de emitir a credencial antiga.
 
 `download` emite temporariamente
 `aralearn.course-source-attachment-access.v1`, com URL assinada de 60 segundos,
@@ -253,7 +253,7 @@ para ocultá-lo.
 
 ### Credencial de recurso do MCP
 
-Na revisão candidata, os metadados OAuth anunciam exatamente o escopo
+Desde a versão 0.0.27, os metadados OAuth anunciam exatamente o escopo
 `offline_access`. A troca do código e a renovação emitem access token e refresh
 token, sem `id_token`. O access token é uma credencial para o recurso MCP, não
 uma sessão reutilizável da aplicação: `sub` e `session_id` são aliases pareados,
@@ -274,12 +274,12 @@ da sessão de origem e exige que sessão, cliente e consentimento OAuth ainda
 estejam vivos. O mesmo bearer é recusado quando usado diretamente no GoTrue, na
 API de dados ou no Storage.
 
-O corte revoga consentimentos e sessões OAuth anteriores, que usavam
-`openid`, mas não consegue recolher um ID token já emitido. Esse token continua
-criptograficamente válido até `exp`. Por isso, a fronteira só pode ser declarada
-fechada depois da janela operacional de ao menos uma duração completa da
-expiração JWT configurada após a promoção do backend, acrescida de margem
-operacional, e da repetição das negativas. O roteiro está em
+O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores, que usavam
+`openid`, mas não recolheu um ID token já emitido. Esse token continuou
+criptograficamente válido até `exp`. A promoção registrou essa validade
+residual, repetiu as negativas com credenciais novas e manteve disponível uma
+verificação posterior da expiração e do inventário. Essa verificação não é um
+bloqueio para publicar os clientes que já usam a fronteira nova. O roteiro está em
 [Implantação](implantacao.md).
 
 ### Anotações ancoradas fora do conteúdo e do estado pessoal
@@ -330,7 +330,7 @@ Retirada redige texto, síntese e resposta imediatamente. Registros de retirada
 e recibos expiram logicamente em até 14 dias: deixam de ser legíveis,
 pagináveis, contar cota ou admitir repetição. A limpeza física é oportunista durante
 leituras ou mutações do Curso e processa, a cada operação, até 128 registros de
-retirada e 256 recibos expirados. Na revisão candidata, uma rotina diária também
+retirada e 256 recibos expirados. Desde a versão 0.0.27, uma rotina diária também
 processa até 512 linhas de cada classe e devolve contagens; assim a limpeza não
 depende apenas de atividade no Curso. Anotações ativas e resolvidas continuam
 sem expiração automática por idade.

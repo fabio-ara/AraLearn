@@ -293,10 +293,10 @@ pelo modelo (tokens).
 | maior resposta de um contrato exato | 13.117 bytes | 16 KiB |
 | soma das 32 respostas de contrato, consultadas separadamente | 191.078 bytes | 200 KiB |
 | Curso de catálogo completo em disco | 361.088 bytes | lido por recortes no produto |
-| definições das cinco ferramentas MCP da candidata | 79.392 bytes | 85.000 bytes |
+| definições das cinco ferramentas MCP publicadas | 79.392 bytes | 85.000 bytes |
 | código dos componentes espelhado no navegador e na Edge | 51 arquivos; 548.156 bytes | 560 KiB |
 
-O fluxo candidato permanece com cinco ferramentas MCP e não cria tabela ou objeto de
+O fluxo publicado permanece com cinco ferramentas MCP e não cria tabela ou objeto de
 Storage por Unidade. Os dados versionados do pacote ficam no conteúdo
 relacional da Unidade. Ainda faltam medições com o GPT hospedado para tokens,
 número de chamadas, reparos, latência e retomada, além de CPU, memória e partida

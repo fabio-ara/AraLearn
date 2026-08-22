@@ -143,8 +143,7 @@ hospedado.
 
 ## Ferramentas e contexto
 
-Na revisão candidata de privacidade, o MCP oferece cinco ferramentas estáveis. O
-ambiente hospedado 0.0.26 ainda oferece seis até a promoção coordenada:
+Desde a versão 0.0.27, o MCP hospedado oferece cinco ferramentas estáveis:
 
 - `listarCursos` localiza Cursos próprios;
 - `lerCurso` lê uma vista delimitada do estado corrente;

@@ -16,9 +16,8 @@ instalação na interface corrente desse produto.
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
 2. Autorize sua conta individual por OAuth.
-3. Confirme a descoberta das ferramentas e do recurso
-   `aralearn://authoring/invariants`: o ambiente hospedado 0.0.26 ainda anuncia
-   seis; a revisão candidata anuncia cinco depois da promoção.
+3. Confirme a descoberta das cinco ferramentas e do recurso
+   `aralearn://authoring/invariants`.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
    propor alterações.
 

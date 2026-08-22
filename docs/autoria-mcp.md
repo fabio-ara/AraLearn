@@ -5,10 +5,10 @@ Este capítulo ensina como um cliente conversacional opera a Autoria pelo
 visual usa a API de Cursos, enquanto o cliente conversacional usa o MCP; ambos
 leem e alteram o mesmo Curso vivo no PostgreSQL.
 
-O ambiente hospedado da versão 0.0.26 ainda oferece seis ferramentas e o
-contrato OAuth anterior. As referências a cinco ferramentas, escopo
-`offline_access`, aliases pareados e upload autenticado descrevem a candidata
-0.0.27 até que seu corte seja promovido e verificado.
+O ambiente hospedado da versão 0.0.27 oferece cinco ferramentas. Perfil e
+gestão de acesso permanecem na aplicação autenticada. O escopo
+`offline_access`, os aliases pareados e o upload autenticado integram o contrato
+publicado.
 
 ## O problema que o serviço resolve
 
@@ -114,8 +114,8 @@ as funções de serviço permitidas.
 
 ## Autenticação e autorização
 
-Cada cliente usa OAuth com uma conta individual do AraLearn. Na revisão
-candidata, os metadados anunciam exatamente `offline_access`; a troca do código
+Cada cliente usa OAuth com uma conta individual do AraLearn. Desde a versão
+0.0.27, os metadados anunciam exatamente `offline_access`; a troca do código
 e a renovação devolvem access token e refresh token, sem `id_token`. O access
 token é destinado ao recurso MCP e traz aliases pareados da pessoa e da sessão
 em `sub` e `session_id`, específicos do cliente OAuth; ele não é uma sessão da
@@ -136,12 +136,12 @@ consentimento OAuth permanecem vivos. O bearer é recusado quando usado
 diretamente no GoTrue, na API de dados ou no Storage. Propriedade do Curso ainda
 é revalidada em cada operação.
 
-O corte revoga consentimentos e sessões OAuth anteriores, por isso clientes
-conectados precisam autorizar novamente. Um ID token `openid` já emitido não é
-recolhido e continua válido até `exp`; a antiga fronteira só pode ser declarada
-fechada depois do maior prazo entre a janela JWT registrada no ambiente e as
-duas horas das URLs v1 de upload emitidas antes do corte, acrescido de margem
-operacional, e das negativas e do inventário repetidos, conforme
+O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores, por isso
+clientes conectados precisam autorizar novamente. Um ID token `openid` já
+emitido não foi recolhido e continuou válido até `exp`. Essa validade residual
+foi registrada no corte; as negativas com credenciais novas e o inventário
+foram verificados, e podem ser repetidos depois da expiração natural sem
+bloquear a publicação dos clientes novos, conforme
 [Implantação](implantacao.md).
 
 As regras correntes são deliberadamente simples:
@@ -268,7 +268,7 @@ do Curso de Storage, identifica a URL como credencial temporária e a limita a
 vínculo relacional. Há limite de 20 MiB por arquivo, 64 MiB de conteúdo único
 por Curso e oito anexos por Fonte.
 
-Na transição candidata, o backend emite v2 somente para `prepare_upload` e v1
+Na transição da 0.0.27, o backend emite v2 somente para `prepare_upload` e v1
 somente para `download`. Isso mantém a leitura no Android 0.0.26 instalado, mas
 faz o upload antigo falhar fechado ao receber v2, sem restaurar a URL assinada.
 A seleção ocorre pela operação, nunca por `User-Agent`. O download v1 só pode
@@ -572,8 +572,8 @@ temporário:
 Para Anotações, essa expiração é autoritativa: o recibo deixa de admitir
 repetição no prazo. A remoção física ocorre oportunisticamente durante leituras
 e mutações do Curso, em um lote de até 128 registros de retirada e 256 recibos
-expirados a cada operação. Na revisão candidata, a rotina privada diária acrescenta
-um lote de até 512 itens por classe, devolve contagens e torna a limpeza
+expirados a cada operação. Desde a versão 0.0.27, a rotina privada diária
+acrescenta um lote de até 512 itens por classe, devolve contagens e torna a limpeza
 independente da abertura do Curso.
 
 Diante de conflito de revisão, não aumente o número e tente novamente às cegas.
