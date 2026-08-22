@@ -1,0 +1,35 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.42", ranksep="0.7", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.5, margin="0.14,0.085"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.65];
+
+  study_home [label="Cursos"];
+  study_course [label="Curso"];
+  study_module [label="Módulo"];
+  study_lesson [label="Lição"];
+  study_micro [label="Microssequência"];
+  study_unit [label="Unidade"];
+  study_sources [label="Fontes"];
+  study_observation [label="Observação"];
+  study_edit [label="Editar"];
+  study_assist [label="Assistência"];
+  study_copy [label="Cópia pessoal"];
+  study_review [label="Rever"];
+  author_courses [label="Autoria"];
+  settings [label="Conta"];
+
+  study_home -> study_course [label="1"];
+  study_home -> study_review [label="2"];
+  study_home -> author_courses [label="3"];
+  study_home -> settings [label="4"];
+  study_course -> study_module [label="1"];
+  study_module -> study_lesson [label="1"];
+  study_lesson -> study_micro [label="1"];
+  study_micro -> study_unit [label="1"];
+  study_review -> study_unit [label="1"];
+  study_unit -> study_sources [label="1"];
+  study_unit -> study_observation [label="2"];
+  study_unit -> study_edit [label="3"];
+  study_edit -> study_assist [label="1"];
+  study_edit -> study_copy [label="2", style=dashed, class="conditional"];
+}
