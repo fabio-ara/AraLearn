@@ -5,93 +5,101 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Atlas visual do AraLearn</title>
   <link rel="stylesheet" href="atlas.css">
-  <link rel="stylesheet" href="graph.css">
 </head>
 <body>
-  <header class="graph-header">
-    <div>
+  <header class="appbar">
+    <div class="brand-block">
       <strong>AraLearn · Atlas visual</strong>
-      <small>Âncora funcional: <code>75e0a8e</code> · 21/08/2026</small>
+      <span>Fluxos, telas e decisões de UX</span>
     </div>
-    <div class="graph-legend">
-      <span><i class="legend-line"></i> navegação</span>
-      <span><i class="legend-line dashed"></i> condição / estado / contexto</span>
-    </div>
+    <div class="anchor">Atual: <code>ebd3feed</code> · referência histórica de Estudo: <code>9e7ddc0</code></div>
   </header>
 
-  <main class="graph-shell">
-    <section class="graph-pane" aria-label="Grafo de telas">
-      <div class="graph-toolbar">
-        <div class="graph-focus">
-          <button data-graph-focus="all" type="button">Tudo</button>
-          <button data-graph-focus="entrada" class="active" type="button">Entrada</button>
-          <button data-graph-focus="estudo" type="button">Estudo</button>
-          <button data-graph-focus="autoria" type="button">Autoria</button>
-          <button data-graph-focus="mcp" type="button">ChatGPT / MCP</button>
-          <button data-graph-focus="conta" type="button">Conta</button>
+  <nav class="modebar" aria-label="Escala do atlas">
+    <button class="mode-tab is-active" data-mode="overview" type="button">Visão geral</button>
+    <button class="mode-tab" data-mode="study" type="button">Estudo</button>
+    <button class="mode-tab" data-mode="authoring" type="button">Autoria</button>
+    <button class="mode-tab" data-mode="mcp" type="button">ChatGPT / MCP</button>
+    <button class="mode-tab" data-mode="research" type="button">Pesquisa</button>
+  </nav>
+
+  <main class="atlas-shell">
+    <section class="graph-pane" aria-label="Mapa das telas">
+      <header class="pane-head graph-head">
+        <div>
+          <span class="eyebrow" id="graphEyebrow">VISÃO GERAL</span>
+          <h1 id="graphTitle">Mapa do produto</h1>
+          <p id="graphHint">Selecione uma tela. Só as rotas ligadas a ela ficam em destaque.</p>
         </div>
-        <div class="graph-zoom">
-          <button id="graphZoomOut" type="button" title="Diminuir zoom">−</button>
-          <span id="graphZoomLabel">100%</span>
-          <button id="graphZoomIn" type="button" title="Aumentar zoom">＋</button>
-          <button id="graphFocusSelected" type="button">Focar selecionado</button>
-          <button id="graphFitAll" type="button">Visão geral</button>
+        <div class="graph-tools" aria-label="Controles do mapa">
+          <button type="button" class="tool-icon" id="zoomOut" title="Diminuir zoom" aria-label="Diminuir zoom">−</button>
+          <button type="button" class="tool-icon" id="zoomIn" title="Aumentar zoom" aria-label="Aumentar zoom">＋</button>
+          <button type="button" class="tool-icon" id="focusSelected" title="Focar tela selecionada" aria-label="Focar tela selecionada">◎</button>
+          <button type="button" class="tool-icon" id="fitGraph" title="Ver mapa inteiro" aria-label="Ver mapa inteiro">⌗</button>
         </div>
+      </header>
+
+      <div class="how-to-read" id="howToRead">
+        <span><b>1</b> clique em um card</span>
+        <span><b>2</b> os números aparecem só nas saídas</span>
+        <span><b>3</b> o mesmo número marca o controle no mock</span>
       </div>
 
-      <div id="graphViewportNew" class="graph-viewport" tabindex="0" aria-label="Mapa de telas. Arraste para mover e use a roda para zoom.">
-        <svg id="graphSvg" class="graph-svg" role="img" aria-label="Grafo de telas do AraLearn"></svg>
+      <div class="graph-viewport" id="graphViewport" tabindex="0" aria-label="Grafo navegável">
+        <div class="graph-stage" id="graphStage"></div>
       </div>
-      <p class="graph-hint">Clique em um card. O número da seta reaparece circulado no controle correspondente do mock à direita.</p>
+
+      <footer class="graph-legend">
+        <span><i class="legend-line solid"></i> navegação / ação</span>
+        <span><i class="legend-line dashed"></i> condição / passagem externa</span>
+        <span><i class="legend-node future"></i> extensão futura</span>
+      </footer>
     </section>
 
-    <aside class="graph-detail">
-      <div class="step-heading">
+    <aside class="detail-pane" aria-live="polite">
+      <header class="pane-head detail-head">
         <div>
-          <span id="journeyName" class="eyebrow"></span>
-          <h1 id="screenTitle"></h1>
-          <p id="screenPath" class="path"></p>
+          <div class="detail-badges" id="detailBadges"></div>
+          <h2 id="detailTitle">Início do Estudo</h2>
+          <p id="detailPath"></p>
         </div>
-        <div id="badges" class="badges"></div>
-      </div>
+      </header>
 
-      <div class="phone-frame"><div id="phone" class="phone"></div></div>
-
-      <section class="graph-actions">
-        <h2>Saídas desta tela</h2>
-        <div id="flowActions"></div>
+      <section class="mock-section">
+        <div id="mockFrame" class="mock-frame phone-frame">
+          <div id="mockSurface" class="mock-surface"></div>
+        </div>
+        <p class="mock-caption" id="mockCaption"></p>
       </section>
 
-      <article class="guide">
-        <section><h2>O que é esta tela?</h2><p id="what"></p></section>
-        <section><h2>O que a pessoa faz aqui?</h2><p id="does"></p></section>
-        <section><h2>O que acontece depois?</h2><p id="after"></p></section>
-        <section id="whySection"><h2>Por que está organizada assim?</h2><p id="why"></p></section>
-        <div id="related" class="related"></div>
-        <details class="evidence"><summary>Evidência no AraLearn atual</summary><div id="evidence"></div></details>
-      </article>
+      <section class="action-section">
+        <h3>Para onde esta tela leva</h3>
+        <div id="actionList" class="action-list"></div>
+      </section>
+
+      <section class="purpose-section">
+        <h3>Função</h3>
+        <p id="detailPurpose"></p>
+      </section>
+
+      <details class="detail-fold" id="whyFold">
+        <summary>Por que os controles estão assim?</summary>
+        <p id="detailWhy"></p>
+      </details>
+
+      <details class="detail-fold">
+        <summary>O que é atual, proposto ou futuro?</summary>
+        <div id="detailStatus"></div>
+      </details>
+
+      <details class="detail-fold evidence-fold">
+        <summary>Base funcional no AraLearn</summary>
+        <div id="detailEvidence"></div>
+      </details>
     </aside>
   </main>
 
-  <div class="compatibility" hidden>
-    <nav><button data-journey="entrada"></button><button data-journey="estudo"></button><button data-journey="autoria"></button><button data-journey="mcp"></button><button data-journey="conta"></button></nav>
-    <button id="mapButton"></button>
-    <button id="prevButton"></button><span id="counter"></span><button id="nextButton"></button>
-    <div id="mapOverlay" hidden><button id="closeMap"></button><div id="mapContents"></div></div>
-  </div>
-
-  <div id="legacyGraphCompat" hidden aria-hidden="true">
-    <div id="graphViewport"></div>
-    <svg id="flowGraph" viewBox="0 0 100 100"></svg>
-    <span id="zoomLabel"></span>
-    <button id="zoomIn"></button>
-    <button id="zoomOut"></button>
-    <button id="resetGraph"></button>
-    <button id="focusSelected"></button>
-  </div>
-
+  <script src="graphs.js"></script>
   <script src="atlas.js"></script>
-  <script src="graph-layout.js"></script>
-  <script src="graph-ui-fixed.js"></script>
 </body>
 </html>
