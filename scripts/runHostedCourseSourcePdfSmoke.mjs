@@ -525,7 +525,7 @@ select jsonb_build_object(
   let result;
   try {
     result = JSON.parse(executeSupabase(
-      ["db", "query", "--project-ref", projectRef, "--output", "json"],
+      ["db", "query", "--linked", "--project-ref", projectRef, "--output", "json"],
       { input: query }
     ));
   } catch {

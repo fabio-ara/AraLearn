@@ -296,7 +296,8 @@ test("inventário usa o banco hospedado vinculado sem depender de grants da API 
     lifecycle: { courseId: COURSE_ID, userId: USER_ID },
     executeSupabase(argumentsValue, { input }) {
       assert.deepEqual(argumentsValue, [
-        "db", "query", "--project-ref", "abcdefghijklmnopqrst", "--output", "json"
+        "db", "query", "--linked", "--project-ref", "abcdefghijklmnopqrst",
+        "--output", "json"
       ]);
       capturedInput = input;
       return JSON.stringify({
