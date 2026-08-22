@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   createHostedPdfFixture,
   HOSTED_COURSE_SOURCE_PDF_SMOKE_CONTRACT,
+  inspectHostedCourseSourcePdfResiduals,
   runHostedCourseSourcePdfSmoke
 } from "../../scripts/runHostedCourseSourcePdfSmoke.mjs";
 
@@ -41,13 +42,22 @@ function ids() {
   return () => REQUEST_IDS[index++];
 }
 
+function noResiduals(inspections = []) {
+  return ({ configuration, lifecycle }) => {
+    inspections.push({ configuration, lifecycle: structuredClone(lifecycle) });
+    assert.equal(configuration.projectRef, "abcdefghijklmnopqrst");
+    assert.equal(lifecycle.userId, USER_ID);
+    assert.equal(lifecycle.courseId, COURSE_ID);
+    return { course: false, object: false, user: false };
+  };
+}
+
 function hostedFetch(requests, { uploadStatus = 200 } = {}) {
   const fixture = createHostedPdfFixture();
   const storagePath = `${COURSE_ID}/${fixture.contentHash}.pdf`;
   const signedUrl = `${PROJECT_URL}/storage/v1/object/sign/course-source-pdfs/${
     storagePath
   }?token=signed-fixture&download=true`;
-  let accountDeleted = false;
   return async (input, init = {}) => {
     const url = new URL(input);
     const headers = new Headers(init.headers);
@@ -200,29 +210,11 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
     if (url.pathname.endsWith("/aralearn-course-api/app/excluirMinhaConta")) {
       const body = JSON.parse(String(init.body));
       assert.deepEqual(body, { confirmation: "EXCLUIR MINHA CONTA" });
-      accountDeleted = true;
       return json({
         ok: true,
         requestId: null,
         data: { contract: "aralearn.account-deletion.v1", status: "deleted" }
       });
-    }
-    if (url.pathname === "/rest/v1/courses" && method === "GET") {
-      assert.equal(accountDeleted, true);
-      assert.equal(url.searchParams.get("id"), `eq.${COURSE_ID}`);
-      assert.equal(headers.get("apikey"), SECRET_KEY);
-      return json([]);
-    }
-    if (url.pathname === "/storage/v1/object/list/course-source-pdfs") {
-      assert.equal(accountDeleted, true);
-      assert.equal(headers.get("apikey"), SECRET_KEY);
-      assert.equal(JSON.parse(String(init.body)).prefix, `${COURSE_ID}/`);
-      return json([]);
-    }
-    if (url.pathname === `/auth/v1/admin/users/${USER_ID}` && method === "GET") {
-      assert.equal(accountDeleted, true);
-      assert.equal(headers.get("apikey"), SECRET_KEY);
-      return json({ message: "not found" }, { status: 404 });
     }
     assert.fail(`Requisição inesperada: ${method} ${url.pathname}`);
   };
@@ -242,11 +234,13 @@ test("fixture PDF hospedada é determinística, válida e limitada", () => {
 
 test("smoke percorre prepare_upload v2, upload autenticado, attach, download v1 e resíduo zero", async () => {
   const requests = [];
+  const inspections = [];
   const result = await runHostedCourseSourcePdfSmoke({
     environment,
     fetchImpl: hostedFetch(requests),
     createId: ids(),
-    createBytes: () => Buffer.alloc(24, 0x5a)
+    createBytes: () => Buffer.alloc(24, 0x5a),
+    inspectResiduals: noResiduals(inspections)
   });
   assert.deepEqual(result, {
     contract: HOSTED_COURSE_SOURCE_PDF_SMOKE_CONTRACT,
@@ -259,6 +253,7 @@ test("smoke percorre prepare_upload v2, upload autenticado, attach, download v1 
       url.pathname.endsWith("/aralearn-course-api/app/excluirMinhaConta")),
     true
   );
+  assert.equal(inspections.length, 1);
 });
 
 test("falha do fluxo ainda limpa a conta e não inclui credenciais nem identificadores no erro", async () => {
@@ -268,7 +263,8 @@ test("falha do fluxo ainda limpa a conta e não inclui credenciais nem identific
       environment,
       fetchImpl: hostedFetch(requests, { uploadStatus: 500 }),
       createId: ids(),
-      createBytes: () => Buffer.alloc(24, 0x5a)
+      createBytes: () => Buffer.alloc(24, 0x5a),
+      inspectResiduals: noResiduals()
     }),
     (error) => {
       const rendered = String(error);
@@ -291,6 +287,27 @@ test("falha do fluxo ainda limpa a conta e não inclui credenciais nem identific
       url.pathname.endsWith("/aralearn-course-api/app/excluirMinhaConta")),
     true
   );
+});
+
+test("inventário usa o banco hospedado vinculado sem depender de grants da API de dados", () => {
+  let capturedInput = "";
+  const residuals = inspectHostedCourseSourcePdfResiduals({
+    configuration: { projectRef: "abcdefghijklmnopqrst" },
+    lifecycle: { courseId: COURSE_ID, userId: USER_ID },
+    executeSupabase(argumentsValue, { input }) {
+      assert.deepEqual(argumentsValue, [
+        "db", "query", "--project-ref", "abcdefghijklmnopqrst", "--output", "json"
+      ]);
+      capturedInput = input;
+      return JSON.stringify({
+        rows: [{ residuals: { courseCount: 0, objectCount: 0, userCount: 0 } }]
+      });
+    }
+  });
+  assert.deepEqual(residuals, { course: false, object: false, user: false });
+  assert.match(capturedInput, new RegExp(COURSE_ID, "u"));
+  assert.match(capturedInput, new RegExp(USER_ID, "u"));
+  assert.doesNotMatch(capturedInput, /sb_secret_|Bearer|access_token/u);
 });
 
 test("smoke recusa stack local e service_role hospedada", async () => {
