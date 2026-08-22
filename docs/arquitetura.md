@@ -5,15 +5,14 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-A linha publicada dos clientes é a 0.0.26 e exige o manifesto
-`20260821145358`. O ambiente hospedado expõe essa revisão, com a API de Cursos
-na revisão 9 e o MCP na revisão 124. O contrato foi validado localmente e no
-ambiente hospedado antes da publicação coordenada de Pages e Android.
+A linha publicada dos clientes é a 0.0.27 e exige o manifesto
+`20260821191340`, com 36 capacidades obrigatórias. O ambiente hospedado expõe
+essa revisão, com a API de Cursos na revisão 13 e o MCP na revisão 128. O
+contrato foi validado localmente e no ambiente hospedado antes da publicação
+coordenada de Pages e Android.
 
-A candidata 0.0.27 ainda não publicada mantém a topologia relacional e
-acrescenta minimização de sessão e MCP,
-retenção periódica e upload autenticado de PDFs. Até sua promoção, os números
-de revisão acima continuam descrevendo o ambiente hospedado.
+A versão 0.0.27 mantém a topologia relacional e acrescenta minimização de sessão
+e MCP, retenção periódica e upload autenticado de PDFs.
 
 ## O Curso como raiz do domínio
 
@@ -123,7 +122,7 @@ para manter o estudo offline, as filas e os rascunhos que já estavam
 persistidos. Uma alteração aberta somente no formulário não integra essa
 garantia e exige confirmação de perda antes da saída. As ações explícitas de
 limpeza removem somente `aralearn-course-v1-<identificador-da-conta>` da conta
-ativa; a opção com saída também elimina a sessão. A sessão candidata persiste
+ativa; a opção com saída também elimina a sessão. A sessão persistida
 somente tokens, tipo, expiração e `user.id`, sem duplicar e-mail ou perfil.
 
 Na exclusão de conta, a confirmação remota é o ponto terminal. Se outra aba
@@ -266,7 +265,7 @@ vez de sobrescrever sua proveniência.
 Ancoragens ligam trechos do Curso às fontes. Atribuições e Anotações podem
 referir-se a essas âncoras sem incorporar uma cópia opaca do documento.
 
-PDFs ficam no bucket privado `course-source-pdfs`. Na revisão candidata, o
+PDFs ficam no bucket privado `course-source-pdfs`. Desde a versão 0.0.27, o
 navegador faz a verificação inicial do cabeçalho, calcula SHA-256 e solicita à
 API uma intenção de envio válida por dez minutos. O upload usa a sessão
 autenticada diretamente no endpoint do Storage, confronta caminho, tamanho e
@@ -343,7 +342,7 @@ qualquer operação privilegiada, a função valida o token recebido e repassa a
 identidade ao contrato SQL exclusivo do proprietário. O navegador nunca recebe
 essa credencial.
 
-Na revisão candidata, o servidor MCP aceita OAuth 2.1 com PKCE e anuncia
+Desde a versão 0.0.27, o servidor MCP aceita OAuth 2.1 com PKCE e anuncia
 somente o escopo `offline_access`; a troca e a renovação não emitem `id_token`.
 O access token usa aliases pareados distintos em `sub` e `session_id` e não é
 uma sessão da aplicação. Ele conserva `aralearn_session_id`, o identificador
@@ -355,19 +354,19 @@ RPC exclusiva do papel de serviço resolve a pessoa e exige sessão de origem,
 cliente e consentimento ainda vivos. O mesmo bearer é recusado diretamente no
 GoTrue, na API de dados e no Storage.
 
-O corte revoga consentimentos e sessões OAuth anteriores. Um ID token
-`openid` já emitido, porém, continua válido até `exp`; a fronteira não pode ser
-declarada fechada antes de transcorrer o maior prazo entre a duração JWT
-configurada e duas horas das URLs v1 de upload emitidas antes da promoção, com
-margem operacional, e de as negativas hospedadas e o inventário de órfãos serem
-repetidos. A API de Cursos exige origem permitida e sessão Supabase comum. As
+O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores. Um ID token
+`openid` já emitido, porém, continuou válido até `exp`; a fronteira foi declarada
+fechada somente depois do maior prazo entre a duração JWT configurada e duas
+horas das URLs v1 de upload emitidas antes da promoção, com margem operacional,
+e da repetição das negativas hospedadas e do inventário de órfãos. A API de
+Cursos exige origem permitida e sessão Supabase comum. As
 origens públicas são configuradas
 de modo exato, sem curingas de produção.
 
 Os buckets `person-avatars` e `course-source-pdfs` são privados. URLs assinadas
 têm duração limitada; o download de PDF expira em 60 segundos e uma URL emitida
 continua válida até esse prazo. O envio de avatar usa a pasta da própria conta e
-valida JPEG, PNG ou WebP até 512 KiB. Na candidata, avatar e PDF também exigem
+valida JPEG, PNG ou WebP até 512 KiB. Desde a 0.0.27, avatar e PDF também exigem
 uma sessão ainda presente no Auth; o PDF passa pelo fluxo autenticado em duas
 etapas e pelas cotas do Curso.
 
@@ -391,8 +390,8 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260821145358`, a versão de contrato e todas as capacidades
-obrigatórias. O backend hospedado e o site 0.0.26 usam essa revisão. A
+esquema `20260821191340`, a versão de contrato e 36 capacidades obrigatórias. O
+backend hospedado e os clientes 0.0.27 usam essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
 

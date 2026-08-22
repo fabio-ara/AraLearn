@@ -35,9 +35,8 @@ validação.
 
 ## Superfície do MCP
 
-Na revisão candidata de privacidade, cinco ferramentas públicas agrupam capacidades
-relacionadas, sem criar uma ferramenta para cada objeto. O ambiente hospedado
-0.0.26 ainda oferece seis até a promoção:
+Desde a versão 0.0.27, cinco ferramentas públicas agrupam capacidades
+relacionadas, sem criar uma ferramenta para cada objeto:
 
 | Ferramenta | Responsabilidade |
 | --- | --- |

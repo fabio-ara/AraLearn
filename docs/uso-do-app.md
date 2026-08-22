@@ -4,10 +4,9 @@ Este guia reúne as operações disponíveis no site e no aplicativo Android. O
 [Guia do estudante](guia-estudante.md) e o [Guia do professor e
 autor](guia-professor-autor.md) desenvolvem os dois percursos em separado.
 
-A linha publicada permanece na versão 0.0.26. As novas ações de limpeza local,
-o upload autenticado de PDF e as respostas genéricas de acesso descritos como
-candidatos pertencem à 0.0.27 e só passam a representar Pages e Android depois
-da promoção coordenada.
+A linha publicada é a versão 0.0.27. As ações de limpeza local, o upload
+autenticado de PDF e as respostas genéricas de acesso integram o site e o
+aplicativo Android dessa versão.
 
 ## Conceitos para começar
 
@@ -196,8 +195,8 @@ Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
 64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
 **Baixar PDF** para consultar o arquivo autorizado.
 
-Na transição candidata, o Android 0.0.26 continua apto a baixar PDFs pelo
-contrato v1, mas seu envio antigo falha de modo fechado. O cliente novo usa o
+Na compatibilidade mantida pela 0.0.27, o Android 0.0.26 continua apto a baixar
+PDFs pelo contrato v1, mas seu envio antigo falha de modo fechado. O cliente novo usa o
 contrato v2 e uma sessão ativa para enviar. Essa compatibilidade de leitura não
 depende de identificação do aparelho e permanece até uma decisão explícita de
 encerrar o suporte ao 0.0.26.
@@ -399,7 +398,7 @@ de aprendizagem ou efeito exige outro desenho de pesquisa.
 ## Conceder e revogar acesso
 
 Em **Pessoas**, use **Conceder acesso**, informe o e-mail exato de uma conta
-e confirme. Na revisão candidata, a resposta imediata é a mesma exista ou não a
+e confirme. Desde a versão 0.0.27, a resposta imediata é a mesma exista ou não a
 conta, inclusive quando o endereço é próprio, o acesso já existe ou o limite foi
 atingido. Há dez tentativas por pessoa autenticada em dez minutos. Quando a
 concessão é válida, a pessoa passa a encontrar o Curso em Estudo. A concessão
@@ -481,7 +480,7 @@ podem permanecer no dispositivo. A confirmação avisa que uma alteração ainda
 aberta e não salva será perdida. Considere essas duas condições ao usar aparelho
 compartilhado.
 
-Na revisão candidata, **Remover dados deste dispositivo** apaga somente os
+Desde a versão 0.0.27, **Remover dados deste dispositivo** apaga somente os
 dados persistidos da conta ativa e mantém a sessão. **Sair e remover dados deste
 dispositivo** encerra a sessão e apaga o mesmo namespace. Nenhuma dessas ações
 preserva texto que ainda exista apenas num formulário aberto.

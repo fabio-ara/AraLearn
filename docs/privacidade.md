@@ -5,10 +5,9 @@ regras técnicas de acesso. Uma instituição que implante o sistema precisa
 acrescentar base jurídica, prazos de retenção, responsáveis, condições dos
 provedores e canais de atendimento aplicáveis ao seu contexto.
 
-Ele não declara conformidade com a LGPD ou com o RGPD. A linha publicada
-0.0.26 ainda precede os controles descritos como **candidatos** nesta revisão;
-eles só passam a representar o ambiente
-hospedado depois da promoção conjunta do banco, das funções e dos clientes.
+Ele não declara conformidade com a LGPD ou com o RGPD. A linha publicada 0.0.27
+inclui os controles técnicos descritos neste documento no banco, nas funções e
+nos clientes.
 
 Privacidade depende de minimização, finalidade, isolamento no banco e
 informação compreensível. Ocultar um campo na interface, sozinho, não protege o
@@ -83,14 +82,14 @@ apenas estado do dispositivo. Os termos não são intercambiáveis.
 
 ### Registro técnico das classes
 
-Este registro descreve o padrão técnico candidato. O prazo institucional final
+Este registro descreve o padrão técnico publicado. O prazo institucional final
 continua aberto quando indicado.
 
 | Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
 | --- | --- | --- | --- | --- | --- |
 | conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem dataset de pesquisa |
 | perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não no MCP público |
-| Curso e autoria | conteúdo, plano, revisões, eventos e recibos para criar e investigar o artefato | pode conter dado pessoal em texto livre; UUIDs ligados à conta e horários correlacionáveis são dados pessoais e não se tornam pseudônimos apenas pelo formato | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos de mudança expiram em 14 dias na candidata | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
+| Curso e autoria | conteúdo, plano, revisões, eventos e recibos para criar e investigar o artefato | pode conter dado pessoal em texto livre; UUIDs ligados à conta e horários correlacionáveis são dados pessoais e não se tornam pseudônimos apenas pelo formato | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos de mudança expiram em 14 dias | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
 | acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador ou MCP |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
 | Observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada redige de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
@@ -118,7 +117,7 @@ busca parcial, diretório ou sugestão de contas. A relação gravada conserva
 identificadores internos; o e-mail não entra nos eventos nem na resposta da
 operação.
 
-Na revisão candidata, a resposta de concessão é sempre a mesma para conta
+Desde a versão 0.0.27, a resposta de concessão é sempre a mesma para conta
 existente, inexistente, própria, já favorecida ou tentativa limitada. Ela apenas
 informa que a solicitação foi aceita; o recibo não contém o resultado nem a
 relação criada. O proprietário autorizado ainda pode encontrar uma relação que
@@ -189,8 +188,8 @@ confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivo
 vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada revisão
 até oito anexos e o Curso até 64 MiB de conteúdo único.
 
-Na revisão candidata, o preparo de envio cria uma intenção privada válida por dez
-minutos para o ator, Curso, caminho, impressão digital, tamanho, tipo, Fonte e
+Desde a versão 0.0.27, o preparo de envio cria uma intenção privada válida por
+dez minutos para o ator, Curso, caminho, impressão digital, tamanho, tipo, Fonte e
 revisões exatos. O navegador envia o PDF ao endpoint autenticado do Storage com
 a sessão corrente; a política também exige que o `session_id` ainda exista e
 não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
@@ -260,7 +259,7 @@ anteriores do texto integral.
 
 Retirar uma Anotação redige imediatamente texto, síntese e resposta e mantém um
 registro de exclusão. Esse registro e o recibo de repetição expiram logicamente
-em até 14 dias. A revisão candidata mantém os lotes oportunistas e acrescenta uma
+em até 14 dias. A versão 0.0.27 mantém os lotes oportunistas e acrescenta uma
 rotina privada diária, às 03:17, para que um Curso inativo não seja a única
 causa de atraso físico. Cada execução processa até 512 linhas por classe e
 devolve contagens separadas de Anotações retiradas, recibos de Anotação,
@@ -316,12 +315,12 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-Na revisão candidata, o catálogo MCP público possui cinco ferramentas. Perfil,
+Desde a versão 0.0.27, o catálogo MCP público possui cinco ferramentas. Perfil,
 avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-A mesma candidata anuncia somente o escopo OAuth `offline_access`; código e
+A mesma versão anuncia somente o escopo OAuth `offline_access`; código e
 refresh token não produzem `id_token`. O access token do MCP usa aliases
 pareados e distintos para pessoa e sessão, sem UUID da pessoa, e-mail ou perfil,
 e não funciona como sessão do aplicativo. O JWT conserva
@@ -333,13 +332,13 @@ de serviço resolve a pessoa e confirma que sessão de origem, cliente e
 consentimento ainda estão ativos. O bearer é recusado diretamente pelo GoTrue,
 pela API de dados e pelo Storage.
 
-No corte, consentimentos e sessões OAuth anteriores são revogados. Isso impede
-renovação e exige novo consentimento, mas um ID token `openid` já emitido
-permanece válido até `exp`. A fronteira anterior não deve ser anunciada como
-fechada antes de transcorrer o maior prazo entre a duração JWT configurada e as
-duas horas das URLs v1 de upload já emitidas, contado a partir da promoção e
-acrescido de margem operacional. Depois dessa janela, as negativas hospedadas e
-o inventário de objetos sem vínculo precisam ser repetidos.
+No corte da 0.0.27, consentimentos e sessões OAuth anteriores foram revogados.
+Isso impede renovação e exige novo consentimento, mas um ID token `openid` já
+emitido continuou válido até `exp`. A fronteira anterior foi declarada fechada
+somente depois do maior prazo entre a duração JWT configurada e as duas horas
+das URLs v1 de upload já emitidas, contado a partir da promoção e acrescido de
+margem operacional. Depois dessa janela, as negativas hospedadas e o inventário
+de objetos sem vínculo foram repetidos.
 
 A caixa de entrada e a leitura por alvo de Observações usam uma projeção
 fechada com síntese, estado, origem, papel, versões e identificador operacional.
@@ -424,7 +423,7 @@ O navegador e o aplicativo Android mantêm sessão autenticada, listas resumidas
 composições já abertas, estado pessoal, alterações pendentes, Anotações e
 arquivos estáticos da interface.
 
-A revisão candidata persiste da sessão somente `access_token`, `refresh_token`,
+Desde a versão 0.0.27, a sessão persiste somente `access_token`, `refresh_token`,
 tipo, expiração e `user.id`. E-mail, nome, identidades externas e o restante do
 objeto retornado pelo Auth não são duplicados nesse registro; uma sessão legada
 é reduzida na primeira leitura. Tokens continuam sendo segredos e não deixam de
@@ -495,7 +494,7 @@ operação idempotente confirma ou conclui o resultado; a tela não apresenta o
 estado ambíguo como uma tentativa sem efeito.
 
 Essa primeira recusa também conserva a sessão necessária para a própria API
-terminar a limpeza do Storage. Na chamada final da revisão candidata, a transação
+terminar a limpeza do Storage. Na chamada final da versão 0.0.27, a transação
 remove todas as sessões da conta imediatamente antes de remover o usuário do
 Auth. As políticas de novos avatares e novos PDFs exigem `session_id` ainda
 presente e não vencido. Essas escritas usam o mesmo bloqueio transacional da
@@ -519,23 +518,23 @@ A operação não oferece restauração automática. Registros técnicos, cópia
 segurança e retenções do provedor podem seguir prazos próprios, que a instituição
 responsável deve declarar.
 
-O envio de PDF candidato não usa URL assinada: exige sessão viva e intenção de
-dez minutos consumida na inserção. O download já assinado pode continuar legível
+O envio de PDF da versão 0.0.27 não usa URL assinada: exige sessão viva e
+intenção de dez minutos consumida na inserção. O download já assinado pode continuar legível
 por até 60 segundos porque o Supabase não revoga uma URL individual antes da
 expiração. A rotina administrativa inventaria, sem apagar, `avatar_owner_missing`,
 `avatar_profile_unlinked`, `pdf_course_missing`, `pdf_unlinked` e
 `pdf_object_missing`. Uma remoção posterior exige conferir vínculos, backups,
 retenções e a classe do objeto; inventariar não autoriza exclusão automática.
 
-Durante o corte, o contrato v1 é emitido e aceito somente para o download
-legado do Android 0.0.26. O contrato v2 fica reservado a `prepare_upload`
+Na compatibilidade mantida pela 0.0.27, o contrato v1 é emitido e aceito somente
+para o download legado do Android 0.0.26. O contrato v2 fica reservado a `prepare_upload`
 autenticado; como o cliente antigo espera uma URL assinada v1, seu upload falha
 fechado. Essa compatibilidade não usa `User-Agent` e só pode ser retirada por
 uma decisão explícita de encerrar o suporte ao 0.0.26.
 
 ## Roadmap de proteção desde a concepção
 
-A proteção de dados possui duas frentes. A revisão candidata corrige riscos
+A proteção de dados possui duas frentes. A versão 0.0.27 corrige riscos
 concretos no produto atual, como exportação, limpeza local, retenção e
 fronteiras do MCP. Somente depois da baseline 2.0, uma revisão própria fixará as
 fronteiras do eventual artefato versionado antes do ensaio Git. Essas medidas são proteção

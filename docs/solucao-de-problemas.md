@@ -229,7 +229,7 @@ máximo 20 MiB. O envio só termina depois que o objeto no Storage privado é
 confirmado pela API de Cursos. Se a rede falhar após o envio, use **Confirmar o
 mesmo PDF** em vez de escolher outro arquivo.
 
-Na revisão candidata, o preparo cria uma intenção de dez minutos e o envio usa
+Desde a versão 0.0.27, o preparo cria uma intenção de dez minutos e o envio usa
 a sessão autenticada. Se a sessão foi encerrada, expirou ou foi revogada,
 autentique-se e prepare outra intenção; não tente reutilizar endereço de upload.
 
@@ -239,8 +239,8 @@ essa janela e não deve ser guardado como identidade do arquivo. Confira
 também a cota de 64 MiB de conteúdo único por Curso e o limite de oito anexos
 por Fonte.
 
-Durante o corte candidato, o Android 0.0.26 ainda baixa pelo contrato v1, mas
-não consegue enviar: `prepare_upload` devolve v2 autenticado e o cliente antigo
+Na compatibilidade mantida pela 0.0.27, o Android 0.0.26 ainda baixa pelo
+contrato v1, mas não consegue enviar: `prepare_upload` devolve v2 autenticado e o cliente antigo
 falha fechado. Atualize o aplicativo para enviar novos PDFs. O download v1 não
 é escolhido por `User-Agent` e só será removido depois de uma decisão explícita
 de encerrar o suporte ao 0.0.26.
@@ -257,15 +257,14 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. verifique a descoberta das ferramentas: seis no ambiente hospedado 0.0.26 e
-   cinco depois da promoção candidata;
+3. verifique a descoberta das cinco ferramentas no ambiente hospedado;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;
 6. confira se cliente e interface apontam para o mesmo ambiente.
 
 Uma concessão de acesso permite Estudo, não Autoria remota.
 
-Depois da promoção candidata, todas as conexões MCP anteriores precisam repetir
+Depois da promoção da 0.0.27, todas as conexões MCP anteriores precisam repetir
 o consentimento com o escopo `offline_access`. O fluxo não emite `id_token`. Se
 o bearer funcionar no MCP, mas for recusado diretamente no GoTrue, na API de
 dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
@@ -322,7 +321,7 @@ próprios. O banco recusa a exclusão enquanto algum desses objetos permanecer.
 Tente novamente com conexão estável. Não use exclusão como forma de sair: ela
 remove Cursos próprios e dados relacionados de modo irreversível.
 
-Na conclusão candidata, o banco revoga todas as sessões antes de remover o
+Desde a versão 0.0.27, o banco revoga todas as sessões antes de remover o
 usuário do Auth. Um download de PDF já assinado ainda pode funcionar por até 60
 segundos. O inventário posterior apenas classifica possíveis objetos órfãos; a
 remoção exige outra decisão segura sobre vínculo, retenção e backup.
