@@ -1,24 +1,20 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.5", ranksep="0.75", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.5, margin="0.14,0.085"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.65];
+  graph [bgcolor="transparent", rankdir=LR, pad="0.23", nodesep="0.5", ranksep="0.8", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
 
-  mcp_handoff [label="Preparar pedido"];
-  mcp_workspace [label="Organizar telas"];
-  mcp_chat [label="ChatGPT"];
-  mcp_read [label="Ler contexto"];
+  mcp_handoff [label="Preparar no AraLearn"];
+  mcp_layout [label="Organizar telas"];
+  mcp_authorize [label="Autorizar MCP"];
+  mcp_read [label="Reler Curso"];
   mcp_deliberate [label="Debater decisão"];
-  mcp_change [label="Alterar / produzir"];
-  mcp_return [label="Voltar ao AraLearn"];
-  inspection [label="Inspeção"];
-  design [label="Desenho"];
+  mcp_apply [label="Alterar Curso"];
+  mcp_return [label="Conferir no AraLearn"];
 
-  mcp_handoff -> mcp_workspace [label="1", style=dashed, class="external"];
-  mcp_workspace -> mcp_chat [label="1"];
-  mcp_chat -> mcp_read [label="1"];
+  mcp_handoff -> mcp_layout [label="1", style=dashed, class="external"];
+  mcp_layout -> mcp_authorize [label="1", style=dashed, class="external"];
+  mcp_authorize -> mcp_read [label="1"];
   mcp_read -> mcp_deliberate [label="1"];
-  mcp_deliberate -> mcp_change [label="1"];
-  mcp_change -> mcp_return [label="1"];
-  mcp_return -> inspection [label="1"];
-  mcp_return -> design [label="2"];
+  mcp_deliberate -> mcp_apply [label="1"];
+  mcp_apply -> mcp_return [label="1"];
 }

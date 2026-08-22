@@ -1,26 +1,29 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.5", ranksep="0.8", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=12, margin="0.15,0.09"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.7];
+  graph [bgcolor="transparent", rankdir=LR, pad="0.25", nodesep="0.58", ranksep="0.9", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=12.5, margin="0.20,0.12"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.72];
 
   login [label="Entrar"];
-  study_home [label="Estudo"];
-  author_courses [label="Autoria"];
-  author_course [label="Curso"];
-  design [label="Desenho"];
-  inspection [label="Inspeção"];
+  study_home [label="Início"];
+  study_course [label="Estudo · Curso"];
+  study_review [label="Rever"];
+  author_courses [label="Autoria · Cursos"];
+  author_course [label="Autoria · Curso"];
   mcp_handoff [label="ChatGPT / MCP"];
-  variants [label="Variantes"];
   analytics [label="Pesquisa"];
+  people [label="Pessoas"];
   settings [label="Conta"];
+  future_groups [label="Grupos / coortes", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
 
   login -> study_home [label="1"];
-  study_home -> author_courses [label="1"];
-  study_home -> settings [label="2"];
-  author_courses -> author_course [label="1"];
-  author_course -> design [label="1"];
-  author_course -> inspection [label="2"];
-  author_course -> mcp_handoff [label="3", style=dashed, class="external"];
-  author_course -> variants [label="4"];
-  author_course -> analytics [label="5"];
+  study_home -> study_course [label="1"];
+  study_home -> author_courses [label="2"];
+  study_home -> study_review [label="3"];
+  study_home -> settings [label="4"];
+  author_courses -> study_home [label="1"];
+  author_courses -> author_course [label="3"];
+  author_course -> mcp_handoff [label="4", style=dashed, class="external"];
+  author_course -> analytics [label="6"];
+  author_course -> people [label="7"];
+  people -> future_groups [label="1", style=dashed, class="future"];
 }

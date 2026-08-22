@@ -18,7 +18,7 @@ O atlas distingue:
 
 Abra `index.html` diretamente no navegador.
 
-O atlas possui cinco escalas: **Visão geral**, **Estudo**, **Autoria**, **ChatGPT / MCP** e **Pesquisa**.
+O atlas distingue cinco escalas: **Visão geral**, **Estudo**, **Autoria**, **ChatGPT / MCP** e **Pesquisa**. A Visão geral agora também numera as saídas da tela selecionada; os mesmos números aparecem sobre os controles do mock.
 
 Nos grafos detalhados:
 
@@ -96,3 +96,15 @@ Foram verificados:
 - zoom/pan/foco;
 - ausência de overflow horizontal nos mocks;
 - visualização representativa em 1440×960, 430×932 e 390×844.
+
+
+## Ajustes da edição v5
+
+- a tela principal mostra explicitamente o seletor **Estudo / Autoria**, alinhado ao comportamento já existente na Home do AraLearn;
+- `Como chegar` mostra uma trilha clicável no painel de detalhe;
+- a Visão geral usa a mesma numeração de saídas dos grafos detalhados;
+- números das arestas recebem um círculo visual para não se confundirem com linhas;
+- a busca de `Meus cursos` foi corrigida (o SVG da lupa não possui mais tamanho implícito do navegador);
+- cards de navegação usam o progresso como faixa inferior, deixando título e ação primária mais legíveis;
+- `Pessoas` distingue o acesso direto atual de uma futura organização em **grupos/coortes**;
+- a proposta futura de coortes mostra um estudo contendo grupos A/B/C e associação a Variantes, sem afirmar que essa infraestrutura já exista.

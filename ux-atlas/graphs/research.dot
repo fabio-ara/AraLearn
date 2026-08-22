@@ -1,31 +1,38 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.5", ranksep="0.78", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.5, margin="0.14,0.085"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.65];
+  graph [bgcolor="transparent", rankdir=LR, pad="0.23", nodesep="0.46", ranksep="0.76", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
 
   design [label="Desenho"];
   resource_policy [label="Recursos"];
   variants [label="Variantes"];
-  materialization [label="Materializar"];
-  inspection [label="Inspecionar"];
-  author_observation [label="Observar"];
-  audit [label="Auditar"];
-  correction [label="Reparar"];
-  analytics [label="Analytics de autoria"];
-  future_groups [label="Grupos de estudo", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
-  future_outcomes [label="Resultados de uso", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
+  materialization [label="Materialização"];
+  inspection [label="Inspeção"];
+  author_observation [label="Observação"];
+  audit [label="Auditoria"];
+  correction [label="Reparo"];
+  analytics [label="Analytics da Autoria"];
+  people [label="Pessoas"];
+  future_groups [label="Grupos / coortes", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
+  future_outcomes [label="Resultados de grupos", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
 
   design -> resource_policy [label="1"];
   design -> variants [label="2"];
-  variants -> materialization [label="1"];
+  design -> materialization [label="3"];
   materialization -> inspection [label="1"];
   inspection -> author_observation [label="1"];
-  inspection -> audit [label="2"];
+  author_observation -> audit [label="1"];
   audit -> correction [label="1"];
-  author_observation -> analytics [label="1"];
-  correction -> analytics [label="1"];
-  variants -> analytics [label="2"];
-  variants -> future_groups [label="3", style=dashed, class="future"];
+  correction -> audit [label="1"];
+  design -> analytics [label="4"];
+  resource_policy -> analytics [label="1"];
+  variants -> analytics [label="1"];
+  materialization -> analytics [label="2"];
+  author_observation -> analytics [label="2"];
+  audit -> analytics [label="2"];
+  correction -> analytics [label="2"];
+  people -> future_groups [label="1", style=dashed, class="future"];
+  variants -> future_groups [label="1", style=dashed, class="future"];
   future_groups -> future_outcomes [label="1", style=dashed, class="future"];
   future_outcomes -> analytics [label="1", style=dashed, class="future"];
 }

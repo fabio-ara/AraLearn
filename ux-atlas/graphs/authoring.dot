@@ -1,8 +1,9 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.44", ranksep="0.78", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.5, margin="0.14,0.085"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.65];
+  graph [bgcolor="transparent", rankdir=LR, pad="0.23", nodesep="0.44", ranksep="0.78", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
 
+  study_home [label="Início / Estudo"];
   author_courses [label="Meus cursos"];
   author_create [label="Criar curso"];
   author_course [label="Curso"];
@@ -20,15 +21,21 @@ digraph G {
   audit [label="Auditar"];
   correction [label="Reparar"];
   mcp_handoff [label="ChatGPT / MCP"];
+  variants [label="Variantes"];
+  analytics [label="Pesquisa"];
   people [label="Pessoas"];
+  future_groups [label="Grupos / coortes", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
 
-  author_courses -> author_create [label="1"];
-  author_courses -> author_course [label="2"];
+  author_courses -> study_home [label="1"];
+  author_courses -> author_create [label="2"];
+  author_courses -> author_course [label="3"];
   author_create -> author_course [label="1"];
   author_course -> author_plan [label="1"];
   author_course -> inspection [label="2"];
   author_course -> author_observation [label="3"];
   author_course -> mcp_handoff [label="4", style=dashed, class="external"];
+  author_course -> variants [label="5"];
+  author_course -> analytics [label="6"];
   author_course -> people [label="7"];
   author_plan -> author_part [label="1"];
   author_part -> design [label="1"];
@@ -47,4 +54,5 @@ digraph G {
   inspection -> author_assist [label="5"];
   audit -> correction [label="1"];
   correction -> inspection [label="1"];
+  people -> future_groups [label="1", style=dashed, class="future"];
 }

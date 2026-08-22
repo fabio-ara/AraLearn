@@ -1,9 +1,9 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.2", nodesep="0.42", ranksep="0.7", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.5, margin="0.14,0.085"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.65];
+  graph [bgcolor="transparent", rankdir=LR, pad="0.22", nodesep="0.44", ranksep="0.72", splines="spline"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
+  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
 
-  study_home [label="Cursos"];
+  study_home [label="Início"];
   study_course [label="Curso"];
   study_module [label="Módulo"];
   study_lesson [label="Lição"];
@@ -19,9 +19,10 @@ digraph G {
   settings [label="Conta"];
 
   study_home -> study_course [label="1"];
-  study_home -> study_review [label="2"];
-  study_home -> author_courses [label="3"];
+  study_home -> author_courses [label="2"];
+  study_home -> study_review [label="3"];
   study_home -> settings [label="4"];
+  author_courses -> study_home [label="1"];
   study_course -> study_module [label="1"];
   study_module -> study_lesson [label="1"];
   study_lesson -> study_micro [label="1"];
