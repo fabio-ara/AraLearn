@@ -1,7 +1,6 @@
 digraph G {
   graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.55,ranksep=.8,splines=spline]
-  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,
-        fontname="Arial",fontsize=12,margin=".18,.12"]
+  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=12,margin=".18,.12"]
   edge [color="#667085",penwidth=1.25,arrowsize=.7,fontname="Arial",fontsize=10,fontcolor="#344054"]
   login [label="Entrar"]
   library [label="Cursos"]
