@@ -1,0 +1,10 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.65,ranksep=.9,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=11,margin=".17,.11"]
+ edge [color="#7b8494",penwidth=1.15,arrowsize=.62]
+ coverage_home [label="Cobertura backend → UI"]
+ author_inspect [label="Autoria · Inspeção"]
+ research_home [label="Pesquisa"]
+ coverage_home -> author_inspect
+ coverage_home -> research_home
+}

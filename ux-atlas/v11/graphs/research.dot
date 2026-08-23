@@ -1,0 +1,50 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.48,ranksep=.72,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=10.5,margin=".15,.10"]
+ edge [color="#7b8494",penwidth=1.15,arrowsize=.62]
+ research_home [label="Pesquisa da autoria"]
+ research_facts [label="Analytics + fatos"]
+ research_variants [label="Variantes"]
+ research_variant_create [label="Criar Variantes"]
+ research_variant_compare [label="Comparação"]
+ research_student_future [label="Efeitos em estudantes · futuro",style="rounded,dashed,filled",fillcolor="#fbf8ff",color="#b69ad5"]
+ research_cycle [label="Ciclo · v10"]
+ research_params [label="Parâmetros · v10"]
+ research_sources [label="Fontes · v10"]
+ research_history [label="Histórico · v10"]
+ author_inspect [label="Inspeção"]
+ author_plan [label="Planejamento"]
+ author_params_course [label="Parâmetros"]
+ author_sources_course [label="Fontes"]
+ author_observations [label="Observações"]
+ author_audit [label="Auditoria"]
+ research_home -> research_facts
+ research_home -> research_variants
+ research_home -> research_student_future
+ research_home -> author_inspect
+ research_facts -> research_facts
+ research_facts -> author_plan
+ research_facts -> author_params_course
+ research_facts -> author_sources_course
+ research_facts -> author_observations
+ research_facts -> author_audit
+ research_facts -> research_variant_compare
+ research_facts -> research_cycle
+ research_facts -> research_params
+ research_facts -> research_sources
+ research_facts -> research_history
+ research_variants -> research_variant_create
+ research_variants -> research_variant_compare
+ research_variant_create -> research_variant_compare
+ research_variant_compare -> research_variant_compare
+ research_variant_compare -> research_facts
+ research_student_future -> research_home
+ research_cycle -> research_home
+ research_params -> research_home
+ research_sources -> research_home
+ research_history -> research_home
+ research_facts -> research_home
+ research_variants -> research_home
+ research_variant_create -> research_variants
+ research_variant_compare -> research_variants
+}

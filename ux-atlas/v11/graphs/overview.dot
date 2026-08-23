@@ -1,0 +1,36 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.58,ranksep=.82,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=11,margin=".16,.11"]
+ edge [color="#7b8494",penwidth=1.2,arrowsize=.65]
+ overview_info [label="Mapa do produto"]
+ login [label="Entrar"]
+ study_home [label="Estudo"]
+ study_course [label="Curso"]
+ author_home [label="Autoria"]
+ author_inspect [label="Inspeção"]
+ author_menu_course [label="Curso · capacidades"]
+ author_menu_review [label="Revisar"]
+ author_menu_research [label="Pesquisa"]
+ author_people [label="Pessoas"]
+ research_home [label="Analytics"]
+ research_variants [label="Variantes"]
+ coverage_home [label="Cobertura do atlas"]
+ overview_info -> login
+ overview_info -> study_home
+ overview_info -> author_inspect
+ overview_info -> research_home
+ overview_info -> coverage_home
+ login -> study_home
+ study_home -> study_course
+ study_home -> author_home
+ author_home -> author_inspect
+ author_inspect -> author_menu_course
+ author_inspect -> author_menu_review
+ author_inspect -> author_menu_research
+ author_inspect -> author_people
+ author_menu_research -> research_home
+ author_menu_research -> research_variants
+ author_inspect -> study_course
+ coverage_home -> author_inspect
+ coverage_home -> research_home
+}

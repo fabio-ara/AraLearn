@@ -1,0 +1,200 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.42,ranksep=.68,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=10.2,margin=".15,.10"]
+ edge [color="#7b8494",penwidth=1.15,arrowsize=.62]
+ author_home [label="Início da Autoria"]
+ author_collections [label="Coleções"]
+ author_collection [label="Coleção"]
+ author_collection_new [label="Nova coleção"]
+ author_collection_add [label="Organizar em coleções"]
+ author_all [label="Todos para editar"]
+ author_create [label="Criar Curso"]
+ author_plan [label="Planejamento"]
+ author_inspect [label="Inspeção"]
+ author_params_course [label="Parâmetros · Curso"]
+ author_params_lesson [label="Parâmetros · Lição"]
+ author_params_micro [label="Parâmetros · Micro"]
+ author_param_edit [label="Alterar parâmetro"]
+ author_obs_course [label="Obs. · Curso"]
+ author_obs_module [label="Obs. · Módulo"]
+ author_obs_lesson [label="Obs. · Lição"]
+ author_obs_micro [label="Obs. · Micro"]
+ author_obs_unit [label="Obs. · Unidade"]
+ author_sources_unit [label="Fontes da Unidade"]
+ author_source_detail [label="Fonte"]
+ author_pdf [label="PDF / original"]
+ author_anchor_edit [label="Reancorar"]
+ author_obs_source [label="Obs. · Fonte"]
+ author_unit_edit [label="Editar Unidade"]
+ author_audit [label="Auditoria"]
+ author_sync [label="Sincronização"]
+ author_history [label="Histórico"]
+ author_snapshot [label="Snapshot antigo"]
+ author_restore [label="Restaurar como novo"]
+ research_home [label="Pesquisa"]
+ study_home [label="Início do Estudo"]
+ study_course [label="Ver em Estudo"]
+ author_home -> author_home
+ author_home -> author_collections
+ author_home -> author_all
+ author_home -> author_create
+ author_home -> author_inspect
+ author_home -> author_collection_add
+ author_home -> study_home
+ author_home -> study_course
+ author_home -> author_sync
+ author_home -> author_history
+ author_collections -> author_collection
+ author_collections -> author_collection_new
+ author_collections -> author_home
+ author_collection_new -> author_collection
+ author_collection_new -> author_collection_add
+ author_collection_add -> author_collection_new
+ author_collection_add -> author_collection
+ author_collection_add -> author_collections
+ author_collection_new -> author_collections
+ author_collection -> author_inspect
+ author_collection -> author_collection_add
+ author_collection -> author_collections
+ author_all -> author_inspect
+ author_all -> author_collection_add
+ author_all -> author_home
+ author_all -> author_all
+ author_create -> author_plan
+ author_create -> author_home
+ author_plan -> author_inspect
+ author_plan -> author_home
+ author_inspect -> author_plan
+ author_inspect -> author_params_course
+ author_inspect -> author_params_lesson
+ author_inspect -> author_params_micro
+ author_inspect -> author_obs_course
+ author_inspect -> author_obs_module
+ author_inspect -> author_obs_lesson
+ author_inspect -> author_obs_micro
+ author_inspect -> author_obs_unit
+ author_inspect -> author_sources_unit
+ author_inspect -> author_unit_edit
+ author_inspect -> author_audit
+ author_inspect -> author_sync
+ author_inspect -> author_history
+ author_inspect -> research_home
+ author_inspect -> study_course
+ author_inspect -> author_home
+ author_inspect -> author_all
+ author_inspect -> author_collection
+ author_params_course -> author_param_edit
+ author_params_course -> author_inspect
+ author_params_lesson -> author_param_edit
+ author_params_lesson -> author_inspect
+ author_params_micro -> author_param_edit
+ author_params_micro -> author_inspect
+ author_param_edit -> author_param_edit
+ author_param_edit -> author_params_course
+ author_param_edit -> author_params_lesson
+ author_param_edit -> author_params_micro
+ author_param_edit -> author_inspect
+ author_obs_course -> author_inspect
+ author_obs_module -> author_inspect
+ author_obs_lesson -> author_inspect
+ author_obs_micro -> author_inspect
+ author_obs_unit -> author_inspect
+ author_sources_unit -> author_source_detail
+ author_sources_unit -> author_inspect
+ author_source_detail -> author_pdf
+ author_source_detail -> author_anchor_edit
+ author_source_detail -> author_obs_source
+ author_source_detail -> author_sources_unit
+ author_pdf -> author_source_detail
+ author_pdf -> author_obs_source
+ author_anchor_edit -> author_source_detail
+ author_obs_source -> author_source_detail
+ author_unit_edit -> author_inspect
+ author_audit -> author_inspect
+ author_sync -> author_inspect
+ author_history -> author_snapshot
+ author_history -> author_inspect
+ author_snapshot -> author_restore
+ author_snapshot -> author_history
+ author_restore -> author_inspect
+ author_restore -> author_snapshot
+ author_menu_course [label="Curso · capacidades"]
+ author_menu_review [label="Revisar · capacidades"]
+ author_menu_research [label="Pesquisa · capacidades"]
+ author_structure [label="Estrutura"]
+ author_sources_course [label="Fontes · Curso"]
+ author_source_add [label="Adicionar Fonte"]
+ author_observations [label="Discussões / correções"]
+ author_people [label="Pessoas"]
+ author_people_add [label="Conceder acesso"]
+ author_people_remove [label="Revogar acesso"]
+ author_component_policy [label="Política de componentes"]
+ author_component_catalog [label="Catálogo de componentes"]
+ author_chat [label="ChatGPT contextual"]
+ research_variants [label="Variantes"]
+ research_home [label="Pesquisa / Analytics"]
+ author_inspect -> author_menu_course
+ author_inspect -> author_menu_review
+ author_inspect -> author_menu_research
+ author_inspect -> author_people
+ author_inspect -> author_chat
+ author_menu_course -> author_structure
+ author_menu_course -> author_plan
+ author_menu_course -> author_params_course
+ author_menu_course -> author_sources_course
+ author_menu_review -> author_inspect
+ author_menu_review -> author_observations
+ author_menu_review -> author_audit
+ author_menu_research -> research_variants
+ author_menu_research -> research_home
+ author_structure -> author_inspect
+ author_sources_course -> author_source_detail
+ author_sources_course -> author_source_add
+ author_sources_course -> author_menu_course
+ author_source_add -> author_sources_course
+ author_observations -> author_obs_unit
+ author_observations -> author_obs_source
+ author_observations -> author_obs_lesson
+ author_observations -> author_menu_review
+ author_people -> author_people_add
+ author_people -> author_people_remove
+ author_people -> author_inspect
+ author_people_add -> author_people
+ author_people_remove -> author_people
+ author_params_course -> author_component_policy
+ author_component_policy -> author_component_catalog
+ author_component_policy -> author_params_course
+ author_component_catalog -> author_component_policy
+ author_chat -> author_inspect
+ author_structure -> author_menu_course
+ author_structure -> author_menu_review
+ author_structure -> author_menu_research
+ author_structure -> author_people
+ author_plan -> author_menu_course
+ author_plan -> author_menu_review
+ author_plan -> author_menu_research
+ author_plan -> author_people
+ author_params_course -> author_menu_course
+ author_params_course -> author_menu_review
+ author_params_course -> author_menu_research
+ author_params_course -> author_people
+ author_sources_course -> author_menu_course
+ author_sources_course -> author_menu_review
+ author_sources_course -> author_menu_research
+ author_sources_course -> author_people
+ author_observations -> author_menu_course
+ author_observations -> author_menu_review
+ author_observations -> author_menu_research
+ author_observations -> author_people
+ author_audit -> author_menu_course
+ author_audit -> author_menu_review
+ author_audit -> author_menu_research
+ author_audit -> author_people
+ author_people -> author_menu_course
+ author_people -> author_menu_review
+ author_people -> author_menu_research
+ author_people -> author_people
+ author_collection_add -> author_all
+ author_sources_course -> author_inspect
+ author_observations -> author_inspect
+}
