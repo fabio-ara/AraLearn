@@ -1,0 +1,15 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.55,ranksep=.8,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=11,margin=".16,.11"]
+ edge [color="#7b8494",penwidth=1.2,arrowsize=.65]
+ research_home [label="Pesquisa da autoria"]
+ research_dataset [label="Conjunto de fatos"]
+ research_facts [label="Fatos / exportação"]
+ author_course [label="Curso em Autoria"]
+ research_home -> research_dataset
+ research_dataset -> research_facts
+ research_facts -> research_home
+ research_home -> author_course
+ research_dataset -> research_home
+ research_facts -> research_dataset
+}
