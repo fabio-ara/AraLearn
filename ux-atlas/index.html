@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas visual do AraLearn · v6</title>
+<title>Atlas visual do AraLearn · v7</title>
 <style>html{background:#f5f6f8;font-family:system-ui,sans-serif}body{margin:0}</style>
 </head>
 <body>
@@ -11,50 +11,27 @@
   <div><strong>AraLearn · Atlas visual</strong><small>Arquitetura móvel, permissões e escala</small></div>
   <span class="anchor">base: <code>ebd3feed</code></span>
 </header>
-
 <nav class="modes" aria-label="Áreas do atlas">
   <button data-mode="overview" class="active">Visão geral</button>
+  <button data-mode="entry">Entrada</button>
   <button data-mode="library">Cursos</button>
   <button data-mode="study">Estudo</button>
   <button data-mode="authoring">Autoria</button>
   <button data-mode="mcp">ChatGPT / MCP</button>
   <button data-mode="research">Pesquisa</button>
 </nav>
-
 <main>
 <section class="map-pane">
   <header class="pane-header">
-    <div>
-      <span id="eyebrow">VISÃO GERAL</span>
-      <h1 id="mapTitle">Mapa do produto</h1>
-      <p id="mapHint">Selecione uma tela. Os números das setas correspondem às ações no mock.</p>
-    </div>
-    <div class="map-tools">
-      <button id="zoomOut" title="Diminuir zoom">−</button>
-      <button id="zoomIn" title="Aumentar zoom">＋</button>
-      <button id="fit" title="Ver mapa inteiro">⌗</button>
-    </div>
+    <div><span id="eyebrow">VISÃO GERAL</span><h1 id="mapTitle">Mapa do produto</h1><p id="mapHint">Selecione uma tela. Os números das setas correspondem às ações no mock.</p></div>
+    <div class="map-tools"><button id="zoomOut" title="Diminuir zoom">−</button><button id="zoomIn" title="Aumentar zoom">＋</button><button id="fit" title="Ver mapa inteiro">⌗</button></div>
   </header>
   <div id="graphViewport" class="graph-viewport"><div id="graphStage"></div></div>
 </section>
-
 <aside class="detail-pane">
-  <header class="detail-header">
-    <div id="badges"></div>
-    <h2 id="screenTitle"></h2>
-    <div id="routeTrail" class="route"></div>
-  </header>
-  <section class="scale-switch">
-    <span>Escala do exemplo</span>
-    <div>
-      <button data-scale="small">1</button>
-      <button data-scale="normal" class="active">20</button>
-      <button data-scale="stress">200</button>
-    </div>
-  </section>
-  <section class="phone-wrap">
-    <div class="phone"><div id="mock"></div></div>
-  </section>
+  <header class="detail-header"><div id="badges"></div><h2 id="screenTitle"></h2><div id="routeTrail" class="route"></div></header>
+  <section class="scale-switch"><span>Escala do exemplo</span><div><button data-scale="small">1</button><button data-scale="normal" class="active">20</button><button data-scale="stress">200</button></div></section>
+  <section class="phone-wrap"><div class="phone"><div id="mock"></div></div></section>
   <section class="actions"><h3>Para onde vai</h3><div id="actions"></div></section>
   <details open><summary>Função desta tela</summary><p id="purpose"></p></details>
   <details><summary>Por que está organizada assim?</summary><p id="why"></p></details>
@@ -62,12 +39,13 @@
   <details><summary>Base funcional</summary><div id="evidence"></div></details>
 </aside>
 </main>
-
-<script src="payload-v6/c01.js"></script>
-<script src="payload-v6/c02.js"></script>
-<script src="payload-v6/c03.js"></script>
-<script src="payload-v6/c04.js"></script>
-<script src="payload-v6/c05.js"></script>
+<script src="payload-v7/c01.js"></script>
+<script src="payload-v7/d02.js"></script>
+<script src="payload-v7/d03.js"></script>
+<script src="payload-v7/d04.js"></script>
+<script src="payload-v7/d05.js"></script>
+<script src="payload-v7/d06.js"></script>
+<script src="payload-v7/d07.js"></script>
 <script src="loader.js"></script>
 </body>
 </html>
