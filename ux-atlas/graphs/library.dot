@@ -1,0 +1,21 @@
+digraph G {
+  graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.5,ranksep=.75,splines=spline]
+  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,
+        fontname="Arial",fontsize=12,margin=".18,.12"]
+  edge [color="#667085",penwidth=1.25,arrowsize=.7,fontname="Arial",fontsize=10,fontcolor="#344054"]
+  home [label="Cursos"]
+  recent [label="Retomar"]
+  studyCollections [label="Coleções de Estudo"]
+  authorCollections [label="Coleções de Autoria"]
+  all [label="Todos os acessíveis"]
+  provenance [label="Proveniência e permissões"]
+  authoring [label="Autoria"]
+  study [label="Estudo"]
+  home -> recent [label="1"]
+  home -> studyCollections [label="2"]
+  home -> authorCollections [label="3"]
+  home -> all [label="4"]
+  all -> provenance [label="1"]
+  all -> study [label="2"]
+  all -> authoring [label="3"]
+}
