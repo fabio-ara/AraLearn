@@ -1,0 +1,20 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.55,ranksep=.8,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=11,margin=".16,.10"]
+ edge [color="#7b8494",penwidth=1.15,arrowsize=.62]
+ research_home [label="Pesquisa"]
+ research_cycle [label="Ciclo de autoria"]
+ research_params [label="Parâmetros"]
+ research_sources [label="Fontes"]
+ research_history [label="Histórico"]
+ author_inspect [label="Inspeção"]
+ research_home -> research_cycle
+ research_home -> research_params
+ research_home -> research_sources
+ research_home -> research_history
+ research_home -> author_inspect
+ research_cycle -> research_home
+ research_params -> research_home
+ research_sources -> research_home
+ research_history -> research_home
+}

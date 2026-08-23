@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas visual do AraLearn · v10</title>
+<style>html{background:#f5f6f8;font-family:system-ui,sans-serif}body{margin:0}</style>
+</head>
+<body>
+<header class="appbar">
+  <div><strong>AraLearn · Atlas visual</strong><small>Estudo e Autoria como Curso vivo · v10</small></div>
+  <span class="anchor">base funcional: <code>ebd3feed</code></span>
+</header>
+<nav class="modes" aria-label="Áreas do atlas">
+  <button data-mode="overview">Visão geral</button>
+  <button data-mode="entry">Entrada</button>
+  <button data-mode="study">Estudo</button>
+  <button data-mode="authoring">Autoria</button>
+  <button data-mode="research">Pesquisa</button>
+</nav>
+<main>
+  <section class="map-pane">
+    <header class="pane-head">
+      <div><span id="eyebrow" class="eyebrow"></span><h1 id="mapTitle"></h1><p>Os números aparecem somente nas saídas da tela selecionada e coincidem com os botões do mock.</p></div>
+      <div class="map-tools"><button id="zoomOut" title="Diminuir zoom">−</button><button id="zoomIn" title="Aumentar zoom">＋</button><button id="fit" title="Ver mapa inteiro">⌗</button></div>
+    </header>
+    <div id="graphViewport" class="graph-viewport"><div id="graphStage" class="graph-stage"></div></div>
+  </section>
+  <aside class="detail-pane">
+    <header class="detail-head"><div id="badges"></div><h2 id="screenTitle"></h2><div id="routeTrail" class="route"></div></header>
+    <section id="scenarioControl" class="scenario"><span>Cenário</span><div><button data-scenario="1">1 Curso</button><button data-scenario="20">20 Cursos</button><button data-scenario="200">200 Cursos</button></div></section>
+    <div id="atlasError" class="atlas-error" hidden></div>
+    <section class="phone-wrap"><div class="phone"><div id="mock"></div></div></section>
+    <section class="actions"><h3>Botões desta tela</h3><div id="actions"></div></section>
+    <details open><summary>Função</summary><p id="purpose"></p></details>
+    <details><summary>Decisão de UX</summary><p id="why"></p></details>
+    <details><summary>Atual × proposta</summary><div id="status"></div></details>
+    <details><summary>Base funcional</summary><div id="evidence"></div></details>
+  </aside>
+</main>
+<script src="payload.js"></script>
+<script src="loader.js"></script>
+</body>
+</html>

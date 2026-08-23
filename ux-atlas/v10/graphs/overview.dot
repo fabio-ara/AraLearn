@@ -1,0 +1,19 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.65,ranksep=.9,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=12,margin=".18,.12"]
+ edge [color="#7b8494",penwidth=1.2,arrowsize=.65]
+ login [label="Entrar"]
+ study_home [label="Estudo"]
+ study_course [label="Curso"]
+ author_home [label="Autoria"]
+ author_inspect [label="Inspeção"]
+ author_history [label="Histórico"]
+ research_home [label="Pesquisa"]
+ login -> study_home
+ study_home -> study_course
+ study_home -> author_home
+ author_home -> author_inspect
+ author_inspect -> author_history
+ author_inspect -> research_home
+ author_inspect -> study_course
+}

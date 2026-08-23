@@ -1,0 +1,86 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.42,ranksep=.68,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=10.5,margin=".16,.10"]
+ edge [color="#7b8494",penwidth=1.15,arrowsize=.62]
+ study_home [label="Início"]
+ study_collections [label="Coleções"]
+ study_collection [label="Coleção"]
+ study_collection_new [label="Nova coleção"]
+ study_collection_add [label="Organizar em coleções"]
+ study_all [label="Todos os Cursos"]
+ study_review [label="Rever"]
+ study_course_menu [label="Ações do Curso"]
+ study_course_info [label="Informações"]
+ study_remove_local [label="Remover local"]
+ study_leave [label="Sair do Curso"]
+ study_delete [label="Excluir Curso"]
+ study_course [label="CURSO"]
+ study_module [label="MÓDULO"]
+ study_lesson [label="LIÇÃO"]
+ study_micro [label="MICROSSEQUÊNCIA"]
+ study_unit [label="UNIDADE"]
+ study_sources [label="Fontes"]
+ study_observation [label="Observação"]
+ study_edit [label="Editar"]
+ study_settings [label="Conta"]
+ author_home [label="Autoria"]
+
+ study_home -> study_home
+ study_home -> study_collections
+ study_home -> study_all
+ study_home -> study_review
+ study_home -> study_course
+ study_home -> study_course_menu
+ study_home -> study_collection_add
+ study_home -> study_settings
+ study_home -> author_home
+ study_collections -> study_collection
+ study_collections -> study_collection_new
+ study_collections -> study_home
+ study_collection_new -> study_collection
+ study_collection_new -> study_collections
+ study_collection -> study_collection_add
+ study_collection_add -> study_collection_new
+ study_collection_add -> study_collections
+ study_collection -> study_course
+ study_collection -> study_course_menu
+ study_collection -> study_collections
+ study_collection_add -> study_collection
+ study_all -> study_course
+ study_all -> study_course_menu
+ study_all -> study_collection_add
+ study_all -> study_home
+ study_all -> study_all
+ study_review -> study_unit
+ study_unit -> study_review
+ study_review -> study_home
+ study_course_menu -> study_course_info
+ study_course_menu -> study_remove_local
+ study_course_menu -> study_leave
+ study_course_menu -> study_delete
+ study_course_menu -> study_all
+ study_course_menu -> study_course
+ study_course_info -> study_all
+ study_remove_local -> study_all
+ study_leave -> study_all
+ study_delete -> study_all
+ study_course -> study_module
+ study_course -> study_all
+ study_course -> study_collection
+ study_course -> study_home
+ study_module -> study_lesson
+ study_module -> study_course
+ study_lesson -> study_micro
+ study_lesson -> study_module
+ study_micro -> study_unit
+ study_micro -> study_lesson
+ study_unit -> study_unit
+ study_unit -> study_sources
+ study_unit -> study_observation
+ study_unit -> study_edit
+ study_unit -> study_micro
+ study_sources -> study_unit
+ study_observation -> study_unit
+ study_edit -> study_unit
+ study_settings -> study_home
+}
