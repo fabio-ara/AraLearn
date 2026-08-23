@@ -1,29 +1,20 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.25", nodesep="0.58", ranksep="0.9", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=12.5, margin="0.20,0.12"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.72];
-
-  login [label="Entrar"];
-  study_home [label="Início"];
-  study_course [label="Estudo · Curso"];
-  study_review [label="Rever"];
-  author_courses [label="Autoria · Cursos"];
-  author_course [label="Autoria · Curso"];
-  mcp_handoff [label="ChatGPT / MCP"];
-  analytics [label="Pesquisa"];
-  people [label="Pessoas"];
-  settings [label="Conta"];
-  future_groups [label="Grupos / coortes", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
-
-  login -> study_home [label="1"];
-  study_home -> study_course [label="1"];
-  study_home -> author_courses [label="2"];
-  study_home -> study_review [label="3"];
-  study_home -> settings [label="4"];
-  author_courses -> study_home [label="1"];
-  author_courses -> author_course [label="3"];
-  author_course -> mcp_handoff [label="4", style=dashed, class="external"];
-  author_course -> analytics [label="6"];
-  author_course -> people [label="7"];
-  people -> future_groups [label="1", style=dashed, class="future"];
+  graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.55,ranksep=.8,splines=spline]
+  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,
+        fontname="Arial",fontsize=12,margin=".18,.12"]
+  edge [color="#667085",penwidth=1.25,arrowsize=.7,fontname="Arial",fontsize=10,fontcolor="#344054"]
+  login [label="Entrar"]
+  library [label="Cursos"]
+  study [label="Estudo"]
+  authoring [label="Autoria"]
+  mcp [label="ChatGPT / MCP"]
+  research [label="Pesquisa da autoria"]
+  account [label="Conta"]
+  login -> library [label="1"]
+  library -> study [label="1"]
+  library -> authoring [label="2"]
+  library -> account [label="3"]
+  authoring -> mcp [label="1",style=dashed]
+  authoring -> research [label="2"]
+  research -> authoring [label="1"]
 }
