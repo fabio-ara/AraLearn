@@ -1,0 +1,92 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.5,ranksep=.76,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=10.5,margin=".16,.11"]
+ edge [color="#7b8494",penwidth=1.2,arrowsize=.65]
+ author_home [label="Início da Autoria"]
+ author_search [label="Buscar editáveis"]
+ author_collections [label="Coleções"]
+ author_collection [label="Coleção autoral"]
+ author_collection_new [label="Nova coleção"]
+ author_collection_add [label="Adicionar Cursos"]
+ author_collection_edit [label="Editar coleção"]
+ author_collection_delete [label="Excluir coleção"]
+ author_all [label="Todos para editar"]
+ author_all_more [label="Mais Cursos"]
+ author_filters [label="Filtros"]
+ create_course [label="Criar Curso"]
+ author_course [label="Curso em Autoria"]
+ author_design [label="Desenho"]
+ author_parts [label="Partes"]
+ author_inspect [label="Inspeção"]
+ author_sources [label="Fontes"]
+ author_variants [label="Variantes"]
+ author_observation [label="Observação"]
+ author_audit [label="Auditoria"]
+ mcp_home [label="ChatGPT / MCP"]
+ research_home [label="Pesquisa"]
+ settings [label="Conta e aparência"]
+ study_home [label="Estudo"]
+ author_home -> author_search
+ author_home -> author_collections
+ author_home -> author_all
+ author_home -> create_course
+ author_home -> author_course
+ author_home -> settings
+ author_home -> study_home
+ author_search -> author_course
+ author_search -> author_home
+ author_collections -> author_collection
+ author_collections -> author_collection_new
+ author_collections -> author_home
+ author_collection_new -> author_collection
+ author_collection_new -> author_collections
+ author_collection -> author_course
+ author_collection -> author_collection_add
+ author_collection -> author_collection_edit
+ author_collection -> author_collections
+ author_collection_add -> author_collection
+ author_collection_edit -> author_collection
+ author_collection_edit -> author_collection_delete
+ author_collection_delete -> author_collections
+ author_collection_delete -> author_collection_edit
+ author_all -> author_filters
+ author_all -> author_course
+ author_all -> author_all_more
+ author_all -> author_home
+ author_all_more -> author_course
+ author_all_more -> author_all
+ create_course -> author_course
+ create_course -> author_home
+ author_course -> author_design
+ author_course -> author_parts
+ author_course -> author_inspect
+ author_course -> author_sources
+ author_course -> author_variants
+ author_course -> mcp_home [style=dashed]
+ author_course -> research_home
+ author_course -> author_all
+ author_inspect -> author_observation
+ author_inspect -> author_audit
+ author_inspect -> author_sources
+ author_inspect -> mcp_home [style=dashed]
+ author_inspect -> author_course
+ author_observation -> author_inspect
+ author_audit -> author_inspect
+ author_design -> author_course
+ author_parts -> author_course
+ author_sources -> author_course
+ author_variants -> author_course
+ settings -> author_home
+ author_part [label="Parte"]
+ author_materialize [label="Materialização"]
+ author_filters -> author_all
+ author_all_more -> author_all_more
+ author_parts -> author_part
+ author_part -> author_parts
+ author_part -> author_design
+ author_part -> author_inspect
+ author_part -> author_materialize
+ author_materialize -> author_part
+ author_materialize -> mcp_home [style=dashed]
+ author_design -> author_design
+}
