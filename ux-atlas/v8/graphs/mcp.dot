@@ -1,0 +1,18 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.58,ranksep=.82,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=11,margin=".16,.11"]
+ edge [color="#7b8494",penwidth=1.2,arrowsize=.65]
+ mcp_home [label="Preparar pedido"]
+ mcp_client [label="ChatGPT"]
+ mcp_read [label="Ler Curso"]
+ mcp_deliberate [label="Debater decisão"]
+ mcp_write [label="Alterar Curso"]
+ author_inspect [label="Voltar ao AraLearn"]
+ mcp_home -> mcp_client [style=dashed]
+ mcp_client -> mcp_read
+ mcp_read -> mcp_deliberate
+ mcp_deliberate -> mcp_write
+ mcp_write -> author_inspect [style=dashed]
+ mcp_home -> author_course
+ author_course [label="Curso em Autoria"]
+}
