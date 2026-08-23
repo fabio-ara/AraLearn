@@ -1,20 +1,20 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.23", nodesep="0.5", ranksep="0.8", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
-
-  mcp_handoff [label="Preparar no AraLearn"];
-  mcp_layout [label="Organizar telas"];
-  mcp_authorize [label="Autorizar MCP"];
-  mcp_read [label="Reler Curso"];
-  mcp_deliberate [label="Debater decisão"];
-  mcp_apply [label="Alterar Curso"];
-  mcp_return [label="Conferir no AraLearn"];
-
-  mcp_handoff -> mcp_layout [label="1", style=dashed, class="external"];
-  mcp_layout -> mcp_authorize [label="1", style=dashed, class="external"];
-  mcp_authorize -> mcp_read [label="1"];
-  mcp_read -> mcp_deliberate [label="1"];
-  mcp_deliberate -> mcp_apply [label="1"];
-  mcp_apply -> mcp_return [label="1"];
+  graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.55,ranksep=.8,splines=spline]
+  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,
+        fontname="Arial",fontsize=12,margin=".18,.12"]
+  edge [color="#667085",penwidth=1.25,arrowsize=.7,fontname="Arial",fontsize=10,fontcolor="#344054"]
+  aralearn [label="AraLearn"]
+  request [label="Copiar pedido"]
+  chatgpt [label="ChatGPT"]
+  read [label="MCP lê o Curso"]
+  deliberate [label="Debate / decisão"]
+  write [label="MCP altera"]
+  return [label="AraLearn relê"]
+  aralearn -> request [label="1"]
+  request -> chatgpt [label="1",style=dashed]
+  chatgpt -> read [label="1"]
+  read -> deliberate [label="1"]
+  deliberate -> write [label="1"]
+  write -> return [label="1",style=dashed]
+  return -> aralearn [label="1"]
 }
