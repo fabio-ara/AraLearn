@@ -1,133 +1,73 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Atlas visual do AraLearn</title>
-  <style>html{background:#f4f5f7;font-family:system-ui,sans-serif}body{margin:0}</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas visual do AraLearn · v6</title>
+<style>html{background:#f5f6f8;font-family:system-ui,sans-serif}body{margin:0}</style>
 </head>
 <body>
-  <header class="appbar">
-    <div class="brand-block">
-      <strong>AraLearn · Atlas visual</strong>
-      <span>Fluxos, telas e decisões de UX</span>
+<header class="appbar">
+  <div><strong>AraLearn · Atlas visual</strong><small>Arquitetura móvel, permissões e escala</small></div>
+  <span class="anchor">base: <code>ebd3feed</code></span>
+</header>
+
+<nav class="modes" aria-label="Áreas do atlas">
+  <button data-mode="overview" class="active">Visão geral</button>
+  <button data-mode="library">Cursos</button>
+  <button data-mode="study">Estudo</button>
+  <button data-mode="authoring">Autoria</button>
+  <button data-mode="mcp">ChatGPT / MCP</button>
+  <button data-mode="research">Pesquisa</button>
+</nav>
+
+<main>
+<section class="map-pane">
+  <header class="pane-header">
+    <div>
+      <span id="eyebrow">VISÃO GERAL</span>
+      <h1 id="mapTitle">Mapa do produto</h1>
+      <p id="mapHint">Selecione uma tela. Os números das setas correspondem às ações no mock.</p>
     </div>
-    <div class="anchor">Atual: <code>ebd3feed</code> · referência histórica de Estudo: <code>9e7ddc0</code></div>
+    <div class="map-tools">
+      <button id="zoomOut" title="Diminuir zoom">−</button>
+      <button id="zoomIn" title="Aumentar zoom">＋</button>
+      <button id="fit" title="Ver mapa inteiro">⌗</button>
+    </div>
   </header>
+  <div id="graphViewport" class="graph-viewport"><div id="graphStage"></div></div>
+</section>
 
-  <nav class="modebar" aria-label="Escala do atlas">
-    <button class="mode-tab is-active" data-mode="overview" type="button">Visão geral</button>
-    <button class="mode-tab" data-mode="study" type="button">Estudo</button>
-    <button class="mode-tab" data-mode="authoring" type="button">Autoria</button>
-    <button class="mode-tab" data-mode="mcp" type="button">ChatGPT / MCP</button>
-    <button class="mode-tab" data-mode="research" type="button">Pesquisa</button>
-  </nav>
+<aside class="detail-pane">
+  <header class="detail-header">
+    <div id="badges"></div>
+    <h2 id="screenTitle"></h2>
+    <div id="routeTrail" class="route"></div>
+  </header>
+  <section class="scale-switch">
+    <span>Escala do exemplo</span>
+    <div>
+      <button data-scale="small">1</button>
+      <button data-scale="normal" class="active">20</button>
+      <button data-scale="stress">200</button>
+    </div>
+  </section>
+  <section class="phone-wrap">
+    <div class="phone"><div id="mock"></div></div>
+  </section>
+  <section class="actions"><h3>Para onde vai</h3><div id="actions"></div></section>
+  <details open><summary>Função desta tela</summary><p id="purpose"></p></details>
+  <details><summary>Por que está organizada assim?</summary><p id="why"></p></details>
+  <details><summary>O que é atual e o que é proposta?</summary><div id="status"></div></details>
+  <details><summary>Base funcional</summary><div id="evidence"></div></details>
+</aside>
+</main>
 
-  <main class="atlas-shell">
-    <section class="graph-pane" aria-label="Mapa das telas">
-      <header class="pane-head graph-head">
-        <div>
-          <span class="eyebrow" id="graphEyebrow">VISÃO GERAL</span>
-          <h1 id="graphTitle">Mapa do produto</h1>
-          <p id="graphHint">Selecione uma tela. Só as rotas ligadas a ela ficam em destaque.</p>
-        </div>
-        <div class="graph-tools" aria-label="Controles do mapa">
-          <button type="button" class="tool-icon" id="zoomOut" title="Diminuir zoom" aria-label="Diminuir zoom">−</button>
-          <button type="button" class="tool-icon" id="zoomIn" title="Aumentar zoom" aria-label="Aumentar zoom">＋</button>
-          <button type="button" class="tool-icon" id="focusSelected" title="Focar tela selecionada" aria-label="Focar tela selecionada">◎</button>
-          <button type="button" class="tool-icon" id="fitGraph" title="Ver mapa inteiro" aria-label="Ver mapa inteiro">⌗</button>
-        </div>
-      </header>
-
-      <div class="how-to-read" id="howToRead">
-        <span><b>1</b> clique em um card</span>
-        <span><b>2</b> os números aparecem só nas saídas</span>
-        <span><b>3</b> o mesmo número marca o controle no mock</span>
-      </div>
-
-      <div class="graph-viewport" id="graphViewport" tabindex="0" aria-label="Grafo navegável">
-        <div class="graph-stage" id="graphStage"></div>
-      </div>
-
-      <footer class="graph-legend">
-        <span><i class="legend-line solid"></i> navegação / ação</span>
-        <span><i class="legend-line dashed"></i> condição / passagem externa</span>
-        <span><i class="legend-node future"></i> extensão futura</span>
-      </footer>
-    </section>
-
-    <aside class="detail-pane" aria-live="polite">
-      <header class="pane-head detail-head">
-        <div>
-          <div class="detail-badges" id="detailBadges"></div>
-          <h2 id="detailTitle">Início do Estudo</h2>
-          <p id="detailPath"></p>
-        </div>
-      </header>
-
-      <section class="route-section" aria-label="Como chegar a esta tela">
-        <span class="route-label">Como chegar</span>
-        <div id="routeTrail" class="route-trail"></div>
-      </section>
-
-      <section class="mock-section">
-        <div id="mockFrame" class="mock-frame phone-frame">
-          <div id="mockSurface" class="mock-surface"></div>
-        </div>
-        <p class="mock-caption" id="mockCaption"></p>
-      </section>
-
-      <section class="action-section">
-        <h3>Para onde esta tela leva</h3>
-        <div id="actionList" class="action-list"></div>
-      </section>
-
-      <section class="purpose-section">
-        <h3>Função</h3>
-        <p id="detailPurpose"></p>
-      </section>
-
-      <details class="detail-fold" id="whyFold">
-        <summary>Por que os controles estão assim?</summary>
-        <p id="detailWhy"></p>
-      </details>
-
-      <details class="detail-fold">
-        <summary>O que é atual, proposto ou futuro?</summary>
-        <div id="detailStatus"></div>
-      </details>
-
-      <details class="detail-fold evidence-fold">
-        <summary>Base funcional no AraLearn</summary>
-        <div id="detailEvidence"></div>
-      </details>
-    </aside>
-  </main>
-
-  <script src="payload-v5s/c01.js"></script>
-  <script src="payload-v5s/c02.js"></script>
-  <script src="payload-v5s/c03.js"></script>
-  <script src="payload-v5s/c04.js"></script>
-  <script src="payload-v5s/c05.js"></script>
-  <script src="payload-v5s/c06.js"></script>
-  <script src="payload-v5s/c07.js"></script>
-  <script src="payload-v5s/c08.js"></script>
-  <script src="payload-v5s/c09.js"></script>
-  <script src="payload-v5s/c10.js"></script>
-  <script src="payload-v5s/c11.js"></script>
-  <script src="payload-v5s/c12.js"></script>
-  <script src="payload-v5s/c13.js"></script>
-  <script src="payload-v5s/c14.js"></script>
-  <script src="payload-v5s/c15.js"></script>
-  <script src="payload-v5s/c16.js"></script>
-  <script src="payload-v5s/c17.js"></script>
-  <script src="payload-v5s/c18.js"></script>
-  <script src="payload-v5s/c19.js"></script>
-  <script src="payload-v5s/c20.js"></script>
-  <script src="payload-v5s/c21.js"></script>
-  <script src="payload-v5s/c22.js"></script>
-  <script src="payload-v5s/c23.js"></script>
-  <script src="payload-v5s/c24.js"></script>
-  <script src="loader.js"></script>
+<script src="payload-v6/c01.js"></script>
+<script src="payload-v6/c02.js"></script>
+<script src="payload-v6/c03.js"></script>
+<script src="payload-v6/c04.js"></script>
+<script src="payload-v6/c05.js"></script>
+<script src="loader.js"></script>
 </body>
 </html>
