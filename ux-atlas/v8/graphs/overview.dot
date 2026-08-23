@@ -1,0 +1,17 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.65,ranksep=.95,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=12,margin=".18,.12"]
+ edge [color="#7b8494",penwidth=1.25,arrowsize=.7]
+ login [label="Entrar"]
+ study_home [label="Estudo"]
+ author_home [label="Autoria"]
+ author_course [label="Curso em Autoria"]
+ mcp_home [label="ChatGPT / MCP"]
+ research_home [label="Pesquisa da autoria"]
+ login -> study_home
+ study_home -> author_home
+ author_home -> study_home
+ author_home -> author_course
+ author_course -> mcp_home [style=dashed]
+ author_course -> research_home
+}
