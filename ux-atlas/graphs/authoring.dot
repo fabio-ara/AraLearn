@@ -1,58 +1,33 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.23", nodesep="0.44", ranksep="0.78", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
-
-  study_home [label="Início / Estudo"];
-  author_courses [label="Meus cursos"];
-  author_create [label="Criar curso"];
-  author_course [label="Curso"];
-  author_plan [label="Planejamento"];
-  author_part [label="Parte"];
-  design [label="Desenho"];
-  resource_policy [label="Recursos"];
-  guidance [label="Orientação"];
-  materialization [label="Materialização"];
-  inspection [label="Inspeção"];
-  author_observation [label="Observação"];
-  author_sources [label="Fontes"];
-  author_edit [label="Editar"];
-  author_assist [label="Assistência"];
-  audit [label="Auditar"];
-  correction [label="Reparar"];
-  mcp_handoff [label="ChatGPT / MCP"];
-  variants [label="Variantes"];
-  analytics [label="Pesquisa"];
-  people [label="Pessoas"];
-  future_groups [label="Grupos / coortes", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
-
-  author_courses -> study_home [label="1"];
-  author_courses -> author_create [label="2"];
-  author_courses -> author_course [label="3"];
-  author_create -> author_course [label="1"];
-  author_course -> author_plan [label="1"];
-  author_course -> inspection [label="2"];
-  author_course -> author_observation [label="3"];
-  author_course -> mcp_handoff [label="4", style=dashed, class="external"];
-  author_course -> variants [label="5"];
-  author_course -> analytics [label="6"];
-  author_course -> people [label="7"];
-  author_plan -> author_part [label="1"];
-  author_part -> design [label="1"];
-  author_part -> author_observation [label="2"];
-  author_part -> materialization [label="3"];
-  author_part -> mcp_handoff [label="4", style=dashed, class="external"];
-  design -> resource_policy [label="1"];
-  design -> guidance [label="2"];
-  design -> mcp_handoff [label="3", style=dashed, class="external"];
-  design -> author_observation [label="4"];
-  materialization -> inspection [label="1"];
-  inspection -> author_observation [label="1"];
-  inspection -> author_sources [label="2"];
-  inspection -> author_edit [label="3"];
-  inspection -> audit [label="4"];
-  inspection -> author_assist [label="5"];
-  audit -> correction [label="1"];
-  correction -> inspection [label="1"];
-  people -> future_groups [label="1", style=dashed, class="future"];
+  graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.5,ranksep=.78,splines=spline]
+  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,
+        fontname="Arial",fontsize=12,margin=".18,.12"]
+  edge [color="#667085",penwidth=1.25,arrowsize=.7,fontname="Arial",fontsize=10,fontcolor="#344054"]
+  library [label="Cursos"]
+  authorLib [label="Biblioteca de Autoria"]
+  course [label="Curso em Autoria"]
+  design [label="Desenho"]
+  parts [label="Partes"]
+  inspect [label="Inspeção"]
+  annotate [label="Observação"]
+  audit [label="Auditoria"]
+  sources [label="Fontes"]
+  variants [label="Variantes"]
+  research [label="Pesquisa"]
+  mcp [label="ChatGPT / MCP"]
+  library -> authorLib [label="1"]
+  authorLib -> course [label="1"]
+  course -> design [label="1"]
+  course -> parts [label="2"]
+  course -> inspect [label="3"]
+  course -> sources [label="4"]
+  course -> variants [label="5"]
+  course -> research [label="6"]
+  course -> mcp [label="7",style=dashed]
+  inspect -> annotate [label="1"]
+  inspect -> audit [label="2"]
+  inspect -> sources [label="3"]
+  inspect -> mcp [label="4",style=dashed]
+  annotate -> inspect [label="1"]
+  audit -> inspect [label="1"]
 }
