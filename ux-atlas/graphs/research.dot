@@ -1,38 +1,31 @@
 digraph G {
-  graph [bgcolor="transparent", rankdir=LR, pad="0.23", nodesep="0.46", ranksep="0.76", splines="spline"];
-  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#bcc3cc", fontcolor="#30353c", fontname="Arial", fontsize=11.8, margin="0.15,0.09"];
-  edge [color="#7b838d", fontcolor="#3346a8", fontname="Arial", fontsize=10, arrowsize=0.67];
-
-  design [label="Desenho"];
-  resource_policy [label="Recursos"];
-  variants [label="Variantes"];
-  materialization [label="Materialização"];
-  inspection [label="Inspeção"];
-  author_observation [label="Observação"];
-  audit [label="Auditoria"];
-  correction [label="Reparo"];
-  analytics [label="Analytics da Autoria"];
-  people [label="Pessoas"];
-  future_groups [label="Grupos / coortes", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
-  future_outcomes [label="Resultados de grupos", style="rounded,dashed,filled", fillcolor="#faf5ff", color="#9b84b7", class="future"];
-
-  design -> resource_policy [label="1"];
-  design -> variants [label="2"];
-  design -> materialization [label="3"];
-  materialization -> inspection [label="1"];
-  inspection -> author_observation [label="1"];
-  author_observation -> audit [label="1"];
-  audit -> correction [label="1"];
-  correction -> audit [label="1"];
-  design -> analytics [label="4"];
-  resource_policy -> analytics [label="1"];
-  variants -> analytics [label="1"];
-  materialization -> analytics [label="2"];
-  author_observation -> analytics [label="2"];
-  audit -> analytics [label="2"];
-  correction -> analytics [label="2"];
-  people -> future_groups [label="1", style=dashed, class="future"];
-  variants -> future_groups [label="1", style=dashed, class="future"];
-  future_groups -> future_outcomes [label="1", style=dashed, class="future"];
-  future_outcomes -> analytics [label="1", style=dashed, class="future"];
+  graph [rankdir=LR,bgcolor="transparent",pad=.25,nodesep=.5,ranksep=.75,splines=spline]
+  node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,
+        fontname="Arial",fontsize=12,margin=".18,.12"]
+  edge [color="#667085",penwidth=1.25,arrowsize=.7,fontname="Arial",fontsize=10,fontcolor="#344054"]
+  course [label="Curso"]
+  dashboard [label="Pesquisa da autoria"]
+  activity [label="Atividade"]
+  design [label="Desenho"]
+  material [label="Materializações"]
+  annotations [label="Observações"]
+  audits [label="Auditorias"]
+  sources [label="Fontes"]
+  variants [label="Variantes"]
+  facts [label="Fatos / exportação"]
+  course -> dashboard [label="1"]
+  dashboard -> activity [label="1"]
+  dashboard -> design [label="2"]
+  dashboard -> material [label="3"]
+  dashboard -> annotations [label="4"]
+  dashboard -> audits [label="5"]
+  dashboard -> sources [label="6"]
+  dashboard -> variants [label="7"]
+  activity -> facts [label="1"]
+  design -> facts [label="1"]
+  material -> facts [label="1"]
+  annotations -> facts [label="1"]
+  audits -> facts [label="1"]
+  sources -> facts [label="1"]
+  variants -> facts [label="1"]
 }
