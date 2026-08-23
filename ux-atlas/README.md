@@ -1,39 +1,38 @@
-# Atlas visual do AraLearn — v6
+# Atlas visual do AraLearn — v7
 
-Esta edição reorganiza o produto inteiro a partir de três princípios:
+Artefato temporário para investigar e redesenhar a UX/UI do AraLearn sem alterar o frontend real.
 
-1. todas as superfícies do AraLearn são projetadas para largura de celular;
-2. escala e permissões são parte da arquitetura, não remendos de listas;
-3. Estudo, Autoria e Pesquisa são vistas diferentes sobre Cursos da mesma conta, mas a organização pessoal de Estudo e Autoria pode ser independente.
+## Base funcional
 
-## Base funcional verificada
+Estado corrente examinado: `ebd3feed909df9c007d0c09140ba28d3afe2dc61`.
 
-Estado corrente usado: `ebd3feed909df9c007d0c09140ba28d3afe2dc61`.
+O runtime atual já distingue, por Curso acessível, `ownership`, `canEdit`, `canDerive`, `isPersonalCopy`, `personalCopyCourseId` e, quando aplicável, `sourceCourseId`/`sourceCourseRevision`. O compartilhamento atual usa `course_access` e concede Estudo; a cópia pessoal é outro Curso pertencente ao usuário que a criou e ligado ao Curso/revisão de origem. Variantes possuem relações próprias de comparação/checkpoint.
 
-O runtime atual já distingue, por Curso acessível:
+Não foi encontrada uma entidade corrente de pasta/coleção/grupo pessoal de Cursos. Por isso, o atlas distingue agrupamentos automáticos derivados das permissões/proveniência de **Coleções de Estudo** e **Coleções de Autoria**, que são propostas de organização pessoal e não alteram permissões nem identidade do Curso.
 
-- `ownership` (`owned` ou `shared`);
-- `canEdit`;
-- `canDerive`;
-- `isPersonalCopy`;
-- `personalCopyCourseId`;
-- para a cópia pessoal, `sourceCourseId` e `sourceCourseRevision`.
+## Arquitetura de navegação
 
-O compartilhamento atual é autorizado por `public.course_access` e é de Estudo. A cópia pessoal é outro Curso, pertencente ao usuário que a criou, registrado em `private.course_personal_copies` e ligado ao Curso/revisão de origem. Variantes possuem relações próprias de comparação/checkpoint.
+O atlas possui sete escalas: **Visão geral**, **Entrada**, **Cursos**, **Estudo**, **Autoria**, **ChatGPT / MCP** e **Pesquisa**.
 
-Não foi encontrada uma entidade corrente de pasta/coleção/grupo pessoal de Cursos.
+A Visão geral começa em **Entrar**. A escala Entrada detalha Login, Criar conta, Recuperar acesso e Nova senha. Depois da autenticação, a pessoa chega a **Cursos**, biblioteca da conta. Estudo, Autoria e Pesquisa são vistas sobre Cursos acessíveis segundo as permissões daquela conta.
 
-## Decisão de UX desta edição
-
-- **Agrupamentos automáticos** (`Meus`, `Cópias`, `Compartilhados`, `Variantes`) são derivados das permissões/proveniência.
-- **Coleções de Estudo** são organização pessoal para aprender.
-- **Coleções de Autoria** são organização pessoal para produzir/pesquisar e contêm apenas Cursos editáveis.
-- As duas coleções não precisam coincidir.
-- Coleções personalizadas são marcadas como extensão proposta; não alteram permissões nem identidade do Curso.
-- `Grupos/coortes` de participantes foram removidos da navegação principal do atlas nesta edição. Eles só devem ser discutidos quando o fluxo de Pesquisa for inspecionado e sua pertinência for estabelecida.
+Todas as superfícies propostas do AraLearn são desenhadas para largura de celular, inclusive Autoria e Pesquisa.
 
 ## Escalabilidade
 
-Na lateral do atlas, `Escala do exemplo` alterna entre 1, 20 e 200 objetos. O objetivo é verificar que a arquitetura continua compreensível em cardinalidades diferentes.
+A chave `1 / 20 / 200` muda a cardinalidade dos exemplos. O objetivo é verificar que a arquitetura continue compreensível com poucos ou muitos Cursos, Partes, Unidades e Fontes.
+
+## Correções da v7
+
+- restaura **Entrar** como primeira tela real do atlas;
+- adiciona a escala **Entrada**;
+- corrige o bug da v6 em que o SVG do Graphviz era calculado como `0 × 0 px`;
+- limita os SVGs do seletor **Estudo / Autoria** a `18 × 18 px`;
+- corrige a navegação **Autoria → Estudo**;
+- usa curvas calculadas pelo Graphviz para evitar os problemas anteriores de rótulos em arestas ortogonais.
+
+## Validação
+
+A v7 foi executada em navegador e verificada em `1440×960`, `430×932` e `390×844`. Todos os sete grafos apresentaram nós com dimensões positivas; não houve erro de JavaScript nem overflow horizontal; e o fluxo **Entrar → Cursos** trocou corretamente para a escala Cursos.
 
 Abra `index.html` diretamente no navegador.
