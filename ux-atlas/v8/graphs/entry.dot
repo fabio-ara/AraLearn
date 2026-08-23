@@ -1,0 +1,17 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad=.28,nodesep=.55,ranksep=.8,splines=spline]
+ node [shape=rect,style="rounded,filled",fillcolor="#ffffff",color="#cfd5df",penwidth=1.2,fontname="Arial",fontsize=12,margin=".18,.12"]
+ edge [color="#7b8494",penwidth=1.25,arrowsize=.7]
+ login [label="Entrar"]
+ signup [label="Criar conta"]
+ recover [label="Recuperar acesso"]
+ newpass [label="Nova senha"]
+ study_home [label="Estudo"]
+ login -> signup
+ signup -> login
+ login -> recover
+ recover -> login
+ recover -> newpass [style=dashed]
+ newpass -> login
+ login -> study_home
+}
