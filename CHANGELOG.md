@@ -4,6 +4,31 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.30] - 2026-08-24
+
+### Alterado
+
+- Estudo recupera a navegação compacta entre Curso, Módulo, Lição,
+  Microssequência e Unidade, com voltar, subir e retomar preservando contexto;
+- a edição autorizada fica disponível nos níveis do Curso correspondentes, e
+  Visualizar, Editar e Assistência por IA compartilham o mesmo alvo quando
+  aplicável;
+- Autoria passa a começar por uma Visão geral organizada pelas tarefas de quem
+  cria: Planejamento, Conteúdo, Parâmetros e componentes, Fontes, Revisão,
+  Variantes e pesquisa e Pessoas e acesso;
+- Partes mostram o histórico completo das materializações realizadas pelo
+  Aplicativo, MCP ou Actions, incluindo etapas, resultados e retorno aos objetos
+  produzidos;
+- README e guias passam a ensinar as jornadas correntes sem perder o
+  aprofundamento técnico e acadêmico.
+
+### Corrigido
+
+- barras superiores, textos extensos, foco, alvos de toque e reflow permanecem
+  utilizáveis em telas móveis e desktop;
+- os rótulos visíveis e acessíveis usam **Assistência por IA**, e a área
+  **Conteúdo** deixa de expor nomes da antiga divisão interna da Autoria.
+
 ## [0.0.29] - 2026-08-24
 
 ### Alterado

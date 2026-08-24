@@ -287,13 +287,13 @@ jobs:
           @"
           ## AraLearn v${{ steps.identity.outputs.version }}
 
-          Esta versão conclui a experiência integrada de Estudo e Autoria do AraLearn.
+          Esta versão reconstrói Estudo e Autoria para tornar o percurso do Curso previsível e as tarefas de criação encontráveis.
 
-          - Estude pelo percurso de Curso, Módulo, Lição, Microssequência e Unidade, com progresso, Observações e retorno previsível.
-          - Visualize, edite ou use a Assistência por API na mesma Unidade. A assistência conversa sobre o plano e só aplica conteúdo validado depois da confirmação humana.
-          - Organize Cursos pela Autoria: planejamento, materialização, parâmetros, Fontes e PDFs, inspeção, auditoria, variantes, pesquisa e acessos.
-          - Integre ferramentas externas por MCP ou conecte um GPT personalizado pelas Actions OpenAPI. São caminhos distintos para as mesmas operações autorais protegidas.
-          - Crie, altere, use e exclua Cursos pela Home, sem confundir o ciclo de vida remoto com a remoção dos dados deste dispositivo.
+          - Em Estudo, percorra Curso, Módulo, Lição, Microssequência e Unidade com voltar, subir e retomar preservando o contexto.
+          - Quando autorizado, edite os níveis correspondentes do Curso e use Visualizar, Editar e Assistência por IA sobre o mesmo objeto nos níveis compatíveis.
+          - Em Autoria, comece pela Visão geral e encontre Planejamento, Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e Pessoas e acesso.
+          - Acompanhe todas as materializações de uma Parte, inclusive as iniciadas pelo Aplicativo, MCP ou Actions, e volte das etapas e resultados aos objetos produzidos.
+          - Consulte o README e os guias revisados para aprender as jornadas visuais e conversacionais, seus limites e os fundamentos técnicos e pedagógicos.
 
           Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.
           "@ | Set-Content -Encoding UTF8 release-notes.md
