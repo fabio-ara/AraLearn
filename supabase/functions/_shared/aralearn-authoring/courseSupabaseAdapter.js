@@ -872,7 +872,7 @@ function normalizePartMaterialization(
   const resultFacts = publicMaterializationResultFacts(source.resultFacts);
   if (id !== materializationId || !UUID_PATTERN.test(id) ||
       !positiveSafeInteger(source.authoringPartVersion) ||
-      !new Set(["application", "mcp"]).has(channel) ||
+      !new Set(["application", "mcp", "actions"]).has(channel) ||
       !new Set(["running", "completed", "failed"]).has(status) ||
       !positiveSafeInteger(source.version) || !jsonRecord(source.designContext) ||
       typeof source.contextHash !== "string" || !CONTEXT_HASH_PATTERN.test(source.contextHash) ||
@@ -1461,7 +1461,7 @@ function withInspectionDeepLinks(value, publicAppUrl) {
     return {
       ...item,
       deepLink: `${publicAppUrl}/#/authoring/courses/${result.courseId}` +
-        `?section=inspection&studyUnitId=${encodeURIComponent(studyUnitId)}`
+        `?section=content&studyUnitId=${encodeURIComponent(studyUnitId)}`
     };
   });
   return result;
@@ -1505,7 +1505,7 @@ function withCourseAuditDeepLinks(value, publicAppUrl) {
         const annotationId = String(reference.annotationId || "").trim();
         injectLink(reference, "deepLink", reference.available && annotationId
           ? auditCourseHref(publicAppUrl, courseId, {
-              section: "observations",
+              section: "review",
               annotationId
             })
           : null, 1);
@@ -1517,12 +1517,12 @@ function withCourseAuditDeepLinks(value, publicAppUrl) {
       target: null
     };
     injectLink(finding.deepLinks, "detail", auditCourseHref(publicAppUrl, courseId, {
-      section: "observations",
+      section: "review",
       findingId
     }), 3);
     injectLink(finding.deepLinks, "target", finding.target?.currentAvailable
       ? auditCourseHref(publicAppUrl, courseId, {
-          section: "inspection",
+          section: "content",
           studyUnitId
         })
       : null, 2);
@@ -1534,7 +1534,7 @@ function withCourseAuditDeepLinks(value, publicAppUrl) {
     const correctionId = String(correction.correctionId || "").trim();
     if (!findingId || !correctionId) return correction;
     injectLink(correction, "deepLink", auditCourseHref(publicAppUrl, courseId, {
-      section: "observations",
+      section: "review",
       findingId,
       correctionId
     }), 2);
@@ -1574,7 +1574,7 @@ function withCourseAuditDeepLinks(value, publicAppUrl) {
         const annotationId = String(annotation.annotationId || "").trim();
         if (annotationId) {
           injectLink(annotation, "deepLink", auditCourseHref(publicAppUrl, courseId, {
-            section: "observations",
+            section: "review",
             annotationId
           }), 1);
         }
@@ -1589,7 +1589,7 @@ function withCourseAuditDeepLinks(value, publicAppUrl) {
       const auditRunId = String(run.auditRunId || "").trim();
       injectLink(run, "deepLink", auditRunId
         ? auditCourseHref(publicAppUrl, courseId, {
-            section: "observations",
+            section: "review",
             auditRunId
           })
         : null, 3);
@@ -1891,8 +1891,13 @@ function validateComponentCatalogProjection(value, { RESOURCE_CATALOG, RESOURCE_
 
 function authoringChannel(principal) {
   if (principal?.authenticationKind === "application") return "application";
-  if (principal?.authenticationKind === "oauth") return "mcp";
+  if (new Set(["oauth", "action"]).has(principal?.authenticationKind)) return "mcp";
   throw new AuthoringApiError(401, "authentication_required", "A origem da Autoria é inválida.");
+}
+
+function materializationChannel(principal) {
+  if (principal?.authenticationKind === "action") return "actions";
+  return authoringChannel(principal);
 }
 
 function storageObjectPath(value) {
@@ -3809,9 +3814,24 @@ export class CourseSupabaseAdapter {
         }
         assertSourceLinksAllowedByContext(sourceApplication.studyUnits, target);
       }
+      const changedObjects = (Array.isArray(payload.entityChanges?.upserts)
+        ? payload.entityChanges.upserts
+        : [])
+        .filter(({ entityType, entityId }) =>
+          new Set(["module", "lesson", "microsequence", "study_unit"]).has(entityType) &&
+          typeof entityId === "string" && entityId.length > 0)
+        .map(({ entityType, entityId }) => ({ entityType, entityId }));
+      payloadForRpc = {
+        ...payloadForRpc,
+        resultFacts: {
+          ...payload.resultFacts,
+          changedObjects
+        }
+      };
     }
+    const channel = materializationChannel(principal);
     const result = first(await this.rpc(
-      "advance_course_authoring_part_materialization_for_actor_v1",
+      "advance_course_authoring_part_materialization_for_actor_v2",
       {
         p_actor_id: principal.actorId,
         p_course_id: courseId,
@@ -3821,7 +3841,7 @@ export class CourseSupabaseAdapter {
         p_expected_materialization_version: expectedMaterializationVersion,
         p_operation: operation,
         p_payload: payloadForRpc,
-        p_channel: authoringChannel(principal),
+        p_channel: channel,
         p_request_id: requestId
       },
       { deadlineAt, timeoutMs: 40_000 }
@@ -3831,7 +3851,7 @@ export class CourseSupabaseAdapter {
       authoringPartId,
       materializationId,
       operation,
-      channel: authoringChannel(principal),
+      channel,
       stepId: operation === "record_step" ? payload.stepId : null
     });
     return withDeepLink(normalized, this.publicAppUrl, "planning");

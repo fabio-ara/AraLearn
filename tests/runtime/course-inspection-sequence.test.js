@@ -134,7 +134,7 @@ function inspectionItem(index) {
       title: "Parte inicial",
       state: "materialized"
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-${String(index).padStart(2, "0")}`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
   };
 }
 
@@ -923,7 +923,7 @@ test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", as
   assert.match(root.innerHTML, /Observações · 129/u);
   assert.match(root.innerHTML, /Exibindo 128 de 129 observações correspondentes; 129 ativas/u);
   assert.match(root.innerHTML, /Abrir todas na área Observações/u);
-  assert.match(root.innerHTML, /section=observations/u);
+  assert.match(root.innerHTML, /section=review/u);
   assert.match(root.innerHTML, /Observação da página 128\./u);
   assert.doesNotMatch(root.innerHTML, /Estudante B/u);
   sequence.destroy();
@@ -1144,7 +1144,7 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
   await sequence.open();
 
   const microsequenceRoute = `#/authoring/courses/${COURSE_ID}` +
-    "?section=inspection&didacticMicrosequenceId=micro-a";
+    "?section=content&didacticMicrosequenceId=micro-a";
   await root.listeners.get("click")({
     preventDefault() {},
     target: {

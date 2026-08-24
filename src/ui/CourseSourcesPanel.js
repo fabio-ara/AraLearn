@@ -228,7 +228,7 @@ function sourceStatusMarkup(source) {
 }
 
 function sourceTitle(source) {
-  return source.title || source.sourceId;
+  return source.title || "Fonte importada sem título";
 }
 
 function renderNotice(state) {
@@ -269,7 +269,7 @@ function renderSourceConfirmation(state) {
 function sourceObservationTargetLabel(item, source) {
   if (item.target.kind === "source") return "Fonte";
   const anchor = source.anchors.find(({ anchorId }) => anchorId === item.target.id);
-  return anchor ? `Âncora · ${selectorLabel(anchor.selector)}` : `Âncora · ${item.target.id}`;
+  return anchor ? `Âncora · ${selectorLabel(anchor.selector)}` : "Âncora não disponível";
 }
 
 function sourceObservationCategoryLabel(category) {
@@ -281,9 +281,8 @@ function sourceObservationCategoryLabel(category) {
 function renderConsideredSourceLinks(sourceLinks) {
   if (!sourceLinks.length) return "";
   return '<div class="course-source-observation-references"><strong>Fontes e Âncoras consideradas</strong><ul>' +
-    sourceLinks.map((link) => `<li>${escapeHtml(link.sourceId)} · fonte v${link.sourceRevision}` +
-      ` · ${link.anchors.map((anchor) => `${escapeHtml(anchor.anchorId)} v${anchor.anchorRevision}`).join(", ")}</li>`
-    ).join("") + "</ul></div>";
+    sourceLinks.map((link, index) => `<li>Fonte ${index + 1} · ${link.anchors.length} ` +
+      `${link.anchors.length === 1 ? "Âncora" : "Âncoras"}</li>`).join("") + "</ul></div>";
 }
 
 function renderSourceObservation(item, source) {
@@ -291,7 +290,7 @@ function renderSourceObservation(item, source) {
     '<header><div>' +
     `<strong>${escapeHtml(sourceObservationCategoryLabel(item.category))}</strong>` +
     `<span>${escapeHtml(sourceObservationTargetLabel(item, source))} · ${escapeHtml(SOURCE_OBSERVATION_STATES[item.state] || item.state)}</span>` +
-    `</div><small>v${item.annotationVersion}</small></header>` +
+    "</div></header>" +
     `<p>${escapeHtml(item.rawText || "Observação retirada.")}</p>` +
     (item.ownerResponse
       ? '<div class="course-source-observation-response"><strong>' +
@@ -555,9 +554,7 @@ function renderSourceForm(state) {
   ).join("");
   return '<form class="course-source-form" data-source-form="source">' +
     `<h3>${source ? resolving ? "Resolver fonte legada" : "Nova revisão da fonte" : "Nova fonte"}</h3>` +
-    '<label for="course-source-id">Identidade estável</label>' +
-    `<input id="course-source-id" name="sourceId" maxlength="${source ? 4_096 : 480}" required value="${escapeHtml(values.sourceId)}"` +
-    `${source ? " readonly" : ""} placeholder="ex.: freire-pedagogia-autonomia">` +
+    `<input type="hidden" name="sourceId" value="${escapeHtml(values.sourceId)}">` +
     '<label for="course-source-kind">Tipo</label>' +
     `<select id="course-source-kind" name="kind" required>${kindOptions}</select>` +
     '<label for="course-source-title">Título</label>' +
@@ -691,7 +688,7 @@ function renderAnchor(anchor, sourceRevision, state) {
   return `<article class="course-source-anchor${deepLinked ? " is-deep-linked" : ""}"` +
     (deepLinked ? ' data-source-deep-linked-anchor tabindex="-1"' : "") + ">" +
     `<div><strong>${escapeHtml(selectorLabel(anchor.selector))}</strong>` +
-    `<span>Âncora v${anchor.revision} · ${anchor.status === "active" ? "ativa" : "aposentada"}</span>` +
+    `<span>${anchor.status === "active" ? "Âncora ativa" : "Âncora aposentada"}</span>` +
     (deepLinked ? '<span class="course-source-deep-link-label">Âncora indicada</span>' : "") +
     "</div>" +
     (anchor.verificationExcerpt
@@ -733,7 +730,7 @@ function renderSourceAttachments(source, index, state) {
         '<button type="button" data-source-action="download-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
           `${state.busy ? " disabled" : ""}>${renderUiIcon("arrow-down", "course-authoring-button-icon")}` +
-          `<span><strong>Baixar PDF</strong><small>${escapeHtml(byteSizeLabel(attachment.byteSize))} · ${escapeHtml(attachment.contentHash.slice(0, 12))}…</small></span></button>`
+          `<span><strong>Baixar PDF</strong><small>${escapeHtml(byteSizeLabel(attachment.byteSize))}</small></span></button>`
       ).join("") + "</div>"
       : '<p class="course-source-empty">Nenhum PDF anexado a esta revisão.</p>') + "</section>";
 }
@@ -744,7 +741,7 @@ function renderSourceRevision(source, index, state) {
   const deepLinked = state.initialAnchorMatch?.sourceRevision === source.revision;
   return `<article class="course-source-revision${deepLinked ? " is-deep-linked" : ""}">` +
     '<header><div>' + sourceStatusMarkup(source) +
-    `<h3>${escapeHtml(sourceTitle(source))}</h3><p>${escapeHtml(source.sourceId)} · revisão ${source.revision}</p></div>` +
+    `<h3>${escapeHtml(sourceTitle(source))}</h3><p>${current ? "Revisão atual" : "Revisão anterior"}</p></div>` +
     (current && (state.canRequestChat || source.status !== "retired")
       ? '<div class="course-source-compact-actions">' +
       (state.canRequestChat
@@ -818,7 +815,7 @@ function renderCatalogCard(source, { selectable = false, selected = false } = {}
     '<span class="course-source-card-icon">' + renderUiIcon("study", "course-authoring-icon") +
     '</span><span class="course-source-card-copy">' +
     sourceStatusMarkup(source) + `<strong>${escapeHtml(sourceTitle(source))}</strong>` +
-    `<small>${escapeHtml(source.sourceId)} · v${source.revision} · ${source.anchorCount} ${source.anchorCount === 1 ? "âncora" : "âncoras"}</small></span>` +
+    `<small>${source.anchorCount} ${source.anchorCount === 1 ? "âncora" : "âncoras"}</small></span>` +
     (selectable ? selected ? renderUiIcon("save", "course-authoring-arrow") : renderUiIcon("add", "course-authoring-arrow") : renderUiIcon("arrow-right", "course-authoring-arrow")) +
     "</button></article>";
 }
@@ -908,8 +905,8 @@ function renderTargetLink(state, link, index) {
   ].join("");
   return '<article class="course-source-target-link">' +
     '<header><div>' + (source ? sourceStatusMarkup(source) : "") +
-    `<strong>${escapeHtml(source ? sourceTitle(source) : link.sourceId)}</strong>` +
-    `<span>${escapeHtml(link.sourceId)} · fonte v${link.sourceRevision}</span></div>` +
+    `<strong>${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}</strong>` +
+    `<span>${stale ? "Revisão histórica vinculada" : "Revisão atual vinculada"}</span></div>` +
     '<div class="course-source-compact-actions">' +
     `<button type="button" data-source-action="move-target-source-up" data-source-id="${escapeHtml(link.sourceId)}"${index === 0 ? " disabled" : ""} aria-label="Mover fonte para cima">${renderUiIcon("arrow-up", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="move-target-source-down" data-source-id="${escapeHtml(link.sourceId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
@@ -2228,7 +2225,10 @@ export function createCourseSourcesPanel({
     } else if (action === "confirm-target-discard") {
       confirmTargetDiscard();
     } else if (action === "add-source") {
-      state.sourceEditor = { source: null, draft: null };
+      state.sourceEditor = {
+        source: null,
+        draft: { ...sourceDraft(null), sourceId: createUuid() }
+      };
       state.failure = "";
       render();
     } else if (action === "cancel-source-form") {

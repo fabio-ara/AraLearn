@@ -299,7 +299,7 @@ test("inbox usa query aninhada, resumo exato e identidade protegida", async () =
   assert.match(root.innerHTML, /Assunto ausente da primeira página/u);
   assert.match(root.innerHTML, /Módulo fora da primeira página/u);
   assert.match(root.innerHTML, /Nova observação autoral/u);
-  assert.match(root.innerHTML, /section=observations&amp;annotationId=/u);
+  assert.match(root.innerHTML, /section=review&amp;annotationId=/u);
   assert.doesNotMatch(root.innerHTML, new RegExp(CONTRIBUTOR_REF, "u"));
   assert.doesNotMatch(root.innerHTML, /\S+@\S+|e-?mail|>chat|fórum|thread/iu);
   panel.destroy();
@@ -752,7 +752,7 @@ test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Liçã
       assert.match(request, new RegExp(`Caminho: ${targetCase.path}`, "u"));
       assert.match(request, new RegExp(`Observação vinculada: ${commands[0].command.annotationId}`, "u"));
       assert.match(request, new RegExp(
-        `section=observations&annotationId=${commands[0].command.annotationId}`,
+        `section=review&annotationId=${commands[0].command.annotationId}`,
         "u"
       ));
       assert.match(request, new RegExp(`Argumento no alvo ${targetCase.kind}`, "u"));

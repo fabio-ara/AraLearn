@@ -206,7 +206,7 @@ test("a projeção bruta recebe definições, links e limites no caso de uso com
   assert.equal(
     assembled.facts[0].deepLink,
     `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      "?section=inspection&studyUnitId=unit-a"
+      "?section=content&studyUnitId=unit-a"
   );
   assert.match(assembled.limitations.join(" "), /não sustentam conclusão causal/u);
 });

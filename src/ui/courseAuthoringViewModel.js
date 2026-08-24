@@ -10,6 +10,7 @@ const PART_PROGRESS_STATES = new Set([
   "planned", "materializing", "attention_required", "partially_materialized", "materialized"
 ]);
 const MATERIALIZATION_STATUSES = new Set(["running", "completed", "failed"]);
+const MATERIALIZATION_PROGRESS_STATES = new Set(["running", "partial", "completed", "failed"]);
 const AUTHORING_ACTIVITY_KINDS = new Set([
   "plan_changed", "materialization_started", "materialization_step_recorded",
   "materialization_finished"
@@ -385,6 +386,23 @@ function normalizeLastMaterialization(value) {
   });
 }
 
+function normalizeMaterializationSummary(value) {
+  if (!isPlainObject(value)) {
+    fail("invalid_authoring_plan", "Uma materialização da Parte é inválida.");
+  }
+  const base = normalizeLastMaterialization(value);
+  const channel = text(value.channel);
+  const progressState = text(value.progressState);
+  const summary = requiredText(value.summary, "O resumo da materialização", { maximum: 1_000 });
+  if (!new Set(["application", "mcp", "actions"]).has(channel)) {
+    fail("invalid_authoring_plan", "O canal da materialização é inválido.");
+  }
+  if (!MATERIALIZATION_PROGRESS_STATES.has(progressState)) {
+    fail("invalid_authoring_plan", "O progresso da materialização é inválido.");
+  }
+  return Object.freeze({ ...base, progressState, channel, summary });
+}
+
 function normalizePartProgress(value) {
   if (!isPlainObject(value)) {
     fail("invalid_authoring_plan", "O progresso de uma Parte é inválido.");
@@ -392,6 +410,23 @@ function normalizePartProgress(value) {
   const state = text(value.state);
   if (!PART_PROGRESS_STATES.has(state)) {
     fail("invalid_authoring_plan", "O estado derivado de uma Parte é inválido.");
+  }
+  if (!Array.isArray(value.materializations)) {
+    fail("invalid_authoring_plan", "O histórico de materializações da Parte é inválido.");
+  }
+  const materializations = value.materializations.map(normalizeMaterializationSummary);
+  if (new Set(materializations.map(({ id }) => id)).size !== materializations.length ||
+      materializations.some((item, index) => index > 0 && (
+        item.startedAt > materializations[index - 1].startedAt ||
+        item.startedAt === materializations[index - 1].startedAt &&
+          item.id > materializations[index - 1].id
+      ))) {
+    fail("invalid_authoring_plan", "A ordem do histórico de materializações é inválida.");
+  }
+  const lastMaterialization = normalizeLastMaterialization(value.lastMaterialization);
+  if ((lastMaterialization == null) !== (materializations.length === 0) ||
+      lastMaterialization && !materializations.some(({ id }) => id === lastMaterialization.id)) {
+    fail("invalid_authoring_plan", "A última materialização não pertence ao histórico da Parte.");
   }
   return Object.freeze({
     state,
@@ -403,7 +438,8 @@ function normalizePartProgress(value) {
       value.studyUnitCount,
       "A quantidade materializada de unidades"
     ),
-    lastMaterialization: normalizeLastMaterialization(value.lastMaterialization)
+    materializations: Object.freeze(materializations),
+    lastMaterialization
   });
 }
 
@@ -488,7 +524,8 @@ function normalizeAuthoringActivity(value) {
   }
   const kind = text(value.kind);
   const channel = text(value.channel);
-  if (!AUTHORING_ACTIVITY_KINDS.has(kind) || !["application", "mcp"].includes(channel)) {
+  if (!AUTHORING_ACTIVITY_KINDS.has(kind) ||
+      !["application", "mcp", "actions"].includes(channel)) {
     fail("invalid_authoring_plan", "Uma atividade recente é inconsistente.");
   }
   return Object.freeze({
@@ -1581,6 +1618,7 @@ export function normalizeCourseAuthoringOutline(value, {
       title: moduleTitle,
       summary: null,
       context: null,
+      entityPath: Object.freeze([course.courseId, moduleId]),
       position: modulePosition
     }));
     moduleValue.lessons.forEach((lessonValue, lessonPosition) => {
@@ -1602,6 +1640,7 @@ export function normalizeCourseAuthoringOutline(value, {
         title: lessonTitle,
         summary: null,
         context: moduleTitle,
+        entityPath: Object.freeze([course.courseId, moduleId, lessonId]),
         position: lessonPosition
       }));
       lessonValue.topics.forEach((topicValue, topicPosition) => {
@@ -1621,6 +1660,7 @@ export function normalizeCourseAuthoringOutline(value, {
           title: outlineRequiredText(topicValue.title, "O título do Tópico"),
           summary: outlineOptionalText(topicValue.summary, "O resumo do Tópico", 4_000),
           context: `${moduleTitle} · ${lessonTitle}`,
+          entityPath: null,
           position: topicPosition
         }));
       });
@@ -1658,6 +1698,12 @@ export function normalizeCourseAuthoringOutline(value, {
             4_000
           ),
           context: `${moduleTitle} · ${lessonTitle}`,
+          entityPath: Object.freeze([
+            course.courseId,
+            moduleId,
+            lessonId,
+            microsequenceId
+          ]),
           position: microsequencePosition,
           studyUnitCount: count
         });

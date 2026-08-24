@@ -29,7 +29,7 @@ function previewDeepLink(publicAppUrl, courseId, studyUnitId) {
   if (!base) return null;
   return courseId && studyUnitId
     ? `${base}/#/authoring/courses/${encodeURIComponent(courseId)}` +
-      `?section=inspection&studyUnitId=${encodeURIComponent(studyUnitId)}`
+      `?section=content&studyUnitId=${encodeURIComponent(studyUnitId)}`
     : `${base}/#/authoring`;
 }
 

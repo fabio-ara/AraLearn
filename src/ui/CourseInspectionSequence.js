@@ -373,7 +373,7 @@ function routeForPath(courseId, kind, id) {
     kind === "lesson" ? { lessonId: id } :
       kind === "didactic_microsequence" ? { didacticMicrosequenceId: id } :
         { studyUnitId: id };
-  return buildCourseAuthoringRoute(courseId, { section: "inspection", ...options });
+  return buildCourseAuthoringRoute(courseId, { section: "content", ...options });
 }
 
 function renderScopeSelect(state) {
@@ -586,6 +586,11 @@ function renderStudyUnit(
     `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações${
       observationCount === null ? "" : ` · ${Number(observationCount)}`
     }</span></button>` +
+    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
+      section: "review",
+      studyUnitId: item.studyUnit.id
+    }))}" data-inspection-route data-inspection-control-key="audit:${escapeHtml(item.studyUnit.id)}">` +
+    `${renderUiIcon("review", "course-authoring-button-icon")}<span>Auditoria</span></a>` +
     "</div>" +
     (runtime.dockHtml
       ? '<p class="course-inspection-response-notice">Respostas desativadas durante a inspeção.</p>'
@@ -644,7 +649,7 @@ function renderInspectionObservationSheet(state) {
     emptyLabel: "Nenhuma observação neste contexto.",
     showContributor: true,
     collectionSummary: state.observationCollectionSummary,
-    canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "observations" })
+    canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "review" })
   });
   const confirmation = renderInspectionConfirmation(state);
   if (!confirmation) return sheet;
@@ -1566,7 +1571,7 @@ export function createCourseInspectionSequence({
     await savePositionNow(anchor);
     const returnTo = returnItem
       ? buildCourseAuthoringRoute(state.courseId, {
-          section: "inspection",
+          section: "content",
           studyUnitId: returnItem.studyUnit.id
         })
       : null;
@@ -1575,7 +1580,7 @@ export function createCourseInspectionSequence({
 
   async function navigateScope(scope) {
     const route = buildCourseAuthoringRoute(state.courseId, {
-      section: "inspection",
+      section: "content",
       ...scopeRouteOptions(scope)
     });
     return navigateFromCurrentPoint(route);
@@ -2236,7 +2241,7 @@ export function createCourseInspectionSequence({
       state.explicitTarget = false;
       state.explicitAnchor = false;
       state.requestedAnchorStudyUnitId = null;
-      return onNavigate(buildCourseAuthoringRoute(state.courseId, { section: "inspection" }));
+      return onNavigate(buildCourseAuthoringRoute(state.courseId, { section: "content" }));
     }
   }
 

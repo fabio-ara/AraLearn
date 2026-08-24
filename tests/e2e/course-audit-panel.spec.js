@@ -694,7 +694,7 @@ for (const width of [360, 390, 430, 1280]) {
       .toBeVisible();
     await expect(page.getByRole("link", { name: "Fonte literal preservada" }).first())
       .toHaveAttribute("href", new RegExp("sourceId=%20Fonte%20literal%20$"));
-    await expect(page.getByRole("link", { name: /Âncora anchor-literal/u }).first())
+    await expect(page.getByRole("link", { name: "Abrir Âncora 1" }).first())
       .toHaveAttribute("href", /anchorId=anchor-literal$/u);
 
     const cards = page.locator("[data-audit-preview-grid] .course-audit-preview-card");
@@ -738,11 +738,11 @@ for (const width of [360, 390, 430, 1280]) {
     await expect(page.locator(".course-audit-run-checks .course-audit-check")).toHaveCount(4);
     await expect(page.getByRole("link", { name: "Link da rodada" })).toHaveAttribute(
       "href",
-      `#/authoring/courses/${IDS.course}?section=observations&auditRunId=${IDS.cleanRun}`
+      `#/authoring/courses/${IDS.course}?section=review&auditRunId=${IDS.cleanRun}`
     );
     await expect(page.getByRole("link", { name: "Inspecionar Unidade" })).toHaveAttribute(
       "href",
-      `#/authoring/courses/${IDS.course}?section=inspection&studyUnitId=unit-a`
+      `#/authoring/courses/${IDS.course}?section=content&studyUnitId=unit-a`
     );
     const resultColumns = await page.locator(".course-audit-result-counts").first().evaluate((node) =>
       getComputedStyle(node).gridTemplateColumns.split(" ").length);
@@ -856,9 +856,10 @@ test("Auditoria ajusta, aplica, verifica e reverte sem perder topics ou Fontes",
   await page.getByRole("button", { name: "Verificar", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Verificar correção" })).toBeVisible();
   const focalCriterion = page.locator('[data-audit-check-dimension="factual_quality"]');
-  await expect(focalCriterion.getByLabel("Código do critério"))
+  await expect(focalCriterion.locator('[name="criterion-code:factual_quality"]'))
     .toHaveValue("mcp.review.factual_traceability");
-  await expect(focalCriterion.getByLabel("Código do critério")).toHaveJSProperty("readOnly", true);
+  await expect(focalCriterion.locator('[name="criterion-code:factual_quality"]'))
+    .toHaveAttribute("type", "hidden");
   await expect(focalCriterion.locator('[name="criterion-version:factual_quality"]'))
     .toHaveValue("2026.08");
   await expect(focalCriterion.getByLabel("Critério público"))

@@ -253,6 +253,7 @@ test("deriva progresso somente de materializações e entidades reais", () => {
       id: IDS.materialization,
       partId: IDS.part,
       status: "completed",
+      channel: "application",
       version: 3,
       startedAt: "2026-08-17T10:00:00.000Z",
       updatedAt: "2026-08-17T10:05:00.000Z",
@@ -267,6 +268,20 @@ test("deriva progresso somente de materializações e entidades reais", () => {
     state: "materialized",
     microsequenceCount: 2,
     studyUnitCount: 2,
+    materializations: [{
+      id: IDS.materialization,
+      status: "completed",
+      progressState: "completed",
+      channel: "application",
+      version: 3,
+      completedStepCount: 2,
+      failedStepCount: 0,
+      totalStepCount: 2,
+      startedAt: "2026-08-17T10:00:00.000Z",
+      updatedAt: "2026-08-17T10:05:00.000Z",
+      completedAt: "2026-08-17T10:05:00.000Z",
+      summary: "2 etapas concluídas"
+    }],
     lastMaterialization: {
       id: IDS.materialization,
       status: "completed",
@@ -295,6 +310,7 @@ test("falha prevalece sobre conteúdo parcial e execução em curso permanece ex
       id: IDS.materialization,
       partId: IDS.part,
       status: "failed",
+      channel: "application",
       version: 1,
       updatedAt: "2026-08-17T10:00:00.000Z"
     }]
@@ -305,6 +321,7 @@ test("falha prevalece sobre conteúdo parcial e execução em curso permanece ex
       id: IDS.materialization,
       partId: IDS.part,
       status: "running",
+      channel: "mcp",
       version: 1,
       updatedAt: "2026-08-17T10:00:00.000Z"
     }]

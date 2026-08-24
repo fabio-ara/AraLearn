@@ -79,6 +79,7 @@
           "course-cas-idempotency-v1",
           "course-instructional-plan-v1",
           "course-authoring-part-materialization-v1",
+          "course-authoring-part-materialization-history-v1",
           "course-study-unit-inspection-v1",
           "course-design-parameters-v1",
           "course-authoring-guidance-v1",
@@ -299,7 +300,7 @@
       },
       "ui": [
         { "path": "src/ui/CourseVariantsPanel.js", "token": "createCourseVariantsPanel" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"variants\"" }
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"research\"" }
       ],
       "visibleEffects": [
         { "path": "src/ui/CourseVariantsPanel.js", "token": "Desvios não declarados" },

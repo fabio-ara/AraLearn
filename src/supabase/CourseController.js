@@ -1361,7 +1361,7 @@ export class CourseController {
                 },
                 authoringPart: null,
                 deepLink: `#/authoring/courses/${intent.courseId}` +
-                  `?section=inspection&studyUnitId=${encodeURIComponent(intent.studyUnit.id)}`
+                  `?section=content&studyUnitId=${encodeURIComponent(intent.studyUnit.id)}`
               },
               inspectionScopeOptions: {
                 authoringParts: [],

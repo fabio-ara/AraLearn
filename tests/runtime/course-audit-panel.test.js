@@ -444,7 +444,7 @@ function findingsPage(options, items, { hasMore = false, nextCursor = null, matc
 function cleanRunSummary({
   auditRunId = CLEAN_RUN_ID,
   createdAt = "2026-08-17T13:00:00Z",
-  deepLink = `#/authoring/courses/${COURSE_ID}?section=observations&auditRunId=${auditRunId}`
+  deepLink = `#/authoring/courses/${COURSE_ID}?section=review&auditRunId=${auditRunId}`
 } = {}) {
   return {
     auditRunId,
@@ -883,16 +883,16 @@ test("detalhes de achado, correção e rodada abrem o compositor sem mutar audit
   }]);
   assert.equal(
     requests[0].deepLink,
-    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}`
+    `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}`
   );
   assert.equal(
     requests[1].deepLink,
-    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}` +
+    `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}` +
       `&correctionId=${CORRECTION_ID}`
   );
   assert.equal(
     requests[2].deepLink,
-    `#/authoring/courses/${COURSE_ID}?section=observations&auditRunId=${CLEAN_RUN_ID}`
+    `#/authoring/courses/${COURSE_ID}?section=review&auditRunId=${CLEAN_RUN_ID}`
   );
   panel.destroy();
   runPanel.destroy();
@@ -1022,7 +1022,7 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   assert.match(root.audit.innerHTML, /Aplicada/u);
   const suggestionRoute = `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${ANNOTATION_ID}`;
   assert.match(root.audit.innerHTML, /Revisar sugestão de resolução/u);
-  assert.match(root.audit.innerHTML, /Observação v3/u);
+  assert.doesNotMatch(root.audit.innerHTML, /Observação v3/u);
   assert.equal(deepLinkClick(root, suggestionRoute), true);
   assert.deepEqual(navigations, [suggestionRoute]);
   panel.destroy();
@@ -1877,10 +1877,10 @@ test("deep link de rodada abre runDetail limpo e volta à enumeração completa"
   assert.match(root.audit.innerHTML, /Critério preservado de structural_conformance/u);
   assert.equal((root.audit.innerHTML.match(/class="course-audit-check"/gu) || []).length, 4);
   assert.ok(root.audit.innerHTML.includes(
-    `href="#/authoring/courses/${COURSE_ID}?section=observations&amp;auditRunId=${CLEAN_RUN_ID}"`
+    `href="#/authoring/courses/${COURSE_ID}?section=review&amp;auditRunId=${CLEAN_RUN_ID}"`
   ));
   assert.ok(root.audit.innerHTML.includes(
-    `href="#/authoring/courses/${COURSE_ID}?section=inspection&amp;studyUnitId=unit-a"`
+    `href="#/authoring/courses/${COURSE_ID}?section=content&amp;studyUnitId=unit-a"`
   ));
 
   actionClick(root, "back-runs");
@@ -1891,7 +1891,7 @@ test("deep link de rodada abre runDetail limpo e volta à enumeração completa"
   assert.match(root.audit.innerHTML, new RegExp(`data-audit-run-id="${CLEAN_RUN_ID}"`, "u"));
   assert.doesNotMatch(root.audit.innerHTML, /javascript:/u);
   assert.ok(root.audit.innerHTML.includes(
-    `href="#/authoring/courses/${COURSE_ID}?section=observations&amp;auditRunId=${CLEAN_RUN_ID}"`
+    `href="#/authoring/courses/${COURSE_ID}?section=review&amp;auditRunId=${CLEAN_RUN_ID}"`
   ));
 });
 

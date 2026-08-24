@@ -749,7 +749,7 @@ export function deriveAuthoringPartProgress({
   }
   const attempts = materializations
     .filter((attempt) => attempt?.partId === partId)
-    .sort((left, right) => String(right.updatedAt || "").localeCompare(String(left.updatedAt || "")) ||
+    .sort((left, right) => String(right.startedAt || "").localeCompare(String(left.startedAt || "")) ||
       String(right.id || "").localeCompare(String(left.id || "")));
   const latest = attempts[0] || null;
   const latestSteps = latest
@@ -778,10 +778,50 @@ export function deriveAuthoringPartProgress({
        !["running", "completed", "failed"].includes(lastMaterialization.status))) {
     fail("invalid_course_authoring_materialization", "A materialização da Parte é inválida.");
   }
+  const history = attempts
+    .map((attempt) => {
+      const attemptSteps = steps.filter((step) => step?.materializationId === attempt.id);
+      const channel = String(attempt.channel || "");
+      if (!["application", "mcp", "actions"].includes(channel)) {
+        fail("invalid_course_authoring_materialization", "O canal da materialização é inválido.");
+      }
+      const completedStepCount = attemptSteps.filter(({ status }) => status === "completed").length;
+      const totalStepCount = attemptSteps.length;
+      const suppliedSummary = typeof attempt.resultFacts?.summary === "string"
+        ? attempt.resultFacts.summary.trim()
+        : "";
+      return {
+        id: uuid(attempt.id, "invalid_course_authoring_materialization_id", "A identidade da materialização"),
+        status: attempt.status,
+        progressState: attempt.status === "failed"
+          ? "failed"
+          : attempt.status === "completed"
+            ? "completed"
+            : completedStepCount > 0 || attemptSteps.some(({ status }) => status === "failed")
+              ? "partial"
+              : "running",
+        channel,
+        version: Number(attempt.version),
+        completedStepCount,
+        failedStepCount: attemptSteps.filter(({ status }) => status === "failed").length,
+        totalStepCount,
+        startedAt: timestamp(attempt.startedAt),
+        updatedAt: timestamp(attempt.updatedAt),
+        completedAt: timestamp(attempt.completedAt),
+        summary: suppliedSummary || (attempt.status === "completed"
+          ? `${completedStepCount} ${completedStepCount === 1 ? "etapa concluída" : "etapas concluídas"}`
+          : attempt.status === "failed"
+            ? "A execução terminou com falha."
+            : `${completedStepCount} de ${totalStepCount} etapas concluídas`)
+      };
+    })
+    .sort((left, right) => String(right.startedAt || "").localeCompare(String(left.startedAt || "")) ||
+      right.id.localeCompare(left.id));
   return {
     state,
     microsequenceCount: linkedIds.length,
     studyUnitCount,
+    materializations: history,
     lastMaterialization
   };
 }

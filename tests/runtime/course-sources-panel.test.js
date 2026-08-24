@@ -576,17 +576,17 @@ test("histórico da Fonte preserva a consulta literal e carrega uma revisão por
   click(root, "open-source", { sourceId });
   await settle();
   assert.equal(sourceCalls.length, 1);
-  assert.match(root.innerHTML, /revisão 3/u);
+  assert.match(root.innerHTML, /Revisão atual/u);
   assert.match(root.innerHTML, /Carregar revisões anteriores/u);
 
   click(root, "load-more-revisions");
   await settle();
-  assert.match(root.innerHTML, /revisão 2/u);
+  assert.match(root.innerHTML, /Revisão anterior/u);
   assert.match(root.innerHTML, /Carregar revisões anteriores/u);
 
   click(root, "load-more-revisions");
   await settle();
-  assert.match(root.innerHTML, /revisão 1/u);
+  assert.equal((root.innerHTML.match(/Revisão anterior/gu) || []).length, 2);
   assert.doesNotMatch(root.innerHTML, /Carregar revisões anteriores/u);
   assert.deepEqual(sourceCalls.map((options) => ({
     sourceId: options.sourceId,
@@ -1935,7 +1935,8 @@ test("resolver Fonte legada preserva a identidade literal existente", async () =
   await settle();
   assert.match(root.innerHTML, /data-source-action="edit-source"/u);
   click(root, "edit-source");
-  assert.match(root.innerHTML, /name="sourceId" maxlength="4096"/u);
+  assert.match(root.innerHTML, new RegExp(`type="hidden" name="sourceId" value="${legacySourceId.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}"`, "u"));
+  assert.doesNotMatch(root.innerHTML, /Identidade estável/u);
   submit(root, "source", {
     ...sourceFormMetadata({ origin: "imported_legacy", availability: "unknown",
       verificationStatus: "unverified" }),
@@ -2361,7 +2362,8 @@ test("formulários contam escalares Unicode e deixam maxlength defensivo para pa
   });
   await sourcePanel.open();
   click(sourceRoot, "add-source");
-  assert.match(sourceRoot.innerHTML, /name="sourceId" maxlength="480"/u);
+  assert.match(sourceRoot.innerHTML, /type="hidden" name="sourceId" value="[0-9a-f-]{36}"/u);
+  assert.doesNotMatch(sourceRoot.innerHTML, /Identidade estável/u);
   assert.match(sourceRoot.innerHTML, /name="title" maxlength="600"/u);
   submit(sourceRoot, "source", {
     ...sourceFormMetadata(),

@@ -890,6 +890,47 @@ export function createCourseStudyApplication({
     return selection ? openLessonStudyUnit(selection, { focusDestination: true }) : false;
   }
 
+  async function openCanonicalEntityPath(entityPath) {
+    if (!Array.isArray(entityPath) || entityPath.length < 1 || entityPath.length > 5 ||
+        entityPath.some((identity) => typeof identity !== "string" || !identity)) {
+      return false;
+    }
+    if (state.manualEditing || state.manualSaving || state.structuralEditing ||
+        state.structuralSaving || providerAssistance?.opened) return false;
+    if (!await ensureCourseLoaded(entityPath[0])) return false;
+    let selection = selectionForCourse(state.project, entityPath[0]);
+    let view = "course";
+    let microsequenceMode = "play";
+    if (entityPath.length >= 2) {
+      selection = selectionForModule(state.project, selection, entityPath[1]);
+      view = "module";
+    }
+    if (entityPath.length >= 3 && selection) {
+      selection = selectionForLesson(state.project, selection, entityPath[2]);
+      view = "lesson";
+    }
+    if (entityPath.length === 4 && selection) {
+      selection = selectionForMicrosequence(state.project, selection, entityPath[3]);
+      view = "microsequence";
+      microsequenceMode = "overview";
+    }
+    if (entityPath.length === 5) {
+      selection = exactStudyUnitSelection(state.project, entityPath);
+      view = "microsequence";
+      microsequenceMode = "play";
+    }
+    if (!selection) return false;
+    state.navigationHistory = [];
+    state.selection = selection;
+    state.view = view;
+    state.microsequenceMode = microsequenceMode;
+    resetStudyUnitInteraction();
+    persistStudyNavigation();
+    queueStudyFocus("[data-study-destination-heading]");
+    render({ preserveFocus: false });
+    return true;
+  }
+
   async function resetCourseProgress(courseId) {
     if (!courseId || typeof repository.clearCourseProgress !== "function") return false;
     const course = findCourse(state.project, courseId);
@@ -3508,7 +3549,7 @@ export function createCourseStudyApplication({
     },
     openCourse,
     openEntityPath(entityPath) {
-      return openReviewItem(entityPath);
+      return openCanonicalEntityPath(entityPath);
     },
     resumePendingManualEdit(options) {
       return resumePendingPersonalCopyEdit(options);

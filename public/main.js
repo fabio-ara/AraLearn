@@ -1116,6 +1116,13 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     root: authoringRoot,
     controller: authoringController,
     providerAssistanceSession: courseProviderSession,
+    async onOpenStudyContent({ entityPath }) {
+      const opened = await editorApp?.openEntityPath?.(entityPath);
+      if (!opened) throw new Error("Não foi possível abrir este objeto no editor contextual.");
+      authoringSurface?.destroy?.();
+      authoringRoot.hidden = true;
+      editorRoot.hidden = false;
+    },
     onClose() {
       clearAuthoringRoute();
       authoringRoot.hidden = true;
@@ -1132,7 +1139,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     authoringRoot.hidden = false;
     void authoringSurface.open();
   };
-  const refreshVisibleApplication = () => authoringSurface?.opened
+  const refreshVisibleApplication = () => authoringSurface?.opened && !authoringRoot.hidden
     ? authoringSurface.refresh()
     : refreshStudy();
   let visibleRefreshTimer = null;

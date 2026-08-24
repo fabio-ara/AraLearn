@@ -386,18 +386,18 @@ function sourceForLink(context, link) {
 
 function renderSourceReferences(sourceLinks, context, courseId) {
   if (!sourceLinks.length) return '<p class="course-audit-meta">Nenhuma Fonte foi declarada neste check.</p>';
-  return '<ul class="course-audit-reference-list">' + sourceLinks.map((link) => {
+  return '<ul class="course-audit-reference-list">' + sourceLinks.map((link, sourceIndex) => {
     const source = sourceForLink(context, link);
-    const sourceLabel = source?.title || `${link.sourceId} · v${link.sourceRevision}`;
+    const sourceLabel = source?.title || `Fonte preservada ${sourceIndex + 1}`;
     const sourceMarkup = source
       ? renderDeepLink(source.deepLink, courseId, sourceLabel)
       : `<span>${escapeHtml(sourceLabel)} (revisão preservada)</span>`;
-    const anchors = link.anchors.map((anchorRef) => {
+    const anchors = link.anchors.map((anchorRef, anchorIndex) => {
       const anchor = source?.anchors.find((item) =>
         item.anchorId === anchorRef.anchorId && item.anchorRevision === anchorRef.anchorRevision);
       return `<li>${anchor
-        ? renderDeepLink(anchor.deepLink, courseId, `Âncora ${anchor.anchorId} · v${anchor.anchorRevision}`)
-        : `<span>Âncora ${escapeHtml(anchorRef.anchorId)} · v${anchorRef.anchorRevision} (preservada)</span>`}</li>`;
+        ? renderDeepLink(anchor.deepLink, courseId, `Abrir Âncora ${anchorIndex + 1}`)
+        : `<span>Âncora preservada ${anchorIndex + 1}</span>`}</li>`;
     }).join("");
     return `<li><div>${sourceMarkup}<span class="course-audit-meta">` +
       `${escapeHtml(LABELS.sourceRelations[link.relation] || link.relation)}</span></div>` +
@@ -406,14 +406,14 @@ function renderSourceReferences(sourceLinks, context, courseId) {
 }
 
 function renderPlanAndParameterReferences(check, context) {
-  const plan = check.planItemRefs.map((ref) => {
+  const plan = check.planItemRefs.map((ref, index) => {
     const item = context?.plan?.items.find((candidate) =>
       candidate.planItemId === ref.planItemId && candidate.version === ref.version);
-    return `<li><strong>Plano</strong> · ${escapeHtml(item?.statement || ref.planItemId)} · v${ref.version}</li>`;
+    return `<li><strong>Plano</strong> · ${escapeHtml(item?.statement || `Item preservado ${index + 1}`)}</li>`;
   });
-  const parameters = check.parameterRefs.map((ref) => {
+  const parameters = check.parameterRefs.map((ref, index) => {
     const parameter = context?.design?.parameters.find(({ parameterId }) => parameterId === ref.parameterId);
-    return `<li><strong>Parâmetro</strong> · ${escapeHtml(ref.parameterId)}: ` +
+    return `<li><strong>Parâmetro ${index + 1}</strong> · ` +
       `${escapeHtml(parameter ? summaryValue(parameter.value) : "valor histórico preservado")}</li>`;
   });
   const items = [...plan, ...parameters];
@@ -426,7 +426,7 @@ function renderCheck(check, context, courseId) {
   return '<section class="course-audit-check">' +
     '<div class="course-audit-criterion"><p class="course-audit-caption">Critério público</p>' +
     `<h4>${escapeHtml(check.criterion.statement)}</h4>` +
-    `<p class="course-audit-meta">${escapeHtml(check.criterion.code)} · v${escapeHtml(check.criterion.version)}</p></div>` +
+    '<p class="course-audit-meta">Critério registrado para esta rodada</p></div>' +
     `<div class="course-audit-badges"><span class="course-audit-result" data-result="${escapeHtml(check.result)}">` +
     `${escapeHtml(label("results", check.result))}</span>` +
     `<span class="course-audit-badge">${escapeHtml(label("dimensions", check.dimension))}</span></div>` +
@@ -441,7 +441,7 @@ function renderContextReferenceChoices(context, dimension, draft) {
   const sourceChoices = dimension === "factual_quality"
     ? context.sources.flatMap((source) => source.anchors
       .filter((anchor) => source.status === "active" && anchor.status === "active")
-      .map((anchor) => {
+      .map((anchor, anchorIndex) => {
         const key = sourceDraftKey({
           dimension,
           sourceId: source.sourceId,
@@ -454,7 +454,7 @@ function renderContextReferenceChoices(context, dimension, draft) {
           ` data-source-id="${escapeHtml(source.sourceId)}" data-source-revision="${source.sourceRevision}"` +
           ` data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.anchorRevision}"` +
           `${checkedAttribute(draftChecked(draft, key))}>` +
-          `<span>${escapeHtml(source.title)} · Âncora ${escapeHtml(anchor.anchorId)}</span></label>`;
+          `<span>${escapeHtml(source.title)} · Âncora ${anchorIndex + 1}</span></label>`;
       })).join("")
     : "";
   const planChoices = context.plan.items.map((item) => {
@@ -469,7 +469,7 @@ function renderContextReferenceChoices(context, dimension, draft) {
       `${checkedAttribute(draftChecked(draft, key))}>` +
       `<span>${escapeHtml(item.statement)}</span></label>`;
   }).join("");
-  const parameterChoices = context.design.parameters.map((parameter) => {
+  const parameterChoices = context.design.parameters.map((parameter, index) => {
     const key = parameterDraftKey({
       dimension,
       parameterId: parameter.parameterId,
@@ -480,7 +480,7 @@ function renderContextReferenceChoices(context, dimension, draft) {
       ` data-parameter-id="${escapeHtml(parameter.parameterId)}"` +
       ` data-change-id="${escapeHtml(parameter.changeId ?? "")}"` +
       `${checkedAttribute(draftChecked(draft, key))}>` +
-      `<span>${escapeHtml(parameter.parameterId)} · ${escapeHtml(summaryValue(parameter.value))}</span></label>`;
+      `<span>${escapeHtml(parameter.reason || `Parâmetro efetivo ${index + 1}`)} · ${escapeHtml(summaryValue(parameter.value))}</span></label>`;
   }).join("");
   const detailsOpen = draft?.referenceDetailsOpen?.has?.(dimension) ? " open" : "";
   return `<details class="course-audit-form-references" data-audit-reference-details="${dimension}"${detailsOpen}>` +
@@ -534,12 +534,10 @@ function renderChecksForm(context, {
     const selectedSeverity = draftValue(draft, namedDraftKey(`severity:${dimension}`), "medium");
     return `<fieldset class="course-audit-check-form" data-audit-check-dimension="${dimension}">` +
       `<legend>${escapeHtml(label("dimensions", dimension))}</legend>` +
-      `<label><span>Código do critério</span><input name="criterion-code:${dimension}" required maxlength="120" value="${escapeHtml(code)}"${locked}></label>` +
+      `<input type="hidden" name="criterion-code:${dimension}" value="${escapeHtml(code)}">` +
       `<input type="hidden" name="criterion-version:${dimension}" value="${escapeHtml(version)}">` +
       `<label><span>Critério público</span><textarea name="criterion-statement:${dimension}" required maxlength="1000"${locked}>${escapeHtml(statement)}</textarea></label>` +
-      (focalCriterion
-        ? `<p class="course-audit-meta">Critério focal preservado na versão ${escapeHtml(criterion.version)}.</p>`
-        : "") +
+      (focalCriterion ? '<p class="course-audit-meta">Critério focal preservado.</p>' : "") +
       `<label><span>Resultado</span><select name="result:${dimension}">` +
       COURSE_AUDIT_RESULTS.map((result) =>
         `<option value="${result}"${selectedAttribute(result, selectedResult)}>${escapeHtml(label("results", result))}</option>`
@@ -557,7 +555,7 @@ function renderChecksForm(context, {
     ? '<label><span>Conclusão da verificação</span><select name="verification-outcome">' +
       `<option value="still_open"${selectedAttribute("still_open", draftValue(draft, namedDraftKey("verification-outcome"), "still_open"))}>O achado continua aberto</option>` +
       `<option value="resolved"${selectedAttribute("resolved", draftValue(draft, namedDraftKey("verification-outcome"), "still_open"))}>O achado foi resolvido</option></select></label>` +
-      `<p class="course-audit-meta">Achado v${finding.findingVersion} · correção v${correction.correctionVersion}</p>`
+      '<p class="course-audit-meta">Correção vinculada ao achado</p>'
     : "";
   return `<form class="course-audit-round-form" data-audit-form="${verification ? "verify" : "record"}"` +
     ` data-audit-draft-id="${escapeHtml(draftId)}">` +
@@ -580,13 +578,13 @@ function renderContext(state) {
     `<p class="course-audit-path">${escapeHtml(pathLabel(target.path))}</p></div>` +
     '<button type="button" data-audit-action="back-findings">Ver achados</button></header>' +
     '<div class="course-audit-context-card"><dl class="course-audit-summary">' +
-    `<div><dt>Curso</dt><dd>v${context.facts.courseRevision}</dd></div>` +
-    `<div><dt>Unidade</dt><dd>v${target.version}</dd></div>` +
-    `<div><dt>Plano</dt><dd>v${context.plan.version}</dd></div></dl>` +
+    `<div><dt>Fontes</dt><dd>${context.sources.length}</dd></div>` +
+    `<div><dt>Observações</dt><dd>${context.annotations.length}</dd></div>` +
+    `<div><dt>Itens do plano</dt><dd>${context.plan.items.length}</dd></div></dl>` +
     `<p>${escapeHtml(context.intent.query || "Contexto representacional preservado")}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(target.path.at(-1)?.id === target.studyUnitId
-      ? buildCourseAuthoringRoute(state.courseId, { section: "inspection", studyUnitId: target.studyUnitId })
+      ? buildCourseAuthoringRoute(state.courseId, { section: "content", studyUnitId: target.studyUnitId })
       : null, state.courseId, "Abrir Unidade") + "</div></div>" +
     `<div class="course-audit-preview-grid is-single">${preview(snapshot, target, "Estado atual")}</div>` +
     '<p class="course-audit-structural-note">A interface registra três dimensões humanas. A conformidade estrutural é medida pelo servidor; uma necessidade de dividir a Unidade permanece como achado aberto no v1.</p>' +
@@ -639,19 +637,19 @@ function renderCorrection(state, detail) {
         detail.corrections.map((item) => renderDeepLink(
           item.deepLink,
           state.courseId,
-          `${label("correctionStates", item.status)} · v${item.correctionVersion}`
+          label("correctionStates", item.status)
         )).join("") + "</div></section>"
       : '<p class="course-audit-meta">Nenhuma correção foi proposta.</p>';
   }
   return '<section class="course-audit-correction" data-audit-correction-id="' +
     escapeHtml(correction.correctionId) + '"><header><div><p class="course-audit-caption">Correção autoral</p>' +
-    `<h3>${escapeHtml(label("correctionStates", correction.status))} · v${correction.correctionVersion}</h3></div>` +
+    `<h3>${escapeHtml(label("correctionStates", correction.status))}</h3></div>` +
     '<div class="course-authoring-header-actions">' +
-    `<span class="course-audit-badge">Base v${correction.target.baseVersion}</span>` +
+    '<span class="course-audit-badge">Base preservada</span>' +
     renderAuditChatButton(
       state,
       "request-chat-correction",
-      `Trabalhar com o ChatGPT sobre a correção v${correction.correctionVersion}`
+      "Trabalhar com o ChatGPT sobre esta correção"
     ) + "</div></header>" +
     `<p>${escapeHtml(correction.rationale)}</p>` +
     '<div class="course-audit-links">' +
@@ -671,25 +669,25 @@ function renderCorrection(state, detail) {
       state.courseId
     ) + "</section></div>" +
     (correction.application
-      ? `<p class="course-audit-meta">Aplicada na Unidade v${correction.application.targetVersion} em ${escapeHtml(formattedInstant(correction.application.appliedAt))}.</p>`
+      ? `<p class="course-audit-meta">Aplicada na Unidade em ${escapeHtml(formattedInstant(correction.application.appliedAt))}.</p>`
       : "") +
     (correction.verification
       ? `<p class="course-audit-meta">Verificação: ${escapeHtml(correction.verification.outcome === "resolved" ? "resolvido" : "continua aberto")}.</p>`
       : "") +
     (correction.rollback
-      ? `<p class="course-audit-meta">Revertida para a Unidade v${correction.rollback.targetVersion} em ${escapeHtml(formattedInstant(correction.rollback.rolledBackAt))}.</p>`
+      ? `<p class="course-audit-meta">Revertida em ${escapeHtml(formattedInstant(correction.rollback.rolledBackAt))}.</p>`
       : "") + "</section>";
 }
 
 function renderHistory(detail) {
   const findingItems = detail.findingHistory.map((entry) =>
     `<li><div><strong>${escapeHtml(LABELS.historyDecisions[entry.decision] || entry.decision)}</strong>` +
-    `<p class="course-audit-meta">Achado v${entry.findingVersion} · ${escapeHtml(formattedInstant(entry.createdAt))}</p></div></li>`
+    `<p class="course-audit-meta">${escapeHtml(formattedInstant(entry.createdAt))}</p></div></li>`
   );
   const correctionItems = detail.selectedCorrectionHistory.map((entry) =>
     `<li><div><strong>Correção ${escapeHtml(label("correctionStates", entry.status).toLowerCase())}</strong>` +
     `<p>${escapeHtml(entry.rationale)}</p>` +
-    `<p class="course-audit-meta">v${entry.correctionVersion} · ${escapeHtml(formattedInstant(entry.createdAt))}</p></div></li>`
+    `<p class="course-audit-meta">${escapeHtml(formattedInstant(entry.createdAt))}</p></div></li>`
   );
   return '<section class="course-audit-history"><h3>Histórico</h3>' +
     `<ol class="course-audit-history-list">${[...findingItems, ...correctionItems].join("") ||
@@ -708,16 +706,16 @@ function renderDetail(state) {
   const finding = detail.finding;
   const correction = detail.selectedCorrection;
   const annotationLinks = finding.annotationRefs.map((annotation) =>
-    renderDeepLink(annotation.deepLink, state.courseId, `Observação v${annotation.annotationVersion}`)
+    renderDeepLink(annotation.deepLink, state.courseId, "Abrir observação relacionada")
   ).join("");
   return '<section class="course-audit-detail" data-audit-detail-id="' + escapeHtml(finding.findingId) + '">' +
     '<header class="course-audit-detail-heading"><div><p class="course-audit-caption">Achado preservado</p>' +
-    `<h3>${escapeHtml(finding.code)}</h3>${renderBadges(finding)}</div>` +
+    `<h3>${escapeHtml(finding.check.criterion.statement)}</h3>${renderBadges(finding)}</div>` +
     '<div class="course-authoring-header-actions">' +
     renderAuditChatButton(
       state,
       "request-chat-finding",
-      `Trabalhar com o ChatGPT sobre o achado ${finding.code}`
+      "Trabalhar com o ChatGPT sobre este achado"
     ) +
     '<button type="button" data-audit-action="back-findings">Voltar aos achados</button></div></header>' +
     `<p class="course-audit-path">${escapeHtml(pathLabel(finding.target.path))}</p>` +
@@ -799,7 +797,7 @@ function renderRunCard(run, courseId) {
     '<header><div>' +
     `<p class="course-audit-caption">${escapeHtml(label("origins", run.origin))}</p>` +
     `<h4>${escapeHtml(label("runKinds", run.runKind))} · ${escapeHtml(formattedInstant(run.createdAt))}</h4>` +
-    `<p class="course-audit-meta">Curso v${run.courseRevision} · Unidade ${escapeHtml(run.target.studyUnitId)} v${run.target.version}</p></div>` +
+    `<p class="course-audit-meta">${escapeHtml(pathLabel(run.target.path))}</p></div>` +
     `<span class="course-audit-badge">${run.findingsCreated === 0
       ? "Nenhum achado criado"
       : `${run.findingsCreated} ${run.findingsCreated === 1 ? "achado criado" : "achados criados"}`}</span></header>` +
@@ -826,18 +824,18 @@ function renderRunDetail(state) {
   const run = state.runDetailPage?.runDetail;
   if (!run) return '<p class="course-authoring-loading" role="status">Carregando rodada…</p>';
   const selfLink = buildCourseAuthoringRoute(state.courseId, {
-    section: "observations",
+    section: "review",
     auditRunId: run.auditRunId
   });
   const targetLink = buildCourseAuthoringRoute(state.courseId, {
-    section: "inspection",
+    section: "content",
     studyUnitId: run.target.studyUnitId
   });
   return '<section class="course-audit-run-detail" data-audit-run-detail-id="' +
     escapeHtml(run.auditRunId) + '"><header class="course-audit-detail-heading"><div>' +
     `<p class="course-audit-caption">${escapeHtml(label("origins", run.origin))}</p>` +
     `<h3>${escapeHtml(label("runKinds", run.runKind))} · ${escapeHtml(formattedInstant(run.createdAt))}</h3>` +
-    `<p class="course-audit-meta">${escapeHtml(run.method.id)} · v${escapeHtml(run.method.version)}</p></div>` +
+    '<p class="course-audit-meta">Método registrado para esta rodada</p></div>' +
     '<div class="course-authoring-header-actions">' +
     renderAuditChatButton(
       state,
@@ -849,10 +847,8 @@ function renderRunDetail(state) {
     '<div class="course-audit-links">' +
     renderDeepLink(selfLink, state.courseId, "Link da rodada") +
     renderDeepLink(targetLink, state.courseId, "Inspecionar Unidade") + "</div>" +
-    '<section class="course-audit-context-card"><h4>Resumo preservado</h4>' +
+    '<section class="course-audit-context-card"><h4>Resumo da rodada</h4>' +
     '<dl class="course-audit-summary">' +
-    `<div><dt>Curso</dt><dd>v${run.courseRevision}</dd></div>` +
-    `<div><dt>Unidade</dt><dd>v${run.target.version}</dd></div>` +
     `<div><dt>Checks</dt><dd>${run.metrics.checksTotal}</dd></div>` +
     `<div><dt>Achados criados</dt><dd>${run.metrics.findingsCreated}</dd></div></dl>` +
     renderResultCounts(run.metrics.byResult) + "</section>" +
@@ -935,11 +931,11 @@ function renderAuditView(state) {
           const label = suggestion.action === "resolve" ? "Revisar sugestão de resolução" :
             "Revisar sugestão de reabertura";
           const href = buildCourseAuthoringRoute(state.courseId, {
-            section: "observations",
+            section: "review",
             annotationId: suggestion.annotationId
           });
           return `<li><a href="${escapeHtml(href)}" data-audit-action="navigate-deep-link">` +
-            `${escapeHtml(label)}</a><span>Observação v${suggestion.annotationVersion}</span></li>`;
+            `${escapeHtml(label)}</a></li>`;
         }).join("") + "</ul></section>"
       : "") + content + renderAuditConfirmation(state) + renderEditor(state);
 }
@@ -1048,7 +1044,7 @@ export function createCourseAuditPanel({
       typeof controller?.mutateCourseAuditCycle !== "function" ||
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
-      routeTarget && !["anchored_annotation", "audit_finding", "audit_run"].includes(routeTarget.kind) ||
+      routeTarget && !["anchored_annotation", "audit_finding", "audit_run", "study_unit"].includes(routeTarget.kind) ||
       typeof onNavigate !== "function" || typeof onCourseRevisionChange !== "function" ||
       onRequestChat !== null && typeof onRequestChat !== "function") {
     throw new TypeError("Dependências de Auditoria e correções são inválidas.");
@@ -1068,13 +1064,15 @@ export function createCourseAuditPanel({
     courseRevision: course.revision,
     requestChatEnabled: typeof onRequestChat === "function",
     routeTarget,
-    activeView: ["audit_finding", "audit_run"].includes(routeTarget?.kind)
+    activeView: ["audit_finding", "audit_run", "study_unit"].includes(routeTarget?.kind)
       ? "findings"
       : "observations",
     mode: routeTarget?.kind === "audit_finding"
       ? "detail"
       : routeTarget?.kind === "audit_run"
         ? "run_detail"
+        : routeTarget?.kind === "study_unit"
+          ? "context"
         : "findings",
     networkOnline: navigatorValue?.onLine !== false,
     auditSetVersion: null,
@@ -1799,15 +1797,15 @@ export function createCourseAuditPanel({
       target: {
         type: "audit_finding",
         id: finding.findingId,
-        title: finding.code,
-        path: `${pathLabel(finding.target.path)} › Achado ${finding.code}`
+        title: label("dimensions", finding.check.dimension),
+        path: `${pathLabel(finding.target.path)} › Achado de ${label("dimensions", finding.check.dimension)}`
       },
       action: "review",
       instruction: "Releia o detalhe persistido deste achado, o critério, a evidência pública, as Fontes, " +
         "Âncoras, Observações, a Unidade e suas versões. Explique divergências e discuta comigo sem " +
         "alterar o Curso neste pedido.",
       deepLink: buildCourseAuthoringRoute(state.courseId, {
-        section: "observations",
+        section: "review",
         findingId: finding.findingId
       }),
       references: { auditRunId: finding.auditRun.auditRunId }
@@ -1823,16 +1821,16 @@ export function createCourseAuditPanel({
       target: {
         type: "authoring_correction",
         id: correction.correctionId,
-        title: `Correção v${correction.correctionVersion}`,
-        path: `${pathLabel(finding.target.path)} › Achado ${finding.code} › ` +
-          `Correção v${correction.correctionVersion}`
+        title: "Correção autoral",
+        path: `${pathLabel(finding.target.path)} › Achado de ${label("dimensions", finding.check.dimension)} › ` +
+          "Correção autoral"
       },
       action: "review",
       instruction: "Compare a justificativa, os checkpoints anterior e posterior, as Fontes, Âncoras e a " +
         "versão corrente da Unidade. Explique riscos e divergências sem aplicar, rejeitar, reverter ou " +
         "verificar a proposta neste pedido.",
       deepLink: buildCourseAuthoringRoute(state.courseId, {
-        section: "observations",
+        section: "review",
         findingId: finding.findingId,
         correctionId: correction.correctionId
       }),
@@ -1855,7 +1853,7 @@ export function createCourseAuditPanel({
         "Compare a revisão auditada e a versão da Unidade com o estado corrente e discuta comigo sem " +
         "alterar o Curso neste pedido.",
       deepLink: buildCourseAuthoringRoute(state.courseId, {
-        section: "observations",
+        section: "review",
         auditRunId: run.auditRunId
       }),
       references: { auditRunId: run.auditRunId }
@@ -2287,6 +2285,9 @@ export function createCourseAuditPanel({
     syncView();
     renderAudit();
     if (state.activeView === "observations") return ensureObservations();
+    if (state.routeTarget.kind === "study_unit") {
+      return loadContext(state.routeTarget.id, { fresh: true });
+    }
     return state.routeTarget.kind === "audit_run"
       ? loadRunDetail(state.routeTarget.id, { fresh: true })
       : loadDetail(state.routeTarget.id, {

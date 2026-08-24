@@ -486,9 +486,9 @@ function renderFacts(page) {
 }
 
 function renderPanel(state) {
-  return '<section class="course-authoring-section course-analytics" aria-labelledby="course-authoring-section-title">' +
+  return '<section class="course-authoring-section course-analytics" aria-labelledby="course-analytics-section-title">' +
     '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Pesquisa</h2>' +
+    '<h2 id="course-analytics-section-title">Pesquisa</h2>' +
     '<p>Fatos do processo de criação, com definição e limites de interpretação.</p></div>' +
     '<div class="course-analytics-export-actions">' +
     `<button type="button" data-course-analytics-action="export-csv"${!state.page || state.exporting ? " disabled" : ""}>CSV</button>` +
