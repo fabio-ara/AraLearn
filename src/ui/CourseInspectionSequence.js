@@ -17,12 +17,7 @@ import {
   listManualStudyUnitTargetIds,
   readManualStudyUnitEditPathValues
 } from "./manualStudyUnitEdit.js";
-import {
-  createStudyUnitProviderAssistance,
-  renderStudyUnitAssistanceTrigger
-} from "./StudyUnitProviderAssistance.js";
-import { studyUnitAssistanceTargetAvailability } from
-  "../assist/studyUnitProviderAssistance.js";
+import { createCourseProviderAssistance } from "./CourseProviderAssistance.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
@@ -449,14 +444,6 @@ function renderManualTitle(item, state, editing, targetId) {
 
 function renderManualModeActions(item, state, editing) {
   const id = escapeHtml(item.studyUnit.id);
-  const assistanceTargetId = editing && state.manualTargetId
-    ? state.manualTargetId
-    : "study_unit";
-  const assistanceAvailability = studyUnitAssistanceTargetAvailability({
-    studyUnit: item.studyUnit,
-    targetId: assistanceTargetId,
-    currentPathValues: editing ? state.manualDraft.pathValues : {}
-  });
   const canUndo = state.manualUndo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   const canRedo = state.manualRedo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   return '<nav class="course-inspection-mode-actions" role="group" aria-label="Modo da Unidade de estudo">' +
@@ -477,16 +464,12 @@ function renderManualModeActions(item, state, editing) {
         ' title="Assistência pelo ChatGPT">' +
         `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
       : "") +
-    (state.canEditManually
-      ? renderStudyUnitAssistanceTrigger({
-          context: "inspection",
-          studyUnitId: item.studyUnit.id,
-          disabled: state.manualSaving || !assistanceAvailability.available,
-          unavailableReason: assistanceAvailability.reason,
-          label: editing
-            ? "Assistência por API no trecho selecionado"
-            : "Assistência por API no título"
-        })
+    (state.canUseProviderAssistance
+      ? `<button type="button" data-inspection-provider-assistance data-study-unit-id="${id}"` +
+        ` aria-pressed="${state.assistanceActiveStudyUnitId === item.studyUnit.id}"` +
+        ' aria-label="Assistência por API" title="Assistência por API"' +
+        `${state.manualSaving || state.assistanceSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
+        `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
       : "") +
     (state.canEditManually
       ? `<button type="button" data-inspection-manual-history="undo" data-study-unit-id="${id}"` +
@@ -497,6 +480,22 @@ function renderManualModeActions(item, state, editing) {
         `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>`
       : "") +
     "</nav>";
+}
+
+function renderAssistanceDraftDock(item, state) {
+  if (state.assistanceDraft?.studyUnitId !== item.studyUnit.id) return "";
+  return '<footer class="course-inspection-manual-dock" aria-label="Rascunho da Assistência por API">' +
+    `<p><strong>${escapeHtml(state.assistanceDraft.summary || "Proposta preparada")}</strong></p>` +
+    (state.assistanceError
+      ? `<p class="course-inspection-manual-error" role="alert">${escapeHtml(state.assistanceError)}</p>`
+      : "") +
+    '<div><button type="button" data-inspection-assistance-action="discard"' +
+    ` aria-label="Descartar proposta" title="Descartar proposta"${state.assistanceSaving ? " disabled" : ""}>` +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
+    '<button type="button" data-inspection-assistance-action="save"' +
+    ` aria-label="Salvar proposta" title="Salvar proposta"${state.assistanceSaving ? " disabled" : ""}>` +
+    `${renderUiIcon(state.assistanceSaving ? "rotate" : "save", "course-authoring-button-icon")}` +
+    '<span>Salvar</span></button></div></footer>';
 }
 
 function renderManualEditDock(item, state, editing, resourceTargetIds) {
@@ -594,6 +593,7 @@ function renderStudyUnit(
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
     `<div class="card-sheet-content">${runtime.bodyHtml}</div>${runtime.dockHtml}</div>` +
     renderManualEditDock(item, state, editing, resourceTargetIds) +
+    renderAssistanceDraftDock(item, state) +
     `<footer><span>${escapeHtml(part ? partStateLabel(part.state) : "Materializada")}</span>` +
     `<small>Unidade ${item.ordinal}</small></footer></article></li>`;
 }
@@ -811,6 +811,9 @@ export function createCourseInspectionSequence({
     canRequestChat: typeof onRequestChat === "function",
     canEditManually: course.ownership === "owned" && course.canEdit === true &&
       typeof onSaveManualEdit === "function",
+    canUseProviderAssistance: course.ownership === "owned" && course.canEdit === true &&
+      typeof onSaveManualEdit === "function" &&
+      typeof controller.loadCourseDocument === "function",
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
@@ -858,6 +861,10 @@ export function createCourseInspectionSequence({
     manualHistoryPreview: null,
     manualUnknownSignature: "",
     manualDiscardArmed: false,
+    assistanceActiveStudyUnitId: "",
+    assistanceDraft: null,
+    assistanceSaving: false,
+    assistanceError: "",
     destroyed: false
   };
   let observer = null;
@@ -1694,7 +1701,7 @@ export function createCourseInspectionSequence({
 
   function ensureProviderAssistance() {
     if (providerAssistance) return providerAssistance;
-    providerAssistance = createStudyUnitProviderAssistance({
+    providerAssistance = createCourseProviderAssistance({
       documentValue,
       windowValue,
       session: providerAssistanceSession
@@ -1712,23 +1719,19 @@ export function createCourseInspectionSequence({
     });
   }
 
-  function providerPreviewFocus(studyUnitId, targetId) {
+  function providerPreviewFocus(studyUnitId) {
     const escapedId = windowValue?.CSS?.escape
       ? windowValue.CSS.escape(studyUnitId)
       : studyUnitId.replace(/["\\]/gu, "\\$&");
     const unit = root.querySelector?.(
       `[data-inspection-study-unit="${escapedId}"]`
     );
-    if (targetId === "study_unit") {
-      return unit?.querySelector?.("[data-inspection-manual-title]") || null;
-    }
-    return unit?.querySelector?.(
-      ".runtime-resource-edit-target.is-inline-editing [data-manual-edit-path]"
-    ) || unit?.querySelector?.(".runtime-resource-edit-target.is-inline-editing") || null;
+    return unit?.querySelector?.("h3") || unit;
   }
 
-  function openProviderAssistance(trigger) {
-    if (!state.canEditManually || state.manualSaving) return false;
+  async function openProviderAssistance(trigger) {
+    if (!state.canUseProviderAssistance || state.manualSaving || state.assistanceSaving ||
+        state.assistanceDraft || providerAssistance?.opened) return false;
     if (state.manualUnknownSignature) {
       state.manualDiscardArmed = true;
       state.manualError = "Confirme a mesma gravação ou descarte o pedido incerto antes de pedir outra alteração.";
@@ -1738,42 +1741,119 @@ export function createCourseInspectionSequence({
     const studyUnitId = String(trigger?.dataset?.studyUnitId || "");
     const item = manualItem(studyUnitId);
     if (!item) return false;
-    if (state.manualStudyUnitId && state.manualStudyUnitId !== studyUnitId &&
-        manualDraftChanged()) {
+    if (state.manualStudyUnitId && manualDraftChanged()) {
       state.manualError = "Salve ou cancele a edição atual antes de usar a assistência.";
       render();
       return false;
     }
-    if (state.manualStudyUnitId !== studyUnitId) {
-      beginManualEdit(studyUnitId, "study_unit", { restoreFocus: false });
-    } else {
-      captureManualDraft();
-    }
-    const current = manualItem(studyUnitId);
-    const targetId = state.manualTargetId || "study_unit";
-    const pathValues = structuredClone(state.manualDraft.pathValues);
+    if (state.manualStudyUnitId) resetManualEditor({ focusEdit: false });
+    state.assistanceActiveStudyUnitId = studyUnitId;
+    state.assistanceError = "";
+    render({ captureDraft: false });
     try {
+      const loaded = await controller.loadCourseDocument(state.courseId, {
+        verifiedRevision: state.pinnedRevision
+      });
+      if (state.destroyed || state.assistanceActiveStudyUnitId !== studyUnitId) return false;
+      const project = loaded?.document;
+      const selection = {
+        courseId: state.courseId,
+        moduleId: item.curriculumPath.module.id,
+        lessonId: item.curriculumPath.lesson.id,
+        microsequenceId: item.curriculumPath.didacticMicrosequence.id,
+        studyUnitId,
+        studyUnitIndex: Math.max(0, Number(item.studyUnit.position) - 1)
+      };
+      const baselineItem = structuredClone(item);
       return ensureProviderAssistance().open({
         trigger: providerTriggerFocus(studyUnitId),
-        studyUnit: current.studyUnit,
-        targetId,
-        pathValues,
-        baselineOrigin: state.manualOrigin,
-        onFocusPreview: () => providerPreviewFocus(studyUnitId, targetId),
-        onPreview: ({ targetId: nextTargetId, pathValues: nextValues, origin }) =>
-          previewManualDraft({
+        project,
+        selection,
+        scope: "study_unit",
+        targetTitle: item.studyUnit.title,
+        writeTargetId: "study_unit",
+        onFocusPreview: () => providerPreviewFocus(studyUnitId),
+        onPreview: (prepared) => {
+          replaceManualItem(baselineItem, prepared.candidate, baselineItem.version);
+          render({ captureDraft: false });
+        },
+        onDiscardPreview: () => {
+          replaceManualItem(baselineItem, baselineItem.studyUnit, baselineItem.version);
+          render({ captureDraft: false });
+        },
+        onApplyDraft: (prepared) => {
+          replaceManualItem(baselineItem, prepared.candidate, baselineItem.version);
+          state.assistanceDraft = {
             studyUnitId,
-            targetId: nextTargetId,
-            pathValues: nextValues,
-            origin,
-            restoreFocus: false
-          })
+            baselineItem,
+            proposedStudyUnit: structuredClone(prepared.candidate),
+            summary: prepared.message
+          };
+          state.assistanceError = "";
+          render({ captureDraft: false });
+        },
+        onClosed: () => {
+          state.assistanceActiveStudyUnitId = "";
+          render({ captureDraft: false });
+        }
       });
     } catch (error) {
+      state.assistanceActiveStudyUnitId = "";
       state.manualError = error instanceof Error
         ? error.message
         : "A assistência por API não está disponível.";
-      render();
+      render({ captureDraft: false });
+      return false;
+    }
+  }
+
+  function discardAssistanceDraft() {
+    const draft = state.assistanceDraft;
+    if (!draft || state.assistanceSaving) return false;
+    replaceManualItem(draft.baselineItem, draft.baselineItem.studyUnit, draft.baselineItem.version);
+    state.assistanceDraft = null;
+    state.assistanceError = "";
+    state.manualStatus = "Proposta descartada.";
+    render({ captureDraft: false });
+    return true;
+  }
+
+  async function saveAssistanceDraft() {
+    const draft = state.assistanceDraft;
+    if (!draft || state.assistanceSaving) return false;
+    state.assistanceSaving = true;
+    state.assistanceError = "";
+    render({ captureDraft: false });
+    try {
+      const committed = await commitManualStudyUnit(
+        draft.baselineItem,
+        draft.proposedStudyUnit,
+        "provider_assistance"
+      );
+      replaceManualItem(
+        draft.baselineItem,
+        committed.item.studyUnit,
+        committed.item.version
+      );
+      state.manualUndo.push({
+        studyUnitId: draft.studyUnitId,
+        targetId: "study_unit",
+        before: structuredClone(draft.baselineItem.studyUnit),
+        after: structuredClone(committed.item.studyUnit)
+      });
+      if (state.manualUndo.length > 20) state.manualUndo.shift();
+      state.manualRedo = [];
+      state.assistanceDraft = null;
+      state.assistanceSaving = false;
+      state.manualStatus = "Proposta salva.";
+      render({ captureDraft: false });
+      return true;
+    } catch (error) {
+      state.assistanceSaving = false;
+      state.assistanceError = error instanceof Error
+        ? error.message
+        : "Não foi possível salvar a proposta.";
+      render({ captureDraft: false });
       return false;
     }
   }
@@ -1987,6 +2067,17 @@ export function createCourseInspectionSequence({
   }
 
   async function handleClick(event) {
+    const assistanceAction = event.target.closest?.("[data-inspection-assistance-action]");
+    if (assistanceAction) {
+      return assistanceAction.dataset.inspectionAssistanceAction === "save"
+        ? saveAssistanceDraft()
+        : discardAssistanceDraft();
+    }
+    if (state.assistanceDraft) {
+      state.assistanceError = "Salve ou descarte a proposta antes de mudar de contexto.";
+      render({ captureDraft: false });
+      return false;
+    }
     const providerTrigger = event.target.closest?.("[data-inspection-provider-assistance]");
     if (providerTrigger) return openProviderAssistance(providerTrigger);
     const mode = event.target.closest?.("[data-inspection-unit-mode]");
@@ -2316,7 +2407,8 @@ export function createCourseInspectionSequence({
     return Boolean(
       state.pendingObservationMutation || state.confirmation ||
       state.observationSaving || draftChanged || state.manualSaving ||
-      state.manualStudyUnitId || manualDraftChanged() || providerAssistance?.opened
+      state.manualStudyUnitId || manualDraftChanged() || providerAssistance?.opened ||
+      state.assistanceDraft || state.assistanceSaving
     );
   }
 

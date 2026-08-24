@@ -243,6 +243,225 @@
   }
 }
 
+/* Sessão contextual de Assistência por API. */
+.course-assistance-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+}
+
+.course-assistance-overlay,
+.course-assistance-overlay *,
+.course-assistance-overlay *::before,
+.course-assistance-overlay *::after {
+  box-sizing: border-box;
+}
+
+.course-assistance-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-overlay);
+}
+
+.course-assistance-sheet {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: min(100%, 430px);
+  max-width: 430px;
+  max-height: min(92dvh, 760px);
+  padding: 16px max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: 22px 22px 0 0;
+  box-shadow: var(--shadow-floating);
+}
+
+.course-assistance-sheet > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.course-assistance-sheet :is(h2, h3, p, ol) {
+  margin: 0;
+}
+
+.course-assistance-sheet > header h2 {
+  margin-top: 2px;
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.course-assistance-sheet > header p,
+.course-assistance-disclosure,
+.course-assistance-fixed-provider,
+.course-assistance-candidate small,
+.course-assistance-empty {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1.4;
+}
+
+.course-assistance-conversation {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.course-assistance-conversation li {
+  display: grid;
+  gap: 3px;
+  width: min(92%, 360px);
+  padding: 9px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+  overflow-wrap: anywhere;
+}
+
+.course-assistance-conversation li.is-user {
+  justify-self: end;
+  background: color-mix(in srgb, var(--action-primary) 10%, var(--surface-subtle));
+}
+
+.course-assistance-conversation li > span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 650;
+}
+
+.course-assistance-plan,
+.course-assistance-candidate,
+.course-assistance-connection {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+}
+
+.course-assistance-plan > p:first-child,
+.course-assistance-candidate > p:first-child {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 650;
+}
+
+.course-assistance-plan h3,
+.course-assistance-candidate h3 {
+  font-size: var(--type-sm);
+}
+
+.course-assistance-sheet form,
+.course-assistance-sheet label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.course-assistance-sheet label > span,
+.course-assistance-connection summary {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.course-assistance-sheet :is(select, input, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 11px;
+  color: var(--text-primary);
+  background: var(--input-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  font: inherit;
+  font-size: var(--type-sm);
+}
+
+.course-assistance-sheet textarea {
+  min-height: 82px;
+  max-height: 28dvh;
+  resize: vertical;
+}
+
+.course-assistance-sheet :is(button, summary) {
+  min-height: 44px;
+}
+
+.course-assistance-sheet form > .open-mini,
+.course-assistance-plan > .open-mini {
+  justify-self: end;
+}
+
+.course-assistance-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.course-assistance-status,
+.course-assistance-error {
+  min-height: 1.1em;
+  font-size: var(--type-xs);
+}
+
+.course-assistance-error {
+  color: var(--status-danger);
+}
+
+.course-assistance-overlay.is-peeking {
+  pointer-events: none;
+}
+
+.course-assistance-peek {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: min(100%, 430px);
+  min-height: 60px;
+  padding: 8px max(10px, var(--safe-right))
+    max(8px, var(--safe-bottom-tappable)) max(10px, var(--safe-left));
+  pointer-events: auto;
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--shadow-floating);
+  font-size: var(--type-xs);
+}
+
+@media (min-width: 520px) {
+  .course-assistance-overlay {
+    place-items: center;
+    padding: 16px;
+  }
+
+  .course-assistance-overlay.is-peeking {
+    place-items: end center;
+  }
+
+  .course-assistance-sheet,
+  .course-assistance-peek {
+    border-radius: 22px;
+  }
+}
+
 .course-authoring-surface {
   box-sizing: border-box;
   width: min(100%, 430px);

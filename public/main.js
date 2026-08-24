@@ -18,8 +18,8 @@ import {
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
-import { createStudyUnitProviderSession } from
-  "../src/ui/StudyUnitProviderAssistance.js";
+import { createCourseProviderSession } from
+  "../src/ui/CourseProviderAssistance.js";
 
 let authStore = null;
 let courseLocalStore = null;
@@ -28,7 +28,7 @@ let authenticationShutdown = null;
 let activeUserId = null;
 let lifecycleAbortController = null;
 let localConnectionRefreshPending = false;
-let studyUnitProviderSession = null;
+let courseProviderSession = null;
 let pendingCompositionCleanup = null;
 let authenticatedApplicationCleanup = null;
 let removeLocalDataOnShutdown = false;
@@ -54,8 +54,8 @@ function quiesceAraLearnAuthenticatedInteractions() {
   cleanupApplication?.();
   lifecycleAbortController?.abort();
   lifecycleAbortController = null;
-  studyUnitProviderSession?.destroy?.();
-  studyUnitProviderSession = null;
+  courseProviderSession?.destroy?.();
+  courseProviderSession = null;
 }
 
 async function closeAraLearnLocalConnections() {
@@ -816,7 +816,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const authoringRoot = root.querySelector("#aralearn-authoring-root");
   const settingsRoot = root.querySelector("#aralearn-settings-root");
-  studyUnitProviderSession = createStudyUnitProviderSession();
+  courseProviderSession = createCourseProviderSession();
   let editorApp = null;
   let authoringSurface = null;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
@@ -847,6 +847,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   ]).catch(() => undefined);
 
   let pendingStudyComposition = null;
+  let pendingStudyStructure = null;
   const saveStudyManualEdit = async (value) => {
     if (value.createsPersonalCopy === true) {
       return repository.commitPersonalCourseCopyEdit({
@@ -881,12 +882,34 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     return result;
   };
 
+  const saveStudyAssistedStructure = async (value) => {
+    const intent = {
+      courseId: value.courseId,
+      expectedCourseRevision: value.expectedCourseRevision,
+      upserts: value.upserts,
+      deletes: value.deletes
+    };
+    const signature = JSON.stringify(intent);
+    if (pendingStudyStructure?.signature !== signature) {
+      pendingStudyStructure = { signature, requestId: createUuid() };
+    }
+    const result = await authoringController.commitCourseStructuralComposition({
+      requestId: pendingStudyStructure.requestId,
+      ...intent
+    });
+    pendingStudyStructure = null;
+    await repository.refreshCourses();
+    await repository.loadCourse(value.courseId);
+    return { ...result, project: repository.loadProject() };
+  };
+
   editorApp = createCourseStudyApplication({
     root: editorRoot,
     repository,
     initialProject: project,
     onSaveManualEdit: saveStudyManualEdit,
-    providerAssistanceSession: studyUnitProviderSession
+    onSaveAssistedStructure: saveStudyAssistedStructure,
+    providerAssistanceSession: courseProviderSession
   });
   await editorApp.resumePendingManualEdit?.().catch((error) => {
     console.warn("A edição pessoal pendente poderá ser retomada na próxima conexão.", error);
@@ -895,7 +918,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   authoringSurface = createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
-    providerAssistanceSession: studyUnitProviderSession,
+    providerAssistanceSession: courseProviderSession,
     onClose() {
       clearAuthoringRoute();
       authoringRoot.hidden = true;

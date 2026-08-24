@@ -202,6 +202,58 @@ test("três composições inválidas preservam o projeto e nunca produzem prévi
   assert.deepEqual(fixture, before);
 });
 
+test("Unidade e Microssequência preservam a identidade do alvo durante reparos", async () => {
+  const changedUnit = validChangedStudyUnit();
+  changedUnit.id = "unidade-fora-do-alvo";
+  await assert.rejects(() => prepareCourseAssistanceProposal({
+    project: fixture,
+    selection,
+    confirmedProposal: {
+      summary: "Revisar a Unidade escolhida.",
+      scope: "study_unit",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    },
+    providerConfig,
+    runtimeConfig,
+    fetchImpl: sequenceFetch(Array(3).fill({
+      message: "Troquei também a identidade.",
+      candidate: changedUnit
+    }))
+  }), (error) => {
+    assert.equal(error.code, "assistance_candidate_invalid");
+    assert.ok(error.validationErrors.some((message) =>
+      /preservar a identidade da Unidade/u.test(message)
+    ));
+    return true;
+  });
+
+  const changedMicrosequence = structuredClone(
+    fixture.courses[0].modules[0].lessons[0].microsequences[0]
+  );
+  changedMicrosequence.id = "microssequencia-fora-do-alvo";
+  await assert.rejects(() => prepareCourseAssistanceProposal({
+    project: fixture,
+    selection,
+    confirmedProposal: {
+      summary: "Reordenar a Microssequência escolhida.",
+      scope: "didactic_microsequence",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    },
+    providerConfig,
+    runtimeConfig,
+    fetchImpl: sequenceFetch(Array(3).fill({
+      message: "Troquei também a identidade.",
+      candidate: changedMicrosequence
+    }))
+  }), (error) => {
+    assert.equal(error.code, "assistance_candidate_invalid");
+    assert.ok(error.validationErrors.some((message) =>
+      /preservar a identidade da Microssequência/u.test(message)
+    ));
+    return true;
+  });
+});
+
 test("Lição aceita criação de Microssequência somente como proposta da própria Lição", async () => {
   const lesson = structuredClone(fixture.courses[0].modules[0].lessons[0]);
   const newMicrosequence = structuredClone(lesson.microsequences[0]);

@@ -605,8 +605,15 @@ function unitsInTarget(scope, candidate) {
 }
 
 function validateRenderableCandidate({ project, selection, scope, candidate, intent }) {
-  const proposedProject = replaceScope(project, selection, scope, candidate);
   const errors = [];
+  const current = findPath(project, selection);
+  if (scope === "study_unit" && candidate.id !== current.studyUnit.id) {
+    errors.push("A proposta deve preservar a identidade da Unidade escolhida.");
+  }
+  if (scope === "didactic_microsequence" && candidate.id !== current.microsequence.id) {
+    errors.push("A proposta deve preservar a identidade da Microssequência escolhida.");
+  }
+  const proposedProject = replaceScope(project, selection, scope, candidate);
   for (const unit of unitsInTarget(scope, candidate)) {
     const validation = validateStudyUnitEnvelope(unit, RESOURCE_PACKAGE_REGISTRY);
     if (!validation.valid) errors.push(...validation.errors);
@@ -778,10 +785,12 @@ export async function prepareCourseAssistanceProposal({
       throw error;
     }
   }
-  throw new StudyUnitProviderError(
+  const invalidCandidateError = new StudyUnitProviderError(
     "assistance_candidate_invalid",
     "A proposta não pôde ser validada e renderizada. O conteúdo original foi preservado."
   );
+  invalidCandidateError.validationErrors = Object.freeze(clone(validationErrors));
+  throw invalidCandidateError;
 }
 
 export const COURSE_ASSISTANCE_LIMITS = Object.freeze({
