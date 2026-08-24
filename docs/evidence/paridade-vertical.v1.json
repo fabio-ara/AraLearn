@@ -378,8 +378,8 @@
         ],
         "databasePatterns": [
           "^table:private\\.course_access_grant_rate_limits$",
-          "^function:private\\.(?:course_source_pdf_reserved_bytes_v1|current_auth_session_is_active_v1|inventory_current_data_orphans_v1|lock_current_account_storage_write_v1|run_current_data_retention_v1)\\(.*\\)$",
-          "^function:public\\.(?:derive_mcp_oauth_pairwise_id_v1|enforce_aralearn_data_api_token_v1|resolve_mcp_oauth_principal_v1)\\(.*\\)$"
+          "^function:private\\.(?:course_source_pdf_reserved_bytes_v1|current_auth_session_is_active_v1|inventory_current_data_orphans_v1|lock_current_account_storage_write_v1|require_aralearn_administrator_v1|run_current_data_retention_v1)\\(.*\\)$",
+          "^function:public\\.(?:authorize_current_orphan_removal_for_actor_v1|derive_mcp_oauth_pairwise_id_v1|enforce_aralearn_data_api_token_v1|get_current_maintenance_for_actor_v1|maintain_course_for_actor_v1|resolve_mcp_oauth_principal_v1|run_current_retention_for_actor_v1)\\(.*\\)$"
         ]
       },
       "ui": [
@@ -390,7 +390,8 @@
       ],
       "persistence": [
         { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "run_current_data_retention_v1" },
-        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "inventory_current_data_orphans_v1" }
+        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "inventory_current_data_orphans_v1" },
+        { "path": "supabase/migrations/20260824120000_product_operations_and_maintenance.sql", "token": "get_current_maintenance_for_actor_v1" }
       ],
       "tests": [
         "tests/runtime/course-data-lifecycle-pglite.test.js",

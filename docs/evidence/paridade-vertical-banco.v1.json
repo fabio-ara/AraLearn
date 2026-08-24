@@ -4951,6 +4951,10 @@
       "caseId": "course-shared-transports"
     },
     {
+      "object": "function:private.require_aralearn_administrator_v1(p_actor_id uuid)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:private.require_authoring_experiment_page_ref_v1(p_provided jsonb, p_current jsonb, p_cursor text, p_label text)",
       "caseId": "pre-course-database-removal"
     },
@@ -5239,6 +5243,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:public.authorize_current_orphan_removal_for_actor_v1(p_actor_id uuid, p_classification text, p_object_path text, p_confirmed boolean)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:public.bootstrap_replica(p_device_id uuid)",
       "caseId": "pre-course-database-removal"
     },
@@ -5479,6 +5487,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:public.get_current_maintenance_for_actor_v1(p_actor_id uuid, p_limit integer)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:public.get_educational_workspace_for_actor_v1(p_actor_id uuid, p_workspace_id uuid)",
       "caseId": "pre-course-database-removal"
     },
@@ -5703,6 +5715,10 @@
       "caseId": "pre-course-database-removal"
     },
     {
+      "object": "function:public.maintain_course_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_operation text, p_confirmed boolean, p_request_id text)",
+      "caseId": "current-data-lifecycle"
+    },
+    {
       "object": "function:public.manage_authoring_design_parameter_assignment_v1(p_actor_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text, p_expected_revision bigint, p_operation text, p_assignment jsonb)",
       "caseId": "pre-course-database-removal"
     },
@@ -5857,6 +5873,10 @@
     {
       "object": "function:public.reuse_unchanged_authoring_publication_v5(p_owner_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text, p_expected_revision bigint, p_workspace_course_id text, p_content_hash text, p_target text, p_completion_state text, p_existing_course_id uuid, p_expected_content_hash text, p_collection_id uuid)",
       "caseId": "pre-course-database-removal"
+    },
+    {
+      "object": "function:public.run_current_retention_for_actor_v1(p_actor_id uuid, p_limit integer, p_confirmed boolean)",
+      "caseId": "current-data-lifecycle"
     },
     {
       "object": "function:public.save_authoring_instructional_analysis_v1(p_actor_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text, p_expected_revision bigint, p_analysis jsonb)",
