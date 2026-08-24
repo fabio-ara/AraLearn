@@ -47,6 +47,8 @@ Isso inclui ciclo de vida de Cursos e cópias, Planejamento/materialização, Pa
 
 Capacidade não precisa virar aba permanente. Também não pode ficar escondida a ponto de parecer inexistente.
 
+MCP e GPT personalizado com Actions são capacidades distintas. A remoção histórica de Actions não deve ser presumida correta apenas porque MCP passou a existir. Em #151, investigue a implementação histórica apenas o suficiente para recuperar, sobre os contratos correntes, a capacidade desejada de operar o AraLearn por um GPT personalizado com Actions/OpenAPI, sem restaurar arquitetura superada por arrasto.
+
 ## Chrome
 
 O Codex local já consegue operar o Chrome. Use-o diretamente durante #152–#154. Testes automatizados são complementares.
