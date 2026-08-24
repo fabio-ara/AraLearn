@@ -1,7 +1,7 @@
 {
   "contract": "aralearn.course-legacy-cleanup-targets.v1",
   "sourceInventoryContract": "aralearn.vertical-parity.database-inventory.v1",
-  "sourceInventoryHash": "148c0f449ae66a65ebe2459dcec0931b84b1ec52080fa703d7a283fb219704d0",
+  "sourceInventoryHash": "6052da60aa8ff57283ce7c92fb26fdfdabdba9018abf95e4176acdba97c3c78b",
   "objectCount": 1550,
   "categoryCounts": {
     "bucket": 2,
