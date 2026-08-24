@@ -65,9 +65,13 @@ sistema de inteligência artificial ajuda a discutir, planejar, preparar,
 validar e pré-visualizar uma alteração tipada antes de a pessoa decidir
 aplicá-la ao rascunho.
 
-O equivalente internacional é *AI-assisted contextual authoring*. No domínio,
-**assistência contextual por modelo de linguagem** é uma descrição técnica
-válida. `course_provider_assistance` permanece como símbolo de implementação.
+Não foi encontrado um equivalente internacional estabelecido que nomeie
+exatamente esta interação. *Contextual AI assistance for authoring* é apenas uma
+descrição técnica própria do AraLearn. No domínio, **assistência contextual por
+modelo de linguagem** é uma descrição técnica válida.
+`course_provider_assistance` permanece como símbolo de implementação. O NIST AI
+RMF sustenta somente a distinção geral entre sistema de IA e meio técnico; não é
+autoridade para o rótulo desta interface.
 
 `API` é meio de acesso; `provider` é o serviço configurado; MCP e Actions são
 integrações de autoria distintas. Por isso `Assistência por API`, `Assistente de
@@ -92,10 +96,11 @@ e liga os modos aos contratos correntes, sem portar handlers ou persistência
 históricos.
 
 Os modos ficam na barra superior. Cada botão mostra somente ícone, tem `title`,
-`aria-label`, estado perceptível e `aria-pressed`. Com três controles, o grupo é
-uma toolbar horizontal: um ponto de tabulação, setas esquerda/direita, `Home` e
-`End`, com roving `tabindex`. Com dois controles, o mesmo componente visual pode
-usar `group` e tabulação nativa.
+`aria-label`, estado perceptível e `aria-pressed`. Os botões toggle permanecem na
+ordem normal de Tab, o mecanismo acessível mais simples para este grupo pequeno.
+O padrão composite de toolbar, com roving `tabindex` e navegação por setas, só
+será usado se uma verificação concreta demonstrar benefício que compense a
+interação adicional; a quantidade de três modos, sozinha, não o exige.
 
 ## Mapa humano de tarefas de Autoria
 

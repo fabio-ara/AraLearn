@@ -3279,14 +3279,14 @@
       ],
       "sources": [
         {
-          "status": "padrao-externo",
-          "ref": "https://www.nist.gov/itl/ai-risk-management-framework",
-          "supports": "Distingue o sistema de inteligência artificial e seus efeitos do mecanismo técnico usado para acessá-lo"
-        },
-        {
           "status": "decisao-produto",
           "ref": "docs/assistencia-por-ia.md",
           "supports": "Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions"
+        },
+        {
+          "status": "padrao-externo",
+          "ref": "https://www.nist.gov/itl/ai-risk-management-framework",
+          "supports": "Sustenta somente a distinção geral entre sistema de inteligência artificial e os mecanismos técnicos que o disponibilizam; não prescreve o rótulo da interface"
         }
       ],
       "notSynonyms": [
@@ -3298,9 +3298,9 @@
       ],
       "interfaceTerm": "Assistência por IA",
       "domainTerm": "Assistência contextual por modelo de linguagem",
-      "englishEquivalent": "AI-assisted contextual authoring",
+      "englishEquivalent": "contextual AI assistance for authoring (descrição técnica própria)",
       "araLearnExample": "Na Unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia no renderer real.",
-      "ambiguityRisk": "O rótulo anterior nomeava o meio de transporte e podia sugerir que a API prestava a assistência, além de misturar a sessão situada com MCP e Actions, que são integrações de autoria distintas.",
+      "ambiguityRisk": "O rótulo anterior nomeava o meio de transporte e podia sugerir que a API prestava a assistência, além de misturar a sessão situada com MCP e Actions, que são integrações de autoria distintas. A tradução inglesa registrada descreve o conceito próprio do AraLearn e não reivindica terminologia internacional estabelecida.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Assistência por API”: rejeitado na interface porque API é o meio de acesso, não quem ou o que presta assistência.",

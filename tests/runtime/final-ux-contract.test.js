@@ -19,6 +19,10 @@ test("o contrato final encerra pesquisa, arquitetura e modos sem alternativa pen
   ]) assert.ok(contract.includes(fragment), `ausente no contrato: ${fragment}`);
 
   assert.match(contract, /Curso → Visão geral → Planejamento → Parte → Materializações/u);
+  assert.match(contract, /descrição técnica própria do AraLearn/iu);
+  assert.match(contract, /ordem normal de Tab/iu);
+  assert.match(contract, /quantidade de três modos, sozinha, não o exige/iu);
+  assert.doesNotMatch(contract, /Com três controles, o grupo é\s+uma toolbar horizontal/iu);
   assert.doesNotMatch(contract, /alternativas? (?:em aberto|pendentes?)/iu);
 });
 
