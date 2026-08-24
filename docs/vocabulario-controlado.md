@@ -958,3 +958,13 @@ Operação tipada exposta pelo servidor para o modelo solicitar uma ação ou co
 **Uso.** `restringir`; formas técnicas ou históricas: `tool`. Distinguir de `MCP Resource`, `prompt`, `estado persistido`, `capacidade`.
 
 **Base.** [padrão externo](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
+
+#### Assistência por IA
+
+Sessão contextual em que um sistema de inteligência artificial ajuda a discutir, planejar, preparar, validar e pré-visualizar uma alteração tipada antes de a pessoa decidir aplicá-la ao rascunho do objeto corrente. Na Unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia no renderer real.
+
+**Domínio e implementação.** Assistência contextual por modelo de linguagem; equivalente internacional: AI-assisted contextual authoring; símbolo: `course_provider_assistance`.
+
+**Uso.** `restringir`; formas técnicas ou históricas: `Assistência por API`. Distinguir de `API`, `provider`, `MCP`, `Actions`, `chat genérico`.
+
+**Base.** [padrão externo](https://www.nist.gov/itl/ai-risk-management-framework): Distingue o sistema de inteligência artificial e seus efeitos do mecanismo técnico usado para acessá-lo; [decisão de produto](assistencia-por-ia.md): Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions.

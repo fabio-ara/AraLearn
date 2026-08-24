@@ -1,26 +1,20 @@
-# Atlas visual — especificação do frontend final
+# Referências históricas de UX
 
-Esta pasta reúne a especificação de UX/UI usada no fechamento do AraLearn.
+O contrato normativo da refatoração corrente é
+[`FINAL-UX-CONTRACT.md`](FINAL-UX-CONTRACT.md). Leia-o primeiro.
 
-Leia nesta ordem:
+Os demais arquivos registram explorações e baselines anteriores. Eles ajudam a
+reconhecer interações que funcionaram, mas não têm autoridade para preservar a
+arquitetura de informação antiga, contrariar as issues correntes ou criar uma
+segunda solução candidata.
 
-1. `CODEX-HANDOFF.md`;
-2. `STUDY-VISUAL-BASELINE.md`;
-3. `MATRIZ-COBERTURA.md`;
-4. `index.html`.
+Quando uma referência histórica divergir do contrato final, prevalece o
+contrato final. O commit `9e7ddc013d8efcf2918bf2b5b03f506217098e15` serve
+somente como evidência da gramática visual e de navegação de Estudo; seus
+contratos, nomes e persistência não retornam ao produto.
 
-A matriz de cobertura e o baseline de Estudo são normativos. O Atlas navegável ajuda a visualizar estados e relações, mas não autoriza recuperar propostas históricas ou contrariar #147, #174 ou os contratos finais do produto.
-
-Base funcional: `main`.
-
-Sequência de implementação: #151 → #152 → #153 → #154 → #155; depois parar.
-
-Validação estrutural do Atlas:
-
-`node ux-atlas/validate.mjs`
-
-Para extrair o código legível das telas do Atlas:
-
-`node ux-atlas/extract.mjs`
+Base funcional desta continuidade: release `0.0.29`, usada como ponto de partida
+e não como resultado aceito. O validador e o extrator antigos pertencem à
+exploração histórica e não são gates da implementação corrente.
 
 Branches antigas de exploração e issues #156–#168 não são base desta entrega.
