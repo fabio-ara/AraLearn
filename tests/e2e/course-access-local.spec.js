@@ -113,74 +113,99 @@ async function rpc(name, body, token) {
 }
 
 function courseRows(id) {
+  const guide = (goal) => ({
+    goal,
+    include: ["prática"],
+    exclude: [],
+    notation: [],
+    avoid: []
+  });
+  const studyUnit = (unitId, position, title, text) => ({
+    id: unitId,
+    position,
+    title,
+    role: "theory",
+    content: [{
+      id: `content-${unitId}`,
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  });
+  const microsequence = (microsequenceId, title, goal, studyUnits) => ({
+    id: microsequenceId,
+    title,
+    goal,
+    role: "explain",
+    dependsOn: [],
+    covers: [],
+    checks: [],
+    errors: [],
+    studyUnits
+  });
+  const lesson = (lessonId, title, goal, microsequences) => ({
+    id: lessonId,
+    title,
+    guide: guide(goal),
+    topics: [],
+    microsequences
+  });
+  const moduleValue = (moduleId, title, goal, lessons) => ({
+    id: moduleId,
+    title,
+    guide: guide(goal),
+    lessons
+  });
   return flattenCourseDocument({
     contract: "aralearn.course.v1",
     courses: [{
       id,
       title: COURSE_TITLE,
       goal: "Praticar uma Unidade sem ampliar o acesso do Curso.",
-      modules: [{
-        id: "module-access-local",
-        title: "Módulo da jornada",
-        guide: {
-          goal: "Percorrer o conteúdo compartilhado.",
-          include: ["acesso direto"],
-          exclude: [],
-          notation: [],
-          avoid: []
-        },
-        lessons: [{
-          id: "lesson-access-local",
-          title: "Lição da jornada",
-          guide: {
-            goal: "Confirmar o acesso ao Estudo.",
-            include: ["prática"],
-            exclude: [],
-            notation: [],
-            avoid: []
-          },
-          topics: [],
-          microsequences: [{
-            id: "microsequence-access-local",
-            title: "Microssequência compartilhada",
-            goal: "Ler, registrar uma observação e avançar.",
-            role: "explain",
-            dependsOn: [],
-            covers: [],
-            checks: [],
-            errors: [],
-            studyUnits: [{
-              id: "study-unit-access-local-1",
-              position: 1,
-              title: "Primeira Unidade compartilhada",
-              role: "theory",
-              content: [{
-                id: "content-access-local-1",
-                package: "aralearn.resource.paragraph",
-                version: "1.0.0",
-                data: { text: "Conteúdo privado liberado somente para a pessoa escolhida." }
-              }],
-              response: null,
-              feedback: [],
-              topics: []
-            }, {
-              id: "study-unit-access-local-2",
-              position: 2,
-              title: "Segunda Unidade compartilhada",
-              role: "theory",
-              content: [{
-                id: "content-access-local-2",
-                package: "aralearn.resource.paragraph",
-                version: "1.0.0",
-                data: { text: "O avanço confirma a prática e o estado pessoal do estudante." }
-              }],
-              response: null,
-              feedback: [],
-              topics: []
-            }]
-          }]
-        }]
-      }]
+      modules: [
+        moduleValue("module-access-local", "Módulo da jornada",
+          "Percorrer o conteúdo compartilhado.", [
+            lesson("lesson-access-local", "Lição da jornada",
+              "Confirmar o acesso ao Estudo.", [
+                microsequence("microsequence-access-local", "Microssequência compartilhada",
+                  "Ler, registrar uma observação e avançar.", [
+                    studyUnit("study-unit-access-local-1", 1,
+                      "Primeira Unidade compartilhada",
+                      "Conteúdo privado liberado somente para a pessoa escolhida."),
+                    studyUnit("study-unit-access-local-2", 2,
+                      "Segunda Unidade compartilhada",
+                      "O avanço confirma a prática e o estado pessoal do estudante.")
+                  ]),
+                microsequence("microsequence-access-local-alternative",
+                  "Microssequência alternativa", "Comprovar a ordem das Microssequências.", [
+                    studyUnit("study-unit-access-local-3", 1, "Unidade da Microssequência alternativa",
+                      "Conteúdo auxiliar para verificar a composição da Lição.")
+                  ])
+              ]),
+            lesson("lesson-access-local-alternative", "Lição alternativa",
+              "Comprovar a ordem das Lições.", [
+                microsequence("microsequence-access-local-lesson-alternative",
+                  "Microssequência da Lição alternativa", "Manter uma composição válida.", [
+                    studyUnit("study-unit-access-local-4", 1, "Unidade da Lição alternativa",
+                      "Conteúdo auxiliar para verificar a composição do Módulo.")
+                  ])
+              ])
+          ]),
+        moduleValue("module-access-local-alternative", "Módulo alternativo",
+          "Comprovar a ordem dos Módulos.", [
+            lesson("lesson-access-local-module-alternative", "Lição do Módulo alternativo",
+              "Manter uma composição válida.", [
+                microsequence("microsequence-access-local-module-alternative",
+                  "Microssequência do Módulo alternativo", "Manter uma composição válida.", [
+                    studyUnit("study-unit-access-local-5", 1, "Unidade do Módulo alternativo",
+                      "Conteúdo auxiliar para verificar a composição do Curso.")
+                  ])
+              ])
+          ])
+      ]
     }]
   }).rows;
 }
@@ -228,7 +253,9 @@ function captureBrowserFailures(page) {
     record(`network: ${requestValue.method()} ${requestValue.url()} ${requestValue.failure()?.errorText}`);
   });
   page.on("response", (response) => {
-    if (response.status() >= 500) record(`http: ${response.status()} ${response.url()}`);
+    if (response.status() >= 500 || response.status() === 403) {
+      record(`http: ${response.status()} ${response.url()}`);
+    }
   });
   return {
     failures,
@@ -286,9 +313,13 @@ async function browserSignIn(page, email) {
 async function setProfile(page, displayName, { avatar = false } = {}) {
   const settingsTrigger = page.getByRole("button", { name: "Conta e aparência" });
   await settingsTrigger.click();
+  const closeSettings = page.getByRole("button", { name: "Fechar" });
+  await expect(closeSettings).toBeFocused();
   await expect(page.locator("[data-profile-avatar-fallback]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Escolher foto" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Dados neste dispositivo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Escolher ou trocar foto" })).toBeVisible();
+  const dataDisclosure = page.getByText("Dados e conta", { exact: true });
+  await expect(dataDisclosure).toBeVisible();
+  await dataDisclosure.click();
   await expect(page.getByText(
     "Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo. Alterações ainda abertas e não salvas serão perdidas.",
     { exact: true }
@@ -307,10 +338,9 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   }))).toEqual({ overlayFits: true, documentFits: true });
   const status = page.locator("[data-settings-status]");
   await expect(status).toHaveText("");
-  const closeSettings = page.getByRole("button", { name: "Fechar" });
-  await expect(closeSettings).toBeFocused();
+  await closeSettings.focus();
   await page.keyboard.press("Shift+Tab");
-  await expect(page.getByRole("button", { name: "Sair", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Tema escuro" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(closeSettings).toBeFocused();
   await page.keyboard.press("Escape");
@@ -337,13 +367,15 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   } else {
     await expect(page.locator("[data-profile-avatar-image]")).toBeHidden();
   }
-  const signOutDialogPromise = page.waitForEvent("dialog");
+  let signOutDialogMessage = "";
+  page.once("dialog", async (dialog) => {
+    signOutDialogMessage = dialog.message();
+    await dialog.dismiss();
+  });
   await page.getByRole("button", { name: "Sair", exact: true }).click();
-  const signOutDialog = await signOutDialogPromise;
-  expect(signOutDialog.message()).toBe(
+  expect(signOutDialogMessage).toBe(
     "Sair desta conta? Cursos e dados já salvos permanecerão neste dispositivo. Alterações ainda abertas e não salvas serão perdidas."
   );
-  await signOutDialog.dismiss();
   await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
   await page.getByRole("button", { name: "Fechar" }).click();
 }
@@ -406,7 +438,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       deletes: [],
       sourceAttributionApplications: [
         "study-unit-access-local-1",
-        "study-unit-access-local-2"
+        "study-unit-access-local-2",
+        "study-unit-access-local-3",
+        "study-unit-access-local-4",
+        "study-unit-access-local-5"
       ].map((studyUnitId) => ({ studyUnitId, sourceLinks: [] }))
     }, ownerToken);
     expect(composition.data.revision).toBe(2);
@@ -419,6 +454,166 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await removeUser(learner?.id);
     await removeUser(outsider?.id);
     await removeUser(owner?.id);
+  });
+
+  test("Estudo real percorre a hierarquia, persiste o Curso e separa voltar, subir e Retomar", async ({
+    browser
+  }, testInfo) => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: "block",
+      permissions: ["local-network-access"]
+    });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const failures = captureBrowserFailures(page);
+    const modes = () => page.locator("header .study-mode-actions");
+    const revisedTitle = `${COURSE_TITLE} revisado`;
+    const firstCardTitle = () => page.locator(".navigation-list article h3").first();
+    const moveChild = async (childId, direction) => {
+      await page.locator(
+        "[data-action='move-study-structure-child'][data-child-id='" + childId + "']" +
+        "[data-direction='" + direction + "']"
+      ).click();
+    };
+    const saveStructure = async ({ title, goal, move }) => {
+      await modes().getByRole("button", { name: "Editar" }).click();
+      await page.locator("[data-study-structure-field='title']").fill(title);
+      await page.locator("[data-study-structure-field='goal']").fill(goal);
+      if (move) await moveChild(move.childId, move.direction);
+      await page.getByRole("button", { name: "Salvar edição" }).click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText(title);
+    };
+    const resumeCurrentLevel = async () => {
+      await page.locator("[data-action='open-course']").click();
+    };
+    try {
+      await browserSignIn(page, owner.email);
+      const homeEntry = page.locator("[data-action='open-course']");
+      await expect(homeEntry).toContainText("Começar");
+      await homeEntry.click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText(COURSE_TITLE);
+      await expect(modes().getByRole("button", { name: "Visualizar" })).toBeVisible();
+      await saveStructure({
+        title: revisedTitle,
+        goal: "Objetivo persistido pelo Planejamento canônico a partir do Estudo.",
+        move: { childId: "module-access-local", direction: "down" }
+      });
+      await expect(firstCardTitle()).toHaveText("Módulo alternativo");
+
+      await page.reload();
+      await expect(page.getByText(revisedTitle, { exact: true })).toBeVisible();
+      await resumeCurrentLevel();
+      await expect(firstCardTitle()).toHaveText("Módulo alternativo");
+      await saveStructure({
+        title: COURSE_TITLE,
+        goal: "Praticar uma Unidade sem ampliar o acesso do Curso.",
+        move: { childId: "module-access-local", direction: "up" }
+      });
+      await expect(firstCardTitle()).toHaveText("Módulo da jornada");
+
+      await page.getByRole("button", { name: "Abrir módulo" }).first().click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText("Módulo da jornada");
+      await saveStructure({
+        title: "Módulo persistido",
+        goal: "Objetivo do Módulo persistido pelo contrato corrente.",
+        move: { childId: "lesson-access-local", direction: "down" }
+      });
+      await expect(firstCardTitle()).toHaveText("Lição alternativa");
+      await page.reload();
+      await resumeCurrentLevel();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText("Módulo persistido");
+      await expect(firstCardTitle()).toHaveText("Lição alternativa");
+      await saveStructure({
+        title: "Módulo da jornada",
+        goal: "Percorrer o conteúdo compartilhado.",
+        move: { childId: "lesson-access-local", direction: "up" }
+      });
+      await expect(firstCardTitle()).toHaveText("Lição da jornada");
+
+      await page.getByRole("button", { name: "Abrir lição" }).first().click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText("Lição da jornada");
+      await expect(modes().getByRole("button", { name: "Assistência por IA" })).toBeVisible();
+      await saveStructure({
+        title: "Lição persistida",
+        goal: "Objetivo da Lição persistido pelo contrato corrente.",
+        move: { childId: "microsequence-access-local", direction: "down" }
+      });
+      await expect(firstCardTitle()).toHaveText("Microssequência alternativa");
+      await page.reload();
+      await resumeCurrentLevel();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText("Lição persistida");
+      await expect(firstCardTitle()).toHaveText("Microssequência alternativa");
+      await saveStructure({
+        title: "Lição da jornada",
+        goal: "Confirmar o acesso ao Estudo.",
+        move: { childId: "microsequence-access-local", direction: "up" }
+      });
+      await expect(firstCardTitle()).toHaveText("Microssequência compartilhada");
+
+      await page.getByRole("button", { name: "Abrir microssequência didática" }).first().click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText(
+        "Microssequência compartilhada"
+      );
+      await saveStructure({
+        title: "Microssequência persistida",
+        goal: "Objetivo da Microssequência persistido pelo contrato corrente.",
+        move: { childId: "study-unit-access-local-1", direction: "down" }
+      });
+      await expect(firstCardTitle()).toHaveText("Segunda Unidade compartilhada");
+      await page.reload();
+      await resumeCurrentLevel();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText(
+        "Microssequência persistida"
+      );
+      await expect(firstCardTitle()).toHaveText("Segunda Unidade compartilhada");
+      await saveStructure({
+        title: "Microssequência compartilhada",
+        goal: "Ler, registrar uma observação e avançar.",
+        move: { childId: "study-unit-access-local-1", direction: "up" }
+      });
+      await expect(firstCardTitle()).toHaveText("Primeira Unidade compartilhada");
+
+      await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+      await expect(page.getByText(
+        "Conteúdo privado liberado somente para a pessoa escolhida.",
+        { exact: true }
+      )).toBeVisible();
+      await expect(modes().getByRole("button", { name: "Visualizar" })).toBeVisible();
+      await expect(modes().getByRole("button", { name: "Editar" })).toBeVisible();
+      await expect(modes().getByRole("button", { name: "Assistência por IA" })).toBeVisible();
+      await modes().getByRole("button", { name: "Editar" }).click();
+      await expect(page.locator("[data-study-manual-title]")).toHaveText(
+        "Primeira Unidade compartilhada"
+      );
+      await modes().getByRole("button", { name: "Visualizar" }).click();
+      await attachScreenshot(page, testInfo, "estudo-real-unidade-390.png");
+
+      await page.getByRole("button", { name: "Voltar" }).click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText(
+        "Microssequência compartilhada"
+      );
+      await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+      await page.getByRole("button", { name: "Subir para a Microssequência" }).click();
+      await expect(page.locator("[data-study-destination-heading]")).toHaveText(
+        "Microssequência compartilhada"
+      );
+      await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+
+      await page.reload();
+      const resume = page.locator("[data-action='open-course']");
+      await expect(resume).toContainText("Retomar");
+      await resume.click();
+      await expect(page.getByText(
+        "Conteúdo privado liberado somente para a pessoa escolhida.",
+        { exact: true }
+      )).toBeVisible();
+      await page.getByRole("button", { name: "Voltar" }).click();
+      await expect(page.locator("[data-action='open-course']")).toBeFocused();
+      expect(failures.failures).toEqual([]);
+    } finally {
+      await context.close().catch(() => undefined);
+    }
   });
 
   test("proprietário concede no celular, estudante pratica e revogação preserva seu estado", async ({
@@ -530,6 +725,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(learnerPreview).toContainText(COURSE_TITLE);
       await expect(learnerPreview).toContainText("Compartilhado com você");
       await learnerPreview.getByRole("button", { name: `Começar ${COURSE_TITLE}` }).click();
+      await learnerPage.getByRole("button", { name: "Abrir módulo" }).first().click();
+      await learnerPage.getByRole("button", { name: "Abrir lição" }).first().click();
+      await learnerPage.getByRole("button", { name: "Abrir microssequência didática" }).first().click();
+      await learnerPage.getByRole("button", { name: "Abrir unidade" }).first().click();
       await expect(learnerPage.getByText(
         "Conteúdo privado liberado somente para a pessoa escolhida.",
         { exact: true }

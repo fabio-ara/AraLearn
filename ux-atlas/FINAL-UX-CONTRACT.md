@@ -78,6 +78,22 @@ integrações de autoria distintas. Por isso `Assistência por API`, `Assistente
 IA` e `Copiloto` não são rótulos correntes. Os demais termos estabilizados em
 `docs/vocabulario-controlado.md` permanecem inalterados.
 
+## Precedência funcional e fechamento vertical
+
+O escopo funcional fixado neste contrato prevalece sobre a conveniência do
+recorte técnico. Preservar o backend e seus contratos é a regra por padrão, não
+uma proibição de completar a menor extensão vertical necessária. A ausência de
+endpoint, RPC ou método público pode ser uma lacuna entre camadas; não autoriza
+reduzir silenciosamente a capacidade definida aqui.
+
+Antes de criar uma operação, deve-se procurar o mecanismo canônico em todo o
+produto. Se ele for insuficiente, completa-se somente a extensão vertical
+necessária. Se uma decisão normativa se provar incorreta como produto, este
+contrato deve ser corrigido explicitamente antes da implementação de uma
+capacidade menor. Após compactação de contexto, retomada ou dúvida de escopo,
+este contrato deve ser relido com `AGENTS.override.md`, o manual corrente e a
+issue ativa antes de reduzir capacidade, criar mecanismo ou encerrar a issue.
+
 ## Modos de Estudo por nível
 
 | Nível | Visualizar | Editar | Assistência por IA | Contrato corrente reaproveitado |

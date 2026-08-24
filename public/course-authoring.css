@@ -11,7 +11,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Sessão contextual de Assistência por API. */
+/* Sessão contextual de Assistência por IA. */
 .course-assistance-overlay {
   position: fixed;
   inset: 0;
@@ -172,6 +172,23 @@
 .course-assistance-sheet form > .open-mini,
 .course-assistance-plan > .open-mini {
   justify-self: end;
+}
+
+.course-assistance-disclosure > summary {
+  cursor: pointer;
+}
+
+.course-assistance-disclosure > p {
+  margin-top: 7px;
+}
+
+.course-assistance-sheet form > .open-mini {
+  width: auto;
+  min-width: var(--tap);
+  padding-inline: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .course-assistance-actions {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { dispatchApplicationBack } from "../../src/ui/applicationBackNavigation.js";
@@ -52,4 +53,31 @@ test("Back interrompe a cadeia no primeiro destino que trata a ação", () => {
 
 test("Back só autoriza saída quando nenhuma superfície trata a ação", () => {
   assert.equal(dispatchApplicationBack(), "exit");
+});
+
+test("Estudo não converte ausência de histórico em subida hierárquica", async () => {
+  const source = await readFile(new URL(
+    "../../src/study/CourseStudyApplication.js",
+    import.meta.url
+  ), "utf8");
+  const goBackStart = source.indexOf("  function goBack()");
+  const goUpStart = source.indexOf("  function goUp(", goBackStart);
+  assert.ok(goBackStart >= 0 && goUpStart > goBackStart);
+  const goBack = source.slice(goBackStart, goUpStart);
+  assert.match(goBack, /const previous = state\.navigationHistory\.pop\(\)/u);
+  assert.match(goBack, /if \(previous\) return restoreNavigationSnapshot\(previous\);\s*return false;/u);
+  assert.doesNotMatch(goBack, /goUp\(/u);
+});
+
+test("entrada nova pela Home abre o Curso sem salto implícito para uma Unidade", async () => {
+  const source = await readFile(new URL(
+    "../../src/study/CourseStudyApplication.js",
+    import.meta.url
+  ), "utf8");
+  const start = source.indexOf("  async function openCourse(");
+  const end = source.indexOf("  async function selectHomeCourse(", start);
+  assert.ok(start >= 0 && end > start);
+  const openCourse = source.slice(start, end);
+  assert.match(openCourse, /const destination = saved;/u);
+  assert.doesNotMatch(openCourse, /firstIncomplete/u);
 });

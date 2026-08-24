@@ -313,3 +313,30 @@ test("diff estrutural tipado limita upserts e exclusões ao escopo confirmado", 
   assert.deepEqual(change.changedStudyUnitIds, ["card-fixture-minimal-complete"]);
   assert.equal(change.upserts.some(({ entityType }) => entityType === "lesson"), false);
 });
+
+test("diff manual inclui o alvo estrutural e somente seus descendentes", () => {
+  const proposed = structuredClone(fixture);
+  const moduleValue = proposed.courses[0].modules[0];
+  moduleValue.title = "Módulo revisto";
+  moduleValue.lessons[0].title = "Lição revista";
+  const moduleChange = buildCourseAssistanceCompositionChange({
+    originalProject: fixture,
+    proposedProject: proposed,
+    selection,
+    scope: "module"
+  });
+  assert.deepEqual(
+    moduleChange.upserts.map(({ entityType }) => entityType),
+    ["module", "lesson"]
+  );
+
+  const lessonProposed = structuredClone(fixture);
+  lessonProposed.courses[0].modules[0].lessons[0].title = "Lição contextual";
+  const lessonChange = buildCourseAssistanceCompositionChange({
+    originalProject: fixture,
+    proposedProject: lessonProposed,
+    selection,
+    scope: "lesson"
+  });
+  assert.deepEqual(lessonChange.upserts.map(({ entityType }) => entityType), ["lesson"]);
+});

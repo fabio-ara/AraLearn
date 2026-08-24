@@ -151,8 +151,18 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /section class="account-device-data" aria-labelledby="account-device-data-title"[\s\S]*?h2 id="account-device-data-title"/u,
+    /details class="account-settings-disclosure account-device-data"[\s\S]*?<summary>Dados e conta<\/summary>/u,
     "Os controles de dados locais precisam de um nome de seção acessível."
+  );
+  assert.match(
+    mainSource,
+    /button class="account-profile-avatar-target"[^>]+data-profile-avatar-choose[\s\S]*?data-profile-avatar-fallback[\s\S]*?data-profile-avatar-image/u,
+    "A foto e seu fallback precisam ser o alvo direto para escolher ou trocar o avatar."
+  );
+  assert.match(
+    mainSource,
+    /data-settings-delete-account[\s\S]*?promptValue\([\s\S]*?Esta ação é irreversível/u,
+    "A ação destrutiva precisa explicar o alcance no momento da decisão."
   );
   assert.match(
     mainSource,
@@ -222,6 +232,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     mainSource,
     /account-settings-sheet[\s\S]*?role="dialog"[\s\S]*?tabindex="-1"[\s\S]*?const restoreSettingsFocus[\s\S]*?currentOpener\?\.focus[\s\S]*?overlay\.addEventListener\("keydown"[\s\S]*?event\.key === "Escape"[\s\S]*?event\.key !== "Tab"/u,
     "Configurações precisa conter o foco, fechar por Esc e devolver o foco ao acionador."
+  );
+  assert.match(
+    mainSource,
+    /authClient\.getSession\?\.\(\)\?\.user\?\.app_metadata\?\.aralearn_role === "administrator"[\s\S]*?loadMaintenance\(\)/u,
+    "Abrir Configurações só deve consultar a manutenção para uma sessão administradora."
   );
   assert.match(
     mainSource,

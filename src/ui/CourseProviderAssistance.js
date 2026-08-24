@@ -271,7 +271,7 @@ export function createCourseProviderAssistance({
     overlay.innerHTML = '<div class="course-assistance-backdrop" data-course-assistance-close></div>' +
       '<section class="course-assistance-sheet" role="dialog" aria-modal="true" ' +
       'aria-labelledby="course-assistance-title" aria-describedby="course-assistance-context">' +
-      '<header><div><p>Assistência por API</p><h2 id="course-assistance-title">' +
+      '<header><div><p>Assistência por IA</p><h2 id="course-assistance-title">' +
       `${escapeHtml(SCOPE_LABELS[active.scope])}: ${escapeHtml(active.targetTitle)}</h2>` +
       '<p id="course-assistance-context">Contexto somente leitura da composição e do caminho curricular; ' +
       `escrita limitada a esta ${escapeHtml(SCOPE_LABELS[active.scope])}.</p></div>` +
@@ -295,7 +295,8 @@ export function createCourseProviderAssistance({
       `${escapeHtml(config.endpoint)}"${pending ? " disabled" : ""}></label>${credentialField}</details>` +
       `<p class="course-assistance-status" role="status" aria-live="polite">${escapeHtml(status)}</p>` +
       `<p class="course-assistance-error" role="alert">${escapeHtml(error)}</p>` +
-      `<p class="course-assistance-disclosure">${escapeHtml(COURSE_ASSISTANCE_DISCLOSURE)}</p>` +
+      '<details class="course-assistance-disclosure"><summary>Privacidade e envio</summary><p>' +
+      `${escapeHtml(COURSE_ASSISTANCE_DISCLOSURE)}</p></details>` +
       '</section>';
     bind();
   }

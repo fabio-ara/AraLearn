@@ -1,6 +1,12 @@
 import { flattenCourseDocument } from "./courseEntities.js";
 
-const SCOPES = new Set(["study_unit", "didactic_microsequence", "lesson"]);
+const SCOPES = new Set([
+  "study_unit",
+  "didactic_microsequence",
+  "lesson",
+  "module",
+  "course"
+]);
 
 function clone(value) {
   return structuredClone(value);
@@ -22,21 +28,27 @@ function comparableRow(row) {
 }
 
 function affectedRows(rows, selection, scope) {
-  const microsequenceIds = new Set();
-  if (scope === "lesson") {
-    rows.filter(({ entityType, parentId }) =>
-      entityType === "microsequence" && parentId === selection.lessonId)
-      .forEach(({ entityId }) => microsequenceIds.add(entityId));
-  } else {
-    microsequenceIds.add(selection.microsequenceId);
+  if (scope === "course") return rows;
+  const identity = scope === "study_unit"
+    ? { entityType: "study_unit", entityId: selection.studyUnitId }
+    : scope === "didactic_microsequence"
+      ? { entityType: "microsequence", entityId: selection.microsequenceId }
+      : scope === "lesson"
+        ? { entityType: "lesson", entityId: selection.lessonId }
+        : { entityType: "module", entityId: selection.moduleId };
+  const included = new Set([rowKey(identity)]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    rows.forEach((row) => {
+      if (included.has(rowKey(row)) || row.parentType === null) return;
+      if (included.has(`${row.parentType}\u0000${row.parentId}`)) {
+        included.add(rowKey(row));
+        changed = true;
+      }
+    });
   }
-  return rows.filter((row) => {
-    if (scope === "study_unit") {
-      return row.entityType === "study_unit" && row.entityId === selection.studyUnitId;
-    }
-    if (row.entityType === "microsequence") return microsequenceIds.has(row.entityId);
-    return row.entityType === "study_unit" && microsequenceIds.has(row.parentId);
-  });
+  return rows.filter((row) => included.has(rowKey(row)));
 }
 
 export function buildCourseAssistanceCompositionChange({

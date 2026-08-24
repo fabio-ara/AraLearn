@@ -467,7 +467,7 @@ function renderManualModeActions(item, state, editing) {
     (state.canUseProviderAssistance
       ? `<button type="button" data-inspection-provider-assistance data-study-unit-id="${id}"` +
         ` aria-pressed="${state.assistanceActiveStudyUnitId === item.studyUnit.id}"` +
-        ' aria-label="Assistência por API" title="Assistência por API"' +
+        ' aria-label="Assistência por IA" title="Assistência por IA"' +
         `${state.manualSaving || state.assistanceSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
         `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
       : "") +
@@ -484,7 +484,7 @@ function renderManualModeActions(item, state, editing) {
 
 function renderAssistanceDraftDock(item, state) {
   if (state.assistanceDraft?.studyUnitId !== item.studyUnit.id) return "";
-  return '<footer class="course-inspection-manual-dock" aria-label="Rascunho da Assistência por API">' +
+  return '<footer class="course-inspection-manual-dock" aria-label="Rascunho da Assistência por IA">' +
     `<p><strong>${escapeHtml(state.assistanceDraft.summary || "Proposta preparada")}</strong></p>` +
     (state.assistanceError
       ? `<p class="course-inspection-manual-error" role="alert">${escapeHtml(state.assistanceError)}</p>`
