@@ -158,3 +158,31 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
   );
   assert.ok(file.byteLength < 96 * 1024);
 });
+
+test("migration de Actions restaura somente a execução server-side do OAuth", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../supabase/migrations/20260824130000_restore_gpt_actions_openapi.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  for (const name of [
+    "create_authoring_action_oauth_client_setup_v4",
+    "link_authoring_action_oauth_client_v4",
+    "create_authoring_action_oauth_authorization_v4",
+    "get_authoring_action_oauth_authorization_v4",
+    "approve_authoring_action_oauth_authorization_v4",
+    "deny_authoring_action_oauth_authorization_v4",
+    "exchange_authoring_action_oauth_code_v4",
+    "exchange_authoring_action_oauth_refresh_v4",
+    "resolve_authoring_action_oauth_principal_v4"
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`grant execute on function public\\.${name}\\([\\s\\S]+?\\)\\s+to service_role;`, "u")
+    );
+  }
+  assert.match(migration, /from public, anon, authenticated, service_role;/u);
+  assert.match(migration, /has_function_privilege\([\s\S]+?'authenticated'[\s\S]+?'EXECUTE'[\s\S]+?\)/u);
+});

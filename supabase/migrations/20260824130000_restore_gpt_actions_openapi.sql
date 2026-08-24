@@ -25,17 +25,66 @@ begin
        'authenticated',
        'public.resolve_authoring_action_oauth_principal_v4(text)',
        'EXECUTE'
-     )
-     or not has_function_privilege(
-       'service_role',
-       'public.resolve_authoring_action_oauth_principal_v4(text)',
-       'EXECUTE'
      ) then
     raise exception 'A fronteira server-side do OAuth de Actions divergiu.'
       using errcode = '55000';
   end if;
 end;
 $actions_contract_preflight$;
+
+revoke all on function public.create_authoring_action_oauth_client_setup_v4(
+  uuid, text, text
+) from public, anon, authenticated, service_role;
+revoke all on function public.link_authoring_action_oauth_client_v4(
+  uuid, uuid, text
+) from public, anon, authenticated, service_role;
+revoke all on function public.create_authoring_action_oauth_authorization_v4(
+  uuid, text, text, text
+) from public, anon, authenticated, service_role;
+revoke all on function public.get_authoring_action_oauth_authorization_v4(
+  uuid, uuid
+) from public, anon, authenticated, service_role;
+revoke all on function public.approve_authoring_action_oauth_authorization_v4(
+  uuid, uuid, text
+) from public, anon, authenticated, service_role;
+revoke all on function public.deny_authoring_action_oauth_authorization_v4(
+  uuid, uuid
+) from public, anon, authenticated, service_role;
+revoke all on function public.exchange_authoring_action_oauth_code_v4(
+  uuid, text, text, text, text, text, uuid
+) from public, anon, authenticated, service_role;
+revoke all on function public.exchange_authoring_action_oauth_refresh_v4(
+  uuid, text, text, text, text
+) from public, anon, authenticated, service_role;
+revoke all on function public.resolve_authoring_action_oauth_principal_v4(text)
+from public, anon, authenticated, service_role;
+
+grant execute on function public.create_authoring_action_oauth_client_setup_v4(
+  uuid, text, text
+) to service_role;
+grant execute on function public.link_authoring_action_oauth_client_v4(
+  uuid, uuid, text
+) to service_role;
+grant execute on function public.create_authoring_action_oauth_authorization_v4(
+  uuid, text, text, text
+) to service_role;
+grant execute on function public.get_authoring_action_oauth_authorization_v4(
+  uuid, uuid
+) to service_role;
+grant execute on function public.approve_authoring_action_oauth_authorization_v4(
+  uuid, uuid, text
+) to service_role;
+grant execute on function public.deny_authoring_action_oauth_authorization_v4(
+  uuid, uuid
+) to service_role;
+grant execute on function public.exchange_authoring_action_oauth_code_v4(
+  uuid, text, text, text, text, text, uuid
+) to service_role;
+grant execute on function public.exchange_authoring_action_oauth_refresh_v4(
+  uuid, text, text, text, text
+) to service_role;
+grant execute on function public.resolve_authoring_action_oauth_principal_v4(text)
+to service_role;
 
 do $advance_product_operations_and_actions_manifest$
 declare
@@ -88,6 +137,19 @@ begin
        'gpt-actions-openapi-v1'
      ]) then
     raise exception 'Manifesto de operações e Actions não foi consolidado.'
+      using errcode = '55000';
+  end if;
+  if has_function_privilege(
+       'authenticated',
+       'public.resolve_authoring_action_oauth_principal_v4(text)',
+       'EXECUTE'
+     )
+     or not has_function_privilege(
+       'service_role',
+       'public.resolve_authoring_action_oauth_principal_v4(text)',
+       'EXECUTE'
+     ) then
+    raise exception 'A fronteira server-side do OAuth de Actions não foi restaurada.'
       using errcode = '55000';
   end if;
 end;
