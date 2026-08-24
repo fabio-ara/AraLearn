@@ -41,12 +41,12 @@ Depois de entrar, a pessoa encontra Cursos próprios e Cursos compartilhados. Um
 seletor e uma prévia mostram objetivo, relação de acesso, quantidade de Módulos,
 Lições e Unidades, progresso e disponibilidade no dispositivo.
 
-**Começar**, **Continuar** ou **Retomar** abre o ponto adequado. `←` retorna à
-tela imediatamente anterior; `↑` sobe um nível da hierarquia. Durante o estudo,
-a pessoa pode responder às práticas, receber retorno, marcar uma Unidade para
-rever, registrar uma Observação e consultar Fontes autorizadas.
+**Começar**, **Continuar** ou **Retomar** abre o ponto adequado. A navegação
+mantém o caminho percorrido e também permite subir pela hierarquia do Curso.
+Durante o estudo, a pessoa pode responder às práticas, receber retorno, marcar
+uma Unidade para rever, registrar uma Observação e consultar Fontes autorizadas.
 
-Na Unidade, **Visualizar**, **Editar** e **Assistência por API** são modos irmãos
+Na Unidade, **Visualizar**, **Editar** e **Assistência por IA** são modos irmãos
 sobre o mesmo alvo. Se uma pessoa com acesso ao Estudo editar um Curso
 compartilhado, a primeira gravação material cria uma cópia privada e preserva o
 original. A navegação continua na mesma Unidade da nova cópia.
@@ -60,24 +60,25 @@ privado. A pessoa pode definir objetivo e público, construir sua hierarquia,
 planejar a produção, ajustar parâmetros, registrar Fontes e conceder acesso
 direto ao Estudo.
 
-As tarefas aparecem progressivamente em quatro áreas:
+Ao abrir um Curso, a **Visão geral** mostra seu estado, a próxima ação útil e as
+sete tarefas principais: **Planejamento**, **Conteúdo**, **Parâmetros e
+componentes**, **Fontes**, **Revisão**, **Variantes e pesquisa** e **Pessoas e
+acesso**. Conteúdo reúne a hierarquia, a leitura no renderer e a edição
+contextual. Revisão oferece um ponto de entrada comum para Observações e
+Auditoria sem confundir seus contratos.
 
-- **Curso:** Estrutura, Planejamento, Parâmetros e Fontes;
-- **Revisar:** Inspeção, Observações, Auditoria e correções;
-- **Pesquisa:** Variantes e fatos da Autoria;
-- **Pessoas:** proprietário e acessos diretos ao Estudo.
-
-Fontes possuem revisões imutáveis, Âncoras e PDFs privados. A Inspeção percorre
-a composição sem ativar respostas. A Auditoria registra achados, correções,
-verificações e reversões. Variantes relacionam Cursos comparáveis; Pesquisa
-apresenta fatos, definições, denominadores, ausências e exportações sem produzir
-conclusões causais automáticas.
+Cada Parte do Planejamento conserva o histórico completo das materializações.
+Uma execução mostra canal, estado, etapas, resultados e links para os objetos
+produzidos; Aplicativo, MCP e Actions aparecem no mesmo percurso visual. Fontes
+possuem revisões imutáveis, Âncoras e PDFs privados. Variantes relacionam Cursos
+comparáveis, e Pesquisa apresenta fatos, definições, denominadores, ausências e
+exportações sem produzir conclusões causais automáticas.
 
 O [guia do professor e autor](docs/guia-professor-autor.md) conduz essas tarefas.
 
-## Usar Assistência por API
+## Usar Assistência por IA
 
-Assistência por API é uma sessão contextual com minichat. A pessoa discute um
+Assistência por IA é uma sessão contextual com minichat. A pessoa discute um
 plano, confirma a geração, confere a prévia no renderer real e decide se deseja
 aplicar e salvar.
 
@@ -120,7 +121,7 @@ abertas, estado pessoal e filas necessárias à continuidade. Conteúdo carregad
 anteriormente pode ser retomado sem rede. Progresso, **Rever** e Observações são
 sincronizados quando a conexão retorna.
 
-Operações autorais amplas, Auditoria, correções e Assistência por API exigem
+Operações autorais amplas, Auditoria, correções e Assistência por IA exigem
 conexão. O AraLearn não mantém uma fila autoral genérica que poderia aplicar uma
 mudança antiga sobre um Curso novo.
 
@@ -165,7 +166,7 @@ de ambiente, backend e publicação estão em [Implantação](docs/implantacao.m
 
 ## Estado e limites
 
-O produto disponível inclui Estudo, Autoria visual, Assistência por API,
+O produto disponível inclui Estudo, Autoria visual, Assistência por IA,
 Autoria conversacional por MCP e por Actions, dados pessoais, controle de acesso
 e Manutenção administrativa para identidades autorizadas. O que depende de
 conexão ou de permissão é indicado antes da ação.

@@ -365,6 +365,20 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
           state: "partially_materialized",
           microsequenceCount: 1,
           studyUnitCount: 2,
+          materializations: [{
+            id: MATERIALIZATION_ID,
+            status: "running",
+            progressState: "partial",
+            channel: "mcp",
+            version: 1,
+            completedStepCount: 2,
+            failedStepCount: 0,
+            totalStepCount: 4,
+            startedAt: "2026-08-17T10:00:00Z",
+            updatedAt: "2026-08-17T10:10:00Z",
+            completedAt: null,
+            summary: "2 de 4 etapas concluídas"
+          }],
           lastMaterialization: {
             id: MATERIALIZATION_ID,
             status: "running",
@@ -388,6 +402,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
           state: "planned",
           microsequenceCount: 0,
           studyUnitCount: 0,
+          materializations: [],
           lastMaterialization: null
         }
       }],
@@ -534,6 +549,7 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
           state: "partially_materialized",
           microsequenceCount: 1,
           studyUnitCount: 0,
+          materializations: [],
           lastMaterialization: null
         }
       }],

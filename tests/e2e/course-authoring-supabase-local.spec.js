@@ -35,7 +35,7 @@ const STUDY_UNIT_TITLE = "Unidade editável da prova";
 const ORIGINAL_STUDY_UNIT_TEXT = "Texto original produzido para a prova transversal.";
 const MANUAL_STUDY_UNIT_TEXT = "Texto revisado manualmente na interface de Autoria.";
 const PROVIDER_STUDY_UNIT_TEXT = "Texto revisado com assistência local e confirmado pela pessoa autora.";
-const SOURCE_ID = "fonte-e2e-autoria-local";
+let sourceId = "";
 const SOURCE_TITLE = "Fonte PDF da prova de Autoria";
 const SOURCE_BUCKET = "course-source-pdfs";
 const PDF_BYTES = Buffer.from(
@@ -159,10 +159,14 @@ async function confirmChatCopy(page) {
   )).toBeVisible();
 }
 
-async function openAuthoringSection(page, destination, section) {
-  const menu = page.locator(
-    `[data-authoring-destination="${destination}"]`
-  );
+async function openAuthoringSection(page, _destination, section) {
+  const overviewTask = page.locator(".course-authoring-task-grid")
+    .getByRole("link", { name: section, exact: true });
+  if (await overviewTask.isVisible()) {
+    await overviewTask.click();
+    return;
+  }
+  const menu = page.locator(".course-authoring-task-menu");
   if (!await menu.evaluate((node) => node.open)) {
     await menu.locator(":scope > summary").click();
   }
@@ -227,10 +231,10 @@ function sourcePersistenceEvidence(storagePath) {
     select json_build_object(
       'sourceRevisions', (select count(*)::integer
         from private.course_source_revisions
-        where course_id='${courseId}'::uuid and source_id='${SOURCE_ID}'),
+        where course_id='${courseId}'::uuid and source_id='${sourceId}'),
       'attachments', (select count(*)::integer
         from private.course_source_attachments
-        where course_id='${courseId}'::uuid and source_id='${SOURCE_ID}'),
+        where course_id='${courseId}'::uuid and source_id='${sourceId}'),
       'storageObjects', (select count(*)::integer from storage.objects
         where bucket_id='${SOURCE_BUCKET}' and name='${storagePath}')
     )::text;
@@ -520,8 +524,9 @@ test.describe("Autoria real com Supabase local", () => {
       await page.getByLabel("Objetivo").fill(INITIAL_OBJECTIVE);
       await page.locator("[data-course-authoring-create]")
         .getByRole("button", { name: "Criar Curso" }).click();
-      await expect(page.getByRole("heading", { name: COURSE_TITLE })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Planejamento" })).toBeVisible();
+      await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Visão geral");
+      await expect(page.locator(".course-authoring-course-heading .course-authoring-eyebrow"))
+        .toHaveText(COURSE_TITLE);
       const hashMatch = page.url().match(/#\/authoring\/courses\/([0-9a-f-]{36})/u);
       expect(hashMatch).not.toBeNull();
       courseId = hashMatch[1];
@@ -537,6 +542,8 @@ test.describe("Autoria real com Supabase local", () => {
         .toBeVisible();
       expect(await page.evaluate(() => [...document.scripts].some((script) =>
         new URL(script.src, location.href).pathname.endsWith("/main.js")))).toBe(true);
+      await openAuthoringSection(page, "course", "Planejamento");
+      await expect(page.getByRole("region", { name: "Crie a primeira Parte" })).toBeVisible();
 
       const beforeCourseCopy = await readCourseIndexedDb(page, owner.id);
       const beforeCourseRevision = (await canonicalHeader()).revision;
@@ -580,11 +587,11 @@ test.describe("Autoria real com Supabase local", () => {
       expect(mutatingRequests.slice(prepareCopyRequestIndex)).toEqual([]);
 
       await openAuthoringSection(page, "course", "Fontes");
-      await expect(page.getByRole("heading", { name: "Fontes" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Fontes", exact: true }).first()).toBeVisible();
       await expect(page.getByText("Carregando fontes…", { exact: true })).toBeHidden();
       await page.getByRole("button", { name: "Nova fonte" }).click();
-      await page.getByLabel("Identidade estável").fill(SOURCE_ID);
-      await expect(page.getByLabel("Identidade estável")).toHaveValue(SOURCE_ID);
+      sourceId = await page.locator('[data-source-form="source"] input[name="sourceId"]').inputValue();
+      expect(sourceId).toMatch(/^[0-9a-f]{8}-[0-9a-f-]{27}$/u);
       await page.getByLabel("Título", { exact: true }).fill(SOURCE_TITLE);
       await page.getByLabel("Autoria", { exact: true }).fill("Equipe E2E AraLearn");
       await page.getByLabel("Citação legível").fill(
@@ -651,7 +658,8 @@ test.describe("Autoria real com Supabase local", () => {
         .toContain(outsiderPdf.response.status);
 
       await openAuthoringSection(page, "course", "Planejamento");
-      await expect(page.getByRole("heading", { name: "Planejamento" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Planejamento", exact: true }).first())
+        .toBeVisible();
       await expect(page.getByText(INITIAL_OBJECTIVE, { exact: true })).toBeVisible();
       const chatGptTab = await context.newPage();
       await chatGptTab.setContent("<title>ChatGPT simulado para a troca de aba</title>");
@@ -741,12 +749,156 @@ test.describe("Autoria real com Supabase local", () => {
         }
       });
 
+      const actionsMaterializationId = crypto.randomUUID();
+      const actionsStepId = crypto.randomUUID();
+      const actionsStarted = await expectSuccessful(
+        "iniciar materialização pelo contrato de Actions",
+        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
+          p_actor_id: owner.id,
+          p_course_id: courseId,
+          p_authoring_part_id: authoringPartId,
+          p_materialization_id: actionsMaterializationId,
+          p_expected_course_revision: materializablePlan.courseRevision,
+          p_expected_materialization_version: 0,
+          p_operation: "start",
+          p_payload: {
+            authoringPartVersion: materializablePart.version,
+            steps: [{
+              id: actionsStepId,
+              position: 0,
+              kind: "didactic_microsequence_materialization",
+              targetDidacticMicrosequenceId: MICROSEQUENCE_ID,
+              productionPosition: 0
+            }]
+          },
+          p_channel: "actions",
+          p_request_id: `actions-${crypto.randomUUID()}`
+        }, config.adminKey)
+      );
+      expect(actionsStarted).toMatchObject({ channel: "actions", operation: "start" });
+      const actionsContextHash = actionsStarted.materialization.contextHash;
+      const actionsStudyUnit = minimalMaterializableRows().find(
+        ({ entityType, entityId }) => entityType === "study_unit" && entityId === STUDY_UNIT_ID
+      );
+      const actionsDesignApplication = {
+        contextHash: actionsContextHash,
+        didacticMicrosequenceId: MICROSEQUENCE_ID,
+        studyUnits: [{
+          studyUnitId: STUDY_UNIT_ID,
+          mode: "expository",
+          introducedInstructionalAnalysisUnitIds: [],
+          explanationApplications: [],
+          practiceApplications: [],
+          componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+        }]
+      };
+      const actionsStep = await expectSuccessful(
+        "registrar etapa pelo contrato de Actions",
+        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
+          p_actor_id: owner.id,
+          p_course_id: courseId,
+          p_authoring_part_id: authoringPartId,
+          p_materialization_id: actionsMaterializationId,
+          p_expected_course_revision: actionsStarted.courseRevision,
+          p_expected_materialization_version: actionsStarted.materialization.version,
+          p_operation: "record_step",
+          p_payload: {
+            stepId: actionsStepId,
+            expectedStepVersion: 1,
+            status: "completed",
+            resultFacts: {
+              producedStudyUnitCount: 1,
+              source: "actions_contract_e2e",
+              changedObjects: [{ entityType: "study_unit", entityId: STUDY_UNIT_ID }]
+            },
+            entityChanges: { upserts: [actionsStudyUnit], deletes: [] },
+            designApplication: actionsDesignApplication,
+            sourceAttributionApplication: {
+              contract: "aralearn.course-source-attribution-application.v1",
+              contextHash: actionsContextHash,
+              didacticMicrosequenceId: MICROSEQUENCE_ID,
+              studyUnits: [{ studyUnitId: STUDY_UNIT_ID, sourceLinks: [] }]
+            }
+          },
+          p_channel: "actions",
+          p_request_id: `actions-${crypto.randomUUID()}`
+        }, config.adminKey)
+      );
+      const actionsFinished = await expectSuccessful(
+        "concluir materialização pelo contrato de Actions",
+        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
+          p_actor_id: owner.id,
+          p_course_id: courseId,
+          p_authoring_part_id: authoringPartId,
+          p_materialization_id: actionsMaterializationId,
+          p_expected_course_revision: actionsStep.courseRevision,
+          p_expected_materialization_version: actionsStep.materialization.version,
+          p_operation: "finish",
+          p_payload: {
+            status: "completed",
+            resultFacts: { summary: "Contexto conferido pela integração Actions." }
+          },
+          p_channel: "actions",
+          p_request_id: `actions-${crypto.randomUUID()}`
+        }, config.adminKey)
+      );
+      expect(actionsFinished).toMatchObject({
+        channel: "actions",
+        materialization: { status: "completed" }
+      });
+
+      const failedMaterializationId = crypto.randomUUID();
+      const failedStepId = crypto.randomUUID();
+      const failedStarted = await expectSuccessful(
+        "iniciar materialização que terminará com falha",
+        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
+          p_actor_id: owner.id,
+          p_course_id: courseId,
+          p_authoring_part_id: authoringPartId,
+          p_materialization_id: failedMaterializationId,
+          p_expected_course_revision: actionsFinished.courseRevision,
+          p_expected_materialization_version: 0,
+          p_operation: "start",
+          p_payload: {
+            authoringPartVersion: materializablePart.version,
+            steps: [{
+              id: failedStepId,
+              position: 0,
+              kind: "context_load",
+              targetDidacticMicrosequenceId: null,
+              productionPosition: null
+            }]
+          },
+          p_channel: "mcp",
+          p_request_id: `mcp-${crypto.randomUUID()}`
+        }, config.adminKey)
+      );
+      const failedFinished = await expectSuccessful(
+        "encerrar materialização com falha observável",
+        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
+          p_actor_id: owner.id,
+          p_course_id: courseId,
+          p_authoring_part_id: authoringPartId,
+          p_materialization_id: failedMaterializationId,
+          p_expected_course_revision: failedStarted.courseRevision,
+          p_expected_materialization_version: failedStarted.materialization.version,
+          p_operation: "finish",
+          p_payload: {
+            status: "failed",
+            resultFacts: { summary: "Uma Fonte precisa ser revista antes de tentar novamente." }
+          },
+          p_channel: "mcp",
+          p_request_id: `mcp-${crypto.randomUUID()}`
+        }, config.adminKey)
+      );
+      expect(failedFinished.materialization.status).toBe("failed");
+
       const materializationId = crypto.randomUUID();
       const stepId = crypto.randomUUID();
       const started = await mcpClient.callTool("alterarCurso", {
         requestId: crypto.randomUUID(),
         courseId,
-        expectedRevision: materializablePlan.courseRevision,
+        expectedRevision: failedFinished.courseRevision,
         operation: "advance_part_materialization",
         materializationCommand: {
           operation: "start",
@@ -765,7 +917,7 @@ test.describe("Autoria real com Supabase local", () => {
       });
       expect(started).toMatchObject({
         courseId,
-        courseRevision: materializablePlan.courseRevision + 1,
+        courseRevision: failedFinished.courseRevision + 1,
         operation: "start",
         channel: "mcp",
         materialization: {
@@ -862,24 +1014,50 @@ test.describe("Autoria real com Supabase local", () => {
       await page.bringToFront();
       await page.evaluate(() => globalThis.dispatchEvent(new Event("focus")));
       await expect(page.getByText(RETURNED_OBJECTIVE, { exact: true })).toBeVisible();
-      await expect(page.getByRole("heading", { name: PART_TITLE, exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: PART_TITLE, exact: true }).first())
+        .toBeVisible();
       await expect(page.getByText("Em materialização", { exact: true })).toBeVisible();
       await expect(page.getByText("1 de 1 etapas", { exact: true })).toBeVisible();
       await expect(page.locator("[role='dialog']:visible, [role='alertdialog']:visible"))
         .toHaveCount(0);
       const writesBeforeMaterializationRead = mutatingRequests.length;
-      await page.getByRole("button", { name: "Ver etapas", exact: true }).click();
+      await page.getByRole("link", { name: "Abrir Parte", exact: true }).first().click();
+      await expect(page.getByRole("heading", { name: PART_TITLE, exact: true }).first())
+        .toBeVisible();
+      await expect(page.getByText("3 execuções", { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", {
+        name: /Falhou MCP.*Uma Fonte precisa ser revista/u
+      })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Concluída Actions/u })).toBeVisible();
+      await page.getByRole("link", { name: /Concluída Actions/u }).click();
+      const actionsExecution = page.getByRole("region", {
+        name: "Etapas e resultados da materialização"
+      });
+      await expect(actionsExecution).toBeVisible();
+      await expect(actionsExecution.getByRole("link", { name: /Unidade produzida 1/u }))
+        .toBeVisible();
+      await actionsExecution.getByRole("link", { name: /Unidade produzida 1/u }).click();
+      await expect(page.getByRole("heading", { name: STUDY_UNIT_TITLE, exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Voltar à execução", exact: true })).toBeVisible();
+      await page.reload();
+      await expect(page.getByRole("heading", { name: STUDY_UNIT_TITLE, exact: true })).toBeVisible();
+      await page.getByRole("link", { name: "Voltar à execução", exact: true }).click();
+      await expect(actionsExecution).toBeVisible();
+      await expect(actionsExecution.getByText("Versão 3 · Actions", { exact: true })).toBeVisible();
+      await page.getByRole("link", { name: PART_TITLE, exact: true }).first().click();
+      await page.locator(`a[href*="materializationId=${materializationId}"]`).click();
       const materializationRegion = page.getByRole("region", {
-        name: "Etapas da materialização"
+        name: "Etapas e resultados da materialização"
       });
       await expect(materializationRegion).toBeVisible();
-      await expect(materializationRegion.getByText("Versão 2 · Chat conectado", { exact: true }))
+      await expect(materializationRegion.getByText("Versão 2 · MCP", { exact: true }))
         .toBeVisible();
       await expect(materializationRegion.getByText(
         "Etapa 1 · Carregar contexto",
         { exact: true }
       )).toBeVisible();
-      await expect(materializationRegion.getByText("Concluída", { exact: true })).toBeVisible();
+      await expect(materializationRegion.getByText("Concluída", { exact: true }).first())
+        .toBeVisible();
       await expect(page.locator("[role='dialog']:visible, [role='alertdialog']:visible"))
         .toHaveCount(0);
       expect(mutatingRequests).toHaveLength(writesBeforeMaterializationRead);
@@ -919,8 +1097,32 @@ test.describe("Autoria real com Supabase local", () => {
         goal: RETURNED_OBJECTIVE
       });
 
-      await openAuthoringSection(page, "review", "Inspeção");
-      await expect(page.getByRole("heading", { name: "Inspeção" })).toBeVisible();
+      await openAuthoringSection(page, "content", "Conteúdo");
+      await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
+        .toBeVisible();
+      const lessonHierarchyItem = page.locator(
+        `[data-course-authoring-entity-kind="lesson"][data-course-authoring-entity-id="${LESSON_ID}"]`
+      );
+      await lessonHierarchyItem.getByRole("button", {
+        name: "Editar Lição mínima da materialização",
+        exact: true
+      }).click();
+      await expect(page.locator("#aralearn-editor-root .topbar-title")).toHaveText("Lição");
+      await page.getByRole("button", { name: "Editar", exact: true }).click();
+      const lessonEditor = page.getByRole("region", { name: "Edição de Lição" });
+      await expect(lessonEditor.getByLabel("Título", { exact: true })).toHaveValue(
+        "Lição mínima da materialização"
+      );
+      await expect(lessonEditor.locator('[data-study-structure-field="goal"]')).toBeEditable();
+      await expect(lessonEditor.getByText("Ordem das Microssequências", { exact: true }))
+        .toBeVisible();
+      await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+      await page.getByRole("button", { name: "Subir para o Módulo", exact: true }).click();
+      await page.getByRole("button", { name: "Subir para o Curso", exact: true }).click();
+      await page.getByRole("button", { name: "Subir para a Home", exact: true }).click();
+      await page.getByRole("button", { name: "Autoria", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
+        .toBeVisible();
       const inspectionUnit = page.locator(
         `[data-inspection-study-unit="${STUDY_UNIT_ID}"]`
       );

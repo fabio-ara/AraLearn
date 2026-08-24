@@ -1,6 +1,6 @@
 begin;
 
-select plan(103);
+select plan(108);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260824150000',
+  '20260824174101',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -23,7 +23,7 @@ select is(
 
 select is(
   jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
-  39,
+  40,
   'o manifesto não omite nem duplica capacidades correntes'
 );
 
@@ -44,6 +44,7 @@ select ok(
     "self-account-deletion-v1",
     "course-instructional-plan-v1",
     "course-authoring-part-materialization-v1",
+    "course-authoring-part-materialization-history-v1",
     "course-study-unit-inspection-v1",
     "course-design-parameters-v1",
     "course-authoring-guidance-v1",
@@ -210,6 +211,11 @@ select has_function(
   'uma Parte avança por operações pequenas e idempotentes'
 );
 select has_function(
+  'public', 'advance_course_authoring_part_materialization_for_actor_v2',
+  array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'bigint', 'text', 'jsonb', 'text', 'text'],
+  'a fronteira observável preserva Aplicativo, MCP e Actions'
+);
+select has_function(
   'public', 'apply_course_design_command_for_actor_v1',
   array['uuid', 'uuid', 'bigint', 'jsonb', 'text', 'text'],
   'parâmetros e regras de componentes usam a fronteira do Curso'
@@ -320,6 +326,18 @@ select function_privs_are(
   array['uuid', 'uuid', 'bigint', 'jsonb'],
   'service_role', array['EXECUTE'],
   'somente o serviço consulta fatos autorais em nome do proprietário'
+);
+select function_privs_are(
+  'public', 'advance_course_authoring_part_materialization_for_actor_v2',
+  array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'bigint', 'text', 'jsonb', 'text', 'text'],
+  'service_role', array['EXECUTE'],
+  'somente o serviço avança materializações em nome de uma pessoa'
+);
+select function_privs_are(
+  'public', 'advance_course_authoring_part_materialization_for_actor_v2',
+  array['uuid', 'uuid', 'uuid', 'uuid', 'bigint', 'bigint', 'text', 'jsonb', 'text', 'text'],
+  'authenticated', array[]::text[],
+  'o cliente autenticado não escolhe ator nem canal de materialização'
 );
 select function_privs_are(
   'public', 'get_owned_course_authoring_analytics_for_actor_v1',
@@ -842,6 +860,22 @@ select ok(
     'storage.objects'
   ),
   'a exclusão idempotente aceita conta ausente e exige sessão viva enquanto ela existe'
+);
+
+select ok(
+  strpos(pg_get_functiondef(
+    'private.course_anchored_annotation_item_v1(private.course_anchored_annotations,uuid,boolean)'
+      ::regprocedure
+  ), 'section=inspection') = 0,
+  'Observações apontam seus alvos para Conteúdo'
+);
+
+select ok(
+  strpos(pg_get_functiondef(
+    'private.course_anchored_annotation_item_v1(private.course_anchored_annotations,uuid,boolean)'
+      ::regprocedure
+  ), 'section=observations') = 0,
+  'Observações e Auditoria apontam para Revisão'
 );
 
 select * from finish();

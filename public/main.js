@@ -307,10 +307,11 @@ function renderSettings(root, authClient, controller, {
         <div class="account-settings-content">
           <form class="account-profile-form" data-profile-form>
             <div class="account-profile-avatar">
-              <span class="account-profile-avatar-fallback" data-profile-avatar-fallback>${renderUiIcon("account", "account-profile-avatar-icon")}</span>
-              <img data-profile-avatar-image alt="" hidden>
+              <button class="account-profile-avatar-target" type="button" data-profile-avatar-choose title="Escolher ou trocar foto" aria-label="Escolher ou trocar foto">
+                <span class="account-profile-avatar-fallback" data-profile-avatar-fallback>${renderUiIcon("account", "account-profile-avatar-icon")}</span>
+                <img data-profile-avatar-image alt="" hidden>
+              </button>
               <input data-profile-avatar-file type="file" accept="image/jpeg,image/png,image/webp" hidden>
-              <button class="icon-ghost" type="button" data-profile-avatar-choose title="Escolher foto" aria-label="Escolher foto">${renderUiIcon("edit", "account-settings-action-icon")}</button>
               <button class="icon-ghost" type="button" data-profile-avatar-remove title="Remover foto" aria-label="Remover foto">${renderUiIcon("trash", "account-settings-action-icon")}</button>
             </div>
             <label for="account-profile-display-name">Nome</label>
@@ -319,19 +320,20 @@ function renderSettings(root, authClient, controller, {
               <button class="icon-ghost is-primary" type="submit" data-profile-save title="Salvar perfil" aria-label="Salvar perfil">${renderUiIcon("save", "account-settings-action-icon")}</button>
             </div>
           </form>
-          <section class="account-device-data" aria-labelledby="account-device-data-title">
-            <h2 id="account-device-data-title">Dados neste dispositivo</h2>
+          <details class="account-settings-disclosure account-device-data">
+            <summary>Dados e conta</summary>
             <p>Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo. Alterações ainda abertas e não salvas serão perdidas.</p>
-            <p>Remover os dados deste dispositivo mantém a conta conectada e não apaga dados já enviados ao AraLearn.</p>
             <div class="account-device-data-actions">
               <button type="button" data-settings-clear-device>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados deste dispositivo</span></button>
+              <button type="button" data-settings-signout>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair</span></button>
               <button class="is-danger" type="button" data-settings-signout-clear>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair e remover dados deste dispositivo</span></button>
+              <button class="is-danger" type="button" data-settings-delete-account>${renderUiIcon("trash", "account-settings-action-icon")}<span>Excluir conta</span></button>
             </div>
-          </section>
-          <section class="account-maintenance" data-settings-maintenance hidden aria-labelledby="account-maintenance-title">
+          </details>
+          <details class="account-maintenance account-settings-disclosure" data-settings-maintenance hidden>
+            <summary id="account-maintenance-title">Manutenção</summary>
             <div class="account-maintenance-heading">
               <div>
-                <h2 id="account-maintenance-title">Manutenção</h2>
                 <p>Estado corrente de retenção e resíduos que o AraLearn sabe classificar com segurança.</p>
               </div>
               <button class="icon-ghost" type="button" data-maintenance-reload title="Atualizar Manutenção" aria-label="Atualizar Manutenção">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
@@ -342,11 +344,7 @@ function renderSettings(root, authClient, controller, {
               <button type="button" data-maintenance-retention>${renderUiIcon("rotate", "account-settings-action-icon")}<span>Executar retenção corrente</span></button>
             </div>
             <div data-maintenance-inventory></div>
-          </section>
-          <div class="account-danger-zone">
-            <button class="icon-ghost is-danger" type="button" data-settings-delete-account title="Excluir conta" aria-label="Excluir conta">${renderUiIcon("trash", "account-settings-action-icon")}</button>
-            <span>Excluir conta, Cursos próprios e cópias pessoais</span>
-          </div>
+          </details>
         </div>
         <p class="account-settings-status" data-settings-status role="status" aria-live="polite"></p>
         <footer class="account-settings-footer">
@@ -356,9 +354,7 @@ function renderSettings(root, authClient, controller, {
             <button class="theme-choice-button" type="button" data-theme-choice="light" title="Tema claro" aria-label="Tema claro">${renderUiIcon("theme-light", "theme-choice-icon")}</button>
             <button class="theme-choice-button" type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">${renderUiIcon("theme-dark", "theme-choice-icon")}</button>
           </div>
-          <div class="account-settings-account-actions">
-            <button class="icon-ghost" type="button" data-settings-signout title="Sair" aria-label="Sair">${renderUiIcon("sign-out", "account-settings-action-icon")}</button>
-          </div>
+          <div class="account-settings-account-actions" aria-hidden="true"></div>
         </footer>
       </div>
     </section>
@@ -903,7 +899,9 @@ function renderSettings(root, authClient, controller, {
       syncTheme();
       overlay.hidden = false;
       void loadProfile();
-      void loadMaintenance();
+      if (authClient.getSession?.()?.user?.app_metadata?.aralearn_role === "administrator") {
+        void loadMaintenance();
+      }
       root.querySelector("button[data-settings-close]")?.focus({ preventScroll: true });
     },
     close,
@@ -1011,6 +1009,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
 
   let pendingStudyComposition = null;
   let pendingStudyStructure = null;
+  let pendingStudyCourseMetadata = null;
   const saveStudyManualEdit = async (value) => {
     if (value.createsPersonalCopy === true) {
       return repository.commitPersonalCourseCopyEdit({
@@ -1046,24 +1045,59 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   };
 
   const saveStudyAssistedStructure = async (value) => {
+    let expectedCourseRevision = value.expectedCourseRevision;
+    let result = null;
+    if (value.scope === "course" && value.metadataChanged === true) {
+      const authoringPlan = await authoringController.loadAuthoringPlan(value.courseId);
+      const currentTitle = String(authoringPlan?.plan?.title || "");
+      const currentObjective = String(authoringPlan?.plan?.objective || "");
+      expectedCourseRevision = Number(authoringPlan?.courseRevision);
+      if (currentTitle !== value.title || currentObjective !== value.objective) {
+        const metadataIntent = {
+          courseId: value.courseId,
+          expectedCourseRevision,
+          expectedPlanVersion: Number(authoringPlan?.plan?.version),
+          operation: "update_plan",
+          title: value.title,
+          objective: value.objective
+        };
+        const metadataSignature = JSON.stringify(metadataIntent);
+        if (pendingStudyCourseMetadata?.signature !== metadataSignature) {
+          pendingStudyCourseMetadata = { signature: metadataSignature, requestId: createUuid() };
+        }
+        result = await authoringController.mutateAuthoringPlan({
+          requestId: pendingStudyCourseMetadata.requestId,
+          ...metadataIntent
+        });
+        pendingStudyCourseMetadata = null;
+        expectedCourseRevision = Number(result?.courseRevision);
+      }
+    }
     const intent = {
       courseId: value.courseId,
-      expectedCourseRevision: value.expectedCourseRevision,
+      expectedCourseRevision,
       upserts: value.upserts,
       deletes: value.deletes
     };
-    const signature = JSON.stringify(intent);
-    if (pendingStudyStructure?.signature !== signature) {
-      pendingStudyStructure = { signature, requestId: createUuid() };
+    if (intent.upserts.length || intent.deletes.length) {
+      const signature = JSON.stringify(intent);
+      if (pendingStudyStructure?.signature !== signature) {
+        pendingStudyStructure = { signature, requestId: createUuid() };
+      }
+      result = await authoringController.commitCourseStructuralComposition({
+        requestId: pendingStudyStructure.requestId,
+        ...intent
+      });
+      pendingStudyStructure = null;
     }
-    const result = await authoringController.commitCourseStructuralComposition({
-      requestId: pendingStudyStructure.requestId,
-      ...intent
-    });
-    pendingStudyStructure = null;
     await repository.refreshCourses();
     await repository.loadCourse(value.courseId);
-    return { ...result, project: repository.loadProject() };
+    return {
+      ...result,
+      courseId: value.courseId,
+      courseRevision: Number(result?.courseRevision || expectedCourseRevision),
+      project: repository.loadProject()
+    };
   };
 
   editorApp = createCourseStudyApplication({
@@ -1082,6 +1116,13 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     root: authoringRoot,
     controller: authoringController,
     providerAssistanceSession: courseProviderSession,
+    async onOpenStudyContent({ entityPath }) {
+      const opened = await editorApp?.openEntityPath?.(entityPath);
+      if (!opened) throw new Error("Não foi possível abrir este objeto no editor contextual.");
+      authoringSurface?.destroy?.();
+      authoringRoot.hidden = true;
+      editorRoot.hidden = false;
+    },
     onClose() {
       clearAuthoringRoute();
       authoringRoot.hidden = true;
@@ -1098,7 +1139,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     authoringRoot.hidden = false;
     void authoringSurface.open();
   };
-  const refreshVisibleApplication = () => authoringSurface?.opened
+  const refreshVisibleApplication = () => authoringSurface?.opened && !authoringRoot.hidden
     ? authoringSurface.refresh()
     : refreshStudy();
   let visibleRefreshTimer = null;

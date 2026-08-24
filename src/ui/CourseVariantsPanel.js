@@ -246,8 +246,8 @@ function renderMemberFacts(member) {
 
 function renderList(state) {
   const items = state.list?.items || [];
-  return '<section class="course-authoring-section course-variants" aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Variantes</h2>' +
+  return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
+    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Variantes</h2>' +
     '<p>Cursos independentes a partir do mesmo planejamento.</p></div>' +
     '<button type="button" class="course-authoring-header-action" data-course-variants-action="create"' +
     ' aria-label="Criar variantes" title="Criar variantes">' +
@@ -301,8 +301,8 @@ function renderVariantFields(state, index) {
 }
 
 function renderCreate(state) {
-  return '<section class="course-authoring-section course-variants" aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Criar variantes</h2>' +
+  return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
+    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Criar variantes</h2>' +
     '<p>Os Cursos começam com o mesmo planejamento e uma diferença declarada.</p></div>' +
     '<button type="button" data-course-variants-action="back" aria-label="Voltar" title="Voltar">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></header>' +
@@ -319,8 +319,8 @@ function renderComparison(state) {
   const labels = new Map(comparison.members.map((member) => [member.courseId, member.label]));
   labels.set(comparison.source.courseId, "Origem");
   const checkpointPlan = comparison.planning.snapshot?.plan || comparison.planning.snapshot;
-  return '<section class="course-authoring-section course-variants" aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Comparação</h2>' +
+  return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
+    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Comparação</h2>' +
     `<p>${comparison.source.changedSinceCheckpoint ? "A origem mudou desde o checkpoint." : "A origem corresponde ao checkpoint."}</p></div>` +
     '<button type="button" data-course-variants-action="back" aria-label="Voltar" title="Voltar">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></header>' +
@@ -362,6 +362,7 @@ export function createCourseVariantsPanel({
   root,
   controller,
   course,
+  initialComparisonSetId = null,
   onCourseRevisionChange = () => undefined,
   onOpenCourse = () => undefined,
   documentValue = root?.ownerDocument || globalThis.document || null
@@ -595,7 +596,9 @@ export function createCourseVariantsPanel({
     );
   };
   return {
-    open: refreshList,
+    open: initialComparisonSetId
+      ? () => openComparison(initialComparisonSetId)
+      : refreshList,
     refresh: refreshList,
     hasPendingDraft,
     destroy() {

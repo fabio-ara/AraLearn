@@ -48,6 +48,13 @@ async function ensureReviewQueueOpen(page) {
   await expect(queue).toHaveAttribute("open", "");
 }
 
+async function openFirstStudyUnitByClicks(page) {
+  await page.getByRole("button", { name: "Abrir módulo" }).click();
+  await page.getByRole("button", { name: "Abrir lição" }).click();
+  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
+  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+}
+
 test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga interna", async ({
   page
 }) => {
@@ -283,10 +290,11 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
 
   expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([]);
   await page.getByRole("button", { name: "Tentar novamente Curso A" }).press("Enter");
+  await openFirstStudyUnitByClicks(page);
   await page.getByRole("button", { name: "Fontes" }).click();
   await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toBeVisible();
   await page.evaluate(() => {
-    for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
+    for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
 
   await selector.selectOption("course-home-b");
@@ -304,6 +312,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   })).toBeVisible();
   await expect(page.getByRole("button", { name: "Abrindo… Curso B" })).toBeDisabled();
   await page.evaluate(() => globalThis.__home148Probe.releaseCourseLoad());
+  await openFirstStudyUnitByClicks(page);
   await expect(page.getByText("Conteúdo inicial de Curso B.", { exact: true })).toBeVisible();
   await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([
@@ -312,7 +321,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   ]);
 
   await page.evaluate(() => {
-    for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
+    for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
   const resumeB = page.getByRole("button", { name: "Retomar Curso B" });
   await expect(resumeB).toBeVisible();
@@ -607,6 +616,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
 
   await expect(page.getByRole("button", { name: "Começar Fixture Minimal" })).toBeVisible();
   await page.getByRole("button", { name: "Começar Fixture Minimal" }).click();
+  await openFirstStudyUnitByClicks(page);
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.loadedCourses.length)).toBe(1);
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toBeVisible();
 
@@ -704,8 +714,13 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByRole("button", { name: /^Observações/u })).toBeFocused();
   await expect(page.getByRole("button", { name: "Marcar para rever" }))
     .toHaveAttribute("aria-pressed", "true");
-  await expect.poll(() => page.evaluate(() =>
-    document.querySelector(".screen-content").scrollTop)).toBe(refreshContext.scrollTop);
+  await expect.poll(() => page.evaluate((previousScrollTop) => {
+    const scroller = document.querySelector(".screen-content");
+    return scroller.scrollTop === Math.min(
+      previousScrollTop,
+      scroller.scrollHeight - scroller.clientHeight
+    );
+  }, refreshContext.scrollTop)).toBe(true);
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.refreshes)).toBe(1);
   await page.getByRole("button", { name: /^Observações/u }).click();
   await expect(page.getByText("Observação recebida de outro dispositivo.", { exact: true }))
@@ -881,6 +896,7 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
     });
   }, project);
   await page.getByRole("button", { name: "Começar Fixture Minimal" }).click();
+  await openFirstStudyUnitByClicks(page);
 
   for (const width of [360, 390, 430, 1280]) {
     await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
@@ -1192,6 +1208,7 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
   }, projectValue);
 
   await page.getByRole("button", { name: "Começar Interações de Estudo" }).click();
+  await openFirstStudyUnitByClicks(page);
 
   const choices = page.locator("[data-action='choice-toggle'][role='radio']");
   const firstChoice = choices.first();

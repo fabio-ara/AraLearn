@@ -1418,7 +1418,7 @@ export class CourseApiClient {
     return normalizeFocalStudyUnitCompositionReceipt(result, command);
   }
 
-  commitCourseStructuralComposition(value = {}) {
+  async commitCourseStructuralComposition(value = {}) {
     const source = exactObject(value, new Set([
       "requestId", "courseId", "expectedRevision", "upserts", "deletes",
       "sourceAttributionApplications"
@@ -1430,8 +1430,9 @@ export class CourseApiClient {
       throw new TypeError("Alteração estrutural assistida inválida.");
     }
     const bounded = boundedJsonObject({ upserts, deletes }, "Alteração estrutural assistida", 480 * 1024);
-    return this.executeCourseAction("alterarCurso", {
-      requestId: requestIdentity(source.requestId),
+    const requestId = requestIdentity(source.requestId);
+    const result = await this.executeCourseAction("alterarCurso", {
+      requestId,
       courseId: uuid(source.courseId, "Curso"),
       expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
       operation: "commit_course_composition",
@@ -1441,6 +1442,11 @@ export class CourseApiClient {
         source.sourceAttributionApplications
       )
     });
+    return {
+      ...result,
+      requestId: result?.requestId || requestId,
+      courseRevision: Number(result?.courseRevision ?? result?.revision)
+    };
   }
 
   async commitPersonalCourseCopyEdit(value = {}) {

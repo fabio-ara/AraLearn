@@ -681,7 +681,7 @@ test("auditoria owner vincula RPC/query e prepara deep links canônicos e limita
     `?section=sources&sourceId=${encodedSource}&anchorId=anchor-a`);
   assert.equal(result.context.annotations[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-    `?section=observations&annotationId=${AUDIT_ANNOTATION_ID}`);
+    `?section=review&annotationId=${AUDIT_ANNOTATION_ID}`);
   assert.doesNotMatch(result.context.sources[0].deepLink, /\+/u);
 
   const longSourceId = "界".repeat(2_048);
@@ -736,7 +736,7 @@ test("auditoria owner vincula RPC/query e prepara deep links canônicos e limita
   });
   assert.equal(runs.runs[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-    `?section=observations&auditRunId=${AUDIT_RUN_ID}`);
+    `?section=review&auditRunId=${AUDIT_RUN_ID}`);
 });
 
 test("detalhe de auditoria liga finding, correção e observação sem link morto do alvo", async () => {
@@ -753,13 +753,13 @@ test("detalhe de auditoria liga finding, correção e observação sem link mort
   const result = await value.getCourseAuditCycle(options);
   const base = `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}`;
   assert.equal(result.detail.finding.deepLinks.detail,
-    `${base}?section=observations&findingId=${AUDIT_FINDING_ID}`);
+    `${base}?section=review&findingId=${AUDIT_FINDING_ID}`);
   assert.equal(result.detail.finding.deepLinks.target,
-    `${base}?section=inspection&studyUnitId=unit-a`);
+    `${base}?section=content&studyUnitId=unit-a`);
   assert.equal(result.detail.finding.annotationRefs[0].deepLink,
-    `${base}?section=observations&annotationId=${AUDIT_ANNOTATION_ID}`);
+    `${base}?section=review&annotationId=${AUDIT_ANNOTATION_ID}`);
   assert.equal(result.detail.corrections[0].deepLink,
-    `${base}?section=observations&findingId=${AUDIT_FINDING_ID}` +
+    `${base}?section=review&findingId=${AUDIT_FINDING_ID}` +
     `&correctionId=${AUDIT_CORRECTION_ID}`);
   assert.equal(result.detail.selectedCorrection.deepLink,
     result.detail.corrections[0].deepLink);
@@ -767,7 +767,7 @@ test("detalhe de auditoria liga finding, correção e observação sem link mort
   resultPage = auditDetailPage({ currentAvailable: false });
   const unavailable = await value.getCourseAuditCycle(options);
   assert.equal(unavailable.detail.finding.deepLinks.detail,
-    `${base}?section=observations&findingId=${AUDIT_FINDING_ID}`);
+    `${base}?section=review&findingId=${AUDIT_FINDING_ID}`);
   assert.equal(unavailable.detail.finding.deepLinks.target, null);
 });
 
@@ -2173,7 +2173,7 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
   assert.equal(
     result.items[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      "?section=inspection&studyUnitId=unit-a"
+      "?section=content&studyUnitId=unit-a"
   );
 });
 
@@ -3258,7 +3258,7 @@ test("leitura retomável redige aplicações internas sem ocultar os fatos públ
 test("avanço de materialização encaminha somente a operação delimitada", async () => {
   let request = null;
   const value = adapter(async (url, init) => {
-    assert.match(url, /advance_course_authoring_part_materialization_for_actor_v1$/u);
+    assert.match(url, /advance_course_authoring_part_materialization_for_actor_v2$/u);
     request = JSON.parse(init.body);
     return json(materializationChange());
   });
@@ -3291,6 +3291,26 @@ test("avanço de materialização encaminha somente a operação delimitada", as
   assert.equal(request.p_channel, "mcp");
   assert.equal(request.p_authoring_part_id, PART_ID);
   assert.deepEqual(request.p_payload, payload);
+
+  let actionsRequest = null;
+  const actionsAdapter = adapter(async (url, init) => {
+    assert.match(url, /advance_course_authoring_part_materialization_for_actor_v2$/u);
+    actionsRequest = JSON.parse(init.body);
+    return json(materializationChange({ channel: "actions" }));
+  });
+  const actionsResult = await actionsAdapter.advanceCourseAuthoringPartMaterialization({
+    principal: { actorId: USER_ID, authenticationKind: "action" },
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID,
+    requestId: "request-materialization-actions-0001",
+    expectedCourseRevision: 4,
+    expectedMaterializationVersion: 0,
+    operation: "start",
+    payload
+  });
+  assert.equal(actionsRequest.p_channel, "actions");
+  assert.equal(actionsResult.channel, "actions");
 
   const invalid = adapter(async () => json({
     ...materializationChange(),
@@ -3331,7 +3351,7 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
     if (url.endsWith("/get_owned_course_authoring_part_materialization_for_actor_v1")) {
       return json(runningMaterialization({ excludedRefs, contextSources }));
     }
-    if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v1")) {
+    if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v2")) {
       return json(materializationChange({
         operation: "record_step",
         stepKind: "didactic_microsequence_materialization",
@@ -3393,7 +3413,7 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
   assert.equal(result.operation, "record_step");
   assert.deepEqual(calls, [
     "get_owned_course_authoring_part_materialization_for_actor_v1",
-    "advance_course_authoring_part_materialization_for_actor_v1"
+    "advance_course_authoring_part_materialization_for_actor_v2"
   ]);
 
   calls.length = 0;
@@ -3437,7 +3457,7 @@ test("record_step exige ambas as aplicações somente na conclusão didática", 
     if (url.endsWith("/get_owned_course_authoring_part_materialization_for_actor_v1")) {
       return json(runningMaterialization({ stepKind }));
     }
-    if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v1")) {
+    if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v2")) {
       writes += 1;
       return json(materializationChange({
         operation: "record_step",

@@ -159,7 +159,7 @@ function renderCoursePreview({
       ? total > 0 && completed >= total
         ? "Volta ao panorama deste Curso concluído."
         : "Continua pela próxima Unidade pendente."
-      : "Começa pela primeira Unidade de estudo.";
+      : "Começa pelo panorama deste Curso.";
   const offline = runtimeStatus?.offline === true;
   const unavailableOffline = offline && !availableOffline;
   const statusCopy = availableOffline
@@ -274,7 +274,7 @@ function renderReviewQueue(
 
 function renderTopbar() {
   return (
-    '<header class="topbar home-topbar navigation-topbar">' +
+    '<header class="topbar home-topbar">' +
     '<div class="topbar-space"></div>' +
     '<h1 class="topbar-title"><span class="brand-title">' +
     '<img class="brand-mark" src="assets/brand/aralearn-mark-monochrome.svg" alt="" aria-hidden="true">' +

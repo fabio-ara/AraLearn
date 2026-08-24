@@ -15,6 +15,20 @@ const fixture = JSON.parse(fs.readFileSync(
   "utf8"
 ));
 
+async function openSecondStudyUnitByClicks(page) {
+  await page.getByRole("button", { name: "Abrir módulo" }).click();
+  await page.getByRole("button", { name: "Abrir lição" }).click();
+  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
+  await page.getByRole("button", { name: "Abrir unidade" }).last().click();
+}
+
+async function openFirstStudyUnitByClicks(page) {
+  await page.getByRole("button", { name: "Abrir módulo" }).click();
+  await page.getByRole("button", { name: "Abrir lição" }).click();
+  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
+  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+}
+
 function responseUnit(manifest, index) {
   const responseId = `manual-response-${index}`;
   let content = [];
@@ -425,6 +439,7 @@ async function openStudyUnit(page, ownership) {
     const app = mountStudyApplication();
     await app.openCourse(sourceCourseId);
   }, { project: fixture, ownership });
+  await openSecondStudyUnitByClicks(page);
   await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
 }
 
@@ -609,7 +624,7 @@ async function installContextualAssistanceResponses(page, {
 }
 
 async function prepareContextualAssistance(page, request) {
-  await page.getByRole("button", { name: "Assistência por API" }).click();
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
   const dialog = page.getByRole("dialog", { name: /Unidade:/u });
   await expect(dialog).toBeVisible();
   await dialog.getByText("Serviço e modelo", { exact: true }).click();
@@ -674,7 +689,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   await openStudyUnit(page, "owned");
   await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Assistência por API" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeVisible();
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator(
     '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
@@ -725,7 +740,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Voltar à conversa" }).click();
   await assistanceDialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
-  await expect(page.getByRole("region", { name: "Rascunho da Assistência por API" }))
+  await expect(page.getByRole("region", { name: "Rascunho da Assistência por IA" }))
     .toBeVisible();
   await page.getByRole("button", { name: "Salvar proposta" }).click();
   await expect(page.getByText("Proposta salva.", { exact: true })).toBeVisible();
@@ -751,7 +766,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
 
   await openStudyUnit(page, "shared");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Assistência por API" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeVisible();
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator(
     '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
@@ -1237,6 +1252,7 @@ test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma 
     globalThis.__manualHistoryApp = app;
     await app.openCourse(courseA.id);
   }, fixture);
+  await openFirstStudyUnitByClicks(page);
 
   const editCurrentParagraph = async (text) => {
     await page.getByRole("button", { name: "Editar", exact: true }).click();
@@ -1255,6 +1271,7 @@ test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma 
   await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
   await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-b");
   await page.getByRole("button", { name: "Começar Curso de Bruno" }).click();
+  await openFirstStudyUnitByClicks(page);
   await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeDisabled();
@@ -1327,7 +1344,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   await page.setViewportSize({ width: 430, height: 860 });
   await openInspectionUnit(page, "owned");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Assistência por API" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeVisible();
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
   const field = page.locator('[data-manual-edit-path="text"]');
@@ -1356,7 +1373,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   await page.getByRole("button", { name: "Cancelar edição" }).click();
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests.length)).toBe(1);
 
-  await page.getByRole("button", { name: "Assistência por API" }).click();
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
   await expect(page.getByRole("dialog", { name: /Unidade:/u })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: /Unidade:/u })).toHaveCount(0);
@@ -1366,7 +1383,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
 
   await openInspectionUnit(page, "shared");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Assistência por API" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
 });
 
 test("gravação incerta conserva o rascunho e só libera outro pedido após retry ou descarte explícito", async ({ page }) => {

@@ -14,7 +14,7 @@ do mesmo percurso.
 
 O AraLearn oferece três integrações relacionadas, mas distintas:
 
-- **Assistência por API** aparece dentro da Unidade, da Microssequência e da
+- **Assistência por IA** aparece dentro da Unidade, da Microssequência e da
   Lição e usa um provedor configurado por relay local;
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
   canônicas de Curso;
@@ -24,9 +24,9 @@ Os três caminhos chegam às mesmas regras de Curso. Eles não compartilham
 credencial, sessão ou protocolo. Perfil, acesso, cópia pessoal, ciclo de vida do
 Curso e Manutenção continuam ações do aplicativo autenticado.
 
-## A sessão de Assistência por API
+## A sessão de Assistência por IA
 
-Assistência por API é uma sessão contextual com minichat. Ela não é uma chamada
+Assistência por IA é uma sessão contextual com minichat. Ela não é uma chamada
 isolada para substituir texto. Ao abrir o modo, a interface mostra o alvo e o
 contexto somente leitura que poderá ser enviado. A conversa progride assim:
 
@@ -115,7 +115,7 @@ conflito. Essa repetição segura não amplia o escopo confirmado.
 
 ## Relay local e credenciais
 
-Em produção, a Assistência por API chama um relay em `127.0.0.1`, `localhost` ou
+Em produção, a Assistência por IA chama um relay em `127.0.0.1`, `localhost` ou
 `10.0.2.2`, na porta 4183. A credencial do provedor fica no relay e nunca entra
 no AraLearn. O navegador classifica os dois primeiros endereços como loopback e
 o último como rede local.

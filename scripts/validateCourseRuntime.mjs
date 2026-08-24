@@ -21,6 +21,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "self-account-deletion-v1",
   "course-instructional-plan-v1",
   "course-authoring-part-materialization-v1",
+  "course-authoring-part-materialization-history-v1",
   "course-study-unit-inspection-v1",
   "course-design-parameters-v1",
   "course-authoring-guidance-v1",
@@ -253,7 +254,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260824150000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260824174101" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -319,6 +320,9 @@ async function validateManifest() {
   );
   const legacyRemovalMigration = await read(
     "supabase/migrations/20260824150000_remove_pre_course_runtime.sql"
+  );
+  const materializationHistoryMigration = await read(
+    "supabase/migrations/20260824174101_authoring_materialization_history.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -428,6 +432,12 @@ async function validateManifest() {
       ) ||
       !legacyRemovalMigration.includes(
         "if v_object_count <> 758"
+      ) ||
+      !materializationHistoryMigration.includes(
+        "to_jsonb('20260824174101'::text)"
+      ) ||
+      !materializationHistoryMigration.includes(
+        "advance_course_authoring_part_materialization_for_actor_v2"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -449,7 +459,8 @@ async function validateManifest() {
         !contextualCompositionMigration.includes(`'${feature}'`) &&
         !personalCourseCopyMigration.includes(`'${feature}'`) &&
         !dataLifecycleMigration.includes(`'${feature}'`) &&
-        !actionsMigration.includes(`'${feature}'`)) {
+        !actionsMigration.includes(`'${feature}'`) &&
+        !materializationHistoryMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

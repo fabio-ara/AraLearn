@@ -11,7 +11,7 @@ import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntime
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.29";
+const VERSION = "0.0.30";
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>

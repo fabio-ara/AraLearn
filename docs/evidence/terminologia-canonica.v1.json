@@ -3262,6 +3262,55 @@
       "status": "vigente"
     },
     {
+      "id": "ai-assistance",
+      "family": "assistant-architecture",
+      "currentTerms": [
+        "Assistência por IA",
+        "Assistência por API"
+      ],
+      "productTerm": "Assistência por IA",
+      "technicalSymbol": "course_provider_assistance",
+      "definition": "Sessão contextual em que um sistema de inteligência artificial ajuda a discutir, planejar, preparar, validar e pré-visualizar uma alteração tipada antes de a pessoa decidir aplicá-la ao rascunho do objeto corrente.",
+      "decision": "restringir",
+      "layers": [
+        "interface",
+        "assistant",
+        "documentation"
+      ],
+      "sources": [
+        {
+          "status": "decisao-produto",
+          "ref": "docs/assistencia-por-ia.md",
+          "supports": "Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions"
+        },
+        {
+          "status": "padrao-externo",
+          "ref": "https://www.nist.gov/itl/ai-risk-management-framework",
+          "supports": "Sustenta somente a distinção geral entre sistema de inteligência artificial e os mecanismos técnicos que o disponibilizam; não prescreve o rótulo da interface"
+        }
+      ],
+      "notSynonyms": [
+        "API",
+        "provider",
+        "MCP",
+        "Actions",
+        "chat genérico"
+      ],
+      "interfaceTerm": "Assistência por IA",
+      "domainTerm": "Assistência contextual por modelo de linguagem",
+      "englishEquivalent": "contextual AI assistance for authoring (descrição técnica própria)",
+      "araLearnExample": "Na Unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia no renderer real.",
+      "ambiguityRisk": "O rótulo anterior nomeava o meio de transporte e podia sugerir que a API prestava a assistência, além de misturar a sessão situada com MCP e Actions, que são integrações de autoria distintas. A tradução inglesa registrada descreve o conceito próprio do AraLearn e não reivindica terminologia internacional estabelecida.",
+      "alternativesAssessment": "compared",
+      "alternativesConsidered": [
+        "“Assistência por API”: rejeitado na interface porque API é o meio de acesso, não quem ou o que presta assistência.",
+        "“Assistente de IA”: rejeitado porque sugere uma entidade ou produto separado, enquanto a capacidade é um modo contextual sobre o objeto corrente.",
+        "“Assistência por modelo de linguagem”: tecnicamente específico, mas longo demais para a toolbar; permanece como definição de domínio.",
+        "“Copiloto”: rejeitado por ser metáfora de marca e não explicar a operação nem a responsabilidade humana."
+      ],
+      "status": "vigente"
+    },
+    {
       "id": "discourse-genre",
       "family": "discourse-text",
       "currentTerms": [

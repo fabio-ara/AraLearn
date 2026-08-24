@@ -101,8 +101,8 @@ Depois do recibo 2xx e antes de invalidar as projeções anteriores, o controlad
 persiste no IndexedDB do usuário o snapshot focal confirmado e promove a Unidade,
 a revisão e a versão no documento `course.v1`. Essa promoção preserva progresso,
 Observações e posição. Só então lista, composição anterior, plano, desenho,
-Fontes, Estrutura, Inspeção e páginas de entidades são invalidados e recompostos.
-Estudo e Inspeção podem ler esse estado sem rede mesmo quando a releitura remota
+Fontes, a hierarquia e as páginas de Conteúdo e de entidades são invalidados e
+recompostos. Estudo e Conteúdo podem ler esse estado sem rede mesmo quando a releitura remota
 falha; a interface o apresenta como confirmado, com sincronização pendente, e
 não simula uma segunda gravação.
 
@@ -168,8 +168,8 @@ aralearn-course-v1-<identificador-da-conta>
 ```
 
 O armazenamento local guarda registros tipados para listas, cabeçalhos, páginas
-candidatas, composição promovida, plano, estrutura, páginas recentes da
-Inspeção, estado pessoal, Anotações de Estudo e posição. O catálogo privado de
+candidatas, composição promovida, plano, estrutura, páginas recentes de
+Conteúdo, estado pessoal, Anotações de Estudo e posição. O catálogo privado de
 Fontes, seus metadados e os bytes de PDFs permanecem somente no servidor e no
 Storage. A separação lógica é feita por chaves e contratos de repositório. A
 sessão de autenticação fica em `aralearn-auth-v1`, fora do banco de Curso.
@@ -315,7 +315,7 @@ Os contratos são exercitados em camadas:
 | estado pessoal e Anotações | testes dos repositórios, duas abas e retomada de fila |
 | concorrência e idempotência | testes PGlite, PostgreSQL real e chamadas repetidas |
 | edição contextual e proveniência carregada | testes de domínio, controlador, adaptador, roteador, PGlite e paridade IndexedDB |
-| snapshot confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Inspeção e CAS externo |
+| snapshot confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Conteúdo e CAS externo |
 | fontes, PDFs e proveniência | testes de domínio, painel, PGlite, Storage e segurança |
 | auditoria, variantes e Pesquisa | testes de domínio, painéis, roteador e PGlite |
 | Autoria integrada | jornada autenticada por `public/main.js`, IndexedDB, API, PostgreSQL, Storage, RLS, OAuth com PKCE e MCP no Supabase local |

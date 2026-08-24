@@ -164,7 +164,7 @@ function observationRequestText(state, { annotationId, target, rawText, withdraw
       "planejamento, os parâmetros, as Fontes e as Âncoras relevantes. Separe evidência, " +
       "interpretação, lacunas e opções antes de responder no ChatGPT.\n\n" + observationText,
     deepLink: requestDeepLink(state, buildCourseAuthoringRoute(state.courseId, {
-      section: "observations",
+      section: "review",
       annotationId
     })),
     references: { annotationId },
@@ -413,7 +413,7 @@ function renderItem(item, selected = false, requestChatEnabled = false) {
       ? '<p class="course-observation-withdrawn">Conteúdo retirado.</p>'
       : `<p class="course-observation-raw">${escapeHtml(item.rawText)}</p>`) +
     `<a class="course-observation-detail-link" href="${escapeHtml(buildCourseAuthoringRoute(
-      item.courseId, { section: "observations", annotationId: item.annotationId }
+      item.courseId, { section: "review", annotationId: item.annotationId }
     ))}" data-observations-action="open-detail" data-annotation-id="${escapeHtml(item.annotationId)}">` +
     'Ver detalhe<span aria-hidden="true">›</span></a></article>';
 }
@@ -538,7 +538,7 @@ function renderPanel(state) {
     `<p>${detailMode ? "Detalhe contextual" : "Inbox única do Curso"}</p></div>` +
     (detailMode
       ? `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
-          section: "observations"
+          section: "review"
         }))}" data-observations-action="back-inbox">Voltar à inbox</a>`
       : '<button type="button" data-observations-action="reload" aria-label="Atualizar observações">' +
         renderUiIcon("rotate", "course-authoring-button-icon") + "</button>") + "</header>" +

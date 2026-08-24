@@ -197,7 +197,7 @@ Lê uma destas projeções:
 o cliente deve reiniciar a partir do estado corrente.
 
 `study_units` também exige `expectedRevision` e aceita os mesmos escopos da
-Inspeção visual: Curso, Parte de autoria, Unidades sem Parte, Módulo, Lição ou
+sequência visual de Conteúdo: Curso, Parte de autoria, Unidades sem Parte, Módulo, Lição ou
 Microssequência didática. `anchorStudyUnitId` inclui a Unidade escolhida na
 primeira página; `cursor: {studyUnitId}` continua para frente ou para trás e
 não pode coexistir com a âncora. A página normal contém 12 itens, o máximo é 24

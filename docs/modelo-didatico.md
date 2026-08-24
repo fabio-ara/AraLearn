@@ -176,7 +176,7 @@ fontes e objetivo → itens do plano → atribuição explícita por Microssequ�
   → parâmetros e orientações efetivos
   → política e seleção progressiva de componentes
   → contexto selado pelo servidor → Unidades e fatos de aplicação
-  → Inspeção e revisão humana
+  → Conteúdo e revisão humana
 ```
 
 A **unidade de análise instrucional** é um recorte editorial ligado a fontes,

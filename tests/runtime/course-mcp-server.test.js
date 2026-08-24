@@ -480,7 +480,7 @@ test("MCP entrega prévia textual e link exato para a Unidade persistida", async
   assert.equal(
     preview.deepLink,
     `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      `?section=inspection&studyUnitId=${studyUnit.id}`
+      `?section=content&studyUnitId=${studyUnit.id}`
   );
   assert.match(payload.result.content[0].text, /A conjunção só é verdadeira/u);
   assert.match(payload.result.content[0].text, /Abrir no AraLearn:/u);

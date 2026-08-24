@@ -138,7 +138,7 @@ Os filtros cobrem:
 
 Cada resultado abre o alvo e o detalhe da Observação. A pessoa proprietária
 pode criar Observações no Curso, Módulo, Lição, Tópico ou Microssequência. Para
-uma Unidade, a criação parte da **Inspeção**, que preserva o alvo exato. O
+uma Unidade, a criação parte de **Conteúdo**, que preserva o alvo exato. O
 detalhe de uma Fonte permite acrescentar uma nota, contestar uma interpretação
 ou solicitar a reformulação da Fonte inteira ou de uma de suas Âncoras.
 

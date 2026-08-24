@@ -416,7 +416,7 @@ function analyticsObjectDeepLink(baseUrl, courseId, fact) {
     return `${route}?section=planning&authoringPartId=${id}`;
   }
   if (reference.kind === "study_unit") {
-    return `${route}?section=inspection&studyUnitId=${id}`;
+    return `${route}?section=content&studyUnitId=${id}`;
   }
   if (reference.kind === "source") {
     return `${route}?section=sources&sourceId=${id}`;
@@ -424,10 +424,10 @@ function analyticsObjectDeepLink(baseUrl, courseId, fact) {
   if (["anchored_annotation", "audit_run", "audit_finding", "correction"].includes(
     reference.kind
   )) {
-    return `${route}?section=observations`;
+    return `${route}?section=review`;
   }
   if (["comparison_set", "variant"].includes(reference.kind)) {
-    return `${route}?section=variants&comparisonSetId=${id}`;
+    return `${route}?section=research&comparisonSetId=${id}`;
   }
   return `${route}?section=research`;
 }

@@ -5,10 +5,6 @@ as tarefas reais de autoria. A sessão não ensina a arquitetura da interface e
 não pede que a participante memorize nomes de áreas. Resultados automatizados
 complementam a observação humana, mas não a substituem.
 
-O feedback que motivou esta revisão é evidência de regressão do produto. A
-avaliação, portanto, mede a recuperação da identidade compacta de Estudo e da
-baixa carga cognitiva, não preferência estética.
-
 ## Verificação antes da sessão
 
 Antes de envolver uma participante, reprovar a revisão se qualquer uma destas
@@ -17,7 +13,8 @@ condições ocorrer:
 - a superfície de Autoria ultrapassa 430 px em 360, 390, 430 ou 1280 px;
 - o aplicativo usa canvas de 760 px, segunda coluna, dashboard expandido ou
   composição exclusiva para desktop;
-- nove destinos ou rótulos de áreas ficam expostos simultaneamente;
+- a navegação principal volta a exigir grupos abstratos ou destinos diferentes
+  das sete tarefas correntes de Autoria;
 - um botão somente por ícone não possui `aria-label` e `title` ou tooltip;
 - a página cria rolagem horizontal global;
 - Estudo perdeu navegação, renderer, prática, progresso, temas, estado offline,

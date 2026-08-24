@@ -161,12 +161,12 @@ A área **Auditoria e correções** reúne duas abas:
 
 Os endereços internos reconhecem estes destinos:
 
-- `section=observations&annotationId=...` para uma Observação;
-- `section=observations&findingId=...` para um achado;
-- `section=observations&findingId=...&correctionId=...` para uma correção;
-- `section=observations&auditRunId=...` para uma rodada.
+- `section=review&annotationId=...` para uma Observação;
+- `section=review&findingId=...` para um achado;
+- `section=review&findingId=...&correctionId=...` para uma correção;
+- `section=review&auditRunId=...` para uma rodada.
 
-Fonte ou Âncora abre **Fontes**; a Unidade abre **Inspeção**. Combinações
+Fonte ou Âncora abre **Fontes**; a Unidade abre **Conteúdo**. Combinações
 incompatíveis são recusadas para evitar que um endereço aparente apontar para
 outro contexto.
 

@@ -75,6 +75,10 @@ function courseDocument(courseId = SOURCE_ID, unit = studyUnit()) {
   };
 }
 
+function studyUnitPath(courseId) {
+  return [courseId, "module-a", "lesson-a", "micro-a", "unit-a"];
+}
+
 function sourceRows() {
   return flattenCourseDocument(courseDocument()).rows.map((row) => ({
     ...row,
@@ -1128,7 +1132,7 @@ test("cancelar o rascunho do Curso B retoma P do Curso A sem apagá-la", async (
     }
   });
 
-  await app.openCourse(TARGET_ID);
+  await app.openEntityPath(studyUnitPath(TARGET_ID));
   assert.equal(app.previewManualEdit({
     targetId: "study_unit",
     pathValues: { title: "Unidade B editada" },
@@ -1217,7 +1221,7 @@ test("conflito entre P e Q no mesmo Curso cancela Q e retoma P", async () => {
     }
   });
 
-  await app.openCourse(SOURCE_ID);
+  await app.openEntityPath(studyUnitPath(SOURCE_ID));
   assert.equal(app.previewManualEdit({
     targetId: "study_unit",
     pathValues: { title: "Rascunho Q diferente" },
@@ -1517,7 +1521,7 @@ test("revogação da origem remove P por CAS e libera outra derivação", async 
   assert.equal(pending, null);
   assert.equal(root.innerHTML.includes("discard-pending-personal-copy"), false);
 
-  await app.openCourse(TARGET_ID);
+  await app.openEntityPath(studyUnitPath(TARGET_ID));
   assert.equal(app.previewManualEdit({
     targetId: "study_unit",
     pathValues: { title: "Nova derivação de B" },

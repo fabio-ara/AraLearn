@@ -81,7 +81,7 @@ de Estudo e as áreas principais de Autoria com uma identidade autorizada.
 ## Android
 
 O APK encapsula a mesma aplicação e acrescenta a ponte nativa necessária ao
-relay local da Assistência por API. O WebView não recebe permissão genérica para
+relay local da Assistência por IA. O WebView não recebe permissão genérica para
 conteúdo HTTP. A compilação de release valida assinatura, origem dos assets e
 presença da ponte esperada.
 

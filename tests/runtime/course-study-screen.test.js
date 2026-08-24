@@ -100,7 +100,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(moreOnlyHtml, /<strong>Rever<\/strong><span class="muted tiny">mais<\/span>/u);
 });
 
-test("Lição e Microssequência expõem Visualizar e Assistência por API como modos irmãos", async () => {
+test("os modos contextuais ficam no topbar, sem rótulo visível dentro dos botões", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -124,7 +124,8 @@ test("Lição e Microssequência expõem Visualizar e Assistência por API como 
     studyUnit,
     progress: { version: 1, lessons: {} },
     coursePermissionsById: {},
-    assistance: { enabled: true, activeScope: "", draft: null, saving: false, error: "" }
+    assistance: { enabled: true, activeScope: "", draft: null, saving: false, error: "" },
+    structuralEditor: { enabled: true, editing: false, saving: false }
   };
   for (const [view, action] of [
     ["lesson", "open-lesson-assistance"],
@@ -135,9 +136,11 @@ test("Lição e Microssequência expõem Visualizar e Assistência por API como 
       view,
       microsequenceMode: view === "microsequence" ? "overview" : "play"
     });
-    assert.match(html, /role="group" aria-label="Modo da (?:Lição|Microssequência)"/u);
+    assert.match(html, /<header[\s\S]*role="group" aria-label="Modo de (?:Lição|Microssequência didática)"/u);
     assert.ok(html.indexOf('aria-label="Visualizar"') < html.indexOf(`data-action="${action}"`));
-    assert.match(html, new RegExp(`data-action="${action}"[\\s\\S]*?aria-label="Assistência por API"`, "u"));
+    assert.match(html, new RegExp(`data-action="${action}"[\\s\\S]*?aria-label="Assistência por IA"`, "u"));
+    assert.match(html, /data-action="study-level-edit"/u);
+    assert.doesNotMatch(html, /<button[^>]*study-mode-button[^>]*>(?:(?!<\/button>)[\s\S])*?<span>/u);
   }
 
   const draftHtml = renderCourseStudyScreen({
@@ -151,7 +154,7 @@ test("Lição e Microssequência expõem Visualizar e Assistência por API como 
       error: ""
     }
   });
-  assert.match(draftHtml, /aria-label="Rascunho da Assistência por API"/u);
+  assert.match(draftHtml, /aria-label="Rascunho da Assistência por IA"/u);
   assert.match(draftHtml, /data-action="save-assistance-draft"/u);
   assert.match(draftHtml, /data-action="discard-assistance-draft"/u);
 });
@@ -360,15 +363,10 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
     manualEditor: { ...manualEditor, createsPersonalCopy: false, isPersonalCopy: false }
   });
   assert.match(ownedHtml, /Edite diretamente no conteúdo\./u);
-  assert.match(ownedHtml, />Visualizar<\/span><\/button>/u);
-  assert.match(ownedHtml, />Editar<\/span><\/button>/u);
-  assert.match(ownedHtml, />Assistência por API<\/span><\/button>/u);
-  assert.ok(
-    ownedHtml.indexOf(">Visualizar</span>") <
-      ownedHtml.indexOf(">Editar</span>") &&
-    ownedHtml.indexOf(">Editar</span>") <
-      ownedHtml.indexOf(">Assistência por API</span>")
-  );
+  assert.match(ownedHtml, /data-action="study-manual-view"[^>]*aria-label="Visualizar"/u);
+  assert.match(ownedHtml, /data-action="study-manual-edit"[^>]*aria-label="Editar"/u);
+  assert.match(ownedHtml, /data-action="study-provider-assistance"[^>]*aria-label="Assistência por IA"/u);
+  assert.doesNotMatch(ownedHtml, /<button[^>]*study-mode-button[^>]*>(?:(?!<\/button>)[\s\S])*?<span>/u);
   assert.match(ownedHtml, /data-action="go-back"[\s\S]*data-action="go-up"/u);
   assert.match(ownedHtml, /aria-label="Subir para a Microssequência"/u);
   assert.match(ownedHtml, /aria-label="Salvar edição"/u);

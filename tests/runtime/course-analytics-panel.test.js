@@ -85,7 +85,7 @@ test("Pesquisa mostra gráfico e tabela equivalentes, revisão, ausência e limi
     controller: { async loadCourseAuthoringAnalytics() { return page(); } }
   });
   await panel.open();
-  assert.match(root.innerHTML, /<h2 id="course-authoring-section-title">Pesquisa<\/h2>/u);
+  assert.match(root.innerHTML, /<h2 id="course-analytics-section-title">Pesquisa<\/h2>/u);
   assert.match(root.innerHTML, /role="img" aria-label="Estado das observações\./u);
   assert.match(root.innerHTML, /<caption>Valores equivalentes ao gráfico<\/caption>/u);
   assert.match(root.innerHTML, /Dado ausente/u);

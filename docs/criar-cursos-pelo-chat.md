@@ -7,10 +7,9 @@ operações delimitadas, enquanto o AraLearn verifica propriedade, revisões,
 contratos e relações antes de confirmar uma mudança.
 
 Este percurso pressupõe que a organização já disponibilizou um cliente MCP
-compatível. A prova automatizada local confirma protocolo, OAuth e continuidade
-com a interface, mas não demonstra que um app do AraLearn esteja publicado ou
-instalável no ChatGPT. Por isso, este documento não substitui um tutorial de
-instalação na interface corrente desse produto.
+compatível. Ele não implica que um app do AraLearn esteja publicado ou
+instalável no ChatGPT e não substitui um tutorial de instalação na interface
+corrente desse produto.
 
 ## Antes de começar
 
@@ -194,16 +193,15 @@ uma responsabilidade humana apoiada por auditoria.
 
 Depois de produzir ou alterar conteúdo:
 
-1. confira o plano e o estado das Partes em **Planejamento**;
-2. confirme decisões e proveniência em **Parâmetros** e **Fontes**;
-3. verifique a hierarquia em **Estrutura**;
-4. percorra as Unidades em **Inspeção**;
-5. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
+1. confira o plano, as Partes e o histórico de materializações em **Planejamento**;
+2. confirme decisões e proveniência em **Parâmetros e componentes** e **Fontes**;
+3. verifique a hierarquia e percorra as Unidades em **Conteúdo**;
+4. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
    citações visíveis;
-6. trate divergências em **Discussões e correções**.
+5. trate divergências em **Revisão**.
 
-A Inspeção reproduz o conteúdo real com as respostas inertes. A edição manual
-e a assistência por API ativam somente os textos autorizados nesse mesmo
+Conteúdo reproduz o material real com as respostas inertes. A edição manual
+e a Assistência por IA ativam somente os textos autorizados nesse mesmo
 renderer; não existe outra representação ou persistência de Unidade.
 
 ## Registrar e tratar Observações

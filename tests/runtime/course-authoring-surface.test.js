@@ -17,6 +17,11 @@ const OUTCOME_ID = "50000000-0000-4000-8000-000000000005";
 const ANALYSIS_ID = "60000000-0000-4000-8000-000000000006";
 const EVIDENCE_ID = "70000000-0000-4000-8000-000000000007";
 const MATERIALIZATION_ID = "80000000-0000-4000-8000-000000000008";
+const MATERIALIZATION_HISTORY_IDS = Object.freeze([
+  "81000000-0000-4000-8000-000000000008",
+  "82000000-0000-4000-8000-000000000008",
+  "83000000-0000-4000-8000-000000000008"
+]);
 const EVENT_ID = "9";
 const PLAN_ID = "a0000000-0000-4000-8000-00000000000a";
 const MATERIALIZATION_STEP_IDS = Object.freeze([
@@ -206,6 +211,20 @@ function authoringPlanFixture(overrides = {}) {
           state: "materializing",
           microsequenceCount: 2,
           studyUnitCount: 7,
+          materializations: [{
+            id: MATERIALIZATION_ID,
+            status: "running",
+            progressState: "partial",
+            channel: "mcp",
+            version: 1,
+            completedStepCount: 2,
+            failedStepCount: 0,
+            totalStepCount: 4,
+            startedAt: "2026-08-17T10:00:00Z",
+            updatedAt: "2026-08-17T10:10:00Z",
+            completedAt: null,
+            summary: "2 de 4 etapas concluídas"
+          }],
           lastMaterialization: {
             id: MATERIALIZATION_ID,
             status: "running",
@@ -229,6 +248,7 @@ function authoringPlanFixture(overrides = {}) {
           state: "planned",
           microsequenceCount: 0,
           studyUnitCount: 0,
+          materializations: [],
           lastMaterialization: null
         }
       }],
@@ -593,7 +613,7 @@ test("lista abre diretamente Cursos concretos com destino canônico em um toque"
   assert.doesNotMatch(root.innerHTML, /Compartilhado|Somente leitura/u);
   assert.match(
     root.innerHTML,
-    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "planning" }).replace("?", "\\?"), "u")
+    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "overview" }).replace("?", "\\?"), "u")
   );
   assert.match(root.innerHTML, /<svg/u);
   assert.doesNotMatch(root.innerHTML, /<textarea|Workspace|Trilha|Coleção|publicação/iu);
@@ -695,14 +715,15 @@ test("paginação da lista encaminha o cursor opaco e acrescenta a página segui
   assert.doesNotMatch(root.innerHTML, /data-course-authoring-action="load-more-courses"/u);
 });
 
-test("Inspeção carrega só cabeçalho; Estrutura usa outline sem composição paralela", async () => {
+test("Conteúdo delega hierarquia, renderer e edição a uma única sequência", async () => {
   const calls = [];
+  const openedPaths = [];
   const root = new FakeRoot();
   const windowValue = new FakeWindow();
   const locationValue = {
     pathname: "/",
     search: "?theme=dark",
-    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "inspection" })
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
   };
   const surface = createCourseAuthoringSurface({
     root,
@@ -723,21 +744,44 @@ test("Inspeção carrega só cabeçalho; Estrutura usa outline sem composição 
     }),
     locationValue,
     historyValue: { state: null, replaceState() {} },
-    windowValue
+    windowValue,
+    onOpenStudyContent(value) {
+      openedPaths.push(structuredClone(value));
+      return true;
+    }
   });
 
   assert.equal(await surface.open(), true);
-  assert.deepEqual(calls, [["course", COURSE_ID]]);
-  assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Inspeção<\/span>/u);
+  assert.deepEqual(calls, [["outline", COURSE_ID]]);
+  assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
+  assert.match(root.innerHTML, /Hierarquia e edição estrutural/u);
+  assert.match(root.innerHTML, /Editar Curso/u);
+  assert.match(root.innerHTML, /Abrir Base em Conteúdo/u);
   assert.match(root.innerHTML, /data-course-inspection-host/u);
-  assert.doesNotMatch(root.innerHTML, /Exemplo guiado/u);
-
-  locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "structure" });
-  windowValue.dispatch("hashchange");
+  assert.doesNotMatch(root.innerHTML, />Estrutura<|>Inspeção</u);
+  root.listeners.get("click")({
+    target: {
+      closest() {
+        return {
+          dataset: {
+            courseAuthoringAction: "edit-content-entity",
+            targetKind: "lesson",
+            targetId: "lesson-a"
+          }
+        };
+      }
+    }
+  });
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Estrutura<\/span>/u);
-  assert.match(root.innerHTML, /Base · Relações/u);
-  assert.deepEqual(calls, [["course", COURSE_ID], ["outline", COURSE_ID]]);
+  assert.deepEqual(openedPaths, [{
+    entityPath: [COURSE_ID, "module-a", "lesson-a"],
+    returnRoute: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
+  }]);
+  assert.equal(surface.destroy(), true);
+  assert.equal(root.innerHTML, "");
+  assert.equal(await surface.open(), true);
+  assert.deepEqual(calls, [["outline", COURSE_ID], ["outline", COURSE_ID]]);
+  assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
 });
 
 test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segunda hierarquia", async () => {
@@ -807,7 +851,7 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.equal(outlineReads, 0);
   assert.equal(inspectionReads, 0);
   assert.equal(materializationReads, 0);
-  assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Planejamento<\/span>/u);
+  assert.match(root.innerHTML, /<h1>Planejamento<\/h1>/u);
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; e aplicação\./u);
   assert.match(root.innerHTML, /7–12/u);
@@ -820,7 +864,7 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
     root.innerHTML,
     /<details class="course-authoring-recent-activity">[\s\S]*Relação entre grandezas\.[\s\S]*<\/details>/u
   );
-  assert.match(root.innerHTML, />Ver etapas</u);
+  assert.match(root.innerHTML, />Abrir Parte</u);
   assert.match(root.innerHTML, /data-course-authoring-action="materialize-part"/u);
   assert.match(root.innerHTML, /data-course-authoring-action="context-chat"/u);
   assert.match(root.innerHTML, /<details class="course-authoring-part-tools"/u);
@@ -1389,16 +1433,22 @@ test("desenho mantém o envelope até a releitura e não reaplica escrita já co
   assert.equal(surface.close(), true, "A confirmação remove o envelope sem pedir nova escrita.");
 });
 
-test("Ver etapas lê uma materialização sob demanda e apresenta a retomada sem JSON", async () => {
+test("deep link abre qualquer materialização e mantém retorno à mesma Parte", async () => {
   const root = new FakeRoot();
   const calls = [];
   const fixture = partMaterializationFixture();
   fixture.materialization.designContext = {
+    contract: "aralearn.course-design-context.v2",
+    courseId: COURSE_ID,
+    componentCatalogVersion: "1-technical",
     focus: "Comparar <origem> com aplicação",
     sourceSet: ["A", "B"]
   };
   fixture.materialization.steps[0].resultFacts = {
-    observation: "Contexto <script>alert(1)</script> carregado"
+    observation: "Contexto <script>alert(1)</script> carregado",
+    loadedSources: 2,
+    sourceAttributionApplicationHash: "c".repeat(64),
+    designApplication: { contract: "internal" }
   };
   fixture.materialization.nextPendingStep = fixture.materialization.steps[2];
   const surface = createCourseAuthoringSurface({
@@ -1412,37 +1462,166 @@ test("Ver etapas lê uma materialização sob demanda e apresenta a retomada sem
     locationValue: {
       pathname: "/",
       search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+      hash: buildCourseAuthoringRoute(COURSE_ID, {
+        section: "planning",
+        authoringPartId: PART_ID,
+        materializationId: MATERIALIZATION_ID
+      })
     },
     windowValue: new FakeWindow()
   });
 
   assert.equal(await surface.open(), true);
-  assert.deepEqual(calls, []);
-  const viewNode = {
-    dataset: { courseAuthoringAction: "view-materialization", partId: PART_ID },
-    closest() { return this; }
-  };
-  root.listeners.get("click")({ target: viewNode, preventDefault() {} });
-  await new Promise((resolve) => setImmediate(resolve));
-
   assert.deepEqual(calls, [[COURSE_ID, PART_ID, MATERIALIZATION_ID]]);
-  assert.match(root.innerHTML, /Etapas da materialização/u);
+  assert.match(root.innerHTML, /Etapas e resultados/u);
   assert.match(root.innerHTML, /Próxima: etapa 3 · Validar produção/u);
   assert.match(root.innerHTML, /Carregar contexto/u);
   assert.match(root.innerHTML, /Fatos da etapa/u);
+  assert.match(root.innerHTML, /Fontes carregadas/u);
+  assert.match(root.innerHTML, /Unidades/u);
+  assert.match(root.innerHTML, /Foco/u);
+  assert.doesNotMatch(root.innerHTML, /Loaded Sources|Study Unit Count|Focus/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; com aplicação/u);
   assert.match(root.innerHTML, /Contexto &lt;script&gt;alert\(1\)&lt;\/script&gt; carregado/u);
   assert.doesNotMatch(root.innerHTML, /<script|"designContext"|"resultFacts"/u);
-
-  const hideNode = {
-    dataset: { courseAuthoringAction: "hide-materialization" },
-    closest() { return this; }
-  };
-  root.listeners.get("click")({ target: hideNode, preventDefault() {} });
-  assert.doesNotMatch(root.innerHTML, /Etapas da materialização/u);
-  assert.match(root.innerHTML, />Ver etapas</u);
+  assert.doesNotMatch(root.innerHTML, /Course Id|Component Catalog Version|c{64}|Design Application/u);
+  assert.match(root.innerHTML, /returnAuthoringPartId=/u);
+  assert.match(root.innerHTML, /returnMaterializationId=/u);
+  assert.match(root.innerHTML, new RegExp(
+    buildCourseAuthoringRoute(COURSE_ID, {
+      section: "planning", authoringPartId: PART_ID
+    }).replaceAll("&", "&amp;").replace("?", "\\?"),
+    "u"
+  ));
   assert.equal(calls.length, 1);
+
+  const directRoot = new FakeRoot();
+  const directSurface = createCourseAuthoringSurface({
+    root: directRoot,
+    controller: controllerFixture(),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, {
+        section: "content",
+        moduleId: "module-a",
+        returnAuthoringPartId: PART_ID,
+        returnMaterializationId: MATERIALIZATION_ID
+      })
+    },
+    windowValue: new FakeWindow()
+  });
+  assert.equal(await directSurface.open(), true);
+  assert.match(directRoot.innerHTML, /aria-label="Voltar à execução"/u);
+  assert.match(directRoot.innerHTML, new RegExp(
+    buildCourseAuthoringRoute(COURSE_ID, {
+      section: "planning",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }).replaceAll("&", "&amp;").replace("?", "\\?"),
+    "u"
+  ));
+});
+
+test("Parte mostra histórico completo com execução parcial, concluída e falha anterior", async () => {
+  const root = new FakeRoot();
+  const plan = authoringPlanFixture();
+  const [partialId, completedId, failedId] = MATERIALIZATION_HISTORY_IDS;
+  plan.plan.parts[0].progress = {
+    state: "materializing",
+    microsequenceCount: 2,
+    studyUnitCount: 7,
+    materializations: [{
+      id: MATERIALIZATION_ID,
+      status: "running",
+      progressState: "running",
+      channel: "mcp",
+      version: 1,
+      completedStepCount: 0,
+      failedStepCount: 0,
+      totalStepCount: 3,
+      startedAt: "2026-08-17T14:00:00Z",
+      updatedAt: "2026-08-17T14:00:00Z",
+      completedAt: null,
+      summary: "A execução está preparando o contexto."
+    }, {
+      id: partialId,
+      status: "running",
+      progressState: "partial",
+      channel: "application",
+      version: 2,
+      completedStepCount: 1,
+      failedStepCount: 0,
+      totalStepCount: 3,
+      startedAt: "2026-08-17T13:00:00Z",
+      updatedAt: "2026-08-17T13:02:00Z",
+      completedAt: null,
+      summary: "A estrutura foi iniciada e pode ser retomada."
+    }, {
+      id: completedId,
+      status: "completed",
+      progressState: "completed",
+      channel: "actions",
+      version: 4,
+      completedStepCount: 3,
+      failedStepCount: 0,
+      totalStepCount: 3,
+      startedAt: "2026-08-17T12:00:00Z",
+      updatedAt: "2026-08-17T12:05:00Z",
+      completedAt: "2026-08-17T12:05:00Z",
+      summary: "Duas Unidades foram produzidas."
+    }, {
+      id: failedId,
+      status: "failed",
+      progressState: "failed",
+      channel: "mcp",
+      version: 2,
+      completedStepCount: 1,
+      failedStepCount: 1,
+      totalStepCount: 3,
+      startedAt: "2026-08-17T11:00:00Z",
+      updatedAt: "2026-08-17T11:02:00Z",
+      completedAt: "2026-08-17T11:02:00Z",
+      summary: "Revise a Fonte pendente e tente novamente."
+    }],
+    lastMaterialization: {
+      id: MATERIALIZATION_ID,
+      status: "running",
+      version: 1,
+      completedStepCount: 0,
+      failedStepCount: 0,
+      totalStepCount: 3,
+      startedAt: "2026-08-17T14:00:00Z",
+      updatedAt: "2026-08-17T14:00:00Z",
+      completedAt: null
+    }
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({ async loadAuthoringPlan() { return plan; } }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, {
+        section: "planning", authoringPartId: PART_ID
+      })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.match(root.innerHTML, /4 execuções/u);
+  assert.match(root.innerHTML, />Em andamento</u);
+  assert.match(root.innerHTML, />Parcial</u);
+  assert.match(root.innerHTML, />Concluída</u);
+  assert.match(root.innerHTML, />Falhou</u);
+  assert.match(root.innerHTML, /Aplicativo/u);
+  assert.match(root.innerHTML, /Actions/u);
+  assert.match(root.innerHTML, /MCP/u);
+  assert.match(root.innerHTML, /Revise a Fonte pendente e tente novamente/u);
+  assert.ok(root.innerHTML.indexOf(MATERIALIZATION_ID) < root.innerHTML.indexOf(partialId));
+  assert.ok(root.innerHTML.indexOf(partialId) < root.innerHTML.indexOf(completedId));
+  assert.ok(root.innerHTML.indexOf(completedId) < root.innerHTML.indexOf(failedId));
 });
 
 test("cria Curso privado pela mesma operação canônica disponível ao MCP", async () => {
@@ -1494,7 +1673,7 @@ test("cria Curso privado pela mesma operação canônica disponível ao MCP", as
   });
   assert.equal(
     locationValue.hash,
-    buildCourseAuthoringRoute(SECOND_COURSE_ID, { section: "planning" })
+    buildCourseAuthoringRoute(SECOND_COURSE_ID)
   );
 });
 
@@ -1564,7 +1743,7 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
   assert.equal(receipts.size, 1);
   assert.equal(
     locationValue.hash,
-    buildCourseAuthoringRoute(SECOND_COURSE_ID, { section: "planning" })
+    buildCourseAuthoringRoute(SECOND_COURSE_ID)
   );
   assert.equal(surface.close(), true);
   assert.equal(closed, 1);
@@ -2296,12 +2475,12 @@ test("Módulo copia pedido contextual com escopo, caminho e retorno canônico", 
       origin: "https://example.test",
       pathname: "/app",
       search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "structure" })
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
     },
     windowValue: new FakeWindow()
   });
   await surface.open();
-  assert.match(root.innerHTML, /aria-label="Revisar Base no ChatGPT"/u);
+  assert.match(root.innerHTML, /data-course-inspection-host/u);
 
   root.listeners.get("click")({
     target: {
@@ -2339,7 +2518,7 @@ test("Módulo copia pedido contextual com escopo, caminho e retorno canônico", 
   assert.match(deliveries[0].requestText, /Caminho: Base/u);
   assert.match(
     deliveries[0].requestText,
-    /section=inspection&moduleId=module-a/u
+    /section=content&moduleId=module-a/u
   );
   assert.match(deliveries[0].requestText, /discuta comigo antes de propor qualquer alteração/iu);
 });
@@ -2631,7 +2810,7 @@ test("resposta ambígua em Pessoas bloqueia navegação e saída até o cancelam
   assert.match(root.innerHTML, /<h1>Meus cursos<\/h1>/u);
 });
 
-test("Estrutura lê um único outline e nunca carrega composição", async () => {
+test("Conteúdo deriva a hierarquia leve sem carregar outra composição", async () => {
   const root = new FakeRoot();
   const calls = [];
   const surface = createCourseAuthoringSurface({
@@ -2649,24 +2828,26 @@ test("Estrutura lê um único outline e nunca carrega composição", async () =>
     locationValue: {
       pathname: "/",
       search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "structure" })
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
     },
     windowValue: new FakeWindow()
   });
 
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["outline", COURSE_ID]]);
-  assert.match(root.innerHTML, /Primeiro caso/u);
-  assert.doesNotMatch(root.innerHTML, /Carregar mais/u);
+  assert.match(root.innerHTML, /data-course-inspection-host/u);
+  assert.match(root.innerHTML, /Base/u);
+  assert.match(root.innerHTML, /Relações/u);
+  assert.doesNotMatch(root.innerHTML, /course-authoring-outline|Estrutura técnica/u);
 });
 
-test("back interno remove o deep link e retorna à lista sem depender de histórico anterior", async () => {
+test("back interno retorna da tarefa à Visão geral e então à lista", async () => {
   const root = new FakeRoot();
   const windowValue = new FakeWindow();
   const locationValue = {
     pathname: "/app",
     search: "",
-    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "structure" })
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
   };
   const replacements = [];
   const surface = createCourseAuthoringSurface({
@@ -2683,6 +2864,10 @@ test("back interno remove o deep link e retorna à lista sem depender de histór
   });
 
   await surface.open();
+  assert.equal(surface.handleBack(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(locationValue.hash, buildCourseAuthoringRoute(COURSE_ID, { section: "overview" }));
+  assert.match(root.innerHTML, /<h1>Visão geral<\/h1>/u);
   assert.equal(surface.handleBack(), true);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(locationValue.hash, "");
@@ -2709,6 +2894,11 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
   const revokedSurface = createCourseAuthoringSurface({
     root: revokedRoot,
     controller: controllerFixture({
+      async getCourse() {
+        const error = new Error("not found");
+        error.status = 404;
+        throw error;
+      },
       async loadAuthoringOutline() {
         const error = new Error("not found");
         error.status = 404;
@@ -2718,7 +2908,7 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
     locationValue: {
       pathname: "/",
       search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "structure" })
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
     },
     windowValue: new FakeWindow()
   });
@@ -2760,10 +2950,22 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.match(css, /\.course-authoring-frame \{[\s\S]*?max-width: 430px;/u);
   assert.match(css, /@media \(max-width: 380px\)/u);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/u);
-  assert.match(css, /\.course-authoring-primary-navigation \{[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/u);
+  assert.match(css, /\.course-authoring-task-menu > nav \{[\s\S]*?width: min\(82vw, 320px\)/u);
   assert.match(
     css,
     /\.course-authoring-course-header \{[\s\S]*?grid-template-columns: var\(--tap\) minmax\(0, 1fr\) var\(--tap\)/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-course-heading \.course-authoring-eyebrow \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-course-heading h1 \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-course-heading \.course-authoring-meta \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
   );
   assert.doesNotMatch(css, /-webkit-line-clamp: 4/u);
   assert.doesNotMatch(css, /\.course-authoring-sections\.has-standard/u);
@@ -2771,6 +2973,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.doesNotMatch(css, /width: min\(100%, (?:560|620|720|760|820|1180)px\)/u);
   assert.doesNotMatch(css, /@media \(min-width: (?:640|680|900)px\)/u);
   assert.doesNotMatch(css, /course-authoring-sidebar-navigation/u);
+  assert.doesNotMatch(css, /course-authoring-(?:sections|primary-navigation|area-menu)/u);
   assert.doesNotMatch(
     surfaceSource,
     /globalThis\.confirm|confirmValue/u,
@@ -2778,7 +2981,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   );
 });
 
-test("Curso próprio revela nove capacidades em quatro destinos compactos", () => {
+test("Visão geral revela as sete tarefas humanas em um único nível", () => {
   const course = {
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -2790,7 +2993,7 @@ test("Curso próprio revela nove capacidades em quatro destinos compactos", () =
   };
   const markup = renderCourseAuthoringSurface({
     view: "course",
-    section: "sources",
+    section: "overview",
     course,
     knownCourse: course,
     loading: false,
@@ -2798,28 +3001,16 @@ test("Curso próprio revela nove capacidades em quatro destinos compactos", () =
     sourceTarget: null
   });
 
-  assert.match(markup, /class="course-authoring-sections"/u);
-  assert.match(markup, /class="course-authoring-primary-navigation"/u);
-  assert.equal((markup.match(/<details class="course-authoring-area-menu/g) || []).length, 4);
-  assert.match(markup, /data-authoring-destination="course"/u);
-  assert.match(markup, /data-authoring-destination="review"/u);
-  assert.match(markup, /data-authoring-destination="research"/u);
-  assert.match(markup, /data-authoring-destination="people"/u);
-  assert.match(markup, /<summary aria-label="Curso: Fontes" title="Curso: Fontes"><svg/u);
-  const summaries = [...markup.matchAll(/<summary[^>]*>[\s\S]*?<\/summary>/gu)]
-    .map(([summary]) => summary);
-  assert.equal(summaries.length, 4);
-  assert.ok(summaries.every((summary) => !summary.includes("<span>")));
+  assert.match(markup, /<h1>Visão geral<\/h1>/u);
+  assert.match(markup, /data-course-authoring-task-list/u);
+  assert.equal((markup.match(/class="course-authoring-task-card"/gu) || []).length, 7);
+  assert.doesNotMatch(markup, /class="course-authoring-sections"|course-authoring-primary-navigation/u);
   assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
-  assert.match(markup, /<span>Planejamento<\/span>/u);
-  assert.match(markup, /<span>Estrutura<\/span>/u);
-  assert.match(markup, /<span>Parâmetros<\/span>/u);
-  assert.match(markup, /<span>Fontes<\/span>/u);
-  assert.match(markup, /<span>Inspeção<\/span>/u);
-  assert.match(markup, /<span>Discussões e correções<\/span>/u);
-  assert.match(markup, /<span>Variantes<\/span>/u);
-  assert.match(markup, /<span>Pesquisa<\/span>/u);
-  assert.match(markup, /<span>Pessoas<\/span>/u);
-  assert.match(markup, /data-course-sources-host/u);
-  assert.doesNotMatch(markup, /studyUnit\.sources/u);
+  for (const label of [
+    "Planejamento", "Conteúdo", "Parâmetros e componentes", "Fontes", "Revisão",
+    "Variantes e pesquisa", "Pessoas e acesso"
+  ]) assert.match(markup, new RegExp(`<strong>${label}<\\/strong>`, "u"));
+  for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {
+    assert.match(markup, new RegExp(`section=${section}`, "u"));
+  }
 });

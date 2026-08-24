@@ -20,9 +20,9 @@ para Estudo assim que contém Unidades válidas.
 continuar ou retomar o percurso, marcar Unidades para rever e registrar
 Observações próprias.
 
-**Autoria** apresenta somente Cursos próprios. Ela reúne Planejamento,
-Parâmetros, Fontes, Estrutura, Inspeção, Discussões e correções, Variantes,
-Pesquisa e Pessoas.
+**Autoria** apresenta somente Cursos próprios. A Visão geral leva a
+Planejamento, Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e
+pesquisa e Pessoas e acesso.
 
 Uma **réplica local** é a cópia dos dados necessários à continuidade no
 dispositivo. Ela permite retomar conteúdo carregado, enquanto o servidor
@@ -142,10 +142,10 @@ Módulo, Lição, Microssequência ou a partir de uma Unidade.
 Em Autoria, use **Criar Curso**, informe título e objetivo e salve. O Curso nasce
 privado, com plano vazio e sugestão inicial de 7 a 12 Partes.
 
-Ao abrir o Curso, quatro grupos por ícone revelam as capacidades necessárias:
-**Curso**, **Revisar**, **Pesquisa** e **Pessoas**. Use o nome acessível ou a dica
-do ícone; os nove nomes funcionais não permanecem expostos ao mesmo tempo. A
-superfície conserva até 430 px também no computador.
+Ao abrir o Curso, a **Visão geral** mostra estado, próxima ação e as sete tarefas
+principais em um único nível de escolha. A barra superior conserva o contexto e
+um menu permite trocar de tarefa. A superfície mantém uma coluna útil de até
+430 px também no computador.
 
 Em **Planejamento**, edite título, objetivo, público, escopo e faixa de Partes.
 Acrescente, reordene ou retire resultados de aprendizagem pretendidos, unidades
@@ -157,6 +157,12 @@ A tela apresenta primeiro a próxima ação e o estado de cada Parte. Use o bot�
 de organização da Parte para abrir edição, reordenação, divisão, união ou
 exclusão. Contexto e referências do plano permanecem recolhidos até serem
 necessários.
+
+Abra a Parte para consultar seu histórico completo de materializações. Cada
+execução informa estado, canal, início, término e resumo. No detalhe, as etapas,
+os fatos e os objetos produzidos aparecem em linguagem de produto. O link do
+objeto abre Conteúdo no alvo exato; voltar restaura a mesma execução, inclusive
+depois de recarregar a página.
 
 ## Configurar o desenho do Curso
 
@@ -199,7 +205,7 @@ autenticado e uma sessão ativa. A seleção depende da operação, não da
 identificação do aparelho.
 
 Toda nova atribuição exige uma Âncora ativa da revisão exata. Use **Definir
-fontes** em um item do Planejamento ou numa Unidade da Inspeção. Salvar substitui
+fontes** em um item do Planejamento ou numa Unidade de Conteúdo. Salvar substitui
 o conjunto completo daquele alvo. **Exportar proveniência** gera um arquivo JSON com o
 alvo, as relações, as revisões, as Âncoras e os metadados dos PDFs depois que o
 conjunto estiver salvo.
@@ -210,7 +216,7 @@ comprovados.
 
 ## Editar uma Unidade no próprio conteúdo
 
-O proprietário pode usar o ícone **Editar** tanto em Estudo quanto na Inspeção.
+O proprietário pode usar o ícone **Editar** tanto em Estudo quanto em Conteúdo.
 Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 **Salvar**. O AraLearn valida a Unidade inteira e preserva identidade, pai,
 posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
@@ -230,7 +236,7 @@ conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home 
 o novo Curso como **Sua cópia** e mantém o original como **Compartilhado com
 você**.
 
-Para trabalhar com a sessão contextual, use **Assistência por API** na Unidade,
+Para trabalhar com a sessão contextual, use **Assistência por IA** na Unidade,
 na Microssequência ou na Lição:
 
 1. confira **Serviço local**, já fixo pela instalação;
@@ -280,8 +286,9 @@ editável antes da cópia. Fechar ou cancelar devolve o foco ao controle que abr
 o compositor.
 
 Copiar o texto não inicia a produção nem altera o Curso. Quando o cliente
-executa a materialização, **Ver etapas** apresenta o andamento e a próxima ação
-pendente.
+executa a materialização, a execução aparece no histórico da Parte com seu
+canal. Abra-a para acompanhar etapas, resultados e objetos produzidos sem perder
+falhas ou execuções anteriores.
 
 O ícone do ChatGPT aparece no cabeçalho do Curso e nos contextos de Módulo,
 Lição, Tópico, Microssequência, Unidade, Parâmetro, Fonte e Âncora. Nesses
@@ -298,7 +305,7 @@ Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
 devolve o foco ao aplicativo. Se o navegador não sinalizar a troca de foco, use a ação
 **Atualizar** no cabeçalho do Curso. A atualização preserva o contexto de
-navegação e, na Inspeção, a Unidade e a posição conhecidas.
+navegação e, em Conteúdo, a Unidade e a posição conhecidas.
 
 Se houver um compositor, uma confirmação ou um formulário em edição, a
 atualização automática ou manual é adiada. O AraLearn conserva o argumento e os
@@ -309,7 +316,7 @@ enviada.
 Validação local, recomposição do painel e resposta de rede ambígua também
 conservam o formulário aberto e devolvem o foco ao campo pertinente. Esse
 comportamento abrange Parâmetros, Fontes e Âncoras, Variantes, Observações na
-caixa autoral e na Inspeção, além dos editores de rodada, verificação e correção
+caixa autoral e em Conteúdo, além dos editores de rodada, verificação e correção
 da Auditoria. **Descartar** ou **Cancelar** remove o rascunho de propósito.
 
 Se a rede cair depois do envio e não for possível saber se o servidor confirmou
@@ -327,20 +334,22 @@ AraLearn pode repetir exatamente o mesmo pedido. Duas abas que repetem essa
 intenção recebem o mesmo resultado; intenções diferentes concorrendo pela
 primeira cópia produzem conflito em vez de dois Cursos pessoais.
 
-## Consultar Estrutura e Inspeção
+## Navegar e editar Conteúdo
 
-**Estrutura** percorre Módulos, Lições e Microssequências em páginas.
-**Inspeção** apresenta as Unidades em uma sequência vertical, com respostas
-desativadas. O recorte pode abranger Curso, Parte, Unidades sem Parte, Módulo,
-Lição ou Microssequência.
+**Conteúdo** percorre Curso, Módulos, Lições, Microssequências e Unidades e usa
+o mesmo renderer de Estudo com respostas desativadas. O recorte pode abranger o
+Curso, uma Parte, Unidades sem Parte, um Módulo, uma Lição ou uma
+Microssequência.
 
-A Inspeção mantém uma janela limitada de Unidades e conserva a posição no
+A sequência mantém uma janela limitada de Unidades e conserva a posição no
 dispositivo. Ao mudar de revisão, procura a mesma identidade de Unidade.
-**Definir fontes**, **Anotar** e **Auditar** trabalham sobre o alvo exato.
+**Editar**, **Definir fontes**, **Anotar** e **Auditar** trabalham sobre o alvo
+exato. No Curso, Módulo, Lição e Microssequência, Editar abre os metadados e a
+composição autorizados para aquele nível e exige salvamento explícito.
 
-## Usar Discussões e correções
+## Usar Revisão
 
-Em **Discussões e correções**, a aba **Observações** reúne as Anotações do Curso.
+Em **Revisão**, a tarefa **Observações** reúne as Anotações do Curso.
 Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
 resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
 
@@ -364,7 +373,7 @@ permite, nomeia o objeto e usa o verbo próprio da consequência, como
 ela devolve o foco ao acionador. Confirmar no ChatGPT não provoca uma segunda
 confirmação no AraLearn; a interface apenas relê o resultado persistido.
 
-Discussões e correções exigem conexão na Autoria. A cópia e a fila de Anotações
+Revisão exige conexão na Autoria. A cópia e a fila de Anotações
 próprias pertencem ao percurso de Estudo; a caixa autoral de Observações e as
 operações de auditoria não possuem fila de saída no IndexedDB.
 
@@ -414,13 +423,17 @@ cliente localizar e ler o recorte necessário, revise a proposta, autorize a
 alteração e confira o resultado na Autoria e em Estudo.
 
 Ao retornar do cliente conversacional, o AraLearn relê o cabeçalho canônico do
-Curso antes de atualizar Planejamento, Inspeção, Discussões, Fontes, Variantes ou
+Curso antes de atualizar Planejamento, Conteúdo, Revisão, Fontes, Variantes ou
 Pesquisa. A cópia de um pedido não escreve na API, no PostgreSQL, no Storage nem
 no IndexedDB.
 
 O cliente usa a revisão do Curso e a versão do objeto lido para proteger a
 escrita. A pessoa escolhe a finalidade; o cliente seleciona a ferramenta e a
 operação adequadas. Veja [Autoria por MCP](autoria-mcp.md).
+
+Um GPT personalizado com **Actions** usa o contrato OpenAPI e um OAuth próprios,
+distintos do MCP. Os dois canais chegam às mesmas operações canônicas e aparecem
+no mesmo histórico visual de materializações, identificados por sua origem.
 
 ## Trabalhar sem conexão
 
@@ -442,7 +455,7 @@ rede; uma cópia local momentaneamente desatualizada não é apresentada como pe
 de conexão.
 
 Na Autoria, o IndexedDB conserva a lista de Cursos próprios, o cabeçalho, o
-planejamento, a Estrutura, páginas recentes da Inspeção e a posição de retomada.
+planejamento, a hierarquia e páginas recentes de Conteúdo e a posição de retomada.
 Uma leitura local é identificada como desatualizada e somente para consulta. A
 mudança da revisão remota invalida os derivados da revisão anterior antes de
 uma nova leitura.
@@ -450,7 +463,7 @@ uma nova leitura.
 Depois que uma edição manual ou assistida recebe confirmação 2xx, o AraLearn
 guarda imediatamente o snapshot confirmado da Unidade e recompõe `course.v1`
 antes de invalidar as projeções anteriores. Progresso, Observações e posição são
-preservados. Estudo e Inspeção podem mostrar essa revisão sem rede como
+preservados. Estudo e Conteúdo podem mostrar essa revisão sem rede como
 confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitura
 igual normaliza a cópia; uma revisão superior a descarta como superada. Sair da
 conta, limpar o Curso ou perder acesso purga esse estado.

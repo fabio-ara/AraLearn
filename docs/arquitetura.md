@@ -46,12 +46,11 @@ A interface separa responsabilidades sem duplicar o domínio:
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
 
-Na Autoria, Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Discussões e
-correções, Variantes, Pesquisa e Pessoas são capacidades projetadas dos
-contratos do Curso, não documentos paralelos nem nove destinos permanentes. A
-superfície de até 430 px usa quatro destinos conceituais: Curso, Revisar,
-Pesquisa e Pessoas. Cada um revela as capacidades pelo objeto e pela tarefa
-correntes, com a mesma composição no celular e no computador.
+Na Autoria, a Visão geral apresenta estado e próxima ação. Planejamento,
+Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e
+Pessoas e acesso são tarefas projetadas dos contratos do Curso, não documentos
+paralelos nem módulos internos expostos. Todas ficam alcançáveis em um único
+nível de escolha, com a mesma composição no celular e no computador.
 
 Na entrada de Estudo, descritores paginados alimentam um único combobox e uma
 única prévia. A seleção não carrega a composição curricular. A ação
@@ -152,7 +151,7 @@ por rede instável.
 
 ## Edição contextual da Unidade
 
-O proprietário pode editar uma Unidade na Inspeção ou em Estudo sem criar uma
+O proprietário pode editar uma Unidade em Conteúdo ou em Estudo sem criar uma
 representação paralela. O renderer declara os caminhos textuais editáveis de
 cada componente; o editor altera apenas esses caminhos, reconcilia respostas
 associadas quando isso é inequívoco e valida novamente o envelope completo.
@@ -164,7 +163,7 @@ função SQL aceita a operação somente pelo papel de servidor. Conteúdo,
 proveniência, revisão, evento e recibo confirmam ou revertem juntos. Ao receber
 2xx, o cliente persiste primeiro o snapshot focal confirmado e promove Unidade,
 revisão e versão no documento `course.v1`; só depois invalida as projeções
-anteriores. Estudo e Inspeção podem reler a Unidade sem rede como confirmada,
+anteriores. Estudo e Conteúdo podem reler a Unidade sem rede como confirmada,
 com sincronização pendente. A escrita não é repetida. A releitura canônica da
 mesma revisão substitui o snapshot; uma revisão superior o elimina como
 incorporado ou superado. Saída local ou remota, revogação, limpeza do Curso ou
@@ -209,7 +208,7 @@ proveniência efetiva anterior. Criar ou alterar um vínculo exige Fonte e Ânco
 ativas nas revisões exatas. Essa exceção conserva dados migrados; ela não abre
 uma nova via para gravar `legacy_reference`.
 
-A Assistência por API é uma sessão contextual sobre o mesmo Curso. O minichat
+A Assistência por IA é uma sessão contextual sobre o mesmo Curso. O minichat
 recebe a composição necessária do alvo, um resumo do caminho curricular e as
 mensagens recentes. A pessoa discute um plano antes de confirmar a preparação.
 PDFs, Fontes, identidade da conta e regiões alheias ao escopo não entram no

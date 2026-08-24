@@ -204,19 +204,17 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
 
 test("edição estrutural assistida reutiliza a composição genérica sem metadados focais", async () => {
   let request = null;
-  const receipt = {
+  const backendReceipt = {
     courseId: COURSE_ID,
-    requestId: "request-structural-edit-0001",
-    courseRevision: 8,
-    changed: true,
+    revision: 8,
     idempotent: false
   };
   const { client } = clientWithFetch(async (url, init) => {
     request = { url, body: JSON.parse(init.body) };
-    return jsonResponse({ ok: true, data: receipt });
+    return jsonResponse({ ok: true, requestId: "request-structural-edit-0001", data: backendReceipt });
   });
   const result = await client.commitCourseStructuralComposition({
-    requestId: receipt.requestId,
+    requestId: "request-structural-edit-0001",
     courseId: COURSE_ID,
     expectedRevision: 7,
     upserts: [{
@@ -235,7 +233,11 @@ test("edição estrutural assistida reutiliza a composição genérica sem metad
     deletes: [],
     sourceAttributionApplications: []
   });
-  assert.deepEqual(result, receipt);
+  assert.deepEqual(result, {
+    ...backendReceipt,
+    requestId: "request-structural-edit-0001",
+    courseRevision: 8
+  });
   assert.match(request.url, /\/functions\/v1\/aralearn-course-api\/app\/alterarCurso$/u);
   assert.equal(request.body.operation, "commit_course_composition");
   assert.equal(Object.hasOwn(request.body, "expectedStudyUnitVersion"), false);
