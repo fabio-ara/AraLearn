@@ -37,6 +37,10 @@ Preserve a identidade e a experiência definidas em `STUDY-VISUAL-BASELINE.md`:
 - `Visualizar / Editar / Assistência por API` aparecem como modos irmãos na Unidade, com Visualizar como padrão;
 - edição, assistência, cópia pessoal, offline e reconciliação usam os mecanismos correntes.
 
+A edição manual e a Assistência por API seguem a mesma autoridade de gravação: o proprietário estudando o próprio Curso salva nele; quem possui somente acesso de Estudo persiste alteração material apenas na cópia pessoal e continua na mesma Unidade. Prévia, cancelamento, falha e no-op não criam cópia.
+
+A Assistência por API reutiliza o mecanismo corrente de providers/relay. Em produção, não colocar chave duradoura de provider no navegador. Os modelos permanecem configuráveis, mas o produto final precisa tornar utilizáveis ao menos OpenAI `gpt-5.6-luna` e DeepSeek V4 (`deepseek-v4-pro`/`deepseek-v4-flash`) pelo caminho seguro corrente ou pela menor extensão necessária dele.
+
 A referência histórica serve para identidade visual/interacional. Não restaure Workspace, Trilhas, APIs, schemas ou persistência antigos.
 
 ## Autoria e operabilidade
@@ -47,7 +51,13 @@ Isso inclui ciclo de vida de Cursos e cópias, Planejamento/materialização, Pa
 
 Capacidade não precisa virar aba permanente. Também não pode ficar escondida a ponto de parecer inexistente.
 
-MCP e GPT personalizado com Actions são capacidades distintas. A remoção histórica de Actions não deve ser presumida correta apenas porque MCP passou a existir. Em #151, investigue a implementação histórica apenas o suficiente para recuperar, sobre os contratos correntes, a capacidade desejada de operar o AraLearn por um GPT personalizado com Actions/OpenAPI, sem restaurar arquitetura superada por arrasto.
+Há três canais de IA distintos e eles não devem ser fundidos por conveniência:
+
+- **MCP**: cliente conversacional conectado aos contratos autorais correntes;
+- **GPT personalizado com Actions/OpenAPI**: integração autoral histórica explicitamente desejada, a restaurar sobre contratos correntes quando aplicável;
+- **Assistência por API na Unidade**: sugestão focal dentro do runtime de Estudo/Inspeção, seguida de revisão humana e salvamento pelas regras correntes de propriedade/cópia.
+
+A remoção histórica de Actions não deve ser presumida correta apenas porque MCP passou a existir. Em #151, investigue a implementação histórica apenas o suficiente para recuperar a capacidade desejada sem restaurar arquitetura superada por arrasto.
 
 ## Chrome
 
@@ -65,6 +75,8 @@ Aprofundamentos técnicos, conceituais e acadêmicos também devem ser didático
 
 Reutilize a bibliografia existente e pesquise somente lacunas materiais. Páginas técnicas, conceituais ou acadêmicas com afirmações externas usam citações autor-data no corpo e terminam com `Referências`, derivadas de `docs/referencias.bib`. Preserve `docs/referencias.md` como bibliografia geral.
 
+A documentação de IA deve explicar MCP, GPT personalizado com Actions e Assistência por API como capacidades distintas, cada uma com sua finalidade, autorização e fronteira de dados.
+
 ## Execução
 
 Use `GPT-5.6 Sol` com esforço `high` e mantenha esse esforço durante a continuidade. Não mude para `ultra` apenas pelo tamanho da tarefa.
@@ -75,6 +87,6 @@ Execute #151 → #152 → #153 → #154 → #155, avançando automaticamente qua
 
 Não abra subissues ou frentes paralelas. Não inicie #156–#168.
 
-Só interrompa por credencial indispensável ausente, ação remota destrutiva sem autoridade suficiente, decisão de produto materialmente ambígua ou falha que não possa ser corrigida proporcionalmente dentro do escopo.
+Só interrompa por credencial indispensável ausente, ação remota destrutiva sem autorização suficiente, decisão de produto materialmente ambígua ou falha que não possa ser corrigida proporcionalmente dentro do escopo.
 
 Depois de #155, pare.
