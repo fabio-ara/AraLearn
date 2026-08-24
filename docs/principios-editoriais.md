@@ -26,14 +26,7 @@ Essa progressão distingue afirmações diferentes. Algo pode ser defendido pela
 
 README, visão do produto, uso do aplicativo, guias de estudante, autor, pesquisador e solução de problemas devem ser compreensíveis por uma pessoa leiga.
 
-Esses textos explicam:
-
-- para que serve o AraLearn;
-- o que a pessoa encontra na interface;
-- como executar uma tarefa;
-- qual resultado esperar;
-- o que fazer quando houver uma falha relevante;
-- o significado dos conceitos necessários para usar o produto.
+Esses textos explicam para que serve o AraLearn, o que a pessoa encontra na interface, como executar uma tarefa, qual resultado esperar, o que fazer diante de uma falha relevante e o significado dos conceitos necessários para usar o produto.
 
 Eles não pressupõem conhecimento de arquitetura, banco de dados, protocolos, ferramentas de desenvolvimento ou história do projeto.
 
@@ -48,6 +41,25 @@ A literatura é apresentada como argumento e contexto, não como lista decorativ
 Documentos de engenharia explicam em detalhe a arquitetura corrente, linguagens e tecnologias, persistência, autorização, sincronização, contratos, APIs, armazenamento, segurança, implantação, testes e recuperação.
 
 Esses detalhes não são bastidor quando ajudam a compreender ou reproduzir o sistema atual. O documento técnico pode ser minucioso, desde que explique primeiro o referente e mantenha clara a relação entre mecanismo e finalidade.
+
+## O aprofundamento também precisa ensinar
+
+Um texto técnico ou acadêmico não pode pressupor que o leitor já domine o vocabulário especializado. A profundidade vem depois da compreensão inicial, não no lugar dela.
+
+Quando introduzir um conceito especializado, siga uma progressão semelhante a esta:
+
+1. apresente uma situação ou problema reconhecível;
+2. explique por que ele importa no AraLearn;
+3. descreva a ideia em linguagem corrente;
+4. apresente o termo técnico;
+5. mostre como o mecanismo ou construto se relaciona com outros conceitos;
+6. explique como aparece no produto ou na investigação;
+7. apresente limites, alternativas e evidências;
+8. ofereça links para aprofundamentos relacionados.
+
+Por exemplo, uma página de segurança não começa por `RLS`. Primeiro explica por que uma pessoa não pode ler ou alterar registros de outra. Em seguida apresenta a segurança em nível de linha, mostra onde ela atua, explica sua relação com autenticação e autorização e só então detalha políticas e contratos. Da mesma forma, um texto de pesquisa explica o problema de atribuir causalidade antes de introduzir confundimento, randomização ou validade interna.
+
+O mesmo princípio vale para desenho instrucional. Densidade informacional, prática de recuperação, variação, evidência ou carga cognitiva aparecem depois que o leitor entende o problema educacional ao qual esses conceitos respondem.
 
 ## Separar documentação corrente de história de implementação
 
@@ -106,6 +118,7 @@ Informações que mudam devem ter um lugar principal. Outros documentos podem re
 | arquitetura e mecanismo corrente | documento técnico correspondente |
 | vocabulário aprovado | [glossário técnico](glossario-tecnico.md) ou glossário de construtos |
 | relação entre alegação, implementação e teste | matriz de conformidade aplicável |
+| metadados bibliográficos | [`referencias.bib`](referencias.bib) |
 | história de versões | CHANGELOG e notas de release |
 
 Uma mudança de comportamento deve alcançar, no mesmo ciclo, o guia afetado, a explicação conceitual, a referência do contrato e a evidência correspondente.
@@ -114,9 +127,39 @@ Uma mudança de comportamento deve alcançar, no mesmo ciclo, o guia afetado, a 
 
 ### Literatura e normas
 
-Afirmações pedagógicas e metodológicas remetem à literatura que as fundamenta. Afirmações sobre protocolos ou padrões técnicos apontam, quando possível, para a especificação ou documentação primária. A [lista de referências](referencias.md) oferece leitura direta, e o arquivo [BibTeX](referencias.bib) conserva os metadados bibliográficos.
+Afirmações pedagógicas e metodológicas remetem à literatura que as fundamenta. Afirmações sobre protocolos, segurança, acessibilidade ou padrões técnicos apontam, quando possível, para especificações, normas e documentação primária. Afirmações sociotécnicas podem exigir também literatura empírica ou conceitual adequada à questão.
 
 Uma citação identifica a origem de uma ideia. Quando os resultados publicados dependem de contexto ou divergem entre si, o texto deve conservar essas condições.
+
+### Pesquisa bibliográfica relevante
+
+A documentação técnica e acadêmica deve ser fundamentada no melhor conjunto de fontes pertinente à afirmação que está sendo feita.
+
+- Para engenharia, prefira especificações, normas, documentação oficial e literatura técnica primária; use trabalhos acadêmicos quando a afirmação envolve segurança, interação humano-computador, sistemas distribuídos, privacidade, desempenho ou outro tema que dependa de evidência além da especificação.
+- Para desenho instrucional, aprendizagem e pesquisa educacional, procure revisões, meta-análises, estudos fundamentais, trabalhos teóricos e estudos primários relevantes à pergunta, conservando resultados contraditórios e limites de transferência.
+- Para acessibilidade e padrões de interface, use normas e orientações primárias, complementadas por pesquisa quando a decisão envolver comportamento humano ou evidência de usabilidade.
+- Para metodologia, cite fontes que definam o método, o construto ou o risco de inferência discutido.
+
+Não é necessário refazer uma busca ampla quando o corpus existente já sustenta adequadamente a afirmação. Pesquise de novo quando a fonte atual for insuficiente, desatualizada para um mecanismo que mudou, distante da pergunta ou incapaz de sustentar o alcance do texto. Novas buscas destinadas ao corpus acadêmico seguem o protocolo bibliográfico vigente do projeto.
+
+Uma fonte relevante não deve ser omitida apenas porque contraria uma decisão do produto. A documentação registra controvérsias, resultados nulos e limites quando eles alteram a interpretação.
+
+### Referências no texto e bibliografia ao fim de cada página
+
+Todo documento técnico, conceitual ou acadêmico que faça afirmações externas deve usar referências no próprio texto e terminar com uma seção **Referências** contendo somente as obras efetivamente citadas naquela página.
+
+O padrão no texto é autor-data, apresentado de forma legível, como `Sweller (1988)` ou `(Sweller, 1988)`, com ligação para a entrada bibliográfica correspondente quando o formato permitir.
+
+`referencias.bib` continua sendo a fonte canônica dos metadados. A bibliografia no fim de cada página deve ser derivada dessas mesmas entradas, e não mantida como uma segunda cópia manual. `referencias.md` continua oferecendo a bibliografia geral do projeto.
+
+A ferramenta existente que constrói referências legíveis deve ser estendida apenas o necessário para:
+
+1. identificar as chaves citadas em cada página;
+2. gerar ou validar a seção **Referências** daquela página a partir de `referencias.bib`;
+3. rejeitar chave desconhecida, metadado divergente, citação sem entrada local ou entrada local nunca citada;
+4. preservar `referencias.md` como índice bibliográfico completo.
+
+Essa automação existe para evitar divergência de metadados, não para escolher literatura nem escrever a argumentação.
 
 ### Implementação verificável
 
@@ -140,16 +183,7 @@ Nomes de botões e áreas aparecem em **negrito** e devem coincidir com a interf
 
 O texto deve desenvolver ideias e relações, em vez de acumular inventários para aparentar completude.
 
-Evite:
-
-- enumerações mecânicas quando um parágrafo explicativo comunica melhor;
-- paralelismo repetitivo;
-- séries de abstrações usadas como sujeito composto;
-- anglicismos quando há termo corrente em português;
-- negativas que apenas cercam uma afirmação simples;
-- qualificadores vagos;
-- metadiscurso sobre a própria escrita;
-- travessão como recurso estilístico habitual.
+Evite enumerações mecânicas quando um parágrafo explicativo comunica melhor, paralelismo repetitivo, séries de abstrações usadas como sujeito composto, anglicismos quando há termo corrente em português, negativas que apenas cercam uma afirmação simples, qualificadores vagos, metadiscurso sobre a própria escrita e travessão como recurso estilístico habitual.
 
 Use listas quando elas realmente ajudam a comparar opções, orientar uma sequência de ações ou localizar itens de referência.
 
@@ -169,7 +203,7 @@ A documentação organiza essa profundidade por progressão e links claros.
 
 ## Revisar clareza e precisão
 
-A verificação automática encontra links quebrados, problemas de títulos, documentos ausentes e algumas formas de bastidor. Ela complementa a leitura crítica.
+A verificação automática encontra links quebrados, problemas de títulos, documentos ausentes, divergências bibliográficas e algumas formas de bastidor. Ela complementa a leitura crítica.
 
 Antes da publicação, revise também:
 
@@ -181,6 +215,8 @@ Antes da publicação, revise também:
 - separação entre uso, fundamento e mecanismo técnico;
 - suficiência da explicação para um leitor leigo;
 - profundidade dos documentos técnicos e acadêmicos;
+- qualidade e pertinência das fontes citadas;
+- presença da bibliografia local ao fim das páginas de aprofundamento;
 - distinção entre hipótese, implementação e evidência empírica.
 
 Uma documentação que passa nos auditores automáticos mas continua difícil de compreender ainda precisa ser reescrita.
