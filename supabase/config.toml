@@ -70,3 +70,6 @@ verify_jwt = false
 
 [functions.aralearn-course-api]
 verify_jwt = false
+
+[functions.aralearn-authoring-action]
+verify_jwt = false

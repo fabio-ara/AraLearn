@@ -26,6 +26,10 @@ $RequiredApplicationOrigins = @(
   'https://fabio-ara.github.io',
   'https://appassets.androidplatform.net'
 )
+$RequiredActionOrigins = @(
+  'https://chatgpt.com',
+  'https://chat.openai.com'
+)
 
 function Invoke-AraLearnSupabase {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
@@ -158,13 +162,18 @@ try {
       @($RequiredApplicationOrigins) + @($AllowedOrigin)
     )
     $origins = $applicationOrigins -join ','
+    $actionOrigins = @(
+      $applicationOrigins + $RequiredActionOrigins | Select-Object -Unique
+    ) -join ','
     Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
     Invoke-AraLearnSupabase secrets set "ARALEARN_COURSE_API_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=$actionOrigins" --project-ref $resolvedProjectRef
     Invoke-AraLearnSupabase secrets set "ARALEARN_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
 
-    Write-Host 'Implantando MCP e API de Cursos...'
+    Write-Host 'Implantando MCP, API de Cursos e Actions...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
     Invoke-AraLearnSupabase functions deploy aralearn-course-api --project-ref $resolvedProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-authoring-action --project-ref $resolvedProjectRef --no-verify-jwt
 
     Write-Host 'Validando a configuração CORS da API de Cursos...'
     $resolvedProjectUrl = "https://$resolvedProjectRef.supabase.co"
@@ -181,6 +190,22 @@ try {
         $courseApiPreflight.Headers['Access-Control-Allow-Origin'] -ne
           'https://fabio-ara.github.io') {
       throw 'O preflight hospedado da API de Cursos falhou; as funções antigas foram preservadas.'
+    }
+
+    Write-Host 'Validando a configuração CORS de Actions...'
+    $actionPreflight = Invoke-WebRequest `
+      -Uri "$resolvedProjectUrl/functions/v1/aralearn-authoring-action/listarCursos" `
+      -Method Options `
+      -Headers @{
+        Origin = 'https://chatgpt.com'
+        'Access-Control-Request-Method' = 'POST'
+      } `
+      -UseBasicParsing
+    if ($actionPreflight.StatusCode -lt 200 -or
+        $actionPreflight.StatusCode -ge 300 -or
+        $actionPreflight.Headers['Access-Control-Allow-Origin'] -ne
+          'https://chatgpt.com') {
+      throw 'O preflight hospedado de Actions falhou; a publicação deve ser interrompida.'
     }
 
     Write-Host 'Validando o MCP OAuth hospedado...'

@@ -24,7 +24,7 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 | Analytics | explorar fatos e métricas | Pesquisa → Analytics e fatos | sete datasets; gráfico+tabela+definição+fatos+exportação |
 | concessão/revogação de acesso | administrar quem estuda diretamente | Pessoas | `activity` |
 | MCP / conversa conectada | agir no objeto corrente sem copiar contexto | ação ChatGPT contextual | canal `authoring_chat` |
-| GPT personalizado com Actions | operar o AraLearn a partir de um GPT personalizado por chamadas HTTP autorizadas | integração Actions/OpenAPI do GPT personalizado | capacidade histórica explicitamente desejada; distinta de MCP; investigar/restaurar sobre contratos correntes, sem ressuscitar arquitetura antiga |
+| GPT personalizado com Actions | operar o AraLearn a partir de um GPT personalizado por chamadas HTTP autorizadas | integração Actions/OpenAPI do GPT personalizado | cinco operações correntes de Curso; OAuth confidencial próprio; canal distinto do MCP e sem arquitetura de Workspace |
 | dados locais | remover réplica do dispositivo sem apagar Curso remoto | Conta / ações locais | alcance explícito |
 | perfil e aparência | reconhecer a conta, atualizar nome e foto e ajustar a leitura | Conta e aparência | avatar próprio; preferências visuais permanecem locais |
 | exclusão da conta | encerrar a própria conta e seus dados conforme contrato final | Conta | ação destrutiva confirmada |
