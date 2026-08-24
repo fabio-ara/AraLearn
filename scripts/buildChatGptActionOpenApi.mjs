@@ -96,7 +96,9 @@ const document = {
 const output = `${JSON.stringify(document)}\n`;
 if (process.argv.includes("--check")) {
   const current = await fs.readFile(target, "utf8").catch(() => "");
-  if (current !== output) throw new Error("O OpenAPI de Actions precisa ser regenerado.");
+  if (current.replaceAll("\r\n", "\n") !== output) {
+    throw new Error("O OpenAPI de Actions precisa ser regenerado.");
+  }
 } else {
   await fs.mkdir(path.dirname(target), { recursive: true });
   await fs.writeFile(target, output, "utf8");
