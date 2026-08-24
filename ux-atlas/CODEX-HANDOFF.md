@@ -24,6 +24,8 @@ O backend atual é o ponto de partida. Quando faltar uma operação necessária 
 
 Quando substituir um caminho, migre seus consumidores e remova a implementação anterior. Não deixe fallback, dual read/write, alias, adapter ou compatibilidade de transição sem consumidor real.
 
+Se houver dúvida real sobre a necessidade de uma solução mais complexa, faça um ensaio finito com poucos cenários e critério de encerramento. Se a solução simples satisfizer os requisitos, pare de investigar alternativas.
+
 ## Estudo
 
 Preserve a identidade e a experiência definidas em `STUDY-VISUAL-BASELINE.md`:
@@ -62,6 +64,10 @@ Aprofundamentos técnicos, conceituais e acadêmicos também devem ser didático
 Reutilize a bibliografia existente e pesquise somente lacunas materiais. Páginas técnicas, conceituais ou acadêmicas com afirmações externas usam citações autor-data no corpo e terminam com `Referências`, derivadas de `docs/referencias.bib`. Preserve `docs/referencias.md` como bibliografia geral.
 
 ## Execução
+
+Use `GPT-5.6 Sol` com esforço `high` e mantenha esse esforço durante a continuidade. Não mude para `ultra` apenas pelo tamanho da tarefa.
+
+Multiagente é aceitável somente para verificações independentes e delimitadas; não o use para abrir explorações arquiteturais paralelas.
 
 Execute #151 → #152 → #153 → #154 → #155, avançando automaticamente quando os critérios de cada etapa estiverem satisfeitos.
 
