@@ -24,7 +24,7 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 | Analytics | explorar fatos e métricas | Pesquisa → Analytics e fatos | sete datasets; gráfico+tabela+definição+fatos+exportação |
 | concessão/revogação de acesso | administrar quem estuda diretamente | Pessoas | `activity` |
 | MCP / conversa conectada | agir no objeto corrente sem copiar contexto | ação ChatGPT contextual | canal `authoring_chat` |
-| GPT personalizado com Actions | operar o AraLearn a partir de um GPT personalizado por chamadas HTTP autorizadas | integração Actions/OpenAPI do GPT personalizado | capacidade distinta de MCP; não presumir substituição entre canais |
+| GPT personalizado com Actions | operar o AraLearn a partir de um GPT personalizado por chamadas HTTP autorizadas | integração Actions/OpenAPI do GPT personalizado | capacidade histórica explicitamente desejada; distinta de MCP; investigar/restaurar sobre contratos correntes, sem ressuscitar arquitetura antiga |
 | dados locais | remover réplica do dispositivo sem apagar Curso remoto | Conta / ações locais | alcance explícito |
 | exclusão da conta | encerrar a própria conta e seus dados conforme contrato final | Conta | ação destrutiva confirmada |
 | retenção corrente | executar/verificar manutenção automática do modelo final | Conta → Manutenção, apenas administrador | reutilizar retenção corrente |
@@ -37,7 +37,7 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 
 A superfície **Manutenção** é secundária e restrita ao papel administrativo. Ela não é um cliente de banco de dados: expõe somente problemas que o AraLearn sabe classificar e ações de produto correspondentes.
 
-MCP e GPT personalizado com Actions são canais distintos. Um não substitui o outro apenas porque ambos permitem operar o AraLearn a partir de uma conversa. Cada canal preservado deve usar os contratos correntes, autorização adequada e retorno compreensível ao produto.
+MCP e GPT personalizado com Actions são canais distintos. Um não substitui o outro apenas porque ambos permitem operar o AraLearn a partir de uma conversa. Para Actions, investigar a implementação histórica somente o suficiente para recuperar a capacidade desejada sobre os contratos correntes; não restaurar arquitetura superada por arrasto.
 
 A matriz não autoriza telemetria nova, arquitetura genérica nem backend especulativo. Pequenas mudanças verticais são permitidas pelo gate #174 quando necessárias para realizar um comportamento já definido.
 
