@@ -285,7 +285,7 @@ jobs:
             exit 0
           }
           @"
-          ## AraLearn ${{ steps.identity.outputs.version }}
+          ## AraLearn v${{ steps.identity.outputs.version }}
 
           Esta versão conclui a experiência integrada de Estudo e Autoria do AraLearn.
 
@@ -300,7 +300,7 @@ jobs:
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `
             --repo $env:GITHUB_REPOSITORY `
             --target $env:ARALEARN_RELEASE_SHA `
-            --title 'AraLearn ${{ steps.identity.outputs.version }}' `
+            --title 'AraLearn v${{ steps.identity.outputs.version }}' `
             --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar a GitHub Release.' }
 

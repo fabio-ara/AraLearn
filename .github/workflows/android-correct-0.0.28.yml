@@ -1,0 +1,125 @@
+name: Gerar APK corrigido 0.0.28
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Gerar APK assinado
+    runs-on: windows-latest
+    env:
+      ARALEARN_EXPECTED_SHA: 39a797aaaf15eb59986c142f0e4f297b473556fa
+      ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Baixar a revisão corrigida
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ARALEARN_EXPECTED_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Conferir a identidade da revisão
+        shell: pwsh
+        run: |
+          $head = (& git rev-parse HEAD).Trim()
+          if ($head -cne $env:ARALEARN_EXPECTED_SHA) {
+            throw 'A revisão baixada não corresponde à revisão autorizada.'
+          }
+          $package = Get-Content -Raw -Encoding UTF8 package.json | ConvertFrom-Json
+          $gradle = Get-Content -Raw -Encoding UTF8 android/app/build.gradle.kts
+          if ([string]$package.version -cne '0.0.28') {
+            throw 'A revisão não declara a versão 0.0.28.'
+          }
+          if ($gradle -notmatch 'versionCode\s*=\s*174' -or $gradle -notmatch 'versionName\s*=\s*"0\.0\.28"') {
+            throw 'A identidade Android não corresponde a 0.0.28 (174).'
+          }
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Preparar Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Conferir configuração de assinatura
+        shell: pwsh
+        env:
+          ARALEARN_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_BASE64 }}
+          ARALEARN_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_PASSWORD }}
+          ARALEARN_ANDROID_KEY_ALIAS: ${{ secrets.ARALEARN_ANDROID_KEY_ALIAS }}
+          ARALEARN_ANDROID_KEY_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEY_PASSWORD }}
+        run: |
+          $required = @(
+            'ARALEARN_ANDROID_KEYSTORE_BASE64',
+            'ARALEARN_ANDROID_KEYSTORE_PASSWORD',
+            'ARALEARN_ANDROID_KEY_ALIAS',
+            'ARALEARN_ANDROID_KEY_PASSWORD'
+          )
+          $missing = @($required | Where-Object {
+            [string]::IsNullOrWhiteSpace([string][Environment]::GetEnvironmentVariable($_))
+          })
+          if ($missing.Count -gt 0) {
+            throw 'A identidade histórica de assinatura não está disponível.'
+          }
+          if (-not $env:ARALEARN_SUPABASE_URL -or -not $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY) {
+            throw 'A configuração pública do AraLearn está ausente.'
+          }
+
+      - name: Restaurar keystore protegida
+        shell: pwsh
+        env:
+          ARALEARN_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'aralearn-release.jks'
+          try {
+            $encoded = ($env:ARALEARN_ANDROID_KEYSTORE_BASE64 -replace '\s', '')
+            [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($encoded))
+          }
+          catch {
+            throw 'A keystore protegida não pôde ser restaurada.'
+          }
+          "ARALEARN_ANDROID_KEYSTORE_PATH=$keystorePath" >> $env:GITHUB_ENV
+
+      - name: Executar testes
+        run: npm test
+
+      - name: Analisar código
+        run: npm run lint
+
+      - name: Compilar APK
+        env:
+          ARALEARN_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_PASSWORD }}
+          ARALEARN_ANDROID_KEY_ALIAS: ${{ secrets.ARALEARN_ANDROID_KEY_ALIAS }}
+          ARALEARN_ANDROID_KEY_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEY_PASSWORD }}
+        run: npm run android:release
+
+      - name: Conferir identidade e certificado
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1
+          -Target Android
+          -ArtifactPath ./android/app/build/outputs/apk/release/app-release.apk
+          -RequireRuntimeConfig
+
+      - name: Preparar APK
+        shell: pwsh
+        run: Copy-Item -LiteralPath android/app/build/outputs/apk/release/app-release.apk -Destination AraLearn-0.0.28.apk
+
+      - name: Disponibilizar APK corrigido
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-0.0.28-corrected
+          path: AraLearn-0.0.28.apk
+          if-no-files-found: error
+          retention-days: 3

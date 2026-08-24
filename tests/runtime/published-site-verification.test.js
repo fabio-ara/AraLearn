@@ -11,7 +11,7 @@ import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntime
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "2.0.1";
+const VERSION = "0.0.29";
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>
@@ -285,7 +285,7 @@ test("recusa manifesto cacheado de outra versão ou revisão divergente", async 
     });
     await assert.rejects(
       () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
-      /versão esperada 2\.0\.1/
+      new RegExp(`versão esperada ${VERSION.replaceAll(".", "\\.")}`, "u")
     );
   });
 
