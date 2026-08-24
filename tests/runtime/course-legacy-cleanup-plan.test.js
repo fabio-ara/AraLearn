@@ -115,23 +115,23 @@ function planFixture() {
   return buildLegacyCleanupPlan(fixture());
 }
 
-test("o inventário de limpeza fixa os 1.595 objetos e separa os dois buckets", () => {
+test("o inventário de limpeza fixa os 1.550 objetos e separa os dois buckets", () => {
   const plan = planFixture();
   assert.equal(plan.removalObjectCount, LEGACY_DATABASE_OBJECT_COUNT);
   assert.deepEqual(plan.removalCategoryCounts, {
     bucket: 2,
-    constraint: 655,
-    function: 333,
-    index: 254,
+    constraint: 634,
+    function: 324,
+    index: 245,
     policy: 9,
-    rls: 110,
-    table: 110,
+    rls: 107,
+    table: 107,
     trigger: 117,
     view: 5
   });
   assert.deepEqual(plan.storageBuckets, LEGACY_STORAGE_BUCKETS);
-  assert.equal(plan.databaseRoots.tables.length, 110);
-  assert.equal(plan.databaseRoots.functions.length, 333);
+  assert.equal(plan.databaseRoots.tables.length, 107);
+  assert.equal(plan.databaseRoots.functions.length, 324);
   assert.equal(plan.allObjects.length,
     parityInventory.objects.filter(({ caseId }) =>
       caseId !== "pre-course-database-removal"

@@ -501,13 +501,15 @@
         ],
         "databasePatterns": [
           "^function:private\\.(?:request_role|require_service_role)\\(\\)$",
-          "^function:public\\.aralearn_mcp_access_token_hook\\(.*\\)$"
+          "^function:public\\.aralearn_mcp_access_token_hook\\(.*\\)$",
+          "^(?:table|constraint|index|rls):private\\.authoring_action_oauth_(?:clients|authorizations|tokens)(?:[/=].*)?$",
+          "^function:public\\.(?:approve|create|deny|exchange|get|link|resolve)_authoring_action_oauth_.+\\(.*\\)$"
         ]
       },
       "routes": [
         { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "createCourseApiHandler" },
         { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "createAuthoringMcpHandler" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/actionServer.js", "token": "createAuthoringActionHandler" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseActionServer.js", "token": "createAuthoringActionHandler" }
       ],
       "tests": [
         "tests/runtime/course-api-server.test.js",

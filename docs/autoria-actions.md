@@ -34,7 +34,7 @@ deve aparecer no GPT, na documentação pública ou no navegador.
 Na configuração de Actions do GPT:
 
 1. importe o arquivo
-   [`aralearn-chatgpt-action-openapi.yaml`](downloads/authoring/aralearn-chatgpt-action-openapi.yaml);
+   [`aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml);
 2. configure a autenticação OAuth com os endereços de autorização e token
    declarados no próprio documento;
 3. informe a identidade e o segredo do cliente cadastrados para essa Action;

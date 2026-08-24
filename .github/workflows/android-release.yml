@@ -287,14 +287,15 @@ jobs:
           @"
           ## AraLearn ${{ steps.identity.outputs.version }}
 
-          - Código de versão Android ${{ steps.identity.outputs.version_code }}.
-          - Conta e aparência separa logout, remoção dos dados locais, logout com remoção local e exclusão irreversível da conta.
-          - O MCP publica cinco ferramentas autorais; Perfil e gestão de Pessoas permanecem exclusivos da aplicação autenticada.
-          - O OAuth do MCP usa somente offline_access, sem ID token, e a função de borda valida assinatura, sessão, cliente e consentimento vivos.
-          - Projeções do MCP, exportações de Observações, cargas do provider, erros e registros operacionais expõem somente os campos necessários.
-          - PDFs usam intenção privada e envio autenticado com limites por arquivo, revisão e Curso; o Android 0.0.26 conserva apenas o download legado.
-          - A retenção técnica processa lotes limitados e inventaria órfãos sem removê-los automaticamente.
-          - O APK foi verificado contra o certificado histórico antes da publicação.
+          Esta versão conclui a experiência integrada de Estudo e Autoria do AraLearn.
+
+          - Estude pelo percurso de Curso, Módulo, Lição, Microssequência e Unidade, com progresso, Observações e retorno previsível.
+          - Visualize, edite ou use a Assistência por API na mesma Unidade. A assistência conversa sobre o plano e só aplica conteúdo validado depois da confirmação humana.
+          - Organize Cursos pela Autoria: planejamento, materialização, parâmetros, Fontes e PDFs, inspeção, auditoria, variantes, pesquisa e acessos.
+          - Integre ferramentas externas por MCP ou conecte um GPT personalizado pelas Actions OpenAPI. São caminhos distintos para as mesmas operações autorais protegidas.
+          - Crie, altere, use e exclua Cursos pela Home, sem confundir o ciclo de vida remoto com a remoção dos dados deste dispositivo.
+
+          Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.
           "@ | Set-Content -Encoding UTF8 release-notes.md
           & gh release create '${{ steps.identity.outputs.tag }}' $env:ARALEARN_RELEASE_APK `
             --repo $env:GITHUB_REPOSITORY `

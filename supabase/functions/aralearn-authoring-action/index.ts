@@ -1,4 +1,4 @@
-import { createAuthoringActionHandler } from "../_shared/aralearn-authoring/actionServer.js";
+import { createAuthoringActionHandler } from "../_shared/aralearn-authoring/courseActionServer.js";
 import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
 import { CourseSupabaseAdapter } from "../_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import {

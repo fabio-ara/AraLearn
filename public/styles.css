@@ -5339,7 +5339,7 @@ input:-webkit-autofill:focus {
 .home-course-lifecycle .is-danger {
   width: 100%;
   min-height: var(--tap);
-  color: var(--danger-text, #9b1c1c);
+  color: var(--danger-text);
   border-color: currentColor;
 }
 

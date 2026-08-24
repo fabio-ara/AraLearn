@@ -10,7 +10,6 @@ const target = path.join(
   root,
   "docs",
   "downloads",
-  "authoring",
   "aralearn-chatgpt-action-openapi.yaml"
 );
 const baseUrl =

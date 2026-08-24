@@ -4,6 +4,39 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [2.0.0] - 2026-08-24
+
+### Adicionado
+
+- Estudo apresenta o percurso completo de Curso, Módulo, Lição,
+  Microssequência e Unidade, com retorno previsível, progresso, Observações e
+  continuidade entre dispositivo e servidor;
+- a Unidade oferece Visualizar, Editar e Assistência por API como modos irmãos
+  sobre o mesmo alvo, inclusive com criação segura de cópia pessoal;
+- a Assistência por API funciona como sessão contextual: conversa sobre o
+  plano, pede confirmação, descobre contratos didáticos exatos e só aplica uma
+  proposta depois de validá-la no renderer real;
+- Autoria reúne planejamento, materialização, parâmetros, Fontes e PDFs,
+  inspeção, auditoria e correção, variantes, pesquisa e gestão de pessoas;
+- GPTs personalizados podem usar as cinco operações autorais por Actions e
+  OpenAPI, como integração distinta do MCP;
+- identidades administrativas autorizadas dispõem de inventário e manutenção
+  operacional pela interface.
+
+### Alterado
+
+- a Home distingue Estudo de Autoria, expõe as ações de ciclo de vida de cada
+  Curso e preserva dados locais como uma operação separada;
+- a documentação pública passa a ensinar o produto corrente por jornadas,
+  fundamentos, integrações, implantação e referências verificáveis.
+
+### Corrigido
+
+- propostas inválidas ou não renderizáveis da assistência deixam de poder
+  substituir o conteúdo corrente;
+- navegação, foco, área segura, textos extensos e menus mantêm o percurso de
+  Estudo utilizável em telas móveis e desktop.
+
 ## [0.0.27] - 2026-08-21
 
 ### Alterado

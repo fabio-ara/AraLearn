@@ -120,87 +120,87 @@
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_client_id_fkey[foreign_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_code[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_pkey[primary_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_scope[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_state[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_status[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_user_id_fkey[foreign_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_creator_user_id_fkey[foreign_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_gpt_id[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_link_state[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_name[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_pkey[primary_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_redirects[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_clients/authoring_action_oauth_clients_secret_hash[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_client_id_fkey[foreign_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_hash[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_kind[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_pkey[primary_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_replacement[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_scope[check]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_user_id_fkey[foreign_key]",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "constraint:private.authoring_analytics_dataset_versions/authoring_analytics_dataset_versions_pkey[primary_key]",
@@ -5224,7 +5224,7 @@
     },
     {
       "object": "function:public.approve_authoring_action_oauth_authorization_v4(p_authorization_id uuid, p_user_id uuid, p_code_hash text)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.aralearn_mcp_access_token_hook(event jsonb)",
@@ -5284,11 +5284,11 @@
     },
     {
       "object": "function:public.create_authoring_action_oauth_authorization_v4(p_client_id uuid, p_redirect_uri text, p_state text, p_scope text)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.create_authoring_action_oauth_client_setup_v4(p_creator_user_id uuid, p_client_name text, p_client_secret_hash text)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.create_authoring_workspace_v5(p_owner_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text, p_title text, p_source_course_id uuid, p_source_revision_hash text, p_source_submission_id uuid, p_brief text, p_rows jsonb)",
@@ -5324,7 +5324,7 @@
     },
     {
       "object": "function:public.deny_authoring_action_oauth_authorization_v4(p_authorization_id uuid, p_user_id uuid)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.derive_mcp_oauth_pairwise_id_v1(p_domain text, p_source_id uuid, p_client_id uuid)",
@@ -5344,11 +5344,11 @@
     },
     {
       "object": "function:public.exchange_authoring_action_oauth_code_v4(p_client_id uuid, p_client_secret_hash text, p_code_hash text, p_redirect_uri text, p_access_token_hash text, p_refresh_token_hash text, p_grant_id uuid)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.exchange_authoring_action_oauth_refresh_v4(p_client_id uuid, p_client_secret_hash text, p_refresh_token_hash text, p_access_token_hash text, p_new_refresh_token_hash text)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.execute_course_anchored_annotation_command_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
@@ -5376,7 +5376,7 @@
     },
     {
       "object": "function:public.get_authoring_action_oauth_authorization_v4(p_authorization_id uuid, p_user_id uuid)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.get_authoring_analytics_overview_v1(p_actor_id uuid, p_workspace_id uuid, p_scope jsonb)",
@@ -5544,7 +5544,7 @@
     },
     {
       "object": "function:public.link_authoring_action_oauth_client_v4(p_creator_user_id uuid, p_client_id uuid, p_gpt_id text)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.link_catalog_review_workspace_v5(p_actor_id uuid, p_submission_id uuid, p_workspace_id uuid)",
@@ -5828,7 +5828,7 @@
     },
     {
       "object": "function:public.resolve_authoring_action_oauth_principal_v4(p_access_token_hash text)",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.resolve_authoring_effective_design_v1(p_actor_id uuid, p_workspace_id uuid, p_request_id text, p_payload_hash text, p_expected_revision bigint, p_snapshot jsonb)",
@@ -5968,39 +5968,39 @@
     },
     {
       "object": "index:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_code_idx",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_expiry_idx",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_authorizations/authoring_action_oauth_authorizations_pkey",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_clients/authoring_action_oauth_clients_pkey",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_clients/authoring_action_oauth_one_active_gpt_per_creator_idx",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_clients/authoring_action_oauth_one_setup_per_creator_idx",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_expiry_idx",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_grant_idx",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_action_oauth_tokens/authoring_action_oauth_tokens_pkey",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.authoring_analytics_dataset_versions/authoring_analytics_dataset_versions_pkey",
@@ -7488,15 +7488,15 @@
     },
     {
       "object": "rls:private.authoring_action_oauth_authorizations=disabled",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "rls:private.authoring_action_oauth_clients=disabled",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "rls:private.authoring_action_oauth_tokens=disabled",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "rls:private.authoring_analytics_dataset_versions=disabled",
@@ -8088,15 +8088,15 @@
     },
     {
       "object": "table:private.authoring_action_oauth_authorizations",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "table:private.authoring_action_oauth_clients",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "table:private.authoring_action_oauth_tokens",
-      "caseId": "pre-course-database-removal"
+      "caseId": "course-shared-transports"
     },
     {
       "object": "table:private.authoring_analytics_dataset_versions",

@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import {
   createAuthoringActionHandler
-} from "../../supabase/functions/_shared/aralearn-authoring/actionServer.js";
+} from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 
 const ORIGIN = "https://chatgpt.com";
 const BASE_URL = "https://project.example/functions/v1/aralearn-authoring-action";
@@ -111,7 +111,7 @@ test("Actions limita origem, rota e corpo sem abrir transporte genérico", async
 test("Actions preserva as cinco operações correntes e rejeita Workspace", async () => {
   const openApi = JSON.parse(await readFile(
     new URL(
-      "../../docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml",
+      "../../docs/downloads/aralearn-chatgpt-action-openapi.yaml",
       import.meta.url
     ),
     "utf8"
@@ -152,7 +152,7 @@ test("OAuth de Actions cadastra credencial confidencial sem expor seu hash", asy
 test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", async () => {
   const file = await readFile(
     new URL(
-      "../../docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml",
+      "../../docs/downloads/aralearn-chatgpt-action-openapi.yaml",
       import.meta.url
     )
   );
