@@ -1,25 +1,26 @@
-# Atlas visual — frontend alvo para Codex
+# Atlas visual — especificação do frontend final
 
-Esta é a única especificação de UX/UI adicionada à branch `ux/codex-frontend-v11`.
+Esta pasta reúne a especificação de UX/UI usada no fechamento do AraLearn.
 
-- Base funcional: `main` atual.
-- Cobertura/navegação alvo: `ux-atlas/`.
-- Identidade visual de Estudo: `ux-atlas/STUDY-VISUAL-BASELINE.md`.
-- Gate contra overengineering: issue #174.
-- Sequência permitida: #151 → #152 → #153 → #154 → #155; depois **parar**.
+Leia nesta ordem:
 
-Comece por `ux-atlas/CODEX-HANDOFF.md`.
+1. `CODEX-HANDOFF.md`;
+2. `STUDY-VISUAL-BASELINE.md`;
+3. `MATRIZ-COBERTURA.md`;
+4. `index.html`.
 
-Abra `ux-atlas/index.html` para navegar pelo Atlas.
+A matriz de cobertura e o baseline de Estudo são normativos. O Atlas navegável ajuda a visualizar estados e relações, mas não autoriza recuperar propostas históricas ou contrariar #147, #174 ou os contratos finais do produto.
 
-Validação estrutural:
+Base funcional: `main`.
+
+Sequência de implementação: #151 → #152 → #153 → #154 → #155; depois parar.
+
+Validação estrutural do Atlas:
 
 `node ux-atlas/validate.mjs`
 
-Código legível do Atlas:
+Para extrair o código legível das telas do Atlas:
 
 `node ux-atlas/extract.mjs`
 
-Isso gera `atlas.generated.js`, `graphs.generated.js` e `atlas.generated.css`.
-
-Branches antigas de exploração do Atlas e issues #156–#168 não são base de implementação desta release.
+Branches antigas de exploração e issues #156–#168 não são base desta entrega.
