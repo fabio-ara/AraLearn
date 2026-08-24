@@ -90,7 +90,7 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
   "supabase/functions/_shared/aralearn-authoring/courseToolExecutor.js",
   "supabase/functions/_shared/aralearn-authoring/actionOAuthServer.js",
-  "supabase/functions/_shared/aralearn-authoring/actionServer.js",
+  "supabase/functions/_shared/aralearn-authoring/courseActionServer.js",
   "supabase/functions/aralearn-course-api/index.ts",
   "supabase/functions/aralearn-authoring-mcp/index.ts",
   "supabase/functions/aralearn-authoring-action/index.ts"
