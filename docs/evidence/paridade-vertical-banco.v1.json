@@ -515,7 +515,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_authoring_part_materializations/course_authoring_part_materializations_channel_v1[check]",
+      "object": "constraint:private.course_authoring_part_materializations/course_authoring_part_materializations_channel_v2[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1843,6 +1843,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.advance_course_authoring_part_materialization_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_materialization_id uuid, p_expected_course_revision bigint, p_expected_materialization_version bigint, p_operation text, p_payload jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.apply_course_design_command_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
       "caseId": "course-authoring-experience"
     },
@@ -2292,6 +2296,10 @@
     },
     {
       "object": "index:private.course_authoring_part_materializations/course_authoring_part_materializations_part_recent_v1_idx",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "index:private.course_authoring_part_materializations/course_authoring_part_materializations_part_started_v1_idx",
       "caseId": "course-authoring-experience"
     },
     {
