@@ -20,7 +20,8 @@
       "objects": {
         "manifestFeatures": [
           "course-personal-state-v2",
-          "personal-course-copy-edit-v1"
+          "personal-course-copy-edit-v1",
+          "course-product-operations-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.course_personal_states|private\\.course_personal_state_receipts)$",
@@ -57,7 +58,7 @@
         "tests/e2e/manual-study-unit-edit.spec.js",
         "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "O estado pessoal mínimo só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência de progresso e Rever são mecanismos internos dessa mesma capacidade, não produtos separados. A edição de um Curso compartilhado materializa uma única cópia pessoal independente, preserva o Curso de origem e permite continuar o Estudo no resultado sem conceder edição sobre a origem."
+      "justification": "O estado pessoal mínimo só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência de progresso e Rever são mecanismos internos dessa mesma capacidade, não produtos separados. A edição de um Curso compartilhado materializa uma única cópia pessoal independente, preserva o Curso de origem e permite continuar o Estudo no resultado sem conceder edição sobre a origem. Excluir Curso próprio e sair de Curso compartilhado permanecem ações distintas e explícitas na mesma Home."
     },
     {
       "id": "course-authoring-experience",
@@ -367,12 +368,13 @@
     {
       "id": "current-data-lifecycle",
       "intent": "Executar retenção proporcional e inventariar órfãos sem depender da abertura de um Curso nem converter uma inspeção em exclusão automática.",
-      "classification": "internal",
+      "classification": "ui",
       "status": "current",
       "objects": {
         "manifestFeatures": [
           "current-data-lifecycle-v1",
-          "isolated-mcp-oauth-principal-v1"
+          "isolated-mcp-oauth-principal-v1",
+          "current-administrative-maintenance-v1"
         ],
         "databasePatterns": [
           "^table:private\\.course_access_grant_rate_limits$",
@@ -380,15 +382,23 @@
           "^function:public\\.(?:derive_mcp_oauth_pairwise_id_v1|enforce_aralearn_data_api_token_v1|resolve_mcp_oauth_principal_v1)\\(.*\\)$"
         ]
       },
+      "ui": [
+        { "path": "public/main.js", "token": "data-settings-maintenance" }
+      ],
+      "visibleEffects": [
+        { "path": "public/main.js", "token": "executeCurrentMaintenance" }
+      ],
       "persistence": [
         { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "run_current_data_retention_v1" },
         { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "inventory_current_data_orphans_v1" }
       ],
       "tests": [
         "tests/runtime/course-data-lifecycle-pglite.test.js",
+        "tests/runtime/course-supabase-adapter.test.js",
+        "tests/runtime/product-operations-pglite.test.js",
         "supabase/tests/course-runtime-local-smoke.mjs"
       ],
-      "justification": "A limpeza trabalha por classe, com limite e contagem próprios, e pode ser repetida sem efeito adicional. O inventário apenas classifica caminhos e vínculos ausentes; uma remoção posterior continua exigindo decisão explícita. A validação de sessão fecha escritas sensíveis após a revogação sem ampliar o perfil ou o compartilhamento como capacidade de produto."
+      "justification": "A limpeza trabalha por classe, com limite e contagem próprios, e pode ser repetida sem efeito adicional. A Manutenção aparece somente para identidade administrativa autorizada, revalida o objeto antes de remover e relê o inventário; não expõe banco ou Storage genéricos. A validação de sessão fecha escritas sensíveis após a revogação sem ampliar o perfil ou o compartilhamento como capacidade de produto."
     },
     {
       "id": "person-profile-and-course-access",
@@ -474,18 +484,20 @@
     },
     {
       "id": "course-shared-transports",
-      "intent": "Expor as operações canônicas de Curso ao aplicativo e ao MCP autenticado sem duplicar domínio, estado ou ferramenta.",
+      "intent": "Expor operações canônicas de Curso ao aplicativo, ao MCP autenticado e ao GPT personalizado por Actions, mantendo canais e autorizações distintos.",
       "classification": "mcp",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
         "edgeFunctions": [
           "aralearn-course-api",
-          "aralearn-authoring-mcp"
+          "aralearn-authoring-mcp",
+          "aralearn-authoring-action"
         ],
         "manifestFeatures": [
           "flat-runtime-manifest-v1",
-          "oauth-only-authoring-mcp"
+          "oauth-only-authoring-mcp",
+          "gpt-actions-openapi-v1"
         ],
         "databasePatterns": [
           "^function:private\\.(?:request_role|require_service_role)\\(\\)$",
@@ -494,14 +506,16 @@
       },
       "routes": [
         { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "createCourseApiHandler" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "createAuthoringMcpHandler" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "createAuthoringMcpHandler" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/actionServer.js", "token": "createAuthoringActionHandler" }
       ],
       "tests": [
         "tests/runtime/course-api-server.test.js",
         "tests/runtime/course-mcp-server.test.js",
+        "tests/runtime/course-action-server.test.js",
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
-      "justification": "Os dois transportes adaptam o mesmo registry e executor de Curso. Não existe Action, ferramenta exclusiva do aplicativo nem segundo motor de autoria."
+      "justification": "Aplicativo, MCP e Actions reutilizam o mesmo executor de Curso. MCP mantém seu protocolo e principal OAuth; Actions publica cinco operações HTTP e um OpenAPI próprio para GPT personalizado, sem converter um canal no outro nem criar segundo motor de autoria."
     },
     {
       "id": "pre-course-database-removal",

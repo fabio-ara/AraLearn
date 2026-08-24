@@ -292,6 +292,17 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   assert.match(html, />Curso compartilhado · Compartilhado com você<\/option>/u);
   assert.match(html, />Minha continuidade · Sua cópia<\/option>/u);
   assert.match(html, /home-course-ownership[^>]*>.*Sua cópia/su);
+  assert.match(html, /<summary>Ações deste Curso<\/summary>/u);
+  assert.match(html, /data-action="delete-owned-course"/u);
+  assert.match(html, />Excluir este Curso<\/span>/u);
+  const sharedHtml = renderHomeScreen({
+    project: { ...project, courses },
+    progress: { version: 1, lessons: {} },
+    editorSupport: { coursePermissionsById: permissions },
+    selectedCourseId: shared.id
+  });
+  assert.match(sharedHtml, /data-action="leave-shared-course"/u);
+  assert.match(sharedHtml, />Sair deste Curso<\/span>/u);
   assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
 });
 

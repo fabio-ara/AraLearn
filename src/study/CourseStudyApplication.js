@@ -332,10 +332,35 @@ export function createCourseStudyApplication({
     state.microsequenceMode = retained.view === "microsequence"
       ? snapshot.microsequenceMode === "play" ? "play" : "overview"
       : "play";
-    persistStudyNavigation({ includePosition: state.view !== "courses" });
-    queueStudyFocus(state.view === "courses"
-      ? "[data-field='home-course-select']"
-      : "[data-study-destination-heading]");
+    if (state.view === "courses" && state.selection?.courseId &&
+        typeof repository.saveStudyNavigation === "function") {
+      void repository.saveStudyNavigation({
+        selectedCourseId: state.selection.courseId,
+        position: {
+          view: "course",
+          entityPath: [
+            state.selection.courseId,
+            state.selection.moduleId,
+            state.selection.lessonId,
+            state.selection.microsequenceId,
+            state.selection.studyUnitId
+          ],
+          microsequenceMode: "play"
+        }
+      }).catch((error) => root.dispatchEvent(new CustomEvent(
+        "aralearn:study-navigation-save-error",
+        { bubbles: true, detail: { error } }
+      )));
+    } else {
+      persistStudyNavigation({ includePosition: true });
+    }
+    if (state.view === "courses" && snapshot.focusTarget?.selector) {
+      queueStudyFocus(snapshot.focusTarget.selector, snapshot.focusTarget.attributes);
+    } else {
+      queueStudyFocus(state.view === "courses"
+        ? "[data-field='home-course-select']"
+        : "[data-study-destination-heading]");
+    }
     render({ preserveFocus: false });
     return true;
   }
@@ -751,7 +776,13 @@ export function createCourseStudyApplication({
 
   async function openCourse(courseId) {
     if (state.homeLoadingCourseId) return false;
-    const origin = navigationSnapshot();
+    const origin = {
+      ...navigationSnapshot(),
+      focusTarget: {
+        selector: "[data-action='open-course']",
+        attributes: { "data-course-id": courseId }
+      }
+    };
     state.homeLoadingCourseId = courseId;
     state.homeError = "";
     state.homeNotice = "";
@@ -1518,6 +1549,54 @@ export function createCourseStudyApplication({
     return target || null;
   }
 
+  async function maintainCourseFromHome(courseId, operation) {
+    if (!courseId || state.homeLoadingCourseId ||
+        typeof repository.maintainCourse !== "function") return false;
+    const course = findCourse(state.project, courseId);
+    if (!course) return false;
+    const owned = operation === "delete_owned_course";
+    const prompt = owned
+      ? `Excluir definitivamente ${course.title || "este Curso"}? Esta ação também remove os dados compartilhados do Curso.`
+      : `Sair de ${course.title || "este Curso"}? Seu acesso compartilhado será encerrado.`;
+    if (typeof globalThis.confirm === "function" && !globalThis.confirm(prompt)) return false;
+    state.homeLoadingCourseId = courseId;
+    state.homeError = "";
+    state.homeNotice = "";
+    render();
+    try {
+      await repository.maintainCourse({
+        courseId,
+        operation,
+        confirmed: true,
+        requestId: globalThis.crypto?.randomUUID?.() ||
+          `course-lifecycle-${Date.now()}-${Math.random().toString(16).slice(2)}`
+      });
+      state.project = repository.loadProject();
+      const nextCourseId = state.project.courses[0]?.id || null;
+      state.selection = nextCourseId
+        ? selectionForCourse(state.project, nextCourseId)
+        : firstSelection(state.project);
+      state.navigationHistory = [];
+      state.homeLoadingCourseId = "";
+      state.homeNotice = owned
+        ? `${course.title || "O Curso"} foi excluído.`
+        : `Seu acesso a ${course.title || "o Curso"} foi encerrado.`;
+      if (nextCourseId) persistStudyNavigation({ includePosition: false });
+      render({ preserveFocus: false });
+      return true;
+    } catch (error) {
+      state.homeLoadingCourseId = "";
+      state.homeError = error instanceof Error
+        ? error.message
+        : "Não foi possível concluir a ação deste Curso.";
+      queueStudyFocus(`[data-action='${owned ? "delete-owned-course" : "leave-shared-course"}']`, {
+        "data-course-id": courseId
+      });
+      render({ preserveFocus: false });
+      return false;
+    }
+  }
+
   function assistanceCapability(scope) {
     const permission = coursePermission();
     if (scope === "study_unit") return manualEditCapability();
@@ -2098,6 +2177,7 @@ export function createCourseStudyApplication({
           render({ preserveFocus: false, captureDraft: false });
           return true;
         }
+        resetManualEditorState();
       } else {
         if (typeof onSaveAssistedStructure !== "function") {
           throw new Error("A gravação estrutural não está disponível.");
@@ -2342,7 +2422,14 @@ export function createCourseStudyApplication({
     }
     const next = lessonStudyUnits[currentIndex + delta];
     if (!next) {
-      if (delta > 0) goBack();
+      if (delta > 0) {
+        resetStudyUnitInteraction();
+        state.view = "lesson";
+        state.microsequenceMode = "play";
+        persistStudyNavigation({ includePosition: true });
+        queueStudyFocus("[data-study-destination-heading]");
+        render({ preserveFocus: false });
+      }
       return false;
     }
     return openLessonStudyUnit(next, { recordHistory: false });
@@ -2757,6 +2844,16 @@ export function createCourseStudyApplication({
     root.querySelectorAll("[data-action='reset-course-progress']").forEach((node) =>
       node.addEventListener("click", () => void resetCourseProgress(
         node.getAttribute("data-course-id")
+      )));
+    root.querySelectorAll("[data-action='delete-owned-course']").forEach((node) =>
+      node.addEventListener("click", () => void maintainCourseFromHome(
+        node.getAttribute("data-course-id"),
+        "delete_owned_course"
+      )));
+    root.querySelectorAll("[data-action='leave-shared-course']").forEach((node) =>
+      node.addEventListener("click", () => void maintainCourseFromHome(
+        node.getAttribute("data-course-id"),
+        "leave_shared_course"
       )));
     root.querySelectorAll("[data-action='reset-study-progress']").forEach((node) =>
       node.addEventListener("click", () => void resetStudyProgress(node)));

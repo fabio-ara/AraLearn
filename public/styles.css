@@ -3939,6 +3939,73 @@ input:-webkit-autofill:focus {
   background: var(--surface-raised);
 }
 
+.account-maintenance {
+  display: grid;
+  gap: 10px;
+  padding-block: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.account-maintenance[hidden] {
+  display: none;
+}
+
+.account-maintenance-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-maintenance h2,
+.account-maintenance p {
+  margin: 0;
+}
+
+.account-maintenance-heading p,
+[data-maintenance-summary] p,
+[data-maintenance-status] {
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  line-height: 1.4;
+}
+
+.account-maintenance-actions button {
+  width: 100%;
+  min-height: var(--tap);
+}
+
+.account-maintenance-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-maintenance-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+}
+
+.account-maintenance-list li > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.account-maintenance-list code {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
 .study-structural-mode-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5238,11 +5305,42 @@ input:-webkit-autofill:focus {
 
 .home-course-preview-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 8px;
   width: 100%;
   min-width: 0;
   padding: 5px;
+}
+
+.home-course-lifecycle {
+  flex: 1 0 100%;
+  min-width: 0;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 4px;
+}
+
+.home-course-lifecycle summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  cursor: pointer;
+}
+
+.home-course-lifecycle p {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1.4;
+}
+
+.home-course-lifecycle .is-danger {
+  width: 100%;
+  min-height: var(--tap);
+  color: var(--danger-text, #9b1c1c);
+  border-color: currentColor;
 }
 
 .home-course-preview-actions .study-course-reset {

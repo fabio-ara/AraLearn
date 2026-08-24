@@ -204,6 +204,7 @@ export function createCourseProviderAssistance({
   let error = "";
   let pending = false;
   let peeking = false;
+  let connectionOpen = false;
   let destroyed = false;
 
   function abortPending() {
@@ -228,12 +229,13 @@ export function createCourseProviderAssistance({
   function syncForm() {
     if (!overlay) return;
     const current = session.read();
+    const credential = text(overlay.querySelector("[data-course-assistance-key]")?.value);
     session.update({
       ...current,
       providerId: text(overlay.querySelector("[data-course-assistance-provider]")?.value),
       model: text(overlay.querySelector("[data-course-assistance-model]")?.value),
       endpoint: text(overlay.querySelector("[data-course-assistance-endpoint]")?.value),
-      apiKey: text(overlay.querySelector("[data-course-assistance-key]")?.value)
+      apiKey: credential || current.apiKey
     });
     messageDraft = text(overlay.querySelector("[data-course-assistance-message]")?.value);
   }
@@ -285,7 +287,8 @@ export function createCourseProviderAssistance({
       `${pending ? ' disabled aria-disabled="true"' : ""}>` +
       `${renderUiIcon(pending ? "rotate" : "prompt", "course-authoring-button-icon")}` +
       `<span>${pending ? "Aguarde…" : "Enviar"}</span></button></form>` +
-      '<details class="course-assistance-connection"><summary>Serviço e modelo</summary>' +
+      `<details class="course-assistance-connection"${connectionOpen ? " open" : ""}>` +
+      '<summary>Serviço e modelo</summary>' +
       providerField + '<label><span>Modelo</span><select data-course-assistance-model' +
       `${pending ? " disabled" : ""}>${modelOptions(config.model)}</select></label>` +
       '<label><span>Endpoint</span><input type="url" data-course-assistance-endpoint value="' +
@@ -320,6 +323,7 @@ export function createCourseProviderAssistance({
     status = "";
     error = "";
     peeking = false;
+    connectionOpen = false;
     if (!destroyed) onClosed?.();
     if (restoreFocus) trigger?.focus?.({ preventScroll: true });
     return true;
@@ -451,6 +455,7 @@ export function createCourseProviderAssistance({
     const current = session.read();
     const provider = PROVIDERS[current.providerId];
     session.update({ ...current, endpoint: provider?.endpoint || "", apiKey: "" });
+    connectionOpen = true;
     render();
   }
 
@@ -492,6 +497,9 @@ export function createCourseProviderAssistance({
     });
     overlay.querySelector("[data-course-assistance-provider]")
       ?.addEventListener("change", changeProvider);
+    overlay.querySelector(".course-assistance-connection")?.addEventListener("toggle", (event) => {
+      connectionOpen = event.currentTarget.open;
+    });
     overlay.onkeydown = keydown;
   }
 
@@ -539,6 +547,7 @@ export function createCourseProviderAssistance({
       messageDraft = "";
       status = "";
       error = "";
+      connectionOpen = false;
       render();
       overlay.querySelector("[data-course-assistance-message]")?.focus?.({ preventScroll: true });
       return true;
