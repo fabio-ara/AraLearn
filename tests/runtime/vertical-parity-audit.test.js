@@ -62,7 +62,7 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário pós-corte separa os onze casos correntes do legado físico", async () => {
+test("o inventário exato cobre os onze casos correntes", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
@@ -70,7 +70,7 @@ test("o inventário pós-corte separa os onze casos correntes do legado físico"
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 2_308);
+  assert.equal(inventory.objects.length, 758);
   assert.deepEqual(counts, {
     "study-course-experience": 40,
     "course-authoring-experience": 273,
@@ -82,8 +82,7 @@ test("o inventário pós-corte separa os onze casos correntes do legado físico"
     "current-data-lifecycle": 20,
     "person-profile-and-course-access": 31,
     "didactic-component-runtime": 1,
-    "course-shared-transports": 48,
-    "pre-course-database-removal": 1_550
+    "course-shared-transports": 48
   });
   const currentCaseIds = current.cases
     .filter(({ status }) => status === "current")
@@ -91,7 +90,7 @@ test("o inventário pós-corte separa os onze casos correntes do legado físico"
   assert.equal(currentCaseIds.length, 11);
   assert.deepEqual(
     new Set(inventory.objects.map(({ caseId }) => caseId)),
-    new Set([...currentCaseIds, "pre-course-database-removal"])
+    new Set(currentCaseIds)
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
   assert.equal(
@@ -130,15 +129,6 @@ test("o inventário pós-corte separa os onze casos correntes do legado físico"
     assignments.get("table:private.authoring_action_oauth_clients"),
     "course-shared-transports"
   );
-  assert.equal(
-    assignments.get("table:private.package_library_cutover_audit"),
-    "pre-course-database-removal"
-  );
-  const removal = current.cases.find(({ id }) => id === "pre-course-database-removal");
-  assert.equal(Object.hasOwn(removal.objects, "databasePatterns"), false);
-  assert.deepEqual(removal.objects.databaseInternalPatterns, [
-    "^(?:table|view|materialized_view|function|bucket|index|constraint|trigger|policy|rls):.+$"
-  ]);
 });
 
 test("o workflow compara o inventário completo logo após reconstruir o banco", async () => {

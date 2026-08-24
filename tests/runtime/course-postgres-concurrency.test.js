@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { runPsql } from "../../scripts/courseCutover/courseCutoverSource.mjs";
+import { runPsql } from "../helpers/runPsql.mjs";
 
 const databaseUrl = String(process.env.ARALEARN_TEST_DATABASE_URL || "").trim();
 const nativePsqlAvailable = spawnSync("psql", ["--version"], {

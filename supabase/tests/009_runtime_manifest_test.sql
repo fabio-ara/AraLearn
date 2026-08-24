@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260824140000',
+  '20260824150000',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -93,7 +93,7 @@ select has_table(
   'o estado pessoal de estudo pertence ao Curso'
 );
 select has_table('private', 'course_entities', 'a composição do Curso é relacional');
-select has_table('private', 'course_revisions', 'revisões do Curso são atômicas');
+select has_table('private', 'course_events', 'o histórico corrente registra eventos do Curso');
 select has_table(
   'private',
   'course_instructional_plans',
