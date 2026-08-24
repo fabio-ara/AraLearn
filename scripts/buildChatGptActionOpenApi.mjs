@@ -67,7 +67,7 @@ const document = {
   openapi: "3.1.0",
   info: {
     title: "AraLearn — Autoria de Cursos",
-    version: "2.0.0",
+    version: "0.0.28",
     description:
       "Permite que um GPT personalizado opere os Cursos próprios da pessoa conectada pelos contratos correntes do AraLearn."
   },
