@@ -4,7 +4,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
-## [2.0.1] - 2026-08-24
+## [0.0.29] - 2026-08-24
 
 ### Alterado
 
@@ -17,7 +17,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - Actions/OpenAPI resolve a identidade pelo contrato próprio e não depende do
   resolvedor OAuth do MCP.
 
-## [2.0.0] - 2026-08-24
+## [0.0.28] - 2026-08-24
 
 ### Adicionado
 
