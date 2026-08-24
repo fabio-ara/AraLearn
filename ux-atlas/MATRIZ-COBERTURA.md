@@ -6,8 +6,8 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 | --- | --- | --- | --- |
 | entrada Estudo/Autoria | escolher entre estudar e editar | Home → switch `Estudo / Autoria` | identidade visual obrigatória |
 | runtime, progresso, Rever e offline | estudar, retomar e continuar sem perder contexto | Estudo → Curso → Módulo → Lição → Microssequência → Unidade | estado pessoal não mede aprendizagem |
-| edição manual da Unidade | modificar conteúdo no mesmo contexto | Unidade → modo `Editar` | usar mecanismo corrente |
-| assistência focal por provider/API | pedir sugestão sem sair da Unidade | Unidade → modo `Assistência por API` | sem telemetria nova por conveniência |
+| edição manual da Unidade | modificar conteúdo no mesmo contexto | Unidade → modo `Editar` | proprietário grava no próprio Curso; quem estuda Curso compartilhado só persiste em cópia pessoal |
+| assistência focal por provider/API | pedir sugestão sem sair da Unidade | Unidade → modo `Assistência por API` | reutilizar provider/relay corrente; tornar utilizáveis pelo menos OpenAI `gpt-5.6-luna` e DeepSeek V4 (`deepseek-v4-pro`/`deepseek-v4-flash`) sem chave duradoura no navegador; prévia não persiste; salvamento segue a mesma regra de propriedade/cópia da edição manual |
 | cópia pessoal | editar compartilhado sem alterar original | Unidade → salvar na minha cópia | Curso privado próprio |
 | criar/editar/excluir Curso próprio | manter a própria biblioteca, inclusive Cursos de teste | Autoria → Meus cursos → ações do Curso | exclusão remota ≠ limpeza local ≠ zerar progresso |
 | sair de Curso compartilhado | encerrar o próprio acesso | Estudo → ações do Curso | não excluir o Curso do proprietário |
@@ -34,6 +34,8 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 ## Regras de cobertura
 
 `←` retorna à tela imediatamente anterior. `↑`, quando existir, sobe somente a hierarquia didática. A Unidade mantém `Visualizar / Editar / Assistência por API` como modos irmãos.
+
+Na Assistência por API, **provider/modelo** é configuração do serviço de linguagem, não nova arquitetura autoral. Reutilizar os adapters e o relay seguro correntes; não reintroduzir credencial duradoura de provider no navegador de produção. Modelos podem continuar configuráveis, mas `gpt-5.6-luna` e DeepSeek V4 devem estar utilizáveis no produto final. Para quem é proprietário, salvar altera o próprio Curso; para quem apenas estuda um Curso compartilhado, salvar alteração material cria/usa a cópia pessoal e mantém a mesma Unidade. Prévia, cancelamento, falha ou no-op não criam cópia.
 
 A superfície **Manutenção** é secundária e restrita ao papel administrativo. Ela não é um cliente de banco de dados: expõe somente problemas que o AraLearn sabe classificar e ações de produto correspondentes.
 
