@@ -242,3 +242,12 @@ automática.
 Consulte [Auditoria e correções do
 Curso](auditoria-de-conformidade-instrucional.md) para o ciclo de melhoria e
 [Privacidade](privacidade.md) para as regras gerais de dados.
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
+- [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
+
+<!-- referências locais: fim -->

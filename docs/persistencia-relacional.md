@@ -115,8 +115,8 @@ seleção, o progresso nem as Observações.
 
 ### Primeira gravação de uma cópia pessoal
 
-Desde a versão 0.0.26 existe uma exceção delimitada ao estado transitório em
-memória. Se quem possui apenas acesso direto salva uma mudança em
+Existe uma exceção delimitada ao estado transitório em memória. Se quem possui
+apenas acesso direto salva uma mudança em
 Estudo, o repositório conserva no IndexedDB o envelope necessário para criar sua
 cópia pessoal: Curso de origem, seleção exata, revisões esperadas, Unidade final,
 origem `manual` ou `provider_assistance` e identificador do pedido. Só pode haver

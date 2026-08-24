@@ -5,7 +5,7 @@ Este capítulo ensina como um cliente conversacional opera a Autoria pelo
 visual usa a API de Cursos, enquanto o cliente conversacional usa o MCP; ambos
 leem e alteram o mesmo Curso vivo no PostgreSQL.
 
-O ambiente hospedado da versão 0.0.27 oferece cinco ferramentas. Perfil e
+O ambiente hospedado oferece cinco ferramentas. Perfil e
 gestão de acesso permanecem na aplicação autenticada. O escopo
 `offline_access`, os aliases pareados e o upload autenticado integram o contrato
 publicado.
@@ -114,8 +114,8 @@ as funções de serviço permitidas.
 
 ## Autenticação e autorização
 
-Cada cliente usa OAuth com uma conta individual do AraLearn. Desde a versão
-0.0.27, os metadados anunciam exatamente `offline_access`; a troca do código
+Cada cliente usa OAuth com uma conta individual do AraLearn. Os metadados
+anunciam exatamente `offline_access`; a troca do código
 e a renovação devolvem access token e refresh token, sem `id_token`. O access
 token é destinado ao recurso MCP e traz aliases pareados da pessoa e da sessão
 em `sub` e `session_id`, específicos do cliente OAuth; ele não é uma sessão da
@@ -136,13 +136,9 @@ consentimento OAuth permanecem vivos. O bearer é recusado quando usado
 diretamente no GoTrue, na API de dados ou no Storage. Propriedade do Curso ainda
 é revalidada em cada operação.
 
-O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores, por isso
-clientes conectados precisam autorizar novamente. Um ID token `openid` já
-emitido não foi recolhido e continuou válido até `exp`. Essa validade residual
-foi registrada no corte; as negativas com credenciais novas e o inventário
-foram verificados, e podem ser repetidos depois da expiração natural sem
-bloquear a publicação dos clientes novos, conforme
-[Implantação](implantacao.md).
+Consentimentos e sessões OAuth encerrados não renovam acesso. Um token já
+emitido permanece criptograficamente válido somente até `exp`. A verificação
+operacional está em [Implantação](implantacao.md).
 
 As regras correntes são deliberadamente simples:
 
@@ -268,11 +264,9 @@ do Curso de Storage, identifica a URL como credencial temporária e a limita a
 vínculo relacional. Há limite de 20 MiB por arquivo, 64 MiB de conteúdo único
 por Curso e oito anexos por Fonte.
 
-Na transição da 0.0.27, o backend emite v2 somente para `prepare_upload` e v1
-somente para `download`. Isso mantém a leitura no Android 0.0.26 instalado, mas
-faz o upload antigo falhar fechado ao receber v2, sem restaurar a URL assinada.
-A seleção ocorre pela operação, nunca por `User-Agent`. O download v1 só pode
-ser retirado depois da decisão explícita de encerrar o suporte ao 0.0.26.
+O backend emite v2 somente para `prepare_upload` e v1 somente para `download`.
+Um upload incompatível falha fechado, sem restaurar URL assinada. A seleção
+ocorre pela operação, nunca por `User-Agent`.
 
 `anchored_annotations` escolhe `inbox`, `target` ou `detail`. A caixa de entrada
 aceita filtros por origem, canal, estado, categoria, ausência de categoria,
@@ -572,7 +566,7 @@ temporário:
 Para Anotações, essa expiração é autoritativa: o recibo deixa de admitir
 repetição no prazo. A remoção física ocorre oportunisticamente durante leituras
 e mutações do Curso, em um lote de até 128 registros de retirada e 256 recibos
-expirados a cada operação. Desde a versão 0.0.27, a rotina privada diária
+expirados a cada operação. A rotina privada diária
 acrescenta um lote de até 512 itens por classe, devolve contagens e torna a limpeza
 independente da abertura do Curso.
 
@@ -695,19 +689,15 @@ registro e autorização OAuth com PKCE e chamadas MCP. A mesma jornada cria a
 estrutura mínima, vincula uma Microssequência à Parte, inicia uma materialização,
 registra a etapa de contexto, relê `part_materialization` e comprova a chegada do
 andamento à interface e ao IndexedDB. Abrir **Ver etapas** não envia nova escrita
-nem repete a confirmação já feita no cliente MCP. O teste encerra comprovando a
-remoção dos dados criados. A versão 0.0.24 acrescenta à mesma jornada a
-edição manual, a assistência por relay, os eventos `manual` e
-`provider_assistance`, a releitura da API e do PostgreSQL e a promoção no
-IndexedDB; esse percurso passou novamente 1/1 em 14,2 segundos depois da
-correção da classificação do endereço local no navegador.
+nem repete a confirmação já feita no cliente MCP. O teste encerra removendo os
+dados descartáveis criados. A jornada também cobre edição manual, assistência
+por relay, eventos `manual` e `provider_assistance`, releitura da API e do
+PostgreSQL e promoção no IndexedDB.
 
-Essa prova é local e automatizada. O relay foi exercitado sobre HTTP local; ela
-não comprova o acesso do Pages HTTPS à rede local nem a ponte nativa do
-Android 0.0.24 num APK instalado em dispositivo real. A verificação
-hospedada só deve ser executada depois que as migrações remotas estiverem em
-paridade com `supabase/runtime-manifest.json`; nenhuma dessas duas provas, por
-si, demonstra instalação pública ou usabilidade dentro do ChatGPT.
+Essa prova é local e automatizada. Ela não comprova, sozinha, o acesso do Pages
+HTTPS à rede local, a ponte nativa num aparelho nem a usabilidade dentro de um
+cliente externo. A verificação hospedada só deve ser executada depois que as
+migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
 
 ## Referências normativas e técnicas
 

@@ -1,233 +1,206 @@
 # AraLearn
 
-AraLearn é uma plataforma móvel para estudar, criar e revisar **Cursos vivos**.
-O conteúdo pode ser estudado enquanto continua sendo planejado, produzido e
-corrigido. Estudo, Autoria visual e Autoria conversacional trabalham sobre o
-mesmo Curso e a mesma identidade.
+AraLearn é uma plataforma para estudar, criar e revisar **Cursos vivos**. O
+conteúdo pode ser usado enquanto continua sendo planejado, produzido, discutido
+e corrigido. Estudo, Autoria visual e Autoria conversacional trabalham sobre o
+mesmo Curso.
 
-O percurso segue uma hierarquia explícita:
+Não é necessário conhecer programação, pesquisa ou teoria educacional para usar
+o aplicativo. A documentação começa pelas tarefas e oferece aprofundamento
+quando ele se torna útil.
+
+## O problema educacional
+
+Materiais digitais costumam separar estudo, produção e revisão em ferramentas
+que não compartilham o mesmo objeto. Isso dificulta corrigir uma explicação sem
+perder seu lugar no percurso, ligar uma afirmação à fonte exata e distinguir
+conteúdo, evidência de uso e hipótese educacional. O AraLearn mantém essas
+atividades ao redor do mesmo Curso vivo e conserva seus papéis separados.
+
+## Como o conteúdo é organizado
+
+Todo Curso segue uma hierarquia reconhecível:
 
 ```text
 Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
 ```
 
-A **Microssequência didática** organiza um avanço conceitual delimitado. Cada
-**Unidade de estudo** realiza uma etapa dessa sequência e pode reunir texto,
-fórmula, diagrama, código, tabela e uma forma de resposta. *Flashcard* designa
-apenas a Unidade organizada como pista e resposta para prática de recuperação.
+Uma **Microssequência didática** organiza um avanço conceitual delimitado. Cada
+**Unidade de estudo** realiza uma etapa desse avanço e pode reunir texto,
+fórmula, código, tabela, diagrama, gráfico e uma forma de resposta.
 
-## O problema educacional
-
-Materiais de estudo costumam impor dois trabalhos ao mesmo tempo: compreender o
-assunto e descobrir como o material foi organizado. Conceitos sem preparação,
-resumos excessivamente condensados, diagramas ambíguos e exercícios desligados
-da explicação acrescentam esforço sem demonstrar melhor aprendizagem.
-
-O AraLearn orienta seus Cursos por quatro compromissos:
-
-1. apresentar os conhecimentos necessários antes de usá-los;
-2. distribuir a explicação em avanços manejáveis e preservar a profundidade do
-   assunto;
-3. praticar o conhecimento desenvolvido pela sequência, com variedade definida
-   pela finalidade da tarefa;
-4. empregar a representação própria do objeto quando ela comunica melhor do que
-   a prosa.
-
-Esses compromissos orientam contratos, interface e auditoria. Sua presença no
-produto ainda precisa ser distinguida de evidência sobre aprendizagem. O
-[modelo didático](docs/modelo-didatico.md) explica essa distinção.
+O AraLearn procura preparar os conhecimentos antes de usá-los, distribuir a
+explicação em avanços manejáveis, praticar o que foi desenvolvido e escolher a
+representação adequada ao objeto. Esses compromissos orientam o produto; não
+devem ser confundidos com evidência de aprendizagem. O
+[modelo didático](docs/modelo-didatico.md) explica essa diferença.
 
 ## Como se estuda
 
-Depois de entrar, a pessoa encontra os Cursos que possui e aqueles aos quais
-recebeu acesso. Um único seletor e uma única prévia apresentam título, objetivo,
-relação de acesso, contagens, progresso e disponibilidade local do Curso
-escolhido. A ação **Começar**, **Continuar** ou **Retomar** busca a composição
-completa quando necessário e a conserva no dispositivo.
+Depois de entrar, a pessoa encontra Cursos próprios e Cursos compartilhados. Um
+seletor e uma prévia mostram objetivo, relação de acesso, quantidade de Módulos,
+Lições e Unidades, progresso e disponibilidade no dispositivo.
 
-Estudo percorre Curso, Módulo, Lição, Microssequência didática e Unidade de
-estudo. O controle principal confirma uma resposta quando necessário, apresenta
-o retorno e depois avança. A pessoa também pode marcar uma Unidade para rever ou
-registrar uma observação situada, como dúvida, possível erro ou trecho confuso.
+**Começar**, **Continuar** ou **Retomar** abre o ponto adequado. `←` retorna à
+tela imediatamente anterior; `↑` sobe um nível da hierarquia. Durante o estudo,
+a pessoa pode responder às práticas, receber retorno, marcar uma Unidade para
+rever, registrar uma Observação e consultar Fontes autorizadas.
 
-Progresso e marcas de revisão formam o **estado pessoal**, separado do conteúdo
-do Curso. As observações ficam em **Anotações ancoradas** próprias: podem existir
-várias na mesma Unidade e chegam à caixa de entrada do proprietário sem revelar
-registros de outros estudantes.
+Na Unidade, **Visualizar**, **Editar** e **Assistência por API** são modos irmãos
+sobre o mesmo alvo. Se uma pessoa com acesso ao Estudo editar um Curso
+compartilhado, a primeira gravação material cria uma cópia privada e preserva o
+original. A navegação continua na mesma Unidade da nova cópia.
 
-Desde a versão 0.0.26, quem recebeu acesso também pode editar uma Unidade
-manualmente ou com a assistência complementar. A primeira gravação com mudança
-material cria um Curso pessoal privado, identificado na interface como **Sua
-cópia**, e mantém a pessoa na mesma Unidade. O Curso compartilhado não é
-alterado. Planejamento, Fontes, PDFs,
-acessos, progresso e Observações não são transportados para a cópia pessoal;
-cada Curso conserva seus próprios registros.
-
-Quando uma Unidade possui proveniência pública, o botão **Fontes** busca as
-citações ao ser aberto. Estudo recebe apenas a projeção autorizada. Uma Fonte
-oculta ou uma referência anterior ainda sem comprovação fica restrita à
-Autoria; o endereço externo aparece somente com a opção **Citação e link**.
-
-O [guia do estudante](docs/guia-estudante.md) apresenta o percurso completo.
+O [guia do estudante](docs/guia-estudante.md) ensina o percurso completo.
 
 ## Como se cria e revisa conteúdo
 
-Autoria lista somente os Cursos da pessoa autenticada. Um Curso novo nasce
-privado, com título e objetivo. Assim que contém Unidades válidas, já pode ser
-aberto em Estudo pelo proprietário ou por quem recebeu acesso.
+Autoria mostra somente os Cursos da pessoa proprietária. Um Curso novo nasce
+privado. A pessoa pode definir objetivo e público, construir sua hierarquia,
+planejar a produção, ajustar parâmetros, registrar Fontes e conceder acesso
+direto ao Estudo.
 
-Ao abrir um Curso, a interface conserva a mesma largura compacta de Estudo e
-parte de quatro destinos por ícone. Cada destino revela somente as capacidades
-necessárias à tarefa corrente:
+As tarefas aparecem progressivamente em quatro áreas:
 
 - **Curso:** Estrutura, Planejamento, Parâmetros e Fontes;
-- **Revisar:** Inspeção, Observações, auditoria e correções;
-- **Pesquisa:** Variantes, Analytics e fatos da Autoria;
-- **Pessoas:** proprietário e acessos diretos concedidos para Estudo.
+- **Revisar:** Inspeção, Observações, Auditoria e correções;
+- **Pesquisa:** Variantes e fatos da Autoria;
+- **Pessoas:** proprietário e acessos diretos ao Estudo.
 
-Na Inspeção, o autor percorre a hierarquia sem perder a Unidade em foco. Pode
-editar ali mesmo as folhas textuais declaradas pelo componente ou pedir uma
-sugestão focal ao relay local configurado no dispositivo, conferir a prévia e só
-então aplicar. A credencial do provider permanece no relay, fora do AraLearn; a
-conversa contextual é transitória. O ChatGPT conectado por MCP continua sendo a
-via principal para planejar, materializar, discutir e auditar o Curso inteiro.
-O relay foi comprovado no ambiente web local. Desde a versão 0.0.24, o
-aplicativo Android encaminha a chamada por uma ponte nativa fixa para o relay,
-sem afrouxar a política de conteúdo misto do WebView. O site e o APK estão
-publicados; o acesso
-à rede local pelo Pages e o relay no APK instalado ainda dependem das validações
-de transporte registradas no roadmap.
+Fontes possuem revisões imutáveis, Âncoras e PDFs privados. A Inspeção percorre
+a composição sem ativar respostas. A Auditoria registra achados, correções,
+verificações e reversões. Variantes relacionam Cursos comparáveis; Pesquisa
+apresenta fatos, definições, denominadores, ausências e exportações sem produzir
+conclusões causais automáticas.
 
-As ferramentas de autoria conectam assistentes ao mesmo Curso por um protocolo
-aberto, o **Model Context Protocol (MCP)**. Elas listam Cursos próprios,
-percorrem sua composição, criam e alteram
-Cursos, consultam e vinculam Fontes, operam auditoria e correções e consultam a
-biblioteca de componentes didáticos. O protocolo oferece cinco ferramentas
-estáveis desde a versão 0.0.27; diferentes leituras e alterações
-entram como operações tipadas. Revisões e identificadores de pedido protegem edições
-concorrentes e repetições causadas por falhas de rede. A versão 0.0.26 oferecia
-seis ferramentas. Na linha publicada 0.0.27, Perfil e acesso permanecem na
-aplicação autenticada e não atravessam o catálogo MCP público.
+O [guia do professor e autor](docs/guia-professor-autor.md) conduz essas tarefas.
 
-O planejamento por Partes é persistido e editável em linguagem natural. A faixa
-inicial de 7 a 12 Partes é uma sugestão configurável. Cada Parte referencia
-Microssequências reais sem entrar na hierarquia curricular, e a produção
-registra etapas retomáveis. A interface copia um pedido de materialização para
-o ChatGPT conectado e apresenta como produzido somente o que o servidor
-confirmou.
+## Usar Assistência por API
 
-Na área **Fontes**, cada registro possui revisões imutáveis, metadados de
-autoria, data, idioma, origem, disponibilidade e verificação. Uma revisão pode
-receber Âncoras de página, tempo, fragmento de endereço ou trecho textual e até
-oito PDFs privados. Cada arquivo tem limite de 20 MiB; conteúdos idênticos usam
-os mesmos bytes dentro do Curso, respeitado o total de 64 MiB. Uma nova
-atribuição exige uma Âncora ativa da revisão exata. Referências anteriores sem
-prova continuam identificadas como pendentes de resolução, com a identidade
-preservada e sem metadados inventados.
+Assistência por API é uma sessão contextual com minichat. A pessoa discute um
+plano, confirma a geração, confere a prévia no renderer real e decide se deseja
+aplicar e salvar.
 
-A Inspeção percorre o Curso inteiro ou um recorte por Parte, Unidades sem Parte,
-Módulo, Lição ou Microssequência. Ela mantém uma janela limitada no navegador e
-conserva localmente a Unidade corrente. As respostas ficam desativadas. Dela, a
-pessoa autora pode anotar ou auditar a Unidade exata. Uma correção altera
-somente o conteúdo editável e a proveniência dessa Unidade, preserva o estado
-anterior para reversão e exige verificação posterior.
+A sessão pode alterar composição e conteúdo da Unidade, estrutura e conteúdo da
+Microssequência e a organização de Microssequências dentro da Lição. O contexto
+enviado é somente leitura e limitado ao alvo necessário. A resposta usa escrita
+tipada e precisa cumprir os contratos do produto.
 
-O [guia do professor e autor](docs/guia-professor-autor.md) ensina essas tarefas.
-A [Autoria por MCP](docs/autoria-mcp.md) documenta o protocolo conversacional.
+Para componentes didáticos, o AraLearn descobre progressivamente as famílias e
+os contratos exatos, valida a composição e permite reparos delimitados. JSON bem
+formado não basta: uma proposta inválida ou não renderizável nunca substitui o
+conteúdo corrente.
 
-## Representações acadêmicas
+A credencial do provedor fica no relay local configurado pela pessoa, fora do
+AraLearn. O capítulo [Assistência por modelo de
+linguagem](docs/assistencia-por-ia.md) explica autoridade, contexto e falhas.
 
-O AraLearn compõe Unidades de estudo com **componentes didáticos**. Há
-componentes para texto, código, tabelas, fórmulas, matrizes, gráficos,
-diagramas, processos e formas de resposta. Cada um deve preservar uma convenção
-reconhecível na área e uma finalidade instrucional explícita.
+## Criar por conversa
 
-O núcleo de execução conhece composição, ciclo de vida, acessibilidade e
-protocolos comuns. Cada pacote de componente mantém seu contrato, validação,
-apresentação, campos textuais editáveis, possibilidades de prática e descrição
-acadêmica. A arquitetura está em [Componentes didáticos e
-pacotes](docs/componentes-didaticos.md).
+Há dois canais distintos para operar Cursos a partir de uma conversa.
+
+O **Model Context Protocol (MCP)** conecta clientes compatíveis às ferramentas
+canônicas do AraLearn. Ele permite localizar Cursos próprios, ler composição,
+planejar, materializar, operar Fontes, Auditoria, Variantes e Pesquisa e
+consultar componentes didáticos.
+
+Um **GPT personalizado com Actions** usa a descrição OpenAPI publicada pelo
+AraLearn e cinco operações HTTP autorizadas. Actions possui OAuth próprio e não
+é um modo do MCP. Os dois canais reutilizam o mesmo domínio de Curso sem
+compartilhar protocolo ou sessão.
+
+Veja [Autoria por MCP](docs/autoria-mcp.md), [Criar Cursos pelo
+chat](docs/criar-cursos-pelo-chat.md) e [Fluxos, instruções e
+contratos](docs/fluxos-prompts-e-contratos.md).
 
 ## Funcionamento sem conexão e sincronização
 
-O navegador e o aplicativo Android usam **IndexedDB**, o banco local do
-dispositivo, para manter a lista resumida, os Cursos já abertos, o estado
-pessoal e as Anotações necessárias à continuidade. Conteúdo carregado
-anteriormente pode ser retomado sem rede. Progresso e **Rever** usam uma fila por
-Curso; comandos de observação usam outra fila e são enviados quando a conexão
-retorna.
+O navegador e o Android mantêm no dispositivo a lista de Cursos, composições já
+abertas, estado pessoal e filas necessárias à continuidade. Conteúdo carregado
+anteriormente pode ser retomado sem rede. Progresso, **Rever** e Observações são
+sincronizados quando a conexão retorna.
 
-Auditoria, achados e correções exigem conexão e não ficam em uma fila local. As
-Observações conservam sua própria cópia e fila para uso sem conexão.
+Operações autorais amplas, Auditoria, correções e Assistência por API exigem
+conexão. O AraLearn não mantém uma fila autoral genérica que poderia aplicar uma
+mudança antiga sobre um Curso novo.
 
-No servidor, PostgreSQL conserva o Curso vivo, suas entidades normalizadas,
-Anotações ancoradas, acessos diretos, eventos mínimos e estados pessoais. O
-armazenamento de objetos guarda fotos privadas de perfil e PDFs privados ligados
-às Fontes. Concorrência otimista, versões específicas e repetição segura
-protegem as alterações.
+No servidor, PostgreSQL conserva o Curso e suas relações. Storage privado guarda
+avatares e PDFs. Revisões, identificadores de pedido e repetição segura protegem
+alterações concorrentes. A explicação completa está em [Persistência relacional
+e sincronização](docs/persistencia-relacional.md).
 
-A justificativa e os limites estão em [Persistência relacional e
-sincronização](docs/persistencia-relacional.md).
+## Controlar acesso e dados
 
-## Aplicação web e Android
+Um acesso direto permite estudar o Curso, mas não concede coautoria do original.
+Na Home, **Ações deste Curso** distingue excluir um Curso próprio de sair de um
+Curso compartilhado. **Remover dados deste dispositivo**, **Sair** e **Excluir
+conta** também são ações diferentes e informam seu alcance antes da confirmação.
 
-A mesma aplicação é entregue na web e como pacote de instalação Android (APK)
-nas versões publicadas do repositório. A linha publicada dos clientes é a 0.0.27,
-que exige o manifesto `20260821191340`, com 36 capacidades obrigatórias. O
-backend hospedado expõe essa revisão, com a API de Cursos na revisão 13 e o MCP
-na revisão 128. Estudo e Autoria
-conservam uma superfície centralizada de até 430 px também no computador. A
-entrada de Estudo usa um
-único seletor de Curso e uma única prévia, sem transformar a biblioteca num
-painel de cartões; a Autoria usa quatro grupos iconográficos com divulgação
-progressiva.
+Uma identidade administrativa autorizada encontra **Manutenção** em **Conta e
+aparência**. A área apresenta retenção e resíduos classificados pelo produto;
+cada remoção é revalidada no servidor e seguida por nova leitura do inventário.
 
-O Android 0.0.27 usa `versionCode` 173. Pages e Android são publicados a partir
-da mesma ponta validada de `main` que contém este marco documental. A validação
-local integral, a promoção do backend e as provas hospedadas de OAuth e PDF
-foram concluídas antes da publicação dos clientes.
+A [página de privacidade](docs/privacidade.md) descreve finalidades, retenção,
+acesso e limites.
+
+## Componentes didáticos
+
+Unidades são compostas por pacotes para texto, código, tabelas, fórmulas,
+matrizes, gráficos, diagramas, processos e respostas. Cada pacote mantém seu
+contrato, validação, apresentação, campos editáveis, acessibilidade e finalidade
+instrucional.
+
+Consulte [Componentes didáticos e pacotes](docs/componentes-didaticos.md) para
+entender como descoberta, validação e renderização se relacionam.
+
+## Web e Android
+
+A mesma experiência é entregue como site e aplicativo Android. Estudo é a
+referência visual: uma coluna central, conteúdo em primeiro lugar, poucas ações
+simultâneas e divulgação progressiva. A interface funciona em telefones de 360,
+390 e 430 pixels e em telas maiores sem criar um segundo painel de desktop.
+
+Os artefatos de instalação ficam nas publicações do repositório. As instruções
+de ambiente, backend e publicação estão em [Implantação](docs/implantacao.md).
 
 ## Estado e limites
 
-O AraLearn usa uma única identidade de Curso vivo, leitura paginada, Inspeção
-vertical exclusiva do proprietário, Fontes com proveniência e PDFs privados,
-Anotações ancoradas, auditoria e correções, Variantes, Pesquisa, estado pessoal,
-acesso direto para Estudo e perfil humano mínimo com nome e foto privada.
+O produto disponível inclui Estudo, Autoria visual, Assistência por API,
+Autoria conversacional por MCP e por Actions, dados pessoais, controle de acesso
+e Manutenção administrativa para identidades autorizadas. O que depende de
+conexão ou de permissão é indicado antes da ação.
 
-As Fontes ficam em relações próprias, separadas do conteúdo da Unidade. A
-produção confirma a Unidade e suas atribuições de proveniência na mesma
-operação. Referências anteriores sem metadados suficientes permanecem ocultas
-no Estudo até serem resolvidas pela pessoa autora. Observações, achados de
-auditoria, correções e estado pessoal também possuem regras próprias de acesso e
-persistência.
-
-O [estado do produto](docs/estado-atual-e-roadmap.md) registra capacidades,
-verificações e limites operacionais da versão disponível. Testes de software
-demonstram contratos e comportamentos observados; efeitos sobre aprendizagem e
-compreensão da interface exigem avaliação com pessoas e tarefas adequadas.
+Testes de software demonstram contratos e comportamentos nas condições
+exercitadas. Eles não demonstram, sozinhos, compreensão, usabilidade ou efeito
+educacional. Essas afirmações exigem avaliação com pessoas, população, tarefa e
+método adequados.
 
 ## Documentação
 
-A documentação apresenta o produto por percursos de aprendizagem. Ela explica
-primeiro o problema, introduz os termos necessários, justifica as decisões e
-expõe consequências e limites.
+O [mapa da documentação](docs/README.md) oferece percursos para:
 
-Comece pelo [mapa da documentação](docs/README.md). Há percursos para usar o
-aplicativo, compreender o modelo pedagógico, estudar a engenharia, realizar
-Autoria, avaliar o produto e operar sua implantação.
+- começar a usar o aplicativo;
+- compreender o modelo educacional;
+- criar e investigar Cursos;
+- estudar a engenharia;
+- avaliar propriedades, hipóteses e evidências;
+- implantar e manter o sistema.
+
+A página [Capacidades e limites atuais](docs/estado-atual-e-roadmap.md) resume o
+produto disponível e indica conexão, acesso e limites de cada caso de uso.
 
 ## Desenvolvimento local
 
-Pré-requisitos: Node.js compatível com o projeto e uma configuração pública de
-uma instância Supabase.
+Pré-requisitos: Node.js compatível com o projeto e configuração pública de uma
+instância Supabase.
 
 ```bash
 npm install
 npm run dev
 ```
 
-O [guia do desenvolvedor](docs/guia-desenvolvedor.md) explica testes, compilação
-da aplicação web, Supabase local e Android.
+O [guia do desenvolvedor](docs/guia-desenvolvedor.md) explica validações,
+aplicação web, Supabase local e Android.
 
 ## Licença
 

@@ -74,7 +74,7 @@ forma incorreta, ajuda solicitada, resultado e comentário espontâneo.
 | “Percorra o conteúdo acima e abaixo desta Unidade e volte exatamente a ela.” | navega por Curso, módulo, lição, Microssequência e Unidade sem decorar subsistemas | retorno exato, contexto visível e número de desvios |
 | “Corrija manualmente um trecho simples desta Unidade.” | encontra edição contextual, limita o escopo, usa prévia, aplica e consegue desfazer | alvo alterado, renderer validado e ausência de edição paralela |
 | “Peça à assistência do aplicativo uma alteração focal e confira antes de aceitar.” | encontra o relay local por divulgação progressiva, distingue pedido de aplicação e mantém o Curso utilizável em falha ou cota | escopo mínimo sem identidades internas, prévia, descarte/aplicação e credencial ausente do AraLearn |
-| “Tente pedir assistência neste terminal extenso e, se não puder, corrija-o de outra forma.” | entende o motivo acessível do bloqueio sem concluir que perdeu a autoria e encontra a edição manual | limite de 6.000/12.000, nome acessível do controle e conclusão manual |
+| “Discuta uma mudança que envolva mais de um componente e confira a proposta antes de salvar.” | entende conversa, plano, confirmação, prévia e gravação como decisões separadas | contexto delimitado, contratos descobertos, renderer real e conteúdo preservado diante de proposta inválida |
 | “Deixe uma observação exatamente sobre o ponto que merece revisão.” | registra Observação situada e entende que ela não altera automaticamente o conteúdo | alvo, texto, estado de sincronização e expectativa declarada |
 | “Descubra qual configuração vale aqui, de onde ela veio e troque ou restaure a decisão.” | consulta valor efetivo, origem e herança sem identificador ou texto técnico | controle encontrado, receio de alterar e resultado após restauração |
 | “Confira a origem deste conteúdo e abra a evidência no ponto indicado.” | encontra Fonte, revisão, Âncora e PDF corretos; distingue ausência de link de ausência de proveniência | revisão aberta, localização e interpretação dos limites da Fonte |
@@ -111,20 +111,8 @@ navegação simultâneos aumentarem a carga até ela abandonar a intenção orig
 
 Registre cada dificuldade como Observação datada e trate recorrência ou bloqueio
 como defeito de produto. Corrija a interface antes de alegar simplicidade. Um
-resultado humano positivo é necessário para os critérios de simplicidade das
-issues [#152](https://github.com/fabio-ara/AraLearn/issues/152),
-[#153](https://github.com/fabio-ara/AraLearn/issues/153) e do cutover
-[#154](https://github.com/fabio-ara/AraLearn/issues/154), sob o
-[roadmap #147](https://github.com/fabio-ara/AraLearn/issues/147).
-
-Os achados também alimentam
-[#151](https://github.com/fabio-ara/AraLearn/issues/151), que fecha Partes,
-componentes, indicadores e MCP, e
-[#153](https://github.com/fabio-ara/AraLearn/issues/153), que reúne as provas no
-ChatGPT conectado, Pages, Android e descoberta humana. A
-[#155](https://github.com/fabio-ara/AraLearn/issues/155) continua dependente do
-cutover da #154, das medidas operacionais, da documentação final e da limpeza
-física autorizada.
+resultado humano positivo é necessário para afirmar que a organização é
+compreensível; automação e inspeção técnica não substituem essa evidência.
 
 A sessão de pesquisa também exige revisão especializada sobre validade das
 medidas e proteção das pessoas. Aprovação da interface não demonstra eficácia

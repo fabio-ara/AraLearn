@@ -75,8 +75,8 @@ README, guias e capítulos conceituais correntes não devem narrar a evolução 
 - “registrado no roadmap”;
 - “esta issue corrigiu...”;
 - “o Codex implementou...”;
-- “como foi solicitado...”;
-- “nesta conversa...”;
+- referências ao pedido que originou o trabalho;
+- referências à conversa de desenvolvimento;
 - comparações de quantidade de ferramentas, revisões de API, manifesto, `versionCode` ou outros números de release quando eles não forem parte da tarefa do leitor.
 
 História de versões pertence ao Git, ao CHANGELOG e às notas de release. Estado operacional de uma implantação pertence à documentação de implantação ou ao registro de release quando for realmente necessário. A documentação de uso ensina o comportamento atual.

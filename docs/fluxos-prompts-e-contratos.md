@@ -35,7 +35,7 @@ validação.
 
 ## Superfície do MCP
 
-Desde a versão 0.0.27, cinco ferramentas públicas agrupam capacidades
+Cinco ferramentas públicas agrupam capacidades
 relacionadas, sem criar uma ferramenta para cada objeto:
 
 | Ferramenta | Responsabilidade |

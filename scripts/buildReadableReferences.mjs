@@ -7,6 +7,8 @@ const scriptPath = fileURLToPath(import.meta.url);
 const defaultRoot = path.resolve(path.dirname(scriptPath), "..");
 const PANDOC_CITATION = /\[([^\]]*?@[^\]]+)\]/gu;
 const READABLE_CITATION = /\[([^\]]+)\]\(referencias\.md#ref-([A-Za-z0-9:_-]+)\)/gu;
+const LOCAL_REFERENCES_START = "<!-- referências locais: início -->";
+const LOCAL_REFERENCES_END = "<!-- referências locais: fim -->";
 
 function matchingBrace(source, opening) {
   let depth = 0;
@@ -218,6 +220,47 @@ function referenceBlock(entry) {
   ].join("\n");
 }
 
+function localReferenceLine(entry) {
+  const authors = parsedNames(entry.fields.author).map((author) => author.display).join("; ");
+  const responsible = authors || markdownText(entry.fields.institution || entry.fields.publisher) || entry.key;
+  const year = markdownText(entry.fields.year) || "s.d.";
+  const title = markdownText(entry.fields.title) || "Sem título";
+  const publicationText = publication(entry);
+  return `- [${citationLabel(entry)}](referencias.md#ref-${entry.key}): ${responsible} (${year}). **${title}.**${publicationText ? ` ${publicationText}.` : ""}`;
+}
+
+function sourceWithoutLocalReferences(source) {
+  const start = source.indexOf(LOCAL_REFERENCES_START);
+  const end = source.indexOf(LOCAL_REFERENCES_END);
+  if (start < 0 && end < 0) return source.trimEnd();
+  if (start < 0 || end < start) throw new Error("A seção local de Referências possui marcadores incompletos.");
+  return `${source.slice(0, start).trimEnd()}${source.slice(end + LOCAL_REFERENCES_END.length)}`.trimEnd();
+}
+
+export function renderLocalReferences(source, entries) {
+  const body = sourceWithoutLocalReferences(String(source || ""));
+  const cited = [...new Set(readableCitationKeys(body))];
+  if (!cited.length) return `${body}\n`;
+  const byKey = new Map(entries.map((entry) => [entry.key, entry]));
+  const unknown = cited.filter((key) => !byKey.has(key));
+  if (unknown.length) throw new Error(`Citação sem entrada canônica: ${unknown.join(", ")}.`);
+  const selected = cited.map((key) => byKey.get(key)).sort((left, right) =>
+    citationLabel(left).localeCompare(citationLabel(right), "pt-BR", { sensitivity: "base" }) ||
+    left.key.localeCompare(right.key, "en-US"));
+  return [
+    body,
+    "",
+    LOCAL_REFERENCES_START,
+    "",
+    "## Referências",
+    "",
+    ...selected.map(localReferenceLine),
+    "",
+    LOCAL_REFERENCES_END,
+    ""
+  ].join("\n");
+}
+
 export function renderReadableReferences(entries) {
   const sorted = [...entries].sort((left, right) => {
     const byLabel = citationLabel(left).localeCompare(citationLabel(right), "pt-BR", { sensitivity: "base" });
@@ -318,7 +361,18 @@ export function buildReadableReferences({ root = defaultRoot, check = false, con
     for (const file of markdownUnder(path.join(root, "docs"))) {
       if (file === output || file.includes(`${path.sep}downloads${path.sep}`)) continue;
       const relative = path.relative(root, file).replaceAll("\\", "/");
-      citationErrors.push(...validateReadableCitations(fs.readFileSync(file, "utf8"), entries, relative));
+      const source = fs.readFileSync(file, "utf8").replace(/\r\n?/gu, "\n");
+      citationErrors.push(...validateReadableCitations(source, entries, relative));
+      let expected;
+      try {
+        expected = renderLocalReferences(source, entries);
+      } catch (error) {
+        citationErrors.push(`${relative}: ${error.message}`);
+        continue;
+      }
+      if (source !== expected) {
+        citationErrors.push(`${relative}: a seção Referências diverge das citações da página.`);
+      }
     }
     if (citationErrors.length) throw new Error(citationErrors.join("\n"));
   }
@@ -330,6 +384,14 @@ export function buildReadableReferences({ root = defaultRoot, check = false, con
       const source = fs.readFileSync(file, "utf8");
       const converted = replacePandocCitations(source, entries);
       if (converted !== source) fs.writeFileSync(file, converted, "utf8");
+    }
+  }
+  if (!check && !convert) {
+    for (const file of markdownUnder(path.join(root, "docs"))) {
+      if (file === output || file.includes(`${path.sep}downloads${path.sep}`)) continue;
+      const source = fs.readFileSync(file, "utf8").replace(/\r\n?/gu, "\n");
+      const withLocalReferences = renderLocalReferences(source, entries);
+      if (withLocalReferences !== source) fs.writeFileSync(file, withLocalReferences, "utf8");
     }
   }
   return { entries, rendered };

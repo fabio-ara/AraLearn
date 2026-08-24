@@ -151,7 +151,7 @@ Não aumente a revisão à mão e não repita a escrita às cegas.
 
 ## Salvei um Curso compartilhado e a cópia não apareceu
 
-Desde a versão 0.0.26, uma cópia pessoal só nasce quando **Salvar na minha
+Uma cópia pessoal só nasce quando **Salvar na minha
 cópia** confirma uma mudança material.
 Abrir o editor, gerar
 uma prévia, cancelar, receber uma falha ou salvar conteúdo idêntico deixa o
@@ -199,11 +199,10 @@ privada, confira se a versão do AraLearn já envia essa classificação corrigi
 se a permissão do navegador foi concedida. Não troque a chave para o cliente para
 contornar o bloqueio.
 
-No Pages, confira também se o navegador autorizou acesso à rede local. O
-Android 0.0.24 encaminha a requisição por uma ponte nativa fixa para não
-depender de conteúdo misto no WebView. Até a instalação e o ensaio do APK em
-dispositivo real, falha nesse percurso não deve ser contornada com tráfego aberto
-nem com chave no aplicativo; use edição manual ou ChatGPT + MCP.
+No Pages, confira também se o navegador autorizou acesso à rede local. O Android
+encaminha a requisição por uma ponte nativa fixa para não depender de conteúdo
+misto no WebView. Uma falha nesse percurso não deve ser contornada com tráfego
+aberto nem com chave no aplicativo; use edição manual ou MCP.
 
 Falha, cota, recusa ou resposta fora do formato não altera o Curso. Feche a
 sugestão e continue a edição manual, ou use ChatGPT + MCP para uma tarefa mais
@@ -229,7 +228,7 @@ máximo 20 MiB. O envio só termina depois que o objeto no Storage privado é
 confirmado pela API de Cursos. Se a rede falhar após o envio, use **Confirmar o
 mesmo PDF** em vez de escolher outro arquivo.
 
-Desde a versão 0.0.27, o preparo cria uma intenção de dez minutos e o envio usa
+O preparo cria uma intenção de dez minutos e o envio usa
 a sessão autenticada. Se a sessão foi encerrada, expirou ou foi revogada,
 autentique-se e prepare outra intenção; não tente reutilizar endereço de upload.
 
@@ -239,11 +238,8 @@ essa janela e não deve ser guardado como identidade do arquivo. Confira
 também a cota de 64 MiB de conteúdo único por Curso e o limite de oito anexos
 por Fonte.
 
-Na compatibilidade mantida pela 0.0.27, o Android 0.0.26 ainda baixa pelo
-contrato v1, mas não consegue enviar: `prepare_upload` devolve v2 autenticado e o cliente antigo
-falha fechado. Atualize o aplicativo para enviar novos PDFs. O download v1 não
-é escolhido por `User-Agent` e só será removido depois de uma decisão explícita
-de encerrar o suporte ao 0.0.26.
+O download usa o contrato v1 e o envio usa `prepare_upload` autenticado v2. Um
+envelope incompatível falha fechado. A escolha não usa `User-Agent`.
 
 ## O Estudo não mostra uma Fonte ou um link
 
@@ -264,8 +260,8 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 Uma concessão de acesso permite Estudo, não Autoria remota.
 
-Depois da promoção da 0.0.27, todas as conexões MCP anteriores precisam repetir
-o consentimento com o escopo `offline_access`. O fluxo não emite `id_token`. Se
+Conexões MCP sem consentimento corrente precisam autorizar o escopo
+`offline_access`. O fluxo não emite `id_token`. Se
 o bearer funcionar no MCP, mas for recusado diretamente no GoTrue, na API de
 dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
 credencial exclusiva do recurso MCP, não uma sessão da aplicação.
@@ -321,7 +317,7 @@ próprios. O banco recusa a exclusão enquanto algum desses objetos permanecer.
 Tente novamente com conexão estável. Não use exclusão como forma de sair: ela
 remove Cursos próprios e dados relacionados de modo irreversível.
 
-Desde a versão 0.0.27, o banco revoga todas as sessões antes de remover o
+O banco revoga todas as sessões antes de remover o
 usuário do Auth. Um download de PDF já assinado ainda pode funcionar por até 60
 segundos. O inventário posterior apenas classifica possíveis objetos órfãos; a
 remoção exige outra decisão segura sobre vínculo, retenção e backup.

@@ -26,9 +26,8 @@ científica nem representa endosso institucional.
 5. [Solução de problemas](solucao-de-problemas.md): diagnóstico por sintoma e
    recuperação segura.
 
-O [estado corrente](estado-atual-e-roadmap.md) registra quais capacidades estão
-publicadas, quais foram verificadas somente em ambiente local e quais limites
-continuam relevantes.
+A página [Capacidades e limites atuais](estado-atual-e-roadmap.md) reúne as
+funções disponíveis e os limites que afetam seu uso.
 
 ## Estudar o modelo pedagógico
 
@@ -80,18 +79,20 @@ Comece pelo comportamento já implementado:
    editar planejamento e proveniência e conceder acesso para Estudo;
 2. [Autoria por Model Context Protocol](autoria-mcp.md): ferramentas que
    operam o mesmo Curso da interface;
-3. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md): percurso
+3. [GPT personalizado com Actions](autoria-actions.md): OpenAPI, conexão OAuth
+   e diferença em relação ao MCP;
+4. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md): percurso
    conversacional e seus limites;
-4. [Assistência por modelo de linguagem](assistencia-por-ia.md): autoridade,
+5. [Assistência por modelo de linguagem](assistencia-por-ia.md): autoridade,
    contexto e concorrência;
-5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md): separação
+6. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md): separação
    entre intenção textual e operação estruturada;
-6. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
+7. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
    parâmetros, orientação natural, herança e política de componentes.
 
 O ciclo implementado de revisão possui um capítulo próprio:
 
-7. [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md):
+8. [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md):
    contexto focal, achados, pontos de recuperação, verificação, reversão e relação
    explícita com Observações.
 
@@ -112,7 +113,7 @@ resultado empírico:
 3. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
 4. [Auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md);
 5. [Auditoria da interface](auditoria-front-end.md);
-6. [Estado corrente e lacunas](estado-atual-e-roadmap.md).
+6. [Capacidades e limites atuais](estado-atual-e-roadmap.md).
 
 O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) prepara a
 avaliação com pessoas. Automação pode verificar contrato e geometria, mas não
@@ -148,6 +149,6 @@ pode declarar compreensão ou eficácia educacional.
 - **Fundamentado** informa a literatura ou norma e o limite da inferência.
 - **Planejado** não deve ser lido como disponível.
 
-Quando houver divergência, o [estado corrente](estado-atual-e-roadmap.md)
-prevalece para comportamento implementado; a [visão](visao-do-produto.md)
-prevalece para a direção ainda não materializada.
+Quando houver divergência, [Capacidades e limites
+atuais](estado-atual-e-roadmap.md) prevalece para o comportamento disponível; a
+[visão](visao-do-produto.md) delimita a finalidade e os compromissos do produto.

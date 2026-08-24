@@ -40,7 +40,7 @@ Não portar handlers antigos.
 
 - **Visualizar:** renderer/runtime atual de `src/study/CourseStudyScreen.js`.
 - **Editar Unidade:** `manualStudyUnitEdit` e fluxo manual atuais.
-- **Assistência por API:** `StudyUnitProviderAssistance`, providers/relay correntes e extensões verticais definidas em #151/#152.
+- **Assistência por API:** `CourseProviderAssistance`, sessão contextual, providers/relay correntes e extensões verticais da Unidade, Microssequência e Lição.
 - **Composição estrutural:** contrato canônico corrente de composição do Curso; estender somente onde a aplicação esteja limitada artificialmente à edição focal.
 - **Componentes didáticos:** catálogo, contratos, validação e prévia correntes de `consultarComponentesDidaticos`.
 - **Cópia pessoal:** contratos atuais implementados após #149.

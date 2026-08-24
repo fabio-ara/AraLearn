@@ -95,14 +95,14 @@ objeto e oferece um campo amplo para o argumento da pessoa autora. Identidade,
 revisão, endereço direto de retorno, referências e limites operacionais são
 acrescentados pelo AraLearn. A cópia não muda o Curso.
 
-Na Unidade, os comandos compactos de edição manual e assistência por API usam o
-mesmo renderer de Estudo e Inspeção. A edição realça apenas os textos que o
-componente autoriza. A assistência abre uma sobreposição de até 430 px, explica
-qual recorte sairá do aplicativo e permite alternar entre a sugestão e o
-conteúdo sem perder o alvo. Aplicar uma sugestão altera o rascunho; salvar a
-Unidade continua sendo uma decisão separada da pessoa.
+Na Unidade, **Visualizar**, **Editar** e **Assistência por API** usam o mesmo
+renderer e o mesmo alvo. A edição realça apenas os textos que o componente
+autoriza. A assistência abre uma sobreposição de até 430 px, apresenta a
+conversa e o plano discutível e permite alternar entre a prévia validada e o
+conteúdo sem perder o alvo. Aplicar altera o rascunho; salvar continua sendo uma
+decisão separada da pessoa.
 
-Desde a versão 0.0.26, um Curso compartilhado apresenta antes da gravação a
+A edição de um Curso compartilhado apresenta antes da gravação a
 frase “Ao salvar, o AraLearn criará
 uma cópia privada para você. O Curso compartilhado continuará intacto.” A ação
 correspondente é **Salvar na minha cópia**. Depois da confirmação, a pessoa
@@ -111,11 +111,10 @@ interface informa **Cópia criada. Você continua nesta Unidade.** A Home usa
 **Compartilhado com você** no original e **Sua cópia** no novo Curso, sem expor
 identificadores ou revisões.
 
-Em produção, a sobreposição apresenta **Serviço local** como informação fixa,
-modelo e pedido como campos principais e endpoint recolhido em **Conexão**. Se
-um valor editável ultrapassar 6.000 caracteres ou o contexto superar 12.000, o
-ícone da assistência fica desabilitado e seu nome acessível explica o motivo.
-A edição manual continua disponível, inclusive para código ou terminal extensos.
+Em produção, a sobreposição apresenta o relay local como conexão fixa. Mensagem,
+conversa, plano, confirmação, estado de validação e prévia seguem uma progressão
+única. A edição manual continua disponível, inclusive para código ou terminal
+extensos.
 
 O retorno de outra guia ou janela provoca a releitura do cabeçalho canônico e da
 área visível. Uma ação de atualização permanece disponível no cabeçalho para o
@@ -307,28 +306,24 @@ diretos, área segura, clique externo, Esc e restauração de foco.
 O teste ponta a ponta da Autoria fica em
 `tests/e2e/course-authoring-cutover.spec.js`; os cenários de auditoria usam
 `tests/e2e/course-audit-panel.spec.js`. A galeria dos componentes é reconstruída
-por `npm run resources:gallery:visual`. Na versão 0.0.25, `npm test` reuniu 999
-verificações, com 990 aprovações e nove casos condicionados ao ambiente. A suíte
-ponta a ponta reuniu 113 casos em nove arquivos, com 111 aprovações e dois casos
-condicionais. A compreensão por pessoas leigas continua dependente da sessão
-humana de aceitação.
+por `npm run resources:gallery:visual`. Resultados e casos condicionados ficam
+nos checks da revisão executada. A compreensão por pessoas leigas depende de
+avaliação com participantes.
 
-Os dois cenários focais da entrada de Estudo passaram. A matriz percorreu as
-oito combinações de largura e tema, confirmou shell centralizado de no máximo
-430 px e ausência de corte ou overflow global. A verificação focal de **Rever** confirmou
-foco, abertura e fechamento por `Enter` e mudança de orientação do indicador.
-Uma rodada no Chrome real integra a verificação pós-publicação.
+O aceite da entrada percorre as combinações de largura e tema, confirma shell
+centralizado de no máximo 430 px e ausência de corte ou overflow global. A
+verificação de **Rever** inclui foco, abertura e fechamento por `Enter` e mudança
+de orientação do indicador. Uma rodada no Chrome real integra a verificação
+pós-publicação.
 
-Na versão 0.0.26, o Chrome real percorreu a cópia pessoal em 360, 390, 430 e
-1.280 px, nos temas claro e escuro. O shell mediu respectivamente 360,
-390, 430 e 430 px e permaneceu centralizado em 1.280 px. Seletor e ação
-principal conservaram 44 px, sem overflow ou identificadores técnicos. Depois
-da gravação, **Sua cópia** e **Compartilhado com você** apareceram como duas
-opções distintas.
+O aceite da cópia pessoal percorre 360, 390, 430 e 1.280 px, nos temas claro e
+escuro. O shell permanece limitado a 430 px e centralizado em tela larga.
+Seletor e ação principal conservam 44 px, sem overflow ou identificadores
+técnicos. Depois da gravação, **Sua cópia** e **Compartilhado com você** aparecem
+como opções distintas.
 
-A matriz visual focal da Autoria na versão 0.0.24 passou 10/10 em 51,4 segundos
-nas quatro larguras e nos dois temas, incluindo Before/After e rodada de
-Auditoria em 1280 px. Ela rejeita
+A matriz visual focal da Autoria percorre as quatro larguras e os dois temas,
+incluindo Before/After e rodada de Auditoria em 1.280 px. Ela rejeita
 largura acima de 430 px, desalinhamento no computador, segunda coluna principal,
 overflow global e ação do ChatGPT sem nome acessível contextual e tooltip.
 
@@ -356,11 +351,10 @@ Uma captura comprova apenas o conjunto de dados, o modo e o tamanho usados. A
 aprovação visual exige também interação real, console e rede sem erros, foco,
 rolagem, textos extensos e estados intermediários.
 
-Na versão 0.0.24, a inspeção local também percorreu Cursos em
-360/390/430/1280 px, Planejamento nos temas claro e escuro, Parâmetros, Fontes e
-Auditoria. Esses artefatos temporários confirmaram a superfície única e
-centralizada sem segunda coluna ou overflow aparente, mas não substituem a
-série persistente de todas as larguras e dos dois temas exigida por #152 e #153.
+A inspeção local percorre Cursos em 360, 390, 430 e 1.280 px, Planejamento nos
+temas claro e escuro, Parâmetros, Fontes e Auditoria. Artefatos temporários
+ajudam o diagnóstico, mas não substituem a matriz persistente de larguras e
+temas.
 
 ## Critério de conclusão visual
 

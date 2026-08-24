@@ -5,14 +5,10 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
 auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-A linha publicada dos clientes é a 0.0.27 e exige o manifesto
-`20260821191340`, com 36 capacidades obrigatórias. O ambiente hospedado expõe
-essa revisão, com a API de Cursos na revisão 13 e o MCP na revisão 128. O
-contrato foi validado localmente e no ambiente hospedado antes da publicação
-coordenada de Pages e Android.
-
-A versão 0.0.27 mantém a topologia relacional e acrescenta minimização de sessão
-e MCP, retenção periódica e upload autenticado de PDFs.
+Os clientes correntes exigem o manifesto `20260824130000`. O ambiente hospedado
+precisa expor essa revisão antes de oferecer operações dependentes dela. A
+topologia relacional inclui minimização de sessão e MCP, retenção periódica,
+upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
 
 ## O Curso como raiz do domínio
 
@@ -63,7 +59,7 @@ Na entrada de Estudo, descritores paginados alimentam um único combobox e uma
 composição e só então entra no Curso. A prévia consulta o documento validado no
 IndexedDB para informar disponibilidade sem conexão; revogação elimina a réplica
 local do Curso compartilhado e o ponto local, sem apagar uma cópia pessoal já
-confirmada. Esse contrato integra a versão 0.0.25.
+confirmada.
 
 O MCP conserva cinco ferramentas estáveis: `listarCursos`, `lerCurso`,
 `criarCurso`, `alterarCurso` e
@@ -177,7 +173,6 @@ usadas pelo próximo CAS sem perder seleção, progresso ou Observações.
 
 ### Cópia pessoal em Estudo
 
-A versão 0.0.26 acrescenta um segundo destino à mesma edição contextual.
 Quando a pessoa possui acesso direto, mas não é proprietária, a
 primeira gravação com mudança material materializa um Curso privado pertencente
 a ela e aplica a Unidade editada nesse novo Curso. O original não recebe escrita.
@@ -214,21 +209,23 @@ proveniência efetiva anterior. Criar ou alterar um vínculo exige Fonte e Ânco
 ativas nas revisões exatas. Essa exceção conserva dados migrados; ela não abre
 uma nova via para gravar `legacy_reference`.
 
-A assistência por API é uma entrada complementar desse mesmo editor. O
-navegador envia pedido, valores textuais editáveis, título, papel, tópicos e as
-mensagens anteriores da conversa contextual. O envelope não contém
-`targetId`, `studyUnitId`, PDFs, Fontes ou outras Unidades. A resposta
-estruturada usa `changes`, pode alterar no máximo um caminho permitido por
-pedido e precisa formar uma Unidade válida antes de aparecer como rascunho. O
-transporte admite até 8.000 tokens de saída. Cada valor editável fica limitado
-a 6.000 caracteres e o contexto gravável completo, a 12.000; fora desse limite,
-o controle da assistência fica indisponível com o motivo acessível, enquanto a
-edição manual continua ativa.
+A Assistência por API é uma sessão contextual sobre o mesmo Curso. O minichat
+recebe a composição necessária do alvo, um resumo do caminho curricular e as
+mensagens recentes. A pessoa discute um plano antes de confirmar a preparação.
+PDFs, Fontes, identidade da conta e regiões alheias ao escopo não entram no
+envelope.
+
+A preparação produz escrita tipada sobre Unidade, Microssequência ou Lição. Ao
+usar componentes didáticos, consulta primeiro as famílias pertinentes, obtém
+somente os contratos exatos, gera a candidata, valida e admite reparos
+delimitados. O renderer canônico precisa aceitar a composição antes da prévia.
+JSON bem formado não é suficiente, e uma candidata inválida ou não
+renderizável nunca substitui o conteúdo corrente.
 
 Em produção, a única conexão disponível é um relay em `127.0.0.1`, `localhost`
 ou `10.0.2.2`, na porta 4183. A credencial do provider permanece nesse serviço,
-fora do AraLearn. A interface mostra **Serviço local** como valor fixo, pede
-somente modelo e pedido e recolhe o endpoint em **Conexão**. Configuração e
+fora do AraLearn. A interface mostra o relay local como valor fixo, oferece
+modelo e mensagem e recolhe o endpoint em **Serviço e modelo**. Configuração e
 conversa não entram no Curso nem no IndexedDB. A montagem de produção ignora
 origens adicionais configuradas pelo ambiente e falha se o artefato contiver
 runtime de desenvolvimento, origem extra ou credencial.
@@ -265,7 +262,7 @@ vez de sobrescrever sua proveniência.
 Ancoragens ligam trechos do Curso às fontes. Atribuições e Anotações podem
 referir-se a essas âncoras sem incorporar uma cópia opaca do documento.
 
-PDFs ficam no bucket privado `course-source-pdfs`. Desde a versão 0.0.27, o
+PDFs ficam no bucket privado `course-source-pdfs`. O
 navegador faz a verificação inicial do cabeçalho, calcula SHA-256 e solicita à
 API uma intenção de envio válida por dez minutos. O upload usa a sessão
 autenticada diretamente no endpoint do Storage, confronta caminho, tamanho e
@@ -281,11 +278,9 @@ O inventário administrativo o classifica como órfão para uma decisão posteri
 sem apagar automaticamente um objeto cuja classe e retenção ainda precisam ser
 confirmadas.
 
-O corte conserva uma única compatibilidade de leitura: `download` responde com
-o contrato v1 para o Android 0.0.26 já instalado. `prepare_upload` responde
-somente com v2 e nunca devolve URL assinada, de modo que o upload antigo falha
-fechado. Essa distinção vem da operação, não de `User-Agent`; retirar v1 exige
-uma decisão explícita de encerrar o suporte ao 0.0.26.
+`download` responde com o contrato temporário de leitura; `prepare_upload`
+responde com o contrato autenticado e nunca devolve URL assinada de envio. A
+distinção vem da operação, não de `User-Agent`.
 
 Cada objeto aceita até 20 MiB. Um Curso pode vincular até 64 MiB de conteúdo
 único e o detalhe de uma fonte retorna no máximo oito anexos. Conteúdo idêntico
@@ -342,7 +337,7 @@ qualquer operação privilegiada, a função valida o token recebido e repassa a
 identidade ao contrato SQL exclusivo do proprietário. O navegador nunca recebe
 essa credencial.
 
-Desde a versão 0.0.27, o servidor MCP aceita OAuth 2.1 com PKCE e anuncia
+O servidor MCP aceita OAuth 2.1 com PKCE e anuncia
 somente o escopo `offline_access`; a troca e a renovação não emitem `id_token`.
 O access token usa aliases pareados distintos em `sub` e `session_id` e não é
 uma sessão da aplicação. Ele conserva `aralearn_session_id`, o identificador
@@ -354,11 +349,8 @@ RPC exclusiva do papel de serviço resolve a pessoa e exige sessão de origem,
 cliente e consentimento ainda vivos. O mesmo bearer é recusado diretamente no
 GoTrue, na API de dados e no Storage.
 
-O corte da 0.0.27 revogou consentimentos e sessões OAuth anteriores. Um ID token
-`openid` já emitido, porém, continuou válido até `exp`; a fronteira foi declarada
-fechada somente depois do maior prazo entre a duração JWT configurada e duas
-horas das URLs v1 de upload emitidas antes da promoção, com margem operacional,
-e da repetição das negativas hospedadas e do inventário de órfãos. A API de
+Consentimentos inválidos e sessões OAuth encerradas não renovam acesso. Um token
+já emitido permanece criptograficamente válido somente até `exp`. A API de
 Cursos exige origem permitida e sessão Supabase comum. As
 origens públicas são configuradas
 de modo exato, sem curingas de produção.
@@ -366,7 +358,7 @@ de modo exato, sem curingas de produção.
 Os buckets `person-avatars` e `course-source-pdfs` são privados. URLs assinadas
 têm duração limitada; o download de PDF expira em 60 segundos e uma URL emitida
 continua válida até esse prazo. O envio de avatar usa a pasta da própria conta e
-valida JPEG, PNG ou WebP até 512 KiB. Desde a 0.0.27, avatar e PDF também exigem
+valida JPEG, PNG ou WebP até 512 KiB. Avatar e PDF também exigem
 uma sessão ainda presente no Auth; o PDF passa pelo fluxo autenticado em duas
 etapas e pelas cotas do Curso.
 
@@ -379,10 +371,10 @@ etapas e pelas cotas do Curso.
 | acesso remoto e coordenação | `src/supabase/CourseApiClient.js`, `src/supabase/CourseController.js` |
 | Estudo e Autoria | `src/study/`, `src/ui/` |
 | edição contextual | `src/ui/manualStudyUnitEdit.js`, `src/ui/manualInlineFields.js`, `src/domain/courseComposition.js` |
-| assistência complementar | `src/assist/`, `src/generation/providers/`, `src/ui/StudyUnitProviderAssistance.js` |
+| assistência contextual | `src/assist/`, `src/generation/providers/`, `src/ui/CourseProviderAssistance.js` |
 | catálogo e renderização | `src/resources/`, `src/render/` |
 | cliente Supabase e sessão | `src/supabase/` |
-| funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/` |
+| funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/`, `supabase/functions/aralearn-authoring-action/` |
 | esquema e operações SQL | `supabase/migrations/` |
 | implantação e verificação | `scripts/`, `.github/workflows/` |
 | retirada controlada de estruturas substituídas | `scripts/courseCutover/` |
@@ -390,8 +382,8 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260821191340`, a versão de contrato e 36 capacidades obrigatórias. O
-backend hospedado e os clientes 0.0.27 usam essa revisão. A
+esquema `20260824130000` e a versão de contrato. O
+backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
 
