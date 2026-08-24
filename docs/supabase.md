@@ -9,7 +9,7 @@ distinto. A interface nunca é a autoridade final de acesso.
 O banco conserva o Curso vivo, sua hierarquia, revisões, relações de acesso,
 estado pessoal, Fontes, Âncoras, Auditoria, Variantes e fatos de Pesquisa. As
 migrations ficam em `supabase/migrations` e o manifesto corrente termina em
-`20260824130000_restore_gpt_actions_openapi.sql`.
+`20260824140000_detach_gpt_actions_from_legacy_oauth.sql`.
 
 Escritas relevantes usam revisão esperada e identificador de pedido. A revisão
 impede aplicar uma decisão sobre uma composição diferente; o identificador

@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260824130000",
+  "schemaRevision": "20260824140000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",

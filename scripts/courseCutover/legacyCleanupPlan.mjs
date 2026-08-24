@@ -123,7 +123,9 @@ function parseFunctionObject(object) {
 }
 
 function manifestForDatabase(finalManifest) {
-  const features = finalManifest.requiredFeatures;
+  // Features form a set; migrations append them at different moments, so their
+  // physical JSON order is not part of the runtime contract.
+  const features = [...finalManifest.requiredFeatures].sort();
   return {
     schemaRevision: finalManifest.schemaRevision,
     contractVersion: finalManifest.contractVersion,
@@ -601,9 +603,13 @@ function validateCatalogSnapshot({
   finalManifest,
   legacy
 }) {
+  const normalizedDatabaseManifest = isRecord(snapshot?.databaseManifest) ? {
+    ...snapshot.databaseManifest,
+    features: [...(snapshot.databaseManifest.features || [])].sort()
+  } : snapshot?.databaseManifest;
   if (!isRecord(snapshot) || snapshot.contract !== SNAPSHOT_CONTRACT ||
       snapshot.schemaRevision !== finalManifest.schemaRevision ||
-      canonicalJson(snapshot.databaseManifest) !== canonicalJson(manifestForDatabase(finalManifest))) {
+      canonicalJson(normalizedDatabaseManifest) !== canonicalJson(manifestForDatabase(finalManifest))) {
     fail("invalid_cleanup_snapshot", "O snapshot foi produzido para outro manifesto do runtime.");
   }
   const expectedObjectNames = expectedObjects.map(({ object }) => object);

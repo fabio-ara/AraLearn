@@ -400,7 +400,17 @@ async function readManagementResult(filePath, property) {
       !isRecord(response[0]) || !(property in response[0])) {
     fail("invalid_cleanup_management_response", "A consulta administrativa devolveu um resultado inválido.");
   }
-  const value = response[0][property];
+  let value = response[0][property];
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      fail(
+        "invalid_cleanup_management_response",
+        "O resultado administrativo contém um JSON textual inválido."
+      );
+    }
+  }
   if (!isRecord(value)) {
     fail("invalid_cleanup_management_response", "O resultado administrativo não contém um objeto JSON.");
   }
@@ -413,6 +423,7 @@ async function managementReadOnlyQuery({
   sqlPath,
   responsePath,
   property,
+  useReadOnlyEndpoint = true,
   processRunner
 }) {
   await fs.access(managementHelperPath);
@@ -422,11 +433,14 @@ async function managementReadOnlyQuery({
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  await processRunner(powershellCommand(), [
-    "-NoProfile", "-NonInteractive", "-File", managementHelperPath,
-    "-ProjectRef", projectRef, "-SqlFile", sqlPath, "-ReadOnly",
+  const argumentsList = [
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", managementHelperPath,
+    "-ProjectRef", projectRef, "-SqlFile", sqlPath,
     "-OutputFile", responsePath
-  ]);
+  ];
+  if (useReadOnlyEndpoint) argumentsList.splice(-2, 0, "-ReadOnly");
+  await processRunner(powershellCommand(), argumentsList);
   return readManagementResult(responsePath, property);
 }
 
@@ -823,6 +837,11 @@ export async function createCleanupBackup({
     sqlPath: queryPath,
     responsePath: snapshotResponsePath,
     property: "jsonb_build_object",
+    // A ACL pública permite o manifesto a clientes do produto, mas não ao papel
+    // especial do endpoint administrativo somente leitura. A consulta gerada
+    // continua sendo um SELECT canônico; usa-se o endpoint normal apenas para
+    // executar essa função sem ampliar a ACL persistente do banco.
+    useReadOnlyEndpoint: false,
     processRunner
   });
   assertLegacyCleanupCatalogSnapshot({

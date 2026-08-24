@@ -55,7 +55,7 @@ Chrome nem a prova hospedada quando o contrato remoto mudou.
 
 As migrations são cumulativas e transacionais quando o PostgreSQL permite. O
 manifesto corrente termina em
-`20260824130000_restore_gpt_actions_openapi.sql`. Antes de aplicar, confira que
+`20260824140000_detach_gpt_actions_from_legacy_oauth.sql`. Antes de aplicar, confira que
 o projeto ligado é o destino pretendido e que o backup exigido pela operação
 existe e pode ser restaurado.
 
