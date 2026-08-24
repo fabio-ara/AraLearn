@@ -3895,3 +3895,113 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
   assert.equal(calls[3].payload.p_target_email, "pessoa@example.com");
   assert.equal(calls[4].payload.p_target_user_id, USER_ID);
 });
+
+test("ciclo de vida usa RPC canônica e limpa somente o prefixo PDF do Curso excluído", async () => {
+  const calls = [];
+  const pdfName = `${"c".repeat(64)}.pdf`;
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, init, body });
+    if (url.endsWith("/rest/v1/rpc/maintain_course_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-lifecycle.v1",
+        courseId: COURSE_ID,
+        operation: "delete_owned_course",
+        status: "completed",
+        changed: true,
+        requestId: "request-delete-course-0001"
+      });
+    }
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
+      assert.equal(body.prefix, `${COURSE_ID}/`);
+      return json([{ name: pdfName }]);
+    }
+    if (url.endsWith("/storage/v1/object/course-source-pdfs")) return json({});
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  assert.deepEqual(await value.maintainCourse({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    operation: "delete_owned_course",
+    confirmed: true,
+    requestId: "request-delete-course-0001"
+  }), {
+    contract: "aralearn.course-lifecycle.v1",
+    courseId: COURSE_ID,
+    operation: "delete_owned_course",
+    status: "completed",
+    changed: true,
+    requestId: "request-delete-course-0001",
+    fileCleanupPending: false
+  });
+  assert.deepEqual(calls.at(-1).body, {
+    prefixes: [`${COURSE_ID}/${pdfName}`]
+  });
+});
+
+test("repetição de exclusão já concluída não ganha autoridade sobre Storage órfão", async () => {
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, init });
+    if (url.endsWith("/rest/v1/rpc/maintain_course_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-lifecycle.v1",
+        courseId: COURSE_ID,
+        operation: "delete_owned_course",
+        status: "already_absent",
+        changed: false,
+        requestId: "request-delete-course-0001"
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.maintainCourse({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    operation: "delete_owned_course",
+    confirmed: true,
+    requestId: "request-delete-course-0001"
+  });
+  assert.equal(result.status, "already_absent");
+  assert.equal(result.fileCleanupPending, false);
+  assert.equal(calls.length, 1);
+});
+
+test("Manutenção remove somente o objeto revalidado e relê o inventário", async () => {
+  const calls = [];
+  const objectPath = `${USER_ID}/${AUDIT_RUN_ID}.png`;
+  const maintenanceState = {
+    contract: "aralearn.current-maintenance.v1",
+    role: "administrator",
+    retention: { scheduled: true, schedule: "17 3 * * *" },
+    inventory: { items: [] }
+  };
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, init, body });
+    if (url.endsWith("/authorize_current_orphan_removal_for_actor_v1")) {
+      return json({
+        contract: "aralearn.current-maintenance-removal.v1",
+        classification: "avatar_profile_unlinked",
+        bucketId: "person-avatars",
+        objectPath,
+        authorized: true
+      });
+    }
+    if (url.endsWith("/storage/v1/object/person-avatars")) return json({});
+    if (url.endsWith("/get_current_maintenance_for_actor_v1")) return json(maintenanceState);
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.executeCurrentMaintenance({
+    principal: { actorId: USER_ID },
+    operation: "remove_orphan_object",
+    classification: "avatar_profile_unlinked",
+    objectPath,
+    confirmed: true
+  });
+  assert.equal(result.contract, "aralearn.current-maintenance-action.v1");
+  assert.equal(result.result.removed, true);
+  assert.deepEqual(result.state, maintenanceState);
+  assert.deepEqual(calls[1].body, { prefixes: [objectPath] });
+  assert.equal(calls[1].init.headers.apikey, "sb_secret_test");
+});

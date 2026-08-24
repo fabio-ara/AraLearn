@@ -1791,7 +1791,9 @@ const BY_NAME = new Map(COURSE_MCP_TOOLS.map((definition) => [definition.name, d
 const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso"]);
 export const COURSE_APPLICATION_ONLY_TOOLS = Object.freeze([
   Object.freeze({ name: "gerirPessoas" }),
-  Object.freeze({ name: "criarCopiaPessoalDoCurso" })
+  Object.freeze({ name: "criarCopiaPessoalDoCurso" }),
+  Object.freeze({ name: "manterCursos" }),
+  Object.freeze({ name: "manterAraLearn" })
 ]);
 const APPLICATION_BY_NAME = new Map([
   ...BY_NAME,
@@ -3037,6 +3039,70 @@ function mapPeople(raw) {
   });
 }
 
+function mapCourseLifecycle(raw) {
+  exactFields(raw, new Set(["operation", "requestId", "courseId", "confirmed"]));
+  const operation = requiredText(raw.operation, "operation", { maximum: 40 });
+  if (!new Set(["delete_owned_course", "leave_shared_course"]).has(operation) ||
+      raw.confirmed !== true) {
+    fail("invalid_tool_argument", "A operação de ciclo de vida do Curso é inválida.");
+  }
+  const requestId = requiredRequestId(raw.requestId);
+  const courseId = requiredUuid(raw.courseId, "courseId");
+  return route("DELETE", `/v1/courses/${courseId}`, requestId, {
+    requestId,
+    operation,
+    confirmed: true
+  });
+}
+
+function mapCurrentMaintenance(raw) {
+  exactFields(raw, new Set([
+    "operation", "limit", "classification", "objectPath", "confirmed"
+  ]));
+  const operation = requiredText(raw.operation, "operation", { maximum: 40 });
+  if (operation === "inspect") {
+    if (Object.keys(raw).some((field) => !new Set(["operation", "limit"]).has(field))) {
+      fail("invalid_tool_argument", "A consulta de Manutenção recebeu campos incompatíveis.");
+    }
+    const limit = raw.limit == null ? 100 : positiveInteger(raw.limit, "limit", 500);
+    return route("GET", `/v1/maintenance?limit=${limit}`);
+  }
+  if (!new Set(["run_retention", "remove_orphan_object"]).has(operation) ||
+      raw.confirmed !== true) {
+    fail("invalid_tool_argument", "A ação de Manutenção é inválida.");
+  }
+  if (operation === "run_retention") {
+    if (Object.keys(raw).some((field) => !new Set([
+      "operation", "limit", "confirmed"
+    ]).has(field))) {
+      fail("invalid_tool_argument", "A retenção recebeu campos incompatíveis.");
+    }
+    return route("POST", "/v1/maintenance/actions", null, {
+      operation,
+      limit: positiveInteger(raw.limit, "limit", 1000),
+      confirmed: true
+    });
+  }
+  if (Object.keys(raw).some((field) => !new Set([
+    "operation", "classification", "objectPath", "confirmed"
+  ]).has(field))) {
+    fail("invalid_tool_argument", "A remoção de resíduo recebeu campos incompatíveis.");
+  }
+  const classification = requiredText(raw.classification, "classification", { maximum: 80 });
+  if (!new Set([
+    "avatar_owner_missing", "avatar_profile_unlinked",
+    "pdf_course_missing", "pdf_unlinked"
+  ]).has(classification)) {
+    fail("invalid_tool_argument", "A classe de resíduo não pode ser removida.");
+  }
+  return route("POST", "/v1/maintenance/actions", null, {
+    operation,
+    classification,
+    objectPath: requiredText(raw.objectPath, "objectPath", { maximum: 500 }),
+    confirmed: true
+  });
+}
+
 function mapResourceLibrary(raw) {
   exactFields(raw, new Set([
     "operation", "query", "intent", "slot", "packages", "studyUnitJson", "courseId",
@@ -3126,6 +3192,8 @@ export function mapAuthoringApplicationToolCall(name, rawArguments) {
   const raw = object(rawArguments ?? {}, "arguments");
   if (name === "gerirPessoas") return mapPeople(raw);
   if (name === "criarCopiaPessoalDoCurso") return mapPersonalCourseCopy(raw);
+  if (name === "manterCursos") return mapCourseLifecycle(raw);
+  if (name === "manterAraLearn") return mapCurrentMaintenance(raw);
   if (name === "lerCurso") {
     return mapRead(raw, {
       requireObservationTextDisclosure: false,

@@ -18,6 +18,12 @@ export function normalizeCoursePath(pathname) {
 export function routeCourseRequest(method, pathname) {
   const verb = String(method || "").toUpperCase();
   const path = normalizeCoursePath(pathname);
+  if (path === "/v1/maintenance") {
+    if (verb === "GET") return { name: "getCurrentMaintenance" };
+  }
+  if (path === "/v1/maintenance/actions") {
+    if (verb === "POST") return { name: "executeCurrentMaintenance" };
+  }
   if (path === "/v1/profile") {
     if (verb === "GET") return { name: "getPersonProfile" };
     if (verb === "PATCH") return { name: "updatePersonProfile" };
@@ -208,8 +214,11 @@ export function routeCourseRequest(method, pathname) {
     }
   }
   const course = path.match(/^\/v1\/courses\/([^/]+)$/u);
-  if (course && verb === "GET") {
-    return { name: "getCourse", courseId: courseUuid(course[1]) };
+  if (course) {
+    if (verb === "GET") return { name: "getCourse", courseId: courseUuid(course[1]) };
+    if (verb === "DELETE") {
+      return { name: "maintainCourse", courseId: courseUuid(course[1]) };
+    }
   }
   throw new AuthoringApiError(404, "not_found", "Endpoint de Curso inexistente.");
 }

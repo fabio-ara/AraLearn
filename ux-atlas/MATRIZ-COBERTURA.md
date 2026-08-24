@@ -25,6 +25,7 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 | concessão/revogação de acesso | administrar quem estuda diretamente | Pessoas | `activity` |
 | MCP / conversa conectada | agir no objeto corrente sem copiar contexto | ação ChatGPT contextual | canal `authoring_chat` |
 | dados locais | remover réplica do dispositivo sem apagar Curso remoto | Conta / ações locais | alcance explícito |
+| perfil e aparência | reconhecer a conta, atualizar nome e foto e ajustar a leitura | Conta e aparência | avatar próprio; preferências visuais permanecem locais |
 | exclusão da conta | encerrar a própria conta e seus dados conforme contrato final | Conta | ação destrutiva confirmada |
 | retenção corrente | executar/verificar manutenção automática do modelo final | Conta → Manutenção, apenas administrador | reutilizar retenção corrente |
 | inventário de resíduos correntes | saber se há objetos/vínculos quebrados | Conta → Manutenção, apenas administrador | classificação determinística do backend |
