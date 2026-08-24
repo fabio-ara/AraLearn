@@ -206,7 +206,7 @@ demonstram efeito educacional de armazenamento local.
 - **Operacionalização:** o estudo lê conteúdo e estado corrente localmente; a
   sincronização ocorre fora do caminho crítico. Na Autoria, o servidor continua
   sendo a autoridade para alterações; listas conhecidas e uma página exata da
-  Inspeção podem permanecer visíveis sem conexão, identificadas como cópia
+  sequência de Conteúdo podem permanecer visíveis sem conexão, identificadas como cópia
   local, sem autorizar mutação.
 - **Consequências e hipótese:** uma réplica local e um cursor compreensível
   podem reduzir erros operacionais de retomada.

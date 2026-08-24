@@ -216,19 +216,20 @@ curricular.
 **Carregamento sob demanda.** Busca da composição ou do detalhe apenas quando o
 destino é aberto. Não implica descarte automático de dados locais válidos.
 
-**Inspeção.** Superfície exclusiva do proprietário que percorre Unidades numa
-sequência vertical fiel a Estudo, com respostas inertes.
+**Sequência curricular de Conteúdo.** Percurso exclusivo do proprietário que
+apresenta Unidades numa sequência vertical fiel a Estudo, com respostas inertes,
+dentro da tarefa Conteúdo.
 
-**Âncora de Inspeção.** Identidade da Unidade que precisa entrar na primeira
+**Âncora de Conteúdo.** Identidade da Unidade que precisa entrar na primeira
 página de um endereço direto ou de uma restauração. Não é enviada junto com o
 cursor.
 
-**Posição local de Inspeção.** Registro por dispositivo com escopo, Unidade,
+**Posição local de Conteúdo.** Registro por dispositivo com escopo, Unidade,
 deslocamento em relação ao topo fixo e revisão do Curso. Serve à retomada e não
 vira fato pedagógico compartilhado.
 
 **Janela limitada.** Trecho da sequência mantido no DOM enquanto itens
-distantes usam espaçadores. A Inspeção pagina doze Unidades e mantém no máximo
+distantes usam espaçadores. A sequência de Conteúdo pagina doze Unidades e mantém no máximo
 trinta e seis.
 
 ## Concorrência e repetição segura

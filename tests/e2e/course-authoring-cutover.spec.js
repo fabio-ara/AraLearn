@@ -3219,7 +3219,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     }));
 
     await navigateToAuthoringArea(page, "inspection");
-    await expect(page.getByRole("heading", { name: "Inspeção", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unidades", exact: true })).toBeVisible();
     await expect.poll(scrollListeners).toEqual({ adds: 1, removes: 0, active: 1 });
 
     await navigateToAuthoringArea(page, "planning");
@@ -3227,7 +3227,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await expect.poll(scrollListeners).toEqual({ adds: 1, removes: 1, active: 0 });
 
     await navigateToAuthoringArea(page, "inspection");
-    await expect(page.getByRole("heading", { name: "Inspeção", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unidades", exact: true })).toBeVisible();
     await expect.poll(scrollListeners).toEqual({ adds: 2, removes: 1, active: 1 });
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.close());
     await expect.poll(scrollListeners).toEqual({ adds: 2, removes: 2, active: 0 });
@@ -3731,7 +3731,7 @@ for (const width of [360, 390, 430, 1280]) {
     const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
     await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
 
-    await expect(page.getByRole("heading", { name: "Inspeção" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unidades" })).toBeVisible();
     await expect(page.getByText("60 Unidades de estudo", { exact: true })).toBeVisible();
     await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
     await expect(page.getByLabel("Filtrar por Parte")).toHaveValue("course:");
@@ -3763,7 +3763,7 @@ for (const width of [360, 390, 430, 1280]) {
     expect(inspectionReads.every(({ limit, maxBytes }) =>
       limit === 12 && maxBytes === 1_500_000)).toBe(true);
     await expect(page.locator(".course-inspection-sequence"))
-      .toHaveAttribute("aria-label", "Sequência vertical de inspeção");
+      .toHaveAttribute("aria-label", "Sequência curricular de Unidades");
     expect(await page.locator("[data-inspection-study-unit]").evaluateAll((items) =>
       items.every((item) => item.getAttribute("aria-setsize") === "60" &&
         item.getAttribute("aria-posinset") === item.dataset.inspectionOrdinal &&
@@ -4917,7 +4917,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
     `#/authoring/courses/${COURSE_IDS[0]}` +
       "?section=content&studyUnitId=study-unit-01"
   );
-  await expect(page.getByRole("heading", { name: "Inspeção", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Unidades", exact: true })).toBeVisible();
   await expect(page.locator('[data-inspection-study-unit="study-unit-01"]')).toHaveCount(1);
   expect(clientErrors).toEqual([]);
   expect(networkErrors).toEqual([]);

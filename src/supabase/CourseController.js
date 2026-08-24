@@ -558,7 +558,7 @@ function normalizePendingCompositionSnapshot(value) {
           intent.didacticMicrosequenceId ||
         typeof item.deepLink !== "string" || !item.deepLink.trim() ||
         typeof item.updatedAt !== "string" || Number.isNaN(Date.parse(item.updatedAt))) {
-      throw new TypeError("Item de Inspeção pendente inválido.");
+      throw new TypeError("Item pendente de Conteúdo inválido.");
     }
     const normalizedItemIntent = normalizeFocalStudyUnitCompositionIntent({
       ...intent,
@@ -577,11 +577,11 @@ function normalizePendingCompositionSnapshot(value) {
         !Array.isArray(options.authoringParts) ||
         !Number.isSafeInteger(Number(options.unassignedStudyUnitCount)) ||
         Number(options.unassignedStudyUnitCount) < 0) {
-      throw new TypeError("Opções de Inspeção pendentes inválidas.");
+      throw new TypeError("Opções pendentes de Conteúdo inválidas.");
     }
     inspectionScopeOptions = options;
   } else if (value.inspectionScopeOptions != null) {
-    throw new TypeError("Opções de Inspeção pendentes sem item.");
+    throw new TypeError("Opções pendentes de Conteúdo sem item.");
   }
   return {
     contract: PENDING_COMPOSITION_CACHE_CONTRACT,

@@ -53,6 +53,9 @@ aguardavam sincronização.
 
 Os itens de navegação mostram o progresso de cada nível. Dentro de uma
 Unidade, a barra superior informa o contexto e a posição na Microssequência.
+Voltar restaura a tela anterior do percurso; subir abre o nível didático que
+contém o objeto atual. Assim, o histórico de navegação e a hierarquia do
+conteúdo continuam previsíveis.
 
 Ao avançar, a Unidade é marcada como concluída. O ponto alcançado permite
 retomar a Lição depois. Sem conexão, a mudança fica no dispositivo e é enviada
@@ -146,12 +149,24 @@ somente o progresso e o ponto de retomada do Curso escolhido. O Curso, as marcas
 Também há reinícios delimitados dentro do percurso. O rótulo da confirmação
 informa se o alcance começa em um Módulo, Lição, Microssequência ou Unidade.
 
-## Editar ou solicitar uma alteração
+## Editar ou usar Assistência por IA
+
+Quando a pessoa tem autorização, o modo **Editar** aparece no nível atual.
+Curso e Módulo permitem ajustar os metadados e a composição disponíveis; Lição
+e Microssequência também permitem organizar seus elementos filhos. Na Unidade,
+a edição trabalha sobre título, composição e conteúdo renderizável. Toda
+gravação exige **Salvar**; cancelar preserva o estado publicado.
+
+**Assistência por IA** está disponível em Lição, Microssequência e Unidade. Ela
+abre uma sessão curta sobre o alvo atual: primeiro a pessoa discute e confirma
+um plano, depois confere a proposta no renderer real, aplica ao rascunho e só
+então decide salvar. Uma proposta inválida, cancelada ou não renderizável não
+substitui o conteúdo corrente.
 
 Se o Curso for seu, **Editar** grava a Unidade no próprio Curso. Se ele foi
 compartilhado, o aviso explica que **Salvar na minha cópia** criará um Curso
 pessoal privado e deixará o original intacto. A edição manual e a assistência
-por API usam o mesmo conteúdo e a mesma prévia. Pedir uma sugestão, cancelar ou
+por IA usam o mesmo conteúdo e a mesma prévia. Pedir uma sugestão, cancelar ou
 sair sem uma mudança material não cria a cópia.
 
 Depois da primeira gravação, o AraLearn continua na mesma Unidade da nova cópia.
@@ -164,6 +179,26 @@ pendentes no dispositivo. Ao reconectar, o aplicativo repete a mesma intenção
 sem criar outra cópia. Um conflito em outra aba conserva o rascunho para
 recuperação. Também é possível registrar uma observação situada no Curso em que
 a pessoa estiver estudando e conversar com o proprietário pelos canais definidos.
+
+## Cuidar da conta e dos dados do dispositivo
+
+Abra **Conta e aparência** para alterar o nome de apresentação, escolher ou
+remover uma foto e definir o tema do sistema, claro ou escuro. A foto pode ser
+JPEG, PNG ou WebP de até 512 KiB e fica em armazenamento privado. Ao fechar a
+área, o foco retorna ao controle que a abriu.
+
+**Remover dados deste dispositivo** apaga somente a réplica local da conta
+ativa e mantém a conta e os dados remotos. **Sair** encerra a sessão, mas pode
+manter dados locais já gravados; **Sair e remover dados deste dispositivo** faz
+as duas coisas. Formulários ainda abertos e não salvos não fazem parte da
+réplica. Em aparelho compartilhado, confira o alcance indicado antes de
+confirmar.
+
+**Excluir conta** é uma operação remota, exige conexão e remove a conta, os
+Cursos próprios e as relações dependentes depois da limpeza dos arquivos
+privados. Essa ação é diferente de limpar o dispositivo e não pode ser desfeita.
+Consulte [Uso do aplicativo](uso-do-app.md) e [Privacidade](privacidade.md) para
+os detalhes operacionais e de retenção.
 
 ## Como interpretar o estado de estudo
 

@@ -50,7 +50,7 @@ proposição própria.
 | Capacidade | Relações principais | O que a implementação permite afirmar | O que permanece fora da evidência |
 | --- | --- | --- | --- |
 | Fontes, Âncoras e PDFs | P2, P7, P9 e P10 | Origem, revisão, localização, relação declarada, arquivo e aplicação por alvo podem ser reconstruídos sob autorização. | Citação não comprova correção factual, adequação didática ou autoria científica. |
-| Inspeção vertical | P1, P3 e P7 | O proprietário percorre uma sequência finita de Unidades com hierarquia, retomada, paginação e o mesmo mecanismo visual de Estudo. | Rolagem, permanência e passagem por uma Unidade não medem atenção ou qualidade da revisão. |
+| Sequência curricular em Conteúdo | P1, P3 e P7 | O proprietário percorre uma sequência finita de Unidades com hierarquia, retomada, paginação e o mesmo mecanismo visual de Estudo. | Rolagem, permanência e passagem por uma Unidade não medem atenção ou qualidade da revisão. |
 | Partes e materialização | P2, P3, P9 e P10 | Planejamento, produção e retomada podem ser coordenados em grupos operacionais sem alterar a hierarquia curricular. | A faixa preferencial de Partes não é lei pedagógica nem medida de complexidade. |
 | Variantes comparáveis | P2, P3 e P10 | Cursos independentes podem partir de planejamento registrado e expor diferenças declaradas, atuais e imprevistas. | Origem comum e reprodução técnica não demonstram comparabilidade de participantes, efeito ou causalidade. |
 | Pesquisa sobre a Autoria | P10 | Fatos, filtros, contagens, tabelas, gráficos e exportações podem ser confrontados sob a mesma revisão. | O painel não mede aprendizagem, atenção, esforço, domínio ou qualidade global. |

@@ -22,7 +22,7 @@ científica nem representa endosso institucional.
 3. [Guia do estudante](guia-estudante.md): primeiro percurso, retomada,
    revisão, observações e citações redigidas;
 4. [Guia do professor e autor](guia-professor-autor.md): criação privada,
-   planejamento, Fontes, inspeção, auditoria, correções e acesso direto;
+   planejamento, Conteúdo, Fontes, revisão, pesquisa e acesso direto;
 5. [Solução de problemas](solucao-de-problemas.md): diagnóstico por sintoma e
    recuperação segura.
 

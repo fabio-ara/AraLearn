@@ -17,16 +17,18 @@ Home → Curso → Módulo → Lição → Microssequência → Unidade
 ```
 
 Confirme que `←` volta à tela realmente anterior e que `↑` sobe um nível. Na
-Unidade, **Visualizar**, **Editar** e **Assistência por API** devem ser modos
+Unidade, **Visualizar**, **Editar** e **Assistência por IA** devem ser modos
 irmãos sobre o mesmo alvo. Verifique resposta, retorno, Fontes, Observações,
 marcação para rever, zeragem de progresso e retomada.
 
-Em **Autoria**, verifique criação, edição e exclusão de um Curso descartável;
-Planejamento e materialização; Parâmetros e política de componentes; Fontes,
-Âncoras e PDFs; Inspeção; Observações; Auditoria, correção, verificação e
-reversão; Variantes; Pesquisa; Pessoas e acessos.
+Em **Autoria**, parta da Visão geral e verifique as sete tarefas: Planejamento,
+inclusive Partes e o histórico completo de materializações; Conteúdo, inclusive
+hierarquia e edição; Parâmetros e componentes; Fontes, Âncoras e PDFs; Revisão,
+com Observações, Auditoria, correção, verificação e reversão; Variantes e
+pesquisa; Pessoas e acesso. Inclua criação, edição e exclusão segura de um Curso
+descartável.
 
-A Assistência por API precisa demonstrar conversa, plano discutível,
+A Assistência por IA precisa demonstrar conversa, plano discutível,
 confirmação, descoberta progressiva de componentes, validação, renderer real,
 aplicação ao rascunho e gravação explícita. Uma proposta recusada deve deixar o
 conteúdo corrente intacto.

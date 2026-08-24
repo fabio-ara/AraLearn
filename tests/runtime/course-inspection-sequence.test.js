@@ -374,6 +374,9 @@ test("Inspeção incorpora sem tradução o mesmo renderer de Unidade usado no E
   });
   await sequence.open();
 
+  assert.match(root.innerHTML, /<h2 id="course-authoring-section-title">Unidades<\/h2>/u);
+  assert.match(root.innerHTML, /aria-label="Navegação entre Unidades"/u);
+  assert.doesNotMatch(root.innerHTML, />Inspeção<|Navegação na Inspeção/u);
   const expected = renderPackageStudyUnitBlocksWithDock(studyUnit(1), {
     omitRepeatedHeading: true,
     blockKeyPrefix: "inspection:unit-01"
@@ -434,7 +437,7 @@ test("posição local removida rebasa no Curso; alvo explícito removido permane
   });
   assert.equal(await explicitSequence.open(), false);
   assert.match(explicitRoot.innerHTML, /Ponto não encontrado/u);
-  assert.match(explicitRoot.innerHTML, /Ir ao início da inspeção/u);
+  assert.match(explicitRoot.innerHTML, /Ir ao início da sequência/u);
   explicitSequence.destroy();
 });
 
@@ -1029,7 +1032,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
     documentValue
   });
   assert.equal(await failure.open(), false);
-  assert.match(failureRoot.innerHTML, /Inspeção indisponível/u);
+  assert.match(failureRoot.innerHTML, /Conteúdo indisponível/u);
   assert.match(failureRoot.innerHTML, /Sem conexão para carregar este trecho/u);
   failure.destroy();
 

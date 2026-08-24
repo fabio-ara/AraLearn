@@ -11,7 +11,7 @@ Evidência corrente revisada em **2026-08-24**.
 | Estudar, responder, rever e observar | sim | após o primeiro carregamento, não | pessoa com acesso ao Curso | sim | sim | sim | produto | estado pessoal sincroniza quando a rede retorna |
 | Editar Unidade no Estudo | sim | para gravar | proprietário ou pessoa apta a criar cópia | sim | sim | sim | produto | acesso compartilhado grava somente numa cópia pessoal |
 | Planejar, materializar e revisar Curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
-| Usar Assistência por API | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige plano confirmado, contratos válidos e gravação explícita |
+| Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige plano confirmado, contratos válidos e gravação explícita |
 | Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | cinco ferramentas públicas canônicas; não inclui perfil ou Manutenção |
 | Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
 | Excluir Curso próprio ou sair de Curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
@@ -48,13 +48,10 @@ inalterado, e o percurso continua na mesma Unidade da nova cópia.
 ## Autoria
 
 Autoria lista somente os Cursos próprios. A pessoa pode criar um Curso privado,
-definir título, objetivo, público e alcance e organizar sua estrutura. As áreas
-de trabalho são apresentadas progressivamente:
-
-- **Curso** reúne Estrutura, Planejamento, Parâmetros e Fontes;
-- **Revisar** reúne Inspeção, Observações, Auditoria e correções;
-- **Pesquisa** reúne Variantes e fatos da Autoria;
-- **Pessoas** reúne proprietário e acessos diretos ao Estudo.
+definir título, objetivo, público e alcance e organizar sua estrutura. Ao abrir
+o Curso, a **Visão geral** mostra estado, próxima ação e as sete tarefas:
+**Planejamento**, **Conteúdo**, **Parâmetros e componentes**, **Fontes**,
+**Revisão**, **Variantes e pesquisa** e **Pessoas e acesso**.
 
 O Planejamento organiza Partes em linguagem natural e pode ligá-las a
 Microssequências reais. A materialização registra passos retomáveis sem declarar
@@ -69,15 +66,15 @@ a Unidade à revisão e às Âncoras exatas usadas. Referências anteriores sem 
 suficiente permanecem identificadas para resolução e não aparecem como citação
 comprovada no Estudo.
 
-A Inspeção percorre a composição sem ativar respostas. A Auditoria registra
+Conteúdo percorre a composição sem ativar respostas. A Auditoria registra
 checks, achados, correções, verificações e reversões. Observações de estudantes
 continuam separadas de achados de auditoria. Variantes registram relações entre
 Cursos; Pesquisa apresenta fatos, definições, denominadores, ausências e
 exportações sem inferir eficácia ou causalidade.
 
-## Assistência por API
+## Assistência por IA
 
-Assistência por API é uma sessão contextual, não uma chamada isolada para trocar
+Assistência por IA é uma sessão contextual, não uma chamada isolada para trocar
 texto. A pessoa conversa num minichat, discute um plano e confirma a geração.
 O modelo recebe contexto somente leitura suficiente para o alvo e devolve
 operações tipadas.

@@ -87,7 +87,7 @@ Quando um detalhe histórico ainda aparece porque ajuda a explicar uma decisão 
 
 Um mecanismo técnico pode ser importante sem pertencer ao README.
 
-Por exemplo, quem usa **Assistência por API** precisa entender o que será enviado, qual ação ocorrerá e como revisar o resultado. A arquitetura de transporte, a ponte Android, a política do WebView, o tratamento da credencial e o contrato do relay pertencem à documentação técnica correspondente.
+Por exemplo, quem usa **Assistência por IA** precisa entender o que será enviado, qual ação ocorrerá e como revisar o resultado. A arquitetura de transporte, a ponte Android, a política do WebView, o tratamento da credencial e o contrato do relay pertencem à documentação técnica correspondente.
 
 O mesmo vale para Model Context Protocol, banco de dados, Storage, políticas de acesso, filas, revisões técnicas e manifests. A camada de uso apresenta o efeito percebido pela pessoa; a camada técnica explica como o sistema o realiza.
 

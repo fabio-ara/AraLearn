@@ -2955,6 +2955,18 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
     css,
     /\.course-authoring-course-header \{[\s\S]*?grid-template-columns: var\(--tap\) minmax\(0, 1fr\) var\(--tap\)/u
   );
+  assert.match(
+    css,
+    /\.course-authoring-course-heading \.course-authoring-eyebrow \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-course-heading h1 \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-course-heading \.course-authoring-meta \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+  );
   assert.doesNotMatch(css, /-webkit-line-clamp: 4/u);
   assert.doesNotMatch(css, /\.course-authoring-sections\.has-standard/u);
   assert.match(css, /min-height: var\(--tap\)/u);

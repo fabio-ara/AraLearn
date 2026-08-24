@@ -385,7 +385,7 @@ recuperar o estado anterior quando necessário.
 
 **Decisão.** Cada pacote declara os campos textuais que uma correção focal pode
 alterar. Identificadores, referências, tipos, relações e geometria servem como
-contexto protegido. A Inspeção apresenta a Unidade com respostas desativadas;
+contexto protegido. Conteúdo apresenta a Unidade com respostas desativadas;
 uma alteração validada ocorre pelo ciclo de correção ou pela operação de
 composição, conforme seu alcance.
 

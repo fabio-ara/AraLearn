@@ -1361,12 +1361,12 @@ function renderPlanningNextAction(state, planning) {
       });
     } else {
       title = "Confira o resultado";
-      message = "As Partes vinculadas estão materializadas e prontas para inspeção.";
+      message = "As Partes vinculadas estão materializadas e prontas para conferência.";
       action = renderActionButton({
         action: "open-inspection",
         icon: "preview",
-        label: "Abrir Inspeção",
-        visibleLabel: "Inspecionar",
+        label: "Abrir Conteúdo",
+        visibleLabel: "Conferir em Conteúdo",
         className: "course-authoring-primary"
       });
     }
@@ -1662,7 +1662,7 @@ function renderCourseSection(state) {
   if (state.failure && !state.outline) {
     return statusPanel({
       kind: state.failure.kind,
-      title: state.failure.kind === "revision-changed" ? "Curso atualizado" : "Estrutura indisponível",
+      title: state.failure.kind === "revision-changed" ? "Curso atualizado" : "Conteúdo indisponível",
       message: state.failure.message,
       action: state.failure.kind === "access-revoked" ? "" : "retry",
       actionLabel: "Recarregar"

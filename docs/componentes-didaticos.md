@@ -203,8 +203,8 @@ Cada pacote declara em `editableTargets()` quais textos podem ser alterados sem
 expor a estrutura. Coordenadas, identidades relacionais, tipos de nó, índices e
 textos destinados apenas à acessibilidade ficam fora desse conjunto.
 
-Essa declaração sustenta validação e correções focais, mas não transforma a
-Inspeção em editor direto. A interface visual mostra a Unidade com respostas
+Essa declaração sustenta validação e correções focais, mas não transforma o
+renderer de Conteúdo em editor irrestrito. A interface visual mostra a Unidade com respostas
 desativadas. Uma correção aprovada pode alterar os campos autorizados e precisa
 validar novamente a Unidade inteira; uma mudança estrutural usa a operação de
 composição. JSON bem-formado, por si só, não concede autoridade nem demonstra

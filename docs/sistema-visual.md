@@ -65,17 +65,15 @@ para reconhecer Cursos próprios e compartilhados sem baixar a composição
 inteira. Um toque abre o Curso; a ação de voltar retorna à lista sem criar uma
 identidade intermediária.
 
-No Curso próprio, a navegação parte de poucos destinos conceituais e revela as
-ações pelo objeto e pela tarefa correntes. Planejamento, Parâmetros, Fontes,
-Estrutura, Inspeção, Discussões e correções, Variantes, Pesquisa e Pessoas são
-capacidades do Curso, não nove áreas que precisam permanecer visíveis ou ser
-memorizadas.
+No Curso próprio, a **Visão geral** mostra identidade, estado e próxima ação.
+Uma grade compacta oferece, em um único nível, **Planejamento**, **Conteúdo**,
+**Parâmetros e componentes**, **Fontes**, **Revisão**, **Variantes e pesquisa**
+e **Pessoas e acesso**. Esses nomes expressam tarefas humanas; não expõem grupos
+históricos ou módulos internos que a pessoa precisaria memorizar.
 
-A barra compacta possui quatro grupos por ícone. **Curso** revela Estrutura,
-Planejamento, Parâmetros e Fontes. **Revisar** revela Inspeção, Observações,
-auditoria e correções. **Pesquisa** reúne Variantes, Analytics e fatos autorais.
-**Pessoas** administra o acesso direto ao Estudo. Uma ação situada também pode
-levar diretamente à capacidade necessária sem passar por essa organização.
+A barra superior permanece compacta, com voltar, título do objeto e menu de
+tarefas. Uma ação situada pode levar diretamente à tarefa e ao objeto
+necessários sem criar uma segunda navegação ou uma sidebar.
 
 Celular e computador usam a mesma composição de até 430 px, centralizada em
 telas maiores. Não existe barra lateral de desktop, segunda coluna, dashboard
@@ -95,7 +93,7 @@ objeto e oferece um campo amplo para o argumento da pessoa autora. Identidade,
 revisão, endereço direto de retorno, referências e limites operacionais são
 acrescentados pelo AraLearn. A cópia não muda o Curso.
 
-Na Unidade, **Visualizar**, **Editar** e **Assistência por API** usam o mesmo
+Na Unidade, **Visualizar**, **Editar** e **Assistência por IA** usam o mesmo
 renderer e o mesmo alvo. A edição realça apenas os textos que o componente
 autoriza. A assistência abre uma sobreposição de até 430 px, apresenta a
 conversa e o plano discutível e permite alternar entre a prévia validada e o
@@ -128,7 +126,7 @@ adiada. Preservar o trabalho em curso tem precedência sobre substituir a área
 por uma revisão recém-lida.
 
 Recomposições internas seguem a mesma regra. Parâmetros, Fontes, Variantes,
-Observações, Inspeção e Auditoria conservam valores, detalhes progressivos e
+Observações, Conteúdo e Auditoria conservam valores, detalhes progressivos e
 foco após validação local, atualização assíncrona ou falha de rede ambígua. Uma
 nova tentativa sem edição parte do formulário novamente apresentado e conserva
 o mesmo envelope idempotente; cancelar ou descartar limpa esse estado
@@ -146,9 +144,9 @@ a ação **Começar**, **Continuar** ou **Retomar**. Ela não se multiplica numa
 grade de cartões e não mostra UUID, hash ou revisão técnica. A composição
 permanece centralizada e limitada a 430 px também em 1280 px.
 
-## Inspeção vertical
+## Sequência curricular em Conteúdo
 
-A Inspeção é uma sequência curricular finita, não uma rolagem infinita. Ela
+Em Conteúdo, a inspeção é uma sequência curricular finita, não uma rolagem infinita. Ela
 reutiliza o mecanismo de renderização de Estudo com respostas inertes e mostra
 posição, hierarquia e limites do recorte. O autor pode restringir a sequência
 por Curso, Parte, Módulo, Lição ou Microssequência.

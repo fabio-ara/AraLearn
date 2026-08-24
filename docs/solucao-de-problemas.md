@@ -171,7 +171,7 @@ acessos e planejamento também começam separados.
 
 Se a mensagem disser que a resposta se perdeu e que a operação pode ter sido
 confirmada, confira os valores preservados e tente novamente pelo mesmo botão,
-sem reeditar o formulário. Parâmetros, Fontes, Variantes, Observações, Inspeção
+sem reeditar o formulário. Parâmetros, Fontes, Variantes, Observações, Conteúdo
 e Auditoria reutilizam o envelope pendente, inclusive o mesmo identificador de
 pedido, para recuperar o recibo sem duplicar o efeito.
 
@@ -184,7 +184,7 @@ fica no IndexedDB para sobreviver a reinício e reconexão. Descartar essa inten
 remove o envelope. Conversa, configuração e credencial do provider nunca fazem
 parte dele.
 
-## A assistência por API não responde
+## A Assistência por IA não responde
 
 Confira se o relay local está ativo, se o modelo foi configurado nele e se o
 endpoint usa `127.0.0.1`, `localhost` ou `10.0.2.2`, por HTTP na porta 4183. A

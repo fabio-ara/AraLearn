@@ -76,7 +76,7 @@ não é aceita em comandos que apenas registram ou leem evidência.
 - `course_sources` e `course_source_attachment` para proveniência e PDFs;
 - `anchored_annotations` para Observações;
 - `part_materialization` para produção retomável;
-- `study_units` para Inspeção curricular;
+- `study_units` para a sequência curricular em Conteúdo;
 - `entities` para alterações estruturais;
 - `audit_cycle` para rodadas, achados e correções;
 - `variant_comparisons` e `variant_comparison` para variantes;
@@ -135,7 +135,7 @@ Parte e Microssequências vinculadas
 → produção de um recorte
 → validação de estrutura, componentes e proveniência
 → confirmação atômica da etapa
-→ Inspeção e eventual auditoria
+→ Conteúdo e eventual auditoria
 ```
 
 Ao iniciar uma execução, o servidor sela o contexto efetivo. Catálogos de

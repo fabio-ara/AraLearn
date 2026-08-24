@@ -11,7 +11,7 @@ da tarefa ou do conceito procurado.
 | Para que serve o AraLearn? | [Visão do produto](visao-do-produto.md) |
 | Como navegar pelo aplicativo? | [Uso do aplicativo](uso-do-app.md) |
 | Como estudar, retomar e marcar uma Unidade para rever? | [Guia do estudante](guia-estudante.md) |
-| Como criar, inspecionar e compartilhar um Curso? | [Guia do professor e autor](guia-professor-autor.md) |
+| Como criar, editar e compartilhar um Curso? | [Guia do professor e autor](guia-professor-autor.md) |
 | Como recuperar uma sessão ou diagnosticar uma falha? | [Solução de problemas](solucao-de-problemas.md) |
 | Quais capacidades estão disponíveis agora? | [Capacidades e limites atuais](estado-atual-e-roadmap.md) |
 

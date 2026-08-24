@@ -32,13 +32,24 @@ identificador de pedido para que a repetição causada por falha de rede recuper
 o mesmo resultado. O plano sugere inicialmente de 7 a 12 Partes; a pessoa autora
 pode alterar essa faixa conforme o trabalho real.
 
-## Trabalhar pelo contexto do Curso
+## Começar pela Visão geral do Curso
 
-Ao abrir um Curso, a barra compacta mostra quatro destinos conceituais: Curso,
-Revisar, Pesquisa e Pessoas. Cada objeto oferece as ações que fazem sentido
-naquele ponto. Planejamento, Parâmetros, Fontes, Estrutura, Inspeção, Discussões
-e correções, Variantes, Pesquisa e Pessoas continuam disponíveis, mas não
-aparecem como nove áreas que você precisa aprender antes de começar.
+Ao abrir um Curso, a **Visão geral** identifica o objeto em edição, mostra seu
+estado, destaca a próxima ação útil e apresenta as tarefas principais em um
+único nível de escolha:
+
+- **Planejamento**;
+- **Conteúdo**;
+- **Parâmetros e componentes**;
+- **Fontes**;
+- **Revisão**;
+- **Variantes e pesquisa**;
+- **Pessoas e acesso**.
+
+A barra compacta preserva o título e o contexto atual. O menu de tarefas permite
+mudar de trabalho sem converter a tela em dashboard ou exigir que a pessoa
+memorize agrupamentos internos. Ao voltar, a posição útil e o objeto focal são
+restaurados sempre que o destino conserva esse contexto.
 
 Celular e computador usam a mesma superfície de até 430 px, centralizada em
 telas maiores. O conteúdo usa um único rolador vertical; tabelas e comparações
@@ -73,7 +84,15 @@ Os estados **Planejada**, **Em materialização**, **Atenção necessária**,
 **Parcial** e **Materializada** são calculados a partir de vínculos, Unidades e
 etapas registradas. A pessoa autora não escolhe o estado manualmente.
 
-### Parâmetros
+Abra uma Parte para consultar todas as suas materializações em ordem do início
+mais recente. Cada execução informa estado, canal (**Aplicativo**, **MCP** ou
+**Actions**), início, término e resumo. Ao abrir uma execução, a tela apresenta
+as etapas na ordem, o ponto em andamento ou que falhou, fatos e contagens úteis
+e os objetos produzidos ou alterados. Um link leva diretamente ao objeto em
+**Conteúdo**; voltar restaura a mesma execução, inclusive depois de recarregar
+um deep link canônico.
+
+### Parâmetros e componentes
 
 **Parâmetros** começa no Curso e permite percorrer Módulo, Lição e
 Microssequência sem carregar toda a composição. Cada decisão mostra o valor
@@ -132,7 +151,7 @@ Uma revisão ativa aceita até oito PDFs privados, cada um com até 20 MiB. O to
 de conteúdo único por Curso é 64 MiB. Arquivos idênticos dentro do mesmo Curso
 compartilham o armazenamento, embora continuem ligados às revisões adequadas.
 
-**Definir fontes** aparece em itens do Planejamento e em Unidades da Inspeção.
+**Definir fontes** aparece em itens do Planejamento e em Unidades de Conteúdo.
 Salvar substitui o conjunto completo do alvo e preserva a ordem escolhida. Cada
 novo vínculo exige uma Âncora ativa da revisão selecionada e declara como a
 Fonte participa do alvo: informou, sustenta, foi adaptada, foi citada,
@@ -154,33 +173,36 @@ A visibilidade controla a projeção entregue em Estudo:
 - **Mostrar citação** apresenta identificação e localização;
 - **Mostrar citação e link** também pode entregar o endereço HTTPS.
 
-### Estrutura
+### Conteúdo
 
-**Estrutura** percorre Módulos, Lições e Microssequências em páginas. A tela
-apresenta identidade, posição, título e resumo de cada entidade. Ela é uma
-leitura compacta da hierarquia do Curso.
+**Conteúdo** reúne a hierarquia e a sequência de leitura do Curso. A estrutura
+percorre Curso, Módulos, Lições, Microssequências e Unidades e apresenta posição,
+título e resumo de cada objeto. Selecionar um alvo mantém o caminho curricular
+visível e abre as Unidades produzidas no mesmo renderer usado em Estudo, com as
+respostas desativadas.
 
-### Inspeção
-
-**Inspeção** apresenta as Unidades produzidas em sequência vertical sob uma
-única revisão do Curso. É possível escolher o Curso inteiro, uma Parte, as
-Unidades sem Parte, um Módulo, uma Lição ou uma Microssequência. Links de
-contexto abrem a entidade ou a Unidade exata.
+O recorte de leitura pode abranger o Curso inteiro, uma Parte, as Unidades sem
+Parte, um Módulo, uma Lição ou uma Microssequência. Links de contexto abrem a
+entidade ou a Unidade exata.
 
 A tela carrega páginas conforme a rolagem e mantém uma janela limitada de
 Unidades. O dispositivo conserva a posição da leitura. Ao retornar depois de
-uma mudança do Curso, a Inspeção relê a revisão e procura a mesma Unidade. Os
-componentes são apresentados como em Estudo, mas suas respostas ficam
-desativadas.
+uma mudança do Curso, Conteúdo relê a revisão e procura a mesma Unidade.
 
-A partir de uma Unidade, use os ícones **Editar**, **Assistência por API**,
+A partir de uma Unidade, use os ícones **Editar**, **Assistência por IA**,
 **Anotar**, **Definir fontes** ou **Auditar**. Essas ações trabalham sobre a
 identidade exata da Unidade. A edição fica restrita aos textos declarados pelo
-componente e não transforma a Inspeção em um editor livre da estrutura.
+componente e não transforma Conteúdo em um editor livre da estrutura.
+
+O ícone **Editar** do cabeçalho atua no objeto focal. No Curso, ele abrange
+metadados e composição; no Módulo, metadados e ordem das Lições; na Lição,
+metadados e estrutura das Microssequências; na Microssequência, objetivo, ordem
+e Unidades; na Unidade, título, composição e conteúdo renderizável. Todas as
+alterações respeitam autorização, usam rascunho e exigem salvamento explícito.
 
 ### Editar uma Unidade no conteúdo
 
-O proprietário encontra os mesmos comandos em Estudo e na Inspeção. Para uma
+O proprietário encontra os mesmos comandos em Estudo e em Conteúdo. Para uma
 alteração manual:
 
 1. use o ícone **Editar** na Unidade;
@@ -195,12 +217,12 @@ persistida e auditável, use o ciclo de correção.
 
 Ao receber a confirmação do servidor, o aplicativo atualiza a cópia local da
 Unidade e do Curso antes de invalidar as projeções anteriores, preservando
-progresso, Observações e posição. Estudo e Inspeção podem abrir esse resultado
+progresso, Observações e posição. Estudo e Conteúdo podem abrir esse resultado
 sem rede como confirmado, com sincronização pendente, e não repetem a escrita.
 Uma revisão remota posterior prevalece; logout, limpeza do Curso ou revogação de
 acesso removem a cópia correspondente.
 
-Use **Assistência por API** como modo irmão de **Visualizar** e **Editar**. Ela
+Use **Assistência por IA** como modo irmão de **Visualizar** e **Editar**. Ela
 está disponível na Unidade, na Microssequência e na Lição conforme a autoridade
 da pessoa. Na instalação de produção, o relay local aparece como conexão fixa;
 informe o modelo e escreva uma mensagem. A chave do provedor permanece no
@@ -226,14 +248,16 @@ entrada direta de chave pertencem somente ao runtime explícito de
 desenvolvimento. No Android, uma ponte nativa fixa mantém a chamada HTTP fora do
 WebView sem relaxar a política de conteúdo misto.
 
-### Discussões e correções
+### Revisão
 
-Esta área reúne as abas **Observações** e **Achados**.
+**Revisão** reúne as tarefas de **Observações** e **Auditoria**. Elas compartilham
+o ponto de entrada para facilitar a triagem, mas continuam sendo conceitos e
+contratos distintos.
 
 **Observações** apresenta a caixa de entrada das Anotações ancoradas. Filtros
 recortam origem, canal, estado, categoria, assunto e posição hierárquica. Uma
 anotação autoral pode ser criada no Curso, Módulo, Lição, Tópico ou
-Microssequência. Para uma Unidade, use **Anotar** na Inspeção. Para Fonte ou
+Microssequência. Para uma Unidade, use **Anotar** em Conteúdo. Para Fonte ou
 Âncora, abra o detalhe correspondente em **Fontes**.
 
 No detalhe, as ações permitidas pelo servidor podem editar texto ou categoria,
@@ -263,11 +287,11 @@ Uma conclusão factual positiva exige Fonte e Âncora ativas na revisão exata.
 **Sustenta o conteúdo** vale para afirmações; **Citação direta** comprova apenas
 a fidelidade da citação.
 
-Discussões e correções exigem conexão na Autoria. A cópia e a fila de Anotações
+Revisão exige conexão na Autoria. A cópia e a fila de Anotações
 próprias sustentam o percurso de Estudo, mas não transformam a caixa autoral de
 Observações, a auditoria ou as correções em operações sem rede.
 
-### Variantes
+### Variantes e pesquisa
 
 **Variantes** cria de dois a oito Cursos independentes a partir do planejamento
 do Curso aberto. Cada variante recebe título, objetivo, rótulo e ao menos uma
@@ -282,7 +306,7 @@ preserva o Curso.
 Esse recurso descreve Cursos relacionados. Ele não distribui participantes,
 registra consentimento, coleta desfechos nem permite inferência causal.
 
-### Pesquisa
+#### Pesquisa
 
 **Pesquisa** consulta fatos da atividade do Curso, produção por Partes, decisões
 de desenho, Fontes e atribuições, Observações, auditorias e Variantes. Os filtros
@@ -294,7 +318,7 @@ dos fatos levam às áreas correspondentes da Autoria. Contagens e estados
 descrevem registros do processo; a interpretação como medida de aprendizagem,
 qualidade ou efeito exige um protocolo de pesquisa próprio.
 
-### Pessoas
+### Pessoas e acesso
 
 **Pessoas** mostra o proprietário e quem recebeu **Acesso ao Estudo**. Nome e
 foto aparecem quando a relação de acesso permite.
@@ -355,6 +379,13 @@ revisão observada, endereço direto de retorno, referências e limites de
 segurança quando a pessoa usa **Copiar pedido**. Copiar ou cancelar não altera o
 Curso nem sua cópia local.
 
+MCP e **Actions** são canais distintos. MCP autoriza um cliente por principal e
+consentimento próprios; um GPT personalizado com Actions usa o contrato OpenAPI
+e o OAuth específicos desse canal. Ambos chamam as operações canônicas do Curso
+e registram a origem da materialização, mas não compartilham sessão nem criam
+duas experiências visuais. Na Autoria, as execuções dos dois canais aparecem no
+mesmo histórico da Parte.
+
 Depois do trabalho no cliente conectado, volte à guia ou focalize a janela do
 AraLearn. A área visível relê o cabeçalho canônico e o estado pertinente. Use a
 ação **Atualizar** do cabeçalho se o navegador não sinalizar o retorno. Uma
@@ -364,7 +395,7 @@ Se houver um compositor, uma confirmação ou um formulário em edição, essa
 releitura é adiada. O AraLearn conserva os campos e o argumento e pede que a
 pessoa conclua ou cancele o rascunho antes de atualizar novamente.
 
-Os formulários de Parâmetros, Fontes, Variantes, Observações, Inspeção e
+Os formulários de Parâmetros, Fontes, Variantes, Observações, Conteúdo e
 Auditoria também conservam campos, controles abertos e foco quando uma
 validação pede correção ou uma resposta de rede se perde. Nesse último caso,
 tentar novamente sem editar repete exatamente o pedido anterior e permite ao
@@ -393,9 +424,12 @@ Para preparar a produção:
    servidor.
 
 Copiar o pedido não altera o Curso. Quando o cliente executa a materialização,
-**Ver etapas** apresenta o andamento, a próxima etapa e fatos limitados já
-registrados. A leitura equivalente pelo MCP permite retomar o trabalho sem
-depender da memória da conversa.
+o histórico da Parte recebe uma nova execução. Abra-a para ver todas as etapas,
+o resultado de cada uma, os fatos registrados e os objetos produzidos. Falhas
+anteriores e execuções parciais permanecem disponíveis; nenhuma é substituída
+pela mais recente. O link de um objeto abre **Conteúdo** no alvo exato e o
+retorno conserva a execução. A leitura equivalente pelo MCP permite retomar o
+trabalho sem depender da memória da conversa.
 
 Enquanto uma Parte está em produção, mudanças em seus vínculos e em sua ordem
 são recusadas. Título, objetivo e itens independentes do plano continuam
@@ -406,11 +440,12 @@ o desenho aplicado e a proveniência correspondente.
 
 ## Limites da interface
 
-A edição contextual não oferece mudança livre de toda a estrutura interna de
-uma Unidade. Ela altera somente folhas textuais declaradas pelo componente e
-passa pela validação e pela gravação canônicas. Alterações estruturais e
-materialização usam as operações autorizadas do MCP; correções que exigem
-histórico e reversão usam o ciclo de auditoria. O acesso público e anônimo
+A edição textual de uma Unidade não oferece mudança livre de toda a estrutura
+interna do componente: ela altera somente folhas declaradas e passa pela
+validação e pela gravação canônicas. A edição estrutural de Curso, Módulo, Lição
+e Microssequência possui controles próprios em Conteúdo; materializações também
+podem usar MCP ou Actions. Correções que exigem histórico e reversão usam o ciclo
+de auditoria. O acesso público e anônimo
 a Cursos também não faz parte do modelo de compartilhamento: a distribuição
 corrente usa contas e concessões diretas para Estudo.
 
@@ -419,7 +454,7 @@ corrente usa contas e concessões diretas para Estudo.
 Depois de alterar um Curso:
 
 1. releia a área modificada na Autoria;
-2. use a Inspeção para abrir a Unidade afetada;
+2. use Conteúdo para abrir a Unidade afetada;
 3. confira as revisões e Âncoras das Fontes atribuídas;
 4. se houve correção, execute outra rodada e verifique o critério focal;
 5. abra o Curso em Estudo e percorra a mesma Unidade;

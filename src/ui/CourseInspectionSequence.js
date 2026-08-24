@@ -106,13 +106,13 @@ function natural(value, label, { minimum = 0, maximum = 1_000_000 } = {}) {
 }
 
 function normalizeScope(value) {
-  exactRecord(value, ["kind", "id"], "O escopo da Inspeção é inválido.");
+  exactRecord(value, ["kind", "id"], "O escopo de Conteúdo é inválido.");
   const kind = String(value.kind || "");
   const id = value.id == null ? null : canonicalId(value.id, "A identidade do escopo", {
     uuid: kind === "authoring_part"
   });
   if (!SCOPE_KINDS.has(kind) || ((kind === "course" || kind === "unassigned") !== (id === null))) {
-    throw new TypeError("O escopo da Inspeção é inválido.");
+    throw new TypeError("O escopo de Conteúdo é inválido.");
   }
   return Object.freeze({ kind, id });
 }
@@ -137,15 +137,15 @@ function normalizeScopeOptions(value) {
   exactRecord(
     value,
     ["authoringParts", "unassignedStudyUnitCount"],
-    "As opções de escopo da Inspeção são inválidas."
+    "As opções de escopo de Conteúdo são inválidas."
   );
   if (!Array.isArray(value.authoringParts) || value.authoringParts.length > 64) {
-    throw new TypeError("As opções de Parte da Inspeção são inválidas.");
+    throw new TypeError("As opções de Parte em Conteúdo são inválidas.");
   }
   const parts = value.authoringParts.map((part, index) => normalizePart(part, `A Parte ${index + 1}`));
   if (new Set(parts.map(({ id }) => id)).size !== parts.length ||
       parts.some((part, index) => part.position !== index)) {
-    throw new TypeError("A ordem das Partes da Inspeção é inválida.");
+    throw new TypeError("A ordem das Partes em Conteúdo é inválida.");
   }
   return Object.freeze({
     authoringParts: Object.freeze(parts),
@@ -169,7 +169,7 @@ function normalizeStudyUnit(value) {
   exactRecord(
     value,
     ["id", "position", "title", "role", "content", "response", "feedback", "topics"],
-    "Uma Unidade de estudo da Inspeção é inválida."
+    "Uma Unidade de estudo de Conteúdo é inválida."
   );
   const cloned = structuredClone(value);
   cloned.id = canonicalId(cloned.id, "A identidade da Unidade de estudo");
@@ -186,7 +186,7 @@ function normalizeInspectionItem(value, totalCount) {
   exactRecord(
     value,
     ["studyUnit", "version", "updatedAt", "ordinal", "curriculumPath", "authoringPart", "deepLink"],
-    "Um item da Inspeção é inválido."
+    "Um item de Conteúdo é inválido."
   );
   exactRecord(
     value.curriculumPath,
@@ -224,10 +224,10 @@ function normalizeInspectionItem(value, totalCount) {
 
 function normalizeCursor(value, expected) {
   if (!expected) {
-    if (value != null) throw new TypeError("O cursor da Inspeção é inconsistente.");
+    if (value != null) throw new TypeError("O cursor de Conteúdo é inconsistente.");
     return null;
   }
-  exactRecord(value, ["studyUnitId"], "O cursor da Inspeção é inválido.");
+  exactRecord(value, ["studyUnitId"], "O cursor de Conteúdo é inválido.");
   return Object.freeze({
     studyUnitId: canonicalId(value.studyUnitId, "A Unidade de estudo do cursor")
   });
@@ -243,11 +243,11 @@ export function normalizeCourseInspectionPage(value, {
     "hasPrevious", "hasMore", "previousCursor", "nextCursor", "pageBytes",
     "offline", "stale", "offlineKnown"
   ];
-  exactRecord(value, topLevelFields, "A página da Inspeção é inválida.");
+  exactRecord(value, topLevelFields, "A página de Conteúdo é inválida.");
   if (value.contract !== PAGE_CONTRACT || !Array.isArray(value.items) ||
       value.items.length > MAX_PAGE_SIZE || typeof value.hasPrevious !== "boolean" ||
       typeof value.hasMore !== "boolean") {
-    throw new TypeError("A página da Inspeção é inválida.");
+    throw new TypeError("A página de Conteúdo é inválida.");
   }
   const courseId = canonicalId(value.courseId, "A identidade do Curso", { uuid: true });
   const courseRevision = natural(value.courseRevision, "A revisão do Curso", { minimum: 1 });
@@ -256,14 +256,14 @@ export function normalizeCourseInspectionPage(value, {
   if ((expectedCourseId && courseId !== expectedCourseId) ||
       (expectedRevision !== null && courseRevision !== expectedRevision) ||
       (expectedScope && !sameScope(scope, expectedScope))) {
-    const error = new Error("O Curso mudou durante a Inspeção.");
+    const error = new Error("O Curso mudou durante a leitura de Conteúdo.");
     error.code = "course_revision_changed";
     throw error;
   }
   const items = value.items.map((item) => normalizeInspectionItem(item, totalCount));
   if (new Set(items.map(({ studyUnit }) => studyUnit.id)).size !== items.length ||
       items.some((item, index) => index > 0 && item.ordinal !== items[index - 1].ordinal + 1)) {
-    throw new TypeError("A ordem da página da Inspeção é inválida.");
+    throw new TypeError("A ordem da página de Conteúdo é inválida.");
   }
   return Object.freeze({
     contract: PAGE_CONTRACT,
@@ -290,7 +290,7 @@ export function inspectionRequestFromTarget(target) {
       anchorStudyUnitId: target.id
     });
   }
-  if (!SCOPE_KINDS.has(target.kind)) throw new TypeError("O alvo da Inspeção é inválido.");
+  if (!SCOPE_KINDS.has(target.kind)) throw new TypeError("O alvo de Conteúdo é inválido.");
   return Object.freeze({
     scope: normalizeScope({ kind: target.kind, id: target.id }),
     anchorStudyUnitId: null
@@ -305,7 +305,7 @@ function statusMessage(error) {
   if (/offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)) {
     return "Sem conexão para carregar este trecho.";
   }
-  return "Não foi possível carregar este trecho da Inspeção.";
+  return "Não foi possível carregar este trecho de Conteúdo.";
 }
 
 function ambiguousObservationFailure(error) {
@@ -678,15 +678,15 @@ function renderSequence(state) {
           : "";
   let body;
   if (state.initialLoading && state.items.length === 0) {
-    body = '<p class="course-authoring-loading" role="status">Carregando inspeção…</p>';
+    body = '<p class="course-authoring-loading" role="status">Carregando Unidades…</p>';
   } else if (state.targetMissing) {
     body = '<section class="course-authoring-state is-error" role="alert">' +
       `${renderUiIcon("remove-state", "course-authoring-state-icon")}<h3>Ponto não encontrado</h3>` +
-      '<p>Esta identidade não pertence mais à Inspeção corrente.</p>' +
-      '<button type="button" data-inspection-action="start">Ir ao início da inspeção</button></section>';
+      '<p>Esta Unidade não pertence mais à sequência corrente de Conteúdo.</p>' +
+      '<button type="button" data-inspection-action="start">Ir ao início da sequência</button></section>';
   } else if (state.initialFailure && state.items.length === 0) {
     body = '<section class="course-authoring-state is-error" role="alert">' +
-      `${renderUiIcon("remove-state", "course-authoring-state-icon")}<h3>Inspeção indisponível</h3>` +
+      `${renderUiIcon("remove-state", "course-authoring-state-icon")}<h3>Conteúdo indisponível</h3>` +
       `<p>${escapeHtml(state.initialFailure)}</p>` +
       '<button type="button" data-inspection-action="retry">Tentar novamente</button></section>';
   } else if (state.items.length === 0) {
@@ -696,9 +696,9 @@ function renderSequence(state) {
         ? "Parte sem Unidades de estudo"
         : "Nenhuma Unidade de estudo materializada"}</h3>` +
       `<p>${partScope ? "Esta Parte ainda não tem Unidades de estudo." :
-        "Este escopo ainda não possui materialização para inspecionar."}</p></section>`;
+        "Este escopo ainda não possui materialização para conferir."}</p></section>`;
   } else {
-    body = '<ol class="course-inspection-sequence" aria-label="Sequência vertical de inspeção">' +
+    body = '<ol class="course-inspection-sequence" aria-label="Sequência curricular de Unidades">' +
       `<li class="course-inspection-spacer" aria-hidden="true" style="height:${Math.round(beforeCount * state.averageHeight)}px"></li>` +
       renderBoundaryButton("backward", state) +
       state.items.map((item) => renderStudyUnit(
@@ -715,10 +715,10 @@ function renderSequence(state) {
   return '<section class="course-authoring-section course-authoring-inspection"' +
     ' aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Inspeção</h2>' +
+    '<h2 id="course-authoring-section-title">Unidades</h2>' +
     `<p>${state.totalCount} ${state.totalCount === 1 ? "Unidade de estudo" : "Unidades de estudo"}</p></div>` +
     (state.scopeOptions ? renderScopeSelect(state) : "") + "</header>" +
-    `<nav class="course-inspection-sticky-context" aria-label="Navegação na Inspeção">` +
+    `<nav class="course-inspection-sticky-context" aria-label="Navegação entre Unidades">` +
     `<button type="button" data-inspection-action="previous" data-inspection-control-key="previous"` +
     `${!active || (active.ordinal <= 1 && !state.hasPrevious) ? " disabled aria-disabled=\"true\"" : ""}` +
     ` aria-label="Unidade anterior">${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button>` +
@@ -762,13 +762,13 @@ function normalizeInspectionPosition(value, expectedCourseRevision = null) {
   exactRecord(
     value,
     ["scope", "studyUnitId", "offsetFromStickyTop", "courseRevision"],
-    "A posição local da Inspeção é inválida."
+    "A posição local de Conteúdo é inválida."
   );
   const offset = Number(value.offsetFromStickyTop);
   const courseRevision = natural(value.courseRevision, "A revisão da posição local", { minimum: 1 });
   if (!Number.isFinite(offset) || Math.abs(offset) > 100_000 ||
       (expectedCourseRevision !== null && courseRevision !== expectedCourseRevision)) {
-    throw new TypeError("A posição local da Inspeção é inválida.");
+    throw new TypeError("A posição local de Conteúdo é inválida.");
   }
   return Object.freeze({
     scope: normalizeScope(value.scope),
@@ -805,7 +805,7 @@ export function createCourseInspectionSequence({
        (typeof providerAssistanceSession?.read !== "function" ||
         typeof providerAssistanceSession?.update !== "function" ||
         typeof providerAssistanceSession?.snapshot !== "function"))) {
-    throw new TypeError("Dependências da sequência de Inspeção são inválidas.");
+    throw new TypeError("Dependências da sequência de Conteúdo são inválidas.");
   }
   const scrollTarget = root.closest?.(".course-authoring-root") || windowValue;
   const requested = inspectionRequestFromTarget(routeTarget);
@@ -1134,13 +1134,13 @@ export function createCourseInspectionSequence({
 
   function mergePage(page, direction) {
     if (page.totalCount !== state.totalCount && state.items.length > 0) {
-      throw new TypeError("A quantidade da Inspeção mudou sem nova revisão.");
+      throw new TypeError("A quantidade de Conteúdo mudou sem nova revisão.");
     }
     const items = new Map(state.items.map((item) => [item.studyUnit.id, item]));
     page.items.forEach((item) => items.set(item.studyUnit.id, item));
     const ordered = [...items.values()].sort((left, right) => left.ordinal - right.ordinal);
     if (ordered.some((item, index) => index > 0 && item.ordinal !== ordered[index - 1].ordinal + 1)) {
-      throw new TypeError("As páginas da Inspeção não são contíguas.");
+      throw new TypeError("As páginas de Conteúdo não são contíguas.");
     }
     while (ordered.length > MAX_WINDOW_ITEMS) {
       if (direction === "backward") ordered.pop();
@@ -1607,7 +1607,7 @@ export function createCourseInspectionSequence({
         deepLink: item.deepLink
       })).catch(() => {});
     } catch {
-      // O integrador apresenta a própria falha sem interromper a Inspeção.
+      // O integrador apresenta a própria falha sem interromper Conteúdo.
     }
     return true;
   }

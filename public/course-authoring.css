@@ -751,15 +751,25 @@
   text-align: center;
 }
 
+.course-authoring-course-heading .course-authoring-eyebrow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .course-authoring-course-heading h1 {
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--type-md);
 }
 
 .course-authoring-course-heading .course-authoring-meta {
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: var(--leading-normal);
 }
 
@@ -3606,7 +3616,7 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* A Inspeção é uma única sequência curricular; o DOM mantém no máximo três páginas. */
+/* Conteúdo usa uma única sequência curricular; o DOM mantém no máximo três páginas. */
 .course-authoring-surface[data-section="content"] {
   width: min(100%, 430px);
 }
