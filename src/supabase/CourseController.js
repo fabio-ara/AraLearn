@@ -2723,6 +2723,86 @@ export class CourseController {
     }
   }
 
+  async commitCourseStructuralComposition(value = {}) {
+    if (!this.ownerOnly || typeof this.api.commitCourseStructuralComposition !== "function") {
+      throw new TypeError("A API de Autoria não oferece edição estrutural assistida.");
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value) ||
+        Object.keys(value).some((field) => !new Set([
+          "requestId", "courseId", "expectedCourseRevision", "upserts", "deletes"
+        ]).has(field))) {
+      throw new TypeError("Alteração estrutural assistida inválida.");
+    }
+    const requestId = String(value.requestId || "");
+    const courseId = String(value.courseId || "").trim().toLowerCase();
+    const expectedCourseRevision = Number(value.expectedCourseRevision);
+    const upserts = Array.isArray(value.upserts) ? structuredClone(value.upserts) : null;
+    const deletes = Array.isArray(value.deletes) ? structuredClone(value.deletes) : null;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
+        !UUID_PATTERN.test(courseId) ||
+        !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1 ||
+        !upserts || !deletes || !upserts.length && !deletes.length ||
+        upserts.length > 200 || deletes.length > 200) {
+      throw new TypeError("Alteração estrutural assistida inválida.");
+    }
+    const studyUnitIds = upserts.filter(({ entityType }) => entityType === "study_unit")
+      .map(({ entityId }) => String(entityId || ""));
+    if (new Set(studyUnitIds).size !== studyUnitIds.length) {
+      throw new TypeError("A alteração estrutural repete uma Unidade de estudo.");
+    }
+    try {
+      const sourceAttributionApplications = [];
+      for (const studyUnitId of studyUnitIds) {
+        const sources = await this.loadCourseSources(courseId, {
+          expectedRevision: expectedCourseRevision,
+          mode: "target",
+          targetKind: "study_unit",
+          targetId: studyUnitId,
+          limit: 10
+        });
+        const effective = sources.items.filter(({ effective: active }) => active === true);
+        if (effective.length > 1) {
+          throw new TypeError("A proveniência efetiva da Unidade é ambígua.");
+        }
+        sourceAttributionApplications.push({
+          studyUnitId,
+          sourceLinks: structuredClone(effective[0]?.sourceLinks ?? [])
+        });
+      }
+      const result = await this.api.commitCourseStructuralComposition({
+        requestId,
+        courseId,
+        expectedRevision: expectedCourseRevision,
+        upserts,
+        deletes,
+        sourceAttributionApplications
+      });
+      if (!result || typeof result !== "object" || Array.isArray(result) ||
+          result.courseId !== courseId || result.requestId !== requestId ||
+          !Number.isSafeInteger(Number(result.courseRevision)) ||
+          Number(result.courseRevision) < expectedCourseRevision) {
+        throw new TypeError("A confirmação estrutural não corresponde ao pedido.");
+      }
+      await Promise.all([
+        this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+        this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+        this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`),
+        this.store.deleteCachePrefix(REVIEW_PAGE_CACHE_KEY)
+      ]);
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      }
+      throw error;
+    }
+  }
+
   async #rereadPersonalCopyComposition(pending, receipt, entityPageSize) {
     if (typeof this.api.getCourseEntities !== "function") return null;
     const course = await this.api.getCourse(receipt.courseId, { ownerOnly: false });
@@ -3320,6 +3400,29 @@ export class CourseController {
 
   revokeCourseAccess(values) {
     return this.api.revokeCourseAccess(values);
+  }
+
+  async maintainCourse(values) {
+    if (typeof this.api.maintainCourse !== "function") {
+      throw new TypeError("A API de Cursos não oferece o ciclo de vida solicitado.");
+    }
+    const result = await this.api.maintainCourse(values);
+    await this.#purgeCoursePrivacyCache(result.courseId, { clearLists: true });
+    return result;
+  }
+
+  loadCurrentMaintenance(values) {
+    if (typeof this.api.loadCurrentMaintenance !== "function") {
+      throw new TypeError("A API de Cursos não oferece Manutenção.");
+    }
+    return this.api.loadCurrentMaintenance(values);
+  }
+
+  executeCurrentMaintenance(values) {
+    if (typeof this.api.executeCurrentMaintenance !== "function") {
+      throw new TypeError("A API de Cursos não oferece Manutenção.");
+    }
+    return this.api.executeCurrentMaintenance(values);
   }
 
   uploadAvatar(file, options) {

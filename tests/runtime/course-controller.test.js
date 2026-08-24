@@ -2118,6 +2118,88 @@ test("edição contextual de Unidade sem atribuição preserva proveniência vaz
   assert.deepEqual(result.studyUnit, editableStudyUnit());
 });
 
+test("edição estrutural assistida preserva proveniência por Unidade e é restrita ao proprietário", async () => {
+  const store = new MemoryStateStore();
+  const calls = [];
+  const sourceLinks = [{
+    sourceId: "fonte retirada",
+    sourceRevision: 1,
+    relation: "legacy_reference",
+    anchors: []
+  }];
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseSources(courseId, options) {
+      calls.push(["sources", options.targetId]);
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId,
+        courseRevision: 4,
+        mode: "target",
+        query: { sourceId: null, targetKind: "study_unit", targetId: options.targetId },
+        pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: options.targetId === "unit-a" ? [{
+          attributionId: "30000000-0000-4000-8000-000000000003",
+          targetKind: "study_unit",
+          targetId: "unit-a",
+          targetVersion: 2,
+          targetHash: "a".repeat(64),
+          revision: 3,
+          sourceLinks,
+          actorId: null,
+          createdAt: "2026-08-20T22:40:00.000Z",
+          effective: true
+        }] : [],
+        nextCursor: null
+      };
+    },
+    async commitCourseStructuralComposition(value) {
+      calls.push(["commit", structuredClone(value)]);
+      return {
+        courseId: COURSE_ID,
+        requestId: value.requestId,
+        courseRevision: 5,
+        changed: true,
+        idempotent: false
+      };
+    }
+  };
+  const owner = new CourseController({ api, store, ownerOnly: true });
+  const reader = new CourseController({ api, store });
+  const command = {
+    requestId: "request-structural-edit-0001",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    upserts: [{
+      entityType: "study_unit", entityId: "unit-a", parentType: "microsequence",
+      parentId: "micro-a", position: 1, content: {
+        title: "Unidade revista", role: "theory", content: [], response: null,
+        feedback: [], topics: []
+      }
+    }, {
+      entityType: "study_unit", entityId: "unit-new", parentType: "microsequence",
+      parentId: "micro-a", position: 2, content: {
+        title: "Unidade nova", role: "theory", content: [], response: null,
+        feedback: [], topics: []
+      }
+    }],
+    deletes: []
+  };
+  const result = await owner.commitCourseStructuralComposition(command);
+  assert.equal(result.courseRevision, 5);
+  assert.deepEqual(calls.slice(0, 2), [["sources", "unit-a"], ["sources", "unit-new"]]);
+  assert.deepEqual(calls[2][1].sourceAttributionApplications, [{
+    studyUnitId: "unit-a", sourceLinks
+  }, {
+    studyUnitId: "unit-new", sourceLinks: []
+  }]);
+  await assert.rejects(
+    () => reader.commitCourseStructuralComposition(command),
+    /edição estrutural assistida/u
+  );
+});
+
 test("falha transitória da releitura não transforma receipt confirmado em escrita ambígua", async () => {
   const store = new MemoryStateStore();
   let commits = 0;

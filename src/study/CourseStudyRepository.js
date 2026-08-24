@@ -546,6 +546,42 @@ export class CourseStudyRepository {
     return this.loadProject();
   }
 
+  async maintainCourse({ courseId, operation, confirmed, requestId } = {}) {
+    if (typeof this.bridge.maintainCourse !== "function") {
+      throw new TypeError("O ciclo de vida do Curso não está disponível.");
+    }
+    const result = await this.bridge.maintainCourse({
+      courseId,
+      operation,
+      confirmed,
+      requestId
+    });
+    await this.#purgeRevokedCourses([courseId], { clearLists: true });
+    return result;
+  }
+
+  async clearLocalCourse(courseIdentity) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    if (!courseId) throw new TypeError("O Curso não está acessível.");
+    const personal = this.personalByCourseId.get(courseId);
+    if (personal) await personal.clearLocal();
+    const annotations = this.annotationsByCourseId.get(courseId);
+    if (annotations) {
+      await annotations.clearLocal();
+      annotations.close();
+    }
+    this.personalByCourseId.delete(courseId);
+    this.annotationsByCourseId.delete(courseId);
+    this.loadedCourseById.delete(courseId);
+    this.offlineCourseRevisionById.delete(courseId);
+    this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
+    await this.bridge.clearCourse(courseId, { clearLists: false });
+    await this.clearStudyNavigationPosition?.(courseId);
+    await this.#cacheReviewPage();
+    this.#rebuildProject();
+    return this.loadProject();
+  }
+
   async loadCourse(courseIdentity) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
