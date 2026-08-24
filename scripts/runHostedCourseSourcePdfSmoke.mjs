@@ -57,7 +57,10 @@ async function parseJson(response, label) {
   try {
     return source ? JSON.parse(source) : null;
   } catch {
-    throw new Error(`${label} não devolveu JSON válido.`);
+    const contentType = text(response.headers.get("content-type")) || "sem Content-Type";
+    throw new Error(
+      `${label} não devolveu JSON válido (HTTP ${response.status}; ${contentType}).`
+    );
   }
 }
 
@@ -729,7 +732,7 @@ export async function readHostedCourseSourcePdfEnvironment(environment = process
   let keys;
   try {
     keys = JSON.parse(runSupabase([
-      "projects", "api-keys", "--project-ref", projectRef, "--reveal", "--output", "json"
+      "projects", "api-keys", "--project-ref", projectRef, "--output", "json"
     ]));
   } catch {
     throw new Error("As chaves hospedadas não puderam ser lidas para o smoke PDF.");

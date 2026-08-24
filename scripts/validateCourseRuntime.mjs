@@ -253,7 +253,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260824130000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260824150000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -313,6 +313,12 @@ async function validateManifest() {
   );
   const actionsMigration = await read(
     "supabase/migrations/20260824130000_restore_gpt_actions_openapi.sql"
+  );
+  const actionsLegacyDetachmentMigration = await read(
+    "supabase/migrations/20260824140000_detach_gpt_actions_from_legacy_oauth.sql"
+  );
+  const legacyRemovalMigration = await read(
+    "supabase/migrations/20260824150000_remove_pre_course_runtime.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -407,6 +413,21 @@ async function validateManifest() {
       ) ||
       !actionsMigration.includes(
         "gpt-actions-openapi-v1"
+      ) ||
+      !actionsLegacyDetachmentMigration.includes(
+        "$advance_actions_runtime_manifest$"
+      ) ||
+      !actionsLegacyDetachmentMigration.includes(
+        "to_jsonb('20260824140000'::text)"
+      ) ||
+      actionsLegacyDetachmentMigration.includes(
+        "v_principal := public.resolve_authoring_oauth_principal"
+      ) ||
+      !legacyRemovalMigration.includes(
+        "to_jsonb('20260824150000'::text)"
+      ) ||
+      !legacyRemovalMigration.includes(
+        "if v_object_count <> 758"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }

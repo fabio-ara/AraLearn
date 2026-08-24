@@ -519,22 +519,6 @@
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
       "justification": "Aplicativo, MCP e Actions reutilizam o mesmo executor de Curso. MCP mantém seu protocolo e principal OAuth; Actions publica cinco operações HTTP e um OpenAPI próprio para GPT personalizado, sem converter um canal no outro nem criar segundo motor de autoria."
-    },
-    {
-      "id": "pre-course-database-removal",
-      "intent": "Isolar os objetos físicos do modelo substituído que ainda aguardam remoção definitiva em #155.",
-      "classification": "remove",
-      "status": "scheduled-removal",
-      "removeBy": "#155",
-      "objects": {
-        "databaseInternalPatterns": [
-          "^(?:table|view|materialized_view|function|bucket|index|constraint|trigger|policy|rls):.+$"
-        ]
-      },
-      "tests": [
-        "tests/runtime/vertical-parity-audit.test.js"
-      ],
-      "justification": "O seletor residual só recebe objetos sem vínculo com um caso corrente. Assim, o inventário conserva visibilidade do legado físico sem sobrepor Curso, estado pessoal, perfil, acesso, componentes didáticos ou OAuth."
     }
   ]
 }

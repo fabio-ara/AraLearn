@@ -292,7 +292,7 @@ objetos que não são eliminados automaticamente pelo PostgreSQL.
 
 Migrações em `supabase/migrations/` são a história reproduzível do banco. A
 revisão hospedada corrente e a revisão implantável declarada em
-`supabase/runtime-manifest.json` são `20260821191340`. Uma migração que
+`supabase/runtime-manifest.json` são `20260824150000`. Uma migração que
 acrescenta capacidade deve:
 
 - fazer verificações prévias e falhar diante de estado incompatível;
@@ -301,17 +301,9 @@ acrescenta capacidade deve:
 - atualizar o manifesto somente depois do contrato completo;
 - incluir testes locais e verificação do ambiente hospedado.
 
-A migração dos Cursos hospedados para o modelo corrente usa
-`scripts/courseCutover/runCourseIdentityCutover.mjs`. O modo de preparação
-calcula e registra a fonte sem alterar o banco. A aplicação revalida o mesmo
-resumo criptográfico e executa todas as etapas em uma transação PostgreSQL, seguida de
-recomposição e comparação dos Cursos.
-
-Estruturas físicas substituídas podem permanecer até a limpeza controlada. Essa
-limpeza é uma operação distinta: requer inventário exato, varredura de
-consumidores, cópia verificada, ensaio de restauração em destino descartável,
-plano ligado ao estado observado e confirmação específica. A atualização
-normal por migração não deve ocultar essa destruição.
+O esquema implantável contém apenas as autoridades correntes de Curso. Estruturas
+substituídas não permanecem como caminho alternativo; recuperação depende de
+backup e das versões anteriores preservadas no Git.
 
 ## Verificação
 

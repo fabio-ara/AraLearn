@@ -4,6 +4,19 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [2.0.1] - 2026-08-24
+
+### Alterado
+
+- instalações novas e atualizações passam a conservar somente o modelo
+  corrente de Curso, sem estruturas anteriores concorrendo com Estudo,
+  Autoria, Pesquisa ou integrações.
+
+### Corrigido
+
+- Actions/OpenAPI resolve a identidade pelo contrato próprio e não depende do
+  resolvedor OAuth do MCP.
+
 ## [2.0.0] - 2026-08-24
 
 ### Adicionado

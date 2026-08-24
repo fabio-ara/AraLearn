@@ -186,3 +186,24 @@ test("migration de Actions restaura somente a execução server-side do OAuth", 
   assert.match(migration, /from public, anon, authenticated, service_role;/u);
   assert.match(migration, /has_function_privilege\([\s\S]+?'authenticated'[\s\S]+?'EXECUTE'[\s\S]+?\)/u);
 });
+
+test("OAuth de Actions resolve a pessoa sem consumir o resolvedor legado", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../supabase/migrations/20260824140000_detach_gpt_actions_from_legacy_oauth.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  assert.match(migration, /join auth\.users account_value/u);
+  assert.match(migration, /join public\.person_profiles profile_value/u);
+  assert.match(migration, /'contract', 'aralearn\.action-oauth-principal\.v1'/u);
+  assert.doesNotMatch(
+    migration,
+    /v_principal\s*:=\s*public\.resolve_authoring_oauth_principal/u
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.resolve_authoring_action_oauth_principal_v4\(text\)\s+to service_role;/u
+  );
+});

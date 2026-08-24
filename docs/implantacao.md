@@ -55,9 +55,9 @@ Chrome nem a prova hospedada quando o contrato remoto mudou.
 
 As migrations são cumulativas e transacionais quando o PostgreSQL permite. O
 manifesto corrente termina em
-`20260824130000_restore_gpt_actions_openapi.sql`. Antes de aplicar, confira que
-o projeto ligado é o destino pretendido e que o backup exigido pela operação
-existe e pode ser restaurado.
+`20260824150000_remove_pre_course_runtime.sql`. Antes de aplicar, confira que o
+projeto ligado é o destino pretendido e mantenha o backup operacional previsto
+para o ambiente.
 
 As Edge Functions possuem responsabilidades distintas:
 

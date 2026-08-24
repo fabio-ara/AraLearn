@@ -41,28 +41,8 @@ function Invoke-AraLearnSupabase {
 }
 
 function Invoke-AraLearnDatabaseLintGate {
-  $lintJsonPath = [System.IO.Path]::GetTempFileName()
-  try {
-    & npx.cmd --yes supabase@2.115.0 db lint --linked --level warning `
-      --output-format json > $lintJsonPath
-    $lintExitCode = $LASTEXITCODE
-    if ($lintExitCode -ne 0) {
-      return [int]$lintExitCode
-    }
-
-    $gateOutput = & node .\scripts\auditLegacyDbLint.mjs $lintJsonPath
-    $gateExitCode = $LASTEXITCODE
-    if ($gateOutput) {
-      Write-Host ($gateOutput -join [Environment]::NewLine)
-    }
-    if ($gateExitCode -ne 0) {
-      throw 'O lint do banco divergiu da baseline exata da limpeza legada.'
-    }
-    return [int]0
-  }
-  finally {
-    Remove-Item -LiteralPath $lintJsonPath -Force -ErrorAction SilentlyContinue
-  }
+  & npx.cmd --yes supabase@2.115.0 db lint --linked --level warning
+  return [int]$LASTEXITCODE
 }
 
 function Assert-AllowedOrigin {

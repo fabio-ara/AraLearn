@@ -178,8 +178,7 @@ Recrie o banco do zero após a alteração:
 
 ```powershell
 npx.cmd --yes supabase@2.115.0 db reset
-npx.cmd --yes supabase@2.115.0 db lint --local --level warning --output-format json |
-  node .\scripts\auditLegacyDbLint.mjs -
+npx.cmd --yes supabase@2.115.0 db lint --local --level warning
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
@@ -189,7 +188,7 @@ quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
 os testes correspondentes existirem. O manifesto corrente aponta para
-`20260824130000` e precisa coincidir com a revisão exposta pelo backend
+`20260824150000` e precisa coincidir com a revisão exposta pelo backend
 hospedado.
 
 ## Testes focais

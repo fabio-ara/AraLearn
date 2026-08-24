@@ -6,6 +6,9 @@ import {
 } from "../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const packageMetadata = JSON.parse(
+  await fs.readFile(path.join(root, "package.json"), "utf8")
+);
 const target = path.join(
   root,
   "docs",
@@ -67,7 +70,7 @@ const document = {
   openapi: "3.1.0",
   info: {
     title: "AraLearn — Autoria de Cursos",
-    version: "2.0.0",
+    version: packageMetadata.version,
     description:
       "Permite que um GPT personalizado opere os Cursos próprios da pessoa conectada pelos contratos correntes do AraLearn."
   },

@@ -259,18 +259,7 @@ jobs:
 
       - name: Conferir o lint do banco
         shell: bash
-        run: |
-          lint_json="$(mktemp)"
-          trap 'rm -f "$lint_json"' EXIT
-          set +e
-          npx --yes supabase@2.115.0 db lint --local --level warning \
-            --output-format json > "$lint_json"
-          lint_status=$?
-          set -e
-          if [ "$lint_status" -ne 0 ]; then
-            exit "$lint_status"
-          fi
-          node scripts/auditLegacyDbLint.mjs "$lint_json"
+        run: npx --yes supabase@2.115.0 db lint --local --level warning
 
       - name: Testar concorrência real dos pedidos de Curso
         shell: bash
