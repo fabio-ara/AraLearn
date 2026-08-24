@@ -92,7 +92,9 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
   assert.equal(COURSE_MCP_TOOLS.find(({ name }) => name === "listarCursos")._meta, undefined);
   assert.deepEqual(COURSE_APPLICATION_ONLY_TOOLS, [
     { name: "gerirPessoas" },
-    { name: "criarCopiaPessoalDoCurso" }
+    { name: "criarCopiaPessoalDoCurso" },
+    { name: "manterCursos" },
+    { name: "manterAraLearn" }
   ]);
   assert.equal(authoringApplicationToolDefinition("gerirPessoas")?.name, "gerirPessoas");
   assert.equal(authoringMcpToolIsAllowed("gerirPessoas", {
@@ -115,7 +117,52 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     actorId: COURSE_ID,
     scopes: ["authoring:write"]
   }), true);
+  for (const name of ["manterCursos", "manterAraLearn"]) {
+    assert.equal(authoringApplicationToolDefinition(name)?.name, name);
+    assert.equal(authoringMcpToolIsAllowed(name, {
+      actorId: COURSE_ID,
+      scopes: ["authoring:write"]
+    }), false);
+    assert.equal(authoringApplicationToolIsAllowed(name, {
+      actorId: COURSE_ID,
+      scopes: ["authoring:write"]
+    }), true);
+  }
   assert.doesNotMatch(serialized, /criarCopiaPessoalDoCurso/u);
+  assert.doesNotMatch(serialized, /manterCursos|manterAraLearn/u);
+});
+
+test("aplicação mapeia ciclo de vida e Manutenção sem expô-los ao MCP", () => {
+  assert.deepEqual(mapAuthoringApplicationToolCall("manterCursos", {
+    operation: "delete_owned_course",
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    confirmed: true
+  }), {
+    kind: "route",
+    method: "DELETE",
+    path: `/v1/courses/${COURSE_ID}`,
+    requestId: REQUEST_ID,
+    body: {
+      requestId: REQUEST_ID,
+      operation: "delete_owned_course",
+      confirmed: true
+    }
+  });
+  assert.deepEqual(mapAuthoringApplicationToolCall("manterAraLearn", {
+    operation: "inspect",
+    limit: 40
+  }), {
+    kind: "route",
+    method: "GET",
+    path: "/v1/maintenance?limit=40",
+    requestId: null,
+    body: null
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("manterCursos", {}),
+    (error) => error.code === "unknown_tool"
+  );
 });
 
 test("cópia pessoal é ação fechada da aplicação e não altera o contrato MCP", () => {

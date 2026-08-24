@@ -38,6 +38,7 @@ import {
   COURSE_SOURCE_PDF_MEDIA_TYPE,
   normalizeCourseSourceAttachmentAccess,
   normalizeCourseSourceAttributionApplication,
+  normalizeSourceAttributionApplications,
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcesRead,
@@ -1417,6 +1418,31 @@ export class CourseApiClient {
     return normalizeFocalStudyUnitCompositionReceipt(result, command);
   }
 
+  commitCourseStructuralComposition(value = {}) {
+    const source = exactObject(value, new Set([
+      "requestId", "courseId", "expectedRevision", "upserts", "deletes",
+      "sourceAttributionApplications"
+    ]), "Alteração estrutural assistida");
+    const upserts = Array.isArray(source.upserts) ? structuredClone(source.upserts) : null;
+    const deletes = Array.isArray(source.deletes) ? structuredClone(source.deletes) : null;
+    if (!upserts || !deletes || !upserts.length && !deletes.length ||
+        upserts.length > 200 || deletes.length > 200) {
+      throw new TypeError("Alteração estrutural assistida inválida.");
+    }
+    const bounded = boundedJsonObject({ upserts, deletes }, "Alteração estrutural assistida", 480 * 1024);
+    return this.executeCourseAction("alterarCurso", {
+      requestId: requestIdentity(source.requestId),
+      courseId: uuid(source.courseId, "Curso"),
+      expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
+      operation: "commit_course_composition",
+      upserts: bounded.upserts,
+      deletes: bounded.deletes,
+      sourceAttributionApplications: normalizeSourceAttributionApplications(
+        source.sourceAttributionApplications
+      )
+    });
+  }
+
   async commitPersonalCourseCopyEdit(value = {}) {
     const command = normalizePersonalCourseCopyEditCommand(value);
     let result;
@@ -1655,6 +1681,82 @@ export class CourseApiClient {
       userId: uuid(userId, "Pessoa"),
       confirmed: true,
       requestId: uuid(requestId, "Identidade da alteração")
+    });
+  }
+
+  async maintainCourse({
+    courseId,
+    operation,
+    confirmed,
+    requestId = createUuid()
+  } = {}) {
+    const normalizedOperation = String(operation || "").trim();
+    if (confirmed !== true || !new Set([
+      "delete_owned_course", "leave_shared_course"
+    ]).has(normalizedOperation)) {
+      throw new TypeError("Operação de ciclo de vida do Curso inválida.");
+    }
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const normalizedRequestId = requestIdentity(requestId);
+    const result = await this.executeCourseAction("manterCursos", {
+      courseId: normalizedCourseId,
+      operation: normalizedOperation,
+      confirmed: true,
+      requestId: normalizedRequestId
+    });
+    if (!result || typeof result !== "object" || Array.isArray(result) ||
+        result.contract !== "aralearn.course-lifecycle.v1" ||
+        result.courseId !== normalizedCourseId ||
+        result.operation !== normalizedOperation ||
+        result.requestId !== normalizedRequestId ||
+        typeof result.changed !== "boolean" ||
+        typeof result.fileCleanupPending !== "boolean" ||
+        !new Set(["completed", "already_absent"]).has(result.status)) {
+      throw new TypeError("A confirmação do ciclo de vida do Curso é inválida.");
+    }
+    return structuredClone(result);
+  }
+
+  loadCurrentMaintenance({ limit = 100 } = {}) {
+    return this.executeCourseAction("manterAraLearn", {
+      operation: "inspect",
+      limit: positiveInteger(limit, "Limite da Manutenção", { maximum: 500 })
+    });
+  }
+
+  executeCurrentMaintenance({
+    operation,
+    limit = null,
+    classification = null,
+    objectPath = null,
+    confirmed
+  } = {}) {
+    const normalizedOperation = String(operation || "").trim();
+    if (confirmed !== true || !new Set([
+      "run_retention", "remove_orphan_object"
+    ]).has(normalizedOperation)) {
+      throw new TypeError("Ação de Manutenção inválida.");
+    }
+    if (normalizedOperation === "run_retention") {
+      return this.executeCourseAction("manterAraLearn", {
+        operation: normalizedOperation,
+        limit: positiveInteger(limit, "Limite da retenção", { maximum: 1000 }),
+        confirmed: true
+      });
+    }
+    const normalizedClassification = String(classification || "").trim();
+    const normalizedPath = String(objectPath || "").trim();
+    if (!new Set([
+      "avatar_owner_missing", "avatar_profile_unlinked",
+      "pdf_course_missing", "pdf_unlinked"
+    ]).has(normalizedClassification) || !normalizedPath || normalizedPath.length > 500) {
+      throw new TypeError("Resíduo de Manutenção inválido.");
+    }
+    return this.executeCourseAction("manterAraLearn", {
+      operation: normalizedOperation,
+      classification: normalizedClassification,
+      objectPath: normalizedPath,
+      confirmed: true
     });
   }
 

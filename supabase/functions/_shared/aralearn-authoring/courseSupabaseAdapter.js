@@ -181,6 +181,23 @@ function accountStorageObjectKey(item, prefix) {
   return objectKey;
 }
 
+function maintenanceObjectPath(value, bucket) {
+  const normalized = String(value || "").trim();
+  const pattern = bucket === PERSON_AVATAR_BUCKET
+    ? /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/u
+    : bucket === COURSE_SOURCE_ATTACHMENT_BUCKET
+      ? /^[0-9a-f-]{36}\/[a-f0-9]{64}\.pdf$/u
+      : null;
+  if (!pattern?.test(normalized) || normalized.length > 500) {
+    throw new AuthoringApiError(
+      503,
+      "invalid_maintenance_state",
+      "O inventário de Manutenção devolveu um objeto inválido."
+    );
+  }
+  return normalized;
+}
+
 function accountDeletionResult(value) {
   const result = first(value);
   if (!exactRecord(result, new Set(["contract", "status"])) ||
@@ -2188,6 +2205,19 @@ export class CourseSupabaseAdapter {
     throw accountDeletionUnavailable();
   }
 
+  async #deleteMaintenanceObject(bucket, objectPath, { deadlineAt = null } = {}) {
+    const normalizedPath = maintenanceObjectPath(objectPath, bucket);
+    await this.#request(
+      `${this.supabaseUrl}/storage/v1/object/${bucket}`,
+      {
+        method: "DELETE",
+        headers: supabaseServerHeaders(this.serverApiKey),
+        body: JSON.stringify({ prefixes: [normalizedPath] })
+      },
+      { deadlineAt, responseLimitBytes: 128 * 1024 }
+    );
+  }
+
   rpc(functionName, payload, options = {}) {
     return this.#request(`${this.supabaseUrl}/rest/v1/rpc/${functionName}`, {
       method: "POST",
@@ -2245,6 +2275,137 @@ export class CourseSupabaseAdapter {
       actorId,
       authenticationKind: "application",
       scopes: ["authoring:read", "authoring:write"]
+    };
+  }
+
+  async resolveApplicationUser(jwt, { deadlineAt = null } = {}) {
+    const principal = await this.resolveApplicationPrincipal(jwt, { deadlineAt });
+    return { id: principal.actorId };
+  }
+
+  async createActionOAuthClientSetup({
+    creatorUserId,
+    clientName,
+    clientSecretHash
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("create_authoring_action_oauth_client_setup_v4", {
+      p_creator_user_id: creatorUserId,
+      p_client_name: clientName,
+      p_client_secret_hash: clientSecretHash
+    }, { deadlineAt }));
+  }
+
+  async linkActionOAuthClient({
+    creatorUserId,
+    clientId,
+    gptId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("link_authoring_action_oauth_client_v4", {
+      p_creator_user_id: creatorUserId,
+      p_client_id: clientId,
+      p_gpt_id: gptId
+    }, { deadlineAt }));
+  }
+
+  async createActionOAuthAuthorization({
+    clientId,
+    redirectUri,
+    state,
+    scope
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("create_authoring_action_oauth_authorization_v4", {
+      p_client_id: clientId,
+      p_redirect_uri: redirectUri,
+      p_state: state,
+      p_scope: scope
+    }, { deadlineAt }));
+  }
+
+  async getActionOAuthAuthorization({
+    authorizationId,
+    userId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("get_authoring_action_oauth_authorization_v4", {
+      p_authorization_id: authorizationId,
+      p_user_id: userId
+    }, { deadlineAt }));
+  }
+
+  async decideActionOAuthAuthorization({
+    authorizationId,
+    userId,
+    action,
+    codeHash = null
+  }, { deadlineAt = null } = {}) {
+    const functionName = action === "approve"
+      ? "approve_authoring_action_oauth_authorization_v4"
+      : "deny_authoring_action_oauth_authorization_v4";
+    return first(await this.rpc(functionName, {
+      p_authorization_id: authorizationId,
+      p_user_id: userId,
+      ...(action === "approve" ? { p_code_hash: codeHash } : {})
+    }, { deadlineAt }));
+  }
+
+  async exchangeActionOAuthCode({
+    clientId,
+    clientSecretHash,
+    codeHash,
+    redirectUri,
+    accessTokenHash,
+    refreshTokenHash,
+    grantId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("exchange_authoring_action_oauth_code_v4", {
+      p_client_id: clientId,
+      p_client_secret_hash: clientSecretHash,
+      p_code_hash: codeHash,
+      p_redirect_uri: redirectUri,
+      p_access_token_hash: accessTokenHash,
+      p_refresh_token_hash: refreshTokenHash,
+      p_grant_id: grantId
+    }, { deadlineAt }));
+  }
+
+  async exchangeActionOAuthRefresh({
+    clientId,
+    clientSecretHash,
+    refreshTokenHash,
+    accessTokenHash,
+    newRefreshTokenHash
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("exchange_authoring_action_oauth_refresh_v4", {
+      p_client_id: clientId,
+      p_client_secret_hash: clientSecretHash,
+      p_refresh_token_hash: refreshTokenHash,
+      p_access_token_hash: accessTokenHash,
+      p_new_refresh_token_hash: newRefreshTokenHash
+    }, { deadlineAt }));
+  }
+
+  async resolveActionPrincipal(accessTokenHash, { deadlineAt = null } = {}) {
+    const principal = first(await this.rpc(
+      "resolve_authoring_action_oauth_principal_v4",
+      { p_access_token_hash: accessTokenHash },
+      { deadlineAt, retry: false, responseLimitBytes: 16 * 1024 }
+    ));
+    if (!principal || principal.active === false) {
+      throw new AuthoringApiError(
+        401,
+        "invalid_oauth_token",
+        "O access token não corresponde a uma autorização Actions ativa."
+      );
+    }
+    const actorId = principal.actorId || principal.actor_id
+      || principal.actorUserId || principal.actor_user_id;
+    if (!UUID_PATTERN.test(String(actorId || ""))) {
+      throw new AuthoringApiError(401, "invalid_oauth_token", "Identidade Actions inválida.");
+    }
+    return {
+      actorId,
+      authenticationKind: "action",
+      scopes: ["authoring:read", "authoring:write"],
+      oauthClientId: principal.oauthClientId || principal.oauth_client_id
     };
   }
 
@@ -3018,6 +3179,126 @@ export class CourseSupabaseAdapter {
       p_confirmed: confirmed,
       p_request_id: requestId
     }, { deadlineAt }));
+  }
+
+  async maintainCourse({
+    principal,
+    courseId,
+    operation,
+    confirmed,
+    requestId,
+    deadlineAt = null
+  }) {
+    const result = first(await this.rpc("maintain_course_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_operation: operation,
+      p_confirmed: confirmed,
+      p_request_id: requestId
+    }, { deadlineAt, timeoutMs: 60_000 }));
+    if (!exactRecord(result, new Set([
+      "contract", "courseId", "operation", "status", "changed", "requestId"
+    ])) || result.contract !== "aralearn.course-lifecycle.v1" ||
+        result.courseId !== courseId || result.operation !== operation ||
+        result.requestId !== requestId || typeof result.changed !== "boolean" ||
+        !new Set(["completed", "already_absent"]).has(result.status)) {
+      throw new AuthoringApiError(
+        503,
+        "invalid_course_lifecycle_state",
+        "O serviço devolveu um ciclo de vida de Curso inválido."
+      );
+    }
+    let fileCleanupPending = false;
+    if (operation === "delete_owned_course" && result.changed) {
+      try {
+        await this.#deleteAccountStoragePrefix(
+          COURSE_SOURCE_ATTACHMENT_BUCKET,
+          `${courseId}/`,
+          { deadlineAt }
+        );
+      } catch {
+        fileCleanupPending = true;
+      }
+    }
+    return { ...result, fileCleanupPending };
+  }
+
+  async getCurrentMaintenance({ principal, limit = 100, deadlineAt = null }) {
+    const result = first(await this.rpc("get_current_maintenance_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_limit: limit
+    }, { deadlineAt, responseLimitBytes: 512 * 1024 }));
+    if (!result || typeof result !== "object" || Array.isArray(result) ||
+        result.contract !== "aralearn.current-maintenance.v1" ||
+        result.role !== "administrator" ||
+        !result.inventory || typeof result.inventory !== "object" ||
+        !Array.isArray(result.inventory.items)) {
+      throw new AuthoringApiError(
+        503,
+        "invalid_maintenance_state",
+        "O serviço devolveu um estado de Manutenção inválido."
+      );
+    }
+    return result;
+  }
+
+  async executeCurrentMaintenance({
+    principal,
+    operation,
+    confirmed,
+    limit = 100,
+    classification = null,
+    objectPath = null,
+    deadlineAt = null
+  }) {
+    let result;
+    if (operation === "run_retention") {
+      result = first(await this.rpc("run_current_retention_for_actor_v1", {
+        p_actor_id: principal.actorId,
+        p_limit: limit,
+        p_confirmed: confirmed
+      }, { deadlineAt, timeoutMs: 60_000 }));
+      if (result?.contract !== "aralearn.current-data-retention.v1") {
+        throw new AuthoringApiError(
+          503,
+          "invalid_maintenance_state",
+          "A retenção devolveu um resultado inválido."
+        );
+      }
+    } else {
+      const authorization = first(await this.rpc(
+        "authorize_current_orphan_removal_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_classification: classification,
+          p_object_path: objectPath,
+          p_confirmed: confirmed
+        },
+        { deadlineAt }
+      ));
+      if (!authorization || authorization.authorized !== true ||
+          authorization.contract !== "aralearn.current-maintenance-removal.v1" ||
+          authorization.classification !== classification ||
+          authorization.objectPath !== objectPath) {
+        throw new AuthoringApiError(
+          503,
+          "invalid_maintenance_state",
+          "A autorização de remoção do resíduo é inválida."
+        );
+      }
+      await this.#deleteMaintenanceObject(
+        authorization.bucketId,
+        authorization.objectPath,
+        { deadlineAt }
+      );
+      result = { ...authorization, removed: true };
+    }
+    return {
+      contract: "aralearn.current-maintenance-action.v1",
+      operation,
+      result,
+      state: await this.getCurrentMaintenance({ principal, limit: 100, deadlineAt })
+    };
   }
 
   async createCourse({ principal, requestId, title, objective, deadlineAt = null }) {

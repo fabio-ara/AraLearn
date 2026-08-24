@@ -261,7 +261,7 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /function quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?cleanupApplication\?\.\(\);[\s\S]*?lifecycleAbortController\?\.abort\(\);[\s\S]*?studyUnitProviderSession\?\.destroy\?\.\(\);[\s\S]*?async function closeAraLearnLocalConnections\(\)[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\);[\s\S]*?if \(pendingCompositionCleanup\) await pendingCompositionCleanup\(\);[\s\S]*?courseLocalStore\?\.close\(\)/u,
+    /function quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?cleanupApplication\?\.\(\);[\s\S]*?lifecycleAbortController\?\.abort\(\);[\s\S]*?courseProviderSession\?\.destroy\?\.\(\);[\s\S]*?async function closeAraLearnLocalConnections\(\)[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\);[\s\S]*?if \(pendingCompositionCleanup\) await pendingCompositionCleanup\(\);[\s\S]*?courseLocalStore\?\.close\(\)/u,
     "Logout deve purgar snapshots autorais confirmados antes de fechar o IndexedDB."
   );
   assert.match(

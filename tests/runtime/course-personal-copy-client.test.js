@@ -1363,14 +1363,7 @@ test("replay idempotente avançado usa a cabeça atual sem criar Desfazer", asyn
   assert.equal(root.innerHTML.includes("Sua cópia já avançou"), true);
   assert.equal(root.innerHTML.includes("Cabeça pessoal atual"), true);
   assert.equal(root.innerHTML.includes("Conteúdo preservado na revisão 3."), true);
-  const undoButton = root.innerHTML.match(
-    /<button[^>]*data-action="study-manual-undo"[^>]*>/u
-  )?.[0];
-  assert.ok(undoButton);
-  assert.match(undoButton, /disabled aria-disabled="true"/u);
-
-  root.click("study-manual-undo");
-  await nextTurn();
+  assert.equal(root.innerHTML.includes('data-action="study-manual-undo"'), false);
 
   assert.equal(root.innerHTML.includes("Cabeça pessoal atual"), true);
   assert.equal(root.innerHTML.includes("Primeira alteração P."), false);

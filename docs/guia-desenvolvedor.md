@@ -188,10 +188,9 @@ comprova a pessoa no corpo da operação. Tabelas expostas exigem tanto privilé
 quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
-os testes correspondentes existirem. A linha publicada dos clientes 0.0.27
-aponta para `20260821191340`, com 36 capacidades obrigatórias, a mesma revisão
-exposta pelo backend hospedado, com a API de Cursos na revisão 13 e o MCP na
-revisão 128.
+os testes correspondentes existirem. O manifesto corrente aponta para
+`20260824130000` e precisa coincidir com a revisão exposta pelo backend
+hospedado.
 
 ## Testes focais
 

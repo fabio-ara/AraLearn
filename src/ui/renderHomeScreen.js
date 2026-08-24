@@ -169,6 +169,17 @@ function renderCoursePreview({
       : "Disponível com conexão";
   const buttonCopy = loading ? "Abrindo…" : error ? "Tentar novamente" : action;
   const accessibleAction = `${buttonCopy} ${title}`;
+  const lifecycleAction = owned
+    ? {
+        action: "delete-owned-course",
+        label: "Excluir este Curso",
+        description: "Exclui o Curso próprio e seus dados compartilhados."
+      }
+    : {
+        action: "leave-shared-course",
+        label: "Sair deste Curso",
+        description: "Encerra somente o seu acesso ao Curso compartilhado."
+      };
   return (
     '<article class="progress-card home-course-selector-preview" data-course-id="' +
     escapeHtml(entityId(course)) + '">' +
@@ -204,7 +215,14 @@ function renderCoursePreview({
     '" aria-label="' + escapeHtml(accessibleAction) + '"' +
     (loading || unavailableOffline ? ' disabled aria-disabled="true"' : "") + ">" +
     renderUiIcon("play", "home-tab-icon") + '<span>' + escapeHtml(buttonCopy) +
-    "</span></button></div>" +
+    "</span></button>" +
+    '<details class="home-course-lifecycle"><summary>Ações deste Curso</summary>' +
+    '<p>' + escapeHtml(lifecycleAction.description) + '</p>' +
+    '<button class="open-mini is-danger" type="button" data-action="' +
+    lifecycleAction.action + '" data-course-id="' + escapeHtml(entityId(course)) + '"' +
+    (loading ? ' disabled aria-disabled="true"' : '') + '>' +
+    renderUiIcon("trash", "home-tab-icon") + '<span>' +
+    escapeHtml(lifecycleAction.label) + '</span></button></details></div>' +
     (loading
       ? '<p class="home-course-loading" role="status">Preparando este Curso…</p>'
       : "") + "</article>"

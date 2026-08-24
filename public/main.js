@@ -18,8 +18,8 @@ import {
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
-import { createStudyUnitProviderSession } from
-  "../src/ui/StudyUnitProviderAssistance.js";
+import { createCourseProviderSession } from
+  "../src/ui/CourseProviderAssistance.js";
 
 let authStore = null;
 let courseLocalStore = null;
@@ -28,7 +28,7 @@ let authenticationShutdown = null;
 let activeUserId = null;
 let lifecycleAbortController = null;
 let localConnectionRefreshPending = false;
-let studyUnitProviderSession = null;
+let courseProviderSession = null;
 let pendingCompositionCleanup = null;
 let authenticatedApplicationCleanup = null;
 let removeLocalDataOnShutdown = false;
@@ -54,8 +54,8 @@ function quiesceAraLearnAuthenticatedInteractions() {
   cleanupApplication?.();
   lifecycleAbortController?.abort();
   lifecycleAbortController = null;
-  studyUnitProviderSession?.destroy?.();
-  studyUnitProviderSession = null;
+  courseProviderSession?.destroy?.();
+  courseProviderSession = null;
 }
 
 async function closeAraLearnLocalConnections() {
@@ -328,6 +328,21 @@ function renderSettings(root, authClient, controller, {
               <button class="is-danger" type="button" data-settings-signout-clear>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair e remover dados deste dispositivo</span></button>
             </div>
           </section>
+          <section class="account-maintenance" data-settings-maintenance hidden aria-labelledby="account-maintenance-title">
+            <div class="account-maintenance-heading">
+              <div>
+                <h2 id="account-maintenance-title">Manutenção</h2>
+                <p>Estado corrente de retenção e resíduos que o AraLearn sabe classificar com segurança.</p>
+              </div>
+              <button class="icon-ghost" type="button" data-maintenance-reload title="Atualizar Manutenção" aria-label="Atualizar Manutenção">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
+            </div>
+            <p data-maintenance-status role="status" aria-live="polite"></p>
+            <div data-maintenance-summary></div>
+            <div class="account-maintenance-actions">
+              <button type="button" data-maintenance-retention>${renderUiIcon("rotate", "account-settings-action-icon")}<span>Executar retenção corrente</span></button>
+            </div>
+            <div data-maintenance-inventory></div>
+          </section>
           <div class="account-danger-zone">
             <button class="icon-ghost is-danger" type="button" data-settings-delete-account title="Excluir conta" aria-label="Excluir conta">${renderUiIcon("trash", "account-settings-action-icon")}</button>
             <span>Excluir conta, Cursos próprios e cópias pessoais</span>
@@ -355,6 +370,10 @@ function renderSettings(root, authClient, controller, {
   const profileFile = root.querySelector("[data-profile-avatar-file]");
   const profileImage = root.querySelector("[data-profile-avatar-image]");
   const profileFallback = root.querySelector("[data-profile-avatar-fallback]");
+  const maintenance = root.querySelector("[data-settings-maintenance]");
+  const maintenanceStatus = root.querySelector("[data-maintenance-status]");
+  const maintenanceSummary = root.querySelector("[data-maintenance-summary]");
+  const maintenanceInventory = root.querySelector("[data-maintenance-inventory]");
   let profile = null;
   let avatarUrl = "";
   let selectedFile = null;
@@ -362,6 +381,92 @@ function renderSettings(root, authClient, controller, {
   let pendingAvatarResolution = null;
   let profileLoading = null;
   let settingsOpener = null;
+  let maintenanceState = null;
+  let maintenanceLoading = false;
+
+  const maintenanceLabels = Object.freeze({
+    avatar_owner_missing: "Avatar sem conta",
+    avatar_profile_unlinked: "Avatar sem vínculo de perfil",
+    pdf_course_missing: "PDF de Curso ausente",
+    pdf_unlinked: "PDF sem vínculo",
+    pdf_object_missing: "Registro de PDF sem arquivo"
+  });
+  const removableMaintenanceClasses = new Set([
+    "avatar_owner_missing", "avatar_profile_unlinked", "pdf_course_missing", "pdf_unlinked"
+  ]);
+
+  const renderMaintenance = () => {
+    if (!maintenanceState || maintenanceState.role !== "administrator") return;
+    maintenance.hidden = false;
+    const retention = maintenanceState.retention || {};
+    maintenanceSummary.replaceChildren();
+    const retentionCopy = root.ownerDocument.createElement("p");
+    retentionCopy.textContent = retention.scheduled
+      ? `Retenção automática ativa${retention.schedule ? ` (${retention.schedule})` : ""}.`
+      : "A retenção automática não está agendada.";
+    maintenanceSummary.append(retentionCopy);
+    maintenanceInventory.replaceChildren();
+    const items = Array.isArray(maintenanceState.inventory?.items)
+      ? maintenanceState.inventory.items
+      : [];
+    if (!items.length) {
+      const empty = root.ownerDocument.createElement("p");
+      empty.className = "muted tiny";
+      empty.textContent = "Nenhum resíduo corrente foi encontrado.";
+      maintenanceInventory.append(empty);
+      return;
+    }
+    const list = root.ownerDocument.createElement("ul");
+    list.className = "account-maintenance-list";
+    for (const item of items) {
+      const row = root.ownerDocument.createElement("li");
+      const copy = root.ownerDocument.createElement("div");
+      const title = root.ownerDocument.createElement("strong");
+      title.textContent = maintenanceLabels[item.classification] || "Resíduo classificado";
+      const path = root.ownerDocument.createElement("code");
+      path.textContent = String(item.objectPath || "");
+      copy.append(title, path);
+      row.append(copy);
+      if (removableMaintenanceClasses.has(item.classification) && item.objectPath) {
+        const remove = root.ownerDocument.createElement("button");
+        remove.type = "button";
+        remove.className = "icon-ghost is-danger";
+        remove.dataset.maintenanceRemove = "";
+        remove.dataset.classification = item.classification;
+        remove.dataset.objectPath = item.objectPath;
+        remove.title = "Remover resíduo revalidado";
+        remove.setAttribute("aria-label", `Remover ${title.textContent}`);
+        remove.innerHTML = renderUiIcon("trash", "account-settings-action-icon");
+        row.append(remove);
+      }
+      list.append(row);
+    }
+    maintenanceInventory.append(list);
+  };
+
+  const loadMaintenance = async ({ announce = false } = {}) => {
+    if (maintenanceLoading) return maintenanceState;
+    maintenanceLoading = true;
+    if (announce) maintenanceStatus.textContent = "Atualizando Manutenção…";
+    try {
+      maintenanceState = await controller.loadCurrentMaintenance({ limit: 100 });
+      maintenanceStatus.textContent = "";
+      renderMaintenance();
+      return maintenanceState;
+    } catch (error) {
+      if (Number(error?.status || 0) === 403) {
+        maintenance.hidden = true;
+        maintenanceState = null;
+      } else if (!maintenance.hidden) {
+        maintenanceStatus.textContent = error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar a Manutenção.";
+      }
+      return null;
+    } finally {
+      maintenanceLoading = false;
+    }
+  };
 
   const focusableSettingsControls = () => [...sheet.querySelectorAll([
     "button:not([disabled])",
@@ -667,6 +772,63 @@ function renderSettings(root, authClient, controller, {
       syncTheme();
     });
   });
+  root.querySelector("[data-maintenance-reload]")?.addEventListener(
+    "click",
+    () => void loadMaintenance({ announce: true })
+  );
+  root.querySelector("[data-maintenance-retention]")?.addEventListener("click", async () => {
+    if (maintenanceLoading || !confirmValue(
+      "Executar agora a retenção corrente? Somente dados vencidos segundo a política instalada serão removidos."
+    )) return;
+    maintenanceLoading = true;
+    maintenanceStatus.textContent = "Executando retenção corrente…";
+    try {
+      const result = await controller.executeCurrentMaintenance({
+        operation: "run_retention",
+        limit: 512,
+        confirmed: true
+      });
+      maintenanceState = result.state;
+      maintenanceStatus.textContent = "Retenção concluída e inventário atualizado.";
+      renderMaintenance();
+    } catch (error) {
+      maintenanceStatus.textContent = error instanceof Error
+        ? error.message
+        : "Não foi possível executar a retenção.";
+    } finally {
+      maintenanceLoading = false;
+    }
+  });
+  maintenanceInventory?.addEventListener("click", async (event) => {
+    const button = event.target.closest?.("[data-maintenance-remove]");
+    if (!button || maintenanceLoading) return;
+    const classification = button.dataset.classification;
+    const objectPath = button.dataset.objectPath;
+    if (!confirmValue(
+      `Remover o resíduo ${maintenanceLabels[classification] || "classificado"}? O AraLearn revalidará exatamente este objeto antes da remoção.`
+    )) return;
+    maintenanceLoading = true;
+    button.disabled = true;
+    maintenanceStatus.textContent = "Revalidando e removendo o resíduo…";
+    try {
+      const result = await controller.executeCurrentMaintenance({
+        operation: "remove_orphan_object",
+        classification,
+        objectPath,
+        confirmed: true
+      });
+      maintenanceState = result.state;
+      maintenanceStatus.textContent = "Resíduo removido e inventário atualizado.";
+      renderMaintenance();
+    } catch (error) {
+      maintenanceStatus.textContent = error instanceof Error
+        ? error.message
+        : "Não foi possível remover o resíduo.";
+      button.disabled = false;
+    } finally {
+      maintenanceLoading = false;
+    }
+  });
   const localDataControls = [
     root.querySelector("[data-settings-clear-device]"),
     root.querySelector("[data-settings-signout-clear]"),
@@ -741,6 +903,7 @@ function renderSettings(root, authClient, controller, {
       syncTheme();
       overlay.hidden = false;
       void loadProfile();
+      void loadMaintenance();
       root.querySelector("button[data-settings-close]")?.focus({ preventScroll: true });
     },
     close,
@@ -816,7 +979,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const authoringRoot = root.querySelector("#aralearn-authoring-root");
   const settingsRoot = root.querySelector("#aralearn-settings-root");
-  studyUnitProviderSession = createStudyUnitProviderSession();
+  courseProviderSession = createCourseProviderSession();
   let editorApp = null;
   let authoringSurface = null;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
@@ -847,6 +1010,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   ]).catch(() => undefined);
 
   let pendingStudyComposition = null;
+  let pendingStudyStructure = null;
   const saveStudyManualEdit = async (value) => {
     if (value.createsPersonalCopy === true) {
       return repository.commitPersonalCourseCopyEdit({
@@ -881,12 +1045,34 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     return result;
   };
 
+  const saveStudyAssistedStructure = async (value) => {
+    const intent = {
+      courseId: value.courseId,
+      expectedCourseRevision: value.expectedCourseRevision,
+      upserts: value.upserts,
+      deletes: value.deletes
+    };
+    const signature = JSON.stringify(intent);
+    if (pendingStudyStructure?.signature !== signature) {
+      pendingStudyStructure = { signature, requestId: createUuid() };
+    }
+    const result = await authoringController.commitCourseStructuralComposition({
+      requestId: pendingStudyStructure.requestId,
+      ...intent
+    });
+    pendingStudyStructure = null;
+    await repository.refreshCourses();
+    await repository.loadCourse(value.courseId);
+    return { ...result, project: repository.loadProject() };
+  };
+
   editorApp = createCourseStudyApplication({
     root: editorRoot,
     repository,
     initialProject: project,
     onSaveManualEdit: saveStudyManualEdit,
-    providerAssistanceSession: studyUnitProviderSession
+    onSaveAssistedStructure: saveStudyAssistedStructure,
+    providerAssistanceSession: courseProviderSession
   });
   await editorApp.resumePendingManualEdit?.().catch((error) => {
     console.warn("A edição pessoal pendente poderá ser retomada na próxima conexão.", error);
@@ -895,7 +1081,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   authoringSurface = createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
-    providerAssistanceSession: studyUnitProviderSession,
+    providerAssistanceSession: courseProviderSession,
     onClose() {
       clearAuthoringRoute();
       authoringRoot.hidden = true;

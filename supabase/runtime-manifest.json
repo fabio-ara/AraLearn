@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260821191340",
+  "schemaRevision": "20260824130000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -37,6 +37,9 @@
     "contextual-study-unit-edit-v1",
     "personal-course-copy-edit-v1",
     "current-data-lifecycle-v1",
-    "authenticated-course-source-pdf-upload-v1"
+    "authenticated-course-source-pdf-upload-v1",
+    "course-product-operations-v1",
+    "current-administrative-maintenance-v1",
+    "gpt-actions-openapi-v1"
   ]
 }

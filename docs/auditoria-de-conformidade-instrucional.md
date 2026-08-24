@@ -172,7 +172,7 @@ outro contexto.
 
 ## Uso pelo MCP
 
-Desde a versão 0.0.27, o ciclo utiliza duas das cinco ferramentas públicas:
+O ciclo utiliza duas das cinco ferramentas públicas:
 
 - `lerCurso` com `view: "audit_cycle"` lê contexto, achados, rodadas e detalhe;
 - `alterarCurso` com `operation: "update_audit_cycle"` executa os comandos do

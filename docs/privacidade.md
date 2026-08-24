@@ -5,9 +5,8 @@ regras técnicas de acesso. Uma instituição que implante o sistema precisa
 acrescentar base jurídica, prazos de retenção, responsáveis, condições dos
 provedores e canais de atendimento aplicáveis ao seu contexto.
 
-Ele não declara conformidade com a LGPD ou com o RGPD. A linha publicada 0.0.27
-inclui os controles técnicos descritos neste documento no banco, nas funções e
-nos clientes.
+Ele não declara conformidade com a LGPD ou com o RGPD. Os controles técnicos
+descritos aqui integram o banco, as funções e os clientes correntes.
 
 Privacidade depende de minimização, finalidade, isolamento no banco e
 informação compreensível. Ocultar um campo na interface, sozinho, não protege o
@@ -40,7 +39,7 @@ conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
 **Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. A pessoa
 que recebeu acesso continua fora da Autoria desse Curso e não pode alterar o
-original. Desde a versão 0.0.26, uma mudança contextual confirmada pode criar
+original. Uma mudança contextual confirmada pode criar
 outro Curso privado, pertencente a essa pessoa.
 
 **Cópia pessoal de Curso** é esse novo Curso, criado somente na primeira
@@ -117,7 +116,7 @@ busca parcial, diretório ou sugestão de contas. A relação gravada conserva
 identificadores internos; o e-mail não entra nos eventos nem na resposta da
 operação.
 
-Desde a versão 0.0.27, a resposta de concessão é sempre a mesma para conta
+A resposta de concessão é sempre a mesma para conta
 existente, inexistente, própria, já favorecida ou tentativa limitada. Ela apenas
 informa que a solicitação foi aceita; o recibo não contém o resultado nem a
 relação criada. O proprietário autorizado ainda pode encontrar uma relação que
@@ -188,17 +187,14 @@ confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivo
 vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada revisão
 até oito anexos e o Curso até 64 MiB de conteúdo único.
 
-Desde a versão 0.0.27, o preparo de envio cria uma intenção privada válida por
+O preparo de envio cria uma intenção privada válida por
 dez minutos para o ator, Curso, caminho, impressão digital, tamanho, tipo, Fonte e
 revisões exatos. O navegador envia o PDF ao endpoint autenticado do Storage com
 a sessão corrente; a política também exige que o `session_id` ainda exista e
 não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
 mesmo bloqueio usado pela exclusão da conta. A inserção consome a intenção. Não
-é emitida nova URL assinada de upload. Uma URL v1 emitida pela versão 0.0.26
-antes do corte, porém, é uma credencial independente da sessão e pode continuar
-aceita por até duas horas. Essa validade residual é registrada e pode ser
-confrontada depois da expiração, sem impedir a publicação do cliente que já não
-recebe URL v1 de upload.
+é emitida URL assinada de upload. Uma credencial temporária já emitida permanece
+independente da sessão somente até expirar; o inventário registra essa janela.
 
 O resumo criptográfico e o cabeçalho só podem ser confirmados depois que os
 bytes chegam. Se um objeto de mesmo tamanho e tipo não corresponder ao PDF
@@ -260,7 +256,7 @@ anteriores do texto integral.
 
 Retirar uma Anotação redige imediatamente texto, síntese e resposta e mantém um
 registro de exclusão. Esse registro e o recibo de repetição expiram logicamente
-em até 14 dias. A versão 0.0.27 mantém os lotes oportunistas e acrescenta uma
+em até 14 dias. Os lotes oportunistas são complementados por uma
 rotina privada diária, às 03:17, para que um Curso inativo não seja a única
 causa de atraso físico. Cada execução processa até 512 linhas por classe e
 devolve contagens separadas de Anotações retiradas, recibos de Anotação,
@@ -316,12 +312,12 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-Desde a versão 0.0.27, o catálogo MCP público possui cinco ferramentas. Perfil,
+O catálogo MCP público possui cinco ferramentas. Perfil,
 avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-A mesma versão anuncia somente o escopo OAuth `offline_access`; código e
+O OAuth anuncia somente o escopo `offline_access`; código e
 refresh token não produzem `id_token`. O access token do MCP usa aliases
 pareados e distintos para pessoa e sessão, sem UUID da pessoa, e-mail ou perfil,
 e não funciona como sessão do aplicativo. O JWT conserva
@@ -333,12 +329,8 @@ de serviço resolve a pessoa e confirma que sessão de origem, cliente e
 consentimento ainda estão ativos. O bearer é recusado diretamente pelo GoTrue,
 pela API de dados e pelo Storage.
 
-No corte da 0.0.27, consentimentos e sessões OAuth anteriores foram revogados.
-Isso impede renovação e exige novo consentimento, mas um ID token `openid` já
-emitido continuou válido até `exp`. A promoção registrou essa validade residual,
-executou as negativas hospedadas com a credencial nova e confrontou o inventário
-de objetos sem vínculo. A expiração natural pode ser verificada posteriormente;
-ela não bloqueia a publicação do cliente que usa a fronteira nova.
+Consentimentos e sessões OAuth encerrados não renovam acesso. Um token já
+emitido permanece criptograficamente válido somente até `exp`.
 
 A caixa de entrada e a leitura por alvo de Observações usam uma projeção
 fechada com síntese, estado, origem, papel, versões e identificador operacional.
@@ -389,12 +381,9 @@ AraLearn, mas podem ser encaminhados pelo relay e retidos pelo provider conforme
 os termos do serviço escolhido. A autorização ocorre por chamada, depois de a
 pessoa conferir o conteúdo enumerado.
 
-Essa fronteira foi comprovada em HTTP local. Pages ainda precisa do ensaio de
-acesso à rede local. O Android 0.0.24 retira a chamada HTTP do WebView por
-uma ponte nativa fixa no relay local e mantém `MIXED_CONTENT_NEVER_ALLOW`; o APK
-instalado ainda precisa comprovar esse percurso em dispositivo real. A limitação
-de transporte não autoriza relaxar a política de conteúdo misto nem mover a
-chave para o AraLearn.
+No Android, uma ponte nativa fixa retira a chamada HTTP do WebView e mantém
+`MIXED_CONTENT_NEVER_ALLOW`. A limitação de transporte não autoriza relaxar a
+política de conteúdo misto nem mover a chave para o AraLearn.
 
 Um runtime explicitamente marcado como desenvolvimento pode permitir chamadas
 diretas a OpenAI, Gemini ou DeepSeek. Ele alerta que o navegador não protege
@@ -423,7 +412,7 @@ O navegador e o aplicativo Android mantêm sessão autenticada, listas resumidas
 composições já abertas, estado pessoal, alterações pendentes, Anotações e
 arquivos estáticos da interface.
 
-Desde a versão 0.0.27, a sessão persiste somente `access_token`, `refresh_token`,
+A sessão persiste somente `access_token`, `refresh_token`,
 tipo, expiração e `user.id`. E-mail, nome, identidades externas e o restante do
 objeto retornado pelo Auth não são duplicados nesse registro; uma sessão legada
 é reduzida na primeira leitura. Tokens continuam sendo segredos e não deixam de
@@ -494,17 +483,15 @@ operação idempotente confirma ou conclui o resultado; a tela não apresenta o
 estado ambíguo como uma tentativa sem efeito.
 
 Essa primeira recusa também conserva a sessão necessária para a própria API
-terminar a limpeza do Storage. Na chamada final da versão 0.0.27, a transação
+terminar a limpeza do Storage. Na chamada final, a transação
 remove todas as sessões da conta imediatamente antes de remover o usuário do
 Auth. As políticas de novos avatares e novos PDFs exigem `session_id` ainda
 presente e não vencido. Essas escritas usam o mesmo bloqueio transacional da
 exclusão: um envio concluído primeiro volta a ser encontrado pela verificação
 de objetos, enquanto uma exclusão concluída primeiro invalida a sessão antes
 que o envio possa prosseguir. Assim, um token residual não reabre a janela de
-escrita autenticada. A URL assinada de upload v1 já emitida antes do corte é a
-exceção transitória: ela não depende da sessão e pode permanecer válida por até
-duas horas. O inventário posterior permite confirmar sua expiração sem bloquear
-a publicação do upload autenticado novo.
+escrita autenticada. Uma credencial temporária já emitida continua válida apenas
+até seu prazo; o inventário permite confirmar a expiração.
 
 Depois, a conta de autenticação, o perfil, os Cursos próprios, suas composições,
 acessos e estados dependentes são removidos. Contribuições em Cursos alheios são
@@ -519,7 +506,7 @@ A operação não oferece restauração automática. Registros técnicos, cópia
 segurança e retenções do provedor podem seguir prazos próprios, que a instituição
 responsável deve declarar.
 
-O envio de PDF da versão 0.0.27 não usa URL assinada: exige sessão viva e
+O envio de PDF não usa URL assinada: exige sessão viva e
 intenção de dez minutos consumida na inserção. O download já assinado pode continuar legível
 por até 60 segundos porque o Supabase não revoga uma URL individual antes da
 expiração. A rotina administrativa inventaria, sem apagar, `avatar_owner_missing`,
@@ -527,19 +514,14 @@ expiração. A rotina administrativa inventaria, sem apagar, `avatar_owner_missi
 `pdf_object_missing`. Uma remoção posterior exige conferir vínculos, backups,
 retenções e a classe do objeto; inventariar não autoriza exclusão automática.
 
-Na compatibilidade mantida pela 0.0.27, o contrato v1 é emitido e aceito somente
-para o download legado do Android 0.0.26. O contrato v2 fica reservado a `prepare_upload`
-autenticado; como o cliente antigo espera uma URL assinada v1, seu upload falha
-fechado. Essa compatibilidade não usa `User-Agent` e só pode ser retirada por
-uma decisão explícita de encerrar o suporte ao 0.0.26.
+O contrato v1 é emitido somente para `download`; o contrato v2 fica reservado a
+`prepare_upload` autenticado. A escolha não usa `User-Agent`.
 
-## Roadmap de proteção desde a concepção
+## Proteção desde a concepção
 
-A proteção de dados possui duas frentes. A versão 0.0.27 corrige riscos
-concretos no produto atual, como exportação, limpeza local, retenção e
-fronteiras do MCP. Somente depois da baseline 2.0, uma revisão própria fixará as
-fronteiras do eventual artefato versionado antes do ensaio Git. Essas medidas são proteção
-desde a concepção e não constituem declaração de conformidade com LGPD ou RGPD.
+Minimização, separação de finalidades, retenção limitada, limpeza local e
+fronteiras de integração reduzem riscos concretos. Essas medidas não constituem
+declaração de conformidade com LGPD ou RGPD.
 
 ## Decisões abertas e gates
 
@@ -603,3 +585,14 @@ Supabase sobre [controle de acesso do
 Storage](https://supabase.com/docs/guides/storage/security/access-control),
 [URLs assinadas](https://supabase.com/docs/guides/storage/serving/downloads) e
 [sessões](https://supabase.com/docs/guides/auth/sessions).
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
+- [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
+- [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
+- [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
+
+<!-- referências locais: fim -->

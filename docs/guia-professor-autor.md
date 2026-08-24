@@ -9,7 +9,7 @@ examinar fatos da produção e conceder acesso.
 
 Na tela inicial, use **Autoria**. A lista **Meus cursos** apresenta somente os
 Cursos da conta autenticada. Um Curso compartilhado aparece em Estudo, mas não
-nessa lista. Desde a versão 0.0.26, o original permanece sob controle do
+nessa lista. O original permanece sob controle do
 proprietário e a pessoa favorecida pode criar, na primeira gravação contextual,
 um Curso pessoal privado. Essa nova cópia
 passa a aparecer em Autoria porque pertence à pessoa que a criou.
@@ -200,32 +200,31 @@ sem rede como confirmado, com sincronização pendente, e não repetem a escrita
 Uma revisão remota posterior prevalece; logout, limpeza do Curso ou revogação de
 acesso removem a cópia correspondente.
 
-Para pedir uma sugestão focal, ative a edição, escolha o trecho e use
-**Assistência por API**. Na instalação de produção, **Serviço local** já aparece
-fixo; informe o modelo e escreva o pedido. O endpoint fica em **Conexão**, e a
-chave do provider é configurada no relay,
-fora do AraLearn. O aviso informa o que sairá do aplicativo: pedido, valores
-textuais editáveis, título, papel, tópicos e mensagens anteriores. PDFs, Fontes,
-outras Unidades e identidades internas não são enviados.
+Use **Assistência por API** como modo irmão de **Visualizar** e **Editar**. Ela
+está disponível na Unidade, na Microssequência e na Lição conforme a autoridade
+da pessoa. Na instalação de produção, o relay local aparece como conexão fixa;
+informe o modelo e escreva uma mensagem. A chave do provedor permanece no
+relay, fora do AraLearn.
+
+O aviso informa o recorte enviado: composição necessária do alvo, resumo do
+caminho curricular e mensagens recentes. PDFs, Fontes, identidade da conta e
+regiões alheias ao escopo não são enviados.
 
 Confira também o destino indicado no aviso. A conversa é efêmera no AraLearn,
 mas o relay a encaminha ao provider configurado, que pode conservar dados de
 acordo com seus próprios termos. Autorize somente depois de revisar esse recorte.
 
-Examine a sugestão, use **Ver no conteúdo** para conferir o mesmo renderer e
-escolha **Aplicar ao rascunho** ou **Descartar sugestão**. Aplicar ainda não
-grava o Curso; conclua com **Salvar** no editor manual. A configuração permanece
-somente na memória da sessão e é eliminada ao sair, recarregar ou encerrar a
-aplicação. Fechar a sobreposição elimina a conversa e a candidata. Providers
-remotos e entrada direta de chave pertencem somente ao runtime explícito de
-desenvolvimento, acompanhado de alerta, e não ao percurso de produção.
+Discuta o plano no minichat e só então use **Confirmar e preparar**. Quando a
+proposta exige componentes, o AraLearn descobre as famílias, obtém os contratos
+exatos, valida e abre a prévia no renderer real. Escolha **Aplicar ao rascunho**
+ou **Descartar proposta**. Aplicar ainda não grava o Curso; use **Salvar
+proposta** depois de conferir. Uma proposta inválida ou não renderizável deixa o
+conteúdo corrente intacto.
 
-Se o texto for grande demais para o recorte seguro, o ícone fica desabilitado e
-o nome acessível explica o limite. Continue com **Editar**: a edição manual não
-depende do relay. A assistência pelo relay ainda aguarda validação no Pages e
-no APK de release. O Android 0.0.24 usa uma ponte nativa fixa para manter a
-chamada HTTP fora do WebView, mas a instalação e o ensaio em dispositivo real
-continuam pendentes.
+A configuração permanece somente na memória da sessão. Providers remotos e
+entrada direta de chave pertencem somente ao runtime explícito de
+desenvolvimento. No Android, uma ponte nativa fixa mantém a chamada HTTP fora do
+WebView sem relaxar a política de conteúdo misto.
 
 ### Discussões e correções
 
@@ -316,7 +315,7 @@ na revogação e nas demais alterações sensíveis da Autoria.
 O serviço usa o e-mail para localizar a conta, sem pesquisa parcial ou sugestão
 de diretório. A pessoa passa a encontrar o Curso em Estudo e conserva estado
 pessoal próprio. A concessão não transfere propriedade nem autoriza alterar o
-Curso original. Desde a versão 0.0.26, a abertura e a prática também não
+Curso original. A abertura e a prática também não
 duplicam o Curso; somente a primeira gravação contextual com mudança material
 cria uma cópia pessoal privada da pessoa favorecida.
 

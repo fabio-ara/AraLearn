@@ -100,6 +100,62 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(moreOnlyHtml, /<strong>Rever<\/strong><span class="muted tiny">mais<\/span>/u);
 });
 
+test("Lição e Microssequência expõem Visualizar e Assistência por API como modos irmãos", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const common = {
+    project,
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: {},
+    assistance: { enabled: true, activeScope: "", draft: null, saving: false, error: "" }
+  };
+  for (const [view, action] of [
+    ["lesson", "open-lesson-assistance"],
+    ["microsequence", "open-microsequence-assistance"]
+  ]) {
+    const html = renderCourseStudyScreen({
+      ...common,
+      view,
+      microsequenceMode: view === "microsequence" ? "overview" : "play"
+    });
+    assert.match(html, /role="group" aria-label="Modo da (?:Lição|Microssequência)"/u);
+    assert.ok(html.indexOf('aria-label="Visualizar"') < html.indexOf(`data-action="${action}"`));
+    assert.match(html, new RegExp(`data-action="${action}"[\\s\\S]*?aria-label="Assistência por API"`, "u"));
+  }
+
+  const draftHtml = renderCourseStudyScreen({
+    ...common,
+    view: "lesson",
+    assistance: {
+      enabled: true,
+      activeScope: "",
+      draft: { scope: "lesson", summary: "Reordenar e acrescentar prática." },
+      saving: false,
+      error: ""
+    }
+  });
+  assert.match(draftHtml, /aria-label="Rascunho da Assistência por API"/u);
+  assert.match(draftHtml, /data-action="save-assistance-draft"/u);
+  assert.match(draftHtml, /data-action="discard-assistance-draft"/u);
+});
+
 test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada contextual", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const base = project.courses[0];
@@ -236,6 +292,17 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   assert.match(html, />Curso compartilhado · Compartilhado com você<\/option>/u);
   assert.match(html, />Minha continuidade · Sua cópia<\/option>/u);
   assert.match(html, /home-course-ownership[^>]*>.*Sua cópia/su);
+  assert.match(html, /<summary>Ações deste Curso<\/summary>/u);
+  assert.match(html, /data-action="delete-owned-course"/u);
+  assert.match(html, />Excluir este Curso<\/span>/u);
+  const sharedHtml = renderHomeScreen({
+    project: { ...project, courses },
+    progress: { version: 1, lessons: {} },
+    editorSupport: { coursePermissionsById: permissions },
+    selectedCourseId: shared.id
+  });
+  assert.match(sharedHtml, /data-action="leave-shared-course"/u);
+  assert.match(sharedHtml, />Sair deste Curso<\/span>/u);
   assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
 });
 
@@ -293,6 +360,17 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
     manualEditor: { ...manualEditor, createsPersonalCopy: false, isPersonalCopy: false }
   });
   assert.match(ownedHtml, /Edite diretamente no conteúdo\./u);
+  assert.match(ownedHtml, />Visualizar<\/span><\/button>/u);
+  assert.match(ownedHtml, />Editar<\/span><\/button>/u);
+  assert.match(ownedHtml, />Assistência por API<\/span><\/button>/u);
+  assert.ok(
+    ownedHtml.indexOf(">Visualizar</span>") <
+      ownedHtml.indexOf(">Editar</span>") &&
+    ownedHtml.indexOf(">Editar</span>") <
+      ownedHtml.indexOf(">Assistência por API</span>")
+  );
+  assert.match(ownedHtml, /data-action="go-back"[\s\S]*data-action="go-up"/u);
+  assert.match(ownedHtml, /aria-label="Subir para a Microssequência"/u);
   assert.match(ownedHtml, /aria-label="Salvar edição"/u);
   assert.doesNotMatch(ownedHtml, /Salvar na minha cópia|Sua cópia/u);
 

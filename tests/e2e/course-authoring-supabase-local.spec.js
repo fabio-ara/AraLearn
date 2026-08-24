@@ -53,6 +53,24 @@ let mcpLifecycle = {};
 let providerServer = null;
 const providerRequests = [];
 
+function assistedStudyUnit() {
+  return {
+    id: STUDY_UNIT_ID,
+    position: 1,
+    title: STUDY_UNIT_TITLE,
+    role: "theory",
+    content: [{
+      id: STUDY_UNIT_CONTENT_ID,
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: PROVIDER_STUDY_UNIT_TEXT }
+    }],
+    response: null,
+    feedback: [],
+    topics: ["Edição contextual"]
+  };
+}
+
 async function startProviderServer() {
   providerRequests.length = 0;
   providerServer = createServer((request, response) => {
@@ -76,14 +94,24 @@ async function startProviderServer() {
         body
       });
       response.writeHead(200, { "content-type": "application/json" });
+      const content = providerRequests.length === 1
+        ? {
+            message: "A formulação pode ficar mais direta sem mudar seu significado.",
+            proposal: {
+              summary: "Tornar a explicação mais direta e preservar a representação textual.",
+              scope: "study_unit",
+              componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+            }
+          }
+        : {
+            message: "A composição foi validada e está pronta para revisão.",
+            candidate: assistedStudyUnit()
+          };
       response.end(JSON.stringify({
         choices: [{
           finish_reason: "stop",
           message: {
-            content: JSON.stringify({
-              message: "A formulação foi tornada mais direta.",
-              changes: [{ path: "text", value: PROVIDER_STUDY_UNIT_TEXT }]
-            })
+            content: JSON.stringify(content)
           }
         }]
       }));
@@ -918,37 +946,51 @@ test.describe("Autoria real com Supabase local", () => {
         `[data-resource-target-id="content:${STUDY_UNIT_CONTENT_ID}"]`
       ).click();
       await inspectionUnit.locator("[data-inspection-provider-assistance]").click();
-      const providerDialog = page.getByRole("dialog", { name: "Assistência por API" });
+      const providerDialog = page.locator("[data-course-assistance] [role='dialog']");
       await expect(providerDialog).toBeVisible();
+      await expect(providerDialog.getByRole("heading", {
+        name: `Unidade: ${STUDY_UNIT_TITLE}`
+      })).toBeVisible();
+      await providerDialog.getByText("Serviço e modelo", { exact: true }).click();
       await providerDialog.getByLabel("Serviço").selectOption("local");
-      await providerDialog.getByLabel("Modelo").fill("modelo-local-e2e");
-      await providerDialog.getByLabel("Pedido").fill(
+      await providerDialog.getByLabel("Modelo").selectOption("gpt-5.6-luna");
+      await providerDialog.getByLabel("Mensagem").fill(
         "Torne o trecho mais direto sem mudar seu significado."
       );
-      await providerDialog.getByRole("button", { name: "Gerar prévia" }).click();
-      await expect(providerDialog.getByText("A formulação foi tornada mais direta."))
+      await providerDialog.getByRole("button", { name: "Enviar" }).click();
+      await expect(providerDialog.getByText(
+        "A formulação pode ficar mais direta sem mudar seu significado."
+      ))
+        .toBeVisible();
+      await expect(providerDialog.getByRole("heading", { name: "Proposta de mudança" }))
+        .toBeVisible();
+      await providerDialog.getByRole("button", { name: "Confirmar e preparar" }).click();
+      await expect(providerDialog.getByRole("heading", { name: "Prévia pronta" }))
         .toBeVisible();
       await providerDialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
-      await expect(inspectionUnit.locator('[data-manual-edit-path="text"]'))
-        .toHaveText(PROVIDER_STUDY_UNIT_TEXT);
-      await inspectionUnit.locator('[data-inspection-manual-action="save"]').click();
-      await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+      await expect(inspectionUnit.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
+        .toBeVisible();
+      await inspectionUnit.getByRole("button", { name: "Salvar proposta" }).click();
+      await expect(page.getByText("Proposta salva.", { exact: true })).toBeVisible();
       const afterProviderRevision = afterManualRevision + 1;
       await expect.poll(async () => (await canonicalHeader()).revision)
         .toBe(afterProviderRevision);
       await expect(inspectionUnit.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
         .toBeVisible();
 
-      expect(providerRequests).toHaveLength(1);
-      expect(providerRequests[0]).toMatchObject({
-        method: "POST",
-        url: "/v1/chat/completions",
-        authorization: null
-      });
-      expect(providerRequests[0].body).toContain(MANUAL_STUDY_UNIT_TEXT);
-      expect(providerRequests[0].body).toContain(STUDY_UNIT_TITLE);
-      expect(providerRequests[0].body).not.toContain(SOURCE_TITLE);
-      expect(providerRequests[0].body).not.toContain("fonte-e2e.pdf");
+      expect(providerRequests).toHaveLength(2);
+      for (const request of providerRequests) {
+        expect(request).toMatchObject({
+          method: "POST",
+          url: "/v1/chat/completions",
+          authorization: null
+        });
+        expect(request.body).toContain(MANUAL_STUDY_UNIT_TEXT);
+        expect(request.body).toContain(STUDY_UNIT_TITLE);
+        expect(request.body).not.toContain(SOURCE_TITLE);
+        expect(request.body).not.toContain("fonte-e2e.pdf");
+      }
+      expect(providerRequests[1].body).toContain("exactComponentContracts");
       expect(contextualEditPersistenceEvidence()).toEqual({
         studyUnitVersion: 3,
         text: PROVIDER_STUDY_UNIT_TEXT,

@@ -22,8 +22,8 @@ informa que a conexão é necessária.
 
 A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
 pessoa. O acesso à **Autoria** leva à atividade autoral. Um Curso compartilhado
-fica em Estudo e continua sob responsabilidade do proprietário. Desde a versão
-0.0.26, a pessoa pode usar **Editar** nesse percurso sem alterar o original: a
+fica em Estudo e continua sob responsabilidade do proprietário. A pessoa pode
+usar **Editar** nesse percurso sem alterar o original: a
 primeira gravação com mudança material
 cria um Curso pessoal privado, que passa a aparecer como **Sua cópia** e também
 pertence à sua Autoria.

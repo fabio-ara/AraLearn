@@ -25,6 +25,12 @@ function request(path, { method = "GET", body = null, requestId = null } = {}) {
 }
 
 test("roteia somente endpoints canônicos de Curso", () => {
+  assert.deepEqual(routeCourseRequest("GET", "/v1/maintenance"), {
+    name: "getCurrentMaintenance"
+  });
+  assert.deepEqual(routeCourseRequest("POST", "/v1/maintenance/actions"), {
+    name: "executeCurrentMaintenance"
+  });
   assert.deepEqual(routeCourseRequest("GET", "/v1/profile"), {
     name: "getPersonProfile"
   });
@@ -35,6 +41,10 @@ test("roteia somente endpoints canônicos de Curso", () => {
   assert.deepEqual(routeCourseRequest("POST", "/v1/courses"), { name: "createCourse" });
   assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}`), {
     name: "getCourse",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest("DELETE", `/v1/courses/${COURSE_ID}`), {
+    name: "maintainCourse",
     courseId: COURSE_ID
   });
   assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}/entities`), {

@@ -505,6 +505,30 @@ async function openInspectionUnit(page, ownership) {
       },
       async loadAuthoringInspectionPosition() { return null; },
       async saveAuthoringInspectionPosition() {},
+      async loadCourseDocument() {
+        return {
+          document: {
+            contract: "aralearn.course-project.v1",
+            courses: [{
+              id: courseId,
+              title: "Curso de relações",
+              modules: [{
+                id: "module-a",
+                title: "Fundamentos",
+                lessons: [{
+                  id: "lesson-a",
+                  title: "Relações",
+                  microsequences: [{
+                    id: "micro-a",
+                    title: "Relações essenciais",
+                    studyUnits: [structuredClone(studyUnit)]
+                  }]
+                }]
+              }]
+            }]
+          }
+        };
+      },
       async commitCourseComposition(request) {
         requests.push(structuredClone(request));
         courseRevision += 1;
@@ -543,6 +567,61 @@ async function openInspectionUnit(page, ownership) {
     });
     await globalThis.__inspectionManualSequence.open();
   }, { ownership });
+}
+
+async function installContextualAssistanceResponses(page, {
+  discussionMessage,
+  candidateMessage,
+  text
+}) {
+  await page.evaluate(({ discussionMessage, candidateMessage, text }) => {
+    globalThis.__ARALEARN_ENV__ = {
+      developmentRuntime: true,
+      assistAllowedOrigins: ["https://api.openai.com"]
+    };
+    const project = globalThis.__manualStudySnapshot();
+    const candidate = structuredClone(
+      project.courses.at(-1).modules[0].lessons[0].microsequences[0].studyUnits[1]
+    );
+    candidate.content[0].data.text = text;
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      const value = calls % 2 === 1
+        ? {
+            message: discussionMessage,
+            proposal: {
+              summary: "Revisar a formulação sem trocar o componente instalado.",
+              scope: "study_unit",
+              componentNeeds: []
+            }
+          }
+        : { message: candidateMessage, candidate };
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { output: [{ content: [{ type: "output_text", text: JSON.stringify(value) }] }] };
+        }
+      };
+    };
+  }, { discussionMessage, candidateMessage, text });
+}
+
+async function prepareContextualAssistance(page, request) {
+  await page.getByRole("button", { name: "Assistência por API" }).click();
+  const dialog = page.getByRole("dialog", { name: /Unidade:/u });
+  await expect(dialog).toBeVisible();
+  await dialog.getByText("Serviço e modelo", { exact: true }).click();
+  await dialog.getByLabel("Serviço").selectOption("openai");
+  await dialog.getByLabel("Modelo").selectOption("gpt-5.6-luna");
+  await dialog.getByLabel("Chave da OpenAI").fill("segredo-somente-em-memoria");
+  await dialog.getByLabel("Mensagem").fill(request);
+  await dialog.getByRole("button", { name: "Enviar" }).click();
+  await expect(dialog.getByText("Plano discutível", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Confirmar e preparar" }).click();
+  await expect(dialog.getByText("Proposta validada", { exact: true })).toBeVisible();
+  return dialog;
 }
 
 test("os 32 packages preservam edição textual no renderer entre 360 e 1280 px", async ({ page }) => {
@@ -628,52 +707,28 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   );
   expect(evidence.progressAfter).toBe(evidence.progressBefore);
 
-  await page.evaluate(() => {
-    globalThis.__ARALEARN_ENV__ = {
-      developmentRuntime: true,
-      assistAllowedOrigins: ["https://api.openai.com"]
-    };
-    globalThis.fetch = async () => ({
-      ok: true,
-      status: 200,
-      async json() {
-        return {
-          output: [{ content: [{
-            type: "output_text",
-            text: JSON.stringify({
-              message: "Ajustei a formulação.",
-              changes: [{
-                path: "text",
-                value: "A conjunção só é verdadeira quando P e Q são verdadeiras."
-              }]
-            })
-          }] }]
-        };
-      }
-    });
+  await installContextualAssistanceResponses(page, {
+    discussionMessage: "Podemos deixar a formulação mais direta.",
+    candidateMessage: "A formulação foi revisada.",
+    text: "A conjunção só é verdadeira quando P e Q são verdadeiras."
   });
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator(
-    '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-  ).click();
-  await page.getByRole("button", { name: "Assistência por API" }).click();
-  await page.getByLabel("Serviço").selectOption("openai");
-  await page.getByLabel("Modelo").fill("gpt-5-mini");
-  await page.getByLabel("Chave da OpenAI").fill("segredo-somente-em-memoria");
-  await page.getByLabel("Pedido").fill("Deixe a frase mais direta.");
-  await page.getByRole("button", { name: "Gerar prévia" }).click();
-  await expect(page.getByText("Ajustei a formulação.")).toBeVisible();
-  await page.setViewportSize({ width: 360, height: 800 });
-  await page.getByRole("button", { name: "Ver no conteúdo" }).click();
-  await expect(page.locator('[data-manual-edit-path="text"]')).toContainText(
-    "A conjunção só é verdadeira quando P e Q são verdadeiras."
+  const assistanceDialog = await prepareContextualAssistance(
+    page,
+    "Deixe a frase mais direta."
   );
-  await expect(page.locator('[data-manual-edit-path="text"]')).toBeFocused();
+  await page.setViewportSize({ width: 360, height: 800 });
+  await assistanceDialog.getByRole("button", { name: "Ver prévia" }).click();
+  await expect(page.getByText(
+    "A conjunção só é verdadeira quando",
+    { exact: false }
+  )).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Voltar à sugestão" }).click();
-  await page.getByRole("button", { name: "Aplicar ao rascunho" }).click();
-  await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Voltar à conversa" }).click();
+  await assistanceDialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+  await expect(page.getByRole("region", { name: "Rascunho da Assistência por API" }))
+    .toBeVisible();
+  await page.getByRole("button", { name: "Salvar proposta" }).click();
+  await expect(page.getByText("Proposta salva.", { exact: true })).toBeVisible();
   const providerRequest = await page.evaluate(() => globalThis.__manualStudyRequests.at(-1));
   expect(providerRequest.origin).toBe("provider_assistance");
   expect(providerRequest.expectedCourseRevision).toBe(8);
@@ -684,10 +739,11 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   expect(await page.evaluate(() => JSON.stringify(
     globalThis.__manualStudyRepository.loadProgress()
   ))).toBe(evidence.progressBefore);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "Desfazer última edição" }).click();
   await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeVisible();
   await expect(page.locator('[data-manual-edit-path="text"]')).toContainText(
-    "A conjunção é verdadeira quando P e Q são verdadeiras."
+    "A conjunção é verdadeira quando as duas são verdadeiras."
   );
   expect(await page.evaluate(() => globalThis.__manualStudyRequests.length)).toBe(2);
   await page.getByRole("button", { name: "Cancelar edição" }).click();
@@ -800,46 +856,21 @@ test("cópia pessoal permanece legível nos quatro tamanhos e nos dois temas", a
 test("prévia por API e cancelamento não criam cópia pessoal", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openStudyUnit(page, "shared");
-  await page.evaluate(() => {
-    globalThis.__ARALEARN_ENV__ = {
-      developmentRuntime: true,
-      assistAllowedOrigins: ["https://api.openai.com"]
-    };
-    globalThis.fetch = async () => ({
-      ok: true,
-      status: 200,
-      async json() {
-        return {
-          output: [{ content: [{
-            type: "output_text",
-            text: JSON.stringify({
-              message: "Sugestão pronta.",
-              changes: [{
-                path: "text",
-                value: "No rascunho, a conjunção é verdadeira quando as duas são verdadeiras."
-              }]
-            })
-          }] }]
-        };
-      }
-    });
+  await installContextualAssistanceResponses(page, {
+    discussionMessage: "Podemos simplificar a explicação.",
+    candidateMessage: "A sugestão passou pelo renderer.",
+    text: "No rascunho, a conjunção é verdadeira quando as duas são verdadeiras."
   });
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator(
-    '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-  ).click();
-  await page.getByRole("button", { name: "Assistência por API" }).click();
-  await page.getByLabel("Serviço").selectOption("openai");
-  await page.getByLabel("Modelo").fill("gpt-5-mini");
-  await page.getByLabel("Chave da OpenAI").fill("segredo-somente-em-memoria");
-  await page.getByLabel("Pedido").fill("Torne a explicação mais direta.");
-  await page.getByRole("button", { name: "Gerar prévia" }).click();
-  await expect(page.getByText("Sugestão pronta.")).toBeVisible();
-  await page.getByRole("button", { name: "Aplicar ao rascunho" }).click();
-  await expect(page.locator('[data-manual-edit-path="text"]')).toContainText(
-    "No rascunho, a conjunção é verdadeira quando as duas são verdadeiras."
+  const dialog = await prepareContextualAssistance(
+    page,
+    "Torne a explicação mais direta."
   );
-  await page.getByRole("button", { name: "Cancelar edição" }).click();
+  await dialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+  await expect(page.getByText(
+    "No rascunho, a conjunção é verdadeira quando",
+    { exact: false }
+  )).toBeVisible();
+  await page.getByRole("button", { name: "Descartar rascunho" }).click();
   expect(await page.evaluate(() => globalThis.__manualStudyRequests.length)).toBe(0);
   expect(await page.evaluate(() => globalThis.__manualStudySnapshot().courses.length)).toBe(1);
 });
@@ -1218,18 +1249,21 @@ test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma 
   };
 
   await editCurrentParagraph("Texto salvo somente no Curso de Ana.");
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeVisible();
 
   await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
   await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-b");
   await page.getByRole("button", { name: "Começar Curso de Bruno" }).click();
   await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeDisabled();
 
   await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
   await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-a");
   await page.getByRole("button", { name: "Retomar Curso de Ana" }).click();
   await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeVisible();
 });
 
@@ -1312,6 +1346,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
     }
   }]);
 
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "Desfazer última edição" }).click();
   await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeVisible();
   await expect(page.locator('[data-manual-edit-path="text"]')).toHaveText(
@@ -1321,15 +1356,13 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   await page.getByRole("button", { name: "Cancelar edição" }).click();
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests.length)).toBe(1);
 
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
   await page.getByRole("button", { name: "Assistência por API" }).click();
-  await expect(page.getByRole("dialog", { name: "Assistência por API" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: /Unidade:/u })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Assistência por API" })).toHaveCount(0);
-  await expect(page.locator('[data-manual-edit-path="text"]')).toHaveText(
+  await expect(page.getByRole("dialog", { name: /Unidade:/u })).toHaveCount(0);
+  await expect(page.getByText(
     "Texto de inspeção revisado."
-  );
+  )).toBeVisible();
 
   await openInspectionUnit(page, "shared");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);

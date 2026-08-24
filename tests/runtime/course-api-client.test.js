@@ -202,6 +202,47 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
   );
 });
 
+test("edição estrutural assistida reutiliza a composição genérica sem metadados focais", async () => {
+  let request = null;
+  const receipt = {
+    courseId: COURSE_ID,
+    requestId: "request-structural-edit-0001",
+    courseRevision: 8,
+    changed: true,
+    idempotent: false
+  };
+  const { client } = clientWithFetch(async (url, init) => {
+    request = { url, body: JSON.parse(init.body) };
+    return jsonResponse({ ok: true, data: receipt });
+  });
+  const result = await client.commitCourseStructuralComposition({
+    requestId: receipt.requestId,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    upserts: [{
+      entityType: "microsequence",
+      entityId: "micro-b",
+      parentType: "lesson",
+      parentId: "lesson-a",
+      position: 1,
+      content: {
+        title: "Aplicação",
+        goal: "Aplicar a regra.",
+        role: "practice",
+        dependsOn: [], covers: [], checks: [], errors: []
+      }
+    }],
+    deletes: [],
+    sourceAttributionApplications: []
+  });
+  assert.deepEqual(result, receipt);
+  assert.match(request.url, /\/functions\/v1\/aralearn-course-api\/app\/alterarCurso$/u);
+  assert.equal(request.body.operation, "commit_course_composition");
+  assert.equal(Object.hasOwn(request.body, "expectedStudyUnitVersion"), false);
+  assert.equal(Object.hasOwn(request.body, "applicationOrigin"), false);
+  assert.deepEqual(request.body.sourceAttributionApplications, []);
+});
+
 test("fila Rever é paginada por RPC browser-only e normalizada estritamente", async () => {
   let request = null;
   const nextCursor = {

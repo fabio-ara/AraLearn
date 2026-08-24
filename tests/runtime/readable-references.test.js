@@ -9,6 +9,7 @@ import {
   citationLabel,
   decodeBibTeX,
   parseBibTeX,
+  renderLocalReferences,
   renderReadableReferences,
   replacePandocCitations,
   validateReadableCitations
@@ -64,6 +65,16 @@ test("citações Pandoc tornam-se links legíveis e recuperáveis", () => {
     validateReadableCitations("[Sweller (1998)](referencias.md#ref-sweller1998)", entries).length,
     1
   );
+});
+
+test("cada página deriva sua seção Referências apenas das obras citadas", () => {
+  const entries = parseBibTeX(fixture);
+  const source = "# Conceito\n\nAfirmação ([Sweller et al. (1998)](referencias.md#ref-sweller1998)).\n";
+  const rendered = renderLocalReferences(source, entries);
+  assert.match(rendered, /## Referências/u);
+  assert.match(rendered, /Cognitive Architecture and Instructional Design/u);
+  assert.doesNotMatch(rendered, /Pedagogia da autonomia/u);
+  assert.equal(renderLocalReferences(rendered, entries), rendered);
 });
 
 test("modo de conferência detecta divergência da página gerada", (context) => {

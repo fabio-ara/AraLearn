@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 export const LEGACY_DATABASE_CASE_ID = "pre-course-database-removal";
-export const LEGACY_DATABASE_OBJECT_COUNT = 1_595;
+export const LEGACY_DATABASE_OBJECT_COUNT = 1_550;
 export const LEGACY_STORAGE_BUCKETS = Object.freeze([
   "aralearn-authoring-artifacts",
   "aralearn-course-revisions"
@@ -23,12 +23,12 @@ const PDF_PLAN_CONTRACT = "aralearn.course-source-pdf-orphan-removal-plan.v1";
 
 const LEGACY_CATEGORY_COUNTS = Object.freeze({
   bucket: 2,
-  constraint: 655,
-  function: 333,
-  index: 254,
+  constraint: 634,
+  function: 324,
+  index: 245,
   policy: 9,
-  rls: 110,
-  table: 110,
+  rls: 107,
+  table: 107,
   trigger: 117,
   view: 5
 });

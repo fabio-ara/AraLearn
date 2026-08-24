@@ -41,7 +41,10 @@ const REQUIRED_FEATURES = Object.freeze([
   "contextual-study-unit-edit-v1",
   "personal-course-copy-edit-v1",
   "current-data-lifecycle-v1",
-  "authenticated-course-source-pdf-upload-v1"
+  "authenticated-course-source-pdf-upload-v1",
+  "course-product-operations-v1",
+  "current-administrative-maintenance-v1",
+  "gpt-actions-openapi-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -86,13 +89,17 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
   "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
   "supabase/functions/_shared/aralearn-authoring/courseToolExecutor.js",
+  "supabase/functions/_shared/aralearn-authoring/actionOAuthServer.js",
+  "supabase/functions/_shared/aralearn-authoring/courseActionServer.js",
   "supabase/functions/aralearn-course-api/index.ts",
-  "supabase/functions/aralearn-authoring-mcp/index.ts"
+  "supabase/functions/aralearn-authoring-mcp/index.ts",
+  "supabase/functions/aralearn-authoring-action/index.ts"
 ]);
 
 const EDGE_RUNTIME_ENTRY_FILES = Object.freeze([
   "supabase/functions/aralearn-course-api/index.ts",
-  "supabase/functions/aralearn-authoring-mcp/index.ts"
+  "supabase/functions/aralearn-authoring-mcp/index.ts",
+  "supabase/functions/aralearn-authoring-action/index.ts"
 ]);
 
 const FORBIDDEN_RUNTIME_SYMBOLS = Object.freeze([
@@ -246,7 +253,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260821191340" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260824130000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -300,6 +307,12 @@ async function validateManifest() {
   );
   const dataLifecycleMigration = await read(
     "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql"
+  );
+  const productOperationsMigration = await read(
+    "supabase/migrations/20260824120000_product_operations_and_maintenance.sql"
+  );
+  const actionsMigration = await read(
+    "supabase/migrations/20260824130000_restore_gpt_actions_openapi.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -379,6 +392,21 @@ async function validateManifest() {
       ) ||
       !dataLifecycleMigration.includes(
         "isolated-mcp-oauth-principal-v1"
+      ) ||
+      !productOperationsMigration.includes(
+        "maintain_course_for_actor_v1"
+      ) ||
+      !productOperationsMigration.includes(
+        "get_current_maintenance_for_actor_v1"
+      ) ||
+      !actionsMigration.includes(
+        "$advance_product_operations_and_actions_manifest$"
+      ) ||
+      !actionsMigration.includes(
+        "to_jsonb('20260824130000'::text)"
+      ) ||
+      !actionsMigration.includes(
+        "gpt-actions-openapi-v1"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -399,7 +427,8 @@ async function validateManifest() {
         !avatarPathMigration.includes(`'${feature}'`) &&
         !contextualCompositionMigration.includes(`'${feature}'`) &&
         !personalCourseCopyMigration.includes(`'${feature}'`) &&
-        !dataLifecycleMigration.includes(`'${feature}'`)) {
+        !dataLifecycleMigration.includes(`'${feature}'`) &&
+        !actionsMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -515,13 +544,13 @@ async function validateRuntimeFiles() {
 }
 
 async function validateEdgeAndMcp() {
-  if (await exists("supabase/functions/aralearn-authoring-action/index.ts")) {
-    fail("A Edge Function substituída aralearn-authoring-action ainda existe.");
+  if (!await exists("supabase/functions/aralearn-authoring-action/index.ts")) {
+    fail("A Edge Function de Actions/OpenAPI não existe.");
   }
   const config = await read("supabase/config.toml");
   if (!config.includes("[functions.aralearn-course-api]") ||
-      config.includes("[functions.aralearn-authoring-action]")) {
-    fail("supabase/config.toml não aponta exclusivamente para a API de Cursos.");
+      !config.includes("[functions.aralearn-authoring-action]")) {
+    fail("supabase/config.toml não declara API de Cursos e Actions.");
   }
   const courseApi = await read("supabase/functions/aralearn-course-api/index.ts");
   if (!courseApi.includes("ARALEARN_COURSE_API_ALLOWED_ORIGINS") ||
@@ -558,8 +587,9 @@ async function validateDeploymentPath() {
       fail(`O fluxo de implantação não contém ${required}.`);
     }
   }
-  if (deployment.includes("secrets set \"ARALEARN_AUTHORING_ACTION_")) {
-    fail("O fluxo de implantação ainda grava secrets da Action substituída.");
+  if (!deployment.includes("secrets set \"ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=") ||
+      !deployment.includes("functions deploy aralearn-authoring-action")) {
+    fail("O fluxo de implantação não preserva a configuração e a função de Actions.");
   }
   if (deployment.includes("ARALEARN_AUTHORING_ALLOWED_ORIGINS=") ||
       deployment.includes("secrets unset") ||

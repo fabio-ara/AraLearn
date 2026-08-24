@@ -4,9 +4,8 @@ Este guia reúne as operações disponíveis no site e no aplicativo Android. O
 [Guia do estudante](guia-estudante.md) e o [Guia do professor e
 autor](guia-professor-autor.md) desenvolvem os dois percursos em separado.
 
-A linha publicada é a versão 0.0.27. As ações de limpeza local, o upload
-autenticado de PDF e as respostas genéricas de acesso integram o site e o
-aplicativo Android dessa versão.
+As ações de limpeza local, o upload autenticado de PDF e as respostas genéricas
+de acesso integram o site e o aplicativo Android correntes.
 
 ## Conceitos para começar
 
@@ -83,7 +82,7 @@ Use o seletor **Estudo / Autoria** na tela inicial.
 - **Autoria** mostra somente Cursos próprios.
 
 A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
-a pessoa pode estudar, mas não alterar o original. Desde a versão 0.0.26, uma
+a pessoa pode estudar, mas não alterar o original. Uma
 gravação contextual feita em Estudo cria um Curso pessoal privado; ele passa a
 aparecer em Autoria como Curso próprio.
 
@@ -195,11 +194,9 @@ Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
 64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
 **Baixar PDF** para consultar o arquivo autorizado.
 
-Na compatibilidade mantida pela 0.0.27, o Android 0.0.26 continua apto a baixar
-PDFs pelo contrato v1, mas seu envio antigo falha de modo fechado. O cliente novo usa o
-contrato v2 e uma sessão ativa para enviar. Essa compatibilidade de leitura não
-depende de identificação do aparelho e permanece até uma decisão explícita de
-encerrar o suporte ao 0.0.26.
+O download usa o contrato temporário de leitura; o envio usa o contrato
+autenticado e uma sessão ativa. A seleção depende da operação, não da
+identificação do aparelho.
 
 Toda nova atribuição exige uma Âncora ativa da revisão exata. Use **Definir
 fontes** em um item do Planejamento ou numa Unidade da Inspeção. Salvar substitui
@@ -219,7 +216,7 @@ Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
 **Cancelar** abandona somente esse rascunho.
 
-Desde a versão 0.0.26, a mesma ação aparece em Estudo para quem recebeu acesso
+A mesma ação aparece em Estudo para quem recebeu acesso
 direto. Antes da primeira gravação,
 a interface informa que
 **Salvar na minha cópia** criará um Curso pessoal privado. A operação materializa
@@ -233,37 +230,35 @@ conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home 
 o novo Curso como **Sua cópia** e mantém o original como **Compartilhado com
 você**.
 
-Para obter uma sugestão, ative a edição, selecione o trecho e use
-**Assistência por API**:
+Para trabalhar com a sessão contextual, use **Assistência por API** na Unidade,
+na Microssequência ou na Lição:
 
 1. confira **Serviço local**, já fixo pela instalação;
 2. informe o modelo; abra **Conexão** apenas para conferir o endpoint do relay
    na porta 4183;
-3. leia o aviso sobre o recorte enviado e escreva o pedido;
-4. confira a sugestão e use **Ver no conteúdo**;
-5. aplique ao rascunho ou descarte;
-6. salve manualmente apenas se o resultado estiver adequado.
+3. leia o aviso sobre o recorte enviado e escreva uma mensagem;
+4. discuta o plano até que ele represente a intenção;
+5. use **Confirmar e preparar**;
+6. confira a candidata no renderer real;
+7. aplique ao rascunho ou descarte;
+8. salve somente se o resultado estiver adequado.
 
-O pedido leva valores textuais editáveis, título, papel, tópicos e mensagens
-anteriores. PDFs, Fontes, outras Unidades, `targetId`, `studyUnitId` e o restante
-do Curso ficam fora. A credencial do provider fica no relay, fora do AraLearn;
-fechar a sobreposição limpa a conversa, e sair ou recarregar também elimina a
-configuração. Providers remotos e chave no navegador aparecem somente num
-runtime explícito de desenvolvimento, com alerta, e não são o percurso de
-produção para pessoas leigas. O ChatGPT conectado por MCP continua sendo a via
-principal para trabalhar com o Curso inteiro.
+O pedido leva a composição necessária do alvo, um resumo do caminho curricular
+e as mensagens recentes. PDFs, Fontes, identidade da conta e regiões alheias ao
+escopo ficam fora. A credencial do provedor permanece no relay, fora do
+AraLearn. Providers remotos e chave no navegador aparecem somente num runtime
+explícito de desenvolvimento, com alerta, e não são o percurso de produção.
 
 O aviso de cada envio separa essa memória efêmera do tratamento externo. O relay
 pode encaminhar o recorte ao provider configurado, que pode conservar dados
 segundo seus próprios termos; confira destino e conteúdo antes de autorizar.
 
-A sugestão altera no máximo um caminho textual por pedido. Se o trecho exceder
-6.000 caracteres ou o contexto editável completo superar 12.000, o ícone fica
-desabilitado e informa o motivo para tecnologias assistivas; use a edição manual.
-O relay foi comprovado no ambiente HTTP local. Ele ainda depende de ensaio no
-Pages. Desde a versão 0.0.24, o Android usa uma ponte nativa fixa para manter a
-chamada HTTP fora do WebView, sem relaxar a política de conteúdo misto, mas a
-instalação e o ensaio em dispositivo real continuam pendentes.
+A sessão pode trabalhar com a composição da Unidade, com a estrutura da
+Microssequência e com a organização de Microssequências dentro da Lição. Depois
+da conversa e da confirmação, o AraLearn valida a proposta e a mostra no
+renderer real. Proposta inválida ou não renderizável deixa o conteúdo corrente
+intacto. No Android, uma ponte nativa fixa mantém a chamada HTTP fora do WebView
+sem relaxar a política de conteúdo misto.
 
 ## Trabalhar com o ChatGPT a partir da Autoria
 
@@ -398,7 +393,7 @@ de aprendizagem ou efeito exige outro desenho de pesquisa.
 ## Conceder e revogar acesso
 
 Em **Pessoas**, use **Conceder acesso**, informe o e-mail exato de uma conta
-e confirme. Desde a versão 0.0.27, a resposta imediata é a mesma exista ou não a
+e confirme. A resposta imediata é a mesma exista ou não a
 conta, inclusive quando o endereço é próprio, o acesso já existe ou o limite foi
 atingido. Há dez tentativas por pessoa autenticada em dez minutos. Quando a
 concessão é válida, a pessoa passa a encontrar o Curso em Estudo. A concessão
@@ -480,7 +475,7 @@ podem permanecer no dispositivo. A confirmação avisa que uma alteração ainda
 aberta e não salva será perdida. Considere essas duas condições ao usar aparelho
 compartilhado.
 
-Desde a versão 0.0.27, **Remover dados deste dispositivo** apaga somente os
+**Remover dados deste dispositivo** apaga somente os
 dados persistidos da conta ativa e mantém a sessão. **Sair e remover dados deste
 dispositivo** encerra a sessão e apaga o mesmo namespace. Nenhuma dessas ações
 preserva texto que ainda exista apenas num formulário aberto.
@@ -514,7 +509,7 @@ próprias. Cursos também não são
 disponibilizados anonimamente: Estudo exige conta própria ou acesso direto
 concedido pelo proprietário.
 
-A cópia pessoal da versão 0.0.26 usa a persistência relacional e o Storage
+A cópia pessoal usa a persistência relacional e o Storage
 correntes do AraLearn. Ela não introduz Git, repositório, ramo ou versão técnica
 na interface.
 

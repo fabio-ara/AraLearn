@@ -382,3 +382,11 @@ efeito pedagógico com estudantes exigem avaliação acadêmica e empírica.
 
 Adicionar um pacote preserva o núcleo. Alterar a estrutura externa, as posições ou a
 semântica comum modifica o núcleo e exige revisão mais ampla.
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+
+<!-- referências locais: fim -->

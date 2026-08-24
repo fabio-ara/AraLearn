@@ -30,6 +30,13 @@ export class CourseStudyBridge {
     return this.controller.clearCourse(courseId, options);
   }
 
+  maintainCourse(values) {
+    if (typeof this.controller.maintainCourse !== "function") {
+      throw new TypeError("O ciclo de vida do Curso não está disponível.");
+    }
+    return this.controller.maintainCourse(values);
+  }
+
   hasOfflineCourse(courseId, options = {}) {
     if (typeof this.controller.hasVerifiedCourseDocument !== "function") {
       return Promise.resolve(false);

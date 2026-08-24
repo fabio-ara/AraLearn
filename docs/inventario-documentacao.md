@@ -13,7 +13,7 @@ da tarefa ou do conceito procurado.
 | Como estudar, retomar e marcar uma Unidade para rever? | [Guia do estudante](guia-estudante.md) |
 | Como criar, inspecionar e compartilhar um Curso? | [Guia do professor e autor](guia-professor-autor.md) |
 | Como recuperar uma sessão ou diagnosticar uma falha? | [Solução de problemas](solucao-de-problemas.md) |
-| Quais capacidades estão disponíveis agora? | [Estado corrente](estado-atual-e-roadmap.md) |
+| Quais capacidades estão disponíveis agora? | [Capacidades e limites atuais](estado-atual-e-roadmap.md) |
 
 ## Compreender o desenho educacional
 
@@ -40,6 +40,7 @@ A [revisão de literatura](revisao-de-literatura.md), o
 | Entender autoridade, contexto e confirmação | [Assistência por modelo de linguagem](assistencia-por-ia.md) |
 | Entender instruções, pedidos e operações estruturadas | [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) |
 | Configurar o acesso por Model Context Protocol | [Autoria por MCP](autoria-mcp.md) |
+| Configurar um GPT personalizado por Actions/OpenAPI | [GPT personalizado com Actions](autoria-actions.md) |
 | Registrar Fontes, Âncoras e atribuição | [Contrato de conteúdo](aralearn-contract.md) |
 | Auditar, corrigir, verificar e reverter | [Auditoria e correções](auditoria-de-conformidade-instrucional.md) |
 

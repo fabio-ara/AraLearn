@@ -1,13 +1,13 @@
 {
   "name": "aralearn",
-  "version": "0.0.27",
+  "version": "2.0.0",
   "private": true,
   "description": "Aplicativo de estudo offline em microssequências.",
   "type": "module",
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
-    "test": "node ./scripts/buildReadableReferences.mjs --check && node ./scripts/buildVegaInterpreterVendor.mjs --check && node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/buildResourceCatalogCourse.mjs --check && node ./scripts/auditCurrentArchitecture.mjs && node ./scripts/auditTerminology.mjs && node ./scripts/auditFrontendStyles.mjs && node ./scripts/auditFrontendResidues.mjs && node ./scripts/auditVerticalParity.mjs && node ./scripts/auditChoicePromptDuplication.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs",
+    "test": "node ./scripts/buildReadableReferences.mjs --check && node ./scripts/buildVegaInterpreterVendor.mjs --check && node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/buildResourceCatalogCourse.mjs --check && node ./scripts/buildChatGptActionOpenApi.mjs --check && node ./scripts/auditCurrentArchitecture.mjs && node ./scripts/auditTerminology.mjs && node ./scripts/auditFrontendStyles.mjs && node ./scripts/auditFrontendResidues.mjs && node ./scripts/auditVerticalParity.mjs && node ./scripts/auditChoicePromptDuplication.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs",
     "test:supabase:smoke": "node ./supabase/tests/course-runtime-local-smoke.mjs",
     "test:authoring:mcp:local": "node ./supabase/tests/authoring-mcp-local-smoke.mjs",
     "test:authoring:mcp:local:oauth": "node ./scripts/runLocalMcpOAuthSmoke.mjs",
@@ -15,6 +15,7 @@
     "test:authoring:mcp:hosted": "node ./supabase/tests/authoring-mcp-hosted-smoke.mjs",
     "test:course:hosted:pdf": "node ./scripts/runHostedCourseSourcePdfSmoke.mjs",
     "test:authoring:mcp": "node --test ./tests/runtime/course-mcp-server.test.js ./tests/runtime/course-mcp-tools.test.js",
+    "test:authoring:actions": "node --test ./tests/runtime/course-action-server.test.js",
     "test:authoring:supabase:e2e": "playwright test tests/e2e/course-authoring-supabase-local.spec.js --config=playwright.authoring-supabase-local.config.js",
     "test:e2e": "node ./scripts/runE2eTests.mjs",
     "lint": "eslint .",
@@ -41,6 +42,8 @@
     "docs:references": "node ./scripts/buildReadableReferences.mjs",
     "docs:references:check": "node ./scripts/buildReadableReferences.mjs --check",
     "docs:references:convert": "node ./scripts/buildReadableReferences.mjs --convert-citations",
+    "actions:openapi": "node ./scripts/buildChatGptActionOpenApi.mjs",
+    "actions:openapi:check": "node ./scripts/buildChatGptActionOpenApi.mjs --check",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "android:release": "pwsh -NoProfile -File ./scripts/buildAndroidRelease.ps1",
     "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"

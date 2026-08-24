@@ -140,3 +140,14 @@ autorregulação são fenômenos mais amplos do que cliques observáveis; um
 indicador simplificado não equivale ao construto
 ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
 [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated)).
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated): Jaclyn Broadbent; Walter L. Poon (2015). **Self-Regulated Learning Strategies and Academic Achievement in Online Higher Education Learning Environments: A Systematic Review.** *The Internet and Higher Education*, 27, p. 1–13.
+- [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
+- [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
+- [Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated): Barry J. Zimmerman (2002). **Becoming a Self-Regulated Learner: An Overview.** *Theory Into Practice*, 41(2), p. 64–70.
+
+<!-- referências locais: fim -->

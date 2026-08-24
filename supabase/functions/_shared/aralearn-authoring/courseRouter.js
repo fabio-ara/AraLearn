@@ -1389,6 +1389,67 @@ function validateAccessChange(body, request, operation) {
   return result;
 }
 
+function validateCourseLifecycle(body, request) {
+  exactFields(body, new Set(["requestId", "operation", "confirmed"]));
+  const operation = text(body.operation, "operation", { maximum: 40 });
+  if (!new Set(["delete_owned_course", "leave_shared_course"]).has(operation) ||
+      body.confirmed !== true) {
+    fail("invalid_course_lifecycle", "A operação de ciclo de vida do Curso é inválida.");
+  }
+  return {
+    requestId: requestIdFrom(request, body),
+    operation,
+    confirmed: true
+  };
+}
+
+function maintenanceQuery(request) {
+  const url = new URL(request.url);
+  if ([...url.searchParams.keys()].some((field) => field !== "limit") ||
+      url.searchParams.getAll("limit").length > 1) {
+    fail("invalid_maintenance_query", "A consulta de Manutenção é inválida.");
+  }
+  return {
+    limit: positiveInteger(url.searchParams.get("limit"), "limit", {
+      defaultValue: 100,
+      maximum: 500
+    })
+  };
+}
+
+function validateMaintenanceAction(body) {
+  exactFields(body, new Set([
+    "operation", "confirmed", "limit", "classification", "objectPath"
+  ]));
+  const operation = text(body.operation, "operation", { maximum: 40 });
+  if (!new Set(["run_retention", "remove_orphan_object"]).has(operation) ||
+      body.confirmed !== true) {
+    fail("invalid_maintenance_action", "A ação de Manutenção é inválida.");
+  }
+  if (operation === "run_retention") {
+    if (body.classification != null || body.objectPath != null) {
+      fail("invalid_maintenance_action", "A retenção não recebe um objeto de resíduo.");
+    }
+    return {
+      operation,
+      confirmed: true,
+      limit: positiveInteger(body.limit, "limit", { maximum: 1000 })
+    };
+  }
+  if (body.limit != null) {
+    fail("invalid_maintenance_action", "A remoção de resíduo não recebe limite.");
+  }
+  const classification = text(body.classification, "classification", { maximum: 80 });
+  const objectPath = text(body.objectPath, "objectPath", { maximum: 500 });
+  if (!new Set([
+    "avatar_owner_missing", "avatar_profile_unlinked",
+    "pdf_course_missing", "pdf_unlinked"
+  ]).has(classification)) {
+    fail("invalid_maintenance_action", "A classe de resíduo não pode ser removida.");
+  }
+  return { operation, confirmed: true, classification, objectPath };
+}
+
 export async function executeCourseRoute({ request, route, adapter, principal, deadlineAt = null }) {
   if (!adapter) throw new TypeError("Adaptador de Curso obrigatório.");
   if (route.name === "getPersonProfile") {
@@ -1396,6 +1457,28 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: null,
       data: await adapter.getPersonProfile({ principal, deadlineAt })
+    };
+  }
+  if (route.name === "getCurrentMaintenance") {
+    assertApplicationPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCurrentMaintenance({
+        principal,
+        ...maintenanceQuery(request),
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "executeCurrentMaintenance") {
+    assertApplicationPrincipal(principal, { write: true });
+    return {
+      requestId: null,
+      data: await adapter.executeCurrentMaintenance({
+        principal,
+        ...validateMaintenanceAction(await readCourseJsonBody(request)),
+        deadlineAt
+      })
     };
   }
   if (route.name === "updatePersonProfile") {
@@ -1632,6 +1715,19 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: value.requestId,
       data: await adapter.createCourse({ principal, ...value, deadlineAt })
+    };
+  }
+  if (route.name === "maintainCourse") {
+    assertApplicationPrincipal(principal, { write: true });
+    const value = validateCourseLifecycle(await readCourseJsonBody(request), request);
+    return {
+      requestId: value.requestId,
+      data: await adapter.maintainCourse({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
     };
   }
   if (route.name === "commitCourseInstructionalPlan") {
