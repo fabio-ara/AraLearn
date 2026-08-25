@@ -180,12 +180,17 @@ condições de supervisão; a existência desses controles não prova que a pess
 compreenda o erro ou exerça controle efetivo.
 
 **Confiança calibrada** ocorre quando a confiança e a dependência correspondem
-à capacidade demonstrada do sistema naquela tarefa e às incertezas conhecidas.
-**Viés de automação** (*automation bias*) é a tendência de aceitar ou priorizar
-a recomendação automatizada de modo inadequado, inclusive diante de indícios
-contrários. Tornar limites e correções possíveis é necessário, mas intervenções
-que exigem reflexão também podem introduzir custo e seus efeitos dependem do
-contexto ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+à capacidade observada do sistema naquela tarefa e às incertezas conhecidas; o
+conceito diz respeito à adequação da dependência, não à confiança alta por si
+só ([Lee e See (2004)](referencias.md#ref-lee2004trust)). **Viés de automação**
+(*automation bias*) descreve uso inadequado de uma recomendação automatizada,
+como aceitá-la diante de indícios contrários ou deixar de procurar informação
+por atenção deslocada ao auxílio. A literatura o relaciona à complacência e a
+processos de atenção, sem reduzir todo aceite de sugestão a um único mecanismo
+([Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation)).
+Tornar limites e correções possíveis é necessário, mas intervenções que exigem
+reflexão também podem introduzir custo e seus efeitos dependem da tarefa
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
 [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Orientações
 para IA generativa em educação reforçam supervisão, transparência, proteção de
 dados e adequação ao contexto ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
@@ -300,11 +305,13 @@ As citações usam chaves da base bibliográfica pública em
 - [Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge): Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated): Jaclyn Broadbent; Walter L. Poon (2015). **Self-Regulated Learning Strategies and Academic Achievement in Online Higher Education Learning Environments: A Systematic Review.** *The Internet and Higher Education*, 27, p. 1–13.
-- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1).
+- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [International Organization for Standardization (2018)](referencias.md#ref-iso2018usability): International Organization for Standardization (2018). **ISO 9241-11:2018: Ergonomics of Human-System Interaction — Part 11: Usability: Definitions and Concepts.** ISO 9241-11:2018.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
 - [Lai et al. (2022)](referencias.md#ref-lai2022mobile): Yuzhi Lai; Nadira Saab; Wilfried Admiraal (2022). **Learning Strategies in Self-Directed Language Learning Using Mobile Technology in Higher Education: A Systematic Scoping Review.** *Education and Information Technologies*, 27, p. 7749–7780.
+- [Lee e See (2004)](referencias.md#ref-lee2004trust): John D. Lee; Katrina A. See (2004). **Trust in Automation: Designing for Appropriate Reliance.** *Human Factors*, 46(1), p. 50–80.
+- [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation): Raja Parasuraman; Dietrich H. Manzey (2010). **Complacency and Bias in Human Use of Automation: An Attentional Integration.** *Human Factors*, 52(3), p. 381–410.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.

@@ -6,6 +6,10 @@ diferenças pretendidas e as revisões observadas.
 
 O recurso apoia análise descritiva do artefato. Ele não cria participantes,
 atribuição aleatória, consentimento, desfechos ou inferência causal.
+Desenhos experimentais e quase experimentais exigem relações declaradas entre
+condições, atribuição, medidas, perdas, análise e ameaças à validade; uma
+estrutura técnica de comparação não satisfaz esses requisitos
+([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
 
 ## Quando usar
 
@@ -19,7 +23,12 @@ Variantes ajudam a examinar uma decisão concreta, por exemplo:
 A origem comum melhora a rastreabilidade, mas não transforma os Cursos em
 condições experimentais equivalentes. Uma pesquisa sobre aprendizagem ainda
 precisa definir população, procedimento, instrumentos, dados ausentes, análise
-e requisitos éticos.
+e requisitos éticos. Quando houver participantes no escopo brasileiro das
+Ciências Humanas e Sociais, a Resolução CNS nº 510/2016 é uma das autoridades
+normativas aplicáveis
+([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+Ela protege direitos e orienta a avaliação ética; não demonstra validade causal
+ou efeito educacional.
 
 ## Criar um conjunto
 
@@ -131,8 +140,18 @@ conjunto e as revisões sem transformar a comparação em medida de aprendizagem
 Para análise externa, registre a pergunta, o recorte, as revisões e os dados
 ausentes. Uma diferença descritiva permite afirmar que os Cursos divergiram em
 determinado aspecto; decidir que uma variante é melhor ou que causou um
-resultado exige outro desenho de pesquisa.
+resultado exige desenho de pesquisa compatível com essa inferência
+([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
 
 Consulte [Pesquisa sobre a Autoria](analytics-instrucionais.md) para fatos e
 exportação e [Guia do pesquisador](guia-pesquisador.md) para os limites de
 interpretação.
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
+- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
+
+<!-- referências locais: fim -->

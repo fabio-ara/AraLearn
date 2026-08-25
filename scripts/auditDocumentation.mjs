@@ -384,6 +384,9 @@ function auditResearchLog({ root, errors }) {
   }
   const identifiers = new Set();
   for (const [offset, line] of lines.slice(1).entries()) {
+    if (/\\"/u.test(line)) {
+      errors.push(`${relative}:${offset + 2}: use aspas CSV duplicadas em vez de escape JSON \\"`);
+    }
     const row = parseCsvRow(line);
     if (!row || row.length !== header.length) {
       errors.push(`${relative}:${offset + 2}: linha CSV inválida`);

@@ -17,6 +17,15 @@ O documento não substitui:
 - instrumentos com evidência de validade;
 - procedimentos de proteção, retenção e descarte de dados.
 
+No Brasil, a Resolução CNS nº 510/2016 estabelece normas para pesquisas em
+Ciências Humanas e Sociais que envolvem dados obtidos diretamente de
+participantes, informações identificáveis ou riscos abrangidos por seu escopo.
+Ela protege, entre outros aspectos, informação compreensível, consentimento ou
+assentimento, privacidade, confidencialidade e retirada sem prejuízo
+([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+A norma orienta a governança ética do estudo; não constitui evidência de
+aprendizagem nem valida o método escolhido.
+
 O protocolo evita quatro atalhos:
 
 1. teste de software não demonstra aprendizagem;
@@ -360,13 +369,21 @@ linhas diferentes. A estrutura dos dados precisa ser modelada.
 - evitar telemetria contínua por conveniência;
 - pseudonimizar ou anonimizar conforme desenho e risco;
 - definir acesso, retenção, exclusão, descarte e resposta a incidente;
-- permitir retirada conforme o protocolo aprovado;
+- garantir retirada a qualquer momento, sem prejuízo, e explicitar no protocolo
+  o tratamento dos dados já coletados;
 - interromper tarefa diante de ansiedade relevante, perda de trabalho,
   exposição de dados ou consequência não prevista;
 - oferecer canal de esclarecimento e informação compreensível.
 
-Os princípios de transparência, controle e responsabilidade na análise de dados educacionais e na IA
-fornecem base para essas decisões ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
+Os direitos de participantes no escopo brasileiro são normatizados pela
+Resolução CNS nº 510/2016
+([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+Princípios de transparência, controle e responsabilidade na análise de dados
+educacionais e na IA complementam essa obrigação no desenho do estudo
+([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
+[Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics);
+[UNESCO (2023)](referencias.md#ref-unesco2023genai);
+[Autio et al. (2024)](referencias.md#ref-nist2024genai)).
 
 ## Versionamento e reprodutibilidade
 
@@ -447,6 +464,7 @@ ou resposta revelada não funcionam como medidas automáticas de aprendizagem.
 ## Referências
 
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
+- [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.

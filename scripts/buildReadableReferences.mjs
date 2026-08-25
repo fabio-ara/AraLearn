@@ -9,6 +9,153 @@ const PANDOC_CITATION = /\[([^\]]*?@[^\]]+)\]/gu;
 const READABLE_CITATION = /\[([^\]]+)\]\(referencias\.md#ref-([A-Za-z0-9:_-]+)\)/gu;
 const LOCAL_REFERENCES_START = "<!-- referências locais: início -->";
 const LOCAL_REFERENCES_END = "<!-- referências locais: fim -->";
+const REFERENCE_READING_GUIDES = Object.freeze([
+  {
+    title: "Aprendizagem e desenho instrucional",
+    introduction: "Comece pelos mecanismos que organizam planejamento, carga, prática e representação. A ordem vai do quadro geral às decisões mais específicas do AraLearn.",
+    readings: [
+      {
+        key: "panadero2017selfregulated",
+        purpose: "situa os ciclos de planejamento, monitoramento e reflexão em seis modelos de aprendizagem autorregulada",
+        limit: "é uma revisão de modelos; não demonstra que controles de interface produzam autorregulação"
+      },
+      {
+        key: "sweller1998architecture",
+        purpose: "introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional",
+        limit: "a teoria não fornece um limite universal de tamanho para Unidades de estudo"
+      },
+      {
+        key: "ainsworth2006deft",
+        purpose: "oferece um quadro para analisar desenho, função e tarefa em múltiplas representações",
+        limit: "não estabelece que variedade visual ou um componente especializado seja sempre superior"
+      },
+      {
+        key: "carpenter2022spacing",
+        purpose: "sintetiza prática de recuperação e espaçamento e ajuda a distinguir os dois mecanismos",
+        limit: "intervalo, conteúdo, população e medida moderam a transferência para outro contexto"
+      }
+    ]
+  },
+  {
+    title: "Pesquisa, avaliação e validade",
+    introduction: "Este percurso separa construção do artefato, investigação educacional, desenho causal e validade das interpretações.",
+    readings: [
+      {
+        key: "messick1995validity",
+        purpose: "explica validade como sustentação das interpretações e dos usos de uma medida",
+        limit: "não valida por si nenhum instrumento ou indicador do AraLearn"
+      },
+      {
+        key: "shadish2002experimental",
+        purpose: "fundamenta desenhos experimentais e quase experimentais e suas ameaças à inferência causal",
+        limit: "um esquema de variantes ou uma origem comum não satisfaz automaticamente esses desenhos"
+      },
+      {
+        key: "dbrc2003designbased",
+        purpose: "introduz a pesquisa baseada em design em contextos educacionais autênticos",
+        limit: "iteração de produto sem pergunta, dados e explicação não constitui DBR"
+      },
+      {
+        key: "hevner2004designscience",
+        purpose: "situa a construção e a avaliação de artefatos em Design Science Research",
+        limit: "evidência técnica do artefato não substitui avaliação de aprendizagem ou usabilidade"
+      },
+      {
+        key: "cns2016resolucao510",
+        purpose: "delimita direitos e requisitos éticos para pesquisas brasileiras em Ciências Humanas e Sociais abrangidas por seu escopo",
+        limit: "a norma não valida desenho, medida ou análise e não demonstra efeito educacional"
+      }
+    ]
+  },
+  {
+    title: "IA generativa e colaboração entre pessoas e IA",
+    introduction: "As leituras avançam de princípios de interação e dependência apropriada para erro de geração, heterogeneidade de desempenho e trabalho docente de revisão.",
+    readings: [
+      {
+        key: "amershi2019humanai",
+        purpose: "organiza diretrizes de comunicação, correção e controle na interação entre pessoas e IA",
+        limit: "diretriz de desenho não demonstra que uma pessoa compreendeu ou exerceu o controle"
+      },
+      {
+        key: "lee2004trust",
+        purpose: "relaciona confiança, contexto e dependência apropriada de automação imperfeita",
+        limit: "confiança declarada não equivale a dependência calibrada numa tarefa concreta"
+      },
+      {
+        key: "ji2023hallucination",
+        purpose: "sintetiza tipos, causas, avaliação e mitigação de alucinações na geração de linguagem",
+        limit: "os resultados variam por tarefa e não demonstram que recuperação ou validação elimine erro"
+      },
+      {
+        key: "vaccaro2024humanai",
+        purpose: "quantifica heterogeneidade e moderadores de desempenho em combinações pessoa–IA",
+        limit: "as tarefas e medidas da meta-análise não predizem a qualidade da autoria no AraLearn"
+      },
+      {
+        key: "selwyn2025prompting",
+        purpose: "mostra o trabalho de conferir, reparar, reescrever e rejeitar saídas de IA relatado por docentes",
+        limit: "o estudo qualitativo cobre 57 docentes de oito escolas na Austrália e na Suécia"
+      },
+      {
+        key: "han2025genaimeta",
+        purpose: "sintetiza resultados educacionais experimentais e seus moderadores",
+        limit: "a heterogeneidade substancial impede transportar o efeito agregado para o AraLearn"
+      }
+    ]
+  },
+  {
+    title: "Aprendizagem no trabalho e circulação de conhecimento",
+    introduction: "Estas fontes ajudam a distinguir aprendizagem individual, formação profissional e processos organizacionais de conhecimento.",
+    readings: [
+      {
+        key: "tynjala2008workplace",
+        purpose: "diferencia formas, níveis e condições de aprendizagem no trabalho",
+        limit: "a revisão não demonstra adequação de uma plataforma específica a toda organização"
+      },
+      {
+        key: "alavi2001knowledge",
+        purpose: "situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento",
+        limit: "armazenar e distribuir Cursos não constitui por si gestão do conhecimento"
+      },
+      {
+        key: "unesco2015tvet",
+        purpose: "delimita educação e formação técnica e profissional numa perspectiva de aprendizagem ao longo da vida",
+        limit: "é uma norma orientadora, não evidência de eficácia educacional do AraLearn"
+      }
+    ]
+  },
+  {
+    title: "Interface móvel, interrupção e modos de cor",
+    introduction: "O percurso liga diversidade de interfaces móveis, retomada de tarefas, polaridade de tela e acessibilidade normativa.",
+    readings: [
+      {
+        key: "faudzi2023mobileui",
+        purpose: "mapeia quadros usados no desenho de interfaces de aprendizagem móvel",
+        limit: "a diversidade encontrada não identifica um layout universalmente superior"
+      },
+      {
+        key: "monk2008resumption",
+        purpose: "examina como duração e demanda da interrupção afetam a retomada de objetivos",
+        limit: "a tarefa experimental não avalia aprendizagem nem armazenamento local"
+      },
+      {
+        key: "piepenbrock2014polarity",
+        purpose: "examina polaridade de tela numa tarefa delimitada de revisão de texto",
+        limit: "desempenho nessa tarefa não estabelece superioridade universal do modo claro"
+      },
+      {
+        key: "xie2021colormode",
+        purpose: "contrasta fadiga objetiva e preferência subjetiva em baixa iluminação",
+        limit: "a condição noturna e os níveis de luminância restringem a generalização"
+      },
+      {
+        key: "w3c2023wcag22",
+        purpose: "fornece critérios normativos de acessibilidade para conteúdo web",
+        limit: "conformidade técnica não demonstra compreensão, conforto ou aprendizagem"
+      }
+    ]
+  }
+]);
 
 function matchingBrace(source, opening) {
   let depth = 0;
@@ -118,6 +265,12 @@ export function decodeBibTeX(value) {
     .trim();
 }
 
+export function normalizeDoi(value) {
+  const decoded = decodeBibTeX(value);
+  const match = /^(?:(?:https?:\/\/(?:dx\.)?doi\.org\/)|(?:doi:\s*))?(10\.\d{4,9}\/\S+)$/iu.exec(decoded);
+  return match ? match[1].replace(/\/$/u, "").toLocaleLowerCase("en-US") : null;
+}
+
 function splitNames(value) {
   const result = [];
   let start = 0;
@@ -203,7 +356,8 @@ function referenceBlock(entry) {
   const publicationText = publication(entry);
   const identifiers = [];
   if (entry.fields.doi) {
-    const doi = decodeBibTeX(entry.fields.doi);
+    const doi = normalizeDoi(entry.fields.doi);
+    if (!doi) throw new Error(`DOI inválido em ${entry.key}: ${decodeBibTeX(entry.fields.doi)}.`);
     identifiers.push(`[DOI ${doi}](https://doi.org/${doi})`);
   }
   if (entry.fields.url) identifiers.push(`[acesso ao documento](${decodeBibTeX(entry.fields.url)})`);
@@ -261,7 +415,36 @@ export function renderLocalReferences(source, entries) {
   ].join("\n");
 }
 
-export function renderReadableReferences(entries) {
+export function renderReadingGuides(entries, guides = REFERENCE_READING_GUIDES) {
+  const byKey = new Map(entries.map((entry) => [entry.key, entry]));
+  const sections = [];
+  for (const guide of guides) {
+    const readings = guide.readings.map((reading) => {
+      const entry = byKey.get(reading.key);
+      if (!entry) throw new Error(`Percurso temático aponta para chave desconhecida: ${reading.key}.`);
+      return { ...reading, entry };
+    });
+    sections.push(
+      `### ${guide.title}`,
+      "",
+      guide.introduction,
+      "",
+      ...readings.map(({ entry, purpose, limit }, index) =>
+        `${index + 1}. [${citationLabel(entry)}](#ref-${entry.key}). **Função da leitura:** ${purpose}. **Limite principal:** ${limit}.`),
+      ""
+    );
+  }
+  if (!sections.length) return [];
+  return [
+    "## Percursos temáticos de leitura",
+    "",
+    "Os percursos abaixo oferecem entradas possíveis no corpus. A ordem é uma orientação de estudo, não uma classificação de qualidade. Função e limite são curadoria editorial; autoria, título, veículo e identificadores continuam derivados exclusivamente de `referencias.bib`.",
+    "",
+    ...sections
+  ];
+}
+
+export function renderReadableReferences(entries, { guides = REFERENCE_READING_GUIDES } = {}) {
   const sorted = [...entries].sort((left, right) => {
     const byLabel = citationLabel(left).localeCompare(citationLabel(right), "pt-BR", { sensitivity: "base" });
     return byLabel || left.key.localeCompare(right.key, "en-US");
@@ -286,6 +469,7 @@ export function renderReadableReferences(entries) {
     "",
     "Como a chave permanece no destino de cada link, um processamento futuro pode recuperar a notação `[@chave]` sem inferir a fonte a partir do texto visível.",
     "",
+    ...renderReadingGuides(entries, guides),
     "## Lista de referências",
     "",
     ...sorted.map(referenceBlock)
@@ -346,11 +530,11 @@ function markdownUnder(directory) {
   });
 }
 
-export function buildReadableReferences({ root = defaultRoot, check = false, convert = false } = {}) {
+export function buildReadableReferences({ root = defaultRoot, check = false, convert = false, guides = REFERENCE_READING_GUIDES } = {}) {
   const bibliography = path.join(root, "docs", "referencias.bib");
   const output = path.join(root, "docs", "referencias.md");
   const entries = parseBibTeX(fs.readFileSync(bibliography, "utf8"));
-  const rendered = renderReadableReferences(entries);
+  const rendered = renderReadableReferences(entries, { guides });
   const current = fs.existsSync(output) ? fs.readFileSync(output, "utf8") : "";
   const normalizedCurrent = current.replace(/\r\n?/gu, "\n");
   if (check && normalizedCurrent !== rendered) throw new Error("docs/referencias.md diverge de docs/referencias.bib; execute npm run docs:references.");

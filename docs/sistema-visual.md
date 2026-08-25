@@ -58,6 +58,18 @@ O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto
 e branco absolutos são reservados às situações em que o contraste medido os
 exige. A mesma relação semântica deve permanecer reconhecível nos dois modos.
 
+Nenhuma polaridade é tratada como superior em todas as situações. Numa tarefa
+específica de revisão de texto, a polaridade positiva, com texto escuro sobre
+fundo claro, apresentou desempenho melhor e pupilas menores
+([Piepenbrock et al. (2014)](referencias.md#ref-piepenbrock2014polarity)). Em
+outro experimento, realizado à noite com baixa iluminação da tela e do
+ambiente, o modo escuro apresentou menores marcadores objetivos de fadiga,
+enquanto o claro recebeu maior preferência subjetiva; contraste mais alto foi
+preferido nos dois casos ([Xie et al. (2021)](referencias.md#ref-xie2021colormode)).
+Tarefa, luminância, iluminação e medida mudam a interpretação. Por isso, o
+produto oferece escolha, preserva contraste e verifica ambos os modos, sem
+converter preferência ou um resultado situado em regra universal.
+
 ## Estrutura do produto
 
 A entrada de Autoria é **Meus cursos**. A lista mostra descritores suficientes
@@ -368,3 +380,12 @@ acidental e mantém uma única responsabilidade por componente.
 - [Wikimedia Codex: estrutura de variáveis](https://doc.wikimedia.org/codex/latest/design-tokens/definition-and-structure.html)
 - [Wikimedia Codex: modos alternativos](https://doc.wikimedia.org/codex/latest/using-codex/adrs/08-adr-color-modes.html)
 - [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Piepenbrock et al. (2014)](referencias.md#ref-piepenbrock2014polarity): Cosima Piepenbrock; Susanne Mayr; Axel Buchner (2014). **Smaller Pupil Size and Better Proofreading Performance with Positive than with Negative Polarity Displays.** *Ergonomics*, 57(11), p. 1670–1677.
+- [Xie et al. (2021)](referencias.md#ref-xie2021colormode): Xiaojiao Xie; Fanghao Song; Yan Liu; Shurui Wang; Dong Yu (2021). **Study on the Effects of Display Color Mode and Luminance Contrast on Visual Fatigue.** *IEEE Access*, 9, p. 35915–35923.
+
+<!-- referências locais: fim -->

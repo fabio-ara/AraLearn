@@ -222,6 +222,19 @@ test("auditoria valida log bibliográfico e acessibilidade dos visuais", (contex
   assert.ok(errors.some((error) => error.includes("Mermaid sem descrição textual")));
 });
 
+test("auditoria rejeita escape JSON em consultas do registro bibliográfico", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.appendFileSync(
+    path.join(temporaryRoot, "docs", "evidence", "registro-buscas-bibliograficas.csv"),
+    'R1,2026-08-25T05:00:00Z,eixo,Busca web integrada,"\\"consulta exata\\"",sem filtros,1,0,1,0,0,nenhum,ARA-LIT-1,revisor,observação\n',
+    "utf8"
+  );
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(errors.some((error) => error.includes("aspas CSV duplicadas")));
+});
+
 test("auditoria valida chaves bibliográficas sem confundir texto entre citações", (context) => {
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));

@@ -1,11 +1,13 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { citationLabel, normalizeDoi, parseBibTeX, renderLocalReferences } from "./buildReadableReferences.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultRepositoryRoot = path.resolve(path.dirname(scriptPath), "..");
 const defaultRegistryPath = "docs/evidence/terminologia-canonica.v1.json";
 const defaultDocumentPath = "docs/vocabulario-controlado.md";
+const defaultBibliographyPath = "docs/referencias.bib";
 const decisions = new Set(["manter", "restringir", "substituir", "remover"]);
 const decisionStatuses = new Set(["vigente", "concluido"]);
 const alternativesAssessments = new Set(["compared", "no-plausible-candidate"]);
@@ -159,19 +161,73 @@ function symbolValues(term) {
   return codeValues([term.technicalSymbol, ...list(term.relatedSymbols)]);
 }
 
-function sourceValues(sources) {
+function normalizedAcademicReference(reference) {
+  const value = String(reference || "").trim();
+  const anchor = /^docs\/referencias\.md#ref-([A-Za-z0-9:_-]+)$/iu.exec(value);
+  if (anchor) return `reference:${anchor[1]}`;
+
+  const doi = normalizeDoi(value);
+  if (doi) return `doi:${doi}`;
+
+  try {
+    return `url:${new URL(value).href}`;
+  } catch {
+    return `literal:${value}`;
+  }
+}
+
+function bibliographicSourceIndex(entries) {
+  const sources = new Map();
+  const collisions = [];
+  const register = (reference, entry) => {
+    const identifier = normalizedAcademicReference(reference);
+    const existing = sources.get(identifier);
+    if (existing && existing.key !== entry.key) {
+      collisions.push(`${identifier} identifica simultaneamente ${existing.key} e ${entry.key}`);
+      return;
+    }
+    sources.set(identifier, entry);
+  };
+  for (const entry of list(entries)) {
+    register(`docs/referencias.md#ref-${entry.key}`, entry);
+    if (entry.fields?.doi) register(entry.fields.doi, entry);
+    if (entry.fields?.url) register(entry.fields.url, entry);
+  }
+  return { sources, collisions };
+}
+
+function sourceValues(sources, bibliography) {
   return list(sources).map((source) => {
     const status = sourceLabels.get(source.status) || markdownCell(source.status);
     const reference = markdownCell(source.ref);
-    const citation = reference.startsWith("https://")
-      ? `[${status}](${reference})`
-      : reference.startsWith("docs/")
-        ? `[${status}](${reference.slice("docs/".length)})`
-        : `\`${status}\``;
+    const bibliographicEntry = bibliography.get(normalizedAcademicReference(reference));
+    const citation = source.status === "evidencia-academica" && bibliographicEntry
+      ? `[${citationLabel(bibliographicEntry)}](referencias.md#ref-${bibliographicEntry.key})`
+      : reference.startsWith("https://")
+        ? `[${status}](${reference})`
+        : reference.startsWith("docs/")
+          ? `[${status}](${reference.slice("docs/".length)})`
+          : `\`${status}\``;
     return typeof source.supports === "string" && source.supports.trim()
       ? `${citation}: ${markdownCell(source.supports).replace(/[.!?;]+$/u, "")}`
       : citation;
   }).join("; ");
+}
+
+function validateAcademicSourceCitations(registry, bibliographyEntries) {
+  if (!bibliographyEntries.length) return [];
+  const { sources: bibliography, collisions } = bibliographicSourceIndex(bibliographyEntries);
+  const findings = collisions.map((collision) => `referencias.bib: identificador bibliográfico ambíguo: ${collision}.`);
+  for (const [termIndex, term] of list(registry.terms).entries()) {
+    for (const [sourceIndex, source] of list(term.sources).entries()) {
+      if (source.status !== "evidencia-academica") continue;
+      const reference = String(source.ref || "").trim();
+      if (!bibliography.has(normalizedAcademicReference(reference))) {
+        findings.push(`terms[${termIndex}].sources[${sourceIndex}]: evidência acadêmica sem citação legível em referencias.bib (${reference}).`);
+      }
+    }
+  }
+  return findings;
 }
 
 function publicDecision(term) {
@@ -179,7 +235,11 @@ function publicDecision(term) {
   return term.decision === "remover" ? "retirado" : "substituído";
 }
 
-export function renderControlledVocabulary(registry) {
+export function renderControlledVocabulary(registry, bibliographyEntries = []) {
+  const { sources: bibliography, collisions } = bibliographicSourceIndex(bibliographyEntries);
+  if (collisions.length) {
+    throw new Error(`Identificador bibliográfico ambíguo: ${collisions.join("; ")}.`);
+  }
   const lines = [
     "# Vocabulário controlado do AraLearn",
     "",
@@ -221,13 +281,16 @@ export function renderControlledVocabulary(registry) {
         "",
         `**Uso.** \`${publicDecision(term)}\`${distinctForms.length > 0 ? `; formas técnicas ou históricas: ${codeValues(distinctForms)}` : ""}. Distinguir de ${codeValues(term.notSynonyms)}.`,
         "",
-        `**Base.** ${sourceValues(term.sources)}.`,
+        `**Base.** ${sourceValues(term.sources, bibliography)}.`,
         ""
       );
     }
   }
 
-  return lines.join("\n");
+  const rendered = lines.join("\n");
+  return bibliographyEntries.length
+    ? renderLocalReferences(rendered, bibliographyEntries)
+    : rendered;
 }
 
 function absoluteInside(repositoryRoot, relativePath) {
@@ -561,7 +624,7 @@ async function auditAbolishedSymbols({
   return findings;
 }
 
-async function auditRenderedDocument({ repositoryRoot, registry, documentPath }) {
+async function auditRenderedDocument({ repositoryRoot, registry, documentPath, bibliographyEntries }) {
   const absoluteDocumentPath = absoluteInside(repositoryRoot, documentPath);
   if (!absoluteDocumentPath) return [`Documento gerado fora do repositório: ${documentPath}.`];
   let current;
@@ -570,7 +633,7 @@ async function auditRenderedDocument({ repositoryRoot, registry, documentPath })
   } catch {
     return [`${documentPath}: documento derivado ausente; execute audit:terminology -- --render.`];
   }
-  const expected = renderControlledVocabulary(registry);
+  const expected = renderControlledVocabulary(registry, bibliographyEntries);
   return current.replace(/\r\n?/gu, "\n") === expected
     ? []
     : [`${documentPath}: documento derivado desatualizado; execute audit:terminology -- --render.`];
@@ -581,14 +644,20 @@ export async function auditTerminology({
   registry = null,
   registryPath = defaultRegistryPath,
   documentPath = defaultDocumentPath,
+  bibliographyEntries = null,
+  bibliographyPath = defaultBibliographyPath,
   checkRenderedDocument = registry == null
 } = {}) {
   const resolvedRegistry = registry ?? JSON.parse(await readFile(
     absoluteInside(repositoryRoot, registryPath),
     "utf8"
   ));
+  const resolvedBibliography = bibliographyEntries ?? (registry == null
+    ? parseBibTeX(await readFile(absoluteInside(repositoryRoot, bibliographyPath), "utf8"))
+    : []);
   const findings = validateTerminologyRegistry(resolvedRegistry);
   if (findings.length > 0) return findings;
+  findings.push(...validateAcademicSourceCitations(resolvedRegistry, resolvedBibliography));
   findings.push(...await auditAbolishedSymbols({
     repositoryRoot,
     registry: resolvedRegistry,
@@ -599,7 +668,8 @@ export async function auditTerminology({
     findings.push(...await auditRenderedDocument({
       repositoryRoot,
       registry: resolvedRegistry,
-      documentPath
+      documentPath,
+      bibliographyEntries: resolvedBibliography
     }));
   }
   return findings;
@@ -615,8 +685,13 @@ async function main() {
     path.join(defaultRepositoryRoot, defaultRegistryPath),
     "utf8"
   ));
+  const bibliographyEntries = parseBibTeX(await readFile(
+    path.join(defaultRepositoryRoot, defaultBibliographyPath),
+    "utf8"
+  ));
   const findings = await auditTerminology({
     registry,
+    bibliographyEntries,
     checkRenderedDocument: check
   });
   if (findings.length > 0) {
@@ -627,7 +702,7 @@ async function main() {
   if (render) {
     await writeFile(
       path.join(defaultRepositoryRoot, defaultDocumentPath),
-      renderControlledVocabulary(registry),
+      renderControlledVocabulary(registry, bibliographyEntries),
       "utf8"
     );
     process.stdout.write(`Vocabulário humano regenerado em ${defaultDocumentPath}.\n`);

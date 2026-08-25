@@ -17,6 +17,58 @@ Cada entrada informa autoria ou responsabilidade institucional, ano, título, ve
 
 Como a chave permanece no destino de cada link, um processamento futuro pode recuperar a notação `[@chave]` sem inferir a fonte a partir do texto visível.
 
+## Percursos temáticos de leitura
+
+Os percursos abaixo oferecem entradas possíveis no corpus. A ordem é uma orientação de estudo, não uma classificação de qualidade. Função e limite são curadoria editorial; autoria, título, veículo e identificadores continuam derivados exclusivamente de `referencias.bib`.
+
+### Aprendizagem e desenho instrucional
+
+Comece pelos mecanismos que organizam planejamento, carga, prática e representação. A ordem vai do quadro geral às decisões mais específicas do AraLearn.
+
+1. [Panadero (2017)](#ref-panadero2017selfregulated). **Função da leitura:** situa os ciclos de planejamento, monitoramento e reflexão em seis modelos de aprendizagem autorregulada. **Limite principal:** é uma revisão de modelos; não demonstra que controles de interface produzam autorregulação.
+2. [Sweller et al. (1998)](#ref-sweller1998architecture). **Função da leitura:** introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional. **Limite principal:** a teoria não fornece um limite universal de tamanho para Unidades de estudo.
+3. [Ainsworth (2006)](#ref-ainsworth2006deft). **Função da leitura:** oferece um quadro para analisar desenho, função e tarefa em múltiplas representações. **Limite principal:** não estabelece que variedade visual ou um componente especializado seja sempre superior.
+4. [Carpenter et al. (2022)](#ref-carpenter2022spacing). **Função da leitura:** sintetiza prática de recuperação e espaçamento e ajuda a distinguir os dois mecanismos. **Limite principal:** intervalo, conteúdo, população e medida moderam a transferência para outro contexto.
+
+### Pesquisa, avaliação e validade
+
+Este percurso separa construção do artefato, investigação educacional, desenho causal e validade das interpretações.
+
+1. [Messick (1995)](#ref-messick1995validity). **Função da leitura:** explica validade como sustentação das interpretações e dos usos de uma medida. **Limite principal:** não valida por si nenhum instrumento ou indicador do AraLearn.
+2. [Shadish et al. (2002)](#ref-shadish2002experimental). **Função da leitura:** fundamenta desenhos experimentais e quase experimentais e suas ameaças à inferência causal. **Limite principal:** um esquema de variantes ou uma origem comum não satisfaz automaticamente esses desenhos.
+3. [Design-Based Research Collective (2003)](#ref-dbrc2003designbased). **Função da leitura:** introduz a pesquisa baseada em design em contextos educacionais autênticos. **Limite principal:** iteração de produto sem pergunta, dados e explicação não constitui DBR.
+4. [Hevner et al. (2004)](#ref-hevner2004designscience). **Função da leitura:** situa a construção e a avaliação de artefatos em Design Science Research. **Limite principal:** evidência técnica do artefato não substitui avaliação de aprendizagem ou usabilidade.
+5. [Conselho Nacional de Saúde (2016)](#ref-cns2016resolucao510). **Função da leitura:** delimita direitos e requisitos éticos para pesquisas brasileiras em Ciências Humanas e Sociais abrangidas por seu escopo. **Limite principal:** a norma não valida desenho, medida ou análise e não demonstra efeito educacional.
+
+### IA generativa e colaboração entre pessoas e IA
+
+As leituras avançam de princípios de interação e dependência apropriada para erro de geração, heterogeneidade de desempenho e trabalho docente de revisão.
+
+1. [Amershi et al. (2019)](#ref-amershi2019humanai). **Função da leitura:** organiza diretrizes de comunicação, correção e controle na interação entre pessoas e IA. **Limite principal:** diretriz de desenho não demonstra que uma pessoa compreendeu ou exerceu o controle.
+2. [Lee e See (2004)](#ref-lee2004trust). **Função da leitura:** relaciona confiança, contexto e dependência apropriada de automação imperfeita. **Limite principal:** confiança declarada não equivale a dependência calibrada numa tarefa concreta.
+3. [Ji et al. (2023)](#ref-ji2023hallucination). **Função da leitura:** sintetiza tipos, causas, avaliação e mitigação de alucinações na geração de linguagem. **Limite principal:** os resultados variam por tarefa e não demonstram que recuperação ou validação elimine erro.
+4. [Vaccaro et al. (2024)](#ref-vaccaro2024humanai). **Função da leitura:** quantifica heterogeneidade e moderadores de desempenho em combinações pessoa–IA. **Limite principal:** as tarefas e medidas da meta-análise não predizem a qualidade da autoria no AraLearn.
+5. [Selwyn et al. (2025)](#ref-selwyn2025prompting). **Função da leitura:** mostra o trabalho de conferir, reparar, reescrever e rejeitar saídas de IA relatado por docentes. **Limite principal:** o estudo qualitativo cobre 57 docentes de oito escolas na Austrália e na Suécia.
+6. [Han et al. (2025)](#ref-han2025genaimeta). **Função da leitura:** sintetiza resultados educacionais experimentais e seus moderadores. **Limite principal:** a heterogeneidade substancial impede transportar o efeito agregado para o AraLearn.
+
+### Aprendizagem no trabalho e circulação de conhecimento
+
+Estas fontes ajudam a distinguir aprendizagem individual, formação profissional e processos organizacionais de conhecimento.
+
+1. [Tynjälä (2008)](#ref-tynjala2008workplace). **Função da leitura:** diferencia formas, níveis e condições de aprendizagem no trabalho. **Limite principal:** a revisão não demonstra adequação de uma plataforma específica a toda organização.
+2. [Alavi e Leidner (2001)](#ref-alavi2001knowledge). **Função da leitura:** situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento. **Limite principal:** armazenar e distribuir Cursos não constitui por si gestão do conhecimento.
+3. [UNESCO (2015)](#ref-unesco2015tvet). **Função da leitura:** delimita educação e formação técnica e profissional numa perspectiva de aprendizagem ao longo da vida. **Limite principal:** é uma norma orientadora, não evidência de eficácia educacional do AraLearn.
+
+### Interface móvel, interrupção e modos de cor
+
+O percurso liga diversidade de interfaces móveis, retomada de tarefas, polaridade de tela e acessibilidade normativa.
+
+1. [Ahmad Faudzi et al. (2023)](#ref-faudzi2023mobileui). **Função da leitura:** mapeia quadros usados no desenho de interfaces de aprendizagem móvel. **Limite principal:** a diversidade encontrada não identifica um layout universalmente superior.
+2. [Monk et al. (2008)](#ref-monk2008resumption). **Função da leitura:** examina como duração e demanda da interrupção afetam a retomada de objetivos. **Limite principal:** a tarefa experimental não avalia aprendizagem nem armazenamento local.
+3. [Piepenbrock et al. (2014)](#ref-piepenbrock2014polarity). **Função da leitura:** examina polaridade de tela numa tarefa delimitada de revisão de texto. **Limite principal:** desempenho nessa tarefa não estabelece superioridade universal do modo claro.
+4. [Xie et al. (2021)](#ref-xie2021colormode). **Função da leitura:** contrasta fadiga objetiva e preferência subjetiva em baixa iluminação. **Limite principal:** a condição noturna e os níveis de luminância restringem a generalização.
+5. [World Wide Web Consortium (2023)](#ref-w3c2023wcag22). **Função da leitura:** fornece critérios normativos de acessibilidade para conteúdo web. **Limite principal:** conformidade técnica não demonstra compreensão, conforto ou aprendizagem.
+
 ## Lista de referências
 
 <a id="ref-agarwal2021retrieval"></a>
@@ -71,7 +123,7 @@ Chave bibliográfica: `amershi2019humanai`.
 
 ### Autio et al. (2024)
 
-Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1. [DOI 10.6028/NIST.AI.600-1](https://doi.org/10.6028/NIST.AI.600-1).
+Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1. [DOI 10.6028/nist.ai.600-1](https://doi.org/10.6028/nist.ai.600-1).
 
 Chave bibliográfica: `nist2024genai`.
 
@@ -87,7 +139,7 @@ Chave bibliográfica: `bandura2001agency`.
 
 ### Barrison et al. (2025)
 
-Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506. [DOI 10.1097/ACM.0000000000005968](https://doi.org/10.1097/ACM.0000000000005968).
+Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506. [DOI 10.1097/acm.0000000000005968](https://doi.org/10.1097/acm.0000000000005968).
 
 Chave bibliográfica: `barrison2025flashcards`.
 
@@ -135,7 +187,7 @@ Chave bibliográfica: `brunmair2019interleaving`.
 
 ### Buçinca et al. (2021)
 
-Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1). [DOI 10.1145/3449287](https://doi.org/10.1145/3449287).
+Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21. [DOI 10.1145/3449287](https://doi.org/10.1145/3449287).
 
 Chave bibliográfica: `bucinca2021overreliance`.
 
@@ -179,6 +231,14 @@ Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (200
 
 Chave bibliográfica: `cepeda2008spacing`.
 
+<a id="ref-chen2025genaimeta"></a>
+
+### Chen e Cheung (2025)
+
+Shuzhen Chen; Alan C. K. Cheung (2025). **Effect of Generative Artificial Intelligence on University Students Learning Outcomes: A Systematic Review and Meta-Analysis.** *Educational Research Review*, 49, p. 100737. [DOI 10.1016/j.edurev.2025.100737](https://doi.org/10.1016/j.edurev.2025.100737).
+
+Chave bibliográfica: `chen2025genaimeta`.
+
 <a id="ref-chen2023elementinteractivity"></a>
 
 ### Chen et al. (2023)
@@ -219,6 +279,14 @@ Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of
 
 Chave bibliográfica: `chun2011attention`.
 
+<a id="ref-cns2016resolucao510"></a>
+
+### Conselho Nacional de Saúde (2016)
+
+Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde. [acesso ao documento](https://www.gov.br/conselho-nacional-de-saude/pt-br/atos-normativos/resolucoes/2016/resolucao-no-510.pdf/view).
+
+Chave bibliográfica: `cns2016resolucao510`.
+
 <a id="ref-degagne2019microlearning"></a>
 
 ### De Gagne et al. (2019)
@@ -239,7 +307,7 @@ Chave bibliográfica: `dennison2026shiksha`.
 
 ### Design-Based Research Collective (2003)
 
-Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8. [DOI 10.3102/0013189X032001005](https://doi.org/10.3102/0013189X032001005).
+Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8. [DOI 10.3102/0013189x032001005](https://doi.org/10.3102/0013189x032001005).
 
 Chave bibliográfica: `dbrc2003designbased`.
 
@@ -255,17 +323,9 @@ Chave bibliográfica: `dyson2004layout`.
 
 ### Foroughi et al. (2016)
 
-Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*. [DOI 10.1037/xlm0000251](https://doi.org/10.1037/xlm0000251).
+Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488. [DOI 10.1037/xlm0000251](https://doi.org/10.1037/xlm0000251).
 
 Chave bibliográfica: `foroughi2016resumption`.
-
-<a id="ref-freire2021autonomia"></a>
-
-### Freire (2021)
-
-Paulo Freire (2021). **Pedagogia da autonomia: saberes necessários à prática educativa.** Paz e Terra. [acesso ao documento](https://books.google.com/books?id=feRDEAAAQBAJ) · ISBN 9786555480337.
-
-Chave bibliográfica: `freire2021autonomia`.
 
 <a id="ref-gazzola2022textcomplexity"></a>
 
@@ -287,7 +347,7 @@ Chave bibliográfica: `ginns2006contiguity`.
 
 ### Graesser et al. (2004)
 
-Arthur C. Graesser; Danielle S. McNamara; Max M. Louwerse; Zhiqiang Cai (2004). **Coh-Metrix: Analysis of Text on Cohesion and Language.** *Behavior Research Methods, Instruments, & Computers*, 36(2), p. 193–202. [DOI 10.3758/BF03195564](https://doi.org/10.3758/BF03195564).
+Arthur C. Graesser; Danielle S. McNamara; Max M. Louwerse; Zhiqiang Cai (2004). **Coh-Metrix: Analysis of Text on Cohesion and Language.** *Behavior Research Methods, Instruments, & Computers*, 36(2), p. 193–202. [DOI 10.3758/bf03195564](https://doi.org/10.3758/bf03195564).
 
 Chave bibliográfica: `graesser2004cohmetrix`.
 
@@ -295,9 +355,17 @@ Chave bibliográfica: `graesser2004cohmetrix`.
 
 ### Gregor e Hevner (2013)
 
-Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355. [DOI 10.25300/MISQ/2013/37.2.01](https://doi.org/10.25300/MISQ/2013/37.2.01).
+Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355. [DOI 10.25300/misq/2013/37.2.01](https://doi.org/10.25300/misq/2013/37.2.01).
 
 Chave bibliográfica: `gregor2013positioning`.
+
+<a id="ref-han2025genaimeta"></a>
+
+### Han et al. (2025)
+
+Xiaoli Han; Hongchao Peng; Mingzhuo Liu (2025). **The Impact of GenAI on Learning Outcomes: A Systematic Review and Meta-Analysis of Experimental Studies.** *Educational Research Review*, 48, p. 100714. [DOI 10.1016/j.edurev.2025.100714](https://doi.org/10.1016/j.edurev.2025.100714).
+
+Chave bibliográfica: `han2025genaimeta`.
 
 <a id="ref-hattie2007feedback"></a>
 
@@ -355,6 +423,14 @@ International Organization for Standardization (2018). **ISO 9241-11:2018: Ergon
 
 Chave bibliográfica: `iso2018usability`.
 
+<a id="ref-ji2023hallucination"></a>
+
+### Ji et al. (2023)
+
+Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38. [DOI 10.1145/3571730](https://doi.org/10.1145/3571730).
+
+Chave bibliográfica: `ji2023hallucination`.
+
 <a id="ref-kalyuga2007expertisereversal"></a>
 
 ### Kalyuga (2007)
@@ -383,7 +459,7 @@ Chave bibliográfica: `karpicke2008retrieval`.
 
 ### Kintsch e van Dijk (1978)
 
-Walter Kintsch; Teun A. van Dijk (1978). **Toward a Model of Text Comprehension and Production.** *Psychological Review*, 85(5), p. 363–394. [DOI 10.1037/0033-295X.85.5.363](https://doi.org/10.1037/0033-295X.85.5.363).
+Walter Kintsch; Teun A. van Dijk (1978). **Toward a Model of Text Comprehension and Production.** *Psychological Review*, 85(5), p. 363–394. [DOI 10.1037/0033-295x.85.5.363](https://doi.org/10.1037/0033-295x.85.5.363).
 
 Chave bibliográfica: `kintsch1978model`.
 
@@ -435,6 +511,14 @@ Sidney Evaldo Leal; Magali Sanches Duran; Carolina Evaristo Scarton; Nathan Sieg
 
 Chave bibliográfica: `leal2024nilcmetrix`.
 
+<a id="ref-lee2004trust"></a>
+
+### Lee e See (2004)
+
+John D. Lee; Katrina A. See (2004). **Trust in Automation: Designing for Appropriate Reliance.** *Human Factors*, 46(1), p. 50–80. [DOI 10.1518/hfes.46.1.50_30392](https://doi.org/10.1518/hfes.46.1.50_30392).
+
+Chave bibliográfica: `lee2004trust`.
+
 <a id="ref-lewis2020rag"></a>
 
 ### Lewis et al. (2020)
@@ -471,7 +555,7 @@ Chave bibliográfica: `martinec2005imagetext`.
 
 ### Mayer (2009)
 
-Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press. [DOI 10.1017/CBO9780511811678](https://doi.org/10.1017/CBO9780511811678) · ISBN 9780521735353.
+Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press. [DOI 10.1017/cbo9780511811678](https://doi.org/10.1017/cbo9780511811678) · ISBN 9780521735353.
 
 Chave bibliográfica: `mayer2009multimedia`.
 
@@ -487,7 +571,7 @@ Chave bibliográfica: `mcnamara1996coherence`.
 
 ### Messick (1995)
 
-Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749. [DOI 10.1037/0003-066X.50.9.741](https://doi.org/10.1037/0003-066X.50.9.741).
+Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749. [DOI 10.1037/0003-066x.50.9.741](https://doi.org/10.1037/0003-066x.50.9.741).
 
 Chave bibliográfica: `messick1995validity`.
 
@@ -555,6 +639,14 @@ Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and F
 
 Chave bibliográfica: `panadero2017selfregulated`.
 
+<a id="ref-parasuraman2010automation"></a>
+
+### Parasuraman e Manzey (2010)
+
+Raja Parasuraman; Dietrich H. Manzey (2010). **Complacency and Bias in Human Use of Automation: An Attentional Integration.** *Human Factors*, 52(3), p. 381–410. [DOI 10.1177/0018720810376055](https://doi.org/10.1177/0018720810376055).
+
+Chave bibliográfica: `parasuraman2010automation`.
+
 <a id="ref-pardo2014ethical"></a>
 
 ### Pardo e Siemens (2014)
@@ -583,7 +675,7 @@ Chave bibliográfica: `passonneau1997segmentation`.
 
 ### Peffers et al. (2007)
 
-Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77. [DOI 10.2753/MIS0742-1222240302](https://doi.org/10.2753/MIS0742-1222240302).
+Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77. [DOI 10.2753/mis0742-1222240302](https://doi.org/10.2753/mis0742-1222240302).
 
 Chave bibliográfica: `peffers2007dsrm`.
 
@@ -591,7 +683,7 @@ Chave bibliográfica: `peffers2007dsrm`.
 
 ### Peters et al. (2024)
 
-Micah D. J. Peters; Christina Godfrey; Patricia McInerney; Zachary Munn; Andrea C. Tricco; Hanan Khalil (2024). **Scoping Reviews.** In: *JBI Manual for Evidence Synthesis*, JBI. [DOI 10.46658/JBIMES-24-09](https://doi.org/10.46658/JBIMES-24-09) · [acesso ao documento](https://synthesismanual.jbi.global).
+Micah D. J. Peters; Christina Godfrey; Patricia McInerney; Zachary Munn; Andrea C. Tricco; Hanan Khalil (2024). **Scoping Reviews.** In: *JBI Manual for Evidence Synthesis*, JBI. [DOI 10.46658/jbimes-24-09](https://doi.org/10.46658/jbimes-24-09) · [acesso ao documento](https://synthesismanual.jbi.global).
 
 Chave bibliográfica: `peters2024scoping`.
 
@@ -631,7 +723,7 @@ Chave bibliográfica: `reisslein2006expertisereversal`.
 
 ### Renkl (2002)
 
-Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556. [DOI 10.1016/S0959-4752(01)00030-5](https://doi.org/10.1016/S0959-4752(01)00030-5).
+Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556. [DOI 10.1016/s0959-4752(01)00030-5](https://doi.org/10.1016/s0959-4752(01)00030-5).
 
 Chave bibliográfica: `renkl2002learning`.
 
@@ -639,7 +731,7 @@ Chave bibliográfica: `renkl2002learning`.
 
 ### Renkl et al. (2004)
 
-Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82. [DOI 10.1023/B:TRUC.0000021815.74806.F6](https://doi.org/10.1023/B:TRUC.0000021815.74806.F6).
+Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82. [DOI 10.1023/b:truc.0000021815.74806.f6](https://doi.org/10.1023/b:truc.0000021815.74806.f6).
 
 Chave bibliográfica: `renkl2004fading`.
 
@@ -679,9 +771,17 @@ Chave bibliográfica: `schneider2018signaling`.
 
 ### Schnotz e Bannert (2003)
 
-Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156. [DOI 10.1016/S0959-4752(02)00017-8](https://doi.org/10.1016/S0959-4752(02)00017-8).
+Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156. [DOI 10.1016/s0959-4752(02)00017-8](https://doi.org/10.1016/s0959-4752(02)00017-8).
 
 Chave bibliográfica: `schnotz2003representations`.
+
+<a id="ref-selwyn2025prompting"></a>
+
+### Selwyn et al. (2025)
+
+Neil Selwyn; Marita Ljungqvist; Anders Sonesson (2025). **When the Prompting Stops: Exploring Teachers' Work Around the Educational Frailties of Generative AI Tools.** *Learning, Media and Technology*, 50(3), p. 310–323. [DOI 10.1080/17439884.2025.2537959](https://doi.org/10.1080/17439884.2025.2537959).
+
+Chave bibliográfica: `selwyn2025prompting`.
 
 <a id="ref-shadish2002experimental"></a>
 
@@ -727,7 +827,7 @@ Chave bibliográfica: `sweller1985workedexamples`.
 
 ### Sweller et al. (1998)
 
-John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296. [DOI 10.1023/A:1022193728205](https://doi.org/10.1023/A:1022193728205).
+John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296. [DOI 10.1023/a:1022193728205](https://doi.org/10.1023/a:1022193728205).
 
 Chave bibliográfica: `sweller1998architecture`.
 
@@ -751,7 +851,7 @@ Chave bibliográfica: `taylor2010interleaved`.
 
 ### Tricco et al. (2018)
 
-Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473. [DOI 10.7326/M18-0850](https://doi.org/10.7326/M18-0850).
+Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473. [DOI 10.7326/m18-0850](https://doi.org/10.7326/m18-0850).
 
 Chave bibliográfica: `tricco2018prismascr`.
 
@@ -783,9 +883,17 @@ Chave bibliográfica: `unesco2015tvet`.
 
 ### UNESCO (2023)
 
-UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO. [DOI 10.54675/EWZM9535](https://doi.org/10.54675/EWZM9535).
+UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO. [DOI 10.54675/ewzm9535](https://doi.org/10.54675/ewzm9535).
 
 Chave bibliográfica: `unesco2023genai`.
+
+<a id="ref-vaccaro2024humanai"></a>
+
+### Vaccaro et al. (2024)
+
+Michelle Vaccaro; Abdullah Almaatouq; Thomas Malone (2024). **When Combinations of Humans and AI Are Useful: A Systematic Review and Meta-Analysis.** *Nature Human Behaviour*, 8, p. 2293–2303. [DOI 10.1038/s41562-024-02024-1](https://doi.org/10.1038/s41562-024-02024-1).
+
+Chave bibliográfica: `vaccaro2024humanai`.
 
 <a id="ref-vanmerrienboer2019fourcomponent"></a>
 
@@ -815,7 +923,7 @@ Chave bibliográfica: `vygotsky1978mind`.
 
 ### Wang e Hannafin (2005)
 
-Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23. [DOI 10.1007/BF02504682](https://doi.org/10.1007/BF02504682).
+Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23. [DOI 10.1007/bf02504682](https://doi.org/10.1007/bf02504682).
 
 Chave bibliográfica: `wang2005designbased`.
 
@@ -823,7 +931,7 @@ Chave bibliográfica: `wang2005designbased`.
 
 ### Wenger (1998)
 
-Etienne Wenger (1998). **Communities of Practice: Learning, Meaning, and Identity.** Cambridge University Press. [DOI 10.1017/CBO9780511803932](https://doi.org/10.1017/CBO9780511803932) · ISBN 9780521663632.
+Etienne Wenger (1998). **Communities of Practice: Learning, Meaning, and Identity.** Cambridge University Press. [DOI 10.1017/cbo9780511803932](https://doi.org/10.1017/cbo9780511803932) · ISBN 9780521663632.
 
 Chave bibliográfica: `wenger1998communities`.
 
@@ -863,7 +971,7 @@ Chave bibliográfica: `w3c2023wcag22`.
 
 ### Xie et al. (2021)
 
-Xiaojiao Xie; Fanghao Song; Yan Liu; Shurui Wang; Dong Yu (2021). **Study on the Effects of Display Color Mode and Luminance Contrast on Visual Fatigue.** *IEEE Access*, 9, p. 35915–35923. [DOI 10.1109/ACCESS.2021.3061770](https://doi.org/10.1109/ACCESS.2021.3061770).
+Xiaojiao Xie; Fanghao Song; Yan Liu; Shurui Wang; Dong Yu (2021). **Study on the Effects of Display Color Mode and Luminance Contrast on Visual Fatigue.** *IEEE Access*, 9, p. 35915–35923. [DOI 10.1109/access.2021.3061770](https://doi.org/10.1109/access.2021.3061770).
 
 Chave bibliográfica: `xie2021colormode`.
 

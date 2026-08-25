@@ -42,7 +42,7 @@ test("revisão e contribuição distinguem hipótese de eficácia comprovada", (
   assert.match(review, /Não se trata de revisão sistemática/u);
   assert.match(review, /## Lacunas de conhecimento/u);
   assert.match(contribution, /contribuição integrada só pode ser avaliado por comparação/u);
-  assert.match(contribution, /### 6\.4 Alegações que permanecem indevidas sem comparação abrangente/u);
+  assert.match(contribution, /### 6\.4 Alegações que exigem comparação definida com alternativas pertinentes/u);
 });
 
 test("quadro e protocolo proíbem proxies comportamentais ambíguos", () => {

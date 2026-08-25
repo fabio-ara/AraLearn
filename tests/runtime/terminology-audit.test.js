@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -8,6 +8,10 @@ import {
   renderControlledVocabulary,
   validateTerminologyRegistry
 } from "../../scripts/auditTerminology.mjs";
+import {
+  buildReadableReferences,
+  parseBibTeX
+} from "../../scripts/buildReadableReferences.mjs";
 
 function syntheticRegistry(termOverrides = {}) {
   return {
@@ -43,6 +47,110 @@ function syntheticRegistry(termOverrides = {}) {
 
 test("o registro corrente é completo e não contém resíduos concluídos", async () => {
   assert.deepEqual(await auditTerminology(), []);
+});
+
+test("fontes acadêmicas aparecem como citações legíveis derivadas da bibliografia", () => {
+  const registry = syntheticRegistry({
+    sources: [{ status: "evidencia-academica", ref: "https://doi.org/10.1000/source" }]
+  });
+  const bibliography = [{
+    key: "fonte2024",
+    fields: {
+      author: "Fonte, Ana",
+      year: "2024",
+      doi: "10.1000/source"
+    }
+  }];
+  const rendered = renderControlledVocabulary(registry, bibliography);
+  assert.match(rendered, /\[Fonte \(2024\)\]\(referencias\.md#ref-fonte2024\)/u);
+  assert.doesNotMatch(rendered, /\[evidência acadêmica\]/u);
+  assert.match(rendered, /## Referências/u);
+  assert.match(rendered, /- \[Fonte \(2024\)\]\(referencias\.md#ref-fonte2024\):/u);
+});
+
+test("fontes acadêmicas reconhecem variantes equivalentes de DOI e URL", () => {
+  const registry = syntheticRegistry({
+    sources: [
+      { status: "evidencia-academica", ref: "HTTP://DX.DOI.ORG/10.1000/SOURCE/" },
+      { status: "evidencia-academica", ref: "https://EXAMPLE.ORG" }
+    ]
+  });
+  const bibliography = [
+    { key: "doi2024", fields: { author: "Fonte, Ana", year: "2024", doi: "10.1000/source" } },
+    { key: "url2025", fields: { author: "Outra, Bia", year: "2025", url: "https://example.org/" } }
+  ];
+  const rendered = renderControlledVocabulary(registry, bibliography);
+  assert.match(rendered, /\[Fonte \(2024\)\]\(referencias\.md#ref-doi2024\)/u);
+  assert.match(rendered, /\[Outra \(2025\)\]\(referencias\.md#ref-url2025\)/u);
+});
+
+test("auditoria rejeita fonte acadêmica não resolvida e identificador ambíguo", async (context) => {
+  const repositoryRoot = await mkdtemp(path.join(os.tmpdir(), "aralearn-terminology-bibliography-"));
+  context.after(() => rm(repositoryRoot, { recursive: true, force: true }));
+  const findings = await auditTerminology({
+    repositoryRoot,
+    registry: syntheticRegistry({
+      sources: [{ status: "evidencia-academica", ref: "https://doi.org/10.1000/ausente" }]
+    }),
+    bibliographyEntries: [
+      { key: "fonte-a", fields: { author: "Fonte, Ana", year: "2024", doi: "10.1000/repetida" } },
+      { key: "fonte-b", fields: { author: "Outra, Bia", year: "2025", doi: "HTTPS://DOI.ORG/10.1000/REPETIDA/" } }
+    ],
+    checkRenderedDocument: false
+  });
+  assert.ok(findings.some((finding) => finding.includes("identificador bibliográfico ambíguo")));
+  assert.ok(findings.some((finding) => finding.includes("evidência acadêmica sem citação legível")));
+});
+
+test("ordem de geração atualiza rótulo e referência local até o mesmo ponto fixo", async (context) => {
+  const repositoryRoot = await mkdtemp(path.join(os.tmpdir(), "aralearn-documentation-references-"));
+  context.after(() => rm(repositoryRoot, { recursive: true, force: true }));
+  await mkdir(path.join(repositoryRoot, "docs"), { recursive: true });
+  const registry = syntheticRegistry({
+    sources: [{ status: "evidencia-academica", ref: "docs/referencias.md#ref-fonte2024" }]
+  });
+  const previousBibliography = `@article{fonte2024,
+  author = {Antiga, Ana},
+  title = {Fonte anterior},
+  year = {2024},
+  doi = {10.1000/source}
+}\n`;
+  const currentBibliography = `@article{fonte2024,
+  author = {Nova, Bia},
+  title = {Fonte atualizada},
+  year = {2025},
+  doi = {10.1000/source}
+}\n`;
+  const previousEntries = parseBibTeX(previousBibliography);
+  await writeFile(path.join(repositoryRoot, "docs", "referencias.bib"), previousBibliography, "utf8");
+  await writeFile(
+    path.join(repositoryRoot, "docs", "vocabulario-controlado.md"),
+    renderControlledVocabulary(registry, previousEntries),
+    "utf8"
+  );
+  await writeFile(path.join(repositoryRoot, "docs", "referencias.bib"), currentBibliography, "utf8");
+  const currentEntries = parseBibTeX(currentBibliography);
+  const generate = async () => {
+    await writeFile(
+      path.join(repositoryRoot, "docs", "vocabulario-controlado.md"),
+      renderControlledVocabulary(registry, currentEntries),
+      "utf8"
+    );
+    buildReadableReferences({ root: repositoryRoot, guides: [] });
+    return readFile(path.join(repositoryRoot, "docs", "vocabulario-controlado.md"), "utf8");
+  };
+  const first = await generate();
+  const second = await generate();
+  assert.equal(first, second);
+  assert.equal(first, renderControlledVocabulary(registry, currentEntries));
+  assert.match(first, /\[Nova \(2025\)\]\(referencias\.md#ref-fonte2024\)/u);
+  assert.doesNotMatch(first, /Antiga \(2024\)/u);
+
+  const packageConfig = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
+  assert.match(
+    packageConfig.scripts["docs:references"],
+    /auditTerminology\.mjs --render && node \.\/scripts\/buildReadableReferences\.mjs/u
+  );
 });
 
 test("o documento derivado aceita as quebras de linha do checkout Windows", async (context) => {

@@ -39,7 +39,7 @@
     "audit:parity": "node ./scripts/auditVerticalParity.mjs",
     "audit:residues": "node ./scripts/auditFrontendResidues.mjs",
     "audit:docs": "node ./scripts/auditDocumentation.mjs",
-    "docs:references": "node ./scripts/buildReadableReferences.mjs",
+    "docs:references": "node ./scripts/auditTerminology.mjs --render && node ./scripts/buildReadableReferences.mjs",
     "docs:references:check": "node ./scripts/buildReadableReferences.mjs --check",
     "docs:references:convert": "node ./scripts/buildReadableReferences.mjs --convert-citations",
     "actions:openapi": "node ./scripts/buildChatGptActionOpenApi.mjs",

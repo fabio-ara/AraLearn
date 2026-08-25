@@ -289,7 +289,8 @@
         },
         {
           "status": "evidencia-academica",
-          "ref": "https://doi.org/10.5209/clac.96949"
+          "ref": "https://doi.org/10.5209/clac.96949",
+          "supports": "Delimita unidades discursivas e critérios de segmentação textual; não define a entidade persistida Microssequência didática do AraLearn."
         }
       ],
       "notSynonyms": [
@@ -373,7 +374,8 @@
         },
         {
           "status": "evidencia-academica",
-          "ref": "https://doi.org/10.1016/S0959-4752(02)00017-8"
+          "ref": "https://doi.org/10.1016/S0959-4752(02)00017-8",
+          "supports": "Discute representações externas e sua interação; não define Unidade de estudo nem persistência no AraLearn."
         }
       ],
       "notSynonyms": [
@@ -3124,7 +3126,7 @@
       "sources": [
         {
           "status": "evidencia-academica",
-          "ref": "https://arxiv.org/abs/2005.11401"
+          "ref": "docs/referencias.md#ref-lewis2020rag"
         }
       ],
       "notSynonyms": [
