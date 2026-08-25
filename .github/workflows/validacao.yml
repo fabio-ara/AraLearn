@@ -1,10 +1,6 @@
 name: Validar repositório
 
 on:
-  push:
-    branches:
-      - main
-      - release/**
   pull_request:
     branches:
       - main
@@ -34,41 +30,65 @@ jobs:
         with:
           node-version: 22
 
+      - name: Classificar arquivos alterados
+        id: paths
+        run: node ./scripts/classifyCiPaths.mjs
+
+      - name: Validar documentação
+        if: steps.paths.outputs.docs_only == 'true'
+        shell: pwsh
+        run: |
+          & git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" --
+          if ($LASTEXITCODE -ne 0) { throw 'A documentação contém problemas de whitespace.' }
+          npm run audit:docs
+          npm run audit:terminology
+          npm run docs:references:check
+
       - name: Preparar Java
+        if: steps.paths.outputs.docs_only != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
       - name: Instalar dependências
+        if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
       - name: Executar testes
+        if: steps.paths.outputs.docs_only != 'true'
         run: npm test
 
       - name: Analisar código
+        if: steps.paths.outputs.docs_only != 'true'
         run: npm run lint
 
       - name: Validar runtime de Curso
+        if: steps.paths.outputs.docs_only != 'true'
         run: npm run validate:course-runtime
 
       - name: Instalar Chromium para testes de interface
+        if: steps.paths.outputs.docs_only != 'true'
         run: npx playwright install chromium
 
       - name: Gerar e testar o artefato web no navegador
+        if: steps.paths.outputs.docs_only != 'true'
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
           ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run test:e2e
 
       - name: Examinar o runtime web
+        if: steps.paths.outputs.docs_only != 'true'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
           -Target Pages -RequireRuntimeConfig
 
       - name: Guardar prévia web da candidata
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: >-
+          ${{ steps.paths.outputs.docs_only != 'true' &&
+              (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: aralearn-pages-candidate
@@ -78,19 +98,23 @@ jobs:
           retention-days: 7
 
       - name: Compilar aplicativo Android
+        if: steps.paths.outputs.docs_only != 'true'
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
           ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run android:debug
 
       - name: Examinar o runtime Android
+        if: steps.paths.outputs.docs_only != 'true'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
           -Target Android -RequireRuntimeConfig
 
       - name: Guardar APK de teste da candidata
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: >-
+          ${{ steps.paths.outputs.docs_only != 'true' &&
+              (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: aralearn-android-debug-candidate
@@ -99,10 +123,12 @@ jobs:
           retention-days: 7
 
       - name: Analisar aplicativo Android
+        if: steps.paths.outputs.docs_only != 'true'
         working-directory: android
         run: .\gradlew.bat :app:lintDebug --no-daemon
 
       - name: Validar exemplo público
+        if: steps.paths.outputs.docs_only != 'true'
         run: npm run validate:example
 
   supabase:
@@ -112,30 +138,45 @@ jobs:
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Preparar Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
 
+      - name: Classificar arquivos alterados
+        id: paths
+        run: node ./scripts/classifyCiPaths.mjs
+
+      - name: Registrar backend não afetado
+        if: steps.paths.outputs.docs_only == 'true'
+        run: echo "Alteração exclusivamente documental; a stack Supabase não será iniciada."
+
       - name: Instalar dependências da integração local
+        if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
       - name: Instalar Chromium da integração local
+        if: steps.paths.outputs.docs_only != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Preparar Deno
+        if: steps.paths.outputs.docs_only != 'true'
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
       - name: Testar e conferir a Edge Function
+        if: steps.paths.outputs.docs_only != 'true'
         run: |
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-api/index.ts
 
       - name: Iniciar stack Supabase
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           npx --yes supabase@2.115.0 stop --no-backup || true
@@ -155,12 +196,15 @@ jobs:
           done
 
       - name: Reaplicar migration e seed
+        if: steps.paths.outputs.docs_only != 'true'
         run: npx --yes supabase@2.115.0 db reset
 
       - name: Executar testes pgTAP
+        if: steps.paths.outputs.docs_only != 'true'
         run: npx --yes supabase@2.115.0 test db
 
       - name: Conferir paridade vertical no banco real
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -258,10 +302,12 @@ jobs:
           } | node scripts/auditVerticalParity.mjs --database-inventory -
 
       - name: Conferir o lint do banco
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: npx --yes supabase@2.115.0 db lint --local --level warning
 
       - name: Testar concorrência real dos pedidos de Curso
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           command -v psql
@@ -272,6 +318,7 @@ jobs:
           node --test ./tests/runtime/course-postgres-concurrency.test.js
 
       - name: Servir e testar a API, o PostgREST e o RLS de Curso
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -335,6 +382,7 @@ jobs:
           npm run test:supabase:smoke
 
       - name: Testar confirmação e recuperação por e-mail
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -343,6 +391,7 @@ jobs:
           node ./supabase/tests/auth-email-smoke.mjs
 
       - name: Servir e testar o gateway MCP e a Autoria real
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -420,5 +469,5 @@ jobs:
           npm run test:authoring:supabase:e2e
 
       - name: Encerrar stack Supabase
-        if: always()
+        if: ${{ always() && steps.paths.outputs.docs_only != 'true' }}
         run: npx --yes supabase@2.115.0 stop --no-backup
