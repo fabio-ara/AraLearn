@@ -59,8 +59,9 @@ recusado. Nesse caso, solicite outro link pelo aplicativo.
 ## Alterar perfil e aparência
 
 Abra **Conta e aparência**. O nome aceita de 1 a 120 caracteres. A foto pode ser
-JPEG, PNG ou WebP de até 512 KiB. Use os controles junto à foto para escolher ou
-remover uma imagem e salve o perfil.
+JPEG, PNG ou WebP de até 512 KiB. Abra **Foto do perfil** para escolher ou
+substituir uma imagem; **Remover foto** só aparece quando existe algo a remover.
+Use **Voltar** ou `Esc` para retornar à vista principal e salve o perfil.
 
 A foto fica em armazenamento privado. Ao substituí-la, o aplicativo primeiro
 registra a nova referência e depois remove o objeto anterior. Uma falha nessa
@@ -110,7 +111,8 @@ Complete os campos indicados, leia o retorno e use **Continuar** novamente para
 avançar. A Unidade concluída e o novo ponto de retomada entram no estado pessoal.
 
 Use **Marcar para rever** dentro da Unidade para acrescentá-la à seção **Rever**
-da tela inicial. O mesmo controle retira a marca.
+da tela inicial. O mesmo controle retira a marca. Na Home, cada item também pode
+ser retirado diretamente; **Desfazer** restaura a marca sem sair da tela.
 
 O AraLearn não transforma a resposta momentânea em nota, classificação entre
 pessoas ou medida de aprendizagem.
@@ -440,11 +442,12 @@ usam a fila do estado pessoal; Observações usam outra fila e outra cópia loca
 Quando a conexão retorna, cada repositório compara sua versão remota e envia as
 operações pendentes.
 
-Na tela inicial, **Disponível neste dispositivo** confirma que a composição
-validada do Curso selecionado pode ser aberta sem rede. **Conecte-se para abrir
-pela primeira vez** distingue o descritor conhecido de uma composição que ainda
-não existe localmente. A seleção e o último ponto visitado permanecem no
-dispositivo; uma segunda aba não desloca a tela já aberta na primeira.
+Na tela inicial, esse estado só aparece quando altera a capacidade de abrir o
+Curso. Sem conexão, **Disponível offline** confirma que a composição validada
+pode ser aberta; **Conecte-se para abrir este Curso** distingue o descritor
+conhecido de uma composição ainda ausente. A seleção e o último ponto visitado
+permanecem no dispositivo; uma segunda aba não desloca a tela já aberta na
+primeira.
 
 Quando a rede está disponível, mas a atualização remota ainda não terminou, a
 Home informa **Exibindo a versão salva · o AraLearn está atualizando os dados.**
@@ -479,7 +482,7 @@ recentes importantes.
 
 ## Sair
 
-Em **Conta e aparência**, use **Sair**. Se houver uma interrupção, o aplicativo
+Em **Conta e aparência**, abra **Dados e conta** e use **Sair**. Se houver uma interrupção, o aplicativo
 permite repetir a saída.
 Sair encerra a sessão, mas Cursos, estado pessoal e filas já gravados localmente
 podem permanecer no dispositivo. A confirmação avisa que uma alteração ainda
@@ -494,7 +497,7 @@ preserva texto que ainda exista apenas num formulário aberto.
 ## Excluir a conta
 
 1. Abra **Conta e aparência**.
-2. Use **Excluir conta**.
+2. Abra **Dados e conta** e use **Excluir conta**.
 3. Digite exatamente `EXCLUIR MINHA CONTA`.
 
 A operação exige conexão e é irreversível. O aplicativo envia uma única

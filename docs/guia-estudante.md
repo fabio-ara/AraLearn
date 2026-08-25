@@ -10,22 +10,23 @@ compartilhada.
 
 A tela inicial de **Estudo** reúne os Cursos acessíveis num único seletor
 **Curso**. Ao escolher uma opção, aparece uma única prévia com título, objetivo,
-relação de acesso, progresso, quantidade de Módulos e Lições e disponibilidade
-no dispositivo. Identificadores, hashes e revisões técnicas não aparecem nesse
+relação de acesso, progresso e quantidade de Módulos e Lições. Identificadores,
+hashes e revisões técnicas não aparecem nesse
 percurso.
 
 O seletor e a prévia usam descrições resumidas. A composição completa é
 carregada somente quando a pessoa entra no Curso. Por isso, a primeira abertura
-requer conexão mesmo quando o título já aparece. Depois de uma abertura
-validada, a prévia informa **Disponível neste dispositivo**; sem essa cópia, ela
-informa que a conexão é necessária.
+requer conexão mesmo quando o título já aparece. A Home não repete um estado
+offline enquanto ele não altera a ação. Sem conexão, a prévia informa
+**Disponível offline** quando já existe uma composição validada; caso contrário,
+informa **Conecte-se para abrir este Curso** e bloqueia a abertura.
 
 A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
 pessoa. O acesso à **Autoria** leva à atividade autoral. Um Curso compartilhado
 fica em Estudo e continua sob responsabilidade do proprietário. A pessoa pode
 usar **Editar** nesse percurso sem alterar o original: a
 primeira gravação com mudança material
-cria um Curso pessoal privado, que passa a aparecer como **Sua cópia** e também
+cria um Curso pessoal privado, que passa a aparecer como **Cópia pessoal** e também
 pertence à sua Autoria.
 
 ## Preparar o dispositivo para estudar sem conexão
@@ -33,8 +34,8 @@ pertence à sua Autoria.
 1. Entre na conta correta.
 2. No seletor **Curso**, escolha o Curso que pretende usar sem rede.
 3. Use **Começar**, **Continuar** ou **Retomar**, conforme o rótulo apresentado.
-4. Aguarde a composição aparecer.
-5. Volte à tela inicial e confirme a indicação **Disponível neste dispositivo**.
+4. Aguarde a composição aparecer; a conclusão dessa abertura guarda a revisão
+   validada para retomada sem conexão.
 
 O AraLearn mantém no banco local do dispositivo a lista conhecida, os Cursos
 abertos e o estado pessoal. Limpar os dados do navegador, reinstalar o
@@ -77,6 +78,11 @@ Uma resposta incorreta pode permitir um novo envio ou exibir a resposta,
 conforme o componente. O AraLearn não converte essa interação em nota global,
 classificação entre estudantes ou bloqueio do Curso.
 
+Numa prática de lacunas, acionar uma lacuna vazia abre somente as alternativas
+daquele ponto. Escolher uma alternativa preenche a mesma lacuna e devolve o foco
+a ela. Acionar uma lacuna já preenchida limpa somente aquele valor, sem alterar
+as demais respostas.
+
 ## Consultar as Fontes de uma Unidade
 
 Use o ícone **Fontes** dentro da Unidade. A consulta ocorre quando o painel é
@@ -101,8 +107,9 @@ a marca está ativa.
 
 As Unidades marcadas aparecem em **Rever**, na tela inicial. Cada item conserva
 o caminho até Curso, Módulo, Lição, Microssequência e Unidade. Ao abri-lo, o
-aplicativo carrega o Curso, se necessário, e leva ao alvo. Use o mesmo ícone
-novamente para retirar a marca.
+aplicativo carrega o Curso, se necessário, e leva ao alvo; **Voltar** retorna ao
+mesmo item, com posição e foco restaurados. Também é possível retirar a marca
+diretamente na Home. A confirmação oferece **Desfazer** sem abrir a Unidade.
 
 A marca pertence à pessoa e não altera o conteúdo do Curso.
 
@@ -173,7 +180,7 @@ sair sem uma mudança material não cria a cópia.
 Depois da primeira gravação, o AraLearn continua na mesma Unidade da nova cópia.
 A estrutura e o conteúdo corrente são materializados nela, mas planejamento,
 Fontes, PDFs, acessos, progresso e Observações começam separados. A cópia aparece
-como **Sua cópia**; o Curso de origem continua como **Compartilhado com você**.
+como **Cópia pessoal**; o Curso de origem continua como **Curso compartilhado**.
 
 Se a conexão cair antes da confirmação, o rascunho e o pedido delimitado ficam
 pendentes no dispositivo. Ao reconectar, o aplicativo repete a mesma intenção
@@ -187,6 +194,11 @@ Abra **Conta e aparência** para alterar o nome de apresentação, escolher ou
 remover uma foto e definir o tema do sistema, claro ou escuro. A foto pode ser
 JPEG, PNG ou WebP de até 512 KiB e fica em armazenamento privado. Ao fechar a
 área, o foco retorna ao controle que a abriu.
+
+O painel conserva a mesma altura enquanto alterna entre a vista principal,
+**Foto do perfil** e **Dados e conta**. **Voltar** ou `Esc` retorna da subvista à
+vista principal; outro `Esc` fecha o painel. **Remover foto** só aparece quando
+há uma foto corrente ou uma nova escolha ainda não salva.
 
 **Remover dados deste dispositivo** apaga somente a réplica local da conta
 ativa e mantém a conta e os dados remotos. **Sair** encerra a sessão, mas pode

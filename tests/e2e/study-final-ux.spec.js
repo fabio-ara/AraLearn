@@ -13,7 +13,7 @@ const styles = [
   "/course-authoring.css"
 ];
 
-async function mountStudy(page, { savedView = "course" } = {}) {
+async function mountStudy(page, { savedView = "course", projectValue = fixture } = {}) {
   await page.goto("/");
   await page.setContent('<!doctype html><html lang="pt-BR"><head><meta name="viewport" ' +
     'content="width=device-width,initial-scale=1">' +
@@ -114,7 +114,7 @@ async function mountStudy(page, { savedView = "course" } = {}) {
       onSaveManualEdit: saveUnit,
       onSaveAssistedStructure: saveStructure
     });
-  }, { project: fixture, savedView });
+  }, { project: projectValue, savedView });
 }
 
 async function capture(page, name) {
@@ -210,15 +210,18 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   const overflow = await page.evaluate(() => {
     const main = document.querySelector(".microsequence-workbench-screen > .screen-content");
     const card = document.querySelector(".study-stage");
+    const content = document.querySelector(".card-sheet-content");
     return {
       mainOverflowY: getComputedStyle(main).overflowY,
       cardOverflowY: getComputedStyle(card).overflowY,
+      contentOverflowY: getComputedStyle(content).overflowY,
       mainScrollable: main.scrollHeight > main.clientHeight,
       cardScrollable: card.scrollHeight > card.clientHeight
     };
   });
-  expect(overflow.mainOverflowY).toBe("auto");
-  expect(overflow.cardOverflowY).toBe("visible");
+  expect(overflow.mainOverflowY).toBe("hidden");
+  expect(overflow.cardOverflowY).toBe("hidden");
+  expect(overflow.contentOverflowY).toBe("auto");
   expect(overflow.cardScrollable).toBe(false);
 
   await modeButton(page, "Assistência por IA").click();
@@ -271,7 +274,6 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
 });
 
 test("topbar cotidiana oferece Voltar e Home", async ({ page }) => {
-  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
   await page.setViewportSize({ width: 390, height: 844 });
   await mountStudy(page, { savedView: "course" });
   await page.locator("[data-action='open-course']").click();
@@ -285,7 +287,6 @@ test("topbar cotidiana oferece Voltar e Home", async ({ page }) => {
 });
 
 test("topbar cotidiana não mantém ação permanente ao pai", async ({ page }) => {
-  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
   await page.setViewportSize({ width: 390, height: 844 });
   await mountStudy(page, { savedView: "course" });
   await page.locator("[data-action='open-course']").click();
@@ -294,7 +295,6 @@ test("topbar cotidiana não mantém ação permanente ao pai", async ({ page }) 
 });
 
 test("títulos de Curso não recebem sufixo textual de propriedade", async ({ page }) => {
-  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.setContent('<!doctype html><html lang="pt-BR"><body><main id="study-root"></main></body></html>');
@@ -302,9 +302,9 @@ test("títulos de Curso não recebem sufixo textual de propriedade", async ({ pa
     const { renderHomeScreen } = await import("/src/ui/renderHomeScreen.js");
     const base = project.courses[0];
     const courses = [
-      { ...structuredClone(base), id: "owned-course", title: "Curso próprio" },
-      { ...structuredClone(base), id: "shared-course", title: "Curso compartilhado" },
-      { ...structuredClone(base), id: "copy-course", title: "Cópia pessoal" }
+      { ...structuredClone(base), id: "owned-course", title: "Curso homônimo" },
+      { ...structuredClone(base), id: "shared-course", title: "Curso homônimo" },
+      { ...structuredClone(base), id: "copy-course", title: "Curso homônimo" }
     ];
     document.querySelector("#study-root").innerHTML = renderHomeScreen({
       project: { ...project, courses },
@@ -322,8 +322,24 @@ test("títulos de Curso não recebem sufixo textual de propriedade", async ({ pa
       }
     });
   }, fixture);
-  await expect(page.locator("select[aria-label='Selecionar Curso'] option"))
-    .not.toContainText(/· (?:Seu Curso|Compartilhado com você|Sua cópia)/u);
+  const labels = await page.locator("select[aria-label='Selecionar Curso'] option")
+    .allTextContents();
+  expect(labels).toHaveLength(3);
+  labels.forEach((label) => {
+    expect(label).not.toMatch(/· (?:Seu Curso|Compartilhado com você|Sua cópia)/u);
+  });
+  expect(labels).toEqual([
+    "Curso homônimo · opção 1",
+    "Curso homônimo · opção 2",
+    "Curso homônimo · opção 3"
+  ]);
+  expect(await page.locator("select[aria-label='Selecionar Curso'] option")
+    .evaluateAll((options) => options.map((option) => option.getAttribute("aria-label"))))
+    .toEqual([
+      "Curso homônimo, Curso próprio, opção 1",
+      "Curso homônimo, Curso compartilhado, opção 2",
+      "Curso homônimo, Cópia pessoal, opção 3"
+    ]);
 });
 
 test("trocar Visualizar e Editar preserva topbar e rolagem", async ({ page }) => {
@@ -357,7 +373,6 @@ test("trocar Visualizar e Editar preserva topbar e rolagem", async ({ page }) =>
 });
 
 test("trocar Visualizar e Editar preserva foco no modo acionado", async ({ page }) => {
-  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
   await page.setViewportSize({ width: 390, height: 844 });
   await mountStudy(page, { savedView: "course" });
   await page.locator("[data-action='open-course']").click();
@@ -367,6 +382,76 @@ test("trocar Visualizar e Editar preserva foco no modo acionado", async ({ page 
   await page.locator("[data-action='open-study-unit']").first().click();
   await modeButton(page, "Editar").click();
   await expect(modeButton(page, "Editar")).toBeFocused();
+});
+
+test("Unidade curta e longa usam a altura útil com um único scroller e dock estável", async ({ page }) => {
+  const openUnit = async () => {
+    await page.locator("[data-action='open-course']").click();
+    await page.locator("[data-action='open-module']").click();
+    await page.locator("[data-action='open-lesson']").click();
+    await page.locator("[data-action='open-microsequence']").click();
+    await page.locator("[data-action='open-study-unit']").first().click();
+  };
+  const geometry = () => page.evaluate(() => {
+    const bounds = (selector) => {
+      const node = document.querySelector(selector);
+      const rect = node.getBoundingClientRect();
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        height: rect.height,
+        overflowY: getComputedStyle(node).overflowY,
+        scrollable: node.scrollHeight > node.clientHeight + 1
+      };
+    };
+    return {
+      viewport: innerHeight,
+      documentFits: document.documentElement.scrollHeight <= innerHeight + 1,
+      screen: bounds(".microsequence-workbench-screen"),
+      main: bounds(".microsequence-generator-screen"),
+      content: bounds(".card-sheet-content"),
+      stage: bounds(".study-stage"),
+      dock: bounds(".study-reader-footer"),
+      verticalScrollers: [...document.querySelectorAll(".microsequence-workbench-screen *")]
+        .filter((node) => {
+          const overflow = getComputedStyle(node).overflowY;
+          return ["auto", "scroll"].includes(overflow) &&
+            node.scrollHeight > node.clientHeight + 1;
+        })
+        .map((node) => node.className)
+    };
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page);
+  await openUnit();
+  const short = await geometry();
+  expect(short.documentFits).toBe(true);
+  expect(short.main.overflowY).toBe("hidden");
+  expect(short.stage.overflowY).toBe("hidden");
+  expect(short.dock.bottom).toBeLessThanOrEqual(short.viewport + 1);
+
+  const longProject = structuredClone(fixture);
+  const longUnit = longProject.courses[0].modules[0].lessons[0]
+    .microsequences[0].studyUnits[0];
+  longUnit.title = "Título extenso da Unidade ".repeat(12).slice(0, 300);
+  longUnit.content[0].data.text = `Conteúdo longo. ${"Linha de leitura contínua. ".repeat(180)}`;
+  await mountStudy(page, { projectValue: longProject });
+  await openUnit();
+  const long = await geometry();
+  expect(long.documentFits).toBe(true);
+  expect(long.main.scrollable).toBe(false);
+  expect(long.stage.scrollable).toBe(false);
+  expect(long.content.overflowY).toBe("auto");
+  expect(long.content.scrollable).toBe(true);
+  expect(long.verticalScrollers).toEqual(["card-sheet-content"]);
+  expect(Math.abs(long.dock.top - short.dock.top)).toBeLessThanOrEqual(1);
+  expect(Math.abs(long.dock.bottom - short.dock.bottom)).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 390, height: 640 });
+  const compact = await geometry();
+  expect(compact.documentFits).toBe(true);
+  expect(compact.dock.bottom).toBeLessThanOrEqual(compact.viewport + 1);
 });
 
 test("Retomar uma Unidade volta para a mesma Home e para o controle de origem", async ({ page }) => {

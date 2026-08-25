@@ -316,14 +316,20 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   const closeSettings = page.getByRole("button", { name: "Fechar" });
   await expect(closeSettings).toBeFocused();
   await expect(page.locator("[data-profile-avatar-fallback]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Escolher ou trocar foto" })).toBeVisible();
-  const dataDisclosure = page.getByText("Dados e conta", { exact: true });
-  await expect(dataDisclosure).toBeVisible();
+  const sheetHeight = await page.locator(".account-settings-sheet").evaluate((node) =>
+    node.getBoundingClientRect().height);
+  await page.getByRole("button", { name: "Abrir Foto do perfil" }).click();
+  await expect(page.locator("[data-settings-title]")).toHaveText("Foto do perfil");
+  await expect(page.getByRole("button", { name: "Escolher foto" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remover foto" })).toBeHidden();
+  expect(await page.locator(".account-settings-sheet").evaluate((node) =>
+    node.getBoundingClientRect().height)).toBeCloseTo(sheetHeight, 0);
+  await page.getByRole("button", { name: "Voltar" }).click();
+  const dataDisclosure = page.getByRole("button", { name: "Dados e conta" });
   await dataDisclosure.click();
-  await expect(page.getByText(
-    "Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo. Alterações ainda abertas e não salvas serão perdidas.",
-    { exact: true }
-  )).toBeVisible();
+  await expect(page.locator("[data-settings-title]")).toHaveText("Dados e conta");
+  expect(await page.locator(".account-settings-sheet").evaluate((node) =>
+    node.getBoundingClientRect().height)).toBeCloseTo(sheetHeight, 0);
   for (const name of [
     "Remover dados deste dispositivo",
     "Sair e remover dados deste dispositivo"
@@ -343,6 +349,9 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   await expect(page.getByRole("button", { name: "Tema escuro" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(closeSettings).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-settings-title]")).toHaveText("Conta e aparência");
+  await expect(dataDisclosure).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeHidden();
   await expect(settingsTrigger).toBeFocused();
@@ -364,10 +373,25 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
     await expect(accountAvatar).toBeVisible();
     await expect.poll(() => accountAvatar.evaluate((image) =>
       image.complete && image.naturalWidth > 0)).toBe(true);
+    await page.getByRole("button", { name: "Abrir Foto do perfil" }).click();
+    await page.locator("[data-profile-avatar-file]").setInputFiles({
+      name: "avatar-substituta-local.png",
+      mimeType: "image/png",
+      buffer: PNG_1PX
+    });
+    await expect(page.getByRole("button", { name: "Remover foto" })).toBeVisible();
+    await page.getByRole("button", { name: "Remover foto" }).click();
+    await expect(status).toHaveText("Foto não salva retirada.");
+    await expect(page.locator("[data-profile-avatar-view-image]")).toBeVisible();
+    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.getByRole("button", { name: "Salvar perfil" }).click();
+    await expect(status).toHaveText("Perfil salvo.");
+    await expect(accountAvatar).toBeVisible();
   } else {
     await expect(page.locator("[data-profile-avatar-image]")).toBeHidden();
   }
   let signOutDialogMessage = "";
+  await page.getByRole("button", { name: "Dados e conta" }).click();
   page.once("dialog", async (dialog) => {
     signOutDialogMessage = dialog.message();
     await dialog.dismiss();

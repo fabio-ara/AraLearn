@@ -163,7 +163,7 @@ delimitado e repete o mesmo pedido. Se outra aba já criou a cópia com uma
 intenção diferente, a interface conserva o rascunho e informa o conflito. Ela
 não deve mostrar o identificador interno do Curso de destino.
 
-Depois da confirmação, a pessoa continua na mesma Unidade de **Sua cópia**. O
+Depois da confirmação, a pessoa continua na mesma Unidade da **Cópia pessoal**. O
 progresso e as Observações do original não são transportados. Fontes, PDFs,
 acessos e planejamento também começam separados.
 

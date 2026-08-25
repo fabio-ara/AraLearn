@@ -283,6 +283,11 @@ transição ocorre localmente; a persistência remota segue pela fila apropriada
 Mudança de tema, instabilidade de rede ou gravação remota não bloqueiam esse
 controle.
 
+A Unidade usa a altura útil disponível sem criar rolagem vertical no documento.
+Conteúdo curto e longo conservam a mesma moldura e o mesmo dock; somente o
+interior do cartão rola quando necessário. Numa lacuna preenchível, o prompt
+pertence à lacuna ativa, e limpar uma resposta não altera as lacunas vizinhas.
+
 Movimento preserva continuidade espacial ou explica mudança de estado. A
 preferência `prefers-reduced-motion` reduz transições e elimina movimento
 decorativo contínuo. Navegar, voltar, confirmar e cancelar não aguardam uma
@@ -304,6 +309,10 @@ Sheets e dialogs conservam geometria externa estável. Quando o conteúdo varia
 ou cresce, ele rola internamente sem deslocar a topbar, o dock ou o controle de
 origem. Mudanças de modo, seleção, validação, edição e status curto preservam
 posição, dimensões, rolagem e foco dos elementos cuja função não mudou.
+
+**Conta e aparência** aplica esse contrato às subvisões **Foto do perfil** e
+**Dados e conta**: a folha não muda de altura, a rolagem permanece interna e a
+ação **Voltar** substitui o espaço reservado sem deslocar o título ou **Fechar**.
 
 Confirmações de alterações sensíveis pertencem à superfície do produto. O
 diálogo informa a ação e seu alcance, oferece cancelar e confirmar com rótulos
@@ -343,7 +352,7 @@ pós-publicação.
 O aceite da cópia pessoal percorre 360, 390, 430 e 1.280 px, nos temas claro e
 escuro. O shell permanece limitado a 430 px e centralizado em tela larga.
 Seletor e ação principal conservam 44 px, sem overflow ou identificadores
-técnicos. Depois da gravação, **Sua cópia** e **Compartilhado com você** aparecem
+técnicos. Depois da gravação, **Cópia pessoal** e **Curso compartilhado** aparecem
 como opções distintas.
 
 A matriz visual focal da Autoria percorre as quatro larguras e os dois temas,

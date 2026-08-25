@@ -234,7 +234,7 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada context
   assert.match(html, /aria-label="Selecionar Curso"/u);
   assert.match(html, /opção 1/u);
   assert.match(html, /opção 2/u);
-  assert.match(html, /Disponível neste dispositivo/u);
+  assert.doesNotMatch(html, /Disponível neste dispositivo|Disponível com conexão/u);
   assert.match(html, /aria-label="Retomar [^"]+"/u);
   assert.match(html, />Retomar<\/span>/u);
   assert.match(html, /Pertence ao selecionado/u);
@@ -293,8 +293,8 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   assert.match(html, />Curso do autor/u);
   assert.match(html, />Curso compartilhado/u);
   assert.match(html, />Minha continuidade/u);
-  assert.match(html, /home-course-ownership[^>]*>.*Sua cópia/su);
-  assert.match(html, /<summary>Ações deste Curso<\/summary>/u);
+  assert.match(html, /home-course-ownership" aria-label="Cópia pessoal"/u);
+  assert.match(html, /<summary[^>]+aria-label="Ações deste Curso"/u);
   assert.match(html, /data-action="delete-owned-course"/u);
   assert.match(html, />Excluir este Curso<\/span>/u);
   const sharedHtml = renderHomeScreen({

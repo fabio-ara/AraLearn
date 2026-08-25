@@ -4,7 +4,7 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Evidência corrente revisada em **2026-08-24**.
+Evidência corrente revisada em **2026-08-25**.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -21,10 +21,10 @@ Evidência corrente revisada em **2026-08-24**.
 ## Estudo
 
 A entrada apresenta um Curso por vez. O seletor distingue Curso próprio,
-**Compartilhado com você** e **Sua cópia** por iconografia, estado acessível e
-texto somente quando necessário; o título não recebe sufixo de propriedade. A prévia informa objetivo,
-quantidade de Módulos, Lições e Unidades, progresso e disponibilidade no
-dispositivo.
+**Curso compartilhado** e **Cópia pessoal** por iconografia e estado acessível;
+o título não recebe sufixo de propriedade. A prévia informa objetivo,
+quantidade de Módulos, Lições e Unidades e progresso. A disponibilidade offline
+aparece somente quando muda a capacidade de abrir o Curso.
 
 O percurso segue a hierarquia:
 
@@ -44,6 +44,10 @@ Durante o estudo, a pessoa pode responder às práticas, receber retorno, avanç
 marcar uma Unidade para rever, registrar Observações e abrir Fontes autorizadas.
 Progresso, respostas, marcas e Observações são pessoais. Eles não alteram o
 conteúdo compartilhado.
+
+A Unidade ocupa a altura útil da tela e mantém o dock de ações no mesmo lugar;
+quando o conteúdo cresce, somente o cartão de conteúdo rola. A Home permite
+retirar um item de **Rever** diretamente e desfazer a retirada.
 
 Quando uma pessoa com acesso de Estudo edita uma Unidade compartilhada, a
 primeira gravação material cria uma cópia privada. O original permanece

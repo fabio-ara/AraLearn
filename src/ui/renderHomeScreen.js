@@ -87,10 +87,10 @@ function coursePresentation(course, progress, permissions = {}) {
     owned,
     personalCopy,
     ownershipLabel: personalCopy
-      ? "Sua cópia"
+      ? "Cópia pessoal"
       : owned
-        ? "Seu Curso"
-        : "Compartilhado com você",
+        ? "Curso próprio"
+        : "Curso compartilhado",
     availableOffline: permissions.availableOffline === true
   };
 }
@@ -98,32 +98,21 @@ function coursePresentation(course, progress, permissions = {}) {
 function optionLabels(presentations) {
   const counts = new Map();
   for (const item of presentations) {
-    const key = `${item.title.toLocaleLowerCase("pt-BR")}\u0000${item.ownershipLabel}`;
+    const key = item.title.toLocaleLowerCase("pt-BR");
     counts.set(key, (counts.get(key) || 0) + 1);
   }
   const occurrences = new Map();
   return presentations.map((item) => {
-    const key = `${item.title.toLocaleLowerCase("pt-BR")}\u0000${item.ownershipLabel}`;
+    const key = item.title.toLocaleLowerCase("pt-BR");
     const occurrence = (occurrences.get(key) || 0) + 1;
     occurrences.set(key, occurrence);
     const suffix = counts.get(key) > 1 ? ` · opção ${occurrence}` : "";
-    return `${item.title} · ${item.ownershipLabel}${suffix}`;
+    return {
+      visible: `${item.title}${suffix}`,
+      accessible: `${item.title}, ${item.ownershipLabel}` +
+        (suffix ? `, opção ${occurrence}` : "")
+    };
   });
-}
-
-function resumeContext(course, position) {
-  if (!position || !Array.isArray(position.entityPath)) return "";
-  const [, moduleId, lessonId, microsequenceId, studyUnitId] = position.entityPath;
-  const moduleValue = (course.modules || []).find((item) => entityId(item) === moduleId);
-  const lesson = (moduleValue?.lessons || []).find((item) => entityId(item) === lessonId);
-  const microsequence = (lesson?.microsequences || [])
-    .find((item) => entityId(item) === microsequenceId);
-  const studyUnit = (microsequence?.studyUnits || [])
-    .find((item) => entityId(item) === studyUnitId);
-  if (position.view === "course") return course.title || "Curso";
-  if (position.view === "module") return moduleValue?.title || "";
-  if (position.view === "lesson") return lesson?.title || "";
-  return studyUnit?.title || microsequence?.title || lesson?.title || "";
 }
 
 function renderCoursePreview({
@@ -147,38 +136,28 @@ function renderCoursePreview({
     ownershipLabel,
     availableOffline
   } = presentation;
-  const context = resumeContext(course, position);
   const action = position
     ? "Retomar"
     : completed > 0
       ? "Continuar"
       : "Começar";
-  const actionCopy = position
-    ? context ? `Retoma em ${context}.` : "Retoma o último ponto visitado."
-    : completed > 0
-      ? total > 0 && completed >= total
-        ? "Volta ao panorama deste Curso concluído."
-        : "Continua pela próxima Unidade pendente."
-      : "Começa pelo panorama deste Curso.";
   const offline = runtimeStatus?.offline === true;
   const unavailableOffline = offline && !availableOffline;
-  const statusCopy = availableOffline
-    ? "Disponível neste dispositivo"
-    : offline
-      ? "Conecte-se para abrir pela primeira vez"
-      : "Disponível com conexão";
+  const statusCopy = offline && unavailableOffline
+    ? "Conecte-se para abrir este Curso"
+    : offline && availableOffline
+      ? "Disponível offline"
+      : "";
   const buttonCopy = loading ? "Abrindo…" : error ? "Tentar novamente" : action;
   const accessibleAction = `${buttonCopy} ${title}`;
   const lifecycleAction = owned
     ? {
         action: "delete-owned-course",
         label: "Excluir este Curso",
-        description: "Exclui o Curso próprio e seus dados compartilhados."
       }
     : {
         action: "leave-shared-course",
         label: "Sair deste Curso",
-        description: "Encerra somente o seu acesso ao Curso compartilhado."
       };
   return (
     '<article class="progress-card home-course-selector-preview" data-course-id="' +
@@ -188,9 +167,9 @@ function renderCoursePreview({
     '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
     String(percentage) + '"></div>' +
     '<div class="home-course-preview-copy">' +
-    '<p class="home-course-ownership">' +
+    '<p class="home-course-ownership" aria-label="' + escapeHtml(ownershipLabel) + '">' +
     renderUiIcon(personalCopy ? "copy" : owned ? "key" : "account-add", "home-course-origin-icon") +
-    '<span>' + escapeHtml(ownershipLabel) + "</span></p>" +
+    '<span class="visually-hidden">' + escapeHtml(ownershipLabel) + "</span></p>" +
     '<h2 class="card-title">' + escapeHtml(title) + "</h2>" +
     (goal ? '<p class="card-subtitle">' + escapeHtml(goal) + "</p>" : "") +
     '<p class="muted tiny progress-meta">' +
@@ -199,10 +178,9 @@ function renderCoursePreview({
     metric("module", String(moduleCount), "Módulos") +
     '<span class="progress-meta-separator" aria-hidden="true">·</span>' +
     metric("lesson", String(lessonCount), "Lições") +
-    '</p><p class="home-course-offline-status">' +
+    '</p>' + (statusCopy ? '<p class="home-course-offline-status">' +
     renderUiIcon(availableOffline ? "offline" : "cloud", "home-tab-icon") +
-    '<span>' + escapeHtml(statusCopy) + "</span></p>" +
-    '<p class="home-course-entry-context">' + escapeHtml(actionCopy) + "</p></div>" +
+    '<span>' + escapeHtml(statusCopy) + "</span></p>" : "") + "</div>" +
     '<div class="home-course-preview-actions">' +
     (completed > 0
       ? '<button class="icon-ghost study-course-reset" type="button" data-action="reset-course-progress" data-course-id="' +
@@ -216,8 +194,9 @@ function renderCoursePreview({
     (loading || unavailableOffline ? ' disabled aria-disabled="true"' : "") + ">" +
     renderUiIcon("play", "home-tab-icon") + '<span>' + escapeHtml(buttonCopy) +
     "</span></button>" +
-    '<details class="home-course-lifecycle"><summary>Ações deste Curso</summary>' +
-    '<p>' + escapeHtml(lifecycleAction.description) + '</p>' +
+    '<details class="home-course-lifecycle"><summary data-action="course-lifecycle-menu" data-course-id="' +
+    escapeHtml(entityId(course)) + '" title="Ações deste Curso" aria-label="Ações deste Curso">' +
+    renderUiIcon("more", "home-tab-icon") + '<span class="visually-hidden">Ações deste Curso</span></summary>' +
     '<button class="open-mini is-danger" type="button" data-action="' +
     lifecycleAction.action + '" data-course-id="' + escapeHtml(entityId(course)) + '"' +
     (loading ? ' disabled aria-disabled="true"' : '') + '>' +
@@ -254,14 +233,20 @@ function renderReviewQueue(
       const [courseId, moduleId, lessonId, microsequenceId, studyUnitId] = item.entityPath;
       const title = String(item.title || "Unidade marcada");
       return (
-        '<button class="study-review-item" type="button" data-action="open-review-item"' +
+        '<article class="study-review-item"><button class="study-review-open" type="button" data-action="open-review-item"' +
         ' data-course-id="' + escapeHtml(courseId) + '" data-module-id="' + escapeHtml(moduleId) +
         '" data-lesson-id="' + escapeHtml(lessonId) + '" data-microsequence-id="' +
         escapeHtml(microsequenceId) + '" data-study-unit-id="' + escapeHtml(studyUnitId) +
         '" aria-label="Abrir para rever: ' + escapeHtml(title) + '">' +
         renderUiIcon("review", "home-tab-icon") + '<span><strong>' + escapeHtml(title) +
         "</strong>" + (item.context ? '<small>' + escapeHtml(item.context) + "</small>" : "") +
-        "</span></button>"
+        "</span></button>" +
+        '<button class="icon-ghost study-review-remove" type="button" data-action="remove-review-item"' +
+        ' data-course-id="' + escapeHtml(courseId) + '" data-module-id="' + escapeHtml(moduleId) +
+        '" data-lesson-id="' + escapeHtml(lessonId) + '" data-microsequence-id="' +
+        escapeHtml(microsequenceId) + '" data-study-unit-id="' + escapeHtml(studyUnitId) +
+        '" title="Retirar de Rever" aria-label="Retirar de Rever: ' + escapeHtml(title) + '">' +
+        renderUiIcon("remove-state", "home-tab-icon") + "</button></article>"
       );
     }).join("")
       : '<p class="muted tiny study-review-empty">Nenhuma Unidade marcada neste Curso.</p>') +
@@ -308,6 +293,7 @@ export function renderHomeScreen({
   homeLoadingCourseId = "",
   homeError = "",
   homeNotice = "",
+  reviewUndo = null,
   homePendingPersonalCopyDiscard = false,
   editorSupport = {}
 }) {
@@ -330,8 +316,9 @@ export function renderHomeScreen({
       '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar Curso"' +
       (loading ? " disabled" : "") + ">" + presentations.map((item, index) =>
         '<option value="' + escapeHtml(entityId(item.course)) + '"' +
+        ' aria-label="' + escapeHtml(labels[index].accessible) + '"' +
         (entityId(item.course) === selectedId ? " selected" : "") + ">" +
-        escapeHtml(labels[index]) + "</option>").join("") + "</select>" +
+        escapeHtml(labels[index].visible) + "</option>").join("") + "</select>" +
       '<p class="visually-hidden" role="status" aria-live="polite">Curso selecionado: ' +
       escapeHtml(selected.title) + ".</p>" +
       renderCoursePreview({
@@ -352,8 +339,10 @@ export function renderHomeScreen({
     '<button type="button" data-action="open-authoring" title="Abrir Autoria">' +
     renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
     renderRuntimeNotice(runtimeStatus) +
-    (homeNotice ? '<p class="study-home-feedback is-notice" role="status">' +
-      escapeHtml(homeNotice) + "</p>" : "") +
+    (homeNotice ? '<div class="study-home-feedback is-notice" role="status"><span>' +
+      escapeHtml(homeNotice) + "</span>" + (reviewUndo
+        ? '<button class="open-mini" type="button" data-action="undo-review-removal">Desfazer</button>'
+        : "") + "</div>" : "") +
     (homeError ? '<p class="study-home-feedback is-error" role="alert">' +
       escapeHtml(homeError) + "</p>" : "") +
     (homePendingPersonalCopyDiscard

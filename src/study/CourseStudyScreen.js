@@ -19,19 +19,17 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function topbar(title, backTitle = "Voltar", upTitle = "", modeControls = "") {
+function topbar(title, backTitle = "Voltar", modeControls = "") {
   return (
     '<header class="topbar lesson-topbar navigation-topbar">' +
+    '<nav class="navigation-primary-actions" aria-label="Navegação">' +
     '<button class="icon-ghost" type="button" data-action="go-back" title="' +
     escapeHtml(backTitle) + '" aria-label="' + escapeHtml(backTitle) + '">' +
     renderUiIcon("arrow-left", "home-tab-icon") + "</button>" +
-    (upTitle
-      ? '<button class="icon-ghost navigation-up" type="button" data-action="go-up"' +
-        ' title="' + escapeHtml(upTitle) + '" aria-label="' + escapeHtml(upTitle) + '">' +
-        renderUiIcon("arrow-up", "home-tab-icon") + "</button>"
-      : '<span class="navigation-up-slot" aria-hidden="true"></span>') +
-    '<div class="topbar-heading"><div class="topbar-title">' + escapeHtml(title) +
-    '</div></div><div class="lesson-top-actions">' + modeControls +
+    '<button class="icon-ghost" type="button" data-action="go-home" title="Home" aria-label="Home">' +
+    renderUiIcon("home", "home-tab-icon") + "</button></nav>" +
+    '<div class="topbar-heading"><span class="visually-hidden">' + escapeHtml(title) +
+    '</span>' + modeControls + '</div><div class="lesson-top-actions">' +
     '<button class="icon-ghost" type="button" data-action="open-settings"' +
     ' title="Conta e aparência" aria-label="Conta e aparência">' +
     renderUiIcon("more", "home-tab-icon") + "</button></div></header>"
@@ -258,7 +256,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Curso", "Menu principal", "Subir para a Home", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Curso", "Voltar", modes) + runtimeNotice(runtimeStatus) +
     '<main class="screen-content course-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -291,7 +289,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Módulo", "Voltar", "Subir para o Curso", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Módulo", "Voltar", modes) + runtimeNotice(runtimeStatus) +
     '<main class="screen-content course-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -336,7 +334,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
     assistanceAction: assistance.enabled ? "open-lesson-assistance" : "",
     disabled: assistance.saving || structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Lição", "Voltar", "Subir para o Módulo", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Lição", "Voltar", modes) + runtimeNotice(runtimeStatus) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -389,7 +387,7 @@ function renderMicrosequenceOverview(
     disabled: assistance.saving || structuralEditor?.saving
   });
   return '<section class="screen microsequence-overview-screen">' +
-    topbar("Microssequência didática", "Voltar", "Subir para a Lição", modes) +
+    topbar("Microssequência didática", "Voltar", modes) +
     runtimeNotice(runtimeStatus) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
     (structuralEditor?.editing
@@ -570,7 +568,7 @@ function renderStudyUnit({
     unit: true
   });
   return '<section class="screen microsequence-workbench-screen">' +
-    topbar(course.title || "Curso", "Voltar", "Subir para a Microssequência", modes) +
+    topbar(course.title || "Curso", "Voltar", modes) +
     runtimeNotice(runtimeStatus) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
@@ -587,15 +585,13 @@ function renderStudyUnit({
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     renderStudyManualHistory(manualEditor) +
-    '<div class="runtime-card-rendered-content">' + renderStudyManualTitle(studyUnit, manualEditor) +
-    '<div class="card-sheet-content">' +
-    runtime.bodyHtml + "</div>" + runtime.dockHtml + "</div></article></section>" +
-    renderStudyCitations({
+    '<div class="runtime-card-rendered-content"><div class="card-sheet-content">' +
+    renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml + renderStudyCitations({
       open: citationsOpen,
       loading: citationsLoading,
       value: citations,
       error: citationsError
-    }) +
+    }) + "</div>" + runtime.dockHtml + "</div></article></section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade ' +
     String(studyUnitIndex + 1) + " de " + String(units.length) + '">' +
     renderUiIcon("study-unit", "study-reader-count-icon") +
@@ -649,6 +645,7 @@ export function renderCourseStudyScreen({
   reviewItems = [],
   reviewHasMore = false,
   reviewQueueOpen = false,
+  reviewUndo = null,
   runtimeStatus = {},
   coursePermissionsById,
   selectedCourseId = null,
@@ -676,6 +673,7 @@ export function renderCourseStudyScreen({
       reviewItems,
       reviewHasMore,
       reviewQueueOpen,
+      reviewUndo,
       runtimeStatus,
       selectedCourseId,
       studyNavigation,
