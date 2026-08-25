@@ -176,8 +176,11 @@ Uma resposta `choice` já contém o estímulo e as alternativas quando esse é s
 
 ## 4. Fontes, Âncoras e atribuições fora do envelope
 
-Uma Fonte possui identidade estável e revisões somente por acréscimo. Uma Âncora aponta
-para uma revisão exata por página, tempo, fragmento URI ou trecho textual. A
+Uma Fonte possui identidade estável, referência humana em `citationText` e
+revisões somente por acréscimo. Uma Âncora aponta para uma revisão exata por
+página, tempo, fragmento URI ou trecho textual. Seu `humanLocator` opcional
+registra a identificação que o próprio material oferece, como capítulo, seção,
+unidade, slide, figura ou tabela, sem substituir o seletor exato. A
 atribuição registra, em ordem, quais revisões e Âncoras sustentam um item do
 plano ou uma Unidade de estudo e qual relação foi declarada:
 `informed_by`, `supported_by`, `adapted_from`, `quoted_from`,
@@ -201,6 +204,8 @@ catálogo. Ao abrir Fontes numa Unidade, ele solicita
 `aralearn.course-study-citations.v1`: Fontes ocultas ou ainda não resolvidas são
 omitidas, `citation` não entrega URL e `citation_and_link` pode entregá-la. A
 projeção não contém trecho privado de verificação, ator, canal nem histórico.
+Quando existe, o localizador humano da Âncora acompanha a referência. A ausência
+do campo significa apenas que o material não declarou um localizador desse tipo.
 
 Uma escrita geral de composição declara exatamente uma aplicação de
 atribuição para cada Unidade incluída ou substituída, mesmo vazia, na mesma
@@ -231,7 +236,7 @@ com `aralearn.mcp-course-source-attachment-access.v1`; `dataDisclosure` registra
 que a URL incluída é uma credencial temporária de 60 segundos e identifica como
 destinatário o cliente MCP ou o GPT conectado por Actions. No detalhe de Fontes,
 o disclosure enumera título, autoria declarada, identificador, citação, endereço,
-edição ou versão, trecho de verificação e valores textuais dos seletores
+edição ou versão, localizador humano, trecho de verificação e valores textuais dos seletores
 `text_quote` e `uri_fragment` como texto livre potencialmente pessoal, conforme
 os tipos de seletor efetivamente presentes.
 

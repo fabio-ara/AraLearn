@@ -114,6 +114,12 @@ explica a operação proposta. Uma escrita usa um identificador de pedido estáv
 e a revisão esperada. Se o Curso mudar, a Action devolve conflito para que a
 conversa releia o estado, em vez de sobrescrever trabalho novo.
 
+Ao registrar Fontes, o GPT usa somente metadados fornecidos ou verificados. Se
+autoria, data, edição, periódico ou outro dado necessário estiver ausente, ele
+explica a lacuna e pergunta à pessoa em vez de inventar. A citação identifica a
+Fonte; o localizador humano identifica capítulo, seção, unidade, slide, figura
+ou tabela declarados pelo material; o seletor conserva a posição exata.
+
 Para produzir uma Unidade com componentes didáticos:
 
 ```text

@@ -322,10 +322,13 @@ const sourceCommandSchema = {
       sourceRevision: { type: "integer", minimum: 1 },
       expectedAnchorRevision: { type: "integer", minimum: 0 },
       selector: sourceSelectorSchema,
+      humanLocator: nullableString(stringSchema({
+        minLength: 1, maxLength: 500, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+      })),
       verificationExcerpt: nullableString(stringSchema({
         minLength: 1, maxLength: 2_000, pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
       }))
-    }),
+    }, ["type", "anchorId", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "verificationExcerpt"]),
     objectSchema({
       type: { const: "retire_anchor" },
       anchorId: courseSourceOpaqueIdSchema,
@@ -1025,7 +1028,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos fora das projeções de Observações. Consulte anchored_annotations para manifestações humanas: inbox e target omitem o texto integral, referências e rótulos pessoais, caminhos e links internos; detail exige includeObservationText=true e envia o texto da Observação ao cliente MCP conectado para uma triagem autoral específica, mantendo as demais omissões. Use course_sources para proveniência sem identidades pessoais nem caminhos do Storage. O download de um PDF exige includeAttachmentDownloadUrl=true e envia ao cliente MCP conectado uma credencial temporária de 60 segundos. Use instructional_plan para Partes, course_design para parâmetros, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos fora das projeções de Observações. Consulte anchored_annotations para manifestações humanas: inbox e target omitem o texto integral, referências e rótulos pessoais, caminhos e links internos; detail exige includeObservationText=true e envia o texto da Observação ao cliente MCP conectado para uma triagem autoral específica, mantendo as demais omissões. Use course_sources para proveniência sem identidades pessoais nem caminhos do Storage: citationText identifica a Fonte para pessoas, humanLocator nomeia capítulo, seção, unidade, slide, figura ou tabela quando o material realmente os declara, e selector preserva a localização exata. Se metadados bibliográficos necessários estiverem ausentes, pergunte à pessoa em vez de inferir ou inventar. O download de um PDF exige includeAttachmentDownloadUrl=true e envia ao cliente MCP conectado uma credencial temporária de 60 segundos. Use instructional_plan para Partes, course_design para parâmetros, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
@@ -1553,7 +1556,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso vivo, suas Anotações ancoradas e o ciclo de auditoria. Releia a vista correspondente, envie checks e evidências públicos sem raciocínio privado, proponha antes de aplicar e verifique depois da aplicação. Aplicar ou desfazer uma correção exige confirmed=true após confirmação humana explícita. Use somente as versões exigidas; cada alteração é limitada e idempotente.",
+    description: "Altera o Curso vivo, suas Anotações ancoradas e o ciclo de auditoria. Releia a vista correspondente, envie checks e evidências públicos sem raciocínio privado, proponha antes de aplicar e verifique depois da aplicação. Em update_course_sources, identifique os metadados realmente presentes e registre somente dados fornecidos ou verificados. Se faltar autoria, data, edição, periódico ou outro dado material à referência, proponha uma referência humana que explicite a lacuna, pergunte somente pelo que estiver ausente ou ambíguo e mostre a referência proposta antes de persistir enquanto houver incerteza; nunca complete por plausibilidade. citationText identifica a Fonte para pessoas, humanLocator registra um localizador declarado pelo material e selector preserva a posição exata. Aplicar ou desfazer uma correção exige confirmed=true após confirmação humana explícita. Use somente as versões exigidas; cada alteração é limitada e idempotente.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,

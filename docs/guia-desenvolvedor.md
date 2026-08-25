@@ -193,7 +193,7 @@ quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
 os testes correspondentes existirem. O manifesto corrente aponta para
-`20260824174101` e precisa coincidir com a revisão exposta pelo backend
+`20260825190000` e precisa coincidir com a revisão exposta pelo backend
 hospedado.
 
 ## Testes focais

@@ -88,8 +88,9 @@ as demais respostas.
 Use o ícone **Fontes** dentro da Unidade. A consulta ocorre quando o painel é
 aberto; o catálogo privado do Curso não acompanha o conteúdo de Estudo.
 
-O painel pode apresentar título, citação, edição ou versão, localização exata e
-endereço externo. A visibilidade definida pela pessoa autora controla o que é
+O painel pode apresentar título, citação, edição ou versão, um localizador
+legível como capítulo, slide ou figura, a localização exata e endereço externo.
+A visibilidade definida pela pessoa autora controla o que é
 mostrado:
 
 - **Não mostrar no Estudo** mantém a Fonte restrita à Autoria;
@@ -99,6 +100,9 @@ mostrado:
 Uma referência anterior ainda pendente de comprovação também fica restrita à
 Autoria. O Estudo não recebe trecho privado de verificação, histórico de
 revisões, identidade de quem editou nem controles de manutenção da Fonte.
+Um endereço externo pode mudar ou desaparecer; um PDF anexado ao Curso é o
+material preservado pelo AraLearn. A citação e o estado de disponibilidade
+descrevem a referência, mas não prometem acesso futuro ao material remoto.
 
 ## Marcar para rever
 

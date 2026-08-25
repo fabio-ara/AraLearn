@@ -143,6 +143,7 @@ function protectedCourseSourcesPage() {
         sourceRevision: 2,
         status: "active",
         selector: { kind: "page_range", startPage: 2, endPage: 3 },
+        humanLocator: "Capítulo 1 · Seção 2",
         verificationExcerpt: "Trecho verificável.",
         actorId: SOURCE_ACTOR_ID,
         createdAt: "2026-08-21T12:01:00Z"
@@ -398,6 +399,7 @@ test("projeção MCP de Fontes conserva referências autorais e omite pessoas e 
   assert.equal(source.identifier, "ISBN 0000");
   assert.equal(source.editionOrVersion, "2");
   assert.equal(source.anchors[0].anchorId, "anchor-a");
+  assert.equal(source.anchors[0].humanLocator, "Capítulo 1 · Seção 2");
   assert.deepEqual(source.anchors[1].selector, {
     kind: "text_quote",
     exact: TEXT_QUOTE_EXACT,
@@ -420,6 +422,7 @@ test("projeção MCP de Fontes conserva referências autorais e omite pessoas e 
     "items[].url",
     "items[].editionOrVersion",
     "items[].anchors[].verificationExcerpt",
+    "items[].anchors[].humanLocator",
     "items[].anchors[].selector.exact",
     "items[].anchors[].selector.prefix",
     "items[].anchors[].selector.suffix",

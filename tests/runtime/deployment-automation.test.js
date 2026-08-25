@@ -449,7 +449,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260824174101");
+  assert.equal(manifest.schemaRevision, "20260825190000");
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("current-data-lifecycle-v1"), true);
@@ -470,6 +470,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-comparisons-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-variant-comparison-list-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-pdf-attachments-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-source-human-locators-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
 });

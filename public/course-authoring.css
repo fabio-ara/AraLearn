@@ -5828,9 +5828,19 @@
 }
 
 .study-citation-list ul li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 2px 6px;
   border-radius: 999px;
   background: var(--surface-raised);
+}
+
+.course-source-availability-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
 }
 
 .study-citation-list a {

@@ -1351,6 +1351,14 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   const validateChange = ajv.compile(changeSchema);
   const validateRead = ajv.compile(readSchema);
+  assert.match(
+    COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").description,
+    /metadados bibliográficos.*pergunte à pessoa.*inferir ou inventar/iu
+  );
+  assert.match(
+    COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").description,
+    /metadados realmente presentes.*pergunte somente.*mostre a referência proposta antes de persistir.*nunca complete por plausibilidade/iu
+  );
   const sourceChange = {
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
@@ -1425,8 +1433,15 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
   };
   assert.equal(validateChange({
     ...sourceChange,
-    sourceCommand: astralAnchor
+    sourceCommand: {
+      ...astralAnchor,
+      humanLocator: "Unidade 4 · Slide 12 · Figura 2"
+    }
   }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: { ...astralAnchor, humanLocator: "x".repeat(501) }
+  }), false);
   assert.equal(validateChange({
     ...sourceChange,
     sourceCommand: {

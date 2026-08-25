@@ -136,9 +136,11 @@ visibilidade em Estudo. Criar nova revisão preserva o registro anterior;
 aposentar impede novos usos sem apagar o histórico.
 
 Cada revisão pode receber Âncoras por intervalo de páginas, intervalo de tempo,
-fragmento de endereço ou trecho textual exato. O trecho de verificação é
-opcional e permanece privado. A Âncora pertence à revisão exata da Fonte e
-também recebe revisões próprias.
+fragmento de endereço ou trecho textual exato. **Localizador para pessoas** pode
+registrar capítulo, seção, unidade, slide, figura ou tabela quando essa
+identificação aparece no material. Ele não substitui o seletor exato nem deve
+ser deduzido. O trecho de verificação é opcional e permanece privado. A Âncora
+pertence à revisão exata da Fonte e também recebe revisões próprias.
 
 No detalhe da Fonte, **Registrar observação** permite acrescentar uma nota,
 contestar uma interpretação ou solicitar reformulação. O alvo pode ser a Fonte
@@ -172,6 +174,10 @@ A visibilidade controla a projeção entregue em Estudo:
 - **Não mostrar no Estudo** restringe a Fonte à Autoria;
 - **Mostrar citação** apresenta identificação e localização;
 - **Mostrar citação e link** também pode entregar o endereço HTTPS.
+
+Em Estudo, quem pode editar o Curso também pode abrir a Fonte ou uma Âncora
+diretamente desse painel. Fechar a Autoria retorna à mesma Unidade e ao controle
+que originou a abertura.
 
 ### Conteúdo
 

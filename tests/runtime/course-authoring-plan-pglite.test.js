@@ -27,6 +27,10 @@ const courseSourcesMigrationUrl = new URL(
   "../../supabase/migrations/20260817190000_course_sources_provenance.sql",
   import.meta.url
 );
+const courseSourceHumanLocatorsMigrationUrl = new URL(
+  "../../supabase/migrations/20260825190000_course_source_human_locators.sql",
+  import.meta.url
+);
 const contextualCompositionMigrationUrl = new URL(
   "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
   import.meta.url
@@ -429,6 +433,19 @@ async function applyCourseDesignMigration(database, {
 
 async function applyCourseSourcesMigration(database) {
   await database.exec(await fs.readFile(courseSourcesMigrationUrl, "utf8"));
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  manifest.schemaRevision = "20260824174101";
+  const literal = JSON.stringify(manifest).replaceAll("'", "''");
+  await database.exec(`
+    create or replace function public.get_aralearn_runtime_manifest()
+    returns jsonb language sql stable security definer
+    set search_path=pg_catalog as $manifest$
+      select '${literal}'::jsonb
+    $manifest$;
+  `);
+  await database.exec(await fs.readFile(courseSourceHumanLocatorsMigrationUrl, "utf8"));
 }
 
 async function applyContextualCompositionMigration(database) {
@@ -3272,9 +3289,10 @@ test("#123 converte todas as referências legacy sem trim, dedupe ou mudança de
   const manifest = await scalar(database, `
     select public.get_aralearn_runtime_manifest() as value
   `);
-  assert.equal(manifest.schemaRevision, "20260817190000");
+  assert.equal(manifest.schemaRevision, "20260825190000");
   assert.equal(manifest.features.includes("course-sources-v1"), true);
   assert.equal(manifest.features.includes("course-source-provenance-v1"), true);
+  assert.equal(manifest.features.includes("course-source-human-locators-v1"), true);
   assert.equal(await scalar(database, `
     select count(*) = 6 and bool_and(
       routine.provolatile = expected.volatility
@@ -3314,17 +3332,25 @@ test("#123 converte todas as referências legacy sem trim, dedupe ou mudança de
   `), true);
   assert.equal(await scalar(database, `
     select strpos(lower(pg_get_functiondef(
-      'public.get_owned_course_sources_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer)'
+      'private.get_owned_course_sources_with_attachments_v1(uuid,uuid,bigint,text,text,text,text,text,integer)'
         ::regprocedure::oid
     )),'for share') > 0
     and strpos(lower(pg_get_functiondef(
-      'public.get_course_study_citations_v1(uuid,bigint,text)'
+      'private.get_course_study_citations_core_v1(uuid,bigint,text)'
         ::regprocedure::oid
     )),'for share') > 0
     and strpos(pg_get_functiondef(
+      'private.get_course_study_citations_core_v1(uuid,bigint,text)'
+        ::regprocedure::oid
+    ),'course-access:') > 0
+    and strpos(pg_get_functiondef(
+      'public.get_owned_course_sources_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer)'
+        ::regprocedure::oid
+    ),'get_owned_course_sources_with_attachments_v1') > 0
+    and strpos(pg_get_functiondef(
       'public.get_course_study_citations_v1(uuid,bigint,text)'
         ::regprocedure::oid
-    ),'course-access:') > 0 as value
+    ),'get_course_study_citations_core_v1') > 0 as value
   `), true);
   await database.close();
 });
@@ -5726,6 +5752,135 @@ test("#123 cerca citações densas no último payload legível sem revisão parc
     select public.get_course_study_citations_v1($1,6,'card-a') as value
   `, [COURSE]), hiddenSeventhPayload);
   await database.close();
+});
+
+test("#192 versiona localizador humano sem misturá-lo ao seletor e o projeta no Estudo", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || jsonb_build_object('sources','[]'::jsonb)
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId: "source-human-locator",
+    expectedSourceRevision: 0,
+    source: sourceDocument({
+      kind: "book",
+      title: "Manual com capítulos e figuras",
+      citationText: "AUTORIA. Manual com capítulos e figuras. 2026.",
+      url: null,
+      editionOrVersion: "2ª edição",
+      availability: "restricted",
+      studyVisibility: "citation"
+    })
+  }, "source-human-locator-save-01");
+  const selector = { kind: "page_range", startPage: 42, endPage: 44 };
+  await executeCourseSourceCommand(database, 5, {
+    type: "save_anchor",
+    anchorId: "anchor-human-locator",
+    sourceId: "source-human-locator",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector,
+    humanLocator: "Capítulo 3 · Seção 2.1 · Figura 5",
+    verificationExcerpt: "Trecho conferido na figura."
+  }, "source-human-locator-anchor-01");
+  const revised = await executeCourseSourceCommand(database, 6, {
+    type: "save_anchor",
+    anchorId: "anchor-human-locator",
+    sourceId: "source-human-locator",
+    sourceRevision: 1,
+    expectedAnchorRevision: 1,
+    selector,
+    humanLocator: "Capítulo 3 · Seção 2.1 · Figura 6",
+    verificationExcerpt: "Trecho conferido na figura."
+  }, "source-human-locator-anchor-02");
+  assert.equal(revised.changed, true);
+  assert.equal(revised.change.revision, 2);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_agg(jsonb_build_object(
+      'revision',revision,'humanLocator',human_locator,'selector',selector
+    ) order by revision) as value
+    from private.course_source_anchor_revisions
+    where course_id=$1 and anchor_id='anchor-human-locator'
+  `, [COURSE]), [{
+    revision: 1,
+    humanLocator: "Capítulo 3 · Seção 2.1 · Figura 5",
+    selector
+  }, {
+    revision: 2,
+    humanLocator: "Capítulo 3 · Seção 2.1 · Figura 6",
+    selector
+  }]);
+
+  const legacyShapeCommand = {
+    type: "save_anchor",
+    anchorId: "anchor-client-0030",
+    sourceId: "source-human-locator",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 50, endPage: 50 },
+    verificationExcerpt: null
+  };
+  await executeCourseSourceCommand(
+    database,
+    7,
+    legacyShapeCommand,
+    "source-human-locator-legacy-01"
+  );
+  const legacyReplay = await executeCourseSourceCommand(
+    database,
+    7,
+    legacyShapeCommand,
+    "source-human-locator-legacy-01"
+  );
+  assert.equal(legacyReplay.idempotent, true);
+
+  const sourceRead = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,8,'source','source-human-locator',null,null,null,10
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(sourceRead.items[0].anchors.find(({ anchorId }) =>
+    anchorId === "anchor-human-locator").humanLocator,
+    "Capítulo 3 · Seção 2.1 · Figura 6");
+  assert.equal(Object.hasOwn(sourceRead.items[0].anchors.find(({ anchorId }) =>
+    anchorId === "anchor-client-0030"), "humanLocator"), false);
+  await executeCourseSourceCommand(database, 8, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 1,
+    sourceLinks: [{
+      sourceId: "source-human-locator",
+      sourceRevision: 1,
+      relation: "supported_by",
+      anchors: [{ anchorId: "anchor-human-locator", anchorRevision: 2 }]
+    }]
+  }, "source-human-locator-assign-01");
+  await database.query(`
+    insert into public.course_access(course_id,user_id,granted_by)
+    values($1,$2,$3) on conflict(course_id,user_id) do nothing
+  `, [COURSE, LEARNER, OWNER]);
+  await actor(database, LEARNER, "authenticated");
+  const citations = await scalar(database, `
+    select public.get_course_study_citations_v1($1,9,'card-a') as value
+  `, [COURSE]);
+  assert.equal(citations.citations[0].citationText,
+    "AUTORIA. Manual com capítulos e figuras. 2026.");
+  assert.deepEqual(citations.citations[0].anchors[0], {
+    anchorId: "anchor-human-locator",
+    anchorRevision: 2,
+    selector,
+    humanLocator: "Capítulo 3 · Seção 2.1 · Figura 6"
+  });
 });
 
 test("#149 cria uma cópia pessoal mínima, idempotente e independente da origem", async () => {

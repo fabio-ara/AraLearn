@@ -8,6 +8,7 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { listManualStudyUnitTargetIds } from "../ui/manualStudyUnitEdit.js";
 import { renderHomeScreen } from "../ui/renderHomeScreen.js";
+import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 
 function escapeHtml(value) {
@@ -508,7 +509,12 @@ function citationSelectorLabel(selector) {
   return `“${selector.exact}”`;
 }
 
-function renderStudyCitations({ open, loading, value, error }) {
+function citationAnchorLabel(anchor) {
+  const exact = citationSelectorLabel(anchor.selector);
+  return anchor.humanLocator ? `${anchor.humanLocator} · ${exact}` : exact;
+}
+
+function renderStudyCitations({ open, loading, value, error, courseId, canAuthorSources }) {
   if (!open) return "";
   let content;
   if (loading) {
@@ -521,16 +527,29 @@ function renderStudyCitations({ open, loading, value, error }) {
   } else {
     content = '<ol class="study-citation-list">' + value.citations.map((citation) =>
       '<li><article><h3>' + escapeHtml(citation.title) + "</h3>" +
-      `<p>${escapeHtml(citation.citationText)}</p>` +
+      `<p class="study-citation-reference">${escapeHtml(citation.citationText)}</p>` +
       (citation.editionOrVersion
         ? `<small>${escapeHtml(citation.editionOrVersion)}</small>`
         : "") +
+      `<small>${citation.url ? "Link externo disponível" : "Referência sem link público"}</small>` +
       (citation.anchors.length
-        ? `<ul>${citation.anchors.map(({ selector }) =>
-            `<li>${escapeHtml(citationSelectorLabel(selector))}</li>`).join("")}</ul>`
+        ? `<ul>${citation.anchors.map((anchor) =>
+            `<li><span>${escapeHtml(citationAnchorLabel(anchor))}</span>` +
+            (canAuthorSources
+              ? `<a href="${escapeHtml(buildCourseAuthoringRoute(courseId, {
+                  section: "sources",
+                  sourceId: citation.sourceId,
+                  anchorId: anchor.anchorId
+                }))}" data-study-source-return aria-label="Revisar esta âncora">Revisar</a>`
+              : "") + "</li>").join("")}</ul>`
         : "") +
       (citation.url
         ? `<a href="${escapeHtml(citation.url)}" target="_blank" rel="noreferrer">Abrir fonte</a>`
+        : "") +
+      (canAuthorSources
+        ? `<a href="${escapeHtml(buildCourseAuthoringRoute(courseId, {
+            section: "sources", sourceId: citation.sourceId
+          }))}" data-study-source-return>Revisar Fonte no Curso</a>`
         : "") + "</article></li>").join("") + "</ol>";
   }
   return '<section class="study-citations-panel" aria-labelledby="study-citations-title">' +
@@ -618,6 +637,7 @@ function renderStudyUnit({
   citationsLoading,
   citations,
   citationsError,
+  canAuthorSources,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   const units = microsequence.studyUnits || [];
@@ -693,7 +713,9 @@ function renderStudyUnit({
       open: citationsOpen,
       loading: citationsLoading,
       value: citations,
-      error: citationsError
+      error: citationsError,
+      courseId: course.id,
+      canAuthorSources
     }) + "</div>" + runtime.dockHtml + "</div></article></section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade ' +
     String(studyUnitIndex + 1) + " de " + String(units.length) + '">' +
@@ -766,6 +788,7 @@ export function renderCourseStudyScreen({
   citationsLoading = false,
   citations = null,
   citationsError = "",
+  canAuthorSources = false,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } },
   assistance = { enabled: false, activeScope: "", draft: null, saving: false, error: "" },
   structuralEditor = { enabled: false, editing: false, saving: false }
@@ -820,6 +843,7 @@ export function renderCourseStudyScreen({
     citationsLoading,
     citations,
     citationsError,
+    canAuthorSources,
     manualEditor
   });
 }

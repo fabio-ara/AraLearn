@@ -326,6 +326,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
+    /data-study-source-return[\s\S]*?getAttribute\("href"\)[\s\S]*?refreshStudy\(\)[\s\S]*?finally\([\s\S]*?restoreOriginFocus/u,
+    "Voltar da Fonte deve reencontrar e focar a origem mesmo depois de atualizar o Estudo."
+  );
+  assert.match(
+    mainSource,
     /createCourseStudyApplication[\s\S]*?await editorApp\.resumePendingManualEdit/u,
     "A inicialização deve recuperar uma edição pessoal persistida antes de seguir."
   );

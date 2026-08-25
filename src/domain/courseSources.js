@@ -537,7 +537,8 @@ export function normalizeCourseSourceCommand(value) {
     };
   }
   if (command.type === "save_anchor") {
-    exact(command, ["type", "anchorId", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "verificationExcerpt"], "invalid_course_source_command", "O comando save_anchor");
+    if (!Object.hasOwn(command, "humanLocator")) command.humanLocator = null;
+    exact(command, ["type", "anchorId", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "humanLocator", "verificationExcerpt"], "invalid_course_source_command", "O comando save_anchor");
     const normalized = {
       type: command.type,
       anchorId: anchorId(command.anchorId),
@@ -545,6 +546,9 @@ export function normalizeCourseSourceCommand(value) {
       sourceRevision: integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte"),
       expectedAnchorRevision: integer(command.expectedAnchorRevision, 0, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Âncora"),
       selector: normalizeCourseSourceSelector(command.selector),
+      humanLocator: optionalText(command.humanLocator, 500, "invalid_course_source_command", "O localizador humano", {
+        allowLayoutWhitespace: false
+      }),
       verificationExcerpt: command.verificationExcerpt === null ? null :
         text(command.verificationExcerpt, 2000, "invalid_course_source_command", "O trecho de verificação", {
           preserveWhitespace: true
@@ -830,12 +834,19 @@ function validateSourceRevision(value, { detailed = false } = {}) {
       fail("invalid_course_sources_read", "A lista de Âncoras é inválida.");
     }
     value.anchors.forEach((anchor) => {
-      exact(anchor, ["anchorId", "revision", "sourceRevision", "status", "selector", "verificationExcerpt", "actorId", "createdAt"], "invalid_course_sources_read", "A revisão da Âncora");
+      const anchorFields = ["anchorId", "revision", "sourceRevision", "status", "selector", "verificationExcerpt", "actorId", "createdAt"];
+      if (Object.hasOwn(anchor, "humanLocator")) anchorFields.push("humanLocator");
+      exact(anchor, anchorFields, "invalid_course_sources_read", "A revisão da Âncora");
       anchorId(anchor.anchorId);
       integer(anchor.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Âncora");
       integer(anchor.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão de Fonte da Âncora");
       if (!["active", "retired"].includes(anchor.status)) fail("invalid_course_sources_read", "O estado da Âncora é inválido.");
       normalizeCourseSourceSelector(anchor.selector);
+      if (Object.hasOwn(anchor, "humanLocator")) {
+        optionalText(anchor.humanLocator, 500, "invalid_course_sources_read", "O localizador humano", {
+          allowLayoutWhitespace: false
+        });
+      }
       if (anchor.verificationExcerpt !== null) {
         text(anchor.verificationExcerpt, 2000, "invalid_course_sources_read", "O trecho de verificação", {
           preserveWhitespace: true
@@ -980,10 +991,17 @@ export function normalizeCourseStudyCitationsRead(value) {
     });
     if (!Array.isArray(citation.anchors) || citation.anchors.length > 8) fail("invalid_course_study_citations", "As Âncoras da citação são inválidas.");
     citation.anchors.forEach((anchor) => {
-      exact(anchor, ["anchorId", "anchorRevision", "selector"], "invalid_course_study_citations", "A Âncora redigida");
+      const anchorFields = ["anchorId", "anchorRevision", "selector"];
+      if (Object.hasOwn(anchor, "humanLocator")) anchorFields.push("humanLocator");
+      exact(anchor, anchorFields, "invalid_course_study_citations", "A Âncora redigida");
       anchorId(anchor.anchorId);
       integer(anchor.anchorRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_study_citations", "A revisão da Âncora");
       normalizeCourseSourceSelector(anchor.selector);
+      if (Object.hasOwn(anchor, "humanLocator")) {
+        optionalText(anchor.humanLocator, 500, "invalid_course_study_citations", "O localizador humano", {
+          allowLayoutWhitespace: false
+        });
+      }
     });
   });
   byteBound(read, 262144, "course_study_citations_too_large", "A leitura de citações");

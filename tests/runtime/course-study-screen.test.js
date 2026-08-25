@@ -556,7 +556,8 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
         anchors: [{
           anchorId: "anchor-publica",
           anchorRevision: 1,
-          selector: { kind: "page_range", startPage: 8, endPage: 9 }
+          selector: { kind: "page_range", startPage: 8, endPage: 9 },
+          humanLocator: "Capítulo 2 · Figura 4"
         }]
       }, {
         sourceId: "fonte-com-link",
@@ -579,8 +580,23 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
   assert.match(open, /Fonte somente citada/u);
   assert.match(open, /Fonte com link público/u);
   assert.match(open, /pp\. 8–9/u);
+  assert.match(open, /Capítulo 2 · Figura 4 · pp\. 8–9/u);
   assert.match(open, /href="https:\/\/example\.test\/fonte"/u);
   assert.equal((open.match(/>Abrir fonte<\/a>/gu) || []).length, 1);
   assert.doesNotMatch(open, /Fonte oculta|Legado não resolvido|verificationExcerpt|actorId|studyVisibility/u);
   assert.doesNotMatch(open, /edit-source|retire-source|Revisar fonte|Aposentar fonte/u);
+
+  const ownedOpen = renderCourseStudyScreen({
+    ...common,
+    course: { ...course, id: "10000000-0000-4000-8000-000000000001" },
+    selection: {
+      ...common.selection,
+      courseId: "10000000-0000-4000-8000-000000000001"
+    },
+    citationsOpen: true,
+    canAuthorSources: true
+  });
+  assert.match(ownedOpen, /section=sources&amp;sourceId=fonte-citacao&amp;anchorId=anchor-publica/u);
+  assert.match(ownedOpen, /Revisar esta âncora/u);
+  assert.match(ownedOpen, /Revisar Fonte no Curso/u);
 });

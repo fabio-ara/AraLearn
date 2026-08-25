@@ -114,9 +114,13 @@ unidades de análise e requisitos de evidência daquele alvo.
 ## Registrar Fontes e Âncoras
 
 Use `course_sources` para percorrer o catálogo, abrir uma Fonte ou consultar o
-histórico de um alvo. Registre somente metadados conhecidos. Depois, crie uma
-Âncora que localize o trecho relevante por páginas, intervalo de tempo,
-fragmento de endereço ou citação textual.
+histórico de um alvo. Registre somente metadados conhecidos. Se faltarem autoria,
+data, edição, periódico ou outros dados necessários à referência, explicite a
+lacuna e pergunte à pessoa; não complete por plausibilidade. `citationText`
+identifica a Fonte para pessoas. Depois, crie uma Âncora que localize o trecho
+relevante por páginas, intervalo de tempo, fragmento de endereço ou citação
+textual. `humanLocator` pode nomear capítulo, seção, unidade, slide, figura ou
+tabela somente quando o próprio material declara essa identificação.
 
 Uma atribuição liga a revisão exata da Fonte e suas Âncoras a um item do plano
 ou a uma Unidade. A relação pode indicar que a Fonte informou, sustentou,

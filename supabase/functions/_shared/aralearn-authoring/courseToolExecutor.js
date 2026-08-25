@@ -231,6 +231,7 @@ function projectSourceRevisionForMcp(source, { detailed = false } = {}) {
           sourceRevision: anchor?.sourceRevision ?? null,
           status: anchor?.status ?? null,
           selector: projectSourceSelectorForMcp(anchor?.selector),
+          humanLocator: anchor?.humanLocator ?? null,
           verificationExcerpt: anchor?.verificationExcerpt ?? null,
           createdAt: anchor?.createdAt ?? null
         })),
@@ -279,6 +280,7 @@ function sourceMcpDisclosure(projectedItems) {
       "items[].url",
       "items[].editionOrVersion",
       "items[].anchors[].verificationExcerpt",
+      "items[].anchors[].humanLocator",
       ...selectorDisclosurePaths
     ],
     omitted: [

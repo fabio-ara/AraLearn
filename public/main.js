@@ -1049,6 +1049,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   courseProviderSession = createCourseProviderSession();
   let editorApp = null;
   let authoringSurface = null;
+  let authoringReturnFocus = null;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
@@ -1196,14 +1197,33 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       clearAuthoringRoute();
       authoringRoot.hidden = true;
       editorRoot.hidden = false;
+      const returnOrigin = authoringReturnFocus;
+      authoringReturnFocus = null;
+      const restoreOriginFocus = () => {
+        const current = returnOrigin?.element?.isConnected
+          ? returnOrigin.element
+          : [...editorRoot.querySelectorAll?.("[data-study-source-return]") || []]
+              .find((node) => node.getAttribute("href") === returnOrigin?.href);
+        current?.focus?.({ preventScroll: true });
+      };
+      globalThis.queueMicrotask?.(restoreOriginFocus);
       void refreshStudy().catch((error) => {
         console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
-      });
+      }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
     }
   });
 
   const openAuthoring = () => {
     settings.close();
+    if (!editorRoot.hidden && editorRoot.contains(document.activeElement)) {
+      const element = document.activeElement;
+      authoringReturnFocus = {
+        element,
+        href: element.matches?.("[data-study-source-return]")
+          ? element.getAttribute("href")
+          : null
+      };
+    }
     editorRoot.hidden = true;
     authoringRoot.hidden = false;
     void authoringSurface.open();

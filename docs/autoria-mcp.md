@@ -242,7 +242,7 @@ No MCP, a resposta usa `aralearn.mcp-course-sources.v1`. Identidades de ator e
 de atribuição, resumo interno do alvo, Curso de origem do objeto e caminhos do
 Storage permanecem fora; `dataDisclosure` registra essas omissões. A aplicação
 autenticada conserva o DTO interno completo para suas próprias telas. Título,
-autoria declarada, identificador, citação, endereço, edição ou versão, trecho de
+  autoria declarada, identificador, citação, endereço, edição ou versão, localizador humano, trecho de
 verificação e valores textuais dos seletores `text_quote` e `uri_fragment` são
 campos livres potencialmente pessoais que integram o detalhe autoral;
 `dataDisclosure` também os enumera quando esse recorte é enviado ao cliente
@@ -385,6 +385,12 @@ vínculo novo declara `informed_by`, `supported_by`, `adapted_from`,
 migração e nunca opção de escrita. Uma identidade legada não resolvida é
 resolvida na mesma identidade, preservando literalmente o identificador; o cliente não a
 normaliza nem cria substituto.
+
+`save_source` registra somente metadados fornecidos ou verificados. Quando um
+dado necessário à referência estiver ausente, o cliente conversa com a pessoa
+antes de escrever e nunca o infere. Em `save_anchor`, `humanLocator` é opcional
+e nomeia a localização declarada pelo material; `selector` continua sendo a
+posição exata e independente.
 
 `update_course_variants` aceita `create_comparison_variants` e
 `detach_comparison_variant`. A criação recebe de duas a oito variantes, fixa o

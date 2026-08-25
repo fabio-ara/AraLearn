@@ -23,7 +23,7 @@ O banco conserva o Curso vivo, sua hierarquia, planejamento, materializações,
 parâmetros, política de componentes, Fontes, Âncoras, vínculos de PDF,
 Observações, Auditoria, Variantes, acesso, estado pessoal e fatos projetados
 para Pesquisa. As migrations reproduzem o esquema, e o manifesto corrente
-termina em `20260824174101_authoring_materialization_history.sql`.
+termina em `20260825190000_course_source_human_locators.sql`.
 
 Uma pessoa autenticada ainda precisa estar autorizada para a linha e para a
 operação pedida. Nas tabelas expostas pela API de dados, privilégios explícitos

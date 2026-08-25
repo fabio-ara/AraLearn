@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260824174101",
+  "schemaRevision": "20260825190000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -25,6 +25,7 @@
     "course-sources-v1",
     "course-source-provenance-v1",
     "course-source-pdf-attachments-v1",
+    "course-source-human-locators-v1",
     "course-anchored-annotations-v1",
     "course-annotation-subject-classification-v1",
     "course-personal-state-v2",

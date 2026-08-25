@@ -523,6 +523,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
             anchors: [{
               anchorId: "anchor-publica",
               anchorRevision: 1,
+              humanLocator: "Capítulo 4, seção 2",
               selector: { kind: "page_range", startPage: 8, endPage: 9 }
             }]
           }, {
@@ -671,6 +672,9 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.locator("[data-action='toggle-citations']").click();
   await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
   await expect(page.getByText("Fonte somente citada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Capítulo 4, seção 2 · pp. 8–9", {
+    exact: true
+  })).toBeVisible();
   await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Abrir fonte" })).toHaveCount(1);
   await expect(page.locator(".study-citations-panel"))

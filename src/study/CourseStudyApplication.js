@@ -3721,6 +3721,7 @@ export function createCourseStudyApplication({
       citationsLoading: state.citationsLoading,
       citations: state.citations,
       citationsError: state.citationsError,
+      canAuthorSources: currentPermission.ownership === "owned" && currentPermission.canEdit === true,
       manualEditor,
       assistance,
       structuralEditor

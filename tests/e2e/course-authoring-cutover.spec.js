@@ -708,6 +708,7 @@ async function mountCourseAuthoring(page, {
           sourceRevision: 1,
           status: "active",
           selector: { kind: "page_range", startPage: index + 10, endPage: index + 12 },
+          humanLocator: index === 0 ? "Capítulo 2, seção 3" : null,
           verificationExcerpt: index === 0 ? "Trecho mínimo para conferência." : null,
           actorId: ownerId,
           createdAt: "2026-08-17T12:00:00.000Z"
@@ -1958,6 +1959,7 @@ async function mountCourseAuthoring(page, {
             sourceRevision: command.sourceRevision,
             status: "active",
             selector: structuredClone(command.selector),
+            humanLocator: command.humanLocator,
             verificationExcerpt: command.verificationExcerpt,
             actorId: ownerId,
             createdAt: "2026-08-17T12:22:00.000Z"
@@ -2920,13 +2922,32 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator("#course-source-detail-title")).toHaveText(
         "Fonte verificável 1"
       );
-      await expect(page.getByText("Páginas 10–12", { exact: true })).toBeVisible();
+      await expect(page.getByText("Capítulo 2, seção 3 · Páginas 10–12", {
+        exact: true
+      })).toBeVisible();
       await expect(page.getByText("Trecho mínimo para conferência.", {
         exact: true
       })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Registrar observação" }))
         .toBeVisible();
       if (width === 390) {
+        await page.getByRole("button", { name: "Revisar âncora", exact: true }).click();
+        const humanLocator = page.getByLabel("Localizador para pessoas");
+        await expect(humanLocator).toHaveValue("Capítulo 2, seção 3");
+        await humanLocator.fill("Capítulo 2, seção 4");
+        await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
+        await expect(page.getByText("Capítulo 2, seção 4 · Páginas 10–12", {
+          exact: true
+        })).toBeVisible();
+        const anchorMutation = await page.evaluate(() =>
+          globalThis.__courseAuthoringHarness.probe.sourceMutations.at(-1)
+        );
+        expect(anchorMutation.command).toMatchObject({
+          type: "save_anchor",
+          anchorId: "anchor-source-01",
+          humanLocator: "Capítulo 2, seção 4",
+          selector: { kind: "page_range", startPage: 10, endPage: 12 }
+        });
         await page.getByLabel("Intenção").selectOption("contestation");
         await page.getByLabel("Alvo").selectOption("anchor-source-01");
         await page.getByLabel("Observação").fill(
@@ -2953,15 +2974,17 @@ test.describe("Autoria canônica mobile-first", () => {
         fullPage: true,
         animations: "disabled"
       });
-      expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceReads
+      const catalogReads = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceReads
         .filter(({ mode }) => mode === "catalog")
-        .map(({ limit, cursor }) => ({ limit, cursor })))).toEqual([
+        .map(({ limit, cursor }) => ({ limit, cursor })));
+      expect(catalogReads).toEqual([
         { limit: 10, cursor: null },
         { limit: 10, cursor: "source-page-10" },
         { limit: 10, cursor: "source-page-20" },
         { limit: 10, cursor: "source-page-30" },
         { limit: 10, cursor: "source-page-40" },
-        { limit: 10, cursor: "source-page-50" }
+        { limit: 10, cursor: "source-page-50" },
+        ...(width === 390 ? [{ limit: 10, cursor: null }] : [])
       ]);
       expect(clientErrors).toEqual([]);
     });
@@ -3094,7 +3117,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
               name: "Trabalhar com o ChatGPT sobre Fonte verificável 1"
             })).toBeVisible();
             await expect(page.getByRole("button", {
-              name: "Trabalhar com o ChatGPT sobre Páginas 10–12"
+              name: "Trabalhar com o ChatGPT sobre Capítulo 2, seção 3 · Páginas 10–12"
             })).toBeVisible();
             await expectSourceMetadataDoesNotOverlap(page);
             await expectNoHorizontalOverflow(page);
@@ -3449,7 +3472,9 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
     name: "Vincular fonte: Fonte verificável 1",
     exact: true
   }).click();
-  await page.getByRole("checkbox", { name: "Páginas 10–12" }).check();
+  await page.getByRole("checkbox", {
+    name: "Capítulo 2, seção 3 · Páginas 10–12"
+  }).check();
   await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
