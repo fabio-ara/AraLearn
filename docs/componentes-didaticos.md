@@ -22,7 +22,7 @@ convencional ou uma operação-alvo da tarefa.
 Antes de criar um pacote, responda:
 
 1. qual objeto ou relação precisa ser percebido;
-2. qual gesto o estudante deverá executar;
+2. qual operação-alvo a tarefa deverá exercitar;
 3. qual convenção é usada na área acadêmica;
 4. por que uma representação existente não preserva essa intenção;
 5. como a forma continua legível, acessível e editável no celular;
@@ -218,8 +218,8 @@ O pacote escolhe a tecnologia conforme a classe do problema:
 |---|---|---|
 | grafos, fluxos e diagramas relacionais | [Graphviz/Viz.js](https://graphviz.org/) | cálculo automático de disposição, rotas e dimensões a partir da topologia |
 | gráficos estatísticos e planos com dados | [Vega/Vega-Lite](https://vega.github.io/vega-lite/docs/) | escalas, eixos, legendas e gramática declarativa de visualização |
-| fórmulas, matrizes e reações | MathML | estrutura matemática nativa e dimensionamento tipográfico dos delimitadores |
-| texto, código e tabelas | HTML semântico | seleção, reorganização responsiva, acessibilidade e edição textual nativas |
+| fórmulas, matrizes e reações | [MathML](https://developer.mozilla.org/en-US/docs/Web/MathML) | estrutura matemática nativa e dimensionamento tipográfico dos delimitadores |
+| texto, código e tabelas | [HTML semântico](https://developer.mozilla.org/en-US/docs/Glossary/Semantics#semantics_in_html) | seleção, reorganização responsiva, acessibilidade e edição textual nativas |
 
 O objetivo não é eliminar CSS, mas evitar que geometria acadêmica dependa de coordenadas autorais ou medições artesanais. Motores externos também têm limites: Graphviz não decide o valor pedagógico de um grafo, Vega não escolhe a escala cientificamente correta e MathML não valida uma equação.
 
@@ -360,7 +360,7 @@ Pacotes complexos também devem apresentar retorno contextualizado.
 `audit_representation` acrescenta:
 
 - `semantic_fit`: a forma preserva a intenção;
-- `response_affordance`: a interação exercita o gesto planejado;
+- `response_affordance`: a interação exercita a operação planejada;
 - `feedback_legibility`: o retorno pode ser relacionado à resposta.
 
 A apresentação real e os testes de navegador verificam geometria e

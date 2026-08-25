@@ -1,8 +1,10 @@
 # Aplicativo Android do AraLearn
 
 Este diretório contém o invólucro Android do AraLearn. Ele não reimplementa o
-produto em Java ou Kotlin: uma `WebView`, componente nativo que exibe uma
-aplicação web dentro do aplicativo, executa o mesmo código JavaScript do site.
+produto em Java ou Kotlin: uma
+[`WebView`](https://developer.android.com/develop/ui/views/layout/webapps/webview),
+componente nativo que exibe uma aplicação web dentro do aplicativo, executa o
+mesmo código JavaScript do site.
 Essa escolha mantém autenticação, estudo, persistência e
 sincronização sob as mesmas regras nos dois ambientes e reduz o risco de duas
 implementações divergirem.
@@ -16,17 +18,19 @@ O APK reúne duas camadas:
   sistema para salvar exportações;
 - a aplicação web executa a interface, acessa o Supabase, que fornece banco,
   autenticação e funções remotas, guarda a réplica no IndexedDB, o banco local
-  oferecido pelo navegador, e sincroniza alterações pendentes.
+  oferecido pelo navegador, e sincroniza estado pessoal e Observações pendentes.
 
-Os arquivos são servidos pela origem interna
-`https://appassets.androidplatform.net`. Uma origem HTTPS estável permite que a
+Os arquivos são servidos por
+[`WebViewAssetLoader`](https://developer.android.com/reference/androidx/webkit/WebViewAssetLoader)
+na origem interna `https://appassets.androidplatform.net`. Uma origem HTTPS estável permite que a
 sessão e o IndexedDB sobrevivam ao fechamento do aplicativo sem liberar acesso
 universal a arquivos do aparelho.
 
 O APK não leva cursos nem um catálogo operacional embutidos. A pessoa precisa
 autenticar-se e replicar um curso ao menos uma vez. Depois disso, o conteúdo já
-replicado e o estado de estudo continuam disponíveis sem conexão; alterações
-locais aguardam na fila de sincronização até a rede voltar.
+replicado e o estado de estudo continuam disponíveis sem conexão. Progresso,
+itens para rever e Observações usam filas próprias até a rede voltar. Alterações
+de Autoria exigem conexão e não entram numa fila offline genérica.
 
 ## Limites de segurança
 
@@ -40,7 +44,9 @@ O aplicativo solicita somente a permissão Android `INTERNET`. A camada nativa:
   subframes;
 - desabilita o backup Android, evitando exportar sessão e réplica local.
 
-A ponte de exportação aceita somente texto CSV ou JSON, com nome de arquivo
+A [configuração de segurança de rede do Android](https://developer.android.com/privacy-and-security/security-config)
+mantém tráfego aberto restrito ao build de depuração e aos destinos locais
+previstos. A ponte de exportação aceita somente texto CSV ou JSON, com nome de arquivo
 restrito e até 8 MiB. O destino é escolhido no seletor de documentos do Android,
 sem conceder ao aplicativo acesso geral ao armazenamento. Enquanto o seletor
 está aberto, o texto permanece em arquivo temporário privado e pode ser retomado
@@ -57,9 +63,9 @@ segredo administrativo.
 
 Antes de gerar um APK, instale:
 
-- Node.js 22 ou mais recente;
-- JDK 17;
-- Android SDK com API 36;
+- [Node.js 22](https://nodejs.org/en/download) ou mais recente;
+- [JDK 17](https://developer.android.com/build/jdks);
+- [Android SDK com API 36](https://developer.android.com/studio/intro/update#sdk-manager);
 - dependências JavaScript, por meio de `npm ci` na raiz do repositório.
 
 O Gradle Wrapper já está versionado. Não é necessário instalar uma versão
@@ -141,7 +147,8 @@ variáveis públicas e gere novamente o artefato.
 
 ## Gerar um APK de publicação
 
-Um APK de publicação precisa de configuração HTTPS e assinatura. A assinatura
+Um APK de publicação precisa de configuração HTTPS e
+[assinatura](https://developer.android.com/studio/publish/app-signing). A assinatura
 prova que uma atualização pertence ao mesmo aplicativo instalado; mudar a
 chave impede a atualização direta de instalações anteriores.
 
@@ -198,7 +205,8 @@ aplicativo interno; fragmentos com token de acesso ou de renovação são rejeit
 
 O esquema personalizado é adequado ao ambiente atual, mas outro aplicativo
 pode registrar o mesmo esquema e interromper o retorno. Uma distribuição em
-larga escala deve preferir um Android App Link HTTPS verificado em domínio
+larga escala deve preferir um
+[Android App Link](https://developer.android.com/training/app-links) HTTPS verificado em domínio
 controlado, com o redirect correspondente configurado no Supabase.
 
 ## Verificar o artefato
@@ -230,8 +238,8 @@ preparação do artefato.
 
 1. Instale o APK e confirme que a autenticação é a única entrada sem sessão.
 2. Entre em uma conta, feche o aplicativo e confirme a restauração da sessão.
-3. Selecione um curso remoto e abra ao menos um card.
-4. Desligue a rede, conclua um card e registre um comentário.
+3. Selecione um Curso remoto e abra ao menos uma Unidade de estudo.
+4. Desligue a rede, responda à prática da Unidade e registre uma Observação.
 5. Feche e reabra o aplicativo ainda sem conexão; confirme Curso e estado local.
 6. Restaure a rede e confirme o envio das operações pendentes.
 7. Solicite recuperação de senha e confirme o retorno pelo link direto móvel.

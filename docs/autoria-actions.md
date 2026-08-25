@@ -1,16 +1,16 @@
 # GPT personalizado com Actions
 
-Um GPT personalizado pode operar Cursos próprios sem usar o protocolo MCP. Ele
-faz chamadas HTTP descritas por um documento OpenAPI e pede à pessoa que conecte
-sua conta AraLearn por OAuth.
+Um GPT personalizado pode operar Cursos próprios sem falar o protocolo MCP. O
+editor do GPT importa uma descrição [OpenAPI](https://spec.openapis.org/oas/v3.1.0)
+e transforma seus caminhos HTTP em Actions. Ao conectar a conta, a pessoa
+autoriza um cliente OAuth próprio desse GPT.
 
-Esse canal é útil quando a conversa precisa ocorrer dentro de um GPT
-personalizado que compreende Actions. Ele não substitui o MCP e não compartilha
-sua conexão.
+Esse canal serve à conversa dentro de um GPT personalizado compatível com
+[GPT Actions](https://developers.openai.com/api/docs/actions/introduction). Ele
+compartilha contratos de Curso com o MCP, mas não compartilha protocolo,
+cliente, consentimento ou token.
 
-## O que o GPT pode fazer
-
-A Action oferece cinco operações:
+## O que a Action oferece
 
 | Operação | Função |
 | --- | --- |
@@ -20,74 +20,150 @@ A Action oferece cinco operações:
 | `alterarCurso` | executar uma alteração tipada, cercada por revisão e identidade de pedido |
 | `consultarComponentesDidaticos` | descobrir, inspecionar, validar e visualizar componentes progressivamente |
 
-Leituras de Planejamento, Fontes, Auditoria, Variantes e Pesquisa entram como
-modos de `lerCurso`. As escritas correspondentes entram como operações fechadas
-de `alterarCurso`. Isso mantém um catálogo pequeno sem transformar argumentos
-livres em autoridade genérica.
+Planejamento, Fontes, Observações, Auditoria, Variantes e Pesquisa aparecem
+como vistas de `lerCurso` ou operações fechadas de `alterarCurso`. O GPT não
+recebe uma rota genérica para banco nem uma operação por tabela.
 
-## Configurar o GPT
+## Preparar um cliente OAuth
 
-O responsável pela implantação primeiro registra um cliente OAuth confidencial
-para Actions. O segredo desse cliente fica no ambiente seguro do serviço e não
-deve aparecer no GPT, na documentação pública ou no navegador.
+A configuração começa antes de o GPT possuir seu identificador definitivo. A
+conta que prepara a integração registra um cliente; o AraLearn devolve
+`client_id` e `client_secret`. O servidor guarda somente o hash do segredo, por
+isso o valor devolvido precisa ser levado diretamente à configuração protegida
+do GPT e não pode ser recuperado depois.
 
-Na configuração de Actions do GPT:
+O cadastro é uma operação autenticada da própria conta AraLearn:
 
-1. importe o arquivo
+```http
+POST https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-action/oauth/clients/register
+Authorization: Bearer <sessão AraLearn da conta>
+Content-Type: application/json
+
+{}
+```
+
+A resposta informa também os endereços de autorização e token, o escopo
+`openid email` e o método `client_secret_post`. Não use chave publicável,
+`service_role` nem chave `sb_secret_` no cabeçalho `Authorization`. O bearer é a
+sessão pessoal corrente e deve permanecer fora de histórico do shell, logs e
+capturas.
+
+Registrar outra preparação ainda não vinculada invalida a anterior da mesma
+conta. Uma conta pode manter até 25 integrações vinculadas e ativas.
+
+## Criar e vincular o GPT
+
+A [configuração oficial de OAuth para Actions](https://developers.openai.com/api/docs/actions/authentication)
+pede os mesmos campos devolvidos pelo AraLearn. No editor do GPT:
+
+1. importe
    [`aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml);
-2. configure a autenticação OAuth com os endereços de autorização e token
-   declarados no próprio documento;
-3. informe a identidade e o segredo do cliente cadastrados para essa Action;
-4. salve a configuração e conecte uma conta AraLearn de teste;
-5. peça primeiro para listar Cursos e confirme que aparecem somente Cursos
-   próprios dessa conta.
+2. escolha OAuth na autenticação da Action;
+3. informe `client_id`, `client_secret`, URL de autorização, URL de token e o
+   escopo `openid email`;
+4. salve o GPT para obter seu identificador no formato `g-...`;
+5. vincule esse identificador ao cliente recém-criado;
+6. conecte uma conta de teste e confira primeiro `listarCursos`.
 
-O OpenAPI é gerado a partir do catálogo corrente. Edite o catálogo e regenere o
-arquivo; não mantenha uma cópia manual concorrente.
+O vínculo também usa a sessão AraLearn da conta que criou o cliente:
+
+```http
+POST https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-action/oauth/clients/<client_id>/link
+Authorization: Bearer <sessão AraLearn da conta>
+Content-Type: application/json
+
+{"gptId":"g-<identificador-do-gpt-salvo>"}
+```
+
+O servidor associa ao cliente os callbacks oficiais do ChatGPT para esse GPT:
+
+```text
+https://chatgpt.com/aip/g-<identificador>/oauth/callback
+https://chat.openai.com/aip/g-<identificador>/oauth/callback
+```
+
+O `client_secret` fica no armazenamento protegido da configuração do GPT. Ele
+não entra em instruções, conversa, OpenAPI, site ou navegador do AraLearn. A
+[introdução oficial à configuração de Actions](https://developers.openai.com/api/docs/actions/getting-started)
+explica o editor e o teste da conexão.
+
+## Autorização da conta
+
+Ao conectar, o GPT abre o endpoint `/oauth/authorize` com código de autorização,
+callback oficial, `state` e `openid email`. O AraLearn leva a pessoa à entrada
+ou à tela de consentimento do próprio site. Aprovar cria um código de uso único
+e duração limitada; negar devolve `access_denied` ao callback.
+
+O endpoint `/oauth/token` confere cliente, segredo, código e callback. O access
+token resultante é opaco, dura normalmente uma hora e é resolvido por hash a
+cada Action. O refresh token é rotativo e o valor anterior deixa de ser aceito
+depois da troca. Vincular ao mesmo GPT um novo cliente preparado pela conta
+desativa o cliente anterior e revoga seus tokens. A execução corrente não
+oferece uma operação separada para revogar uma concessão já vinculada.
+
+Os escopos identificam a conexão, mas não concedem escrita geral. Depois de
+resolver o token opaco, o servidor cria um principal interno com as capacidades
+`authoring:read` e `authoring:write`; elas não são escopos OAuth configuráveis no
+GPT. Toda operação continua limitada aos Cursos próprios desse principal, aos
+argumentos admitidos e às revisões esperadas.
 
 ## Como uma conversa segura progride
 
-Antes de alterar um Curso, o GPT deve localizar o alvo, ler a revisão corrente e
-explicar a operação proposta. Uma escrita usa um identificador de pedido estável
+Antes de alterar um Curso, o GPT localiza o alvo, lê a revisão corrente e
+explica a operação proposta. Uma escrita usa um identificador de pedido estável
 e a revisão esperada. Se o Curso mudar, a Action devolve conflito para que a
 conversa releia o estado, em vez de sobrescrever trabalho novo.
 
-Para produzir uma Unidade com componentes didáticos, a sequência adequada é:
+Para produzir uma Unidade com componentes didáticos:
 
 ```text
 planejar → confirmar → descobrir → obter contratos exatos → gerar
 → validar → reparar de forma limitada → visualizar → aplicar
 ```
 
-Uma resposta JSON bem formada pode continuar semanticamente inválida. A Action
-de componentes valida o contrato e abre a prévia no renderer real antes da
+JSON bem formado pode continuar semanticamente inválido. A operação de
+componentes valida o contrato e abre a prévia no renderer real antes da
 aplicação.
+
+Texto integral de Observações e URL temporária de PDF exigem declarações
+explícitas no pedido porque esses dados serão enviados ao GPT conectado. A URL
+assinada de download funciona como credencial por sessenta segundos; solicite-a
+somente quando a tarefa precisar ler aquele PDF.
 
 ## Diferença entre Actions e MCP
 
 | Aspecto | Actions | MCP |
 | --- | --- | --- |
-| transporte | chamadas HTTP descritas por OpenAPI | protocolo Model Context Protocol |
+| transporte | chamadas HTTP descritas por OpenAPI | Model Context Protocol |
 | uso típico | GPT personalizado | cliente MCP compatível |
-| OAuth | cliente confidencial próprio da Action | cliente e principal próprios do MCP |
+| cliente OAuth | confidencial, ligado ao GPT | público ou conforme o cliente MCP cadastrado dinamicamente |
+| escopo | `openid email` | `offline_access` |
+| token | opaco, resolvido por hash | JWT ES256 minimizado e destinado ao recurso MCP |
 | catálogo | cinco operações HTTP | cinco ferramentas canônicas |
-| sessão | conexão do GPT | conexão do cliente MCP |
 
-Os dois canais chegam ao mesmo executor de Curso e às mesmas regras de acesso.
-A separação impede que um bearer, um consentimento ou uma suposição de protocolo
-seja reutilizado no outro canal.
+Depois de autenticar seus principais, os dois canais chegam ao mesmo executor
+de Curso. Essa convergência mantém revisão, idempotência, validação e histórico;
+ela não torna bearers ou consentimentos intercambiáveis.
 
-## Limites
+## Verificação e recuperação
+
+O OpenAPI é gerado a partir do catálogo corrente:
+
+```powershell
+npm.cmd run actions:openapi:check
+npm.cmd run test:authoring:actions
+```
+
+Se a importação divergir, regenere o documento com `npm run actions:openapi` e
+revise o diff. Se a conexão falhar antes do consentimento, confronte
+`client_id`, URLs, escopo e identificador vinculado. Se falhar na troca, gere
+outra preparação em vez de reutilizar um segredo possivelmente perdido; a nova
+preparação invalida somente o cadastro ainda não vinculado.
 
 Actions opera somente Cursos próprios. Perfil, acesso direto ao Estudo, cópia
-pessoal, exclusão de Curso, exclusão de conta e Manutenção continuam na
+pessoal, exclusão de Curso, exclusão de conta e Manutenção permanecem na
 aplicação autenticada.
 
-URLs temporárias de PDF e texto integral de Observações só devem ser pedidos
-quando a tarefa realmente exige enviar esses dados ao cliente conectado. O GPT
-deve conservar os links literais devolvidos pelo AraLearn e nunca inventar
-identidades, Fontes, Âncoras ou revisões.
-
-Para o canal alternativo, consulte [Autoria por MCP](autoria-mcp.md). Para os
-princípios comuns de intenção, confirmação e operação tipada, consulte [Fluxos,
-instruções e contratos](fluxos-prompts-e-contratos.md).
+Para o canal alternativo, consulte [Autoria por MCP](autoria-mcp.md). Para a
+fronteira comum entre linguagem natural e escrita, consulte [Fluxos, instruções
+e contratos](fluxos-prompts-e-contratos.md).

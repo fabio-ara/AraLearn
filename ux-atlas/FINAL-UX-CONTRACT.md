@@ -1,9 +1,10 @@
-# Contrato final de experiência
+# Contrato histórico da rodada final de experiência
 
-Este documento é a única referência normativa compacta de UX para #152 e #153.
-As issues correntes #147, #174 e #151–#155 definem o produto; este contrato
-transforma suas decisões em jornadas e oráculos executáveis. O restante de
-`ux-atlas/` é histórico ou exploratório.
+Este documento conserva a referência normativa compacta que orientou #152 e
+#153. Ele registra como as decisões de #147, #174 e #151–#155 foram traduzidas
+em jornadas e critérios de verificação durante aquela rodada. Não é a fonte do
+comportamento corrente: para isso, prevalecem o produto, os contratos
+executáveis e o [mapa da documentação atual](../docs/README.md).
 
 Base funcional: release `0.0.29`, revisão
 `8f21fb21c8713c8efc0f3e0cf4d1bc955a6ff2c6`. Backend, persistência, MCP,
@@ -78,7 +79,7 @@ integrações de autoria distintas. Por isso `Assistência por API`, `Assistente
 IA` e `Copiloto` não são rótulos correntes. Os demais termos estabilizados em
 `docs/vocabulario-controlado.md` permanecem inalterados.
 
-## Precedência funcional e fechamento vertical
+## Precedência funcional adotada na rodada
 
 O escopo funcional fixado neste contrato prevalece sobre a conveniência do
 recorte técnico. Preservar o backend e seus contratos é a regra por padrão, não
@@ -86,13 +87,10 @@ uma proibição de completar a menor extensão vertical necessária. A ausência
 endpoint, RPC ou método público pode ser uma lacuna entre camadas; não autoriza
 reduzir silenciosamente a capacidade definida aqui.
 
-Antes de criar uma operação, deve-se procurar o mecanismo canônico em todo o
-produto. Se ele for insuficiente, completa-se somente a extensão vertical
-necessária. Se uma decisão normativa se provar incorreta como produto, este
-contrato deve ser corrigido explicitamente antes da implementação de uma
-capacidade menor. Após compactação de contexto, retomada ou dúvida de escopo,
-este contrato deve ser relido com `AGENTS.override.md`, o manual corrente e a
-issue ativa antes de reduzir capacidade, criar mecanismo ou encerrar a issue.
+Antes de criar uma operação, a rodada exigia procurar o mecanismo canônico em
+todo o produto. Se ele fosse insuficiente, completava-se somente a extensão
+vertical necessária. Uma decisão normativa incorreta precisava ser revista
+explicitamente antes da implementação de uma capacidade menor.
 
 ## Modos de Estudo por nível
 
@@ -223,7 +221,7 @@ deep link usa Curso, Parte, materialização e alvo canônicos quando disponíve
 - nenhuma ação principal depende de ID, JSON, hash, endpoint ou nome de tabela;
 - interface, títulos e nomes acessíveis usam `Assistência por IA`.
 
-## Screenshots normativos necessários
+## Screenshots normativos exigidos na rodada
 
 Em 390 e 1280 px, registrar Home de Estudo, Curso, Lição, Microssequência,
 Unidade em cada modo, Conta/aparência, Visão geral de Autoria, Planejamento,

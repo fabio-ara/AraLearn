@@ -97,7 +97,9 @@ representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006de
 distribuída ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed)), feedback
 ([Shute (2008)](referencias.md#ref-shute2008feedback); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)), autorregulação
 ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)), interação entre pessoas e IA
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)) e governança de dados
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+[Lee e See (2004)](referencias.md#ref-lee2004trust);
+[Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai)) e governança de dados
 educacionais ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). Nenhuma dessas fontes
 avalia a configuração do AraLearn como conjunto.
 
@@ -167,8 +169,23 @@ encontrar uma intenção sem conhecer a sintaxe antecipadamente.
 **Decisão.** A autoria consulta descrições e facetas, escolhe o tipo e só então
 recebe seu contrato.
 
-**Fundamentação.** Recuperação de informação externa pode condicionar a geração,
-mas permanece sujeita a erros de busca, interpretação e uso ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)).
+**Fundamentação.** A geração aumentada por recuperação condiciona a produção a
+informação recuperada ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)),
+mas erros de geração, sua detecção e sua mitigação variam conforme a tarefa
+([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)).
+
+Estudos situados de autoria educacional mostram instrutores e docentes
+planejando, avaliando, adaptando e contextualizando saídas de IA
+([Choi et al. (2024)](referencias.md#ref-choi2024vivid);
+[Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha)). Esses estudos
+situados não autorizam presumir ganho uniforme. Uma meta-análise encontrou
+efeitos heterogêneos para combinações pessoa–IA e ausência de sinergia média
+contra o melhor desempenho isolado; nas tarefas de criação, o efeito positivo
+não foi estatisticamente significativo
+([Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai)). Entrevistas com
+57 docentes de oito escolas também descreveram conferência, reparo, reescrita,
+rejeição e reconstrução de materiais produzidos por IA
+([Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting)).
 
 **Operacionalização.** A consulta retorna intenção, operações, limitações e
 facetas; uma segunda operação fornece apenas o contrato selecionado.
@@ -249,8 +266,13 @@ contratos. O ciclo de auditoria mantém a Unidade focal e seu contexto visíveis
 limita a correção ao conteúdo e às atribuições de Fontes autorizadas e exige
 verificação posterior.
 
-**Fundamentação.** A interação entre pessoas e IA requer limites compreensíveis, correção e
-controle efetivo ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
+**Fundamentação.** A interação entre pessoas e IA requer limites
+compreensíveis, correção e controle
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Em uma tarefa
+de decisão assistida, funções que forçavam reflexão reduziram dependência
+excessiva e acrescentaram custo; o resultado não demonstra controle efetivo na
+autoria educacional
+([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 
 **Operacionalização.** Contexto derivado pelo servidor, rodada imutável, achado,
 proposta versionada, aplicação confirmada, verificação e reversão são registros
@@ -355,7 +377,7 @@ configuração inexista em outros produtos ou estudos.
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
 | sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do Curso e acesso direto preservam responsabilidade sem burocratizar o Estudo? |
-| flashcards e prática | recuperação, repetição e feedback curto | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
+| flashcards e prática | recuperação, repetição e retorno após a resposta | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
 | bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
 | aplicações com cópia local | réplica, fila e sincronização | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
@@ -400,7 +422,7 @@ Exigem medidas compatíveis de compreensão, retenção ou transferência:
 - feedback melhora desempenho posterior;
 - o desenho não punitivo altera estratégia ou ansiedade.
 
-### 6.4 Alegações que permanecem indevidas sem comparação abrangente
+### 6.4 Alegações que exigem comparação definida com alternativas pertinentes
 
 - o AraLearn é o primeiro ou único sistema com essa configuração;
 - a arquitetura é universalmente superior;
@@ -456,16 +478,20 @@ cadeia documental. As referências completas estão em
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
-- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1).
+- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
+- [Choi et al. (2024)](referencias.md#ref-choi2024vivid): Seulgi Choi; Hyewon Lee; Yoonjoo Lee; Juho Kim (2024). **VIVID: Human–AI Collaborative Authoring of Vicarious Dialogues from Lecture Videos.** In: *Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems*, Association for Computing Machinery, p. 1–26.
 - [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
+- [Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha): Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
-- [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*.
+- [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
 - [International Organization for Standardization (2018)](referencias.md#ref-iso2018usability): International Organization for Standardization (2018). **ISO 9241-11:2018: Ergonomics of Human-System Interaction — Part 11: Usability: Definitions and Concepts.** ISO 9241-11:2018.
+- [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
+- [Lee e See (2004)](referencias.md#ref-lee2004trust): John D. Lee; Katrina A. See (2004). **Trust in Automation: Designing for Appropriate Reliance.** *Human Factors*, 46(1), p. 50–80.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
 - [Monk et al. (2008)](referencias.md#ref-monk2008resumption): Christopher A. Monk; J. Gregory Trafton; Deborah A. Boehm-Davis (2008). **The Effect of Interruption Duration and Demand on Resuming Suspended Goals.** *Journal of Experimental Psychology: Applied*, 14(4), p. 299–313.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
@@ -474,9 +500,11 @@ cadeia documental. As referências completas estão em
 - [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm): Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
+- [Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting): Neil Selwyn; Marita Ljungqvist; Anders Sonesson (2025). **When the Prompting Stops: Exploring Teachers' Work Around the Educational Frailties of Generative AI Tools.** *Learning, Media and Technology*, 50(3), p. 310–323.
 - [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
+- [Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai): Michelle Vaccaro; Abdullah Almaatouq; Thomas Malone (2024). **When Combinations of Humans and AI Are Useful: A Systematic Review and Meta-Analysis.** *Nature Human Behaviour*, 8, p. 2293–2303.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.
 - [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased): Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23.
 - [Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated): Barry J. Zimmerman (2002). **Becoming a Self-Regulated Learner: An Overview.** *Theory Into Practice*, 41(2), p. 64–70.

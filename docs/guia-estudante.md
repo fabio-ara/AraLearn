@@ -155,13 +155,13 @@ Quando a pessoa tem autorização, o modo **Editar** aparece no nível atual.
 Curso e Módulo permitem ajustar os metadados e a composição disponíveis; Lição
 e Microssequência também permitem organizar seus elementos filhos. Na Unidade,
 a edição trabalha sobre título, composição e conteúdo renderizável. Toda
-gravação exige **Salvar**; cancelar preserva o estado publicado.
+gravação exige **Salvar**; cancelar preserva o estado salvo anteriormente.
 
 **Assistência por IA** está disponível em Lição, Microssequência e Unidade. Ela
-abre uma sessão curta sobre o alvo atual: primeiro a pessoa discute e confirma
-um plano, depois confere a proposta no renderer real, aplica ao rascunho e só
-então decide salvar. Uma proposta inválida, cancelada ou não renderizável não
-substitui o conteúdo corrente.
+abre uma sessão contextual em memória sobre o alvo atual: primeiro a pessoa
+discute e confirma um plano, depois confere a proposta no renderer real, aplica
+ao rascunho e só então decide salvar. Uma proposta inválida, cancelada ou não
+renderizável não substitui o conteúdo corrente.
 
 Se o Curso for seu, **Editar** grava a Unidade no próprio Curso. Se ele foi
 compartilhado, o aviso explica que **Salvar na minha cópia** criará um Curso

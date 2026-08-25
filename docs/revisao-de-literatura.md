@@ -231,6 +231,16 @@ processos ([Knowles (1975)](referencias.md#ref-knowles1975selfdirected)). **Agê
 modo intencional e produzir efeitos, sempre em condições sociais e materiais
 ([Bandura (2001)](referencias.md#ref-bandura2001agency)).
 
+**Metacognição**, no uso adotado neste corpus, é o conhecimento que a pessoa
+tem sobre o próprio processo de pensar e aprender, acompanhado da capacidade
+de monitorá-lo e regulá-lo. Julgar que compreendeu, perceber incerteza, escolher
+outra estratégia e conferir se ela funcionou são manifestações possíveis; uma
+declaração de confiança ou um clique isolado não mede esse processo. A
+metacognição participa dos ciclos de autorregulação, mas não é sinônimo de toda
+autorregulação, que também envolve motivação, comportamento e condições do
+ambiente ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
+[Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
+
 Esses conceitos impedem uma inferência comum: disponibilizar opções ou permitir
 navegação não prova autonomia. Uma meta-análise sobre controle do aprendiz em
 tecnologia educacional encontrou efeitos heterogêneos
@@ -438,6 +448,14 @@ aos conceitos relevantes ou à atividade cognitiva em curso
 portanto, base para um checklist universal ou para uma nota de “qualidade da
 explicação”.
 
+Num estudo com 48 estudantes de formação docente aprendendo probabilidade por
+exemplos resolvidos, explicações instrucionais apoiaram a aprendizagem em
+condições delimitadas, mas também apareceram déficits na forma como o apoio foi
+usado ([Renkl (2002)](referencias.md#ref-renkl2002learning)). O resultado situa
+a relação entre exemplo, explicação oferecida e autoexplicação da pessoa; não
+autoriza substituir a atividade do estudante por explicações adicionais em
+toda tarefa.
+
 A implementação registra requisitos aplicáveis, como definição, mecanismo,
 condição de aplicação, limite, contraste, exemplo ou justificativa de
 procedimento, ligados às unidades e relações pertinentes. O mesmo princípio
@@ -465,8 +483,11 @@ A fundamentação e o modelo operacional de contratos estão detalhados em
 Exemplos resolvidos podem ser mais adequados do que resolução não apoiada para
 novatos em determinadas tarefas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples)). A retirada
 gradual de etapas pode articular a passagem entre estudo do exemplo e solução
-independente ([Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). O benefício depende do conhecimento prévio e da
-natureza da operação.
+independente ([Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). A
+explicação instrucional pode apoiar a autoexplicação quando corresponde ao
+conteúdo e à atividade, sem eliminar déficits de uso
+([Renkl (2002)](referencias.md#ref-renkl2002learning)). O benefício depende do
+conhecimento prévio e da natureza da operação.
 
 - **Problema:** exigir desempenho completo antes de modelar a operação pode
   produzir busca improdutiva; manter a solução permanentemente visível pode
@@ -736,7 +757,66 @@ permitem tratar acesso comum a um Curso como colaboração ou comunidade.
   de compartilhamento, revogação e explicação de responsabilidade. Autoria
   coletiva continua sendo uma questão de pesquisa, não uma capacidade vigente.
 
-## 13. Inteligência artificial generativa, recuperação de contexto e controle humano
+## 13. Aprendizagem no trabalho, gestão do conhecimento e educação profissional
+
+### O que muda quando aprender faz parte do trabalho
+
+No trabalho, uma pessoa pode aprender num curso formal, ao executar uma tarefa,
+ao resolver um problema novo, ao conversar com colegas ou ao revisar uma
+prática. Esses processos não pertencem todos à mesma unidade de análise. Podem
+envolver indivíduo, equipe, organização ou relações entre organizações, e os
+ambientes de trabalho diferem quanto às oportunidades e ao apoio que oferecem.
+Uma revisão temática também distingue aprendizagem formal e informal e alerta
+contra tratar “o local de trabalho” como ambiente uniforme
+([Tynjälä (2008)](referencias.md#ref-tynjala2008workplace)).
+
+**Gestão do conhecimento** trata dos processos pelos quais uma organização cria,
+organiza, compartilha, transfere e aplica conhecimento. Um sistema de
+informação pode apoiar esses processos, mas não os substitui: conhecimento e
+gestão do conhecimento envolvem práticas, pessoas, contextos e decisões que não
+se reduzem ao armazenamento de documentos. A revisão de Alavi e Leidner situa
+os sistemas de gestão do conhecimento como apoio à criação, à transferência e
+à aplicação de conhecimento organizacional e ressalta a natureza multifacetada
+do problema ([Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge)).
+
+**Educação e formação técnica e profissional** (TVET, do inglês *technical and
+vocational education and training*) abrange educação, formação e
+desenvolvimento de competências relacionados a campos ocupacionais, produção,
+serviços e meios de vida. A recomendação da UNESCO inclui aprendizagem baseada
+no trabalho, formação continuada e desenvolvimento profissional dentro de uma
+perspectiva de aprendizagem ao longo da vida. Ela também reconhece contextos
+institucionais, laborais, domésticos e informais, inclusive aprendizagem
+autodirigida e entre pares ([UNESCO (2015)](referencias.md#ref-unesco2015tvet)).
+A recomendação é uma fonte normativa: delimita finalidades e orientações, mas
+não demonstra que uma plataforma específica forme competências profissionais.
+
+### Relação possível com o AraLearn
+
+- **Problema:** conhecimento necessário ao trabalho pode estar disperso em
+  normas, manuais, experiência, explicações locais e procedimentos que mudam.
+  Transformar essas fontes em percurso de estudo exige curadoria, autoria,
+  revisão, proveniência e relação explícita entre explicação e prática.
+- **Decisão:** o AraLearn conserva o mesmo Curso, Fontes, Âncoras, planejamento,
+  representações, práticas e histórico de revisão em contextos educacionais e
+  profissionais. Ele não cria uma ontologia especial de “conhecimento
+  corporativo” nem presume que disponibilizar um Curso produza aprendizagem
+  organizacional.
+- **Possibilidades de investigação:** formação continuada, treinamento e
+  desenvolvimento, aprendizagem autodirigida no trabalho, educação profissional
+  e tecnológica e circulação de conhecimento podem usar o artefato para
+  estruturar materiais e examinar como pessoas encontram, interpretam,
+  transformam e revisam conhecimento relacionado a tarefas reais.
+- **Limites:** a versão corrente não oferece gestão de competências, matrícula
+  institucional, certificação, coautoria organizacional, fluxo de aprovação por
+  papéis ou telemetria de desempenho no trabalho. Propriedade do Curso e acesso
+  direto para Estudo não constituem comunidade de prática, gestão do
+  conhecimento ou programa de treinamento.
+- **Evidência necessária:** cada estudo precisa caracterizar ocupação,
+  organização, tarefa, experiência prévia, condições de aprendizagem e
+  consequências do uso. Qualidade do Curso, sucesso numa tarefa, retenção,
+  transferência ao trabalho e mudança organizacional são resultados distintos.
+
+## 14. Inteligência artificial generativa, recuperação de contexto e controle humano
 
 Um **modelo de linguagem de grande porte** (LLM, do inglês *large language
 model*) estima e produz sequências de linguagem a partir de instruções e
@@ -745,10 +825,27 @@ mais ampla de sistemas capazes de produzir conteúdo; fluência não implica
 correção factual ou adequação pedagógica.
 
 A geração aumentada por recuperação condiciona a geração a informação
-recuperada ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Ela não elimina erros de fonte, recuperação,
-interpretação ou geração. Nem todo mecanismo de consulta de contexto deve ser
-chamado de RAG; o termo exige que a recuperação integre a arquitetura de
-geração de modo identificável.
+recuperada ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Nem todo
+mecanismo de consulta de contexto deve ser chamado de RAG; o termo exige que a
+recuperação integre a arquitetura de geração de modo identificável. Essa
+arquitetura não elimina erros de fonte, recuperação, interpretação ou geração.
+Uma revisão sobre alucinação na geração de linguagem mostra tipos, causas,
+métricas e formas de mitigação dependentes da tarefa
+([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)).
+
+Sínteses recentes sobre uso educacional de IA generativa encontraram efeitos
+agregados positivos, mas também forte heterogeneidade e moderadores. Han et al.
+reuniram 68 estudos experimentais ou quase experimentais e 337 tamanhos de
+efeito, com heterogeneidade substancial; nível educacional, área, duração e
+tamanho amostral modificaram os resultados
+([Han et al. (2025)](referencias.md#ref-han2025genaimeta)). Chen e Cheung
+sintetizaram 57 estudos e 97 estimativas com estudantes universitários; algumas
+dimensões foram positivas, enquanto metacognição não apresentou efeito
+estatisticamente significativo, e pessoa, ferramenta, regra, contexto e medida
+atuaram como moderadores
+([Chen e Cheung (2025)](referencias.md#ref-chen2025genaimeta)). Essas sínteses
+não avaliam o AraLearn nem permitem transportar um efeito médio para outra
+tarefa, modelo ou população.
 
 Diretrizes para interação entre pessoas e IA recomendam comunicar capacidades e limites,
 oferecer feedback e permitir correção ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Funções que exigem
@@ -757,6 +854,18 @@ introduzem custo e não se transferem automaticamente
 ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Orientações de UNESCO e NIST destacam avaliação de
 risco, transparência, proteção de dados e responsabilidade humana
 ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
+
+A própria colaboração pessoa–IA é heterogênea. Uma meta-análise pré-registrada
+de 106 experimentos encontrou que as combinações tiveram desempenho médio
+inferior ao melhor desempenho isolado; houve perdas em tarefas de decisão e um
+resultado positivo não significativo em tarefas de criação
+([Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai)). Em entrevistas
+com docentes de escolas australianas e suecas, o uso para planejar e produzir
+materiais envolveu conferir, validar, editar, reorganizar, reescrever, rejeitar
+e reconstruir saídas ([Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting)).
+Esses relatos tornam visível trabalho profissional que uma descrição centrada
+somente em geração ou economia de tempo apagaria, mas não estimam efeito
+populacional nem aprendizagem.
 
 - **Problema:** uma LLM pode produzir estrutura válida com conteúdo incorreto,
   selecionar representação inadequada ou alterar fora do escopo.
@@ -767,9 +876,18 @@ risco, transparência, proteção de dados e responsabilidade humana
 - **Decisão:** apresentar primeiro o catálogo de intenções, recuperar o contrato
   do componente escolhido, separar contexto somente leitura de alvos editáveis e
   manter decisão editorial humana.
-- **Fundamentação:** recuperação de contexto não elimina erro
-  ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)); interação responsável exige limites, correção e controle
-  ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance); [UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
+- **Fundamentação:** RAG define uma forma de condicionar a geração por
+  recuperação ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)), enquanto
+  alucinação e mitigação permanecem dependentes da tarefa
+  ([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)); diretrizes e
+  orientações de risco recomendam explicitar limites, oferecer meios de
+  correção e definir responsabilidades
+  ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+  [UNESCO (2023)](referencias.md#ref-unesco2023genai);
+  [Autio et al. (2024)](referencias.md#ref-nist2024genai)). O estudo de Buçinca
+  et al. oferece evidência situada de que forçar reflexão pode reduzir
+  dependência excessiva e acrescentar custo, sem garantir transferência para
+  a autoria ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 - **Operacionalização:** catálogo, contrato específico, contexto de leitura,
   alvos graváveis, validação e versões reversíveis formam etapas distintas.
 - **Consequências e hipótese:** essa delimitação pode reduzir deriva estrutural e retrabalho.
@@ -777,7 +895,7 @@ risco, transparência, proteção de dados e responsabilidade humana
   garantem qualidade factual, pedagógica ou acadêmica. São necessárias tarefas com modelos e contextos variados, incluindo
   erro factual, lacuna do catálogo, mudança de escopo, rejeição e reversão.
 
-## 14. Análise de dados educacionais, privacidade e interpretação
+## 15. Análise de dados educacionais, privacidade e interpretação
 
 A análise de dados educacionais, também conhecida como *learning analytics*,
 envolve mais que coletar e exibir dados. Transparência, controle,
@@ -802,7 +920,7 @@ qualidade docente.
 - **Fundamentação:** a ética da análise de dados exige finalidade, transparência,
   proporcionalidade e participação ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
 - **Operacionalização:** cada consulta fixa Curso, revisão, filtros e instante de
-  corte. Gráfico, tabela, lista, CSV, JSON e MCP usam o mesmo recorte. As
+  corte. Gráfico, tabela, lista, CSV, JSON, MCP e Actions usam o mesmo recorte. As
   métricas correntes declaram pergunta, unidade, denominador, tratamento de
   ausências e inferências vedadas.
 - **Consequências e hipótese:** fatos rastreáveis e definições explícitas podem
@@ -813,7 +931,7 @@ qualidade docente.
   investigados por desenho participativo, teste de interpretação, utilidade para
   decisões reais e análise de efeitos adversos.
 
-## 15. Métrica, indicador, desfecho e validade
+## 16. Métrica, indicador, desfecho e validade
 
 Guardar um evento com precisão não valida a interpretação construída sobre ele.
 Validade diz respeito à sustentação das interpretações e dos usos de uma medida
@@ -846,7 +964,7 @@ quantidade de conceitos anotados, tempo de materialização e taxa de correção
   instrumento, população, momento, dados ausentes, incerteza, comparações e
   consequências do uso.
 
-## 16. Construção e avaliação do artefato
+## 17. Construção e avaliação do artefato
 
 Design-Based Research (DBR) investiga intervenções educacionais por ciclos em
 contextos autênticos e busca explicar relações entre teoria, design e prática
@@ -941,6 +1059,7 @@ O corpus atual ainda precisa ser ampliado para:
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
 - [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+- [Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge): Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136.
 - [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
@@ -949,12 +1068,13 @@ O corpus atual ainda precisa ser ampliado para:
 - [Baughan et al. (2022)](referencias.md#ref-baughan2022dissociation): Amanda Baughan; Mingrui Ray Zhang; Raveena Rao; Kai Lukoff; Anastasia Schaadhardt; Lisa D. Butler; Alexis Hiniker (2022). **I Don't Even Remember What I Read: How Design Influences Dissociation on Social Media.** In: *Proceedings of the 2022 CHI Conference on Human Factors in Computing Systems*, ACM, p. 1–13.
 - [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative): E. N. Bridwell-Mitchell (2016). **Collaborative Institutional Agency: How Peer Learning in Communities of Practice Enables and Inhibits Micro-Institutional Change.** *Organization Studies*, 37(2), p. 161–192.
 - [Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving): Markus Brunmair; Tobias Richter (2019). **Similarity Matters: A Meta-Analysis of Interleaved Learning and Its Moderators.** *Psychological Bulletin*, 145(11), p. 1029–1052.
-- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1).
+- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
 - [Butler et al. (2008)](referencias.md#ref-butler2008confidence): Andrew C. Butler; Jeffrey D. Karpicke; Henry L. Roediger (2008). **Correcting a Metacognitive Error: Feedback Increases Retention of Low-Confidence Correct Responses.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 34(4), p. 918–928.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing): Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (2008). **Spacing Effects in Learning: A Temporal Ridgeline of Optimal Retention.** *Psychological Science*, 19(11), p. 1095–1102.
+- [Chen e Cheung (2025)](referencias.md#ref-chen2025genaimeta): Shuzhen Chen; Alan C. K. Cheung (2025). **Effect of Generative Artificial Intelligence on University Students Learning Outcomes: A Systematic Review and Meta-Analysis.** *Educational Research Review*, 49, p. 100737.
 - [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63.
 - [Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations): Michelene T. H. Chi; Miriam Bassok; Matthew W. Lewis; Peter Reimann; Robert Glaser (1989). **Self-Explanations: How Students Study and Use Examples in Learning to Solve Problems.** *Cognitive Science*, 13(2), p. 145–182.
 - [Chi et al. (1994)](referencias.md#ref-chi1994eliciting): Michelene T. H. Chi; Nicholas de Leeuw; Mei-Hung Chiu; Christian LaVancher (1994). **Eliciting Self-Explanations Improves Understanding.** *Cognitive Science*, 18(3), p. 439–477.
@@ -964,17 +1084,19 @@ O corpus atual ainda precisa ser ampliado para:
 - [Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha): Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Dyson (2004)](referencias.md#ref-dyson2004layout): Mary C. Dyson (2004). **How Physical Text Layout Affects Reading from Screen.** *Behaviour & Information Technology*, 23(6), p. 377–393.
-- [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*.
+- [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Gazzola et al. (2022)](referencias.md#ref-gazzola2022textcomplexity): Murilo Gazzola; Sidney Leal; Breno Pedroni; Fábio Theoto Rocha; Sabine Pompéia; Sandra Aluísio (2022). **Text Complexity of Open Educational Resources in Portuguese: Mixing Written and Spoken Registers in a Multi-task Approach.** *Language Resources and Evaluation*, 56(2), p. 621–650.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Graesser et al. (2004)](referencias.md#ref-graesser2004cohmetrix): Arthur C. Graesser; Danielle S. McNamara; Max M. Louwerse; Zhiqiang Cai (2004). **Coh-Metrix: Analysis of Text on Cohesion and Language.** *Behavior Research Methods, Instruments, & Computers*, 36(2), p. 193–202.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
+- [Han et al. (2025)](referencias.md#ref-han2025genaimeta): Xiaoli Han; Hongchao Peng; Mingzhuo Liu (2025). **The Impact of GenAI on Learning Outcomes: A Systematic Review and Meta-Analysis of Experimental Studies.** *Educational Research Review*, 48, p. 100714.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
 - [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens): Ymkje E. Haverkamp; Ivar Bråten; Natalia Latini; Ladislao Salmerón (2023). **Is It the Size, the Movement, or Both? Investigating Effects of Screen Size and Text Movement on Processing, Understanding, and Motivation When Students Read Informational Text.** *Reading and Writing*, 36(7), p. 1589–1608.
 - [Hearst (1997)](referencias.md#ref-hearst1997texttiling): Marti A. Hearst (1997). **TextTiling: Segmenting Text into Multi-paragraph Subtopic Passages.** *Computational Linguistics*, 23(1), p. 33–64.
 - [Henrie et al. (2015)](referencias.md#ref-henrie2015engagement): Curtis R. Henrie; Lisa R. Halverson; Charles R. Graham (2015). **Measuring Student Engagement in Technology-mediated Learning: A Review.** *Computers & Education*, 90, p. 36–53.
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
 - [Howard-Jones (2014)](referencias.md#ref-howardjones2014neuroscience): Paul A. Howard-Jones (2014). **Neuroscience and Education: Myths and Messages.** *Nature Reviews Neuroscience*, 15(12), p. 817–824.
+- [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
 - [Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol): Angela C. Karich; Matthew K. Burns; Kathrin E. Maki (2014). **Updated Meta-Analysis of Learner Control Within Educational Technology.** *Review of Educational Research*, 84(3), p. 392–410.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
 - [Kintsch e van Dijk (1978)](referencias.md#ref-kintsch1978model): Walter Kintsch; Teun A. van Dijk (1978). **Toward a Model of Text Comprehension and Production.** *Psychological Review*, 85(5), p. 363–394.
@@ -1003,22 +1125,27 @@ O corpus atual ainda precisa ser ampliado para:
 - [Peters et al. (2024)](referencias.md#ref-peters2024scoping): Micah D. J. Peters; Christina Godfrey; Patricia McInerney; Zachary Munn; Andrea C. Tricco; Hanan Khalil (2024). **Scoping Reviews.** In: *JBI Manual for Evidence Synthesis*, JBI.
 - [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades): Salvador Pons Bordería; Margarita Borreguero Zuloaga (2024). **Unidades discursivas del texto escrito: revisión crítica del estado de la cuestión y directrices para una nueva propuesta.** *Círculo de Lingüística Aplicada a la Comunicación*, 99, p. 7–21.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
+- [Renkl (2002)](referencias.md#ref-renkl2002learning): Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
 - [Richter et al. (2016)](referencias.md#ref-richter2016signaling): Juliane Richter; Katharina Scheiter; Alexander Eitel (2016). **Signaling Text–Picture Relations in Multimedia Learning: A Comprehensive Meta-analysis.** *Educational Research Review*, 17, p. 19–36.
 - [Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation): Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860.
 - [Schneider et al. (2018)](referencias.md#ref-schneider2018signaling): Sascha Schneider; Maik Beege; Steve Nebel; Günter Daniel Rey (2018). **A Meta-analysis of How Signaling Affects Learning with Media.** *Educational Research Review*, 23, p. 1–24.
 - [Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations): Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156.
+- [Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting): Neil Selwyn; Marita Ljungqvist; Anders Sonesson (2025). **When the Prompting Stops: Exploring Teachers' Work Around the Educational Frailties of Generative AI Tools.** *Learning, Media and Technology*, 50(3), p. 310–323.
 - [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
 - [Sotola e Credé (2021)](referencias.md#ref-sotola2021quizzes): Lukas K. Sotola; Marcus Credé (2021). **Regarding Class Quizzes: A Meta-Analytic Synthesis of Studies on the Relationship between Frequent Low-Stakes Testing and Class Performance.** *Educational Psychology Review*, 33(2), p. 407–426.
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
-- [Tang e Hew (2017)](referencias.md#ref-tang2017twitter): Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?.** *Computers & Education*, 106, p. 97–118.
+- [Tang e Hew (2017)](referencias.md#ref-tang2017twitter): Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?** *Computers & Education*, 106, p. 97–118.
 - [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved): Kelli Taylor; Doug Rohrer (2010). **The Effects of Interleaved Practice.** *Applied Cognitive Psychology*, 24(6), p. 837–848.
-- [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
+- [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; et al. (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
 - [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered): Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222.
+- [Tynjälä (2008)](referencias.md#ref-tynjala2008workplace): Päivi Tynjälä (2008). **Perspectives into Learning at the Workplace.** *Educational Research Review*, 3(2), p. 130–154.
+- [UNESCO (2015)](referencias.md#ref-unesco2015tvet): UNESCO (2015). **Recommendation concerning Technical and Vocational Education and Training (TVET).** UNESCO.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
+- [Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai): Michelle Vaccaro; Abdullah Almaatouq; Thomas Malone (2024). **When Combinations of Humans and AI Are Useful: A Systematic Review and Meta-Analysis.** *Nature Human Behaviour*, 8, p. 2293–2303.
 - [van Merriënboer (2019)](referencias.md#ref-vanmerrienboer2019fourcomponent): Jeroen J. G. van Merriënboer (2019). **The Four-Component Instructional Design Model: An Overview of Its Main Design Principles.** School of Health Professions Education, Maastricht University.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.
 - [Vygotsky (1978)](referencias.md#ref-vygotsky1978mind): Lev S. Vygotsky (1978). **Mind in Society: The Development of Higher Psychological Processes.** Harvard University Press.

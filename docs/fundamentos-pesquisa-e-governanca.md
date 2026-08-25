@@ -138,6 +138,13 @@ coerente.
 
 ## Design-Based Research
 
+Construir o AraLearn ao longo do tempo não transforma sua genealogia em método
+de pesquisa. Um episódio só pode ser situado em DBR ou DSR quando pergunta,
+contexto, versão do artefato, procedimento, dados e contribuição foram
+declarados de modo compatível com a tradição metodológica. Classificar
+retroativamente toda iteração como pesquisa apagaria a diferença entre memória
+do projeto e investigação documentada.
+
 ### Conceito
 
 Design-Based Research (DBR) é uma tradição de investigação de intervenções
@@ -163,8 +170,10 @@ ter:
   contexto em que pessoas estudam, retomam, interpretam e revisam.
 - **Alternativas:** avaliação laboratorial isolada, coleta de satisfação ou
   ciclos situados com mecanismos declarados.
-- **Decisão:** usar DBR para investigar progressão, representações, feedback,
-  retomada cotidiana, observações e práticas de autoria em contexto.
+- **Enquadramento possível:** episódios futuros ou documentados podem usar DBR
+  para investigar progressão, representações, feedback, retomada cotidiana,
+  observações e práticas de autoria em contexto quando cumprirem as condições
+  metodológicas acima.
 - **Fundamentação:** DBR relaciona teoria, desenho e prática sem presumir que a
   intervenção funcione da mesma forma em todos os ambientes
   ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
@@ -197,8 +206,10 @@ planejar avaliações formativas ou somativas, artificiais ou naturalísticas
 - **Alternativas:** relatar apenas implementação, executar testes sem argumento
   de design ou organizar problema, objetivo, construção, demonstração,
   avaliação e contribuição.
-- **Decisão:** usar DSR para investigar arquitetura de componentes, contratos,
-  persistência local-first, delimitação de autoria, validação e frugalidade.
+- **Enquadramento possível:** episódios futuros ou documentados podem usar DSR
+  para investigar arquitetura de componentes, contratos, persistência
+  local-first, delimitação de autoria, validação e frugalidade quando a
+  contribuição de design e a estratégia de avaliação estiverem explícitas.
 - **Fundamentação:** DSR oferece estrutura para relacionar relevância,
   rigor, artefato e avaliação ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm); [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
 - **Operacionalização:** requisitos verificáveis, versão identificada, cenário
@@ -236,6 +247,30 @@ As duas tradições podem examinar a mesma versão, mas usam os dados para
 perguntas diferentes. Um teste visual demonstra que rótulos não se sobrepõem;
 uma tarefa com participantes informa se a relação foi interpretada; uma medida
 posterior informa retenção. Nenhum desses resultados substitui os demais.
+
+### O que cada registro permite afirmar
+
+- **Genealogia do artefato** relata experiências e problemas que antecederam
+  uma decisão. Ela explica origem, não método nem efeito.
+- **Decisão de engenharia** registra problema, alternativas e mecanismo
+  adotado. Pode existir fora de qualquer estudo.
+- **Ciclo de desenho** relaciona uma versão, um problema observado e uma
+  revisão. Iteração, por si, ainda não caracteriza DBR ou DSR.
+- **Avaliação técnica** verifica contrato, segurança, geometria, desempenho ou
+  outro comportamento do artefato em condições declaradas.
+- **Avaliação de usabilidade** examina se pessoas específicas alcançam
+  objetivos específicos em contexto identificado.
+- **Investigação educacional** precisa definir constructo ou resultado, tarefa,
+  instrumento, população, comparação quando pertinente e limites de
+  inferência.
+- **Episódio DBR** acrescenta problema educacional situado, conjectura,
+  intervenção, atores relevantes, análise do processo e revisão da explicação.
+- **Episódio DSR** acrescenta problema de design, contribuição pretendida,
+  demonstração, avaliação e abstração responsável do conhecimento produzido.
+
+Um mesmo episódio pode fornecer evidência a mais de uma trilha, desde que cada
+pergunta e conclusão permaneça identificável. O rótulo metodológico não amplia
+o alcance dos dados.
 
 ## Fundamentos que orientam o desenho
 
@@ -282,9 +317,13 @@ sobre ansiedade ou autonomia é presumido.
 
 ### IA e governança de dados
 
-Recuperação pode condicionar a geração, mas não garante factualidade
-([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). A interação entre pessoas e IA requer comunicação de limites, correção e
-controle ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações de risco destacam responsabilidade
+Lewis et al. definem geração aumentada por recuperação como uma arquitetura em
+que informação recuperada condiciona a geração
+([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Recuperação não garante
+factualidade: erros e formas de mitigação variam entre tarefas de geração
+([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)). A interação entre
+pessoas e IA requer comunicação de limites, correção e controle
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações de risco destacam responsabilidade
 e proteção de dados ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)). A análise de dados
 educacionais, também conhecida como *learning analytics*, exige finalidade,
 transparência e proporcionalidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
@@ -367,6 +406,14 @@ Antes de coletar um dado, devem ser definidos:
 - custo de armazenamento e risco;
 - informação e consentimento necessários.
 
+Quando uma investigação brasileira em Ciências Humanas e Sociais estiver no
+escopo da Resolução CNS nº 510/2016, informação, consentimento ou assentimento,
+privacidade, confidencialidade, retirada e proteção diante de riscos seguem a
+norma aplicável
+([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+Essa autoridade é normativa; não demonstra que uma medida seja válida nem que
+uma intervenção produza aprendizagem.
+
 Cliques, tempo e conclusão não entram apenas por estarem disponíveis. A ética
 integra o desenho da análise de dados desde a definição da finalidade
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
@@ -437,25 +484,71 @@ a exposição, mas não dispensa retenção, controle de acesso nem direito de
 retirada. O produto
 não escolhe teste estatístico nem emite conclusão causal automaticamente.
 
+## Conceitos mínimos para interpretar uma investigação
+
+Um **evento** é uma ocorrência observável registrada com tipo, instante,
+objeto, contexto e proveniência. Ele não é automaticamente uma medida: abrir
+uma tela, concluir uma materialização ou registrar uma Observação só ganha
+significado analítico depois que pergunta e regra de interpretação forem
+declaradas.
+
+O **denominador** é o conjunto de oportunidades ao qual uma contagem se refere.
+“Duas correções”, por exemplo, muda de significado se o denominador for duas,
+vinte ou duzentas Unidades elegíveis. O denominador precisa declarar inclusões,
+exclusões, ausências, filtros e instante de corte.
+
+**Confiabilidade** descreve a consistência de escores, classificações ou
+observações sob fontes de variação pertinentes, como itens, ocasiões e
+avaliadores. Ela não equivale a validade. Um instrumento pode produzir valores
+consistentes e ainda sustentar uma interpretação incorreta; validade concerne
+ao argumento que liga evidência, interpretação e uso na população e na tarefa
+de interesse ([Messick (1995)](referencias.md#ref-messick1995validity);
+[American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
+
+Uma **associação** indica que duas variáveis variam juntas nas condições
+observadas. **Confundimento** ocorre quando uma causa alternativa influencia a
+condição e o desfecho, oferecendo outra explicação para a associação. Inferir
+causalidade exige um desenho e pressupostos capazes de enfrentar seleção,
+história, mensuração, perdas, contaminação e outras explicações rivais
+([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
+
+Num **desenho experimental**, a atribuição aleatória é usada para formar
+condições comparáveis em expectativa. Num **desenho quase experimental**, a
+intervenção é estudada sem atribuição aleatória, recorrendo a comparação,
+temporalidade, modelagem e pressupostos adicionais para sustentar a inferência.
+Criar Variantes no AraLearn não realiza nenhum dos dois: ainda faltam
+participantes, atribuição, exposição, instrumentos, desfechos e análise.
+
+**Validade externa** trata do argumento para transferir uma conclusão entre
+pessoas, tarefas, contextos, versões e momentos. **Generalização** não é um selo
+recebido por usar amostra grande nem uma promessa de universalidade; depende de
+quais dimensões mudam e de por que o mecanismo deveria permanecer aplicável.
+Resultados sobre uma ocupação, instituição ou Curso precisam conservar seus
+limites antes de orientar outro contexto.
+
 <!-- referências locais: início -->
 
 ## Referências
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+- [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
 - [Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving): Markus Brunmair; Tobias Richter (2019). **Similarity Matters: A Meta-Analysis of Interleaved Learning and Its Moderators.** *Psychological Bulletin*, 145(11), p. 1029–1052.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
+- [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
+- [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
 - [Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol): Angela C. Karich; Matthew K. Burns; Kathrin E. Maki (2014). **Updated Meta-Analysis of Learner Control Within Educational Technology.** *Review of Educational Research*, 84(3), p. 392–410.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
+- [Messick (1995)](referencias.md#ref-messick1995validity): Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749.
 - [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.
 - [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
@@ -464,10 +557,11 @@ não escolhe teste estatístico nem emite conclusão causal automaticamente.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
+- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
-- [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
+- [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; et al. (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
 - [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered): Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.

@@ -1,6 +1,15 @@
-# Matriz backend → operação → UI → Pesquisa
+# Matriz histórica de cobertura da rodada de UX
 
-Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma capacidade de produto não é considerada concluída só porque existe no backend: a pessoa autorizada precisa conseguir encontrá-la e usá-la pela interface, salvo quando sua natureza for estritamente interna.
+Esta matriz registra os requisitos examinados na rodada encerrada. Seus nomes,
+agrupamentos e instruções pertencem àquele período. Para o produto vigente,
+prevalecem os contratos executáveis e o
+[mapa da documentação atual](../docs/README.md).
+
+Naquela rodada, a matriz cobria as capacidades que precisavam aparecer no
+produto final. A regra adotada era que uma capacidade não se considerava
+concluída apenas por existir no backend: a pessoa autorizada precisava
+conseguir encontrá-la e usá-la pela interface, salvo quando sua natureza fosse
+estritamente interna.
 
 | Capacidade | Tarefa humana | Superfície alvo | Observação |
 | --- | --- | --- | --- |
@@ -34,7 +43,7 @@ Esta matriz cobre as capacidades que precisam aparecer no produto final. Uma cap
 | inventário de resíduos correntes | saber se há objetos/vínculos quebrados | Conta → Manutenção, apenas administrador | classificação determinística do backend |
 | correção de resíduo seguro | remover/reparar resíduo reconhecido sem SQL/Storage manual | Conta → Manutenção → detalhe/ação | autorização server-side e releitura do estado |
 
-## Regras de cobertura
+## Regras de cobertura registradas na rodada
 
 `←` retorna à tela imediatamente anterior. `↑`, quando existir, sobe somente a hierarquia didática. Unidade, Microssequência e Lição usam a mesma gramática de modos quando a capacidade existir, sem confundir os respectivos escopos de escrita.
 

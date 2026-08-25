@@ -176,9 +176,12 @@ Contratos podem demonstrar integridade técnica, autorização e correspondênci
 entre referências. Eles não demonstram verdade científica, qualidade global ou
 aprendizagem. Recomendações de interação humano-IA ressaltam visibilidade,
 controle e possibilidade de correção
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
-[Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). No uso educacional de
-modelos generativos, a responsabilidade factual e pedagógica permanece humana
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Num estudo de
+decisão assistida por IA, intervenções que forçavam reflexão reduziram
+dependência excessiva, mas acrescentaram custo; esse resultado é situado e não
+garante o mesmo efeito na autoria educacional
+([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). No uso
+educacional de modelos generativos, a responsabilidade factual e pedagógica permanece humana
 ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
 Consulte [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) para o percurso
@@ -190,7 +193,7 @@ para a relação entre intenção, confirmação e escrita tipada.
 ## Referências
 
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
-- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1).
+- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 
 <!-- referências locais: fim -->

@@ -51,6 +51,27 @@ registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
+## Aprender no trabalho e formar profissionalmente
+
+Aprendizagem no trabalho, gestão do conhecimento, treinamento e
+desenvolvimento e educação profissional e tecnológica são contextos possíveis
+de aplicação e investigação. O percurso abaixo não presume que disponibilizar
+um Curso produza competência, transferência ao trabalho ou mudança
+organizacional:
+
+1. [Visão do produto](visao-do-produto.md): públicos, condições de uso e
+   capacidades que o AraLearn não oferece;
+2. [Revisão de literatura](revisao-de-literatura.md#13-aprendizagem-no-trabalho-gestão-do-conhecimento-e-educação-profissional):
+   aprendizagem formal e informal, processos organizacionais de conhecimento
+   e educação e formação técnica e profissional;
+3. [Origens do AraLearn](origens-do-aralearn.md): experiências declaradas que
+   tornaram esses problemas relevantes, sem transformar biografia em prova;
+4. [Modelo didático](modelo-didatico.md): como Fontes, progressão,
+   representações, prática e revisão organizam um Curso;
+5. [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
+   e [Protocolo de avaliação](protocolo-avaliacao-artefato.md): como distinguir
+   uso, tarefa, aprendizagem, transferência e resultado organizacional.
+
 ## Estudar a engenharia
 
 1. [Arquitetura](arquitetura.md): Curso vivo, fronteiras e fontes de
@@ -119,6 +140,26 @@ O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) prepara a
 avaliação com pessoas. Automação pode verificar contrato e geometria, mas não
 pode declarar compreensão ou eficácia educacional.
 
+## Avaliar um uso institucional
+
+Um gestor, uma instituição educacional ou uma administração pública pode
+começar pela [Visão do produto](visao-do-produto.md) e pelas
+[Capacidades e limites atuais](estado-atual-e-roadmap.md). Esses capítulos
+delimitam finalidade, público, propriedades implementadas e resultados ainda
+não demonstrados.
+
+Para examinar uma adoção concreta, continue por:
+
+1. [Arquitetura](arquitetura.md): serviços, fronteiras e dependências;
+2. [Privacidade](privacidade.md): localização, acesso, retenção e exclusão dos
+   dados;
+3. [Implantação](implantacao.md): ambientes, configuração, operação e
+   recuperação;
+4. [Sistema visual](sistema-visual.md): acessibilidade e condições de leitura;
+5. [Protocolo de avaliação](protocolo-avaliacao-artefato.md): avaliação própria
+   do contexto institucional, sem presumir adequação legal, científica ou
+   educacional universal.
+
 ## Operar e implantar
 
 | Assunto | Documento |
@@ -126,6 +167,19 @@ pode declarar compreensão ou eficácia educacional.
 | ambientes, configuração e publicação | [Implantação](implantacao.md) |
 | banco, Storage, autenticação e funções | [Supabase](supabase.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
+
+Para contribuir com código ou documentação, consulte também o
+[`CONTRIBUTING.md`](../CONTRIBUTING.md). A integração Android tem instruções
+próprias em [`android/README.md`](../android/README.md), e as bibliotecas
+distribuídas dentro do aplicativo são identificadas em
+[`public/vendor/README.md`](../public/vendor/README.md).
+
+## Consultar história e licença
+
+O [`CHANGELOG.md`](../CHANGELOG.md) registra mudanças por versão e conserva a
+terminologia do período correspondente. O histórico detalhado permanece no
+Git. A licença de uso e redistribuição está em [`LICENSE.md`](../LICENSE.md).
+Documentos correntes não repetem essa cronologia.
 
 ## Referência completa
 
@@ -135,7 +189,7 @@ pode declarar compreensão ou eficácia educacional.
 | [Glossário técnico](glossario-tecnico.md) | termos de software e infraestrutura |
 | [Glossário de construtos](glossario-construtos.md) | termos educacionais e metodológicos |
 | [Vocabulário controlado](vocabulario-controlado.md) | decisões terminológicas e mapa de corte |
-| [Referências](referencias.md) | bibliografia legível gerada da fonte canônica |
+| [Referências](referencias.md) | bibliografia legível e percursos temáticos gerados da fonte canônica |
 | [Cobertura da documentação](inventario-documentacao.md) | assunto e percurso de cada capítulo |
 | [Matriz de conformidade](matriz-conformidade-tecnica.md) | rastreabilidade da engenharia |
 

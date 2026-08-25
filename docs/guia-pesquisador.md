@@ -51,7 +51,7 @@ Storage não são medidas de aprendizagem.
 
 O catálogo possui somente quatro operacionalizações:
 
-1. teto de unidades da análise introduzidas por Unidade expositiva;
+1. teto de unidades de análise introduzidas por Unidade expositiva;
 2. formas explicativas requeridas;
 3. oportunidades distintas por requisito de evidência;
 4. dimensões requeridas de variação da prática.
@@ -59,7 +59,7 @@ O catálogo possui somente quatro operacionalizações:
 Cada definição informa constructo, operacionalização, limitações, evidência e
 estatuto do default. Não crie uma quinta definição alterando JSON ou tabela.
 Uma nova dimensão exige nova decisão de produto, revisão conceitual, migração,
-interface, MCP e testes.
+interface, MCP, Actions e testes.
 
 ### Origem `research_condition`
 
@@ -76,7 +76,7 @@ Ao usar essa origem:
 - registre a revisão exata do Curso;
 - mantenha invariantes e diferenças planejadas em protocolo próprio;
 - não interprete o rótulo como garantia de isolamento experimental;
-- não use o estado pessoal cotidiano como outcome implícito.
+- não use o estado pessoal cotidiano como desfecho de pesquisa implícito.
 
 ## Orientação natural e interpretação
 
@@ -111,7 +111,7 @@ proibido. Esses são achados de conformidade ao desenho, não pontuações
 educacionais.
 
 Os fatos aplicados preservam identidades de Unidades de estudo e declarações
-sobre unidades da análise, requisitos de evidência, oportunidades, formas,
+sobre unidades de análise, requisitos de evidência, oportunidades, formas,
 dimensões e pacotes. Forma, oportunidade e variação não são inferidas
 semanticamente do conteúdo pelo banco. A reconciliação material cobre IDs das
 Unidades, pai/alvo e `componentRefs`. O registro não preserva conversa, prompt,
@@ -153,8 +153,8 @@ Casos metamórficos impedem proxy de comprimento:
 
 A área **Pesquisa** projeta sete conjuntos de fatos: atividade, produção,
 desenho, Fontes, Observações, auditorias e variantes. Cada consulta fixa Curso,
-revisão, filtros e instante de corte. Gráfico, tabela, lista, CSV, JSON e MCP
-derivam da mesma resposta paginada.
+revisão, filtros e instante de corte. Gráfico, tabela, lista, CSV, JSON, MCP e
+Actions derivam da mesma resposta paginada.
 
 Use a visão para localizar o registro que sustenta uma contagem. Informe a
 definição, o denominador e as lacunas junto do número. Identidade de conta,
@@ -221,21 +221,36 @@ documentadas.
 ## Estratégia de investigação
 
 Pesquisa baseada em design e Design Science Research podem compartilhar
-episódios e dados, mas não são sinônimas. A primeira acompanha intervenção e
-aprendizagem situada; a segunda investiga o artefato, seus requisitos e sua
-avaliação. Consulte o [protocolo de avaliação](protocolo-avaliacao-artefato.md).
+episódios e dados, mas não são sinônimas. A primeira investiga intervenções
+educacionais situadas; a segunda organiza a construção e a avaliação do
+artefato e do conhecimento de desenho
+([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
+[Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased);
+[Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)). Consulte o
+[protocolo de avaliação](protocolo-avaliacao-artefato.md).
 
-Para alegação causal, o contrato de parâmetros é insuficiente. Ainda são
-necessários, conforme a pergunta:
+Para alegação causal, o contrato de parâmetros é insuficiente. Desenho,
+atribuição, comparação, perdas e ameaças à validade precisam corresponder à
+inferência pretendida ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
+Ainda são necessários, conforme a pergunta:
 
 - população e critérios de inclusão;
 - consentimento e apreciação ética aplicável;
 - protocolo e hipóteses registrados;
 - condição de comparação;
 - regra de atribuição;
-- instrumentos e outcomes válidos;
+- instrumentos e desfechos de pesquisa válidos;
 - controle de exposição, perdas e versões;
 - plano de análise e explicações rivais.
+
+No Brasil, pesquisas em Ciências Humanas e Sociais que usam dados obtidos
+diretamente de participantes, informações identificáveis ou procedimentos com
+riscos abrangidos pela norma devem observar a avaliação ética aplicável e os
+direitos de informação, consentimento ou assentimento, privacidade,
+confidencialidade e retirada previstos na Resolução CNS nº 510/2016
+([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+Essa é uma autoridade normativa; ela não demonstra validade metodológica,
+usabilidade ou efeito educacional.
 
 ## Relatar
 
@@ -251,3 +266,15 @@ O relatório deve separar:
 Preserve resultados negativos e divergências. Não apresente valor padrão como
 evidência, conformidade como aprendizagem, `research_condition` como
 randomização nem contagem descritiva como efeito educacional.
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
+- [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
+- [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
+- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
+- [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased): Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23.
+
+<!-- referências locais: fim -->

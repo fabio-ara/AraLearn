@@ -31,10 +31,12 @@ O percurso segue a hierarquia:
 Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
 ```
 
-`←` retorna à tela imediatamente anterior. `↑` sobe um nível da hierarquia e
-não substitui o retorno. Na Unidade, **Visualizar**, **Editar** e **Assistência
-por API** são modos irmãos sobre o mesmo alvo. Lição e Microssequência também
-oferecem Visualização e Assistência quando a pessoa é proprietária.
+**Voltar** refaz o percurso tela a tela. **Subir** leva diretamente ao nível
+imediatamente superior da hierarquia, sem substituir o retorno pelo caminho
+percorrido. Curso e Módulo oferecem os modos **Visualizar** e **Editar**. Lição,
+Microssequência e Unidade oferecem **Visualizar**, **Editar** e **Assistência por
+IA**. Os modos de alteração aparecem quando a relação de acesso autoriza operar
+o alvo.
 
 Durante o estudo, a pessoa pode responder às práticas, receber retorno, avançar,
 marcar uma Unidade para rever, registrar Observações e abrir Fontes autorizadas.
@@ -67,7 +69,7 @@ suficiente permanecem identificadas para resolução e não aparecem como citaç
 comprovada no Estudo.
 
 Conteúdo percorre a composição sem ativar respostas. A Auditoria registra
-checks, achados, correções, verificações e reversões. Observações de estudantes
+rodadas, achados, correções, verificações e reversões. Observações de estudantes
 continuam separadas de achados de auditoria. Variantes registram relações entre
 Cursos; Pesquisa apresenta fatos, definições, denominadores, ausências e
 exportações sem inferir eficácia ou causalidade.

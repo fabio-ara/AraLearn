@@ -1,147 +1,155 @@
 # Origens do AraLearn
 
-## Como ler esta página
+## O que esta narrativa explica
 
-Esta narrativa de origem parte da memória autobiográfica do **autor do
-projeto**. Ela registra experiências anteriores ao AraLearn e situa algumas
-das perguntas que orientaram sua criação.
+O AraLearn nasceu de problemas encontrados ao estudar, produzir material e
+construir sistemas sob restrições concretas. Esta página registra a genealogia
+biográfica declarada pelo responsável pelo projeto. Ela ajuda a compreender por
+que certas perguntas ganharam importância, mas não demonstra que as respostas
+do produto sejam pedagogicamente eficazes ou tecnicamente superiores.
 
-Uma memória biográfica ajuda a explicar por que um problema chamou a atenção
-de quem projetou o sistema. A eficácia pedagógica, a adequação técnica e as
-relações de causa e efeito exigem outras formas de evidência: literatura,
-implementação verificável e avaliação empírica. Esses fundamentos são tratados
-separadamente na [revisão de
-literatura](revisao-de-literatura.md) e no [protocolo de avaliação do
-artefato](protocolo-avaliacao-artefato.md).
+As instituições e tecnologias citadas contextualizam experiências. Nenhuma
+delas participou do desenvolvimento, avaliou o AraLearn ou o endossa. As
+relações com aprendizagem, interação e pesquisa são examinadas separadamente na
+[revisão de literatura](revisao-de-literatura.md) e nos [fundamentos de
+pesquisa](fundamentos-pesquisa-e-governanca.md).
 
-As instituições mencionadas abaixo identificam etapas da trajetória declarada,
-sem atribuir a elas participação no desenvolvimento, avaliação ou endosso do
-AraLearn.
+## Do estudo de idiomas ao conteúdo estruturado
 
-## Trajetória declarada
+O ponto de partida foi o uso do [Anki](https://apps.ankiweb.net/) no estudo de
+idiomas, especialmente japonês e chinês. Com o tempo, os cartões deixaram de ser
+somente pares de pergunta e resposta. Passaram a usar
+[HTML](https://html.spec.whatwg.org/), [CSS](https://www.w3.org/Style/CSS/) e
+[JavaScript](https://tc39.es/ecma262/) para organizar informação gramatical,
+representações e interação.
 
-| Período | Experiência biográfica |
-| --- | --- |
-| 2009–2013 | Bacharelado em Letras, com habilitações em Português e Linguística, na Universidade de São Paulo. |
-| 2010–2022 | Vínculo com o Colégio Etapa, sem detalhamento de funções nesta narrativa. |
-| 2014–2020 | Bacharelado em Ciências Biológicas na Universidade de São Paulo, interrompido na etapa do trabalho de conclusão de curso, depois do cumprimento dos créditos. |
-| desde 2024 | Vínculo com a Companhia Ambiental do Estado de São Paulo, sem associação institucional com o projeto. |
-| desde 2025 | Bacharelado em Tecnologia da Informação na Universidade Virtual do Estado de São Paulo. |
-| desde 2026 | Curso superior de Tecnologia em Análise e Desenvolvimento de Sistemas no Instituto Federal de São Paulo. |
+O trabalho também envolveu curadoria e processamento de grandes conjuntos
+provenientes de dicionários e enciclopédias disponíveis na internet. Parsers
+transformavam essas fontes em registros utilizáveis. O
+[MeCab](https://taku910.github.io/mecab/) apoiava a análise morfológica; o
+[Online Japanese Accent Dictionary, OJAD](https://www.gavo.t.u-tokyo.ac.jp/ojad/eng/pages/home),
+da Universidade de Tóquio, oferecia recursos para prosódia e acento; e a
+[síntese de voz do Microsoft Azure](https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech)
+gerava automaticamente áudio associado a itens vocabulares e sentenças.
 
-As datas abertas indicam formações ou vínculos declarados como ainda em curso.
+Essa etapa tornou visíveis problemas que um cartão simples não resolvia:
+preservar a relação entre texto, som e análise linguística; transformar fontes
+heterogêneas sem perder sua origem; automatizar operações repetitivas; e manter
+controle sobre o resultado de uma produção em escala. A experiência explica a
+presença posterior de dados estruturados, representações especializadas,
+Fontes, validação e autoria assistida no horizonte do projeto. Ela não prova
+que a solução adotada pelo AraLearn seja a melhor para esses problemas.
 
-## Experiências de aprendizagem que precederam o projeto
+## De vocabulário a materiais extensos
 
-Antes do AraLearn, o autor do projeto experimentou diferentes maneiras de
-organizar o próprio estudo. Entre elas estavam a produção de resumos, a criação
-de materiais no Anki e o uso de Duolingo e LingoDeer. Essas práticas fizeram
-parte, em especial, da aprendizagem autodidata de japonês e mandarim.
+Durante um período de desemprego, o ambiente customizado foi adaptado para
+produzir material de estudo para concursos públicos. O trabalho reunia fontes
+públicas, bancos de questões por assinatura e materiais extensos de cursos
+preparatórios, sobretudo em Administração e Direito.
 
-Na memória autobiográfica do autor do projeto, essas experiências precederam
-perguntas que mais tarde se tornariam relevantes para o AraLearn:
+A mudança de domínio deslocou o centro do problema. Já não bastava associar
+uma forma linguística a significado e áudio. Era necessário selecionar grandes
+volumes, decompor argumentos e procedimentos, organizar dependências,
+transformar fontes em explicação e prática e revisar a qualidade do conjunto.
+Surgiram, assim, perguntas sobre escalabilidade de autoria e sobre como
+representar conteúdos que não cabem numa única forma de atividade.
 
-- como organizar conteúdo complexo para estudo continuado;
-- como articular explicação e prática em um percurso ajustável;
-- como adaptar materiais a objetivos próprios;
-- como tornar o estudo utilizável em sessões pequenas e retomáveis;
-- como reduzir o trabalho de produzir e revisar materiais sem perder o
-  controle sobre o conteúdo.
+## Automação de processos sob restrições
 
-Essas perguntas registram a genealogia declarada do problema, sem atribuir a
-uma ferramenta específica a causa de uma escolha técnica ou comparar a
-eficácia das ferramentas citadas.
+O responsável pelo projeto atua na
+[CETESB](https://cetesb.sp.gov.br/). Nesse contexto, passou a trabalhar
+intensamente com automação de processos de negócio num ambiente com forte
+restrição de ferramentas, baseado principalmente em licenciamento Microsoft
+E3, atualmente também [Microsoft 365
+Copilot](https://www.microsoft.com/microsoft-365-copilot),
+[Excel](https://www.microsoft.com/en-us/microsoft-365/excel) e automações locais em
+[VBA](https://learn.microsoft.com/office/vba/api/overview/).
 
-## Quando o cartão se tornou um ambiente programável
+Foram construídos sistemas para rotinas como processamento de pagamentos e
+benefícios, admissão e demissão, alterações cadastrais, geração de documentos,
+demonstrativos destinados a órgãos reguladores e outros processos
+administrativos. Esta narrativa não expõe regras internas, dados pessoais ou
+informações confidenciais. A CETESB não é apresentada como usuária ou
+patrocinadora do AraLearn.
 
-Segundo o relato autobiográfico, o Anki deixou progressivamente de ser usado
-apenas como uma sequência de frente e verso. Os materiais passaram a integrar
-HTML, CSS, JavaScript, áudio, informações gramaticais, dicionários e dados
-obtidos de fontes diferentes. Planilhas e arquivos tabulares CSV serviam para organizar
-e transformar conjuntos maiores de dados antes de sua apresentação.
+A contribuição dessa experiência para a genealogia está no tipo de problema:
+automatizar sem perder rastreabilidade; validar entradas e resultados;
+integrar etapas que pertencem ao mesmo processo; manter sistemas usados em
+situações reais; e permitir que conhecimento operacional seja compreendido,
+revisado e transmitido. Essas relações ajudam a explicar o interesse do
+AraLearn por proveniência, histórico de decisões, recuperação e circulação de
+conhecimento.
 
-Essa experiência trouxe duas perguntas que continuam pertinentes ao projeto:
+## Aprender a integrar um sistema
 
-- como articular representações verbais, sonoras, visuais e interativas sem
-  perder a unidade de sentido do conteúdo;
-- como automatizar tarefas repetitivas de produção sem retirar do autor o
-  controle sobre fontes, estrutura e correção.
+A necessidade de automação ampliou o estudo de programação, engenharia de
+software, Excel, [Microsoft Power
+Platform](https://www.microsoft.com/power-platform) e outras tecnologias
+administrativas e de desenvolvimento. A trajetória inclui diversos cursos do
+[SENAI](https://www.portaldaindustria.com.br/senai/), mencionados aqui por sua
+função no percurso de aprendizagem, não como inventário de certificados.
 
-O relato explica por que a integração de diferentes meios, os dados
-estruturados e a automação apareceram cedo como problemas de projeto. A
-natureza acadêmica das Unidades de estudo, das representações externas e dos
-componentes didáticos é examinada separadamente na revisão terminológica.
+O estudo autodidata de desenvolvimento moderno também produziu a situação
+informalmente chamada *tutorial hell*. O termo não designa um constructo
+científico. Ele descreve a repetição de muitos tutoriais locais sem conseguir
+integrar o que cada exemplo pressupõe: reproduzir uma tela ou uma API era
+diferente de construir um sistema cuja programação, arquitetura, dados,
+implantação, segurança e operação funcionassem juntas.
 
-## Progressão fechada e autoria do percurso
+Essa dificuldade reforçou uma pergunta central do AraLearn: como ensinar um
+assunto em partes sem esconder as relações que permitem passar do exemplo para
+uma realização inteira? A pergunta biográfica pode orientar hipóteses de
+desenho; sua resposta exige literatura e avaliação próprias.
 
-Duolingo e LingoDeer aparecem nessa memória como experiências importantes e,
-mais tarde, como contraste para uma necessidade percebida: poder alterar
-ordem, ênfase, exemplos, representações e ritmo. A insatisfação relatada situa
-a origem autobiográfica da pergunta “quem pode configurar o percurso de
-aprendizagem?”, sem constituir uma avaliação geral dessas plataformas.
+## Formação corrente e experiência anterior
 
-Os mesmos procedimentos de decomposição, organização e recuperação foram
-posteriormente adaptados, no relato, do estudo de idiomas para conteúdos de
-Administração e Direito. Essa transferência entre domínios motivou a hipótese
-de que parte do problema era mais geral que a aprendizagem de uma língua. Sua
-validade depende de delimitação e avaliação próprias.
+O responsável frequenta atualmente o curso superior de Tecnologia em Análise e
+Desenvolvimento de Sistemas no [Instituto Federal de São Paulo
+(IFSP)](https://www.ifsp.edu.br/). O interesse pelo AraLearn foi retomado em
+paralelo a essa formação, como artefato para relacionar engenharia de software,
+educação e investigação.
 
-## Da automação aos modelos de linguagem
+A experiência anterior na [Universidade Virtual do Estado de São Paulo
+(UNIVESP)](https://univesp.br/) deixou de atender, naquele momento, à necessidade
+pessoal de integrar stacks e práticas modernas de desenvolvimento. Esse relato
+é situado: não avalia a instituição, seus cursos ou seus estudantes, e não
+implica conclusão de formação, campus ou período que não tenham sido declarados.
 
-A automação surgiu primeiro como resposta prática ao custo de tratar dados e
-manter materiais manualmente. Mais tarde, a formação em desenvolvimento de
-sistemas permitiu formular esse conjunto de práticas como um problema de
-software. O encontro posterior com modelos de linguagem acrescentou uma nova
-possibilidade e uma nova tensão:
+## O artefato que reúne essas perguntas
+
+O AraLearn passou a reunir problemas antes tratados separadamente:
+
+- transformar fontes em conteúdo estruturado e revisável;
+- preservar relações entre explicação, representação e prática;
+- oferecer profundidade sem condensar pressupostos nem fragmentar o percurso;
+- sustentar estudo e retomada em dispositivos móveis e conectividade variável;
+- apoiar autoria com automação e modelos de linguagem sem retirar a decisão
+  editorial da pessoa;
+- relacionar engenharia, proveniência, privacidade e avaliação;
+- investigar aplicações possíveis em estudo autodidata, educação profissional,
+  treinamento e desenvolvimento e circulação de conhecimento no trabalho.
+
+Essas áreas são contextos possíveis de uso e pesquisa, não resultados já
+demonstrados. O AraLearn implementa um produto e materializa decisões de
+desenho. Usabilidade, aprendizagem, transferência ao trabalho e mudança
+organizacional continuam sendo perguntas empíricas distintas.
+
+## Da experiência à evidência
+
+A genealogia e a pesquisa cumprem funções diferentes:
 
 ```text
-interpretação e geração flexíveis
-              +
-estado persistido, contratos e validação verificável
-              ↓
-autoria assistida com controle humano
+experiência declarada
+  → problema percebido
+  → hipótese de desenho
+  → propriedade implementada
+  → avaliação delimitada
+  → resultado e limites
 ```
 
-Nessa formulação, o modelo de linguagem auxilia a produção, enquanto o
-AraLearn conserva planejamento, parâmetros, fontes, observações e andamento.
-Esses dados podem ser consultados ou alterados pela interface e pelas
-ferramentas autorizadas. A separação entre o estado do curso e as instruções do
-assistente permite comparar configurações de produção de forma controlada.
-
-## A situação móvel que concentra as restrições
-
-Uma imagem recorrente na memória do projeto é a de quem trabalha e estuda em
-pé no transporte público: tela pequena, interrupções, períodos breves,
-conectividade variável e necessidade de retomar. Trata-se de uma situação
-concreta de uso, sem pressupor como funcionam a atenção ou o cérebro.
-
-Ela torna concretas exigências como largura móvel, continuidade, retomada, uso
-sem conexão e segmentação semanticamente coerente. Os efeitos dessas decisões
-sobre aprendizagem, usabilidade e permanência são perguntas empíricas.
-
-## Da experiência pessoal à pesquisa
-
-O projeto distingue a origem de uma hipótese de sua validação:
-
-```text
-memória autobiográfica
-        ↓
-problema percebido
-        ↓
-hipótese de projeto
-        ↓
-decisão implementada
-        ↓
-avaliação com método declarado
-        ↓
-evidência e limites
-```
-
-Por exemplo, produzir materiais próprios pode motivar a pergunta sobre quanto
-controle autoral uma plataforma deve oferecer. A experiência pessoal torna a
-pergunta compreensível. A resposta precisa ser comparada com alternativas,
-implementada de modo observável e avaliada com participantes, tarefas,
-instrumentos e critérios adequados.
-
-Essa distinção preserva a história do AraLearn e reserva a avaliação da
-eficácia educacional para as evidências adequadas.
+Uma experiência pode mostrar por que a decomposição do conhecimento se tornou
+uma preocupação. A implementação pode demonstrar que o produto conserva
+hierarquia, Fontes e versões. Somente uma avaliação adequada pode mostrar como
+pessoas compreendem o percurso, aprendem, transferem uma prática ou usam o
+artefato no trabalho. Preservar essas fronteiras permite contar a origem do
+AraLearn sem transformar biografia em prova.

@@ -105,7 +105,7 @@ do Curso de componentes exercitam os renderizadores dentro do aplicativo real.
 
 ## Projetos e licenças
 
-- [Viz.js](https://github.com/mdaines/viz-js) e sua [licença MIT](https://github.com/mdaines/viz-js/blob/main/LICENSE)
+- [Viz.js](https://github.com/mdaines/viz-js) e sua [licença MIT](https://github.com/mdaines/viz-js/blob/master/LICENSE)
 - [Graphviz](https://graphviz.org/)
 - [Vega](https://github.com/vega/vega)
 - [Vega-Lite](https://github.com/vega/vega-lite)

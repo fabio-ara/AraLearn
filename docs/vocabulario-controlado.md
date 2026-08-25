@@ -47,7 +47,7 @@ Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, cor
 
 #### Pesquisa
 
-Superfície e conjunto de operações para configurar estudos, inspecionar medidas e exportar dados; não certifica validade científica por si só. Em Pesquisa, uma pessoa pesquisadora configura uma comparação e exporta medidas com seus dados brutos e metadados.
+Superfície que expõe fatos de Autoria, métricas descritivas, Variantes e comparações e permite exportar fatos e metadados; não configura o protocolo de um estudo nem certifica validade científica. Em Pesquisa, a pessoa proprietária fixa recorte e revisão, compara fatos e métricas de Variantes e exporta fatos brutos e metadados para uma análise externa.
 
 **Domínio e implementação.** Pesquisa; equivalente internacional: research; símbolo: `research_surface`.
 
@@ -89,13 +89,13 @@ Unidade curricular de um módulo que organiza uma progressão didática coerente
 
 #### Microssequência didática
 
-Construto próprio do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa. Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.
+Termo operacional do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa. Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.
 
 **Domínio e implementação.** Microssequência didática; equivalente internacional: didactic microsequence; símbolo: `didactic_microsequence`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `microssequência`. Distinguir de `parágrafo`, `subtópico automático`, `Parte`.
 
-**Base.** [definição própria](vocabulario-controlado.md); [evidência acadêmica](https://doi.org/10.5209/clac.96949).
+**Base.** [definição própria](modelo-didatico.md); [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades): Delimita unidades discursivas e critérios de segmentação textual; não define a entidade persistida Microssequência didática do AraLearn.
 
 #### Unidade de estudo
 
@@ -105,7 +105,7 @@ Menor unidade persistida, ordenável, endereçável e renderizável apresentada 
 
 **Uso.** `restringir`; formas técnicas ou históricas: `card`. Distinguir de `flashcard`, `tela`, `objeto de aprendizagem`, `parágrafo`.
 
-**Base.** [definição própria](vocabulario-controlado.md); [evidência acadêmica](https://doi.org/10.1016/S0959-4752(02)00017-8).
+**Base.** [definição própria](vocabulario-controlado.md); [Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations): Discute representações externas e sua interação; não define Unidade de estudo nem persistência no AraLearn.
 
 #### Item de prática de recuperação
 
@@ -115,7 +115,7 @@ Unidade específica organizada em torno de pista e resposta para praticar recupe
 
 **Uso.** `restringir`; formas técnicas ou históricas: `flashcard`. Distinguir de `AraLearn`, `curso`, `unidade teórica`, `unidade de estudo`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1097/ACM.0000000000005968).
+**Base.** [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards).
 
 ### Discurso e organização textual
 
@@ -127,7 +127,7 @@ Forma recorrente de ação social reconhecida em uma situação comunicativa, ad
 
 **Uso.** `restringir`; formas técnicas ou históricas: `gênero de produto`. Distinguir de `gênero comunicativo sem qualificação`, `gênero textual`, `classe de produto`, `tipo de unidade`, `mídia`, `flashcard`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1080/00335638409383686); [evidência acadêmica](https://journals.aom.org/doi/10.5465/amr.1992.4279545).
+**Base.** [Miller (1984)](referencias.md#ref-miller1984genre); [Yates e Orlikowski (1992)](referencias.md#ref-yates1992genres).
 
 #### Segmento discursivo
 
@@ -137,7 +137,7 @@ Trecho delimitado segundo critério declarado, como intenção discursiva, rela�
 
 **Uso.** `restringir`; formas técnicas ou históricas: `unidade discursiva`, `segmento semântico`. Distinguir de `parágrafo`, `conceito`, `unidade de estudo`, `microssequência`.
 
-**Base.** [evidência acadêmica](https://aclanthology.org/J97-1005/); [evidência acadêmica](https://doi.org/10.5209/clac.96949).
+**Base.** [Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation); [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades).
 
 #### Parágrafo
 
@@ -147,7 +147,7 @@ Unidade gráfica e textual que contribui para a organização do texto, mas cuja
 
 **Uso.** `restringir`. Distinguir de `segmento semântico`, `unidade de estudo`, `conceito`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.5209/clac.96949).
+**Base.** [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades).
 
 ### Representações e componentes
 
@@ -159,7 +159,7 @@ Forma perceptível pela qual conteúdo ou relações são apresentados, como tex
 
 **Uso.** `restringir`; formas técnicas ou históricas: `resource`, `recurso de card`. Distinguir de `MCP Resource`, `ativo de mídia`, `formato de resposta`, `pacote de componente`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1016/j.learninstruc.2006.03.001).
+**Base.** [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft).
 
 #### Componente didático
 
@@ -229,7 +229,7 @@ Relação semântica declarada entre representações, como complementaridade, e
 
 **Uso.** `restringir`; formas técnicas ou históricas: `multimodalidade`. Distinguir de `tipo MIME`, `coocorrência`, `equivalência automática`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1016/j.learninstruc.2006.03.001); [evidência acadêmica](https://doi.org/10.1177/1470357205055928).
+**Base.** [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext).
 
 #### Transformação entre representações
 
@@ -239,7 +239,7 @@ Mapeamento documentado entre representação de origem e destino com registro do
 
 **Uso.** `restringir`; formas técnicas ou históricas: `tradutibilidade entre texto e visual`. Distinguir de `tradução sem perda`, `conversão de arquivo`, `redundância`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1177/1470357205055928); [padrão externo](https://www.w3.org/TR/prov-dm/).
+**Base.** [Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext); [padrão externo](https://www.w3.org/TR/prov-dm/).
 
 ### Processo de autoria
 
@@ -467,15 +467,15 @@ Política completa e versionada por escopo que fixa catálogo, disponibilidade, 
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
-#### Densidade conceitual operacionalizada
+#### Medida de densidade conceitual
 
-Construto de pesquisa calculado a partir de unidades semânticas anotadas e de um denominador explícito, segundo esquema, versão e procedimento de validação declarados. A pesquisa define e mede quantas unidades conceituais relevantes aparecem em determinada extensão, em vez de usar “densidade” como impressão informal.
+Medida obtida pela aplicação de uma métrica versionada a unidades semânticas anotadas e a um denominador explícito; a interpretação exige definição e validação próprias do construto pretendido. Uma investigação define o construto, anota unidades semânticas, fixa o denominador e aplica a métrica versionada; o valor calculado é uma medida, não o construto.
 
-**Domínio e implementação.** Densidade conceitual operacionalizada; equivalente internacional: operationalized conceptual density; símbolo: `conceptual_density_measure`.
+**Domínio e implementação.** Medida de densidade conceitual; equivalente internacional: conceptual density measure; símbolo: `conceptual_density_measure`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `densidade conceitual`. Distinguir de `quantidade de caracteres`, `complexidade textual`, `carga cognitiva`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1037/0033-295X.85.5.363); [evidência acadêmica](https://doi.org/10.1037/0003-066X.50.9.741).
+**Base.** [Kintsch e van Dijk (1978)](referencias.md#ref-kintsch1978model); [Messick (1995)](referencias.md#ref-messick1995validity).
 
 #### Extensão editorial
 
@@ -485,13 +485,13 @@ Contagem observável de caracteres, palavras, linhas, altura, duração ou volum
 
 **Uso.** `restringir`; formas técnicas ou históricas: `limite de caracteres`. Distinguir de `densidade conceitual`, `dificuldade`, `completude`, `qualidade`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1080/01449290410001715714).
+**Base.** [Dyson (2004)](referencias.md#ref-dyson2004layout).
 
 ### Desenho e mensuração de pesquisa
 
 #### Variante comparável
 
-Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal. A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.
+Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal. A mesma origem e o mesmo plano geram as variantes A e B, com valores diferentes do parâmetro nível de apoio e identificadores próprios.
 
 **Domínio e implementação.** Variante comparável; equivalente internacional: comparable course variant; símbolo: `course_variant_comparison`.
 
@@ -507,11 +507,11 @@ Protocolo de pesquisa que compara condições mediante fatores, atribuição, me
 
 **Uso.** `restringir`. Distinguir de `variante comparável`, `teste A/B informal`, `analytics`.
 
-**Base.** [decisão de produto](experimentos-instrucionais-parametrizados.md): A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal; [evidência acadêmica](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/): Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o esquema técnico do AraLearn garanta um experimento válido.
+**Base.** [decisão de produto](experimentos-instrucionais-parametrizados.md): A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal; [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o esquema técnico do AraLearn garanta um experimento válido.
 
 #### Condição experimental
 
-Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável. Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.
+Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada por Variante comparável. Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.
 
 **Domínio e implementação.** Condição experimental; equivalente internacional: experimental condition; símbolo: `experimental_condition`.
 
@@ -527,7 +527,7 @@ Valor obtido por instrumento ou procedimento declarado, antes de qualquer interp
 
 **Uso.** `restringir`; formas técnicas ou históricas: `medida`. Distinguir de `métrica calculada`, `indicador`, `construto`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1037/0003-066X.50.9.741).
+**Base.** [Messick (1995)](referencias.md#ref-messick1995validity).
 
 #### Métrica calculada
 
@@ -537,7 +537,7 @@ Resultado operacional regenerável de fórmula versionada aplicada a fatos ou me
 
 **Uso.** `restringir`; formas técnicas ou históricas: `métrica`, `Analytics`. Distinguir de `medida observada`, `indicador`, `atenção`, `aprendizagem`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1037/0003-066X.50.9.741); [decisão de produto](analytics-instrucionais.md).
+**Base.** [Messick (1995)](referencias.md#ref-messick1995validity); [decisão de produto](analytics-instrucionais.md).
 
 #### Indicador de pesquisa
 
@@ -593,13 +593,13 @@ Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhame
 
 #### Disponibilização pública
 
-Operação explícita que torna uma versão do curso acessível publicamente; não é estágio obrigatório da autoria ou condição para estudo privado. A pessoa proprietária decide disponibilizar publicamente um curso vivo; isso altera seu alcance, não cria um estado editorial imutável.
+Capacidade retirada que tornaria uma versão do Curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação. O AraLearn corrente não oferece disponibilização pública; o acesso depende de propriedade ou compartilhamento direto com uma pessoa autenticada.
 
 **Domínio e implementação.** Disponibilização pública; equivalente internacional: public course availability; símbolo: `public_course_release`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `publicação`. Distinguir de `materialização`, `salvamento`, `curso pronto`.
+**Uso.** `retirado`; formas técnicas ou históricas: `publicação`. Distinguir de `materialização`, `salvamento`, `curso pronto`.
 
-**Base.** [decisão de produto](arquitetura.md).
+**Base.** [decisão de produto](estado-atual-e-roadmap.md).
 
 #### Artefato de conteúdo
 
@@ -785,7 +785,7 @@ Deslocamento contínuo da viewport no eixo vertical, distinto do gesto físico q
 
 **Uso.** `restringir`; formas técnicas ou históricas: `rolar`, `scroll`. Distinguir de `deslize`, `avançar`, `feed`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1007/s11145-022-10328-9).
+**Base.** [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens).
 
 #### Gesto de deslize
 
@@ -815,7 +815,7 @@ Definição terminológica própria do AraLearn para a transformação que a tar
 
 **Uso.** `substituído`; formas técnicas ou históricas: `gesto cognitivo`, `cognitiveOperations`. Distinguir de `gesto de entrada`, `atenção`, `processo cognitivo medido`, `ação epistêmica`.
 
-**Base.** [definição própria](vocabulario-controlado.md): Fixa o rótulo e a definição operacional adotados no domínio do AraLearn; [evidência acadêmica](https://doi.org/10.1207/s15516709cog1804_1): Sustenta apenas a distinção entre ações pragmáticas e epistêmicas; não fundamenta o rótulo operação-alvo da tarefa.
+**Base.** [definição própria](vocabulario-controlado.md): Fixa o rótulo e a definição operacional adotados no domínio do AraLearn; [Kirsh e Maglio (1994)](referencias.md#ref-kirshmaglio1994epistemic): Sustenta apenas a distinção entre ações pragmáticas e epistêmicas; não fundamenta o rótulo operação-alvo da tarefa.
 
 #### Atenção
 
@@ -825,7 +825,7 @@ Família de processos seletivos internos e externos que exige operacionalizaçã
 
 **Uso.** `restringir`. Distinguir de `tempo de tela`, `foco de teclado`, `rolagem`, `engajamento`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1146/annurev.psych.093008.100427).
+**Base.** [Chun et al. (2011)](referencias.md#ref-chun2011attention).
 
 #### Engajamento
 
@@ -835,7 +835,7 @@ Construto multidimensional cuja dimensão comportamental, cognitiva ou afetiva d
 
 **Uso.** `restringir`. Distinguir de `clique`, `tempo`, `atenção`, `conclusão`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1016/j.compedu.2015.09.005).
+**Base.** [Henrie et al. (2015)](referencias.md#ref-henrie2015engagement).
 
 #### Foco do controle
 
@@ -855,7 +855,7 @@ Fluxo finito e curricularmente ordenado para percorrer unidades de estudo na Aut
 
 **Uso.** `manter`. Distinguir de `feed`, `rolagem infinita`, `evidência de compreensão`.
 
-**Base.** [hipótese de produto](sistema-visual.md); [evidência acadêmica](https://doi.org/10.1007/s11145-022-10328-9).
+**Base.** [hipótese de produto](sistema-visual.md); [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens).
 
 #### Feed social
 
@@ -865,7 +865,7 @@ Fluxo digital continuamente abastecido, usado aqui apenas como antecedente compa
 
 **Uso.** `restringir`; formas técnicas ou históricas: `feed`. Distinguir de `sequência vertical de inspeção`, `curso`, `navegação curricular`.
 
-**Base.** [evidência histórica](vocabulario-controlado.md); [evidência acadêmica](https://doi.org/10.1145/3491102.3501899).
+**Base.** [evidência histórica](vocabulario-controlado.md); [Baughan et al. (2022)](referencias.md#ref-baughan2022dissociation).
 
 #### Ação epistêmica
 
@@ -875,7 +875,7 @@ Ação externa realizada para revelar informação ou simplificar o trabalho cog
 
 **Uso.** `restringir`. Distinguir de `toque`, `swipe`, `operação-alvo da tarefa`, `qualquer interação`.
 
-**Base.** [evidência acadêmica](https://doi.org/10.1207/s15516709cog1804_1).
+**Base.** [Kirsh e Maglio (1994)](referencias.md#ref-kirshmaglio1994epistemic).
 
 ### Assistente, MCP e estado
 
@@ -911,7 +911,7 @@ Conteúdo relativamente estável de referência recuperável sob demanda, como c
 
 #### Estado de autoria do curso
 
-Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface e MCP. O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface e pelas ferramentas MCP.
+Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface, MCP e Actions. O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface, pelas ferramentas MCP e pelas operações de Actions.
 
 **Domínio e implementação.** Estado de autoria do curso; equivalente internacional: course authoring state; símbolo: `course_authoring_state`.
 
@@ -927,7 +927,7 @@ Processo em que uma consulta recupera explicitamente itens de um corpus indexado
 
 **Uso.** `restringir`; formas técnicas ou históricas: `RAG`. Distinguir de `knowledge base`, `MCP Resource`, `leitura direta de estado`, `busca simples`.
 
-**Base.** [evidência acadêmica](https://arxiv.org/abs/2005.11401).
+**Base.** [Lewis et al. (2020)](referencias.md#ref-lewis2020rag).
 
 #### Configuração do assistente
 
@@ -965,6 +965,31 @@ Sessão contextual em que um sistema de inteligência artificial ajuda a discuti
 
 **Domínio e implementação.** Assistência contextual por modelo de linguagem; equivalente internacional: contextual AI assistance for authoring (descrição técnica própria); símbolo: `course_provider_assistance`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `Assistência por API`. Distinguir de `API`, `provider`, `MCP`, `Actions`, `chat genérico`.
+**Uso.** `restringir`; formas técnicas ou históricas: `Assistência por API`. Distinguir de `API`, `provedor`, `MCP`, `Actions`, `chat genérico`.
 
-**Base.** [decisão de produto](assistencia-por-ia.md): Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions; [padrão externo](https://www.nist.gov/itl/ai-risk-management-framework): Sustenta somente a distinção geral entre sistema de inteligência artificial e os mecanismos técnicos que o disponibilizam; não prescreve o rótulo da interface.
+**Base.** [decisão de produto](assistencia-por-ia.md): Define a sessão contextual, a confirmação humana e a separação entre provedor, API, MCP e Actions; [padrão externo](https://www.nist.gov/itl/ai-risk-management-framework): Sustenta somente a distinção geral entre sistema de inteligência artificial e os mecanismos técnicos que o disponibilizam; não prescreve o rótulo da interface.
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+- [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards): Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506.
+- [Baughan et al. (2022)](referencias.md#ref-baughan2022dissociation): Amanda Baughan; Mingrui Ray Zhang; Raveena Rao; Kai Lukoff; Anastasia Schaadhardt; Lisa D. Butler; Alexis Hiniker (2022). **I Don't Even Remember What I Read: How Design Influences Dissociation on Social Media.** In: *Proceedings of the 2022 CHI Conference on Human Factors in Computing Systems*, ACM, p. 1–13.
+- [Chun et al. (2011)](referencias.md#ref-chun2011attention): Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of External and Internal Attention.** *Annual Review of Psychology*, 62(1), p. 73–101.
+- [Dyson (2004)](referencias.md#ref-dyson2004layout): Mary C. Dyson (2004). **How Physical Text Layout Affects Reading from Screen.** *Behaviour & Information Technology*, 23(6), p. 377–393.
+- [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens): Ymkje E. Haverkamp; Ivar Bråten; Natalia Latini; Ladislao Salmerón (2023). **Is It the Size, the Movement, or Both? Investigating Effects of Screen Size and Text Movement on Processing, Understanding, and Motivation When Students Read Informational Text.** *Reading and Writing*, 36(7), p. 1589–1608.
+- [Henrie et al. (2015)](referencias.md#ref-henrie2015engagement): Curtis R. Henrie; Lisa R. Halverson; Charles R. Graham (2015). **Measuring Student Engagement in Technology-mediated Learning: A Review.** *Computers & Education*, 90, p. 36–53.
+- [Kintsch e van Dijk (1978)](referencias.md#ref-kintsch1978model): Walter Kintsch; Teun A. van Dijk (1978). **Toward a Model of Text Comprehension and Production.** *Psychological Review*, 85(5), p. 363–394.
+- [Kirsh e Maglio (1994)](referencias.md#ref-kirshmaglio1994epistemic): David Kirsh; Paul Maglio (1994). **On Distinguishing Epistemic from Pragmatic Action.** *Cognitive Science*, 18(4), p. 513–549.
+- [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
+- [Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext): Radan Martinec; Andrew Salway (2005). **A System for Image–Text Relations in New (and Old) Media.** *Visual Communication*, 4(3), p. 337–371.
+- [Messick (1995)](referencias.md#ref-messick1995validity): Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749.
+- [Miller (1984)](referencias.md#ref-miller1984genre): Carolyn R. Miller (1984). **Genre as Social Action.** *Quarterly Journal of Speech*, 70(2), p. 151–167.
+- [Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation): Rebecca J. Passonneau; Diane J. Litman (1997). **Discourse Segmentation by Human and Automated Means.** *Computational Linguistics*, 23(1), p. 103–139.
+- [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades): Salvador Pons Bordería; Margarita Borreguero Zuloaga (2024). **Unidades discursivas del texto escrito: revisión crítica del estado de la cuestión y directrices para una nueva propuesta.** *Círculo de Lingüística Aplicada a la Comunicación*, 99, p. 7–21.
+- [Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations): Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156.
+- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
+- [Yates e Orlikowski (1992)](referencias.md#ref-yates1992genres): Joanne Yates; Wanda J. Orlikowski (1992). **Genres of Organizational Communication: A Structurational Approach to Studying Communication and Media.** *Academy of Management Review*, 17(2), p. 299–326.
+
+<!-- referências locais: fim -->

@@ -18,6 +18,9 @@ const CONTEXTUAL_CONTENT_EXCEPTIONS = new Set([
   "supabase/fixtures/catalog/catalog-fixtures.json",
   "supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json"
 ]);
+const CONTEXTUAL_IDENTIFIER_ALLOWLIST = new Map([
+  ["docs/origens-do-aralearn.md", new Set(["instituição particular SENAI"])]
+]);
 const REQUIRED_TECHNICAL_DOCUMENTS = Object.freeze([
   "docs/glossario-tecnico.md",
   "docs/matriz-conformidade-tecnica.md",
@@ -71,9 +74,11 @@ const REQUIRED_PRODUCT_PRESENTATION_HEADINGS = Object.freeze([
 const REQUIRED_DOCUMENTATION_ROUTES = Object.freeze([
   "comecar a usar",
   "estudar o modelo pedagogico",
+  "aprender no trabalho e formar profissionalmente",
   "estudar a engenharia",
   "estudar a autoria de cursos",
   "avaliar o artefato",
+  "avaliar um uso institucional",
   "operar e implantar"
 ]);
 const BACKSTAGE_DOCUMENTATION = Object.freeze([
@@ -380,6 +385,9 @@ function auditResearchLog({ root, errors }) {
   }
   const identifiers = new Set();
   for (const [offset, line] of lines.slice(1).entries()) {
+    if (/\\"/u.test(line)) {
+      errors.push(`${relative}:${offset + 2}: use aspas CSV duplicadas em vez de escape JSON \\"`);
+    }
     const row = parseCsvRow(line);
     if (!row || row.length !== header.length) {
       errors.push(`${relative}:${offset + 2}: linha CSV inválida`);
@@ -564,6 +572,7 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
     if (CONTEXTUAL_CONTENT_EXCEPTIONS.has(relative)) continue;
     const source = sources.get(file) || fs.readFileSync(file, "utf8");
     for (const identifier of CONTEXTUAL_IDENTIFIERS) {
+      if (CONTEXTUAL_IDENTIFIER_ALLOWLIST.get(relative)?.has(identifier.label)) continue;
       const match = identifier.pattern.exec(source);
       if (match) errors.push(`${relative}:${lineNumber(source, match.index)}: ${identifier.label}`);
     }

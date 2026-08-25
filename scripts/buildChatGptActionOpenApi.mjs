@@ -37,18 +37,34 @@ const errorSchema = {
     error: { type: "object" }
   }
 };
+function forActionDocumentation(value) {
+  if (typeof value === "string") {
+    return value
+      .replaceAll("cliente MCP conectado", "GPT conectado por Actions")
+      .replaceAll("superfície MCP", "superfície de Actions");
+  }
+  if (Array.isArray(value)) return value.map(forActionDocumentation);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, forActionDocumentation(entry)])
+    );
+  }
+  return value;
+}
 const paths = Object.fromEntries(COURSE_MCP_TOOLS.map((tool) => [
   `/${tool.name}`,
   {
     post: {
       operationId: tool.name,
       summary: tool.title,
-      description: tool.description,
+      description: forActionDocumentation(tool.description),
       "x-openai-isConsequential": tool.annotations?.destructiveHint === true,
       security: [{ AraLearnOAuth: ["openid", "email"] }],
       requestBody: {
         required: true,
-        content: { "application/json": { schema: tool.inputSchema } }
+        content: {
+          "application/json": { schema: forActionDocumentation(tool.inputSchema) }
+        }
       },
       responses: Object.fromEntries([
         ["200", {

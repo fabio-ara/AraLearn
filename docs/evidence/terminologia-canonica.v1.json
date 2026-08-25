@@ -117,7 +117,7 @@
       ],
       "productTerm": "Pesquisa",
       "technicalSymbol": "research_surface",
-      "definition": "Superfície e conjunto de operações para configurar estudos, inspecionar medidas e exportar dados; não certifica validade científica por si só.",
+      "definition": "Superfície que expõe fatos de Autoria, métricas descritivas, Variantes e comparações e permite exportar fatos e metadados; não configura o protocolo de um estudo nem certifica validade científica.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -138,11 +138,11 @@
       "interfaceTerm": "Pesquisa",
       "domainTerm": "Pesquisa",
       "englishEquivalent": "research",
-      "araLearnExample": "Em Pesquisa, uma pessoa pesquisadora configura uma comparação e exporta medidas com seus dados brutos e metadados.",
+      "araLearnExample": "Em Pesquisa, a pessoa proprietária fixa recorte e revisão, compara fatos e métricas de Variantes e exporta fatos brutos e metadados para uma análise externa.",
       "ambiguityRisk": "Sem esta delimitação, “Pesquisa” pode ser confundido com analytics, experimento, relatório, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Dados de pesquisa”: designa os registros tratados, não a superfície que configura estudos, inspeciona medidas e exporta conjuntos analisáveis.",
+        "“Dados de pesquisa”: designa os registros tratados, não a superfície que inspeciona fatos e métricas, compara Variantes e exporta conjuntos analisáveis.",
         "“Análises da autoria”: cobre apenas um subconjunto do ciclo de pesquisa e por isso não pode nomear a superfície completa."
       ],
       "status": "vigente"
@@ -273,7 +273,7 @@
       ],
       "productTerm": "Microssequência didática",
       "technicalSymbol": "didactic_microsequence",
-      "definition": "Construto próprio do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa.",
+      "definition": "Termo operacional do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -285,11 +285,12 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "docs/vocabulario-controlado.md"
+          "ref": "docs/modelo-didatico.md"
         },
         {
           "status": "evidencia-academica",
-          "ref": "https://doi.org/10.5209/clac.96949"
+          "ref": "https://doi.org/10.5209/clac.96949",
+          "supports": "Delimita unidades discursivas e critérios de segmentação textual; não define a entidade persistida Microssequência didática do AraLearn."
         }
       ],
       "notSynonyms": [
@@ -304,7 +305,7 @@
       "ambiguityRisk": "Sem esta delimitação, “Microssequência didática” pode ser confundido com parágrafo, subtópico automático, Parte, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Sequência didática breve”: torna a extensão editorial parte do nome, embora o limite seja parametrizável e não defina o construto.",
+        "“Sequência didática breve”: torna a extensão editorial parte do nome, embora ela varie conforme o conteúdo e não defina o termo operacional.",
         "“Bloco”: não expressa que há ordem interna e objetivo instrucional delimitado entre as unidades reunidas."
       ],
       "status": "vigente"
@@ -373,7 +374,8 @@
         },
         {
           "status": "evidencia-academica",
-          "ref": "https://doi.org/10.1016/S0959-4752(02)00017-8"
+          "ref": "https://doi.org/10.1016/S0959-4752(02)00017-8",
+          "supports": "Discute representações externas e sua interação; não define Unidade de estudo nem persistência no AraLearn."
         }
       ],
       "notSynonyms": [
@@ -1587,7 +1589,7 @@
       "interfaceTerm": "Variante comparável",
       "domainTerm": "Variante comparável",
       "englishEquivalent": "comparable course variant",
-      "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.",
+      "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com valores diferentes do parâmetro nível de apoio e identificadores próprios.",
       "ambiguityRisk": "Sem esta delimitação, “Variante comparável” pode ser confundido com experimento, condição experimental, versão de estado ou branch Git, produzindo promessas causais e de pesquisa que não existem no produto.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1646,7 +1648,7 @@
       ],
       "productTerm": "Condição experimental",
       "technicalSymbol": "experimental_condition",
-      "definition": "Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável.",
+      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada por Variante comparável.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -1668,7 +1670,7 @@
       "interfaceTerm": "Condição experimental",
       "domainTerm": "Condição experimental",
       "englishEquivalent": "experimental condition",
-      "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.",
+      "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.",
       "ambiguityRisk": "Sem esta delimitação, “Condição experimental” pode ser confundida com Variante comparável, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1986,8 +1988,8 @@
       ],
       "productTerm": "Disponibilização pública",
       "technicalSymbol": "public_course_release",
-      "definition": "Operação explícita que torna uma versão do curso acessível publicamente; não é estágio obrigatório da autoria ou condição para estudo privado.",
-      "decision": "restringir",
+      "definition": "Capacidade retirada que tornaria uma versão do Curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação.",
+      "decision": "remover",
       "layers": [
         "interface",
         "domain",
@@ -1997,7 +1999,7 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "docs/arquitetura.md"
+          "ref": "docs/estado-atual-e-roadmap.md"
         }
       ],
       "notSynonyms": [
@@ -2008,13 +2010,16 @@
       "interfaceTerm": "Disponibilização pública",
       "domainTerm": "Disponibilização pública",
       "englishEquivalent": "public course availability",
-      "araLearnExample": "A pessoa proprietária decide disponibilizar publicamente um curso vivo; isso altera seu alcance, não cria um estado editorial imutável.",
+      "araLearnExample": "O AraLearn corrente não oferece disponibilização pública; o acesso depende de propriedade ou compartilhamento direto com uma pessoa autenticada.",
       "ambiguityRisk": "Sem esta delimitação, “Disponibilização pública” pode ser confundido com materialização, salvamento, curso pronto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Publicação”: foi examinada, mas pode sugerir estágio obrigatório ou workflow editorial; Disponibilização pública nomeia a mudança explícita de acesso."
+        "“Publicação”: além de sugerir um estágio editorial, nomeava uma capacidade retirada e não deve descrever salvamento ou compartilhamento privado."
       ],
-      "status": "vigente"
+      "forbiddenSymbols": [
+        "public_course_release"
+      ],
+      "status": "concluido"
     },
     {
       "id": "content-artifact",
@@ -3072,7 +3077,7 @@
       ],
       "productTerm": "Estado de autoria do curso",
       "technicalSymbol": "course_authoring_state",
-      "definition": "Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface e MCP.",
+      "definition": "Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface, MCP e Actions.",
       "decision": "manter",
       "layers": [
         "interface",
@@ -3097,11 +3102,11 @@
       "interfaceTerm": "Estado de autoria do curso",
       "domainTerm": "Estado de autoria do curso",
       "englishEquivalent": "course authoring state",
-      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface e pelas ferramentas MCP.",
+      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface, pelas ferramentas MCP e pelas operações de Actions.",
       "ambiguityRisk": "Sem esta delimitação, “Estado de autoria do curso” pode ser confundido com workspace, histórico de chat, knowledge base, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Workspace”: nomeia um contêiner abstrato e esconde que o objeto compartilhado entre interface e MCP é o estado concreto do curso em autoria."
+        "“Workspace”: nomeia um contêiner abstrato e esconde que o objeto compartilhado entre interface, MCP e Actions é o estado concreto do curso em autoria."
       ],
       "status": "vigente"
     },
@@ -3124,7 +3129,7 @@
       "sources": [
         {
           "status": "evidencia-academica",
-          "ref": "https://arxiv.org/abs/2005.11401"
+          "ref": "docs/referencias.md#ref-lewis2020rag"
         }
       ],
       "notSynonyms": [
@@ -3281,7 +3286,7 @@
         {
           "status": "decisao-produto",
           "ref": "docs/assistencia-por-ia.md",
-          "supports": "Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions"
+          "supports": "Define a sessão contextual, a confirmação humana e a separação entre provedor, API, MCP e Actions"
         },
         {
           "status": "padrao-externo",
@@ -3291,7 +3296,7 @@
       ],
       "notSynonyms": [
         "API",
-        "provider",
+        "provedor",
         "MCP",
         "Actions",
         "chat genérico"
@@ -3440,9 +3445,9 @@
       "currentTerms": [
         "densidade conceitual"
       ],
-      "productTerm": "Densidade conceitual operacionalizada",
+      "productTerm": "Medida de densidade conceitual",
       "technicalSymbol": "conceptual_density_measure",
-      "definition": "Construto de pesquisa calculado a partir de unidades semânticas anotadas e de um denominador explícito, segundo esquema, versão e procedimento de validação declarados.",
+      "definition": "Medida obtida pela aplicação de uma métrica versionada a unidades semânticas anotadas e a um denominador explícito; a interpretação exige definição e validação próprias do construto pretendido.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -3465,14 +3470,14 @@
         "complexidade textual",
         "carga cognitiva"
       ],
-      "interfaceTerm": "Densidade conceitual operacionalizada",
-      "domainTerm": "Densidade conceitual operacionalizada",
-      "englishEquivalent": "operationalized conceptual density",
-      "araLearnExample": "A pesquisa define e mede quantas unidades conceituais relevantes aparecem em determinada extensão, em vez de usar “densidade” como impressão informal.",
-      "ambiguityRisk": "Sem esta delimitação, “Densidade conceitual operacionalizada” pode ser confundido com quantidade de caracteres, complexidade textual, carga cognitiva, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "interfaceTerm": "Medida de densidade conceitual",
+      "domainTerm": "Medida de densidade conceitual",
+      "englishEquivalent": "conceptual density measure",
+      "araLearnExample": "Uma investigação define o construto, anota unidades semânticas, fixa o denominador e aplica a métrica versionada; o valor calculado é uma medida, não o construto.",
+      "ambiguityRisk": "Sem esta delimitação, “Medida de densidade conceitual” pode ser confundida com o próprio construto, quantidade de caracteres, complexidade textual ou carga cognitiva, produzindo interpretações incompatíveis.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Contagem de conceitos”: fornece apenas o numerador; Densidade conceitual operacionalizada exige unidade semântica, denominador, esquema e validação declarados."
+        "“Contagem de conceitos”: fornece apenas o numerador; a medida de densidade exige unidade semântica, denominador, esquema, versão e argumento de validação declarados."
       ],
       "status": "vigente"
     },

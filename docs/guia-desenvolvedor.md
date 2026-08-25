@@ -12,7 +12,8 @@ Functions.
 
 ## Preparação
 
-Instale Node.js 22 e restaure as dependências fixadas:
+Instale [Node.js 22](https://nodejs.org/en/download) e restaure as dependências
+fixadas:
 
 ```powershell
 npm.cmd ci
@@ -28,7 +29,9 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
 
 Somente a URL e a chave pública chegam ao navegador. Para trabalhar com o banco
-local, Docker e Supabase CLI são necessários:
+local, [Docker](https://docs.docker.com/desktop/) e
+[Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
+são necessários:
 
 ```powershell
 npx.cmd --yes supabase@2.115.0 start
@@ -49,9 +52,10 @@ comandos locais e retomar a sincronização. Uma alteração autoral passa por
 `CourseApiClient`, pela Edge Function `aralearn-course-api`, pelo roteador comum
 e por uma função SQL com revisão esperada.
 
-Uma ferramenta MCP entra por `aralearn-authoring-mcp`, mas converge no mesmo
-`courseRouter`, `courseToolExecutor` e `courseSupabaseAdapter`. Corrigir apenas
-um dos transportes costuma deixar o contrato divergente.
+Uma ferramenta MCP entra por `aralearn-authoring-mcp`; uma operação de Actions,
+por `aralearn-authoring-action`. As duas convergem no mesmo `courseRouter`,
+`courseToolExecutor` e `courseSupabaseAdapter`. Corrigir apenas um dos
+transportes costuma deixar o contrato divergente.
 
 ## Mapa do repositório
 
@@ -66,9 +70,10 @@ um dos transportes costuma deixar o contrato divergente.
 | `src/resources/` | catálogo, contratos e pacotes didáticos |
 | `src/render/` | renderização dos pacotes |
 | `supabase/migrations/` | esquema, funções, privilégios e políticas versionados |
-| `supabase/functions/_shared/aralearn-authoring/` | contrato comum da API e do MCP |
+| `supabase/functions/_shared/aralearn-authoring/` | contrato comum da API, do MCP e de Actions |
 | `supabase/functions/aralearn-course-api/` | entrada HTTP da Autoria no navegador |
 | `supabase/functions/aralearn-authoring-mcp/` | servidor MCP e recurso visual |
+| `supabase/functions/aralearn-authoring-action/` | Actions/OpenAPI e OAuth do GPT personalizado |
 | `tests/runtime/` | domínio e integração sem navegador completo |
 | `tests/e2e/` | fluxos reais de Estudo e Autoria no Chromium |
 | `scripts/` | geração, auditoria, validação e implantação |
@@ -104,13 +109,13 @@ Localize primeiro a autoridade do dado e percorra o caminho completo:
 1. defina ou ajuste a regra pura em `src/domain/`;
 2. mantenha a forma remota no cliente, protocolo e adaptador;
 3. altere a migração quando o contrato relacional mudar;
-4. exponha a operação pelo roteador comum da API e do MCP;
+4. exponha a operação pelo roteador comum da API, do MCP e de Actions;
 5. adapte o controlador e a projeção da interface;
 6. acrescente o menor teste que reproduz o risco em cada fronteira afetada;
 7. sincronize a cópia usada pela Edge Function;
 8. valide o fluxo no navegador e no Supabase local quando houver persistência.
 
-Uma nova área visual não justifica uma nova ferramenta MCP, tabela ou serviço.
+Uma nova área visual não justifica uma nova ferramenta MCP, Action, tabela ou serviço.
 Primeiro verifique se a capacidade cabe como visão ou operação das autoridades
 existentes.
 
@@ -188,7 +193,7 @@ quanto política de segurança por linha.
 
 Avance `supabase/runtime-manifest.json` somente depois que o esquema completo e
 os testes correspondentes existirem. O manifesto corrente aponta para
-`20260824150000` e precisa coincidir com a revisão exposta pelo backend
+`20260824174101` e precisa coincidir com a revisão exposta pelo backend
 hospedado.
 
 ## Testes focais

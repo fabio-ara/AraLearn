@@ -170,9 +170,10 @@ Fonte ou Âncora abre **Fontes**; a Unidade abre **Conteúdo**. Combinações
 incompatíveis são recusadas para evitar que um endereço aparente apontar para
 outro contexto.
 
-## Uso pelo MCP
+## Uso por MCP e Actions
 
-O ciclo utiliza duas das cinco ferramentas públicas:
+O ciclo utiliza duas das cinco operações públicas, apresentadas como ferramentas
+no MCP e como caminhos HTTP em Actions:
 
 - `lerCurso` com `view: "audit_cycle"` lê contexto, achados, rodadas e detalhe;
 - `alterarCurso` com `operation: "update_audit_cycle"` executa os comandos do
@@ -188,8 +189,8 @@ Os comandos são:
 - `verify_finding`;
 - `rollback_authoring_correction`.
 
-No MCP, aplicar e reverter exigem `auditCommand.confirmed: true` depois de
-confirmação humana. Os demais comandos recusam esse campo.
+Nos dois canais, aplicar e reverter exigem `auditCommand.confirmed: true` depois
+de confirmação humana. Os demais comandos recusam esse campo.
 
 ## Conexão, concorrência e limites
 

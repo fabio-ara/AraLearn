@@ -4,8 +4,8 @@ A área **Pesquisa** permite examinar fatos registrados durante a criação de u
 Curso. Ela apresenta o processo de planejamento, produção, revisão e comparação
 sem atribuir nota ao Curso, à pessoa autora ou a quem estuda.
 
-Gráfico, tabela, lista, exportação e MCP partem das mesmas linhas e da mesma
-revisão. Cada métrica informa pergunta, definição, unidade, denominador,
+Gráfico, tabela, lista, exportação, MCP e Actions partem das mesmas linhas e da
+mesma revisão. Cada métrica informa pergunta, definição, unidade, denominador,
 tratamento dos dados ausentes e inferências indevidas.
 
 ## Como consultar
@@ -105,9 +105,10 @@ repetido, fato duplicado ou página de outro recorte.
 A exportação direta percorre as páginas sob a mesma consulta e revisão, até cem
 páginas e 8 MiB por arquivo. Acima desse volume, nenhum arquivo parcial é salvo:
 a área Pesquisa orienta restringir o período, o conjunto ou o canal. Esse limite
-mantém o salvamento previsível no navegador e no aplicativo Android. Não há
-volume observado que justifique criar arquivos temporários, retenção e limpeza
-no Storage apenas para exportações maiores.
+impede que o AraLearn tente manter ou salvar um arquivo acima de 8 MiB no
+navegador e no Android. Exportações maiores por arquivos temporários no Storage
+não fazem parte do contrato corrente. Uma investigação cujo volume exceda esse
+limite precisa restringir e validar o recorte antes da exportação.
 
 O JSON usa o contrato `aralearn.course-authoring-analytics-export.v1` e
 conserva:
@@ -127,9 +128,9 @@ as chaves sem criar colunas instáveis.
 
 ## Consulta pela conversa
 
-`lerCurso` com `view: "research"` devolve o mesmo contrato da área Pesquisa.
-O cliente pode filtrar, explicar a métrica, apresentar a tabela e abrir os
-objetos relacionados sem criar outra base de dados.
+`lerCurso` com `view: "research"` devolve o mesmo contrato da área Pesquisa por
+MCP ou Actions. O cliente pode filtrar, explicar a métrica, apresentar a tabela
+e abrir os objetos relacionados sem criar outra base de dados.
 
 Quando o cliente oferece a extensão visual MCP Apps, o resultado pode aparecer
 num componente com indicadores agregados, gráfico, tabela equivalente, limites

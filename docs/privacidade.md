@@ -25,7 +25,7 @@ Quatro tipos de afirmação precisam permanecer distintos:
 | questão jurídica ou ética aberta | controlador, operadores, bases, transferências, protocolo de pesquisa, população, menores, retenções institucionais e pareceres dependem da implantação e de decisão humana competente |
 
 Consentimento não é tratado como base universal. Conta necessária ao serviço,
-assistência por provider, fatos operacionais e participação voluntária em
+assistência por provedor, fatos operacionais e participação voluntária em
 pesquisa são tratamentos diferentes.
 
 ## Conceitos essenciais
@@ -87,14 +87,14 @@ continua aberto quando indicado.
 | Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
 | --- | --- | --- | --- | --- | --- |
 | conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem dataset de pesquisa |
-| perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não no MCP público |
+| perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não em MCP nem Actions |
 | Curso e autoria | conteúdo, plano, revisões, eventos e recibos para criar e investigar o artefato | pode conter dado pessoal em texto livre; UUIDs ligados à conta e horários correlacionáveis são dados pessoais e não se tornam pseudônimos apenas pelo formato | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos de mudança expiram em 14 dias | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
-| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador ou MCP |
+| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador, MCP ou Actions |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
 | Observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada redige de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
 | Analytics da Autoria | IDs, hashes, canal, origem, estado, contagens e horários para descrever o processo | pessoal/pseudonimizado enquanto houver correlação; não é anonimizado por retirar o nome | PostgreSQL; proprietário do Curso | prazo institucional ainda aberto | exportável com aviso; não mede aprendizagem nem constitui dataset anônimo |
-| PDFs e avatares | documentos de Fonte e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | PDFs não entram nos exports correntes nem são enviados ao provider por padrão |
-| assistência por provider | pedido, texto editável selecionado, título, papel, tópicos e até oito turnos para produzir uma sugestão focal | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provider escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provider | não é dataset de pesquisa; envio exige aviso por chamada |
+| PDFs e avatares | documentos de Fonte e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | PDFs não entram nas exportações correntes nem são enviados ao provedor por padrão |
+| assistência por provedor | pedido, texto editável selecionado, título, papel, tópicos e até oito turnos para produzir uma sugestão focal | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provedor escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provedor | não é dataset de pesquisa; envio exige aviso por chamada |
 | pesquisa | protocolo, pseudônimo específico, medidas e eventual tabela de reidentificação | pessoal pseudonimizado enquanto reidentificável; pode tornar-se sensível conforme a pergunta | plano de dados segregado e acesso definido pelo protocolo, ainda não implantado como infraestrutura genérica | conforme protocolo, retirada e obrigação institucional | exportação somente nos termos do protocolo; resultados publicados exigem avaliação de reidentificação |
 | registros e limpeza | contagens de tentativas, datas de expiração e contagens de remoção para segurança e ciclo de vida | ator é identificador pessoal da conta; horários e contagens permanecem correlacionáveis; nenhuma coluna de e-mail integra o contador de concessões | tabelas privadas e rotina administrativa | janela de concessão, 30 dias; demais prazos por classe | contagens operacionais não integram export comum nem autorizam pesquisa |
 
@@ -193,7 +193,7 @@ revisões exatos. O navegador envia o PDF ao endpoint autenticado do Storage com
 a sessão corrente; a política também exige que o `session_id` ainda exista e
 não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
 mesmo bloqueio usado pela exclusão da conta. A inserção consome a intenção. Não
-é emitida URL assinada de upload. Uma credencial temporária já emitida permanece
+é emitida URL assinada de upload. Uma URL de download já emitida permanece
 independente da sessão somente até expirar; o inventário registra essa janela.
 
 O resumo criptográfico e o cabeçalho só podem ser confirmados depois que os
@@ -303,7 +303,7 @@ possível, Analytics e suas exportações devem ser tratados como dados pessoais
 pseudonimizados. A área **Pesquisa** é uma projeção operacional do proprietário,
 não um plano de dados de participantes autorizado por protocolo.
 
-## Autoria conversacional
+## Integrações conversacionais
 
 Um protocolo aberto conecta assistentes às ferramentas de Autoria: o **Model
 Context Protocol (MCP)**. Essa integração recebe apenas Cursos próprios da
@@ -317,22 +317,36 @@ avatar, lista de Pessoas, concessão e revogação permanecem operações exclus
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-O OAuth anuncia somente o escopo `offline_access`; código e
-refresh token não produzem `id_token`. O access token do MCP usa aliases
+Um GPT personalizado pode chamar as mesmas cinco operações por Actions e
+OpenAPI. Esse canal recebe uma credencial de acesso opaca, que identifica a
+autorização sem expor seu conteúdo ao cliente, e uma credencial de renovação
+rotativa. O servidor guarda somente resumos criptográficos dessas credenciais e
+resolve a conta a cada chamada. Os nomes técnicos dessas peças são *access token*
+e *refresh token*. O cliente confidencial ligado ao GPT pede os escopos
+`openid email`. Credencial, cliente e consentimento de Actions não funcionam no
+MCP, e a credencial do MCP não funciona em Actions.
+
+O MCP possui seu próprio fluxo OAuth e anuncia somente o escopo
+`offline_access`. O código de autorização e o *refresh token* não produzem
+`id_token`. Sua credencial de acesso é um JWT que usa identificadores substitutos
 pareados e distintos para pessoa e sessão, sem UUID da pessoa, e-mail ou perfil,
-e não funciona como sessão do aplicativo. O JWT conserva
-`aralearn_session_id`, o UUID real da sessão de origem necessário à RPC. Esse
-identificador é correlacionável; a credencial inteira continua sendo pessoal ou
-pseudonimizada e não é anônima. A Edge Function valida a assinatura
-ES256 com chave EC P-256 pela JWKS do Auth. Em seguida, uma RPC exclusiva do papel
-de serviço resolve a pessoa e confirma que sessão de origem, cliente e
-consentimento ainda estão ativos. O bearer é recusado diretamente pelo GoTrue,
-pela API de dados e pelo Storage.
+e não funciona como sessão do aplicativo. Ela conserva
+`aralearn_session_id`, o UUID real da sessão de origem necessário à chamada
+interna ao banco. Esse identificador permite correlação; por isso, a credencial
+inteira continua sendo pessoal ou pseudonimizada, não anônima.
 
-Consentimentos e sessões OAuth encerrados não renovam acesso. Um token já
-emitido permanece criptograficamente válido somente até `exp`.
+Antes de aceitar a chamada, a Edge Function obtém no serviço de autenticação o
+conjunto público de chaves, chamado JWKS, e valida a assinatura ES256 produzida
+com uma chave de curva elíptica P-256. Depois, uma função de banco exclusiva do
+papel de serviço resolve a pessoa e confirma que sessão de origem, cliente e
+consentimento continuam ativos. A mesma credencial é recusada quando alguém
+tenta usá-la diretamente no serviço de autenticação (GoTrue), na API de dados
+ou no Storage.
 
-A caixa de entrada e a leitura por alvo de Observações usam uma projeção
+Consentimentos e sessões OAuth do MCP encerrados não renovam acesso. Um token
+já emitido permanece criptograficamente válido somente até `exp`.
+
+A caixa de entrada e a leitura por alvo de Observações nos dois canais usam uma projeção
 fechada com síntese, estado, origem, papel, versões e identificador operacional.
 Ela omite texto integral, `contributor.ref`, rótulo protegido da pessoa,
 caminhos, links, IDs internos do alvo, horários e texto da resposta autoral. O
@@ -341,10 +355,10 @@ detalhe e o contexto de auditoria com Observações selecionadas só incluem
 registra o destinatário e a finalidade desse envio; as demais omissões continuam
 valendo.
 
-Fontes também usam uma projeção própria no MCP. Ela preserva as referências de
+Fontes também usam uma projeção própria nos clientes conectados. Ela preserva as referências de
 domínio necessárias à autoria, mas omite UUID de ator, identidade de atribuição,
 resumo interno do alvo, Curso de origem do objeto e caminho do Storage. Preparar
-o envio de PDF exige a sessão da aplicação e não integra a ferramenta MCP. Para
+o envio de PDF exige a sessão da aplicação e não integra MCP nem Actions. Para
 abrir um anexo, o cliente precisa declarar
 `includeAttachmentDownloadUrl: true`; somente então recebe a URL assinada, com
 `dataDisclosure` que a identifica como credencial temporária de 60 segundos.
@@ -353,19 +367,20 @@ na revisão autoral: título, autoria declarada, citação, endereço, identific
 edição ou versão, trecho de verificação e, quando presentes, `exact`, `prefix`,
 `suffix` ou `fragment` dos seletores de Âncora. O painel de Fontes do Estudo já
 pode mostrar título, citação, edição ou versão, endereço e o recorte representado
-pelo seletor. O detalhe solicitado pelo cliente MCP também pode receber os
+pelo seletor. O detalhe solicitado pelo cliente conectado também pode receber os
 demais campos autorais enumerados; o trecho de verificação não é exibido no
-Estudo.
+Estudo. Em Actions, o destinatário declarado é o GPT conectado; no MCP, é o
+cliente MCP conectado.
 
 Na assistência complementar de produção, o pedido sai do dispositivo somente
 para um relay em `127.0.0.1`, `localhost` ou `10.0.2.2`, na porta 4183. A chave
-do provider fica nesse relay e não entra no AraLearn. O aviso anterior à chamada
+do provedor fica nesse relay e não entra no AraLearn. O aviso anterior à chamada
 enumera o conteúdo: pedido, valores textuais editáveis, título, papel, tópicos e
 mensagens anteriores daquela conversa. PDFs, Fontes, outras Unidades,
 `targetId`, `studyUnitId` e o restante do Curso não são enviados.
 
 O envelope é montado por lista fechada, e campos extras presentes na Unidade
-não são serializados. Erros públicos do provider preservam código e orientação
+não são serializados. Erros públicos do provedor preservam código e orientação
 úteis, mas não refletem segredo, e-mail, cabeçalho de autorização ou corpo bruto.
 As Edge Functions não registram corpo, cabeçalhos ou exceções brutas no console;
 workflows também recusam rastreamento e impressão direta de credenciais. O texto
@@ -377,7 +392,7 @@ como rede local ao pedir acesso. Essa informação de transporte não amplia o
 conteúdo enviado nem concede ao AraLearn acesso à credencial do relay.
 
 O aviso também informa que esses valores permanecem apenas na memória efêmera do
-AraLearn, mas podem ser encaminhados pelo relay e retidos pelo provider conforme
+AraLearn, mas podem ser encaminhados pelo relay e retidos pelo provedor conforme
 os termos do serviço escolhido. A autorização ocorre por chamada, depois de a
 pessoa conferir o conteúdo enumerado.
 
@@ -388,13 +403,13 @@ política de conteúdo misto nem mover a chave para o AraLearn.
 Um runtime explicitamente marcado como desenvolvimento pode permitir chamadas
 diretas a OpenAI, Gemini ou DeepSeek. Ele alerta que o navegador não protege
 chaves duradouras, orienta usar somente credencial descartável de teste, fixa cada
-provider à sua origem e envia a chave apenas no cabeçalho. A credencial direta
+provedor à sua origem e envia a chave apenas no cabeçalho. A credencial direta
 permanece em memória até sair, recarregar ou encerrar a sessão; não entra no
 IndexedDB, no PostgreSQL, no Storage nem nos artefatos. Esse modo não é indicado
 como configuração de produção ou percurso para pessoas leigas.
 
 Ao sair da conta, o aplicativo destrói a superfície ativa e cancela a chamada ao
-provider antes de apagar a sessão e fechar os armazenamentos locais. Uma resposta
+provedor antes de apagar a sessão e fechar os armazenamentos locais. Uma resposta
 tardia não pode executar callback, reabrir a sobreposição nem restaurar a
 configuração ou a credencial em memória. O cenário integrado `SIGNED_OUT`
 confirma aborto, ausência de callback tardio, remoção da sobreposição e da
@@ -422,7 +437,7 @@ Durante a primeira gravação de uma cópia pessoal, o IndexedDB pode conservar 
 Curso e a seleção de origem, as versões esperadas, a Unidade final, a origem da
 edição e um identificador de pedido. Esse recorte existe para repetição
 idempotente após falha ou reinício e é removido na confirmação ou no descarte.
-Ele não inclui conversa, endpoint, modelo ou credencial do provider.
+Ele não inclui conversa, endpoint, modelo ou credencial do provedor.
 
 Rodadas, achados, correções, comparações e fatos de Pesquisa permanecem no
 servidor. Limpar os dados do aplicativo pode apagar mudanças ainda não
@@ -540,7 +555,7 @@ de Analytics do produto não autoriza silenciosamente esse uso.
 
 Uma futura tabela que relacione participante e identidade real deve ficar
 segregada, com pseudônimo diferente por protocolo, acesso restrito, retenção
-própria e exclusão de Git, exports comuns e providers de IA. Enquanto essa
+própria e exclusão de Git, exportações comuns e provedores de IA. Enquanto essa
 relação existir, `participant_id` continua sendo dado pessoal pseudonimizado.
 
 ## Responsabilidades da instituição

@@ -4,8 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
-test("o contrato final encerra pesquisa, arquitetura e modos sem alternativa pendente", async () => {
+test("o contrato histórico registra as decisões finais da rodada sem alternativa pendente", async () => {
   const contract = await read("ux-atlas/FINAL-UX-CONTRACT.md");
+  assert.match(contract, /contrato histórico da rodada final de experiência/iu);
+  assert.match(contract, /não é a fonte do\s+comportamento corrente/iu);
   for (const fragment of [
     "A pesquisa respondeu às seis perguntas",
     "Assistência por IA",
@@ -26,10 +28,11 @@ test("o contrato final encerra pesquisa, arquitetura e modos sem alternativa pen
   assert.doesNotMatch(contract, /alternativas? (?:em aberto|pendentes?)/iu);
 });
 
-test("o Atlas anterior está explicitamente subordinado ao contrato final", async () => {
+test("o Atlas histórico está explicitamente subordinado às autoridades correntes", async () => {
   const index = await read("ux-atlas/README.md");
-  assert.match(index, /contrato normativo[^\n]*refatoração corrente/iu);
-  assert.match(index, /históric[oa]s?|explorações|exploratóri[oa]s?/iu);
-  assert.match(index, /prevalece o\s+contrato final/iu);
+  assert.match(index, /registra a rodada de desenho que antecedeu a experiência\s+corrente/iu);
+  assert.match(index, /não é documentação normativa do produto atual/iu);
+  assert.match(index, /produto corrente[\s\S]*prevalecem/iu);
+  assert.match(index, /conserva o contrato final\s+daquela rodada/iu);
   assert.doesNotMatch(index, /matriz de cobertura e o baseline de Estudo são normativos/iu);
 });

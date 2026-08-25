@@ -22,21 +22,24 @@ significado, autoridade, versões e invariantes. Um **envelope** transporta o
 conteúdo e seus metadados. JSON válido só se torna mudança de Curso depois de
 passar por essas regras.
 
-## Uma autoridade, duas formas de interação
+## Uma autoridade, três entradas de autoria
 
-A interface visual e o MCP operam o mesmo Curso. A interface oferece campos e
-controles compreensíveis; no MCP, a pessoa descreve sua intenção e o cliente
-escolhe as ferramentas. As duas formas chegam aos mesmos casos de uso, às
-mesmas funções do banco e às mesmas regras de autorização.
+A interface visual, um cliente MCP e um GPT conectado por Actions operam o
+mesmo Curso. A interface oferece campos e controles compreensíveis. Nos canais
+conversacionais, a pessoa descreve sua intenção e o cliente escolhe uma das
+cinco operações tipadas. As três entradas chegam aos mesmos casos de uso, às
+mesmas funções do banco e às mesmas regras de autorização, depois de resolverem
+identidades por mecanismos próprios.
 
-O canal técnico `application|mcp` identifica por onde uma operação autoral
-chegou. Esse dado não altera a propriedade do Curso nem o resultado da
-validação.
+O canal técnico `application|mcp|actions` identifica por onde uma operação
+autoral chegou. Esse dado aparece no histórico de materialização, mas não
+altera a propriedade do Curso nem o resultado da validação.
 
-## Superfície do MCP
+## Superfícies conversacionais
 
-Cinco ferramentas públicas agrupam capacidades
-relacionadas, sem criar uma ferramenta para cada objeto:
+MCP expõe cinco ferramentas; Actions expõe cinco operações HTTP descritas por
+OpenAPI. Nomes, argumentos e executor são compartilhados, sem criar uma entrada
+para cada objeto:
 
 | Ferramenta | Responsabilidade |
 | --- | --- |
@@ -48,7 +51,7 @@ relacionadas, sem criar uma ferramenta para cada objeto:
 
 Perfil, avatar e acesso direto são operações exclusivas da aplicação
 autenticada. O e-mail-alvo de uma concessão não integra nenhum prompt ou
-payload MCP.
+payload de MCP ou Actions.
 
 `alterarCurso` aceita estas operações públicas:
 
@@ -82,7 +85,7 @@ não é aceita em comandos que apenas registram ou leem evidência.
 - `variant_comparisons` e `variant_comparison` para variantes;
 - `research` para fatos, métricas e destinos da Pesquisa.
 
-O cliente escolhe a menor vista que sustenta a decisão. Conteúdo adjacente pode
+O cliente MCP ou o GPT escolhe a menor vista que sustenta a decisão. Conteúdo adjacente pode
 ser útil para coerência, mas a operação de escrita continua limitada aos alvos
 declarados.
 
@@ -196,7 +199,7 @@ limitação seja apresentada à pessoa.
 ## Observações e auditoria
 
 Uma Observação preserva texto, alvo, revisão observada, origem, canal,
-classificação e estado. A leitura por MCP pode mostrar caixa de entrada, alvo ou
+classificação e estado. A leitura conversacional pode mostrar caixa de entrada, alvo ou
 detalhe. Criar uma Observação pela conversa exige alvo, síntese breve e
 confirmação humana.
 
@@ -204,7 +207,7 @@ Caixa de entrada e alvo usam uma projeção fechada sem texto integral,
 `contributor.ref`, rótulo protegido, caminhos, links, horários exatos ou IDs internos. O detalhe
 e o contexto de auditoria com Observações selecionadas exigem a declaração
 `includeObservationText: true`; a resposta registra que o texto foi enviado ao
-cliente MCP conectado e continua omitindo as referências pessoais e internas.
+cliente conectado e continua omitindo as referências pessoais e internas.
 
 O ciclo de auditoria deriva o contexto de uma Unidade e registra uma rodada
 imutável. Achado, proposta de correção, aplicação, verificação e reversão são
@@ -220,7 +223,7 @@ parâmetros, políticas de componentes, Partes, Unidades, componentes e
 proveniência. Desvincular uma variante preserva o Curso.
 
 A vista `research` projeta sete conjuntos de fatos operacionais. Métricas,
-gráfico, tabela, exportação e MCP derivam das mesmas linhas e da mesma revisão.
+gráfico, tabela, exportação, MCP e Actions derivam das mesmas linhas e da mesma revisão.
 Os filtros e o instante de corte integram o cursor, impedindo que páginas de
 recortes diferentes sejam misturadas.
 
@@ -269,3 +272,4 @@ declaradas. Avaliar verdade, adequação pedagógica ou eficácia exige evidênc
 método próprios. Consulte [Desenho instrucional
 parametrizado](desenho-instrucional-parametrizado.md) para os parâmetros e
 [Autoria por MCP](autoria-mcp.md) para os esquemas completos.
+O canal HTTP está em [GPT personalizado com Actions](autoria-actions.md).

@@ -21,11 +21,17 @@ Cada família possui uma autoridade definida:
 | auditoria, correções, variantes e Pesquisa | PostgreSQL | estado transitório de interface |
 | posição atual de navegação | dispositivo | sincronização apenas quando o contrato pessoal exigir |
 
-O IndexedDB é uma réplica transacional e limitada. Ele não é uma segunda
-autoridade relacional nem uma fila universal de mutações.
+O [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) é
+um banco de objetos transacional oferecido pelo navegador. No AraLearn, ele
+mantém uma réplica limitada; não é uma segunda autoridade relacional nem uma
+fila universal de mutações.
 
 ## Modelo relacional do Curso
 
+O [PostgreSQL](https://www.postgresql.org/docs/current/) conserva relações que
+precisam permanecer coerentes mesmo quando uma operação alcança várias tabelas.
+Uma [transação](https://www.postgresql.org/docs/current/tutorial-transactions.html)
+confirma todas as mudanças previstas ou as desfaz em conjunto. Nesse modelo,
 `public.courses` contém identidade, título, objetivo, proprietário, revisão e
 metadados de ciclo de vida. A composição ordenada vive em
 `private.course_entities`, com tipos e pais restritos pela hierarquia:
@@ -98,7 +104,7 @@ preserva o fato legado sem permitir que clientes criem uma nova
 `legacy_reference`.
 
 Depois do recibo 2xx e antes de invalidar as projeções anteriores, o controlador
-persiste no IndexedDB do usuário o snapshot focal confirmado e promove a Unidade,
+persiste no IndexedDB do usuário o instantâneo focal confirmado e promove a Unidade,
 a revisão e a versão no documento `course.v1`. Essa promoção preserva progresso,
 Observações e posição. Só então lista, composição anterior, plano, desenho,
 Fontes, a hierarquia e as páginas de Conteúdo e de entidades são invalidados e
@@ -106,11 +112,12 @@ recompostos. Estudo e Conteúdo podem ler esse estado sem rede mesmo quando a re
 falha; a interface o apresenta como confirmado, com sincronização pendente, e
 não simula uma segunda gravação.
 
-Uma releitura canônica na mesma revisão substitui o snapshot confirmado e limpa
+Uma releitura canônica na mesma revisão substitui o instantâneo confirmado e limpa
 o estado transitório. Uma revisão superior o elimina como superado. Saída local
 ou remota, revogação, limpeza do Curso ou outra perda de autoridade purgam a
 projeção. Se uma mudança externa chegar antes da próxima edição, a atualização rebasa revisão
-e versão esperadas para que o CAS não use a fotografia anterior, sem perder a
+e versão esperadas para que a comparação e troca (`compare-and-swap`, CAS) use
+o estado corrente, sem perder a
 seleção, o progresso nem as Observações.
 
 ### Primeira gravação de uma cópia pessoal
@@ -121,7 +128,7 @@ Estudo, o repositório conserva no IndexedDB o envelope necessário para criar s
 cópia pessoal: Curso de origem, seleção exata, revisões esperadas, Unidade final,
 origem `manual` ou `provider_assistance` e identificador do pedido. Só pode haver
 uma intenção pendente dessa família por vez. Conversa, endpoint, modelo e
-credencial do provider ficam fora.
+credencial do provedor ficam fora.
 
 O servidor verifica primeiro se houve mudança material. Sem mudança, devolve um
 recibo sem criar Curso, plano, entidades ou relação. Havendo mudança, uma única
@@ -184,6 +191,22 @@ solicita normalmente 12 itens por página, admite até 24 e limita a 36 o númer
 de Unidades simultâneas no documento visual. A paginação remota continua sendo
 a fonte do restante.
 
+### Shell offline e dados do Curso
+
+O cache do service worker e o IndexedDB resolvem interrupções diferentes. O
+[service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
+conserva arquivos estáticos necessários para abrir a interface, como HTML,
+folhas de estilo, módulos JavaScript e recursos declarados pelo manifesto. Ele
+usa rede primeiro para requisições `GET` da mesma origem e não guarda endereços
+com parâmetros de consulta.
+
+O IndexedDB conserva os documentos e comandos delimitados acima. Assim, abrir
+o shell sem conexão não garante que qualquer Curso esteja disponível: o Curso
+precisa ter sido replicado e promovido integralmente naquela conta. Da mesma
+forma, ter um Curso local não basta se os arquivos da interface nunca foram
+instalados. O Android empacota o shell no APK e desativa o registro do service
+worker, mas continua usando o IndexedDB da WebView para a réplica por conta.
+
 ## Estado pessoal
 
 Estado pessoal v2 contém progresso e marcação para rever por alvo de estudo.
@@ -191,7 +214,9 @@ Ele não incorpora Anotações, texto autoral nem uma cópia da Unidade. O
 repositório aplica atualizações otimistas, agrupa comandos compatíveis e
 reconcilia o recibo remoto.
 
-Quando duas abas estão abertas, `BroadcastChannel` comunica que a família
+Quando duas abas estão abertas, a
+[`BroadcastChannel`](https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API)
+comunica que a família
 mudou. Cada aba relê o registro persistido; o canal não transporta texto bruto.
 Essa escolha reduz exposição e evita que a mensagem entre abas se torne uma
 autoridade efêmera.
@@ -226,19 +251,23 @@ O banco guarda vínculo, resumo criptográfico SHA-256, tamanho, tipo, nome apre
 origem. O objeto binário fica no bucket privado `course-source-pdfs`, no
 caminho `<curso-de-origem>/<sha256>.pdf`.
 
-O envio possui duas fases:
+O vínculo de um envio percorre cinco passos. A leitura posterior é uma operação
+separada:
 
 1. o navegador faz a verificação inicial do cabeçalho PDF, calcula o resumo
    criptográfico e envia os metadados à API;
-2. a API verifica propriedade, revisão, duplicidade e cota, então devolve URL
-   assinada;
-3. o navegador envia o objeto sem sobrescrita;
+2. a API verifica propriedade, revisão, duplicidade e cota, então devolve o
+   caminho associado a uma intenção privada válida por dez minutos;
+3. o navegador faz um `POST` autenticado diretamente ao endpoint do Storage,
+   sem URL assinada de envio e sem sobrescrita; a política e o gatilho conferem
+   sessão, caminho e consumo único da intenção;
 4. a API lê o objeto com a credencial do servidor, limita a leitura, confere o
    tamanho, o cabeçalho `%PDF-` e recalcula SHA-256;
 5. somente após essa conferência a operação relacional confirma o vínculo entre
-   fonte e objeto;
-6. aberturas futuras recebem URL assinada depois de confirmar que a pessoa é
-   proprietária do Curso vinculado.
+   fonte e objeto.
+
+Aberturas futuras recebem URL assinada de leitura depois de confirmar que a
+pessoa é proprietária do Curso vinculado.
 
 O objeto vinculado é imutável e aceita até 20 MiB. O conjunto de conteúdo único por Curso aceita até
 64 MiB, e uma leitura detalhada retorna até oito anexos por fonte. Objetos com o
@@ -292,7 +321,7 @@ objetos que não são eliminados automaticamente pelo PostgreSQL.
 
 Migrações em `supabase/migrations/` são a história reproduzível do banco. A
 revisão hospedada corrente e a revisão implantável declarada em
-`supabase/runtime-manifest.json` são `20260824150000`. Uma migração que
+`supabase/runtime-manifest.json` são `20260824174101`. Uma migração que
 acrescenta capacidade deve:
 
 - fazer verificações prévias e falhar diante de estado incompatível;
@@ -315,10 +344,10 @@ Os contratos são exercitados em camadas:
 | estado pessoal e Anotações | testes dos repositórios, duas abas e retomada de fila |
 | concorrência e idempotência | testes PGlite, PostgreSQL real e chamadas repetidas |
 | edição contextual e proveniência carregada | testes de domínio, controlador, adaptador, roteador, PGlite e paridade IndexedDB |
-| snapshot confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Conteúdo e CAS externo |
+| instantâneo confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Conteúdo e CAS externo |
 | fontes, PDFs e proveniência | testes de domínio, painel, PGlite, Storage e segurança |
 | auditoria, variantes e Pesquisa | testes de domínio, painéis, roteador e PGlite |
-| Autoria integrada | jornada autenticada por `public/main.js`, IndexedDB, API, PostgreSQL, Storage, RLS, OAuth com PKCE e MCP no Supabase local |
+| Autoria integrada | jornada autenticada por `public/main.js`, IndexedDB, API, PostgreSQL, Storage, RLS, MCP e Actions no Supabase local |
 | esquema implantado | `supabase db reset`, análise do banco, inventário e manifesto hospedado |
 
 O roteiro de ambiente está em [Supabase](supabase.md) e a ordem de promoção em

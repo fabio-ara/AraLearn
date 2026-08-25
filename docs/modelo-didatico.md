@@ -65,8 +65,8 @@ O curso é organizado em níveis com responsabilidades diferentes:
 
 **Problema.** Uma Unidade isolada costuma ser pequena demais para situar, explicar,
 exemplificar e praticar um conceito complexo. Uma lição inteira pode conter
-objetivos demais para orientar uma sessão curta e permitir uma retomada
-precisa.
+objetivos demais para delimitar o que estava em andamento e permitir uma
+retomada precisa depois de interrupção.
 
 **Alternativas e requisitos.** Seria possível usar somente Unidades e Lições, ou
 fixar blocos por duração e quantidade. A unidade intermediária, porém, precisa
@@ -219,9 +219,9 @@ observadas semanticamente pelo banco. IDs de Unidades, pai/alvo e
 permitem confrontar planejado e declarado como aplicado; não constituem pontuação,
 diagnóstico ou resultado de aprendizagem.
 
-Interface e MCP operam o mesmo contrato em linguagem comum. A pessoa autora não
-precisa editar JSON nem um esquema opaco de componentes. A fundamentação e os limites
-estão em
+Interface, MCP e Actions operam o mesmo contrato em linguagem comum. A pessoa
+autora não precisa editar JSON nem um esquema opaco de componentes. A
+fundamentação e os limites estão em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## Profundidade sem condensação
@@ -304,8 +304,13 @@ explicação, exemplo resolvido, prática guiada e prática com menos apoio.
 
 **Fundamentação.** Estudos sobre exemplos resolvidos e transição para resolução
 independente sustentam essa possibilidade em condições delimitadas
-([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). O nível de conhecimento prévio
-modifica a utilidade do apoio; por isso, a sequência não é uma receita fixa.
+([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples);
+[Renkl (2002)](referencias.md#ref-renkl2002learning);
+[Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). Explicações
+instrucionais podem apoiar autoexplicações quando se ajustam ao conteúdo e à
+atividade, mas não substituem o trabalho do estudante. O nível de conhecimento
+prévio modifica a utilidade do apoio; por isso, a sequência não é uma receita
+fixa.
 
 **Operacionalização.** A retirada pode ocorrer por passos, dicas, decisões ou
 estrutura parcialmente preenchida. Valores, casos, coordenadas, código-base e
@@ -616,7 +621,7 @@ As referências completas e seus identificadores persistentes estão em
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing): Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (2008). **Spacing Effects in Learning: A Temporal Ridgeline of Optimal Retention.** *Psychological Science*, 19(11), p. 1095–1102.
 - [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
-- [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*.
+- [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
 - [Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal): Slava Kalyuga (2007). **Expertise Reversal Effect and Its Implications for Learner-Tailored Instruction.** *Educational Psychology Review*, 19(4), p. 509–539.
@@ -629,6 +634,7 @@ As referências completas e seus identificadores persistentes estão em
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
 - [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
 - [Reisslein et al. (2006)](referencias.md#ref-reisslein2006expertisereversal): Jana Reisslein; Robert K. Atkinson; Patrick Seeling; Martin Reisslein (2006). **Encountering the Expertise Reversal Effect with a Computer-Based Environment on Electrical Circuit Analysis.** *Learning and Instruction*, 16(2), p. 92–103.
+- [Renkl (2002)](referencias.md#ref-renkl2002learning): Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
 - [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.

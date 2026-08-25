@@ -2,10 +2,10 @@
 
 O AraLearn organiza estudo e autoria em torno de um único Curso vivo. A mesma
 identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
-ferramentas do Model Context Protocol (MCP). Esse desenho abrange Fontes e PDFs,
-auditoria e correções, variantes e a projeção factual de Pesquisa.
+integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
+Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260824150000`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260824174101`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -45,6 +45,7 @@ A interface separa responsabilidades sem duplicar o domínio:
 | Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
+| Actions | oferecer cinco operações HTTP descritas por OpenAPI a um GPT personalizado conectado |
 
 Na Autoria, a Visão geral apresenta estado e próxima ação. Planejamento,
 Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e
@@ -66,18 +67,51 @@ O MCP conserva cinco ferramentas estáveis: `listarCursos`, `lerCurso`,
 visões ou operações dessas ferramentas. O contrato não cria uma ferramenta
 nova para cada painel da interface. Perfil, avatar e acesso direto pertencem à
 aplicação autenticada; o e-mail usado para conceder acesso não é enviado ao
-cliente MCP.
+cliente MCP nem ao GPT conectado por Actions.
+
+## Shell web e inicialização
+
+O shell web é a camada que consegue abrir antes de qualquer Curso. HTML fornece
+a estrutura inicial, CSS define apresentação e responsividade, e módulos
+JavaScript carregam autenticação, armazenamento e as superfícies de produto. A
+inicialização abre primeiro o armazenamento da sessão, lê somente a URL e a
+chave publicável do projeto Supabase e decide entre configuração ausente,
+entrada, recuperação de conta, consentimento OAuth ou aplicação autenticada.
+Somente depois de identificar a conta ela abre o banco local daquele usuário e
+monta Estudo e Autoria. Encerramento remoto de sessão destrói essas superfícies,
+cancela chamadas em andamento e fecha as conexões locais antes de voltar à
+entrada.
+
+No site de produção, um [service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
+intercepta apenas requisições `GET` da mesma origem. Ele instala um conjunto
+versionado de arquivos do shell, tenta a rede primeiro e usa a cópia anterior
+quando a rede falha. Endereços com parâmetros de consulta não entram no cache,
+para não conservar retornos do fluxo PKCE. Uma navegação sem resposta pode
+receber o `index.html` já instalado. Caches de versões antigas são removidos na
+ativação.
+
+Esse cache torna a interface carregável; ele não contém Cursos nem substitui o
+[IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API), que
+guarda a réplica por conta e as filas explicitamente previstas. Em
+desenvolvimento, o registro correspondente é removido para que o teste não seja
+enganado por um shell antigo. No Android, o service worker não é registrado:
+os arquivos já pertencem ao APK e são servidos pela origem interna da WebView.
 
 ## Fluxo entre navegador e serviços
 
-O caminho principal é:
+Os caminhos principais são:
 
 ```text
-navegador → IndexedDB → Edge Function ou MCP → PostgreSQL e Storage
+aplicação web ou Android → IndexedDB da conta
+aplicação web ou Android → aralearn-course-api ┐
+cliente MCP              → aralearn-authoring-mcp ├→ executor comum → PostgreSQL e Storage
+GPT conectado por Actions → aralearn-authoring-action ┘
 ```
 
-O sentido da seta indica a passagem da solicitação, não uma fila universal.
-Cada trecho tem uma função distinta:
+O IndexedDB participa somente do caminho da aplicação. MCP e Actions chegam por
+suas próprias Edge Functions e não atravessam a réplica local do navegador. O
+sentido da seta indica passagem da solicitação, não uma fila universal. Cada
+trecho tem uma função distinta:
 
 1. o navegador mantém uma projeção mínima da sessão, navegação e estado
    transitório da interface;
@@ -87,10 +121,13 @@ Cada trecho tem uma função distinta:
    pessoa;
 4. o servidor MCP recebe chamadas de clientes conversacionais autenticados por
    OAuth 2.1 com PKCE;
-5. as duas Edge Functions convergem no mesmo roteador e executor de operações;
-6. o PostgreSQL aplica autorização, revisão esperada, idempotência e
+5. a função de Actions recebe chamadas HTTP de um GPT conectado pelo OAuth
+   próprio desse canal;
+6. as três Edge Functions convergem no mesmo roteador e executor de operações,
+   embora cada transporte autentique seu próprio principal;
+7. o PostgreSQL aplica autorização, revisão esperada, idempotência e
    integridade relacional;
-7. o Storage guarda avatares e PDFs privados, enquanto o banco guarda vínculo,
+8. o Storage guarda avatares e PDFs privados, enquanto o banco guarda vínculo,
    autoria, hash e permissões.
 
 Estudo usa ainda leituras autenticadas por PostgREST e funções SQL para Cursos
@@ -117,8 +154,8 @@ para manter o estudo offline, as filas e os rascunhos que já estavam
 persistidos. Uma alteração aberta somente no formulário não integra essa
 garantia e exige confirmação de perda antes da saída. As ações explícitas de
 limpeza removem somente `aralearn-course-v1-<identificador-da-conta>` da conta
-ativa; a opção com saída também elimina a sessão. A sessão persistida
-somente tokens, tipo, expiração e `user.id`, sem duplicar e-mail ou perfil.
+ativa; a opção com saída também elimina a sessão. A sessão persiste somente
+tokens, tipo, expiração e `user.id`, sem duplicar e-mail ou perfil.
 
 Na exclusão de conta, a confirmação remota é o ponto terminal. Se outra aba
 bloquear a remoção do IndexedDB depois desse sucesso, a conta já não existe e a
@@ -127,7 +164,9 @@ conta novamente nem apresenta o estado como falha remota.
 
 A inspeção autoral também é paginada. O cliente conserva no máximo quatro
 páginas ou 8 MiB por Curso e limita a quantidade renderizada. Esse recorte
-mantém rede, memória e documento visual previsíveis em dispositivos modestos.
+estabelece tetos observáveis de rede, memória mantida pelo cache e quantidade de
+Unidades no documento. Adequação a um dispositivo específico ainda precisa ser
+verificada nesse aparelho.
 
 Estado pessoal e Anotações possuem contratos independentes. Progresso e itens
 para rever usam estado pessoal v2. Anotações guardam texto, classificação,
@@ -161,11 +200,11 @@ revisões esperadas do Curso e da Unidade, a proveniência efetiva e uma origem
 fechada: `manual` ou `provider_assistance`. A API autentica o proprietário e a
 função SQL aceita a operação somente pelo papel de servidor. Conteúdo,
 proveniência, revisão, evento e recibo confirmam ou revertem juntos. Ao receber
-2xx, o cliente persiste primeiro o snapshot focal confirmado e promove Unidade,
+2xx, o cliente persiste primeiro o instantâneo focal confirmado e promove Unidade,
 revisão e versão no documento `course.v1`; só depois invalida as projeções
 anteriores. Estudo e Conteúdo podem reler a Unidade sem rede como confirmada,
 com sincronização pendente. A escrita não é repetida. A releitura canônica da
-mesma revisão substitui o snapshot; uma revisão superior o elimina como
+mesma revisão substitui o instantâneo; uma revisão superior o elimina como
 incorporado ou superado. Saída local ou remota, revogação, limpeza do Curso ou
 perda de autoridade purgam a réplica. Uma atualização externa rebasa as versões
 usadas pelo próximo CAS sem perder seleção, progresso ou Observações.
@@ -192,7 +231,7 @@ operação do proprietário continuam com a autorização anterior.
 
 Se a conexão falhar ou a resposta ficar ambígua, somente o envelope final dessa
 primeira gravação fica no IndexedDB: origem, seleção, versões, Unidade editada e
-identificador de pedido. Conversa, configuração e credencial do provider não
+identificador de pedido. Conversa, configuração e credencial do provedor não
 integram esse estado. A reconexão repete a mesma intenção e a confirmação promove
 o Curso pessoal. Essa capacidade usa o PostgreSQL, as Edge Functions e o
 IndexedDB correntes; não introduz Git nem uma camada futura de versionamento.
@@ -222,7 +261,7 @@ JSON bem formado não é suficiente, e uma candidata inválida ou não
 renderizável nunca substitui o conteúdo corrente.
 
 Em produção, a única conexão disponível é um relay em `127.0.0.1`, `localhost`
-ou `10.0.2.2`, na porta 4183. A credencial do provider permanece nesse serviço,
+ou `10.0.2.2`, na porta 4183. A credencial do provedor permanece nesse serviço,
 fora do AraLearn. A interface mostra o relay local como valor fixo, oferece
 modelo e mensagem e recolhe o endpoint em **Serviço e modelo**. Configuração e
 conversa não entram no Curso nem no IndexedDB. A montagem de produção ignora
@@ -243,11 +282,11 @@ do Pages.
 
 Um runtime explicitamente identificado como desenvolvimento pode liberar
 OpenAI, Gemini e DeepSeek diretos e o campo de chave, sempre com alerta de que o
-navegador não protege credenciais duradouras. Nesse modo, cada provider continua
+navegador não protege credenciais duradouras. Nesse modo, cada provedor continua
 preso à sua própria origem exata, e a chave segue somente no cabeçalho.
 
 Ao sair da conta ou encerrar a aplicação, a superfície de Estudo ou Autoria é
-destruída e a chamada ao provider é cancelada antes de apagar a sessão e fechar
+destruída e a chamada ao provedor é cancelada antes de apagar a sessão e fechar
 os armazenamentos locais. Uma resposta tardia não pode executar callback, reabrir
 a sobreposição nem restaurar configuração ou credencial em memória.
 
@@ -316,8 +355,8 @@ meio razoável de fazer essa relação, e não como conjunto anônimo.
 
 O catálogo corrente contém 32 pacotes versionados: 29 de conteúdo e três de
 resposta. Busca e consulta retornam no máximo oito resultados por chamada e
-cada contrato seleciona exatamente um `package@version`. O navegador e o MCP
-usam o mesmo catálogo gerado, o que impede divergência entre criação,
+cada contrato seleciona exatamente um `package@version`. Navegador, MCP e
+Actions usam o mesmo catálogo gerado, o que impede divergência entre criação,
 validação e renderização.
 
 Um pacote define contrato, dados de exemplo, limites e representação
@@ -336,7 +375,8 @@ qualquer operação privilegiada, a função valida o token recebido e repassa a
 identidade ao contrato SQL exclusivo do proprietário. O navegador nunca recebe
 essa credencial.
 
-O servidor MCP aceita OAuth 2.1 com PKCE e anuncia
+O servidor MCP aceita [OAuth 2.1](https://supabase.com/docs/guides/auth/oauth-server)
+com [PKCE](https://www.rfc-editor.org/rfc/rfc7636) e anuncia
 somente o escopo `offline_access`; a troca e a renovação não emitem `id_token`.
 O access token usa aliases pareados distintos em `sub` e `session_id` e não é
 uma sessão da aplicação. Ele conserva `aralearn_session_id`, o identificador
@@ -353,6 +393,14 @@ já emitido permanece criptograficamente válido somente até `exp`. A API de
 Cursos exige origem permitida e sessão Supabase comum. As
 origens públicas são configuradas
 de modo exato, sem curingas de produção.
+
+Actions usa outra concessão: um cliente confidencial ligado ao GPT, código de
+autorização, escopos `openid email`, access token opaco e refresh token rotativo.
+O endpoint resolve esse token no banco antes de executar a operação. Ele não
+aceita o bearer JWT do MCP, e o MCP não aceita o token opaco de Actions. O
+documento [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) descreve caminhos,
+corpos, respostas e OAuth para a importação da Action; ele descreve a API, mas
+não substitui autorização nem validação no servidor.
 
 Os buckets `person-avatars` e `course-source-pdfs` são privados. URLs assinadas
 têm duração limitada; o download de PDF expira em 60 segundos e uma URL emitida
@@ -380,13 +428,13 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260824150000` e a versão de contrato. O
+esquema `20260824174101` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
 
 A promoção exige migrações em paridade, análise do banco, testes de
-concorrência, testes reais de funcionamento da API e do MCP, validação de
+concorrência, testes reais de funcionamento da API, do MCP e de Actions, validação de
 autenticação, testes do navegador e artefatos web e Android.
 
 Detalhes operacionais estão em [Persistência relacional e sincronização](persistencia-relacional.md),

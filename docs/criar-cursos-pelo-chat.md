@@ -48,7 +48,7 @@ segura.
 Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título e
 objetivo. A operação usa um `requestId`, que permite recuperar o mesmo resultado
 quando uma resposta de rede se perde. O Curso criado possui uma única identidade
-para Autoria, Pesquisa, Estudo e MCP.
+para Autoria, Pesquisa, Estudo, MCP e Actions.
 
 ## Planejar por Partes
 

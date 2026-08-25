@@ -146,7 +146,12 @@ As regras correntes são deliberadamente simples:
 - Curso compartilhado não aparece no MCP autoral;
 - acesso direto concede somente Estudo no Curso original; a cópia pessoal é
   criada exclusivamente pela aplicação e só depois passa a ser um Curso próprio;
-- mutações exigem escopo de escrita;
+- o escopo `offline_access` permite renovar a conexão, mas não concede escrita
+  por si; depois de validar token, sessão de origem, cliente e consentimento, o
+  servidor cria um principal interno com as capacidades `authoring:read` e
+  `authoring:write`. Elas não são escopos OAuth solicitáveis pelo cliente. Cada
+  mutação ainda depende da ferramenta admitida, da propriedade do Curso e das
+  revisões esperadas;
 - perfil e acesso continuam sujeitos à identidade da sessão e à propriedade;
 - o servidor nunca confia num identificador enviado pelo cliente para ampliar
   autoridade.

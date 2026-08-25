@@ -57,11 +57,15 @@ function temporaryDocumentation() {
       "",
       "## Estudar o modelo pedagógico",
       "",
+      "## Aprender no trabalho e formar profissionalmente",
+      "",
       "## Estudar a engenharia",
       "",
       "## Estudar a autoria de cursos",
       "",
       "## Avaliar o artefato",
+      "",
+      "## Avaliar um uso institucional",
       "",
       "## Operar e implantar",
       ""
@@ -218,6 +222,19 @@ test("auditoria valida log bibliográfico e acessibilidade dos visuais", (contex
   assert.ok(errors.some((error) => error.includes("cabeçalho não implementa")));
   assert.ok(errors.some((error) => error.includes("visual sem texto alternativo")));
   assert.ok(errors.some((error) => error.includes("Mermaid sem descrição textual")));
+});
+
+test("auditoria rejeita escape JSON em consultas do registro bibliográfico", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.appendFileSync(
+    path.join(temporaryRoot, "docs", "evidence", "registro-buscas-bibliograficas.csv"),
+    'R1,2026-08-25T05:00:00Z,eixo,Busca web integrada,"\\"consulta exata\\"",sem filtros,1,0,1,0,0,nenhum,ARA-LIT-1,revisor,observação\n',
+    "utf8"
+  );
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(errors.some((error) => error.includes("aspas CSV duplicadas")));
 });
 
 test("auditoria valida chaves bibliográficas sem confundir texto entre citações", (context) => {
@@ -405,11 +422,17 @@ test("auditoria alcança texto de interface e fixture publicada não classificad
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(temporaryRoot, "src", "ui", "screen.js"), "export const title = 'Curso SENAI';\n", "utf8");
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "origens-do-aralearn.md"),
+    "# Origens\n\nO percurso declarado inclui cursos do SENAI.\n",
+    "utf8"
+  );
   const fixtureDirectory = path.join(temporaryRoot, "supabase", "fixtures", "catalog");
   fs.mkdirSync(fixtureDirectory, { recursive: true });
   fs.writeFileSync(path.join(fixtureDirectory, "unexpected.json"), '{"title":"Dataprev"}\n', "utf8");
   const errors = auditDocumentation({ root: temporaryRoot });
   assert.ok(errors.some((error) => error.includes("src/ui/screen.js:1: instituição particular SENAI")));
+  assert.equal(errors.some((error) => error.includes("docs/origens-do-aralearn.md:3: instituição particular SENAI")), false);
   assert.ok(errors.some((error) => error.includes("supabase/fixtures/catalog/unexpected.json:1: instituição particular Dataprev")));
 });
 
