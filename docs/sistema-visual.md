@@ -61,9 +61,9 @@ exige. A mesma relação semântica deve permanecer reconhecível nos dois modos
 ## Estrutura do produto
 
 A entrada de Autoria é **Meus cursos**. A lista mostra descritores suficientes
-para reconhecer Cursos próprios e compartilhados sem baixar a composição
-inteira. Um toque abre o Curso; a ação de voltar retorna à lista sem criar uma
-identidade intermediária.
+para reconhecer os Cursos próprios sem baixar a composição inteira. Cursos
+compartilhados aparecem somente em Estudo. Um toque abre o Curso; a ação de
+voltar retorna à lista sem criar uma identidade intermediária.
 
 No Curso próprio, a **Visão geral** mostra identidade, estado e próxima ação.
 Uma grade compacta oferece, em um único nível, **Planejamento**, **Conteúdo**,

@@ -55,7 +55,7 @@ Chrome nem a prova hospedada quando o contrato remoto mudou.
 
 As migrations são cumulativas e transacionais quando o PostgreSQL permite. O
 manifesto corrente termina em
-`20260824150000_remove_pre_course_runtime.sql`. Antes de aplicar, confira que o
+`20260824174101_authoring_materialization_history.sql`. Antes de aplicar, confira que o
 projeto ligado é o destino pretendido e mantenha o backup operacional previsto
 para o ambiente.
 

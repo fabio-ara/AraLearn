@@ -127,6 +127,19 @@ pode declarar compreensão ou eficácia educacional.
 | banco, Storage, autenticação e funções | [Supabase](supabase.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 
+Para contribuir com código ou documentação, consulte também o
+[`CONTRIBUTING.md`](../CONTRIBUTING.md). A integração Android tem instruções
+próprias em [`android/README.md`](../android/README.md), e as bibliotecas
+distribuídas dentro do aplicativo são identificadas em
+[`public/vendor/README.md`](../public/vendor/README.md).
+
+## Consultar história e licença
+
+O [`CHANGELOG.md`](../CHANGELOG.md) registra mudanças por versão e conserva a
+terminologia do período correspondente. O histórico detalhado permanece no
+Git. A licença de uso e redistribuição está em [`LICENSE.md`](../LICENSE.md).
+Documentos correntes não repetem essa cronologia.
+
 ## Referência completa
 
 | Documento | Função principal |
