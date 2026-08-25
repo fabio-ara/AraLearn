@@ -101,6 +101,26 @@ baixa consequência, sem nota ou classificação.
 - **Evidência necessária:** observar decisões sobre o processo em contexto, e
   não apenas navegação livre.
 
+### Metacognição
+
+- **Tipo:** família de construtos relacionados ao conhecimento e à regulação do
+  próprio processo cognitivo.
+- **Definição:** conhecimento que a pessoa tem sobre como pensa e aprende,
+  acompanhado de monitoramento e regulação desse processo. No estudo, pode
+  envolver julgar compreensão, reconhecer incerteza, escolher estratégia e
+  verificar se ela funcionou. Esses processos integram modelos de
+  autorregulação, mas não abrangem sozinhos suas dimensões motivacionais,
+  comportamentais e contextuais
+  ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
+  [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
+- **Manifestação possível:** explicitar o que não foi compreendido, justificar
+  mudança de estratégia e revisar o próprio julgamento depois de nova
+  evidência.
+- **Não equivale a:** confiança declarada, Observação registrada, resposta
+  correta, tempo de estudo ou marca para revisão.
+- **Evidência necessária:** tarefa, julgamento e comportamento regulatório
+  relacionados ao processo definido, com instrumento e momento adequados.
+
 ### Apoio à autonomia
 
 - **Tipo:** construto teórico aplicado ao contexto.
@@ -113,22 +133,38 @@ baixa consequência, sem nota ou classificação.
 - **Evidência necessária:** avaliação da qualidade da escolha e da percepção de
   suporte, não contagem de controles.
 
-### Controle humano da IA
+### Supervisão humana da IA
 
 Neste glossário, **inteligência artificial (IA)** designa modelos ou serviços
 computacionais que propõem, transformam ou analisam conteúdo durante a autoria.
 
-- **Tipo:** política de desenho e construto de avaliação.
-- **Definição:** autoridade efetiva da pessoa sobre intenção, escopo, revisão e
-  consequência de uma operação assistida.
-- **Manifestação possível:** conhecer o alvo, rejeitar, iterar, corrigir,
-  desfazer, restaurar e justificar a decisão final.
-- **Não equivale a:** botão de confirmação, aviso genérico ou revisão humana
-  apenas nominal.
-- **Evidência necessária:** tarefas com erro, sugestão inadequada e mudança de
-  escopo, acompanhadas de explicação sobre responsabilidade e consequência.
-  Diretrizes de interação humano-IA fundamentam a necessidade de comunicação e
-  correção ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)).
+- **Tipo:** política de desenho.
+- **Definição:** requisito de manter intenção, escopo, proposta, validação,
+  aplicação e consequência sob autoridade explícita da pessoa.
+- **Manifestação possível:** alvo visível, proposta separada da gravação,
+  possibilidade real de rejeitar, corrigir e reverter e registro da decisão.
+- **Não equivale a:** resultado já demonstrado sobre compreensão, agência ou
+  controle efetivo.
+- **Evidência necessária:** inspeção do fluxo, contratos, estados e testes que
+  demonstrem a propriedade implementada. Diretrizes de interação humano-IA
+  fundamentam a necessidade de comunicar capacidades e permitir correção
+  ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)).
+
+### Controle humano efetivo da IA
+
+- **Tipo:** resultado de interação.
+- **Definição:** capacidade demonstrada de compreender a intenção, o alvo e as
+  consequências de uma operação assistida e de intervir de modo eficaz antes e
+  depois da mudança.
+- **Manifestação possível:** detectar sugestão inadequada, rejeitar ou corrigir,
+  explicar a decisão final e restaurar o estado anterior quando necessário.
+- **Não equivale a:** presença de confirmação, aviso genérico, assinatura humana
+  nominal ou aceitação automática seguida de possibilidade teórica de desfazer.
+- **Evidência necessária:** tarefas com erro factual, erro de escopo e
+  recomendação plausível porém inadequada, acompanhadas de observação e
+  explicação da pessoa. Funções que impõem reflexão podem reduzir dependência
+  excessiva em alguns cenários, mas também acrescentam custo e não têm efeito
+  universal ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 
 ## Construtos relacionados ao processamento da tarefa
 
@@ -467,6 +503,68 @@ construto.
 - **Evidência necessária:** rodada de auditoria reproduzível, unidades reais, regras
   declaradas, julgamento humano nos itens semânticos e reauditoria após reparo.
 
+## Termos operacionais de Curso e Autoria
+
+### Curso
+
+Objeto instrucional vivo e identificável que reúne hierarquia, conteúdo,
+desenho, Fontes, Observações e estado de Autoria. O Curso pode ser estudado à
+medida que é produzido e não depende de uma etapa de publicação para existir.
+É unidade de propriedade e autorização do produto, não turma, disciplina,
+intervenção educacional validada ou programa institucional.
+
+### Materialização
+
+Execução que transforma planejamento confirmado e contexto selado numa
+alteração tipada do Curso, preservando etapas, resultados e recibos. Ela pode
+criar ou alterar objetos de conteúdo conforme o escopo autorizado.
+Materialização não equivale a geração textual, publicação, qualidade autoral ou
+aprendizagem; seu término demonstra apenas que a operação de Autoria alcançou
+um estado persistido verificável.
+
+### Fonte
+
+Objeto de proveniência que identifica um material usado na Autoria e conserva
+revisões. Uma Fonte pode ser documento, página da Web, vídeo, PDF ou outro
+material aceito pelo produto. Sua presença permite localizar a origem, mas não
+atesta verdade, qualidade, pertinência ou fidelidade da interpretação.
+
+### Âncora
+
+Localização delimitada dentro de uma revisão exata de Fonte, como página,
+instante de mídia, fragmento de endereço ou trecho textual. Ela torna a
+atribuição reencontrável; não demonstra que o alvo foi interpretado
+corretamente nem substitui a leitura do contexto.
+
+### Observação
+
+Nome de interface da anotação ancorada registrada por uma pessoa sobre um alvo
+do Curso. Pode expressar dúvida, possível erro, confusão, sugestão ou pedido de
+revisão e possui estado próprio. Não altera o conteúdo automaticamente e não é
+medida de compreensão, dificuldade, qualidade ou aprendizagem.
+
+### Achado
+
+Registro produzido numa rodada de Auditoria que descreve uma divergência,
+conserva regra, alvo, evidência e estado e pode originar proposta focal de
+correção. Achado não é Observação, diagnóstico de estudante, correção já
+aplicada nem prova de eficácia da auditoria.
+
+### Parâmetro de desenho
+
+Decisão versionada por escopo que orienta propriedades como novidade presumida,
+formas de explicação, oportunidades de prática e dimensões de variação. Valor
+padrão, herança e sobrescrita registram origem e autoridade. Um parâmetro é
+hipótese operacional de desenho, não dose pedagógica validada nem perfil de
+estudante.
+
+### Política de componentes
+
+Regra versionada por escopo que delimita catálogo, referências permitidas,
+excluídas e preferidas para materialização. A política controla disponibilidade
+e proveniência da escolha; não é parâmetro pedagógico, componente efetivamente
+usado ou evidência de que a representação selecionada é adequada.
+
 ## Termos operacionais do modelo didático
 
 ### Segmento discursivo
@@ -611,7 +709,7 @@ alegação de que a resposta será eficaz.
 
 ### Microssequência didática
 
-Construto próprio do AraLearn: conjunto ordenado de unidades de estudo e
+Termo operacional do AraLearn: conjunto ordenado de unidades de estudo e
 interação orientado a um objetivo instrucional delimitado, com contexto, teoria
 e prática suficientes para esse escopo. Não corresponde automaticamente a
 parágrafo, subtópico, duração ou quantidade fixa e não é apresentado como
@@ -620,7 +718,7 @@ unidade universal da pesquisa educacional.
 ### Parte de autoria
 
 Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
-dependências, complexidade das microssequências e carga de revisão. É uma
+dependências, complexidade das microssequências e volume de revisão. É uma
 unidade de materialização, não um nível didático. A faixa orientativa de 7 a 12
 Partes por curso é um valor padrão configurável para coordenar produção e
 revisão, não cota pedagógica nem quantidade universal; cada Parte pode abranger
@@ -709,6 +807,28 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Evidência necessária:** definição versionada, regras de inclusão, filtros e
   correspondência verificável com as linhas apresentadas.
 
+### Evento
+
+- **Tipo:** ocorrência observável.
+- **Definição:** mudança ou ação registrada com tipo, instante, objeto,
+  contexto e proveniência identificáveis.
+- **Não equivale a:** medida, indicador, intenção, atenção ou aprendizagem. Um
+  evento só adquire função analítica quando pergunta e regra de interpretação
+  determinam como ele será usado.
+- **Evidência necessária:** contrato do evento, condições de registro, versão,
+  cobertura conhecida e tratamento das ocorrências ausentes ou duplicadas.
+
+### Denominador
+
+- **Tipo:** definição do conjunto de oportunidades.
+- **Definição:** conjunto ao qual um numerador se refere. Duas correções podem
+  representar duas de duas, duas de vinte ou duas de duzentas Unidades
+  elegíveis; são medidas diferentes.
+- **Não equivale a:** total disponível por conveniência, número de registros
+  retornados ou população inteira presumida.
+- **Evidência necessária:** regra de inclusão e exclusão, filtros, instante de
+  corte, ausências e unidade de análise.
+
 ### Métrica
 
 - **Tipo:** regra de cálculo operacional.
@@ -729,6 +849,83 @@ Não equivale a painel de indicadores, predição ou vigilância.
   ao uso pretendidos
   ([Messick (1995)](referencias.md#ref-messick1995validity);
   [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
+
+### Confiabilidade
+
+- **Tipo:** propriedade de uma medição.
+- **Definição:** consistência de escores, classificações ou observações diante
+  das fontes de variação pertinentes, como itens, ocasiões e avaliadores.
+- **Não equivale a:** validade, precisão computacional ou concordância casual.
+  Uma medida pode ser consistente e ainda sustentar uma interpretação errada.
+- **Evidência necessária:** fonte de variação definida, procedimento de
+  estimação e população, tarefa e uso correspondentes
+  ([American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
+
+### Associação
+
+- **Tipo:** relação estatística observada.
+- **Definição:** variação conjunta entre duas variáveis nas condições e no
+  recorte analisados.
+- **Não equivale a:** efeito causal, mecanismo demonstrado ou direção da
+  relação.
+- **Evidência necessária:** variáveis e medidas definidas, população, desenho,
+  incerteza e exame de seleção, ausências e explicações rivais.
+
+### Confundimento
+
+- **Tipo:** ameaça à inferência causal.
+- **Definição:** situação em que uma causa alternativa se relaciona tanto à
+  condição quanto ao desfecho e pode explicar a associação observada.
+- **Não equivale a:** qualquer diferença entre grupos ou simples erro de
+  medição, embora ambos também possam ameaçar uma conclusão.
+- **Evidência necessária:** modelo causal e desenho capazes de identificar as
+  causas alternativas pertinentes, com pressupostos e limitações explícitos
+  ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
+
+### Desenho experimental
+
+- **Tipo:** desenho de investigação causal.
+- **Definição:** estudo em que a atribuição aleatória forma condições
+  comparáveis em expectativa e a intervenção, a exposição e os desfechos são
+  definidos pelo protocolo.
+- **Não equivale a:** criação de Variantes, teste de software ou comparação
+  descritiva entre Cursos.
+- **Evidência necessária:** participantes, atribuição, intervenção,
+  instrumentos, aderência, perdas, análise e incerteza documentados
+  ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
+
+### Desenho quase experimental
+
+- **Tipo:** desenho de investigação causal sem atribuição aleatória.
+- **Definição:** estudo que recorre a comparação, temporalidade, modelagem e
+  pressupostos adicionais para enfrentar explicações rivais quando a
+  atribuição aleatória não ocorre.
+- **Não equivale a:** experimento incompleto nem diferença descritiva promovida
+  automaticamente a efeito.
+- **Evidência necessária:** regra de formação das condições, comparabilidade,
+  mensuração anterior e posterior quando pertinente, perdas, contaminação,
+  pressupostos e análise de sensibilidade
+  ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
+
+### Validade externa
+
+- **Tipo:** argumento sobre transporte de uma conclusão.
+- **Definição:** sustentação para aplicar uma conclusão além das pessoas,
+  tarefas, contextos, versões e momentos diretamente estudados.
+- **Não equivale a:** amostra grande, repetição técnica ou validade interna.
+- **Evidência necessária:** dimensões que mudam entre o estudo e o destino,
+  mecanismo que se espera preservar e evidência sobre moderadores e limites.
+
+### Generalização
+
+- **Tipo:** inferência para casos além dos observados.
+- **Definição:** extensão justificada de um resultado a população, tarefa,
+  contexto ou período delimitado.
+- **Não equivale a:** universalidade, extrapolação por semelhança superficial ou
+  validade recebida automaticamente pelo método.
+- **Evidência necessária:** população-alvo, regra de amostragem ou transporte,
+  correspondências e diferenças relevantes e incerteza declarada
+  ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
 
 ### Indicador
 
@@ -848,6 +1045,7 @@ desenvolvimento e validação próprios.
 - [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards): Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506.
 - [Bjork e Bjork (2011)](referencias.md#ref-bjork2011desirable): Elizabeth L. Bjork; Robert A. Bjork (2011). **Making Things Hard on Yourself, but in a Good Way: Creating Desirable Difficulties to Enhance Learning.** In: *Psychology and the Real World: Essays Illustrating Fundamental Contributions to Society*, Worth Publishers, p. 56–64.
 - [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative): E. N. Bridwell-Mitchell (2016). **Collaborative Institutional Agency: How Peer Learning in Communities of Practice Enables and Inhibits Micro-Institutional Change.** *Organization Studies*, 37(2), p. 161–192.
+- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1).
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63.
@@ -877,6 +1075,7 @@ desenvolvimento e validação próprios.
 - [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm): Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77.
 - [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades): Salvador Pons Bordería; Margarita Borreguero Zuloaga (2024). **Unidades discursivas del texto escrito: revisión crítica del estado de la cuestión y directrices para una nueva propuesta.** *Círculo de Lingüística Aplicada a la Comunicación*, 99, p. 7–21.
 - [Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation): Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860.
+- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
 - [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.

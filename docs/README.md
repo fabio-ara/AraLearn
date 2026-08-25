@@ -51,6 +51,27 @@ registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
+## Aprender no trabalho e formar profissionalmente
+
+Aprendizagem no trabalho, gestão do conhecimento, treinamento e
+desenvolvimento e educação profissional e tecnológica são contextos possíveis
+de aplicação e investigação. O percurso abaixo não presume que disponibilizar
+um Curso produza competência, transferência ao trabalho ou mudança
+organizacional:
+
+1. [Visão do produto](visao-do-produto.md): públicos, condições de uso e
+   capacidades que o AraLearn não oferece;
+2. [Revisão de literatura](revisao-de-literatura.md#13-aprendizagem-no-trabalho-gestão-do-conhecimento-e-educação-profissional):
+   aprendizagem formal e informal, processos organizacionais de conhecimento
+   e educação e formação técnica e profissional;
+3. [Origens do AraLearn](origens-do-aralearn.md): experiências declaradas que
+   tornaram esses problemas relevantes, sem transformar biografia em prova;
+4. [Modelo didático](modelo-didatico.md): como Fontes, progressão,
+   representações, prática e revisão organizam um Curso;
+5. [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
+   e [Protocolo de avaliação](protocolo-avaliacao-artefato.md): como distinguir
+   uso, tarefa, aprendizagem, transferência e resultado organizacional.
+
 ## Estudar a engenharia
 
 1. [Arquitetura](arquitetura.md): Curso vivo, fronteiras e fontes de

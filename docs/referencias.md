@@ -43,6 +43,14 @@ Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learnin
 
 Chave bibliográfica: `ainsworth2006deft`.
 
+<a id="ref-alavi2001knowledge"></a>
+
+### Alavi e Leidner (2001)
+
+Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136. [DOI 10.2307/3250961](https://doi.org/10.2307/3250961).
+
+Chave bibliográfica: `alavi2001knowledge`.
+
 <a id="ref-aera2014standards"></a>
 
 ### American Educational Research Association et al. (2014)
@@ -754,6 +762,22 @@ Chave bibliográfica: `tricco2018prismascr`.
 Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222. [DOI 10.18608/hla22.021](https://doi.org/10.18608/hla22.021) · ISBN 9780995240834.
 
 Chave bibliográfica: `tsai2022humancentered`.
+
+<a id="ref-tynjala2008workplace"></a>
+
+### Tynjälä (2008)
+
+Päivi Tynjälä (2008). **Perspectives into Learning at the Workplace.** *Educational Research Review*, 3(2), p. 130–154. [DOI 10.1016/j.edurev.2007.12.001](https://doi.org/10.1016/j.edurev.2007.12.001).
+
+Chave bibliográfica: `tynjala2008workplace`.
+
+<a id="ref-unesco2015tvet"></a>
+
+### UNESCO (2015)
+
+UNESCO (2015). **Recommendation concerning Technical and Vocational Education and Training (TVET).** UNESCO. [acesso ao documento](https://www.unesco.org/en/legal-affairs/recommendation-concerning-technical-and-vocational-education-and-training-tvet).
+
+Chave bibliográfica: `unesco2015tvet`.
 
 <a id="ref-unesco2023genai"></a>
 

@@ -14,11 +14,14 @@ por uma avaliação compatível com essa afirmação.
 
 ## Estrutura das proposições
 
-O quadro teórico organiza dez hipóteses de desenho pela relação C-M-R:
+O quadro teórico organiza dez hipóteses de desenho pela relação C–M–O e
+conserva as explicações rivais como R:
 
 - **contexto:** pessoas, tarefa e condições em que o problema ocorre;
 - **mecanismo:** propriedade do desenho que pode produzir uma diferença;
-- **resultado:** mudança observável que se espera encontrar.
+- **manifestação ou resultado observável:** mudança que se espera encontrar;
+- **explicações rivais:** outros mecanismos ou condições capazes de produzir o
+  mesmo resultado.
 
 A notação ajuda a formular hipóteses e explicações rivais. Ela não transforma a
 implementação numa teoria causal validada.

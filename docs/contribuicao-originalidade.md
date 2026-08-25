@@ -355,7 +355,7 @@ configuração inexista em outros produtos ou estudos.
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
 | sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do Curso e acesso direto preservam responsabilidade sem burocratizar o Estudo? |
-| flashcards e prática | recuperação, repetição e feedback curto | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
+| flashcards e prática | recuperação, repetição e retorno após a resposta | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
 | bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
 | aplicações com cópia local | réplica, fila e sincronização | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
@@ -400,7 +400,7 @@ Exigem medidas compatíveis de compreensão, retenção ou transferência:
 - feedback melhora desempenho posterior;
 - o desenho não punitivo altera estratégia ou ansiedade.
 
-### 6.4 Alegações que permanecem indevidas sem comparação abrangente
+### 6.4 Alegações que exigem comparação definida com alternativas pertinentes
 
 - o AraLearn é o primeiro ou único sistema com essa configuração;
 - a arquitetura é universalmente superior;

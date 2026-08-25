@@ -231,6 +231,16 @@ processos ([Knowles (1975)](referencias.md#ref-knowles1975selfdirected)). **Agê
 modo intencional e produzir efeitos, sempre em condições sociais e materiais
 ([Bandura (2001)](referencias.md#ref-bandura2001agency)).
 
+**Metacognição**, no uso adotado neste corpus, é o conhecimento que a pessoa
+tem sobre o próprio processo de pensar e aprender, acompanhado da capacidade
+de monitorá-lo e regulá-lo. Julgar que compreendeu, perceber incerteza, escolher
+outra estratégia e conferir se ela funcionou são manifestações possíveis; uma
+declaração de confiança ou um clique isolado não mede esse processo. A
+metacognição participa dos ciclos de autorregulação, mas não é sinônimo de toda
+autorregulação, que também envolve motivação, comportamento e condições do
+ambiente ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
+[Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
+
 Esses conceitos impedem uma inferência comum: disponibilizar opções ou permitir
 navegação não prova autonomia. Uma meta-análise sobre controle do aprendiz em
 tecnologia educacional encontrou efeitos heterogêneos
@@ -736,7 +746,66 @@ permitem tratar acesso comum a um Curso como colaboração ou comunidade.
   de compartilhamento, revogação e explicação de responsabilidade. Autoria
   coletiva continua sendo uma questão de pesquisa, não uma capacidade vigente.
 
-## 13. Inteligência artificial generativa, recuperação de contexto e controle humano
+## 13. Aprendizagem no trabalho, gestão do conhecimento e educação profissional
+
+### O que muda quando aprender faz parte do trabalho
+
+No trabalho, uma pessoa pode aprender num curso formal, ao executar uma tarefa,
+ao resolver um problema novo, ao conversar com colegas ou ao revisar uma
+prática. Esses processos não pertencem todos à mesma unidade de análise. Podem
+envolver indivíduo, equipe, organização ou relações entre organizações, e os
+ambientes de trabalho diferem quanto às oportunidades e ao apoio que oferecem.
+Uma revisão temática também distingue aprendizagem formal e informal e alerta
+contra tratar “o local de trabalho” como ambiente uniforme
+([Tynjälä (2008)](referencias.md#ref-tynjala2008workplace)).
+
+**Gestão do conhecimento** trata dos processos pelos quais uma organização cria,
+organiza, compartilha, transfere e aplica conhecimento. Um sistema de
+informação pode apoiar esses processos, mas não os substitui: conhecimento e
+gestão do conhecimento envolvem práticas, pessoas, contextos e decisões que não
+se reduzem ao armazenamento de documentos. A revisão de Alavi e Leidner situa
+os sistemas de gestão do conhecimento como apoio à criação, à transferência e
+à aplicação de conhecimento organizacional e ressalta a natureza multifacetada
+do problema ([Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge)).
+
+**Educação e formação técnica e profissional** (TVET, do inglês *technical and
+vocational education and training*) abrange educação, formação e
+desenvolvimento de competências relacionados a campos ocupacionais, produção,
+serviços e meios de vida. A recomendação da UNESCO inclui aprendizagem baseada
+no trabalho, formação continuada e desenvolvimento profissional dentro de uma
+perspectiva de aprendizagem ao longo da vida. Ela também reconhece contextos
+institucionais, laborais, domésticos e informais, inclusive aprendizagem
+autodirigida e entre pares ([UNESCO (2015)](referencias.md#ref-unesco2015tvet)).
+A recomendação é uma fonte normativa: delimita finalidades e orientações, mas
+não demonstra que uma plataforma específica forme competências profissionais.
+
+### Relação possível com o AraLearn
+
+- **Problema:** conhecimento necessário ao trabalho pode estar disperso em
+  normas, manuais, experiência, explicações locais e procedimentos que mudam.
+  Transformar essas fontes em percurso de estudo exige curadoria, autoria,
+  revisão, proveniência e relação explícita entre explicação e prática.
+- **Decisão:** o AraLearn conserva o mesmo Curso, Fontes, Âncoras, planejamento,
+  representações, práticas e histórico de revisão em contextos educacionais e
+  profissionais. Ele não cria uma ontologia especial de “conhecimento
+  corporativo” nem presume que disponibilizar um Curso produza aprendizagem
+  organizacional.
+- **Possibilidades de investigação:** formação continuada, treinamento e
+  desenvolvimento, aprendizagem autodirigida no trabalho, educação profissional
+  e tecnológica e circulação de conhecimento podem usar o artefato para
+  estruturar materiais e examinar como pessoas encontram, interpretam,
+  transformam e revisam conhecimento relacionado a tarefas reais.
+- **Limites:** a versão corrente não oferece gestão de competências, matrícula
+  institucional, certificação, coautoria organizacional, fluxo de aprovação por
+  papéis ou telemetria de desempenho no trabalho. Propriedade do Curso e acesso
+  direto para Estudo não constituem comunidade de prática, gestão do
+  conhecimento ou programa de treinamento.
+- **Evidência necessária:** cada estudo precisa caracterizar ocupação,
+  organização, tarefa, experiência prévia, condições de aprendizagem e
+  consequências do uso. Qualidade do Curso, sucesso numa tarefa, retenção,
+  transferência ao trabalho e mudança organizacional são resultados distintos.
+
+## 14. Inteligência artificial generativa, recuperação de contexto e controle humano
 
 Um **modelo de linguagem de grande porte** (LLM, do inglês *large language
 model*) estima e produz sequências de linguagem a partir de instruções e
@@ -777,7 +846,7 @@ risco, transparência, proteção de dados e responsabilidade humana
   garantem qualidade factual, pedagógica ou acadêmica. São necessárias tarefas com modelos e contextos variados, incluindo
   erro factual, lacuna do catálogo, mudança de escopo, rejeição e reversão.
 
-## 14. Análise de dados educacionais, privacidade e interpretação
+## 15. Análise de dados educacionais, privacidade e interpretação
 
 A análise de dados educacionais, também conhecida como *learning analytics*,
 envolve mais que coletar e exibir dados. Transparência, controle,
@@ -813,7 +882,7 @@ qualidade docente.
   investigados por desenho participativo, teste de interpretação, utilidade para
   decisões reais e análise de efeitos adversos.
 
-## 15. Métrica, indicador, desfecho e validade
+## 16. Métrica, indicador, desfecho e validade
 
 Guardar um evento com precisão não valida a interpretação construída sobre ele.
 Validade diz respeito à sustentação das interpretações e dos usos de uma medida
@@ -846,7 +915,7 @@ quantidade de conceitos anotados, tempo de materialização e taxa de correção
   instrumento, população, momento, dados ausentes, incerteza, comparações e
   consequências do uso.
 
-## 16. Construção e avaliação do artefato
+## 17. Construção e avaliação do artefato
 
 Design-Based Research (DBR) investiga intervenções educacionais por ciclos em
 contextos autênticos e busca explicar relações entre teoria, design e prática
@@ -941,6 +1010,7 @@ O corpus atual ainda precisa ser ampliado para:
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
 - [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+- [Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge): Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136.
 - [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
@@ -1018,6 +1088,8 @@ O corpus atual ainda precisa ser ampliado para:
 - [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved): Kelli Taylor; Doug Rohrer (2010). **The Effects of Interleaved Practice.** *Applied Cognitive Psychology*, 24(6), p. 837–848.
 - [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
 - [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered): Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222.
+- [Tynjälä (2008)](referencias.md#ref-tynjala2008workplace): Päivi Tynjälä (2008). **Perspectives into Learning at the Workplace.** *Educational Research Review*, 3(2), p. 130–154.
+- [UNESCO (2015)](referencias.md#ref-unesco2015tvet): UNESCO (2015). **Recommendation concerning Technical and Vocational Education and Training (TVET).** UNESCO.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 - [van Merriënboer (2019)](referencias.md#ref-vanmerrienboer2019fourcomponent): Jeroen J. G. van Merriënboer (2019). **The Four-Component Instructional Design Model: An Overview of Its Main Design Principles.** School of Health Professions Education, Maastricht University.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.

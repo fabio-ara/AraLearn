@@ -65,8 +65,8 @@ O curso é organizado em níveis com responsabilidades diferentes:
 
 **Problema.** Uma Unidade isolada costuma ser pequena demais para situar, explicar,
 exemplificar e praticar um conceito complexo. Uma lição inteira pode conter
-objetivos demais para orientar uma sessão curta e permitir uma retomada
-precisa.
+objetivos demais para delimitar o que estava em andamento e permitir uma
+retomada precisa depois de interrupção.
 
 **Alternativas e requisitos.** Seria possível usar somente Unidades e Lições, ou
 fixar blocos por duração e quantidade. A unidade intermediária, porém, precisa

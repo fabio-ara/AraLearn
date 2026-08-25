@@ -104,7 +104,8 @@ encontra e compreende tarefas, mesmo que nunca nomeie a organização interna.
 O fluxo falha se uma tarefa comum exigir explicação externa de arquitetura,
 identificador, contrato ou banco; se a participante perder o contexto do Curso;
 se aprender a contornar a interface substituir a descoberta; ou se texto e
-navegação simultâneos aumentarem a carga até ela abandonar a intenção original.
+navegação concorrentes produzirem hesitação, alternância repetida, perda de
+contexto, pedido de ajuda ou abandono da intenção original.
 
 Registre cada dificuldade como Observação datada e trate recorrência ou bloqueio
 como defeito de produto. Corrija a interface antes de alegar simplicidade. Um

@@ -47,7 +47,7 @@ Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, cor
 
 #### Pesquisa
 
-Superfície e conjunto de operações para configurar estudos, inspecionar medidas e exportar dados; não certifica validade científica por si só. Em Pesquisa, uma pessoa pesquisadora configura uma comparação e exporta medidas com seus dados brutos e metadados.
+Superfície que expõe fatos de Autoria, métricas descritivas, Variantes e comparações e permite exportar fatos e metadados; não configura o protocolo de um estudo nem certifica validade científica. Em Pesquisa, a pessoa proprietária fixa recorte e revisão, compara fatos e métricas de Variantes e exporta fatos brutos e metadados para uma análise externa.
 
 **Domínio e implementação.** Pesquisa; equivalente internacional: research; símbolo: `research_surface`.
 
@@ -89,13 +89,13 @@ Unidade curricular de um módulo que organiza uma progressão didática coerente
 
 #### Microssequência didática
 
-Construto próprio do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa. Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.
+Termo operacional do AraLearn: conjunto ordenado de unidades de estudo orientado a um objetivo instrucional delimitado, sem quantidade fixa. Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.
 
 **Domínio e implementação.** Microssequência didática; equivalente internacional: didactic microsequence; símbolo: `didactic_microsequence`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `microssequência`. Distinguir de `parágrafo`, `subtópico automático`, `Parte`.
 
-**Base.** [definição própria](vocabulario-controlado.md); [evidência acadêmica](https://doi.org/10.5209/clac.96949).
+**Base.** [definição própria](modelo-didatico.md); [evidência acadêmica](https://doi.org/10.5209/clac.96949).
 
 #### Unidade de estudo
 
@@ -467,11 +467,11 @@ Política completa e versionada por escopo que fixa catálogo, disponibilidade, 
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
-#### Densidade conceitual operacionalizada
+#### Medida de densidade conceitual
 
-Construto de pesquisa calculado a partir de unidades semânticas anotadas e de um denominador explícito, segundo esquema, versão e procedimento de validação declarados. A pesquisa define e mede quantas unidades conceituais relevantes aparecem em determinada extensão, em vez de usar “densidade” como impressão informal.
+Medida obtida pela aplicação de uma métrica versionada a unidades semânticas anotadas e a um denominador explícito; a interpretação exige definição e validação próprias do construto pretendido. Uma investigação define o construto, anota unidades semânticas, fixa o denominador e aplica a métrica versionada; o valor calculado é uma medida, não o construto.
 
-**Domínio e implementação.** Densidade conceitual operacionalizada; equivalente internacional: operationalized conceptual density; símbolo: `conceptual_density_measure`.
+**Domínio e implementação.** Medida de densidade conceitual; equivalente internacional: conceptual density measure; símbolo: `conceptual_density_measure`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `densidade conceitual`. Distinguir de `quantidade de caracteres`, `complexidade textual`, `carga cognitiva`.
 

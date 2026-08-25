@@ -115,6 +115,36 @@ comuns das Unidades. Cada pacote continua responsável pelas convenções da ár
 pela legibilidade móvel, pela interação de prática, pelos campos textuais
 editáveis e pela validação.
 
+## Interação que preserva orientação e contexto
+
+Uma interface de autoria não é compreensível apenas porque expõe todas as
+funções. A pessoa precisa formar uma imagem de onde está, que objeto está
+alterando, qual estado prevalece e como retornar. **Arquitetura da informação**
+designa aqui a organização de lugares, rótulos, relações e percursos que permite
+responder a essas perguntas.
+
+O AraLearn usa a hierarquia do próprio Curso como referência comum entre
+Estudo e Autoria. O título, o caminho didático, o modo ativo e o alvo corrente
+permanecem visíveis nos pontos em que uma ação poderia ser ambígua. Essa
+decisão privilegia **reconhecimento em vez de memorização**: a pessoa pode
+reconhecer um Curso, uma Unidade, uma Fonte ou a origem de um valor na tela, em
+vez de decorar identificadores, nomes de contratos ou a posição de uma área.
+
+**Visibilidade do estado** significa tornar observável o que o sistema sabe e
+o que ainda está acontecendo. Cópia local, falta de conexão, rascunho, prévia,
+gravação, sincronização e conflito não são o mesmo estado. A interface precisa
+mostrar essa diferença antes de pedir uma decisão. **Divulgação progressiva**
+significa apresentar primeiro as ações e informações necessárias à tarefa e
+revelar detalhes especializados quando passam a ser relevantes. Ela evita
+exigir todo o vocabulário de componentes, pesquisa e integração no primeiro
+contato, sem remover essas capacidades.
+
+Essas são decisões de interação, não resultados de usabilidade. Demonstrar que
+pessoas encontram uma função, interpretam um estado e retomam a tarefa exige
+avaliação com público, objetivos e contexto definidos, conforme o conceito de
+usabilidade da ISO 9241-11:2018
+([International Organization for Standardization (2018)](referencias.md#ref-iso2018usability)).
+
 ## Estudo, autoria e assistência computacional
 
 O mesmo Curso pode ser observado em dois contextos complementares:
@@ -126,9 +156,15 @@ O mesmo Curso pode ser observado em dois contextos complementares:
   original;
 - na **Autoria**, a pessoa proprietária planeja, produz e inspeciona o Curso,
   mantém sua proveniência, tria Anotações, audita correções, compara variantes,
-  consulta fatos da produção e concede acesso direto para Estudo. Um protocolo
-  aberto, o **Model Context Protocol (MCP)**, conecta o assistente de autoria ao
-  aplicativo.
+  consulta fatos da produção e concede acesso direto para Estudo.
+
+A assistência computacional chega ao Curso por três canais distintos. A
+**Assistência por IA** dentro do aplicativo mantém uma sessão contextual em
+memória para Unidade, Microssequência ou Lição. O **Model Context Protocol
+(MCP)** conecta um cliente compatível às operações canônicas de Autoria. O
+canal **Actions/OpenAPI** permite que um GPT personalizado use cinco operações
+HTTP do mesmo domínio. Eles não compartilham protocolo, sessão, credencial ou
+principal de autorização, embora obedeçam às mesmas regras de Curso.
 
 Uma alteração não precisa transportar todos os Cursos. A entrada inicial recebe
 descritores finos para selecionar um Curso; a composição é lida em páginas sob
@@ -137,11 +173,22 @@ linguagem é montado para o Curso e o alvo pertinentes, e a resposta precisa
 satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
-é uma ferramenta de autoria sob responsabilidade humana. Recomendações para
-interação entre pessoas e inteligência artificial favorecem tornar
-o escopo visível, oferecer possibilidade de correção e apoiar a recuperação de
-erros ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações para IA generativa em educação também
-reforçam supervisão, transparência e adequação ao contexto ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
+é uma ferramenta de autoria sob responsabilidade humana. O AraLearn separa
+conversa, plano, confirmação para gerar, prévia, aplicação ao rascunho e
+gravação. Escopo visível, validação, possibilidade de rejeitar e reversão são
+condições de supervisão; a existência desses controles não prova que a pessoa
+compreenda o erro ou exerça controle efetivo.
+
+**Confiança calibrada** ocorre quando a confiança e a dependência correspondem
+à capacidade demonstrada do sistema naquela tarefa e às incertezas conhecidas.
+**Viés de automação** (*automation bias*) é a tendência de aceitar ou priorizar
+a recomendação automatizada de modo inadequado, inclusive diante de indícios
+contrários. Tornar limites e correções possíveis é necessário, mas intervenções
+que exigem reflexão também podem introduzir custo e seus efeitos dependem do
+contexto ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+[Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Orientações
+para IA generativa em educação reforçam supervisão, transparência, proteção de
+dados e adequação ao contexto ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
 ## Continuidade entre dispositivo e servidor
 
@@ -190,10 +237,10 @@ O proprietário pode conceder ou revogar acesso diretamente a outra conta. A
 concessão dá acesso a Estudo e preserva com o proprietário a edição do Curso. O
 modelo não cria grupos, organizações nem acesso público anônimo.
 
-## Público e condições de uso
+## Públicos e condições de uso
 
-O desenho móvel atende especialmente pessoas que estudam em sessões curtas,
-durante deslocamentos ou entre outras atividades. A interface web mantém a
+O desenho móvel atende especialmente pessoas que estudam em períodos que podem
+ser interrompidos, durante deslocamentos ou entre outras atividades. A interface web mantém a
 largura de leitura próxima à experiência móvel para que o mesmo conteúdo não
 dependa de uma diagramação exclusiva para computador. Revisões de aprendizagem móvel
 e autodirigida identificam oportunidades e exigências próprias desse contexto,
@@ -204,6 +251,17 @@ O AraLearn também atende autores, professores, revisores e pesquisadores que
 precisam examinar como um Curso foi planejado, representado, corrigido e usado.
 Esses públicos observam o mesmo Curso vivo, mas recebem ações diferentes de
 acordo com propriedade e acesso.
+
+Treinamento e desenvolvimento, educação profissional e tecnológica,
+aprendizagem autodirigida no trabalho e circulação de conhecimento são
+contextos possíveis de aplicação e investigação. A aprendizagem no trabalho
+pode ser formal ou informal, envolver diferentes níveis e depender das
+condições oferecidas pelo ambiente ([Tynjälä (2008)](referencias.md#ref-tynjala2008workplace)).
+Sistemas de informação podem apoiar criação, transferência e aplicação de
+conhecimento organizacional sem constituir, sozinhos, gestão do conhecimento
+([Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge)). O AraLearn
+não oferece gestão de competências, matrícula institucional ou certificação e
+não tem eficácia demonstrada nesses contextos.
 
 ## Limites e compromissos verificáveis
 
@@ -239,9 +297,12 @@ As citações usam chaves da base bibliográfica pública em
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+- [Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge): Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated): Jaclyn Broadbent; Walter L. Poon (2015). **Self-Regulated Learning Strategies and Academic Achievement in Online Higher Education Learning Environments: A Systematic Review.** *The Internet and Higher Education*, 27, p. 1–13.
+- [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1).
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
+- [International Organization for Standardization (2018)](referencias.md#ref-iso2018usability): International Organization for Standardization (2018). **ISO 9241-11:2018: Ergonomics of Human-System Interaction — Part 11: Usability: Definitions and Concepts.** ISO 9241-11:2018.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
 - [Lai et al. (2022)](referencias.md#ref-lai2022mobile): Yuzhi Lai; Nadira Saab; Wilfried Admiraal (2022). **Learning Strategies in Self-Directed Language Learning Using Mobile Technology in Higher Education: A Systematic Scoping Review.** *Education and Information Technologies*, 27, p. 7749–7780.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
@@ -252,6 +313,7 @@ As citações usam chaves da base bibliográfica pública em
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
+- [Tynjälä (2008)](referencias.md#ref-tynjala2008workplace): Päivi Tynjälä (2008). **Perspectives into Learning at the Workplace.** *Educational Research Review*, 3(2), p. 130–154.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 
 <!-- referências locais: fim -->

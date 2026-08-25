@@ -57,6 +57,8 @@ function temporaryDocumentation() {
       "",
       "## Estudar o modelo pedagógico",
       "",
+      "## Aprender no trabalho e formar profissionalmente",
+      "",
       "## Estudar a engenharia",
       "",
       "## Estudar a autoria de cursos",
@@ -405,11 +407,17 @@ test("auditoria alcança texto de interface e fixture publicada não classificad
   const temporaryRoot = temporaryDocumentation();
   context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(temporaryRoot, "src", "ui", "screen.js"), "export const title = 'Curso SENAI';\n", "utf8");
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "origens-do-aralearn.md"),
+    "# Origens\n\nO percurso declarado inclui cursos do SENAI.\n",
+    "utf8"
+  );
   const fixtureDirectory = path.join(temporaryRoot, "supabase", "fixtures", "catalog");
   fs.mkdirSync(fixtureDirectory, { recursive: true });
   fs.writeFileSync(path.join(fixtureDirectory, "unexpected.json"), '{"title":"Dataprev"}\n', "utf8");
   const errors = auditDocumentation({ root: temporaryRoot });
   assert.ok(errors.some((error) => error.includes("src/ui/screen.js:1: instituição particular SENAI")));
+  assert.equal(errors.some((error) => error.includes("docs/origens-do-aralearn.md:3: instituição particular SENAI")), false);
   assert.ok(errors.some((error) => error.includes("supabase/fixtures/catalog/unexpected.json:1: instituição particular Dataprev")));
 });
 
