@@ -91,8 +91,8 @@ ser usada pelos testes.
 
 Os verificadores de build interrompem a montagem quando encontram
 `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_DB_PASSWORD` no
-processo que gera site ou APK. Segredos de provedores de IA permanecem no relay
-local correspondente, não no Supabase nem no artefato público.
+processo que gera site ou APK. Chaves efêmeras de providers de IA permanecem
+somente na memória da sessão, não no Supabase nem no artefato público.
 
 ## Storage: bytes privados e vínculo relacional
 

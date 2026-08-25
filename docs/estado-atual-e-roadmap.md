@@ -20,8 +20,9 @@ Evidência corrente revisada em **2026-08-24**.
 
 ## Estudo
 
-A entrada apresenta um Curso por vez. O seletor distingue **Seu Curso**,
-**Compartilhado com você** e **Sua cópia**. A prévia informa objetivo,
+A entrada apresenta um Curso por vez. O seletor distingue Curso próprio,
+**Compartilhado com você** e **Sua cópia** por iconografia, estado acessível e
+texto somente quando necessário; o título não recebe sufixo de propriedade. A prévia informa objetivo,
 quantidade de Módulos, Lições e Unidades, progresso e disponibilidade no
 dispositivo.
 
@@ -31,9 +32,10 @@ O percurso segue a hierarquia:
 Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
 ```
 
-**Voltar** refaz o percurso tela a tela. **Subir** leva diretamente ao nível
-imediatamente superior da hierarquia, sem substituir o retorno pelo caminho
-percorrido. Curso e Módulo oferecem os modos **Visualizar** e **Editar**. Lição,
+**Voltar** restaura a origem real do percurso, inclusive rolagem e foco depois
+de Retomar, Rever ou endereço direto. **Home** oferece uma saída global
+previsível. O pai só aparece como ação contextual quando uma jornada concreta
+o justificar. Curso e Módulo oferecem os modos **Visualizar** e **Editar**. Lição,
 Microssequência e Unidade oferecem **Visualizar**, **Editar** e **Assistência por
 IA**. Os modos de alteração aparecem quando a relação de acesso autoriza operar
 o alvo.
@@ -93,8 +95,9 @@ faz no máximo reparos delimitados. A prévia usa o renderer real. JSON válido,
 sozinho, não basta: uma proposta inválida ou não renderizável nunca substitui o
 conteúdo corrente.
 
-A credencial do provedor permanece no relay local configurado pela pessoa. O
-AraLearn não grava a conversa como conteúdo. Aplicar uma prévia ainda exige uma
+A pessoa escolhe OpenAI, Gemini ou DeepSeek e informa uma chave mantida somente
+na memória da sessão. O AraLearn não grava a conversa como conteúdo nem expõe
+endpoint ou relay no uso normal. Aplicar uma prévia ainda exige uma
 gravação explícita e as cercas de versão do Curso.
 
 ## Autoria conversacional

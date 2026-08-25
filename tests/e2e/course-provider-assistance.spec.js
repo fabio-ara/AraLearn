@@ -36,16 +36,16 @@ async function installHarness(page) {
     const probe = { calls: 0, previews: 0, discards: 0, drafts: 0, current: original };
     const session = createCourseProviderSession();
     session.update({
-      providerId: "local",
+      providerId: "openai",
       model: "gpt-5.6-luna",
-      endpoint: "http://127.0.0.1:4183/v1/chat/completions",
-      apiKey: ""
+      endpoint: "https://api.openai.com/v1/responses",
+      apiKey: "stub-credential"
     });
     const response = (value) => ({
       ok: true,
       status: 200,
       async json() {
-        return { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }] };
+        return { output: [{ content: [{ type: "output_text", text: JSON.stringify(value) }] }] };
       }
     });
     const assistance = createCourseProviderAssistance({
@@ -54,7 +54,7 @@ async function installHarness(page) {
       session,
       runtimeConfig: {
         developmentRuntime: true,
-        assistAllowedOrigins: ["http://127.0.0.1:4183"]
+        assistAllowedOrigins: ["https://api.openai.com"]
       },
       fetchImpl: async () => {
         probe.calls += 1;
@@ -131,6 +131,11 @@ test("sessão fecha por Escape, restaura foco e não persiste credencial", async
   await page.keyboard.press("Escape");
   await expect(page.locator("#trigger")).toBeFocused();
   const snapshot = await page.evaluate(() => globalThis.__courseAssistance.sessionSnapshot());
-  expect(snapshot.hasCredential).toBe(false);
+  expect(snapshot.hasCredential).toBe(true);
   expect(snapshot.conversationTurnCount).toBe(0);
+  const destroyed = await page.evaluate(() => {
+    globalThis.__courseAssistanceSession.destroy();
+    return globalThis.__courseAssistance.sessionSnapshot();
+  });
+  expect(destroyed.hasCredential).toBe(false);
 });

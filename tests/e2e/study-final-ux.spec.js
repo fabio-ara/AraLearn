@@ -135,7 +135,7 @@ function modeButton(page, name) {
   return page.locator("header .study-mode-actions").getByRole("button", { name });
 }
 
-test("jornada por cliques mantém voltar, subir e modos contextuais distintos", async ({ page }) => {
+test("jornada por cliques mantém voltar e modos contextuais distintos", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountStudy(page, { savedView: "course" });
   const homeGeometry = await page.evaluate(() => {
@@ -243,15 +243,12 @@ test("jornada por cliques mantém voltar, subir e modos contextuais distintos", 
     };
     return {
       back: bounds("[data-action='go-back']"),
-      up: bounds("[data-action='go-up']"),
       modes: bounds("header .study-mode-actions"),
       viewport: innerWidth
     };
   });
   expect(editTopbar.back.visible).toBe(true);
-  expect(editTopbar.up.visible).toBe(true);
   expect(editTopbar.back.left).toBeGreaterThanOrEqual(0);
-  expect(editTopbar.up.left).toBeGreaterThanOrEqual(0);
   expect(editTopbar.modes.right).toBeLessThanOrEqual(editTopbar.viewport);
   await capture(page, "390-unidade-editar");
   await modeButton(page, "Visualizar").click();
@@ -271,22 +268,105 @@ test("jornada por cliques mantém voltar, subir e modos contextuais distintos", 
   await page.locator("[data-action='go-back']").click();
   await expect(page.locator("[data-action='open-course']")).toBeFocused();
 
+});
+
+test("topbar cotidiana oferece Voltar e Home", async ({ page }) => {
+  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page, { savedView: "course" });
+  await page.locator("[data-action='open-course']").click();
+  await page.locator("[data-action='open-module']").click();
+
+  await expect(page.locator("[data-action='go-back']")).toBeVisible();
+  await expect(page.locator("[data-action='go-home']")).toBeVisible();
+
+  await page.locator("[data-action='go-home']").click();
+  await expect(page.locator("[data-action='open-course']")).toBeVisible();
+});
+
+test("topbar cotidiana não mantém ação permanente ao pai", async ({ page }) => {
+  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page, { savedView: "course" });
+  await page.locator("[data-action='open-course']").click();
+  await page.locator("[data-action='open-module']").click();
+  await expect(page.locator("[data-action='go-up']")).toHaveCount(0);
+});
+
+test("títulos de Curso não recebem sufixo textual de propriedade", async ({ page }) => {
+  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.setContent('<!doctype html><html lang="pt-BR"><body><main id="study-root"></main></body></html>');
+  await page.evaluate(async (project) => {
+    const { renderHomeScreen } = await import("/src/ui/renderHomeScreen.js");
+    const base = project.courses[0];
+    const courses = [
+      { ...structuredClone(base), id: "owned-course", title: "Curso próprio" },
+      { ...structuredClone(base), id: "shared-course", title: "Curso compartilhado" },
+      { ...structuredClone(base), id: "copy-course", title: "Cópia pessoal" }
+    ];
+    document.querySelector("#study-root").innerHTML = renderHomeScreen({
+      project: { ...project, courses },
+      progress: { version: 1, lessons: {} },
+      selectedCourseId: courses[0].id,
+      editorSupport: {
+        coursePermissionsById: {
+          [courses[0].id]: { ownership: "owned", canEdit: true },
+          [courses[1].id]: { ownership: "shared", canEdit: false, canDerive: true },
+          [courses[2].id]: {
+            ownership: "owned", canEdit: true, isPersonalCopy: true,
+            sourceCourseId: courses[1].id
+          }
+        }
+      }
+    });
+  }, fixture);
+  await expect(page.locator("select[aria-label='Selecionar Curso'] option"))
+    .not.toContainText(/· (?:Seu Curso|Compartilhado com você|Sua cópia)/u);
+});
+
+test("trocar Visualizar e Editar preserva topbar e rolagem", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page, { savedView: "course" });
   await page.locator("[data-action='open-course']").click();
   await page.locator("[data-action='open-module']").click();
   await page.locator("[data-action='open-lesson']").click();
   await page.locator("[data-action='open-microsequence']").click();
   await page.locator("[data-action='open-study-unit']").first().click();
-  await page.locator("[data-action='go-up']").click();
-  await expect(page.locator("[data-study-destination-heading]")).toContainText("Regra central");
-  await page.locator("[data-action='go-up']").click();
-  await expect(page.locator("[data-study-destination-heading]")).toContainText("Lição");
-  await page.locator("[data-action='go-up']").click();
-  await expect(page.locator("[data-study-destination-heading]")).toContainText("Módulo contextual");
-  await page.locator("[data-action='go-up']").click();
-  await expect(page.locator("[data-study-destination-heading]")).toContainText("Fixture contextual");
-  await expect(page.locator("[data-action='go-up']")).toHaveAttribute("aria-label", "Subir para a Home");
-  await page.locator("[data-action='go-up']").click();
-  await expect(page.locator("[data-action='open-course']")).toBeVisible();
+
+  const geometry = () => page.evaluate(() => {
+    const rect = document.querySelector(".navigation-topbar").getBoundingClientRect();
+    const scroller = document.querySelector(".screen-content");
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      scrollTop: scroller.scrollTop
+    };
+  });
+  await page.locator(".screen-content").evaluate((node) => {
+    node.scrollTop = Math.min(40, Math.max(0, node.scrollHeight - node.clientHeight));
+  });
+  const before = await geometry();
+  await modeButton(page, "Editar").click();
+  expect(await geometry()).toEqual(before);
+  await modeButton(page, "Visualizar").click();
+  expect(await geometry()).toEqual(before);
+});
+
+test("trocar Visualizar e Editar preserva foco no modo acionado", async ({ page }) => {
+  test.fail(true, "oráculo pós-auditoria preparado antes da implementação");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page, { savedView: "course" });
+  await page.locator("[data-action='open-course']").click();
+  await page.locator("[data-action='open-module']").click();
+  await page.locator("[data-action='open-lesson']").click();
+  await page.locator("[data-action='open-microsequence']").click();
+  await page.locator("[data-action='open-study-unit']").first().click();
+  await modeButton(page, "Editar").click();
+  await expect(modeButton(page, "Editar")).toBeFocused();
 });
 
 test("Retomar uma Unidade volta para a mesma Home e para o controle de origem", async ({ page }) => {
@@ -301,10 +381,14 @@ test("Retomar uma Unidade volta para a mesma Home e para o controle de origem", 
   await capture(page, "1280-home-retorno");
 });
 
-test("Home e toolbar permanecem dentro das arestas em 360 e 430 px", async ({ page }) => {
-  for (const width of [360, 430]) {
+test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ page }) => {
+  for (const [width, colorScheme] of [[360, "light"], [390, "dark"], [430, "light"], [1280, "dark"]]) {
+    await page.emulateMedia({ colorScheme });
     await page.setViewportSize({ width, height: 800 });
     await mountStudy(page, { savedView: "course" });
+    await page.evaluate((mode) => {
+      document.documentElement.dataset.colorMode = mode;
+    }, colorScheme);
     const home = await page.evaluate(() => {
       const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
       const top = rect(".home-topbar");
@@ -328,18 +412,20 @@ test("Home e toolbar permanecem dentro das arestas em 360 e 430 px", async ({ pa
       const heading = document.querySelector(".topbar-heading").getBoundingClientRect();
       const actions = document.querySelector(".lesson-top-actions").getBoundingClientRect();
       const back = document.querySelector("[data-action='go-back']").getBoundingClientRect();
-      const up = document.querySelector("[data-action='go-up']").getBoundingClientRect();
       const account = document.querySelector("[data-action='open-settings']").getBoundingClientRect();
       const buttons = [...document.querySelectorAll(".study-mode-button")]
         .map((button) => button.getBoundingClientRect());
       return {
         barFits: bar.left >= 0 && bar.right <= innerWidth,
-        controlsFit: [back, up, account].every(({ left, right }) =>
+        controlsFit: [back, account].every(({ left, right }) =>
           left >= 0 && right <= innerWidth),
         documentFits: document.documentElement.scrollWidth <= innerWidth,
         overlap: Math.max(0, heading.right - actions.left),
         buttonWidths: buttons.map(({ width: value }) => value),
-        buttonHeights: buttons.map(({ height: value }) => value)
+        buttonHeights: buttons.map(({ height: value }) => value),
+        targetsMeetMinimum: [back, account, ...buttons]
+          .every(({ width: valueWidth, height: valueHeight }) =>
+            valueWidth >= 24 && valueHeight >= 24)
       };
       });
       expect(topbar.barFits, label).toBe(true);
@@ -348,6 +434,7 @@ test("Home e toolbar permanecem dentro das arestas em 360 e 430 px", async ({ pa
       expect(topbar.overlap, label).toBe(0);
       expect(new Set(topbar.buttonWidths).size, label).toBe(1);
       expect(new Set(topbar.buttonHeights).size, label).toBe(1);
+      expect(topbar.targetsMeetMinimum, label).toBe(true);
     };
     await assertTopbarFits("Lição");
     await page.locator("[data-action='open-microsequence']").click();

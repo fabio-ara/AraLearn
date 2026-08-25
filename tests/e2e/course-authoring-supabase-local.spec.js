@@ -1117,9 +1117,7 @@ test.describe("Autoria real com Supabase local", () => {
       await expect(lessonEditor.getByText("Ordem das Microssequências", { exact: true }))
         .toBeVisible();
       await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
-      await page.getByRole("button", { name: "Subir para o Módulo", exact: true }).click();
-      await page.getByRole("button", { name: "Subir para o Curso", exact: true }).click();
-      await page.getByRole("button", { name: "Subir para a Home", exact: true }).click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await page.getByRole("button", { name: "Autoria", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
         .toBeVisible();

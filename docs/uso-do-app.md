@@ -233,16 +233,15 @@ progresso e Observações não são copiados; esses registros começam próprios
 novo Curso.
 
 Abrir o editor, pedir uma sugestão, cancelar, encontrar uma falha ou confirmar
-conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home mostra
-o novo Curso como **Sua cópia** e mantém o original como **Compartilhado com
-você**.
+conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home
+distingue a cópia pessoal e o original compartilhado por iconografia e estado
+acessível ao lado do título, sem alterar o título de nenhum dos dois.
 
 Para trabalhar com a sessão contextual, use **Assistência por IA** na Unidade,
 na Microssequência ou na Lição:
 
-1. confira **Serviço local**, já fixo pela instalação;
-2. informe o modelo; abra **Conexão** apenas para conferir o endpoint do relay
-   na porta 4183;
+1. escolha OpenAI, Gemini ou DeepSeek;
+2. informe o modelo quando necessário e a chave efêmera da sessão;
 3. leia o aviso sobre o recorte enviado e escreva uma mensagem;
 4. discuta o plano até que ele represente a intenção;
 5. use **Confirmar e preparar**;
@@ -252,20 +251,18 @@ na Microssequência ou na Lição:
 
 O pedido leva a composição necessária do alvo, um resumo do caminho curricular
 e as mensagens recentes. PDFs, Fontes, identidade da conta e regiões alheias ao
-escopo ficam fora. A credencial do provedor permanece no relay, fora do
-AraLearn. Provedores remotos e chave no navegador aparecem somente num runtime
-explícito de desenvolvimento, com alerta, e não são o percurso de produção.
+escopo ficam fora. A chave segue somente ao provider escolhido e permanece em
+memória até sair, recarregar ou encerrar a superfície.
 
-O aviso de cada envio separa essa memória efêmera do tratamento externo. O relay
-pode encaminhar o recorte ao provedor configurado, que pode conservar dados
-segundo seus próprios termos; confira destino e conteúdo antes de autorizar.
+O aviso de cada envio separa essa memória efêmera do tratamento externo. O
+provider pode conservar dados segundo seus próprios termos; confira destino e
+conteúdo antes de autorizar.
 
 A sessão pode trabalhar com a composição da Unidade, com a estrutura da
 Microssequência e com a organização de Microssequências dentro da Lição. Depois
 da conversa e da confirmação, o AraLearn valida a proposta e a mostra no
 renderer real. Proposta inválida ou não renderizável deixa o conteúdo corrente
-intacto. No Android, uma ponte nativa fixa mantém a chamada HTTP fora do WebView
-sem relaxar a política de conteúdo misto.
+intacto. Endpoint, relay e instruções de arquitetura não aparecem no uso normal.
 
 ## Trabalhar com o ChatGPT a partir da Autoria
 

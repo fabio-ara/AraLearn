@@ -456,7 +456,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await removeUser(owner?.id);
   });
 
-  test("Estudo real percorre a hierarquia, persiste o Curso e separa voltar, subir e Retomar", async ({
+  test("Estudo real percorre a hierarquia, persiste o Curso e separa Voltar de Retomar", async ({
     browser
   }, testInfo) => {
     const context = await browser.newContext({
@@ -590,11 +590,6 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await attachScreenshot(page, testInfo, "estudo-real-unidade-390.png");
 
       await page.getByRole("button", { name: "Voltar" }).click();
-      await expect(page.locator("[data-study-destination-heading]")).toHaveText(
-        "Microssequência compartilhada"
-      );
-      await page.getByRole("button", { name: "Abrir unidade" }).first().click();
-      await page.getByRole("button", { name: "Subir para a Microssequência" }).click();
       await expect(page.locator("[data-study-destination-heading]")).toHaveText(
         "Microssequência compartilhada"
       );

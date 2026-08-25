@@ -260,30 +260,17 @@ delimitados. O renderer canônico precisa aceitar a composição antes da prévi
 JSON bem formado não é suficiente, e uma candidata inválida ou não
 renderizável nunca substitui o conteúdo corrente.
 
-Em produção, a única conexão disponível é um relay em `127.0.0.1`, `localhost`
-ou `10.0.2.2`, na porta 4183. A credencial do provedor permanece nesse serviço,
-fora do AraLearn. A interface mostra o relay local como valor fixo, oferece
-modelo e mensagem e recolhe o endpoint em **Serviço e modelo**. Configuração e
-conversa não entram no Curso nem no IndexedDB. A montagem de produção ignora
-origens adicionais configuradas pelo ambiente e falha se o artefato contiver
-runtime de desenvolvimento, origem extra ou credencial.
+A conexão de produção é direta com OpenAI, Gemini ou DeepSeek, escolhidos pela
+pessoa. Provider, modelo, chave, conversa e candidata permanecem apenas na
+memória da sessão; a chave segue somente no cabeçalho da origem oficial do
+provider e nunca entra no Curso, IndexedDB, Storage, logs ou artefatos. A
+interface normal não oferece endpoint configurável nem descreve arquitetura de
+transporte.
 
-No navegador, o adaptador declara `targetAddressSpace` conforme o destino:
-`loopback` para `127.0.0.1` e `localhost`, `local` apenas para `10.0.2.2`. Essa
-distinção evita que um endereço de loopback seja apresentado incorretamente como
-rede local às proteções do navegador.
-
-No Android, uma ponte nativa aceita mensagens apenas do quadro principal na
-origem `https://appassets.androidplatform.net` e chama exclusivamente
-`http://127.0.0.1:4183/v1/chat/completions`. Ela aceita POST JSON sem credencial
-do navegador, limita pedido e resposta a 128 KiB, aplica 45 segundos de espera e
-propaga cancelamento. A chave continua no relay. A ponte não integra o artefato
-do Pages.
-
-Um runtime explicitamente identificado como desenvolvimento pode liberar
-OpenAI, Gemini e DeepSeek diretos e o campo de chave, sempre com alerta de que o
-navegador não protege credenciais duradouras. Nesse modo, cada provedor continua
-preso à sua própria origem exata, e a chave segue somente no cabeçalho.
+Cada adaptador permanece preso à origem oficial de seu provider, monta o
+envelope compatível e normaliza a resposta para a mesma conversa contextual.
+Testes usam stubs determinísticos dos três providers. Sair, recarregar ou
+encerrar a superfície cancela a chamada e apaga a configuração efêmera.
 
 Ao sair da conta ou encerrar a aplicação, a superfície de Estudo ou Autoria é
 destruída e a chamada ao provedor é cancelada antes de apagar a sessão e fechar

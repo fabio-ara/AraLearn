@@ -39,12 +39,11 @@ arquitetura visual diferente.
   correção pronta, uma nova verificação e um ponto de controle reversível;
 - preparar Variantes, uma diferença não declarada, fatos para gráfico, tabela e
   exportação, além de outra conta com acesso somente a Estudo;
-- disponibilizar o relay local de teste na porta 4183 para a assistência
-  contextual, com toda credencial fora do AraLearn e dos registros da sessão;
-- repetir a chamada a partir do Pages HTTPS e do APK de release; registrar a
-  permissão de acesso à rede local no navegador, a passagem pela ponte nativa no
-  Android, a manutenção do bloqueio de conteúdo misto no WebView e a mensagem de
-  recuperação em vez de contornar silenciosamente a política do cliente;
+- disponibilizar stubs determinísticos de OpenAI, Gemini e DeepSeek para a
+  assistência contextual, sem credencial real ou chamada paga;
+- repetir a jornada a partir do Pages HTTPS e do APK de release; registrar a
+  escolha de provider, a limpeza da chave efêmera, o comportamento no Android e
+  a mensagem de recuperação diante de falha;
 - exercitar também conexão instável, retomada após reconexão e duas abas;
 - não explicar MCP, Partes, nomes de áreas, esquema, revisão, CAS, UUID,
   relações internas ou localização dos controles;
@@ -70,7 +69,7 @@ forma incorreta, ajuda solicitada, resultado e comentário espontâneo.
 | “Encontre o que o ChatGPT acabou de produzir e diga onde isso fica no Curso.” | chega à Parte e à Unidade recém-materializadas, entende o estado e não perde posição na hierarquia | caminho seguido, posição preservada e interpretação do progresso |
 | “Percorra o conteúdo acima e abaixo desta Unidade e volte exatamente a ela.” | navega por Curso, módulo, lição, Microssequência e Unidade sem decorar subsistemas | retorno exato, contexto visível e número de desvios |
 | “Corrija manualmente um trecho simples desta Unidade.” | encontra edição contextual, limita o escopo, usa prévia, aplica e consegue desfazer | alvo alterado, renderer validado e ausência de edição paralela |
-| “Peça à assistência do aplicativo uma alteração focal e confira antes de aceitar.” | encontra o relay local por divulgação progressiva, distingue pedido de aplicação e mantém o Curso utilizável em falha ou cota | escopo mínimo sem identidades internas, prévia, descarte/aplicação e credencial ausente do AraLearn |
+| “Peça à assistência do aplicativo uma alteração focal e confira antes de aceitar.” | escolhe o provider sem lidar com endpoint, distingue pedido de aplicação e mantém o Curso utilizável em falha ou cota | escopo mínimo sem identidades internas, prévia, descarte/aplicação e chave efêmera ausente da persistência |
 | “Discuta uma mudança que envolva mais de um componente e confira a proposta antes de salvar.” | entende conversa, plano, confirmação, prévia e gravação como decisões separadas | contexto delimitado, contratos descobertos, renderer real e conteúdo preservado diante de proposta inválida |
 | “Deixe uma observação exatamente sobre o ponto que merece revisão.” | registra Observação situada e entende que ela não altera automaticamente o conteúdo | alvo, texto, estado de sincronização e expectativa declarada |
 | “Descubra qual configuração vale aqui, de onde ela veio e troque ou restaure a decisão.” | consulta valor efetivo, origem e herança sem identificador ou texto técnico | controle encontrado, receio de alterar e resultado após restauração |

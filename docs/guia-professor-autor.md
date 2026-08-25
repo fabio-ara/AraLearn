@@ -224,17 +224,17 @@ acesso removem a cópia correspondente.
 
 Use **Assistência por IA** como modo irmão de **Visualizar** e **Editar**. Ela
 está disponível na Unidade, na Microssequência e na Lição conforme a autoridade
-da pessoa. Na instalação de produção, o relay local aparece como conexão fixa;
-informe o modelo e escreva uma mensagem. A chave do provedor permanece no
-relay, fora do AraLearn.
+da pessoa. Escolha OpenAI, Gemini ou DeepSeek, informe o modelo quando
+necessário e forneça uma chave efêmera. Ela permanece somente na memória da
+sessão e é apagada ao sair, recarregar ou fechar a superfície.
 
 O aviso informa o recorte enviado: composição necessária do alvo, resumo do
 caminho curricular e mensagens recentes. PDFs, Fontes, identidade da conta e
 regiões alheias ao escopo não são enviados.
 
-Confira também o destino indicado no aviso. A conversa é efêmera no AraLearn,
-mas o relay a encaminha ao provedor configurado, que pode conservar dados de
-acordo com seus próprios termos. Autorize somente depois de revisar esse recorte.
+Confira também o provider indicado no aviso. A conversa é efêmera no AraLearn,
+mas o provider pode conservar dados de acordo com seus próprios termos.
+Autorize somente depois de revisar esse recorte.
 
 Discuta o plano no minichat e só então use **Confirmar e preparar**. Quando a
 proposta exige componentes, o AraLearn descobre as famílias, obtém os contratos
@@ -243,10 +243,8 @@ ou **Descartar proposta**. Aplicar ainda não grava o Curso; use **Salvar
 proposta** depois de conferir. Uma proposta inválida ou não renderizável deixa o
 conteúdo corrente intacto.
 
-A configuração permanece somente na memória da sessão. Provedores remotos e
-entrada direta de chave pertencem somente ao runtime explícito de
-desenvolvimento. No Android, uma ponte nativa fixa mantém a chamada HTTP fora do
-WebView sem relaxar a política de conteúdo misto.
+A configuração permanece somente na memória da sessão. Endpoint, relay e texto
+de arquitetura não aparecem no percurso normal.
 
 ### Revisão
 

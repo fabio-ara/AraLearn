@@ -53,9 +53,10 @@ aguardavam sincronização.
 
 Os itens de navegação mostram o progresso de cada nível. Dentro de uma
 Unidade, a barra superior informa o contexto e a posição na Microssequência.
-Voltar restaura a tela anterior do percurso; subir abre o nível didático que
-contém o objeto atual. Assim, o histórico de navegação e a hierarquia do
-conteúdo continuam previsíveis.
+**Voltar** restaura a origem real do percurso, inclusive rolagem e foco depois
+de Retomar, Rever ou abrir um endereço direto. **Home** oferece uma saída global
+previsível. Quando for realmente útil acessar o nível didático pai, a jornada
+apresenta essa ação no próprio contexto, sem ocupar permanentemente a barra.
 
 Ao avançar, a Unidade é marcada como concluída. O ponto alcançado permite
 retomar a Lição depois. Sem conexão, a mudança fica no dispositivo e é enviada

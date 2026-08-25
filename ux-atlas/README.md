@@ -1,8 +1,8 @@
-# Referências históricas de UX
+# Contrato corrente e referências históricas de UX
 
-Este diretório registra a rodada de desenho que antecedeu a experiência
-corrente. Ele ajuda a reconstruir decisões e a reconhecer a origem de algumas
-interações, mas não é documentação normativa do produto atual.
+Este diretório reúne o contrato corrente e registros da rodada de desenho que
+antecedeu a experiência atual. Os registros históricos ajudam a reconstruir
+decisões, mas não são documentação normativa do produto.
 
 Para compreender e usar a experiência vigente, comece pelo
 [mapa da documentação](../docs/README.md), pelo
@@ -11,10 +11,10 @@ Para compreender e usar a experiência vigente, comece pelo
 [Autoria](../docs/guia-professor-autor.md). Quando houver divergência, o
 produto corrente, seus contratos executáveis e esses documentos prevalecem.
 
-O [`FINAL-UX-CONTRACT.md`](FINAL-UX-CONTRACT.md) conserva o contrato final
-daquela rodada. A [`MATRIZ-COBERTURA.md`](MATRIZ-COBERTURA.md) e a
+O [`FINAL-UX-CONTRACT.md`](FINAL-UX-CONTRACT.md) é a referência normativa
+compacta reconciliada depois da auditoria humana. A
+[`MATRIZ-COBERTURA.md`](MATRIZ-COBERTURA.md) e a
 [`STUDY-VISUAL-BASELINE.md`](STUDY-VISUAL-BASELINE.md) preservam,
 respectivamente, os requisitos então examinados e a referência visual usada.
 Termos, versões, issues, caminhos e instruções nesses registros pertencem ao
-período documentado e não devem orientar uma implementação nova sem confronto
-com as fontes correntes.
+período documentado e não prevalecem sobre o contrato corrente.

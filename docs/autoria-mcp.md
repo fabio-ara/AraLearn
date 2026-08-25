@@ -696,12 +696,12 @@ registra a etapa de contexto, relê `part_materialization` e comprova a chegada 
 andamento à interface e ao IndexedDB. Abrir **Ver etapas** não envia nova escrita
 nem repete a confirmação já feita no cliente MCP. O teste encerra removendo os
 dados descartáveis criados. A jornada também cobre edição manual, assistência
-por relay, eventos `manual` e `provider_assistance`, releitura da API e do
+com provider simulado, eventos `manual` e `provider_assistance`, releitura da API e do
 PostgreSQL e promoção no IndexedDB.
 
-Essa prova é local e automatizada. Ela não comprova, sozinha, o acesso do Pages
-HTTPS à rede local, a ponte nativa num aparelho nem a usabilidade dentro de um
-cliente externo. A verificação hospedada só deve ser executada depois que as
+Essa prova é local e automatizada. Ela não comprova, sozinha, a usabilidade da
+assistência num navegador ou aparelho real nem o fluxo dentro de um cliente
+externo. A verificação hospedada só deve ser executada depois que as
 migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
 
 ## Referências normativas e técnicas

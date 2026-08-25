@@ -906,8 +906,13 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
     await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
     await expect(page.locator("#study-observation-counter"))
       .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
+    const stableHeight = await page.locator(".study-observation-sheet")
+      .evaluate((sheet) => sheet.getBoundingClientRect().height);
+    await page.getByRole("textbox", { name: "Observação" }).fill("observação ".repeat(180));
     const geometry = await page.locator(".study-observation-sheet").evaluate((sheet) => {
       const rect = sheet.getBoundingClientRect();
+      const body = sheet.querySelector(".study-observation-body");
+      const textarea = sheet.querySelector(".study-observation-textarea");
       const controls = [...sheet.querySelectorAll("button, textarea, .study-observation-category-chip")]
         .filter((node) => {
           const nodeRect = node.getBoundingClientRect();
@@ -917,10 +922,16 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
         documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
         sheetFits: rect.left >= -1 && rect.right <= window.innerWidth + 1 &&
           sheet.scrollWidth <= sheet.clientWidth + 1,
+        height: rect.height,
+        bodyOverflowY: getComputedStyle(body).overflowY,
+        internalScrollable: textarea.scrollHeight > textarea.clientHeight,
         minimumTouch: Math.min(...controls.map((node) => node.getBoundingClientRect().height))
       };
     });
     expect(geometry).toMatchObject({ documentFits: true, sheetFits: true });
+    expect(Math.abs(geometry.height - stableHeight)).toBeLessThanOrEqual(1);
+    expect(geometry.bodyOverflowY).toBe("auto");
+    expect(geometry.internalScrollable).toBe(true);
     expect(geometry.minimumTouch).toBeGreaterThanOrEqual(43);
     await page.getByRole("button", { name: "Fechar" }).click();
   }

@@ -186,24 +186,11 @@ parte dele.
 
 ## A Assistência por IA não responde
 
-Confira se o relay local está ativo, se o modelo foi configurado nele e se o
-endpoint usa `127.0.0.1`, `localhost` ou `10.0.2.2`, por HTTP na porta 4183. A
-chave do provedor pertence ao relay, fora do AraLearn. Se a tela mostrar
-provedores remotos e campo de chave, a aplicação está num runtime explícito de
-desenvolvimento; use apenas credencial descartável de teste e nunca trate esse
-modo como configuração de produção.
-
-No navegador, `127.0.0.1` e `localhost` precisam ser tratados como loopback;
-`10.0.2.2`, como rede local. Se o console indicar bloqueio de acesso à rede
-privada, confira se a versão do AraLearn já envia essa classificação corrigida e
-se a permissão do navegador foi concedida. Não troque a chave para o cliente para
-contornar o bloqueio.
-
-No Pages, confira também se o navegador autorizou acesso à rede local. O Android
-encaminha a requisição por uma ponte nativa fixa para não depender de conteúdo
-misto no WebView. Uma falha nesse percurso não deve ser contornada com tráfego
-aberto nem com chave no aplicativo; use edição manual ou um cliente conectado
-por MCP ou Actions.
+Confira o provider escolhido, o modelo, a conectividade e a validade ou cota da
+chave efêmera. OpenAI, Gemini e DeepSeek usam origens oficiais fixas; a interface
+normal não aceita endpoint alternativo. Recarregar ou sair apaga a chave e a
+conversa, portanto abra uma nova sessão quando necessário. Não grave a chave no
+Curso, no navegador ou em logs para contornar uma falha.
 
 Falha, cota, recusa ou resposta fora do formato não altera o Curso. Feche a
 sugestão e continue a edição manual, ou use um cliente MCP ou um GPT conectado

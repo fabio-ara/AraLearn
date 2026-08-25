@@ -20,8 +20,7 @@ const RUNTIME = Object.freeze({
   assistAllowedOrigins: Object.freeze([
     "https://api.openai.com",
     "https://generativelanguage.googleapis.com",
-    "https://api.deepseek.com",
-    "http://127.0.0.1:4183"
+    "https://api.deepseek.com"
   ])
 });
 
@@ -67,7 +66,7 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
   ]);
   for (const expected of [
     "alvo de escrita", "caminho curricular", "mensagens recentes", "PDFs", "Fontes",
-    "somente na memória", "relay local"
+    "somente na memória"
   ]) assert.match(COURSE_ASSISTANCE_DISCLOSURE, new RegExp(expected, "iu"));
   session.destroy();
   assert.equal(session.snapshot().hasCredential, false);
@@ -120,21 +119,41 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
   })), { message: "Ok" });
 });
 
-test("produção limita o navegador ao relay local sem credencial", () => {
+test("produção aceita provider remoto oficial com chave efêmera", {
+  todo: "oráculo pós-auditoria preparado antes da implementação"
+}, () => {
   const production = {
-    assistAllowedOrigins: ["http://127.0.0.1:4183", "https://api.openai.com"]
+    assistAllowedOrigins: [
+      "https://api.openai.com",
+      "https://generativelanguage.googleapis.com",
+      "https://api.deepseek.com"
+    ]
+  };
+  assert.equal(normalizeStudyUnitProviderConfig({
+    providerId: "openai", model: "gpt-5.6-luna", apiKey: "chave"
+  }, production).providerId, "openai");
+});
+
+test("produção rejeita relay local como provider da assistência", () => {
+  const production = {
+    assistAllowedOrigins: [
+      "https://api.openai.com",
+      "https://generativelanguage.googleapis.com",
+      "https://api.deepseek.com"
+    ]
   };
   assert.throws(() => normalizeStudyUnitProviderConfig({
-    providerId: "openai", model: "gpt-5.6-luna", apiKey: "chave"
-  }, production), /serviço local|não são aceitas/iu);
-  assert.throws(() => normalizeStudyUnitProviderConfig({
-    providerId: "local", model: "gpt-5.6-luna", apiKey: "token",
-    endpoint: "http://127.0.0.1:4183/v1/chat/completions"
-  }, production), /fora do AraLearn/iu);
-  assert.equal(normalizeStudyUnitProviderConfig({
     providerId: "local", model: "gpt-5.6-luna",
     endpoint: "http://127.0.0.1:4183/v1/chat/completions"
-  }, production).endpoint, "http://127.0.0.1:4183/v1/chat/completions");
+  }, production), /serviço|provider|origem/iu);
+});
+
+test("a divulgação de produção nomeia providers e não expõe arquitetura", {
+  todo: "oráculo pós-auditoria preparado antes da implementação"
+}, () => {
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /OpenAI|Gemini|DeepSeek/iu);
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /chave[\s\S]*memória/iu);
+  assert.doesNotMatch(COURSE_ASSISTANCE_DISCLOSURE, /relay|endpoint|servidor local/iu);
 });
 
 test("falha transitória tem só um retry e nunca reflete dados sensíveis", async () => {
@@ -163,7 +182,7 @@ test("falha transitória tem só um retry e nunca reflete dados sensíveis", asy
 
 test("resposta acima do teto e cancelamento interrompem o transporte", async () => {
   const config = normalizeStudyUnitProviderConfig({
-    providerId: "local", model: "gpt-5.6-luna"
+    providerId: "openai", model: "gpt-5.6-luna", apiKey: "stub-credential"
   }, RUNTIME);
   const request = buildStudyUnitProviderRequest(config, {
     system: "Sistema", prompt: "Pedido", schema: { type: "object", properties: {} }

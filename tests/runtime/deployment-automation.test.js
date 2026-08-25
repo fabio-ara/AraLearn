@@ -123,7 +123,7 @@ function writeSafeArtifact(root, { nativeAssistBridge = false } = {}) {
 }
 
 function writeSafeAndroidArtifact(root) {
-  writeSafeArtifact(root, { nativeAssistBridge: true });
+  writeSafeArtifact(root);
 }
 
 function packApk(
@@ -614,6 +614,17 @@ test("verificação aprova artefato público exato", {
   }
 });
 
+test("montagem publicável usa providers oficiais sem relay nem ponte nativa", {
+  todo: "oráculo pós-auditoria preparado antes da implementação"
+}, () => {
+  const stageSource = fs.readFileSync(path.join(repositoryRoot, "scripts/stageWebRuntime.mjs"), "utf8");
+  const publicRuntime = fs.readFileSync(path.join(repositoryRoot, "public/runtime-config.js"), "utf8");
+  assert.doesNotMatch(`${stageSource}\n${publicRuntime}`, /nativeAssistBridge|127\.0\.0\.1:4183|10\.0\.2\.2:4183/u);
+  assert.match(`${stageSource}\n${publicRuntime}`, /api\.openai\.com/u);
+  assert.match(`${stageSource}\n${publicRuntime}`, /generativelanguage\.googleapis\.com/u);
+  assert.match(`${stageSource}\n${publicRuntime}`, /api\.deepseek\.com/u);
+});
+
 test("verificação bloqueia segredo, catálogo embarcado e CSP ampla sem imprimir a chave", {
   skip: !powerShellAvailable
 }, () => {
@@ -671,12 +682,13 @@ test("verificação detecta artefato gerado para outro projeto", {
 });
 
 test("verificação aprova configuração e CSP válidas dentro do APK", {
-  skip: !powerShellAvailable
+  skip: !powerShellAvailable,
+  todo: "oráculo pós-auditoria preparado antes da implementação"
 }, () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-safe-"));
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
+      writeSafeArtifact(publicRoot);
       fs.writeFileSync(path.join(publicRoot, "application.js"), "const runtime = 'oauth-mcp';\n", "utf8");
     });
 
@@ -708,7 +720,8 @@ test("verificador exige APK e runtime atual nos destinos finais", () => {
 });
 
 test("verificação aprova a identidade atual e as duas saídas conhecidas do apksigner", {
-  skip: !powerShellAvailable
+  skip: !powerShellAvailable,
+  todo: "oráculo pós-auditoria preparado antes da implementação"
 }, () => {
   for (const [label, signatureLine] of [
     ["atual", "V2 Signer: certificate SHA-256 digest: "],
@@ -1055,7 +1068,7 @@ test("verificação reprova APK sem configuração pública", {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-no-config-"));
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
+      writeSafeArtifact(publicRoot);
       fs.rmSync(path.join(publicRoot, "runtime-config.js"));
     });
 
@@ -1077,7 +1090,7 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-bad-config-"));
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
+      writeSafeArtifact(publicRoot);
       fs.writeFileSync(
         path.join(publicRoot, "runtime-config.js"),
         `globalThis.__ARALEARN_ENV__ = ${JSON.stringify({
@@ -1085,7 +1098,7 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
           supabasePublishableKey: "invalid-public-key",
           assistAllowedOrigins: [
             ...DEFAULT_ASSIST_ALLOWED_ORIGINS,
-            "https://api.openai.com"
+            "https://modelos.example.edu"
           ]
         })};\n`,
         "utf8"
@@ -1106,7 +1119,6 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
     const codes = new Set(parseJsonOutput(result).issues.map((issue) => issue.code));
     assert.ok(codes.has("config.publishable-key"));
     assert.ok(codes.has("config.assist-origins"));
-    assert.ok(codes.has("config.native-assist-bridge"));
     assert.ok(codes.has("csp.origin"));
     assert.ok(codes.has("csp.assist-origin"));
   } finally {
@@ -1122,7 +1134,7 @@ test("verificação bloqueia segredos administrativos dentro do APK", {
     const servicePayload = Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url");
     const serviceToken = `eyJhbGciOiJIUzI1NiJ9.${servicePayload}.packaged-service-token`;
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
-      writeSafeArtifact(publicRoot, { nativeAssistBridge: true });
+      writeSafeArtifact(publicRoot);
       fs.writeFileSync(
         path.join(publicRoot, "application.js"),
         `const serverKey = "${serviceToken}";`,

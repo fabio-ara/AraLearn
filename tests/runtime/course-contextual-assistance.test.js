@@ -26,14 +26,14 @@ const selection = Object.freeze({
 
 const runtimeConfig = Object.freeze({
   developmentRuntime: true,
-  assistAllowedOrigins: Object.freeze(["http://127.0.0.1:4183"])
+  assistAllowedOrigins: Object.freeze(["https://api.openai.com"])
 });
 
 const providerConfig = Object.freeze({
-  providerId: "local",
+  providerId: "openai",
   model: "gpt-5.6-luna",
-  endpoint: "http://127.0.0.1:4183/v1/chat/completions",
-  apiKey: ""
+  endpoint: "https://api.openai.com/v1/responses",
+  apiKey: "stub-credential"
 });
 
 function response(value) {
@@ -42,10 +42,10 @@ function response(value) {
     status: 200,
     async json() {
       return {
-        choices: [{
-          finish_reason: "stop",
-          message: { content: typeof value === "string" ? value : JSON.stringify(value) }
-        }]
+        output: [{ content: [{
+          type: "output_text",
+          text: typeof value === "string" ? value : JSON.stringify(value)
+        }] }]
       };
     }
   };
@@ -167,10 +167,9 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
     ]
   );
   assert.equal(requests.length, 2);
-  assert.match(requests[1].body.messages[1].content, /repair/u);
-  assert.match(requests[1].body.messages[1].content, /curto demais/iu);
-  assert.match(requests[0].body.messages[1].content,
-    /"required":\["text","languageTag","textDirection"\]/u);
+  assert.match(requests[1].body.input, /repair/u);
+  assert.match(requests[1].body.input, /curto demais/iu);
+  assert.match(requests[0].body.input, /"required":\["text"\]/u);
   assert.deepEqual(currentStudyUnit(), fixture.courses[0].modules[0]
     .lessons[0].microsequences[0].studyUnits[0]);
 });

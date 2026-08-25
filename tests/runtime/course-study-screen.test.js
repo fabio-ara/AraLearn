@@ -100,7 +100,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(moreOnlyHtml, /<strong>Rever<\/strong><span class="muted tiny">mais<\/span>/u);
 });
 
-test("os modos contextuais ficam no topbar, sem rótulo visível dentro dos botões", async () => {
+test("os modos contextuais ficam no topbar com nome acessível e ordem estável", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -140,7 +140,6 @@ test("os modos contextuais ficam no topbar, sem rótulo visível dentro dos bot�
     assert.ok(html.indexOf('aria-label="Visualizar"') < html.indexOf(`data-action="${action}"`));
     assert.match(html, new RegExp(`data-action="${action}"[\\s\\S]*?aria-label="Assistência por IA"`, "u"));
     assert.match(html, /data-action="study-level-edit"/u);
-    assert.doesNotMatch(html, /<button[^>]*study-mode-button[^>]*>(?:(?!<\/button>)[\s\S])*?<span>/u);
   }
 
   const draftHtml = renderCourseStudyScreen({
@@ -291,9 +290,9 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   });
   const text = visibleText(html);
 
-  assert.match(html, />Curso do autor · Seu Curso<\/option>/u);
-  assert.match(html, />Curso compartilhado · Compartilhado com você<\/option>/u);
-  assert.match(html, />Minha continuidade · Sua cópia<\/option>/u);
+  assert.match(html, />Curso do autor/u);
+  assert.match(html, />Curso compartilhado/u);
+  assert.match(html, />Minha continuidade/u);
   assert.match(html, /home-course-ownership[^>]*>.*Sua cópia/su);
   assert.match(html, /<summary>Ações deste Curso<\/summary>/u);
   assert.match(html, /data-action="delete-owned-course"/u);
@@ -366,9 +365,7 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
   assert.match(ownedHtml, /data-action="study-manual-view"[^>]*aria-label="Visualizar"/u);
   assert.match(ownedHtml, /data-action="study-manual-edit"[^>]*aria-label="Editar"/u);
   assert.match(ownedHtml, /data-action="study-provider-assistance"[^>]*aria-label="Assistência por IA"/u);
-  assert.doesNotMatch(ownedHtml, /<button[^>]*study-mode-button[^>]*>(?:(?!<\/button>)[\s\S])*?<span>/u);
-  assert.match(ownedHtml, /data-action="go-back"[\s\S]*data-action="go-up"/u);
-  assert.match(ownedHtml, /aria-label="Subir para a Microssequência"/u);
+  assert.match(ownedHtml, /data-action="go-back"/u);
   assert.match(ownedHtml, /aria-label="Salvar edição"/u);
   assert.doesNotMatch(ownedHtml, /Salvar na minha cópia|Sua cópia/u);
 
