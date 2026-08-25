@@ -749,20 +749,20 @@ test("versões publicáveis permanecem alinhadas entre npm e Android", () => {
   assert.match(currentAndroidVersionCode, /^\d+$/u);
 });
 
-test("release Android aguarda a validação da main e usa exatamente o SHA aprovado", () => {
+test("release Android parte do push de versão em main e usa exatamente seu SHA", () => {
   const source = fs.readFileSync(scripts.androidWorkflow, "utf8");
+  const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
   const jobEnvironment = source.slice(
     source.indexOf("    env:"),
     source.indexOf("    steps:")
   );
-  assert.match(source, /workflow_run:/u);
-  assert.match(source, /workflows:\s*\n\s*- Validar repositório/u);
-  assert.match(source, /workflow_run\.conclusion == 'success'/u);
-  assert.match(source, /workflow_run\.event == 'push'/u);
-  assert.match(source, /workflow_run\.head_sha/u);
+  assert.match(triggers, /push:\s*\n\s*branches:\s*\n\s*- main/u);
+  assert.match(triggers, /paths:\s*\n\s*- package\.json\s*\n\s*- android\/app\/build\.gradle\.kts/u);
+  assert.doesNotMatch(source, /workflow_run:|Validar repositório/u);
   assert.match(source, /github\.ref == 'refs\/heads\/main'/u);
-  assert.match(source, /permissions:\s*\n\s*actions: read\s*\n\s*contents: write/u);
+  assert.match(source, /permissions:\s*\n\s*contents: write/u);
   assert.match(source, /ref: \$\{\{ env\.ARALEARN_RELEASE_SHA \}\}/u);
+  assert.match(source, /ARALEARN_RELEASE_SHA: \$\{\{ github\.sha \}\}/u);
   assert.match(source, /persist-credentials: false/u);
   assert.doesNotMatch(jobEnvironment, /GH_TOKEN|ARALEARN_ANDROID_KEYSTORE_/u);
   assert.equal(
@@ -771,23 +771,7 @@ test("release Android aguarda a validação da main e usa exatamente o SHA aprov
   );
   assert.match(source, /refs\/remotes\/origin\/main/u);
   assert.match(source, /steps\.freshness\.outputs\.current == 'true'/u);
-  assert.match(
-    source,
-    /actions\/workflows\/validacao\.yml\/runs\?event=push&head_sha=\$headSha&per_page=100/u
-  );
-  for (const validationField of [
-    /\$_\.head_sha -ceq \$env:ARALEARN_RELEASE_SHA/u,
-    /\$_\.head_branch -ceq 'main'/u,
-    /\$_\.event -ceq 'push'/u,
-    /\$_\.status -ceq 'completed'/u,
-    /\$_\.conclusion -ceq 'success'/u
-  ]) {
-    assert.match(source, validationField);
-  }
-  assert.ok(
-    source.indexOf("- name: Confirmar validação da revisão") <
-      source.indexOf("- name: Ler identidade da release")
-  );
+  assert.doesNotMatch(source, /actions\/workflows\/validacao\.yml|Confirmar validação da revisão/u);
   assert.match(source, /--target \$env:ARALEARN_RELEASE_SHA/u);
   assert.match(source, /verifyDeploymentArtifacts\.ps1/u);
   assert.match(source, /git ls-remote --tags origin \$tagRef/u);
@@ -897,36 +881,23 @@ test("validação local atravessa navegador, MCP OAuth, API, IndexedDB e Supabas
   );
 });
 
-test("Pages publica somente a revisão aprovada pela validação da main", () => {
+test("Pages publica diretamente o push não documental protegido em main", () => {
   const source = fs.readFileSync(scripts.pagesWorkflow, "utf8");
-  assert.match(source, /workflow_run:\s*\n\s*workflows:\s*\n\s*- Validar repositório/u);
-  assert.match(source, /workflow_run\.conclusion == 'success'/u);
-  assert.match(source, /workflow_run\.event == 'push'/u);
-  assert.match(source, /workflow_run\.head_branch == 'main'/u);
-  assert.match(source, /workflow_run\.head_sha/u);
-  assert.doesNotMatch(source, /^\s{2}push:/mu);
+  const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
+  assert.match(triggers, /push:\s*\n\s*branches:\s*\n\s*- main/u);
+  assert.match(triggers, /paths-ignore:[\s\S]+docs\/\*\*\/\*\.md/u);
+  assert.doesNotMatch(source, /workflow_run:|Validar repositório/u);
   assert.match(
     source,
     /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/u
   );
-  assert.match(source, /permissions:\s*\n\s*actions: read\s*\n\s*contents: read/u);
+  assert.match(source, /permissions:\s*\n\s*contents: read/u);
   assert.equal(
     source.match(/ref: \$\{\{ env\.ARALEARN_PAGES_SHA \}\}/gu)?.length,
     2
   );
-  assert.match(
-    source,
-    /actions\/workflows\/validacao\.yml\/runs\?branch=main&event=push&head_sha=\$headSha&per_page=100/u
-  );
-  for (const validationField of [
-    /\$_\.head_sha -ceq \$env:ARALEARN_PAGES_SHA/u,
-    /\$_\.head_branch -ceq 'main'/u,
-    /\$_\.event -ceq 'push'/u,
-    /\$_\.status -ceq 'completed'/u,
-    /\$_\.conclusion -ceq 'success'/u
-  ]) {
-    assert.match(source, validationField);
-  }
+  assert.match(source, /ARALEARN_PAGES_SHA: \$\{\{ github\.sha \}\}/u);
+  assert.doesNotMatch(source, /actions\/workflows\/validacao\.yml|Confirmar validação da revisão/u);
   assert.match(
     source,
     /group: pages-\$\{\{[\s\S]+\|\| github\.run_id \}\}/u
@@ -953,10 +924,44 @@ test("validação do repositório usa permissão mínima", () => {
   assert.doesNotMatch(source, /contents: write|actions: write|pages: write|id-token: write/u);
 });
 
+test("validação obrigatória distingue documentação sem omitir os jobs existentes", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
+  assert.match(triggers, /pull_request:\s*\n\s*branches:\s*\n\s*- main\s*\n\s*- release\/\*\*/u);
+  assert.match(triggers, /workflow_dispatch:/u);
+  assert.doesNotMatch(triggers, /push:|paths-ignore:/u);
+  assert.match(source, /name: Testar e validar/u);
+  assert.match(source, /name: Testar Supabase local/u);
+  assert.equal(source.match(/node \.\/scripts\/classifyCiPaths\.mjs/gu)?.length, 2);
+  for (const validator of [
+    "npm run audit:docs",
+    "npm run audit:terminology",
+    "npm run docs:references:check"
+  ]) {
+    assert.match(source, new RegExp(validator.replaceAll(".", "\\."), "u"));
+  }
+  assert.match(source, /git diff --check/u);
+  assert.match(source, /Registrar backend não afetado[\s\S]+docs_only == 'true'/u);
+  for (const expensiveStep of [
+    "Preparar Java",
+    "Instalar Chromium para testes de interface",
+    "Gerar e testar o artefato web no navegador",
+    "Compilar aplicativo Android",
+    "Instalar Chromium da integração local",
+    "Preparar Deno",
+    "Iniciar stack Supabase"
+  ]) {
+    assert.match(
+      source,
+      new RegExp(`- name: ${expensiveStep}[\\s\\S]{0,120}if: steps\\.paths\\.outputs\\.docs_only != 'true'`, "u")
+    );
+  }
+  assert.match(source, /always\(\) && steps\.paths\.outputs\.docs_only != 'true'/u);
+});
+
 test("PR conserva a prévia web e o APK debug sem promover uma release", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
-  const candidateOnly = /if: github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'/gu;
-  assert.equal(Array.from(source.matchAll(candidateOnly)).length, 2);
+  assert.ok(Array.from(source.matchAll(/steps\.paths\.outputs\.docs_only != 'true'/gu)).length >= 20);
   assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_URL: \$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/gu)).length, 2);
   assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_PUBLISHABLE_KEY: \$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/gu)).length, 2);
   assert.equal(Array.from(source.matchAll(/-RequireRuntimeConfig/gu)).length, 2);
