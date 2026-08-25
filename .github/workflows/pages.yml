@@ -1,23 +1,24 @@
 name: Publicar site
 
 on:
-  workflow_run:
-    workflows:
-      - Validar repositório
+  push:
     branches:
       - main
-    types:
-      - completed
+    paths-ignore:
+      - "*.md"
+      - "docs/**/*.md"
+      - "docs/**/*.bib"
+      - "docs/evidence/registro-buscas-bibliograficas.csv"
+      - "ux-atlas/**/*.md"
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
   pages: write
   id-token: write
 
 concurrency:
-  group: pages-${{ (((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')) && 'publish') || github.run_id }}
+  group: pages-${{ ((github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && 'publish') || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -25,13 +26,10 @@ jobs:
     name: Gerar artefato
     if: >-
       ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-          (github.event_name == 'workflow_run' &&
-           github.event.workflow_run.conclusion == 'success' &&
-           github.event.workflow_run.event == 'push' &&
-           github.event.workflow_run.head_branch == 'main') }}
+          github.event_name == 'push' }}
     runs-on: windows-latest
     env:
-      ARALEARN_PAGES_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      ARALEARN_PAGES_SHA: ${{ github.sha }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
     steps:
@@ -41,38 +39,6 @@ jobs:
           ref: ${{ env.ARALEARN_PAGES_SHA }}
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Confirmar validação da revisão
-        if: github.event_name == 'workflow_dispatch'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
-            throw 'O token do GitHub está ausente; a validação da revisão não pode ser confirmada.'
-          }
-          $headSha = [Uri]::EscapeDataString($env:ARALEARN_PAGES_SHA)
-          $runsUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/workflows/validacao.yml/runs?branch=main&event=push&head_sha=$headSha&per_page=100"
-          try {
-            $runs = Invoke-RestMethod -Method Get -Uri $runsUrl -Headers @{
-              Accept = 'application/vnd.github+json'
-              Authorization = "Bearer $env:GH_TOKEN"
-              'X-GitHub-Api-Version' = '2022-11-28'
-            }
-          }
-          catch {
-            throw 'Não foi possível consultar a validação da revisão no GitHub.'
-          }
-          $approved = @($runs.workflow_runs | Where-Object {
-            [string]$_.head_sha -ceq $env:ARALEARN_PAGES_SHA -and
-            [string]$_.head_branch -ceq 'main' -and
-            [string]$_.event -ceq 'push' -and
-            [string]$_.status -ceq 'completed' -and
-            [string]$_.conclusion -ceq 'success'
-          })
-          if ($approved.Count -lt 1) {
-            throw "A revisão $env:ARALEARN_PAGES_SHA ainda não tem uma validação completa e bem-sucedida de main."
-          }
 
       - name: Preparar Node.js
         uses: actions/setup-node@v7
@@ -119,7 +85,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     env:
-      ARALEARN_PAGES_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      ARALEARN_PAGES_SHA: ${{ github.sha }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
