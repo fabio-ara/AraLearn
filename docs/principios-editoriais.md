@@ -1,222 +1,374 @@
 # Princípios editoriais da documentação
 
-A documentação do AraLearn deve ensinar o produto com a mesma disciplina didática que o próprio AraLearn procura aplicar ao conteúdo educacional. Cada texto precisa ser compreensível para seu público sem exigir formação prévia em educação, engenharia de software, bancos de dados, estatística ou inteligência artificial.
+A documentação do AraLearn deve permitir que pessoas com formações diferentes compreendam o mesmo produto em profundidades diferentes. Um estudante autodidata pode chegar para aprender a usar o aplicativo; um professor pode querer entender o desenho instrucional; um pesquisador pode examinar construtos, evidências e limites; um engenheiro pode precisar reproduzir a arquitetura; um gestor ou administrador público pode querer avaliar dependências, segurança, privacidade, operação e adequação institucional.
 
-A profundidade não deve ser reduzida. Ela deve ser distribuída de modo que o leitor encontre primeiro o conceito e a tarefa, e só depois os mecanismos, a teoria e os detalhes técnicos necessários.
+Esses leitores não precisam receber documentos concorrentes. A documentação deve construir uma progressão: começar pelo problema e pelo referente concreto, introduzir os conceitos necessários, explicar a terminologia especializada e oferecer caminhos de aprofundamento técnico e acadêmico.
+
+**Didático não significa curto. Acadêmico não significa críptico. Acessível não significa impreciso.**
 
 ## Começar pelo problema e pelo referente
 
-Um conceito técnico, pedagógico ou metodológico só ganha sentido quando o leitor conhece o problema a que ele responde.
+Um termo técnico, pedagógico ou metodológico só ajuda quando o leitor entende o fenômeno, o objeto ou a decisão que ele nomeia.
 
-Uma explicação conceitual apresenta, quando forem pertinentes:
+Quando a estrutura do assunto permitir, uma explicação deve desenvolver relações semelhantes a estas:
 
-1. a necessidade observada;
-2. o fenômeno ou objeto ao qual a necessidade se refere;
-3. o conceito usado para compreendê-lo;
-4. a decisão adotada e seu alcance;
-5. as consequências e os limites;
-6. a evidência disponível;
-7. a terminologia técnica que ajuda a nomear o que já foi compreendido.
+1. qual problema ou necessidade está em jogo;
+2. qual objeto, situação ou fenômeno precisa ser compreendido;
+3. qual conceito ajuda a explicar esse objeto;
+4. um exemplo que torne a relação observável;
+5. como esse conceito se relaciona a outros;
+6. qual terminologia técnica é adequada;
+7. como o assunto aparece no AraLearn;
+8. que decisão foi adotada e quais alternativas eram relevantes;
+9. que evidência sustenta a decisão ou a interpretação;
+10. quais limites permanecem;
+11. onde continuar o estudo do tema.
 
-Essa progressão distingue afirmações diferentes. Algo pode ser defendido pela literatura, implementado no produto ou demonstrado por uma avaliação. Uma dessas condições não implica automaticamente as outras.
+Essa sequência orienta o raciocínio. Ela não deve ser convertida mecanicamente em onze subtítulos.
 
-## Organizar a documentação em camadas de leitura
+Uma página de segurança, por exemplo, não precisa começar por `RLS`, `JWT` ou `CAS`. Primeiro explica por que uma pessoa não pode ler ou alterar dados de outra e por que duas gravações concorrentes podem entrar em conflito. Depois apresenta autenticação, autorização, segurança em nível de linha e controle otimista de concorrência nos pontos em que esses mecanismos passam a ter um referente claro.
+
+O mesmo princípio vale para educação. Carga cognitiva, prática de recuperação, validade, agência ou múltiplas representações aparecem depois que o leitor compreende o problema educacional ao qual esses conceitos respondem.
+
+## Preservar profundidade
+
+Simplificar a entrada não autoriza apagar conhecimento.
+
+Quando um assunto exige desenvolvimento extenso, a documentação pode ser extensa. A profundidade deve ser distribuída em uma ordem que permita avançar sem pressupostos desnecessários.
+
+Um leitor interessado em engenharia deve encontrar material suficiente para compreender e reproduzir o sistema. Um pesquisador deve encontrar conceitos, métodos, hipóteses, métricas, limitações e literatura. Um autor deve compreender o desenho instrucional e as decisões que pode controlar. Um estudante deve conseguir usar o produto sem dominar previamente nenhuma dessas camadas.
+
+Quando uma passagem acumular informação demais, reduza o escopo daquela passagem e distribua o conteúdo. Não comprima vários conceitos novos numa frase mais abstrata.
+
+## Usar terminologia técnica com rigor
+
+A documentação utiliza a terminologia adequada de cada domínio quando ela acrescenta precisão.
+
+Isso inclui, quando pertinente, educação, design instrucional, psicologia cognitiva, avaliação educacional, estatística, metodologia científica, filosofia da ciência, sociologia, gestão do conhecimento, interação humano-computador, UX, UI, acessibilidade, engenharia de software, sistemas distribuídos, desenvolvimento web, bancos de dados, segurança, privacidade, infraestrutura, computação móvel, inteligência artificial, sistemas de informação e Learning Analytics.
+
+A presença de muitos domínios não é objetivo por si só. Uma disciplina deve entrar quando ajuda a responder uma pergunta real sobre o artefato.
+
+Termos especializados são apresentados depois do conceito que ajudam a nomear. Quando existir uma expressão técnica consagrada em inglês e ela for útil para pesquisa posterior, a primeira ocorrência pode apresentar o equivalente em português e o termo original.
+
+Nomes próprios de padrões, protocolos, produtos, bibliotecas, instituições e trabalhos acadêmicos permanecem reconhecíveis para que o leitor possa localizá-los.
+
+Termos sobrecarregados devem receber qualificação quando dois domínios puderem ser confundidos.
+
+## Distinguir o que é produto, teoria, hipótese e evidência
+
+A documentação deve separar afirmações de naturezas diferentes.
+
+Uma ideia pode ser:
+
+- uma definição operacional do AraLearn;
+- uma decisão de desenho;
+- uma propriedade implementada;
+- uma proposição teórica;
+- uma hipótese do artefato;
+- um resultado obtido em outro estudo;
+- uma evidência empírica produzida com o próprio AraLearn.
+
+Essas categorias não são intercambiáveis.
+
+Testes de software podem demonstrar comportamento sob condições exercitadas. Eles não demonstram, sozinhos, compreensão, usabilidade ou aprendizagem.
+
+Uma norma pode estabelecer requisitos de acessibilidade ou segurança. Ela não demonstra efeito educacional.
+
+Uma associação observada em dados não autoriza, por si, inferência causal.
+
+Um termo próprio do AraLearn, como **Microssequência didática**, **Parte de autoria** ou **estado de estudo não punitivo**, deve ser descrito como conceito operacional do produto quando essa for sua natureza. A proximidade com um construto da literatura não transforma automaticamente o termo do produto em constructo científico estabelecido.
+
+## Organizar a documentação por função
+
+Cada documento deve ter uma função predominante.
 
 ### Compreender e usar
 
-README, visão do produto, uso do aplicativo, guias de estudante, autor, pesquisador e solução de problemas devem ser compreensíveis por uma pessoa leiga.
+README, visão do produto, uso do aplicativo, guias e solução de problemas devem ser compreensíveis sem formação prévia em engenharia, educação ou pesquisa.
 
-Esses textos explicam para que serve o AraLearn, o que a pessoa encontra na interface, como executar uma tarefa, qual resultado esperar, o que fazer diante de uma falha relevante e o significado dos conceitos necessários para usar o produto.
-
-Eles não pressupõem conhecimento de arquitetura, banco de dados, protocolos, ferramentas de desenvolvimento ou história do projeto.
+Eles explicam para que serve o AraLearn, o que a pessoa encontra, como realizar uma tarefa, qual resultado esperar e como recuperar-se de falhas relevantes.
 
 ### Aprofundamento conceitual e acadêmico
 
-Documentos sobre modelo didático, desenho instrucional, componentes, aprendizagem, pesquisa, métricas e metodologia desenvolvem fundamentos, alternativas, controvérsias, evidências e limites de inferência.
+Documentos sobre aprendizagem, desenho instrucional, componentes, pesquisa, métricas, metodologia e aspectos sociotécnicos desenvolvem conceitos, relações, alternativas, controvérsias, evidências e limites de inferência.
 
-A literatura é apresentada como argumento e contexto, não como lista decorativa de referências. Citações e referências permitem verificar as afirmações e aprofundar o tema.
+A literatura aparece como parte do argumento, não como lista decorativa.
 
 ### Aprofundamento técnico
 
-Documentos de engenharia explicam em detalhe a arquitetura corrente, linguagens e tecnologias, persistência, autorização, sincronização, contratos, APIs, armazenamento, segurança, implantação, testes e recuperação.
+Documentos de engenharia explicam a arquitetura corrente, tecnologias, persistência, autorização, sincronização, contratos, APIs, armazenamento, segurança, implantação, testes e recuperação.
 
-Esses detalhes não são bastidor quando ajudam a compreender ou reproduzir o sistema atual. O documento técnico pode ser minucioso, desde que explique primeiro o referente e mantenha clara a relação entre mecanismo e finalidade.
+Detalhe técnico não é bastidor quando ajuda a compreender ou reproduzir o sistema corrente. O texto técnico, porém, continua obrigado a construir o referente antes de exigir domínio do vocabulário especializado.
 
-## O aprofundamento também precisa ensinar
+### Referência
 
-Um texto técnico ou acadêmico não pode pressupor que o leitor já domine o vocabulário especializado. A profundidade vem depois da compreensão inicial, não no lugar dela.
+Glossários, dicionários, contratos e matrizes favorecem consulta precisa. Eles complementam explicações narrativas; não precisam substituí-las.
 
-Quando introduzir um conceito especializado, siga uma progressão semelhante a esta:
+### Avaliação
 
-1. apresente uma situação ou problema reconhecível;
-2. explique por que ele importa no AraLearn;
-3. descreva a ideia em linguagem corrente;
-4. apresente o termo técnico;
-5. mostre como o mecanismo ou construto se relaciona com outros conceitos;
-6. explique como aparece no produto ou na investigação;
-7. apresente limites, alternativas e evidências;
-8. ofereça links para aprofundamentos relacionados.
+Documentos de avaliação relacionam proposições, métodos, evidências, riscos de validade e limites de generalização.
 
-Por exemplo, uma página de segurança não começa por `RLS`. Primeiro explica por que uma pessoa não pode ler ou alterar registros de outra. Em seguida apresenta a segurança em nível de linha, mostra onde ela atua, explica sua relação com autenticação e autorização e só então detalha políticas e contratos. Da mesma forma, um texto de pesquisa explica o problema de atribuir causalidade antes de introduzir confundimento, randomização ou validade interna.
+### História
 
-O mesmo princípio vale para desenho instrucional. Densidade informacional, prática de recuperação, variação, evidência ou carga cognitiva aparecem depois que o leitor entende o problema educacional ao qual esses conceitos respondem.
-
-## Separar documentação corrente de história de implementação
-
-A documentação corrente descreve **o produto como ele funciona agora**.
-
-README, guias e capítulos conceituais correntes não devem narrar a evolução interna do projeto. Evite construções como:
-
-- “desde a versão 0.0.x”;
-- “a versão anterior oferecia...”;
-- “na linha publicada...”;
-- “foi comprovado no ambiente...”;
-- “ainda depende de validação...”;
-- “registrado no roadmap”;
-- “esta issue corrigiu...”;
-- “o Codex implementou...”;
-- referências ao pedido que originou o trabalho;
-- referências à conversa de desenvolvimento;
-- comparações de quantidade de ferramentas, revisões de API, manifesto, `versionCode` ou outros números de release quando eles não forem parte da tarefa do leitor.
-
-História de versões pertence ao Git, ao CHANGELOG e às notas de release. Estado operacional de uma implantação pertence à documentação de implantação ou ao registro de release quando for realmente necessário. A documentação de uso ensina o comportamento atual.
-
-Quando um detalhe histórico ainda aparece porque ajuda a explicar uma decisão corrente, reescreva a ideia como fundamento da decisão, sem transformar o texto em cronologia de implementação.
-
-## Colocar cada detalhe no lugar adequado
-
-Um mecanismo técnico pode ser importante sem pertencer ao README.
-
-Por exemplo, quem usa **Assistência por IA** precisa entender o que será enviado, qual ação ocorrerá e como revisar o resultado. A arquitetura de transporte, a ponte Android, a política do WebView, o tratamento da credencial e o contrato do relay pertencem à documentação técnica correspondente.
-
-O mesmo vale para Model Context Protocol, banco de dados, Storage, políticas de acesso, filas, revisões técnicas e manifests. A camada de uso apresenta o efeito percebido pela pessoa; a camada técnica explica como o sistema o realiza.
-
-## Adequar a forma à tarefa do leitor
-
-Cada documento possui uma função predominante:
-
-- uma apresentação delimita o produto, sua finalidade e seus compromissos;
-- um guia conduz uma tarefa e explica o resultado esperado;
-- um capítulo conceitual desenvolve fundamentos, alternativas e justificativas;
-- uma referência define termos, campos, contratos e estados para consulta;
-- um texto de avaliação relaciona proposições, métodos, evidências e limites;
-- um documento técnico explica mecanismos, decisões e formas de verificação;
-- uma nota de release registra mudanças de uma versão específica.
-
-A estrutura acompanha essa função. Um guia segue a ordem em que a pessoa age. Um capítulo conceitual desenvolve relações. Uma referência favorece consulta precisa. Uma nota de release não deve ser usada como introdução ao produto.
+História de versões pertence ao Git, ao CHANGELOG, às notas de release e a documentos explicitamente históricos quando houver função pública clara.
 
 ## Manter uma fonte principal para cada informação
 
-Informações que mudam devem ter um lugar principal. Outros documentos podem resumir ou apontar para elas, mas não devem manter versões concorrentes do mesmo conteúdo.
+Informações mutáveis devem ter uma fonte principal. Outros documentos podem resumir ou apontar para ela, mas não devem manter versões concorrentes do mesmo conteúdo.
 
 | Informação | Fonte principal |
 | --- | --- |
 | finalidade e compromissos do produto | [Visão do produto](visao-do-produto.md) |
-| percurso de leitura | [Índice da documentação](README.md) |
-| procedimento de uso | guia do público ou da área correspondente |
-| justificativa conceitual | capítulo conceitual do assunto |
+| percursos de leitura | [Mapa da documentação](README.md) |
+| procedimento de uso | guia do público ou da tarefa correspondente |
+| fundamentos conceituais | capítulo conceitual do assunto |
 | arquitetura e mecanismo corrente | documento técnico correspondente |
-| vocabulário aprovado | [glossário técnico](glossario-tecnico.md) ou glossário de construtos |
-| relação entre alegação, implementação e teste | matriz de conformidade aplicável |
+| vocabulário técnico e construtos | glossários e vocabulário controlado |
+| relação entre alegação, implementação e verificação | matriz de conformidade pertinente |
 | metadados bibliográficos | [`referencias.bib`](referencias.bib) |
+| bibliografia legível | [`referencias.md`](referencias.md) |
 | história de versões | CHANGELOG e notas de release |
 
-Uma mudança de comportamento deve alcançar, no mesmo ciclo, o guia afetado, a explicação conceitual, a referência do contrato e a evidência correspondente.
+Quando um comportamento muda, a documentação corrente deve ser reescrita para representar o novo estado. Acrescentar uma cronologia no final da seção não substitui essa atualização.
 
-## Sustentar as afirmações
+## Documentar integralmente a engenharia
 
-### Literatura e normas
+Documentação integral da engenharia não significa comentar cada função, arquivo ou tabela.
 
-Afirmações pedagógicas e metodológicas remetem à literatura que as fundamenta. Afirmações sobre protocolos, segurança, acessibilidade ou padrões técnicos apontam, quando possível, para especificações, normas e documentação primária. Afirmações sociotécnicas podem exigir também literatura empírica ou conceitual adequada à questão.
+Significa que todo subsistema vivo e material possui um percurso encontrável que permita compreender, conforme o assunto exigir:
 
-Uma citação identifica a origem de uma ideia. Quando os resultados publicados dependem de contexto ou divergem entre si, o texto deve conservar essas condições.
+- o problema que resolve;
+- sua finalidade;
+- o modelo mental necessário;
+- sua fronteira de responsabilidade;
+- suas relações com outros subsistemas;
+- os fluxos de dados e de controle;
+- as fontes de autoridade;
+- autenticação e autorização;
+- persistência e sincronização;
+- concorrência;
+- funcionamento sem conexão;
+- segurança e privacidade;
+- falhas e recuperação;
+- limites;
+- tecnologias utilizadas;
+- formas de verificação.
 
-### Pesquisa bibliográfica relevante
+Uma tecnologia deve ser apresentada no ponto em que passa a resolver um problema já compreendido.
 
-A documentação técnica e acadêmica deve ser fundamentada no melhor conjunto de fontes pertinente à afirmação que está sendo feita.
+A documentação não deve se limitar a afirmações como “o AraLearn usa PostgreSQL, IndexedDB e Supabase”. Ela deve explicar por que cada mecanismo aparece, o que faz, onde termina sua responsabilidade e como se relaciona com os demais.
 
-- Para engenharia, prefira especificações, normas, documentação oficial e literatura técnica primária; use trabalhos acadêmicos quando a afirmação envolve segurança, interação humano-computador, sistemas distribuídos, privacidade, desempenho ou outro tema que dependa de evidência além da especificação.
-- Para desenho instrucional, aprendizagem e pesquisa educacional, procure revisões, meta-análises, estudos fundamentais, trabalhos teóricos e estudos primários relevantes à pergunta, conservando resultados contraditórios e limites de transferência.
-- Para acessibilidade e padrões de interface, use normas e orientações primárias, complementadas por pesquisa quando a decisão envolver comportamento humano ou evidência de usabilidade.
-- Para metodologia, cite fontes que definam o método, o construto ou o risco de inferência discutido.
+## Ligar tecnologias a fontes oficiais
 
-Não é necessário refazer uma busca ampla quando o corpus existente já sustenta adequadamente a afirmação. Pesquise de novo quando a fonte atual for insuficiente, desatualizada para um mecanismo que mudou, distante da pergunta ou incapaz de sustentar o alcance do texto. Novas buscas destinadas ao corpus acadêmico seguem o protocolo bibliográfico vigente do projeto.
+Quando um produto, protocolo, padrão, serviço ou tecnologia disponível na web for relevante para compreender, instalar, operar ou aprofundar um assunto, a documentação deve apontar para uma fonte oficial adequada.
 
-Uma fonte relevante não deve ser omitida apenas porque contraria uma decisão do produto. A documentação registra controvérsias, resultados nulos e limites quando eles alteram a interpretação.
+Use, conforme o caso:
 
-### Referências no texto e bibliografia ao fim de cada página
+- especificações e normas;
+- documentação oficial do produto ou protocolo;
+- documentação de APIs;
+- páginas institucionais;
+- documentação de bibliotecas mantida pelo projeto responsável.
 
-Todo documento técnico, conceitual ou acadêmico que faça afirmações externas deve usar referências no próprio texto e terminar com uma seção **Referências** contendo somente as obras efetivamente citadas naquela página.
+Links tecnológicos não substituem bibliografia acadêmica quando a afirmação é empírica.
 
-O padrão no texto é autor-data, apresentado de forma legível, como `Sweller (1988)` ou `(Sweller, 1988)`, com ligação para a entrada bibliográfica correspondente quando o formato permitir.
+Bibliografia acadêmica não substitui especificações ou documentação oficial quando a afirmação é sobre o funcionamento corrente de um protocolo ou produto.
 
-`referencias.bib` continua sendo a fonte canônica dos metadados. A bibliografia no fim de cada página deve ser derivada dessas mesmas entradas, e não mantida como uma segunda cópia manual. `referencias.md` continua oferecendo a bibliografia geral do projeto.
+Não transforme capítulos em listas de fornecedores. O link aparece depois que a função da tecnologia foi explicada.
 
-A ferramenta existente que constrói referências legíveis deve ser estendida apenas o necessário para:
+## Sustentar afirmações externas
 
-1. identificar as chaves citadas em cada página;
-2. gerar ou validar a seção **Referências** daquela página a partir de `referencias.bib`;
-3. rejeitar chave desconhecida, metadado divergente, citação sem entrada local ou entrada local nunca citada;
-4. preservar `referencias.md` como índice bibliográfico completo.
+Afirmações externas técnicas, acadêmicas, metodológicas, históricas ou normativas precisam de fonte adequada ao tipo de afirmação.
 
-Essa automação existe para evitar divergência de metadados, não para escolher literatura nem escrever a argumentação.
+A citação deve aparecer no texto no ponto em que a afirmação depende dela.
 
-### Implementação verificável
+A fonte precisa sustentar o alcance real da frase. Uma referência não deve ser usada apenas porque seu título parece relacionado.
 
-Afirmações sobre o funcionamento do aplicativo podem ser confrontadas com o código, o modelo de dados e os testes. A [matriz de conformidade técnica](matriz-conformidade-tecnica.md) reúne os pontos de verificação mais importantes.
+Quando a literatura apresentar resultados contraditórios, nulos ou dependentes de contexto, essas condições devem permanecer visíveis quando alterarem a interpretação.
 
-O comportamento observado sob condições testadas demonstra uma propriedade do sistema. Conclusões sobre compreensão, aprendizagem ou usabilidade exigem avaliação com pessoas e métodos adequados.
+### Escolher fontes conforme a pergunta
 
-### Hipóteses e resultados empíricos
+Para educação, aprendizagem e interação humana, a seleção pode incluir, conforme a pergunta:
 
-Proposições sobre aprendizagem, esforço percebido, retomada e trabalho autoral permanecem hipóteses até serem avaliadas. Ao apresentar um resultado empírico, a documentação informa população, tarefa, instrumentos, análise e limites de generalização. O [protocolo de avaliação](protocolo-avaliacao-artefato.md) organiza esse trabalho.
+- revisões sistemáticas;
+- meta-análises;
+- revisões de escopo;
+- trabalhos fundamentais;
+- estudos primários pertinentes;
+- trabalhos teóricos;
+- literatura metodológica;
+- normas.
 
-## Usar o vocabulário do produto
+Uma obra fundamental não deixa de ser relevante por ser antiga. Uma publicação não se torna adequada apenas por ser recente.
 
-Um termo especializado aparece depois do conceito que ajuda a nomear. Um protocolo aberto que conecta assistentes a ferramentas, por exemplo, pode ser explicado primeiro por sua função e em seguida apresentado como **Model Context Protocol (MCP)**.
+Em áreas que mudam rapidamente, como IA generativa e Human-AI Interaction, afirmações sobre o estado corrente devem considerar também literatura recente.
 
-Identificadores literais de campos, contratos e ferramentas aparecem como código somente quando a grafia exata importa. Na explicação para pessoas, prefira os termos do produto em português.
+Para engenharia, especificações, normas e documentação oficial são as principais autoridades para o comportamento de protocolos e tecnologias correntes. Literatura acadêmica complementa esse material quando a afirmação envolve fatores humanos, segurança, privacidade, sistemas distribuídos, desempenho ou propriedades empíricas.
 
-Nomes de botões e áreas aparecem em **negrito** e devem coincidir com a interface. Termos internos de implementação só entram quando são necessários para explicar um contrato ou uma decisão técnica no documento apropriado.
+Para ética, privacidade e direitos, diferencie requisito legal, orientação institucional, decisão de produto e questão metodológica.
+
+## Manter citações e bibliografia verificáveis
+
+`referencias.bib` é a fonte canônica de metadados bibliográficos.
+
+`referencias.md` oferece a representação legível do corpus completo.
+
+Documentos técnicos, conceituais e acadêmicos que façam afirmações externas devem usar o padrão bibliográfico adotado pelo projeto. Quando houver seção local de **Referências**, ela deve conter somente as obras efetivamente citadas naquela página e derivar dos mesmos metadados canônicos.
+
+A bibliografia geral também deve permitir aprendizagem. Além de localizar uma obra por autoria, um leitor deve conseguir encontrar caminhos temáticos, reconhecer leituras fundamentais, sínteses e aprofundamentos, entender por que uma fonte é relevante e conhecer seus limites de uso.
+
+Uma orientação temática não deve duplicar manualmente os metadados completos da bibliografia.
+
+### Registrar pesquisas bibliográficas com honestidade
+
+Novas buscas destinadas a ampliar o corpus seguem o protocolo bibliográfico vigente.
+
+Registre apenas o que realmente ocorreu.
+
+Diferencie:
+
+- metadado conferido;
+- título avaliado;
+- resumo lido;
+- texto integral lido;
+- informação obtida por uma síntese;
+- inferência feita para o AraLearn.
+
+Catálogos e serviços de metadados ajudam a confirmar identidade bibliográfica. Eles não demonstram, sozinhos, método, população ou resultado de um estudo.
+
+## Separar documentação corrente de bastidor
+
+A documentação corrente explica o produto, sua engenharia, seus fundamentos, seus limites e seu uso.
+
+Ela não deve funcionar como diário de implementação, backlog, relato de depuração ou transcrição do processo de desenvolvimento.
+
+Não pertencem aos capítulos correntes:
+
+- prompts ou instruções de desenvolvimento;
+- conversas internas;
+- issues e pull requests como narrativa do produto;
+- tentativas e improvisações;
+- checkpoints internos;
+- contagens de tokens;
+- comentários de ferramentas de desenvolvimento;
+- cronologias de correção que não ajudem o leitor a compreender o estado atual.
+
+Ferramentas de inteligência artificial podem e devem aparecer quando forem funcionalidade do AraLearn, tecnologia explicada, objeto de pesquisa ou risco sociotécnico pertinente. O processo interno usado para produzir o código não é conteúdo necessário à documentação pública corrente.
+
+## Tratar genealogia com cuidado
+
+A genealogia do AraLearn pode ajudar a explicar os problemas que motivaram o artefato.
+
+Ela deve diferenciar:
+
+- relato biográfico declarado;
+- interpretação sobre como uma experiência influenciou o desenho;
+- hipótese;
+- evidência científica.
+
+A genealogia não deve se tornar currículo, narrativa heroica ou argumento de autoridade.
+
+Vínculo com uma instituição não implica endosso institucional. Uma experiência pessoal com uma instituição não autoriza avaliação geral daquela instituição.
+
+Fatos biográficos só devem ser publicados quando houver autoridade explícita para fazê-lo.
 
 ## Escrever em português natural
 
-O texto deve desenvolver ideias e relações, em vez de acumular inventários para aparentar completude.
+A documentação deve desenvolver ideias e relações, em vez de acumular estruturas que apenas aparentem organização.
 
-Evite enumerações mecânicas quando um parágrafo explicativo comunica melhor, paralelismo repetitivo, séries de abstrações usadas como sujeito composto, anglicismos quando há termo corrente em português, negativas que apenas cercam uma afirmação simples, qualificadores vagos, metadiscurso sobre a própria escrita e travessão como recurso estilístico habitual.
+Evite, quando não tiverem função:
 
-Use listas quando elas realmente ajudam a comparar opções, orientar uma sequência de ações ou localizar itens de referência.
+- metadiscurso sobre o próprio texto;
+- enumerações mecânicas;
+- listas excessivamente simétricas;
+- paralelismo repetitivo;
+- cadeias de substantivos abstratos;
+- múltiplos conceitos novos na mesma frase;
+- negativas que apenas cercam uma afirmação simples;
+- fórmulas repetidas como “não apenas X, mas também Y”;
+- o verbo “combinar” usado como relação genérica;
+- qualificadores vagos ou promocionais;
+- anglicismos dispensáveis;
+- travessão como recurso estilístico recorrente;
+- conclusões que apenas repetem a introdução;
+- linguagem pseudacadêmica baseada em jargão não explicado.
+
+Isso não é uma lista de palavras proibidas. A qualidade da frase depende de seu papel no argumento.
+
+Um texto acadêmico pode ser formal sem ser opaco. Um texto introdutório pode ser simples sem ser superficial.
 
 ## Escrever exemplos e instruções úteis
 
-Um exemplo precisa revelar a regra que pretende ensinar. Exemplos simples demais podem ocultar problemas de escala; casos muito particulares podem soar como restrição inexistente.
+Um exemplo precisa revelar a relação ou a regra que pretende ensinar.
 
-Instruções descrevem ações observáveis e resultados reconhecíveis. Mensagens para estudantes, autores, pesquisadores e administradores usam o vocabulário da atividade, sem expor detalhes internos do desenvolvimento.
+Exemplos simples demais podem esconder problemas de escala. Casos excessivamente particulares podem fazer parecer que há uma restrição inexistente.
 
-## Preservar profundidade sem sobrecarregar a entrada
+Instruções devem descrever ações observáveis, resultados reconhecíveis e formas de recuperação quando necessárias.
 
-Simplificar a entrada não significa apagar conhecimento.
+Nomes de botões e áreas devem coincidir com a interface vigente.
 
-Um leitor interessado em engenharia deve encontrar documentação suficiente para compreender e reproduzir o sistema. Um pesquisador deve encontrar fundamentos, métodos, métricas, limitações e referências. Um autor deve conseguir compreender o desenho instrucional e os parâmetros. Um estudante deve conseguir usar o produto sem conhecer nenhuma dessas camadas antes de precisar delas.
+Identificadores internos aparecem apenas quando sua grafia exata for necessária para uma tarefa técnica.
 
-A documentação organiza essa profundidade por progressão e links claros.
+## Não escrever para o teste
 
-## Revisar clareza e precisão
+A linguagem da documentação pública não deve ser moldada por detalhes dos testes automatizados.
 
-A verificação automática encontra links quebrados, problemas de títulos, documentos ausentes, divergências bibliográficas e algumas formas de bastidor. Ela complementa a leitura crítica.
+Seletores CSS, nomes de handlers, tolerâncias geométricas, hashes, identificadores de workflows, migrations e contagens de testes pertencem aos artefatos técnicos que deles realmente dependem.
 
-Antes da publicação, revise também:
+Um teste pode verificar uma propriedade. A explicação destinada a pessoas deve apresentar a propriedade em linguagem adequada ao leitor.
+
+## Fazer do mapa da documentação uma entrada real
+
+O mapa da documentação deve permitir que a pessoa entre pelo que deseja compreender ou fazer.
+
+Entre os percursos relevantes estão:
+
+- começar a usar o AraLearn;
+- estudar;
+- criar e revisar Cursos;
+- compreender Assistência por IA e integrações conversacionais;
+- estudar a engenharia;
+- instalar e operar;
+- compreender segurança e privacidade;
+- estudar fundamentos educacionais;
+- investigar o artefato academicamente;
+- compreender sua genealogia;
+- encontrar bibliografia e caminhos de aprofundamento.
+
+Se o índice promete um percurso que os documentos não entregam, é o corpus ou o índice que precisa ser corrigido.
+
+## Revisar antes de publicar
+
+Verificação automática é necessária, mas não suficiente.
+
+Automação pode encontrar links quebrados, chaves bibliográficas desconhecidas, termos abolidos, corrupção de codificação e algumas classes de inconsistência.
+
+Ela não consegue demonstrar, sozinha, que:
+
+- a progressão é didática;
+- o argumento é intelectualmente honesto;
+- uma citação sustenta o alcance da frase;
+- a bibliografia é adequada à pergunta;
+- um conceito foi explicado antes de ser exigido;
+- o corpus preservou todo conhecimento corrente relevante;
+- a prosa é natural.
+
+Antes de concluir uma alteração substancial, revise:
 
 - progressão das ideias;
 - naturalidade do português;
+- precisão terminológica;
 - coerência entre documentos;
-- correspondência entre nomes da interface e documentação;
-- ausência de cronologia de implementação em textos correntes;
-- separação entre uso, fundamento e mecanismo técnico;
-- suficiência da explicação para um leitor leigo;
-- profundidade dos documentos técnicos e acadêmicos;
-- qualidade e pertinência das fontes citadas;
-- presença da bibliografia local ao fim das páginas de aprofundamento;
-- distinção entre hipótese, implementação e evidência empírica.
+- correspondência com o produto corrente;
+- suficiência da engenharia documentada;
+- distinção entre hipótese, implementação e evidência;
+- qualidade das fontes;
+- referências locais;
+- links de aprofundamento;
+- ausência de bastidor;
+- integridade de UTF-8;
+- conhecimento útil que possa ter sido perdido em versões anteriores.
 
-Uma documentação que passa nos auditores automáticos mas continua difícil de compreender ainda precisa ser reescrita.
+Quando uma reestruturação documental for material, compare estados anteriores relevantes. Restaure conhecimento que continua correto e necessário, atualizado para o produto vigente. Não restaure história, arquitetura ou terminologia superadas apenas porque apareceram em uma versão antiga.
+
+Revisão independente pode procurar omissões e contradições. Ela complementa, mas não substitui, a responsabilidade editorial sobre o corpus.
