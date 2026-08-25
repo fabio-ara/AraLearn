@@ -62,7 +62,7 @@ intensamente com automação de processos de negócio num ambiente com forte
 restrição de ferramentas, baseado principalmente em licenciamento Microsoft
 E3, atualmente também [Microsoft 365
 Copilot](https://www.microsoft.com/microsoft-365-copilot),
-[Excel](https://www.microsoft.com/microsoft-365/excel) e automações locais em
+[Excel](https://www.microsoft.com/en-us/microsoft-365/excel) e automações locais em
 [VBA](https://learn.microsoft.com/office/vba/api/overview/).
 
 Foram construídos sistemas para rotinas como processamento de pagamentos e

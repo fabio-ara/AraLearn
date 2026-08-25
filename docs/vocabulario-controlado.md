@@ -491,7 +491,7 @@ Contagem observável de caracteres, palavras, linhas, altura, duração ou volum
 
 #### Variante comparável
 
-Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal. A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.
+Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal. A mesma origem e o mesmo plano geram as variantes A e B, com valores diferentes do parâmetro nível de apoio e identificadores próprios.
 
 **Domínio e implementação.** Variante comparável; equivalente internacional: comparable course variant; símbolo: `course_variant_comparison`.
 
@@ -511,7 +511,7 @@ Protocolo de pesquisa que compara condições mediante fatores, atribuição, me
 
 #### Condição experimental
 
-Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável. Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.
+Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada por Variante comparável. Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.
 
 **Domínio e implementação.** Condição experimental; equivalente internacional: experimental condition; símbolo: `experimental_condition`.
 
@@ -593,13 +593,13 @@ Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhame
 
 #### Disponibilização pública
 
-Operação explícita que torna uma versão do curso acessível publicamente; não é estágio obrigatório da autoria ou condição para estudo privado. A pessoa proprietária decide disponibilizar publicamente um curso vivo; isso altera seu alcance, não cria um estado editorial imutável.
+Capacidade retirada que tornaria uma versão do Curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação. O AraLearn corrente não oferece disponibilização pública; o acesso depende de propriedade ou compartilhamento direto com uma pessoa autenticada.
 
 **Domínio e implementação.** Disponibilização pública; equivalente internacional: public course availability; símbolo: `public_course_release`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `publicação`. Distinguir de `materialização`, `salvamento`, `curso pronto`.
+**Uso.** `retirado`; formas técnicas ou históricas: `publicação`. Distinguir de `materialização`, `salvamento`, `curso pronto`.
 
-**Base.** [decisão de produto](arquitetura.md).
+**Base.** [decisão de produto](estado-atual-e-roadmap.md).
 
 #### Artefato de conteúdo
 
@@ -965,9 +965,9 @@ Sessão contextual em que um sistema de inteligência artificial ajuda a discuti
 
 **Domínio e implementação.** Assistência contextual por modelo de linguagem; equivalente internacional: contextual AI assistance for authoring (descrição técnica própria); símbolo: `course_provider_assistance`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `Assistência por API`. Distinguir de `API`, `provider`, `MCP`, `Actions`, `chat genérico`.
+**Uso.** `restringir`; formas técnicas ou históricas: `Assistência por API`. Distinguir de `API`, `provedor`, `MCP`, `Actions`, `chat genérico`.
 
-**Base.** [decisão de produto](assistencia-por-ia.md): Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions; [padrão externo](https://www.nist.gov/itl/ai-risk-management-framework): Sustenta somente a distinção geral entre sistema de inteligência artificial e os mecanismos técnicos que o disponibilizam; não prescreve o rótulo da interface.
+**Base.** [decisão de produto](assistencia-por-ia.md): Define a sessão contextual, a confirmação humana e a separação entre provedor, API, MCP e Actions; [padrão externo](https://www.nist.gov/itl/ai-risk-management-framework): Sustenta somente a distinção geral entre sistema de inteligência artificial e os mecanismos técnicos que o disponibilizam; não prescreve o rótulo da interface.
 
 <!-- referências locais: início -->
 

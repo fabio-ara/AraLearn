@@ -92,8 +92,8 @@ contratos](fluxos-prompts-e-contratos.md).
 
 | Propriedade | Mecanismo corrente | Evidência executável | Limite da evidência |
 | --- | --- | --- | --- |
-| Assistência por IA é uma sessão contextual do aplicativo | estado em memória, plano confirmado, relay/provider e escrita tipada | testes de assistência no domínio, runtime e E2E | resposta válida não garante utilidade pedagógica |
-| credencial do provider permanece fora do artefato de produção | relay local fixo e adaptadores diretos somente em desenvolvimento explícito | `provider-runtime-security.test.js`, `android-local-assist-bridge.test.js` | operador ainda precisa proteger o relay e sua chave |
+| Assistência por IA é uma sessão contextual do aplicativo | estado em memória, plano confirmado, relay/provedor e escrita tipada | testes de assistência no domínio, runtime e E2E | resposta válida não garante utilidade pedagógica |
+| credencial do provedor permanece fora do artefato de produção | relay local fixo e adaptadores diretos somente em desenvolvimento explícito | `provider-runtime-security.test.js`, `android-local-assist-bridge.test.js` | operador ainda precisa proteger o relay e sua chave |
 | candidato de IA não altera conteúdo antes da decisão humana | validar, reparar de forma limitada, renderizar prévia e aplicar explicitamente | testes de assistência, renderer e E2E | confirmação humana pode conter erro de julgamento |
 | MCP usa protocolo e OAuth próprios | cinco ferramentas, servidor MCP, PKCE S256, JWT minimizado e consentimento | testes MCP, JWT, consentimento e smokes OAuth | cliente MCP externo pode ter comportamento próprio |
 | Actions usa HTTP descrito por OpenAPI e OAuth próprio | cinco operações, cliente confidencial ligado ao GPT e tokens opacos | `course-action-server.test.js`, gerador OpenAPI e testes de OAuth | configuração real do GPT exige acesso à plataforma externa |

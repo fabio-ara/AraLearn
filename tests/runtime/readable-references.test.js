@@ -64,6 +64,44 @@ test("DOI prefixado é normalizado sem duplicar o resolvedor", () => {
   assert.doesNotMatch(rendered, /doi\.org\/https?:/iu);
 });
 
+test("destino Markdown preserva DOI com parênteses", () => {
+  const entries = parseBibTeX(`@article{source,
+  author = {Pessoa, Ana},
+  title = {Fonte},
+  year = {2026},
+  doi = {10.1016/S0959-4752(01)00030-5}
+}\n`);
+  const rendered = renderReadableReferences(entries, { guides: [] });
+  assert.match(rendered, /https:\/\/doi\.org\/10\.1016\/s0959-4752%2801%2900030-5/u);
+  assert.doesNotMatch(rendered, /\]\(https:\/\/doi\.org\/[^)\n]*\(/u);
+});
+
+test("destino Markdown preserva escape percentual válido", () => {
+  const entries = parseBibTeX(`@misc{source,
+  author = {Pessoa, Ana},
+  title = {Fonte},
+  year = {2026},
+  url = {https://example.org/a%20b(c).pdf}
+}\n`);
+  const rendered = renderReadableReferences(entries, { guides: [] });
+  assert.match(rendered, /https:\/\/example\.org\/a%20b%28c%29\.pdf/u);
+  assert.doesNotMatch(rendered, /%2520/u);
+});
+
+test("referência legível preserva pontuação final e traduz o sentinela de autoria", () => {
+  const entries = parseBibTeX(`@article{source,
+  author = {Pessoa, Ana and Pessoa, Beto and others},
+  title = {Pergunta de pesquisa?},
+  journal = {Revista},
+  year = {2026}
+}\n`);
+  const rendered = renderReadableReferences(entries, { guides: [] });
+  assert.match(rendered, /Ana Pessoa; Beto Pessoa; et al\. \(2026\)/u);
+  assert.match(rendered, /\*\*Pergunta de pesquisa\?\*\*/u);
+  assert.doesNotMatch(rendered, /\?\./u);
+  assert.doesNotMatch(rendered, /; others/u);
+});
+
 test("percurso temático deriva rótulos e destinos sem duplicar metadados", () => {
   const entries = parseBibTeX(fixture);
   const rendered = renderReadableReferences(entries, {

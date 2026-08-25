@@ -1589,7 +1589,7 @@
       "interfaceTerm": "Variante comparável",
       "domainTerm": "Variante comparável",
       "englishEquivalent": "comparable course variant",
-      "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com densidades conceituais diferentes e identificadores próprios.",
+      "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com valores diferentes do parâmetro nível de apoio e identificadores próprios.",
       "ambiguityRisk": "Sem esta delimitação, “Variante comparável” pode ser confundido com experimento, condição experimental, versão de estado ou branch Git, produzindo promessas causais e de pesquisa que não existem no produto.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1648,7 +1648,7 @@
       ],
       "productTerm": "Condição experimental",
       "technicalSymbol": "experimental_condition",
-      "definition": "Combinação declarada de níveis de fatores à qual uma participação é vinculada em um experimento. Não é criada por Variante comparável.",
+      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada por Variante comparável.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -1670,7 +1670,7 @@
       "interfaceTerm": "Condição experimental",
       "domainTerm": "Condição experimental",
       "englishEquivalent": "experimental condition",
-      "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia aplicar menor densidade conceitual e a B maior densidade, mantendo os demais fatores definidos.",
+      "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.",
       "ambiguityRisk": "Sem esta delimitação, “Condição experimental” pode ser confundida com Variante comparável, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1988,8 +1988,8 @@
       ],
       "productTerm": "Disponibilização pública",
       "technicalSymbol": "public_course_release",
-      "definition": "Operação explícita que torna uma versão do curso acessível publicamente; não é estágio obrigatório da autoria ou condição para estudo privado.",
-      "decision": "restringir",
+      "definition": "Capacidade retirada que tornaria uma versão do Curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação.",
+      "decision": "remover",
       "layers": [
         "interface",
         "domain",
@@ -1999,7 +1999,7 @@
       "sources": [
         {
           "status": "decisao-produto",
-          "ref": "docs/arquitetura.md"
+          "ref": "docs/estado-atual-e-roadmap.md"
         }
       ],
       "notSynonyms": [
@@ -2010,13 +2010,16 @@
       "interfaceTerm": "Disponibilização pública",
       "domainTerm": "Disponibilização pública",
       "englishEquivalent": "public course availability",
-      "araLearnExample": "A pessoa proprietária decide disponibilizar publicamente um curso vivo; isso altera seu alcance, não cria um estado editorial imutável.",
+      "araLearnExample": "O AraLearn corrente não oferece disponibilização pública; o acesso depende de propriedade ou compartilhamento direto com uma pessoa autenticada.",
       "ambiguityRisk": "Sem esta delimitação, “Disponibilização pública” pode ser confundido com materialização, salvamento, curso pronto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Publicação”: foi examinada, mas pode sugerir estágio obrigatório ou workflow editorial; Disponibilização pública nomeia a mudança explícita de acesso."
+        "“Publicação”: além de sugerir um estágio editorial, nomeava uma capacidade retirada e não deve descrever salvamento ou compartilhamento privado."
       ],
-      "status": "vigente"
+      "forbiddenSymbols": [
+        "public_course_release"
+      ],
+      "status": "concluido"
     },
     {
       "id": "content-artifact",
@@ -3283,7 +3286,7 @@
         {
           "status": "decisao-produto",
           "ref": "docs/assistencia-por-ia.md",
-          "supports": "Define a sessão contextual, a confirmação humana e a separação entre provider, API, MCP e Actions"
+          "supports": "Define a sessão contextual, a confirmação humana e a separação entre provedor, API, MCP e Actions"
         },
         {
           "status": "padrao-externo",
@@ -3293,7 +3296,7 @@
       ],
       "notSynonyms": [
         "API",
-        "provider",
+        "provedor",
         "MCP",
         "Actions",
         "chat genérico"

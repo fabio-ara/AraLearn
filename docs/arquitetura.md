@@ -200,11 +200,11 @@ revisões esperadas do Curso e da Unidade, a proveniência efetiva e uma origem
 fechada: `manual` ou `provider_assistance`. A API autentica o proprietário e a
 função SQL aceita a operação somente pelo papel de servidor. Conteúdo,
 proveniência, revisão, evento e recibo confirmam ou revertem juntos. Ao receber
-2xx, o cliente persiste primeiro o snapshot focal confirmado e promove Unidade,
+2xx, o cliente persiste primeiro o instantâneo focal confirmado e promove Unidade,
 revisão e versão no documento `course.v1`; só depois invalida as projeções
 anteriores. Estudo e Conteúdo podem reler a Unidade sem rede como confirmada,
 com sincronização pendente. A escrita não é repetida. A releitura canônica da
-mesma revisão substitui o snapshot; uma revisão superior o elimina como
+mesma revisão substitui o instantâneo; uma revisão superior o elimina como
 incorporado ou superado. Saída local ou remota, revogação, limpeza do Curso ou
 perda de autoridade purgam a réplica. Uma atualização externa rebasa as versões
 usadas pelo próximo CAS sem perder seleção, progresso ou Observações.
@@ -231,7 +231,7 @@ operação do proprietário continuam com a autorização anterior.
 
 Se a conexão falhar ou a resposta ficar ambígua, somente o envelope final dessa
 primeira gravação fica no IndexedDB: origem, seleção, versões, Unidade editada e
-identificador de pedido. Conversa, configuração e credencial do provider não
+identificador de pedido. Conversa, configuração e credencial do provedor não
 integram esse estado. A reconexão repete a mesma intenção e a confirmação promove
 o Curso pessoal. Essa capacidade usa o PostgreSQL, as Edge Functions e o
 IndexedDB correntes; não introduz Git nem uma camada futura de versionamento.
@@ -261,7 +261,7 @@ JSON bem formado não é suficiente, e uma candidata inválida ou não
 renderizável nunca substitui o conteúdo corrente.
 
 Em produção, a única conexão disponível é um relay em `127.0.0.1`, `localhost`
-ou `10.0.2.2`, na porta 4183. A credencial do provider permanece nesse serviço,
+ou `10.0.2.2`, na porta 4183. A credencial do provedor permanece nesse serviço,
 fora do AraLearn. A interface mostra o relay local como valor fixo, oferece
 modelo e mensagem e recolhe o endpoint em **Serviço e modelo**. Configuração e
 conversa não entram no Curso nem no IndexedDB. A montagem de produção ignora
@@ -282,11 +282,11 @@ do Pages.
 
 Um runtime explicitamente identificado como desenvolvimento pode liberar
 OpenAI, Gemini e DeepSeek diretos e o campo de chave, sempre com alerta de que o
-navegador não protege credenciais duradouras. Nesse modo, cada provider continua
+navegador não protege credenciais duradouras. Nesse modo, cada provedor continua
 preso à sua própria origem exata, e a chave segue somente no cabeçalho.
 
 Ao sair da conta ou encerrar a aplicação, a superfície de Estudo ou Autoria é
-destruída e a chamada ao provider é cancelada antes de apagar a sessão e fechar
+destruída e a chamada ao provedor é cancelada antes de apagar a sessão e fechar
 os armazenamentos locais. Uma resposta tardia não pode executar callback, reabrir
 a sobreposição nem restaurar configuração ou credencial em memória.
 

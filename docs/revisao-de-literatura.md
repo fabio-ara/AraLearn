@@ -880,7 +880,8 @@ populacional nem aprendizagem.
   recuperação ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)), enquanto
   alucinação e mitigação permanecem dependentes da tarefa
   ([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)); diretrizes e
-  orientações de risco exigem limites, correção e responsabilidade
+  orientações de risco recomendam explicitar limites, oferecer meios de
+  correção e definir responsabilidades
   ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
   [UNESCO (2023)](referencias.md#ref-unesco2023genai);
   [Autio et al. (2024)](referencias.md#ref-nist2024genai)). O estudo de Buçinca
@@ -1137,9 +1138,9 @@ O corpus atual ainda precisa ser ampliado para:
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
-- [Tang e Hew (2017)](referencias.md#ref-tang2017twitter): Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?.** *Computers & Education*, 106, p. 97–118.
+- [Tang e Hew (2017)](referencias.md#ref-tang2017twitter): Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?** *Computers & Education*, 106, p. 97–118.
 - [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved): Kelli Taylor; Doug Rohrer (2010). **The Effects of Interleaved Practice.** *Applied Cognitive Psychology*, 24(6), p. 837–848.
-- [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
+- [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; et al. (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
 - [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered): Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222.
 - [Tynjälä (2008)](referencias.md#ref-tynjala2008workplace): Päivi Tynjälä (2008). **Perspectives into Learning at the Workplace.** *Educational Research Review*, 3(2), p. 130–154.
 - [UNESCO (2015)](referencias.md#ref-unesco2015tvet): UNESCO (2015). **Recommendation concerning Technical and Vocational Education and Training (TVET).** UNESCO.

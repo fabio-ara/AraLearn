@@ -104,7 +104,7 @@ preserva o fato legado sem permitir que clientes criem uma nova
 `legacy_reference`.
 
 Depois do recibo 2xx e antes de invalidar as projeções anteriores, o controlador
-persiste no IndexedDB do usuário o snapshot focal confirmado e promove a Unidade,
+persiste no IndexedDB do usuário o instantâneo focal confirmado e promove a Unidade,
 a revisão e a versão no documento `course.v1`. Essa promoção preserva progresso,
 Observações e posição. Só então lista, composição anterior, plano, desenho,
 Fontes, a hierarquia e as páginas de Conteúdo e de entidades são invalidados e
@@ -112,11 +112,12 @@ recompostos. Estudo e Conteúdo podem ler esse estado sem rede mesmo quando a re
 falha; a interface o apresenta como confirmado, com sincronização pendente, e
 não simula uma segunda gravação.
 
-Uma releitura canônica na mesma revisão substitui o snapshot confirmado e limpa
+Uma releitura canônica na mesma revisão substitui o instantâneo confirmado e limpa
 o estado transitório. Uma revisão superior o elimina como superado. Saída local
 ou remota, revogação, limpeza do Curso ou outra perda de autoridade purgam a
 projeção. Se uma mudança externa chegar antes da próxima edição, a atualização rebasa revisão
-e versão esperadas para que o CAS não use a fotografia anterior, sem perder a
+e versão esperadas para que a comparação e troca (`compare-and-swap`, CAS) use
+o estado corrente, sem perder a
 seleção, o progresso nem as Observações.
 
 ### Primeira gravação de uma cópia pessoal
@@ -127,7 +128,7 @@ Estudo, o repositório conserva no IndexedDB o envelope necessário para criar s
 cópia pessoal: Curso de origem, seleção exata, revisões esperadas, Unidade final,
 origem `manual` ou `provider_assistance` e identificador do pedido. Só pode haver
 uma intenção pendente dessa família por vez. Conversa, endpoint, modelo e
-credencial do provider ficam fora.
+credencial do provedor ficam fora.
 
 O servidor verifica primeiro se houve mudança material. Sem mudança, devolve um
 recibo sem criar Curso, plano, entidades ou relação. Havendo mudança, uma única
@@ -343,7 +344,7 @@ Os contratos são exercitados em camadas:
 | estado pessoal e Anotações | testes dos repositórios, duas abas e retomada de fila |
 | concorrência e idempotência | testes PGlite, PostgreSQL real e chamadas repetidas |
 | edição contextual e proveniência carregada | testes de domínio, controlador, adaptador, roteador, PGlite e paridade IndexedDB |
-| snapshot confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Conteúdo e CAS externo |
+| instantâneo confirmado, uso sem rede e expiração | testes do controlador, repositório de Estudo, Estudo/Conteúdo e CAS externo |
 | fontes, PDFs e proveniência | testes de domínio, painel, PGlite, Storage e segurança |
 | auditoria, variantes e Pesquisa | testes de domínio, painéis, roteador e PGlite |
 | Autoria integrada | jornada autenticada por `public/main.js`, IndexedDB, API, PostgreSQL, Storage, RLS, MCP e Actions no Supabase local |

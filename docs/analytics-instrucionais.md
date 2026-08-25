@@ -106,9 +106,9 @@ A exportação direta percorre as páginas sob a mesma consulta e revisão, até
 páginas e 8 MiB por arquivo. Acima desse volume, nenhum arquivo parcial é salvo:
 a área Pesquisa orienta restringir o período, o conjunto ou o canal. Esse limite
 impede que o AraLearn tente manter ou salvar um arquivo acima de 8 MiB no
-navegador e no Android. O corpus corrente não demonstrou necessidade de criar
-arquivos temporários, retenção e limpeza no Storage para exportações maiores;
-um estudo com outro volume precisa validar o recorte escolhido.
+navegador e no Android. Exportações maiores por arquivos temporários no Storage
+não fazem parte do contrato corrente. Uma investigação cujo volume exceda esse
+limite precisa restringir e validar o recorte antes da exportação.
 
 O JSON usa o contrato `aralearn.course-authoring-analytics-export.v1` e
 conserva:

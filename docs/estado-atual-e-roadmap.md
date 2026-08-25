@@ -69,7 +69,7 @@ suficiente permanecem identificadas para resolução e não aparecem como citaç
 comprovada no Estudo.
 
 Conteúdo percorre a composição sem ativar respostas. A Auditoria registra
-checks, achados, correções, verificações e reversões. Observações de estudantes
+rodadas, achados, correções, verificações e reversões. Observações de estudantes
 continuam separadas de achados de auditoria. Variantes registram relações entre
 Cursos; Pesquisa apresenta fatos, definições, denominadores, ausências e
 exportações sem inferir eficácia ou causalidade.

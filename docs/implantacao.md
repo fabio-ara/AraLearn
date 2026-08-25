@@ -175,10 +175,10 @@ cliente que dependa da nova revisão.
 
 ## Publicar o site
 
-`npm run pages:build` gera `.pages` a partir dos mesmos fontes validados. O
+`npm run pages:build` gera `.pages` a partir das mesmas fontes validadas. O
 artefato contém HTML, CSS, módulos JavaScript, manifesto de recursos,
 configuração pública e o documento OpenAPI de Actions. Não contém Cursos,
-chave secreta nem credencial de provider.
+chave secreta nem credencial de provedor.
 
 O workflow `pages.yml` publica o mesmo SHA já aprovado. Em outro host estático,
 envie o conteúdo de `.pages`, preserve caminhos e tipos MIME e sirva tudo por

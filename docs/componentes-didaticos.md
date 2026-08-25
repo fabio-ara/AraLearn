@@ -22,7 +22,7 @@ convencional ou uma operação-alvo da tarefa.
 Antes de criar um pacote, responda:
 
 1. qual objeto ou relação precisa ser percebido;
-2. qual gesto o estudante deverá executar;
+2. qual operação-alvo a tarefa deverá exercitar;
 3. qual convenção é usada na área acadêmica;
 4. por que uma representação existente não preserva essa intenção;
 5. como a forma continua legível, acessível e editável no celular;
@@ -360,7 +360,7 @@ Pacotes complexos também devem apresentar retorno contextualizado.
 `audit_representation` acrescenta:
 
 - `semantic_fit`: a forma preserva a intenção;
-- `response_affordance`: a interação exercita o gesto planejado;
+- `response_affordance`: a interação exercita a operação planejada;
 - `feedback_legibility`: o retorno pode ser relacionado à resposta.
 
 A apresentação real e os testes de navegador verificam geometria e

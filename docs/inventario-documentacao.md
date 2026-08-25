@@ -194,7 +194,6 @@ produto.
 | [`ux-atlas/FINAL-UX-CONTRACT.md`](../ux-atlas/FINAL-UX-CONTRACT.md) | contrato final da rodada de UX que produziu a experiência corrente |
 | [`ux-atlas/MATRIZ-COBERTURA.md`](../ux-atlas/MATRIZ-COBERTURA.md) | matriz histórica de requisitos da rodada de UX |
 | [`ux-atlas/STUDY-VISUAL-BASELINE.md`](../ux-atlas/STUDY-VISUAL-BASELINE.md) | registro histórico da referência visual de Estudo |
-| [`ux-atlas/CODEX-HANDOFF.md`](../ux-atlas/CODEX-HANDOFF.md) | instrução histórica de execução, sem autoridade sobre o produto corrente |
 
 Arquivos estruturados de contrato, evidência ou configuração sustentam essas
 páginas, mas não entram como documentos destinados à leitura humana apenas por

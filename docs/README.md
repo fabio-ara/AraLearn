@@ -140,6 +140,26 @@ O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) prepara a
 avaliação com pessoas. Automação pode verificar contrato e geometria, mas não
 pode declarar compreensão ou eficácia educacional.
 
+## Avaliar um uso institucional
+
+Um gestor, uma instituição educacional ou uma administração pública pode
+começar pela [Visão do produto](visao-do-produto.md) e pelas
+[Capacidades e limites atuais](estado-atual-e-roadmap.md). Esses capítulos
+delimitam finalidade, público, propriedades implementadas e resultados ainda
+não demonstrados.
+
+Para examinar uma adoção concreta, continue por:
+
+1. [Arquitetura](arquitetura.md): serviços, fronteiras e dependências;
+2. [Privacidade](privacidade.md): localização, acesso, retenção e exclusão dos
+   dados;
+3. [Implantação](implantacao.md): ambientes, configuração, operação e
+   recuperação;
+4. [Sistema visual](sistema-visual.md): acessibilidade e condições de leitura;
+5. [Protocolo de avaliação](protocolo-avaliacao-artefato.md): avaliação própria
+   do contexto institucional, sem presumir adequação legal, científica ou
+   educacional universal.
+
 ## Operar e implantar
 
 | Assunto | Documento |
@@ -169,7 +189,7 @@ Documentos correntes não repetem essa cronologia.
 | [Glossário técnico](glossario-tecnico.md) | termos de software e infraestrutura |
 | [Glossário de construtos](glossario-construtos.md) | termos educacionais e metodológicos |
 | [Vocabulário controlado](vocabulario-controlado.md) | decisões terminológicas e mapa de corte |
-| [Referências](referencias.md) | bibliografia legível gerada da fonte canônica |
+| [Referências](referencias.md) | bibliografia legível e percursos temáticos gerados da fonte canônica |
 | [Cobertura da documentação](inventario-documentacao.md) | assunto e percurso de cada capítulo |
 | [Matriz de conformidade](matriz-conformidade-tecnica.md) | rastreabilidade da engenharia |
 

@@ -683,7 +683,7 @@ Chave bibliográfica: `peffers2007dsrm`.
 
 ### Peters et al. (2024)
 
-Micah D. J. Peters; Christina Godfrey; Patricia McInerney; Zachary Munn; Andrea C. Tricco; Hanan Khalil (2024). **Scoping Reviews.** In: *JBI Manual for Evidence Synthesis*, JBI. [DOI 10.46658/jbimes-24-09](https://doi.org/10.46658/jbimes-24-09) · [acesso ao documento](https://synthesismanual.jbi.global).
+Micah D. J. Peters; Christina Godfrey; Patricia McInerney; Zachary Munn; Andrea C. Tricco; Hanan Khalil (2024). **Scoping Reviews.** In: *JBI Manual for Evidence Synthesis*, JBI. [DOI 10.46658/jbimes-24-09](https://doi.org/10.46658/jbimes-24-09) · [acesso ao documento](https://synthesismanual.jbi.global/).
 
 Chave bibliográfica: `peters2024scoping`.
 
@@ -723,7 +723,7 @@ Chave bibliográfica: `reisslein2006expertisereversal`.
 
 ### Renkl (2002)
 
-Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556. [DOI 10.1016/s0959-4752(01)00030-5](https://doi.org/10.1016/s0959-4752(01)00030-5).
+Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556. [DOI 10.1016/s0959-4752(01)00030-5](https://doi.org/10.1016/s0959-4752%2801%2900030-5).
 
 Chave bibliográfica: `renkl2002learning`.
 
@@ -771,7 +771,7 @@ Chave bibliográfica: `schneider2018signaling`.
 
 ### Schnotz e Bannert (2003)
 
-Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156. [DOI 10.1016/s0959-4752(02)00017-8](https://doi.org/10.1016/s0959-4752(02)00017-8).
+Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156. [DOI 10.1016/s0959-4752(02)00017-8](https://doi.org/10.1016/s0959-4752%2802%2900017-8).
 
 Chave bibliográfica: `schnotz2003representations`.
 
@@ -835,7 +835,7 @@ Chave bibliográfica: `sweller1998architecture`.
 
 ### Tang e Hew (2017)
 
-Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?.** *Computers & Education*, 106, p. 97–118. [DOI 10.1016/j.compedu.2016.12.004](https://doi.org/10.1016/j.compedu.2016.12.004).
+Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?** *Computers & Education*, 106, p. 97–118. [DOI 10.1016/j.compedu.2016.12.004](https://doi.org/10.1016/j.compedu.2016.12.004).
 
 Chave bibliográfica: `tang2017twitter`.
 
@@ -851,7 +851,7 @@ Chave bibliográfica: `taylor2010interleaved`.
 
 ### Tricco et al. (2018)
 
-Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; others (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473. [DOI 10.7326/m18-0850](https://doi.org/10.7326/m18-0850).
+Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; et al. (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473. [DOI 10.7326/m18-0850](https://doi.org/10.7326/m18-0850).
 
 Chave bibliográfica: `tricco2018prismascr`.
 

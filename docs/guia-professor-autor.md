@@ -233,7 +233,7 @@ caminho curricular e mensagens recentes. PDFs, Fontes, identidade da conta e
 regiões alheias ao escopo não são enviados.
 
 Confira também o destino indicado no aviso. A conversa é efêmera no AraLearn,
-mas o relay a encaminha ao provider configurado, que pode conservar dados de
+mas o relay a encaminha ao provedor configurado, que pode conservar dados de
 acordo com seus próprios termos. Autorize somente depois de revisar esse recorte.
 
 Discuta o plano no minichat e só então use **Confirmar e preparar**. Quando a
@@ -243,7 +243,7 @@ ou **Descartar proposta**. Aplicar ainda não grava o Curso; use **Salvar
 proposta** depois de conferir. Uma proposta inválida ou não renderizável deixa o
 conteúdo corrente intacto.
 
-A configuração permanece somente na memória da sessão. Providers remotos e
+A configuração permanece somente na memória da sessão. Provedores remotos e
 entrada direta de chave pertencem somente ao runtime explícito de
 desenvolvimento. No Android, uma ponte nativa fixa mantém a chamada HTTP fora do
 WebView sem relaxar a política de conteúdo misto.

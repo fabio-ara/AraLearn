@@ -4,7 +4,7 @@ Este guia reúne as operações disponíveis no site e no aplicativo Android. O
 [Guia do estudante](guia-estudante.md) e o [Guia do professor e
 autor](guia-professor-autor.md) desenvolvem os dois percursos em separado.
 
-As ações de limpeza local, o upload autenticado de PDF e as respostas genéricas
+As ações de limpeza local, o envio autenticado de PDF e as respostas genéricas
 de acesso integram o site e o aplicativo Android correntes.
 
 ## Conceitos para começar
@@ -201,7 +201,7 @@ Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
 64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
 **Baixar PDF** para consultar o arquivo autorizado.
 
-O download usa o contrato temporário de leitura; o envio usa o contrato
+O recebimento do PDF usa o contrato temporário de leitura; o envio usa o contrato
 autenticado e uma sessão ativa. A seleção depende da operação, não da
 identificação do aparelho.
 
@@ -253,11 +253,11 @@ na Microssequência ou na Lição:
 O pedido leva a composição necessária do alvo, um resumo do caminho curricular
 e as mensagens recentes. PDFs, Fontes, identidade da conta e regiões alheias ao
 escopo ficam fora. A credencial do provedor permanece no relay, fora do
-AraLearn. Providers remotos e chave no navegador aparecem somente num runtime
+AraLearn. Provedores remotos e chave no navegador aparecem somente num runtime
 explícito de desenvolvimento, com alerta, e não são o percurso de produção.
 
 O aviso de cada envio separa essa memória efêmera do tratamento externo. O relay
-pode encaminhar o recorte ao provider configurado, que pode conservar dados
+pode encaminhar o recorte ao provedor configurado, que pode conservar dados
 segundo seus próprios termos; confira destino e conteúdo antes de autorizar.
 
 A sessão pode trabalhar com a composição da Unidade, com a estrutura da
@@ -330,7 +330,7 @@ nova intenção e um novo pedido.
 Na criação da cópia pessoal, esse envelope delimitado também fica no IndexedDB
 até a confirmação ou o descarte. Ele conserva o Curso de origem, a Unidade, as
 versões esperadas, o rascunho final e a origem manual ou assistida. Não conserva
-a conversa, a configuração nem a credencial do provider. Ao reconectar, o
+a conversa, a configuração nem a credencial do provedor. Ao reconectar, o
 AraLearn pode repetir exatamente o mesmo pedido. Duas abas que repetem essa
 intenção recebem o mesmo resultado; intenções diferentes concorrendo pela
 primeira cópia produzem conflito em vez de dois Cursos pessoais.
@@ -355,8 +355,8 @@ Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
 resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
 
 **Registrar e copiar** salva primeiro a Observação no Curso e só então prepara
-o pedido situado para o ChatGPT. Assim, uma falha de clipboard não apaga nem
-duplica o argumento já confirmado pelo servidor.
+o pedido situado para o ChatGPT. Assim, uma falha da área de transferência não
+apaga nem duplica o argumento já confirmado pelo servidor.
 
 Na aba **Achados**, escolha uma Unidade e carregue seu contexto. Uma rodada pode
 registrar verificações estruturais, pedagógicas, factuais e editoriais. Se um
@@ -462,7 +462,7 @@ mudança da revisão remota invalida os derivados da revisão anterior antes de
 uma nova leitura.
 
 Depois que uma edição manual ou assistida recebe confirmação 2xx, o AraLearn
-guarda imediatamente o snapshot confirmado da Unidade e recompõe `course.v1`
+guarda imediatamente o instantâneo confirmado da Unidade e recompõe `course.v1`
 antes de invalidar as projeções anteriores. Progresso, Observações e posição são
 preservados. Estudo e Conteúdo podem mostrar essa revisão sem rede como
 confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitura

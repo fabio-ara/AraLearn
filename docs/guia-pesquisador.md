@@ -51,7 +51,7 @@ Storage não são medidas de aprendizagem.
 
 O catálogo possui somente quatro operacionalizações:
 
-1. teto de unidades da análise introduzidas por Unidade expositiva;
+1. teto de unidades de análise introduzidas por Unidade expositiva;
 2. formas explicativas requeridas;
 3. oportunidades distintas por requisito de evidência;
 4. dimensões requeridas de variação da prática.
@@ -76,7 +76,7 @@ Ao usar essa origem:
 - registre a revisão exata do Curso;
 - mantenha invariantes e diferenças planejadas em protocolo próprio;
 - não interprete o rótulo como garantia de isolamento experimental;
-- não use o estado pessoal cotidiano como outcome implícito.
+- não use o estado pessoal cotidiano como desfecho de pesquisa implícito.
 
 ## Orientação natural e interpretação
 
@@ -111,7 +111,7 @@ proibido. Esses são achados de conformidade ao desenho, não pontuações
 educacionais.
 
 Os fatos aplicados preservam identidades de Unidades de estudo e declarações
-sobre unidades da análise, requisitos de evidência, oportunidades, formas,
+sobre unidades de análise, requisitos de evidência, oportunidades, formas,
 dimensões e pacotes. Forma, oportunidade e variação não são inferidas
 semanticamente do conteúdo pelo banco. A reconciliação material cobre IDs das
 Unidades, pai/alvo e `componentRefs`. O registro não preserva conversa, prompt,
@@ -239,7 +239,7 @@ Ainda são necessários, conforme a pergunta:
 - protocolo e hipóteses registrados;
 - condição de comparação;
 - regra de atribuição;
-- instrumentos e outcomes válidos;
+- instrumentos e desfechos de pesquisa válidos;
 - controle de exposição, perdas e versões;
 - plano de análise e explicações rivais.
 

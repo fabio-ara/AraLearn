@@ -341,7 +341,7 @@ exclusivo do proprietário fixa a Unidade corrente, sua Microssequência, plano,
 intenção representacional, Fontes/Âncoras e até 12 Anotações selecionadas. A
 rodada registra verificações públicas nas dimensões estrutural, pedagógica, factual e
 editorial; o servidor acrescenta a conformidade estrutural às três verificações
-humanos.
+humanas.
 
 O contrato interno pode conter o texto autorizado das Observações. A projeção
 MCP o omite por padrão e só acrescenta `rawText` quando

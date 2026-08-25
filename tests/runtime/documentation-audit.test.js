@@ -65,6 +65,8 @@ function temporaryDocumentation() {
       "",
       "## Avaliar o artefato",
       "",
+      "## Avaliar um uso institucional",
+      "",
       "## Operar e implantar",
       ""
     ].join("\n"),

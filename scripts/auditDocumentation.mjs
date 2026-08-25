@@ -78,6 +78,7 @@ const REQUIRED_DOCUMENTATION_ROUTES = Object.freeze([
   "estudar a engenharia",
   "estudar a autoria de cursos",
   "avaliar o artefato",
+  "avaliar um uso institucional",
   "operar e implantar"
 ]);
 const BACKSTAGE_DOCUMENTATION = Object.freeze([

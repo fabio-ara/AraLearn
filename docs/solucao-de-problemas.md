@@ -181,15 +181,15 @@ recarregar ou fechar a página antes de concluir a repetição ou o descarte.
 
 A primeira gravação de uma cópia pessoal é a exceção delimitada: seu envelope
 fica no IndexedDB para sobreviver a reinício e reconexão. Descartar essa intenção
-remove o envelope. Conversa, configuração e credencial do provider nunca fazem
+remove o envelope. Conversa, configuração e credencial do provedor nunca fazem
 parte dele.
 
 ## A Assistência por IA não responde
 
 Confira se o relay local está ativo, se o modelo foi configurado nele e se o
 endpoint usa `127.0.0.1`, `localhost` ou `10.0.2.2`, por HTTP na porta 4183. A
-chave do provider pertence ao relay, fora do AraLearn. Se a tela mostrar
-providers remotos e campo de chave, a aplicação está num runtime explícito de
+chave do provedor pertence ao relay, fora do AraLearn. Se a tela mostrar
+provedores remotos e campo de chave, a aplicação está num runtime explícito de
 desenvolvimento; use apenas credencial descartável de teste e nunca trate esse
 modo como configuração de produção.
 

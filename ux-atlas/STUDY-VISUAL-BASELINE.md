@@ -1,8 +1,16 @@
-# Identidade visual de Estudo — referência obrigatória
+# Identidade visual de Estudo — referência histórica
 
-Esta referência complementa o Atlas. Ela existe para impedir que a implementação final preserve capacidades, mas perca novamente a linguagem visual e interacional que tornava Estudo simples.
+Este documento preserva a baseline visual usada na rodada de UX encerrada.
+Termos, caminhos e instruções abaixo registram aquele período e não têm
+autoridade sobre a experiência vigente. Para o estado atual, consulte o
+[sistema visual](../docs/sistema-visual.md), o
+[guia do estudante](../docs/guia-estudante.md) e os contratos executáveis.
 
-## Regra de autoridade
+Naquela rodada, esta referência complementava o Atlas para que a implementação
+preservasse também a linguagem visual e interacional que tornava Estudo
+simples, e não somente suas capacidades.
+
+## Regra de autoridade usada na rodada
 
 - **Funcionalidade, dados, autorização e persistência:** `main` atual e contratos fechados em #151.
 - **Cobertura e navegação do frontend:** `ux-atlas/`.

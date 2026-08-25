@@ -290,6 +290,7 @@ function splitNames(value) {
 
 function parsedNames(rawValue) {
   return splitNames(rawValue || "").map((raw) => {
+    if (/^others$/iu.test(raw.trim())) return { display: "et al.", family: "et al." };
     const corporate = /^\{.*\}$/su.test(raw.trim());
     const value = decodeBibTeX(raw);
     if (corporate || !value.includes(",")) {
@@ -314,8 +315,18 @@ function markdownText(value) {
   return decodeBibTeX(value).replaceAll("[", "\\[").replaceAll("]", "\\]");
 }
 
+function markdownDestination(value) {
+  return new URL(decodeBibTeX(value)).href
+    .replaceAll("(", "%28")
+    .replaceAll(")", "%29");
+}
+
 function pageRange(value) {
   return markdownText(value).replace(/--/gu, "–");
+}
+
+function punctuatedTitle(value) {
+  return /[.!?]$/u.test(value) ? value : `${value}.`;
 }
 
 function publication(entry) {
@@ -358,16 +369,16 @@ function referenceBlock(entry) {
   if (entry.fields.doi) {
     const doi = normalizeDoi(entry.fields.doi);
     if (!doi) throw new Error(`DOI inválido em ${entry.key}: ${decodeBibTeX(entry.fields.doi)}.`);
-    identifiers.push(`[DOI ${doi}](https://doi.org/${doi})`);
+    identifiers.push(`[DOI ${doi}](${markdownDestination(`https://doi.org/${doi}`)})`);
   }
-  if (entry.fields.url) identifiers.push(`[acesso ao documento](${decodeBibTeX(entry.fields.url)})`);
+  if (entry.fields.url) identifiers.push(`[acesso ao documento](${markdownDestination(entry.fields.url)})`);
   if (entry.fields.isbn) identifiers.push(`ISBN ${markdownText(entry.fields.isbn)}`);
   return [
     `<a id="ref-${entry.key}"></a>`,
     "",
     `### ${citationLabel(entry)}`,
     "",
-    `${responsible} (${year}). **${title}.**${publicationText ? ` ${publicationText}.` : ""}${identifiers.length ? ` ${identifiers.join(" · ")}.` : ""}`,
+    `${responsible} (${year}). **${punctuatedTitle(title)}**${publicationText ? ` ${publicationText}.` : ""}${identifiers.length ? ` ${identifiers.join(" · ")}.` : ""}`,
     "",
     `Chave bibliográfica: \`${entry.key}\`.`,
     ""
@@ -380,7 +391,7 @@ function localReferenceLine(entry) {
   const year = markdownText(entry.fields.year) || "s.d.";
   const title = markdownText(entry.fields.title) || "Sem título";
   const publicationText = publication(entry);
-  return `- [${citationLabel(entry)}](referencias.md#ref-${entry.key}): ${responsible} (${year}). **${title}.**${publicationText ? ` ${publicationText}.` : ""}`;
+  return `- [${citationLabel(entry)}](referencias.md#ref-${entry.key}): ${responsible} (${year}). **${punctuatedTitle(title)}**${publicationText ? ` ${publicationText}.` : ""}`;
 }
 
 function sourceWithoutLocalReferences(source) {

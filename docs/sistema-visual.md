@@ -333,7 +333,7 @@ técnicos. Depois da gravação, **Sua cópia** e **Compartilhado com você** ap
 como opções distintas.
 
 A matriz visual focal da Autoria percorre as quatro larguras e os dois temas,
-incluindo Before/After e rodada de Auditoria em 1.280 px. Ela rejeita
+incluindo comparação antes e depois e rodada de Auditoria em 1.280 px. Ela rejeita
 largura acima de 430 px, desalinhamento no computador, segunda coluna principal,
 overflow global e ação do ChatGPT sem nome acessível contextual e tooltip.
 

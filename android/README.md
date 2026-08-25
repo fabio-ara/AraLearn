@@ -238,8 +238,8 @@ preparação do artefato.
 
 1. Instale o APK e confirme que a autenticação é a única entrada sem sessão.
 2. Entre em uma conta, feche o aplicativo e confirme a restauração da sessão.
-3. Selecione um curso remoto e abra ao menos um card.
-4. Desligue a rede, conclua um card e registre um comentário.
+3. Selecione um Curso remoto e abra ao menos uma Unidade de estudo.
+4. Desligue a rede, responda à prática da Unidade e registre uma Observação.
 5. Feche e reabra o aplicativo ainda sem conexão; confirme Curso e estado local.
 6. Restaure a rede e confirme o envio das operações pendentes.
 7. Solicite recuperação de senha e confirme o retorno pelo link direto móvel.
