@@ -202,12 +202,14 @@ contornar o bloqueio.
 No Pages, confira também se o navegador autorizou acesso à rede local. O Android
 encaminha a requisição por uma ponte nativa fixa para não depender de conteúdo
 misto no WebView. Uma falha nesse percurso não deve ser contornada com tráfego
-aberto nem com chave no aplicativo; use edição manual ou MCP.
+aberto nem com chave no aplicativo; use edição manual ou um cliente conectado
+por MCP ou Actions.
 
 Falha, cota, recusa ou resposta fora do formato não altera o Curso. Feche a
-sugestão e continue a edição manual, ou use ChatGPT + MCP para uma tarefa mais
-ampla. Se **Aplicar ao rascunho** já foi usado, confira o conteúdo e ainda use
-**Salvar** para efetivar a mudança; aplicar a candidata não grava por si só.
+sugestão e continue a edição manual, ou use um cliente MCP ou um GPT conectado
+por Actions para uma tarefa mais ampla. Se **Aplicar ao rascunho** já foi usado,
+confira o conteúdo e ainda use **Salvar** para efetivar a mudança; aplicar a
+candidata não grava por si só.
 
 ## Não consigo salvar uma atribuição de Fontes
 
@@ -230,7 +232,7 @@ mesmo PDF** em vez de escolher outro arquivo.
 
 O preparo cria uma intenção de dez minutos e o envio usa
 a sessão autenticada. Se a sessão foi encerrada, expirou ou foi revogada,
-autentique-se e prepare outra intenção; não tente reutilizar endereço de upload.
+autentique-se e prepare outra intenção; não tente reutilizar a intenção vencida.
 
 Para abrir um anexo, releia a Fonte e solicite um novo endereço assinado. O
 endereço expira em 60 segundos, não pode ser revogado individualmente durante
@@ -249,11 +251,12 @@ conteúdo. Fonte oculta ou legada não resolvida é omitida. A visibilidade
 e link** pode mostrar o endereço. Se o acesso foi revogado ou o Curso não
 existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
-## O MCP não encontra ou não altera o Curso
+## MCP ou Actions não encontra ou não altera o Curso
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. verifique a descoberta das cinco ferramentas no ambiente hospedado;
+3. verifique as cinco ferramentas MCP ou as cinco operações de Actions no
+   ambiente hospedado;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;
 6. confira se cliente e interface apontam para o mesmo ambiente.
@@ -266,15 +269,25 @@ o bearer funcionar no MCP, mas for recusado diretamente no GoTrue, na API de
 dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
 credencial exclusiva do recurso MCP, não uma sessão da aplicação.
 
-## A alteração do MCP não aparece na interface
+Em Actions, confira se o OpenAPI importado coincide com o documento corrente,
+se `client_id` e `client_secret` pertencem ao cliente vinculado àquele GPT e se
+as URLs de autorização e token usam a função `aralearn-authoring-action`. O
+escopo é `openid email`, e o access token opaco não funciona no MCP, no GoTrue,
+na API de dados ou no Storage. Se o segredo se perdeu antes do vínculo, prepare
+outro cliente; se o GPT já estava vinculado e precisa substituir a credencial,
+vincular um novo cliente ao mesmo identificador desativa o anterior e revoga
+seus tokens. A execução corrente não possui uma ação separada para revogar uma
+concessão já vinculada.
 
-O MCP e a Autoria usam o mesmo Curso, mas a interface pode conservar uma
-projeção já carregada. Ao voltar à guia ou focalizar a janela do AraLearn, aguarde
-a releitura da área visível. Se o navegador não sinalizar o retorno, use a ação
-**Atualizar** no cabeçalho do Curso e confira a nova revisão. Se a leitura do
-servidor contiver a mudança e a tela não, registre console, rede, rota e revisão
-exibida: o defeito está na projeção ou atualização da interface, não numa etapa
-de publicação.
+## A alteração por MCP ou Actions não aparece na interface
+
+MCP, Actions e a Autoria usam o mesmo Curso, mas a interface pode conservar uma
+projeção já carregada. Ao voltar à guia ou focalizar a janela do AraLearn,
+aguarde a releitura da área visível. Se o navegador não sinalizar o retorno, use
+a ação **Atualizar** no cabeçalho do Curso e confira a nova revisão. Se a leitura
+do servidor contiver a mudança e a tela não, registre console, rede, rota e
+revisão exibida: o defeito está na projeção ou atualização da interface, não
+numa etapa de publicação.
 
 Quando houver um compositor, uma confirmação ou um formulário em edição, o
 AraLearn adia a atualização para conservar o rascunho. Conclua ou cancele essa

@@ -802,7 +802,7 @@ qualidade docente.
 - **Fundamentação:** a ética da análise de dados exige finalidade, transparência,
   proporcionalidade e participação ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
 - **Operacionalização:** cada consulta fixa Curso, revisão, filtros e instante de
-  corte. Gráfico, tabela, lista, CSV, JSON e MCP usam o mesmo recorte. As
+  corte. Gráfico, tabela, lista, CSV, JSON, MCP e Actions usam o mesmo recorte. As
   métricas correntes declaram pergunta, unidade, denominador, tratamento de
   ausências e inferências vedadas.
 - **Consequências e hipótese:** fatos rastreáveis e definições explícitas podem

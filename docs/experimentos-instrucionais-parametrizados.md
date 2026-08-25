@@ -104,7 +104,7 @@ diferença observável.
 comparação. A operação exige confirmação. O Curso, seu conteúdo, seus acessos e
 seu histórico continuam existentes e podem integrar outra atividade.
 
-## Uso pelo MCP
+## Uso por MCP e Actions
 
 `lerCurso` oferece:
 
@@ -115,10 +115,12 @@ seu histórico continuam existentes e podem integrar outra atividade.
 Curso. A escrita usa revisão esperada e `requestId`, o que protege concorrência
 e repetição.
 
-Clientes compatíveis com a extensão visual MCP Apps podem apresentar a comparação em tabela compacta dentro
-da conversa. A representação textual conserva revisões, números, diferenças e
-dados ausentes quando o cliente não oferece o componente visual. As duas formas
-usam o mesmo contrato e a mesma autorização.
+Clientes compatíveis com a extensão visual MCP Apps podem apresentar a
+comparação em tabela compacta dentro da conversa. Essa extensão pertence ao MCP;
+Actions recebe a representação estruturada da operação HTTP. A representação
+textual conserva revisões, números, diferenças e dados ausentes quando o cliente
+MCP não oferece o componente visual. Todas derivam do mesmo contrato de domínio,
+mas cada canal conserva autenticação e autorização próprias.
 
 ## Relação com Pesquisa
 

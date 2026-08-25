@@ -40,7 +40,7 @@ armazenam conversa completa nem formam um depósito analítico paralelo.
 | Chave | Significado |
 | --- | --- |
 | `authoring_interface` | operação feita na interface de Autoria |
-| `authoring_chat` | operação solicitada por um cliente MCP conectado |
+| `authoring_chat` | operação solicitada por conversa conectada, via MCP ou Actions |
 | `study_interface` | fato originado no Estudo |
 | `audit_process` | fato produzido pelo ciclo de auditoria e correção |
 
@@ -138,4 +138,4 @@ conhecidas são separadas por ` | `. O arquivo usa UTF-8 com marcador inicial
 para facilitar a abertura em programas de planilha.
 
 Consulte [Pesquisa sobre a Autoria](analytics-instrucionais.md) para o uso pela
-interface e pelo MCP.
+interface, pelo MCP e por Actions.

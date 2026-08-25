@@ -186,8 +186,9 @@ estudante.
 Em **Fontes**, crie registros, acrescente revisões, aposente fontes e consulte o
 histórico. Uma revisão pode ter Âncoras por página, tempo, fragmento de endereço
 ou trecho textual. O trecho de verificação não aparece no Estudo. Como faz parte
-do detalhe autoral da Fonte, ele também é enviado ao cliente MCP conectado
-quando esse detalhe é solicitado; evite dados pessoais desnecessários.
+do detalhe autoral da Fonte, ele também é enviado ao cliente conectado por MCP
+ou Actions quando esse detalhe é solicitado; evite dados pessoais
+desnecessários.
 
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
 interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora

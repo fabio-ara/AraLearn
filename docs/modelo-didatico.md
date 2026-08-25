@@ -219,9 +219,9 @@ observadas semanticamente pelo banco. IDs de Unidades, pai/alvo e
 permitem confrontar planejado e declarado como aplicado; não constituem pontuação,
 diagnóstico ou resultado de aprendizagem.
 
-Interface e MCP operam o mesmo contrato em linguagem comum. A pessoa autora não
-precisa editar JSON nem um esquema opaco de componentes. A fundamentação e os limites
-estão em
+Interface, MCP e Actions operam o mesmo contrato em linguagem comum. A pessoa
+autora não precisa editar JSON nem um esquema opaco de componentes. A
+fundamentação e os limites estão em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## Profundidade sem condensação

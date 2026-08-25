@@ -911,7 +911,7 @@ Conteúdo relativamente estável de referência recuperável sob demanda, como c
 
 #### Estado de autoria do curso
 
-Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface e MCP. O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface e pelas ferramentas MCP.
+Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface, MCP e Actions. O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface, pelas ferramentas MCP e pelas operações de Actions.
 
 **Domínio e implementação.** Estado de autoria do curso; equivalente internacional: course authoring state; símbolo: `course_authoring_state`.
 

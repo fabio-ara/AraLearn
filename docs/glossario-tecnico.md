@@ -56,9 +56,9 @@ sem manter nomes paralelos.
 ## Curso e composição
 
 **Curso vivo (`course`).** Raiz identificável e mutável compartilhada por
-Estudo, Autoria, Pesquisa e MCP. Conserva proprietário, título, objetivo,
-revisão e datas. Plano, composição e estados relacionados ficam em relações
-próprias sob o mesmo `courseId`.
+Estudo, Autoria, Pesquisa, MCP e Actions. Conserva proprietário, título,
+objetivo, revisão e datas. Plano, composição e estados relacionados ficam em
+relações próprias sob o mesmo `courseId`.
 
 **Revisão do Curso (`revision`).** Inteiro crescente alterado por uma mudança
 autoral confirmada. Serve à concorrência e à leitura coerente; não cria outro
@@ -267,8 +267,8 @@ conteúdo nem registra endereço de correio eletrônico.
 
 **Autorização.** Decisão sobre uma operação específica e um Curso específico.
 
-**Proprietário (`owner`).** Conta que possui o Curso. A Autoria, a Pesquisa e o
-MCP sobre esse Curso pertencem ao proprietário.
+**Proprietário (`owner`).** Conta que possui o Curso. A Autoria, a Pesquisa, o
+MCP e Actions sobre esse Curso pertencem ao proprietário.
 
 **Acesso direto.** Relação Curso-pessoa que concede Estudo. Não cria grupo,
 organização, papel autoral ou coautoria.
@@ -283,9 +283,11 @@ mesmo quando uma função remota também valida autoridade.
 **Menor privilégio.** Cada papel recebe apenas tabelas e funções exigidas. Uma
 função nova não se torna acessível até entrar na lista explícita de permissões.
 
-**Papel de serviço (`service_role`).** Papel administrativo usado dentro das
-funções remotas para chamar funções internas. Nunca é entregue ao navegador ou
-ao cliente MCP.
+**Papel de serviço (`service_role`).** Papel administrativo do PostgreSQL usado
+pelas funções remotas para chamar contratos internos. No ambiente hospedado, a
+Edge Function recebe uma chave secreta `sb_secret_` que atua com essa
+autoridade; a antiga JWT `service_role` fica restrita ao stack local de teste.
+Nenhuma das duas pertence ao navegador, ao MCP ou a Actions.
 
 **Compartimento privado (`bucket`).** Conjunto de objetos sem endereço público.
 Avatar e PDF de Fonte exigem autorização antes da emissão de um endereço
@@ -312,11 +314,12 @@ banco chamada pela rede. Mantém transação, autorização e regras próximas a
 dados.
 
 **Função remota (`Edge Function`).** Função HTTP executada na infraestrutura do
-Supabase. A API de Curso e o servidor MCP autenticam o transporte e delegam
-mutações às funções canônicas do banco.
+Supabase. A API de Curso, o servidor MCP e Actions autenticam seus transportes
+e delegam mutações às funções canônicas do banco.
 
 **Roteador de Curso.** Camada compartilhada que transforma rotas HTTP em casos
-de uso. Evita que interface visual e MCP implementem regras diferentes.
+de uso. Evita que interface visual, MCP e Actions implementem regras de domínio
+diferentes.
 
 ## MCP e assistência conversacional
 
@@ -336,15 +339,22 @@ textual continua disponível com os elementos canônicos do resultado quando o
 cliente não oferece essa extensão. Um
 endereço permanece disponível somente nos contratos que o fornecem.
 
-**OAuth.** Protocolo de autorização usado para conectar a conta individual ao
-cliente MCP.
+**OAuth.** Protocolo de autorização usado para conectar a conta individual a
+um cliente. O MCP usa o servidor OAuth 2.1 do Supabase; Actions mantém uma
+concessão própria para o GPT. Tokens e consentimentos não são intercambiáveis.
 
 **PKCE.** Vínculo criptográfico entre a solicitação de autorização e a troca do
 código. O AraLearn exige o método S256.
 
-**Escopo OAuth.** Limite declarado no token. Um escopo de escrita permite
-solicitar uma ferramenta de mutação, mas a propriedade do Curso ainda é
-verificada em cada chamada.
+**Escopo OAuth.** Limite declarado numa concessão. O MCP anuncia exatamente
+`offline_access`, necessário à renovação; Actions declara `openid email` para a
+conexão da conta. Nenhum desses nomes concede escrita por si. Cada mutação ainda
+depende da operação admitida, do principal resolvido e da propriedade do Curso.
+
+**Capacidade interna de autoria.** Marca criada pelo servidor depois de validar
+a credencial e resolver a pessoa. `authoring:read` permite as operações de
+leitura e `authoring:write`, as operações mutáveis. Essas marcas não integram a
+descoberta OAuth nem podem ser pedidas pelo cliente para ampliar autoridade.
 
 **Instrução de sistema (`system prompt`).** Instruções estáveis do cliente.
 Dados mutáveis do Curso são lidos pelas ferramentas e não copiados para esse
@@ -355,15 +365,15 @@ conectado. A cópia não altera o Curso nem informa progresso até que operaçõ
 confirmadas ocorram.
 
 **Comando de plano.** Operação fechada para atualizar campos, itens, Partes e
-vínculos de produção. Interface e MCP usam o mesmo domínio.
+vínculos de produção. Interface, MCP e Actions usam o mesmo domínio.
 
 **Comando de composição.** Operação separada que cria, altera ou remove
 entidades didáticas. Reorganizar uma Parte não substitui conteúdo
 implicitamente.
 
-**Canal de autoria.** Origem persistida da mutação, `application` para a
-interface ou `mcp` para o cliente conectado. O canal descreve o transporte, sem
-mudar autoridade ou validação.
+**Canal de autoria.** Origem persistida da mutação: `application` para a
+interface, `mcp` para um cliente MCP ou `actions` para um GPT conectado. O canal
+descreve o transporte, sem mudar autoridade ou validação.
 
 **Endereço direto.** Endereço que abre Curso, área e objeto reconhecível sem expor
 um identificador técnico como linguagem principal para a pessoa.
@@ -413,8 +423,10 @@ sem metadados ou Âncora inventados. Fica oculta em Estudo até receber uma revi
 ativa na mesma identidade.
 
 **Anexo PDF de Fonte.** Objeto privado e imutável ligado à revisão exata da
-Fonte. O envio ocorre diretamente ao armazenamento de objetos por endereço
-assinado e só se torna válido depois da confirmação transacional.
+Fonte. A API cria uma intenção curta; o navegador faz `POST` autenticado no
+Storage, sem URL assinada de envio. O anexo só se torna válido depois da
+conferência dos bytes e da confirmação do vínculo relacional. URL assinada é
+emitida apenas para leitura temporária.
 
 **Deduplicação por conteúdo.** Reutilização dos mesmos bytes quando o SHA-256,
 tamanho e tipo coincidem dentro do Curso e da política de acesso. Cada revisão

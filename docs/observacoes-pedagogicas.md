@@ -152,9 +152,10 @@ autora registra uma reformulação, também precisa declarar as revisões de Fon
 e de Âncora que considerou. Essa declaração torna verificável a base da
 reformulação sem incorporar o conteúdo dos documentos à Observação.
 
-## Uso pelo MCP
+## Uso por MCP e Actions
 
-Observações integram as ferramentas gerais de Curso:
+Observações integram as operações gerais de Curso compartilhadas pelos dois
+canais:
 
 - `lerCurso`, com `view: "anchored_annotations"`, lê caixa de entrada, alvo ou
   detalhe;
@@ -209,12 +210,14 @@ registro redigido e o recibo técnico expiram logicamente em até 14 dias. Depoi
 desse prazo, deixam de ser legíveis, pagináveis, contabilizados na quota ou
 recuperáveis por repetição.
 
-A remoção física ocorre oportunisticamente em leituras e alterações do Curso,
-em lotes delimitados. Um Curso inativo pode conservar linhas já redigidas além
-do prazo lógico, pois não há promessa de remoção física agendada. Excluir o
-Curso remove as Observações associadas. Observações ativas ou resolvidas não
-expiram apenas por idade; cada instalação precisa declarar a política
-institucional de retenção.
+A remoção física ocorre em lotes delimitados, tanto oportunisticamente em
+leituras e alterações do Curso quanto pela rotina diária agendada para 03:17 no
+fuso do banco. Cada execução programada processa até 512 itens por classe; uma
+fila maior pode exigir vários dias, e atraso ou falha do agendamento não restaura
+a legibilidade depois do prazo lógico. Uma identidade administrativa também
+pode executar a rotina com confirmação explícita. Excluir o Curso remove as
+Observações associadas. Observações ativas ou resolvidas não expiram apenas por
+idade; cada instalação precisa declarar a política institucional de retenção.
 
 Quando um achado referencia uma Observação, o vínculo conserva somente
 identidade e versão. Após a retirada, o achado a apresenta como indisponível;

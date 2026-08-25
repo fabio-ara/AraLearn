@@ -59,7 +59,7 @@ O catálogo possui somente quatro operacionalizações:
 Cada definição informa constructo, operacionalização, limitações, evidência e
 estatuto do default. Não crie uma quinta definição alterando JSON ou tabela.
 Uma nova dimensão exige nova decisão de produto, revisão conceitual, migração,
-interface, MCP e testes.
+interface, MCP, Actions e testes.
 
 ### Origem `research_condition`
 
@@ -153,8 +153,8 @@ Casos metamórficos impedem proxy de comprimento:
 
 A área **Pesquisa** projeta sete conjuntos de fatos: atividade, produção,
 desenho, Fontes, Observações, auditorias e variantes. Cada consulta fixa Curso,
-revisão, filtros e instante de corte. Gráfico, tabela, lista, CSV, JSON e MCP
-derivam da mesma resposta paginada.
+revisão, filtros e instante de corte. Gráfico, tabela, lista, CSV, JSON, MCP e
+Actions derivam da mesma resposta paginada.
 
 Use a visão para localizar o registro que sustenta uma contagem. Informe a
 definição, o denominador e as lacunas junto do número. Identidade de conta,

@@ -125,8 +125,8 @@ de onde veio.
 Considere o teto `2` definido pela autoria no Curso e o teto `1` definido na
 Lição A. Uma Microssequência dessa Lição recebe `1`, com origem `author` e
 proveniência na Lição A. Ao limpar a atribuição da Lição, a mesma
-Microssequência volta a receber `2` do Curso. Interface e MCP apresentam a mesma
-resolução.
+Microssequência volta a receber `2` do Curso. Interface, MCP e Actions apresentam
+a mesma resolução.
 
 ## Itens do plano por Microssequência
 
@@ -181,10 +181,10 @@ até 32 referências. Bloqueio prevalece sobre permissão; preferência apenas
 orienta a escolha entre componentes permitidos e adequados. Disponibilidade,
 preferência e uso materializado são fatos diferentes.
 
-O catálogo apresentado pela interface e pelo MCP vem da mesma fonte usada na
-função remota. Na produção seguinte, o servidor sela a revisão do catálogo e a
-política efetiva de cada Microssequência. Componente desconhecido, bloqueado ou
-fora de uma lista restrita faz a etapa inteira ser revertida.
+O catálogo apresentado pela interface, pelo MCP e por Actions vem da mesma fonte
+usada na função remota. Na produção seguinte, o servidor sela a revisão do
+catálogo e a política efetiva de cada Microssequência. Componente desconhecido,
+bloqueado ou fora de uma lista restrita faz a etapa inteira ser revertida.
 
 ## Contexto efetivo e fatos de aplicação
 
@@ -210,7 +210,7 @@ Essa verificação preserva rastreabilidade. Ela não substitui leitura
 disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
 mecanismo ou se duas práticas são substantivamente distintas.
 
-## Interface e MCP
+## Interface, MCP e Actions
 
 A área **Parâmetros** percorre Curso, Módulo, Lição e Microssequência. Para o
 alvo selecionado, mostra:
@@ -224,7 +224,7 @@ alvo selecionado, mostra:
 - limites de produção quando forem pertinentes.
 
 `lerCurso` usa a vista `course_design`; `alterarCurso` usa
-`update_course_design`. A interface e o MCP chegam ao mesmo domínio. Uma
+`update_course_design`. Interface, MCP e Actions chegam ao mesmo domínio. Uma
 mudança informa escopo, revisão esperada, origem, motivo e `requestId`. Repetir
 o mesmo pedido recupera o mesmo resultado; uma operação sem alteração conserva
 a revisão.

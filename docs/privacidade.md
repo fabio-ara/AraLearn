@@ -87,9 +87,9 @@ continua aberto quando indicado.
 | Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
 | --- | --- | --- | --- | --- | --- |
 | conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem dataset de pesquisa |
-| perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não no MCP público |
+| perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não em MCP nem Actions |
 | Curso e autoria | conteúdo, plano, revisões, eventos e recibos para criar e investigar o artefato | pode conter dado pessoal em texto livre; UUIDs ligados à conta e horários correlacionáveis são dados pessoais e não se tornam pseudônimos apenas pelo formato | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos de mudança expiram em 14 dias | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
-| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador ou MCP |
+| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador, MCP ou Actions |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
 | Observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada redige de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
 | Analytics da Autoria | IDs, hashes, canal, origem, estado, contagens e horários para descrever o processo | pessoal/pseudonimizado enquanto houver correlação; não é anonimizado por retirar o nome | PostgreSQL; proprietário do Curso | prazo institucional ainda aberto | exportável com aviso; não mede aprendizagem nem constitui dataset anônimo |
@@ -193,7 +193,7 @@ revisões exatos. O navegador envia o PDF ao endpoint autenticado do Storage com
 a sessão corrente; a política também exige que o `session_id` ainda exista e
 não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
 mesmo bloqueio usado pela exclusão da conta. A inserção consome a intenção. Não
-é emitida URL assinada de upload. Uma credencial temporária já emitida permanece
+é emitida URL assinada de upload. Uma URL de download já emitida permanece
 independente da sessão somente até expirar; o inventário registra essa janela.
 
 O resumo criptográfico e o cabeçalho só podem ser confirmados depois que os
@@ -303,7 +303,7 @@ possível, Analytics e suas exportações devem ser tratados como dados pessoais
 pseudonimizados. A área **Pesquisa** é uma projeção operacional do proprietário,
 não um plano de dados de participantes autorizado por protocolo.
 
-## Autoria conversacional
+## Integrações conversacionais
 
 Um protocolo aberto conecta assistentes às ferramentas de Autoria: o **Model
 Context Protocol (MCP)**. Essa integração recebe apenas Cursos próprios da
@@ -317,7 +317,14 @@ avatar, lista de Pessoas, concessão e revogação permanecem operações exclus
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-O OAuth anuncia somente o escopo `offline_access`; código e
+Um GPT personalizado pode chamar as mesmas cinco operações por Actions e
+OpenAPI. Esse canal usa cliente confidencial ligado ao GPT, escopos
+`openid email`, access token opaco e refresh token rotativo. O servidor guarda
+hashes dos tokens e resolve a conta a cada chamada. Token, cliente e
+consentimento de Actions não funcionam no MCP, e o bearer do MCP não funciona
+em Actions.
+
+O OAuth do MCP anuncia somente o escopo `offline_access`; código e
 refresh token não produzem `id_token`. O access token do MCP usa aliases
 pareados e distintos para pessoa e sessão, sem UUID da pessoa, e-mail ou perfil,
 e não funciona como sessão do aplicativo. O JWT conserva
@@ -329,10 +336,10 @@ de serviço resolve a pessoa e confirma que sessão de origem, cliente e
 consentimento ainda estão ativos. O bearer é recusado diretamente pelo GoTrue,
 pela API de dados e pelo Storage.
 
-Consentimentos e sessões OAuth encerrados não renovam acesso. Um token já
-emitido permanece criptograficamente válido somente até `exp`.
+Consentimentos e sessões OAuth do MCP encerrados não renovam acesso. Um token
+já emitido permanece criptograficamente válido somente até `exp`.
 
-A caixa de entrada e a leitura por alvo de Observações usam uma projeção
+A caixa de entrada e a leitura por alvo de Observações nos dois canais usam uma projeção
 fechada com síntese, estado, origem, papel, versões e identificador operacional.
 Ela omite texto integral, `contributor.ref`, rótulo protegido da pessoa,
 caminhos, links, IDs internos do alvo, horários e texto da resposta autoral. O
@@ -341,10 +348,10 @@ detalhe e o contexto de auditoria com Observações selecionadas só incluem
 registra o destinatário e a finalidade desse envio; as demais omissões continuam
 valendo.
 
-Fontes também usam uma projeção própria no MCP. Ela preserva as referências de
+Fontes também usam uma projeção própria nos clientes conectados. Ela preserva as referências de
 domínio necessárias à autoria, mas omite UUID de ator, identidade de atribuição,
 resumo interno do alvo, Curso de origem do objeto e caminho do Storage. Preparar
-o envio de PDF exige a sessão da aplicação e não integra a ferramenta MCP. Para
+o envio de PDF exige a sessão da aplicação e não integra MCP nem Actions. Para
 abrir um anexo, o cliente precisa declarar
 `includeAttachmentDownloadUrl: true`; somente então recebe a URL assinada, com
 `dataDisclosure` que a identifica como credencial temporária de 60 segundos.
@@ -353,9 +360,10 @@ na revisão autoral: título, autoria declarada, citação, endereço, identific
 edição ou versão, trecho de verificação e, quando presentes, `exact`, `prefix`,
 `suffix` ou `fragment` dos seletores de Âncora. O painel de Fontes do Estudo já
 pode mostrar título, citação, edição ou versão, endereço e o recorte representado
-pelo seletor. O detalhe solicitado pelo cliente MCP também pode receber os
+pelo seletor. O detalhe solicitado pelo cliente conectado também pode receber os
 demais campos autorais enumerados; o trecho de verificação não é exibido no
-Estudo.
+Estudo. Em Actions, o destinatário declarado é o GPT conectado; no MCP, é o
+cliente MCP conectado.
 
 Na assistência complementar de produção, o pedido sai do dispositivo somente
 para um relay em `127.0.0.1`, `localhost` ou `10.0.2.2`, na porta 4183. A chave

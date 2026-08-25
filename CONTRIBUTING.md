@@ -9,8 +9,12 @@ mudança quando tratam da mesma responsabilidade.
 
 Leia o [README](README.md) para conhecer o produto e a
 [documentação](docs/README.md) para localizar a área afetada. Depois, verifique
-os comandos do `package.json` e os testes já existentes. O projeto usa Node.js
-22 ou mais recente; a camada Android também exige JDK 17 e Android SDK 36.
+os comandos do `package.json` e os testes já existentes. O projeto usa
+[Node.js 22](https://nodejs.org/en/download) ou mais recente; a camada Android
+também exige [JDK 17](https://developer.android.com/build/jdks) e
+[Android SDK 36](https://developer.android.com/studio/intro/update#sdk-manager).
+O guia de [Implantação](docs/implantacao.md#diagnosticar-a-máquina) reúne as
+demais ferramentas e suas fontes oficiais.
 
 Instale as dependências de forma reproduzível:
 
@@ -101,7 +105,8 @@ Acrescente verificações conforme a área:
 | Área | Validações principais |
 | --- | --- |
 | Exemplo de curso | `npm run validate:example` |
-| Autoria conversacional | `npm run test:authoring:mcp` |
+| Autoria por MCP | `npm run test:authoring:mcp` |
+| Autoria por Actions | `npm run test:authoring:actions` e `npm run actions:openapi:check` |
 | Componentes didáticos | testes do pacote, galeria visual e Curso de componentes |
 | Integração Android | `npm run android:debug` e verificação do APK |
 | Banco e Edge Functions | testes Deno, pgTAP e testes integrados do ambiente local |

@@ -20,8 +20,13 @@ O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
 
 O preparo de upload de PDF usa o contrato autenticado; a abertura usa o contrato
-temporário de leitura. A projeção minimizada do MCP e a credencial OAuth
-confinada descritas abaixo integram o ambiente hospedado.
+temporário de leitura. As projeções minimizadas dos clientes conectados e as
+credenciais OAuth confinadas descritas abaixo integram o ambiente hospedado.
+
+Alguns identificadores dessas projeções conservam o prefixo histórico `mcp-`.
+O nome do envelope não limita seu transporte: MCP e Actions consomem a mesma
+forma minimizada pelo executor compartilhado. Quando há envio de dado sensível,
+`dataDisclosure` distingue o cliente MCP do GPT conectado por Actions.
 
 O sistema separa responsabilidades de conteúdo, proveniência, observação e
 auditoria:
@@ -36,12 +41,12 @@ auditoria:
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
 | `aralearn.course-source-attachment-access.v1` | abertura temporária de PDF privado |
 | `aralearn.course-source-attachment-access.v2` | preparação de envio autenticado de PDF privado de uma Fonte |
-| `aralearn.mcp-course-sources.v1` | projeção autoral de Fontes sem identidades pessoais, resumo interno do alvo nem caminhos do Storage |
-| `aralearn.mcp-course-source-attachment-access.v1` | metadados do anexo e, somente após declaração explícita, URL assinada de 60 segundos para o cliente MCP |
+| `aralearn.mcp-course-sources.v1` | projeção autoral de Fontes para MCP ou Actions, sem identidades pessoais, resumo interno do alvo nem caminhos do Storage |
+| `aralearn.mcp-course-source-attachment-access.v1` | metadados do anexo e, somente após declaração explícita, URL assinada de 60 segundos para o cliente conectado |
 | `aralearn.course-access-grant-request.v1` | confirmação imediata e genérica de uma solicitação de acesso ao Estudo |
 | `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
 | `aralearn.course-anchored-annotation-page.v1`, `aralearn.course-anchored-annotation.v1` e `aralearn.course-anchored-annotation-change.v1` | página, item protegido e recibo de Anotações ancoradas |
-| `aralearn.mcp-anchored-annotation-page.v1` e `aralearn.mcp-anchored-annotation-change.v1` | projeção minimizada para o cliente MCP, sem referência protegida, caminhos ou texto comum |
+| `aralearn.mcp-anchored-annotation-page.v1` e `aralearn.mcp-anchored-annotation-change.v1` | projeção minimizada para MCP ou Actions, sem referência protegida, caminhos ou texto comum |
 | `aralearn.course-audit-context.v1` | contexto focal corrente que pode ser auditado |
 | `aralearn.course-instructional-audit-run.v1`, `aralearn.course-audit-finding.v1` e `aralearn.course-authoring-correction.v1` | rodada imutável, achado versionado e ponto de controle da correção |
 | `aralearn.course-audit-cycle-page.v1` e `aralearn.course-audit-cycle-change.v1` | leitura paginada/detalhada e recibo estrito do ciclo |
@@ -80,7 +85,7 @@ O documento é a unidade de intercâmbio e validação da composição:
 }
 ```
 
-`scope` é opcional e, quando presente, vale `course`, `module`, `lesson` ou `microsequence`. `courses` continua sendo uma lista mesmo quando o recorte contém um único Curso. Essa regularidade permite que as mesmas ferramentas componham e validem documentos completos e recortes sem criar envelopes paralelos. No modelo relacional, cada item dessa lista corresponde a uma única raiz de Curso; Estudo, Autoria, API de Cursos e MCP preservam essa identidade.
+`scope` é opcional e, quando presente, vale `course`, `module`, `lesson` ou `microsequence`. `courses` continua sendo uma lista mesmo quando o recorte contém um único Curso. Essa regularidade permite que as mesmas ferramentas componham e validem documentos completos e recortes sem criar envelopes paralelos. No modelo relacional, cada item dessa lista corresponde a uma única raiz de Curso; Estudo, Autoria, API de Cursos, MCP e Actions preservam essa identidade.
 
 A hierarquia é:
 
@@ -208,8 +213,8 @@ evento e recibo atomicamente.
 uma intenção privada de dez minutos, com `signedUrl` e `expiresAt` nulos. O
 navegador faz POST autenticado no bucket; a política exige sessão viva e
 consome a intenção na inserção. O backend não emite v1 para essa operação e não
-restaura uma URL assinada de upload. Uma credencial temporária já emitida
-continua independente da sessão até expirar; o inventário registra essa janela.
+restaura uma URL assinada de upload. Uma URL de download já emitida continua
+independente da sessão até expirar; o inventário registra essa janela.
 
 `download` emite `aralearn.course-source-attachment-access.v1`, com URL assinada
 de 60 segundos. O normalizador aceita v1 somente quando a operação é `download`;
@@ -217,17 +222,18 @@ o upload usa v2 e falha de modo fechado diante de envelope incompatível. A
 seleção não inspeciona `User-Agent`. Uma URL de download emitida não pode ser
 revogada individualmente antes de expirar.
 
-O MCP não recebe o contrato interno de Fontes. A projeção
+MCP e Actions não recebem o contrato interno de Fontes. A projeção
 `aralearn.mcp-course-sources.v1` omite ator, identidade de atribuição, resumo do
 alvo, Curso de origem do objeto e caminho do Storage. Preparar upload permanece
-exclusivo da aplicação autenticada. O download MCP exige
+exclusivo da aplicação autenticada. O download por um cliente conectado exige
 `includeAttachmentDownloadUrl: true` antes de acessar o adaptador e responde
 com `aralearn.mcp-course-source-attachment-access.v1`; `dataDisclosure` registra
-que a URL incluída é uma credencial temporária de 60 segundos. No detalhe de
-Fontes, o disclosure enumera título, autoria declarada, identificador, citação,
-endereço, edição ou versão, trecho de verificação e valores textuais dos
-seletores `text_quote` e `uri_fragment` como texto livre potencialmente pessoal,
-conforme os tipos de seletor efetivamente presentes.
+que a URL incluída é uma credencial temporária de 60 segundos e identifica como
+destinatário o cliente MCP ou o GPT conectado por Actions. No detalhe de Fontes,
+o disclosure enumera título, autoria declarada, identificador, citação, endereço,
+edição ou versão, trecho de verificação e valores textuais dos seletores
+`text_quote` e `uri_fragment` como texto livre potencialmente pessoal, conforme
+os tipos de seletor efetivamente presentes.
 
 ### Solicitação de acesso sem resposta enumerável
 
@@ -479,7 +485,7 @@ O documento não carrega estados burocráticos como “rascunho”, “pronto”
 Microssequência sem Unidades pode permanecer como parte do planejamento
 visível.
 
-O aplicativo corrente não oferece publicação pública. Estudo, Autoria, API de Cursos e MCP operam
+O aplicativo corrente não oferece publicação pública. Estudo, Autoria, API de Cursos, MCP e Actions operam
 o mesmo Curso vivo, cuja composição relacional é validada sem mudar de
 identidade por um rótulo editorial.
 

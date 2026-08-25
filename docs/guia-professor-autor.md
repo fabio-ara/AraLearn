@@ -428,8 +428,8 @@ o histórico da Parte recebe uma nova execução. Abra-a para ver todas as etapa
 o resultado de cada uma, os fatos registrados e os objetos produzidos. Falhas
 anteriores e execuções parciais permanecem disponíveis; nenhuma é substituída
 pela mais recente. O link de um objeto abre **Conteúdo** no alvo exato e o
-retorno conserva a execução. A leitura equivalente pelo MCP permite retomar o
-trabalho sem depender da memória da conversa.
+retorno conserva a execução. A leitura equivalente por MCP ou Actions permite
+retomar o trabalho sem depender da memória da conversa.
 
 Enquanto uma Parte está em produção, mudanças em seus vínculos e em sua ordem
 são recusadas. Título, objetivo e itens independentes do plano continuam

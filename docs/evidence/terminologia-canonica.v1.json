@@ -3072,7 +3072,7 @@
       ],
       "productTerm": "Estado de autoria do curso",
       "technicalSymbol": "course_authoring_state",
-      "definition": "Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface e MCP.",
+      "definition": "Estado persistido e editável do curso que reúne planejamento, parâmetros, fontes, observações, materialização e dados de pesquisa e que é compartilhado por interface, MCP e Actions.",
       "decision": "manter",
       "layers": [
         "interface",
@@ -3097,11 +3097,11 @@
       "interfaceTerm": "Estado de autoria do curso",
       "domainTerm": "Estado de autoria do curso",
       "englishEquivalent": "course authoring state",
-      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface e pelas ferramentas MCP.",
+      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface, pelas ferramentas MCP e pelas operações de Actions.",
       "ambiguityRisk": "Sem esta delimitação, “Estado de autoria do curso” pode ser confundido com workspace, histórico de chat, knowledge base, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Workspace”: nomeia um contêiner abstrato e esconde que o objeto compartilhado entre interface e MCP é o estado concreto do curso em autoria."
+        "“Workspace”: nomeia um contêiner abstrato e esconde que o objeto compartilhado entre interface, MCP e Actions é o estado concreto do curso em autoria."
       ],
       "status": "vigente"
     },
