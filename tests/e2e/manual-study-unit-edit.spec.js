@@ -18,7 +18,7 @@ const fixture = JSON.parse(fs.readFileSync(
 async function openSecondStudyUnitByClicks(page) {
   await page.getByRole("button", { name: "Abrir módulo" }).click();
   await page.getByRole("button", { name: "Abrir lição" }).click();
-  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
+  await page.getByRole("button", { name: "Abrir microssequência didática" }).first().click();
   await page.getByRole("button", { name: "Abrir unidade" }).last().click();
 }
 
@@ -144,7 +144,31 @@ function packageCatalogDocument() {
   };
 }
 
-async function openStudyUnit(page, ownership) {
+async function openStudyUnit(page, ownership, { duplicateMicrosequence = false } = {}) {
+  const project = structuredClone(fixture);
+  if (duplicateMicrosequence) {
+    const lesson = project.courses[0].modules[0].lessons[0];
+    const duplicate = structuredClone(lesson.microsequences[0]);
+    duplicate.id = "micro-fixture-secondary";
+    duplicate.title = "Aplicação complementar";
+    duplicate.studyUnits = duplicate.studyUnits.map((unit, index) => ({
+      ...unit,
+      id: `${unit.id}-secondary-${index}`,
+      content: unit.content.map((instance) => ({
+        ...instance,
+        id: `${instance.id}-secondary-${index}`
+      })),
+      response: unit.response ? {
+        ...unit.response,
+        id: `${unit.response.id}-secondary-${index}`
+      } : null,
+      feedback: unit.feedback.map((instance) => ({
+        ...instance,
+        id: `${instance.id}-secondary-${index}`
+      }))
+    }));
+    lesson.microsequences.push(duplicate);
+  }
   await page.goto("/");
   await page.setContent('<!doctype html><html lang="pt-BR"><head>' +
     STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
@@ -426,7 +450,14 @@ async function openStudyUnit(page, ownership) {
         root,
         repository,
         initialProject: structuredClone(canonicalProject),
-        onSaveManualEdit: saveManualEdit
+        onSaveManualEdit: saveManualEdit,
+        onSaveAssistedStructure: ownership === "owned"
+          ? async (request) => ({
+              courseId: request.courseId,
+              courseRevision: canonicalRevision + 1,
+              project: structuredClone(request.proposedProject)
+            })
+          : null
       });
       return globalThis.__manualStudyApp;
     }
@@ -438,7 +469,7 @@ async function openStudyUnit(page, ownership) {
     };
     const app = mountStudyApplication();
     await app.openCourse(sourceCourseId);
-  }, { project: fixture, ownership });
+  }, { project, ownership });
   await openSecondStudyUnitByClicks(page);
   await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
 }
@@ -625,11 +656,15 @@ async function installContextualAssistanceResponses(page, {
 
 async function prepareContextualAssistance(page, request) {
   await page.getByRole("button", { name: "Assistência por IA" }).click();
+  await expect(page.getByRole("region", { name: "Alcance da Assistência por IA" }))
+    .toContainText("Unidade inteira");
+  await expect(page.getByRole("button", { name: "Unidade inteira" })).toBeFocused();
+  await page.getByRole("button", { name: "Conversar" }).click();
   const dialog = page.getByRole("dialog", { name: /Unidade:/u });
   await expect(dialog).toBeVisible();
   await dialog.getByText("Serviço e modelo", { exact: true }).click();
-  await dialog.getByLabel("Serviço").selectOption("openai");
-  await dialog.getByLabel("Modelo").selectOption("gpt-5.6-luna");
+  await dialog.locator("[data-course-assistance-provider]").selectOption("openai");
+  await dialog.locator("[data-course-assistance-model]").selectOption("gpt-5.6-luna");
   await dialog.getByLabel("Chave da OpenAI").fill("segredo-somente-em-memoria");
   await dialog.getByLabel("Mensagem").fill(request);
   await dialog.getByRole("button", { name: "Enviar" }).click();
@@ -739,6 +774,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   )).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Voltar à conversa" }).click();
+  await expect(assistanceDialog.getByLabel("Mensagem")).toBeFocused();
   await assistanceDialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
   await expect(page.getByRole("region", { name: "Rascunho da Assistência por IA" }))
     .toBeVisible();
@@ -888,6 +924,94 @@ test("prévia por API e cancelamento não criam cópia pessoal", async ({ page }
   await page.getByRole("button", { name: "Descartar rascunho" }).click();
   expect(await page.evaluate(() => globalThis.__manualStudyRequests.length)).toBe(0);
   expect(await page.evaluate(() => globalThis.__manualStudySnapshot().courses.length)).toBe(1);
+});
+
+test("seleção situada combina múltiplas Unidades e Microssequências antes da conversa", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openStudyUnit(page, "owned", { duplicateMicrosequence: true });
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.locator("[data-study-manual-title]").fill("Rascunho ainda não salvo");
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  await expect(page.locator("[data-study-manual-title]")).toContainText(
+    "Rascunho ainda não salvo"
+  );
+  await expect(page.getByText(
+    "Salve ou cancele a edição antes de abrir a assistência.",
+    { exact: true }
+  )).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar edição" })).toBeFocused();
+  await page.getByRole("button", { name: "Cancelar edição" }).click();
+  await page.getByRole("button", { name: "Voltar" }).click();
+  await expect(page.getByRole("heading", { name: "Unidades" })).toBeVisible();
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  const microScope = page.getByRole("region", { name: "Alcance da Assistência por IA" });
+  await expect(microScope).toContainText("1 Unidade");
+  await expect(page.locator(
+    '[data-action="toggle-assistance-target"][aria-pressed="true"]'
+  ).first()).toBeFocused();
+  const secondUnit = page.locator(
+    '[data-action="toggle-assistance-target"][aria-pressed="false"]'
+  ).first();
+  const secondUnitId = await secondUnit.getAttribute("data-assistance-target-id");
+  await secondUnit.click();
+  await expect(page.locator(
+    `[data-action="toggle-assistance-target"][data-assistance-target-id="${secondUnitId}"]`
+  )).toBeFocused();
+  await expect(microScope).toContainText("2 Unidades");
+  await microScope.getByRole("button", { name: "Cancelar seleção" }).click();
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeFocused();
+
+  await page.getByRole("button", { name: "Voltar" }).click();
+  await expect(page.getByRole("heading", { name: "Microssequências didáticas" })).toBeVisible();
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  const lessonScope = page.getByRole("region", { name: "Alcance da Assistência por IA" });
+  await expect(lessonScope).toContainText("1 Microssequência");
+  await expect(page.locator(
+    '[data-action="toggle-assistance-target"][aria-pressed="true"]'
+  ).first()).toBeFocused();
+  const secondMicrosequence = page.locator(
+    '[data-action="toggle-assistance-target"][aria-pressed="false"]'
+  ).first();
+  const secondMicrosequenceId = await secondMicrosequence.getAttribute(
+    "data-assistance-target-id"
+  );
+  await secondMicrosequence.click();
+  await expect(page.locator(
+    `[data-action="toggle-assistance-target"][data-assistance-target-id="${secondMicrosequenceId}"]`
+  )).toBeFocused();
+  await expect(lessonScope).toContainText("2 Microssequências");
+  await lessonScope.getByRole("button", { name: "Cancelar seleção" }).click();
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeFocused();
+
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  await page.getByRole("button", { name: "Visualizar", exact: true }).click();
+  await expect(lessonScope).toBeHidden();
+  await expect(page.getByRole("button", { name: "Visualizar", exact: true })).toBeFocused();
+
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect(lessonScope).toBeHidden();
+  await expect(page.locator(".study-structure-editor")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeFocused();
+
+  await page.locator("[data-study-structure-field='title']").fill(
+    "Rascunho estrutural preservado"
+  );
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  await expect(page.locator(".study-structure-editor")).toContainText(
+    "Rascunho estrutural preservado"
+  );
+  await expect(page.getByText(
+    "Salve ou cancele a edição antes de abrir a assistência.",
+    { exact: true }
+  )).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar edição" })).toBeFocused();
+  await page.getByRole("button", { name: "Cancelar edição" }).click();
+  await page.getByRole("button", { name: "Assistência por IA" }).click();
+  await expect(lessonScope).toBeVisible();
+  await expect(page.locator(
+    '[data-action="toggle-assistance-target"][aria-pressed="true"]'
+  ).first()).toBeFocused();
 });
 
 test("rascunho pessoal pendente reaparece e a reconexão retoma o mesmo pedido", async ({ page }) => {

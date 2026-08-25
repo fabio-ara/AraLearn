@@ -1,17 +1,10 @@
-const LOCAL_ASSIST_HOSTS = new Set(["127.0.0.1", "localhost", "10.0.2.2"]);
-const LOCAL_ASSIST_PORT = "4183";
-
 export const DEFAULT_ASSIST_ALLOWED_ORIGINS = Object.freeze([
-  `http://127.0.0.1:${LOCAL_ASSIST_PORT}`,
-  `http://localhost:${LOCAL_ASSIST_PORT}`,
-  `http://10.0.2.2:${LOCAL_ASSIST_PORT}`
-]);
-
-export const DEVELOPMENT_VENDOR_ASSIST_ORIGINS = Object.freeze([
   "https://api.openai.com",
   "https://generativelanguage.googleapis.com",
   "https://api.deepseek.com"
 ]);
+
+export const DEVELOPMENT_VENDOR_ASSIST_ORIGINS = DEFAULT_ASSIST_ALLOWED_ORIGINS;
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -35,23 +28,18 @@ export function normalizeAssistProviderOrigin(value) {
   if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
     throw new Error("A origem autorizada para assistência deve conter somente protocolo, host e porta.");
   }
-  const local = LOCAL_ASSIST_HOSTS.has(parsed.hostname);
-  if (parsed.protocol === "http:" && (!local || parsed.port !== LOCAL_ASSIST_PORT)) {
-    throw new Error(`HTTP na assistência só é aceito no dispositivo local, na porta ${LOCAL_ASSIST_PORT}.`);
-  }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error("A origem autorizada para assistência deve usar HTTPS ou o serviço HTTP local.");
+  if (parsed.protocol !== "https:") {
+    throw new Error("A origem autorizada para assistência deve usar HTTPS; o dispositivo local não é um provider de produção.");
   }
   return parsed.origin;
 }
 
 export function buildAssistAllowedOrigins(
   source = "",
-  { includeDirectVendors = false, includeConfiguredOrigins = false } = {}
+  { includeConfiguredOrigins = false } = {}
 ) {
   return Object.freeze([...new Set([
     ...DEFAULT_ASSIST_ALLOWED_ORIGINS,
-    ...(includeDirectVendors ? DEVELOPMENT_VENDOR_ASSIST_ORIGINS : []),
     ...(includeConfiguredOrigins
       ? values(source).map(text).filter(Boolean).map(normalizeAssistProviderOrigin)
       : [])

@@ -614,9 +614,7 @@ test("verificação aprova artefato público exato", {
   }
 });
 
-test("montagem publicável usa providers oficiais sem relay nem ponte nativa", {
-  todo: "oráculo pós-auditoria preparado antes da implementação"
-}, () => {
+test("montagem publicável usa providers oficiais sem relay nem ponte nativa", () => {
   const stageSource = fs.readFileSync(path.join(repositoryRoot, "scripts/stageWebRuntime.mjs"), "utf8");
   const publicRuntime = fs.readFileSync(path.join(repositoryRoot, "public/runtime-config.js"), "utf8");
   assert.doesNotMatch(`${stageSource}\n${publicRuntime}`, /nativeAssistBridge|127\.0\.0\.1:4183|10\.0\.2\.2:4183/u);

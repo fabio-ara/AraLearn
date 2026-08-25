@@ -356,9 +356,9 @@ function Test-RuntimeConfigurationContent {
       })
     }
     $expectedAssistOrigins = @(
-      'http://127.0.0.1:4183',
-      'http://localhost:4183',
-      'http://10.0.2.2:4183'
+      'https://api.openai.com',
+      'https://generativelanguage.googleapis.com',
+      'https://api.deepseek.com'
     )
     $missingExpectedAssistOrigins = @($expectedAssistOrigins | Where-Object {
       $_ -cnotin $assistOrigins
@@ -367,18 +367,14 @@ function Test-RuntimeConfigurationContent {
       $assistOrigins.Count -ne $expectedAssistOrigins.Count -or
       $missingExpectedAssistOrigins.Count -gt 0
     ) {
-      Add-Issue 'config.assist-origins' $RuntimeConfigLocation 'A produção deve permitir somente as três origens locais canônicas da assistência.'
+      Add-Issue 'config.assist-origins' $RuntimeConfigLocation 'A produção deve permitir somente as origens oficiais dos três providers da assistência.'
     }
     else {
       $seenAssistOrigins = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
       foreach ($origin in $assistOrigins) {
         $parsedOrigin = $null
         try { $parsedOrigin = [Uri]$origin } catch { $parsedOrigin = $null }
-        $localHost = $parsedOrigin -and $parsedOrigin.Host -in @('127.0.0.1', 'localhost', '10.0.2.2')
-        $validProtocol = $parsedOrigin -and (
-          $parsedOrigin.Scheme -ceq 'https' -or
-          ($parsedOrigin.Scheme -ceq 'http' -and $localHost -and $parsedOrigin.Port -eq 4183)
-        )
+        $validProtocol = $parsedOrigin -and $parsedOrigin.Scheme -ceq 'https'
         $exactOrigin = $parsedOrigin -and
           -not $parsedOrigin.UserInfo -and
           $parsedOrigin.AbsolutePath -ceq '/' -and
@@ -395,11 +391,8 @@ function Test-RuntimeConfigurationContent {
     if ($developmentRuntimeEnabled) {
       Add-Issue 'config.development-runtime' $RuntimeConfigLocation 'O artefato de produção não pode habilitar o runtime de desenvolvimento.'
     }
-    if ($Platform -eq 'android' -and -not $nativeAssistBridgeEnabled) {
-      Add-Issue 'config.native-assist-bridge' $RuntimeConfigLocation 'O APK deve habilitar a ponte nativa do relay local.'
-    }
-    elseif ($Platform -eq 'web' -and $nativeAssistBridgeEnabled) {
-      Add-Issue 'config.native-assist-bridge' $RuntimeConfigLocation 'O artefato web não pode habilitar a ponte exclusiva do Android.'
+    if ($nativeAssistBridgeEnabled) {
+      Add-Issue 'config.native-assist-bridge' $RuntimeConfigLocation 'Artefatos de produção não podem habilitar a ponte do relay substituído.'
     }
   }
   elseif ($RequireRuntimeConfig) {

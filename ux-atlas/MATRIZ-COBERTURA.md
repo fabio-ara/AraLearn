@@ -16,9 +16,9 @@ estritamente interna.
 | entrada Estudo/Autoria | escolher entre estudar e editar | Home → switch `Estudo / Autoria` | identidade visual obrigatória |
 | runtime, progresso, Rever e offline | estudar, retomar e continuar sem perder contexto | Estudo → Curso → Módulo → Lição → Microssequência → Unidade | estado pessoal não mede aprendizagem |
 | edição manual da Unidade | modificar conteúdo no mesmo contexto | Unidade → modo `Editar` | proprietário grava no próprio Curso; quem estuda Curso compartilhado só persiste em cópia pessoal |
-| assistência por API na Unidade | discutir e propor mudanças de conteúdo ou da composição de componentes sem sair da Unidade | Unidade → modo `Assistência por API` | minichat focal; contexto de leitura inclui a Unidade inteira e contexto curricular compacto; escrita continua estrita ao escopo autorizado; prévia antes de aplicar |
-| assistência por API na Microssequência | discutir e propor quantidade, ordem, função didática e composição/conteúdo das Unidades | Microssequência → modo `Assistência por API` | pode acrescentar/remover/reordenar Unidades e alterar teoria/prática conforme contratos atuais; prévia estrutural e validação antes de aplicar |
-| assistência estrutural na Lição | discutir e propor a organização das Microssequências, inclusive criar nova Microssequência | Lição → modo `Assistência por API` ou ação contextual explicitamente rotulada a partir da Microssequência | mutação pertence à Lição; não apresentar criação de irmã como se fosse alteração interna da Microssequência corrente |
+| assistência por IA na Unidade | discutir e propor mudanças de conteúdo ou da composição de componentes sem sair da Unidade | Unidade → modo `Assistência por IA` | minichat focal; contexto de leitura inclui a Unidade inteira e contexto curricular compacto; escrita continua estrita ao escopo autorizado; prévia antes de aplicar |
+| assistência por IA na Microssequência | discutir e propor quantidade, ordem, função didática e composição/conteúdo das Unidades | Microssequência → modo `Assistência por IA` | pode acrescentar/remover/reordenar Unidades e alterar teoria/prática conforme contratos atuais; prévia estrutural e validação antes de aplicar |
+| assistência estrutural na Lição | discutir e propor a organização das Microssequências, inclusive criar nova Microssequência | Lição → modo `Assistência por IA` ou ação contextual explicitamente rotulada a partir da Microssequência | mutação pertence à Lição; não apresentar criação de irmã como se fosse alteração interna da Microssequência corrente |
 | cópia pessoal | editar compartilhado sem alterar original | Unidade → salvar na minha cópia | Curso privado próprio |
 | criar/editar/excluir Curso próprio | manter a própria biblioteca, inclusive Cursos de teste | Autoria → Meus cursos → ações do Curso | exclusão remota ≠ limpeza local ≠ zerar progresso |
 | sair de Curso compartilhado | encerrar o próprio acesso | Estudo → ações do Curso | não excluir o Curso do proprietário |
@@ -47,7 +47,7 @@ estritamente interna.
 
 `←` retorna à tela imediatamente anterior. `↑`, quando existir, sobe somente a hierarquia didática. Unidade, Microssequência e Lição usam a mesma gramática de modos quando a capacidade existir, sem confundir os respectivos escopos de escrita.
 
-Na Assistência por API, **provider/modelo** é configuração do serviço de linguagem, não nova arquitetura autoral. Reutilizar os adapters e o relay seguro correntes; não reintroduzir credencial duradoura de provider no navegador de produção. Modelos podem continuar configuráveis, mas `gpt-5.6-luna` e DeepSeek V4 devem estar utilizáveis no produto final.
+Na Assistência por IA, **provider/modelo** é configuração do serviço de linguagem, não nova arquitetura autoral. OpenAI, Gemini e DeepSeek usam seus adaptadores e origens oficiais; a chave fornecida pela pessoa permanece somente na memória da sessão. Modelos continuam configuráveis sem expor endpoint ou infraestrutura na interface.
 
 A sessão de assistência separa três coisas:
 

@@ -167,7 +167,7 @@ test("lê a configuração pública sem executar JavaScript e valida a CSP exata
       `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
       '"assistAllowedOrigins": []'
     )),
-    /somente as origens(?: locais)? canônicas/u
+    /somente as origens oficiais/u
   );
   assert.throws(
     () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
@@ -177,7 +177,7 @@ test("lê a configuração pública sem executar JavaScript e valida a CSP exata
         "https://modelos.example.edu"
       ])}`
     )),
-    /somente as origens(?: locais)? canônicas/u
+    /somente as origens oficiais/u
   );
   assert.throws(
     () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
@@ -195,9 +195,7 @@ test("lê a configuração pública sem executar JavaScript e valida a CSP exata
   );
 });
 
-test("site publicado aceita somente as origens oficiais dos providers", {
-  todo: "oráculo pós-auditoria preparado antes da implementação"
-}, () => {
+test("site publicado aceita somente as origens oficiais dos providers", () => {
   const config = RUNTIME_CONFIG.replace(
     JSON.stringify(ASSIST_ORIGINS),
     JSON.stringify(DEVELOPMENT_VENDOR_ASSIST_ORIGINS)

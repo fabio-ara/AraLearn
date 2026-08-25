@@ -40,7 +40,7 @@ No baseline, `src/ui/renderLessonScreen.js` define um único `renderEntityModeSw
 
 A gramática era usada em Lição, Microssequência e Card. O Card corresponde conceitualmente à atual Unidade de estudo. O baseline também possuía compositor de pedido contextual em Lição/Microssequência, em vez de obrigar a pessoa a sair do objeto para conversar com a IA.
 
-A implementação final recupera essa gramática como **segmented control/toggle de modos pares**. No produto atual, usar **Assistência por API** quando a ação executa provider configurado no aplicativo.
+A implementação final recupera essa gramática como **segmented control/toggle de modos pares**. No produto atual, o nome de interface é **Assistência por IA**.
 
 ## Mapeamento para o código atual
 
@@ -48,7 +48,7 @@ Não portar handlers antigos.
 
 - **Visualizar:** renderer/runtime atual de `src/study/CourseStudyScreen.js`.
 - **Editar Unidade:** `manualStudyUnitEdit` e fluxo manual atuais.
-- **Assistência por API:** `CourseProviderAssistance`, sessão contextual, providers/relay correntes e extensões verticais da Unidade, Microssequência e Lição.
+- **Assistência por IA:** `CourseProviderAssistance`, sessão contextual, providers remotos correntes e extensões verticais da Unidade, Microssequência e Lição.
 - **Composição estrutural:** contrato canônico corrente de composição do Curso; estender somente onde a aplicação esteja limitada artificialmente à edição focal.
 - **Componentes didáticos:** catálogo, contratos, validação e prévia correntes de `consultarComponentesDidaticos`.
 - **Cópia pessoal:** contratos atuais implementados após #149.
@@ -56,13 +56,13 @@ Não portar handlers antigos.
 
 Não criar segundo editor, segundo renderer, segundo catálogo ou um chat genérico paralelo ao runtime.
 
-## Assistência por API como modo situado
+## Assistência por IA como modo situado
 
-`Assistência por API` não é um botão de geração instantânea. É um modo contextual que mantém a pessoa no objeto corrente.
+`Assistência por IA` não é um botão de geração instantânea. É um modo contextual que mantém a pessoa no objeto corrente.
 
 A superfície deve continuar simples:
 
-1. o seletor `Visualizar / Editar / Assistência por API` permanece compacto;
+1. o seletor `Visualizar / Editar / Assistência por IA` permanece compacto;
 2. depois de escolher Assistência, aparece uma área de conversa curta com caixa de pedido;
 3. escopo atual é visível em linguagem de produto (`Unidade`, `Microssequência` ou `Lição`);
 4. provider/modelo e detalhes de conexão ficam em divulgação progressiva;
@@ -97,7 +97,7 @@ Internamente, reutilizar descoberta progressiva de componentes e carregar soment
 ## Requisitos visuais
 
 1. `Visualizar` é o modo inicial e mantém o runtime limpo.
-2. `Editar` e `Assistência por API` ocupam o mesmo nível semântico de `Visualizar` quando autorizados.
+2. `Editar` e `Assistência por IA` ocupam o mesmo nível semântico de `Visualizar` quando autorizados.
 3. Trocar de modo não muda Curso/Lição/Microssequência/Unidade nem perde posição.
 4. Ações internas aparecem somente depois que o modo é escolhido e não competem com o seletor principal.
 5. Unidade, Microssequência e Lição usam a mesma gramática visual sem confundir seus escopos de mutação.
@@ -107,7 +107,7 @@ Internamente, reutilizar descoberta progressiva de componentes e carregar soment
 
 ## Anti-regressão
 
-A implementação não está autorizada a simplificar removendo modo funcional ou reduzindo Assistência por API a edição textual quando os contratos finais suportarem composição/estrutura.
+A implementação não está autorizada a simplificar removendo modo funcional ou reduzindo Assistência por IA a edição textual quando os contratos finais suportarem composição/estrutura.
 
 Também não está autorizada a resolver essa ampliação com editor low-code, JSON exposto, nova biblioteca de UI ou arquitetura paralela. Reutilize o runtime, o catálogo, a composição e os validadores correntes.
 

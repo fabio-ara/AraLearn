@@ -161,6 +161,10 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   await expect(modeButton(page, "Editar")).toBeVisible();
   await capture(page, "390-curso");
   await modeButton(page, "Editar").click();
+  await page.locator("[data-study-structure-field='title']").fill("");
+  await page.locator("[data-action='save-study-structure']").click();
+  await expect(page.getByRole("alert")).toContainText("Título e objetivo são obrigatórios");
+  await expect(page.locator("[data-study-structure-field='title']")).toBeFocused();
   await page.locator("[data-study-structure-field='title']").fill("Fixture contextual");
   await page.locator("[data-study-structure-field='goal']").fill(
     "Validar metadados e composição pelo modo contextual."
@@ -182,6 +186,14 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   await expect(modeButton(page, "Assistência por IA")).toBeVisible();
   await capture(page, "390-licao");
   await modeButton(page, "Assistência por IA").click();
+  const lessonSelectionDock = page.locator(".study-assistance-selection-dock");
+  await expect(lessonSelectionDock.getByRole("button", { name: "Conversar" })).toBeVisible();
+  expect(await lessonSelectionDock.evaluate((dock) => ({
+    dockOverflow: dock.scrollWidth - dock.clientWidth,
+    actionOverflow: dock.querySelector("[data-action='start-assistance-chat']").scrollWidth -
+      dock.querySelector("[data-action='start-assistance-chat']").clientWidth
+  }))).toEqual({ dockOverflow: 0, actionOverflow: 0 });
+  await page.locator("[data-action='start-assistance-chat']").click();
   await page.getByRole("dialog", { name: /Lição:/ })
     .getByRole("button", { name: "Fechar" }).click();
   await expect(modeButton(page, "Assistência por IA")).toBeFocused();
@@ -190,6 +202,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   await expect(modeButton(page, "Editar")).toBeVisible();
   await capture(page, "390-microssequencia");
   await modeButton(page, "Assistência por IA").click();
+  await page.locator("[data-action='start-assistance-chat']").click();
   await page.getByRole("dialog", { name: /Microssequência:/ })
     .getByRole("button", { name: "Fechar" }).click();
   await expect(modeButton(page, "Assistência por IA")).toBeFocused();
@@ -225,6 +238,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   expect(overflow.cardScrollable).toBe(false);
 
   await modeButton(page, "Assistência por IA").click();
+  await page.locator("[data-action='start-assistance-chat']").click();
   const assistanceDialog = page.getByRole("dialog", { name: /Unidade:/ });
   await expect(assistanceDialog).toBeVisible();
   await capture(page, "390-unidade-assistencia");

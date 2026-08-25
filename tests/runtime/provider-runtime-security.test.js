@@ -10,9 +10,7 @@ import {
   readAssistAllowedOrigins
 } from "../../src/assist/providerRuntimeSecurity.js";
 
-test("produção permite somente as origens oficiais dos providers", {
-  todo: "oráculo pós-auditoria preparado antes da implementação"
-}, () => {
+test("produção permite somente as origens oficiais dos providers", () => {
   const origins = buildAssistAllowedOrigins("https://modelos.example.edu");
   assert.deepEqual(origins, DEVELOPMENT_VENDOR_ASSIST_ORIGINS);
   assert.equal(Object.isFrozen(origins), true);
@@ -27,7 +25,7 @@ test("produção permite somente as origens oficiais dos providers", {
   );
   assert.throws(
     () => normalizeAssistProviderOrigin("http://127.0.0.1:9999"),
-    /porta 4183/u
+    /HTTPS|provider/u
   );
   assert.throws(
     () => normalizeAssistProviderOrigin("https://*.example.edu"),
@@ -60,9 +58,7 @@ test("endpoint falha fechado quando a instalação não declara sua origem", () 
   );
 });
 
-test("produção rejeita endpoints HTTP locais da assistência", {
-  todo: "oráculo pós-auditoria preparado antes da implementação"
-}, () => {
+test("produção rejeita endpoints HTTP locais da assistência", () => {
   assert.throws(
     () => assertAssistProviderEndpointAllowed(
       "http://10.0.2.2:4183/assist",

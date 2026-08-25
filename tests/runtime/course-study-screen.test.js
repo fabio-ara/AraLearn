@@ -158,6 +158,139 @@ test("os modos contextuais ficam no topbar com nome acessível e ordem estável"
   assert.match(draftHtml, /data-action="discard-assistance-draft"/u);
 });
 
+test("seleção da assistência acontece nos objetos renderizados e resume o alcance sem IDs", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const originalMicrosequence = lesson.microsequences[0];
+  const secondMicrosequence = structuredClone(originalMicrosequence);
+  secondMicrosequence.id = "micro-contexto-secundario";
+  secondMicrosequence.title = "Contexto secundário";
+  lesson.microsequences.push(secondMicrosequence);
+  const studyUnit = originalMicrosequence.studyUnits[0];
+  const common = {
+    project,
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: originalMicrosequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence: originalMicrosequence,
+    studyUnit,
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: {}
+  };
+  const lessonHtml = renderCourseStudyScreen({
+    ...common,
+    view: "lesson",
+    assistance: {
+      enabled: true,
+      activeScope: "lesson",
+      selection: { scope: "lesson", ids: lesson.microsequences.map(({ id }) => id) }
+    }
+  });
+  assert.equal((lessonHtml.match(/data-action="toggle-assistance-target"/gu) || []).length, 2);
+  assert.match(lessonHtml, /Alterar[\s\S]*2 Microssequências/u);
+  assert.doesNotMatch(visibleText(lessonHtml), /micro-contexto-secundario/u);
+
+  const microHtml = renderCourseStudyScreen({
+    ...common,
+    view: "microsequence",
+    microsequenceMode: "overview",
+    assistance: {
+      enabled: true,
+      activeScope: "didactic_microsequence",
+      selection: {
+        scope: "didactic_microsequence",
+        ids: originalMicrosequence.studyUnits.map(({ id }) => id)
+      }
+    }
+  });
+  assert.equal((microHtml.match(/data-action="toggle-assistance-target"/gu) || []).length,
+    originalMicrosequence.studyUnits.length);
+  assert.match(microHtml, /Alterar[\s\S]*2 Unidades/u);
+
+  const unitHtml = renderCourseStudyScreen({
+    ...common,
+    view: "microsequence",
+    microsequenceMode: "play",
+    manualEditor: {
+      enabled: true,
+      editing: false,
+      mode: "assist",
+      targetId: "",
+      draft: { pathValues: {} },
+      assistance: {
+        selection: { scope: "study_unit", ids: [studyUnit.content[0].id] }
+      }
+    }
+  });
+  assert.match(unitHtml, /data-assistance-target-id="study_unit"/u);
+  assert.match(unitHtml, /Alterar[\s\S]*1 componente/u);
+});
+
+test("Editar mantém resumo e filhos situados e mostra organização só no alvo selecionado", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const common = {
+    project,
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: {},
+    assistance: { enabled: false }
+  };
+  for (const [view, children, selectedChildId] of [
+    ["course", course.modules, moduleValue.id],
+    ["module", moduleValue.lessons, lesson.id],
+    ["lesson", lesson.microsequences, microsequence.id],
+    ["microsequence", microsequence.studyUnits, studyUnit.id]
+  ]) {
+    const html = renderCourseStudyScreen({
+      ...common,
+      view,
+      microsequenceMode: view === "microsequence" ? "overview" : "play",
+      structuralEditor: {
+        enabled: true,
+        editing: true,
+        saving: false,
+        label: view,
+        fields: { title: "Título situado", goal: "Objetivo situado" },
+        children: children.map(({ id, title }) => ({ id, title })),
+        selectedChildId
+      }
+    });
+    assert.match(html, /class="clean-card entity-summary-card study-structure-editor"/u);
+    assert.match(html, /class="navigation-list"/u);
+    assert.doesNotMatch(html, /<fieldset>/u);
+    assert.equal((html.match(/data-action="move-study-structure-child"/gu) || []).length, 2);
+    assert.equal((html.match(/data-action="select-study-structure-child"/gu) || []).length,
+      children.length);
+  }
+});
+
 test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada contextual", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const base = project.courses[0];

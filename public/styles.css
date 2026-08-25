@@ -843,78 +843,15 @@ button.account-settings-back[hidden] {
 
 .study-structure-editor {
   display: grid;
-  gap: 12px;
+  gap: 6px;
 }
 
-.study-structure-editor > label {
-  display: grid;
-  gap: 5px;
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
-
-.study-structure-editor :is(input, textarea) {
-  width: 100%;
+.study-structure-editor [contenteditable] {
   min-width: 0;
-  padding: 10px 11px;
-  border: 1px solid var(--input-border);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  background: var(--input-surface);
-  font: inherit;
-}
-
-.study-structure-editor textarea {
-  min-height: 86px;
-  resize: vertical;
-}
-
-.study-structure-editor fieldset {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.study-structure-editor legend {
-  margin-bottom: 5px;
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
-
-.study-structure-editor ol {
-  display: grid;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.study-structure-editor li {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 7px 6px 11px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-}
-
-.study-structure-editor li > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.study-structure-editor li > span:last-child,
-.study-structure-editor footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
+  border-radius: 4px;
+  outline: 1px dashed color-mix(in srgb, var(--action-primary) 48%, transparent);
+  outline-offset: 3px;
+  cursor: text;
 }
 
 .study-structure-editor-error {
@@ -4855,6 +4792,95 @@ button.account-settings-back[hidden] {
   overflow-y: hidden;
 }
 
+.study-assistance-selection-dock {
+  position: sticky;
+  bottom: max(8px, var(--safe-bottom-tappable));
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  box-shadow: var(--shadow-floating);
+}
+
+.study-assistance-selection-dock p,
+.study-assistance-selection-dock span,
+.study-assistance-selection-dock strong {
+  margin: 0;
+}
+
+.study-assistance-selection-dock p,
+.study-assistance-selection-dock > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.study-assistance-selection-dock p {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.study-assistance-selection-dock > div {
+  flex: 0 0 auto;
+}
+
+.study-assistance-selection-dock .open-mini {
+  display: inline-flex;
+  width: auto;
+  padding-inline: 12px;
+  gap: 7px;
+}
+
+.study-assistance-selection-dock p > span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.navigation-list-card.is-assistance-selected,
+.navigation-list-card.is-structure-selected,
+.runtime-resource-edit-target.is-selected {
+  outline: 2px solid color-mix(in srgb, var(--action-primary) 58%, transparent);
+  outline-offset: 2px;
+}
+
+.study-structure-edit-dock {
+  position: sticky;
+  bottom: max(8px, var(--safe-bottom-tappable));
+  z-index: 10;
+  padding-top: 6px;
+  background: var(--surface-canvas);
+}
+
+.study-assistance-whole-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--tap);
+  margin: 0 0 8px;
+  padding: 6px 9px;
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  font: inherit;
+  font-size: var(--type-xs);
+}
+
+.study-assistance-whole-target[aria-pressed="true"] {
+  color: var(--text-primary);
+  border-color: var(--action-primary);
+}
+
 .microsequence-workbench-screen .workbench-surface {
   display: flex;
   flex: 1 1 auto;
@@ -5512,7 +5538,6 @@ button.account-settings-back[hidden] {
 
 .home-course-ownership,
 .home-course-offline-status,
-.home-course-entry-context,
 .home-course-loading {
   min-width: 0;
   margin: 0;
@@ -5562,12 +5587,6 @@ button.account-settings-back[hidden] {
   line-height: 1.38;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-}
-
-.home-course-entry-context {
-  color: var(--text-secondary);
-  font-size: var(--type-sm);
-  line-height: 1.38;
 }
 
 .home-course-preview-actions {

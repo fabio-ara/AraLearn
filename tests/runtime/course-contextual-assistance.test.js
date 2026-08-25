@@ -78,12 +78,12 @@ test("contexto separa escrita de leitura e inclui Unidade inteira sem Fontes ou 
     project: fixture,
     selection,
     scope: "study_unit",
-    writeTargetId: "content:card-fixture-minimal-regra-content"
+    writeTargetIds: ["card-fixture-minimal-regra-content"]
   });
   assert.deepEqual(context.writeTarget, {
     kind: "study_unit",
     id: selection.studyUnitId,
-    selectedComponentId: "content:card-fixture-minimal-regra-content"
+    selectedIds: ["card-fixture-minimal-regra-content"]
   });
   assert.deepEqual(context.readOnlyContext.completeStudyUnit, currentStudyUnit());
   assert.equal(context.readOnlyContext.microsequence.id, selection.microsequenceId);
@@ -92,6 +92,17 @@ test("contexto separa escrita de leitura e inclui Unidade inteira sem Fontes ou 
   assert.ok(new TextEncoder().encode(JSON.stringify(context)).byteLength <=
     COURSE_ASSISTANCE_LIMITS.maximumContextBytes);
   assert.doesNotMatch(JSON.stringify(context), /pdf|sourceLinks|Fontes/iu);
+});
+
+test("seleção inválida ou obsoleta nunca amplia autoridade de escrita", () => {
+  for (const scope of ["study_unit", "didactic_microsequence", "lesson"]) {
+    assert.throws(() => buildCourseAssistanceContext({
+      project: fixture,
+      selection,
+      scope,
+      writeTargetIds: ["alvo-inexistente"]
+    }), (error) => error.code === "assistance_write_target_invalid");
+  }
 });
 
 test("um turno pode apenas discutir e outro forma plano no escopo recebido", async () => {
@@ -248,6 +259,58 @@ test("Unidade e Microssequência preservam a identidade do alvo durante reparos"
     assert.equal(error.code, "assistance_candidate_invalid");
     assert.ok(error.validationErrors.some((message) =>
       /preservar a identidade da Microssequência/u.test(message)
+    ));
+    return true;
+  });
+});
+
+test("seleção focal impede escrita em componentes e Unidades usados só como contexto", async () => {
+  const changedTitle = validChangedStudyUnit();
+  await assert.rejects(() => prepareCourseAssistanceProposal({
+    project: fixture,
+    selection,
+    writeTargetIds: [changedTitle.content[0].id],
+    confirmedProposal: {
+      summary: "Revisar somente o componente textual.",
+      scope: "study_unit",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    },
+    providerConfig,
+    runtimeConfig,
+    fetchImpl: sequenceFetch(Array(3).fill({
+      message: "Também alterei o título.",
+      candidate: changedTitle
+    }))
+  }), (error) => {
+    assert.equal(error.code, "assistance_candidate_invalid");
+    assert.ok(error.validationErrors.some((message) => /título|title/iu.test(message)));
+    return true;
+  });
+
+  const microsequence = structuredClone(
+    fixture.courses[0].modules[0].lessons[0].microsequences[0]
+  );
+  const [selectedUnit, readOnlyUnit] = microsequence.studyUnits;
+  readOnlyUnit.title = "Alteração fora da seleção";
+  await assert.rejects(() => prepareCourseAssistanceProposal({
+    project: fixture,
+    selection,
+    writeTargetIds: [selectedUnit.id],
+    confirmedProposal: {
+      summary: "Revisar somente a primeira Unidade.",
+      scope: "didactic_microsequence",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    },
+    providerConfig,
+    runtimeConfig,
+    fetchImpl: sequenceFetch(Array(3).fill({
+      message: "Também alterei a Unidade de contexto.",
+      candidate: microsequence
+    }))
+  }), (error) => {
+    assert.equal(error.code, "assistance_candidate_invalid");
+    assert.ok(error.validationErrors.some((message) =>
+      message.includes(readOnlyUnit.id) && /não foi escolhida/u.test(message)
     ));
     return true;
   });

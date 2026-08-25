@@ -100,6 +100,10 @@ aralearn://auth/callback
 A compilação escreve essas duas informações em `runtime-config.js`. Ao iniciar, o
 aplicativo consegue abrir a autenticação e acessar o serviço configurado.
 
+A Assistência por IA usa no APK o mesmo fluxo do site: a pessoa escolhe OpenAI,
+Gemini ou DeepSeek e fornece uma chave efêmera, mantida somente na memória da
+sessão. O aplicativo não instala relay local nem persiste essa chave.
+
 ### Uso local e sem conexão
 
 No emulador Android, `http://10.0.2.2:54321` alcança o Supabase executado na
