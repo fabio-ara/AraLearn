@@ -1140,8 +1140,8 @@ export class CourseStudyRepository {
     return this.#personal(reference).isStudyUnitCompleted(reference);
   }
 
-  setStudyUnitCompleted(reference, completed = true) {
-    return this.#personal(reference).setStudyUnitCompleted(reference, completed);
+  setStudyUnitCompleted(reference, completed = true, options = {}) {
+    return this.#personal(reference).setStudyUnitCompleted(reference, completed, options);
   }
 
   isStudyUnitMarkedForReview(reference) {

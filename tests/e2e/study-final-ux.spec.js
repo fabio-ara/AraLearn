@@ -194,7 +194,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
       dock.querySelector("[data-action='start-assistance-chat']").clientWidth
   }))).toEqual({ dockOverflow: 0, actionOverflow: 0 });
   await page.locator("[data-action='start-assistance-chat']").click();
-  await page.getByRole("dialog", { name: /Lição:/ })
+  await page.locator("[data-course-assistance]").getByRole("dialog")
     .getByRole("button", { name: "Fechar" }).click();
   await expect(modeButton(page, "Assistência por IA")).toBeFocused();
   await page.locator("[data-action='open-microsequence']").click();
@@ -203,7 +203,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   await capture(page, "390-microssequencia");
   await modeButton(page, "Assistência por IA").click();
   await page.locator("[data-action='start-assistance-chat']").click();
-  await page.getByRole("dialog", { name: /Microssequência:/ })
+  await page.locator("[data-course-assistance]").getByRole("dialog")
     .getByRole("button", { name: "Fechar" }).click();
   await expect(modeButton(page, "Assistência por IA")).toBeFocused();
   await page.locator("[data-action='open-study-unit']").first().click();
@@ -239,7 +239,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
 
   await modeButton(page, "Assistência por IA").click();
   await page.locator("[data-action='start-assistance-chat']").click();
-  const assistanceDialog = page.getByRole("dialog", { name: /Unidade:/ });
+  const assistanceDialog = page.locator("[data-course-assistance]").getByRole("dialog");
   await expect(assistanceDialog).toBeVisible();
   await capture(page, "390-unidade-assistencia");
   await assistanceDialog.getByRole("button", { name: "Fechar" }).click();
@@ -468,13 +468,15 @@ test("Unidade curta e longa usam a altura útil com um único scroller e dock es
   expect(compact.dock.bottom).toBeLessThanOrEqual(compact.viewport + 1);
 });
 
-test("Retomar uma Unidade volta para a mesma Home e para o controle de origem", async ({ page }) => {
+test("Abrir ignora a Unidade salva, mostra os Módulos e volta ao controle de origem", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await mountStudy(page, { savedView: "microsequence" });
-  const resume = page.locator("[data-action='open-course']");
-  await expect(resume).toContainText("Retomar");
-  await resume.click();
-  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  const open = page.locator("[data-action='open-course']");
+  await expect(open).toContainText("Abrir");
+  await open.click();
+  await expect(page.locator("[data-study-destination-heading]")).toContainText("Fixture Minimal");
+  await expect(page.locator("[data-action='open-module']")).toBeVisible();
+  await expect(page.locator(".runtime-card-title")).toHaveCount(0);
   await page.locator("[data-action='go-back']").click();
   await expect(page.locator("[data-action='open-course']")).toBeFocused();
   await capture(page, "1280-home-retorno");
@@ -538,5 +540,23 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     await assertTopbarFits("Lição");
     await page.locator("[data-action='open-microsequence']").click();
     await assertTopbarFits("Microssequência");
+    await page.locator("[data-action='open-study-unit']").first().click();
+    const runtimeDock = await page.evaluate(() => {
+      const dock = document.querySelector(".study-next-wrap").getBoundingClientRect();
+      const next = document.querySelector(".study-continue-btn").getBoundingClientRect();
+      const nextStyle = getComputedStyle(document.querySelector(".study-continue-btn"));
+      return {
+        display: nextStyle.display,
+        fitsDock: next.left >= dock.left && next.right <= dock.right + 1,
+        fitsViewport: next.left >= 0 && next.right <= innerWidth,
+        singleLine: next.height <= 48,
+        documentFits: document.documentElement.scrollWidth <= innerWidth
+      };
+    });
+    expect(runtimeDock.display, `Runtime ${width}px`).toBe("flex");
+    expect(runtimeDock.fitsDock, `Runtime ${width}px`).toBe(true);
+    expect(runtimeDock.fitsViewport, `Runtime ${width}px`).toBe(true);
+    expect(runtimeDock.singleLine, `Runtime ${width}px`).toBe(true);
+    expect(runtimeDock.documentFits, `Runtime ${width}px`).toBe(true);
   }
 });

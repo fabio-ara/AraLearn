@@ -1542,17 +1542,15 @@ function renderContentSection(state) {
   }
   const items = state.outline.rows || [];
   const editable = state.course?.canEdit === true;
-  const hierarchyOpen = state.routeTarget?.kind !== "study_unit";
   return '<section class="course-authoring-content-flow" aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-content-heading"><div><h2 id="course-authoring-section-title">Inspeção do conteúdo</h2>' +
-    '<p>Navegue pela hierarquia, leia no renderer e edite o objeto no contexto.</p></div>' +
+    '<p>Leia as Unidades como elas aparecem em Estudo e aja no próprio conteúdo.</p></div>' +
     (editable && state.canOpenStudyContent
       ? '<button type="button" class="course-authoring-primary" data-course-authoring-action="edit-content-entity"' +
         ' data-target-kind="course" aria-label="Editar Curso" title="Editar Curso">' +
         `${renderUiIcon("edit", "course-authoring-button-icon")}</button>`
-      : "") + '</header>' +
-    `<details class="course-authoring-content-hierarchy"${hierarchyOpen ? " open" : ""}>` +
-    '<summary>Hierarquia e edição estrutural</summary>' +
+      : "") + '</header><details class="course-authoring-content-hierarchy">' +
+    '<summary>Estrutura do Curso</summary>' +
     (items.length
       ? `<nav class="course-authoring-entities" aria-label="Hierarquia do Curso">${items.map((item) =>
           renderEntityItem(item, state)).join("")}</nav>`

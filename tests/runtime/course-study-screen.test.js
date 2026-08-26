@@ -291,7 +291,7 @@ test("Editar mantém resumo e filhos situados e mostra organização só no alvo
   }
 });
 
-test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada contextual", async () => {
+test("a Home oferece um seletor de Curso, uma prévia rica e uma única entrada", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const base = project.courses[0];
   const courses = [
@@ -336,21 +336,6 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada context
     progress: { version: 1, lessons: {} },
     coursePermissionsById: permissions,
     selectedCourseId: selected.id,
-    studyNavigation: {
-      positions: {
-        [selected.id]: {
-          view: "microsequence",
-          entityPath: [
-            selected.id,
-            moduleValue.id,
-            lesson.id,
-            microsequence.id,
-            studyUnit.id
-          ],
-          microsequenceMode: "play"
-        }
-      }
-    },
     runtimeStatus: { offline: false },
     reviewItems: [{
       title: "Pertence ao selecionado",
@@ -368,12 +353,42 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada context
   assert.match(html, /opção 1/u);
   assert.match(html, /opção 2/u);
   assert.doesNotMatch(html, /Disponível neste dispositivo|Disponível com conexão/u);
-  assert.match(html, /aria-label="Retomar [^"]+"/u);
-  assert.match(html, />Retomar<\/span>/u);
+  assert.match(html, /aria-label="Abrir [^"]+"/u);
+  assert.match(html, />Abrir<\/span>/u);
+  assert.doesNotMatch(html, />Começar<|>Continuar<|>Retomar</u);
   assert.match(html, /Pertence ao selecionado/u);
   assert.doesNotMatch(html, /Pertence a outro Curso/u);
   assert.doesNotMatch(html, /<details[^>]+study-review-queue[^>]+open/u);
   assert.doesNotMatch(html, /navigation-list-card|courses-home-list|Abrir Curso/u);
+
+  const lessonPath = `${selected.id}::${moduleValue.id}::${lesson.id}`;
+  const completedStates = [
+    [],
+    [studyUnit.id],
+    microsequence.studyUnits.map(({ id }) => id)
+  ];
+  for (const completedStudyUnitIds of completedStates) {
+    const progress = completedStudyUnitIds.length
+      ? {
+          version: 1,
+          lessons: {
+            [lessonPath]: {
+              cursorStudyUnitId: completedStudyUnitIds.at(-1),
+              completedStudyUnitIds
+            }
+          }
+        }
+      : { version: 1, lessons: {} };
+    const home = renderHomeScreen({
+      project: { ...project, courses },
+      progress,
+      editorSupport: { coursePermissionsById: permissions },
+      selectedCourseId: selected.id
+    });
+    assert.match(home, /aria-label="Abrir [^"]+"/u);
+    assert.match(home, />Abrir<\/span>/u);
+    assert.doesNotMatch(home, />Começar<|>Continuar<|>Retomar</u);
+  }
 });
 
 test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem expor IDs", async () => {

@@ -117,7 +117,6 @@ function optionLabels(presentations) {
 
 function renderCoursePreview({
   presentation,
-  position,
   runtimeStatus,
   loading = false,
   error = ""
@@ -136,11 +135,7 @@ function renderCoursePreview({
     ownershipLabel,
     availableOffline
   } = presentation;
-  const action = position
-    ? "Retomar"
-    : completed > 0
-      ? "Continuar"
-      : "Começar";
+  const action = "Abrir";
   const offline = runtimeStatus?.offline === true;
   const unavailableOffline = offline && !availableOffline;
   const statusCopy = offline && unavailableOffline
@@ -289,7 +284,6 @@ export function renderHomeScreen({
   reviewQueueOpen = false,
   runtimeStatus = {},
   selectedCourseId = null,
-  studyNavigation = null,
   homeLoadingCourseId = "",
   homeError = "",
   homeNotice = "",
@@ -307,7 +301,6 @@ export function renderHomeScreen({
     presentations[0] || null;
   const labels = optionLabels(presentations);
   const selectedId = selected ? entityId(selected.course) : "";
-  const position = studyNavigation?.positions?.[selectedId] || null;
   const loading = Boolean(selectedId && homeLoadingCourseId === selectedId);
   const selectMarkup = selected
     ? '<section class="clean-card home-course-selector-card" aria-labelledby="home-course-selector-label">' +
@@ -323,7 +316,6 @@ export function renderHomeScreen({
       escapeHtml(selected.title) + ".</p>" +
       renderCoursePreview({
         presentation: selected,
-        position,
         runtimeStatus,
         loading,
         error: homeError

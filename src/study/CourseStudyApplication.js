@@ -141,34 +141,6 @@ function selectionForStudyUnitIdentity(project, courseId, studyUnitId) {
   return null;
 }
 
-function positionSelection(project, position) {
-  const path = position?.entityPath;
-  if (!Array.isArray(path) || path.length !== 5) return null;
-  const courseSelection = selectionForCourse(project, path[0]);
-  if (!courseSelection) return null;
-  if (position.view === "course") {
-    return { selection: courseSelection, view: "course", microsequenceMode: "play" };
-  }
-  const moduleSelection = selectionForModule(project, courseSelection, path[1]);
-  if (!moduleSelection) return null;
-  if (position.view === "module") {
-    return { selection: moduleSelection, view: "module", microsequenceMode: "play" };
-  }
-  const lessonSelection = selectionForLesson(project, moduleSelection, path[2]);
-  if (!lessonSelection) return null;
-  if (position.view === "lesson") {
-    return { selection: lessonSelection, view: "lesson", microsequenceMode: "play" };
-  }
-  const exactSelection = exactStudyUnitSelection(project, path);
-  return exactSelection
-    ? {
-        selection: exactSelection,
-        view: "microsequence",
-        microsequenceMode: position.microsequenceMode === "overview" ? "overview" : "play"
-      }
-    : null;
-}
-
 export function createCourseStudyApplication({
   root,
   repository,
@@ -220,6 +192,8 @@ export function createCourseStudyApplication({
     activeGapPrompt: null,
     pendingStudyFocus: null,
     feedbackOpen: false,
+    advancePending: false,
+    advanceError: "",
     observationSheetOpen: false,
     observationItems: [],
     observationDraft: { category: null, rawText: "" },
@@ -473,10 +447,6 @@ export function createCourseStudyApplication({
     )));
   }
 
-  function savedCoursePosition(courseId) {
-    return repository.loadStudyNavigation?.()?.positions?.[courseId] || null;
-  }
-
   function syncAccountControl() {
     root.querySelectorAll("[data-action='open-settings']").forEach((node) => {
       const avatarUrl = String(state.accountProfile?.avatarUrl || "").trim();
@@ -648,6 +618,8 @@ export function createCourseStudyApplication({
     state.activeGapPrompt = null;
     state.pendingStudyFocus = null;
     state.feedbackOpen = false;
+    state.advancePending = false;
+    state.advanceError = "";
     resetManualEditorState();
     resetCitations();
     resetObservationSheet();
@@ -789,21 +761,13 @@ export function createCourseStudyApplication({
         render();
         return false;
       }
-      const rawSavedPosition = savedCoursePosition(courseId);
-      const saved = positionSelection(state.project, rawSavedPosition);
-      if (rawSavedPosition && !saved) {
-        await repository.clearStudyNavigationPosition?.(courseId, {
-          expectedPosition: rawSavedPosition
-        });
-      }
-      const destination = saved;
-      const selection = destination?.selection || selectionForCourse(state.project, courseId);
+      const selection = selectionForCourse(state.project, courseId);
       if (!selection) return false;
       resetStudyUnitInteraction();
       pushNavigationHistory(origin);
       state.selection = selection;
-      state.view = destination?.view || "course";
-      state.microsequenceMode = destination?.microsequenceMode || "play";
+      state.view = "course";
+      state.microsequenceMode = "play";
       state.homeLoadingCourseId = "";
       persistStudyNavigation();
       queueStudyFocus("[data-study-destination-heading]");
@@ -2814,6 +2778,7 @@ export function createCourseStudyApplication({
   }
 
   async function stepStudyUnit(delta) {
+    if (state.advancePending) return false;
     if (state.assistanceDraft) {
       state.assistanceError = "Salve ou descarte a proposta antes de mudar de Unidade.";
       render();
@@ -2838,7 +2803,23 @@ export function createCourseStudyApplication({
     );
     if (currentIndex < 0) return false;
     if (delta > 0) {
-      await repository.setStudyUnitCompleted(canonicalReference(state.selection), true);
+      state.advancePending = true;
+      state.advanceError = "";
+      render();
+      try {
+        await repository.setStudyUnitCompleted(
+          canonicalReference(state.selection),
+          true,
+          { synchronize: false }
+        );
+      } catch {
+        state.advancePending = false;
+        state.advanceError = "Não foi possível guardar o progresso neste dispositivo. Tente novamente.";
+        render();
+        return false;
+      }
+      state.advancePending = false;
+      void Promise.resolve(repository.flush?.()).catch(() => undefined);
     }
     const next = lessonStudyUnits[currentIndex + delta];
     if (!next) {
@@ -3754,13 +3735,14 @@ export function createCourseStudyApplication({
       runtimeStatus,
       coursePermissionsById: byCourseId,
       selectedCourseId: state.selection.courseId,
-      studyNavigation: repository.loadStudyNavigation?.() || null,
       homeLoadingCourseId: state.homeLoadingCourseId,
       homeError: state.homeError,
       homeNotice: state.homeNotice,
       homePendingPersonalCopyDiscard: state.homePendingPersonalCopyDiscard,
       packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
+      advancePending: state.advancePending,
+      advanceError: state.advanceError,
       observationCount: observationItems.filter(({ state: value }) => value !== "withdrawn").length,
       markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference)),
       citationsOpen: state.citationsOpen,

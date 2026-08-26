@@ -6,14 +6,14 @@ const fixture = JSON.parse(await readFile(new URL(
   import.meta.url
 ), "utf8"));
 
-async function installHarness(page, { delayed = false } = {}) {
+async function installHarness(page, { delayed = false, configured = true } = {}) {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
     contentType: "text/javascript",
     body: ""
   }));
   await page.goto("/");
-  await page.evaluate(async ({ project, delayed }) => {
+  await page.evaluate(async ({ project, delayed, configured }) => {
     const {
       createCourseProviderAssistance,
       createCourseProviderSession
@@ -35,11 +35,13 @@ async function installHarness(page, { delayed = false } = {}) {
       `<article id="preview" tabindex="-1">${original.content[0].data.text}</article></main>`;
     const probe = { calls: 0, previews: 0, discards: 0, drafts: 0, current: original };
     const session = createCourseProviderSession();
-    session.update({
-      providerId: "openai",
-      model: "gpt-5.6-luna",
-      apiKey: "stub-credential"
-    });
+    if (configured) {
+      session.update({
+        providerId: "openai",
+        model: "gpt-5.6-luna",
+        apiKey: "stub-credential"
+      });
+    }
     const response = (value) => ({
       ok: true,
       status: 200,
@@ -92,25 +94,45 @@ async function installHarness(page, { delayed = false } = {}) {
     globalThis.__courseAssistanceProbe = probe;
     globalThis.__courseAssistance = assistance;
     globalThis.__courseAssistanceSession = session;
-  }, { project: fixture, delayed });
+  }, { project: fixture, delayed, configured });
 }
 
 test("minichat discute, confirma, renderiza, descarta e aplica só ao rascunho", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 568 });
   await installHarness(page);
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Unidade: Regra central/u });
+  const dialog = page.getByRole("dialog", { name: /Regra central/u });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("Unidade inteira", { exact: false })).toBeVisible();
   const initialHeight = (await dialog.boundingBox()).height;
   await dialog.getByText("Serviço e modelo", { exact: true }).click();
   expect((await dialog.boundingBox()).height).toBe(initialHeight);
+  const connectionLayout = await dialog.evaluate((sheet) => {
+    const body = sheet.querySelector(".course-assistance-body").getBoundingClientRect();
+    const controls = [
+      sheet.querySelector(".course-assistance-connection > summary"),
+      ...sheet.querySelectorAll(".course-assistance-connection label")
+    ].map((node) => {
+      const bounds = node.getBoundingClientRect();
+      return {
+        top: bounds.top,
+        bottom: bounds.bottom,
+        within: bounds.top >= body.top && bounds.bottom <= body.bottom
+      };
+    });
+    return { body: { top: body.top, bottom: body.bottom }, controls };
+  });
+  expect(connectionLayout.controls).toEqual(connectionLayout.controls.map((control) => ({
+    ...control,
+    within: true
+  })));
   await dialog.getByText("Serviço e modelo", { exact: true }).click();
   await dialog.getByLabel("Mensagem").fill("Explique e proponha uma revisão.");
   await dialog.getByRole("button", { name: "Enviar" }).click();
-  await expect(dialog.getByText("Plano discutível")).toBeVisible();
+  await expect(dialog.getByText("Antes da mudança")).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Plano proposto" })).toBeVisible();
   await expect(dialog.getByText("Reescrever a explicação", { exact: false })).toBeVisible();
-  expect((await dialog.boundingBox()).height).toBeGreaterThanOrEqual(initialHeight);
+  expect((await dialog.boundingBox()).height).toBe(initialHeight);
   await expect(dialog.getByLabel("Mensagem")).toBeFocused();
   expect(await dialog.evaluate((sheet) => {
     const composer = sheet.querySelector("form").getBoundingClientRect();
@@ -119,6 +141,7 @@ test("minichat discute, confirma, renderiza, descarta e aplica só ao rascunho",
   })).toBe(true);
   await dialog.getByRole("button", { name: "Confirmar e preparar" }).click();
   await expect(dialog.getByText("Proposta validada")).toBeVisible();
+  expect((await dialog.boundingBox()).height).toBe(initialHeight);
   await expect(dialog.getByLabel("Mensagem")).toBeFocused();
   await expect(page.locator("#preview")).toContainText("consequências observáveis");
   expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.drafts)).toBe(0);
@@ -155,10 +178,38 @@ test("sessão fecha por Escape, restaura foco e não persiste credencial", async
   expect(destroyed.hasCredential).toBe(false);
 });
 
+test("configuração ausente preserva a mensagem e revela o primeiro campo necessário", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 568 });
+  await installHarness(page, { configured: false });
+  await page.locator("#trigger").click();
+  const dialog = page.getByRole("dialog", { name: /Regra central/u });
+  const connection = dialog.locator(".course-assistance-connection");
+  const initialHeight = (await dialog.boundingBox()).height;
+
+  expect(await connection.evaluate((details) => details.open)).toBe(true);
+  await expect(dialog.getByLabel("Serviço")).toBeFocused();
+  await dialog.getByText("Serviço e modelo", { exact: true }).click();
+  expect(await connection.evaluate((details) => details.open)).toBe(false);
+
+  const draft = "Explique o problema antes de sugerir qualquer mudança.";
+  await dialog.getByLabel("Mensagem").fill(draft);
+  await dialog.getByRole("button", { name: "Enviar" }).click();
+
+  expect(await connection.evaluate((details) => details.open)).toBe(true);
+  await expect(dialog.getByLabel("Serviço")).toBeFocused();
+  await expect(dialog.getByLabel("Mensagem")).toHaveValue(draft);
+  await expect(dialog.getByRole("alert")).toContainText("Escolha o serviço");
+  expect((await dialog.boundingBox()).height).toBe(initialHeight);
+  expect(await page.evaluate(() => ({
+    calls: globalThis.__courseAssistanceProbe.calls,
+    turns: globalThis.__courseAssistance.sessionSnapshot().conversationTurnCount
+  }))).toEqual({ calls: 0, turns: 0 });
+});
+
 test("trocar provider ajusta modelos, apaga a chave anterior e não expõe endpoint", async ({ page }) => {
   await installHarness(page);
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Unidade: Regra central/u });
+  const dialog = page.getByRole("dialog", { name: /Regra central/u });
   await dialog.getByText("Serviço e modelo", { exact: true }).click();
   await dialog.getByLabel("Serviço").selectOption("gemini");
   await expect(dialog.getByLabel("Modelo")).toHaveValue("gemini-2.5-flash");
@@ -167,6 +218,12 @@ test("trocar provider ajusta modelos, apaga a chave anterior e não expõe endpo
   await expect(dialog.getByLabel("Modelo")).toHaveValue("deepseek-v4-pro");
   await expect(dialog.getByLabel("Chave da DeepSeek")).toHaveValue("");
   await expect(dialog.getByText(/endpoint|relay|servidor local/iu)).toHaveCount(0);
+  await dialog.getByText("Privacidade e envio", { exact: true }).click();
+  const disclosure = dialog.locator(".course-assistance-disclosure > p");
+  await expect(disclosure).toContainText("o conteúdo selecionado");
+  await expect(disclosure).toContainText("PDFs, Fontes e dados da conta não são enviados");
+  await expect(disclosure).toContainText("O serviço pode guardar o conteúdo conforme os próprios termos");
+  await expect(disclosure).not.toContainText(/alvo de escrita|caminho curricular|renderer|contratos instalados/iu);
   await page.keyboard.press("Escape");
   expect(await page.evaluate(() => globalThis.__courseAssistance.sessionSnapshot())).toMatchObject({
     providerId: "",
@@ -179,7 +236,7 @@ test("trocar provider ajusta modelos, apaga a chave anterior e não expõe endpo
 test("resposta tardia depois de fechar não reabre conversa nem produz prévia", async ({ page }) => {
   await installHarness(page, { delayed: true });
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Unidade: Regra central/u });
+  const dialog = page.getByRole("dialog", { name: /Regra central/u });
   await dialog.getByLabel("Mensagem").fill("Prepare uma mudança.");
   await dialog.getByRole("button", { name: "Enviar" }).click();
   await page.keyboard.press("Escape");

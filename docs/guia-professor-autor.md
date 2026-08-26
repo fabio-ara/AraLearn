@@ -182,11 +182,12 @@ que originou a abertura.
 
 ### Conteúdo
 
-**Conteúdo** reúne a hierarquia e a sequência de leitura do Curso. A estrutura
-percorre Curso, Módulos, Lições, Microssequências e Unidades e apresenta posição,
-título e resumo de cada objeto. Selecionar um alvo mantém o caminho curricular
-visível e abre as Unidades produzidas no mesmo renderer usado em Estudo, com as
-respostas desativadas.
+**Conteúdo** começa pela sequência de Unidades produzidas no mesmo renderer usado
+em Estudo, com as respostas desativadas. A estrutura de Curso, Módulos, Lições e
+Microssequências permanece disponível, recolhida, para edição estrutural sem
+empurrar o material para fora da área de inspeção. Cada Unidade oferece ações
+nomeadas para visualizar, editar, conversar, observar, conferir desenho,
+produção/materialização, Fontes e Auditoria conforme a permissão.
 
 O recorte de leitura pode abranger o Curso inteiro, uma Parte, as Unidades sem
 Parte, um Módulo, uma Lição ou uma Microssequência. Links de contexto abrem a
@@ -235,9 +236,9 @@ da pessoa. Escolha OpenAI, Gemini ou DeepSeek, informe o modelo quando
 necessário e forneça uma chave efêmera. Ela permanece somente na memória da
 sessão e é apagada ao sair, recarregar ou fechar a superfície.
 
-O aviso informa o recorte enviado: composição necessária do alvo, resumo do
-caminho curricular e mensagens recentes. PDFs, Fontes, identidade da conta e
-regiões alheias ao escopo não são enviados.
+O aviso informa o recorte enviado: sua mensagem, o conteúdo selecionado, o
+restante do objeto corrente como contexto, um resumo do Curso e as mensagens
+recentes. PDFs, Fontes e dados da conta não são enviados.
 
 Confira também o provider indicado no aviso. A conversa é efêmera no AraLearn,
 mas o provider pode conservar dados de acordo com seus próprios termos.

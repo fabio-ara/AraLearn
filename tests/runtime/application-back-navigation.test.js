@@ -80,6 +80,7 @@ test("entrada nova pela Home abre o Curso sem salto implícito para uma Unidade"
   const end = source.indexOf("  async function selectHomeCourse(", start);
   assert.ok(start >= 0 && end > start);
   const openCourse = source.slice(start, end);
-  assert.match(openCourse, /const destination = saved;/u);
-  assert.doesNotMatch(openCourse, /firstIncomplete/u);
+  assert.match(openCourse, /const selection = selectionForCourse\(state\.project, courseId\);/u);
+  assert.match(openCourse, /state\.view = "course";/u);
+  assert.doesNotMatch(openCourse, /saved|firstIncomplete/u);
 });

@@ -63,9 +63,14 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
     "gpt-5.6-luna", "gemini-2.5-flash", "deepseek-v4-pro", "deepseek-v4-flash"
   ]);
   for (const expected of [
-    "alvo de escrita", "caminho curricular", "mensagens recentes", "PDFs", "Fontes",
-    "somente na memória"
+    "OpenAI", "Gemini", "DeepSeek", "mensagem", "conteúdo selecionado", "resumo do Curso",
+    "PDFs", "Fontes", "dados da conta", "somente nesta sessão", "pode guardar",
+    "próprios termos"
   ]) assert.match(COURSE_ASSISTANCE_DISCLOSURE, new RegExp(expected, "iu"));
+  assert.doesNotMatch(
+    COURSE_ASSISTANCE_DISCLOSURE,
+    /alvo de escrita|caminho curricular|regiões alheias|contratos instalados|renderer|relay|endpoint|servidor local/iu
+  );
   session.destroy();
   assert.equal(session.snapshot().hasCredential, false);
   assert.equal(session.snapshot().destroyed, true);
@@ -220,10 +225,16 @@ test("produção rejeita relay local como provider da assistência", () => {
   }, production), /serviço|provider|origem/iu);
 });
 
-test("a divulgação de produção nomeia providers e não expõe arquitetura", () => {
+test("a divulgação de produção explica envio, exclusões, sessão e retenção sem bastidor", () => {
   assert.match(COURSE_ASSISTANCE_DISCLOSURE, /OpenAI|Gemini|DeepSeek/iu);
-  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /chave[\s\S]*memória/iu);
-  assert.doesNotMatch(COURSE_ASSISTANCE_DISCLOSURE, /relay|endpoint|servidor local/iu);
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /mensagem[\s\S]*conteúdo selecionado[\s\S]*resumo do Curso/iu);
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /PDFs[\s\S]*Fontes[\s\S]*dados da conta[\s\S]*não são enviados/iu);
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /chave[\s\S]*somente nesta sessão/iu);
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /pode guardar[\s\S]*próprios termos/iu);
+  assert.doesNotMatch(
+    COURSE_ASSISTANCE_DISCLOSURE,
+    /alvo de escrita|caminho curricular|regiões alheias|contratos instalados|renderer|relay|endpoint|servidor local/iu
+  );
 });
 
 test("falha transitória tem só um retry e nunca reflete dados sensíveis", async () => {

@@ -53,6 +53,10 @@ const scripts = {
     "course-runtime-local-smoke.mjs"
   ),
   courseRuntimeValidator: path.join(repositoryRoot, "scripts", "validateCourseRuntime.mjs"),
+  coursePostgresConcurrency: path.join(
+    repositoryRoot,
+    "tests", "runtime", "course-postgres-concurrency.test.js"
+  ),
   pagesWorkflow: path.join(repositoryRoot, ".github", "workflows", "pages.yml"),
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
   validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1"),
@@ -184,6 +188,34 @@ function writeAndroidToolMocks(temporaryRoot, {
     ARALEARN_APKSIGNER_PATH: apksignerPath
   };
 }
+
+test("a suíte de concorrência recusa banco hospedado antes de executar SQL", () => {
+  const source = fs.readFileSync(scripts.coursePostgresConcurrency, "utf8");
+  assert.match(source, /const postgresGate =[^;]*!localDatabase/su);
+  const childEnvironment = { ...process.env };
+  delete childEnvironment.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, [
+    "--test",
+    "--test-reporter=tap",
+    scripts.coursePostgresConcurrency
+  ], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: {
+      ...childEnvironment,
+      ARALEARN_TEST_DATABASE_URL:
+        "postgresql://postgres:segredo@db.abcdefghijklmnopqrst.supabase.co:5432/postgres"
+    }
+  });
+  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+  assert.equal(result.status, 0, output);
+  assert.match(output, /# SKIP[^\r\n]*PostgreSQL local/iu);
+  const testCount = Number(output.match(/^# tests (\d+)$/mu)?.[1]);
+  const skippedCount = Number(output.match(/^# skipped (\d+)$/mu)?.[1]);
+  assert.ok(testCount > 0, output);
+  assert.equal(skippedCount, testCount, output);
+  assert.doesNotMatch(output, /^not ok\b/imu);
+});
 
 test("planos de implantação cobrem somente os três perfis suportados", {
   skip: !powerShellAvailable
@@ -451,7 +483,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260826094500");
+  assert.equal(manifest.schemaRevision, "20260826143846");
   assert.equal(manifest.requiredFeatures.includes("continuous-authoring-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);

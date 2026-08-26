@@ -4089,6 +4089,8 @@ button.account-settings-back[hidden] {
   flex: 0 0 auto;
   position: relative;
   z-index: 12;
+  width: 100%;
+  min-width: 0;
   padding:
     0
     var(--shell-scrollbar-comp)
@@ -4275,12 +4277,14 @@ button.account-settings-back[hidden] {
   justify-content: stretch;
   align-items: flex-end;
   width: 100%;
+  min-width: 0;
   min-height: calc(var(--tap) + 4px);
   overflow: visible;
 }
 
 .study-action-stack {
   width: 100%;
+  min-width: 0;
   display: grid;
   gap: 8px;
 }
@@ -4337,19 +4341,25 @@ button.account-settings-back[hidden] {
   padding-top: 4px;
 }
 
-.study-continue-popup-btn {
+.open-mini.study-continue-popup-btn {
   position: relative;
   z-index: 1;
-  width: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
   height: 48px;
   min-width: 48px;
   min-height: 48px;
+  padding-inline: 12px;
+  gap: 6px;
   border-radius: 14px;
+  white-space: nowrap;
 }
 
 .study-observation-btn,
-.study-review-btn,
-.study-continue-btn {
+.study-review-btn {
   width: 48px;
   height: 48px;
   min-height: 48px;
@@ -4374,9 +4384,34 @@ button.account-settings-back[hidden] {
   background: var(--action-soft);
 }
 
-.study-continue-btn {
+.open-mini.study-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 48px;
+  min-height: 48px;
+  height: 48px;
+  padding-inline: 10px;
+  gap: 5px;
+  border-radius: 14px;
   font-size: 1.1rem;
   box-shadow: var(--shadow-card);
+  white-space: nowrap;
+}
+
+.study-continue-btn span,
+.study-continue-popup-btn span {
+  font-size: var(--type-xs);
+  font-weight: 750;
+}
+
+.study-advance-error {
+  margin: 0;
+  color: var(--status-danger);
+  font-size: var(--type-xs);
+  text-align: center;
 }
 
 .editor-overlay {

@@ -375,10 +375,11 @@ cliente MCP conectado.
 Na Assistência por IA, o pedido sai do dispositivo diretamente para OpenAI,
 Gemini ou DeepSeek, conforme a escolha da pessoa. A chave efêmera segue somente
 no cabeçalho da chamada e permanece em memória durante a sessão. O aviso
-anterior à chamada
-enumera o conteúdo: pedido, valores textuais editáveis, título, papel, tópicos e
-mensagens anteriores daquela conversa. PDFs, Fontes, outras Unidades,
-`targetId`, `studyUnitId` e o restante do Curso não são enviados.
+anterior à chamada enumera o conteúdo: pedido, conteúdo selecionado, restante
+do objeto corrente como contexto, resumo curricular do Curso e mensagens
+anteriores daquela conversa. O envelope usa identificadores internos dos
+objetos necessários para manter o recorte e a ordem. PDFs, Fontes e dados da
+conta não são enviados.
 
 O envelope é montado por lista fechada, e campos extras presentes na Unidade
 não são serializados. Erros públicos do provedor preservam código e orientação

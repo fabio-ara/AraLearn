@@ -41,10 +41,10 @@ const SCOPE_LABELS = Object.freeze({
 });
 
 export const COURSE_ASSISTANCE_DISCLOSURE =
-  "O serviço recebe o alvo de escrita, o conteúdo completo necessário para compreendê-lo, " +
-  "um resumo do caminho curricular e as mensagens recentes desta sessão. PDFs, Fontes, " +
-  "identidade da conta e regiões alheias do Curso não são enviados. OpenAI, Gemini ou DeepSeek " +
-  "recebem a conversa diretamente. A chave e a configuração permanecem somente na memória desta sessão.";
+  "Para responder, o serviço escolhido (OpenAI, Gemini ou DeepSeek) recebe sua mensagem, " +
+  "o conteúdo selecionado, o restante deste objeto como contexto e um resumo do Curso. " +
+  "PDFs, Fontes e dados da conta não são enviados. Sua chave fica somente nesta sessão. " +
+  "O serviço pode guardar o conteúdo conforme os próprios termos.";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -83,7 +83,7 @@ function providerOptions(selected) {
 
 function conversationHtml(conversation) {
   if (!conversation.length) {
-    return '<p class="course-assistance-empty">Converse sobre o que deve mudar. A preparação só começa depois da sua confirmação.</p>';
+    return '<p class="course-assistance-empty">Diga o que deseja compreender ou mudar. Nada será aplicado sem sua confirmação.</p>';
   }
   return '<ol class="course-assistance-conversation" aria-label="Conversa desta sessão">' +
     conversation.map((turn) => `<li class="is-${turn.role}"><span>${turn.role === "user" ? "Você" : "Assistência"}</span>` +
@@ -106,7 +106,7 @@ function selectedScopeLabel(scope, ids = []) {
 function proposalHtml(proposal, pending) {
   if (!proposal) return "";
   return '<section class="course-assistance-plan" aria-labelledby="course-assistance-plan-title">' +
-    '<p>Plano discutível</p><h3 id="course-assistance-plan-title">Proposta de mudança</h3>' +
+    '<p>Antes da mudança</p><h3 id="course-assistance-plan-title">Plano proposto</h3>' +
     `<p>${escapeHtml(proposal.summary)}</p>` +
     '<button class="open-mini" type="button" data-course-assistance-prepare' +
     `${pending ? ' disabled aria-disabled="true"' : ""}>` +
@@ -120,7 +120,7 @@ function candidateHtml(candidate) {
   return '<section class="course-assistance-candidate" aria-labelledby="course-assistance-preview-title">' +
     '<p>Proposta validada</p><h3 id="course-assistance-preview-title">Prévia pronta</h3>' +
     `<p>${escapeHtml(candidate.message)}</p>` +
-    `<small>${unitCount} ${unitCount === 1 ? "Unidade renderizada" : "Unidades renderizadas"} com os contratos instalados.</small>` +
+    `<small>${unitCount} ${unitCount === 1 ? "Unidade pronta" : "Unidades prontas"} para conferência.</small>` +
     '<div class="course-assistance-actions">' +
     '<button class="open-mini" type="button" data-course-assistance-peek>' +
     `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Ver prévia</span></button>` +
@@ -247,7 +247,7 @@ export function createCourseProviderAssistance({
     });
   }
 
-  function render({ focusSelector = "", scrollBodyToEnd = false } = {}) {
+  function render({ focusSelector = "", scrollBodyToEnd = false, revealSelector = "" } = {}) {
     if (!overlay || !active) return;
     if (peeking) return renderPeek();
     const previousBody = overlay.querySelector("[data-course-assistance-body]");
@@ -274,16 +274,15 @@ export function createCourseProviderAssistance({
       `<input type="password" autocomplete="off" data-course-assistance-key ` +
       `placeholder="${config.apiKey ? "Chave informada nesta sessão" : "Somente nesta sessão"}"` +
       `${pending ? " disabled" : ""}></label>`;
-    const hasConversation = conversation.length > 0 || Boolean(proposal) || Boolean(candidate);
     overlay.innerHTML = '<div class="course-assistance-backdrop" data-course-assistance-close></div>' +
-      '<section class="course-assistance-sheet' + (hasConversation ? ' has-conversation' : '') +
-      '" role="dialog" aria-modal="true" ' +
+      '<section class="course-assistance-sheet" role="dialog" aria-modal="true" ' +
       'aria-labelledby="course-assistance-title" aria-describedby="course-assistance-context">' +
-      '<header><div><p>Assistência por IA</p><h2 id="course-assistance-title">' +
-      `${escapeHtml(SCOPE_LABELS[active.scope])}: ${escapeHtml(active.targetTitle)}</h2>` +
-      '<p id="course-assistance-context"><strong>Alterar: ' +
+      '<header><div><p class="course-assistance-eyebrow">Assistência por IA · ' +
+      `${escapeHtml(SCOPE_LABELS[active.scope])}</p><h2 id="course-assistance-title">` +
+      `${escapeHtml(active.targetTitle)}</h2>` +
+      '<p id="course-assistance-context"><strong>' +
       `${escapeHtml(selectedScopeLabel(active.scope, active.writeTargetIds))}.</strong> ` +
-      'O restante da composição e do caminho curricular entra somente como contexto.</p></div>' +
+      'A IA só poderá propor mudanças nessa seleção.</p></div>' +
       '<button class="icon-ghost" type="button" data-course-assistance-close aria-label="Fechar" title="Fechar">' +
       `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
       '<div class="course-assistance-body" data-course-assistance-body>' +
@@ -293,8 +292,12 @@ export function createCourseProviderAssistance({
       providerField + '<label><span>Modelo</span><select data-course-assistance-model' +
       `${pending ? " disabled" : ""}>${modelOptions(config.model, config.providerId)}</select></label>` +
       `${credentialField}</details>` +
-      `<p class="course-assistance-status" tabindex="-1" role="status" aria-live="polite">${escapeHtml(status)}</p>` +
-      `<p class="course-assistance-error" tabindex="-1" role="alert">${escapeHtml(error)}</p>` +
+      (status
+        ? `<p class="course-assistance-status" tabindex="-1" role="status" aria-live="polite">${escapeHtml(status)}</p>`
+        : "") +
+      (error
+        ? `<p class="course-assistance-error" tabindex="-1" role="alert">${escapeHtml(error)}</p>`
+        : "") +
       '<details class="course-assistance-disclosure"><summary>Privacidade e envio</summary><p>' +
       `${escapeHtml(COURSE_ASSISTANCE_DISCLOSURE)}</p></details></div>` +
       '<form data-course-assistance-form><label class="course-assistance-message"><span>Mensagem</span>' +
@@ -309,6 +312,12 @@ export function createCourseProviderAssistance({
     const nextBody = overlay.querySelector("[data-course-assistance-body]");
     if (nextBody) {
       nextBody.scrollTop = scrollBodyToEnd ? nextBody.scrollHeight : previousScrollTop;
+      const revealTarget = revealSelector && overlay.querySelector(revealSelector);
+      if (revealTarget?.getBoundingClientRect && nextBody.getBoundingClientRect) {
+        const bodyBounds = nextBody.getBoundingClientRect();
+        const targetBounds = revealTarget.getBoundingClientRect();
+        nextBody.scrollTop += targetBounds.top - bodyBounds.top;
+      }
     }
     const focusTarget = focusSelector && overlay.querySelector(focusSelector);
     if (focusTarget && !focusTarget.disabled) {
@@ -354,6 +363,24 @@ export function createCourseProviderAssistance({
     if (!messageDraft) {
       error = "Escreva uma mensagem antes de enviar.";
       render({ focusSelector: "[data-course-assistance-message]" });
+      return false;
+    }
+    const config = session.read();
+    const missingSelector = !config.providerId
+      ? "[data-course-assistance-provider]"
+      : !config.model
+        ? "[data-course-assistance-model]"
+        : !config.apiKey
+          ? "[data-course-assistance-key]"
+          : "";
+    if (missingSelector) {
+      connectionOpen = true;
+      status = "";
+      error = "Escolha o serviço e informe a chave desta sessão antes de enviar.";
+      render({
+        focusSelector: missingSelector,
+        revealSelector: ".course-assistance-connection > summary"
+      });
       return false;
     }
     if (candidate) await restorePreview();
@@ -415,7 +442,7 @@ export function createCourseProviderAssistance({
     if (!active || !proposal || pending) return false;
     syncForm();
     pending = true;
-    status = "Descobrindo componentes e validando a composição…";
+    status = "Preparando a proposta para prévia…";
     error = "";
     const epoch = ++requestEpoch;
     requestController = new AbortController();
@@ -435,7 +462,7 @@ export function createCourseProviderAssistance({
       if (!active || epoch !== requestEpoch) return false;
       await Promise.resolve(active.onPreview(prepared));
       candidate = prepared;
-      status = "A proposta passou pelos contratos e pelo renderer. Revise antes de aplicar.";
+      status = "Prévia pronta. Confira o resultado antes de aplicar.";
       return true;
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
@@ -534,6 +561,13 @@ export function createCourseProviderAssistance({
       ?.addEventListener("change", changeProvider);
     overlay.querySelector(".course-assistance-connection")?.addEventListener("toggle", (event) => {
       connectionOpen = event.currentTarget.open;
+      if (connectionOpen) {
+        const body = overlay.querySelector("[data-course-assistance-body]");
+        const summary = event.currentTarget.querySelector("summary");
+        if (body?.getBoundingClientRect && summary?.getBoundingClientRect) {
+          body.scrollTop += summary.getBoundingClientRect().top - body.getBoundingClientRect().top;
+        }
+      }
     });
   }
 
@@ -587,9 +621,19 @@ export function createCourseProviderAssistance({
       messageDraft = "";
       status = "";
       error = "";
-      connectionOpen = false;
-      render();
-      overlay.querySelector("[data-course-assistance-message]")?.focus?.({ preventScroll: true });
+      const config = session.read();
+      const missingSelector = !config.providerId
+        ? "[data-course-assistance-provider]"
+        : !config.model
+          ? "[data-course-assistance-model]"
+          : !config.apiKey
+            ? "[data-course-assistance-key]"
+            : "";
+      connectionOpen = Boolean(missingSelector);
+      render({
+        focusSelector: missingSelector || "[data-course-assistance-message]",
+        revealSelector: missingSelector ? ".course-assistance-connection > summary" : ""
+      });
       return true;
     },
     handleBack() {

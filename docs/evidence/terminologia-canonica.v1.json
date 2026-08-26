@@ -2633,11 +2633,11 @@
       "id": "study-entry-action",
       "family": "interaction-cognition",
       "currentTerms": [
-        "Play"
+        "Abrir"
       ],
-      "productTerm": "Começar, continuar ou retomar",
+      "productTerm": "Abrir",
       "technicalSymbol": "study_entry_action",
-      "definition": "Ação contextual que inicia uma unidade, continua a sequência corrente ou retoma uma posição anterior; o rótulo deve refletir o estado real.",
+      "definition": "Ação de entrada que abre o Curso selecionado pela lista de Módulos; posições salvas não mudam o nome nem pulam silenciosamente a hierarquia.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2655,15 +2655,15 @@
         "rolagem",
         "avanço automático"
       ],
-      "interfaceTerm": "Começar, continuar ou retomar",
+      "interfaceTerm": "Abrir",
       "domainTerm": "Ação de entrada no Estudo",
       "englishEquivalent": "study entry action",
-      "araLearnExample": "O botão inicial mostra Começar, Continuar ou Retomar conforme o progresso real, em vez do rótulo genérico Play.",
-      "ambiguityRisk": "Sem esta delimitação, “Começar, continuar ou retomar” pode ser confundido com reprodução de mídia, rolagem, avanço automático, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "araLearnExample": "O botão inicial mostra Abrir em qualquer estado de progresso e entra no Curso pela lista de Módulos.",
+      "ambiguityRisk": "Rótulos dependentes do progresso podem sugerir um destino diferente e fazer a entrada pular níveis sem que a pessoa tenha escolhido o alvo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Abrir”: ignora se a ação inicia, continua ou retoma progresso existente e por isso não descreve corretamente todos os estados.",
-        "“Play”: foi rejeitado porque remete à reprodução de mídia, que não é a operação solicitada ao entrar no estudo."
+        "“Começar”, “Continuar” e “Retomar”: foram rejeitados porque criavam distinções sem ação correspondente e podiam levar diretamente a uma Unidade.",
+        "“Play”: foi rejeitado como rótulo porque remete à reprodução de mídia, que não é a operação solicitada ao entrar no estudo."
       ],
       "status": "vigente"
     },

@@ -92,8 +92,9 @@ aparecer em Autoria como Curso próprio.
 1. Em Estudo, escolha uma opção no seletor **Curso**.
 2. Confira título, objetivo, relação de acesso, progresso e disponibilidade na
    prévia selecionada.
-3. Use **Começar**, **Continuar** ou **Retomar**, conforme o estado real.
-4. Percorra Módulo, Lição ou Microssequência quando quiser mudar de contexto.
+3. Use **Abrir**. A entrada mostra primeiro os Módulos, independentemente do
+   progresso já salvo.
+4. Escolha Módulo, Lição ou Microssequência para chegar às Unidades.
 
 Na primeira abertura, o aplicativo baixa a composição em páginas, confirma que
 todas pertencem à mesma revisão e valida o documento. Depois, mantém uma cópia
@@ -251,10 +252,10 @@ na Microssequência ou na Lição:
 7. aplique ao rascunho ou descarte;
 8. salve somente se o resultado estiver adequado.
 
-O pedido leva a composição necessária do alvo, um resumo do caminho curricular
-e as mensagens recentes. PDFs, Fontes, identidade da conta e regiões alheias ao
-escopo ficam fora. A chave segue somente ao provider escolhido e permanece em
-memória até sair, recarregar ou encerrar a superfície.
+O pedido leva sua mensagem, o conteúdo selecionado, o restante do objeto
+corrente como contexto, um resumo do Curso e as mensagens recentes. PDFs,
+Fontes e dados da conta ficam fora. A chave segue somente ao provider escolhido
+e permanece em memória até sair, recarregar ou encerrar a superfície.
 
 O aviso de cada envio separa essa memória efêmera do tratamento externo. O
 provider pode conservar dados segundo seus próprios termos; confira destino e

@@ -1070,6 +1070,7 @@ test.describe("Autoria real com Supabase local", () => {
       await openAuthoringSection(page, "content", "Conteúdo");
       await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
         .toBeVisible();
+      await page.locator(".course-authoring-content-hierarchy > summary").click();
       const lessonHierarchyItem = page.locator(
         `[data-course-authoring-entity-kind="lesson"][data-course-authoring-entity-id="${LESSON_ID}"]`
       );
@@ -1127,9 +1128,11 @@ test.describe("Autoria real com Supabase local", () => {
       const providerDialog = page.locator("[data-course-assistance] [role='dialog']");
       await expect(providerDialog).toBeVisible();
       await expect(providerDialog.getByRole("heading", {
-        name: `Unidade: ${STUDY_UNIT_TITLE}`
+        name: STUDY_UNIT_TITLE,
+        exact: true
       })).toBeVisible();
-      await providerDialog.getByText("Serviço e modelo", { exact: true }).click();
+      await expect(providerDialog.locator(".course-assistance-connection"))
+        .toHaveJSProperty("open", true);
       await providerDialog.getByLabel("Serviço").selectOption("openai");
       await providerDialog.getByLabel("Modelo").selectOption("gpt-5.6-luna");
       await providerDialog.getByLabel("Chave da OpenAI").fill("openai-stub");
@@ -1141,7 +1144,7 @@ test.describe("Autoria real com Supabase local", () => {
         "A formulação pode ficar mais direta sem mudar seu significado."
       ))
         .toBeVisible();
-      await expect(providerDialog.getByRole("heading", { name: "Proposta de mudança" }))
+      await expect(providerDialog.getByRole("heading", { name: "Plano proposto" }))
         .toBeVisible();
       await providerDialog.getByRole("button", { name: "Confirmar e preparar" }).click();
       await expect(providerDialog.getByRole("heading", { name: "Prévia pronta" }))

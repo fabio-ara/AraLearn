@@ -157,9 +157,10 @@ navegação não comunica permissão.
 
 Sua entrada usa um único combobox de Curso e uma única prévia rica selecionada.
 A prévia reúne objetivo, relação de acesso, progresso, disponibilidade local e
-a ação **Começar**, **Continuar** ou **Retomar**. Ela não se multiplica numa
-grade de cartões e não mostra UUID, hash ou revisão técnica. A composição
-permanece centralizada e limitada a 430 px também em 1280 px.
+a ação estável **Abrir**, que leva à lista de Módulos. Ela não se multiplica numa
+grade de cartões, não pula a hierarquia por causa de uma posição salva e não
+mostra UUID, hash ou revisão técnica. A composição permanece centralizada e
+limitada a 430 px também em 1280 px.
 
 ## Sequência curricular em Conteúdo
 
