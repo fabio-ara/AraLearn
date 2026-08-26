@@ -21,17 +21,53 @@ function jwt(payload) {
   ].join(".");
 }
 
-function request(path, { method = "POST", body = {}, token = "session" } = {}) {
+function request(path, {
+  method = "POST",
+  body = {},
+  token = "session",
+  headers = {}
+} = {}) {
   return new Request(`https://edge.example/functions/v1/aralearn-course-api${path}`, {
     method,
     headers: {
       Origin: ORIGIN,
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...headers
     },
     ...(method === "POST" ? { body: JSON.stringify(body) } : {})
   });
 }
+
+test("negocia inspeção v2 sem alterar a operação legada do aplicativo", async () => {
+  const versions = [];
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:read"] };
+      },
+      async listCourseStudyUnits({ inspectionVersion, courseId, expectedRevision }) {
+        versions.push(inspectionVersion);
+        return {
+          contract: `aralearn.course-study-unit-inspection-page.v${inspectionVersion}`,
+          courseId,
+          courseRevision: expectedRevision,
+          items: []
+        };
+      }
+    }
+  });
+  const body = { courseId: COURSE_ID, view: "study_units", expectedRevision: 7 };
+  assert.equal((await handler(request("/app/lerCurso", { body }))).status, 200);
+  assert.equal((await handler(request("/app/lerCurso", {
+    body,
+    headers: {
+      Accept: "application/vnd.aralearn.course-study-unit-inspection.v2+json"
+    }
+  }))).status, 200);
+  assert.deepEqual(versions, [1, 2]);
+});
 
 test("expõe exclusão de conta somente na rota interna autenticada do aplicativo", async () => {
   let call = null;

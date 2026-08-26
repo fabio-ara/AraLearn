@@ -22,6 +22,8 @@ import {
 } from "./renderStudyUnitObservationSheet.js";
 
 const PAGE_SIZE = 12;
+const MAX_CHAT_SELECTION = 12;
+const PENDING_OBSERVATION_STATES = new Set(["open", "considered"]);
 const DRAFT_FOCUS_SELECTORS = Object.freeze({
   create: '[data-observation-create-form] textarea[name="rawText"]',
   edit: '[data-observation-edit-form] textarea[name="rawText"]',
@@ -172,6 +174,37 @@ function observationRequestText(state, { annotationId, target, rawText, withdraw
       "Este pedido inicia uma discussão; não altere o Curso nem a Observação nesta etapa.",
       "O contrato admite somente um Retorno da autoria por Observação; se uma persistência for pedida depois, atualize esse retorno em vez de criar uma segunda resposta.",
       "Não crie outra Observação para simular conversa ou duplicar este argumento."
+    ]
+  });
+}
+
+function observationSelectionRequestText(state, items) {
+  const annotationIds = items.map(({ annotationId }) => annotationId);
+  return buildCourseAuthoringRequestText({
+    course: {
+      id: state.courseId,
+      title: state.courseTitle,
+      revision: state.courseRevision
+    },
+    target: {
+      type: "course",
+      id: state.courseId,
+      title: state.courseTitle,
+      path: null
+    },
+    action: "review",
+    instruction: `Revise em conjunto as ${items.length} Observações selecionadas. ` +
+      "Releia cada uma pelos contratos canônicos de Observações e, para os alvos pertinentes, " +
+      "consulte o Conteúdo, o desenho efetivo, as Fontes, as Âncoras e a Auditoria antes de propor reparos. " +
+      "Identidades selecionadas pelo AraLearn: " + annotationIds.join(", ") + ". " +
+      "Separe diagnóstico, proposta e verificação; não trate uma mutação bem-sucedida como prova de reparo.",
+    deepLink: requestDeepLink(state, buildCourseAuthoringRoute(state.courseId, {
+      section: "review"
+    })),
+    references: null,
+    limits: [
+      "Não copie o Curso inteiro para o chat; releia somente o conjunto selecionado e seus contextos canônicos.",
+      "Não resolva Observações nem retire marcadores antes de uma verificação factual posterior ao reparo."
     ]
   });
 }
@@ -388,7 +421,7 @@ function renderAuthorComposer(state) {
     '</form></details>';
 }
 
-function renderItem(item, selected = false, requestChatEnabled = false) {
+function renderItem(item, selected = false, requestChatEnabled = false, selectable = false) {
   const withdrawn = item.state === "withdrawn";
   return `<article class="course-observation-card${selected ? " is-selected" : ""}">` +
     '<header><div class="course-observation-badges">' +
@@ -397,6 +430,11 @@ function renderItem(item, selected = false, requestChatEnabled = false) {
     `<span>${escapeHtml(label("states", item.state))}</span>` +
     `<span>${escapeHtml(item.category ? label("categories", item.category) : "Sem categoria")}</span>` +
     `</div><strong>${escapeHtml(item.contributor.label)}</strong>` +
+    (selectable
+      ? '<label class="course-observation-select"><input type="checkbox"' +
+        ` data-observation-select="${escapeHtml(item.annotationId)}"${selected ? " checked" : ""}>` +
+        '<span>Selecionar</span></label>'
+      : "") +
     (requestChatEnabled
       ? '<button type="button" class="course-observation-chat-action"' +
         ' data-observations-action="request-chat"' +
@@ -557,8 +595,22 @@ function renderPanel(state) {
               `<dd>${state.summary.matchingTotal}</dd></div><div><dt>Sem assunto</dt>` +
               `<dd>${state.summary.unclassifiedTotal}</dd></div>${summaryRows(state.summary)}</dl>`
             : "") +
+          (state.requestChatEnabled
+            ? '<section class="course-observation-selection" aria-label="Revisão conjunta">' +
+              `<p>${state.selectedAnnotationIds.size} de ${MAX_CHAT_SELECTION} selecionadas</p>` +
+              '<button type="button" class="course-authoring-primary"' +
+              ' data-observations-action="request-chat-selection"' +
+              `${state.selectedAnnotationIds.size ? "" : " disabled"}>` +
+              renderUiIcon("prompt", "course-authoring-button-icon") +
+              '<span>Revisar selecionadas com ChatGPT</span></button></section>'
+            : "") +
           `<div class="course-observations-list">${state.items.map((value) =>
-            renderItem(value, false, state.requestChatEnabled)).join("") ||
+            renderItem(
+              value,
+              state.selectedAnnotationIds.has(value.annotationId),
+              state.requestChatEnabled,
+              state.requestChatEnabled && PENDING_OBSERVATION_STATES.has(value.state)
+            )).join("") ||
             '<p class="course-authoring-empty-copy">Nenhuma observação corresponde aos filtros.</p>'}</div>` +
           (state.hasMore
             ? '<button type="button" class="course-observations-load-more" data-observations-action="load-more"' +
@@ -616,6 +668,7 @@ export function createCourseObservationsPanel({
     createDraft: null,
     editDraft: null,
     responseDraft: null,
+    selectedAnnotationIds: new Set(),
     pendingMutation: null,
     restoreDraftFocus: "",
     destroyed: false
@@ -745,6 +798,12 @@ export function createCourseObservationsPanel({
         .map((item) => [item.annotationId, item]));
       page.items.forEach((item) => items.set(item.annotationId, item));
       state.items = [...items.values()];
+      const selectableIds = new Set(state.items
+        .filter(({ state: itemState }) => PENDING_OBSERVATION_STATES.has(itemState))
+        .map(({ annotationId }) => annotationId));
+      for (const annotationId of state.selectedAnnotationIds) {
+        if (!selectableIds.has(annotationId)) state.selectedAnnotationIds.delete(annotationId);
+      }
       state.hasMore = page.hasMore;
       state.nextCursor = page.nextCursor;
       if (!append) state.seenCursors.clear();
@@ -874,6 +933,36 @@ export function createCourseObservationsPanel({
         : `O pedido não foi copiado. ${detail}`;
       state.error = [priorError, deliveryError].filter(Boolean).join(" ");
       state.message = persisted ? "Observação registrada." : "";
+      render();
+      return false;
+    }
+  }
+
+  async function requestChatForSelection() {
+    if (!state.requestChatEnabled || state.selectedAnnotationIds.size === 0) return false;
+    const items = state.items.filter(({ annotationId, state: itemState }) =>
+      state.selectedAnnotationIds.has(annotationId) &&
+      PENDING_OBSERVATION_STATES.has(itemState)
+    );
+    if (items.length !== state.selectedAnnotationIds.size || items.length > MAX_CHAT_SELECTION) {
+      state.error = "A seleção mudou; escolha novamente as Observações pendentes.";
+      render();
+      return false;
+    }
+    state.error = "";
+    try {
+      await onRequestChat(structuredClone({
+        requestText: observationSelectionRequestText(state, items)
+      }));
+      if (state.destroyed) return true;
+      state.message = "Pedido conjunto copiado para o ChatGPT.";
+      render();
+      return true;
+    } catch (error) {
+      if (state.destroyed) return false;
+      const detail = error instanceof Error ? error.message : "Não foi possível copiar o pedido.";
+      state.error = `O pedido conjunto não foi copiado. ${detail}`;
+      state.message = "";
       render();
       return false;
     }
@@ -1075,7 +1164,24 @@ export function createCourseObservationsPanel({
 
   root.addEventListener("change", (event) => {
     const item = detailItem();
-    if (event.target.matches?.('[data-observation-create-form] select[name="target"]')) {
+    if (event.target.matches?.("[data-observation-select]")) {
+      const annotationId = String(event.target.dataset.observationSelect || "");
+      const candidate = state.items.find((value) => value.annotationId === annotationId);
+      if (!candidate || !PENDING_OBSERVATION_STATES.has(candidate.state)) return;
+      if (event.target.checked) {
+        if (state.selectedAnnotationIds.size >= MAX_CHAT_SELECTION) {
+          event.target.checked = false;
+          state.error = `Selecione no máximo ${MAX_CHAT_SELECTION} Observações por revisão.`;
+        } else {
+          state.selectedAnnotationIds.add(annotationId);
+          state.error = "";
+        }
+      } else {
+        state.selectedAnnotationIds.delete(annotationId);
+        state.error = "";
+      }
+      render();
+    } else if (event.target.matches?.('[data-observation-create-form] select[name="target"]')) {
       state.createDraft ||= { targetIndex: "0", category: null, rawText: "" };
       state.createDraft.targetIndex = String(event.target.value || "0");
     } else if (event.target.matches?.('[data-observation-create-form] select[name="category"]')) {
@@ -1132,6 +1238,8 @@ export function createCourseObservationsPanel({
         rawText: item.rawText,
         withdrawn: item.state === "withdrawn"
       });
+    } else if (action === "request-chat-selection") {
+      void requestChatForSelection();
     } else if (["consider", "resolve", "reopen", "withdraw"].includes(action)) {
       const item = detailItem();
       if (!item) return;

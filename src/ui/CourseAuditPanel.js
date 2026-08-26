@@ -1969,9 +1969,13 @@ export function createCourseAuditPanel({
         outcome: formValue(form, "verification-outcome")
       };
       state.verifyOpen = false;
-      void runMutation(mutationInput(command), "Verificação registrada.", {
+      void runMutation(
+        mutationInput(command),
+        "Verificação registrada; as Observações vinculadas foram atualizadas conforme o resultado.",
+        {
         draftId: form.dataset.auditDraftId || null
-      });
+        }
+      );
     } catch (error) {
       state.error = errorMessage(error);
       renderAudit();

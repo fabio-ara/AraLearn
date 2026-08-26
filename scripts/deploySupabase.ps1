@@ -41,8 +41,12 @@ function Invoke-AraLearnSupabase {
 }
 
 function Invoke-AraLearnDatabaseLintGate {
-  & npx.cmd --yes supabase@2.115.0 db lint --linked --level warning
-  return [int]$LASTEXITCODE
+  $lintOutput = @(& npx.cmd --yes supabase@2.115.0 db lint --linked --level warning 2>&1)
+  $lintExitCode = [int]$LASTEXITCODE
+  foreach ($line in $lintOutput) {
+    Write-Host $line
+  }
+  return $lintExitCode
 }
 
 function Assert-AllowedOrigin {

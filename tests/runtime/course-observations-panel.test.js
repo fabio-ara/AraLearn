@@ -838,6 +838,60 @@ test("falha da cópia não desfaz nem duplica a Observação confirmada", async 
   }
 });
 
+test("seleciona várias pendências e gera pedido canônico sem copiar o Curso", async () => {
+  const root = new FakeRoot();
+  const deliveries = [];
+  const first = pagedItem(1);
+  const second = pagedItem(2);
+  const panel = createCourseObservationsPanel({
+    root,
+    course: { courseId: COURSE_ID, title: "Curso", revision: 7 },
+    onRequestChat(payload) { deliveries.push(structuredClone(payload)); },
+    controller: {
+      async loadAuthoringOutline() { return outline(); },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return pagedResult(options.query, [first, second], {
+          hasMore: false,
+          nextCursor: null
+        });
+      },
+      async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
+    }
+  });
+  await panel.open();
+  assert.match(root.innerHTML, /0 de 12 selecionadas/u);
+  for (const value of [first, second]) {
+    root.listeners.get("change")({
+      target: {
+        checked: true,
+        dataset: { observationSelect: value.annotationId },
+        matches(selector) { return selector === "[data-observation-select]"; }
+      }
+    });
+  }
+  assert.match(root.innerHTML, /2 de 12 selecionadas/u);
+
+  const node = {
+    dataset: { observationsAction: "request-chat-selection" },
+    closest(selector) {
+      return selector === "[data-observations-action]" ? this : null;
+    }
+  };
+  root.listeners.get("click")({ target: node });
+  await settle();
+
+  assert.equal(deliveries.length, 1);
+  const request = deliveries[0].requestText;
+  assert.match(request, /Revise em conjunto as 2 Observações selecionadas/u);
+  assert.match(request, new RegExp(first.annotationId, "u"));
+  assert.match(request, new RegExp(second.annotationId, "u"));
+  assert.match(request, /contratos canônicos de Observações/u);
+  assert.doesNotMatch(request, /Observação paginada 1|Observação paginada 2/u);
+  assert.doesNotMatch(request, /\{|\}/u);
+  assert.match(root.innerHTML, /Pedido conjunto copiado para o ChatGPT/u);
+  panel.destroy();
+});
+
 test("validação preserva rascunhos de criação, edição e Retorno no DOM renderizado", async () => {
   const NativeFormData = globalThis.FormData;
   globalThis.FormData = class {

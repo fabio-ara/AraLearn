@@ -4686,6 +4686,36 @@ button.account-settings-back[hidden] {
   border-top: 1px solid var(--border-subtle);
 }
 
+.study-observation-composer.is-compact {
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+}
+
+.study-observation-composer.is-compact .study-observation-textarea {
+  min-height: 78px;
+  max-height: 180px;
+}
+
+.study-observation-category-disclosure {
+  min-width: 0;
+}
+
+.study-observation-category-disclosure > summary {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.study-observation-category-disclosure[open] > summary {
+  margin-bottom: 6px;
+}
+
 .study-observation-composer h3 {
   margin: 0;
   font-size: var(--type-sm);

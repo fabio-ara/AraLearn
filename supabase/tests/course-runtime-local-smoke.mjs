@@ -1185,7 +1185,7 @@ try {
   }, ownerToken);
   assert.equal(
     firstInspectionPage.data.contract,
-    "aralearn.course-study-unit-inspection-page.v1",
+    "aralearn.course-study-unit-inspection-page.v2",
   );
   assert.equal(firstInspectionPage.data.courseRevision, 17);
   assert.equal(firstInspectionPage.data.totalCount, 3);

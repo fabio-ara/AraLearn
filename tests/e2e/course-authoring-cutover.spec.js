@@ -1686,10 +1686,15 @@ async function mountCourseAuthoring(page, {
             title: "Relações iniciais",
             state: "materialized"
           },
+          authorship: {
+            pendingObservationCount: 0,
+            production: null,
+            design: null
+          },
           deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=${studyUnit.id}`
         }));
         return {
-          contract: "aralearn.course-study-unit-inspection-page.v1",
+          contract: "aralearn.course-study-unit-inspection-page.v2",
           courseId,
           courseRevision: detail.revision,
           scope: structuredClone(options.scope),
@@ -3371,7 +3376,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
   });
 });
 
-test.describe("entrada e Visão geral da Autoria", () => {
+test.describe("entrada e Conteúdo cotidiano da Autoria", () => {
   const layouts = [
     { width: 360, height: 780 },
     { width: 390, height: 820 },
@@ -3401,14 +3406,15 @@ test.describe("entrada e Visão geral da Autoria", () => {
         });
 
         await page.locator(".course-authoring-course-card").first().click();
-        await expect(page.getByRole("heading", { name: "Visão geral", exact: true }))
+        await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }))
           .toBeVisible();
-        await expect(page.locator("[data-course-authoring-task-list] > a")).toHaveCount(7);
-        await expect(page.getByText("Curso próprio", { exact: true })).toBeVisible();
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+        await expect(page.getByRole("navigation", { name: "Tarefas do Curso" }))
+          .toBeVisible();
         await expectNoHorizontalOverflow(page);
         await expectVisibleTouchTargets(page);
         await page.screenshot({
-          path: testInfo.outputPath(`authoring-overview-${width}-${colorScheme}.png`),
+          path: testInfo.outputPath(`authoring-content-${width}-${colorScheme}.png`),
           fullPage: true,
           animations: "disabled"
         });
@@ -3508,10 +3514,13 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
 
-  await page.locator(
+  const details = page.locator(
     'summary[aria-label="Abrir detalhes de Exemplo guiado com diagrama"]'
-  ).click();
-  await page.getByRole("button", { name: "Definir fontes" }).click();
+  );
+  await details.click();
+  await details.click();
+  const sourcesAction = page.getByRole("button", { name: "Fontes", exact: true }).first();
+  await sourcesAction.click();
   await expect(page.getByRole("dialog", {
     name: "Fontes de Exemplo guiado com diagrama"
   })).toBeVisible();
@@ -3526,6 +3535,7 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(sourcesAction).toBeFocused();
 
   const command = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations[0].command);
@@ -3813,19 +3823,8 @@ for (const width of [360, 390, 430, 1280]) {
     ).first()).toBeDisabled();
     await expectNoHorizontalOverflow(page);
 
-    for (let iteration = 0; iteration < 6; iteration += 1) {
-      const before = await page.locator("[data-inspection-ordinal]").evaluateAll((items) =>
-        Math.max(0, ...items.map((item) => Number(item.dataset.inspectionOrdinal))));
-      const count = await page.locator("[data-inspection-study-unit]").count();
-      expect(count).toBeLessThanOrEqual(36);
-      if (before >= 60) break;
-      const load = page.locator('[data-inspection-load="forward"]');
-      await expect(load).toHaveCount(1);
-      await load.click();
-      await expect.poll(() => page.locator("[data-inspection-ordinal]").evaluateAll((items) =>
-        Math.max(0, ...items.map((item) => Number(item.dataset.inspectionOrdinal))))
-      ).toBeGreaterThan(before);
-    }
+    await page.locator('[data-inspection-jump="50"]').click();
+    await expect(page.locator('[data-inspection-study-unit="study-unit-50"]')).toHaveCount(1);
 
     await expect(page.locator('[data-inspection-study-unit="study-unit-60"]')).toHaveCount(1);
     expect(await page.locator("[data-inspection-study-unit]").count()).toBeLessThanOrEqual(36);
@@ -3986,6 +3985,20 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   );
   await expect(page.locator('[data-inspection-study-unit="study-unit-25"]')).toHaveCount(1);
   await expect(page.locator("[data-inspection-context-position]")).toHaveText("25/60");
+
+  const designAction = page.locator(
+    '[data-inspection-study-unit="study-unit-25"] [data-inspection-control-key="design:study-unit-25"]'
+  );
+  await designAction.click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}` +
+      "?section=parameters&didacticMicrosequenceId=microsequence-a"
+  );
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
+  );
+  await expect(designAction).toBeFocused();
 
   await page.getByLabel("Filtrar por Parte").selectOption(
     "authoring_part:70000000-0000-4000-8000-000000000007"

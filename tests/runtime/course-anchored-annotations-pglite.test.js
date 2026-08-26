@@ -20,6 +20,10 @@ const migrationUrl = new URL(
   "../../supabase/migrations/20260817200000_course_anchored_annotations.sql",
   import.meta.url
 );
+const unitAnnotationScopeMigrationUrl = new URL(
+  "../../supabase/migrations/20260826093000_align_unit_annotation_scope_with_materialization.sql",
+  import.meta.url
+);
 
 const OWNER = "10000000-0000-4000-8000-000000000001";
 const LEARNER_A = "10000000-0000-4000-8000-000000000002";
@@ -426,6 +430,23 @@ async function installMigration(database) {
   await database.exec(await fs.readFile(migrationUrl, "utf8"));
 }
 
+async function installUnitAnnotationScopeMigration(database) {
+  const manifest = {
+    schemaRevision: "20260826090000",
+    contractVersion: 1,
+    features: ["continuous-authoring-inspection-v1"]
+  };
+  const literal = JSON.stringify(manifest).replaceAll("'", "''");
+  await database.exec(`
+    create or replace function public.get_aralearn_runtime_manifest()
+    returns jsonb language sql stable security definer
+    set search_path=pg_catalog as $manifest$
+      select '${literal}'::jsonb
+    $manifest$;
+  `);
+  await database.exec(await fs.readFile(unitAnnotationScopeMigrationUrl, "utf8"));
+}
+
 test("#124 migra fatos legados sem inventar caminho, texto, estado ou instante", async (t) => {
   const database = await legacyDatabase();
   t.after(() => database.close());
@@ -601,6 +622,43 @@ test("#124 aborta atomicamente estado órfão e achado #125", async (t) => {
   assert.equal(await scalar(auditDatabase,
     "select to_regclass('private.course_anchored_annotations') is null value"
   ), true);
+});
+
+test("#194 aceita Observação direta em Unidade materializada com tópicos legíveis", async (t) => {
+  const database = await legacyDatabase();
+  t.after(() => database.close());
+  await installMigration(database);
+  await installUnitAnnotationScopeMigration(database);
+  await database.exec(`
+    update private.course_entities
+    set content=jsonb_build_object(
+      'title','Unidade materializada',
+      'topics',jsonb_build_array('semântica modal','nome acessível')
+    )
+    where course_id='${COURSE}' and entity_type='study_unit'
+      and entity_id='unit-a';
+  `);
+  await actor(database, LEARNER_B);
+
+  const changed = await scalar(database, `
+    select public.execute_my_course_anchored_annotation_command_v1(
+      $1,7,$2::jsonb,'request.issue-194.unit-observation'
+    ) value
+  `, [COURSE, JSON.stringify({
+    type: "create_anchored_annotation",
+    annotationId: "40000000-0000-4000-8000-000000000194",
+    target: { kind: "study_unit", id: "unit-a" },
+    rawText: "aria-modal não contém o foco por si só.",
+    category: "possible_error",
+    capturedAt: null,
+    briefSummary: null
+  })]);
+
+  normalizeCourseAnchoredAnnotationChange(changed);
+  assert.equal(changed.annotation.target.kind, "study_unit");
+  assert.equal(changed.annotation.target.id, "unit-a");
+  assert.equal(changed.annotation.subjectClassification.status, "unclassified");
+  assert.deepEqual(changed.annotation.subjectClassification.automatic.subjects, []);
 });
 
 test("#124 aplica classificação conservadora, privacidade, CAS e redação", async (t) => {

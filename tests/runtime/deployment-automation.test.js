@@ -274,6 +274,8 @@ test("implantação publica somente MCP OAuth e API de Curso", () => {
   assert.doesNotMatch(source, /functions delete|Remove-AraLearnSupabaseFunctionIfPresent/u);
   assert.match(source, /funções da versão publicada foram preservadas/u);
   assert.match(source, /function Resolve-AllowedOrigins/u);
+  assert.match(source, /\$lintOutput = @\(& npx\.cmd[^\r\n]+db lint[^\r\n]+2>&1\)/u);
+  assert.match(source, /\$lintExitCode = \[int\]\$LASTEXITCODE/u);
   assert.match(source, /\$value -split ','/u);
   assert.match(source, /Select-Object -Unique/u);
   assert.match(source, /\$RequiredApplicationOrigins\s*=\s*@\([\s\S]+https:\/\/appassets\.androidplatform\.net[\s\S]+\)/u);
@@ -356,7 +358,7 @@ test("smoke real de Curso cobre proveniência redigida sem enviar a chave como B
   assert.match(source, /studyUnits/u);
   assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
   assert.match(source, /view:\s*"study_units"/u);
-  assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+  assert.match(source, /aralearn\.course-study-unit-inspection-page\.v2/u);
   assert.match(source, /view:\s*"course_design"/u);
   assert.match(source, /operation:\s*"update_course_design"/u);
   assert.match(source, /aralearn\.course-design\.v1/u);
@@ -449,7 +451,8 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260825190000");
+  assert.equal(manifest.schemaRevision, "20260826094500");
+  assert.equal(manifest.requiredFeatures.includes("continuous-authoring-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("current-data-lifecycle-v1"), true);
@@ -492,7 +495,7 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
     assert.match(source, /studyUnits/u);
     assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
     assert.match(source, /view:\s*"study_units"/u);
-    assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+    assert.match(source, /aralearn\.course-study-unit-inspection-page\.v2/u);
     assert.match(source, /view:\s*"course_design"/u);
     assert.match(source, /operation:\s*"update_course_design"/u);
     assert.match(source, /aralearn\.course-design\.v1/u);

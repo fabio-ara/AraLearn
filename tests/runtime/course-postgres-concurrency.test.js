@@ -1160,7 +1160,7 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
     limit = 24,
     maxBytes = 1_500_000
   } = {}) => `
-    select public.list_owned_course_study_units_for_actor_v1(
+    select public.list_owned_course_study_units_for_actor_v2(
       '${actorId}','${courseId}',1,'course',null,
       ${anchor === null ? "null" : `'${anchor}'`},
       ${cursor === null ? "null" : `'${cursor}'`},
@@ -1221,11 +1221,11 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
     assert.equal(await result(psql(`
       select has_function_privilege(
         'service_role',
-        'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+        'public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
         'EXECUTE'
       ) || '|' || has_function_privilege(
         'authenticated',
-        'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+        'public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
         'EXECUTE'
       );
     `)), "true|false");
@@ -1236,7 +1236,7 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
       "scopeOptions", "items", "hasPrevious", "hasMore",
       "previousCursor", "nextCursor", "pageBytes"
     ].sort());
-    assert.equal(first.contract, "aralearn.course-study-unit-inspection-page.v1");
+    assert.equal(first.contract, "aralearn.course-study-unit-inspection-page.v2");
     assert.equal(first.totalCount, 60);
     assert.equal(first.items.length, 24);
     assert.equal(first.items[0].studyUnit.id, "unit-001");

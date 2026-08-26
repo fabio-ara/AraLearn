@@ -506,7 +506,7 @@ async function openInspectionUnit(page, ownership) {
     const controller = {
       async loadAuthoringStudyUnits(_courseId, options) {
         return {
-          contract: "aralearn.course-study-unit-inspection-page.v1",
+          contract: "aralearn.course-study-unit-inspection-page.v2",
           courseId,
           courseRevision: 7,
           scope: options.scope,
@@ -539,6 +539,11 @@ async function openInspectionUnit(page, ownership) {
               position: 0,
               title: "Parte inicial",
               state: "materialized"
+            },
+            authorship: {
+              pendingObservationCount: 0,
+              production: null,
+              design: null
             },
             deepLink: `#/authoring/courses/${courseId}?section=inspection&studyUnitId=${studyUnit.id}`
           }],

@@ -290,8 +290,8 @@ function courseMeta(course) {
     : "";
 }
 
-function initialSectionForCourse() {
-  return "overview";
+function initialSectionForCourse(course) {
+  return Number(course?.counts?.studyUnitCount || 0) > 0 ? "content" : "overview";
 }
 
 function statusPanel({ kind = "status", title, message, action = "", actionLabel = "" }) {
@@ -1863,6 +1863,7 @@ export function createCourseAuthoringSurface({
     section: "overview",
     researchView: "variants",
     contentReturnRoute: "",
+    inspectionReturnFocus: null,
     canOpenStudyContent: typeof onOpenStudyContent === "function",
     loading: false,
     list: null,
@@ -2129,6 +2130,12 @@ export function createCourseAuthoringSurface({
               render();
             },
             onTargetSaved() {
+              if (state.sourceTarget?.targetKind === "study_unit") {
+                state.inspectionReturnFocus = {
+                  route: state.routeKey,
+                  key: `sources:${state.sourceTarget.targetId}`
+                };
+              }
               state.sourceTarget = null;
               void loadCourse(state.course.courseId, { force: true });
             }
@@ -2150,11 +2157,16 @@ export function createCourseAuthoringSurface({
     const host = root.querySelector?.("[data-course-inspection-host]");
     if (!host) return;
     try {
+      const initialFocusKey = state.inspectionReturnFocus?.route === state.routeKey
+        ? state.inspectionReturnFocus.key
+        : "";
+      if (initialFocusKey) state.inspectionReturnFocus = null;
       inspectionSequence = createCourseInspectionSequence({
         root: host,
         controller,
         course: state.course,
         routeTarget: state.routeTarget,
+        initialFocusKey,
         onNavigate: (hash, options) => navigate(hash, options),
         onEditSources: (target) => openTargetSources(target),
         onRequestChat: contextualChatRequest,
@@ -2853,7 +2865,7 @@ export function createCourseAuthoringSurface({
     return `${locationValue.pathname || ""}${locationValue.search || ""}${hash}` || hash;
   }
 
-  function navigate(hash, { replace = false, returnTo = "" } = {}) {
+  function navigate(hash, { replace = false, returnTo = "", returnFocusKey = "" } = {}) {
     const currentRoute = state.routeKey.startsWith?.("#/")
       ? state.routeKey
       : String(locationValue.hash || "");
@@ -2864,6 +2876,9 @@ export function createCourseAuthoringSurface({
       return "deferred";
     }
     if (!replace && returnTo && typeof historyValue?.replaceState === "function") {
+      state.inspectionReturnFocus = returnFocusKey
+        ? { route: returnTo, key: returnFocusKey }
+        : null;
       historyValue.replaceState(historyValue.state ?? null, "", locationUrl(returnTo));
     }
     if (replace && typeof historyValue?.replaceState === "function") {

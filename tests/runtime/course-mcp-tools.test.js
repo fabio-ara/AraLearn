@@ -339,7 +339,7 @@ test("mapeia lista, leituras e criação sem identidade indireta", () => {
       limit: 12,
       maxBytes: 262144
     }).path,
-    `/v1/courses/${COURSE_ID}/study-units?expectedRevision=4` +
+    `/v2/courses/${COURSE_ID}/study-units?expectedRevision=4` +
       `&scopeKind=authoring_part&scopeId=${PART_ID}&anchorStudyUnitId=unit-a` +
       "&direction=backward&limit=12&maxBytes=262144"
   );
@@ -720,8 +720,32 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
       "commit_course_composition",
       "advance_part_materialization"
   ]);
-  assert.equal(schema.properties.planCommand.additionalProperties, false);
-  assert.equal(Object.hasOwn(schema.properties.planCommand.properties, "authoringGuidance"), false);
+  const planBranches = schema.properties.planCommand.oneOf;
+  const planBranch = (type) => planBranches.find((branch) =>
+    branch.properties.type.const === type
+  );
+  assert.match(
+    mapAuthoringApplicationToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "study_units",
+      expectedRevision: 4
+    }).path,
+    new RegExp(`^/v1/courses/${COURSE_ID}/study-units\\?`, "u")
+  );
+  assert.match(
+    mapAuthoringApplicationToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "study_units",
+      expectedRevision: 4
+    }, { inspectionVersion: 2 }).path,
+    new RegExp(`^/v2/courses/${COURSE_ID}/study-units\\?`, "u")
+  );
+  assert.equal(planBranches.length, 14);
+  assert.equal(planBranch("add_part").additionalProperties, false);
+  assert.deepEqual(planBranch("add_part").required, ["type", "id", "position", "title"]);
+  assert.equal(Object.hasOwn(planBranch("add_part").properties, "partId"), false);
+  assert.equal(Object.hasOwn(planBranch("remove_part").properties, "title"), false);
+  assert.equal(planBranch("update_plan").anyOf.length, 5);
   assert.equal(schema.properties.designCommand.oneOf.length, 8);
   assert.equal(
     schema.properties.designCommand.oneOf[7].properties.type.const,
@@ -762,9 +786,10 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     .includes("sourceAttributionApplications"));
   assert.ok(operationBranch("advance_part_materialization").then.required
     .includes("materializationCommand"));
-  assert.ok(schema.properties.planCommand.properties.type.enum.includes("split_part"));
-  assert.ok(schema.properties.planCommand.properties.type.enum.includes("assign_microsequence"));
-  assert.equal(schema.properties.planCommand.properties.microsequenceIds.maxItems, 64);
+  assert.equal(planBranch("split_part").properties.microsequenceIds.maxItems, 64);
+  assert.deepEqual(planBranch("assign_microsequence").required, [
+    "type", "partId", "microsequenceId", "position"
+  ]);
   assert.equal(schema.properties.materializationCommand.properties.steps.maxItems, 64);
   assert.equal(
     schema.properties.materializationCommand.properties.designApplication.anyOf[1].type,
@@ -1736,14 +1761,19 @@ test("preparo de anexo exige a aplicação e MCP só mapeia download após discl
 test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais entidades", () => {
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
     .inputSchema.properties.upserts.items;
-  assert.equal(schema.properties.position.minimum, 0);
-  assert.deepEqual(schema.allOf, [{
-    if: {
-      properties: { entityType: { const: "study_unit" } },
-      required: ["entityType"]
-    },
-    then: { properties: { position: { minimum: 1 } } }
-  }]);
+  const entityBranch = (type) => schema.oneOf.find((branch) =>
+    branch.properties.entityType.const === type
+  );
+  assert.equal(entityBranch("module").properties.position.minimum, 0);
+  assert.equal(entityBranch("study_unit").properties.position.minimum, 1);
+  assert.equal(entityBranch("module").properties.parentType.type, "null");
+  assert.equal(entityBranch("lesson").properties.parentType.const, "module");
+  assert.deepEqual(entityBranch("microsequence").properties.content.properties.role.enum, [
+    "explain", "practice", "review", "support"
+  ]);
+  assert.deepEqual(entityBranch("module").properties.content.properties.guide.required, [
+    "goal", "include", "exclude", "notation", "avoid"
+  ]);
 });
 
 test("perfil e acesso direto ao Estudo permanecem na aplicação e fora do MCP público", () => {

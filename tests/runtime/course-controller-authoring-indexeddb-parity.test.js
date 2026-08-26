@@ -44,7 +44,7 @@ function courseListPage(revision) {
 
 function inspectionPage(revision, items = []) {
   return {
-    contract: "aralearn.course-study-unit-inspection-page.v1",
+    contract: "aralearn.course-study-unit-inspection-page.v2",
     courseId: COURSE_ID,
     courseRevision: revision,
     scope: { kind: "course", id: null },

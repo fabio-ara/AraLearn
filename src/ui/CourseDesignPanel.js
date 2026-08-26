@@ -367,7 +367,7 @@ function renderApplicationComparison(design) {
     `${escapeHtml(application.componentRefs.length
       ? application.componentRefs.map((ref) => componentLabels.get(ref) || ref).join("; ")
       : "Nenhum")}.</span></dd></div></dl>` +
-    `<p class="course-design-context-hash">Contexto selado: ${escapeHtml(application.contextHash)}</p>` +
+    '<p class="course-design-context-hash">Contexto de produção preservado para confronto.</p>' +
     "</section>";
 }
 

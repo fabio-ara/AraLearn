@@ -31,6 +31,18 @@ const courseSourceHumanLocatorsMigrationUrl = new URL(
   "../../supabase/migrations/20260825190000_course_source_human_locators.sql",
   import.meta.url
 );
+const continuousAuthoringInspectionMigrationUrl = new URL(
+  "../../supabase/migrations/20260826090000_continuous_authoring_inspection.sql",
+  import.meta.url
+);
+const unitAnnotationScopeMigrationUrl = new URL(
+  "../../supabase/migrations/20260826093000_align_unit_annotation_scope_with_materialization.sql",
+  import.meta.url
+);
+const scopedContinuousInspectionMigrationUrl = new URL(
+  "../../supabase/migrations/20260826094500_preserve_inspection_v1_and_scope_design_verification.sql",
+  import.meta.url
+);
 const contextualCompositionMigrationUrl = new URL(
   "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
   import.meta.url
@@ -446,6 +458,12 @@ async function applyCourseSourcesMigration(database) {
     $manifest$;
   `);
   await database.exec(await fs.readFile(courseSourceHumanLocatorsMigrationUrl, "utf8"));
+}
+
+async function applyContinuousAuthoringInspectionMigration(database) {
+  await database.exec(await fs.readFile(continuousAuthoringInspectionMigrationUrl, "utf8"));
+  await database.exec(await fs.readFile(unitAnnotationScopeMigrationUrl, "utf8"));
+  await database.exec(await fs.readFile(scopedContinuousInspectionMigrationUrl, "utf8"));
 }
 
 async function applyContextualCompositionMigration(database) {
@@ -1809,6 +1827,28 @@ async function inspectionPage(database, {
   ]);
 }
 
+async function continuousInspectionPage(database, options = {}) {
+  const {
+    actorId = OWNER,
+    revision = 4,
+    scopeKind = "course",
+    scopeId = null,
+    anchorStudyUnitId = null,
+    cursorStudyUnitId = null,
+    direction = "forward",
+    limit = 12,
+    maxBytes = 1_500_000
+  } = options;
+  return scalar(database, `
+    select public.list_owned_course_study_units_for_actor_v2(
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+    ) as value
+  `, [
+    actorId, COURSE, revision, scopeKind, scopeId,
+    anchorStudyUnitId, cursorStudyUnitId, direction, limit, maxBytes
+  ]);
+}
+
 async function inspectionCommit(database, {
   revision,
   upserts = [],
@@ -2213,6 +2253,205 @@ test("pagina mais de 50 Unidades sem lacuna, repetição ou carga integral", asy
       'course_authoring_part_microsequences_order_v1'
     )
   `), 3);
+  await database.close();
+});
+
+test("inspeção contínua projeta pendências e estado autoral sem N+1", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.exec(`
+    update private.course_entities
+    set content = content || '{"sources":[]}'::jsonb
+    where entity_type = 'study_unit';
+  `);
+  await applyCourseSourcesMigration(database);
+  await database.exec(`
+    create table private.course_anchored_annotations(
+      id uuid not null default pg_catalog.gen_random_uuid(),
+      course_id uuid not null,
+      target_kind text not null,
+      target_id text not null,
+      state text not null,
+      hard_delete_after timestamptz,
+      version bigint not null default 1,
+      primary key(course_id,id)
+    );
+    create table private.course_audit_finding_annotations(
+      course_id uuid not null,
+      finding_id uuid not null,
+      annotation_id uuid not null
+    );
+    create table private.course_instructional_audit_runs(
+      course_id uuid not null,
+      id uuid not null,
+      course_revision bigint not null,
+      target_version bigint not null,
+      checks jsonb not null default '[]'::jsonb
+    );
+    create table private.course_authoring_corrections(
+      course_id uuid not null,
+      target_study_unit_id text not null,
+      status text not null,
+      verification jsonb
+    );
+    create function private.execute_course_audit_cycle_command_core_v1(
+      uuid,uuid,bigint,jsonb,text,text
+    ) returns jsonb language sql as $$select '{}'::jsonb$$;
+    create function private.execute_course_anchored_annotation_command_core_v1(
+      uuid,uuid,bigint,jsonb,text,text,text,boolean
+    ) returns jsonb language sql as $$select '{}'::jsonb$$;
+    create function private.course_audit_change_from_receipt_v1(jsonb,boolean)
+      returns jsonb language sql as $$select '{}'::jsonb$$;
+    insert into private.course_anchored_annotations(
+      course_id,target_kind,target_id,state,hard_delete_after
+    ) values
+      ('${COURSE}','study_unit','card-a','open',null),
+      ('${COURSE}','study_unit','card-a','considered',null),
+      ('${COURSE}','study_unit','card-a','withdrawn',null);
+
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values(
+      '${COURSE}','microsequence','micro-b','lesson','lesson-a',1,
+      '{"title":"Micro B","dependsOn":[]}'
+    );
+    insert into private.course_authoring_part_didactic_microsequences(
+      course_id,authoring_part_id,didactic_microsequence_id,production_position
+    ) select '${COURSE}',id,'micro-b',1
+      from private.course_authoring_parts
+      where course_id='${COURSE}' and retired_at is null
+      order by position limit 1;
+
+    with target_part as (
+      select id,version from private.course_authoring_parts
+      where course_id='${COURSE}' and retired_at is null
+      order by position limit 1
+    ), context_value as (
+      select target_part.id,target_part.version,
+        private.course_materialization_design_context_core_v1(
+          '${COURSE}',target_part.id,4,
+          '[{"kind":"didactic_microsequence_materialization","targetDidacticMicrosequenceId":"micro-a","productionPosition":0},{"kind":"didactic_microsequence_materialization","targetDidacticMicrosequenceId":"micro-b","productionPosition":1}]'
+        ) as value
+      from target_part
+    )
+    insert into private.course_authoring_part_materializations(
+      id,course_id,authoring_part_id,authoring_part_version,actor_id,
+      channel,status,design_context,result_facts,completed_at
+    ) select
+      '61000000-0000-4000-8000-000000000001','${COURSE}',id,version,
+      '${OWNER}','mcp','completed',value,'{}',now()
+    from context_value;
+
+    insert into private.course_authoring_part_materialization_steps(
+      id,course_id,materialization_id,position,step_kind,
+      target_didactic_microsequence_id,production_position,status,
+      result_facts,completed_at
+    ) values(
+      '61000000-0000-4000-8000-000000000002','${COURSE}',
+      '61000000-0000-4000-8000-000000000001',0,
+      'didactic_microsequence_materialization','micro-a',0,'completed',
+      '{"designApplication":{"studyUnits":[{"studyUnitId":"card-a"}]}}',now()
+    ),(
+      '61000000-0000-4000-8000-000000000003','${COURSE}',
+      '61000000-0000-4000-8000-000000000001',1,
+      'didactic_microsequence_materialization','micro-b',1,'completed',
+      '{"designApplication":{"studyUnits":[]}}',now()
+    );
+  `);
+  await actor(database, OWNER, "service_role");
+  const unrelatedDesignChange = await applyDesignCommand(database, 4, {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-b" },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 4,
+    origin: "author",
+    reason: "Alterar somente outra microssequência."
+  }, "inspection-unrelated-design-change-0001");
+  assert.equal(unrelatedDesignChange.courseRevision, 5);
+  await applyContinuousAuthoringInspectionMigration(database);
+  const unaffectedPage = await continuousInspectionPage(database, {
+    revision: 5,
+    limit: 12
+  });
+  assert.equal(unaffectedPage.items[0].authorship.design.state, "current");
+
+  const designChange = await applyDesignCommand(database, 5, {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 3,
+    origin: "author",
+    reason: "Confrontar a produção com o desenho vigente."
+  }, "inspection-design-change-0001");
+  assert.equal(designChange.courseRevision, 6);
+
+  const legacyPage = await inspectionPage(database, { revision: 6, limit: 12 });
+  assert.equal(legacyPage.contract, "aralearn.course-study-unit-inspection-page.v1");
+  assert.equal(Object.hasOwn(legacyPage.items[0], "authorship"), false);
+
+  const page = await continuousInspectionPage(database, { revision: 6, limit: 12 });
+  assert.equal(page.contract, "aralearn.course-study-unit-inspection-page.v2");
+  assert.equal(page.items.length, 1);
+  assert.equal(page.items[0].authorship.pendingObservationCount, 2);
+  assert.equal(page.items[0].authorship.production.state, "produced");
+  assert.equal(page.items[0].authorship.production.currentMaterialization, true);
+  assert.equal(page.items[0].authorship.design.state, "changed");
+  assert.equal(page.items[0].authorship.design.used.parameters.length, 4);
+  assert.equal(
+    page.items[0].authorship.design.used.parameters[0].value,
+    2
+  );
+  assert.equal(
+    page.items[0].authorship.design.current.parameters[0].value,
+    3
+  );
+
+  await database.exec(`
+    insert into private.course_instructional_audit_runs(
+      course_id,id,course_revision,target_version,checks
+    ) values(
+      '${COURSE}','62000000-0000-4000-8000-000000000001',6,1,
+      '[{"dimension":"structural_conformance","result":"passed","criterion":{"code":"unrelated_accessibility_repair"}}]'
+    );
+    insert into private.course_authoring_corrections(
+      course_id,target_study_unit_id,status,verification
+    ) values(
+      '${COURSE}','card-a','verified',
+      '{"auditRunId":"62000000-0000-4000-8000-000000000001","outcome":"resolved"}'
+    );
+  `);
+  const unrelatedVerification = await continuousInspectionPage(database, {
+    revision: 6,
+    limit: 12
+  });
+  assert.equal(unrelatedVerification.items[0].authorship.design.state, "changed");
+
+  await database.exec(`
+    insert into private.course_instructional_audit_runs(
+      course_id,id,course_revision,target_version,checks
+    ) values(
+      '${COURSE}','62000000-0000-4000-8000-000000000002',6,1,
+      '[{"dimension":"structural_conformance","result":"passed","criterion":{"code":"current_design_alignment"}}]'
+    );
+    insert into private.course_authoring_corrections(
+      course_id,target_study_unit_id,status,verification
+    ) values(
+      '${COURSE}','card-a','verified',
+      '{"auditRunId":"62000000-0000-4000-8000-000000000002","outcome":"resolved"}'
+    );
+  `);
+  const alignedVerification = await continuousInspectionPage(database, {
+    revision: 6,
+    limit: 12
+  });
+  assert.equal(alignedVerification.items[0].authorship.design.state, "verified");
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  assert.equal(manifest.schemaRevision, "20260826094500");
+  assert.equal(manifest.features.includes("continuous-authoring-inspection-v1"), true);
   await database.close();
 });
 

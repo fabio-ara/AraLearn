@@ -938,8 +938,13 @@ if (!accessToken) {
   });
   assert.equal(
     firstPage.contract,
-    "aralearn.course-study-unit-inspection-page.v1"
+    "aralearn.course-study-unit-inspection-page.v2"
   );
+  assert.deepEqual(firstPage.items[0].authorship, {
+    pendingObservationCount: 0,
+    production: null,
+    design: null
+  });
   assert.equal(firstPage.totalCount, 2);
   assert.equal(firstPage.items[0].studyUnit.id, "study-unit-mcp-smoke-1");
   assert.equal(firstPage.items[0].studyUnit.title, "Unidade MCP 1 com proveniência");

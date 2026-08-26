@@ -523,6 +523,7 @@ export async function executeCourseTool({
   rawArguments,
   deadlineAt,
   surface = "mcp",
+  applicationInspectionVersion = 1,
   onRequestIdValidated = null
 }) {
   const allowed = surface === "application"
@@ -536,7 +537,9 @@ export async function executeCourseTool({
     );
   }
   const operation = surface === "application"
-    ? mapAuthoringApplicationToolCall(name, rawArguments)
+    ? mapAuthoringApplicationToolCall(name, rawArguments, {
+        inspectionVersion: applicationInspectionVersion
+      })
     : mapAuthoringMcpToolCall(name, rawArguments);
   if (typeof onRequestIdValidated === "function") {
     onRequestIdValidated(operation.requestId ?? null);

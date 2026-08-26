@@ -5,7 +5,7 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
 Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260825190000`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260826094500`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -168,6 +168,12 @@ estabelece tetos observáveis de rede, memória mantida pelo cache e quantidade 
 Unidades no documento. Adequação a um dispositivo específico ainda precisa ser
 verificada nesse aparelho.
 
+A mesma página projeta, junto de cada Unidade, a quantidade de Observações
+pendentes, sua materialização de origem e o desenho efetivo usado naquela
+produção. A comparação com o desenho vigente é derivada no servidor em uma
+única leitura paginada; a interface apresenta valores e origens legíveis, sem
+expor hashes nem buscar Observações ou parâmetros Unidade por Unidade.
+
 Estado pessoal e Anotações possuem contratos independentes. Progresso e itens
 para rever usam estado pessoal v2. Anotações guardam texto, classificação,
 âncoras e citações em repositório próprio. As filas locais dessas duas famílias
@@ -317,6 +323,10 @@ o objeto imutável por vínculos próprios e autorizados.
 Auditoria registra ciclos, achados, decisões e vínculos com Anotações. Correções
 continuam explícitas e sujeitas à revisão esperada do Curso. Esses dados ficam
 no servidor e não possuem réplica autoral ou fila de saída no IndexedDB.
+Quando a verificação de um achado confirma o reparo, a mesma transação atualiza
+as Observações vinculadas; um resultado ainda aberto as reabre. Assim, a pessoa
+não precisa executar uma segunda ação administrativa e o replay do comando
+continua idempotente.
 
 Uma comparação de variantes parte de um ponto de controle imutável do plano e
 cria de dois a oito Cursos independentes. Ela copia desenho, fontes,
@@ -415,7 +425,7 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260825190000` e a versão de contrato. O
+esquema `20260826094500` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.

@@ -588,7 +588,7 @@ function controllerFixture(overrides = {}) {
   return controller;
 }
 
-test("lista abre diretamente Cursos concretos com destino canônico em um toque", async () => {
+test("lista abre Curso materializado diretamente no Conteúdo em um toque", async () => {
   const calls = [];
   const root = new FakeRoot();
   const surface = createCourseAuthoringSurface({
@@ -613,7 +613,7 @@ test("lista abre diretamente Cursos concretos com destino canônico em um toque"
   assert.doesNotMatch(root.innerHTML, /Compartilhado|Somente leitura/u);
   assert.match(
     root.innerHTML,
-    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "overview" }).replace("?", "\\?"), "u")
+    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "content" }).replace("?", "\\?"), "u")
   );
   assert.match(root.innerHTML, /<svg/u);
   assert.doesNotMatch(root.innerHTML, /<textarea|Workspace|Trilha|Coleção|publicação/iu);

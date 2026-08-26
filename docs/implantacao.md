@@ -164,7 +164,7 @@ da API e de Actions, OAuth do MCP hospedado e o fluxo autenticado de PDF antes
 de encerrar.
 
 O manifesto corrente termina em
-`20260825190000_course_source_human_locators.sql`. Depois da aplicação:
+`20260826094500_preserve_inspection_v1_and_scope_design_verification.sql`. Depois da aplicação:
 
 ```powershell
 npm.cmd run deployment:verify-hosted
