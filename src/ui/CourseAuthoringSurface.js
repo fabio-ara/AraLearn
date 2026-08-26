@@ -440,7 +440,8 @@ function renderCourseHeader(course, state) {
       `<h1>${escapeHtml(title)}</h1></div></header>`;
   }
   const materializationReturn = state.section === "content" && state.contentReturnRoute;
-  const contextualReturn = state.contextualReturn?.route === state.routeKey
+  const contextualReturn = state.contextualReturn &&
+    state.contextualReturn.route === state.routeKey
     ? state.contextualReturn.returnTo
     : "";
   const returnRoute = materializationReturn || contextualReturn;

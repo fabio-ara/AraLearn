@@ -2457,6 +2457,18 @@ try {
     },
   }, ownerToken);
   assert.equal(explicitlyReopenedAnnotation.data.annotation.state, "open");
+  const explicitlyResolvedAnnotation = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "resolve_anchored_annotation",
+      annotationId: learnerAnnotationId,
+      expectedAnnotationVersion:
+        explicitlyReopenedAnnotation.data.annotation.annotationVersion,
+    },
+  }, ownerToken);
+  assert.equal(explicitlyResolvedAnnotation.data.annotation.state, "resolved");
 
   const revoked = await courseAction("gerirPessoas", {
     operation: "revoke_access",
