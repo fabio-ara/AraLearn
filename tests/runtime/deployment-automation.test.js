@@ -1064,6 +1064,30 @@ test("verificação inspeciona o runtime aninhado e bloqueia a API estática", {
   }
 });
 
+test("verificação preserva o callback OAuth canônico de Actions", {
+  skip: !powerShellAvailable
+}, () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-actions-oauth-"));
+  try {
+    const apkPath = packApk(
+      temporaryRoot,
+      writeSafeAndroidArtifact,
+      {
+        legacySurfaceText:
+          "/functions/v1/aralearn-authoring-action/oauth/authorizations/current"
+      }
+    );
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("verificação reprova APK sem configuração pública", {
   skip: !powerShellAvailable
 }, () => {

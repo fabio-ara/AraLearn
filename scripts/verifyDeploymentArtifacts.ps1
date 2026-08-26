@@ -118,7 +118,7 @@ function Test-TextForLegacySurface {
   )
 
   if (
-    $Text -match '(?i)\baralearn-authoring-(?:action|api)\b' -or
+    $Text -match '(?i)\baralearn-authoring-api\b' -or
     $Text -match '(?i)\bX-AraLearn-API-Key\b' -or
     $Text -match '(?i)\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})' -or
     $Text -match '(?i)\bARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET\b' -or
