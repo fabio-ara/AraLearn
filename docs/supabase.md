@@ -23,7 +23,7 @@ O banco conserva o Curso vivo, sua hierarquia, planejamento, materializações,
 parâmetros, política de componentes, Fontes, Âncoras, vínculos de PDF,
 Observações, Auditoria, Variantes, acesso, estado pessoal e fatos projetados
 para Pesquisa. As migrations reproduzem o esquema, e o manifesto corrente
-termina em `20260826094500_preserve_inspection_v1_and_scope_design_verification.sql`.
+termina em `20260826143846_optimize_course_rls_actor_lookup.sql`.
 
 A inspeção contínua de Autoria agrega na página das Unidades os marcadores de
 Observações, a materialização de origem e a comparação entre desenho usado e

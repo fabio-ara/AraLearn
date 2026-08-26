@@ -407,6 +407,8 @@ function cacheKey(courseId) {
 
 export class CoursePersonalStateRepository {
   #queue = Promise.resolve();
+  #localQueue = Promise.resolve();
+  #cacheQueue = Promise.resolve();
   #record = null;
   #initialized = false;
   #course = null;
@@ -527,17 +529,19 @@ export class CoursePersonalStateRepository {
 
   clearProgress() {
     this.#assertInitialized();
-    const current = this.#record.state.progress.lessons;
-    const next = clone(current);
-    for (const indexed of this.#indexedLessons) {
-      const entry = next[indexed.lessonId];
-      if (!entry) continue;
-      const removedIds = new Set(indexed.studyUnits.map((unit) => unit.studyUnitId));
-      const remaining = remainingLessonProgress(entry, removedIds, indexed);
-      if (remaining) next[indexed.lessonId] = remaining;
-      else delete next[indexed.lessonId];
-    }
-    return this.#mutate(mapDiff("progress.lessons", current, next));
+    return this.#mutate((state) => {
+      const current = state.progress.lessons;
+      const next = clone(current);
+      for (const indexed of this.#indexedLessons) {
+        const entry = next[indexed.lessonId];
+        if (!entry) continue;
+        const removedIds = new Set(indexed.studyUnits.map((unit) => unit.studyUnitId));
+        const remaining = remainingLessonProgress(entry, removedIds, indexed);
+        if (remaining) next[indexed.lessonId] = remaining;
+        else delete next[indexed.lessonId];
+      }
+      return mapDiff("progress.lessons", current, next);
+    });
   }
 
   clearProgressScope({
@@ -549,8 +553,6 @@ export class CoursePersonalStateRepository {
   } = {}) {
     this.#assertInitialized();
     if (courseId !== this.courseId) throw failure("O escopo não pertence ao Curso carregado.");
-    const current = this.#record.state.progress.lessons;
-    const next = clone(current);
     const moduleLessons = this.#indexedLessons.filter((entry) => entry.moduleId === moduleId);
     if (moduleId && !moduleLessons.length) throw failure("O Módulo não existe no Curso.");
 
@@ -558,27 +560,35 @@ export class CoursePersonalStateRepository {
       return this.clearProgress();
     }
     if (!lessonId) {
-      for (const indexed of moduleLessons) {
-        const entry = next[indexed.lessonId];
-        if (!entry) continue;
-        const removedIds = new Set(indexed.studyUnits.map((unit) => unit.studyUnitId));
-        const remaining = remainingLessonProgress(entry, removedIds, indexed);
-        if (remaining) next[indexed.lessonId] = remaining;
-        else delete next[indexed.lessonId];
-      }
-      return this.#mutate(mapDiff("progress.lessons", current, next));
+      return this.#mutate((state) => {
+        const current = state.progress.lessons;
+        const next = clone(current);
+        for (const indexed of moduleLessons) {
+          const entry = next[indexed.lessonId];
+          if (!entry) continue;
+          const removedIds = new Set(indexed.studyUnits.map((unit) => unit.studyUnitId));
+          const remaining = remainingLessonProgress(entry, removedIds, indexed);
+          if (remaining) next[indexed.lessonId] = remaining;
+          else delete next[indexed.lessonId];
+        }
+        return mapDiff("progress.lessons", current, next);
+      });
     }
 
     const indexed = moduleLessons.find((entry) => entry.lessonId === lessonId);
     if (!indexed) throw failure("A Lição não existe no Módulo indicado.");
     if (!microsequenceId) {
-      const entry = next[lessonId];
-      if (!entry) return Promise.resolve(this.snapshot());
       const removedIds = new Set(indexed.studyUnits.map((unit) => unit.studyUnitId));
-      const remaining = remainingLessonProgress(entry, removedIds, indexed);
-      if (remaining) next[lessonId] = remaining;
-      else delete next[lessonId];
-      return this.#mutate(mapDiff("progress.lessons", current, next));
+      return this.#mutate((state) => {
+        const current = state.progress.lessons;
+        const entry = current[lessonId];
+        if (!entry) return [];
+        const next = clone(current);
+        const remaining = remainingLessonProgress(entry, removedIds, indexed);
+        if (remaining) next[lessonId] = remaining;
+        else delete next[lessonId];
+        return mapDiff("progress.lessons", current, next);
+      });
     }
 
     const microsequenceUnits = indexed.studyUnits
@@ -586,8 +596,6 @@ export class CoursePersonalStateRepository {
     if (!microsequenceUnits.length) {
       throw failure("A Microssequência didática não existe na Lição indicada.");
     }
-    const currentEntry = next[lessonId];
-    if (!currentEntry) return Promise.resolve(this.snapshot());
     let removedIds;
     if (studyUnitId) {
       const start = indexed.studyUnits.findIndex((unit) =>
@@ -597,10 +605,16 @@ export class CoursePersonalStateRepository {
     } else {
       removedIds = new Set(microsequenceUnits.map((unit) => unit.studyUnitId));
     }
-    const remaining = remainingLessonProgress(currentEntry, removedIds, indexed);
-    if (remaining) next[lessonId] = remaining;
-    else delete next[lessonId];
-    return this.#mutate(mapDiff("progress.lessons", current, next));
+    return this.#mutate((state) => {
+      const current = state.progress.lessons;
+      const currentEntry = current[lessonId];
+      if (!currentEntry) return [];
+      const next = clone(current);
+      const remaining = remainingLessonProgress(currentEntry, removedIds, indexed);
+      if (remaining) next[lessonId] = remaining;
+      else delete next[lessonId];
+      return mapDiff("progress.lessons", current, next);
+    });
   }
 
   isStudyUnitCompleted(reference) {
@@ -610,30 +624,32 @@ export class CoursePersonalStateRepository {
       .some((entry) => entry.completedStudyUnitIds.includes(studyUnitId));
   }
 
-  setStudyUnitCompleted(reference, completed = true) {
+  setStudyUnitCompleted(reference, completed = true, { synchronize = true } = {}) {
     this.#assertInitialized();
     const { lessonId, studyUnitId } = studyUnitLocation(reference, this.#indexedLessons);
-    const current = this.#record.state.progress.lessons;
-    const next = clone(current);
-    for (const [currentLessonId, entry] of Object.entries(next)) {
-      if (!entry.completedStudyUnitIds.includes(studyUnitId)) continue;
-      const ids = entry.completedStudyUnitIds.filter((id) => id !== studyUnitId);
-      if (!ids.length) delete next[currentLessonId];
-      else next[currentLessonId] = {
-        cursorStudyUnitId: ids.includes(entry.cursorStudyUnitId)
-          ? entry.cursorStudyUnitId
-          : ids.at(-1),
-        completedStudyUnitIds: ids
-      };
-    }
-    if (completed === true) {
-      const target = next[lessonId] || { completedStudyUnitIds: [] };
-      next[lessonId] = {
-        cursorStudyUnitId: studyUnitId,
-        completedStudyUnitIds: [...target.completedStudyUnitIds, studyUnitId]
-      };
-    }
-    return this.#mutate(mapDiff("progress.lessons", current, next));
+    return this.#mutate((state) => {
+      const current = state.progress.lessons;
+      const next = clone(current);
+      for (const [currentLessonId, entry] of Object.entries(next)) {
+        if (!entry.completedStudyUnitIds.includes(studyUnitId)) continue;
+        const ids = entry.completedStudyUnitIds.filter((id) => id !== studyUnitId);
+        if (!ids.length) delete next[currentLessonId];
+        else next[currentLessonId] = {
+          cursorStudyUnitId: ids.includes(entry.cursorStudyUnitId)
+            ? entry.cursorStudyUnitId
+            : ids.at(-1),
+          completedStudyUnitIds: ids
+        };
+      }
+      if (completed === true) {
+        const target = next[lessonId] || { completedStudyUnitIds: [] };
+        next[lessonId] = {
+          cursorStudyUnitId: studyUnitId,
+          completedStudyUnitIds: [...target.completedStudyUnitIds, studyUnitId]
+        };
+      }
+      return mapDiff("progress.lessons", current, next);
+    }, { synchronize });
   }
 
   isStudyUnitMarkedForReview(reference) {
@@ -708,13 +724,15 @@ export class CoursePersonalStateRepository {
   }
 
   async clearLocal() {
-    await Promise.all([
-      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
-      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
-      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`)
-    ]);
-    this.#record = null;
-    this.#initialized = false;
+    await this.#enqueueCache(async () => {
+      await Promise.all([
+        this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
+        this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
+        this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`)
+      ]);
+      this.#record = null;
+      this.#initialized = false;
+    });
     return true;
   }
 
@@ -724,47 +742,80 @@ export class CoursePersonalStateRepository {
     return next;
   }
 
-  async #persist() {
-    this.#record.updatedAt = nowIso(this.clock);
-    await this.cache.putCache(cacheKey(this.courseId), clone(this.#record));
+  #enqueueCache(operation) {
+    const next = this.#cacheQueue.then(operation, operation);
+    this.#cacheQueue = next.catch(() => undefined);
+    return next;
+  }
+
+  #enqueueLocal(operation) {
+    const next = this.#localQueue.then(operation, operation);
+    this.#localQueue = next.catch(() => undefined);
+    return next;
+  }
+
+  #persist() {
+    return this.#enqueueCache(async () => {
+      this.#assertInitialized();
+      this.#record.updatedAt = nowIso(this.clock);
+      await this.cache.putCache(cacheKey(this.courseId), clone(this.#record));
+    });
   }
 
   async #clearAuthority() {
-    await Promise.all([
-      this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
-      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
-      this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`),
-      this.cache.deleteCachePrefix(`course.v1.header:${this.courseId}`),
-      this.cache.deleteCachePrefix(`course.v1.entities:${this.courseId}:`),
-      this.cache.deleteCachePrefix("course.v1.list:")
-    ]);
-    this.#record = null;
-    this.#initialized = false;
+    await this.#enqueueCache(async () => {
+      await Promise.all([
+        this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
+        this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
+        this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`),
+        this.cache.deleteCachePrefix(`course.v1.header:${this.courseId}`),
+        this.cache.deleteCachePrefix(`course.v1.entities:${this.courseId}:`),
+        this.cache.deleteCachePrefix("course.v1.list:")
+      ]);
+      this.#record = null;
+      this.#initialized = false;
+    });
   }
 
   #mutate(operations, { synchronize = true } = {}) {
     this.#assertInitialized();
-    const normalized = normalizeOperations(operations);
-    if (!normalized.length) return Promise.resolve(this.snapshot());
-    this.#record.state = applyOperations(this.#record.state, normalized);
-    if (this.#record.pending || this.#record.needsRemoteRebase) {
-      this.#record.queuedOperations = mergeOperations(
-        this.#record.queuedOperations,
-        normalized
+    const operationFactory = typeof operations === "function" ? operations : () => operations;
+    const persistence = this.#enqueueLocal(() => this.#enqueueCache(async () => {
+      this.#assertInitialized();
+      let requestId = "";
+      const buildOperations = (record) => normalizeOperations(
+        operationFactory(clone(record.state))
       );
-    } else {
-      this.#record.pending = {
-        requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração"),
-        baseRevision: this.#record.revision,
-        operations: normalized,
-        createdAt: nowIso(this.clock)
+      const applyMutation = (record, normalized) => {
+        record.state = applyOperations(record.state, normalized);
+        if (record.pending || record.needsRemoteRebase) {
+          record.queuedOperations = mergeOperations(record.queuedOperations, normalized);
+          return;
+        }
+        requestId ||= requiredUuid(this.uuidFactory(), "Identidade da alteração");
+        record.pending = {
+          requestId,
+          baseRevision: record.revision,
+          operations: normalized,
+          createdAt: nowIso(this.clock)
+        };
       };
-    }
-    return this.#enqueue(async () => {
-      await this.#persist();
-      if (synchronize) await this.#flushUnlocked();
+
+      const durable = clone(this.#record);
+      const durableOperations = buildOperations(durable);
+      if (!durableOperations.length) return this.snapshot();
+      applyMutation(durable, durableOperations);
+      durable.updatedAt = nowIso(this.clock);
+      await this.cache.putCache(cacheKey(this.courseId), durable);
+
+      const currentOperations = buildOperations(this.#record);
+      if (currentOperations.length) applyMutation(this.#record, currentOperations);
+      this.#record.updatedAt = nowIso(this.clock);
+      await this.cache.putCache(cacheKey(this.courseId), clone(this.#record));
       return this.snapshot();
-    });
+    }));
+    if (!synchronize) return persistence;
+    return persistence.then(() => this.#enqueue(() => this.#flushUnlocked()));
   }
 
   async #flushUnlocked() {

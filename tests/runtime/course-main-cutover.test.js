@@ -15,6 +15,7 @@ const courseAuthoringStylesPath = path.join(repositoryRoot, "public", "course-au
 const oauthConsentPath = path.join(repositoryRoot, "src", "ui", "OAuthAuthorizationConsent.js");
 const sourceRoot = path.join(repositoryRoot, "src");
 const pagesRoot = path.join(repositoryRoot, ".pages");
+const actionsOpenApiAsset = "./docs/downloads/aralearn-chatgpt-action-openapi.yaml";
 
 function moduleSpecifiers(source) {
   const tree = parse(source, { ecmaVersion: "latest", sourceType: "module" });
@@ -412,6 +413,12 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     assets.some((asset) => asset.startsWith("./docs/downloads/authoring/")),
     false,
     "Pacotes de Action/Workspace retirados não podem ser publicados como runtime."
+  );
+  assert.equal(assets.includes(actionsOpenApiAsset), true, "OpenAPI de Actions ausente do site.");
+  assert.equal(
+    await readFile(path.join(pagesRoot, actionsOpenApiAsset.slice(2)), "utf8"),
+    await readFile(path.join(repositoryRoot, actionsOpenApiAsset.slice(2)), "utf8"),
+    "O site precisa publicar exatamente o OpenAPI gerado corrente."
   );
 
   const expectedSourceAssets = relativeModules

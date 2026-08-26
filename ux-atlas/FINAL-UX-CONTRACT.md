@@ -91,8 +91,8 @@ explicitamente antes da implementação de uma capacidade menor.
 ## Navegação e modos de Estudo por nível
 
 A barra cotidiana usa **Voltar + Home**. **Voltar** restaura a origem real da
-navegação, inclusive posição de rolagem e foco depois de **Retomar**, **Rever**
-ou endereço direto. **Home** oferece uma saída global previsível sem consumir o
+navegação, inclusive posição de rolagem e foco depois de **Rever** ou endereço
+direto. **Home** oferece uma saída global previsível sem consumir o
 histórico. O acesso ao pai não ocupa permanentemente a barra; uma jornada pode
 oferecê-lo como ação contextual própria quando isso for materialmente útil.
 

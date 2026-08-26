@@ -33,7 +33,7 @@ Curso → Módulo → Lição → Microssequência didática → Unidade de estu
 ```
 
 **Voltar** restaura a origem real do percurso, inclusive rolagem e foco depois
-de Retomar, Rever ou endereço direto. **Home** oferece uma saída global
+de Rever ou endereço direto. **Home** oferece uma saída global
 previsível. O pai só aparece como ação contextual quando uma jornada concreta
 o justificar. Curso e Módulo oferecem os modos **Visualizar** e **Editar**. Lição,
 Microssequência e Unidade oferecem **Visualizar**, **Editar** e **Assistência por

@@ -43,6 +43,10 @@ const scopedContinuousInspectionMigrationUrl = new URL(
   "../../supabase/migrations/20260826094500_preserve_inspection_v1_and_scope_design_verification.sql",
   import.meta.url
 );
+const courseRlsActorLookupMigrationUrl = new URL(
+  "../../supabase/migrations/20260826143846_optimize_course_rls_actor_lookup.sql",
+  import.meta.url
+);
 const contextualCompositionMigrationUrl = new URL(
   "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
   import.meta.url
@@ -464,6 +468,34 @@ async function applyContinuousAuthoringInspectionMigration(database) {
   await database.exec(await fs.readFile(continuousAuthoringInspectionMigrationUrl, "utf8"));
   await database.exec(await fs.readFile(unitAnnotationScopeMigrationUrl, "utf8"));
   await database.exec(await fs.readFile(scopedContinuousInspectionMigrationUrl, "utf8"));
+  await database.exec(`
+    alter table public.courses enable row level security;
+    create policy courses_access_v1 on public.courses
+      for select to authenticated
+      using(private.course_ownership_v1(id,auth.uid()) is not null);
+
+    alter table private.course_entities enable row level security;
+    create policy course_entities_access_v1 on private.course_entities
+      for select to authenticated
+      using(private.course_ownership_v1(course_id,auth.uid()) is not null);
+
+    alter table public.course_access enable row level security;
+    create policy course_access_self_v1 on public.course_access
+      for select to authenticated using(user_id=auth.uid());
+
+    alter table public.course_personal_states enable row level security;
+    create policy course_personal_states_owner_v1 on public.course_personal_states
+      for all to authenticated
+      using(
+        user_id=auth.uid()
+        and private.course_ownership_v1(course_id,auth.uid()) is not null
+      )
+      with check(
+        user_id=auth.uid()
+        and private.course_ownership_v1(course_id,auth.uid()) is not null
+      );
+  `);
+  await database.exec(await fs.readFile(courseRlsActorLookupMigrationUrl, "utf8"));
 }
 
 async function applyContextualCompositionMigration(database) {
@@ -2450,8 +2482,29 @@ test("inspeção contínua projeta pendências e estado autoral sem N+1", async 
   const manifest = await scalar(database, `
     select public.get_aralearn_runtime_manifest() as value
   `);
-  assert.equal(manifest.schemaRevision, "20260826094500");
+  assert.equal(manifest.schemaRevision, "20260826143846");
   assert.equal(manifest.features.includes("continuous-authoring-inspection-v1"), true);
+  const optimizedPolicies = await database.query(`
+    select polname,
+      pg_get_expr(polqual,polrelid) as using_expression,
+      pg_get_expr(polwithcheck,polrelid) as check_expression
+    from pg_policy
+    where polname in(
+      'courses_access_v1','course_entities_access_v1',
+      'course_access_self_v1','course_personal_states_owner_v1'
+    )
+    order by polname
+  `);
+  assert.equal(optimizedPolicies.rows.length, 4);
+  for (const policy of optimizedPolicies.rows) {
+    assert.match(policy.using_expression, /SELECT auth\.uid\(\)/iu);
+  }
+  assert.match(
+    optimizedPolicies.rows.find(({ polname }) =>
+      polname === "course_personal_states_owner_v1"
+    ).check_expression,
+    /SELECT auth\.uid\(\)/iu
+  );
   await database.close();
 });
 

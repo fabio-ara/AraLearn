@@ -9,6 +9,9 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 const CACHE_REVISION_PLACEHOLDER = "__ARALEARN_CACHE_REVISION__";
+const ACTIONS_OPENAPI_PATH = path.join(
+  "docs", "downloads", "aralearn-chatgpt-action-openapi.yaml"
+);
 const FORBIDDEN_PUBLISHED_SURFACE = /(?:remote-(?:library|workspace)|learning-spaces|authoring-workspace|workspace-authoring|home-trails|aralearn:open-library|\b(?:Workspace|Trilhas?|Coleções?)\b)/iu;
 const FORBIDDEN_CANONICAL_IDENTITY = /\b(?:moduleKey|lessonKey|microsequenceKey|cardKey|completedCardKeys|completedCardIds|cursorCardId|editorProgress)\b/u;
 
@@ -378,6 +381,10 @@ async function stageRuntime({ target, outputPath }) {
   await writeExactContentSecurityPolicy(publicDestination, target);
   await copyRuntimeJavaScript(runtimeRoot);
   if (target === "pages") {
+    await copyFile(
+      path.join(repositoryRoot, ACTIONS_OPENAPI_PATH),
+      path.join(runtimeRoot, ACTIONS_OPENAPI_PATH)
+    );
     await rewritePagesMainImport(runtimeRoot);
     await stampServiceWorker(runtimeRoot, publicDestination);
     await writePagesAssetManifest(runtimeRoot);

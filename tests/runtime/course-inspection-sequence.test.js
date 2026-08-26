@@ -398,6 +398,9 @@ test("marcadores coexistem e o desenho mostra usado versus vigente sem hashes", 
   assert.match(root.innerHTML, /Vigente agora/u);
   assert.match(root.innerHTML, />2<\/span>/u);
   assert.match(root.innerHTML, />3<\/span>/u);
+  assert.match(root.innerHTML, /data-inspection-control-key="production:unit-01"/u);
+  assert.match(root.innerHTML, /section=planning&amp;authoringPartId=20000000-0000-4000-8000-000000000002&amp;materializationId=30000000-0000-4000-8000-000000000003/u);
+  assert.match(root.innerHTML, /<span>Produção<\/span>/u);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
   sequence.destroy();
 });
@@ -809,7 +812,9 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
   assert.match(root.innerHTML, /<span>Observações<\/span>/u);
-  assert.match(root.innerHTML, /Observar esta Unidade/u);
+  assert.doesNotMatch(root.innerHTML, /Observar esta Unidade/u);
+  assert.match(root.innerHTML, /<span>Visualizar<\/span>/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-select-button/u);
   assert.equal(annotationCalls.length, 0);
 
   await root.listeners.get("click")({
@@ -1304,25 +1309,34 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
 
   const microsequenceRoute = `#/authoring/courses/${COURSE_ID}` +
     "?section=content&didacticMicrosequenceId=micro-a";
+  const routeNode = {
+    dataset: { inspectionControlKey: "production:unit-02" },
+    getAttribute: () => microsequenceRoute,
+    closest(selector) {
+      return selector === "[data-inspection-study-unit]"
+        ? { dataset: { inspectionStudyUnit: "unit-02" } }
+        : null;
+    }
+  };
   await root.listeners.get("click")({
     preventDefault() {},
     target: {
       closest(selector) {
         return selector === "[data-inspection-route]"
-          ? { getAttribute: () => microsequenceRoute }
+          ? routeNode
           : null;
       }
     }
   });
 
   assert.deepEqual(events.map(([kind]) => kind), ["save", "navigate"]);
-  assert.equal(events[0][1].studyUnitId, "unit-01");
+  assert.equal(events[0][1].studyUnitId, "unit-02");
   assert.deepEqual(events[1], [
     "navigate",
     microsequenceRoute,
     {
-      returnTo: inspectionItem(1).deepLink,
-      returnFocusKey: "design:unit-01"
+      returnTo: inspectionItem(2).deepLink,
+      returnFocusKey: "production:unit-02"
     }
   ]);
   sequence.destroy();

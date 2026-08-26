@@ -1074,10 +1074,9 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     await editorApp?.refreshPersonalState?.();
     return nextProject;
   };
-  const bestEffortFlush = () => Promise.all([
-    repository?.flush() || Promise.resolve(),
-    editorApp?.flushPersonalState?.() || Promise.resolve()
-  ]).catch(() => undefined);
+  const bestEffortFlush = () => Promise.resolve(
+    repository?.flush?.()
+  ).catch(() => undefined);
 
   let pendingStudyComposition = null;
   let pendingStudyStructure = null;

@@ -14,7 +14,7 @@ import {
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.31";
+const VERSION = "0.0.32";
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>
@@ -26,6 +26,18 @@ const RUNTIME_CONFIG = `globalThis.__ARALEARN_ENV__ ??= Object.freeze({
   "supabasePublishableKey": "sb_publishable_public-test-value",
   "assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}
 });\n`;
+const ACTIONS_OPENAPI = JSON.stringify({
+  openapi: "3.1.0",
+  info: { title: "AraLearn — Autoria de Cursos", version: VERSION },
+  servers: [{ url: `${PROJECT_URL}/functions/v1/aralearn-authoring-action` }],
+  paths: Object.fromEntries([
+    "listarCursos",
+    "lerCurso",
+    "criarCurso",
+    "alterarCurso",
+    "consultarComponentesDidaticos"
+  ].map((operationId) => [`/${operationId}`, { post: { operationId } }]))
+});
 const ASSETS = [
   "./index.html",
   "./runtime-config.js",
@@ -36,6 +48,7 @@ const ASSETS = [
   "./styles.css",
   "./main.js",
   "./service-worker.js",
+  "./docs/downloads/aralearn-chatgpt-action-openapi.yaml",
   "./assets/brand/aralearn-mark.png",
   "./src/render/renderPackageStudyUnit.js",
   "./src/resources/kernel/studyUnitEnvelope.js"
@@ -80,6 +93,10 @@ function createPublishedSiteFetch({
       body: 'const CACHE_PREFIX = "aralearn-shell-";\nconst CACHE_NAME = `${CACHE_PREFIX}0123456789abcdef0123`;\nself.addEventListener("fetch", () => {});',
       type: "text/javascript"
     }],
+    ["/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml", {
+      body: ACTIONS_OPENAPI,
+      type: "application/yaml"
+    }],
     ["/AraLearn/assets/brand/aralearn-mark.png", { body: "PNG", type: "image/png" }],
     ["/AraLearn/src/render/renderPackageStudyUnit.js", {
       body: 'import "../resources/kernel/studyUnitEnvelope.js";',
@@ -112,7 +129,7 @@ test("verifica integralmente um site publicado usando somente GET", async () => 
     version: VERSION,
     artifactRevision: REVISION,
     projectUrl: PROJECT_URL,
-    resourcesChecked: 14,
+    resourcesChecked: 15,
     callbackChecked: true
   });
   assert.ok(calls.length >= ASSETS.length + 2);
@@ -292,6 +309,24 @@ test("recusa recurso ausente ou servido com MIME incorreto", async (context) => 
     assert.equal(calls.filter(({ url }) => new URL(url).pathname === "/AraLearn/styles.css").length, 1);
     assert.deepEqual(delays, []);
   });
+});
+
+test("recusa OpenAPI de Actions hospedado com versão ou operações divergentes", async () => {
+  const incompatible = JSON.parse(ACTIONS_OPENAPI);
+  incompatible.info.version = "0.0.30";
+  delete incompatible.paths["/alterarCurso"];
+  const { fetchImpl } = createPublishedSiteFetch({
+    overrides: {
+      "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+        body: incompatible,
+        type: "application/yaml"
+      }
+    }
+  });
+  await assert.rejects(
+    () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+    /OpenAPI publicado de Actions não corresponde/u
+  );
 });
 
 test("recusa manifesto cacheado de outra versão ou revisão divergente", async (context) => {

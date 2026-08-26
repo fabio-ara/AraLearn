@@ -335,7 +335,7 @@ objetos que não são eliminados automaticamente pelo PostgreSQL.
 
 Migrações em `supabase/migrations/` são a história reproduzível do banco. A
 revisão hospedada corrente e a revisão implantável declarada em
-`supabase/runtime-manifest.json` são `20260826094500`. Uma migração que
+`supabase/runtime-manifest.json` são `20260826143846`. Uma migração que
 acrescenta capacidade deve:
 
 - fazer verificações prévias e falhar diante de estado incompatível;

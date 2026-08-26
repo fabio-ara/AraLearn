@@ -33,7 +33,7 @@ pertence à sua Autoria.
 
 1. Entre na conta correta.
 2. No seletor **Curso**, escolha o Curso que pretende usar sem rede.
-3. Use **Começar**, **Continuar** ou **Retomar**, conforme o rótulo apresentado.
+3. Use **Abrir** e escolha o Módulo.
 4. Aguarde a composição aparecer; a conclusão dessa abertura guarda a revisão
    validada para retomada sem conexão.
 
@@ -42,20 +42,19 @@ abertos e o estado pessoal. Limpar os dados do navegador, reinstalar o
 aplicativo ou apagar o armazenamento do site pode eliminar alterações que ainda
 aguardavam sincronização.
 
-## Iniciar ou retomar uma sessão
+## Abrir uma sessão
 
 1. Na tela inicial, escolha o Curso no seletor.
-2. Confira a prévia e use a ação principal:
-   - **Começar** leva à primeira Unidade pendente quando ainda não há progresso;
-   - **Continuar** parte do progresso salvo quando não existe um ponto de
-     navegação mais específico;
-   - **Retomar** volta ao último ponto visitado naquele Curso.
-3. Percorra Módulo, Lição ou Microssequência quando quiser mudar de contexto.
+2. Confira a prévia e use **Abrir**. A ação sempre mostra os Módulos do Curso;
+   ela não muda de nome nem pula níveis por causa do progresso salvo.
+3. Escolha Módulo, Lição ou Microssequência para chegar às Unidades. **Rever** e
+   um endereço direto continuam abrindo o alvo que a pessoa escolheu
+   explicitamente.
 
 Os itens de navegação mostram o progresso de cada nível. Dentro de uma
 Unidade, a barra superior informa o contexto e a posição na Microssequência.
 **Voltar** restaura a origem real do percurso, inclusive rolagem e foco depois
-de Retomar, Rever ou abrir um endereço direto. **Home** oferece uma saída global
+de Rever ou abrir um endereço direto. **Home** oferece uma saída global
 previsível. Quando for realmente útil acessar o nível didático pai, a jornada
 apresenta essa ação no próprio contexto, sem ocupar permanentemente a barra.
 

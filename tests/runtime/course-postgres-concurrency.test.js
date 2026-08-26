@@ -111,8 +111,9 @@ function cleanupUser(userId, email) {
   `));
 }
 
-const postgresGate = !databaseUrl || (!nativePsqlAvailable && !localDockerPsqlAvailable)
-  ? "defina ARALEARN_TEST_DATABASE_URL e disponibilize psql ou a stack Docker local"
+const postgresGate = !databaseUrl || !localDatabase ||
+    (!nativePsqlAvailable && !localDockerPsqlAvailable)
+  ? "defina ARALEARN_TEST_DATABASE_URL para PostgreSQL local e disponibilize psql ou a stack Docker local"
   : false;
 const parsedDatabaseUrl = (() => {
   try {
@@ -124,7 +125,7 @@ const parsedDatabaseUrl = (() => {
 const runnerPassword = parsedDatabaseUrl
   ? decodeURIComponent(parsedDatabaseUrl.password || "")
   : "";
-const localCutoverGate = postgresGate || !localDatabase || !runnerPassword
+const localCutoverGate = postgresGate || !runnerPassword
   ? "o gate do corte exige PostgreSQL local com senha na URL"
   : false;
 

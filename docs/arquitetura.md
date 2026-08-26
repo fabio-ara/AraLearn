@@ -5,7 +5,7 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
 Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260826094500`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260826143846`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -54,12 +54,13 @@ paralelos nem módulos internos expostos. Todas ficam alcançáveis em um único
 nível de escolha, com a mesma composição no celular e no computador.
 
 Na entrada de Estudo, descritores paginados alimentam um único combobox e uma
-única prévia. A seleção não carrega a composição curricular. A ação
-**Começar**, **Continuar** ou **Retomar** resolve a posição pertinente, valida a
-composição e só então entra no Curso. A prévia consulta o documento validado no
-IndexedDB para informar disponibilidade sem conexão; revogação elimina a réplica
-local do Curso compartilhado e o ponto local, sem apagar uma cópia pessoal já
-confirmada.
+única prévia. A seleção não carrega a composição curricular. A ação **Abrir**
+valida a composição e entra sempre no Curso pela lista de Módulos; o progresso
+permanece visível e persistido, mas não vira um atalho implícito para uma Unidade.
+**Rever** e endereços diretos continuam levando ao alvo explícito. A prévia
+consulta o documento validado no IndexedDB para informar disponibilidade sem
+conexão; revogação elimina a réplica local do Curso compartilhado e o ponto
+local, sem apagar uma cópia pessoal já confirmada.
 
 O MCP conserva cinco ferramentas estáveis: `listarCursos`, `lerCurso`,
 `criarCurso`, `alterarCurso` e
@@ -253,11 +254,11 @@ proveniência efetiva anterior. Criar ou alterar um vínculo exige Fonte e Ânco
 ativas nas revisões exatas. Essa exceção conserva dados migrados; ela não abre
 uma nova via para gravar `legacy_reference`.
 
-A Assistência por IA é uma sessão contextual sobre o mesmo Curso. O minichat
-recebe a composição necessária do alvo, um resumo do caminho curricular e as
-mensagens recentes. A pessoa discute um plano antes de confirmar a preparação.
-PDFs, Fontes, identidade da conta e regiões alheias ao escopo não entram no
-envelope.
+A Assistência por IA é uma sessão contextual sobre o mesmo Curso. O serviço
+escolhido recebe a mensagem, o conteúdo selecionado, o restante do objeto atual
+como contexto, um resumo do Curso e as mensagens recentes. A pessoa discute um
+plano antes de confirmar a preparação. PDFs, Fontes e dados da conta não entram
+no envelope.
 
 A preparação produz escrita tipada sobre Unidade, Microssequência ou Lição. Ao
 usar componentes didáticos, consulta primeiro as famílias pertinentes, obtém
@@ -425,7 +426,7 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260826094500` e a versão de contrato. O
+esquema `20260826143846` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.

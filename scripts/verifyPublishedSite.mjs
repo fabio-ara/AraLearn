@@ -21,6 +21,14 @@ const CALLBACK_PARAMETERS = Object.freeze({
   auth_state: "aralearn-publication-check",
   code: "aralearn-publication-check"
 });
+const ACTIONS_OPENAPI_ASSET = "./docs/downloads/aralearn-chatgpt-action-openapi.yaml";
+const ACTIONS_TOOL_NAMES = Object.freeze([
+  "alterarCurso",
+  "consultarComponentesDidaticos",
+  "criarCurso",
+  "lerCurso",
+  "listarCursos"
+]);
 const REQUIRED_ASSETS = Object.freeze([
   "./index.html",
   "./runtime-config.js",
@@ -31,11 +39,14 @@ const REQUIRED_ASSETS = Object.freeze([
   "./styles.css",
   "./main.js",
   "./service-worker.js",
+  ACTIONS_OPENAPI_ASSET,
   "./assets/brand/aralearn-mark.png",
   "./src/render/renderPackageStudyUnit.js",
   "./src/resources/kernel/studyUnitEnvelope.js"
 ]);
-const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".json", ".mjs", ".svg", ".txt", ".xml"]);
+const TEXT_EXTENSIONS = new Set([
+  ".css", ".html", ".js", ".json", ".mjs", ".svg", ".txt", ".xml", ".yaml"
+]);
 const RETRYABLE_HTTP_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504]);
 const MIME_TYPES = Object.freeze({
   ".css": ["text/css"],
@@ -44,6 +55,10 @@ const MIME_TYPES = Object.freeze({
   ".json": ["application/json", "text/json"],
   ".mjs": ["application/javascript", "application/x-javascript", "text/javascript"],
   ".png": ["image/png"],
+  ".yaml": [
+    "application/yaml", "application/x-yaml", "text/yaml", "text/x-yaml",
+    "text/plain", "application/octet-stream"
+  ],
   ".svg": ["image/svg+xml"]
 });
 
@@ -348,6 +363,32 @@ function validateAssetManifest(source, siteUrl, expectedVersion) {
   return { assets, revision: manifest.revision };
 }
 
+function validatePublishedActionsOpenApi(source, expectedVersion, projectOrigin) {
+  let document;
+  try {
+    document = JSON.parse(source);
+  } catch {
+    throw new Error("O OpenAPI publicado de Actions não contém o documento gerado válido.");
+  }
+  if (document?.openapi !== "3.1.0" || document?.info?.version !== expectedVersion) {
+    throw new Error(`O OpenAPI publicado de Actions não corresponde à versão ${expectedVersion}.`);
+  }
+  const expectedServer = new URL(
+    "/functions/v1/aralearn-authoring-action",
+    projectOrigin
+  ).href;
+  if (document?.servers?.length !== 1 || document.servers[0]?.url !== expectedServer) {
+    throw new Error("O OpenAPI publicado de Actions não aponta para a função hospedada corrente.");
+  }
+  const actionNames = Object.values(document.paths || {})
+    .map((entry) => entry?.post?.operationId)
+    .filter((value) => typeof value === "string")
+    .sort();
+  if (JSON.stringify(actionNames) !== JSON.stringify(ACTIONS_TOOL_NAMES)) {
+    throw new Error("O OpenAPI publicado de Actions não contém as cinco operações canônicas.");
+  }
+}
+
 function cacheBustedUrl(value, key) {
   const url = new URL(value);
   url.searchParams.set("aralearn-publication-check", key);
@@ -440,6 +481,13 @@ export async function verifyPublishedSite({
     }
     assertNoSecrets(source, asset);
     if (asset === "./service-worker.js") assertVersionedServiceWorker(source, revision);
+    if (asset === ACTIONS_OPENAPI_ASSET) {
+      validatePublishedActionsOpenApi(
+        source,
+        normalizedExpectedVersion,
+        runtimeConfig.projectOrigin
+      );
+    }
   }
 
   await verifyCallback(baseUrl, fetchImpl, waitImpl);

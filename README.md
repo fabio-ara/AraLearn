@@ -41,8 +41,9 @@ Depois de entrar, a pessoa encontra Cursos próprios e Cursos compartilhados. Um
 seletor e uma prévia mostram objetivo, relação de acesso, quantidade de Módulos,
 Lições e Unidades, progresso e disponibilidade no dispositivo.
 
-**Começar**, **Continuar** ou **Retomar** abre o ponto adequado. **Voltar**
-restaura a origem real, a rolagem e o foco; **Home** oferece uma saída global.
+**Abrir** sempre entra no Curso pela lista de Módulos, sem transformar o progresso
+salvo em um atalho inesperado. **Voltar** restaura a origem real, a rolagem e o
+foco; **Home** oferece uma saída global.
 O acesso direto ao pai aparece somente quando uma jornada contextual o exige.
 Durante o estudo, a pessoa pode responder às práticas, receber retorno, marcar
 uma Unidade para rever, registrar uma Observação e consultar Fontes autorizadas.

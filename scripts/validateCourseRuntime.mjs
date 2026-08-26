@@ -256,7 +256,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260826094500" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260826143846" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -337,6 +337,9 @@ async function validateManifest() {
   );
   const continuousInspectionV2Migration = await read(
     "supabase/migrations/20260826094500_preserve_inspection_v1_and_scope_design_verification.sql"
+  );
+  const courseRlsActorLookupMigration = await read(
+    "supabase/migrations/20260826143846_optimize_course_rls_actor_lookup.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -482,6 +485,12 @@ async function validateManifest() {
       ) ||
       !continuousInspectionV2Migration.includes(
         "to_jsonb('20260826094500'::text)"
+      ) ||
+      !courseRlsActorLookupMigration.includes(
+        "$advance_course_rls_actor_lookup_manifest$"
+      ) ||
+      !courseRlsActorLookupMigration.includes(
+        "to_jsonb('20260826143846'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }

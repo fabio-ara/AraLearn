@@ -630,6 +630,8 @@ function renderStudyUnit({
   studyUnitIndex,
   packageStudyUnitOptions,
   feedbackOpen,
+  advancePending,
+  advanceError,
   observationCount,
   markedForReview,
   runtimeStatus,
@@ -661,6 +663,10 @@ function renderStudyUnit({
     ...packageStudyUnitOptions
   });
   const feedbackEntry = getPackageStudyUnitFeedbackEntry(studyUnit);
+  const nextActionLabel = feedbackEntry && !feedbackOpen
+    ? "Ver explicação"
+    : "Próxima Unidade";
+  const nextActionVisible = feedbackEntry && !feedbackOpen ? "Explicação" : "Próxima";
   const feedback = feedbackOpen && feedbackEntry
     ? renderPackageStudyUnitFeedback(feedbackEntry, {
         studyUnit,
@@ -673,8 +679,12 @@ function renderStudyUnit({
       '<div class="study-continue-popup-body">' + feedback.bodyHtml + "</div>" +
       feedback.dockHtml + '<div class="study-continue-popup-actions">' +
       '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-feedback"' +
-      ' title="Continuar" aria-label="Continuar">' +
-      renderUiIcon("play", "home-tab-icon") + "</button></div></section></div>"
+      ` title="Próxima Unidade" aria-label="Próxima Unidade"${advancePending
+        ? ' disabled aria-disabled="true"'
+        : ""}>` +
+      renderUiIcon(advancePending ? "rotate" : "play", "home-tab-icon") +
+      `<span>${advancePending ? "Guardando…" : "Próxima"}</span>` +
+      "</button></div></section></div>"
     : "";
   const modes = renderModeControls({
     label: "Unidade de estudo",
@@ -725,6 +735,9 @@ function renderStudyUnit({
     (manualEditor.status
       ? `<p class="study-manual-status" role="status" aria-live="polite">${escapeHtml(manualEditor.status)}</p>`
       : "") +
+    (advanceError
+      ? `<p class="study-advance-error" role="alert">${escapeHtml(advanceError)}</p>`
+      : "") +
     renderAssistanceDraftDock(manualEditor.assistance, "study_unit") +
     renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") +
     (manualEditor.editing ? renderStudyManualDock(manualEditor) :
@@ -751,8 +764,11 @@ function renderStudyUnit({
     ' title="Unidade anterior" aria-label="Unidade anterior">' +
     renderUiIcon("arrow-left", "home-tab-icon") + "</button>" +
     '<button class="open-mini study-continue-btn" type="button" data-action="next-study-unit"' +
-    ' title="Continuar" aria-label="Continuar">' + renderUiIcon("play", "home-tab-icon") +
-    "</button>" + feedbackMarkup + "</div></div></div></section>") +
+    ` title="${nextActionLabel}" aria-label="${nextActionLabel}"${advancePending
+      ? ' disabled aria-disabled="true"'
+      : ""}>` + renderUiIcon(advancePending ? "rotate" : "play", "home-tab-icon") +
+    `<span>${advancePending ? "Guardando…" : nextActionVisible}</span></button>` +
+    feedbackMarkup + "</div></div></div></section>") +
     "</section></div></section>" +
     "</main></section>";
 }
@@ -775,13 +791,14 @@ export function renderCourseStudyScreen({
   runtimeStatus = {},
   coursePermissionsById,
   selectedCourseId = null,
-  studyNavigation = null,
   homeLoadingCourseId = "",
   homeError = "",
   homeNotice = "",
   homePendingPersonalCopyDiscard = false,
   packageStudyUnitOptions = {},
   feedbackOpen = false,
+  advancePending = false,
+  advanceError = "",
   observationCount = 0,
   markedForReview = false,
   citationsOpen = false,
@@ -803,7 +820,6 @@ export function renderCourseStudyScreen({
       reviewUndo,
       runtimeStatus,
       selectedCourseId,
-      studyNavigation,
       homeLoadingCourseId,
       homeError,
       homeNotice,
@@ -836,6 +852,8 @@ export function renderCourseStudyScreen({
     studyUnitIndex: selection.studyUnitIndex,
     packageStudyUnitOptions,
     feedbackOpen,
+    advancePending,
+    advanceError,
     observationCount,
     markedForReview,
     runtimeStatus,

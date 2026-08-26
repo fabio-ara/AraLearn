@@ -4,6 +4,28 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.32] - 2026-08-26
+
+### Corrigido
+
+- Autoria abre diretamente a inspeção contínua das Unidades de estudo, mostra
+  seu conteúdo completo e oferece ações nomeadas para editar, observar,
+  auditar e acompanhar a materialização no contexto certo;
+- a entrada única **Abrir** passa sempre pelos Módulos, e o avanço entre
+  Unidades confirma primeiro a gravação local sem ficar bloqueado pelo envio
+  remoto;
+- a Assistência por IA usa uma folha estável e rolável, preserva a mensagem ao
+  pedir configuração e apresenta somente contexto útil à pessoa;
+- o OpenAPI de Actions acompanha o site publicado e é verificado com sua
+  versão, endpoint e cinco operações canônicas.
+
+### Desempenho
+
+- a persistência pessoal separa avanço local e sincronização remota sem perder
+  mutações concorrentes ou restaurar cache revogado;
+- as políticas de acesso aos Cursos calculam a identidade uma vez por consulta,
+  e as provas de concorrência aceitam somente a stack Supabase local.
+
 ## [0.0.31] - 2026-08-26
 
 ### Adicionado

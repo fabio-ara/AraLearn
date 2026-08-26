@@ -665,15 +665,16 @@ async function prepareContextualAssistance(page, request) {
     .toContainText("Unidade inteira");
   await expect(page.getByRole("button", { name: "Unidade inteira" })).toBeFocused();
   await page.getByRole("button", { name: "Conversar" }).click();
-  const dialog = page.getByRole("dialog", { name: /Unidade:/u });
+  const dialog = page.locator("[data-course-assistance]").getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await dialog.getByText("Serviço e modelo", { exact: true }).click();
+  const connection = dialog.locator(".course-assistance-connection");
+  await expect(connection).toHaveJSProperty("open", true);
   await dialog.locator("[data-course-assistance-provider]").selectOption("openai");
   await dialog.locator("[data-course-assistance-model]").selectOption("gpt-5.6-luna");
   await dialog.getByLabel("Chave da OpenAI").fill("segredo-somente-em-memoria");
   await dialog.getByLabel("Mensagem").fill(request);
   await dialog.getByRole("button", { name: "Enviar" }).click();
-  await expect(dialog.getByText("Plano discutível", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Antes da mudança", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Confirmar e preparar" }).click();
   await expect(dialog.getByText("Proposta validada", { exact: true })).toBeVisible();
   return dialog;
@@ -1399,7 +1400,7 @@ test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma 
 
   await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
   await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-b");
-  await page.getByRole("button", { name: "Começar Curso de Bruno" }).click();
+  await page.getByRole("button", { name: "Abrir Curso de Bruno" }).click();
   await openFirstStudyUnitByClicks(page);
   await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Editar", exact: true }).click();
@@ -1407,7 +1408,8 @@ test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma 
 
   await page.evaluate(() => globalThis.__manualHistoryApp.openCourses());
   await page.getByRole("combobox", { name: "Selecionar Curso" }).selectOption("course-history-a");
-  await page.getByRole("button", { name: "Retomar Curso de Ana" }).click();
+  await page.getByRole("button", { name: "Abrir Curso de Ana" }).click();
+  await openFirstStudyUnitByClicks(page);
   await expect(page.getByText("Texto salvo somente no Curso de Ana.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Desfazer última edição" })).toBeVisible();
@@ -1503,9 +1505,10 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests.length)).toBe(1);
 
   await page.getByRole("button", { name: "Assistência por IA" }).click();
-  await expect(page.getByRole("dialog", { name: /Unidade:/u })).toBeVisible();
+  const assistanceDialog = page.locator("[data-course-assistance]").getByRole("dialog");
+  await expect(assistanceDialog).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: /Unidade:/u })).toHaveCount(0);
+  await expect(assistanceDialog).toHaveCount(0);
   await expect(page.getByText(
     "Texto de inspeção revisado."
   )).toBeVisible();

@@ -346,7 +346,10 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   await expect(status).toHaveText("");
   await closeSettings.focus();
   await page.keyboard.press("Shift+Tab");
-  await expect(page.getByRole("button", { name: "Tema escuro" })).toBeFocused();
+  await expect(page.locator(".account-settings-sheet").getByRole("button", {
+    name: "Voltar",
+    exact: true
+  })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(closeSettings).toBeFocused();
   await page.keyboard.press("Escape");
@@ -480,7 +483,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await removeUser(owner?.id);
   });
 
-  test("Estudo real percorre a hierarquia, persiste o Curso e separa Voltar de Retomar", async ({
+  test("Estudo real percorre a hierarquia, persiste o Curso e mantém a entrada uniforme", async ({
     browser
   }, testInfo) => {
     const context = await browser.newContext({
@@ -495,10 +498,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     const revisedTitle = `${COURSE_TITLE} revisado`;
     const firstCardTitle = () => page.locator(".navigation-list article h3").first();
     const moveChild = async (childId, direction) => {
-      await page.locator(
+      const moveButton = page.locator(
         "[data-action='move-study-structure-child'][data-child-id='" + childId + "']" +
         "[data-direction='" + direction + "']"
-      ).click();
+      );
+      if (await moveButton.count() === 0) {
+        await page.locator(
+          "[data-action='select-study-structure-child'][data-child-id='" + childId + "']"
+        ).click();
+      }
+      await moveButton.click();
     };
     const saveStructure = async ({ title, goal, move }) => {
       await modes().getByRole("button", { name: "Editar" }).click();
@@ -508,13 +517,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Salvar edição" }).click();
       await expect(page.locator("[data-study-destination-heading]")).toHaveText(title);
     };
-    const resumeCurrentLevel = async () => {
+    const openHierarchy = async (...actions) => {
       await page.locator("[data-action='open-course']").click();
+      for (const action of actions) {
+        await page.getByRole("button", { name: action }).first().click();
+      }
     };
     try {
       await browserSignIn(page, owner.email);
       const homeEntry = page.locator("[data-action='open-course']");
-      await expect(homeEntry).toContainText("Começar");
+      await expect(homeEntry).toContainText("Abrir");
       await homeEntry.click();
       await expect(page.locator("[data-study-destination-heading]")).toHaveText(COURSE_TITLE);
       await expect(modes().getByRole("button", { name: "Visualizar" })).toBeVisible();
@@ -526,8 +538,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(firstCardTitle()).toHaveText("Módulo alternativo");
 
       await page.reload();
-      await expect(page.getByText(revisedTitle, { exact: true })).toBeVisible();
-      await resumeCurrentLevel();
+      await expect(page.locator(".home-course-selector-preview")).toContainText(revisedTitle);
+      await openHierarchy();
       await expect(firstCardTitle()).toHaveText("Módulo alternativo");
       await saveStructure({
         title: COURSE_TITLE,
@@ -545,7 +557,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       });
       await expect(firstCardTitle()).toHaveText("Lição alternativa");
       await page.reload();
-      await resumeCurrentLevel();
+      await openHierarchy("Abrir módulo");
       await expect(page.locator("[data-study-destination-heading]")).toHaveText("Módulo persistido");
       await expect(firstCardTitle()).toHaveText("Lição alternativa");
       await saveStructure({
@@ -565,7 +577,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       });
       await expect(firstCardTitle()).toHaveText("Microssequência alternativa");
       await page.reload();
-      await resumeCurrentLevel();
+      await openHierarchy("Abrir módulo", "Abrir lição");
       await expect(page.locator("[data-study-destination-heading]")).toHaveText("Lição persistida");
       await expect(firstCardTitle()).toHaveText("Microssequência alternativa");
       await saveStructure({
@@ -586,7 +598,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       });
       await expect(firstCardTitle()).toHaveText("Segunda Unidade compartilhada");
       await page.reload();
-      await resumeCurrentLevel();
+      await openHierarchy("Abrir módulo", "Abrir lição", "Abrir microssequência didática");
       await expect(page.locator("[data-study-destination-heading]")).toHaveText(
         "Microssequência persistida"
       );
@@ -620,15 +632,20 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Abrir unidade" }).first().click();
 
       await page.reload();
-      const resume = page.locator("[data-action='open-course']");
-      await expect(resume).toContainText("Retomar");
-      await resume.click();
+      const open = page.locator("[data-action='open-course']");
+      await expect(open).toContainText("Abrir");
+      await openHierarchy(
+        "Abrir módulo",
+        "Abrir lição",
+        "Abrir microssequência didática",
+        "Abrir unidade"
+      );
       await expect(page.getByText(
         "Conteúdo privado liberado somente para a pessoa escolhida.",
         { exact: true }
       )).toBeVisible();
       await page.getByRole("button", { name: "Voltar" }).click();
-      await expect(page.locator("[data-action='open-course']")).toBeFocused();
+      await expect(page.locator("[data-action='open-study-unit']").first()).toBeFocused();
       expect(failures.failures).toEqual([]);
     } finally {
       await context.close().catch(() => undefined);
@@ -665,7 +682,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         browserSignIn(learnerPage, learner.email)
       ]);
 
-      await expect(ownerPage.getByText(COURSE_TITLE, { exact: true })).toBeVisible();
+      await expect(ownerPage.getByRole("heading", { name: COURSE_TITLE, exact: true }))
+        .toBeVisible();
       await expect(learnerPage.getByText(
         "Nenhum Curso está disponível para estudo nesta conta.",
         { exact: true }
@@ -707,12 +725,14 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(ownerPage.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
       await ownerPage.getByRole("link", { name: `Abrir ${COURSE_TITLE}` }).click();
       await expect(ownerPage.locator(
-        ".course-authoring-surface[data-view='course'][data-section='planning']"
+        ".course-authoring-surface[data-view='course'][data-section='content']"
       )).toHaveAttribute("aria-busy", "false");
-      await expect(ownerPage.getByRole("heading", { name: "Planejamento" })).toBeVisible();
-      await ownerPage.locator("[data-authoring-destination='people'] > summary").click();
-      await ownerPage.getByRole("link", { name: "Pessoas" }).click();
-      await expect(ownerPage.getByRole("heading", { name: "Pessoas" })).toBeVisible();
+      await expect(ownerPage.getByRole("heading", { name: "Unidades", exact: true }))
+        .toBeVisible();
+      await ownerPage.locator(".course-authoring-task-menu > summary").click();
+      await ownerPage.getByRole("link", { name: "Pessoas e acesso", exact: true }).click();
+      await expect(ownerPage.getByRole("heading", { name: "Pessoas", exact: true }))
+        .toBeVisible();
       await expect(ownerPage.getByText("Somente você tem acesso.", { exact: true })).toBeVisible();
       await ownerPage.getByRole("button", { name: "Conceder acesso" }).click();
       await ownerPage.getByLabel("E-mail exato").fill(learner.email);
@@ -742,8 +762,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(learnerPage.getByRole("combobox", { name: "Selecionar Curso" }))
         .toHaveValue(courseId);
       await expect(learnerPreview).toContainText(COURSE_TITLE);
-      await expect(learnerPreview).toContainText("Compartilhado com você");
-      await learnerPreview.getByRole("button", { name: `Começar ${COURSE_TITLE}` }).click();
+      await expect(learnerPreview).toContainText("Curso compartilhado");
+      await learnerPreview.getByRole("button", { name: `Abrir ${COURSE_TITLE}` }).click();
       await learnerPage.getByRole("button", { name: "Abrir módulo" }).first().click();
       await learnerPage.getByRole("button", { name: "Abrir lição" }).first().click();
       await learnerPage.getByRole("button", { name: "Abrir microssequência didática" }).first().click();
@@ -754,8 +774,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       )).toBeVisible();
       await expectNoHorizontalOverflow(learnerPage, ".study-reader-screen");
 
+      const observationsLoaded = learnerPage.waitForResponse((response) =>
+        response.url().includes("/rpc/get_my_course_anchored_annotations_v1") &&
+        response.request().method() === "POST"
+      );
       await learnerPage.getByRole("button", { name: "Observações" }).click();
-      await learnerPage.getByText("Dúvida", { exact: true }).click();
+      await observationsLoaded;
+      await expect(learnerPage.locator(".study-observation-loading")).toHaveCount(0);
+      await learnerPage.locator(".study-observation-category-disclosure > summary").click();
+      await learnerPage.locator(".study-observation-category-chip", { hasText: "Dúvida" })
+        .click();
       await expect(learnerPage.getByRole("radio", { name: "Dúvida" })).toBeChecked();
       await learnerPage.getByRole("textbox", { name: "Observação", exact: true }).fill(
         "Esta observação pertence ao estudante e deve sobreviver à revogação."
@@ -763,7 +791,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerPage.getByRole("button", { name: "Adicionar" }).click();
       await expect(learnerPage.getByText("Sincronizada", { exact: true })).toBeVisible();
       await learnerPage.getByRole("button", { name: "Fechar" }).click();
-      await learnerPage.getByRole("button", { name: "Continuar" }).click();
+      await learnerPage.getByRole("button", { name: "Próxima Unidade" }).click();
       await expect(learnerPage.getByText(
         "O avanço confirma a prática e o estado pessoal do estudante.",
         { exact: true }

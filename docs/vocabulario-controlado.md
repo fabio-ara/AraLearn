@@ -767,13 +767,13 @@ Projeção consultável de itens disponíveis e de seus metadados; não é o reg
 
 ### Interação e cognição
 
-#### Começar, continuar ou retomar
+#### Abrir
 
-Ação contextual que inicia uma unidade, continua a sequência corrente ou retoma uma posição anterior; o rótulo deve refletir o estado real. O botão inicial mostra Começar, Continuar ou Retomar conforme o progresso real, em vez do rótulo genérico Play.
+Ação de entrada que abre o Curso selecionado pela lista de Módulos; posições salvas não mudam o nome nem pulam silenciosamente a hierarquia. O botão inicial mostra Abrir em qualquer estado de progresso e entra no Curso pela lista de Módulos.
 
 **Domínio e implementação.** Ação de entrada no Estudo; equivalente internacional: study entry action; símbolo: `study_entry_action`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `Play`. Distinguir de `reprodução de mídia`, `rolagem`, `avanço automático`.
+**Uso.** `restringir`. Distinguir de `reprodução de mídia`, `rolagem`, `avanço automático`.
 
 **Base.** [hipótese de produto](sistema-visual.md).
 

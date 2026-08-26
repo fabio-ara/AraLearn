@@ -10,6 +10,16 @@ import {
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const REQUEST_ID = "20000000-0000-4000-8000-000000000002";
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function course() {
   return {
     id: COURSE_ID,
@@ -193,6 +203,186 @@ test("persiste somente progresso e marca de revisão pela identidade direta do C
   assert.equal(JSON.stringify(api.calls).includes("workspace"), false);
   assert.equal([...cache.values.keys()].every((key) =>
     key.startsWith(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`)), true);
+});
+
+test("persistência local não espera o envio remoto anterior", async () => {
+  const cache = memoryCache();
+  const remoteStarted = deferred();
+  const releaseRemote = deferred();
+  let revision = 0;
+  let callCount = 0;
+  const repository = new CoursePersonalStateRepository({
+    courseId: COURSE_ID,
+    cache,
+    course: course(),
+    api: {
+      async loadPersonalState() { return null; },
+      async mutatePersonalState({ expectedRevision }) {
+        callCount += 1;
+        assert.equal(expectedRevision, revision);
+        if (callCount === 1) {
+          remoteStarted.resolve();
+          await releaseRemote.promise;
+        }
+        revision += 1;
+        return {
+          courseId: COURSE_ID,
+          revision,
+          updatedAt: "2026-08-17T12:00:00.000Z",
+          idempotent: false
+        };
+      }
+    },
+    clock: () => "2026-08-17T12:00:00.000Z",
+    uuidFactory: () => crypto.randomUUID()
+  });
+  await repository.initialize({ refresh: false });
+  await repository.setStudyUnitCompleted(reference("unit-a"), true, { synchronize: false });
+  const flushing = repository.flush();
+  await remoteStarted.promise;
+
+  let secondSettled = false;
+  const second = repository.setStudyUnitCompleted(
+    reference("unit-b"),
+    true,
+    { synchronize: false }
+  ).then(() => { secondSettled = true; });
+  await Promise.race([
+    second,
+    new Promise((resolve) => setTimeout(resolve, 100))
+  ]);
+  assert.equal(secondSettled, true);
+  assert.deepEqual(
+    cache.values.get(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`)
+      .state.progress.lessons["lesson-a"].completedStudyUnitIds,
+    ["unit-a", "unit-b"]
+  );
+
+  releaseRemote.resolve();
+  await Promise.all([second, flushing]);
+  assert.equal(repository.snapshot().pending, false);
+  assert.equal(callCount, 2);
+});
+
+test("duas persistências locais simultâneas preservam ambas as Unidades", async () => {
+  const repository = new CoursePersonalStateRepository({
+    courseId: COURSE_ID,
+    cache: memoryCache(),
+    course: course(),
+    api: remote(),
+    clock: () => "2026-08-17T12:00:00.000Z",
+    uuidFactory: () => crypto.randomUUID()
+  });
+  await repository.initialize({ refresh: false });
+
+  await Promise.all([
+    repository.setStudyUnitCompleted(reference("unit-a"), true, { synchronize: false }),
+    repository.setStudyUnitCompleted(reference("unit-b"), true, { synchronize: false })
+  ]);
+
+  assert.deepEqual(
+    repository.loadCanonicalState().progress.lessons["lesson-a"].completedStudyUnitIds,
+    ["unit-a", "unit-b"]
+  );
+});
+
+test("falha da gravação local preserva uma nova tentativa real", async () => {
+  const cache = memoryCache();
+  const putCache = cache.putCache.bind(cache);
+  let rejectNextWrite = false;
+  cache.putCache = async (...args) => {
+    if (rejectNextWrite) {
+      rejectNextWrite = false;
+      throw new Error("cache indisponível");
+    }
+    return putCache(...args);
+  };
+  const repository = new CoursePersonalStateRepository({
+    courseId: COURSE_ID,
+    cache,
+    course: course(),
+    api: remote(),
+    clock: () => "2026-08-17T12:00:00.000Z",
+    uuidFactory: () => REQUEST_ID
+  });
+  await repository.initialize({ refresh: false });
+
+  rejectNextWrite = true;
+  await assert.rejects(
+    () => repository.setStudyUnitCompleted(
+      reference("unit-a"),
+      true,
+      { synchronize: false }
+    ),
+    /cache indisponível/u
+  );
+  assert.equal(repository.isStudyUnitCompleted(reference("unit-a")), false);
+
+  await repository.setStudyUnitCompleted(
+    reference("unit-a"),
+    true,
+    { synchronize: false }
+  );
+  assert.equal(repository.isStudyUnitCompleted(reference("unit-a")), true);
+});
+
+test("revogação elimina gravação local já aceita sem ressuscitar o cache", async () => {
+  const baseCache = memoryCache();
+  const blockedPutStarted = deferred();
+  const releaseBlockedPut = deferred();
+  let blockNextPut = false;
+  const cache = {
+    ...baseCache,
+    async putCache(key, value) {
+      if (blockNextPut) {
+        blockNextPut = false;
+        blockedPutStarted.resolve();
+        await releaseBlockedPut.promise;
+      }
+      return baseCache.putCache(key, value);
+    }
+  };
+  const releaseRemote = deferred();
+  const repository = new CoursePersonalStateRepository({
+    courseId: COURSE_ID,
+    cache,
+    course: course(),
+    api: {
+      async loadPersonalState() { return null; },
+      async mutatePersonalState() {
+        await releaseRemote.promise;
+        const error = new Error("acesso revogado");
+        error.status = 403;
+        throw error;
+      }
+    },
+    clock: () => "2026-08-17T12:00:00.000Z",
+    uuidFactory: () => REQUEST_ID
+  });
+  await repository.initialize({ refresh: false });
+  await repository.setStudyUnitCompleted(reference("unit-a"), true, { synchronize: false });
+  const flushing = repository.flush().then(
+    () => null,
+    (error) => error
+  );
+
+  blockNextPut = true;
+  const second = repository.setStudyUnitCompleted(
+    reference("unit-b"),
+    true,
+    { synchronize: false }
+  );
+  await blockedPutStarted.promise;
+  releaseRemote.resolve();
+  releaseBlockedPut.resolve();
+  await second;
+  const flushError = await flushing;
+
+  assert.equal(flushError?.status, 403);
+  assert.equal(
+    baseCache.values.has(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`),
+    false
+  );
 });
 
 test("mantém uma mutação offline pendente com requestId e corpo imutáveis", async () => {
