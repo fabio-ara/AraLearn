@@ -342,6 +342,7 @@ function contextPage(options) {
       design: {
         parameters: [{
           parameterId: "scaffolding",
+          changeId: "19",
           value: "progressive",
           origin: "course",
           reason: "Apoio gradual.",

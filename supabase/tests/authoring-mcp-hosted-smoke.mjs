@@ -553,6 +553,7 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
       scope: { kind: "course", ref: created.courseId },
       parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
       value: 3,
+      mode: "explicit",
       origin: "author",
       reason: "Exercitar o desenho parametrizado no smoke hospedado."
     }

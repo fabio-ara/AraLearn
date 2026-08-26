@@ -67,7 +67,7 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
   const initialized = await initialize.json();
   assert.equal(initialized.result.serverInfo.version, "0.0.27");
   assert.match(initialized.result.instructions, /Curso vivo e mutável/iu);
-  assert.match(initialized.result.instructions, /não os fixe no prompt/iu);
+  assert.match(initialized.result.instructions, /phaseGuidance focal/iu);
 
   const listed = await handler()(request("tools/list"));
   const tools = (await listed.json()).result.tools;
@@ -91,7 +91,13 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   const resourcesResponse = await handler()(request("resources/list"));
   const resources = (await resourcesResponse.json()).result.resources;
   assert.deepEqual(resources.map(({ uri }) => uri), [
-    "aralearn://authoring/invariants",
+    "aralearn://authoring/planning-design",
+    "aralearn://authoring/materialization",
+    "aralearn://authoring/sources",
+    "aralearn://authoring/inspection",
+    "aralearn://authoring/audit-repair",
+    "aralearn://authoring/linguistic-didactic-review",
+    "aralearn://authoring/components",
     "ui://aralearn/course-inspector/0.0.23.html"
   ]);
   const componentResponse = await handler()(request("resources/read", {
@@ -233,8 +239,9 @@ test("MCP minimiza Observações e sinaliza quando o detalhe envia texto bruto",
   const inboxSerialized = JSON.stringify(inbox);
   assert.equal(inbox.structuredContent.data.dataDisclosure.rawObservationTextIncluded, false);
   assert.match(inbox.content[0].text, /omite o texto integral/iu);
+  assert.equal(inbox.structuredContent.data.items[0].target.id, "internal-study-unit");
   for (const protectedValue of [
-    protectedRef, "Estudante FEED", rawText, "internal-study-unit", "internal-topic"
+    protectedRef, "Estudante FEED", rawText, "internal-topic"
   ]) {
     assert.equal(inboxSerialized.includes(protectedValue), false, protectedValue);
   }

@@ -1,0 +1,17 @@
+[
+  {
+    "focus": "qualificador artificial e metadiscurso",
+    "before": "Esta curta explicação reúne três ideias e, nesta seção, mostra o que veremos.",
+    "after": "Um diálogo modal bloqueia a interação com o restante da página até ser concluído ou fechado."
+  },
+  {
+    "focus": "negativa defensiva e empilhamento de conceitos",
+    "before": "Não se trata apenas de foco: combine modal, inert, top layer, trap e retorno sem confundir os conceitos.",
+    "after": "Ao abrir o diálogo, mova o foco para ele. Ao fechar, devolva o foco ao controle que o abriu."
+  },
+  {
+    "focus": "sigla e metáfora técnica sem explicação",
+    "before": "A APG injeta um guardrail que ancora o fluxo no pipeline.",
+    "after": "A prática guiada apresenta uma etapa por vez e impede avançar enquanto a condição observável não for satisfeita."
+  }
+]

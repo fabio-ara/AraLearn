@@ -1056,6 +1056,7 @@ if (!accessToken) {
       scope: { kind: "course", ref: created.courseId },
       parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
       value: 3,
+      mode: "explicit",
       origin: "author",
       reason: "Exercitar a resolução explícita pelo MCP local."
     }

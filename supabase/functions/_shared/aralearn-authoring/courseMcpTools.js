@@ -605,6 +605,9 @@ const parameterIdSchema = stringSchema({ enum: [
 const designWriteOriginSchema = stringSchema({ enum: [
   "automatic", "author", "research_condition"
 ] });
+const explicitDesignWriteOriginSchema = stringSchema({ enum: [
+  "author", "research_condition"
+] });
 const integerParameterValueSchema = { type: "integer", minimum: 1, maximum: 64 };
 const explanationFormsParameterValueSchema = {
   type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
@@ -694,10 +697,25 @@ const courseDesignCommandSchema = {
       scope: courseDesignParameterScopeSchema,
       parameterId: parameterIdSchema,
       value: parameterValueSchema,
-      origin: designWriteOriginSchema,
-      reason: stringSchema({ minLength: 1, maxLength: 1_000 })
+      mode: stringSchema({
+        enum: ["automatic", "explicit"],
+        description: "automatic delega a resolução; explicit fixa a origem autoral ou de pesquisa."
       }),
+      origin: explicitDesignWriteOriginSchema,
+      reason: stringSchema({
+        minLength: 1,
+        maxLength: 1_000,
+        description: "Justificativa pública breve, sem raciocínio privado."
+      })
+      }, ["type", "scope", "parameterId", "value", "mode", "reason"]),
       allOf: [{
+        if: {
+          properties: { mode: { const: "automatic" } },
+          required: ["mode"]
+        },
+        then: forbidFields(["origin"]),
+        else: { required: ["origin"] }
+      }, {
         if: {
           properties: { parameterId: { const:
             "new_analysis_unit_ceiling_per_expository_study_unit" } },
@@ -804,24 +822,20 @@ const courseGuideSchema = objectSchema({
   avoid: entityTextListSchema
 });
 const courseModuleContentSchema = objectSchema({
-  id: stringSchema({ minLength: 1, maxLength: 240 }),
   title: stringSchema({ minLength: 1, maxLength: 300 }),
   guide: courseGuideSchema
 });
 const courseLessonContentSchema = objectSchema({
-  id: stringSchema({ minLength: 1, maxLength: 240 }),
   title: stringSchema({ minLength: 1, maxLength: 300 }),
   guide: courseGuideSchema
 });
 const courseTopicContentSchema = objectSchema({
-  id: stringSchema({ minLength: 1, maxLength: 240 }),
   label: stringSchema({ minLength: 1, maxLength: 2_000 }),
   kind: stringSchema({ enum: ["concept", "procedure", "representation", "term"] }),
   checks: entityTextListSchema,
   errors: entityTextListSchema
 });
 const courseMicrosequenceContentSchema = objectSchema({
-  id: stringSchema({ minLength: 1, maxLength: 240 }),
   title: stringSchema({ minLength: 1, maxLength: 300 }),
   goal: stringSchema({ minLength: 1, maxLength: 8_000 }),
   role: stringSchema({ enum: ["explain", "practice", "review", "support"] }),
@@ -830,7 +844,7 @@ const courseMicrosequenceContentSchema = objectSchema({
   covers: entityTextListSchema,
   checks: entityTextListSchema,
   errors: entityTextListSchema
-}, ["id", "title", "goal", "role", "dependsOn", "covers", "checks"]);
+}, ["title", "goal", "role", "dependsOn", "covers", "checks"]);
 const courseEntityIdSchema = stringSchema({ minLength: 1, maxLength: 240 });
 const courseEntitySchemaFor = ({ entityType, parentType, positionMinimum = 0, content }) => objectSchema({
   entityType: { const: entityType },
@@ -852,11 +866,19 @@ const courseEntitySchema = {
       entityType: "study_unit", parentType: "microsequence", positionMinimum: 1,
       content: {
         type: "object",
-        description: "Envelope completo validado pelo contrato do componente consultado em consultarComponentesDidaticos."
+        description: "Conteúdo validado pelo contrato consultado; id e position ficam no invólucro."
       }
     })
   ]
 };
+const courseEntitySchemaReference = { $ref: "#/$defs/courseEntity" };
+const courseEntityDeleteSchema = objectSchema({
+  entityType: stringSchema({
+    enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
+  }),
+  entityId: stringSchema({ minLength: 1, maxLength: 240 })
+});
+const courseEntityDeleteSchemaReference = { $ref: "#/$defs/courseEntityDelete" };
 
 const materializationStepSchema = objectSchema({
   id: uuidSchema,
@@ -939,13 +961,13 @@ const designApplicationSchema = objectSchema({
         maxItems: 32,
         uniqueItems: true,
         items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 }),
-        description: "Lista ordenada, sem repetição, exatamente igual aos refs package@version usados em content, response e feedback da mesma Unidade enviada em entityChanges."
+        description: "Refs package@version usados na mesma Unidade de entityChanges."
       }
     })
   }
 });
 designApplicationSchema.description =
-  "Em etapa didática concluída, descreve exatamente as Unidades de estudo presentes como upserts em entityChanges na mesma chamada; os IDs precisam coincidir.";
+  "Na conclusão didática, descreve as mesmas Unidades de entityChanges.";
 
 const sourceAttributionStudyUnitSchema = objectSchema({
   studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
@@ -956,14 +978,17 @@ const sourceAttributionApplicationsSchema = {
   maxItems: 64,
   items: sourceAttributionStudyUnitSchema
 };
+const sourceAttributionApplicationsSchemaReference = {
+  $ref: "#/$defs/sourceAttributionApplications"
+};
 const sourceAttributionApplicationSchema = objectSchema({
   contract: { const: "aralearn.course-source-attribution-application.v1" },
   contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
   didacticMicrosequenceId: stringSchema({ minLength: 1, maxLength: 240 }),
-  studyUnits: sourceAttributionApplicationsSchema
+  studyUnits: sourceAttributionApplicationsSchemaReference
 });
 sourceAttributionApplicationSchema.description =
-  "Em etapa didática concluída, atribui proveniência exatamente às mesmas Unidades de estudo enviadas como upserts em entityChanges e designApplication na mesma chamada.";
+  "Na conclusão didática, atribui Fontes às mesmas Unidades do lote.";
 
 const materializationCommandSchema = {
   ...objectSchema({
@@ -986,19 +1011,14 @@ const materializationCommandSchema = {
   sourceAttributionApplication: nullableString(sourceAttributionApplicationSchema),
   entityChanges: {
     ...objectSchema({
-    upserts: { type: "array", maxItems: 64, items: courseEntitySchema },
+    upserts: { type: "array", maxItems: 64, items: courseEntitySchemaReference },
     deletes: {
       type: "array",
       maxItems: 64,
-      items: objectSchema({
-        entityType: stringSchema({
-          enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
-        }),
-        entityId: stringSchema({ minLength: 1, maxLength: 240 })
-      })
+      items: courseEntityDeleteSchemaReference
     }
     }),
-    description: "Lote atômico da etapa, com no máximo 64 alterações. Em etapa didática concluída, envie aqui os upserts das Unidades produzidas; não as grave antes em commit_course_composition. Os IDs devem coincidir exatamente com designApplication e sourceAttributionApplication."
+    description: "Lote atômico da etapa. Na conclusão, os IDs coincidem com as duas aplicações."
   }
   }, ["operation", "authoringPartId", "materializationId", "expectedMaterializationVersion"]),
   allOf: [{
@@ -1079,7 +1099,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos fora das projeções de Observações. Consulte anchored_annotations para manifestações humanas: inbox e target omitem o texto integral, referências e rótulos pessoais, caminhos e links internos; detail exige includeObservationText=true e envia o texto da Observação ao cliente MCP conectado para uma triagem autoral específica, mantendo as demais omissões. Use course_sources para proveniência sem identidades pessoais nem caminhos do Storage: citationText identifica a Fonte para pessoas, humanLocator nomeia capítulo, seção, unidade, slide, figura ou tabela quando o material realmente os declara, e selector preserva a localização exata. Se metadados bibliográficos necessários estiverem ausentes, pergunte à pessoa em vez de inferir ou inventar. O download de um PDF exige includeAttachmentDownloadUrl=true e envia ao cliente MCP conectado uma credencial temporária de 60 segundos. Use instructional_plan para Partes, course_design para parâmetros, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê uma vista delimitada do Curso vivo. Escolha o menor recorte necessário; a primeira página pertinente inclui phaseGuidance focal. Preserve revisões e deep links. Texto integral de Observação e download temporário de PDF exigem as declarações explícitas do schema.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
@@ -1607,7 +1627,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso vivo, suas Anotações ancoradas e o ciclo de auditoria. Releia a vista correspondente, envie checks e evidências públicos sem raciocínio privado, proponha antes de aplicar e verifique depois da aplicação. Em update_course_sources, identifique os metadados realmente presentes e registre somente dados fornecidos ou verificados. Se faltar autoria, data, edição, periódico ou outro dado material à referência, proponha uma referência humana que explicite a lacuna, pergunte somente pelo que estiver ausente ou ambíguo e mostre a referência proposta antes de persistir enquanto houver incerteza; nunca complete por plausibilidade. citationText identifica a Fonte para pessoas, humanLocator registra um localizador declarado pelo material e selector preserva a posição exata. Em advance_part_materialization, uma etapa didática concluída persiste suas Unidades atomicamente: envie os mesmos IDs em entityChanges, designApplication e sourceAttributionApplication, sem commit_course_composition anterior. Aplicar ou desfazer uma correção exige confirmed=true após confirmação humana explícita. Use somente as versões exigidas; cada alteração é limitada e idempotente.",
+    description: "Altera o Curso por operação tipada. Releia a vista, preserve requestId e versões e siga phaseGuidance. Proponha antes de aplicar e verifique depois.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -1630,20 +1650,20 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       auditCommand: auditCommandSchema,
       variantCommand: courseVariantCommandSchema,
       materializationCommand: materializationCommandSchema,
-      upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
-      sourceAttributionApplications: sourceAttributionApplicationsSchema,
+      upserts: { type: "array", maxItems: 200, items: courseEntitySchemaReference },
+      sourceAttributionApplications: sourceAttributionApplicationsSchemaReference,
       deletes: {
         type: "array",
         maxItems: 200,
-        items: objectSchema({
-          entityType: stringSchema({
-            enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
-          }),
-          entityId: stringSchema({ minLength: 1, maxLength: 240 })
-        })
+        items: courseEntityDeleteSchemaReference
       }
       }, ["requestId", "courseId", "operation"]),
-      $defs: { sourceLinks: sourceLinksSchema },
+      $defs: {
+        sourceLinks: sourceLinksSchema,
+        courseEntity: courseEntitySchema,
+        courseEntityDelete: courseEntityDeleteSchema,
+        sourceAttributionApplications: sourceAttributionApplicationsSchema
+      },
       allOf: [{
         if: {
           properties: { operation: { const: "update_course_design" } },
@@ -1787,7 +1807,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "consultarComponentesDidaticos",
     title: "Consultar componentes didáticos",
-    description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto.",
+    description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto. contracts aceita exatamente um package por chamada.",
     inputSchema: {
       ...objectSchema({
       operation: stringSchema({
@@ -2678,7 +2698,8 @@ function mapPersonalCourseCopy(raw) {
 function mapChange(raw, {
   requireAnnotationConfirmation = true,
   requireAuditConfirmation = true,
-  allowApplicationCompositionMetadata = false
+  allowApplicationCompositionMetadata = false,
+  normalizeExternalDesignDecision = true
 } = {}) {
   const allowedFields = new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
@@ -2813,6 +2834,31 @@ function mapChange(raw, {
       fail("invalid_tool_argument", "O comando dos parâmetros recebeu campos incompatíveis.");
     }
     const command = boundedJsonObject(raw.designCommand, "designCommand", 32 * 1024);
+    if (normalizeExternalDesignDecision && command.type === "set_parameter") {
+      const mode = requiredText(command.mode, "designCommand.mode", { maximum: 16 });
+      if (!new Set(["automatic", "explicit"]).has(mode)) {
+        fail("invalid_tool_argument", "designCommand.mode é inválido.", {
+          field: "designCommand.mode"
+        });
+      }
+      if (mode === "automatic") {
+        if (command.origin != null) {
+          fail(
+            "invalid_tool_argument",
+            "Uma decisão automática não recebe origin explícita.",
+            { field: "designCommand.origin" }
+          );
+        }
+        command.origin = "automatic";
+      } else if (!new Set(["author", "research_condition"]).has(command.origin)) {
+        fail(
+          "invalid_tool_argument",
+          "Uma decisão explícita exige origin author ou research_condition.",
+          { field: "designCommand.origin" }
+        );
+      }
+      delete command.mode;
+    }
     return route("POST", `/v1/courses/${courseId}/course-design/changes`, requestId, {
       requestId,
       expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
@@ -3265,7 +3311,8 @@ export function mapAuthoringApplicationToolCall(
     return mapChange(raw, {
       requireAnnotationConfirmation: false,
       requireAuditConfirmation: false,
-      allowApplicationCompositionMetadata: true
+      allowApplicationCompositionMetadata: true,
+      normalizeExternalDesignDecision: false
     });
   }
   return mapAuthoringMcpToolCall(name, raw);

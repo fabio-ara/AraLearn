@@ -60,10 +60,13 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
-O recurso de conhecimento `aralearn://authoring/invariants` contém somente
-invariantes de operação: Curso vivo, leitura antes de escrita, estado dinâmico
-persistido, Parte como agrupamento operacional, descoberta progressiva de
-componentes, materialização por etapas retomáveis e síntese breve do resultado.
+As instruções permanentes contêm somente invariantes transversais: Curso vivo,
+leitura focal antes da escrita, revisões correntes, ausência de invenção e ciclo
+de proposta, aplicação e verificação. Planejamento, desenho, materialização,
+Fontes, inspeção, Auditoria e componentes possuem recursos próprios sob
+`aralearn://authoring/*`. A primeira leitura pertinente também devolve
+`phaseGuidance`; assim o cliente recebe a orientação da fase sem carregar
+simultaneamente os manuais das demais fases.
 
 O recurso visual opcional `ui://aralearn/course-inspector/0.0.23.html` segue a
 extensão MCP Apps. Ele representa a prévia de uma Unidade de estudo, os
@@ -280,9 +283,11 @@ detalhe exige `annotationId` e `includeObservationText: true`. A página admite 
 de até 240 caracteres e resposta de até 256 KiB. Cada item usa
 `aralearn.mcp-anchored-annotation-page.v1`. A projeção comum contém somente
 `annotationId`, versão, origem, canal, espécie e papel da pessoa contribuinte,
-rótulo educacional do alvo, revisão observada, síntese, classificação sem IDs,
+identidade opaca e rótulo educacional do alvo, revisão observada, síntese, classificação sem IDs,
 estado e capacidades. Ela não envia `contributor.ref`, o rótulo protegido da
-pessoa, IDs e caminhos do alvo, links profundos nem IDs de Tópico. O texto
+pessoa, caminhos do alvo, links profundos nem IDs de Tópico. A identidade opaca
+do alvo permite localizar a Unidade, Fonte ou Âncora observada sem expor a
+hierarquia. O texto
 integral da Observação aparece somente no detalhe explicitamente declarado;
 horários exatos permanecem fora. `dataDisclosure` identifica o cliente MCP
 conectado, a finalidade e os campos omitidos. O texto de uma resposta autoral
@@ -311,6 +316,11 @@ registro de retirada, ela aparece `available: false` e sem link profundo. Depois
 física prevista pelo ciclo de limpeza das Anotações, a exclusão em cascata remove apenas o
 vínculo e o identificador da projeção; nenhum texto, pseudônimo ou dado pessoal
 foi copiado para rodada, achado ou correção.
+
+Cada parâmetro efetivo do desenho inclui seu `changeId` corrente. O cliente usa
+essa identidade em `parameterRefs` para registrar quais decisões de desenho
+foram realmente auditadas; valor e justificativa continuam legíveis, e o
+servidor recusa referência herdada ou substituída que tenha ficado stale.
 
 Ao pedir que o contexto MCP inclua textos de Observações selecionadas, o
 cliente informa `includeObservationText: true`. Sem essa declaração, a leitura
@@ -673,8 +683,8 @@ Para conectar um cliente:
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
 3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das cinco ferramentas, do recurso de invariantes e, num
-   cliente compatível, do recurso visual versionado;
+5. confira a descoberta das cinco ferramentas, dos recursos focais de autoria
+   e, num cliente compatível, do recurso visual versionado;
 6. faça primeiro uma leitura sem mutação;
 7. teste criação e alteração somente num Curso de desenvolvimento.
 

@@ -1169,6 +1169,11 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
     windowValue: new FakeWindow()
   });
   await surface.open();
+  const parameterForm = root.innerHTML.match(
+    /<form class="course-design-parameter-form"[\s\S]*?<\/form>/u
+  )?.[0] || "";
+  assert.match(parameterForm, /Este formulário fixa uma decisão explícita/iu);
+  assert.doesNotMatch(parameterForm, /<option value="automatic"/u);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {

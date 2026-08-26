@@ -426,7 +426,15 @@ function auditContextPage({
         items: []
       },
       design: {
-        parameters: [],
+        parameters: [{
+          parameterId: "required_explanation_forms",
+          changeId: "20",
+          value: ["plain_definition", "concrete_example"],
+          origin: "author",
+          reason: "Explicitar definição e exemplo.",
+          sourceScope: { kind: "course", ref: COURSE_ID },
+          inherited: true
+        }],
         guidance: [],
         componentPolicy: {
           changeId: null,
@@ -673,6 +681,7 @@ test("auditoria owner vincula RPC/query e prepara deep links canônicos e limita
   });
   const encodedSource = "%20%20fonte-literal-%C3%A1%20%20";
   assert.equal(result.context.sources[0].sourceId, "  fonte-literal-á  ");
+  assert.equal(result.context.design.parameters[0].changeId, "20");
   assert.equal(result.context.sources[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
     `?section=sources&sourceId=${encodedSource}`);
@@ -904,6 +913,44 @@ test("registro de auditoria deriva check estrutural e ids estáveis antes do RPC
   assert.equal(writes[0].p_actor_id, USER_ID);
   assert.equal(writes[0].p_channel, "mcp");
   assert.equal(writes[0].p_expected_course_revision, 7);
+
+  const validWrites = [];
+  const validContext = auditContextPage();
+  validContext.query.annotationIds = [];
+  validContext.context.annotations = [];
+  const validAdapter = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body);
+    if (url.endsWith("/get_owned_course_audit_cycle_for_actor_v1")) {
+      return json(validContext);
+    }
+    validWrites.push(payload);
+    return json({
+      contract: "aralearn.course-audit-cycle-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      auditSetVersion: 5,
+      requestId: "request-audit-adapter-valid-0001",
+      idempotent: false,
+      changed: true,
+      change: {
+        type: "record_audit",
+        auditRunId: AUDIT_RUN_ID,
+        findingRefs: [],
+        correctionRef: null
+      },
+      finding: null,
+      correction: null,
+      suggestedAnnotationActions: []
+    });
+  });
+  await validAdapter.executeCourseAuditCycleCommand({
+    ...mutation,
+    requestId: "request-audit-adapter-valid-0001"
+  });
+  assert.equal(validWrites[0].p_command.checks[0].result, "passed");
+  assert.equal(validWrites[0].p_command.findings.length, 0);
+  assert.match(validWrites[0].p_command.checks[0].publicEvidence,
+    /encaixe semântico permanece para a auditoria humana/iu);
 });
 
 test("retry alcança o receipt antes do enriquecimento nos três comandos contextuais", async () => {

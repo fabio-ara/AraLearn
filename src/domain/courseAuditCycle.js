@@ -750,16 +750,23 @@ function designContext(value, code) {
   }
   const parameters = value.parameters.map((entry) => {
     exact(entry, [
-      "parameterId", "value", "origin", "reason", "sourceScope", "inherited"
+      "parameterId", "changeId", "value", "origin", "reason", "sourceScope", "inherited"
     ], code, "Um parâmetro efetivo");
     if (typeof entry.inherited !== "boolean") fail(code, "A herança do parâmetro é inválida.");
     byteBound(entry.value, 2048, code, "O valor do parâmetro");
+    const changeId = entry.changeId === null
+      ? null
+      : text(entry.changeId, 19, 19, code, "A mudança do parâmetro");
+    if (changeId !== null && !DECIMAL_ID_PATTERN.test(changeId)) {
+      fail(code, "A mudança do parâmetro é inválida.");
+    }
     return {
       parameterId: (() => {
         const parameterId = text(entry.parameterId, 160, 640, code, "A identidade do parâmetro");
         if (!PARAMETER_ID_PATTERN.test(parameterId)) fail(code, "A identidade do parâmetro é inválida.");
         return parameterId;
       })(),
+      changeId,
       value: entry.value,
       origin: text(entry.origin, 80, 320, code, "A origem do parâmetro"),
       reason: text(entry.reason, 1000, 4096, code, "A justificativa do parâmetro", { preserveLayout: true }),

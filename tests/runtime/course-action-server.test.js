@@ -125,7 +125,9 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
     "/consultarComponentesDidaticos"
   ]);
   assert.equal(JSON.stringify(openApi).includes("Workspace"), false);
-  assert.deepEqual(openApi.components.schemas, {});
+  assert.deepEqual(Object.keys(openApi.components.schemas), [
+    "SuccessResponse", "ErrorResponse"
+  ]);
   for (const pathValue of Object.values(openApi.paths)) {
     assert.ok(pathValue.post.description.length <= 300);
   }
@@ -137,6 +139,10 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
     assert.match(readDescription, new RegExp(view, "u"));
   }
   const oauth = openApi.components.securitySchemes.AraLearnOAuth;
+  assert.match(
+    openApi.paths["/consultarComponentesDidaticos"].post.description,
+    /contracts aceita exatamente um package/iu
+  );
   assert.match(oauth.flows.authorizationCode.authorizationUrl, /authoring-action\/oauth\/authorize$/u);
   assert.doesNotMatch(oauth.flows.authorizationCode.authorizationUrl, /authoring-mcp/u);
 });
@@ -167,7 +173,24 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
       import.meta.url
     )
   );
-  assert.ok(file.byteLength < 96 * 1024);
+  assert.ok(file.byteLength < 72 * 1024);
+  const openApi = JSON.parse(file);
+  const inputSchemas = Object.values(openApi.paths).map(
+    ({ post }) => post.requestBody.content["application/json"].schema
+  );
+  assert.equal(inputSchemas.some((schema) => JSON.stringify(schema).includes('"allOf"')), false);
+  assert.match(openApi.paths["/alterarCurso"].post.description, /mode automatic/iu);
+  const changeInput = openApi.paths["/alterarCurso"].post.requestBody
+    .content["application/json"].schema.description;
+  assert.match(changeInput, /sourceAttributionApplications/iu);
+  assert.match(changeInput, /nunca em content/iu);
+  assert.match(changeInput, /record_step sempre inclui[\s\S]+resultFacts/iu);
+  assert.match(changeInput,
+    /record_audit e verify_finding incluem ao menos um check factual_quality, um pedagogical_quality e um editorial_quality/iu);
+  const readInput = openApi.paths["/lerCurso"].post.requestBody
+    .content["application/json"].schema.description;
+  assert.match(readInput, /part_materialization/iu);
+  assert.match(readInput, /proíbe expectedRevision/iu);
 });
 
 test("migration de Actions restaura somente a execução server-side do OAuth", async () => {

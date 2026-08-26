@@ -4116,7 +4116,7 @@ export function createCourseAuthoringSurface({
           return;
         }
       }
-      if (!new Set(["automatic", "author", "research_condition"]).has(origin) ||
+      if (!new Set(["author", "research_condition"]).has(origin) ||
           !reason || reason.length > 1_000) {
         state.designFailure = "Informe a origem e uma justificativa clara.";
         render();

@@ -24,6 +24,12 @@ Planejamento, Fontes, Observações, Auditoria, Variantes e Pesquisa aparecem
 como vistas de `lerCurso` ou operações fechadas de `alterarCurso`. O GPT não
 recebe uma rota genérica para banco nem uma operação por tabela.
 
+O OpenAPI apresenta todos os campos e operações, mas deixa condicionais de
+exclusão e descrições mecânicas profundas para o mesmo validador server-side
+usado pelo MCP. A primeira leitura da fase inclui `phaseGuidance` focal.
+Isso reduz o contrato importado sem tornar a escrita livre nem criar uma API de
+negócio paralela.
+
 ## Preparar um cliente OAuth
 
 A configuração começa antes de o GPT possuir seu identificador definitivo. A
@@ -114,6 +120,19 @@ explica a operação proposta. Uma escrita usa um identificador de pedido estáv
 e a revisão esperada. Se o Curso mudar, a Action devolve conflito para que a
 conversa releia o estado, em vez de sobrescrever trabalho novo.
 
+Em parâmetros, `clear_parameter` remove a decisão local e restaura a herança.
+`set_parameter` com `mode: automatic` delega a resolução ao AraLearn/GPT e
+registra o valor resolvido com justificativa pública breve. `mode: explicit`
+fixa uma decisão com `origin: author|research_condition`. O servidor converte
+essas formas inequívocas para o mesmo domínio canônico usado pela aplicação.
+
+Ao registrar ou verificar uma rodada de Auditoria, a Action envia ao menos um
+check de qualidade factual, um de qualidade pedagógica e um de qualidade
+editorial. A conformidade estrutural é calculada pelo servidor. O contexto
+focal devolve a identidade corrente das parametrizações e a identidade opaca
+do alvo de cada Observação para que o GPT consiga ligar decisão, pendência,
+proposta e reparo sem copiar o Curso inteiro para a conversa.
+
 Ao registrar Fontes, o GPT usa somente metadados fornecidos ou verificados. Se
 autoria, data, edição, periódico ou outro dado necessário estiver ausente, ele
 explica a lacuna e pergunta à pessoa em vez de inventar. A citação identifica a
@@ -159,6 +178,10 @@ O OpenAPI é gerado a partir do catálogo corrente:
 npm.cmd run actions:openapi:check
 npm.cmd run test:authoring:actions
 ```
+
+O arquivo gerado deve permanecer abaixo de 72 KiB. O teste também confirma que
+as condicionais removidas do documento continuam impostas pelo mapeador e pelos
+validadores do servidor.
 
 Se a importação divergir, regenere o documento com `npm run actions:openapi` e
 revise o diff. Se a conexão falhar antes do consentimento, confronte

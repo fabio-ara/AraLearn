@@ -1860,9 +1860,14 @@ async function deterministicRepresentationFacts(context, auditRunId) {
     studyUnit,
     intent: context?.intent
   });
+  const intent = jsonRecord(context?.intent) ? context.intent : {};
+  const mechanicalRepresentationConstraint = [
+    "structureIds", "taskOperationIds", "practiceModeIds", "mustPreserve"
+  ].some((field) => Array.isArray(intent[field]) && intent[field].length > 0) ||
+    intent.notationIsLearningObject === true;
   const result = !audit.structural.valid
     ? "failed"
-    : audit.overallFit === "substitute"
+    : mechanicalRepresentationConstraint && audit.overallFit === "substitute"
       ? "uncertain"
       : "passed";
   const checkId = await deterministicAuditUuid(
@@ -1878,7 +1883,9 @@ async function deterministicRepresentationFacts(context, auditRunId) {
       statement: "A Unidade de estudo satisfaz os contratos dos componentes e sua representação corresponde à intenção persistida."
     },
     result,
-    publicEvidence: auditPublicEvidence(audit),
+    publicEvidence: audit.structural.valid && !mechanicalRepresentationConstraint
+      ? "A Unidade satisfaz os contratos estruturais dos componentes. Não há faceta representacional mecânica explícita; o encaixe semântico permanece para a auditoria humana."
+      : auditPublicEvidence(audit),
     adequacy: result === "passed"
       ? "sufficient"
       : result === "failed"

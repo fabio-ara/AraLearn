@@ -46,7 +46,7 @@ auditoria:
 | `aralearn.course-access-grant-request.v1` | confirmação imediata e genérica de uma solicitação de acesso ao Estudo |
 | `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
 | `aralearn.course-anchored-annotation-page.v1`, `aralearn.course-anchored-annotation.v1` e `aralearn.course-anchored-annotation-change.v1` | página, item protegido e recibo de Anotações ancoradas |
-| `aralearn.mcp-anchored-annotation-page.v1` e `aralearn.mcp-anchored-annotation-change.v1` | projeção minimizada para MCP ou Actions, sem referência protegida, caminhos ou texto comum |
+| `aralearn.mcp-anchored-annotation-page.v1` e `aralearn.mcp-anchored-annotation-change.v1` | projeção minimizada para MCP ou Actions, com identidade opaca do alvo e sem referência pessoal protegida, caminhos ou texto comum |
 | `aralearn.course-audit-context.v1` | contexto focal corrente que pode ser auditado |
 | `aralearn.course-instructional-audit-run.v1`, `aralearn.course-audit-finding.v1` e `aralearn.course-authoring-correction.v1` | rodada imutável, achado versionado e ponto de controle da correção |
 | `aralearn.course-audit-cycle-page.v1` e `aralearn.course-audit-cycle-change.v1` | leitura paginada/detalhada e recibo estrito do ciclo |

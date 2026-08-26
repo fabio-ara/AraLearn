@@ -9,6 +9,7 @@ import {
   validateAuthoringApplicationToolOutput,
   validateAuthoringMcpToolOutput
 } from "./courseMcpTools.js";
+import { courseAuthoringGuidanceForCall } from "./courseKnowledge.js";
 
 function parseStudyUnitJson(source) {
   try {
@@ -84,6 +85,7 @@ function projectAnnotationForMcp(annotation, { includeObservationText = false } 
     },
     target: {
       kind: annotation.target?.kind ?? null,
+      id: annotation.target?.id ?? null,
       label: annotationTargetLabel(annotation.target),
       currentAvailable: annotation.target?.currentAvailable === true
     },
@@ -122,7 +124,6 @@ function annotationMcpDisclosure(includeObservationText) {
       "courseId",
       "contributor.ref",
       "contributor.label",
-      "target.id",
       "target.observedPath",
       "target.currentPath",
       "target.deepLink",
@@ -144,7 +145,10 @@ function projectSelectedAuditAnnotation(annotation, { includeObservationText = f
     state: annotation.state ?? null,
     category: annotation.category ?? null,
     briefSummary: annotation.briefSummary ?? null,
-    target: { kind: annotation.target?.kind ?? null },
+    target: {
+      kind: annotation.target?.kind ?? null,
+      id: annotation.target?.id ?? null
+    },
     ...(includeObservationText ? { rawText: annotation.rawText ?? null } : {})
   };
 }
@@ -455,13 +459,19 @@ async function resourceLibraryResult(args, publicAppUrl) {
     intent = "",
     ...facets
   } = args;
+  const packageRequests = packages.map((identity) => {
+    const match = /^(.+)@(\d+\.\d+\.\d+)$/u.exec(String(identity || "").trim());
+    return match
+      ? { packageId: match[1], version: match[2] }
+      : identity;
+  });
   let result;
   if (operation === "explore") {
     result = RESOURCE_CATALOG.explore({ slot: args.slot });
   } else if (operation === "search") {
     result = RESOURCE_CATALOG.search({ ...facets, query, limit: facets.limit ?? 8 });
   } else if (operation === "inspect") {
-    result = RESOURCE_CATALOG.inspect(packages);
+    result = RESOURCE_CATALOG.inspect(packageRequests);
   } else if (operation === "contracts") {
     if (packages.length > 1) {
       throw new AuthoringApiError(
@@ -470,7 +480,7 @@ async function resourceLibraryResult(args, publicAppUrl) {
         "contracts aceita um componente didático exato por chamada."
       );
     }
-    result = RESOURCE_CATALOG.contracts(packages);
+    result = RESOURCE_CATALOG.contracts(packageRequests);
   } else if (operation === "validate_study_unit") {
     result = RESOURCE_CATALOG.validateStudyUnit(parseStudyUnitJson(studyUnitJson));
   } else if (operation === "audit_representation") {
@@ -566,12 +576,18 @@ export async function executeCourseTool({
     principal,
     deadlineAt
   });
-  const data = surface === "mcp"
+  let data = surface === "mcp"
     ? projectCourseToolResultForMcp(result.data, {
         includeObservationText: rawArguments?.includeObservationText === true,
         includeAttachmentDownloadUrl:
           rawArguments?.includeAttachmentDownloadUrl === true
       })
     : result.data;
+  const phaseGuidance = surface === "mcp"
+    ? courseAuthoringGuidanceForCall(name, rawArguments)
+    : null;
+  if (phaseGuidance && data && typeof data === "object" && !Array.isArray(data)) {
+    data = { ...data, phaseGuidance };
+  }
   return validatedSuccess(name, result.requestId, data, surface);
 }
