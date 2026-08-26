@@ -1523,6 +1523,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:private.course_design_target_human_snapshot_v1(p_context jsonb, p_didactic_microsequence_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_effective_source_attribution_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
       "caseId": "course-source-provenance"
     },
@@ -1561,6 +1565,14 @@
     {
       "object": "function:private.course_plan_without_sources_v1(p_plan jsonb)",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "function:private.course_relevant_design_fingerprint_v1(p_context jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.course_relevant_design_fingerprint_v2(p_context jsonb, p_didactic_microsequence_id text)",
+      "caseId": "course-authoring-experience"
     },
     {
       "object": "function:private.course_source_context_plan_items_v1(p_course_id uuid, p_plan_item_ids jsonb)",
@@ -1631,6 +1643,10 @@
       "caseId": "course-audit-corrections"
     },
     {
+      "object": "function:private.execute_course_audit_cycle_command_pre_continuous_inspection_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-audit-corrections"
+    },
+    {
       "object": "function:private.execute_course_source_command_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
       "caseId": "course-source-provenance"
     },
@@ -1693,6 +1709,10 @@
     {
       "object": "function:private.list_course_review_items_for_actor_v1(p_actor_id uuid, p_limit integer, p_before_marked_at timestamp with time zone, p_before_course_id uuid, p_before_study_unit_id text)",
       "caseId": "study-course-experience"
+    },
+    {
+      "object": "function:private.list_course_study_units_for_actor_continuous_v2(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_scope_kind text, p_scope_id text, p_anchor_study_unit_id text, p_cursor_study_unit_id text, p_direction text, p_limit integer, p_max_bytes integer)",
+      "caseId": "course-authoring-experience"
     },
     {
       "object": "function:private.list_course_study_units_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_scope_kind text, p_scope_id text, p_anchor_study_unit_id text, p_cursor_study_unit_id text, p_direction text, p_limit integer, p_max_bytes integer)",
@@ -2076,6 +2096,10 @@
     },
     {
       "object": "function:public.list_owned_course_study_units_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_scope_kind text, p_scope_id text, p_anchor_study_unit_id text, p_cursor_study_unit_id text, p_direction text, p_limit integer, p_max_bytes integer)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.list_owned_course_study_units_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_scope_kind text, p_scope_id text, p_anchor_study_unit_id text, p_cursor_study_unit_id text, p_direction text, p_limit integer, p_max_bytes integer)",
       "caseId": "course-authoring-experience"
     },
     {
