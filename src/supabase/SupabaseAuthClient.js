@@ -517,6 +517,33 @@ export class SupabaseAuthClient {
     );
   }
 
+  async getActionOAuthAuthorizationDetails(rawAuthorizationId) {
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) throw new Error("Entre na sua conta para revisar esta conexão.");
+    const id = authorizationId(rawAuthorizationId);
+    return this.http.request(
+      `/functions/v1/aralearn-authoring-action/oauth/authorizations/${encodeURIComponent(id)}`,
+      { method: "GET", accessToken }
+    );
+  }
+
+  async decideActionOAuthAuthorization(rawAuthorizationId, action) {
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) throw new Error("Entre na sua conta para revisar esta conexão.");
+    const id = authorizationId(rawAuthorizationId);
+    if (!new Set(["approve", "deny"]).has(action)) {
+      throw new Error("Decisão OAuth inválida.");
+    }
+    return this.http.request(
+      `/functions/v1/aralearn-authoring-action/oauth/authorizations/${encodeURIComponent(id)}`,
+      {
+        method: "POST",
+        accessToken,
+        body: { action }
+      }
+    );
+  }
+
   async signOut() {
     const accessToken = this.session?.access_token || null;
     if (accessToken) {

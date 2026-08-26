@@ -14,7 +14,7 @@ import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.j
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
 import {
-  readOAuthAuthorizationId,
+  readOAuthAuthorizationRequest,
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
@@ -1306,7 +1306,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
 async function start(root) {
   authStore = await AuthSessionStore.open(globalThis.indexedDB);
   watchLocalConnection(authStore);
-  const oauthAuthorizationId = readOAuthAuthorizationId();
+  const oauthAuthorizationRequest = readOAuthAuthorizationRequest();
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
     renderAuthGate({ root, configured: false });
@@ -1341,8 +1341,13 @@ async function start(root) {
     renderAuthGate({ root, authClient, configured: true });
     return;
   }
-  if (oauthAuthorizationId) {
-    await renderOAuthAuthorizationConsent({ root, authClient, authorizationId: oauthAuthorizationId });
+  if (oauthAuthorizationRequest.authorizationId) {
+    await renderOAuthAuthorizationConsent({
+      root,
+      authClient,
+      authorizationId: oauthAuthorizationRequest.authorizationId,
+      channel: oauthAuthorizationRequest.channel
+    });
     return;
   }
   activeUserId = session.user.id;

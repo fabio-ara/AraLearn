@@ -5,6 +5,7 @@ import {
   OAUTH_AUTHORING_PERMISSION_LABELS,
   assertOAuthAuthoringScope,
   readOAuthAuthorizationId,
+  readOAuthAuthorizationRequest,
   renderOAuthAuthorizationConsent,
   redirectToOAuthClient
 } from "../../src/ui/OAuthAuthorizationConsent.js";
@@ -14,6 +15,16 @@ test("consentimento aceita somente continuidade sem token de identidade", () => 
   for (const scope of ["openid", "email", "offline_access openid", "", "offline_access offline_access"]) {
     assert.throws(
       () => assertOAuthAuthoringScope(scope),
+      /permissões incompatíveis/u
+    );
+  }
+});
+
+test("consentimento de Actions aceita somente a identidade solicitada pelo GPT", () => {
+  assert.deepEqual(assertOAuthAuthoringScope("openid email", "actions"), ["openid", "email"]);
+  for (const scope of ["openid", "email", "offline_access", "email openid", ""]) {
+    assert.throws(
+      () => assertOAuthAuthoringScope(scope, "actions"),
       /permissões incompatíveis/u
     );
   }
@@ -69,6 +80,12 @@ test("consentimento lê somente o identificador OAuth da consulta", () => {
     "authorization-123"
   );
   assert.equal(readOAuthAuthorizationId({ search: "?outro=valor" }), "");
+  assert.deepEqual(
+    readOAuthAuthorizationRequest({
+      search: "?action_authorization_id=action-123&authorization_id=mcp-123"
+    }),
+    { authorizationId: "action-123", channel: "actions" }
+  );
 });
 
 test("redirecionamento OAuth aceita HTTPS e HTTP estritamente local", () => {

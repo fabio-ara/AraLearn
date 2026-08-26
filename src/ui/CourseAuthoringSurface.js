@@ -264,12 +264,6 @@ function normalizeCoursePeople(value, courseId) {
   return Object.freeze({ owner, people: Object.freeze(people) });
 }
 
-function ownershipLabel(value) {
-  if (value === "owned") return "Seu Curso";
-  if (value === "shared") return "Compartilhado";
-  return "";
-}
-
 function accessLabel(course) {
   if (course?.ownership === "shared" || course?.canEdit === false) return "Somente leitura";
   return "";
@@ -287,7 +281,6 @@ function courseCountsLabel(value) {
 
 function courseMeta(course) {
   const values = [
-    ownershipLabel(course?.ownership),
     accessLabel(course),
     courseCountsLabel(course?.counts)
   ]
@@ -1594,7 +1587,7 @@ function renderOverviewSection(state) {
     '<header class="course-authoring-overview-identity"><p>Curso em edição</p>' +
     `<h2 id="course-authoring-section-title">${escapeHtml(course.title)}</h2>` +
     (course.goal ? `<p>${escapeHtml(course.goal)}</p>` : "") +
-    `<span>${escapeHtml(accessLabel(course) || "Acesso ao Curso")}</span></header>` +
+    `<span>${escapeHtml(accessLabel(course) || "Curso próprio")}</span></header>` +
     renderOverviewNextAction(state) +
     '<section class="course-authoring-task-section" aria-labelledby="course-authoring-task-title">' +
     '<div><h3 id="course-authoring-task-title">O que você quer fazer?</h3>' +
@@ -1688,9 +1681,6 @@ function renderCourseDetail(state) {
       : "") +
     (state.section !== "planning" && state.writeFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
-      : "") +
-    (state.section !== "planning" && visibleCourse?.goal
-      ? `<p class="course-authoring-course-goal">${escapeHtml(visibleCourse.goal)}</p>`
       : "") +
     `<main class="course-authoring-course-content">${renderCourseSection(state)}</main></div></div>` +
     (state.sourceTarget

@@ -125,6 +125,17 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
     "/consultarComponentesDidaticos"
   ]);
   assert.equal(JSON.stringify(openApi).includes("Workspace"), false);
+  assert.deepEqual(openApi.components.schemas, {});
+  for (const pathValue of Object.values(openApi.paths)) {
+    assert.ok(pathValue.post.description.length <= 300);
+  }
+  const readDescription = openApi.paths["/lerCurso"].post.description;
+  for (const view of [
+    "course_sources", "anchored_annotations", "audit_cycle",
+    "variant_comparison", "variant_comparisons"
+  ]) {
+    assert.match(readDescription, new RegExp(view, "u"));
+  }
   const oauth = openApi.components.securitySchemes.AraLearnOAuth;
   assert.match(oauth.flows.authorizationCode.authorizationUrl, /authoring-action\/oauth\/authorize$/u);
   assert.doesNotMatch(oauth.flows.authorizationCode.authorizationUrl, /authoring-mcp/u);

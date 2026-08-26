@@ -583,11 +583,15 @@
 
 .course-authoring-chat-composer {
   width: min(100%, 430px);
-  max-height: min(88dvh, 760px);
+  height: min(620px, calc(
+    100dvh - max(12px, var(--safe-top)) - max(12px, var(--safe-bottom-tappable))
+  ));
+  min-height: 0;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 10px;
   padding: 14px;
-  overflow: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
   border: 1px solid var(--border-default);
   border-radius: var(--radius) var(--radius) 0 0;
@@ -649,6 +653,14 @@
   min-width: 0;
   display: grid;
   gap: 6px;
+}
+
+.course-authoring-chat-composer form {
+  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .course-authoring-chat-composer label {
@@ -787,15 +799,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: var(--leading-normal);
-}
-
-.course-authoring-course-goal {
-  margin: 5px 4px 0;
-  overflow-wrap: anywhere;
-  color: var(--text-secondary);
-  font-size: var(--type-sm);
-  line-height: var(--leading-normal);
-  text-align: center;
 }
 
 .course-authoring-layout,
@@ -3641,10 +3644,7 @@
   width: 100%;
 }
 
-.course-authoring-surface[data-section="content"] :is(
-  .course-authoring-course-header,
-  .course-authoring-course-goal
-) {
+.course-authoring-surface[data-section="content"] .course-authoring-course-header {
   width: 100%;
   margin-inline: auto;
 }

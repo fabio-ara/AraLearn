@@ -9,7 +9,8 @@ examinar fatos da produção e conceder acesso.
 
 Na tela inicial, use **Autoria**. A lista **Meus cursos** apresenta somente os
 Cursos da conta autenticada. Um Curso compartilhado aparece em Estudo, mas não
-nessa lista. O original permanece sob controle do
+nessa lista. Como o recorte já é explícito, os títulos não repetem marcadores
+como `Seu Curso`; a identidade do Curso permanece limpa. O original permanece sob controle do
 proprietário e a pessoa favorecida pode criar, na primeira gravação contextual,
 um Curso pessoal privado. Essa nova cópia
 passa a aparecer em Autoria porque pertence à pessoa que a criou.

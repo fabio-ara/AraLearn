@@ -1,7 +1,9 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const SCOPE_LABELS = Object.freeze({
-  offline_access: "Manter a conexão ativa até você revogá-la"
+  offline_access: "Manter a conexão ativa até você revogá-la",
+  openid: "Identificar sua conta AraLearn nesta conexão",
+  email: "Confirmar a conta AraLearn conectada"
 });
 export const OAUTH_AUTHORING_PERMISSION_LABELS = Object.freeze([
   "Ler seus Cursos, planejamento e conteúdo na Autoria",
@@ -16,9 +18,18 @@ function text(value) {
 }
 
 export function readOAuthAuthorizationId(locationValue = globalThis.location) {
+  return readOAuthAuthorizationRequest(locationValue).authorizationId;
+}
+
+export function readOAuthAuthorizationRequest(locationValue = globalThis.location) {
+  const query = new URLSearchParams(text(locationValue?.search).replace(/^\?/u, ""));
+  const actionAuthorizationId = text(query.get("action_authorization_id"));
+  if (actionAuthorizationId) {
+    return Object.freeze({ authorizationId: actionAuthorizationId, channel: "actions" });
+  }
   const value = new URLSearchParams(text(locationValue?.search).replace(/^\?/u, ""))
     .get("authorization_id");
-  return text(value);
+  return Object.freeze({ authorizationId: text(value), channel: "mcp" });
 }
 
 function parsedOAuthRedirect(rawUrl) {
@@ -44,13 +55,14 @@ export function redirectToOAuthClient(rawUrl, locationValue = globalThis.locatio
   return target;
 }
 
-export function assertOAuthAuthoringScope(scope) {
-  if (text(scope) !== "offline_access") {
+export function assertOAuthAuthoringScope(scope, channel = "mcp") {
+  const expected = channel === "actions" ? "openid email" : "offline_access";
+  if (text(scope) !== expected) {
     throw new Error(
       "A conexão pediu permissões incompatíveis com a autoria protegida do AraLearn."
     );
   }
-  return Object.freeze(["offline_access"]);
+  return Object.freeze(expected.split(" "));
 }
 
 function decisionButton({ action, icon, label, primary = false }) {
@@ -98,11 +110,17 @@ export async function renderOAuthAuthorizationConsent({
   root,
   authClient,
   authorizationId,
+  channel = "mcp",
   locationValue = globalThis.location
 } = {}) {
   if (!root) throw new TypeError("Elemento raiz do consentimento OAuth ausente.");
-  if (!authClient?.getOAuthAuthorizationDetails
-      || !authClient?.decideOAuthAuthorization) {
+  const getDetails = channel === "actions"
+    ? authClient?.getActionOAuthAuthorizationDetails?.bind(authClient)
+    : authClient?.getOAuthAuthorizationDetails?.bind(authClient);
+  const decideAuthorization = channel === "actions"
+    ? authClient?.decideActionOAuthAuthorization?.bind(authClient)
+    : authClient?.decideOAuthAuthorization?.bind(authClient);
+  if (!getDetails || !decideAuthorization) {
     throw new TypeError("Cliente OAuth do AraLearn ausente.");
   }
   const requestedId = text(authorizationId);
@@ -111,7 +129,7 @@ export async function renderOAuthAuthorizationConsent({
 
   let details;
   try {
-    details = await authClient.getOAuthAuthorizationDetails(requestedId);
+    details = await getDetails(requestedId);
     if (text(details?.redirect_url)) {
       redirectToOAuthClient(details.redirect_url, locationValue);
       return { redirected: true };
@@ -120,13 +138,13 @@ export async function renderOAuthAuthorizationConsent({
         || !details?.client || typeof details.client !== "object") {
       throw new Error("O servidor OAuth devolveu uma solicitação incompatível.");
     }
-    assertOAuthAuthoringScope(details.scope);
+    assertOAuthAuthoringScope(details.scope, channel);
   } catch (error) {
     renderFailure(root, error);
     return { redirected: false, error };
   }
 
-  const scopes = assertOAuthAuthoringScope(details.scope);
+  const scopes = assertOAuthAuthoringScope(details.scope, channel);
   root.innerHTML = `
     <main class="auth-shell">
       <section class="auth-card">
@@ -200,7 +218,7 @@ export async function renderOAuthAuthorizationConsent({
       : "Negando…";
     status.dataset.kind = "";
     try {
-      const result = await authClient.decideOAuthAuthorization(requestedId, action);
+      const result = await decideAuthorization(requestedId, action);
       redirectToOAuthClient(result?.redirect_url, locationValue);
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : String(error);

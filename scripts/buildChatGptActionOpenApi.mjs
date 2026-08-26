@@ -51,13 +51,21 @@ function forActionDocumentation(value) {
   }
   return value;
 }
+const CHATGPT_ACTION_DESCRIPTIONS = {
+  lerCurso:
+    "Lê uma projeção corrente do Curso. Use summary/outline; instructional_plan, course_design, course_sources, anchored_annotations, audit_cycle, research, variant_comparison e variant_comparisons na inspeção. Peça metadados ausentes; solicite texto integral ou download temporário só quando necessário.",
+  alterarCurso:
+    "Executa uma alteração tipada no Curso próprio. Leia antes, preserve expectedRevision e requestId e use somente operações admitidas pelo schema para planejamento, conteúdo, Fontes, Observações, auditoria, variantes ou pesquisa. Releia após conflito e confirme ações consequenciais."
+};
 const paths = Object.fromEntries(COURSE_MCP_TOOLS.map((tool) => [
   `/${tool.name}`,
   {
     post: {
       operationId: tool.name,
       summary: tool.title,
-      description: forActionDocumentation(tool.description),
+      description: forActionDocumentation(
+        CHATGPT_ACTION_DESCRIPTIONS[tool.name] || tool.description
+      ),
       "x-openai-isConsequential": tool.annotations?.destructiveHint === true,
       security: [{ AraLearnOAuth: ["openid", "email"] }],
       requestBody: {
@@ -93,6 +101,7 @@ const document = {
   servers: [{ url: baseUrl }],
   paths,
   components: {
+    schemas: {},
     securitySchemes: {
       AraLearnOAuth: {
         type: "oauth2",

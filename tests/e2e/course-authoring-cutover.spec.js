@@ -3371,6 +3371,53 @@ test.describe("aceite focal do shell simples da Autoria", () => {
   });
 });
 
+test.describe("entrada e Visão geral da Autoria", () => {
+  const layouts = [
+    { width: 360, height: 780 },
+    { width: 390, height: 820 },
+    { width: 430, height: 860 },
+    { width: 1280, height: 900 }
+  ];
+
+  for (const colorScheme of ["light", "dark"]) {
+    for (const { width, height } of layouts) {
+      test(`${width} px em tema ${colorScheme} mantém lista e tarefas legíveis`, async ({
+        page
+      }, testInfo) => {
+        const clientErrors = captureClientErrors(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+        await page.setViewportSize({ width, height });
+        await mountCourseAuthoring(page, { cardinality: "many" });
+
+        await expect(page.getByRole("heading", { name: "Meus cursos", exact: true }))
+          .toBeVisible();
+        await expect(page.getByText("Seu Curso", { exact: true })).toHaveCount(0);
+        await expectNoHorizontalOverflow(page);
+        await expectVisibleTouchTargets(page);
+        await page.screenshot({
+          path: testInfo.outputPath(`authoring-list-${width}-${colorScheme}.png`),
+          fullPage: true,
+          animations: "disabled"
+        });
+
+        await page.locator(".course-authoring-course-card").first().click();
+        await expect(page.getByRole("heading", { name: "Visão geral", exact: true }))
+          .toBeVisible();
+        await expect(page.locator("[data-course-authoring-task-list] > a")).toHaveCount(7);
+        await expect(page.getByText("Curso próprio", { exact: true })).toBeVisible();
+        await expectNoHorizontalOverflow(page);
+        await expectVisibleTouchTargets(page);
+        await page.screenshot({
+          path: testInfo.outputPath(`authoring-overview-${width}-${colorScheme}.png`),
+          fullPage: true,
+          animations: "disabled"
+        });
+        expect(clientErrors).toEqual([]);
+      });
+    }
+  }
+});
+
 test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 820 });
