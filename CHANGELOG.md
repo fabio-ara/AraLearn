@@ -4,6 +4,35 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.31] - 2026-08-26
+
+### Adicionado
+
+- a Autoria permite inspecionar imediatamente o conteúdo produzido, registrar
+  Observações no próprio contexto e acompanhar desenho, Fontes, parâmetros,
+  achados, correções e verificações sem expor contratos internos;
+- MCP e Actions operam o mesmo Curso vivo, incluindo Observações, produção,
+  auditoria, reparo aprovado e rastreabilidade das decisões de desenho;
+- a Assistência por IA em Estudo oferece conversa contextual com OpenAI,
+  Gemini ou DeepSeek, usando uma chave efêmera mantida somente na sessão.
+
+### Alterado
+
+- Estudo usa **Voltar** e **Home** como navegação cotidiana e preserva origem,
+  rolagem e foco ao alternar modos ou retornar à leitura;
+- Autoria organiza tarefas e detalhes por divulgação progressiva, mantém um
+  único fluxo de rolagem e carrega inspeções extensas sob demanda;
+- parâmetros pedagógicos distinguem herança, decisão automática justificada e
+  decisão explícita, além de separar o desenho vigente daquele aplicado à
+  versão materializada.
+
+### Corrigido
+
+- folhas, diálogos, retornos contextuais e ações móveis preservam foco, toque,
+  estabilidade geométrica e legibilidade entre 360 px e desktop;
+- verificação de reparos coordena Observações relacionadas somente depois de
+  conferir o conteúdo resultante e mantém proveniência e intenção didática.
+
 ## [0.0.30] - 2026-08-24
 
 ### Alterado
