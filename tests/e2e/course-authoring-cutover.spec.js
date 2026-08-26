@@ -568,6 +568,13 @@ async function mountCourseAuthoring(page, {
       firstCourse.plan.counts.linkedDidacticMicrosequenceCount = 0;
       firstCourse.plan.counts.studyUnitCount = 0;
     }
+    if (requestedPlanningScenario === "unlinked-existing") {
+      const firstCourse = definitions[0];
+      firstCourse.plan.parts = [];
+      firstCourse.plan.counts.authoringPartCount = 0;
+      firstCourse.plan.counts.linkedDidacticMicrosequenceCount = 0;
+      firstCourse.plan.counts.studyUnitCount = 0;
+    }
     if (requestedPlanningScenario === "two-parts") {
       const firstCourse = definitions[0];
       firstCourse.plan.parts.push({
@@ -3801,6 +3808,61 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await expect(page.getByRole("button", { name: "Retirar observação", exact: true })).toBeFocused();
   await expect.poll(() => page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  expect(clientErrors).toEqual([]);
+});
+
+test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Unidade", async ({
+  page
+}) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+  const actions = page.locator(".course-inspection-item-actions").first();
+  const contextualLabels = actions.locator(":scope > :is(button, a) > span");
+  const boxes = await contextualLabels.evaluateAll((nodes) => nodes.map((node) => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+  }));
+  expect(boxes.every((box, index) => boxes.every((other, otherIndex) =>
+    index === otherIndex || box.right <= other.left || other.right <= box.left ||
+      box.bottom <= other.top || other.bottom <= box.top))).toBe(true);
+
+  await actions.getByRole("link", { name: "Desenho", exact: true }).click();
+  await expect(page.getByRole("heading", {
+    name: "Cobertura planejada desta Microssequência"
+  })).toBeVisible();
+  await expect(page.getByText("Não foi possível carregar os itens do Planejamento."))
+    .toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Voltar à Unidade" })).toBeVisible();
+  const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
+  expect(probe.planReads).toBe(1);
+  expect(probe.designReads).toHaveLength(1);
+
+  await page.getByRole("link", { name: "Voltar à Unidade" }).click();
+  await expect(page).toHaveURL(new RegExp("section=content&studyUnitId=study-unit-01"));
+  await expect(actions.getByRole("link", { name: "Desenho", exact: true })).toBeFocused();
+  expect(clientErrors).toEqual([]);
+});
+
+test("Planejamento explica Conteúdo existente que ainda não está ligado a Partes", async ({
+  page
+}) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
+  await mountCourseAuthoring(page, {
+    cardinality: "many",
+    hash,
+    planningScenario: "unlinked-existing"
+  });
+
+  const notice = page.locator(".course-authoring-unlinked-content");
+  await expect(notice).toContainText("Conteúdo existente ainda não vinculado ao plano");
+  await expect(notice).toContainText("60 Unidades permanecem disponíveis em Conteúdo");
+  await expect(notice).toContainText("Nada foi removido");
+  await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
 });
 

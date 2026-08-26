@@ -1051,6 +1051,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   let authoringSurface = null;
   let authoringReturnFocus = null;
   let studyAuthoringReturn = null;
+  let authoringHistoryReturn = false;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
@@ -1183,6 +1184,23 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     console.warn("A edição pessoal pendente poderá ser retomada na próxima conexão.", error);
   });
   void settings.loadProfile();
+  const restoreStudyAfterAuthoring = () => {
+    authoringRoot.hidden = true;
+    editorRoot.hidden = false;
+    const returnOrigin = authoringReturnFocus;
+    authoringReturnFocus = null;
+    const restoreOriginFocus = () => {
+      const current = returnOrigin?.element?.isConnected
+        ? returnOrigin.element
+        : [...editorRoot.querySelectorAll?.("[data-study-source-return]") || []]
+            .find((node) => node.getAttribute("href") === returnOrigin?.href);
+      current?.focus?.({ preventScroll: true });
+    };
+    globalThis.queueMicrotask?.(restoreOriginFocus);
+    void refreshStudy().catch((error) => {
+      console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
+    }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
+  };
   authoringSurface = createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
@@ -1211,22 +1229,12 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       editorRoot.hidden = false;
     },
     onClose() {
-      clearAuthoringRoute();
-      authoringRoot.hidden = true;
-      editorRoot.hidden = false;
-      const returnOrigin = authoringReturnFocus;
-      authoringReturnFocus = null;
-      const restoreOriginFocus = () => {
-        const current = returnOrigin?.element?.isConnected
-          ? returnOrigin.element
-          : [...editorRoot.querySelectorAll?.("[data-study-source-return]") || []]
-              .find((node) => node.getAttribute("href") === returnOrigin?.href);
-        current?.focus?.({ preventScroll: true });
-      };
-      globalThis.queueMicrotask?.(restoreOriginFocus);
-      void refreshStudy().catch((error) => {
-        console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
-      }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
+      const returnThroughHistory = authoringHistoryReturn &&
+        isCourseAuthoringRouteCandidate(globalThis.location.hash);
+      authoringHistoryReturn = false;
+      if (returnThroughHistory) globalThis.history.back();
+      else clearAuthoringRoute();
+      restoreStudyAfterAuthoring();
     }
   });
 
@@ -1257,9 +1265,10 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     return true;
   };
 
-  const openAuthoring = () => {
+  const openAuthoring = ({ returnThroughHistory = false } = {}) => {
     studyAuthoringReturn = null;
     settings.close();
+    if (!authoringSurface.opened) authoringHistoryReturn = returnThroughHistory;
     if (!editorRoot.hidden && editorRoot.contains(document.activeElement)) {
       const element = document.activeElement;
       authoringReturnFocus = {
@@ -1330,10 +1339,25 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   globalThis.addEventListener("offline", () => {
     editorApp?.setOfflineStatus?.(true);
   }, { signal: lifecycleAbortController.signal });
-  globalThis.addEventListener("hashchange", () => {
-    if (isCourseAuthoringRouteCandidate(globalThis.location.hash) && !authoringSurface.opened) {
-      openAuthoring();
+  globalThis.addEventListener("hashchange", (event) => {
+    if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) {
+      if (!authoringSurface.opened) {
+        const previousHash = event.oldURL ? new URL(event.oldURL).hash : "";
+        openAuthoring({
+          returnThroughHistory: !isCourseAuthoringRouteCandidate(previousHash) &&
+            !editorRoot.hidden
+        });
+      }
+      return;
     }
+    if (!authoringHistoryReturn || !authoringSurface.opened) return;
+    globalThis.queueMicrotask?.(() => {
+      if (isCourseAuthoringRouteCandidate(globalThis.location.hash) ||
+          !authoringHistoryReturn || !authoringSurface.opened) return;
+      authoringHistoryReturn = false;
+      authoringSurface.destroy();
+      restoreStudyAfterAuthoring();
+    });
   }, { signal: lifecycleAbortController.signal });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") settings.handleBack();

@@ -440,16 +440,26 @@ function renderCourseHeader(course, state) {
       `<h1>${escapeHtml(title)}</h1></div></header>`;
   }
   const materializationReturn = state.section === "content" && state.contentReturnRoute;
+  const contextualReturn = state.contextualReturn?.route === state.routeKey
+    ? state.contextualReturn.returnTo
+    : "";
+  const returnRoute = materializationReturn || contextualReturn;
+  const returnLabel = materializationReturn
+    ? "Voltar à execução"
+    : contextualReturn
+      ? "Voltar à Unidade"
+      : "Voltar à Visão geral";
   const back = overview
     ? '<button type="button" class="course-authoring-back" data-course-authoring-action="show-list"' +
       ' aria-label="Voltar aos Cursos" title="Voltar aos Cursos">' +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button>"
     : `<a class="course-authoring-back" href="${escapeHtml(
-        materializationReturn || buildCourseAuthoringRoute(course.courseId)
+        returnRoute || buildCourseAuthoringRoute(course.courseId)
       )}"` +
-      ` data-course-authoring-action="change-section" data-section="${materializationReturn ? "planning" : "overview"}"` +
-      ` aria-label="${materializationReturn ? "Voltar à execução" : "Voltar à Visão geral"}"` +
-      ` title="${materializationReturn ? "Voltar à execução" : "Voltar à Visão geral"}">` +
+      ` data-course-authoring-action="change-section" data-section="${
+        materializationReturn ? "planning" : contextualReturn ? "content" : "overview"
+      }"` +
+      ` aria-label="${returnLabel}" title="${returnLabel}">` +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + "</a>";
   return '<header class="course-authoring-course-header">' + back +
     '<div class="course-authoring-course-heading">' +
@@ -1245,6 +1255,21 @@ function renderParts(state, planning) {
       : '<p class="course-authoring-empty-copy">Nenhuma Parte planejada.</p>') + "</section>";
 }
 
+function renderUnlinkedContentNotice(state, planning) {
+  const contentStudyUnits = Number(state.course?.counts?.studyUnitCount || 0);
+  const plannedStudyUnits = Number(planning.studyUnitCount || 0);
+  if (contentStudyUnits <= plannedStudyUnits) return "";
+  const unlinkedCount = contentStudyUnits - plannedStudyUnits;
+  return '<aside class="course-authoring-notice course-authoring-unlinked-content">' +
+    '<strong>Conteúdo existente ainda não vinculado ao plano</strong>' +
+    `<p>${escapeHtml(countedLabel(
+      unlinkedCount,
+      "Unidade permanece disponível",
+      "Unidades permanecem disponíveis"
+    ))} em Conteúdo, mas ${unlinkedCount === 1 ? "ainda não foi vinculada" : "ainda não foram vinculadas"} ` +
+    "a Partes deste Planejamento. Nada foi removido.</p></aside>";
+}
+
 function renderPartDetailScreen(state, planning, part) {
   const index = planning.parts.findIndex(({ id }) => id === part.id);
   return '<section class="course-authoring-section course-authoring-part-detail"' +
@@ -1431,6 +1456,7 @@ function renderPlanningSection(state) {
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
       : "") +
     (state.planningEditOpen ? "" : renderPlanningNextAction(state, planning) +
+    renderUnlinkedContentNotice(state, planning) +
     '<div class="course-authoring-planning-details is-objective">' +
     renderPlanningCard({
       icon: "intent",
@@ -1863,6 +1889,7 @@ export function createCourseAuthoringSurface({
     section: "overview",
     researchView: "variants",
     contentReturnRoute: "",
+    contextualReturn: null,
     inspectionReturnFocus: null,
     canOpenStudyContent: typeof onOpenStudyContent === "function",
     loading: false,
@@ -2784,6 +2811,8 @@ export function createCourseAuthoringSurface({
       state.routeKey = nextKey;
       const needsOutline = route.section === "content";
       const requestedDesignScope = designScopeForRoute(route.courseId, route.target);
+      const needsTargetPlan = route.section === "parameters" &&
+        requestedDesignScope.kind === "didactic_microsequence";
       if (!force && state.course?.courseId === route.courseId &&
           (!needsOutline || state.outline)) {
         state.view = "course";
@@ -2803,11 +2832,21 @@ export function createCourseAuthoringSurface({
           const part = state.authoringPlan?.plan.parts.find(({ id }) => id === route.target.id);
           if (part) return loadPartMaterialization(part, route.target.materializationId);
         }
-        if (route.section === "parameters" && !sameDesignScope(
-          state.courseDesign?.scopeContext?.current,
-          requestedDesignScope
-        )) {
-          return loadDesign(route.courseId, { scope: requestedDesignScope });
+        if (route.section === "parameters") {
+          const needsPlanningLoad = needsTargetPlan && !state.authoringPlan;
+          const needsDesignLoad = !sameDesignScope(
+            state.courseDesign?.scopeContext?.current,
+            requestedDesignScope
+          );
+          if (needsPlanningLoad || needsDesignLoad) {
+            const [planningLoaded, designLoaded] = await Promise.all([
+              needsPlanningLoad ? loadPlanning(route.courseId) : Promise.resolve(true),
+              needsDesignLoad
+                ? loadDesign(route.courseId, { scope: requestedDesignScope })
+                : Promise.resolve(true)
+            ]);
+            return planningLoaded && designLoaded;
+          }
         }
         render({ focus: "#course-authoring-section-title" });
         return true;
@@ -2821,6 +2860,7 @@ export function createCourseAuthoringSurface({
     state.knownCourse = null;
     state.outline = null;
     state.routeTarget = null;
+    state.contextualReturn = null;
     state.sourceTarget = null;
     state.people = null;
     state.peopleFailure = "";
@@ -2876,6 +2916,7 @@ export function createCourseAuthoringSurface({
       return "deferred";
     }
     if (!replace && returnTo && typeof historyValue?.replaceState === "function") {
+      state.contextualReturn = { route: hash, returnTo };
       state.inspectionReturnFocus = returnFocusKey
         ? { route: returnTo, key: returnFocusKey }
         : null;
@@ -2896,6 +2937,7 @@ export function createCourseAuthoringSurface({
 
   function handleHashChange() {
     const hash = locationValue.hash || "";
+    if (hash === state.routeKey) return;
     if (state.routeKey.startsWith?.("#/") && hash !== state.routeKey &&
         hasPendingAuthoringDraft() && !isPersistedDesignScopeNavigation(hash)) {
       if (typeof historyValue?.replaceState === "function") {

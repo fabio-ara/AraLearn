@@ -803,6 +803,22 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   }, refreshContext.scrollTop)).toBe(true);
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.refreshes)).toBe(1);
   await page.getByRole("button", { name: /^Observações/u }).click();
+  const observationClose = page.getByRole("button", { name: "Fechar" });
+  const studyScreen = page.locator(".app-shell > .screen");
+  await expect(observationClose).toBeFocused();
+  await expect(studyScreen).toHaveAttribute("inert", "");
+  await expect(studyScreen).toHaveAttribute("aria-hidden", "true");
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Adicionar" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(observationClose).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Observações da Unidade de estudo" }))
+    .toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Observações/u })).toBeFocused();
+  await expect(studyScreen).not.toHaveAttribute("inert", "");
+  await expect(studyScreen).not.toHaveAttribute("aria-hidden", "true");
+  await page.getByRole("button", { name: /^Observações/u }).click();
   await expect(page.getByText("Observação recebida de outro dispositivo.", { exact: true }))
     .toBeVisible();
   await expect(page.getByText("Retorno privado da autoria.", { exact: true })).toBeVisible();

@@ -5420,7 +5420,8 @@ button.account-settings-back[hidden] {
 
 .study-home-feedback.is-notice .open-mini {
   flex: 0 0 auto;
-  min-height: 36px;
+  min-height: var(--tap);
+  min-width: var(--tap);
   padding-inline: 10px;
 }
 

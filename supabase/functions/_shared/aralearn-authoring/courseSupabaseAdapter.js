@@ -2086,7 +2086,8 @@ function signedStorageUrl(baseUrl, value, { download = false } = {}) {
 
 function anchoredAnnotationChannel(principal) {
   if (principal?.authenticationKind === "application") return "authoring_interface";
-  if (principal?.authenticationKind === "oauth") return "authoring_chat";
+  if (principal?.authenticationKind === "oauth" ||
+      principal?.authenticationKind === "action") return "authoring_chat";
   throw new AuthoringApiError(401, "authentication_required", "O canal da observação é inválido.");
 }
 

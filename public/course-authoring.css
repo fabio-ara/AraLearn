@@ -528,6 +528,19 @@
   color: var(--status-danger);
 }
 
+.course-authoring-unlinked-content {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  text-align: left;
+}
+
+.course-authoring-unlinked-content p {
+  margin: 0;
+}
+
 .course-authoring-state {
   min-height: 150px;
   display: grid;
@@ -4858,6 +4871,40 @@
 
 .course-inspection-item-actions .course-inspection-mode-actions button[aria-pressed="true"] {
   background: var(--surface-sunken);
+}
+
+@media (max-width: 700px) {
+  .course-inspection-item-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .course-inspection-item-actions .course-inspection-mode-actions {
+    grid-column: 1 / -2;
+  }
+
+  .course-inspection-item-actions [data-inspection-select-button] {
+    grid-column: -2 / -1;
+    justify-self: end;
+  }
+
+  .course-inspection-item-actions > :is(button, a):not([data-inspection-select-button]) {
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding-inline: 2px;
+    overflow-wrap: anywhere;
+    font-size: var(--type-xs);
+    line-height: var(--leading-snug);
+    text-align: center;
+  }
+
+  .course-inspection-item-actions > :is(button, a):not([data-inspection-select-button]) > span {
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 }
 
 .course-inspection-title-edit-target {

@@ -115,9 +115,9 @@ function projectAnnotationForMcp(annotation, { includeObservationText = false } 
   };
 }
 
-function annotationMcpDisclosure(includeObservationText) {
+function annotationMcpDisclosure(includeObservationText, recipient) {
   return {
-    recipient: "connected_mcp_client",
+    recipient,
     purpose: "author_triage",
     rawObservationTextIncluded: includeObservationText,
     omitted: [
@@ -264,7 +264,7 @@ function projectSourceAttributionForMcp(attribution) {
   };
 }
 
-function sourceMcpDisclosure(projectedItems) {
+function sourceMcpDisclosure(projectedItems, recipient) {
   const projectedSelectors = (Array.isArray(projectedItems) ? projectedItems : [])
     .flatMap((item) => Array.isArray(item?.anchors) ? item.anchors : [])
     .map((anchor) => anchor?.selector)
@@ -273,7 +273,7 @@ function sourceMcpDisclosure(projectedItems) {
     .filter((field) => projectedSelectors.some((selector) => Object.hasOwn(selector, field)))
     .map((field) => `items[].anchors[].selector.${field}`);
   return {
-    recipient: "connected_mcp_client",
+    recipient,
     purpose: "author_source_review",
     attachmentDownloadUrlIncluded: false,
     potentiallyPersonalFreeTextIncluded: [
@@ -299,7 +299,7 @@ function sourceMcpDisclosure(projectedItems) {
   };
 }
 
-function projectCourseSourcesForMcp(value) {
+function projectCourseSourcesForMcp(value, recipient) {
   const mode = value.mode ?? null;
   const items = (Array.isArray(value.items) ? value.items : [])
     .map((item) => mode === "target"
@@ -321,13 +321,13 @@ function projectCourseSourcesForMcp(value) {
     },
     items,
     nextCursor: value.nextCursor ?? null,
-    dataDisclosure: sourceMcpDisclosure(items)
+    dataDisclosure: sourceMcpDisclosure(items, recipient)
   };
 }
 
-function attachmentMcpDisclosure(includeAttachmentDownloadUrl) {
+function attachmentMcpDisclosure(includeAttachmentDownloadUrl, recipient) {
   return {
-    recipient: "connected_mcp_client",
+    recipient,
     purpose: includeAttachmentDownloadUrl
       ? "author_requested_pdf_download"
       : "author_source_attachment_metadata",
@@ -349,7 +349,7 @@ function attachmentMcpDisclosure(includeAttachmentDownloadUrl) {
 
 function projectSourceAttachmentAccessForMcp(
   value,
-  { includeAttachmentDownloadUrl = false } = {}
+  { includeAttachmentDownloadUrl = false, recipient } = {}
 ) {
   const discloseDownloadUrl = value.operation === "download" &&
     includeAttachmentDownloadUrl === true;
@@ -368,7 +368,7 @@ function projectSourceAttachmentAccessForMcp(
         expiresAt: value.expiresAt ?? null
       }
       : {}),
-    dataDisclosure: attachmentMcpDisclosure(discloseDownloadUrl)
+    dataDisclosure: attachmentMcpDisclosure(discloseDownloadUrl, recipient)
   };
 }
 
@@ -380,16 +380,18 @@ export function projectCourseToolResultForMcp(
   value,
   {
     includeObservationText = false,
-    includeAttachmentDownloadUrl = false
+    includeAttachmentDownloadUrl = false,
+    recipient = "connected_mcp_client"
   } = {}
 ) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   if (value.contract === COURSE_SOURCES_CONTRACT) {
-    return projectCourseSourcesForMcp(value);
+    return projectCourseSourcesForMcp(value, recipient);
   }
   if (COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACTS.has(value.contract)) {
     return projectSourceAttachmentAccessForMcp(value, {
-      includeAttachmentDownloadUrl
+      includeAttachmentDownloadUrl,
+      recipient
     });
   }
   if (value.contract === MCP_ANNOTATION_PAGE_CONTRACT) {
@@ -409,7 +411,7 @@ export function projectCourseToolResultForMcp(
         .filter(Boolean),
       hasMore: value.hasMore === true,
       nextCursor: value.nextCursor ?? null,
-      dataDisclosure: annotationMcpDisclosure(includeObservationText)
+      dataDisclosure: annotationMcpDisclosure(includeObservationText, recipient)
     };
   }
   if (value.contract === MCP_ANNOTATION_CHANGE_CONTRACT) {
@@ -421,7 +423,7 @@ export function projectCourseToolResultForMcp(
       idempotent: value.idempotent === true,
       changed: value.changed === true,
       annotation: projectAnnotationForMcp(value.annotation),
-      dataDisclosure: annotationMcpDisclosure(false)
+      dataDisclosure: annotationMcpDisclosure(false, recipient)
     };
   }
   if (value.contract === MCP_AUDIT_CYCLE_PAGE_CONTRACT &&
@@ -439,7 +441,7 @@ export function projectCourseToolResultForMcp(
           .filter(Boolean)
       },
       dataDisclosure: {
-        ...annotationMcpDisclosure(includeObservationText),
+        ...annotationMcpDisclosure(includeObservationText, recipient),
         purpose: "author_audit_context"
       }
     };
@@ -533,6 +535,7 @@ export async function executeCourseTool({
   rawArguments,
   deadlineAt,
   surface = "mcp",
+  projectionRecipient = "connected_mcp_client",
   applicationInspectionVersion = 1,
   onRequestIdValidated = null
 }) {
@@ -580,7 +583,8 @@ export async function executeCourseTool({
     ? projectCourseToolResultForMcp(result.data, {
         includeObservationText: rawArguments?.includeObservationText === true,
         includeAttachmentDownloadUrl:
-          rawArguments?.includeAttachmentDownloadUrl === true
+          rawArguments?.includeAttachmentDownloadUrl === true,
+        recipient: projectionRecipient
       })
     : result.data;
   const phaseGuidance = surface === "mcp"

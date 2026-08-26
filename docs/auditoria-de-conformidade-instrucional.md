@@ -148,9 +148,12 @@ Quando uma Observação é retirada, o achado a apresenta como indisponível e s
 endereço. Depois da remoção física do registro redigido, o vínculo desaparece;
 rodada, achado e correção permanecem.
 
-Decisões do ciclo podem sugerir `resolve` ou `reopen` para uma Observação. A
-sugestão não muda seu estado. A triagem exige outro comando explícito de
-Anotação ancorada com a versão corrente.
+Na verificação, `resolved` resolve e `still_open` reabre atomicamente as
+Observações vinculadas cujo estado exige essa transição. A resposta não deixa
+uma segunda decisão pendente em `suggestedAnnotationActions`. Outras
+transições, como a reversão de uma correção, ainda podem sugerir `reopen`; essa
+sugestão só muda a Observação depois de um comando explícito com sua versão
+corrente.
 
 ## Uso na interface
 

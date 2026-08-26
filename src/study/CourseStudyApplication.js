@@ -590,6 +590,14 @@ export function createCourseStudyApplication({
     state.observationStale = false;
   }
 
+  function closeObservationSheet() {
+    if (!state.observationSheetOpen) return false;
+    resetObservationSheet();
+    queueStudyFocus("[data-action='open-observation']");
+    render({ preserveFocus: false });
+    return true;
+  }
+
   function restoreManualHistoryPreview() {
     const preview = state.manualHistoryPreview;
     if (!preview) return;
@@ -2712,9 +2720,7 @@ export function createCourseStudyApplication({
       return false;
     }
     if (state.observationSheetOpen) {
-      resetObservationSheet();
-      render();
-      return true;
+      return closeObservationSheet();
     }
     if (state.feedbackOpen) {
       state.feedbackOpen = false;
@@ -2744,9 +2750,7 @@ export function createCourseStudyApplication({
       return false;
     }
     if (state.observationSheetOpen) {
-      resetObservationSheet();
-      render();
-      return true;
+      return closeObservationSheet();
     }
     if (state.view === "courses") return false;
     persistStudyNavigation({ includePosition: true });
@@ -2861,6 +2865,7 @@ export function createCourseStudyApplication({
     state.observationError = "";
     state.observationStale = false;
     state.observationSheetOpen = true;
+    queueStudyFocus("[data-observation-action='close']");
     unsubscribeAnnotations?.();
     unsubscribeAnnotations = typeof repository.subscribeToAnnotations === "function"
       ? repository.subscribeToAnnotations(reference, ({ stale }) => {
@@ -2890,6 +2895,9 @@ export function createCourseStudyApplication({
       return;
     }
     await refreshOpenObservations(reference, epoch);
+    if (state.observationSheetOpen && epoch === observationsEpoch) {
+      focusStudyTarget({ selector: "[data-observation-action='close']", attributes: {} });
+    }
   }
 
   async function refreshOpenObservations(reference, epoch) {
@@ -3540,8 +3548,7 @@ export function createCourseStudyApplication({
         const action = node.dataset.observationAction;
         const annotationId = node.dataset.observationId;
         if (action === "close") {
-          resetObservationSheet();
-          render();
+          closeObservationSheet();
         } else if (action === "edit") {
           editObservation(annotationId);
         } else if (action === "withdraw") {
@@ -3556,6 +3563,45 @@ export function createCourseStudyApplication({
           render();
         }
       }));
+    const observationOverlay = root.querySelector(".study-observation-overlay");
+    observationOverlay?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeObservationSheet();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const sheet = observationOverlay.querySelector(".study-observation-sheet");
+      const controls = [...(sheet?.querySelectorAll([
+        "button:not([disabled])",
+        "input:not([disabled]):not([type='hidden'])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "a[href]",
+        "summary",
+        "[tabindex]:not([tabindex='-1'])"
+      ].join(",")) || [])].filter((control) =>
+        !control.hidden && !control.closest("[hidden]")
+      );
+      if (!controls.length) {
+        event.preventDefault();
+        sheet?.focus?.({ preventScroll: true });
+        return;
+      }
+      const documentValue = root.ownerDocument || globalThis.document;
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && (documentValue.activeElement === first ||
+          !sheet?.contains(documentValue.activeElement))) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!event.shiftKey && (documentValue.activeElement === last ||
+          !sheet?.contains(documentValue.activeElement))) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    });
     bindGapInputs(root);
   }
 
@@ -3734,6 +3780,11 @@ export function createCourseStudyApplication({
       loading: state.observationLoading,
       stale: state.observationStale
     }) : "") + "</div>";
+    const studyScreen = root.querySelector(".app-shell > .screen");
+    if (state.observationSheetOpen && studyScreen) {
+      studyScreen.inert = true;
+      studyScreen.setAttribute("aria-hidden", "true");
+    }
     onViewChange(state.view);
     syncAccountControl();
     bindActions();

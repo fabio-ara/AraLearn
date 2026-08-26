@@ -1349,7 +1349,8 @@ test("observação ou alvo ausente não apagam o sinal distinto de acesso revoga
 test("canal autoral deriva somente da principal e criação liga alvo confirmado", async () => {
   for (const [authenticationKind, expectedChannel, suffix] of [
     ["application", "authoring_interface", "app"],
-    ["oauth", "authoring_chat", "chat"]
+    ["oauth", "authoring_chat", "chat"],
+    ["action", "authoring_chat", "actions"]
   ]) {
     let request = null;
     const requestId = `request-annotation-${suffix}-1`;

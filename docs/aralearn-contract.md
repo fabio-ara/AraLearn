@@ -370,8 +370,11 @@ apagar a história.
 Uma conclusão factual positiva exige Fonte e Âncora atuais e ativas. A relação
 `supported_by` sustenta afirmações; `quoted_from` é aceita somente pelo critério
 de fidelidade de citação. Vincular uma Observação conserva a origem situada,
-mas não a transforma em prova factual. Ações `resolve|reopen` devolvidas para
-essas Observações são sugestões: outro comando explícito precisa executá-las.
+mas não a transforma em prova factual. Ao verificar um achado, o servidor
+resolve ou reabre atomicamente as Observações vinculadas compatíveis com o
+resultado e devolve `suggestedAnnotationActions` vazio. Uma sugestão devolvida
+por outra transição, como a reversão de correção, continua exigindo comando
+explícito com a versão corrente da Observação.
 
 A junção conserva apenas identidade e versão da Anotação. Retirada ainda
 presente como registro de retirada é projetada indisponível e sem link; a remoção

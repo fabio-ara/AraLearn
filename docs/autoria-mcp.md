@@ -289,8 +289,9 @@ pessoa, caminhos do alvo, links profundos nem IDs de Tópico. A identidade opaca
 do alvo permite localizar a Unidade, Fonte ou Âncora observada sem expor a
 hierarquia. O texto
 integral da Observação aparece somente no detalhe explicitamente declarado;
-horários exatos permanecem fora. `dataDisclosure` identifica o cliente MCP
-conectado, a finalidade e os campos omitidos. O texto de uma resposta autoral
+horários exatos permanecem fora. `dataDisclosure` identifica o destinatário
+real — `connected_mcp_client` no MCP ou `connected_actions_gpt` em Actions —,
+a finalidade e os campos omitidos. O texto de uma resposta autoral
 anterior também permanece fora do MCP; o recorte informa apenas que ela existe
 e sua espécie. A aplicação autenticada conserva o DTO interno completo para
 suas próprias telas e ações.
@@ -460,8 +461,10 @@ Verificação registra outra rodada e informa `resolved|still_open`. Resolver
 exige que o critério focal tenha passado; `still_open` reabre. Evidência factual
 positiva ou resolução factual exige Fonte e Âncora ativas na revisão exata:
 `supported_by` sustenta afirmações e `quoted_from` só vale para
-`quotation_fidelity`. `suggestedAnnotationActions` com `resolve|reopen` é mera
-sugestão; executá-la requer outro comando explícito de
+`quotation_fidelity`. A verificação sincroniza atomicamente o estado das
+Observações vinculadas compatíveis com `resolved|still_open` e devolve
+`suggestedAnnotationActions` vazio. Quando outra transição, como a reversão de
+correção, devolve uma sugestão, executá-la ainda requer comando explícito de
 `update_anchored_annotations` com a versão corrente.
 
 O recibo de Fonte contém exatamente `contract`, `courseId`, `courseRevision`,

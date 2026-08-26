@@ -129,6 +129,7 @@ export function createAuthoringActionHandler({
         rawArguments,
         deadlineAt,
         surface: "mcp",
+        projectionRecipient: "connected_actions_gpt",
         onRequestIdValidated(value) {
           requestId = value;
         }

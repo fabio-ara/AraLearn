@@ -1195,6 +1195,28 @@ test.describe("Autoria real com Supabase local", () => {
         path: screenshotPath,
         contentType: "image/png"
       });
+
+      await page.getByRole("link", { name: "Voltar à Visão geral" }).click();
+      await page.getByRole("button", { name: "Voltar aos Cursos" }).click();
+      await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
+      await page.getByRole("button", { name: "Voltar ao Estudo" }).click();
+      const studyRoot = page.locator("#aralearn-editor-root");
+      const authoringRoot = page.locator("#aralearn-authoring-root");
+      await expect(studyRoot).toBeVisible();
+      const historyRoute = `#/authoring/courses/${courseId}?section=content`;
+      await page.evaluate((hash) => { window.location.hash = hash; }, historyRoute);
+      await expect(authoringRoot).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`${courseId}\\?section=content$`, "u"));
+      await page.goBack();
+      await expect(studyRoot).toBeVisible();
+      await expect(authoringRoot).toBeHidden();
+      await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("");
+      await page.goForward();
+      await expect(authoringRoot).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`${courseId}\\?section=content$`, "u"));
+      await page.goBack();
+      await expect(studyRoot).toBeVisible();
+      await expect(authoringRoot).toBeHidden();
       expect(browserFailures).toEqual([]);
     } finally {
       await context.close().catch(() => undefined);
