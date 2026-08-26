@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { createServer } from "node:http";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 
@@ -50,7 +49,6 @@ let ownerToken = "";
 let outsiderToken = "";
 let courseId = "";
 let mcpLifecycle = {};
-let providerServer = null;
 const providerRequests = [];
 
 function assistedStudyUnit() {
@@ -71,63 +69,36 @@ function assistedStudyUnit() {
   };
 }
 
-async function startProviderServer() {
+async function installProviderStub(page) {
   providerRequests.length = 0;
-  providerServer = createServer((request, response) => {
-    response.setHeader("access-control-allow-origin", "http://127.0.0.1:4182");
-    response.setHeader("access-control-allow-methods", "POST, OPTIONS");
-    response.setHeader("access-control-allow-headers", "authorization, content-type");
-    response.setHeader("access-control-allow-private-network", "true");
-    if (request.method === "OPTIONS") {
-      response.writeHead(204);
-      response.end();
-      return;
-    }
-    const chunks = [];
-    request.on("data", (chunk) => chunks.push(chunk));
-    request.on("end", () => {
-      const body = Buffer.concat(chunks).toString("utf8");
-      providerRequests.push({
-        method: request.method,
-        url: request.url,
-        authorization: request.headers.authorization ?? null,
-        body
-      });
-      response.writeHead(200, { "content-type": "application/json" });
-      const content = providerRequests.length === 1
-        ? {
-            message: "A formulação pode ficar mais direta sem mudar seu significado.",
-            proposal: {
-              summary: "Tornar a explicação mais direta e preservar a representação textual.",
-              scope: "study_unit",
-              componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
-            }
+  await page.route("https://api.openai.com/v1/responses", async (route) => {
+    const request = route.request();
+    const body = request.postData() || "";
+    providerRequests.push({
+      method: request.method(),
+      url: new URL(request.url()).pathname,
+      authorization: request.headers().authorization ?? null,
+      body
+    });
+    const content = providerRequests.length === 1
+      ? {
+          message: "A formulação pode ficar mais direta sem mudar seu significado.",
+          proposal: {
+            summary: "Tornar a explicação mais direta e preservar a representação textual.",
+            scope: "study_unit",
+            componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
           }
-        : {
-            message: "A composição foi validada e está pronta para revisão.",
-            candidate: assistedStudyUnit()
-          };
-      response.end(JSON.stringify({
-        choices: [{
-          finish_reason: "stop",
-          message: {
-            content: JSON.stringify(content)
-          }
-        }]
-      }));
+        }
+      : {
+          message: "A composição foi validada e está pronta para revisão.",
+          candidate: assistedStudyUnit()
+        };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ output_text: JSON.stringify(content) })
     });
   });
-  await new Promise((resolve, reject) => {
-    providerServer.once("error", reject);
-    providerServer.listen(4183, "127.0.0.1", resolve);
-  });
-}
-
-async function stopProviderServer() {
-  if (!providerServer) return;
-  const server = providerServer;
-  providerServer = null;
-  await new Promise((resolve) => server.close(resolve));
 }
 
 function failure(label, result) {
@@ -401,7 +372,6 @@ test.describe("Autoria real com Supabase local", () => {
   test.beforeAll(async ({ browserName }, testInfo) => {
     void browserName;
     testInfo.setTimeout(90_000);
-    await startProviderServer();
     config = localSupabaseConfiguration();
     const suffix = `${Date.now()}-${process.pid}`;
     owner = await expectSuccessful(
@@ -487,7 +457,6 @@ test.describe("Autoria real com Supabase local", () => {
       expect([200, 204, 404], failure("remover segunda conta", outsiderRemoval))
         .toContain(outsiderRemoval.response.status);
     }
-    await stopProviderServer();
     if (mcpCleanupFailure) throw mcpCleanupFailure;
   });
 
@@ -501,6 +470,7 @@ test.describe("Autoria real com Supabase local", () => {
     });
     context.setDefaultTimeout(15_000);
     const page = await context.newPage();
+    await installProviderStub(page);
     const browserFailures = captureBrowserFailures(page);
     const browserDialogs = [];
     page.on("dialog", (dialog) => {
@@ -1107,18 +1077,26 @@ test.describe("Autoria real com Supabase local", () => {
         name: "Editar Lição mínima da materialização",
         exact: true
       }).click();
-      await expect(page.locator("#aralearn-editor-root .topbar-title")).toHaveText("Lição");
+      await expect(page.getByRole("group", { name: "Modo de Lição" })).toBeVisible();
       await page.getByRole("button", { name: "Editar", exact: true }).click();
       const lessonEditor = page.getByRole("region", { name: "Edição de Lição" });
-      await expect(lessonEditor.getByLabel("Título", { exact: true })).toHaveValue(
+      await expect(lessonEditor.getByLabel("Título", { exact: true })).toHaveText(
         "Lição mínima da materialização"
       );
       await expect(lessonEditor.locator('[data-study-structure-field="goal"]')).toBeEditable();
-      await expect(lessonEditor.getByText("Ordem das Microssequências", { exact: true }))
+      await expect(page.getByRole("heading", {
+        name: "Microssequências didáticas",
+        exact: true
+      }))
         .toBeVisible();
+      await expect(page.getByRole("button", {
+        name: "Selecionar Microssequência mínima da materialização",
+        exact: true
+      })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Mover para cima", exact: true }))
+        .toBeDisabled();
       await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
-      await page.getByRole("button", { name: "Autoria", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
         .toBeVisible();
       const inspectionUnit = page.locator(
@@ -1152,8 +1130,9 @@ test.describe("Autoria real com Supabase local", () => {
         name: `Unidade: ${STUDY_UNIT_TITLE}`
       })).toBeVisible();
       await providerDialog.getByText("Serviço e modelo", { exact: true }).click();
-      await providerDialog.getByLabel("Serviço").selectOption("local");
+      await providerDialog.getByLabel("Serviço").selectOption("openai");
       await providerDialog.getByLabel("Modelo").selectOption("gpt-5.6-luna");
+      await providerDialog.getByLabel("Chave da OpenAI").fill("openai-stub");
       await providerDialog.getByLabel("Mensagem").fill(
         "Torne o trecho mais direto sem mudar seu significado."
       );
@@ -1182,8 +1161,8 @@ test.describe("Autoria real com Supabase local", () => {
       for (const request of providerRequests) {
         expect(request).toMatchObject({
           method: "POST",
-          url: "/v1/chat/completions",
-          authorization: null
+          url: "/v1/responses",
+          authorization: "Bearer openai-stub"
         });
         expect(request.body).toContain(MANUAL_STUDY_UNIT_TEXT);
         expect(request.body).toContain(STUDY_UNIT_TITLE);

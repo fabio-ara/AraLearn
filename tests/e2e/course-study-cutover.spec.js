@@ -6,6 +6,12 @@ const project = JSON.parse(readFileSync(new URL(
   import.meta.url
 ), "utf8"));
 
+const HOME_COURSE_IDS = Object.freeze({
+  a: "a0000000-0000-4000-8000-00000000000a",
+  b: "b0000000-0000-4000-8000-00000000000b",
+  c: "c0000000-0000-4000-8000-00000000000c"
+});
+
 async function expectHomeGeometry(page, width, colorMode) {
   await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
   await page.evaluate((mode) => {
@@ -70,7 +76,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     const baseCourse = documentValue.courses[0];
     const makeCourse = (suffix, title, goal) => {
       const replacements = [
-        ["course-fixture-minimal", `course-home-${suffix}`],
+        ["course-fixture-minimal", documentValue.homeCourseIds[suffix]],
         ["module-fixture-minimal", `module-home-${suffix}`],
         ["lesson-fixture-minimal", `lesson-home-${suffix}`],
         ["micro-fixture-minimal", `micro-home-${suffix}`],
@@ -105,9 +111,9 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
       loads: [],
       offlineChecks: [],
       availableOffline: {
-        "course-home-a": true,
-        "course-home-b": false,
-        "course-home-c": false
+        [documentValue.homeCourseIds.a]: true,
+        [documentValue.homeCourseIds.b]: false,
+        [documentValue.homeCourseIds.c]: false
       },
       delayCourseId: "",
       failCourseId: "",
@@ -118,7 +124,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
         title: "Rever regra do Curso A",
         context: "Curso A · Regra central",
         entityPath: [
-          "course-home-a",
+          documentValue.homeCourseIds.a,
           "module-home-a",
           "lesson-home-a",
           "micro-home-a",
@@ -130,7 +136,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
         title: "Rever outro exemplo do Curso A",
         context: "Curso A · Segundo exemplo",
         entityPath: [
-          "course-home-a",
+          documentValue.homeCourseIds.a,
           "module-home-a",
           "lesson-home-a",
           "micro-home-a",
@@ -139,7 +145,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
       }],
       navigation: {
         contract: "aralearn.course-study-navigation.v1",
-        selectedCourseId: "course-home-a",
+        selectedCourseId: documentValue.homeCourseIds.a,
         positions: {},
         updatedAt: "2026-08-21T12:00:00.000Z"
       },
@@ -266,7 +272,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     };
     globalThis.__home148Probe = state;
     state.mount();
-  }, project);
+  }, { ...project, homeCourseIds: HOME_COURSE_IDS });
 
   const selector = page.getByRole("combobox", { name: "Selecionar Curso" });
   await expect(selector).toHaveCount(1);
@@ -296,7 +302,9 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     name: "Retirar de Rever: Rever outro exemplo do Curso A"
   }).click();
   await expect(page.getByRole("button", { name: "Desfazer" })).toBeFocused();
-  await page.evaluate(() => { globalThis.__home148Probe.failCourseId = "course-home-a"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.failCourseId = courseId;
+  }, HOME_COURSE_IDS.a);
   const failedReview = page.getByRole("button", { name: "Abrir para rever: Rever regra do Curso A" });
   await failedReview.press("Enter");
   await expect(page.getByRole("alert")).toHaveText(
@@ -315,14 +323,16 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
 
-  await selector.selectOption("course-home-b");
-  await expect(selector).toHaveValue("course-home-b");
+  await selector.selectOption(HOME_COURSE_IDS.b);
+  await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
   await expect(page.locator(".home-course-selector-preview")).toContainText("Curso B");
   await expect(page.locator(".home-course-selector-preview"))
     .toContainText("Curso compartilhado");
-  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual(["course-home-a"]);
+  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([HOME_COURSE_IDS.a]);
 
-  await page.evaluate(() => { globalThis.__home148Probe.delayCourseId = "course-home-b"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.delayCourseId = courseId;
+  }, HOME_COURSE_IDS.b);
   await page.getByRole("button", { name: "Começar Curso B" }).click();
   await expect(selector).toBeDisabled();
   await expect(page.getByRole("status", { name: "" }).filter({
@@ -334,8 +344,8 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await expect(page.getByText("Conteúdo inicial de Curso B.", { exact: true })).toBeVisible();
   await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([
-    "course-home-a",
-    "course-home-b"
+    HOME_COURSE_IDS.a,
+    HOME_COURSE_IDS.b
   ]);
 
   await page.evaluate(() => {
@@ -344,15 +354,15 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   const resumeB = page.getByRole("button", { name: "Retomar Curso B" });
   await expect(resumeB).toBeVisible();
   await expect(resumeB).toBeFocused();
-  await expect.poll(() => page.evaluate(() =>
-    globalThis.__home148Probe.navigation.positions["course-home-b"]?.entityPath?.at(-1)
-  )).toBe("unit-home-b-first");
-  await expect.poll(() => page.evaluate(() =>
-    globalThis.__home148Probe.navigation.positions["course-home-b"]?.view
-  )).toBe("course");
+  await expect.poll(() => page.evaluate((courseId) =>
+    globalThis.__home148Probe.navigation.positions[courseId]?.entityPath?.at(-1),
+  HOME_COURSE_IDS.b)).toBe("unit-home-b-first");
+  await expect.poll(() => page.evaluate((courseId) =>
+    globalThis.__home148Probe.navigation.positions[courseId]?.view,
+  HOME_COURSE_IDS.b)).toBe("course");
 
   await page.evaluate(() => globalThis.__home148Probe.mount());
-  await expect(selector).toHaveValue("course-home-b");
+  await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
   await expect(page.getByRole("button", { name: "Retomar Curso B" })).toBeVisible();
   await page.getByRole("button", { name: "Retomar Curso B" }).click();
   await expect(page.getByRole("heading", { name: "Curso B", exact: true })).toBeVisible();
@@ -360,11 +370,11 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
   });
 
-  await selector.selectOption("course-home-a");
+  await selector.selectOption(HOME_COURSE_IDS.a);
   await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(true));
   await expect(page.getByText("Disponível neste dispositivo", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Retomar Curso A" })).toBeEnabled();
-  await selector.selectOption("course-home-c");
+  await selector.selectOption(HOME_COURSE_IDS.c);
   await expect(page.getByText(
     "Conecte-se para abrir este Curso",
     { exact: true }
@@ -372,14 +382,18 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await expect(page.getByRole("button", { name: "Começar Curso C" })).toBeDisabled();
   await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(false));
 
-  await page.evaluate(() => { globalThis.__home148Probe.failCourseId = "course-home-c"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.failCourseId = courseId;
+  }, HOME_COURSE_IDS.c);
   await page.getByRole("button", { name: "Começar Curso C" }).press("Enter");
   await expect(page.getByRole("alert")).toHaveText(
     "Não foi possível abrir este Curso. Tente novamente."
   );
   await expect(page.getByRole("button", { name: "Tentar novamente Curso C" })).toBeFocused();
 
-  await page.evaluate(() => { globalThis.__home148Probe.revokeCourseId = "course-home-c"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.revokeCourseId = courseId;
+  }, HOME_COURSE_IDS.c);
   await page.getByRole("button", { name: "Tentar novamente Curso C" }).press("Enter");
   await expect(page.getByText("Seu acesso a Curso C foi encerrado.", { exact: true })).toBeVisible();
   await expect(selector.locator("option")).toHaveCount(2);
@@ -387,14 +401,14 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await expect(page.locator(".home-course-selector-preview")).toHaveCount(1);
   await expect(selector).toBeFocused();
 
-  await page.evaluate(() => {
+  await page.evaluate((courseId) => {
     const probe = globalThis.__home148Probe;
-    probe.navigation.selectedCourseId = "course-home-a";
+    probe.navigation.selectedCourseId = courseId;
     probe.reviewItems = [];
     probe.reviewNextItems = [];
     probe.reviewHasMore = true;
     probe.mount();
-  });
+  }, HOME_COURSE_IDS.a);
   await ensureReviewQueueOpen(page);
   await page.getByRole("button", { name: "Mostrar mais" }).press("Enter");
   await expect(page.locator(".study-review-queue")).toHaveCount(0);
@@ -414,7 +428,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await page.getByRole("button", { name: "Excluir este Curso" }).click();
   await expect(page.getByText("Curso A foi excluído.", { exact: true })).toBeVisible();
   await expect(selector).toBeFocused();
-  await expect(selector).toHaveValue("course-home-b");
+  await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
 });
 
 test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime canônico", async ({ page }) => {

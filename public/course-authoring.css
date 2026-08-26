@@ -4829,6 +4829,14 @@
   text-decoration: none;
 }
 
+.course-inspection-item-actions [data-inspection-select-button] {
+  width: var(--tap);
+  min-width: var(--tap);
+  flex: 0 0 var(--tap);
+  justify-content: center;
+  padding: 0;
+}
+
 .course-inspection-item-actions [data-inspection-select-button][aria-pressed="true"] {
   color: var(--text-on-action);
   background: var(--action-primary);

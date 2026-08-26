@@ -4745,6 +4745,7 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-composer-actions button {
+  min-width: var(--tap);
   min-height: var(--tap);
   display: inline-flex;
   align-items: center;

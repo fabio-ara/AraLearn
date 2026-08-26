@@ -1050,6 +1050,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   let editorApp = null;
   let authoringSurface = null;
   let authoringReturnFocus = null;
+  let studyAuthoringReturn = null;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
@@ -1186,9 +1187,25 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     root: authoringRoot,
     controller: authoringController,
     providerAssistanceSession: courseProviderSession,
-    async onOpenStudyContent({ entityPath }) {
+    async onOpenStudyContent({ entityPath, returnRoute }) {
+      const origin = authoringRoot.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+      const returnState = {
+        route: returnRoute,
+        scrollTop: Number(authoringRoot.scrollTop) || 0,
+        scrollLeft: Number(authoringRoot.scrollLeft) || 0,
+        focus: origin
+          ? {
+              action: origin.dataset.courseAuthoringAction || "",
+              targetKind: origin.dataset.targetKind || "",
+              targetId: origin.dataset.targetId || ""
+            }
+          : null
+      };
       const opened = await editorApp?.openEntityPath?.(entityPath);
       if (!opened) throw new Error("Não foi possível abrir este objeto no editor contextual.");
+      studyAuthoringReturn = returnState;
       authoringSurface?.destroy?.();
       authoringRoot.hidden = true;
       editorRoot.hidden = false;
@@ -1213,7 +1230,35 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     }
   });
 
+  const returnFromStudyToAuthoring = () => {
+    const pending = studyAuthoringReturn;
+    if (!pending) return false;
+    studyAuthoringReturn = null;
+    if (location.hash !== pending.route) {
+      history.replaceState(history.state ?? null, "", pending.route);
+    }
+    editorRoot.hidden = true;
+    authoringRoot.hidden = false;
+    void authoringSurface.open().then(() => {
+      authoringRoot.scrollTop = pending.scrollTop;
+      authoringRoot.scrollLeft = pending.scrollLeft;
+      const focus = pending.focus;
+      if (!focus) return;
+      const target = [...authoringRoot.querySelectorAll(
+        `[data-course-authoring-action="${focus.action}"]`
+      )].find((node) =>
+        String(node.dataset.targetKind || "") === focus.targetKind &&
+        String(node.dataset.targetId || "") === focus.targetId
+      );
+      target?.focus?.({ preventScroll: true });
+    }).catch((error) => {
+      console.warn("A Autoria poderá ser reaberta pela Home.", error);
+    });
+    return true;
+  };
+
   const openAuthoring = () => {
+    studyAuthoringReturn = null;
     settings.close();
     if (!editorRoot.hidden && editorRoot.contains(document.activeElement)) {
       const element = document.activeElement;
@@ -1255,6 +1300,13 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   editorRoot.addEventListener("aralearn:open-authoring", openAuthoring);
 
   lifecycleAbortController = new AbortController();
+  editorRoot.addEventListener("click", (event) => {
+    if (!studyAuthoringReturn || !event.target?.closest?.("[data-action='go-back']")) return;
+    const handled = editorApp?.handleBack?.() === true;
+    if (!handled && !editorApp?.hasPendingManualEdit?.()) returnFromStudyToAuthoring();
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, { capture: true, signal: lifecycleAbortController.signal });
   lifecycleAbortController.signal.addEventListener("abort", () => {
     if (authenticatedApplicationCleanup !== cleanupApplication) return;
     authenticatedApplicationCleanup = null;
@@ -1293,7 +1345,8 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       const destination = dispatchApplicationBack({
         closeOverlay: () => settings.handleBack(),
         handleAuthoringBack: () => authoringSurface?.handleBack?.() === true,
-        handleStudyBack: () => editorApp?.handleBack?.() === true
+        handleStudyBack: () => editorApp?.handleBack?.() === true ||
+          (!editorApp?.hasPendingManualEdit?.() && returnFromStudyToAuthoring())
       });
       if (destination !== "exit") return true;
       void bestEffortFlush().then(() => globalThis.AndroidHost?.finishApp?.());

@@ -1517,7 +1517,7 @@ function renderContentSection(state) {
   const editable = state.course?.canEdit === true;
   const hierarchyOpen = state.routeTarget?.kind !== "study_unit";
   return '<section class="course-authoring-content-flow" aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-content-heading"><div><h2 id="course-authoring-section-title">Conteúdo</h2>' +
+    '<header class="course-authoring-content-heading"><div><h2 id="course-authoring-section-title">Inspeção do conteúdo</h2>' +
     '<p>Navegue pela hierarquia, leia no renderer e edite o objeto no contexto.</p></div>' +
     (editable && state.canOpenStudyContent
       ? '<button type="button" class="course-authoring-primary" data-course-authoring-action="edit-content-entity"' +

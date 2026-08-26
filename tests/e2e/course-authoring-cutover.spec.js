@@ -3409,8 +3409,8 @@ test.describe("entrada e Conteúdo cotidiano da Autoria", () => {
         await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }))
           .toBeVisible();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
-        await expect(page.getByRole("navigation", { name: "Tarefas do Curso" }))
-          .toBeVisible();
+        await expect(page.locator(".course-authoring-task-menu > summary"))
+          .toHaveAccessibleName("Abrir tarefas do Curso");
         await expectNoHorizontalOverflow(page);
         await expectVisibleTouchTargets(page);
         await page.screenshot({
