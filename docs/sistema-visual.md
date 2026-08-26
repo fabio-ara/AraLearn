@@ -92,8 +92,9 @@ telas maiores. Não existe barra lateral de desktop, segunda coluna, dashboard
 expandido nem canvas de 760 px. A Autoria possui um único rolador vertical;
 tabelas e comparações largas usam rolagem horizontal local.
 
-Uma ação frequente usa ícone conhecido, nome acessível e dica. A ação principal
-de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
+Uma ação frequente, reconhecível e situada prefere ícone conhecido, nome
+acessível e dica. Texto visível permanece quando evita ambiguidade real; a ação
+principal de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
 em controles progressivos, sem desaparecer do produto. Planejamento mostra
 primeiro a próxima ação, o objetivo e o estado das Partes; contexto, referências
 e organização avançada são abertos quando necessários.
@@ -117,14 +118,15 @@ frase “Ao salvar, o AraLearn criará
 uma cópia privada para você. O Curso compartilhado continuará intacto.” A ação
 correspondente é **Salvar na minha cópia**. Depois da confirmação, a pessoa
 permanece na mesma Unidade e a
-interface informa **Cópia criada. Você continua nesta Unidade.** A Home usa
-**Compartilhado com você** no original e **Sua cópia** no novo Curso, sem expor
-identificadores ou revisões.
+interface informa **Cópia criada. Você continua nesta Unidade.** A Home distingue
+o original compartilhado e a cópia pessoal por iconografia e estado acessível
+ao lado do título, sem anexar sufixos nem expor identificadores ou revisões.
 
-Em produção, a sobreposição apresenta o relay local como conexão fixa. Mensagem,
-conversa, plano, confirmação, estado de validação e prévia seguem uma progressão
-única. A edição manual continua disponível, inclusive para código ou terminal
-extensos.
+A sobreposição permite escolher OpenAI, Gemini ou DeepSeek e informar uma chave
+mantida somente na memória da sessão. Mensagem, conversa multiturmo, plano,
+confirmação, estado de validação e prévia seguem uma progressão única. Endpoint,
+relay e explicações de arquitetura não aparecem no uso normal. A edição manual
+continua disponível, inclusive para código ou terminal extensos.
 
 O retorno de outra guia ou janela provoca a releitura do cabeçalho canônico e da
 área visível. Uma ação de atualização permanece disponível no cabeçalho para o
@@ -145,7 +147,10 @@ o mesmo envelope idempotente; cancelar ou descartar limpa esse estado
 transitório de maneira explícita.
 
 O Estudo conserva navegação própria, com foco na Unidade atual, na prática e na
-retomada. Um Curso compartilhado concede Estudo e não entra na Autoria da pessoa
+retomada. A barra cotidiana usa **Voltar + Home**: Voltar restaura a origem real,
+rolagem e foco; Home oferece saída global previsível. Acesso direto ao pai só
+aparece como ação contextual quando uma jornada concreta o justificar. Um Curso
+compartilhado concede Estudo e não entra na Autoria da pessoa
 favorecida. A cópia pessoal criada por uma gravação passa a ser Curso próprio e,
 por isso, aparece na Autoria dessa pessoa. Semelhança visual entre cartões de
 navegação não comunica permissão.
@@ -231,6 +236,10 @@ o rótulo e a geometria calculada.
 `currentColor`. Um ícone sem texto visível recebe nome acessível. O estado é
 comunicado por rótulo, forma e cor; a troca de glifo isolada não basta.
 
+A gramática é icon-first, não icon-only. Títulos não recebem sufixos como
+`· Seu Curso` para expressar propriedade; iconografia e estado acessível fazem
+essa distinção, com cor apenas como reforço.
+
 Rótulos descrevem a tarefa. Termos como JSON, versão de estado, identificador de
 pacote ou trava de concorrência aparecem apenas em diagnóstico técnico. A
 interface comum fala em Curso, Parte, Unidade de estudo, componente didático,
@@ -274,6 +283,11 @@ transição ocorre localmente; a persistência remota segue pela fila apropriada
 Mudança de tema, instabilidade de rede ou gravação remota não bloqueiam esse
 controle.
 
+A Unidade usa a altura útil disponível sem criar rolagem vertical no documento.
+Conteúdo curto e longo conservam a mesma moldura e o mesmo dock; somente o
+interior do cartão rola quando necessário. Numa lacuna preenchível, o prompt
+pertence à lacuna ativa, e limpar uma resposta não altera as lacunas vizinhas.
+
 Movimento preserva continuidade espacial ou explica mudança de estado. A
 preferência `prefers-reduced-motion` reduz transições e elimina movimento
 decorativo contínuo. Navegar, voltar, confirmar e cancelar não aguardam uma
@@ -290,6 +304,15 @@ Menus, seletores e diálogos fecham por ação explícita, clique externo e Esc
 quando a operação permite. Sobreposições mantêm foco contido e o devolvem ao
 controle de origem. Mensagens transitórias não cobrem o controle de avanço nem
 impedem a retomada do estudo.
+
+Sheets e dialogs conservam geometria externa estável. Quando o conteúdo varia
+ou cresce, ele rola internamente sem deslocar a topbar, o dock ou o controle de
+origem. Mudanças de modo, seleção, validação, edição e status curto preservam
+posição, dimensões, rolagem e foco dos elementos cuja função não mudou.
+
+**Conta e aparência** aplica esse contrato às subvisões **Foto do perfil** e
+**Dados e conta**: a folha não muda de altura, a rolagem permanece interna e a
+ação **Voltar** substitui o espaço reservado sem deslocar o título ou **Fechar**.
 
 Confirmações de alterações sensíveis pertencem à superfície do produto. O
 diálogo informa a ação e seu alcance, oferece cancelar e confirmar com rótulos
@@ -329,7 +352,7 @@ pós-publicação.
 O aceite da cópia pessoal percorre 360, 390, 430 e 1.280 px, nos temas claro e
 escuro. O shell permanece limitado a 430 px e centralizado em tela larga.
 Seletor e ação principal conservam 44 px, sem overflow ou identificadores
-técnicos. Depois da gravação, **Sua cópia** e **Compartilhado com você** aparecem
+técnicos. Depois da gravação, **Cópia pessoal** e **Curso compartilhado** aparecem
 como opções distintas.
 
 A matriz visual focal da Autoria percorre as quatro larguras e os dois temas,

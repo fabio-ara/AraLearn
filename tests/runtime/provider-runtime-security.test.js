@@ -10,18 +10,11 @@ import {
   readAssistAllowedOrigins
 } from "../../src/assist/providerRuntimeSecurity.js";
 
-test("origens da assistência são exatas, fechadas e incluem somente presets seguros", () => {
+test("produção permite somente as origens oficiais dos providers", () => {
   const origins = buildAssistAllowedOrigins("https://modelos.example.edu");
-  assert.deepEqual(origins, DEFAULT_ASSIST_ALLOWED_ORIGINS);
+  assert.deepEqual(origins, DEVELOPMENT_VENDOR_ASSIST_ORIGINS);
   assert.equal(Object.isFrozen(origins), true);
-  assert.deepEqual(buildAssistAllowedOrigins("https://modelos.example.edu", {
-    includeDirectVendors: true,
-    includeConfiguredOrigins: true
-  }), [
-    ...DEFAULT_ASSIST_ALLOWED_ORIGINS,
-    ...DEVELOPMENT_VENDOR_ASSIST_ORIGINS,
-    "https://modelos.example.edu"
-  ]);
+  assert.deepEqual(DEFAULT_ASSIST_ALLOWED_ORIGINS, DEVELOPMENT_VENDOR_ASSIST_ORIGINS);
   assert.throws(
     () => normalizeAssistProviderOrigin("https://modelos.example.edu/v1/responses"),
     /somente protocolo, host e porta/u
@@ -32,7 +25,7 @@ test("origens da assistência são exatas, fechadas e incluem somente presets se
   );
   assert.throws(
     () => normalizeAssistProviderOrigin("http://127.0.0.1:9999"),
-    /porta 4183/u
+    /HTTPS|provider/u
   );
   assert.throws(
     () => normalizeAssistProviderOrigin("https://*.example.edu"),
@@ -65,13 +58,13 @@ test("endpoint falha fechado quando a instalação não declara sua origem", () 
   );
 });
 
-test("HTTP é aceito somente no serviço local previsto", () => {
-  assert.equal(
-    assertAssistProviderEndpointAllowed(
+test("produção rejeita endpoints HTTP locais da assistência", () => {
+  assert.throws(
+    () => assertAssistProviderEndpointAllowed(
       "http://10.0.2.2:4183/assist",
       { assistAllowedOrigins: ["http://10.0.2.2:4183"] }
     ),
-    "http://10.0.2.2:4183/assist"
+    /HTTPS|provider|origem/iu
   );
   assert.throws(
     () => assertAssistProviderEndpointAllowed(

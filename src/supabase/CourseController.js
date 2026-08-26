@@ -57,7 +57,7 @@ const ACCESSIBLE_COURSE_IDS_CACHE_KEY = `${CACHE_PREFIX}.accessible-course-ids`;
 const ACCESSIBLE_COURSE_IDS_CONTRACT = "aralearn.accessible-course-ids.v1";
 const REVIEW_PAGE_CACHE_KEY = `${CACHE_PREFIX}.review-page`;
 const AUTHORING_INSPECTION_PAGE_CONTRACT =
-  "aralearn.course-study-unit-inspection-page.v1";
+  "aralearn.course-study-unit-inspection-page.v2";
 const AUTHORING_INSPECTION_POSITION_CONTRACT =
   "aralearn.course-authoring-inspection-position.v1";
 const AUTHORING_INSPECTION_CACHE_MAX_PAGES = 4;

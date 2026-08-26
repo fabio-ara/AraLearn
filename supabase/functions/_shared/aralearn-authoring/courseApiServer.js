@@ -149,6 +149,11 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
           rawArguments,
           deadlineAt,
           surface: "application",
+          applicationInspectionVersion:
+            request.headers.get("accept") ===
+              "application/vnd.aralearn.course-study-unit-inspection.v2+json"
+              ? 2
+              : 1,
           onRequestIdValidated(value) {
             requestId = value;
           }

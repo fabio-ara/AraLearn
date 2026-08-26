@@ -10,6 +10,14 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "home") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M2.2 7.1 8 2.3l5.8 4.8v6.2H9.9V9.5H6.1v3.8H2.2z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "sparkles") {
     return (
       '<svg class="' +

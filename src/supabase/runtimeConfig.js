@@ -75,7 +75,14 @@ export function buildAuthRedirectUrl(
     text(locationValue.search).replace(/^\?/u, "")
   );
   const redirect = new URL(`${locationValue.origin}${locationValue.pathname}`);
+  const actionAuthorizationId = text(
+    authorizationParameters.get("action_authorization_id")
+  );
   const authorizationId = text(authorizationParameters.get("authorization_id"));
-  if (authorizationId) redirect.searchParams.set("authorization_id", authorizationId);
+  if (actionAuthorizationId) {
+    redirect.searchParams.set("action_authorization_id", actionAuthorizationId);
+  } else if (authorizationId) {
+    redirect.searchParams.set("authorization_id", authorizationId);
+  }
   return redirect.toString();
 }

@@ -254,7 +254,7 @@ function decodeJwtPayload(token) {
   }
 }
 
-function publicRuntimeConfig(target = "pages") {
+function publicRuntimeConfig() {
   const supabaseUrl = String(process.env.ARALEARN_SUPABASE_URL || "").trim().replace(/\/+$/, "");
   const supabasePublishableKey = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim();
   const payload = decodeJwtPayload(supabasePublishableKey);
@@ -282,8 +282,7 @@ function publicRuntimeConfig(target = "pages") {
     supabasePublishableKey,
     assistAllowedOrigins: buildAssistAllowedOrigins(
       process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || ""
-    ),
-    ...(target === "android" ? { nativeAssistBridge: true } : {})
+    )
   };
 }
 

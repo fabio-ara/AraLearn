@@ -3,38 +3,26 @@ import {
   requestCourseAssistanceDiscussion,
   COURSE_ASSISTANCE_LIMITS
 } from "../assist/courseContextualAssistance.js";
-import { createAndroidLocalAssistFetch } from "../assist/androidLocalAssistBridge.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const PROVIDERS = Object.freeze({
   openai: Object.freeze({
     label: "OpenAI",
-    endpoint: "https://api.openai.com/v1/responses",
-    keyLabel: "Chave da OpenAI",
-    keyRequired: true
+    keyLabel: "Chave da OpenAI"
   }),
   deepseek: Object.freeze({
     label: "DeepSeek",
-    endpoint: "https://api.deepseek.com/chat/completions",
-    keyLabel: "Chave da DeepSeek",
-    keyRequired: true
+    keyLabel: "Chave da DeepSeek"
   }),
   gemini: Object.freeze({
     label: "Gemini",
-    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-    keyLabel: "Chave do Gemini",
-    keyRequired: true
-  }),
-  local: Object.freeze({
-    label: "Serviço local",
-    endpoint: "http://127.0.0.1:4183/v1/chat/completions",
-    keyLabel: "Token local, se exigido",
-    keyRequired: false
+    keyLabel: "Chave do Gemini"
   })
 });
 
 const MODEL_PRESETS = Object.freeze([
   Object.freeze({ value: "gpt-5.6-luna", label: "OpenAI · GPT-5.6 Luna" }),
+  Object.freeze({ value: "gemini-2.5-flash", label: "Gemini · 2.5 Flash" }),
   Object.freeze({ value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" }),
   Object.freeze({ value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" })
 ]);
@@ -42,7 +30,6 @@ const MODEL_PRESETS = Object.freeze([
 const EMPTY_CONFIG = Object.freeze({
   providerId: "",
   model: "",
-  endpoint: "",
   apiKey: "",
   timeoutMs: 45_000
 });
@@ -56,8 +43,8 @@ const SCOPE_LABELS = Object.freeze({
 export const COURSE_ASSISTANCE_DISCLOSURE =
   "O serviço recebe o alvo de escrita, o conteúdo completo necessário para compreendê-lo, " +
   "um resumo do caminho curricular e as mensagens recentes desta sessão. PDFs, Fontes, " +
-  "identidade da conta e regiões alheias do Curso não são enviados. A conversa e a " +
-  "configuração permanecem somente na memória. Em produção, a chave do provedor fica no relay local.";
+  "identidade da conta e regiões alheias do Curso não são enviados. OpenAI, Gemini ou DeepSeek " +
+  "recebem a conversa diretamente. A chave e a configuração permanecem somente na memória desta sessão.";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -72,11 +59,18 @@ function escapeHtml(value) {
     .replace(/'/gu, "&#39;");
 }
 
-function modelOptions(selected) {
-  const known = MODEL_PRESETS.some(({ value }) => value === selected);
+function providerModelPrefix(providerId) {
+  return providerId === "openai" ? "gpt-" : providerId === "gemini" ? "gemini-" : "deepseek-";
+}
+
+function modelOptions(selected, providerId) {
+  const available = providerId
+    ? MODEL_PRESETS.filter(({ value }) => value.startsWith(providerModelPrefix(providerId)))
+    : MODEL_PRESETS;
+  const known = available.some(({ value }) => value === selected);
   return '<option value="">Escolha o modelo</option>' +
     (!selected || known ? "" : `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`) +
-    MODEL_PRESETS.map(({ value, label }) =>
+    available.map(({ value, label }) =>
     `<option value="${escapeHtml(value)}"${selected === value ? " selected" : ""}>` +
     `${escapeHtml(label)}</option>`).join("");
 }
@@ -94,6 +88,19 @@ function conversationHtml(conversation) {
   return '<ol class="course-assistance-conversation" aria-label="Conversa desta sessão">' +
     conversation.map((turn) => `<li class="is-${turn.role}"><span>${turn.role === "user" ? "Você" : "Assistência"}</span>` +
       `<p>${escapeHtml(turn.message)}</p></li>`).join("") + "</ol>";
+}
+
+function selectedScopeLabel(scope, ids = []) {
+  const count = ids.length;
+  if (scope === "study_unit") {
+    return ids.includes("study_unit")
+      ? "Unidade inteira"
+      : `${count} ${count === 1 ? "componente" : "componentes"}`;
+  }
+  if (scope === "didactic_microsequence") {
+    return `${count} ${count === 1 ? "Unidade" : "Unidades"}`;
+  }
+  return `${count} ${count === 1 ? "Microssequência" : "Microssequências"}`;
 }
 
 function proposalHtml(proposal, pending) {
@@ -148,7 +155,6 @@ export function createCourseProviderSession() {
       config = {
         providerId: text(value.providerId),
         model: text(value.model),
-        endpoint: text(value.endpoint),
         apiKey: text(value.apiKey),
         timeoutMs: Number.isFinite(Number(value.timeoutMs))
           ? Number(value.timeoutMs)
@@ -160,10 +166,14 @@ export function createCourseProviderSession() {
       return Object.freeze({
         providerId: config.providerId,
         model: config.model,
-        endpoint: config.endpoint,
         hasCredential: Boolean(config.apiKey),
         destroyed
       });
+    },
+    clear() {
+      if (destroyed) return false;
+      config = { ...EMPTY_CONFIG };
+      return true;
     },
     destroy() {
       config = { ...EMPTY_CONFIG };
@@ -187,11 +197,6 @@ export function createCourseProviderAssistance({
   if (typeof session?.read !== "function" || typeof session?.update !== "function") {
     throw new TypeError("Sessão inválida para a assistência contextual.");
   }
-  const providerFetch = createAndroidLocalAssistFetch({
-    enabled: runtimeConfig?.nativeAssistBridge === true,
-    bridge: globalThis.AraLearnNativeAssist,
-    fallbackFetch: fetchImpl
-  });
   let active = null;
   let overlay = null;
   let requestController = null;
@@ -214,18 +219,6 @@ export function createCourseProviderAssistance({
     pending = false;
   }
 
-  function configureProductionDefault() {
-    const current = session.read();
-    if (runtimeConfig?.developmentRuntime === true) return;
-    session.update({
-      ...current,
-      providerId: "local",
-      model: current.model || "gpt-5.6-luna",
-      endpoint: PROVIDERS.local.endpoint,
-      apiKey: ""
-    });
-  }
-
   function syncForm() {
     if (!overlay) return;
     const current = session.read();
@@ -234,7 +227,6 @@ export function createCourseProviderAssistance({
       ...current,
       providerId: text(overlay.querySelector("[data-course-assistance-provider]")?.value),
       model: text(overlay.querySelector("[data-course-assistance-model]")?.value),
-      endpoint: text(overlay.querySelector("[data-course-assistance-endpoint]")?.value),
       apiKey: credential || current.apiKey
     });
     messageDraft = text(overlay.querySelector("[data-course-assistance-message]")?.value);
@@ -248,37 +240,63 @@ export function createCourseProviderAssistance({
       `${renderUiIcon("arrow-left", "course-authoring-button-icon")}<span>Voltar à conversa</span></button></section>`;
     overlay.querySelector("[data-course-assistance-return]")?.addEventListener("click", () => {
       peeking = false;
-      render();
+      render({
+        focusSelector: "[data-course-assistance-message]",
+        scrollBodyToEnd: true
+      });
     });
   }
 
-  function render() {
+  function render({ focusSelector = "", scrollBodyToEnd = false } = {}) {
     if (!overlay || !active) return;
     if (peeking) return renderPeek();
+    const previousBody = overlay.querySelector("[data-course-assistance-body]");
+    const previousScrollTop = previousBody?.scrollTop || 0;
+    if (!focusSelector && overlay.contains?.(documentValue.activeElement)) {
+      focusSelector = [
+        "data-course-assistance-message",
+        "data-course-assistance-provider",
+        "data-course-assistance-model",
+        "data-course-assistance-key",
+        "data-course-assistance-send",
+        "data-course-assistance-prepare",
+        "data-course-assistance-discard",
+        "data-course-assistance-apply"
+      ].find((name) => documentValue.activeElement?.hasAttribute?.(name));
+      if (focusSelector) focusSelector = `[${focusSelector}]`;
+    }
     overlay.classList.remove("is-peeking");
     const config = session.read();
-    const development = runtimeConfig?.developmentRuntime === true;
-    const provider = PROVIDERS[config.providerId] || PROVIDERS.local;
-    const providerField = development
-      ? '<label><span>Serviço</span><select data-course-assistance-provider' +
-        `${pending ? " disabled" : ""}>${providerOptions(config.providerId)}</select></label>`
-      : '<input type="hidden" data-course-assistance-provider value="local">' +
-        '<p class="course-assistance-fixed-provider"><span>Conexão</span><strong>Relay local seguro</strong></p>';
-    const credentialField = development
-      ? `<label><span>${escapeHtml(provider.keyLabel)}</span><input type="password" autocomplete="off" ` +
-        `data-course-assistance-key${pending ? " disabled" : ""}></label>`
-      : '<p>A credencial do provedor é configurada fora do AraLearn.</p>';
+    const provider = PROVIDERS[config.providerId] || null;
+    const providerField = '<label><span>Serviço</span><select data-course-assistance-provider' +
+      `${pending ? " disabled" : ""}>${providerOptions(config.providerId)}</select></label>`;
+    const credentialField = `<label><span>${escapeHtml(provider?.keyLabel || "Chave de API")}</span>` +
+      `<input type="password" autocomplete="off" data-course-assistance-key ` +
+      `placeholder="${config.apiKey ? "Chave informada nesta sessão" : "Somente nesta sessão"}"` +
+      `${pending ? " disabled" : ""}></label>`;
+    const hasConversation = conversation.length > 0 || Boolean(proposal) || Boolean(candidate);
     overlay.innerHTML = '<div class="course-assistance-backdrop" data-course-assistance-close></div>' +
-      '<section class="course-assistance-sheet" role="dialog" aria-modal="true" ' +
+      '<section class="course-assistance-sheet' + (hasConversation ? ' has-conversation' : '') +
+      '" role="dialog" aria-modal="true" ' +
       'aria-labelledby="course-assistance-title" aria-describedby="course-assistance-context">' +
       '<header><div><p>Assistência por IA</p><h2 id="course-assistance-title">' +
       `${escapeHtml(SCOPE_LABELS[active.scope])}: ${escapeHtml(active.targetTitle)}</h2>` +
-      '<p id="course-assistance-context">Contexto somente leitura da composição e do caminho curricular; ' +
-      `escrita limitada a esta ${escapeHtml(SCOPE_LABELS[active.scope])}.</p></div>` +
+      '<p id="course-assistance-context"><strong>Alterar: ' +
+      `${escapeHtml(selectedScopeLabel(active.scope, active.writeTargetIds))}.</strong> ` +
+      'O restante da composição e do caminho curricular entra somente como contexto.</p></div>' +
       '<button class="icon-ghost" type="button" data-course-assistance-close aria-label="Fechar" title="Fechar">' +
       `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
-      conversationHtml(conversation) + proposalHtml(proposal, pending) +
-      candidateHtml(candidate) +
+      '<div class="course-assistance-body" data-course-assistance-body>' +
+      conversationHtml(conversation) + proposalHtml(proposal, pending) + candidateHtml(candidate) +
+      `<details class="course-assistance-connection"${connectionOpen ? " open" : ""}>` +
+      '<summary>Serviço e modelo</summary>' +
+      providerField + '<label><span>Modelo</span><select data-course-assistance-model' +
+      `${pending ? " disabled" : ""}>${modelOptions(config.model, config.providerId)}</select></label>` +
+      `${credentialField}</details>` +
+      `<p class="course-assistance-status" tabindex="-1" role="status" aria-live="polite">${escapeHtml(status)}</p>` +
+      `<p class="course-assistance-error" tabindex="-1" role="alert">${escapeHtml(error)}</p>` +
+      '<details class="course-assistance-disclosure"><summary>Privacidade e envio</summary><p>' +
+      `${escapeHtml(COURSE_ASSISTANCE_DISCLOSURE)}</p></details></div>` +
       '<form data-course-assistance-form><label class="course-assistance-message"><span>Mensagem</span>' +
       `<textarea data-course-assistance-message maxlength="${COURSE_ASSISTANCE_LIMITS.maximumRequestLength}" ` +
       `placeholder="Discuta, peça uma explicação ou refine a mudança"${pending ? " disabled" : ""}>` +
@@ -286,19 +304,16 @@ export function createCourseProviderAssistance({
       '<button class="open-mini" type="submit" data-course-assistance-send' +
       `${pending ? ' disabled aria-disabled="true"' : ""}>` +
       `${renderUiIcon(pending ? "rotate" : "prompt", "course-authoring-button-icon")}` +
-      `<span>${pending ? "Aguarde…" : "Enviar"}</span></button></form>` +
-      `<details class="course-assistance-connection"${connectionOpen ? " open" : ""}>` +
-      '<summary>Serviço e modelo</summary>' +
-      providerField + '<label><span>Modelo</span><select data-course-assistance-model' +
-      `${pending ? " disabled" : ""}>${modelOptions(config.model)}</select></label>` +
-      '<label><span>Endpoint</span><input type="url" data-course-assistance-endpoint value="' +
-      `${escapeHtml(config.endpoint)}"${pending ? " disabled" : ""}></label>${credentialField}</details>` +
-      `<p class="course-assistance-status" role="status" aria-live="polite">${escapeHtml(status)}</p>` +
-      `<p class="course-assistance-error" role="alert">${escapeHtml(error)}</p>` +
-      '<details class="course-assistance-disclosure"><summary>Privacidade e envio</summary><p>' +
-      `${escapeHtml(COURSE_ASSISTANCE_DISCLOSURE)}</p></details>` +
-      '</section>';
+      `<span>${pending ? "Aguarde…" : "Enviar"}</span></button></form></section>`;
     bind();
+    const nextBody = overlay.querySelector("[data-course-assistance-body]");
+    if (nextBody) {
+      nextBody.scrollTop = scrollBodyToEnd ? nextBody.scrollHeight : previousScrollTop;
+    }
+    const focusTarget = focusSelector && overlay.querySelector(focusSelector);
+    if (focusTarget && !focusTarget.disabled) {
+      try { focusTarget.focus({ preventScroll: true }); } catch { focusTarget.focus(); }
+    }
   }
 
   async function restorePreview() {
@@ -315,6 +330,7 @@ export function createCourseProviderAssistance({
       try { await restorePreview(); } catch { /* O consumidor informa mudança concorrente. */ }
     }
     overlay?.remove?.();
+    documentValue?.removeEventListener?.("keydown", keydown);
     overlay = null;
     active = null;
     conversation = [];
@@ -325,6 +341,8 @@ export function createCourseProviderAssistance({
     error = "";
     peeking = false;
     connectionOpen = false;
+    if (typeof session.clear === "function") session.clear();
+    else session.update({ ...EMPTY_CONFIG });
     if (!destroyed) onClosed?.();
     if (restoreFocus) trigger?.focus?.({ preventScroll: true });
     return true;
@@ -335,7 +353,7 @@ export function createCourseProviderAssistance({
     syncForm();
     if (!messageDraft) {
       error = "Escreva uma mensagem antes de enviar.";
-      render();
+      render({ focusSelector: "[data-course-assistance-message]" });
       return false;
     }
     if (candidate) await restorePreview();
@@ -350,18 +368,22 @@ export function createCourseProviderAssistance({
     error = "";
     const epoch = ++requestEpoch;
     requestController = new AbortController();
-    render();
+    render({
+      focusSelector: "[data-course-assistance-status]",
+      scrollBodyToEnd: true
+    });
     try {
       const response = await requestCourseAssistanceDiscussion({
         project: active.project,
         selection: active.selection,
         scope: active.scope,
         writeTargetId: active.writeTargetId,
+        writeTargetIds: active.writeTargetIds,
         message: userMessage,
         conversation: conversation.slice(0, -1),
         providerConfig: session.read(),
         runtimeConfig,
-        fetchImpl: providerFetch,
+        fetchImpl,
         signal: requestController.signal
       });
       if (!active || epoch !== requestEpoch) return false;
@@ -381,7 +403,10 @@ export function createCourseProviderAssistance({
       if (active && epoch === requestEpoch) {
         pending = false;
         requestController = null;
-        render();
+        render({
+          focusSelector: "[data-course-assistance-message]",
+          scrollBodyToEnd: true
+        });
       }
     }
   }
@@ -394,16 +419,17 @@ export function createCourseProviderAssistance({
     error = "";
     const epoch = ++requestEpoch;
     requestController = new AbortController();
-    render();
+    render({ focusSelector: "[data-course-assistance-status]", scrollBodyToEnd: true });
     try {
       const prepared = await prepareCourseAssistanceProposal({
         project: active.project,
         selection: active.selection,
         confirmedProposal: proposal,
         conversation,
+        writeTargetIds: active.writeTargetIds,
         providerConfig: session.read(),
         runtimeConfig,
-        fetchImpl: providerFetch,
+        fetchImpl,
         signal: requestController.signal
       });
       if (!active || epoch !== requestEpoch) return false;
@@ -421,7 +447,7 @@ export function createCourseProviderAssistance({
       if (active && epoch === requestEpoch) {
         pending = false;
         requestController = null;
-        render();
+        render({ focusSelector: "[data-course-assistance-message]", scrollBodyToEnd: true });
       }
     }
   }
@@ -432,7 +458,7 @@ export function createCourseProviderAssistance({
     candidate = null;
     status = "Proposta descartada. A conversa continua disponível.";
     error = "";
-    render();
+    render({ focusSelector: "[data-course-assistance-message]", scrollBodyToEnd: true });
     return true;
   }
 
@@ -443,7 +469,7 @@ export function createCourseProviderAssistance({
       await Promise.resolve(active.onApplyDraft(applied));
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "A proposta não pôde ser aplicada ao rascunho.";
-      render();
+      render({ focusSelector: "[data-course-assistance-error]", scrollBodyToEnd: true });
       return false;
     }
     candidate = null;
@@ -454,8 +480,13 @@ export function createCourseProviderAssistance({
     if (!event.target.matches?.("[data-course-assistance-provider]")) return;
     syncForm();
     const current = session.read();
-    const provider = PROVIDERS[current.providerId];
-    session.update({ ...current, endpoint: provider?.endpoint || "", apiKey: "" });
+    session.update({
+      ...current,
+      model: MODEL_PRESETS.find(({ value }) => value.startsWith(
+        current.providerId === "openai" ? "gpt-" : current.providerId === "gemini" ? "gemini-" : "deepseek-"
+      ))?.value || "",
+      apiKey: ""
+    });
     connectionOpen = true;
     render();
   }
@@ -465,7 +496,10 @@ export function createCourseProviderAssistance({
       event.preventDefault?.();
       if (peeking) {
         peeking = false;
-        render();
+        render({
+          focusSelector: "[data-course-assistance-message]",
+          scrollBodyToEnd: true
+        });
       } else void close();
       return;
     }
@@ -501,7 +535,6 @@ export function createCourseProviderAssistance({
     overlay.querySelector(".course-assistance-connection")?.addEventListener("toggle", (event) => {
       connectionOpen = event.currentTarget.open;
     });
-    overlay.onkeydown = keydown;
   }
 
   const handleOnline = () => {
@@ -522,6 +555,7 @@ export function createCourseProviderAssistance({
       scope,
       targetTitle,
       writeTargetId = "",
+      writeTargetIds = [],
       onPreview,
       onDiscardPreview,
       onApplyDraft,
@@ -532,16 +566,21 @@ export function createCourseProviderAssistance({
       if (active || !project || !selection || !SCOPE_LABELS[scope] ||
           typeof onPreview !== "function" || typeof onDiscardPreview !== "function" ||
           typeof onApplyDraft !== "function") return false;
-      configureProductionDefault();
       active = {
         trigger, project: structuredClone(project), selection: structuredClone(selection),
         scope, targetTitle: text(targetTitle) || SCOPE_LABELS[scope], writeTargetId,
+        writeTargetIds: (() => {
+          const normalized = [...new Set((Array.isArray(writeTargetIds) ? writeTargetIds : [])
+            .map(text).filter(Boolean))];
+          return normalized.length ? normalized : scope === "study_unit" ? ["study_unit"] : [];
+        })(),
         onPreview, onDiscardPreview, onApplyDraft, onFocusPreview, onClosed
       };
       overlay = documentValue.createElement("div");
       overlay.className = "course-assistance-overlay";
       overlay.setAttribute("data-course-assistance", "");
       documentValue.body.appendChild(overlay);
+      documentValue.addEventListener?.("keydown", keydown);
       conversation = [];
       proposal = null;
       candidate = null;
@@ -555,7 +594,14 @@ export function createCourseProviderAssistance({
     },
     handleBack() {
       if (!active) return false;
-      if (peeking) { peeking = false; render(); return true; }
+      if (peeking) {
+        peeking = false;
+        render({
+          focusSelector: "[data-course-assistance-message]",
+          scrollBodyToEnd: true
+        });
+        return true;
+      }
       void close();
       return true;
     },
@@ -576,6 +622,7 @@ export function createCourseProviderAssistance({
       if (destroyed) return;
       destroyed = true;
       windowValue?.removeEventListener?.("online", handleOnline);
+      documentValue?.removeEventListener?.("keydown", keydown);
       if (ownsSession) session.destroy?.();
       void close({ discard: false, restoreFocus: false });
     }

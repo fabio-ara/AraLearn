@@ -732,7 +732,7 @@ export async function readHostedCourseSourcePdfEnvironment(environment = process
   let keys;
   try {
     keys = JSON.parse(runSupabase([
-      "projects", "api-keys", "--project-ref", projectRef, "--output", "json"
+      "projects", "api-keys", "--project-ref", projectRef, "--reveal", "--output", "json"
     ]));
   } catch {
     throw new Error("As chaves hospedadas não puderam ser lidas para o smoke PDF.");

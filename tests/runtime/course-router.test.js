@@ -55,6 +55,10 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "listCourseStudyUnits",
     courseId: COURSE_ID
   });
+  assert.deepEqual(routeCourseRequest("GET", `/v2/courses/${COURSE_ID}/study-units`), {
+    name: "listContinuousCourseStudyUnits",
+    courseId: COURSE_ID
+  });
   assert.deepEqual(routeCourseRequest(
     "GET",
     `/v1/courses/${COURSE_ID}/instructional-plan`
@@ -691,7 +695,7 @@ test("lê Unidades de estudo por escopo com âncora e orçamento limitado", asyn
     async listCourseStudyUnits(value) {
       call = value;
       return {
-        contract: "aralearn.course-study-unit-inspection-page.v1",
+        contract: "aralearn.course-study-unit-inspection-page.v2",
         courseId: value.courseId,
         courseRevision: value.expectedRevision,
         items: []
@@ -717,6 +721,18 @@ test("lê Unidades de estudo por escopo com âncora e orçamento limitado", asyn
   assert.equal(call.cursorStudyUnitId, null);
   assert.equal(call.direction, "backward");
   assert.equal(call.maxBytes, 262144);
+  assert.equal(call.inspectionVersion, 1);
+
+  const continuous = request(
+    `/v2/courses/${COURSE_ID}/study-units?expectedRevision=8&limit=12`
+  );
+  await executeCourseRoute({
+    request: continuous,
+    route: routeCourseRequest("GET", new URL(continuous.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(call.inspectionVersion, 2);
 
   const invalid = request(
     `/v1/courses/${COURSE_ID}/study-units?expectedRevision=8` +

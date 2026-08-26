@@ -23,7 +23,17 @@ O banco conserva o Curso vivo, sua hierarquia, planejamento, materializações,
 parâmetros, política de componentes, Fontes, Âncoras, vínculos de PDF,
 Observações, Auditoria, Variantes, acesso, estado pessoal e fatos projetados
 para Pesquisa. As migrations reproduzem o esquema, e o manifesto corrente
-termina em `20260824174101_authoring_materialization_history.sql`.
+termina em `20260826094500_preserve_inspection_v1_and_scope_design_verification.sql`.
+
+A inspeção contínua de Autoria agrega na página das Unidades os marcadores de
+Observações, a materialização de origem e a comparação entre desenho usado e
+vigente. A verificação de Auditoria coordena, na mesma transação, o estado das
+Observações vinculadas. Esses comportamentos reutilizam as autoridades
+existentes e não criam uma fila ou entidade de revisão em lote.
+Durante o corte único da sequência, a projeção v1 permanece estável para a
+release publicada e a inspeção contínua usa a projeção v2 separada. A API do
+aplicativo negocia v2 pelo media type da inspeção; clientes anteriores sem essa
+declaração continuam na rota e na projeção v1.
 
 Uma pessoa autenticada ainda precisa estar autorizada para a linha e para a
 operação pedida. Nas tabelas expostas pela API de dados, privilégios explícitos
@@ -91,8 +101,8 @@ ser usada pelos testes.
 
 Os verificadores de build interrompem a montagem quando encontram
 `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_DB_PASSWORD` no
-processo que gera site ou APK. Segredos de provedores de IA permanecem no relay
-local correspondente, não no Supabase nem no artefato público.
+processo que gera site ou APK. Chaves efêmeras de providers de IA permanecem
+somente na memória da sessão, não no Supabase nem no artefato público.
 
 ## Storage: bytes privados e vínculo relacional
 

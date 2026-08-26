@@ -23,12 +23,14 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-part-materialization-v1",
   "course-authoring-part-materialization-history-v1",
   "course-study-unit-inspection-v1",
+  "continuous-authoring-inspection-v1",
   "course-design-parameters-v1",
   "course-authoring-guidance-v1",
   "course-component-policy-v1",
   "course-sources-v1",
   "course-source-provenance-v1",
   "course-source-pdf-attachments-v1",
+  "course-source-human-locators-v1",
   "course-anchored-annotations-v1",
   "course-annotation-subject-classification-v1",
   "course-personal-state-v2",
@@ -254,7 +256,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260824174101" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260826094500" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -323,6 +325,18 @@ async function validateManifest() {
   );
   const materializationHistoryMigration = await read(
     "supabase/migrations/20260824174101_authoring_materialization_history.sql"
+  );
+  const sourceHumanLocatorsMigration = await read(
+    "supabase/migrations/20260825190000_course_source_human_locators.sql"
+  );
+  const continuousInspectionMigration = await read(
+    "supabase/migrations/20260826090000_continuous_authoring_inspection.sql"
+  );
+  const unitAnnotationScopeMigration = await read(
+    "supabase/migrations/20260826093000_align_unit_annotation_scope_with_materialization.sql"
+  );
+  const continuousInspectionV2Migration = await read(
+    "supabase/migrations/20260826094500_preserve_inspection_v1_and_scope_design_verification.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -438,6 +452,36 @@ async function validateManifest() {
       ) ||
       !materializationHistoryMigration.includes(
         "advance_course_authoring_part_materialization_for_actor_v2"
+      ) ||
+      !sourceHumanLocatorsMigration.includes(
+        "$advance_course_source_human_locators_manifest$"
+      ) ||
+      !sourceHumanLocatorsMigration.includes(
+        "to_jsonb('20260825190000'::text)"
+      ) ||
+      !sourceHumanLocatorsMigration.includes(
+        "course-source-human-locators-v1"
+      ) ||
+      !continuousInspectionMigration.includes(
+        "$advance_continuous_authoring_inspection_manifest$"
+      ) ||
+      !continuousInspectionMigration.includes(
+        "to_jsonb('20260826090000'::text)"
+      ) ||
+      !continuousInspectionMigration.includes(
+        "continuous-authoring-inspection-v1"
+      ) ||
+      !unitAnnotationScopeMigration.includes(
+        "$advance_unit_annotation_scope_manifest$"
+      ) ||
+      !unitAnnotationScopeMigration.includes(
+        "to_jsonb('20260826093000'::text)"
+      ) ||
+      !continuousInspectionV2Migration.includes(
+        "$advance_continuous_inspection_v2_manifest$"
+      ) ||
+      !continuousInspectionV2Migration.includes(
+        "to_jsonb('20260826094500'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -460,7 +504,11 @@ async function validateManifest() {
         !personalCourseCopyMigration.includes(`'${feature}'`) &&
         !dataLifecycleMigration.includes(`'${feature}'`) &&
         !actionsMigration.includes(`'${feature}'`) &&
-        !materializationHistoryMigration.includes(`'${feature}'`)) {
+        !materializationHistoryMigration.includes(`'${feature}'`) &&
+        !sourceHumanLocatorsMigration.includes(`'${feature}'`) &&
+        !continuousInspectionMigration.includes(`'${feature}'`) &&
+        !unitAnnotationScopeMigration.includes(`'${feature}'`) &&
+        !continuousInspectionV2Migration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

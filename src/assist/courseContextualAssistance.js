@@ -108,11 +108,43 @@ function targetForScope(path, scope) {
   return path.lesson;
 }
 
+function targetSelectionIds(target, scope, requested = []) {
+  const ids = [...new Set(list(requested).map(text).filter(Boolean))];
+  if (scope === "study_unit") {
+    const componentIds = new Set([
+      ...list(target?.content),
+      ...(target?.response ? [target.response] : []),
+      ...list(target?.feedback)
+    ].map(({ id }) => id));
+    if (!ids.length) return ["study_unit"];
+    if (ids.some((id) => id !== "study_unit" && !componentIds.has(id))) {
+      throw new StudyUnitProviderError(
+        "assistance_write_target_invalid",
+        "A seleção de escrita não pertence mais a esta Unidade. Selecione o conteúdo novamente."
+      );
+    }
+    return ids;
+  }
+  const children = scope === "didactic_microsequence"
+    ? list(target?.studyUnits)
+    : list(target?.microsequences);
+  const available = new Set(children.map(({ id }) => id));
+  if (!ids.length) return children.map(({ id }) => id);
+  if (ids.some((id) => !available.has(id))) {
+    throw new StudyUnitProviderError(
+      "assistance_write_target_invalid",
+      "A seleção de escrita não pertence mais a esta composição. Selecione os itens novamente."
+    );
+  }
+  return ids;
+}
+
 export function buildCourseAssistanceContext({
   project,
   selection,
   scope = "study_unit",
-  writeTargetId = ""
+  writeTargetId = "",
+  writeTargetIds = []
 } = {}) {
   if (!SCOPES.has(scope)) throw new TypeError("Escopo de assistência inválido.");
   const path = findPath(project, selection);
@@ -129,9 +161,11 @@ export function buildCourseAssistanceContext({
     writeTarget: {
       kind: scope,
       id: target.id,
-      ...(scope === "study_unit" && text(writeTargetId)
-        ? { selectedComponentId: text(writeTargetId) }
-        : {})
+      selectedIds: targetSelectionIds(
+        target,
+        scope,
+        list(writeTargetIds).length ? writeTargetIds : text(writeTargetId) ? [writeTargetId] : []
+      )
     },
     readOnlyContext: {
       target: clone(target),
@@ -274,6 +308,7 @@ export async function requestCourseAssistanceDiscussion({
   selection,
   scope = "study_unit",
   writeTargetId = "",
+  writeTargetIds = [],
   message,
   conversation = [],
   providerConfig,
@@ -289,7 +324,7 @@ export async function requestCourseAssistanceDiscussion({
     );
   }
   const { context } = buildCourseAssistanceContext({
-    project, selection, scope, writeTargetId
+    project, selection, scope, writeTargetId, writeTargetIds
   });
   const envelope = {
     ...context,
@@ -604,7 +639,77 @@ function unitsInTarget(scope, candidate) {
   return list(candidate.microsequences).flatMap(({ studyUnits }) => list(studyUnits));
 }
 
-function validateRenderableCandidate({ project, selection, scope, candidate, intent }) {
+function same(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function selectionAuthorityErrors(currentTarget, candidate, scope, selectedIds) {
+  const selected = new Set(selectedIds);
+  const errors = [];
+  if (scope === "study_unit" && !selected.has("study_unit")) {
+    for (const field of ["id", "position", "title", "role", "topics"]) {
+      if (!same(currentTarget?.[field], candidate?.[field])) {
+        errors.push(`A proposta tentou alterar ${field} fora dos componentes escolhidos.`);
+      }
+    }
+    const currentInstances = [
+      ...list(currentTarget?.content),
+      ...(currentTarget?.response ? [currentTarget.response] : []),
+      ...list(currentTarget?.feedback)
+    ];
+    const candidateInstances = [
+      ...list(candidate?.content),
+      ...(candidate?.response ? [candidate.response] : []),
+      ...list(candidate?.feedback)
+    ];
+    const candidateById = new Map(candidateInstances.map((instance) => [instance.id, instance]));
+    for (const instance of currentInstances) {
+      if (!selected.has(instance.id) && !same(instance, candidateById.get(instance.id))) {
+        errors.push(`O componente ${instance.id} não foi escolhido para escrita.`);
+      }
+    }
+    if (candidateInstances.some(({ id }) =>
+      !currentInstances.some((instance) => instance.id === id))) {
+      errors.push("A seleção focal de componentes não autoriza acrescentar outro componente.");
+    }
+  }
+  if (scope === "didactic_microsequence") {
+    const currentMetadata = { ...currentTarget };
+    const candidateMetadata = { ...candidate };
+    delete currentMetadata.studyUnits;
+    delete candidateMetadata.studyUnits;
+    if (!same(currentMetadata, candidateMetadata)) {
+      errors.push("A seleção de Unidades não autoriza alterar os dados da Microssequência.");
+    }
+    const candidateById = new Map(list(candidate?.studyUnits).map((unit) => [unit.id, unit]));
+    for (const unit of list(currentTarget?.studyUnits)) {
+      if (!selected.has(unit.id) && !same(unit, candidateById.get(unit.id))) {
+        errors.push(`A Unidade ${unit.id} não foi escolhida para escrita.`);
+      }
+    }
+    if (selected.size < list(currentTarget?.studyUnits).length &&
+        list(candidate?.studyUnits).some(({ id }) =>
+          !list(currentTarget?.studyUnits).some((unit) => unit.id === id))) {
+      errors.push("Escolha todas as Unidades para acrescentar uma nova composição.");
+    }
+  }
+  if (scope === "lesson") {
+    const candidateById = new Map(list(candidate?.microsequences).map((item) => [item.id, item]));
+    for (const microsequence of list(currentTarget?.microsequences)) {
+      if (!selected.has(microsequence.id) && !same(microsequence, candidateById.get(microsequence.id))) {
+        errors.push(`A Microssequência ${microsequence.id} não foi escolhida para escrita.`);
+      }
+    }
+    if (selected.size < list(currentTarget?.microsequences).length &&
+        list(candidate?.microsequences).some(({ id }) =>
+          !list(currentTarget?.microsequences).some((item) => item.id === id))) {
+      errors.push("Escolha todas as Microssequências para acrescentar uma nova composição.");
+    }
+  }
+  return errors;
+}
+
+function validateRenderableCandidate({ project, selection, scope, candidate, intent, selectedIds }) {
   const errors = [];
   const current = findPath(project, selection);
   if (scope === "study_unit" && candidate.id !== current.studyUnit.id) {
@@ -613,6 +718,12 @@ function validateRenderableCandidate({ project, selection, scope, candidate, int
   if (scope === "didactic_microsequence" && candidate.id !== current.microsequence.id) {
     errors.push("A proposta deve preservar a identidade da Microssequência escolhida.");
   }
+  errors.push(...selectionAuthorityErrors(
+    targetForScope(current, scope),
+    candidate,
+    scope,
+    selectedIds
+  ));
   const proposedProject = replaceScope(project, selection, scope, candidate);
   for (const unit of unitsInTarget(scope, candidate)) {
     const validation = validateStudyUnitEnvelope(unit, RESOURCE_PACKAGE_REGISTRY);
@@ -672,6 +783,7 @@ export async function prepareCourseAssistanceProposal({
   selection,
   confirmedProposal,
   conversation = [],
+  writeTargetIds = [],
   providerConfig,
   runtimeConfig = globalThis.__ARALEARN_ENV__ || {},
   fetchImpl = globalThis.fetch,
@@ -682,7 +794,9 @@ export async function prepareCourseAssistanceProposal({
       !Array.isArray(confirmedProposal?.componentNeeds)) {
     throw new TypeError("Confirme uma proposta válida antes de preparar a mudança.");
   }
-  const { context, path } = buildCourseAssistanceContext({ project, selection, scope });
+  const { context, path } = buildCourseAssistanceContext({
+    project, selection, scope, writeTargetIds
+  });
   const target = targetForScope(path, scope);
   const { contracts, trace } = discoverContracts(target, confirmedProposal);
   if (!contracts.length) {
@@ -739,7 +853,8 @@ export async function prepareCourseAssistanceProposal({
         selection,
         scope,
         candidate: generated.candidate,
-        intent: confirmedProposal.summary
+        intent: confirmedProposal.summary,
+        selectedIds: context.writeTarget.selectedIds
       });
       trace.push({
         operation: "validate_study_unit",

@@ -164,7 +164,7 @@ da API e de Actions, OAuth do MCP hospedado e o fluxo autenticado de PDF antes
 de encerrar.
 
 O manifesto corrente termina em
-`20260824174101_authoring_materialization_history.sql`. Depois da aplicação:
+`20260826094500_preserve_inspection_v1_and_scope_design_verification.sql`. Depois da aplicação:
 
 ```powershell
 npm.cmd run deployment:verify-hosted
@@ -209,8 +209,8 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
 
 O workflow `android-release.yml` deve receber o mesmo SHA do backend e do site.
 Instale primeiro em dispositivo descartável ou autorizado e confira login,
-retomada, área segura, teclado, rolagem, PDFs, exportação e o relay local da
-Assistência por IA. O guia [Aplicativo Android](../android/README.md) explica
+retomada, área segura, teclado, rolagem, PDFs, exportação e a Assistência por IA
+com stubs determinísticos dos providers. O guia [Aplicativo Android](../android/README.md) explica
 assinatura, retorno móvel, rede e recuperação do build.
 
 ## Ordem segura de promoção

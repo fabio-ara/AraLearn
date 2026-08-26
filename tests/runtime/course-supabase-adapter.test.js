@@ -426,7 +426,15 @@ function auditContextPage({
         items: []
       },
       design: {
-        parameters: [],
+        parameters: [{
+          parameterId: "required_explanation_forms",
+          changeId: "20",
+          value: ["plain_definition", "concrete_example"],
+          origin: "author",
+          reason: "Explicitar definição e exemplo.",
+          sourceScope: { kind: "course", ref: COURSE_ID },
+          inherited: true
+        }],
         guidance: [],
         componentPolicy: {
           changeId: null,
@@ -673,6 +681,7 @@ test("auditoria owner vincula RPC/query e prepara deep links canônicos e limita
   });
   const encodedSource = "%20%20fonte-literal-%C3%A1%20%20";
   assert.equal(result.context.sources[0].sourceId, "  fonte-literal-á  ");
+  assert.equal(result.context.design.parameters[0].changeId, "20");
   assert.equal(result.context.sources[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
     `?section=sources&sourceId=${encodedSource}`);
@@ -904,6 +913,44 @@ test("registro de auditoria deriva check estrutural e ids estáveis antes do RPC
   assert.equal(writes[0].p_actor_id, USER_ID);
   assert.equal(writes[0].p_channel, "mcp");
   assert.equal(writes[0].p_expected_course_revision, 7);
+
+  const validWrites = [];
+  const validContext = auditContextPage();
+  validContext.query.annotationIds = [];
+  validContext.context.annotations = [];
+  const validAdapter = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body);
+    if (url.endsWith("/get_owned_course_audit_cycle_for_actor_v1")) {
+      return json(validContext);
+    }
+    validWrites.push(payload);
+    return json({
+      contract: "aralearn.course-audit-cycle-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      auditSetVersion: 5,
+      requestId: "request-audit-adapter-valid-0001",
+      idempotent: false,
+      changed: true,
+      change: {
+        type: "record_audit",
+        auditRunId: AUDIT_RUN_ID,
+        findingRefs: [],
+        correctionRef: null
+      },
+      finding: null,
+      correction: null,
+      suggestedAnnotationActions: []
+    });
+  });
+  await validAdapter.executeCourseAuditCycleCommand({
+    ...mutation,
+    requestId: "request-audit-adapter-valid-0001"
+  });
+  assert.equal(validWrites[0].p_command.checks[0].result, "passed");
+  assert.equal(validWrites[0].p_command.findings.length, 0);
+  assert.match(validWrites[0].p_command.checks[0].publicEvidence,
+    /encaixe semântico permanece para a auditoria humana/iu);
 });
 
 test("retry alcança o receipt antes do enriquecimento nos três comandos contextuais", async () => {
@@ -1302,7 +1349,8 @@ test("observação ou alvo ausente não apagam o sinal distinto de acesso revoga
 test("canal autoral deriva somente da principal e criação liga alvo confirmado", async () => {
   for (const [authenticationKind, expectedChannel, suffix] of [
     ["application", "authoring_interface", "app"],
-    ["oauth", "authoring_chat", "chat"]
+    ["oauth", "authoring_chat", "chat"],
+    ["action", "authoring_chat", "actions"]
   ]) {
     let request = null;
     const requestId = `request-annotation-${suffix}-1`;
@@ -2095,13 +2143,53 @@ test("lê entidades para o MCP com ator e cerca de versão", async () => {
   assert.equal(payload.p_after_entity_id, "lesson-a");
 });
 
+function inspectionDesignSnapshot({ ceiling = 2 } = {}) {
+  return {
+    parameters: [
+      {
+        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+        value: ceiling,
+        origin: "author",
+        sourceScopeKind: "didactic_microsequence"
+      },
+      {
+        parameterId: "required_explanation_forms",
+        value: ["plain_definition"],
+        origin: "system_default",
+        sourceScopeKind: null
+      },
+      {
+        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+        value: 2,
+        origin: "system_default",
+        sourceScopeKind: null
+      },
+      {
+        parameterId: "required_practice_variation_dimensions",
+        value: ["case_or_data"],
+        origin: "system_default",
+        sourceScopeKind: null
+      }
+    ],
+    guidance: [],
+    componentPolicy: {
+      availability: "allow_only",
+      allowedCount: 3,
+      excludedCount: 0,
+      preferredCount: 2,
+      origin: "author",
+      sourceScopeKind: "course"
+    }
+  };
+}
+
 test("lê inspeção curricular limitada e acrescenta link exato da Unidade", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {
-    assert.match(url, /\/rpc\/list_owned_course_study_units_for_actor_v1$/u);
+    assert.match(url, /\/rpc\/list_owned_course_study_units_for_actor_v2$/u);
     payload = JSON.parse(init.body);
     return json({
-      contract: "aralearn.course-study-unit-inspection-page.v1",
+      contract: "aralearn.course-study-unit-inspection-page.v2",
       courseId: COURSE_ID,
       courseRevision: 7,
       scope: { kind: "authoring_part", id: PART_ID },
@@ -2144,6 +2232,20 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
           position: 0,
           title: "Parte A",
           state: "materialized"
+        },
+        authorship: {
+          pendingObservationCount: 2,
+          production: {
+            materializationId: "30000000-0000-4000-8000-000000000003",
+            recordedAt: "2026-08-17T09:00:00Z",
+            state: "changed",
+            currentMaterialization: true
+          },
+          design: {
+            used: inspectionDesignSnapshot(),
+            current: inspectionDesignSnapshot({ ceiling: 3 }),
+            state: "changed"
+          }
         }
       }],
       hasPrevious: false,
@@ -2175,6 +2277,61 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
       "?section=content&studyUnitId=unit-a"
   );
+});
+
+test("preserva a projeção v1 para a release pública durante o corte", async () => {
+  const value = adapter(async (url) => {
+    assert.match(url, /\/rpc\/list_owned_course_study_units_for_actor_v1$/u);
+    return json({
+      contract: "aralearn.course-study-unit-inspection-page.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      scope: { kind: "course", id: null },
+      totalCount: 1,
+      scopeOptions: { authoringParts: [], unassignedStudyUnitCount: 1 },
+      items: [{
+        studyUnit: {
+          id: "unit-a",
+          position: 1,
+          title: "Unidade A",
+          role: "theory",
+          content: [{
+            id: "paragraph-a",
+            package: "aralearn.resource.paragraph",
+            version: "1.0.0",
+            data: { text: "Conteúdo." }
+          }],
+          response: null,
+          feedback: [],
+          topics: []
+        },
+        version: 2,
+        updatedAt: "2026-08-17T10:00:00Z",
+        ordinal: 1,
+        curriculumPath: {
+          module: { id: "module-a", position: 0, title: "Módulo A" },
+          lesson: { id: "lesson-a", position: 0, title: "Lição A" },
+          didacticMicrosequence: { id: "micro-a", position: 0, title: "Micro A" }
+        },
+        authoringPart: null
+      }],
+      hasPrevious: false,
+      hasMore: false,
+      previousCursor: null,
+      nextCursor: null,
+      pageBytes: 480
+    });
+  });
+
+  const result = await value.listCourseStudyUnits({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    scopeKind: "course",
+    inspectionVersion: 1
+  });
+  assert.equal(result.contract, "aralearn.course-study-unit-inspection-page.v1");
+  assert.equal(Object.hasOwn(result.items[0], "authorship"), false);
 });
 
 test("lê e altera parâmetros por RPC owner-only com catálogo validado", async () => {

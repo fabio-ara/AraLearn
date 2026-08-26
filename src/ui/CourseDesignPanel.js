@@ -77,8 +77,11 @@ function formatValue(value) {
   return value.map((item) => VALUE_LABELS[item] || item).join(" · ");
 }
 
-function formOriginOptions(selected = "author") {
-  return ["author", "automatic", "research_condition"].map((origin) =>
+function formOriginOptions(selected = "author", { allowAutomatic = true } = {}) {
+  const origins = allowAutomatic
+    ? ["author", "automatic", "research_condition"]
+    : ["author", "research_condition"];
+  return origins.map((origin) =>
     `<option value="${origin}"${origin === selected ? " selected" : ""}>` +
       `${escapeHtml(originLabel(origin))}</option>`).join("");
 }
@@ -144,9 +147,13 @@ function renderParameterCard(design, definition, resolution, busy) {
     ? '<form class="course-design-parameter-form" data-course-design-parameter>' +
       `<input type="hidden" name="parameterId" value="${escapeHtml(definition.id)}">` +
       renderParameterInput(definition, draftValue) +
-      `<label for="course-design-origin-${escapeHtml(definition.id)}">Origem da decisão</label>` +
+      '<p class="course-design-form-hint">Este formulário fixa uma decisão explícita. ' +
+      'A escolha automática aparece quando a resolução foi delegada ao assistente.</p>' +
+      `<label for="course-design-origin-${escapeHtml(definition.id)}">Origem da decisão explícita</label>` +
       `<select id="course-design-origin-${escapeHtml(definition.id)}" name="origin" required>` +
-      formOriginOptions(local?.origin || "author") + "</select>" +
+      formOriginOptions(local?.origin === "research_condition" ? local.origin : "author", {
+        allowAutomatic: false
+      }) + "</select>" +
       `<label for="course-design-reason-${escapeHtml(definition.id)}">Por que usar este valor?</label>` +
       `<textarea id="course-design-reason-${escapeHtml(definition.id)}" name="reason" maxlength="1000"` +
       ` rows="3" required>${escapeHtml(local?.reason || "")}</textarea>` +
@@ -367,7 +374,7 @@ function renderApplicationComparison(design) {
     `${escapeHtml(application.componentRefs.length
       ? application.componentRefs.map((ref) => componentLabels.get(ref) || ref).join("; ")
       : "Nenhum")}.</span></dd></div></dl>` +
-    `<p class="course-design-context-hash">Contexto selado: ${escapeHtml(application.contextHash)}</p>` +
+    '<p class="course-design-context-hash">Contexto de produção preservado para confronto.</p>' +
     "</section>";
 }
 

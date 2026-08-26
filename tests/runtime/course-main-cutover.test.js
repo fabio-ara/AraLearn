@@ -136,8 +136,8 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   }
   assert.match(
     mainSource,
-    /Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo\. Alterações ainda abertas e não salvas serão perdidas/u,
-    "A saída comum deve explicar que os dados locais da conta permanecem."
+    /data-settings-open-view="account"[\s\S]*?>Dados e conta<[\s\S]*?data-settings-view="account" hidden/u,
+    "Dados e conta deve abrir uma subvisão sem expandir a folha principal."
   );
   assert.match(
     mainSource,
@@ -151,13 +151,18 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /details class="account-settings-disclosure account-device-data"[\s\S]*?<summary>Dados e conta<\/summary>/u,
+    /data-settings-open-view="account"[\s\S]*?data-settings-view="account" hidden/u,
     "Os controles de dados locais precisam de um nome de seção acessível."
   );
   assert.match(
     mainSource,
-    /button class="account-profile-avatar-target"[^>]+data-profile-avatar-choose[\s\S]*?data-profile-avatar-fallback[\s\S]*?data-profile-avatar-image/u,
-    "A foto e seu fallback precisam ser o alvo direto para escolher ou trocar o avatar."
+    /button class="account-profile-avatar-target"[^>]+data-settings-open-view="photo"[\s\S]*?data-settings-view="photo" hidden[\s\S]*?data-profile-avatar-choose[\s\S]*?data-profile-avatar-remove hidden/u,
+    "A foto deve abrir subvisão própria e esconder Remover quando não há imagem."
+  );
+  assert.match(
+    mainSource,
+    /data-profile-avatar-remove[\s\S]*?if \(selectedFile\)[\s\S]*?selectedFile = null[\s\S]*?profileFile\.value = ""[\s\S]*?loadProfile\(\{ force: true \}\)[\s\S]*?Foto não salva retirada/u,
+    "Remover uma substituição ainda não salva deve restaurar a foto corrente e limpar o arquivo escolhido."
   );
   assert.match(
     mainSource,
@@ -321,6 +326,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
+    /data-study-source-return[\s\S]*?getAttribute\("href"\)[\s\S]*?refreshStudy\(\)[\s\S]*?finally\([\s\S]*?restoreOriginFocus/u,
+    "Voltar da Fonte deve reencontrar e focar a origem mesmo depois de atualizar o Estudo."
+  );
+  assert.match(
+    mainSource,
     /createCourseStudyApplication[\s\S]*?await editorApp\.resumePendingManualEdit/u,
     "A inicialização deve recuperar uma edição pessoal persistida antes de seguir."
   );
@@ -376,6 +386,16 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
         source,
         /\.account-device-data-actions button \{[\s\S]*?min-height: var\(--tap\);/u,
         "As ações de dados locais precisam preservar o alvo tátil mínimo."
+      );
+      assert.match(
+        source,
+        /button\.account-settings-back\[hidden\] \{[\s\S]*?display: none;/u,
+        "Voltar não pode aparecer na vista principal da Conta."
+      );
+      assert.match(
+        source,
+        /\.account-profile-photo-actions button\[hidden\] \{[\s\S]*?display: none;/u,
+        "Remover foto não pode aparecer quando não existe foto corrente ou escolhida."
       );
     }
   }

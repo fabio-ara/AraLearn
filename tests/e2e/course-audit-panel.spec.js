@@ -399,6 +399,7 @@ async function mountAuditPanel(page, {
       design: {
         parameters: [{
           parameterId: "scaffolding",
+          changeId: "7",
           value: "progressive",
           origin: "course",
           reason: "Apoio gradual.",

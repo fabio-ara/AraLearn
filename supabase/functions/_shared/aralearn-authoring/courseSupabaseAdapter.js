@@ -95,6 +95,10 @@ const INSPECTION_FIELDS = new Set([
   "items", "hasPrevious", "hasMore", "previousCursor", "nextCursor", "pageBytes"
 ]);
 const INSPECTION_ITEM_FIELDS = new Set([
+  "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath", "authoringPart",
+  "authorship"
+]);
+const LEGACY_INSPECTION_ITEM_FIELDS = new Set([
   "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath", "authoringPart"
 ]);
 const INSPECTION_SCOPE_KINDS = new Set([
@@ -105,6 +109,15 @@ const AUTHORING_PART_STATES = new Set([
   "planned", "partially_materialized", "materializing", "attention_required",
   "materialized"
 ]);
+const INSPECTION_DESIGN_ORIGINS = new Set([
+  "automatic", "author", "research_condition", "migration", "system_default"
+]);
+const INSPECTION_DESIGN_SCOPES = new Set([
+  "course", "module", "lesson", "didactic_microsequence"
+]);
+const INSPECTION_DESIGN_PARAMETER_IDS = new Set(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id)
+);
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
@@ -498,7 +511,146 @@ function normalizeInspectionCursor(value, expected) {
   return { studyUnitId };
 }
 
+function validInspectionDesignSnapshot(value) {
+  if (!exactRecord(value, new Set(["parameters", "guidance", "componentPolicy"])) ||
+      !Array.isArray(value.parameters) || value.parameters.length !== 4 ||
+      !Array.isArray(value.guidance) || value.guidance.length > 4 ||
+      !exactRecord(value.componentPolicy, new Set([
+        "availability", "allowedCount", "excludedCount", "preferredCount",
+        "origin", "sourceScopeKind"
+      ]))) return false;
+  const parameterIds = new Set();
+  for (const parameter of value.parameters) {
+    if (!exactRecord(parameter, new Set([
+      "parameterId", "value", "origin", "sourceScopeKind"
+    ])) || !INSPECTION_DESIGN_PARAMETER_IDS.has(parameter.parameterId) ||
+        parameterIds.has(parameter.parameterId) ||
+        !(Number.isSafeInteger(parameter.value) ||
+          Array.isArray(parameter.value) && parameter.value.length <= 16 &&
+          parameter.value.every((item) => typeof item === "string" && item.length <= 80)) ||
+        !INSPECTION_DESIGN_ORIGINS.has(parameter.origin) ||
+        !(parameter.sourceScopeKind === null ||
+          INSPECTION_DESIGN_SCOPES.has(parameter.sourceScopeKind))) return false;
+    parameterIds.add(parameter.parameterId);
+  }
+  if (parameterIds.size !== 4) return false;
+  if (value.guidance.some((revision) =>
+    !exactRecord(revision, new Set(["guidance", "origin", "sourceScopeKind"])) ||
+    typeof revision.guidance !== "string" || revision.guidance.length > 16_384 ||
+    !INSPECTION_DESIGN_ORIGINS.has(revision.origin) ||
+    !INSPECTION_DESIGN_SCOPES.has(revision.sourceScopeKind)
+  )) return false;
+  const policy = value.componentPolicy;
+  return new Set(["all", "allow_only"]).has(policy.availability) &&
+    [policy.allowedCount, policy.excludedCount, policy.preferredCount].every(
+      (count) => nonNegativeSafeInteger(count) && count <= 128
+    ) && INSPECTION_DESIGN_ORIGINS.has(policy.origin) &&
+    (policy.sourceScopeKind === null ||
+      INSPECTION_DESIGN_SCOPES.has(policy.sourceScopeKind));
+}
+
 function normalizeInspectionPage(
+  value,
+  { courseId, expectedRevision, scopeKind, scopeId },
+  validateCourseEntityContent
+) {
+  if (!exactRecord(value, INSPECTION_FIELDS) ||
+      value.contract !== "aralearn.course-study-unit-inspection-page.v2" ||
+      String(value.courseId || "").trim().toLowerCase() !== courseId ||
+      Number(value.courseRevision) !== expectedRevision ||
+      !nonNegativeSafeInteger(value.totalCount) ||
+      !nonNegativeSafeInteger(value.pageBytes) || value.pageBytes > 1_750_000 ||
+      typeof value.hasPrevious !== "boolean" || typeof value.hasMore !== "boolean" ||
+      !Array.isArray(value.items) || value.items.length > 24 ||
+      !exactRecord(value.scopeOptions, new Set([
+        "authoringParts", "unassignedStudyUnitCount"
+      ])) || !Array.isArray(value.scopeOptions.authoringParts) ||
+      !nonNegativeSafeInteger(value.scopeOptions.unassignedStudyUnitCount)) {
+    invalidInspectionRead();
+  }
+  const scope = normalizeInspectionScope(value.scope);
+  if (scope.kind !== scopeKind || scope.id !== scopeId) invalidInspectionRead();
+  const authoringParts = value.scopeOptions.authoringParts.map(normalizeInspectionPart);
+  if (authoringParts.some((part, index) => part.position !== index) ||
+      new Set(authoringParts.map(({ id }) => id)).size !== authoringParts.length) {
+    invalidInspectionRead();
+  }
+  const items = value.items.map((item) => {
+    if (!exactRecord(item, INSPECTION_ITEM_FIELDS) || !jsonRecord(item.studyUnit) ||
+        !exactRecord(item.curriculumPath, new Set([
+          "module", "lesson", "didacticMicrosequence"
+        ]))) {
+      invalidInspectionRead();
+    }
+    const id = boundedInspectionId(item.studyUnit.id);
+    const authorship = item.authorship;
+    if (!exactRecord(authorship, new Set([
+      "pendingObservationCount", "production", "design"
+    ])) || !nonNegativeSafeInteger(authorship.pendingObservationCount) ||
+        authorship.pendingObservationCount > 512) {
+      invalidInspectionRead();
+    }
+    if (authorship.production !== null && (
+      !exactRecord(authorship.production, new Set([
+        "materializationId", "recordedAt", "state", "currentMaterialization"
+      ])) || !UUID_PATTERN.test(String(authorship.production.materializationId || "")) ||
+      !validTimestamp(authorship.production.recordedAt) ||
+      !new Set(["produced", "changed"]).has(authorship.production.state) ||
+      typeof authorship.production.currentMaterialization !== "boolean"
+    )) invalidInspectionRead();
+    if (authorship.design !== null && (
+      !exactRecord(authorship.design, new Set([
+        "used", "current", "state"
+      ])) || !validInspectionDesignSnapshot(authorship.design.used) ||
+      !validInspectionDesignSnapshot(authorship.design.current) ||
+      !new Set(["current", "changed", "verified"]).has(authorship.design.state)
+    )) invalidInspectionRead();
+    if (!id || !positiveSafeInteger(item.studyUnit.position) ||
+        !positiveSafeInteger(item.version) || !positiveSafeInteger(item.ordinal) ||
+        !validTimestamp(item.updatedAt)) {
+      invalidInspectionRead();
+    }
+    const studyUnitValidation = validateCourseEntityContent("study_unit", item.studyUnit);
+    if (!studyUnitValidation.valid) invalidInspectionRead();
+    return {
+      studyUnit: structuredClone(studyUnitValidation.normalized),
+      version: Number(item.version),
+      updatedAt: item.updatedAt,
+      ordinal: Number(item.ordinal),
+      curriculumPath: {
+        module: normalizeCurriculumNode(item.curriculumPath.module),
+        lesson: normalizeCurriculumNode(item.curriculumPath.lesson),
+        didacticMicrosequence: normalizeCurriculumNode(
+          item.curriculumPath.didacticMicrosequence
+        )
+      },
+      authoringPart: normalizeInspectionPart(item.authoringPart),
+      authorship: structuredClone(authorship)
+    };
+  });
+  if (new Set(items.map(({ studyUnit }) => studyUnit.id)).size !== items.length) {
+    invalidInspectionRead();
+  }
+  return {
+    contract: value.contract,
+    courseId,
+    courseRevision: Number(value.courseRevision),
+    scope,
+    totalCount: Number(value.totalCount),
+    scopeOptions: {
+      authoringParts,
+      unassignedStudyUnitCount: Number(value.scopeOptions.unassignedStudyUnitCount)
+    },
+    items,
+    hasPrevious: value.hasPrevious,
+    hasMore: value.hasMore,
+    previousCursor: normalizeInspectionCursor(value.previousCursor, value.hasPrevious),
+    nextCursor: normalizeInspectionCursor(value.nextCursor, value.hasMore),
+    pageBytes: Number(value.pageBytes)
+  };
+}
+
+function normalizeLegacyInspectionPage(
   value,
   { courseId, expectedRevision, scopeKind, scopeId },
   validateCourseEntityContent
@@ -525,7 +677,7 @@ function normalizeInspectionPage(
     invalidInspectionRead();
   }
   const items = value.items.map((item) => {
-    if (!exactRecord(item, INSPECTION_ITEM_FIELDS) || !jsonRecord(item.studyUnit) ||
+    if (!exactRecord(item, LEGACY_INSPECTION_ITEM_FIELDS) || !jsonRecord(item.studyUnit) ||
         !exactRecord(item.curriculumPath, new Set([
           "module", "lesson", "didacticMicrosequence"
         ]))) {
@@ -1708,9 +1860,14 @@ async function deterministicRepresentationFacts(context, auditRunId) {
     studyUnit,
     intent: context?.intent
   });
+  const intent = jsonRecord(context?.intent) ? context.intent : {};
+  const mechanicalRepresentationConstraint = [
+    "structureIds", "taskOperationIds", "practiceModeIds", "mustPreserve"
+  ].some((field) => Array.isArray(intent[field]) && intent[field].length > 0) ||
+    intent.notationIsLearningObject === true;
   const result = !audit.structural.valid
     ? "failed"
-    : audit.overallFit === "substitute"
+    : mechanicalRepresentationConstraint && audit.overallFit === "substitute"
       ? "uncertain"
       : "passed";
   const checkId = await deterministicAuditUuid(
@@ -1726,7 +1883,9 @@ async function deterministicRepresentationFacts(context, auditRunId) {
       statement: "A Unidade de estudo satisfaz os contratos dos componentes e sua representação corresponde à intenção persistida."
     },
     result,
-    publicEvidence: auditPublicEvidence(audit),
+    publicEvidence: audit.structural.valid && !mechanicalRepresentationConstraint
+      ? "A Unidade satisfaz os contratos estruturais dos componentes. Não há faceta representacional mecânica explícita; o encaixe semântico permanece para a auditoria humana."
+      : auditPublicEvidence(audit),
     adequacy: result === "passed"
       ? "sufficient"
       : result === "failed"
@@ -1927,7 +2086,8 @@ function signedStorageUrl(baseUrl, value, { download = false } = {}) {
 
 function anchoredAnnotationChannel(principal) {
   if (principal?.authenticationKind === "application") return "authoring_interface";
-  if (principal?.authenticationKind === "oauth") return "authoring_chat";
+  if (principal?.authenticationKind === "oauth" ||
+      principal?.authenticationKind === "action") return "authoring_chat";
   throw new AuthoringApiError(401, "authentication_required", "O canal da observação é inválido.");
 }
 
@@ -3129,10 +3289,14 @@ export class CourseSupabaseAdapter {
     direction = "forward",
     limit = 12,
     maxBytes = 512 * 1024,
+    inspectionVersion = 2,
     deadlineAt = null
   }) {
+    if (![1, 2].includes(inspectionVersion)) {
+      throw new TypeError("Versão da inspeção inválida.");
+    }
     const result = first(await this.rpc(
-      "list_owned_course_study_units_for_actor_v1",
+      `list_owned_course_study_units_for_actor_v${inspectionVersion}`,
       {
         p_actor_id: principal.actorId,
         p_course_id: courseId,
@@ -3150,7 +3314,10 @@ export class CourseSupabaseAdapter {
     const { validateCourseEntityContent } = await import(
       "../aralearn/runtime/domain/courseEntities.js"
     );
-    return withInspectionDeepLinks(normalizeInspectionPage(result, {
+    const normalizePage = inspectionVersion === 2
+      ? normalizeInspectionPage
+      : normalizeLegacyInspectionPage;
+    return withInspectionDeepLinks(normalizePage(result, {
       courseId,
       expectedRevision,
       scopeKind,

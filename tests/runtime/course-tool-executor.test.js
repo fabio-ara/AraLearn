@@ -7,6 +7,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseToolExecutor.js";
 import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+  courseAuthoringGuidanceForCall,
   listCourseAuthoringKnowledgeResources,
   readCourseAuthoringKnowledgeResource
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
@@ -143,6 +144,7 @@ function protectedCourseSourcesPage() {
         sourceRevision: 2,
         status: "active",
         selector: { kind: "page_range", startPage: 2, endPage: 3 },
+        humanLocator: "Capítulo 1 · Seção 2",
         verificationExcerpt: "Trecho verificável.",
         actorId: SOURCE_ACTOR_ID,
         createdAt: "2026-08-21T12:01:00Z"
@@ -266,13 +268,14 @@ test("impede escrita sem escopo", async () => {
   );
 });
 
-test("projeção MCP de Observações omite identidade, caminhos e texto fora do detalhe", () => {
+test("projeção MCP de Observações conserva o alvo e omite pessoas, caminhos e texto comum", () => {
   const projected = projectCourseToolResultForMcp(protectedAnnotationPage());
   const serialized = JSON.stringify(projected);
   const item = projected.items[0];
 
   assert.equal(projected.contract, "aralearn.mcp-anchored-annotation-page.v1");
   assert.equal(item.target.label, "Unidade visível");
+  assert.equal(item.target.id, "study-unit-internal-ref");
   assert.deepEqual(item.contributor, {
     kind: "protected_person",
     role: "learner"
@@ -282,7 +285,6 @@ test("projeção MCP de Observações omite identidade, caminhos e texto fora do
   for (const protectedValue of [
     COURSE_ID,
     "person-deadbeefdeadbeef",
-    "study-unit-internal-ref",
     "topic-internal-ref",
     "Estudante DEAD",
     "sentinel@example.test",
@@ -357,7 +359,10 @@ test("contexto MCP de auditoria minimiza Observações selecionadas", () => {
   assert.deepEqual(Object.keys(annotation).toSorted(), [
     "annotationId", "annotationVersion", "briefSummary", "category", "state", "target"
   ].toSorted());
-  assert.deepEqual(annotation.target, { kind: "study_unit" });
+  assert.deepEqual(annotation.target, {
+    kind: "study_unit",
+    id: "study-unit-internal-ref"
+  });
   assert.equal(projected.dataDisclosure.rawObservationTextIncluded, false);
   assert.equal(Object.hasOwn(projected, "courseId"), false);
   assert.equal(JSON.stringify(projected).includes(COURSE_ID), false);
@@ -398,6 +403,7 @@ test("projeção MCP de Fontes conserva referências autorais e omite pessoas e 
   assert.equal(source.identifier, "ISBN 0000");
   assert.equal(source.editionOrVersion, "2");
   assert.equal(source.anchors[0].anchorId, "anchor-a");
+  assert.equal(source.anchors[0].humanLocator, "Capítulo 1 · Seção 2");
   assert.deepEqual(source.anchors[1].selector, {
     kind: "text_quote",
     exact: TEXT_QUOTE_EXACT,
@@ -420,6 +426,7 @@ test("projeção MCP de Fontes conserva referências autorais e omite pessoas e 
     "items[].url",
     "items[].editionOrVersion",
     "items[].anchors[].verificationExcerpt",
+    "items[].anchors[].humanLocator",
     "items[].anchors[].selector.exact",
     "items[].anchors[].selector.prefix",
     "items[].anchors[].selector.suffix",
@@ -631,17 +638,61 @@ test("executa cópia pessoal somente pela superfície da aplicação", async () 
   );
 });
 
-test("conhecimento contém somente invariantes estáveis", () => {
+test("conhecimento mantém núcleo curto e carrega orientação somente por fase", () => {
   const resources = listCourseAuthoringKnowledgeResources();
-  assert.equal(resources.length, 1);
+  assert.equal(resources.length, 7);
   assert.equal("text" in resources[0], false);
-  const value = readCourseAuthoringKnowledgeResource(resources[0].uri);
-  assert.match(value.text, /Curso vivo e mutável/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não os fixe no prompt/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /targetPlanItems/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /somente as unidades de análise/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /audit_cycle em mode context/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /raciocínio privada/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Aplicar uma correção não prova/iu);
-  assert.doesNotMatch(value.text, /workspace|trilha|coleção|publica(?:ção|do)/iu);
+  const materialization = readCourseAuthoringKnowledgeResource(
+    "aralearn://authoring/materialization"
+  );
+  const linguisticReview = readCourseAuthoringKnowledgeResource(
+    "aralearn://authoring/linguistic-didactic-review"
+  );
+  assert.match(materialization.text, /targetPlanItems/iu);
+  assert.match(materialization.text, /mesmos ids em entityChanges/iu);
+  assert.match(linguisticReview.text, /curto\/curta/iu);
+  assert.match(linguisticReview.text, /explica em vez de apenas resumir/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /phaseGuidance focal/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /raciocínio privado/iu);
+  assert.doesNotMatch(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /targetPlanItems|citationText|curto\/curta/iu);
+  assert.doesNotMatch(materialization.text, /workspace|trilha|coleção|publica(?:ção|do)/iu);
+});
+
+test("orientação focal acompanha somente a leitura pertinente", () => {
+  assert.equal(courseAuthoringGuidanceForCall("lerCurso", {
+    view: "summary"
+  }), null);
+  assert.equal(courseAuthoringGuidanceForCall("lerCurso", {
+    view: "part_materialization",
+    cursor: "next"
+  }), null);
+  assert.equal(courseAuthoringGuidanceForCall("lerCurso", {
+    view: "course_design"
+  }).phase, "planning_design");
+  const review = courseAuthoringGuidanceForCall("lerCurso", {
+    view: "audit_cycle",
+    mode: "context",
+    dimensions: ["pedagogical_quality", "editorial_quality"]
+  });
+  assert.equal(review.phase, "linguistic_didactic_review");
+  assert.match(review.instructions.join(" "), /enumerações extensas/iu);
+});
+
+test("biblioteca resolve a identidade pública pacote@versão em contracts", async () => {
+  const result = await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "contracts",
+      packages: ["aralearn.resource.code@1.0.0"]
+    },
+    surface: "mcp"
+  });
+
+  const contract = result.data.result.items[0];
+  assert.equal(contract.status, "ok");
+  assert.equal(contract.packageId, "aralearn.resource.code");
+  assert.equal(contract.version, "1.0.0");
+  assert.equal(typeof contract.definition, "object");
 });

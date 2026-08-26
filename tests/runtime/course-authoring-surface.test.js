@@ -588,7 +588,7 @@ function controllerFixture(overrides = {}) {
   return controller;
 }
 
-test("lista abre diretamente Cursos concretos com destino canônico em um toque", async () => {
+test("lista abre Curso materializado diretamente no Conteúdo em um toque", async () => {
   const calls = [];
   const root = new FakeRoot();
   const surface = createCourseAuthoringSurface({
@@ -613,7 +613,7 @@ test("lista abre diretamente Cursos concretos com destino canônico em um toque"
   assert.doesNotMatch(root.innerHTML, /Compartilhado|Somente leitura/u);
   assert.match(
     root.innerHTML,
-    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "overview" }).replace("?", "\\?"), "u")
+    new RegExp(buildCourseAuthoringRoute(COURSE_ID, { section: "content" }).replace("?", "\\?"), "u")
   );
   assert.match(root.innerHTML, /<svg/u);
   assert.doesNotMatch(root.innerHTML, /<textarea|Workspace|Trilha|Coleção|publicação/iu);
@@ -1169,6 +1169,11 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
     windowValue: new FakeWindow()
   });
   await surface.open();
+  const parameterForm = root.innerHTML.match(
+    /<form class="course-design-parameter-form"[\s\S]*?<\/form>/u
+  )?.[0] || "";
+  assert.match(parameterForm, /Este formulário fixa uma decisão explícita/iu);
+  assert.doesNotMatch(parameterForm, /<option value="automatic"/u);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
@@ -2948,6 +2953,14 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
     /\.course-authoring-surface \{[\s\S]*?width: min\(100%, 430px\);[\s\S]*?max-width: 430px;/u
   );
   assert.match(css, /\.course-authoring-frame \{[\s\S]*?max-width: 430px;/u);
+  assert.match(
+    css,
+    /\.course-authoring-chat-composer \{[\s\S]*?height: min\(620px, calc\([\s\S]*?100dvh - max\(12px, var\(--safe-top\)\) - max\(12px, var\(--safe-bottom-tappable\)\)[\s\S]*?\)\);[\s\S]*?grid-template-rows: auto auto minmax\(0, 1fr\);[\s\S]*?overflow: hidden;/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-chat-composer form \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-gutter: stable;/u
+  );
   assert.match(css, /@media \(max-width: 380px\)/u);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/u);
   assert.match(css, /\.course-authoring-task-menu > nav \{[\s\S]*?width: min\(82vw, 320px\)/u);
@@ -3002,6 +3015,8 @@ test("Visão geral revela as sete tarefas humanas em um único nível", () => {
   });
 
   assert.match(markup, /<h1>Visão geral<\/h1>/u);
+  assert.match(markup, /Curso próprio/u);
+  assert.equal((markup.match(/Compreender relações essenciais\./gu) || []).length, 1);
   assert.match(markup, /data-course-authoring-task-list/u);
   assert.equal((markup.match(/class="course-authoring-task-card"/gu) || []).length, 7);
   assert.doesNotMatch(markup, /class="course-authoring-sections"|course-authoring-primary-navigation/u);
@@ -3013,4 +3028,17 @@ test("Visão geral revela as sete tarefas humanas em um único nível", () => {
   for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {
     assert.match(markup, new RegExp(`section=${section}`, "u"));
   }
+});
+
+test("Meus cursos não repete propriedade em texto visual", () => {
+  const markup = renderCourseAuthoringSurface({
+    view: "list",
+    query: "",
+    list: listPage(),
+    loading: false,
+    failure: null
+  });
+
+  assert.match(markup, /<h1>Meus cursos<\/h1>/u);
+  assert.doesNotMatch(markup, /Seu Curso|· Seu Curso/u);
 });

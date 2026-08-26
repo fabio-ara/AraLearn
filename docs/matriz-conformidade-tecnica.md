@@ -15,7 +15,7 @@ visual](sistema-visual.md), [Componentes didáticos](componentes-didaticos.md) e
 | --- | --- | --- | --- |
 | o shell escolhe configuração, entrada, recuperação, consentimento ou aplicação autenticada antes de abrir um Curso | inicialização de `public/main.js`, `AuthSessionStore` e configuração pública | `course-main-cutover.test.js`, `supabase-auth.test.js` | cobre estados programados; não avalia compreensão das mensagens |
 | Estudo segue Curso → Módulo → Lição → Microssequência → Unidade | aplicação e telas de Estudo sobre a composição validada | `course-study-cutover.spec.js`, `study-final-ux.spec.js` | não mede aprendizagem |
-| voltar restaura a tela anterior e subir segue a hierarquia | histórico, origem, rolagem e foco separados | `application-back-navigation.test.js`, testes E2E de Estudo | demonstra jornadas exercitadas |
+| Voltar restaura a origem real e Home oferece saída global | histórico, origem, rolagem e foco restaurados; pai somente contextual | `application-back-navigation.test.js`, testes E2E de Estudo | demonstra jornadas exercitadas |
 | Visualizar, Editar e Assistência por IA usam o mesmo alvo nos níveis autorizados | renderer, edição contextual e sessão de assistência | testes de Estudo, edição manual e assistência | não mede preferência nem usabilidade percebida |
 | Autoria começa pela Visão geral e mantém sete tarefas encontráveis | `CourseAuthoringSurface` e rotas tipadas | `course-authoring-surface.test.js`, `course-authoring-cutover.spec.js` | teste de navegação não prova facilidade de uso |
 | foco, dialog, disclosure, teclado e área segura seguem os contratos da interface | controladores de overlay, estilos e navegação | `study-final-ux.spec.js`, `android-workbench-safe-area.test.js`, auditor de estilos | requer verificação visual real em navegadores e aparelhos representativos |
@@ -92,8 +92,8 @@ contratos](fluxos-prompts-e-contratos.md).
 
 | Propriedade | Mecanismo corrente | Evidência executável | Limite da evidência |
 | --- | --- | --- | --- |
-| Assistência por IA é uma sessão contextual do aplicativo | estado em memória, plano confirmado, relay/provedor e escrita tipada | testes de assistência no domínio, runtime e E2E | resposta válida não garante utilidade pedagógica |
-| credencial do provedor permanece fora do artefato de produção | relay local fixo e adaptadores diretos somente em desenvolvimento explícito | `provider-runtime-security.test.js`, `android-local-assist-bridge.test.js` | operador ainda precisa proteger o relay e sua chave |
+| Assistência por IA é uma sessão contextual do aplicativo | estado em memória, conversa multiturmo, plano confirmado, provider escolhido e escrita tipada | testes de assistência no domínio, runtime e E2E | resposta válida não garante utilidade pedagógica |
+| credencial do provider permanece efêmera e fora dos artefatos | chave somente em memória, origem oficial por provider e limpeza ao encerrar a sessão | oráculos preparados em `provider-runtime-security.test.js`, testes dos adapters e E2E com stubs; ativação acompanha a implementação | navegador público não protege chave duradoura; testes não fazem chamadas pagas |
 | candidato de IA não altera conteúdo antes da decisão humana | validar, reparar de forma limitada, renderizar prévia e aplicar explicitamente | testes de assistência, renderer e E2E | confirmação humana pode conter erro de julgamento |
 | MCP usa protocolo e OAuth próprios | cinco ferramentas, servidor MCP, PKCE S256, JWT minimizado e consentimento | testes MCP, JWT, consentimento e smokes OAuth | cliente MCP externo pode ter comportamento próprio |
 | Actions usa HTTP descrito por OpenAPI e OAuth próprio | cinco operações, cliente confidencial ligado ao GPT e tokens opacos | `course-action-server.test.js`, gerador OpenAPI e testes de OAuth | configuração real do GPT exige acesso à plataforma externa |
@@ -110,7 +110,7 @@ problemas](solucao-de-problemas.md).
 | --- | --- | --- | --- |
 | web e Android executam a mesma aplicação | build Pages e assets do APK sobre os mesmos módulos | E2E web, testes Android e verificadores de artefato | hardware e WebView reais exigem ensaio representativo |
 | a WebView hospeda assets sob origem HTTPS estável | `WebViewAssetLoader` e `appassets.androidplatform.net` | `android-runtime-security.test.js`, verificador Android | não transforma o APK em aplicação nativa independente |
-| navegação e ponte nativa têm escopo fechado | esquemas permitidos, quadro principal, origem exata, limites de exportação e relay | testes Android de segurança, ponte e área segura | novos recursos nativos exigem nova análise de superfície |
+| navegação e capacidades nativas têm escopo fechado | esquemas permitidos, quadro principal, origem exata e limites de exportação | testes Android de segurança e área segura | novos recursos nativos exigem nova análise de superfície |
 | release Android preserva identidade de atualização | keystore externo e configuração de assinatura | build de release e inspeção do APK | perder a chave impede atualização direta |
 | publicação parte de uma revisão validada | planos de implantação, workflows e verificadores por SHA | `deployment-automation.test.js`, testes de CI e site publicado | serviços distintos não oferecem transação distribuída de publicação |
 | backend é aplicado antes dos clientes dependentes | dry-run, confirmação literal, migrations, funções e verificação hospedada | testes de automação e `hosted-backend-verifier.test.js` | resposta ambígua exige diagnóstico manual do destino |

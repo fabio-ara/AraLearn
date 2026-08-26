@@ -9,7 +9,10 @@ const migrationUrl = new URL(
   "../../supabase/migrations/20260817210000_course_audit_corrections.sql",
   import.meta.url
 );
-
+const continuousInspectionMigrationUrl = new URL(
+  "../../supabase/migrations/20260826090000_continuous_authoring_inspection.sql",
+  import.meta.url
+);
 const OWNER = "10000000-0000-4000-8000-000000000001";
 const ACTOR = "10000000-0000-4000-8000-000000000002";
 const COURSE = "20000000-0000-4000-8000-000000000001";
@@ -294,5 +297,155 @@ test("validador SQL recusa StudyUnit parcial, default implícito e alias de paco
     from jsonb_array_elements($1::jsonb) value
   `, [JSON.stringify(candidates)]);
   assert.deepEqual(result.rows.map(({ valid }) => valid), [true, false, false, false, false]);
+  await database.close();
+});
+
+test("verificação coordena Observações vinculadas atomicamente e preserva replay", async () => {
+  const migration = await fs.readFile(continuousInspectionMigrationUrl, "utf8");
+  const start = migration.indexOf(
+    "alter function private.execute_course_audit_cycle_command_core_v1("
+  );
+  const end = migration.indexOf(
+    "create function private.list_course_study_units_for_actor_v1(", start
+  );
+  assert.ok(start >= 0 && end > start, "wrapper coordenador deve permanecer delimitado");
+
+  const database = new PGlite();
+  await database.exec(`
+    create schema private;
+    create table private.course_anchored_annotations(
+      course_id uuid not null,
+      id uuid not null,
+      version bigint not null,
+      state text not null,
+      primary key(course_id,id)
+    );
+    create table private.course_audit_finding_annotations(
+      course_id uuid not null,
+      finding_id uuid not null,
+      annotation_id uuid not null
+    );
+    create table private.course_change_receipts(
+      actor_id uuid not null,
+      request_id text not null,
+      operation text not null,
+      course_id uuid not null,
+      result jsonb not null,
+      primary key(actor_id,request_id)
+    );
+    create table private.annotation_calls(
+      request_id text primary key
+    );
+
+    create function private.execute_course_audit_cycle_command_core_v1(
+      p_actor_id uuid,p_course_id uuid,p_expected bigint,
+      p_command jsonb,p_channel text,p_request_id text
+    ) returns jsonb language plpgsql as $$
+    declare v_receipt jsonb;
+    begin
+      select result into v_receipt from private.course_change_receipts
+      where actor_id=p_actor_id and request_id=p_request_id;
+      if v_receipt is not null then
+        return jsonb_build_object('idempotent',true);
+      end if;
+      v_receipt:=jsonb_build_object(
+        'schema','course-audit-receipt-v1',
+        'suggestedAnnotationActions',jsonb_build_array(jsonb_build_object(
+          'annotationId','${ANNOTATION}','annotationVersion',1,
+          'action',case when p_command->>'outcome'='resolved' then 'resolve' else 'reopen' end
+        ))
+      );
+      insert into private.course_change_receipts values(
+        p_actor_id,p_request_id,'update_audit_cycle',p_course_id,v_receipt
+      );
+      return jsonb_build_object('idempotent',false);
+    end $$;
+
+    create function private.execute_course_anchored_annotation_command_core_v1(
+      p_actor_id uuid,p_course_id uuid,p_expected bigint,p_command jsonb,
+      p_origin text,p_channel text,p_request_id text,p_owner boolean
+    ) returns jsonb language plpgsql as $$
+    declare v_version bigint;
+    begin
+      if exists(select 1 from private.annotation_calls where request_id=p_request_id) then
+        return jsonb_build_object('idempotent',true);
+      end if;
+      select version into v_version from private.course_anchored_annotations
+      where course_id=p_course_id and id=(p_command->>'annotationId')::uuid for update;
+      if v_version<>(p_command->>'expectedAnnotationVersion')::bigint then
+        raise exception 'versão divergente';
+      end if;
+      update private.course_anchored_annotations set
+        state=case when p_command->>'type'='resolve_anchored_annotation'
+          then 'resolved' else 'open' end,
+        version=version+1
+      where course_id=p_course_id and id=(p_command->>'annotationId')::uuid;
+      insert into private.annotation_calls values(p_request_id);
+      return jsonb_build_object('idempotent',false);
+    end $$;
+
+    create function private.course_audit_change_from_receipt_v1(
+      p_receipt jsonb,p_idempotent boolean
+    ) returns jsonb language sql as $$
+      select jsonb_build_object(
+        'idempotent',p_idempotent,
+        'suggestedAnnotationActions',p_receipt->'suggestedAnnotationActions'
+      )
+    $$;
+
+    insert into private.course_anchored_annotations values(
+      '${COURSE}','${ANNOTATION}',1,'open'
+    );
+    insert into private.course_audit_finding_annotations values(
+      '${COURSE}','${FINDING}','${ANNOTATION}'
+    );
+  `);
+  await database.exec(migration.slice(start, end));
+
+  const verification = async ({ outcome, auditRunId, requestId }) => {
+    const result = await database.query(`
+      select private.execute_course_audit_cycle_command_core_v1(
+        $1,$2,1,$3,'application',$4
+      ) value
+    `, [OWNER, COURSE, JSON.stringify({
+      type: "verify_finding",
+      findingId: FINDING,
+      auditRunId,
+      outcome
+    }), requestId]);
+    return result.rows[0].value;
+  };
+
+  const resolved = await verification({
+    outcome: "resolved",
+    auditRunId: "88888888-8888-5888-8888-888888888888",
+    requestId: "verify-resolved-0001"
+  });
+  assert.deepEqual(resolved.suggestedAnnotationActions, []);
+  assert.equal(resolved.idempotent, false);
+  let annotation = await database.query(`
+    select state,version from private.course_anchored_annotations
+  `);
+  assert.deepEqual(annotation.rows[0], { state: "resolved", version: 2 });
+
+  const replay = await verification({
+    outcome: "resolved",
+    auditRunId: "88888888-8888-5888-8888-888888888888",
+    requestId: "verify-resolved-0001"
+  });
+  assert.equal(replay.idempotent, true);
+  assert.equal(await count(database, "private.annotation_calls"), 1);
+
+  const reopened = await verification({
+    outcome: "still_open",
+    auditRunId: "99999999-9999-5999-8999-999999999999",
+    requestId: "verify-open-0002"
+  });
+  assert.deepEqual(reopened.suggestedAnnotationActions, []);
+  annotation = await database.query(`
+    select state,version from private.course_anchored_annotations
+  `);
+  assert.deepEqual(annotation.rows[0], { state: "open", version: 3 });
+  assert.equal(await count(database, "private.annotation_calls"), 2);
   await database.close();
 });

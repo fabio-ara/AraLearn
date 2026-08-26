@@ -23,32 +23,16 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.view.WindowCompat;
-import androidx.webkit.JavaScriptReplyProxy;
-import androidx.webkit.WebMessageCompat;
 import androidx.webkit.WebViewAssetLoader;
-import androidx.webkit.WebViewCompat;
-import androidx.webkit.WebViewFeature;
 
-import org.json.JSONObject;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.Proxy;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
 import java.util.regex.Pattern;
 
 public class MainActivity extends ComponentActivity {
@@ -64,22 +48,12 @@ public class MainActivity extends ComponentActivity {
     private static final String CSV_MIME_TYPE = "text/csv";
     private static final int MAX_TEXT_EXPORT_BYTES = 8 * 1024 * 1024;
     private static final int MAX_TEXT_EXPORT_FILE_NAME_LENGTH = 160;
-    private static final String ANDROID_ASSIST_CONTRACT = "aralearn.android-local-assist.v1";
-    private static final String ANDROID_ASSIST_OBJECT = "AraLearnNativeAssist";
-    private static final String LOCAL_ASSIST_URL = "http://127.0.0.1:4183/v1/chat/completions";
-    private static final int LOCAL_ASSIST_TIMEOUT_MS = 45_000;
-    private static final int MAX_LOCAL_ASSIST_REQUEST_BYTES = 128 * 1024;
-    private static final int MAX_LOCAL_ASSIST_RESPONSE_BYTES = 128 * 1024;
     private static final String TEXT_EXPORT_CACHE_PREFIX = "aralearn-text-export-";
     private static final String STATE_TEXT_EXPORT_PATH = "aralearn.textExport.path";
     private static final String STATE_TEXT_EXPORT_FILE_NAME = "aralearn.textExport.fileName";
     private static final String STATE_TEXT_EXPORT_MIME_TYPE = "aralearn.textExport.mimeType";
     private static final Pattern SAFE_TEXT_EXPORT_FILE_NAME =
         Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]*");
-    private static final Pattern UUID_PATTERN = Pattern.compile(
-        "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        Pattern.CASE_INSENSITIVE
-    );
     private static final String BACK_PRESS_SCRIPT =
         "(function(){try{return !!(window.AraLearnAndroid && " +
         "window.AraLearnAndroid.handleBackPress && " +
@@ -93,10 +67,6 @@ public class MainActivity extends ComponentActivity {
     private ValueCallback<Uri[]> filePathCallback;
     private PendingTextExport pendingTextExport;
     private WebViewAssetLoader assetLoader;
-    private final ExecutorService localAssistExecutor = Executors.newSingleThreadExecutor();
-    private final Map<String, HttpURLConnection> localAssistConnections = new ConcurrentHashMap<>();
-    private final Map<String, FutureTask<Void>> localAssistTasks = new ConcurrentHashMap<>();
-    private volatile boolean localAssistDestroyed = false;
     private final ActivityResultLauncher<Intent> fileChooserLauncher = registerForActivityResult(
         new ActivityResultContracts.StartActivityForResult(),
         result -> completeFileChooser(result.getResultCode(), result.getData())
@@ -189,12 +159,6 @@ public class MainActivity extends ComponentActivity {
 
     @Override
     protected void onDestroy() {
-        localAssistDestroyed = true;
-        localAssistTasks.values().forEach((task) -> task.cancel(true));
-        localAssistTasks.clear();
-        localAssistConnections.values().forEach(HttpURLConnection::disconnect);
-        localAssistConnections.clear();
-        localAssistExecutor.shutdownNow();
         clearFilePathCallback();
         if (isChangingConfigurations()) {
             synchronized (this) {
@@ -205,9 +169,6 @@ public class MainActivity extends ComponentActivity {
         }
 
         if (webView != null) {
-            if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-                WebViewCompat.removeWebMessageListener(webView, ANDROID_ASSIST_OBJECT);
-            }
             webView.removeJavascriptInterface("AndroidHost");
             webView.stopLoading();
             webView.loadUrl("about:blank");
@@ -238,149 +199,8 @@ public class MainActivity extends ComponentActivity {
         );
 
         webView.addJavascriptInterface(new AndroidHostBridge(), "AndroidHost");
-        configureLocalAssistBridge();
         webView.setWebViewClient(new AraLearnWebViewClient());
         webView.setWebChromeClient(new AraLearnWebChromeClient());
-    }
-
-    private void configureLocalAssistBridge() {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return;
-        WebViewCompat.addWebMessageListener(
-            webView,
-            ANDROID_ASSIST_OBJECT,
-            Collections.singleton(APP_ORIGIN),
-            (view, message, sourceOrigin, isMainFrame, replyProxy) -> {
-                if (!isMainFrame || !APP_ORIGIN.equalsIgnoreCase(sourceOrigin.toString()) ||
-                    message.getType() != WebMessageCompat.TYPE_STRING) {
-                    return;
-                }
-                handleLocalAssistMessage(message.getData(), replyProxy);
-            }
-        );
-    }
-
-    private void handleLocalAssistMessage(String rawMessage, JavaScriptReplyProxy replyProxy) {
-        if (localAssistDestroyed || rawMessage == null ||
-            rawMessage.getBytes(StandardCharsets.UTF_8).length > MAX_LOCAL_ASSIST_REQUEST_BYTES) {
-            return;
-        }
-        JSONObject message;
-        try {
-            message = new JSONObject(rawMessage);
-        } catch (Exception error) {
-            return;
-        }
-        if (!ANDROID_ASSIST_CONTRACT.equals(message.optString("contract"))) return;
-        String requestId = message.optString("requestId");
-        if (!UUID_PATTERN.matcher(requestId).matches()) return;
-        String operation = message.optString("operation");
-        if ("cancel".equals(operation)) {
-            FutureTask<Void> task = localAssistTasks.remove(requestId);
-            if (task != null) task.cancel(true);
-            HttpURLConnection connection = localAssistConnections.remove(requestId);
-            if (connection != null) connection.disconnect();
-            return;
-        }
-        String body = message.optString("body", "");
-        if (!"request".equals(operation) ||
-            !"/v1/chat/completions".equals(message.optString("path")) ||
-            body.isEmpty() ||
-            body.getBytes(StandardCharsets.UTF_8).length > MAX_LOCAL_ASSIST_REQUEST_BYTES) {
-            replyLocalAssist(replyProxy, requestId, 0, "", true);
-            return;
-        }
-        try {
-            new JSONObject(body);
-        } catch (Exception error) {
-            replyLocalAssist(replyProxy, requestId, 0, "", true);
-            return;
-        }
-        FutureTask<Void> task = new FutureTask<>(() -> {
-            performLocalAssistRequest(requestId, body, replyProxy);
-            return null;
-        });
-        if (localAssistTasks.putIfAbsent(requestId, task) != null) {
-            replyLocalAssist(replyProxy, requestId, 0, "", true);
-            return;
-        }
-        localAssistExecutor.execute(task);
-    }
-
-    private void performLocalAssistRequest(
-        String requestId,
-        String body,
-        JavaScriptReplyProxy replyProxy
-    ) {
-        HttpURLConnection connection = null;
-        try {
-            if (localAssistDestroyed || Thread.currentThread().isInterrupted() ||
-                !localAssistTasks.containsKey(requestId)) return;
-            connection = (HttpURLConnection) new URL(LOCAL_ASSIST_URL).openConnection(Proxy.NO_PROXY);
-            connection.setInstanceFollowRedirects(false);
-            connection.setConnectTimeout(LOCAL_ASSIST_TIMEOUT_MS);
-            connection.setReadTimeout(LOCAL_ASSIST_TIMEOUT_MS);
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setDoOutput(true);
-            localAssistConnections.put(requestId, connection);
-            if (Thread.currentThread().isInterrupted() ||
-                !localAssistTasks.containsKey(requestId)) return;
-            byte[] requestBytes = body.getBytes(StandardCharsets.UTF_8);
-            connection.setFixedLengthStreamingMode(requestBytes.length);
-            try (OutputStream output = connection.getOutputStream()) {
-                output.write(requestBytes);
-            }
-            int status = connection.getResponseCode();
-            InputStream input = status >= 200 && status < 400
-                ? connection.getInputStream()
-                : connection.getErrorStream();
-            String responseBody = input == null ? "" : readBoundedLocalAssistResponse(input);
-            replyLocalAssist(replyProxy, requestId, status, responseBody, false);
-        } catch (Exception error) {
-            replyLocalAssist(replyProxy, requestId, 0, "", true);
-        } finally {
-            localAssistTasks.remove(requestId);
-            localAssistConnections.remove(requestId);
-            if (connection != null) connection.disconnect();
-        }
-    }
-
-    private String readBoundedLocalAssistResponse(InputStream input) throws IOException {
-        try (InputStream source = input; ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[8 * 1024];
-            int count;
-            while ((count = source.read(buffer)) >= 0) {
-                if (output.size() + count > MAX_LOCAL_ASSIST_RESPONSE_BYTES) {
-                    throw new IOException("Resposta local excedeu o limite.");
-                }
-                output.write(buffer, 0, count);
-            }
-            return output.toString(StandardCharsets.UTF_8.name());
-        }
-    }
-
-    private void replyLocalAssist(
-        JavaScriptReplyProxy replyProxy,
-        String requestId,
-        int status,
-        String body,
-        boolean failed
-    ) {
-        if (localAssistDestroyed) return;
-        JSONObject response = new JSONObject();
-        try {
-            response.put("contract", ANDROID_ASSIST_CONTRACT);
-            response.put("requestId", requestId);
-            response.put("status", status);
-            response.put("body", body == null ? "" : body);
-            response.put("error", failed);
-        } catch (Exception error) {
-            return;
-        }
-        runOnUiThread(() -> {
-            if (!localAssistDestroyed) replyProxy.postMessage(response.toString());
-        });
     }
 
     private void configureBackNavigation() {

@@ -16,9 +16,11 @@ Em **Estudo**, percorra:
 Home → Curso → Módulo → Lição → Microssequência → Unidade
 ```
 
-Confirme que `←` volta à tela realmente anterior e que `↑` sobe um nível. Na
-Unidade, **Visualizar**, **Editar** e **Assistência por IA** devem ser modos
-irmãos sobre o mesmo alvo. Verifique resposta, retorno, Fontes, Observações,
+Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que
+**Home** oferece a saída global sem consumir o histórico. Acesso ao pai só deve
+aparecer quando houver ação contextual própria. Na Unidade, **Visualizar**,
+**Editar** e **Assistência por IA** devem ser modos irmãos sobre o mesmo alvo,
+sem deslocar elementos cuja função não mudou. Verifique resposta, retorno, Fontes, Observações,
 marcação para rever, zeragem de progresso e retomada.
 
 Em **Autoria**, parta da Visão geral e verifique as sete tarefas: Planejamento,
@@ -43,6 +45,8 @@ representativa. Em cada tamanho, observe:
 - alinhamento da coluna e dos controles;
 - textos extensos sem truncamento de sentido;
 - foco depois de abrir, fechar, voltar e falhar;
+- geometria estável ao trocar modo, selecionar, validar ou editar;
+- sheets e dialogs com contorno estável e conteúdo variável rolando internamente;
 - menus e sobreposições fechando por ação explícita, clique externo e `Esc`;
 - temas claro e escuro quando a superfície os oferece;
 - console sem erro relacionado à jornada.

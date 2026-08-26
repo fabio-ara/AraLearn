@@ -174,6 +174,55 @@ function annotationController() {
   };
 }
 
+test("detalhe distingue referência remota, PDF preservado e material apenas referido", async () => {
+  const scenarios = [{
+    value: source(1),
+    expected: "Referência remota: o endereço pode mudar ou deixar de estar disponível."
+  }, {
+    value: source(1, { attachments: [{
+      contentHash: "a".repeat(64),
+      byteSize: 1024,
+      mediaType: "application/pdf",
+      storagePath: `${COURSE_ID}/${"a".repeat(64)}.pdf`,
+      actorId: null,
+      createdAt: "2026-08-17T12:00:00.000Z"
+    }] }),
+    expected: "1 PDF preservado nesta revisão do AraLearn."
+  }, {
+    value: source(1, {
+      url: null,
+      availability: "unknown",
+      studyVisibility: "citation",
+      attachments: []
+    }),
+    expected: "Somente a referência foi registrada; esta revisão não oferece arquivo nem endereço de acesso."
+  }];
+  for (const scenario of scenarios) {
+    const root = new FakeRoot();
+    const panel = createCourseSourcesPanel({
+      root,
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      controller: {
+        ...annotationController(),
+        async loadCourseSources(courseId, options) {
+          return options.mode === "catalog"
+            ? catalogPage([scenario.value])
+            : sourcePage(scenario.value);
+        },
+        async mutateCourseSources() {
+          throw new Error("Mutação inesperada.");
+        }
+      }
+    });
+    await panel.open();
+    click(root, "open-source", { sourceId: scenario.value.sourceId });
+    await settle();
+    assert.match(root.innerHTML, new RegExp(scenario.expected.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+    panel.destroy();
+  }
+});
+
 function sourceObservation(annotationId, {
   targetKind = "source",
   targetId = "source-01",
@@ -2000,6 +2049,7 @@ test("detalhe cria, revisa e aposenta Âncora presa à revisão exata da Fonte",
             sourceRevision: command.sourceRevision,
             status: "active",
             selector: structuredClone(command.selector),
+            humanLocator: command.humanLocator,
             verificationExcerpt: command.verificationExcerpt,
             actorId: null,
             createdAt: "2026-08-17T12:00:00.000Z"
@@ -2035,6 +2085,7 @@ test("detalhe cria, revisa e aposenta Âncora presa à revisão exata da Fonte",
     selectorKind: "page_range",
     startPage: "20",
     endPage: "21",
+    humanLocator: "Capítulo 3 · Tabela 1",
     verificationExcerpt: "Trecho conferido."
   });
   await settle();
@@ -2044,6 +2095,7 @@ test("detalhe cria, revisa e aposenta Âncora presa à revisão exata da Fonte",
     selectorKind: "page_range",
     startPage: "22",
     endPage: "24",
+    humanLocator: "Capítulo 3 · Tabela 2",
     verificationExcerpt: "Trecho revisto."
   });
   await settle();
@@ -2077,22 +2129,26 @@ test("detalhe cria, revisa e aposenta Âncora presa à revisão exata da Fonte",
     type: command.type,
     sourceRevision: command.sourceRevision,
     expectedAnchorRevision: command.expectedAnchorRevision,
-    selector: command.selector
+    selector: command.selector,
+    humanLocator: command.humanLocator
   })), [{
     type: "save_anchor",
     sourceRevision: 1,
     expectedAnchorRevision: 0,
-    selector: { kind: "page_range", startPage: 20, endPage: 21 }
+    selector: { kind: "page_range", startPage: 20, endPage: 21 },
+    humanLocator: "Capítulo 3 · Tabela 1"
   }, {
     type: "save_anchor",
     sourceRevision: 1,
     expectedAnchorRevision: 1,
-    selector: { kind: "page_range", startPage: 22, endPage: 24 }
+    selector: { kind: "page_range", startPage: 22, endPage: 24 },
+    humanLocator: "Capítulo 3 · Tabela 2"
   }, {
     type: "retire_anchor",
     sourceRevision: undefined,
     expectedAnchorRevision: 2,
-    selector: undefined
+    selector: undefined,
+    humanLocator: undefined
   }]);
   assert.match(root.innerHTML, /aposentada/u);
 });

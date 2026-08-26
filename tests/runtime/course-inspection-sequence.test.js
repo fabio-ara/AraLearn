@@ -113,6 +113,50 @@ function studyUnit(index) {
   };
 }
 
+function designSnapshot({ ceiling = 2 } = {}) {
+  return {
+    parameters: [
+      {
+        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+        value: ceiling,
+        origin: "author",
+        sourceScopeKind: "didactic_microsequence"
+      },
+      {
+        parameterId: "required_explanation_forms",
+        value: ["plain_definition", "concrete_example"],
+        origin: "system_default",
+        sourceScopeKind: null
+      },
+      {
+        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+        value: 2,
+        origin: "system_default",
+        sourceScopeKind: null
+      },
+      {
+        parameterId: "required_practice_variation_dimensions",
+        value: ["case_or_data"],
+        origin: "system_default",
+        sourceScopeKind: null
+      }
+    ],
+    guidance: [{
+      guidance: "Usar exemplos contrastivos.",
+      origin: "author",
+      sourceScopeKind: "course"
+    }],
+    componentPolicy: {
+      availability: "allow_only",
+      allowedCount: 3,
+      excludedCount: 0,
+      preferredCount: 2,
+      origin: "author",
+      sourceScopeKind: "course"
+    }
+  };
+}
+
 function inspectionItem(index) {
   return {
     studyUnit: studyUnit(index),
@@ -133,6 +177,20 @@ function inspectionItem(index) {
       position: 0,
       title: "Parte inicial",
       state: "materialized"
+    },
+    authorship: {
+      pendingObservationCount: 0,
+      production: {
+        materializationId: "30000000-0000-4000-8000-000000000003",
+        recordedAt: "2026-08-17T12:00:00Z",
+        state: "produced",
+        currentMaterialization: true
+      },
+      design: {
+        used: designSnapshot(),
+        current: designSnapshot(),
+        state: "current"
+      }
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
   };
@@ -224,7 +282,7 @@ function pageFor(options, totalCount = 60) {
   }
   const end = start + items.length;
   return {
-    contract: "aralearn.course-study-unit-inspection-page.v1",
+    contract: "aralearn.course-study-unit-inspection-page.v2",
     courseId: COURSE_ID,
     courseRevision: REVISION,
     scope: options.scope,
@@ -310,6 +368,40 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
   });
 });
 
+test("marcadores coexistem e o desenho mostra usado versus vigente sem hashes", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      const page = pageFor(options, 2);
+      page.items[0].authorship.pendingObservationCount = 2;
+      page.items[0].authorship.design.current = designSnapshot({ ceiling: 3 });
+      page.items[0].authorship.design.state = "changed";
+      return page;
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+
+  assert.equal(await sequence.open(), true);
+  assert.match(
+    root.innerHTML,
+    /aria-label="1\. Unidade 1; Observação pendente; desenho alterado"/u
+  );
+  assert.match(root.innerHTML, /Desenho usado nesta versão × vigente agora/u);
+  assert.match(root.innerHTML, /Usado nesta versão/u);
+  assert.match(root.innerHTML, /Vigente agora/u);
+  assert.match(root.innerHTML, />2<\/span>/u);
+  assert.match(root.innerHTML, />3<\/span>/u);
+  assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
+  sequence.destroy();
+});
+
 test("observa e libera o rolador real da Autoria em vez da janela", () => {
   const root = new FakeRoot();
   const authoringScroller = new FakeWindow();
@@ -360,6 +452,35 @@ test("pagina de 12 em 12 e conserva uma janela curricular de no máximo 36 artig
     assert.equal(options.maxBytes, 1_500_000);
     assert.deepEqual(options.scope, { kind: "course", id: null });
   });
+  sequence.destroy();
+});
+
+test("índice compacto alcança uma Unidade distante sem abandonar a janela curricular", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture();
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+
+  assert.equal(await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-jump]"
+          ? { dataset: { inspectionJump: "50" } }
+          : null;
+      }
+    }
+  }), true);
+
+  assert.equal(sequence.snapshot().studyUnitId, "unit-50");
+  assert.equal(sequence.snapshot().itemCount, COURSE_INSPECTION_MAX_WINDOW_ITEMS);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-50"/u);
+  assert.equal(controller.calls.length, 5);
   sequence.destroy();
 });
 
@@ -465,6 +586,32 @@ test("revisão nova mantém deep link removido como Ponto não encontrado", asyn
   assert.equal(await sequence.refresh(REVISION + 1), false);
   assert.match(root.innerHTML, /Ponto não encontrado/u);
   assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
+  sequence.destroy();
+});
+
+test("retorno contextual restaura o foco na ação exata da Unidade", async () => {
+  const root = new FakeRoot();
+  let focused = 0;
+  const unitElement = { getBoundingClientRect: () => ({ top: 24 }) };
+  const control = { focus() { focused += 1; } };
+  root.querySelector = (selector) => {
+    if (selector === '[data-inspection-study-unit="unit-20"]') return unitElement;
+    if (selector === '[data-inspection-control-key="design:unit-20"]') return control;
+    return null;
+  };
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture(),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    routeTarget: { kind: "study_unit", id: "unit-20" },
+    initialFocusKey: "design:unit-20",
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+
+  assert.equal(await sequence.open(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(focused, 1);
   sequence.destroy();
 });
 
@@ -622,7 +769,7 @@ test("Unidade delega pedido contextual ao ChatGPT com caminho e deep link exatos
   sequence.destroy();
 });
 
-test("Inspeção evita N+1 decorativo e conta somente ao abrir o composer contextual", async () => {
+test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solicitada", async () => {
   const root = new FakeRoot();
   const annotationCalls = [];
   const controller = controllerFixture({
@@ -662,6 +809,7 @@ test("Inspeção evita N+1 decorativo e conta somente ao abrir o composer contex
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
   assert.match(root.innerHTML, /<span>Observações<\/span>/u);
+  assert.match(root.innerHTML, /Observar esta Unidade/u);
   assert.equal(annotationCalls.length, 0);
 
   await root.listeners.get("click")({
@@ -676,7 +824,7 @@ test("Inspeção evita N+1 decorativo e conta somente ao abrir o composer contex
   assert.match(root.innerHTML, /Observações da Unidade/u);
   assert.match(root.innerHTML, /data-observation-composer/u);
   assert.match(root.innerHTML, /Nova observação/u);
-  assert.match(root.innerHTML, /Observações · 0/u);
+  assert.doesNotMatch(root.innerHTML, /Observações · 0/u);
   assert.equal(annotationCalls.length, 1);
   assert.equal(annotationCalls[0].options.limit, 24);
   assert.equal(annotationCalls[0].options.query.mode, "target");
@@ -1122,6 +1270,14 @@ test("revisão nova cancela paginação antiga e mantém somente o trecho ancora
 test("troca de escopo salva a posição e preserva no histórico o deep link exato", async () => {
   const root = new FakeRoot();
   const events = [];
+  const activeElement = {
+    closest(selector) {
+      if (selector === "[data-inspection-control-key]") {
+        return { dataset: { inspectionControlKey: "design:unit-01" } };
+      }
+      return null;
+    }
+  };
   const sequence = createCourseInspectionSequence({
     root,
     controller: controllerFixture({
@@ -1142,7 +1298,7 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
       events.push(["navigate", hash, structuredClone(options)]);
     },
     windowValue: new FakeWindow(),
-    documentValue: { activeElement: null }
+    documentValue: { activeElement }
   });
   await sequence.open();
 
@@ -1164,7 +1320,10 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
   assert.deepEqual(events[1], [
     "navigate",
     microsequenceRoute,
-    { returnTo: inspectionItem(1).deepLink }
+    {
+      returnTo: inspectionItem(1).deepLink,
+      returnFocusKey: "design:unit-01"
+    }
   ]);
   sequence.destroy();
 });

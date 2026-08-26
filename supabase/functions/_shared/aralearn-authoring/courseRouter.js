@@ -1646,6 +1646,20 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       data: await adapter.listCourseStudyUnits({
         principal,
         courseId: route.courseId,
+        inspectionVersion: 1,
+        ...courseStudyUnitQuery(request),
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "listContinuousCourseStudyUnits") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.listCourseStudyUnits({
+        principal,
+        courseId: route.courseId,
+        inspectionVersion: 2,
         ...courseStudyUnitQuery(request),
         deadlineAt
       })

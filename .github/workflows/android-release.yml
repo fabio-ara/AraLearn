@@ -252,13 +252,13 @@ jobs:
           @"
           ## AraLearn v${{ steps.identity.outputs.version }}
 
-          Esta versão reconstrói Estudo e Autoria para tornar o percurso do Curso previsível e as tarefas de criação encontráveis.
+          Esta versão torna Estudo e Autoria mais diretos e fecha o ciclo de inspeção, discussão e reparo do Curso.
 
-          - Em Estudo, percorra Curso, Módulo, Lição, Microssequência e Unidade com voltar, subir e retomar preservando o contexto.
-          - Quando autorizado, edite os níveis correspondentes do Curso e use Visualizar, Editar e Assistência por IA sobre o mesmo objeto nos níveis compatíveis.
-          - Em Autoria, comece pela Visão geral e encontre Planejamento, Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e Pessoas e acesso.
-          - Acompanhe todas as materializações de uma Parte, inclusive as iniciadas pelo Aplicativo, MCP ou Actions, e volte das etapas e resultados aos objetos produzidos.
-          - Consulte o README e os guias revisados para aprender as jornadas visuais e conversacionais, seus limites e os fundamentos técnicos e pedagógicos.
+          - Em Estudo, use Voltar e Home sem perder origem, rolagem ou foco e alterne Visualizar, Editar e Assistência por IA sobre o mesmo objeto.
+          - Em Autoria, abra o conteúdo produzido, percorra Unidades, registre Observações no contexto e consulte desenho, parâmetros, Fontes e histórico de materialização.
+          - Leve Observações e achados ao ChatGPT por MCP ou Actions, discuta uma correção, aprove-a e verifique o conteúdo resultante antes de encerrar a pendência.
+          - Distinga herança, decisão automática justificada e decisão explícita, inclusive entre o desenho vigente e o aplicado a uma versão materializada.
+          - Use OpenAI, Gemini ou DeepSeek na Assistência por IA com uma chave efêmera mantida somente na sessão.
 
           Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.
           "@ | Set-Content -Encoding UTF8 release-notes.md

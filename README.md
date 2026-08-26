@@ -41,8 +41,9 @@ Depois de entrar, a pessoa encontra Cursos próprios e Cursos compartilhados. Um
 seletor e uma prévia mostram objetivo, relação de acesso, quantidade de Módulos,
 Lições e Unidades, progresso e disponibilidade no dispositivo.
 
-**Começar**, **Continuar** ou **Retomar** abre o ponto adequado. A navegação
-mantém o caminho percorrido e também permite subir pela hierarquia do Curso.
+**Começar**, **Continuar** ou **Retomar** abre o ponto adequado. **Voltar**
+restaura a origem real, a rolagem e o foco; **Home** oferece uma saída global.
+O acesso direto ao pai aparece somente quando uma jornada contextual o exige.
 Durante o estudo, a pessoa pode responder às práticas, receber retorno, marcar
 uma Unidade para rever, registrar uma Observação e consultar Fontes autorizadas.
 
@@ -92,8 +93,8 @@ os contratos exatos, valida a composição e permite reparos delimitados. JSON b
 formado não basta: uma proposta inválida ou não renderizável nunca substitui o
 conteúdo corrente.
 
-A credencial do provedor fica no relay local configurado pela pessoa, fora do
-AraLearn. O capítulo [Assistência por modelo de
+A pessoa escolhe OpenAI, Gemini ou DeepSeek e fornece uma chave mantida somente
+na memória da sessão. O capítulo [Assistência por modelo de
 linguagem](docs/assistencia-por-ia.md) explica autoridade, contexto e falhas.
 
 ## Criar por conversa

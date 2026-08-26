@@ -38,8 +38,9 @@ altera a propriedade do Curso nem o resultado da validação.
 ## Superfícies conversacionais
 
 MCP expõe cinco ferramentas; Actions expõe cinco operações HTTP descritas por
-OpenAPI. Nomes, argumentos e executor são compartilhados, sem criar uma entrada
-para cada objeto:
+OpenAPI. Nomes e executor são compartilhados. O OpenAPI pode omitir
+condicionais mecânicas profundas que o servidor continua validando, sem criar
+uma entrada de negócio para cada objeto:
 
 | Ferramenta | Responsabilidade |
 | --- | --- |
@@ -110,7 +111,10 @@ reinterpretar silenciosamente a intenção.
 ## Resolução do desenho
 
 Parâmetros pedagógicos possuem definições versionadas, tipo, escopos,
-valor-padrão e limitações. A precedência corrente é:
+valor-padrão e limitações. Há três ações distintas: limpar para herdar; delegar
+uma resolução automática, que conserva valor escolhido e justificativa pública;
+ou fixar uma decisão explícita da autoria ou de pesquisa. A precedência corrente
+é:
 
 1. decisão autoral ou de pesquisa no escopo aplicável mais próximo;
 2. atribuição automática justificada no escopo aplicável mais próximo;

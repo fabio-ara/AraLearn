@@ -269,7 +269,7 @@ function renderSourceConfirmation(state) {
 function sourceObservationTargetLabel(item, source) {
   if (item.target.kind === "source") return "Fonte";
   const anchor = source.anchors.find(({ anchorId }) => anchorId === item.target.id);
-  return anchor ? `Âncora · ${selectorLabel(anchor.selector)}` : "Âncora não disponível";
+  return anchor ? `Âncora · ${anchorLabel(anchor)}` : "Âncora não disponível";
 }
 
 function sourceObservationCategoryLabel(category) {
@@ -312,7 +312,7 @@ function renderSourceObservationForm(state, source) {
   };
   const anchorOptions = source.anchors.filter(({ status }) => status === "active").map((anchor) =>
     `<option value="${escapeHtml(anchor.anchorId)}"${values.targetId === anchor.anchorId ? " selected" : ""}>` +
-      `Âncora · ${escapeHtml(selectorLabel(anchor.selector))}</option>`
+      `Âncora · ${escapeHtml(anchorLabel(anchor))}</option>`
   ).join("");
   const kindOptions = Object.entries(SOURCE_OBSERVATION_KINDS).map(([value, entry]) =>
     `<option value="${value}"${values.observationKind === value ? " selected" : ""}>` +
@@ -570,6 +570,7 @@ function renderSourceForm(state) {
     '<label for="course-source-citation">Citação legível</label>' +
     `<textarea id="course-source-citation" name="citationText" maxlength="4096" rows="3"` +
     ` placeholder="Autores, título, ano e publicação">${escapeHtml(values.citationText)}</textarea>` +
+    '<p class="course-source-form-help">Registre somente dados fornecidos ou conferidos. Se algo faltar, deixe a lacuna explícita; não complete por plausibilidade.</p>' +
     '<div class="course-source-form-grid"><div><label for="course-source-url">Link canônico</label>' +
     `<input id="course-source-url" name="url" type="url" maxlength="4096" value="${escapeHtml(values.url)}"` +
     ' placeholder="https://…"></div><div><label for="course-source-edition">Edição ou versão</label>' +
@@ -629,6 +630,7 @@ function anchorDraft(anchor = null) {
     exact: selector.exact || "",
     prefix: selector.prefix || "",
     suffix: selector.suffix || "",
+    humanLocator: anchor?.humanLocator || "",
     verificationExcerpt: anchor?.verificationExcerpt || ""
   };
 }
@@ -636,7 +638,7 @@ function anchorDraft(anchor = null) {
 function anchorDraftFromForm(form, current) {
   return formDraft(form, current, [
     "selectorKind", "startPage", "endPage", "startTime", "endTime", "fragment", "exact",
-    "prefix", "suffix", "verificationExcerpt"
+    "prefix", "suffix", "humanLocator", "verificationExcerpt"
   ]);
 }
 
@@ -656,6 +658,10 @@ function renderAnchorForm(state) {
     '<label for="course-anchor-kind">Como localizar</label>' +
     `<select id="course-anchor-kind" name="selectorKind" data-source-anchor-kind required>${options}</select>` +
     renderAnchorSelectorFields(draft) +
+    '<label for="course-anchor-human-locator">Localizador para pessoas</label>' +
+    `<input id="course-anchor-human-locator" name="humanLocator" maxlength="1000" value="${escapeHtml(draft.humanLocator)}"` +
+    ' placeholder="Capítulo 3 · Seção 2.1 · Figura 5">' +
+    '<p class="course-source-form-help">Use capítulo, seção, unidade, slide, figura ou tabela somente quando essa identificação constar no material.</p>' +
     '<label for="course-anchor-excerpt">Trecho para conferência</label>' +
     `<textarea id="course-anchor-excerpt" name="verificationExcerpt" maxlength="4000" rows="3">${escapeHtml(draft.verificationExcerpt)}</textarea>` +
     '<p class="course-source-form-help">Use apenas o trecho mínimo necessário para confirmar a localização.</p>' +
@@ -677,6 +683,11 @@ function selectorLabel(selector) {
   return `“${selector.exact}”`;
 }
 
+function anchorLabel(anchor) {
+  const exact = selectorLabel(anchor.selector);
+  return anchor.humanLocator ? `${anchor.humanLocator} · ${exact}` : exact;
+}
+
 function renderAnchor(anchor, sourceRevision, state) {
   const source = state.detail?.items?.[0] || null;
   const current = sourceRevision === source?.revision;
@@ -687,7 +698,7 @@ function renderAnchor(anchor, sourceRevision, state) {
     state.initialAnchorMatch?.anchorRevision === anchor.revision;
   return `<article class="course-source-anchor${deepLinked ? " is-deep-linked" : ""}"` +
     (deepLinked ? ' data-source-deep-linked-anchor tabindex="-1"' : "") + ">" +
-    `<div><strong>${escapeHtml(selectorLabel(anchor.selector))}</strong>` +
+    `<div><strong>${escapeHtml(anchorLabel(anchor))}</strong>` +
     `<span>${anchor.status === "active" ? "Âncora ativa" : "Âncora aposentada"}</span>` +
     (deepLinked ? '<span class="course-source-deep-link-label">Âncora indicada</span>' : "") +
     "</div>" +
@@ -697,7 +708,7 @@ function renderAnchor(anchor, sourceRevision, state) {
     (editable || canRequestChat ? '<div class="course-source-compact-actions">' +
       (canRequestChat
         ? `<button type="button" data-source-action="request-chat-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}"` +
-          ` data-source-revision="${sourceRevision}" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(selectorLabel(anchor.selector))}"` +
+          ` data-source-revision="${sourceRevision}" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(anchorLabel(anchor))}"` +
           ` title="Trabalhar com o ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
         : "") +
       (editable
@@ -735,6 +746,17 @@ function renderSourceAttachments(source, index, state) {
       : '<p class="course-source-empty">Nenhum PDF anexado a esta revisão.</p>') + "</section>";
 }
 
+function sourceAvailabilityNote(source) {
+  const attachmentCount = Array.isArray(source.attachments) ? source.attachments.length : 0;
+  if (attachmentCount > 0) {
+    return `${attachmentCount} ${attachmentCount === 1 ? "PDF preservado" : "PDFs preservados"} nesta revisão do AraLearn.`;
+  }
+  if (safeHttpUrl(source.url)) {
+    return "Referência remota: o endereço pode mudar ou deixar de estar disponível.";
+  }
+  return "Somente a referência foi registrada; esta revisão não oferece arquivo nem endereço de acesso.";
+}
+
 function renderSourceRevision(source, index, state) {
   const current = index === 0;
   const url = safeHttpUrl(source.url);
@@ -768,7 +790,8 @@ function renderSourceRevision(source, index, state) {
         `<div><dt>Disponibilidade</dt><dd>${escapeHtml(SOURCE_AVAILABILITIES[source.availability])}</dd></div>` +
         `<div><dt>Verificação</dt><dd>${escapeHtml(SOURCE_VERIFICATIONS[source.verificationStatus])}</dd></div>` +
         `<div><dt>Estudo</dt><dd>${escapeHtml(SOURCE_VISIBILITIES[source.studyVisibility])}</dd></div>` +
-        `<div><dt>Link</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(source.url)}</a>` : escapeHtml(source.url || "Não informado")}</dd></div></dl>`) +
+        `<div><dt>Link</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(source.url)}</a>` : escapeHtml(source.url || "Não informado")}</dd></div></dl>` +
+        `<p class="course-source-availability-note">${escapeHtml(sourceAvailabilityNote(source))}</p>`) +
     renderSourceAttachments(source, index, state) +
     `<section class="course-source-anchors"><header><div><h4>Âncoras desta revisão</h4><p>${source.anchors.length} carregadas</p></div>` +
     (current && source.status === "active"
@@ -923,7 +946,7 @@ function renderTargetLink(state, link, index) {
           ? '<fieldset class="course-source-anchor-choices"><legend>Âncoras usadas</legend>' +
             anchors.filter(({ status }) => status === "active").map((anchor) =>
               `<label><input type="checkbox" data-source-target-anchor data-source-id="${escapeHtml(link.sourceId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
-              `<span>${escapeHtml(selectorLabel(anchor.selector))}${selectedAnchors.has(anchor.anchorId) &&
+              `<span>${escapeHtml(anchorLabel(anchor))}${selectedAnchors.has(anchor.anchorId) &&
                 (currentAnchors.get(anchor.anchorId)?.status !== "active" ||
                  currentAnchors.get(anchor.anchorId)?.revision !== anchor.revision)
                 ? " · revisão histórica"
@@ -1379,7 +1402,7 @@ export function createCourseSourcesPanel({
 
   function requestAnchorChat(source, anchor) {
     if (!source || !anchor || typeof onRequestChat !== "function") return false;
-    const title = selectorLabel(anchor.selector);
+    const title = anchorLabel(anchor);
     const deepLink = routeToSource(source.sourceId, anchor.anchorId);
     return invokeSafely(onRequestChat, {
       target: {
@@ -1990,6 +2013,7 @@ export function createCourseSourcesPanel({
       sourceRevision: source.revision,
       expectedAnchorRevision: existing?.revision || 0,
       selector: selectorFromForm(form),
+      humanLocator: optionalFormValue(form, "humanLocator", "O localizador para pessoas", 500),
       verificationExcerpt: literalOptionalFormValue(
         form,
         "verificationExcerpt",

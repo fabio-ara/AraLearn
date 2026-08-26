@@ -191,6 +191,17 @@ solicita normalmente 12 itens por página, admite até 24 e limita a 36 o númer
 de Unidades simultâneas no documento visual. A paginação remota continua sendo
 a fonte do restante.
 
+Cada item da página inclui fatos autorais derivados na mesma consulta: contagem
+de Observações pendentes, materialização que produziu a versão e instantâneos
+humanos do desenho usado e do desenho vigente. O cliente não precisa consultar
+essas autoridades separadamente para cada Unidade, e os fingerprints usados na
+comparação permanecem internos ao banco.
+
+A comparação é restrita à microssequência da Unidade. Uma Auditoria só muda o
+marcador para verificado quando a rodada resolvida contém o critério estrutural
+explícito `current_design_alignment` na mesma revisão do Curso e versão da
+Unidade; reparos sem essa prova não ocultam uma diferença de desenho.
+
 ### Shell offline e dados do Curso
 
 O cache do service worker e o IndexedDB resolvem interrupções diferentes. O
@@ -290,6 +301,9 @@ da relação permitida entre pessoas, não de uma URL pública permanente.
 Auditoria e correções mantêm ciclos, achados, decisões, comandos e vínculos com
 Anotações no servidor. Não existe fila local para essas alterações. A interface
 pode preservar apenas o estado transitório necessário para repetir uma leitura.
+Verificar um achado também resolve ou reabre, atomicamente, as Observações
+vinculadas conforme o resultado. A mesma identidade idempotente cobre o comando
+inteiro, inclusive em repetição depois de uma resposta ambígua.
 
 Variantes guardam ponto de controle imutável do plano, conjunto de comparação e
 membros. Cada membro é um Curso independente. Plano, desenho, fontes,
@@ -321,7 +335,7 @@ objetos que não são eliminados automaticamente pelo PostgreSQL.
 
 Migrações em `supabase/migrations/` são a história reproduzível do banco. A
 revisão hospedada corrente e a revisão implantável declarada em
-`supabase/runtime-manifest.json` são `20260824174101`. Uma migração que
+`supabase/runtime-manifest.json` são `20260826094500`. Uma migração que
 acrescenta capacidade deve:
 
 - fazer verificações prévias e falhar diante de estado incompatível;

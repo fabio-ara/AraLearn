@@ -978,7 +978,7 @@ export class CourseApiClient {
     );
   }
 
-  async executeCourseAction(name, argumentsValue = {}) {
+  async executeCourseAction(name, argumentsValue = {}, { headers = {} } = {}) {
     const actionName = String(name || "").trim();
     if (!/^[a-z][A-Za-z0-9]{2,79}$/u.test(actionName)) {
       throw new TypeError("Operação de Curso inválida.");
@@ -993,7 +993,7 @@ export class CourseApiClient {
       }
       const execute = () => this.http.request(
         `/functions/v1/aralearn-course-api/app/${encodeURIComponent(actionName)}`,
-        { method: "POST", body, accessToken, timeoutMs: 60_000 }
+        { method: "POST", body, accessToken, headers, timeoutMs: 60_000 }
       );
       let response;
       try {
@@ -1367,6 +1367,10 @@ export class CourseApiClient {
         minimum: 64 * 1024,
         maximum: 1_500_000
       })
+    }, {
+      headers: {
+        Accept: "application/vnd.aralearn.course-study-unit-inspection.v2+json"
+      }
     });
   }
 

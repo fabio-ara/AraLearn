@@ -6,6 +6,12 @@ const project = JSON.parse(readFileSync(new URL(
   import.meta.url
 ), "utf8"));
 
+const HOME_COURSE_IDS = Object.freeze({
+  a: "a0000000-0000-4000-8000-00000000000a",
+  b: "b0000000-0000-4000-8000-00000000000b",
+  c: "c0000000-0000-4000-8000-00000000000c"
+});
+
 async function expectHomeGeometry(page, width, colorMode) {
   await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
   await page.evaluate((mode) => {
@@ -70,7 +76,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     const baseCourse = documentValue.courses[0];
     const makeCourse = (suffix, title, goal) => {
       const replacements = [
-        ["course-fixture-minimal", `course-home-${suffix}`],
+        ["course-fixture-minimal", documentValue.homeCourseIds[suffix]],
         ["module-fixture-minimal", `module-home-${suffix}`],
         ["lesson-fixture-minimal", `lesson-home-${suffix}`],
         ["micro-fixture-minimal", `micro-home-${suffix}`],
@@ -105,19 +111,20 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
       loads: [],
       offlineChecks: [],
       availableOffline: {
-        "course-home-a": true,
-        "course-home-b": false,
-        "course-home-c": false
+        [documentValue.homeCourseIds.a]: true,
+        [documentValue.homeCourseIds.b]: false,
+        [documentValue.homeCourseIds.c]: false
       },
       delayCourseId: "",
       failCourseId: "",
       revokeCourseId: "",
+      failLifecycle: false,
       releaseCourseLoad: null,
       reviewItems: [{
         title: "Rever regra do Curso A",
         context: "Curso A · Regra central",
         entityPath: [
-          "course-home-a",
+          documentValue.homeCourseIds.a,
           "module-home-a",
           "lesson-home-a",
           "micro-home-a",
@@ -129,7 +136,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
         title: "Rever outro exemplo do Curso A",
         context: "Curso A · Segundo exemplo",
         entityPath: [
-          "course-home-a",
+          documentValue.homeCourseIds.a,
           "module-home-a",
           "lesson-home-a",
           "micro-home-a",
@@ -138,7 +145,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
       }],
       navigation: {
         contract: "aralearn.course-study-navigation.v1",
-        selectedCourseId: "course-home-a",
+        selectedCourseId: documentValue.homeCourseIds.a,
         positions: {},
         updatedAt: "2026-08-21T12:00:00.000Z"
       },
@@ -202,6 +209,13 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
         state.reviewNextItems = [];
         state.reviewHasMore = false;
       },
+      setStudyUnitReviewMark: async (reference, marked) => {
+        if (marked) return;
+        state.reviewItems = state.reviewItems.filter((item) =>
+          item.entityPath.at(-1) !== reference.studyUnitId);
+        state.reviewNextItems = state.reviewNextItems.filter((item) =>
+          item.entityPath.at(-1) !== reference.studyUnitId);
+      },
       loadAnnotationsForPath: () => [],
       isStudyUnitMarkedForReview: () => false,
       loadRuntimeStatus: () => ({ offline: false, stale: false, readOnly: false }),
@@ -238,6 +252,11 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
         state.offlineChecks.push(courseId);
         return state.availableOffline[courseId];
       },
+      maintainCourse: async ({ courseId }) => {
+        if (state.failLifecycle) throw new Error("Falha simulada no ciclo de vida.");
+        state.activeProject.courses = state.activeProject.courses
+          .filter((course) => course.id !== courseId);
+      },
       flush: async () => undefined
     };
     state.mount = () => {
@@ -253,7 +272,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     };
     globalThis.__home148Probe = state;
     state.mount();
-  }, project);
+  }, { ...project, homeCourseIds: HOME_COURSE_IDS });
 
   const selector = page.getByRole("combobox", { name: "Selecionar Curso" });
   await expect(selector).toHaveCount(1);
@@ -262,7 +281,7 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await expect(page.locator(".home-course-selector-preview")).toContainText(
     "Compreender o primeiro objetivo do Curso A."
   );
-  await expect(page.locator(".home-course-selector-preview")).toContainText("Seu Curso");
+  await expect(page.locator(".home-course-selector-preview")).toContainText("Curso próprio");
   await expect(page.locator("body")).not.toContainText("course-home-");
 
   for (const colorMode of ["light", "dark"]) {
@@ -279,12 +298,19 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     name: "Abrir para rever: Rever outro exemplo do Curso A"
   })).toBeVisible();
   await expect(page.locator(".study-review-queue > summary")).toBeFocused();
-  await page.evaluate(() => { globalThis.__home148Probe.failCourseId = "course-home-a"; });
+  await page.getByRole("button", {
+    name: "Retirar de Rever: Rever outro exemplo do Curso A"
+  }).click();
+  await expect(page.getByRole("button", { name: "Desfazer" })).toBeFocused();
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.failCourseId = courseId;
+  }, HOME_COURSE_IDS.a);
   const failedReview = page.getByRole("button", { name: "Abrir para rever: Rever regra do Curso A" });
   await failedReview.press("Enter");
   await expect(page.getByRole("alert")).toHaveText(
     "Não foi possível abrir este Curso. Tente novamente."
   );
+  await expect(page.getByRole("button", { name: "Desfazer" })).toHaveCount(0);
   await expect(page.locator(".study-review-queue > summary")).toBeFocused();
   await page.evaluate(() => { globalThis.__home148Probe.loads = []; });
 
@@ -297,14 +323,16 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
 
-  await selector.selectOption("course-home-b");
-  await expect(selector).toHaveValue("course-home-b");
+  await selector.selectOption(HOME_COURSE_IDS.b);
+  await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
   await expect(page.locator(".home-course-selector-preview")).toContainText("Curso B");
   await expect(page.locator(".home-course-selector-preview"))
-    .toContainText("Compartilhado com você");
-  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual(["course-home-a"]);
+    .toContainText("Curso compartilhado");
+  expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([HOME_COURSE_IDS.a]);
 
-  await page.evaluate(() => { globalThis.__home148Probe.delayCourseId = "course-home-b"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.delayCourseId = courseId;
+  }, HOME_COURSE_IDS.b);
   await page.getByRole("button", { name: "Começar Curso B" }).click();
   await expect(selector).toBeDisabled();
   await expect(page.getByRole("status", { name: "" }).filter({
@@ -316,8 +344,8 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await expect(page.getByText("Conteúdo inicial de Curso B.", { exact: true })).toBeVisible();
   await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([
-    "course-home-a",
-    "course-home-b"
+    HOME_COURSE_IDS.a,
+    HOME_COURSE_IDS.b
   ]);
 
   await page.evaluate(() => {
@@ -326,15 +354,15 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   const resumeB = page.getByRole("button", { name: "Retomar Curso B" });
   await expect(resumeB).toBeVisible();
   await expect(resumeB).toBeFocused();
-  await expect.poll(() => page.evaluate(() =>
-    globalThis.__home148Probe.navigation.positions["course-home-b"]?.entityPath?.at(-1)
-  )).toBe("unit-home-b-first");
-  await expect.poll(() => page.evaluate(() =>
-    globalThis.__home148Probe.navigation.positions["course-home-b"]?.view
-  )).toBe("course");
+  await expect.poll(() => page.evaluate((courseId) =>
+    globalThis.__home148Probe.navigation.positions[courseId]?.entityPath?.at(-1),
+  HOME_COURSE_IDS.b)).toBe("unit-home-b-first");
+  await expect.poll(() => page.evaluate((courseId) =>
+    globalThis.__home148Probe.navigation.positions[courseId]?.view,
+  HOME_COURSE_IDS.b)).toBe("course");
 
   await page.evaluate(() => globalThis.__home148Probe.mount());
-  await expect(selector).toHaveValue("course-home-b");
+  await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
   await expect(page.getByRole("button", { name: "Retomar Curso B" })).toBeVisible();
   await page.getByRole("button", { name: "Retomar Curso B" }).click();
   await expect(page.getByRole("heading", { name: "Curso B", exact: true })).toBeVisible();
@@ -342,26 +370,30 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
     for (let index = 0; index < 4; index += 1) globalThis.__home148Probe.app.handleBack();
   });
 
-  await selector.selectOption("course-home-a");
+  await selector.selectOption(HOME_COURSE_IDS.a);
   await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(true));
-  await expect(page.getByText("Disponível neste dispositivo", { exact: true })).toBeVisible();
+  await expect(page.getByText("Disponível neste dispositivo", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Retomar Curso A" })).toBeEnabled();
-  await selector.selectOption("course-home-c");
+  await selector.selectOption(HOME_COURSE_IDS.c);
   await expect(page.getByText(
-    "Conecte-se para abrir pela primeira vez",
+    "Conecte-se para abrir este Curso",
     { exact: true }
   )).toBeVisible();
   await expect(page.getByRole("button", { name: "Começar Curso C" })).toBeDisabled();
   await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(false));
 
-  await page.evaluate(() => { globalThis.__home148Probe.failCourseId = "course-home-c"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.failCourseId = courseId;
+  }, HOME_COURSE_IDS.c);
   await page.getByRole("button", { name: "Começar Curso C" }).press("Enter");
   await expect(page.getByRole("alert")).toHaveText(
     "Não foi possível abrir este Curso. Tente novamente."
   );
   await expect(page.getByRole("button", { name: "Tentar novamente Curso C" })).toBeFocused();
 
-  await page.evaluate(() => { globalThis.__home148Probe.revokeCourseId = "course-home-c"; });
+  await page.evaluate((courseId) => {
+    globalThis.__home148Probe.revokeCourseId = courseId;
+  }, HOME_COURSE_IDS.c);
   await page.getByRole("button", { name: "Tentar novamente Curso C" }).press("Enter");
   await expect(page.getByText("Seu acesso a Curso C foi encerrado.", { exact: true })).toBeVisible();
   await expect(selector.locator("option")).toHaveCount(2);
@@ -369,18 +401,34 @@ test("Home escolhe um entre três Cursos e preserva a retomada sem expor a carga
   await expect(page.locator(".home-course-selector-preview")).toHaveCount(1);
   await expect(selector).toBeFocused();
 
-  await page.evaluate(() => {
+  await page.evaluate((courseId) => {
     const probe = globalThis.__home148Probe;
-    probe.navigation.selectedCourseId = "course-home-a";
+    probe.navigation.selectedCourseId = courseId;
     probe.reviewItems = [];
     probe.reviewNextItems = [];
     probe.reviewHasMore = true;
     probe.mount();
-  });
+  }, HOME_COURSE_IDS.a);
   await ensureReviewQueueOpen(page);
   await page.getByRole("button", { name: "Mostrar mais" }).press("Enter");
   await expect(page.locator(".study-review-queue")).toHaveCount(0);
   await expect(selector).toBeFocused();
+
+  const lifecycleMenu = page.locator("[data-action='course-lifecycle-menu']");
+  await lifecycleMenu.click();
+  await page.evaluate(() => { globalThis.__home148Probe.failLifecycle = true; });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Excluir este Curso" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Falha simulada no ciclo de vida.");
+  await expect(lifecycleMenu).toBeFocused();
+
+  await lifecycleMenu.click();
+  await page.evaluate(() => { globalThis.__home148Probe.failLifecycle = false; });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Excluir este Curso" }).click();
+  await expect(page.getByText("Curso A foi excluído.", { exact: true })).toBeVisible();
+  await expect(selector).toBeFocused();
+  await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
 });
 
 test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime canônico", async ({ page }) => {
@@ -393,10 +441,14 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.evaluate(async (documentValue) => {
     document.body.innerHTML = '<main id="study-root"></main>';
     const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
+    const citationStressUnit = documentValue.courses[0].modules[0].lessons[0]
+      .microsequences[0].studyUnits[0];
+    citationStressUnit.content[0].data.text += ` ${"Contexto extenso antes das Fontes. ".repeat(90)}`;
     const progress = { version: 1, lessons: {} };
     const state = {
       completed: [], annotations: {}, annotationListeners: new Map(), annotationIndex: 0,
       review: new Map(), loadedCourses: [], failWithdraw: false,
+      failReviewUpdate: false,
       annotationsRevoked: false, annotationNotFound: false,
       externalProject: null, remotePersonal: null, refreshes: 0, revoked: false,
       citationReads: [], citationRevision: 4, citationsRevoked: false
@@ -485,6 +537,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
             anchors: [{
               anchorId: "anchor-publica",
               anchorRevision: 1,
+              humanLocator: "Capítulo 4, seção 2",
               selector: { kind: "page_range", startPage: 8, endPage: 9 }
             }]
           }, {
@@ -497,7 +550,15 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
             url: "https://example.test/fonte-publica",
             editionOrVersion: null,
             anchors: []
-          }]
+          }, ...Array.from({ length: 18 }, (_, index) => ({
+            sourceId: `fonte-extensa-${index + 1}`,
+            sourceRevision: 1,
+            title: `Fonte extensa ${index + 1}`,
+            citationText: `Autoria. Fonte extensa ${index + 1}. 2026.`,
+            url: null,
+            editionOrVersion: null,
+            anchors: []
+          }))]
         };
       },
       loadAnnotationsForPath: (reference) => structuredClone(annotationItems(reference)),
@@ -555,6 +616,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
       loadReviewItems: () => [...state.review.values()].map((value) => structuredClone(value)),
       isStudyUnitMarkedForReview: (reference) => state.review.has(reference.studyUnitId),
       setStudyUnitReviewMark: async (reference, marked) => {
+        if (state.failReviewUpdate) throw new Error("Falha simulada ao atualizar Rever.");
         if (marked) {
           state.review.set(reference.studyUnitId, {
             title: "Unidade marcada",
@@ -624,6 +686,9 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.locator("[data-action='toggle-citations']").click();
   await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
   await expect(page.getByText("Fonte somente citada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Capítulo 4, seção 2 · pp. 8–9", {
+    exact: true
+  })).toBeVisible();
   await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Abrir fonte" })).toHaveCount(1);
   await expect(page.locator(".study-citations-panel"))
@@ -631,6 +696,21 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.locator(".study-citations-panel"))
     .not.toContainText("Legado não resolvido");
   await expect(page.locator(".study-citations-panel [data-source-action]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeInViewport();
+  await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeInViewport();
+  expect(await page.locator(".study-citations-panel").evaluate((panel) =>
+    panel.parentElement?.classList.contains("card-sheet-content"))).toBe(true);
+  expect(await page.evaluate(() => ({
+    documentFits: document.documentElement.scrollHeight <= innerHeight + 1,
+    outerScrollable: document.querySelector(".microsequence-generator-screen").scrollHeight >
+      document.querySelector(".microsequence-generator-screen").clientHeight + 1,
+    contentOverflowY: getComputedStyle(document.querySelector(".card-sheet-content")).overflowY
+  }))).toEqual({ documentFits: true, outerScrollable: false, contentOverflowY: "auto" });
+  await page.locator(".card-sheet-content").evaluate((content) => {
+    content.scrollTop = content.scrollHeight;
+  });
+  await expect(page.getByText("Fonte extensa 18", { exact: true })).toBeInViewport();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.getByRole("button", { name: "Fontes", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toHaveCount(0);
@@ -723,6 +803,22 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   }, refreshContext.scrollTop)).toBe(true);
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.refreshes)).toBe(1);
   await page.getByRole("button", { name: /^Observações/u }).click();
+  const observationClose = page.getByRole("button", { name: "Fechar" });
+  const studyScreen = page.locator(".app-shell > .screen");
+  await expect(observationClose).toBeFocused();
+  await expect(studyScreen).toHaveAttribute("inert", "");
+  await expect(studyScreen).toHaveAttribute("aria-hidden", "true");
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Adicionar" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(observationClose).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Observações da Unidade de estudo" }))
+    .toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Observações/u })).toBeFocused();
+  await expect(studyScreen).not.toHaveAttribute("inert", "");
+  await expect(studyScreen).not.toHaveAttribute("aria-hidden", "true");
+  await page.getByRole("button", { name: /^Observações/u }).click();
   await expect(page.getByText("Observação recebida de outro dispositivo.", { exact: true }))
     .toBeVisible();
   await expect(page.getByText("Retorno privado da autoria.", { exact: true })).toBeVisible();
@@ -734,6 +830,10 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByRole("button", { name: "Abrir para rever: Unidade remota" })).toBeVisible();
   await page.getByRole("button", { name: "Abrir para rever: Unidade remota" }).click();
   await expect(page.locator("[data-study-destination-heading]")).toBeFocused();
+  await page.getByRole("button", { name: "Voltar" }).click();
+  await expect(page.getByRole("button", { name: "Abrir para rever: Unidade remota" }))
+    .toBeFocused();
+  await page.getByRole("button", { name: "Abrir para rever: Unidade remota" }).click();
 
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByText("Se uma delas for falsa", { exact: false })).toBeVisible();
@@ -788,6 +888,27 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.evaluate(() => globalThis.__courseStudyApp.openCourses());
   await ensureReviewQueueOpen(page);
   await expect(page.getByRole("button", { name: "Abrir para rever: Unidade marcada" })).toBeVisible();
+  await page.getByRole("button", { name: "Retirar de Rever: Unidade marcada" }).click();
+  await expect(page.getByRole("button", { name: "Abrir para rever: Unidade marcada" }))
+    .toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Desfazer" })).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__courseStudyProbe.review.size)).toBe(1);
+  await page.getByRole("button", { name: "Desfazer" }).click();
+  await expect(page.getByRole("button", { name: "Abrir para rever: Unidade marcada" })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__courseStudyProbe.review.size)).toBe(2);
+  await page.evaluate(() => { globalThis.__courseStudyProbe.failReviewUpdate = true; });
+  const removeReview = page.getByRole("button", { name: "Retirar de Rever: Unidade marcada" });
+  await removeReview.click();
+  await expect(page.getByRole("alert")).toHaveText("Falha simulada ao atualizar Rever.");
+  await expect(removeReview).toBeFocused();
+  await page.evaluate(() => { globalThis.__courseStudyProbe.failReviewUpdate = false; });
+  await removeReview.click();
+  await page.evaluate(() => { globalThis.__courseStudyProbe.failReviewUpdate = true; });
+  await page.getByRole("button", { name: "Desfazer" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Falha simulada ao atualizar Rever.");
+  await expect(page.getByRole("button", { name: "Desfazer" })).toBeFocused();
+  await page.evaluate(() => { globalThis.__courseStudyProbe.failReviewUpdate = false; });
+  await page.getByRole("button", { name: "Desfazer" }).click();
   await page.getByRole("button", { name: "Abrir para rever: Unidade marcada" }).click();
   await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
 
@@ -906,8 +1027,13 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
     await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
     await expect(page.locator("#study-observation-counter"))
       .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
+    const stableHeight = await page.locator(".study-observation-sheet")
+      .evaluate((sheet) => sheet.getBoundingClientRect().height);
+    await page.getByRole("textbox", { name: "Observação" }).fill("observação ".repeat(180));
     const geometry = await page.locator(".study-observation-sheet").evaluate((sheet) => {
       const rect = sheet.getBoundingClientRect();
+      const body = sheet.querySelector(".study-observation-body");
+      const textarea = sheet.querySelector(".study-observation-textarea");
       const controls = [...sheet.querySelectorAll("button, textarea, .study-observation-category-chip")]
         .filter((node) => {
           const nodeRect = node.getBoundingClientRect();
@@ -917,10 +1043,16 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
         documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
         sheetFits: rect.left >= -1 && rect.right <= window.innerWidth + 1 &&
           sheet.scrollWidth <= sheet.clientWidth + 1,
+        height: rect.height,
+        bodyOverflowY: getComputedStyle(body).overflowY,
+        internalScrollable: textarea.scrollHeight > textarea.clientHeight,
         minimumTouch: Math.min(...controls.map((node) => node.getBoundingClientRect().height))
       };
     });
     expect(geometry).toMatchObject({ documentFits: true, sheetFits: true });
+    expect(Math.abs(geometry.height - stableHeight)).toBeLessThanOrEqual(1);
+    expect(geometry.bodyOverflowY).toBe("auto");
+    expect(geometry.internalScrollable).toBe(true);
     expect(geometry.minimumTouch).toBeGreaterThanOrEqual(43);
     await page.getByRole("button", { name: "Fechar" }).click();
   }
@@ -1089,7 +1221,7 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
               card("choice-gap-card", 2, "Lacuna de opção", [packageInstance(
                 "choice-gap-copy",
                 "aralearn.resource.paragraph",
-                { text: "Escolha certo." }
+                { text: "Escolha certo, repita certo e finalize agora." }
               )], packageInstance("choice-gap-response", "aralearn.response.gap", {
                 prompt: "Complete.",
                 blanks: [{
@@ -1099,6 +1231,20 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
                   responseMode: "choice",
                   answer: "certo",
                   distractors: ["errado"]
+                }, {
+                  id: "choice-gap-same",
+                  targetInstanceId: "choice-gap-copy",
+                  targetPath: "text",
+                  responseMode: "choice",
+                  answer: "certo",
+                  distractors: ["errado"]
+                }, {
+                  id: "choice-gap-different",
+                  targetInstanceId: "choice-gap-copy",
+                  targetPath: "text",
+                  responseMode: "choice",
+                  answer: "agora",
+                  distractors: ["depois"]
                 }]
               })),
               card("free-gap-card", 3, "Lacuna livre", [packageInstance(
@@ -1242,19 +1388,33 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
   await page.locator("[data-action='next-study-unit']").click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna de opção");
 
-  let choiceGap = page.locator("[data-action='text-gap-open-choice']");
+  let choiceGaps = page.locator("[data-action='text-gap-open-choice']");
+  await expect(choiceGaps).toHaveCount(3);
   await page.locator("[data-action='next-study-unit']").click();
   await expect(page.getByRole("alert")).toContainText("Complete todas as lacunas.");
   await expect(page.locator("[data-action='text-gap-set-choice']").first()).toBeFocused();
-  await choiceGap.focus();
-  await choiceGap.press("Enter");
+  await choiceGaps.nth(0).focus();
+  await choiceGaps.nth(0).press("Enter");
   await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
   await page.locator("[data-action='text-gap-set-choice'][data-text-gap-value='certo']").click();
-  choiceGap = page.locator("[data-action='text-gap-open-choice']");
-  await choiceGap.focus();
-  await choiceGap.press("Space");
-  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  choiceGaps = page.locator("[data-action='text-gap-open-choice']");
+  await expect(choiceGaps.nth(0)).toHaveAttribute("data-empty", "false");
+  await expect(choiceGaps.nth(1)).toHaveAttribute("data-empty", "true");
+  await choiceGaps.nth(0).press("Space");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  choiceGaps = page.locator("[data-action='text-gap-open-choice']");
+  await expect(choiceGaps.nth(0)).toHaveAttribute("data-empty", "true");
+  await expect(choiceGaps.nth(1)).toHaveAttribute("data-empty", "true");
+  await choiceGaps.nth(1).click();
   await page.locator("[data-action='text-gap-set-choice'][data-text-gap-value='certo']").click();
+  choiceGaps = page.locator("[data-action='text-gap-open-choice']");
+  await expect(choiceGaps.nth(0)).toHaveAttribute("data-empty", "true");
+  await expect(choiceGaps.nth(1)).toHaveAttribute("data-empty", "false");
+  await choiceGaps.nth(0).click();
+  await page.locator("[data-action='text-gap-set-choice'][data-text-gap-value='certo']").click();
+  choiceGaps = page.locator("[data-action='text-gap-open-choice']");
+  await choiceGaps.nth(2).click();
+  await page.locator("[data-action='text-gap-set-choice'][data-text-gap-value='agora']").click();
   await page.locator("[data-action='next-study-unit']").click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna livre");
 

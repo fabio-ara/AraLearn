@@ -192,6 +192,13 @@ export function routeCourseRequest(method, pathname) {
   if (studyUnits && verb === "GET") {
     return { name: "listCourseStudyUnits", courseId: courseUuid(studyUnits[1]) };
   }
+  const continuousStudyUnits = path.match(/^\/v2\/courses\/([^/]+)\/study-units$/u);
+  if (continuousStudyUnits && verb === "GET") {
+    return {
+      name: "listContinuousCourseStudyUnits",
+      courseId: courseUuid(continuousStudyUnits[1])
+    };
+  }
   const entities = path.match(/^\/v1\/courses\/([^/]+)\/entities$/u);
   if (entities && verb === "GET") {
     return { name: "listCourseEntities", courseId: courseUuid(entities[1]) };

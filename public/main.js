@@ -14,7 +14,7 @@ import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.j
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
 import {
-  readOAuthAuthorizationId,
+  readOAuthAuthorizationRequest,
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
@@ -300,19 +300,20 @@ function renderSettings(root, authClient, controller, {
       <div class="account-settings-sheet courses-home-screen" role="dialog" aria-modal="true" aria-label="Conta e aparência" tabindex="-1">
         <header class="account-settings-header">
           <div class="account-settings-title-row">
-            <h1 class="account-settings-title">Conta e aparência</h1>
+            <button class="icon-ghost account-settings-back" type="button" data-settings-back title="Voltar" aria-label="Voltar" hidden>${renderUiIcon("arrow-left", "account-settings-action-icon")}</button>
+            <h1 class="account-settings-title" data-settings-title>Conta e aparência</h1>
             <button class="icon-ghost account-settings-close" type="button" data-settings-close title="Fechar" aria-label="Fechar">${renderUiIcon("remove-state", "account-settings-action-icon")}</button>
           </div>
         </header>
         <div class="account-settings-content">
+          <section class="account-settings-view" data-settings-view="main">
           <form class="account-profile-form" data-profile-form>
             <div class="account-profile-avatar">
-              <button class="account-profile-avatar-target" type="button" data-profile-avatar-choose title="Escolher ou trocar foto" aria-label="Escolher ou trocar foto">
+              <button class="account-profile-avatar-target" type="button" data-settings-open-view="photo" title="Foto do perfil" aria-label="Abrir Foto do perfil">
                 <span class="account-profile-avatar-fallback" data-profile-avatar-fallback>${renderUiIcon("account", "account-profile-avatar-icon")}</span>
                 <img data-profile-avatar-image alt="" hidden>
               </button>
               <input data-profile-avatar-file type="file" accept="image/jpeg,image/png,image/webp" hidden>
-              <button class="icon-ghost" type="button" data-profile-avatar-remove title="Remover foto" aria-label="Remover foto">${renderUiIcon("trash", "account-settings-action-icon")}</button>
             </div>
             <label for="account-profile-display-name">Nome</label>
             <div class="account-profile-name-row">
@@ -320,22 +321,13 @@ function renderSettings(root, authClient, controller, {
               <button class="icon-ghost is-primary" type="submit" data-profile-save title="Salvar perfil" aria-label="Salvar perfil">${renderUiIcon("save", "account-settings-action-icon")}</button>
             </div>
           </form>
-          <details class="account-settings-disclosure account-device-data">
-            <summary>Dados e conta</summary>
-            <p>Ao sair, Cursos e dados já salvos desta conta permanecem neste dispositivo. Alterações ainda abertas e não salvas serão perdidas.</p>
-            <div class="account-device-data-actions">
-              <button type="button" data-settings-clear-device>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados deste dispositivo</span></button>
-              <button type="button" data-settings-signout>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair</span></button>
-              <button class="is-danger" type="button" data-settings-signout-clear>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair e remover dados deste dispositivo</span></button>
-              <button class="is-danger" type="button" data-settings-delete-account>${renderUiIcon("trash", "account-settings-action-icon")}<span>Excluir conta</span></button>
-            </div>
-          </details>
-          <details class="account-maintenance account-settings-disclosure" data-settings-maintenance hidden>
-            <summary id="account-maintenance-title">Manutenção</summary>
+          <button class="account-settings-subview-entry" type="button" data-settings-open-view="account">
+            <span>${renderUiIcon("account", "account-settings-action-icon")}<strong>Dados e conta</strong></span>
+            ${renderUiIcon("arrow-right", "account-settings-action-icon")}
+          </button>
+          <section class="account-maintenance account-settings-disclosure" data-settings-maintenance hidden>
             <div class="account-maintenance-heading">
-              <div>
-                <p>Estado corrente de retenção e resíduos que o AraLearn sabe classificar com segurança.</p>
-              </div>
+              <div><h2 id="account-maintenance-title">Manutenção</h2></div>
               <button class="icon-ghost" type="button" data-maintenance-reload title="Atualizar Manutenção" aria-label="Atualizar Manutenção">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
             </div>
             <p data-maintenance-status role="status" aria-live="polite"></p>
@@ -344,7 +336,28 @@ function renderSettings(root, authClient, controller, {
               <button type="button" data-maintenance-retention>${renderUiIcon("rotate", "account-settings-action-icon")}<span>Executar retenção corrente</span></button>
             </div>
             <div data-maintenance-inventory></div>
-          </details>
+          </section>
+          </section>
+          <section class="account-settings-view account-profile-photo-view" data-settings-view="photo" hidden aria-labelledby="account-settings-photo-title">
+            <h2 id="account-settings-photo-title" class="visually-hidden">Foto do perfil</h2>
+            <div class="account-profile-photo-preview" aria-hidden="true">
+              <span data-profile-avatar-view-fallback>${renderUiIcon("account", "account-profile-avatar-icon")}</span>
+              <img data-profile-avatar-view-image alt="" hidden>
+            </div>
+            <div class="account-profile-photo-actions">
+              <button type="button" data-profile-avatar-choose>${renderUiIcon("upload", "account-settings-action-icon")}<span data-profile-avatar-choose-label>Escolher foto</span></button>
+              <button class="is-danger" type="button" data-profile-avatar-remove hidden>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover foto</span></button>
+            </div>
+          </section>
+          <section class="account-settings-view account-device-data" data-settings-view="account" hidden aria-labelledby="account-settings-account-title">
+            <h2 id="account-settings-account-title" class="visually-hidden">Dados e conta</h2>
+            <div class="account-device-data-actions">
+              <button type="button" data-settings-clear-device>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados deste dispositivo</span></button>
+              <button type="button" data-settings-signout>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair</span></button>
+              <button class="is-danger" type="button" data-settings-signout-clear>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair e remover dados deste dispositivo</span></button>
+              <button class="is-danger" type="button" data-settings-delete-account>${renderUiIcon("trash", "account-settings-action-icon")}<span>Excluir conta</span></button>
+            </div>
+          </section>
         </div>
         <p class="account-settings-status" data-settings-status role="status" aria-live="polite"></p>
         <footer class="account-settings-footer">
@@ -362,10 +375,16 @@ function renderSettings(root, authClient, controller, {
   const overlay = root.querySelector("[data-settings]");
   const sheet = root.querySelector(".account-settings-sheet");
   const status = root.querySelector("[data-settings-status]");
+  const settingsTitle = root.querySelector("[data-settings-title]");
+  const settingsBack = root.querySelector("[data-settings-back]");
   const profileName = root.querySelector("[data-profile-name]");
   const profileFile = root.querySelector("[data-profile-avatar-file]");
   const profileImage = root.querySelector("[data-profile-avatar-image]");
   const profileFallback = root.querySelector("[data-profile-avatar-fallback]");
+  const profileViewImage = root.querySelector("[data-profile-avatar-view-image]");
+  const profileViewFallback = root.querySelector("[data-profile-avatar-view-fallback]");
+  const profileRemove = root.querySelector("[data-profile-avatar-remove]");
+  const profileChooseLabel = root.querySelector("[data-profile-avatar-choose-label]");
   const maintenance = root.querySelector("[data-settings-maintenance]");
   const maintenanceStatus = root.querySelector("[data-maintenance-status]");
   const maintenanceSummary = root.querySelector("[data-maintenance-summary]");
@@ -379,6 +398,8 @@ function renderSettings(root, authClient, controller, {
   let settingsOpener = null;
   let maintenanceState = null;
   let maintenanceLoading = false;
+  let activeSettingsView = "main";
+  let settingsSubviewOpener = null;
 
   const maintenanceLabels = Object.freeze({
     avatar_owner_missing: "Avatar sem conta",
@@ -490,6 +511,11 @@ function renderSettings(root, authClient, controller, {
     profileImage.hidden = !avatarUrl;
     profileImage.src = avatarUrl;
     profileFallback.hidden = Boolean(avatarUrl);
+    profileViewImage.hidden = !avatarUrl;
+    profileViewImage.src = avatarUrl;
+    profileViewFallback.hidden = Boolean(avatarUrl);
+    profileRemove.hidden = !(avatarUrl || profile?.avatarObjectKey || selectedFile);
+    profileChooseLabel.textContent = avatarUrl ? "Substituir foto" : "Escolher foto";
     onProfileChange({
       displayName: profile?.displayName || null,
       avatarUrl
@@ -535,10 +561,30 @@ function renderSettings(root, authClient, controller, {
       button.setAttribute("aria-pressed", String(selected));
     });
   };
+  const showSettingsView = (view, { restoreFocus = false } = {}) => {
+    const nextView = new Set(["main", "photo", "account"]).has(view) ? view : "main";
+    activeSettingsView = nextView;
+    root.querySelectorAll("[data-settings-view]").forEach((section) => {
+      section.hidden = section.dataset.settingsView !== nextView;
+    });
+    settingsBack.hidden = nextView === "main";
+    settingsTitle.textContent = nextView === "photo"
+      ? "Foto do perfil"
+      : nextView === "account" ? "Dados e conta" : "Conta e aparência";
+    if (restoreFocus && nextView === "main") {
+      settingsSubviewOpener?.focus?.({ preventScroll: true });
+      settingsSubviewOpener = null;
+    } else if (nextView !== "main") {
+      settingsBack.focus({ preventScroll: true });
+    }
+    root.querySelector(".account-settings-content")?.scrollTo?.({ top: 0, behavior: "instant" });
+  };
   const close = ({ restoreFocus = true } = {}) => {
     if (overlay.hidden) return false;
     overlay.hidden = true;
     status.textContent = "";
+    showSettingsView("main");
+    settingsSubviewOpener = null;
     if (restoreFocus) restoreSettingsFocus();
     else settingsOpener = null;
     return true;
@@ -548,7 +594,8 @@ function renderSettings(root, authClient, controller, {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      close();
+      if (activeSettingsView === "main") close();
+      else showSettingsView("main", { restoreFocus: true });
       return;
     }
     if (event.key !== "Tab") return;
@@ -578,6 +625,15 @@ function renderSettings(root, authClient, controller, {
     selectedFile = profileFile.files?.[0] || null;
     if (!selectedFile) return;
     replaceAvatarUrl(globalThis.URL?.createObjectURL?.(selectedFile) || "");
+  });
+  root.querySelectorAll("[data-settings-open-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      settingsSubviewOpener = button;
+      showSettingsView(button.dataset.settingsOpenView);
+    });
+  });
+  settingsBack?.addEventListener("click", () => {
+    showSettingsView("main", { restoreFocus: true });
   });
   const retryPendingAvatarCleanup = async () => {
     if (!pendingAvatarCleanupObjectKey) return true;
@@ -697,6 +753,14 @@ function renderSettings(root, authClient, controller, {
     }
   });
   root.querySelector("[data-profile-avatar-remove]")?.addEventListener("click", async () => {
+    if (selectedFile) {
+      selectedFile = null;
+      profileFile.value = "";
+      if (profile?.avatarObjectKey) await loadProfile({ force: true });
+      else replaceAvatarUrl("");
+      status.textContent = "Foto não salva retirada.";
+      return;
+    }
     if (!profile?.avatarObjectKey ||
         !confirmValue("Remover sua foto de perfil?")) return;
     const previousAvatarObjectKey = profile.avatarObjectKey;
@@ -897,6 +961,7 @@ function renderSettings(root, authClient, controller, {
         ? activeElement
         : null;
       syncTheme();
+      showSettingsView("main");
       overlay.hidden = false;
       void loadProfile();
       if (authClient.getSession?.()?.user?.app_metadata?.aralearn_role === "administrator") {
@@ -907,6 +972,10 @@ function renderSettings(root, authClient, controller, {
     close,
     handleBack() {
       if (overlay.hidden) return false;
+      if (activeSettingsView !== "main") {
+        showSettingsView("main", { restoreFocus: true });
+        return true;
+      }
       close();
       return true;
     }
@@ -980,6 +1049,9 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   courseProviderSession = createCourseProviderSession();
   let editorApp = null;
   let authoringSurface = null;
+  let authoringReturnFocus = null;
+  let studyAuthoringReturn = null;
+  let authoringHistoryReturn = false;
   const settings = renderSettings(settingsRoot, authClient, authoringController, {
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
@@ -1112,29 +1184,100 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     console.warn("A edição pessoal pendente poderá ser retomada na próxima conexão.", error);
   });
   void settings.loadProfile();
+  const restoreStudyAfterAuthoring = () => {
+    authoringRoot.hidden = true;
+    editorRoot.hidden = false;
+    const returnOrigin = authoringReturnFocus;
+    authoringReturnFocus = null;
+    const restoreOriginFocus = () => {
+      const current = returnOrigin?.element?.isConnected
+        ? returnOrigin.element
+        : [...editorRoot.querySelectorAll?.("[data-study-source-return]") || []]
+            .find((node) => node.getAttribute("href") === returnOrigin?.href);
+      current?.focus?.({ preventScroll: true });
+    };
+    globalThis.queueMicrotask?.(restoreOriginFocus);
+    void refreshStudy().catch((error) => {
+      console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
+    }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
+  };
   authoringSurface = createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
     providerAssistanceSession: courseProviderSession,
-    async onOpenStudyContent({ entityPath }) {
+    async onOpenStudyContent({ entityPath, returnRoute }) {
+      const origin = authoringRoot.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+      const returnState = {
+        route: returnRoute,
+        scrollTop: Number(authoringRoot.scrollTop) || 0,
+        scrollLeft: Number(authoringRoot.scrollLeft) || 0,
+        focus: origin
+          ? {
+              action: origin.dataset.courseAuthoringAction || "",
+              targetKind: origin.dataset.targetKind || "",
+              targetId: origin.dataset.targetId || ""
+            }
+          : null
+      };
       const opened = await editorApp?.openEntityPath?.(entityPath);
       if (!opened) throw new Error("Não foi possível abrir este objeto no editor contextual.");
+      studyAuthoringReturn = returnState;
       authoringSurface?.destroy?.();
       authoringRoot.hidden = true;
       editorRoot.hidden = false;
     },
     onClose() {
-      clearAuthoringRoute();
-      authoringRoot.hidden = true;
-      editorRoot.hidden = false;
-      void refreshStudy().catch((error) => {
-        console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
-      });
+      const returnThroughHistory = authoringHistoryReturn &&
+        isCourseAuthoringRouteCandidate(globalThis.location.hash);
+      authoringHistoryReturn = false;
+      if (returnThroughHistory) globalThis.history.back();
+      else clearAuthoringRoute();
+      restoreStudyAfterAuthoring();
     }
   });
 
-  const openAuthoring = () => {
+  const returnFromStudyToAuthoring = () => {
+    const pending = studyAuthoringReturn;
+    if (!pending) return false;
+    studyAuthoringReturn = null;
+    if (location.hash !== pending.route) {
+      history.replaceState(history.state ?? null, "", pending.route);
+    }
+    editorRoot.hidden = true;
+    authoringRoot.hidden = false;
+    void authoringSurface.open().then(() => {
+      authoringRoot.scrollTop = pending.scrollTop;
+      authoringRoot.scrollLeft = pending.scrollLeft;
+      const focus = pending.focus;
+      if (!focus) return;
+      const target = [...authoringRoot.querySelectorAll(
+        `[data-course-authoring-action="${focus.action}"]`
+      )].find((node) =>
+        String(node.dataset.targetKind || "") === focus.targetKind &&
+        String(node.dataset.targetId || "") === focus.targetId
+      );
+      target?.focus?.({ preventScroll: true });
+    }).catch((error) => {
+      console.warn("A Autoria poderá ser reaberta pela Home.", error);
+    });
+    return true;
+  };
+
+  const openAuthoring = ({ returnThroughHistory = false } = {}) => {
+    studyAuthoringReturn = null;
     settings.close();
+    if (!authoringSurface.opened) authoringHistoryReturn = returnThroughHistory;
+    if (!editorRoot.hidden && editorRoot.contains(document.activeElement)) {
+      const element = document.activeElement;
+      authoringReturnFocus = {
+        element,
+        href: element.matches?.("[data-study-source-return]")
+          ? element.getAttribute("href")
+          : null
+      };
+    }
     editorRoot.hidden = true;
     authoringRoot.hidden = false;
     void authoringSurface.open();
@@ -1166,6 +1309,13 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   editorRoot.addEventListener("aralearn:open-authoring", openAuthoring);
 
   lifecycleAbortController = new AbortController();
+  editorRoot.addEventListener("click", (event) => {
+    if (!studyAuthoringReturn || !event.target?.closest?.("[data-action='go-back']")) return;
+    const handled = editorApp?.handleBack?.() === true;
+    if (!handled && !editorApp?.hasPendingManualEdit?.()) returnFromStudyToAuthoring();
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, { capture: true, signal: lifecycleAbortController.signal });
   lifecycleAbortController.signal.addEventListener("abort", () => {
     if (authenticatedApplicationCleanup !== cleanupApplication) return;
     authenticatedApplicationCleanup = null;
@@ -1189,10 +1339,25 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   globalThis.addEventListener("offline", () => {
     editorApp?.setOfflineStatus?.(true);
   }, { signal: lifecycleAbortController.signal });
-  globalThis.addEventListener("hashchange", () => {
-    if (isCourseAuthoringRouteCandidate(globalThis.location.hash) && !authoringSurface.opened) {
-      openAuthoring();
+  globalThis.addEventListener("hashchange", (event) => {
+    if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) {
+      if (!authoringSurface.opened) {
+        const previousHash = event.oldURL ? new URL(event.oldURL).hash : "";
+        openAuthoring({
+          returnThroughHistory: !isCourseAuthoringRouteCandidate(previousHash) &&
+            !editorRoot.hidden
+        });
+      }
+      return;
     }
+    if (!authoringHistoryReturn || !authoringSurface.opened) return;
+    globalThis.queueMicrotask?.(() => {
+      if (isCourseAuthoringRouteCandidate(globalThis.location.hash) ||
+          !authoringHistoryReturn || !authoringSurface.opened) return;
+      authoringHistoryReturn = false;
+      authoringSurface.destroy();
+      restoreStudyAfterAuthoring();
+    });
   }, { signal: lifecycleAbortController.signal });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") settings.handleBack();
@@ -1204,7 +1369,8 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       const destination = dispatchApplicationBack({
         closeOverlay: () => settings.handleBack(),
         handleAuthoringBack: () => authoringSurface?.handleBack?.() === true,
-        handleStudyBack: () => editorApp?.handleBack?.() === true
+        handleStudyBack: () => editorApp?.handleBack?.() === true ||
+          (!editorApp?.hasPendingManualEdit?.() && returnFromStudyToAuthoring())
       });
       if (destination !== "exit") return true;
       void bestEffortFlush().then(() => globalThis.AndroidHost?.finishApp?.());
@@ -1217,7 +1383,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
 async function start(root) {
   authStore = await AuthSessionStore.open(globalThis.indexedDB);
   watchLocalConnection(authStore);
-  const oauthAuthorizationId = readOAuthAuthorizationId();
+  const oauthAuthorizationRequest = readOAuthAuthorizationRequest();
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
     renderAuthGate({ root, configured: false });
@@ -1252,8 +1418,13 @@ async function start(root) {
     renderAuthGate({ root, authClient, configured: true });
     return;
   }
-  if (oauthAuthorizationId) {
-    await renderOAuthAuthorizationConsent({ root, authClient, authorizationId: oauthAuthorizationId });
+  if (oauthAuthorizationRequest.authorizationId) {
+    await renderOAuthAuthorizationConsent({
+      root,
+      authClient,
+      authorizationId: oauthAuthorizationRequest.authorizationId,
+      channel: oauthAuthorizationRequest.channel
+    });
     return;
   }
   activeUserId = session.user.id;

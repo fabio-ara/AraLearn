@@ -5,7 +5,7 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
 Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260824174101`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260826094500`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -168,6 +168,12 @@ estabelece tetos observáveis de rede, memória mantida pelo cache e quantidade 
 Unidades no documento. Adequação a um dispositivo específico ainda precisa ser
 verificada nesse aparelho.
 
+A mesma página projeta, junto de cada Unidade, a quantidade de Observações
+pendentes, sua materialização de origem e o desenho efetivo usado naquela
+produção. A comparação com o desenho vigente é derivada no servidor em uma
+única leitura paginada; a interface apresenta valores e origens legíveis, sem
+expor hashes nem buscar Observações ou parâmetros Unidade por Unidade.
+
 Estado pessoal e Anotações possuem contratos independentes. Progresso e itens
 para rever usam estado pessoal v2. Anotações guardam texto, classificação,
 âncoras e citações em repositório próprio. As filas locais dessas duas famílias
@@ -260,30 +266,17 @@ delimitados. O renderer canônico precisa aceitar a composição antes da prévi
 JSON bem formado não é suficiente, e uma candidata inválida ou não
 renderizável nunca substitui o conteúdo corrente.
 
-Em produção, a única conexão disponível é um relay em `127.0.0.1`, `localhost`
-ou `10.0.2.2`, na porta 4183. A credencial do provedor permanece nesse serviço,
-fora do AraLearn. A interface mostra o relay local como valor fixo, oferece
-modelo e mensagem e recolhe o endpoint em **Serviço e modelo**. Configuração e
-conversa não entram no Curso nem no IndexedDB. A montagem de produção ignora
-origens adicionais configuradas pelo ambiente e falha se o artefato contiver
-runtime de desenvolvimento, origem extra ou credencial.
+A conexão de produção é direta com OpenAI, Gemini ou DeepSeek, escolhidos pela
+pessoa. Provider, modelo, chave, conversa e candidata permanecem apenas na
+memória da sessão; a chave segue somente no cabeçalho da origem oficial do
+provider e nunca entra no Curso, IndexedDB, Storage, logs ou artefatos. A
+interface normal não oferece endpoint configurável nem descreve arquitetura de
+transporte.
 
-No navegador, o adaptador declara `targetAddressSpace` conforme o destino:
-`loopback` para `127.0.0.1` e `localhost`, `local` apenas para `10.0.2.2`. Essa
-distinção evita que um endereço de loopback seja apresentado incorretamente como
-rede local às proteções do navegador.
-
-No Android, uma ponte nativa aceita mensagens apenas do quadro principal na
-origem `https://appassets.androidplatform.net` e chama exclusivamente
-`http://127.0.0.1:4183/v1/chat/completions`. Ela aceita POST JSON sem credencial
-do navegador, limita pedido e resposta a 128 KiB, aplica 45 segundos de espera e
-propaga cancelamento. A chave continua no relay. A ponte não integra o artefato
-do Pages.
-
-Um runtime explicitamente identificado como desenvolvimento pode liberar
-OpenAI, Gemini e DeepSeek diretos e o campo de chave, sempre com alerta de que o
-navegador não protege credenciais duradouras. Nesse modo, cada provedor continua
-preso à sua própria origem exata, e a chave segue somente no cabeçalho.
+Cada adaptador permanece preso à origem oficial de seu provider, monta o
+envelope compatível e normaliza a resposta para a mesma conversa contextual.
+Testes usam stubs determinísticos dos três providers. Sair, recarregar ou
+encerrar a superfície cancela a chamada e apaga a configuração efêmera.
 
 Ao sair da conta ou encerrar a aplicação, a superfície de Estudo ou Autoria é
 destruída e a chamada ao provedor é cancelada antes de apagar a sessão e fechar
@@ -330,6 +323,10 @@ o objeto imutável por vínculos próprios e autorizados.
 Auditoria registra ciclos, achados, decisões e vínculos com Anotações. Correções
 continuam explícitas e sujeitas à revisão esperada do Curso. Esses dados ficam
 no servidor e não possuem réplica autoral ou fila de saída no IndexedDB.
+Quando a verificação de um achado confirma o reparo, a mesma transação atualiza
+as Observações vinculadas; um resultado ainda aberto as reabre. Assim, a pessoa
+não precisa executar uma segunda ação administrativa e o replay do comando
+continua idempotente.
 
 Uma comparação de variantes parte de um ponto de controle imutável do plano e
 cria de dois a oito Cursos independentes. Ela copia desenho, fontes,
@@ -428,7 +425,7 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260824174101` e a versão de contrato. O
+esquema `20260826094500` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.

@@ -24,11 +24,12 @@ import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import {
   formatObservationTextBudget,
   isObservationTextOverLimit,
+  renderStudyUnitObservationComposer,
   renderStudyUnitObservationSheet,
   validateStudyUnitObservationText
 } from "./renderStudyUnitObservationSheet.js";
 
-const PAGE_CONTRACT = "aralearn.course-study-unit-inspection-page.v1";
+const PAGE_CONTRACT = "aralearn.course-study-unit-inspection-page.v2";
 const PAGE_SIZE = 12;
 const MAX_PAGE_SIZE = 24;
 const MAX_WINDOW_ITEMS = 36;
@@ -47,6 +48,35 @@ const PART_STATES = new Set([
 const SCOPE_KINDS = new Set([
   "course", "authoring_part", "unassigned", "module", "lesson", "didactic_microsequence"
 ]);
+const DESIGN_SNAPSHOT_ORIGINS = new Set([
+  "automatic", "author", "research_condition", "migration", "system_default"
+]);
+const DESIGN_SNAPSHOT_SCOPES = new Set([
+  "course", "module", "lesson", "didactic_microsequence"
+]);
+const DESIGN_PARAMETER_LABELS = Object.freeze({
+  new_analysis_unit_ceiling_per_expository_study_unit:
+    "Novas unidades de análise por Unidade expositiva",
+  required_explanation_forms: "Formas de explicação requeridas",
+  minimum_distinct_practice_opportunities_per_evidence_requirement:
+    "Oportunidades distintas por requisito",
+  required_practice_variation_dimensions: "Dimensões de variação da prática"
+});
+const DESIGN_VALUE_LABELS = Object.freeze({
+  plain_definition: "definição direta",
+  concrete_example: "exemplo concreto",
+  mechanism: "mecanismo",
+  contrast: "contraste",
+  application_condition: "condição de aplicação",
+  limit_or_exception: "limite ou exceção",
+  worked_example: "exemplo resolvido",
+  representation_link: "ligação entre representações",
+  case_or_data: "caso ou dados",
+  context: "contexto",
+  task_feature: "característica da tarefa",
+  external_representation: "representação externa",
+  support_level: "nível de apoio"
+});
 
 export const COURSE_INSPECTION_PAGE_SIZE = PAGE_SIZE;
 export const COURSE_INSPECTION_MAX_WINDOW_ITEMS = MAX_WINDOW_ITEMS;
@@ -182,10 +212,133 @@ function normalizeStudyUnit(value) {
   return Object.freeze(cloned);
 }
 
+function normalizeAuthorship(value) {
+  exactRecord(
+    value,
+    ["pendingObservationCount", "production", "design"],
+    "O estado autoral da Unidade é inválido."
+  );
+  const pendingObservationCount = natural(
+    value.pendingObservationCount,
+    "A quantidade de Observações pendentes",
+    { maximum: 512 }
+  );
+  let production = null;
+  if (value.production !== null) {
+    exactRecord(
+      value.production,
+      ["materializationId", "recordedAt", "state", "currentMaterialization"],
+      "A proveniência de produção é inválida."
+    );
+    const recordedAt = String(value.production.recordedAt || "");
+    if (!UUID_PATTERN.test(String(value.production.materializationId || "")) ||
+        Number.isNaN(Date.parse(recordedAt)) ||
+        !new Set(["produced", "changed"]).has(value.production.state) ||
+        typeof value.production.currentMaterialization !== "boolean") {
+      throw new TypeError("A proveniência de produção é inválida.");
+    }
+    production = Object.freeze({
+      materializationId: value.production.materializationId,
+      recordedAt,
+      state: value.production.state,
+      currentMaterialization: value.production.currentMaterialization
+    });
+  }
+  let design = null;
+  if (value.design !== null) {
+    exactRecord(
+      value.design,
+      ["used", "current", "state"],
+      "A comparação de desenho é inválida."
+    );
+    if (!new Set(["current", "changed", "verified"]).has(value.design.state)) {
+      throw new TypeError("A comparação de desenho é inválida.");
+    }
+    design = Object.freeze({
+      used: normalizeDesignSnapshot(value.design.used),
+      current: normalizeDesignSnapshot(value.design.current),
+      state: value.design.state
+    });
+  }
+  return Object.freeze({ pendingObservationCount, production, design });
+}
+
+function normalizeDesignSnapshot(value) {
+  exactRecord(
+    value,
+    ["parameters", "guidance", "componentPolicy"],
+    "O desenho contextual da Unidade é inválido."
+  );
+  if (!Array.isArray(value.parameters) || value.parameters.length !== 4 ||
+      !Array.isArray(value.guidance) || value.guidance.length > 4) {
+    throw new TypeError("O desenho contextual da Unidade é inválido.");
+  }
+  const parameters = value.parameters.map((parameter) => {
+    exactRecord(
+      parameter,
+      ["parameterId", "value", "origin", "sourceScopeKind"],
+      "Um parâmetro contextual da Unidade é inválido."
+    );
+    const parameterId = String(parameter.parameterId || "");
+    const normalizedValue = structuredClone(parameter.value);
+    if (!Object.hasOwn(DESIGN_PARAMETER_LABELS, parameterId) ||
+        !(Number.isSafeInteger(normalizedValue) ||
+          Array.isArray(normalizedValue) && normalizedValue.length <= 16 &&
+          normalizedValue.every((item) => typeof item === "string" && item.length <= 80)) ||
+        !DESIGN_SNAPSHOT_ORIGINS.has(parameter.origin) ||
+        !(parameter.sourceScopeKind === null ||
+          DESIGN_SNAPSHOT_SCOPES.has(parameter.sourceScopeKind))) {
+      throw new TypeError("Um parâmetro contextual da Unidade é inválido.");
+    }
+    return Object.freeze({ ...parameter, value: normalizedValue });
+  });
+  if (new Set(parameters.map(({ parameterId }) => parameterId)).size !== 4) {
+    throw new TypeError("O desenho contextual repete ou omite parâmetros.");
+  }
+  const guidance = value.guidance.map((revision) => {
+    exactRecord(
+      revision,
+      ["guidance", "origin", "sourceScopeKind"],
+      "Uma orientação contextual da Unidade é inválida."
+    );
+    if (typeof revision.guidance !== "string" || revision.guidance.length > 16_384 ||
+        containsControlCharacters(revision.guidance.replace(/[\n\r\t]/gu, "")) ||
+        !DESIGN_SNAPSHOT_ORIGINS.has(revision.origin) ||
+        !DESIGN_SNAPSHOT_SCOPES.has(revision.sourceScopeKind)) {
+      throw new TypeError("Uma orientação contextual da Unidade é inválida.");
+    }
+    return Object.freeze({ ...revision });
+  });
+  exactRecord(
+    value.componentPolicy,
+    [
+      "availability", "allowedCount", "excludedCount", "preferredCount",
+      "origin", "sourceScopeKind"
+    ],
+    "A política contextual da Unidade é inválida."
+  );
+  const policy = value.componentPolicy;
+  if (!new Set(["all", "allow_only"]).has(policy.availability) ||
+      ![policy.allowedCount, policy.excludedCount, policy.preferredCount].every(
+        (count) => Number.isSafeInteger(count) && count >= 0 && count <= 128
+      ) || !DESIGN_SNAPSHOT_ORIGINS.has(policy.origin) ||
+      !(policy.sourceScopeKind === null || DESIGN_SNAPSHOT_SCOPES.has(policy.sourceScopeKind))) {
+    throw new TypeError("A política contextual da Unidade é inválida.");
+  }
+  return Object.freeze({
+    parameters: Object.freeze(parameters),
+    guidance: Object.freeze(guidance),
+    componentPolicy: Object.freeze({ ...policy })
+  });
+}
+
 function normalizeInspectionItem(value, totalCount) {
   exactRecord(
     value,
-    ["studyUnit", "version", "updatedAt", "ordinal", "curriculumPath", "authoringPart", "deepLink"],
+    [
+      "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath",
+      "authoringPart", "authorship", "deepLink"
+    ],
     "Um item de Conteúdo é inválido."
   );
   exactRecord(
@@ -218,6 +371,7 @@ function normalizeInspectionItem(value, totalCount) {
       )
     }),
     authoringPart: value.authoringPart == null ? null : normalizePart(value.authoringPart),
+    authorship: normalizeAuthorship(value.authorship),
     deepLink
   });
 }
@@ -553,9 +707,11 @@ function renderStudyUnit(
       : ""
   });
   const part = item.authoringPart;
-  return `<li class="course-inspection-item" data-inspection-study-unit="${escapeHtml(item.studyUnit.id)}"` +
+  const selected = state.selectedStudyUnitId === item.studyUnit.id;
+  return `<li class="course-inspection-item${selected ? " is-selected" : ""}" data-inspection-study-unit="${escapeHtml(item.studyUnit.id)}"` +
     ` data-inspection-ordinal="${item.ordinal}" aria-posinset="${item.ordinal}" aria-setsize="${totalCount}">` +
-    `<article aria-labelledby="inspection-study-unit-${escapeHtml(item.studyUnit.id)}">` +
+    `<article aria-labelledby="inspection-study-unit-${escapeHtml(item.studyUnit.id)}"` +
+    ` data-inspection-select-unit="${escapeHtml(item.studyUnit.id)}"${selected ? ' aria-current="true"' : ""}>` +
     '<header class="course-inspection-item-heading"><div>' +
     `<p>${escapeHtml(path.module.title)} · ${escapeHtml(path.lesson.title)}</p>` +
     `<span>${escapeHtml(path.didacticMicrosequence.title)} · Unidade ${item.ordinal} de ${totalCount}</span>` +
@@ -572,35 +728,145 @@ function renderStudyUnit(
     `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
     ` data-inspection-control-key="copy:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
-    (state.canEditSources
-      ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
-        ` data-inspection-control-key="sources:${escapeHtml(item.studyUnit.id)}">` +
-        `${renderUiIcon("study", "course-authoring-button-icon")}<span>Definir fontes</span></button>`
-      : "") +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
     renderManualModeActions(item, state, editing) +
+    `<button type="button" data-inspection-select-button data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
+    ` aria-label="Selecionar ${escapeHtml(item.studyUnit.title)}" title="Selecionar Unidade"` +
+    `${selected ? ' aria-pressed="true"' : ' aria-pressed="false"'}>` +
+    `${renderUiIcon("ready-state", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-inspection-observations data-study-unit-id="${escapeHtml(
       item.studyUnit.id
     )}" data-inspection-control-key="observations:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações${
-      observationCount === null ? "" : ` · ${Number(observationCount)}`
+      Number(observationCount) > 0 ? ` · ${Number(observationCount)}` : ""
     }</span></button>` +
+    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
+      section: "parameters",
+      didacticMicrosequenceId: path.didacticMicrosequence.id
+    }))}" data-inspection-route data-inspection-control-key="design:${escapeHtml(item.studyUnit.id)}">` +
+    `${renderUiIcon("tags", "course-authoring-button-icon")}<span>Desenho</span></a>` +
+    (state.canEditSources
+      ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
+        ` data-inspection-control-key="sources:${escapeHtml(item.studyUnit.id)}">` +
+        `${renderUiIcon("study", "course-authoring-button-icon")}<span>Fontes</span></button>`
+      : "") +
     `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
       section: "review",
       studyUnitId: item.studyUnit.id
     }))}" data-inspection-route data-inspection-control-key="audit:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("review", "course-authoring-button-icon")}<span>Auditoria</span></a>` +
     "</div>" +
+    renderAuthorshipState(item) +
+    (selected ? renderDesignComparison(item) : "") +
     (runtime.dockHtml
       ? '<p class="course-inspection-response-notice">Respostas desativadas durante a inspeção.</p>'
       : "") +
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
     `<div class="card-sheet-content">${runtime.bodyHtml}</div>${runtime.dockHtml}</div>` +
+    (selected && !editing && !state.observationSheetOpen
+      ? renderStudyUnitObservationComposer({
+          draft: state.observationDraft,
+          error: state.observationSheetOpen ? "" : state.observationError,
+          saving: state.observationSaving,
+          compact: true,
+          studyUnitId: item.studyUnit.id
+        })
+      : "") +
     renderManualEditDock(item, state, editing, resourceTargetIds) +
     renderAssistanceDraftDock(item, state) +
     `<footer><span>${escapeHtml(part ? partStateLabel(part.state) : "Materializada")}</span>` +
     `<small>Unidade ${item.ordinal}</small></footer></article></li>`;
+}
+
+function renderAuthorshipState(item) {
+  const production = item.authorship.production;
+  const design = item.authorship.design;
+  const labels = [];
+  if (production) {
+    labels.push(production.state === "produced" && production.currentMaterialization
+      ? "Produzida nesta materialização"
+      : production.state === "changed"
+        ? "Alterada depois da materialização"
+        : "Produzida anteriormente");
+  }
+  if (design?.state === "changed") labels.push("Desenho vigente diferente");
+  if (design?.state === "verified") labels.push("Reparo verificado no desenho vigente");
+  return labels.length
+    ? `<p class="course-inspection-authorship">${labels.map((label) =>
+        `<span>${escapeHtml(label)}</span>`).join("")}</p>`
+    : "";
+}
+
+function designOriginLabel(origin) {
+  return ({
+    automatic: "Automático",
+    author: "Autoria",
+    research_condition: "Condição de pesquisa",
+    migration: "Decisão preservada",
+    system_default: "Padrão do produto"
+  })[origin] || "Origem preservada";
+}
+
+function designScopeLabel(kind) {
+  return ({
+    course: "Curso",
+    module: "Módulo",
+    lesson: "Lição",
+    didactic_microsequence: "Microssequência"
+  })[kind] || "Padrão geral";
+}
+
+function designValueLabel(value) {
+  if (Array.isArray(value)) {
+    return value.length
+      ? value.map((item) => DESIGN_VALUE_LABELS[item] || item).join("; ")
+      : "Nenhum";
+  }
+  return String(value);
+}
+
+function renderDesignSnapshot(snapshot, title) {
+  const parameters = snapshot.parameters.map((parameter) =>
+    `<li><strong>${escapeHtml(DESIGN_PARAMETER_LABELS[parameter.parameterId])}</strong>` +
+    `<span>${escapeHtml(designValueLabel(parameter.value))}</span>` +
+    `<small>${escapeHtml(designOriginLabel(parameter.origin))} · ${escapeHtml(
+      designScopeLabel(parameter.sourceScopeKind)
+    )}</small></li>`).join("");
+  const guidance = snapshot.guidance.length
+    ? snapshot.guidance.map((revision) =>
+      `<blockquote><p>${escapeHtml(revision.guidance)}</p><footer>${escapeHtml(
+        designOriginLabel(revision.origin)
+      )} · ${escapeHtml(designScopeLabel(revision.sourceScopeKind))}</footer></blockquote>`
+    ).join("")
+    : "<p>Nenhuma orientação adicional.</p>";
+  const policy = snapshot.componentPolicy;
+  const availability = policy.availability === "all"
+    ? "Todos os componentes instalados"
+    : `${policy.allowedCount} componentes permitidos`;
+  return `<section><h4>${escapeHtml(title)}</h4><ul>${parameters}</ul>` +
+    `<div><strong>Orientação</strong>${guidance}</div>` +
+    `<p><strong>Política de componentes</strong><span>${escapeHtml(availability)}; ` +
+    `${policy.excludedCount} excluídos; ${policy.preferredCount} preferidos.</span>` +
+    `<small>${escapeHtml(designOriginLabel(policy.origin))} · ${escapeHtml(
+      designScopeLabel(policy.sourceScopeKind)
+    )}</small></p></section>`;
+}
+
+function renderDesignComparison(item) {
+  const design = item.authorship.design;
+  if (!design) return "";
+  return '<details class="course-inspection-design-comparison">' +
+    '<summary>Desenho usado nesta versão × vigente agora</summary>' +
+    `<p>${design.state === "current"
+      ? "O desenho relevante permanece igual ao usado na produção."
+      : design.state === "verified"
+        ? "A Unidade foi verificada novamente diante do desenho vigente."
+        : "O conteúdo produzido ainda precisa ser confrontado com o desenho vigente."}</p>` +
+    '<div class="course-inspection-design-comparison-grid">' +
+    renderDesignSnapshot(design.used, "Usado nesta versão") +
+    renderDesignSnapshot(design.current, "Vigente agora") +
+    "</div></details>";
 }
 
 function renderBoundaryButton(direction, state) {
@@ -636,7 +902,7 @@ function renderInspectionConfirmation(state) {
 }
 
 function renderInspectionObservationSheet(state) {
-  if (!state.observationStudyUnitId) return "";
+  if (!state.observationSheetOpen || !state.observationStudyUnitId) return "";
   const sheet = renderStudyUnitObservationSheet({
     items: state.observationItems,
     draft: state.observationDraft,
@@ -649,7 +915,8 @@ function renderInspectionObservationSheet(state) {
     emptyLabel: "Nenhuma observação neste contexto.",
     showContributor: true,
     collectionSummary: state.observationCollectionSummary,
-    canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "review" })
+    canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "review" }),
+    showComposer: true
   });
   const confirmation = renderInspectionConfirmation(state);
   if (!confirmation) return sheet;
@@ -658,6 +925,31 @@ function renderInspectionObservationSheet(state) {
     '<section class="editor-overlay study-observation-overlay" inert aria-hidden="true"'
   );
   return `${inactiveSheet}${confirmation}`;
+}
+
+function renderInspectionIndex(state) {
+  if (state.totalCount < 1) return "";
+  const loaded = new Map(state.items.map((item) => [item.ordinal, item]));
+  const markers = Array.from({ length: state.totalCount }, (_, index) => {
+    const ordinal = index + 1;
+    const item = loaded.get(ordinal);
+    const current = item?.studyUnit.id === state.selectedStudyUnitId;
+    const observations = item && Number(state.observationCounts[item.studyUnit.id] || 0);
+    const designChanged = item?.authorship.design?.state === "changed";
+    const label = item ? `${ordinal}. ${item.studyUnit.title}` : `Unidade ${ordinal}`;
+    return `<button type="button" data-inspection-jump="${ordinal}"` +
+      ` class="course-inspection-index-item${current ? " is-current" : ""}` +
+      `${observations ? " has-observation" : ""}${designChanged ? " has-design-change" : ""}"` +
+      ` aria-label="${escapeHtml(label)}${observations ? "; Observação pendente" : ""}` +
+      `${designChanged ? "; desenho alterado" : ""}"` +
+      `${current ? ' aria-current="true"' : ""}>` +
+      `<span>${ordinal}</span>${observations ? '<i aria-hidden="true"></i>' : ""}` +
+      `${designChanged ? '<i class="is-design" aria-hidden="true"></i>' : ""}</button>`;
+  }).join("");
+  return '<section class="course-inspection-index" aria-label="Índice das Unidades">' +
+    '<div class="course-inspection-index-strip">' + markers + "</div>" +
+    '<p class="course-inspection-index-legend"><span><i aria-hidden="true"></i>Observação pendente</span>' +
+    '<span><i class="is-design" aria-hidden="true"></i>Desenho alterado</span></p></section>';
 }
 
 function renderSequence(state) {
@@ -726,7 +1018,7 @@ function renderSequence(state) {
     `<button type="button" data-inspection-action="next" data-inspection-control-key="next"` +
     `${!active || (active.ordinal >= state.totalCount && !state.hasMore) ? " disabled aria-disabled=\"true\"" : ""}` +
     ` aria-label="Próxima Unidade">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button></nav>` +
-    notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
+    renderInspectionIndex(state) + notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
     `${escapeHtml(state.manualStatus)}</p>` +
     renderInspectionObservationSheet(state) + "</section>";
 }
@@ -783,6 +1075,7 @@ export function createCourseInspectionSequence({
   controller,
   course,
   routeTarget = null,
+  initialFocusKey = "",
   onNavigate = () => {},
   onEditSources = () => {},
   onRequestChat = null,
@@ -808,6 +1101,7 @@ export function createCourseInspectionSequence({
     throw new TypeError("Dependências da sequência de Conteúdo são inválidas.");
   }
   const scrollTarget = root.closest?.(".course-authoring-root") || windowValue;
+  let pendingInitialFocusKey = typeof initialFocusKey === "string" ? initialFocusKey : "";
   const requested = inspectionRequestFromTarget(routeTarget);
   const state = {
     courseId: course.courseId,
@@ -832,6 +1126,7 @@ export function createCourseInspectionSequence({
     nextCursor: null,
     averageHeight: 320,
     activeStudyUnitId: requested.anchorStudyUnitId,
+    selectedStudyUnitId: requested.anchorStudyUnitId,
     initialLoading: false,
     loadingDirection: "",
     initialFailure: "",
@@ -843,6 +1138,8 @@ export function createCourseInspectionSequence({
     hydrationFailure: "",
     observationCounts: {},
     observationStudyUnitId: null,
+    observationSheetOpen: false,
+    observationDraftStudyUnitId: requested.anchorStudyUnitId,
     observationItems: [],
     observationCollectionSummary: null,
     observationDraft: { category: null, rawText: "" },
@@ -1137,7 +1434,10 @@ export function createCourseInspectionSequence({
       throw new TypeError("A quantidade de Conteúdo mudou sem nova revisão.");
     }
     const items = new Map(state.items.map((item) => [item.studyUnit.id, item]));
-    page.items.forEach((item) => items.set(item.studyUnit.id, item));
+    page.items.forEach((item) => {
+      items.set(item.studyUnit.id, item);
+      state.observationCounts[item.studyUnit.id] = item.authorship.pendingObservationCount;
+    });
     const ordered = [...items.values()].sort((left, right) => left.ordinal - right.ordinal);
     if (ordered.some((item, index) => index > 0 && item.ordinal !== ordered[index - 1].ordinal + 1)) {
       throw new TypeError("As páginas de Conteúdo não são contíguas.");
@@ -1151,6 +1451,12 @@ export function createCourseInspectionSequence({
       state.activeStudyUnitId = direction === "backward"
         ? ordered[ordered.length - 1]?.studyUnit.id || null
         : ordered[0]?.studyUnit.id || null;
+    }
+    if (state.selectedStudyUnitId &&
+        !ordered.some(({ studyUnit }) => studyUnit.id === state.selectedStudyUnitId) &&
+        !hasObservationDraft()) {
+      state.selectedStudyUnitId = state.activeStudyUnitId;
+      state.observationDraftStudyUnitId = state.selectedStudyUnitId;
     }
     state.items = ordered;
     state.totalCount = page.totalCount;
@@ -1263,11 +1569,20 @@ export function createCourseInspectionSequence({
   async function openObservations(studyUnitId) {
     const item = state.items.find(({ studyUnit }) => studyUnit.id === studyUnitId);
     if (!item) return false;
+    if (hasObservationDraft() && state.observationDraftStudyUnitId &&
+        state.observationDraftStudyUnitId !== studyUnitId) {
+      state.observationError = "Salve ou apague a observação em rascunho antes de mudar de alvo.";
+      state.restoreObservationFocus = true;
+      render();
+      return false;
+    }
     const epoch = ++observationEpoch;
     state.observationStudyUnitId = studyUnitId;
+    state.observationSheetOpen = true;
     state.observationItems = [];
     state.observationCollectionSummary = null;
-    state.observationDraft = { category: null, rawText: "" };
+    if (!hasObservationDraft()) state.observationDraft = { category: null, rawText: "" };
+    state.observationDraftStudyUnitId = studyUnitId;
     state.observationEditingId = null;
     state.observationError = "";
     state.observationLoading = true;
@@ -1330,6 +1645,7 @@ export function createCourseInspectionSequence({
       state.pendingObservationMutation = null;
       const studyUnitId = state.observationStudyUnitId;
       state.observationDraft = { category: null, rawText: "" };
+      state.observationDraftStudyUnitId = state.selectedStudyUnitId;
       state.observationEditingId = null;
       const observations = await loadTargetObservations(studyUnitId);
       state.observationItems = observations.items;
@@ -1387,6 +1703,8 @@ export function createCourseInspectionSequence({
       state.activeStudyUnitId = page.items.some(({ studyUnit }) => studyUnit.id === anchorStudyUnitId)
         ? anchorStudyUnitId
         : page.items[0]?.studyUnit.id || null;
+      state.selectedStudyUnitId = state.activeStudyUnitId;
+      state.observationDraftStudyUnitId = state.activeStudyUnitId;
       return true;
     } catch (error) {
       if (state.destroyed || epoch !== requestEpoch) return false;
@@ -1405,10 +1723,15 @@ export function createCourseInspectionSequence({
       if (!state.destroyed && epoch === requestEpoch) {
         state.initialLoading = false;
         render({
-          anchor: { studyUnitId: state.activeStudyUnitId || anchorStudyUnitId, offsetFromStickyTop: offset },
+          anchor: {
+            studyUnitId: state.activeStudyUnitId || anchorStudyUnitId,
+            offsetFromStickyTop: offset,
+            controlKey: pendingInitialFocusKey
+          },
           initial: true,
           restorePosition: hasRequestedPosition
         });
+        pendingInitialFocusKey = "";
         if (!hasRequestedPosition && scrollTarget && "scrollTop" in scrollTarget) {
           scrollTarget.scrollTop = 0;
         }
@@ -1539,12 +1862,60 @@ export function createCourseInspectionSequence({
     }
     if (!target) return false;
     state.activeStudyUnitId = target.studyUnit.id;
+    state.selectedStudyUnitId = target.studyUnit.id;
     const escapedId = globalThis.CSS?.escape
       ? globalThis.CSS.escape(target.studyUnit.id)
       : target.studyUnit.id.replace(/["\\]/gu, "\\$&");
     const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
     const reducedMotion = windowValue?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
     element?.scrollIntoView?.({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
+    scheduleSave();
+    return true;
+  }
+
+  function hasObservationDraft() {
+    return state.observationDraft.rawText !== "" || state.observationDraft.category !== null;
+  }
+
+  function selectStudyUnit(studyUnitId) {
+    const target = state.items.find(({ studyUnit }) => studyUnit.id === studyUnitId);
+    if (!target) return false;
+    if (hasObservationDraft() && state.observationDraftStudyUnitId &&
+        state.observationDraftStudyUnitId !== studyUnitId) {
+      state.observationError = "Salve ou apague a observação em rascunho antes de mudar de alvo.";
+      state.restoreObservationFocus = true;
+      render();
+      return false;
+    }
+    state.activeStudyUnitId = studyUnitId;
+    state.selectedStudyUnitId = studyUnitId;
+    state.observationDraftStudyUnitId = studyUnitId;
+    state.observationError = "";
+    render({ anchor: captureAnchor() });
+    return true;
+  }
+
+  async function jumpToOrdinal(ordinal) {
+    if (!Number.isSafeInteger(ordinal) || ordinal < 1 || ordinal > state.totalCount) return false;
+    let target = state.items.find((item) => item.ordinal === ordinal);
+    let attempts = 0;
+    while (!target && attempts <= Math.ceil(state.totalCount / PAGE_SIZE) + 1) {
+      const first = state.items[0]?.ordinal || 1;
+      const direction = ordinal < first ? "backward" : "forward";
+      if (!await loadDirection(direction)) break;
+      target = state.items.find((item) => item.ordinal === ordinal);
+      attempts += 1;
+    }
+    if (!target || !selectStudyUnit(target.studyUnit.id)) return false;
+    const escapedId = globalThis.CSS?.escape
+      ? globalThis.CSS.escape(target.studyUnit.id)
+      : target.studyUnit.id.replace(/["\\]/gu, "\\$&");
+    root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`)?.scrollIntoView?.({
+      block: "start",
+      behavior: windowValue?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true
+        ? "auto"
+        : "smooth"
+    });
     scheduleSave();
     return true;
   }
@@ -1575,7 +1946,10 @@ export function createCourseInspectionSequence({
           studyUnitId: returnItem.studyUnit.id
         })
       : null;
-    return onNavigate(route, { returnTo });
+    return onNavigate(route, {
+      returnTo,
+      ...(captured.controlKey ? { returnFocusKey: captured.controlKey } : {})
+    });
   }
 
   async function navigateScope(scope) {
@@ -2154,8 +2528,9 @@ export function createCourseInspectionSequence({
     const observations = event.target.closest?.("[data-inspection-observations]");
     if (observations) {
       const studyUnitId = String(observations.dataset.studyUnitId || "");
-      if (state.observationStudyUnitId === studyUnitId) {
+      if (state.observationSheetOpen && state.observationStudyUnitId === studyUnitId) {
         ++observationEpoch;
+        state.observationSheetOpen = false;
         state.observationStudyUnitId = null;
         state.observationItems = [];
         state.observationCollectionSummary = null;
@@ -2174,10 +2549,12 @@ export function createCourseInspectionSequence({
         return confirmWithdraw();
       } else if (action === "close") {
         ++observationEpoch;
+        const preserveCreationDraft = !state.observationEditingId && hasObservationDraft();
+        state.observationSheetOpen = false;
         state.observationStudyUnitId = null;
         state.observationItems = [];
         state.observationCollectionSummary = null;
-        state.observationDraft = { category: null, rawText: "" };
+        if (!preserveCreationDraft) state.observationDraft = { category: null, rawText: "" };
         state.observationEditingId = null;
         render();
       } else if (action === "edit") {
@@ -2198,6 +2575,16 @@ export function createCourseInspectionSequence({
         if (item?.capabilities?.canWithdraw) requestWithdraw(item);
       }
       return true;
+    }
+    const jump = event.target.closest?.("[data-inspection-jump]");
+    if (jump) return jumpToOrdinal(Number(jump.dataset.inspectionJump));
+    const selectButton = event.target.closest?.("[data-inspection-select-button]");
+    if (selectButton) return selectStudyUnit(String(selectButton.dataset.studyUnitId || ""));
+    const selectSurface = event.target.closest?.("[data-inspection-select-unit]");
+    if (selectSurface && !event.target.closest?.(
+      "button, a, input, textarea, select, summary, [contenteditable]"
+    )) {
+      return selectStudyUnit(String(selectSurface.dataset.inspectionSelectUnit || ""));
     }
     const route = event.target.closest?.("[data-inspection-route]");
     if (route) {
@@ -2223,6 +2610,9 @@ export function createCourseInspectionSequence({
       const item = state.items.find(({ studyUnit }) =>
         studyUnit.id === String(editSources.dataset.studyUnitId || ""));
       if (item) {
+        state.activeStudyUnitId = item.studyUnit.id;
+        state.selectedStudyUnitId = item.studyUnit.id;
+        await savePositionNow(captureAnchor());
         onEditSources({
           targetKind: "study_unit",
           targetId: item.studyUnit.id,
@@ -2248,6 +2638,10 @@ export function createCourseInspectionSequence({
   function handleChange(event) {
     if (event.target.matches?.("[data-field='study-unit-observation-category']")) {
       state.observationDraft.category = event.target.value || null;
+      state.observationDraftStudyUnitId = String(
+        event.target.closest?.("[data-observation-composer]")?.dataset?.studyUnitId ||
+        state.observationStudyUnitId || state.selectedStudyUnitId || ""
+      );
       return;
     }
     if (event.target.matches?.("[data-inspection-scope]")) {
@@ -2262,6 +2656,10 @@ export function createCourseInspectionSequence({
     }
     if (event.target.matches?.("[data-field='study-unit-observation']")) {
       state.observationDraft.rawText = event.target.value;
+      state.observationDraftStudyUnitId = String(
+        event.target.closest?.("[data-observation-composer]")?.dataset?.studyUnitId ||
+        state.observationStudyUnitId || state.selectedStudyUnitId || ""
+      );
       const counter = root.querySelector?.("#study-observation-counter");
       if (counter) {
         counter.textContent = formatObservationTextBudget(event.target.value);
@@ -2273,6 +2671,15 @@ export function createCourseInspectionSequence({
   function handleSubmit(event) {
     if (!event.target.matches?.("[data-observation-composer]")) return;
     event.preventDefault?.();
+    const submittedStudyUnitId = String(
+      event.target.dataset?.studyUnitId || state.observationStudyUnitId || state.selectedStudyUnitId || ""
+    );
+    if (!state.items.some(({ studyUnit }) => studyUnit.id === submittedStudyUnitId)) {
+      state.observationError = "A Unidade selecionada não está mais disponível.";
+      render();
+      return;
+    }
+    state.observationStudyUnitId = submittedStudyUnitId;
     const rawText = state.observationDraft.rawText;
     const issue = validateStudyUnitObservationText(rawText);
     if (issue) {
@@ -2292,7 +2699,7 @@ export function createCourseInspectionSequence({
       briefSummary: editing.briefSummary
     } : {
       type: "create_anchored_annotation",
-      target: { kind: "study_unit", id: state.observationStudyUnitId },
+      target: { kind: "study_unit", id: submittedStudyUnitId },
       rawText,
       category: state.observationDraft.category,
       briefSummary: null
@@ -2504,6 +2911,10 @@ export function createCourseInspectionSequence({
         state.activeStudyUnitId = page.items.some(({ studyUnit }) => studyUnit.id === anchor.studyUnitId)
           ? anchor.studyUnitId
           : page.items[0]?.studyUnit.id || null;
+        if (!hasObservationDraft()) {
+          state.selectedStudyUnitId = state.activeStudyUnitId;
+          state.observationDraftStudyUnitId = state.activeStudyUnitId;
+        }
         state.stale = false;
         state.targetMissing = false;
         state.initialFailure = "";
@@ -2539,6 +2950,10 @@ export function createCourseInspectionSequence({
             state.items = [];
             mergePage(page, "initial");
             state.activeStudyUnitId = page.items[0]?.studyUnit.id || null;
+            if (!hasObservationDraft()) {
+              state.selectedStudyUnitId = state.activeStudyUnitId;
+              state.observationDraftStudyUnitId = state.activeStudyUnitId;
+            }
             state.targetMissing = false;
             state.stale = false;
             state.initialFailure = "";

@@ -20,8 +20,7 @@ const RUNTIME = Object.freeze({
   assistAllowedOrigins: Object.freeze([
     "https://api.openai.com",
     "https://generativelanguage.googleapis.com",
-    "https://api.deepseek.com",
-    "http://127.0.0.1:4183"
+    "https://api.deepseek.com"
   ])
 });
 
@@ -49,7 +48,6 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
   session.update({
     providerId: "openai",
     model: "modelo-escolhido",
-    endpoint: "https://api.openai.com/v1/responses",
     apiKey: "segredo-da-sessao",
     timeoutMs: 45_000
   });
@@ -57,17 +55,16 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
   assert.deepEqual(session.snapshot(), {
     providerId: "openai",
     model: "modelo-escolhido",
-    endpoint: "https://api.openai.com/v1/responses",
     hasCredential: true,
     destroyed: false
   });
   assert.doesNotMatch(JSON.stringify(session.snapshot()), /segredo-da-sessao/u);
   assert.deepEqual(COURSE_ASSISTANCE_MODEL_PRESETS.map(({ value }) => value), [
-    "gpt-5.6-luna", "deepseek-v4-pro", "deepseek-v4-flash"
+    "gpt-5.6-luna", "gemini-2.5-flash", "deepseek-v4-pro", "deepseek-v4-flash"
   ]);
   for (const expected of [
     "alvo de escrita", "caminho curricular", "mensagens recentes", "PDFs", "Fontes",
-    "somente na memória", "relay local"
+    "somente na memória"
   ]) assert.match(COURSE_ASSISTANCE_DISCLOSURE, new RegExp(expected, "iu"));
   session.destroy();
   assert.equal(session.snapshot().hasCredential, false);
@@ -101,6 +98,7 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
   });
   const openaiBody = JSON.parse(openaiRequest.init.body);
   assert.equal(openaiRequest.url, "https://api.openai.com/v1/responses");
+  assert.equal(openaiRequest.init.redirect, "error");
   assert.equal(openaiBody.store, false);
   assert.equal(openaiBody.text.format.type, "json_schema");
   assert.equal(openaiBody.text.format.strict, true);
@@ -114,27 +112,118 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
     system: "Sistema", prompt: "Pedido", schema
   });
   assert.equal(geminiRequest.init.headers["x-goog-api-key"], "gemini-secret");
+  assert.equal(geminiRequest.init.redirect, "error");
   assert.doesNotMatch(geminiRequest.url, /key=|gemini-secret/u);
   assert.deepEqual(parseStudyUnitProviderOutput("gemini", providerOutput("gemini", {
     message: "Ok"
   })), { message: "Ok" });
 });
 
-test("produção limita o navegador ao relay local sem credencial", () => {
+test("produção aceita provider remoto oficial com chave efêmera", () => {
   const production = {
-    assistAllowedOrigins: ["http://127.0.0.1:4183", "https://api.openai.com"]
+    assistAllowedOrigins: [
+      "https://api.openai.com",
+      "https://generativelanguage.googleapis.com",
+      "https://api.deepseek.com"
+    ]
+  };
+  assert.equal(normalizeStudyUnitProviderConfig({
+    providerId: "openai", model: "gpt-5.6-luna", apiKey: "chave"
+  }, production).providerId, "openai");
+});
+
+test("OpenAI, Gemini e DeepSeek usam adaptadores próprios e saídas estruturadas", () => {
+  const schema = { type: "object", additionalProperties: false, properties: {} };
+  for (const [providerId, model] of [
+    ["openai", "gpt-5.6-luna"],
+    ["gemini", "gemini-2.5-flash"],
+    ["deepseek", "deepseek-v4-pro"]
+  ]) {
+    const config = normalizeStudyUnitProviderConfig({
+      providerId,
+      model,
+      apiKey: `${providerId}-stub`
+    }, RUNTIME);
+    const request = buildStudyUnitProviderRequest(config, {
+      system: "Sistema",
+      prompt: "Pedido",
+      schema
+    });
+    assert.equal(new URL(request.url).origin, ({
+      openai: "https://api.openai.com",
+      gemini: "https://generativelanguage.googleapis.com",
+      deepseek: "https://api.deepseek.com"
+    })[providerId]);
+    assert.deepEqual(parseStudyUnitProviderOutput(
+      providerId,
+      providerOutput(providerId, { message: providerId })
+    ), { message: providerId });
+  }
+});
+
+test("adaptadores distinguem recusa, credencial, cota e chave ausente sem chamadas reais", async () => {
+  assert.throws(() => normalizeStudyUnitProviderConfig({
+    providerId: "gemini",
+    model: "gemini-2.5-flash",
+    apiKey: ""
+  }, RUNTIME), (error) => error.code === "provider_credential_missing");
+  for (const [providerId, payload] of [
+    ["openai", { output: [{ content: [{ type: "refusal", refusal: "não" }] }] }],
+    ["gemini", { candidates: [{ finishReason: "SAFETY", content: { parts: [] } }] }],
+    ["deepseek", { choices: [{ finish_reason: "content_filter", message: { content: "" } }] }]
+  ]) {
+    assert.throws(
+      () => parseStudyUnitProviderOutput(providerId, payload),
+      (error) => error.code === "provider_refusal"
+    );
+  }
+  const config = normalizeStudyUnitProviderConfig({
+    providerId: "deepseek",
+    model: "deepseek-v4-pro",
+    apiKey: "stub"
+  }, RUNTIME);
+  const request = buildStudyUnitProviderRequest(config, {
+    system: "Sistema",
+    prompt: "Pedido",
+    schema: { type: "object", properties: {} }
+  });
+  for (const [status, code, calls] of [
+    [401, "provider_auth_failed", 1],
+    [403, "provider_auth_failed", 1],
+    [429, "provider_temporarily_unavailable", 2]
+  ]) {
+    let count = 0;
+    await assert.rejects(callStudyUnitProvider({
+      config,
+      request,
+      retryDelayMs: 0,
+      fetchImpl: async () => {
+        count += 1;
+        return jsonResponse({}, { status });
+      }
+    }), (error) => error.code === code);
+    assert.equal(count, calls);
+  }
+});
+
+test("produção rejeita relay local como provider da assistência", () => {
+  const production = {
+    assistAllowedOrigins: [
+      "https://api.openai.com",
+      "https://generativelanguage.googleapis.com",
+      "https://api.deepseek.com"
+    ]
   };
   assert.throws(() => normalizeStudyUnitProviderConfig({
-    providerId: "openai", model: "gpt-5.6-luna", apiKey: "chave"
-  }, production), /serviço local|não são aceitas/iu);
-  assert.throws(() => normalizeStudyUnitProviderConfig({
-    providerId: "local", model: "gpt-5.6-luna", apiKey: "token",
-    endpoint: "http://127.0.0.1:4183/v1/chat/completions"
-  }, production), /fora do AraLearn/iu);
-  assert.equal(normalizeStudyUnitProviderConfig({
     providerId: "local", model: "gpt-5.6-luna",
     endpoint: "http://127.0.0.1:4183/v1/chat/completions"
-  }, production).endpoint, "http://127.0.0.1:4183/v1/chat/completions");
+  }, production), /serviço|provider|origem/iu);
+});
+
+test("a divulgação de produção nomeia providers e não expõe arquitetura", () => {
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /OpenAI|Gemini|DeepSeek/iu);
+  assert.match(COURSE_ASSISTANCE_DISCLOSURE, /chave[\s\S]*memória/iu);
+  assert.doesNotMatch(COURSE_ASSISTANCE_DISCLOSURE, /relay|endpoint|servidor local/iu);
 });
 
 test("falha transitória tem só um retry e nunca reflete dados sensíveis", async () => {
@@ -159,11 +248,23 @@ test("falha transitória tem só um retry e nunca reflete dados sensíveis", asy
   });
   assert.equal(calls, 2);
   assert.equal(value.message, "Ok");
+
+  calls = 0;
+  await assert.rejects(callStudyUnitProvider({
+    config,
+    request,
+    retryDelayMs: 0,
+    fetchImpl: async () => {
+      calls += 1;
+      throw new TypeError(secret);
+    }
+  }), (error) => error.code === "provider_network_failure" && !error.message.includes(secret));
+  assert.equal(calls, 2);
 });
 
-test("resposta acima do teto e cancelamento interrompem o transporte", async () => {
+test("resposta acima do teto, timeout e cancelamento interrompem o transporte", async () => {
   const config = normalizeStudyUnitProviderConfig({
-    providerId: "local", model: "gpt-5.6-luna"
+    providerId: "openai", model: "gpt-5.6-luna", apiKey: "stub-credential"
   }, RUNTIME);
   const request = buildStudyUnitProviderRequest(config, {
     system: "Sistema", prompt: "Pedido", schema: { type: "object", properties: {} }
@@ -186,6 +287,19 @@ test("resposta acima do teto e cancelamento interrompem o transporte", async () 
     })
   }), /maior que o limite seguro/u);
   assert.equal(cancelled, true);
+
+  await assert.rejects(callStudyUnitProvider({
+    config: { ...config, timeoutMs: 1 },
+    request,
+    retryDelayMs: 0,
+    fetchImpl: (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      }, { once: true });
+    })
+  }), (error) => error.code === "provider_timeout");
 
   const abort = new AbortController();
   const pending = callStudyUnitProvider({

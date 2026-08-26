@@ -78,6 +78,7 @@ async function request(path, {
   token = publishableKey,
   body,
   origin = null,
+  accept = null,
 } = {}) {
   const contentType = body !== undefined;
   const headers = token === serverApiKey
@@ -89,6 +90,7 @@ async function request(path, {
           : {}),
         ...(contentType ? { "Content-Type": "application/json" } : {}),
       };
+  if (accept) headers.Accept = accept;
   if (origin) headers.Origin = origin;
   const response = await fetch(`${projectUrl}${path}`, {
     method,
@@ -135,6 +137,9 @@ async function courseAction(name, body, token, expectedStatus = 200) {
         token,
         body,
         origin: APPLICATION_ORIGIN,
+        accept: name === "lerCurso" && body?.view === "study_units"
+          ? "application/vnd.aralearn.course-study-unit-inspection.v2+json"
+          : null,
       },
     );
     const responseCode = String(
@@ -1185,7 +1190,7 @@ try {
   }, ownerToken);
   assert.equal(
     firstInspectionPage.data.contract,
-    "aralearn.course-study-unit-inspection-page.v1",
+    "aralearn.course-study-unit-inspection-page.v2",
   );
   assert.equal(firstInspectionPage.data.courseRevision, 17);
   assert.equal(firstInspectionPage.data.totalCount, 3);
@@ -2248,11 +2253,7 @@ try {
     verifiedEditorialStillOpen.correction.verification.outcome,
     "still_open",
   );
-  assert.deepEqual(verifiedEditorialStillOpen.suggestedAnnotationActions, [{
-    annotationId: learnerAnnotationId,
-    annotationVersion: linkedAuditAnnotation.annotationVersion,
-    action: "reopen",
-  }]);
+  assert.deepEqual(verifiedEditorialStillOpen.suggestedAnnotationActions, []);
   const annotationAfterStillOpen = await courseAction("lerCurso", {
     courseId,
     view: "anchored_annotations",
@@ -2340,12 +2341,8 @@ try {
     verifiedFactualCorrection.correction.verification.outcome,
     "resolved",
   );
-  assert.deepEqual(verifiedFactualCorrection.suggestedAnnotationActions, [{
-    annotationId: learnerAnnotationId,
-    annotationVersion: linkedAuditAnnotation.annotationVersion,
-    action: "resolve",
-  }]);
-  const annotationBeforeExplicitResolution = await courseAction("lerCurso", {
+  assert.deepEqual(verifiedFactualCorrection.suggestedAnnotationActions, []);
+  const automaticallyResolvedAnnotation = await courseAction("lerCurso", {
     courseId,
     view: "anchored_annotations",
     expectedRevision: auditCourseRevision,
@@ -2354,20 +2351,11 @@ try {
     annotationId: learnerAnnotationId,
     limit: 1,
   }, ownerToken);
-  assert.equal(annotationBeforeExplicitResolution.data.items[0].state, "considered");
-  const explicitlyResolvedAnnotation = await courseAction("alterarCurso", {
-    requestId: crypto.randomUUID(),
-    courseId,
-    operation: "update_anchored_annotations",
-    annotationCommand: {
-      type: "resolve_anchored_annotation",
-      annotationId: learnerAnnotationId,
-      expectedAnnotationVersion:
-        annotationBeforeExplicitResolution.data.items[0].annotationVersion,
-    },
-  }, ownerToken);
-  assert.equal(explicitlyResolvedAnnotation.data.courseRevision, auditCourseRevision);
-  assert.equal(explicitlyResolvedAnnotation.data.annotation.state, "resolved");
+  assert.equal(automaticallyResolvedAnnotation.data.items[0].state, "resolved");
+  assert.equal(
+    automaticallyResolvedAnnotation.data.items[0].annotationVersion,
+    linkedAuditAnnotation.annotationVersion + 1,
+  );
 
   const rollbackFactualCommand = {
     type: "rollback_authoring_correction",
@@ -2397,7 +2385,7 @@ try {
     [{
       annotationId: learnerAnnotationId,
       annotationVersion:
-        explicitlyResolvedAnnotation.data.annotation.annotationVersion,
+        automaticallyResolvedAnnotation.data.items[0].annotationVersion,
       action: "reopen",
     }],
     "A sugestão precisa usar a versão corrente da observação.",
@@ -2455,7 +2443,7 @@ try {
   assert.equal(annotationAfterRollback.data.items[0].state, "resolved");
   assert.equal(
     annotationAfterRollback.data.items[0].annotationVersion,
-    explicitlyResolvedAnnotation.data.annotation.annotationVersion,
+    automaticallyResolvedAnnotation.data.items[0].annotationVersion,
   );
   const explicitlyReopenedAnnotation = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
@@ -2469,6 +2457,18 @@ try {
     },
   }, ownerToken);
   assert.equal(explicitlyReopenedAnnotation.data.annotation.state, "open");
+  const explicitlyResolvedAnnotation = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "resolve_anchored_annotation",
+      annotationId: learnerAnnotationId,
+      expectedAnnotationVersion:
+        explicitlyReopenedAnnotation.data.annotation.annotationVersion,
+    },
+  }, ownerToken);
+  assert.equal(explicitlyResolvedAnnotation.data.annotation.state, "resolved");
 
   const revoked = await courseAction("gerirPessoas", {
     operation: "revoke_access",

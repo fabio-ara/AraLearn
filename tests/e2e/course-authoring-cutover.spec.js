@@ -568,6 +568,13 @@ async function mountCourseAuthoring(page, {
       firstCourse.plan.counts.linkedDidacticMicrosequenceCount = 0;
       firstCourse.plan.counts.studyUnitCount = 0;
     }
+    if (requestedPlanningScenario === "unlinked-existing") {
+      const firstCourse = definitions[0];
+      firstCourse.plan.parts = [];
+      firstCourse.plan.counts.authoringPartCount = 0;
+      firstCourse.plan.counts.linkedDidacticMicrosequenceCount = 0;
+      firstCourse.plan.counts.studyUnitCount = 0;
+    }
     if (requestedPlanningScenario === "two-parts") {
       const firstCourse = definitions[0];
       firstCourse.plan.parts.push({
@@ -708,6 +715,7 @@ async function mountCourseAuthoring(page, {
           sourceRevision: 1,
           status: "active",
           selector: { kind: "page_range", startPage: index + 10, endPage: index + 12 },
+          humanLocator: index === 0 ? "Capítulo 2, seção 3" : null,
           verificationExcerpt: index === 0 ? "Trecho mínimo para conferência." : null,
           actorId: ownerId,
           createdAt: "2026-08-17T12:00:00.000Z"
@@ -1685,10 +1693,15 @@ async function mountCourseAuthoring(page, {
             title: "Relações iniciais",
             state: "materialized"
           },
+          authorship: {
+            pendingObservationCount: 0,
+            production: null,
+            design: null
+          },
           deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=${studyUnit.id}`
         }));
         return {
-          contract: "aralearn.course-study-unit-inspection-page.v1",
+          contract: "aralearn.course-study-unit-inspection-page.v2",
           courseId,
           courseRevision: detail.revision,
           scope: structuredClone(options.scope),
@@ -1958,6 +1971,7 @@ async function mountCourseAuthoring(page, {
             sourceRevision: command.sourceRevision,
             status: "active",
             selector: structuredClone(command.selector),
+            humanLocator: command.humanLocator,
             verificationExcerpt: command.verificationExcerpt,
             actorId: ownerId,
             createdAt: "2026-08-17T12:22:00.000Z"
@@ -2920,13 +2934,32 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator("#course-source-detail-title")).toHaveText(
         "Fonte verificável 1"
       );
-      await expect(page.getByText("Páginas 10–12", { exact: true })).toBeVisible();
+      await expect(page.getByText("Capítulo 2, seção 3 · Páginas 10–12", {
+        exact: true
+      })).toBeVisible();
       await expect(page.getByText("Trecho mínimo para conferência.", {
         exact: true
       })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Registrar observação" }))
         .toBeVisible();
       if (width === 390) {
+        await page.getByRole("button", { name: "Revisar âncora", exact: true }).click();
+        const humanLocator = page.getByLabel("Localizador para pessoas");
+        await expect(humanLocator).toHaveValue("Capítulo 2, seção 3");
+        await humanLocator.fill("Capítulo 2, seção 4");
+        await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
+        await expect(page.getByText("Capítulo 2, seção 4 · Páginas 10–12", {
+          exact: true
+        })).toBeVisible();
+        const anchorMutation = await page.evaluate(() =>
+          globalThis.__courseAuthoringHarness.probe.sourceMutations.at(-1)
+        );
+        expect(anchorMutation.command).toMatchObject({
+          type: "save_anchor",
+          anchorId: "anchor-source-01",
+          humanLocator: "Capítulo 2, seção 4",
+          selector: { kind: "page_range", startPage: 10, endPage: 12 }
+        });
         await page.getByLabel("Intenção").selectOption("contestation");
         await page.getByLabel("Alvo").selectOption("anchor-source-01");
         await page.getByLabel("Observação").fill(
@@ -2953,15 +2986,17 @@ test.describe("Autoria canônica mobile-first", () => {
         fullPage: true,
         animations: "disabled"
       });
-      expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceReads
+      const catalogReads = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceReads
         .filter(({ mode }) => mode === "catalog")
-        .map(({ limit, cursor }) => ({ limit, cursor })))).toEqual([
+        .map(({ limit, cursor }) => ({ limit, cursor })));
+      expect(catalogReads).toEqual([
         { limit: 10, cursor: null },
         { limit: 10, cursor: "source-page-10" },
         { limit: 10, cursor: "source-page-20" },
         { limit: 10, cursor: "source-page-30" },
         { limit: 10, cursor: "source-page-40" },
-        { limit: 10, cursor: "source-page-50" }
+        { limit: 10, cursor: "source-page-50" },
+        ...(width === 390 ? [{ limit: 10, cursor: null }] : [])
       ]);
       expect(clientErrors).toEqual([]);
     });
@@ -3094,7 +3129,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
               name: "Trabalhar com o ChatGPT sobre Fonte verificável 1"
             })).toBeVisible();
             await expect(page.getByRole("button", {
-              name: "Trabalhar com o ChatGPT sobre Páginas 10–12"
+              name: "Trabalhar com o ChatGPT sobre Capítulo 2, seção 3 · Páginas 10–12"
             })).toBeVisible();
             await expectSourceMetadataDoesNotOverlap(page);
             await expectNoHorizontalOverflow(page);
@@ -3348,6 +3383,54 @@ test.describe("aceite focal do shell simples da Autoria", () => {
   });
 });
 
+test.describe("entrada e Conteúdo cotidiano da Autoria", () => {
+  const layouts = [
+    { width: 360, height: 780 },
+    { width: 390, height: 820 },
+    { width: 430, height: 860 },
+    { width: 1280, height: 900 }
+  ];
+
+  for (const colorScheme of ["light", "dark"]) {
+    for (const { width, height } of layouts) {
+      test(`${width} px em tema ${colorScheme} mantém lista e tarefas legíveis`, async ({
+        page
+      }, testInfo) => {
+        const clientErrors = captureClientErrors(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+        await page.setViewportSize({ width, height });
+        await mountCourseAuthoring(page, { cardinality: "many" });
+
+        await expect(page.getByRole("heading", { name: "Meus cursos", exact: true }))
+          .toBeVisible();
+        await expect(page.getByText("Seu Curso", { exact: true })).toHaveCount(0);
+        await expectNoHorizontalOverflow(page);
+        await expectVisibleTouchTargets(page);
+        await page.screenshot({
+          path: testInfo.outputPath(`authoring-list-${width}-${colorScheme}.png`),
+          fullPage: true,
+          animations: "disabled"
+        });
+
+        await page.locator(".course-authoring-course-card").first().click();
+        await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }))
+          .toBeVisible();
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+        await expect(page.locator(".course-authoring-task-menu > summary"))
+          .toHaveAccessibleName("Abrir tarefas do Curso");
+        await expectNoHorizontalOverflow(page);
+        await expectVisibleTouchTargets(page);
+        await page.screenshot({
+          path: testInfo.outputPath(`authoring-content-${width}-${colorScheme}.png`),
+          fullPage: true,
+          animations: "disabled"
+        });
+        expect(clientErrors).toEqual([]);
+      });
+    }
+  }
+});
+
 test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 820 });
@@ -3438,10 +3521,13 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
 
-  await page.locator(
+  const details = page.locator(
     'summary[aria-label="Abrir detalhes de Exemplo guiado com diagrama"]'
-  ).click();
-  await page.getByRole("button", { name: "Definir fontes" }).click();
+  );
+  await details.click();
+  await details.click();
+  const sourcesAction = page.getByRole("button", { name: "Fontes", exact: true }).first();
+  await sourcesAction.click();
   await expect(page.getByRole("dialog", {
     name: "Fontes de Exemplo guiado com diagrama"
   })).toBeVisible();
@@ -3449,11 +3535,14 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
     name: "Vincular fonte: Fonte verificável 1",
     exact: true
   }).click();
-  await page.getByRole("checkbox", { name: "Páginas 10–12" }).check();
+  await page.getByRole("checkbox", {
+    name: "Capítulo 2, seção 3 · Páginas 10–12"
+  }).check();
   await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(sourcesAction).toBeFocused();
 
   const command = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations[0].command);
@@ -3722,6 +3811,61 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   expect(clientErrors).toEqual([]);
 });
 
+test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Unidade", async ({
+  page
+}) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+  const actions = page.locator(".course-inspection-item-actions").first();
+  const contextualLabels = actions.locator(":scope > :is(button, a) > span");
+  const boxes = await contextualLabels.evaluateAll((nodes) => nodes.map((node) => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+  }));
+  expect(boxes.every((box, index) => boxes.every((other, otherIndex) =>
+    index === otherIndex || box.right <= other.left || other.right <= box.left ||
+      box.bottom <= other.top || other.bottom <= box.top))).toBe(true);
+
+  await actions.getByRole("link", { name: "Desenho", exact: true }).click();
+  await expect(page.getByRole("heading", {
+    name: "Cobertura planejada desta Microssequência"
+  })).toBeVisible();
+  await expect(page.getByText("Não foi possível carregar os itens do Planejamento."))
+    .toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Voltar à Unidade" })).toBeVisible();
+  const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
+  expect(probe.planReads).toBe(1);
+  expect(probe.designReads).toHaveLength(1);
+
+  await page.getByRole("link", { name: "Voltar à Unidade" }).click();
+  await expect(page).toHaveURL(new RegExp("section=content&studyUnitId=study-unit-01"));
+  await expect(actions.getByRole("link", { name: "Desenho", exact: true })).toBeFocused();
+  expect(clientErrors).toEqual([]);
+});
+
+test("Planejamento explica Conteúdo existente que ainda não está ligado a Partes", async ({
+  page
+}) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
+  await mountCourseAuthoring(page, {
+    cardinality: "many",
+    hash,
+    planningScenario: "unlinked-existing"
+  });
+
+  const notice = page.locator(".course-authoring-unlinked-content");
+  await expect(notice).toContainText("Conteúdo existente ainda não vinculado ao plano");
+  await expect(notice).toContainText("60 Unidades permanecem disponíveis em Conteúdo");
+  await expect(notice).toContainText("Nada foi removido");
+  await expectNoHorizontalOverflow(page);
+  expect(clientErrors).toEqual([]);
+});
+
 for (const width of [360, 390, 430, 1280]) {
   test(`Inspeção virtualiza 60 Unidades de estudo em ${width} px`, async ({ page }, testInfo) => {
     const clientErrors = captureClientErrors(page);
@@ -3741,19 +3885,8 @@ for (const width of [360, 390, 430, 1280]) {
     ).first()).toBeDisabled();
     await expectNoHorizontalOverflow(page);
 
-    for (let iteration = 0; iteration < 6; iteration += 1) {
-      const before = await page.locator("[data-inspection-ordinal]").evaluateAll((items) =>
-        Math.max(0, ...items.map((item) => Number(item.dataset.inspectionOrdinal))));
-      const count = await page.locator("[data-inspection-study-unit]").count();
-      expect(count).toBeLessThanOrEqual(36);
-      if (before >= 60) break;
-      const load = page.locator('[data-inspection-load="forward"]');
-      await expect(load).toHaveCount(1);
-      await load.click();
-      await expect.poll(() => page.locator("[data-inspection-ordinal]").evaluateAll((items) =>
-        Math.max(0, ...items.map((item) => Number(item.dataset.inspectionOrdinal))))
-      ).toBeGreaterThan(before);
-    }
+    await page.locator('[data-inspection-jump="50"]').click();
+    await expect(page.locator('[data-inspection-study-unit="study-unit-50"]')).toHaveCount(1);
 
     await expect(page.locator('[data-inspection-study-unit="study-unit-60"]')).toHaveCount(1);
     expect(await page.locator("[data-inspection-study-unit]").count()).toBeLessThanOrEqual(36);
@@ -3914,6 +4047,20 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   );
   await expect(page.locator('[data-inspection-study-unit="study-unit-25"]')).toHaveCount(1);
   await expect(page.locator("[data-inspection-context-position]")).toHaveText("25/60");
+
+  const designAction = page.locator(
+    '[data-inspection-study-unit="study-unit-25"] [data-inspection-control-key="design:study-unit-25"]'
+  );
+  await designAction.click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}` +
+      "?section=parameters&didacticMicrosequenceId=microsequence-a"
+  );
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
+  );
+  await expect(designAction).toBeFocused();
 
   await page.getByLabel("Filtrar por Parte").selectOption(
     "authoring_part:70000000-0000-4000-8000-000000000007"

@@ -9,6 +9,7 @@ import {
   validateAuthoringApplicationToolOutput,
   validateAuthoringMcpToolOutput
 } from "./courseMcpTools.js";
+import { courseAuthoringGuidanceForCall } from "./courseKnowledge.js";
 
 function parseStudyUnitJson(source) {
   try {
@@ -84,6 +85,7 @@ function projectAnnotationForMcp(annotation, { includeObservationText = false } 
     },
     target: {
       kind: annotation.target?.kind ?? null,
+      id: annotation.target?.id ?? null,
       label: annotationTargetLabel(annotation.target),
       currentAvailable: annotation.target?.currentAvailable === true
     },
@@ -113,16 +115,15 @@ function projectAnnotationForMcp(annotation, { includeObservationText = false } 
   };
 }
 
-function annotationMcpDisclosure(includeObservationText) {
+function annotationMcpDisclosure(includeObservationText, recipient) {
   return {
-    recipient: "connected_mcp_client",
+    recipient,
     purpose: "author_triage",
     rawObservationTextIncluded: includeObservationText,
     omitted: [
       "courseId",
       "contributor.ref",
       "contributor.label",
-      "target.id",
       "target.observedPath",
       "target.currentPath",
       "target.deepLink",
@@ -144,7 +145,10 @@ function projectSelectedAuditAnnotation(annotation, { includeObservationText = f
     state: annotation.state ?? null,
     category: annotation.category ?? null,
     briefSummary: annotation.briefSummary ?? null,
-    target: { kind: annotation.target?.kind ?? null },
+    target: {
+      kind: annotation.target?.kind ?? null,
+      id: annotation.target?.id ?? null
+    },
     ...(includeObservationText ? { rawText: annotation.rawText ?? null } : {})
   };
 }
@@ -231,6 +235,7 @@ function projectSourceRevisionForMcp(source, { detailed = false } = {}) {
           sourceRevision: anchor?.sourceRevision ?? null,
           status: anchor?.status ?? null,
           selector: projectSourceSelectorForMcp(anchor?.selector),
+          humanLocator: anchor?.humanLocator ?? null,
           verificationExcerpt: anchor?.verificationExcerpt ?? null,
           createdAt: anchor?.createdAt ?? null
         })),
@@ -259,7 +264,7 @@ function projectSourceAttributionForMcp(attribution) {
   };
 }
 
-function sourceMcpDisclosure(projectedItems) {
+function sourceMcpDisclosure(projectedItems, recipient) {
   const projectedSelectors = (Array.isArray(projectedItems) ? projectedItems : [])
     .flatMap((item) => Array.isArray(item?.anchors) ? item.anchors : [])
     .map((anchor) => anchor?.selector)
@@ -268,7 +273,7 @@ function sourceMcpDisclosure(projectedItems) {
     .filter((field) => projectedSelectors.some((selector) => Object.hasOwn(selector, field)))
     .map((field) => `items[].anchors[].selector.${field}`);
   return {
-    recipient: "connected_mcp_client",
+    recipient,
     purpose: "author_source_review",
     attachmentDownloadUrlIncluded: false,
     potentiallyPersonalFreeTextIncluded: [
@@ -279,6 +284,7 @@ function sourceMcpDisclosure(projectedItems) {
       "items[].url",
       "items[].editionOrVersion",
       "items[].anchors[].verificationExcerpt",
+      "items[].anchors[].humanLocator",
       ...selectorDisclosurePaths
     ],
     omitted: [
@@ -293,7 +299,7 @@ function sourceMcpDisclosure(projectedItems) {
   };
 }
 
-function projectCourseSourcesForMcp(value) {
+function projectCourseSourcesForMcp(value, recipient) {
   const mode = value.mode ?? null;
   const items = (Array.isArray(value.items) ? value.items : [])
     .map((item) => mode === "target"
@@ -315,13 +321,13 @@ function projectCourseSourcesForMcp(value) {
     },
     items,
     nextCursor: value.nextCursor ?? null,
-    dataDisclosure: sourceMcpDisclosure(items)
+    dataDisclosure: sourceMcpDisclosure(items, recipient)
   };
 }
 
-function attachmentMcpDisclosure(includeAttachmentDownloadUrl) {
+function attachmentMcpDisclosure(includeAttachmentDownloadUrl, recipient) {
   return {
-    recipient: "connected_mcp_client",
+    recipient,
     purpose: includeAttachmentDownloadUrl
       ? "author_requested_pdf_download"
       : "author_source_attachment_metadata",
@@ -343,7 +349,7 @@ function attachmentMcpDisclosure(includeAttachmentDownloadUrl) {
 
 function projectSourceAttachmentAccessForMcp(
   value,
-  { includeAttachmentDownloadUrl = false } = {}
+  { includeAttachmentDownloadUrl = false, recipient } = {}
 ) {
   const discloseDownloadUrl = value.operation === "download" &&
     includeAttachmentDownloadUrl === true;
@@ -362,7 +368,7 @@ function projectSourceAttachmentAccessForMcp(
         expiresAt: value.expiresAt ?? null
       }
       : {}),
-    dataDisclosure: attachmentMcpDisclosure(discloseDownloadUrl)
+    dataDisclosure: attachmentMcpDisclosure(discloseDownloadUrl, recipient)
   };
 }
 
@@ -374,16 +380,18 @@ export function projectCourseToolResultForMcp(
   value,
   {
     includeObservationText = false,
-    includeAttachmentDownloadUrl = false
+    includeAttachmentDownloadUrl = false,
+    recipient = "connected_mcp_client"
   } = {}
 ) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   if (value.contract === COURSE_SOURCES_CONTRACT) {
-    return projectCourseSourcesForMcp(value);
+    return projectCourseSourcesForMcp(value, recipient);
   }
   if (COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACTS.has(value.contract)) {
     return projectSourceAttachmentAccessForMcp(value, {
-      includeAttachmentDownloadUrl
+      includeAttachmentDownloadUrl,
+      recipient
     });
   }
   if (value.contract === MCP_ANNOTATION_PAGE_CONTRACT) {
@@ -403,7 +411,7 @@ export function projectCourseToolResultForMcp(
         .filter(Boolean),
       hasMore: value.hasMore === true,
       nextCursor: value.nextCursor ?? null,
-      dataDisclosure: annotationMcpDisclosure(includeObservationText)
+      dataDisclosure: annotationMcpDisclosure(includeObservationText, recipient)
     };
   }
   if (value.contract === MCP_ANNOTATION_CHANGE_CONTRACT) {
@@ -415,7 +423,7 @@ export function projectCourseToolResultForMcp(
       idempotent: value.idempotent === true,
       changed: value.changed === true,
       annotation: projectAnnotationForMcp(value.annotation),
-      dataDisclosure: annotationMcpDisclosure(false)
+      dataDisclosure: annotationMcpDisclosure(false, recipient)
     };
   }
   if (value.contract === MCP_AUDIT_CYCLE_PAGE_CONTRACT &&
@@ -433,7 +441,7 @@ export function projectCourseToolResultForMcp(
           .filter(Boolean)
       },
       dataDisclosure: {
-        ...annotationMcpDisclosure(includeObservationText),
+        ...annotationMcpDisclosure(includeObservationText, recipient),
         purpose: "author_audit_context"
       }
     };
@@ -453,13 +461,19 @@ async function resourceLibraryResult(args, publicAppUrl) {
     intent = "",
     ...facets
   } = args;
+  const packageRequests = packages.map((identity) => {
+    const match = /^(.+)@(\d+\.\d+\.\d+)$/u.exec(String(identity || "").trim());
+    return match
+      ? { packageId: match[1], version: match[2] }
+      : identity;
+  });
   let result;
   if (operation === "explore") {
     result = RESOURCE_CATALOG.explore({ slot: args.slot });
   } else if (operation === "search") {
     result = RESOURCE_CATALOG.search({ ...facets, query, limit: facets.limit ?? 8 });
   } else if (operation === "inspect") {
-    result = RESOURCE_CATALOG.inspect(packages);
+    result = RESOURCE_CATALOG.inspect(packageRequests);
   } else if (operation === "contracts") {
     if (packages.length > 1) {
       throw new AuthoringApiError(
@@ -468,7 +482,7 @@ async function resourceLibraryResult(args, publicAppUrl) {
         "contracts aceita um componente didático exato por chamada."
       );
     }
-    result = RESOURCE_CATALOG.contracts(packages);
+    result = RESOURCE_CATALOG.contracts(packageRequests);
   } else if (operation === "validate_study_unit") {
     result = RESOURCE_CATALOG.validateStudyUnit(parseStudyUnitJson(studyUnitJson));
   } else if (operation === "audit_representation") {
@@ -521,6 +535,8 @@ export async function executeCourseTool({
   rawArguments,
   deadlineAt,
   surface = "mcp",
+  projectionRecipient = "connected_mcp_client",
+  applicationInspectionVersion = 1,
   onRequestIdValidated = null
 }) {
   const allowed = surface === "application"
@@ -534,7 +550,9 @@ export async function executeCourseTool({
     );
   }
   const operation = surface === "application"
-    ? mapAuthoringApplicationToolCall(name, rawArguments)
+    ? mapAuthoringApplicationToolCall(name, rawArguments, {
+        inspectionVersion: applicationInspectionVersion
+      })
     : mapAuthoringMcpToolCall(name, rawArguments);
   if (typeof onRequestIdValidated === "function") {
     onRequestIdValidated(operation.requestId ?? null);
@@ -561,12 +579,19 @@ export async function executeCourseTool({
     principal,
     deadlineAt
   });
-  const data = surface === "mcp"
+  let data = surface === "mcp"
     ? projectCourseToolResultForMcp(result.data, {
         includeObservationText: rawArguments?.includeObservationText === true,
         includeAttachmentDownloadUrl:
-          rawArguments?.includeAttachmentDownloadUrl === true
+          rawArguments?.includeAttachmentDownloadUrl === true,
+        recipient: projectionRecipient
       })
     : result.data;
+  const phaseGuidance = surface === "mcp"
+    ? courseAuthoringGuidanceForCall(name, rawArguments)
+    : null;
+  if (phaseGuidance && data && typeof data === "object" && !Array.isArray(data)) {
+    data = { ...data, phaseGuidance };
+  }
   return validatedSuccess(name, result.requestId, data, surface);
 }

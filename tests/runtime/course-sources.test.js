@@ -250,6 +250,67 @@ test("normaliza comandos fechados, metadados e seletores exatos", () => {
 });
 
 test("metadados estruturados aceitam precisão declarada e rejeitam valores inventados", () => {
+  const heterogeneousSources = [{
+    kind: "article",
+    citationText: "ARA, F. Fontes educacionais auditáveis. Revista Exemplo, v. 2, 2026.",
+    overrides: {}
+  }, {
+    kind: "book",
+    citationText: "ARA, F. Manual do AraLearn. 2. ed. 2026.",
+    overrides: { editionOrVersion: "2ª edição" }
+  }, {
+    kind: "document",
+    citationText: "ARA, F. Proveniência no ensino [slides]. Encontro Exemplo, 2026.",
+    overrides: { identifier: null, url: null, availability: "private" }
+  }, {
+    kind: "web_page",
+    citationText: "AraLearn. Guia de Fontes. 2026. Disponível em: https://example.test/guia.",
+    overrides: { identifier: null, url: "https://example.test/guia" }
+  }, {
+    kind: "document",
+    citationText: "Material de síntese fornecido pela pessoa autora; não publicado.",
+    overrides: {
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      url: null,
+      origin: "author_provided",
+      availability: "private"
+    }
+  }, {
+    kind: "media",
+    citationText: "Imagem sem autoria ou data declaradas, fornecida pela pessoa autora.",
+    overrides: {
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      url: null,
+      origin: "author_provided",
+      availability: "private"
+    }
+  }];
+  for (const [index, entry] of heterogeneousSources.entries()) {
+    const normalized = normalizeCourseSourceCommand({
+      type: "save_source",
+      sourceId: `source-kind-${index}`,
+      expectedSourceRevision: 0,
+      source: sourceDocument({
+        kind: entry.kind,
+        citationText: entry.citationText,
+        ...entry.overrides
+      })
+    });
+    assert.equal(normalized.source.citationText, entry.citationText);
+  }
+  assert.throws(
+    () => normalizeCourseSourceCommand({
+      type: "save_source",
+      sourceId: "source-visible-without-reference",
+      expectedSourceRevision: 0,
+      source: sourceDocument({ citationText: null, studyVisibility: "citation" })
+    }),
+    (error) => error.code === "invalid_course_source"
+  );
   for (const publicationDate of ["0001", "2026", "2026-08", "2024-02-29"]) {
     assert.equal(normalizeCourseSourceCommand({
       type: "save_source",
@@ -296,6 +357,25 @@ test("metadados estruturados aceitam precisão declarada e rejeitam valores inve
       source: { ...sourceDocument(), origin: undefined }
     }),
     (error) => error.code === "invalid_course_source"
+  );
+
+  const locatedAnchor = normalizeCourseSourceCommand({
+    type: "save_anchor",
+    anchorId: "anchor-human-locator",
+    sourceId: "source-book",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 42, endPage: 44 },
+    humanLocator: "Capítulo 3 · Seção 2.1 · Figura 5",
+    verificationExcerpt: null
+  });
+  assert.equal(locatedAnchor.humanLocator, "Capítulo 3 · Seção 2.1 · Figura 5");
+  assert.throws(
+    () => normalizeCourseSourceCommand({
+      ...locatedAnchor,
+      humanLocator: "Slide 12\nmetadado inventado"
+    }),
+    (error) => error.code === "invalid_course_source_command"
   );
 });
 
@@ -693,7 +773,8 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       anchors: [{
         anchorId: "anchor-a",
         anchorRevision: 1,
-        selector: { kind: "page_range", startPage: 3, endPage: 4 }
+        selector: { kind: "page_range", startPage: 3, endPage: 4 },
+        humanLocator: "Capítulo 1 · Tabela 2"
       }]
     }]
   };

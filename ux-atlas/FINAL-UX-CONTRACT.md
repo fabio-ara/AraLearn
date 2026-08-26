@@ -1,15 +1,11 @@
-# Contrato histórico da rodada final de experiência
+# Contrato corrente de experiência
 
-Este documento conserva a referência normativa compacta que orientou #152 e
-#153. Ele registra como as decisões de #147, #174 e #151–#155 foram traduzidas
-em jornadas e critérios de verificação durante aquela rodada. Não é a fonte do
-comportamento corrente: para isso, prevalecem o produto, os contratos
-executáveis e o [mapa da documentação atual](../docs/README.md).
-
-Base funcional: release `0.0.29`, revisão
-`8f21fb21c8713c8efc0f3e0cf4d1bc955a6ff2c6`. Backend, persistência, MCP,
-Actions/OpenAPI, Pesquisa, Fontes, Auditoria, componentes didáticos, cópia
-pessoal e contratos correntes são preservados por padrão.
+Este documento é a referência normativa compacta da experiência do AraLearn.
+Ele reconcilia o contrato anterior com a auditoria humana posterior e deve ser
+lido junto dos contratos executáveis e do
+[mapa da documentação atual](../docs/README.md). Quando um registro histórico
+do Atlas divergir deste arquivo, prevalecem este contrato, o produto corrente e
+a documentação canônica afetada.
 
 ## Decisões encerradas pela pesquisa finita
 
@@ -79,7 +75,7 @@ integrações de autoria distintas. Por isso `Assistência por API`, `Assistente
 IA` e `Copiloto` não são rótulos correntes. Os demais termos estabilizados em
 `docs/vocabulario-controlado.md` permanecem inalterados.
 
-## Precedência funcional adotada na rodada
+## Precedência funcional
 
 O escopo funcional fixado neste contrato prevalece sobre a conveniência do
 recorte técnico. Preservar o backend e seus contratos é a regra por padrão, não
@@ -92,7 +88,13 @@ todo o produto. Se ele fosse insuficiente, completava-se somente a extensão
 vertical necessária. Uma decisão normativa incorreta precisava ser revista
 explicitamente antes da implementação de uma capacidade menor.
 
-## Modos de Estudo por nível
+## Navegação e modos de Estudo por nível
+
+A barra cotidiana usa **Voltar + Home**. **Voltar** restaura a origem real da
+navegação, inclusive posição de rolagem e foco depois de **Retomar**, **Rever**
+ou endereço direto. **Home** oferece uma saída global previsível sem consumir o
+histórico. O acesso ao pai não ocupa permanentemente a barra; uma jornada pode
+oferecê-lo como ação contextual própria quando isso for materialmente útil.
 
 | Nível | Visualizar | Editar | Assistência por IA | Contrato corrente reaproveitado |
 | --- | --- | --- | --- | --- |
@@ -102,19 +104,21 @@ explicitamente antes da implementação de uma capacidade menor.
 | Microssequência | sim | sim, se autorizado | sim, se autorizado | objetivo, ordem e estrutura das Unidades |
 | Unidade | sim | sim, se autorizado | sim, se autorizado | título, composição e conteúdo renderizável |
 
-O baseline histórico confirma `Visualizar / Editar / IA` como modos situados em
-Lição, Microssequência e Unidade. A baseline 0.0.29 preserva a escrita tipada da
-Unidade e a assistência estrutural, mas omite `Editar` em níveis anteriores e
-coloca seletores com texto dentro do conteúdo. #152 restaura a gramática visual
-e liga os modos aos contratos correntes, sem portar handlers ou persistência
-históricos.
+Os modos ficam na barra superior e operam sobre o mesmo objeto. Trocar entre
+**Visualizar**, **Editar** e **Assistência por IA** não recompõe a tela nem
+desloca elementos cuja função não mudou. Cada botão tem nome acessível, estado
+perceptível e `aria-pressed`. A interface é **icon-first, não icon-only**:
+ações frequentes, reconhecíveis e situadas preferem ícone, enquanto um rótulo
+curto permanece visível quando evita ambiguidade real. Os botões toggle seguem
+na ordem normal de Tab. Roving `tabindex` só entra se uma verificação concreta
+demonstrar benefício que compense a interação adicional.
 
-Os modos ficam na barra superior. Cada botão mostra somente ícone, tem `title`,
-`aria-label`, estado perceptível e `aria-pressed`. Os botões toggle permanecem na
-ordem normal de Tab, o mecanismo acessível mais simples para este grupo pequeno.
-O padrão composite de toolbar, com roving `tabindex` e navegação por setas, só
-será usado se uma verificação concreta demonstrar benefício que compense a
-interação adicional; a quantidade de três modos, sozinha, não o exige.
+O rótulo estabilizado desta capacidade é **Assistência por IA**. Ela usa o
+provider remoto escolhido pela pessoa — OpenAI, Gemini ou DeepSeek — e uma chave
+efêmera mantida apenas na memória da sessão. A conversa contextual é
+multiturmo, reenvia o histórico e o contexto pertinente, valida a proposta e
+mostra uma prévia renderizável antes de aplicar ao rascunho. Aplicar e salvar
+continuam decisões separadas. Relay local não é arquitetura de produção.
 
 ## Mapa humano de tarefas de Autoria
 
@@ -183,7 +187,7 @@ deep link usa Curso, Parte, materialização e alvo canônicos quando disponíve
 
 - Home → Curso → Módulo → Lição → Microssequência → Unidade → voltar tela a
   tela;
-- subir um nível em cada tela sem consumir o histórico de voltar;
+- usar Home como saída global sem consumir o histórico de voltar;
 - Home → Retomar → Unidade → voltar à mesma Home e ao controle de origem;
 - Visualizar/Editar/Assistência por IA conforme a tabela, com salvar explícito;
 - responder, avançar, rever, abrir Fontes e Observações;
@@ -200,18 +204,31 @@ deep link usa Curso, Parte, materialização e alvo canônicos quando disponíve
 
 ## Invariantes executáveis
 
+Mudança de modo, seleção, validação, mensagem curta, edição e estado transitório
+preservam posição, dimensões, rolagem e foco dos elementos cuja função não
+mudou. Edição e seleção realçam o objeto já renderizado; não criam uma cópia
+paralela para representar o mesmo alvo. Status previsível ocupa região estável,
+e mensagens raras ou longas usam superfície própria.
+
 - conteúdo útil, topbar, Home e cards compartilham arestas com tolerância de 2 px;
 - largura útil máxima de 430 px; testes em 360, 390, 430 e 1280 px;
 - controles irmãos na toolbar diferem no máximo 1 px em altura e centro vertical;
-- botões compactos de modo não contêm texto visível; nomes ficam em
-  `aria-label` e `title`;
+- controles compactos têm nome acessível; texto visível é mantido quando reduz
+  ambiguidade e removido quando apenas repete um ícone reconhecível e situado;
+- propriedade, compartilhamento e cópia pessoal usam iconografia e estado
+  acessível; títulos não recebem sufixos como `· Seu Curso` ou equivalentes;
 - alvo de toque mede ao menos 24 × 24 px e prefere `--tap` (44 px) nas ações
   primárias ou isoladas;
-- `goBack` não chama nem usa `goUp` como fallback;
+- `goBack` restaura a origem real e não chama nem usa navegação ao pai como
+  fallback;
 - transição que salta níveis registra origem, rolagem e foco;
+- a topbar cotidiana expõe Voltar e Home; acesso ao pai é contextual;
 - Unidade e telas de Autoria usam um único rolador vertical principal em cenário
   normal; conteúdo largo pode rolar horizontalmente;
-- dialog modal prende foco, fecha com `Escape` e restaura o controle de origem;
+- sheets e dialogs mantêm geometria externa estável, rolam o conteúdo variável
+  internamente, prendem foco quando modais, fecham com `Escape` e restauram o
+  controle de origem;
+- a presença de scrollbar não altera a largura útil nem o alinhamento;
 - disclosure expõe `aria-expanded` coerente;
 - dock e teclado virtual não encobrem foco ou ação necessária;
 - a partir da Visão geral de Autoria, cada tarefa principal exige no máximo um
@@ -221,7 +238,7 @@ deep link usa Curso, Parte, materialização e alvo canônicos quando disponíve
 - nenhuma ação principal depende de ID, JSON, hash, endpoint ou nome de tabela;
 - interface, títulos e nomes acessíveis usam `Assistência por IA`.
 
-## Screenshots normativos exigidos na rodada
+## Matriz visual de verificação
 
 Em 390 e 1280 px, registrar Home de Estudo, Curso, Lição, Microssequência,
 Unidade em cada modo, Conta/aparência, Visão geral de Autoria, Planejamento,

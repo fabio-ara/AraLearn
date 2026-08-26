@@ -415,7 +415,7 @@ test("invalida a sessão somente diante de falha de autenticação", async () =>
 test("Autoria usa RPCs owner-only sem mudar a leitura compartilhada do Estudo", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: JSON.parse(init.body), headers: new Headers(init.headers) });
     return jsonResponse({ items: [], hasMore: false, nextCursor: null });
   });
 
@@ -1126,7 +1126,7 @@ test("cliente usa o DTO factual de variantes e o nome canônico ao desvincular",
 test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: JSON.parse(init.body), headers: new Headers(init.headers) });
     return jsonResponse({ ok: true, data: { items: [] } });
   });
 
@@ -1152,6 +1152,10 @@ test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", 
     limit: 12,
     maxBytes: 262144
   });
+  assert.equal(
+    calls[1].headers.get("accept"),
+    "application/vnd.aralearn.course-study-unit-inspection.v2+json"
+  );
   assert.throws(
     () => client.loadAuthoringStudyUnits(COURSE_ID, {
       expectedRevision: 9,

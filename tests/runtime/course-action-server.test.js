@@ -10,6 +10,33 @@ const ORIGIN = "https://chatgpt.com";
 const BASE_URL = "https://project.example/functions/v1/aralearn-authoring-action";
 const APP_URL = "https://app.example/";
 const ACTOR_ID = "10000000-0000-4000-8000-000000000001";
+const ANNOTATION_ID = "20000000-0000-4000-8000-000000000002";
+
+function annotation({ state = "open" } = {}) {
+  return {
+    annotationId: ANNOTATION_ID,
+    annotationVersion: state === "open" ? 1 : 2,
+    provenance: { origin: "author", channel: "authoring_chat" },
+    contributor: { kind: "self", role: "author" },
+    target: { kind: "study_unit", id: "unit-a", currentAvailable: true },
+    observedRevision: { certainty: "known", courseRevision: 3, targetVersion: 1 },
+    rawText: "Rever a explicação antes da publicação.",
+    category: "suggestion",
+    briefSummary: "Rever a explicação",
+    subjectClassification: { status: "unclassified", effective: { subjects: [] } },
+    state,
+    ownerResponse: null,
+    capabilities: {
+      canRevise: false,
+      canWithdraw: false,
+      canConsider: false,
+      canRespond: false,
+      canResolve: state === "open",
+      canReopen: state !== "open",
+      canCorrectSubjects: false
+    }
+  };
+}
 
 function createHandler(overrides = {}) {
   return createAuthoringActionHandler({
@@ -80,6 +107,75 @@ test("Actions lista Cursos pelo canal HTTP e pelo principal opaco próprio", asy
   assert.equal(resolved, 1);
 });
 
+test("Actions lê e altera Observações com destinatário e principal próprios", async () => {
+  let mutation = null;
+  const handler = createHandler({
+    async getCourseAnchoredAnnotations(value) {
+      assert.equal(value.principal.authenticationKind, "action");
+      return {
+        contract: "aralearn.course-anchored-annotation-page.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 3,
+        annotationSetVersion: 1,
+        summary: {
+          matchingTotal: 1,
+          byOrigin: { author: 1 },
+          byChannel: { authoring_chat: 1 },
+          byState: { open: 1 },
+          unclassifiedTotal: 1
+        },
+        items: [annotation()],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async executeCourseAnchoredAnnotationCommand(value) {
+      mutation = value;
+      return {
+        contract: "aralearn.course-anchored-annotation-change.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 3,
+        annotationSetVersion: 2,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        annotation: annotation({ state: "resolved" })
+      };
+    }
+  });
+
+  const readResponse = await handler(request("lerCurso", {
+    courseId: ACTOR_ID,
+    view: "anchored_annotations",
+    expectedRevision: 3,
+    mode: "detail",
+    annotationId: ANNOTATION_ID,
+    includeObservationText: true
+  }));
+  assert.equal(readResponse.status, 200);
+  const read = await readResponse.json();
+  assert.equal(read.data.items[0].rawText, "Rever a explicação antes da publicação.");
+  assert.equal(read.data.dataDisclosure.recipient, "connected_actions_gpt");
+  assert.equal(read.data.dataDisclosure.rawObservationTextIncluded, true);
+
+  const changeResponse = await handler(request("alterarCurso", {
+    requestId: "request-action-observation-0001",
+    courseId: ACTOR_ID,
+    operation: "update_anchored_annotations",
+    annotationCommand: {
+      type: "resolve_anchored_annotation",
+      annotationId: ANNOTATION_ID,
+      expectedAnnotationVersion: 1
+    }
+  }));
+  assert.equal(changeResponse.status, 200);
+  const change = await changeResponse.json();
+  assert.equal(mutation.principal.authenticationKind, "action");
+  assert.equal(mutation.command.type, "resolve_anchored_annotation");
+  assert.equal(change.data.annotation.state, "resolved");
+  assert.equal(change.data.dataDisclosure.recipient, "connected_actions_gpt");
+});
+
 test("Actions não aceita o bearer sem passar pelo resolvedor específico", async () => {
   const response = await createHandler()(new Request(`${BASE_URL}/listarCursos`, {
     method: "POST",
@@ -125,7 +221,24 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
     "/consultarComponentesDidaticos"
   ]);
   assert.equal(JSON.stringify(openApi).includes("Workspace"), false);
+  assert.deepEqual(Object.keys(openApi.components.schemas), [
+    "SuccessResponse", "ErrorResponse"
+  ]);
+  for (const pathValue of Object.values(openApi.paths)) {
+    assert.ok(pathValue.post.description.length <= 300);
+  }
+  const readDescription = openApi.paths["/lerCurso"].post.description;
+  for (const view of [
+    "course_sources", "anchored_annotations", "audit_cycle",
+    "variant_comparison", "variant_comparisons"
+  ]) {
+    assert.match(readDescription, new RegExp(view, "u"));
+  }
   const oauth = openApi.components.securitySchemes.AraLearnOAuth;
+  assert.match(
+    openApi.paths["/consultarComponentesDidaticos"].post.description,
+    /contracts aceita exatamente um package/iu
+  );
   assert.match(oauth.flows.authorizationCode.authorizationUrl, /authoring-action\/oauth\/authorize$/u);
   assert.doesNotMatch(oauth.flows.authorizationCode.authorizationUrl, /authoring-mcp/u);
 });
@@ -156,7 +269,24 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
       import.meta.url
     )
   );
-  assert.ok(file.byteLength < 96 * 1024);
+  assert.ok(file.byteLength < 72 * 1024);
+  const openApi = JSON.parse(file);
+  const inputSchemas = Object.values(openApi.paths).map(
+    ({ post }) => post.requestBody.content["application/json"].schema
+  );
+  assert.equal(inputSchemas.some((schema) => JSON.stringify(schema).includes('"allOf"')), false);
+  assert.match(openApi.paths["/alterarCurso"].post.description, /mode automatic/iu);
+  const changeInput = openApi.paths["/alterarCurso"].post.requestBody
+    .content["application/json"].schema.description;
+  assert.match(changeInput, /sourceAttributionApplications/iu);
+  assert.match(changeInput, /nunca em content/iu);
+  assert.match(changeInput, /record_step sempre inclui[\s\S]+resultFacts/iu);
+  assert.match(changeInput,
+    /record_audit e verify_finding incluem ao menos um check factual_quality, um pedagogical_quality e um editorial_quality/iu);
+  const readInput = openApi.paths["/lerCurso"].post.requestBody
+    .content["application/json"].schema.description;
+  assert.match(readInput, /part_materialization/iu);
+  assert.match(readInput, /proíbe expectedRevision/iu);
 });
 
 test("migration de Actions restaura somente a execução server-side do OAuth", async () => {

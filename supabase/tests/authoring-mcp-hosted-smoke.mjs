@@ -440,7 +440,12 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
     limit: 1,
     maxBytes: 65_536
   });
-  assert.equal(firstPage.contract, "aralearn.course-study-unit-inspection-page.v1");
+  assert.equal(firstPage.contract, "aralearn.course-study-unit-inspection-page.v2");
+  assert.deepEqual(firstPage.items[0].authorship, {
+    pendingObservationCount: 0,
+    production: null,
+    design: null
+  });
   assert.equal(firstPage.items[0].studyUnit.id, "study-unit-hosted-smoke-1");
   assert.equal(
     firstPage.items[0].studyUnit.title,
@@ -548,6 +553,7 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
       scope: { kind: "course", ref: created.courseId },
       parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
       value: 3,
+      mode: "explicit",
       origin: "author",
       reason: "Exercitar o desenho parametrizado no smoke hospedado."
     }

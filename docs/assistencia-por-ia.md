@@ -15,7 +15,7 @@ do mesmo percurso.
 O AraLearn oferece três integrações relacionadas, mas distintas:
 
 - **Assistência por IA** aparece dentro da Unidade, da Microssequência e da
-  Lição e usa um provedor configurado por relay local;
+  Lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
   canônicas de Curso;
 - **Actions/OpenAPI** conecta um GPT personalizado a cinco operações HTTP.
@@ -73,10 +73,10 @@ orçamento explícito; se o recorte não couber com segurança, a interface expl
 o limite em vez de truncar silenciosamente uma estrutura que seria necessária
 à decisão.
 
-O relay encaminha o envelope ao provedor configurado, que pode aplicar seus
-próprios termos de tratamento. A revisão humana continua necessária mesmo com a
-lista fechada, pois o próprio conteúdo educacional pode conter dado pessoal ou
-informação sensível.
+O AraLearn envia o envelope diretamente ao provedor escolhido, que pode aplicar
+seus próprios termos de tratamento. A revisão humana continua necessária mesmo
+com a lista fechada, pois o próprio conteúdo educacional pode conter dado
+pessoal ou informação sensível.
 
 ## Descoberta e geração de componentes
 
@@ -113,25 +113,21 @@ Um `requestId` estável permite recuperar o recibo de uma escrita quando a
 resposta da rede se perde. Repetir a mesma identidade com conteúdo diferente é
 conflito. Essa repetição segura não amplia o escopo confirmado.
 
-## Relay local e credenciais
+## Provider remoto e credencial efêmera
 
-Em produção, a Assistência por IA chama um relay em `127.0.0.1`, `localhost` ou
-`10.0.2.2`, na porta 4183. A credencial do provedor fica no relay e nunca entra
-no AraLearn. O navegador classifica os dois primeiros endereços como loopback e
-o último como rede local.
+A pessoa escolhe OpenAI, Gemini ou DeepSeek, informa o modelo quando necessário
+e fornece a própria chave. A chave permanece apenas em memória durante a sessão,
+segue somente no cabeçalho da chamada ao provider escolhido e não entra no
+Curso, PostgreSQL, IndexedDB, Storage, logs ou artefatos.
 
-O modelo e o endpoint permanecem na memória da sessão. Sair, recarregar ou
-encerrar a superfície cancela a chamada pendente e apaga essa configuração. Uma
-resposta tardia não pode reabrir a sessão nem aplicar conteúdo.
+Sair, recarregar ou encerrar a superfície cancela a chamada pendente e apaga
+provider, modelo, chave, conversa e candidata. Uma resposta tardia não pode
+reabrir a sessão nem aplicar conteúdo. A interface normal não pede endpoint nem
+expõe relay ou instruções de arquitetura.
 
-Chamadas diretas a provedores, com chave no navegador, são admitidas somente em
-runtime de desenvolvimento explicitamente identificado e com credencial
-descartável. Elas não compõem a configuração publicada.
-
-No Android, uma ponte nativa encaminha a chamada ao relay de loopback sem
-relaxar a política de conteúdo misto do WebView. A instalação precisa conseguir
-alcançar o relay no próprio dispositivo ou no encaminhamento de desenvolvimento
-previsto pela implantação.
+Chaves duradouras não devem ser usadas num cliente público. A pessoa precisa
+revisar o recorte e os termos do provider a cada sessão; testes automatizados e
+ensaios de desenvolvimento usam stubs determinísticos, nunca uma chamada paga.
 
 ## MCP e Actions
 

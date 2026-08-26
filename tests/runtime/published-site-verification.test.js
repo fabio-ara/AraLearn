@@ -7,11 +7,14 @@ import {
   validatePublishedCsp,
   verifyPublishedSite
 } from "../../scripts/verifyPublishedSite.mjs";
-import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntimeSecurity.js";
+import {
+  DEFAULT_ASSIST_ALLOWED_ORIGINS,
+  DEVELOPMENT_VENDOR_ASSIST_ORIGINS
+} from "../../src/assist/providerRuntimeSecurity.js";
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.30";
+const VERSION = "0.0.31";
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>
@@ -164,17 +167,17 @@ test("lê a configuração pública sem executar JavaScript e valida a CSP exata
       `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
       '"assistAllowedOrigins": []'
     )),
-    /somente as origens locais canônicas/u
+    /somente as origens oficiais/u
   );
   assert.throws(
     () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
       `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}`,
       `"assistAllowedOrigins": ${JSON.stringify([
         ...ASSIST_ORIGINS,
-        "https://api.openai.com"
+        "https://modelos.example.edu"
       ])}`
     )),
-    /somente as origens locais canônicas/u
+    /somente as origens oficiais/u
   );
   assert.throws(
     () => parsePublicRuntimeConfig(RUNTIME_CONFIG.replace(
@@ -189,6 +192,24 @@ test("lê a configuração pública sem executar JavaScript e valida a CSP exata
       `"assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}, "developmentRuntime": true`
     )),
     /não pertencem ao artefato Pages: developmentRuntime/u
+  );
+});
+
+test("site publicado aceita somente as origens oficiais dos providers", () => {
+  const config = RUNTIME_CONFIG.replace(
+    JSON.stringify(ASSIST_ORIGINS),
+    JSON.stringify(DEVELOPMENT_VENDOR_ASSIST_ORIGINS)
+  );
+  const index = INDEX.replace(
+    ASSIST_ORIGINS.join(" "),
+    DEVELOPMENT_VENDOR_ASSIST_ORIGINS.join(" ")
+  );
+  assert.deepEqual(parsePublicRuntimeConfig(config).assistAllowedOrigins,
+    DEVELOPMENT_VENDOR_ASSIST_ORIGINS);
+  assert.deepEqual(
+    validatePublishedCsp(index, PROJECT_URL, DEVELOPMENT_VENDOR_ASSIST_ORIGINS)
+      .connectSources,
+    ["'self'", PROJECT_URL, ...DEVELOPMENT_VENDOR_ASSIST_ORIGINS]
   );
 });
 

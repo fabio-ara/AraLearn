@@ -61,9 +61,11 @@ test("Estudo não converte ausência de histórico em subida hierárquica", asyn
     import.meta.url
   ), "utf8");
   const goBackStart = source.indexOf("  function goBack()");
-  const goUpStart = source.indexOf("  function goUp(", goBackStart);
-  assert.ok(goBackStart >= 0 && goUpStart > goBackStart);
-  const goBack = source.slice(goBackStart, goUpStart);
+  assert.ok(goBackStart >= 0);
+  const goBack = source.slice(goBackStart).match(
+    /^[ ]{2}function goBack\(\) \{[\s\S]*?^[ ]{2}\}\r?$/mu
+  )?.[0] || "";
+  assert.ok(goBack);
   assert.match(goBack, /const previous = state\.navigationHistory\.pop\(\)/u);
   assert.match(goBack, /if \(previous\) return restoreNavigationSnapshot\(previous\);\s*return false;/u);
   assert.doesNotMatch(goBack, /goUp\(/u);

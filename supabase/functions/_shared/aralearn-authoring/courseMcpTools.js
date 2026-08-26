@@ -322,10 +322,13 @@ const sourceCommandSchema = {
       sourceRevision: { type: "integer", minimum: 1 },
       expectedAnchorRevision: { type: "integer", minimum: 0 },
       selector: sourceSelectorSchema,
+      humanLocator: nullableString(stringSchema({
+        minLength: 1, maxLength: 500, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+      })),
       verificationExcerpt: nullableString(stringSchema({
         minLength: 1, maxLength: 2_000, pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
       }))
-    }),
+    }, ["type", "anchorId", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "verificationExcerpt"]),
     objectSchema({
       type: { const: "retire_anchor" },
       anchorId: courseSourceOpaqueIdSchema,
@@ -477,71 +480,76 @@ const auditCommandSchema = {
   ]
 };
 
+const planItemKindSchema = stringSchema({ enum: [
+  "intended_learning_outcome",
+  "instructional_analysis_unit",
+  "evidence_requirement"
+] });
+const planItemIdListSchema = (maximum) => ({
+  type: "array", maxItems: maximum, uniqueItems: true, items: uuidSchema
+});
+const microsequenceIdSchema = stringSchema({ minLength: 1, maxLength: 240 });
+const partIntentSchema = stringSchema({ maxLength: 4_000 });
 const authoringPlanCommandSchema = {
-  ...objectSchema({
-  type: stringSchema({ enum: [
-    "update_plan",
-    "add_plan_item",
-    "update_plan_item",
-    "remove_plan_item",
-    "reorder_plan_items",
-    "add_part",
-    "update_part",
-    "remove_part",
-    "reorder_parts",
-    "split_part",
-    "join_parts",
-    "assign_microsequence",
-    "move_microsequence",
-    "remove_microsequence"
-  ] }),
-  kind: stringSchema({ enum: [
-    "intended_learning_outcome",
-    "instructional_analysis_unit",
-    "evidence_requirement"
-  ] }),
-  id: uuidSchema,
-  position: { type: "integer", minimum: 0, maximum: 255 },
-  statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
-  sourceLinks: sourceLinksSchemaReference,
-  orderedIds: { type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema },
-  title: stringSchema({ minLength: 1, maxLength: 300 }),
-  objective: stringSchema({ minLength: 1, maxLength: 2_000 }),
-  audience: stringSchema({ maxLength: 4_000 }),
-  scope: stringSchema({ maxLength: 8_000 }),
-  preferredPartCount: objectSchema({
-    minimum: { type: "integer", minimum: 1, maximum: 64 },
-    maximum: { type: "integer", minimum: 1, maximum: 64 },
-    origin: stringSchema({ enum: ["automatic", "author", "research_condition"] })
-  }),
-  intent: stringSchema({ maxLength: 4_000 }),
-  partId: uuidSchema,
-  newPartId: uuidSchema,
-  newPartPosition: { type: "integer", minimum: 0, maximum: 63 },
-  microsequenceIds: {
-    type: "array",
-    maxItems: 64,
-    uniqueItems: true,
-    items: stringSchema({ minLength: 1, maxLength: 240 })
-  },
-  sourcePartId: uuidSchema,
-  targetPartId: uuidSchema,
-  microsequenceId: stringSchema({ minLength: 1, maxLength: 240 })
-  }, ["type"]),
-  allOf: [{
-    if: {
-      properties: { type: { enum: ["add_plan_item", "update_plan_item"] } },
-      required: ["type"]
+  oneOf: [
+    {
+      ...objectSchema({
+        type: { const: "update_plan" },
+        title: stringSchema({ minLength: 1, maxLength: 300 }),
+        objective: stringSchema({ minLength: 1, maxLength: 2_000 }),
+        audience: stringSchema({ maxLength: 4_000 }),
+        scope: stringSchema({ maxLength: 8_000 }),
+        preferredPartCount: objectSchema({
+          minimum: { type: "integer", minimum: 1, maximum: 64 },
+          maximum: { type: "integer", minimum: 1, maximum: 64 },
+          origin: stringSchema({ enum: ["automatic", "author", "research_condition"] })
+        })
+      }, ["type"]),
+      anyOf: ["title", "objective", "audience", "scope", "preferredPartCount"]
+        .map((field) => ({ required: [field] }))
     },
-    then: { required: ["sourceLinks"] },
-    else: forbidFields(["sourceLinks"])
-  }, {
-    if: { properties: { type: { const: "add_part" } }, required: ["type"] },
-    then: { properties: { position: { maximum: 63 } } }
-  }, {
-    if: { properties: { type: { const: "reorder_parts" } }, required: ["type"] },
-    then: { properties: { orderedIds: { maxItems: 64 } } }
-  }]
+    objectSchema({
+      type: { const: "add_plan_item" }, kind: planItemKindSchema, id: uuidSchema,
+      position: { type: "integer", minimum: 0, maximum: 255 },
+      statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
+      sourceLinks: sourceLinksSchemaReference
+    }),
+    objectSchema({
+      type: { const: "update_plan_item" }, kind: planItemKindSchema, id: uuidSchema,
+      statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
+      sourceLinks: sourceLinksSchemaReference
+    }),
+    objectSchema({ type: { const: "remove_plan_item" }, kind: planItemKindSchema, id: uuidSchema }),
+    objectSchema({
+      type: { const: "reorder_plan_items" }, kind: planItemKindSchema,
+      orderedIds: planItemIdListSchema(256)
+    }),
+    objectSchema({
+      type: { const: "add_part" }, id: uuidSchema,
+      position: { type: "integer", minimum: 0, maximum: 63 },
+      title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema
+    }, ["type", "id", "position", "title"]),
+    objectSchema({
+      type: { const: "update_part" }, id: uuidSchema,
+      title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema
+    }, ["type", "id", "title"]),
+    objectSchema({ type: { const: "remove_part" }, id: uuidSchema }),
+    objectSchema({ type: { const: "reorder_parts" }, orderedIds: planItemIdListSchema(64) }),
+    objectSchema({
+      type: { const: "split_part" }, partId: uuidSchema, newPartId: uuidSchema,
+      newPartPosition: { type: "integer", minimum: 0, maximum: 63 },
+      title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema,
+      microsequenceIds: {
+        type: "array", maxItems: 64, uniqueItems: true, items: microsequenceIdSchema
+      }
+    }, ["type", "partId", "newPartId", "newPartPosition", "title", "microsequenceIds"]),
+    objectSchema({ type: { const: "join_parts" }, sourcePartId: uuidSchema, targetPartId: uuidSchema }),
+    ...["assign_microsequence", "move_microsequence"].map((type) => objectSchema({
+      type: { const: type }, partId: uuidSchema, microsequenceId: microsequenceIdSchema,
+      position: { type: "integer", minimum: 0, maximum: 63 }
+    })),
+    objectSchema({ type: { const: "remove_microsequence" }, microsequenceId: microsequenceIdSchema })
+  ]
 };
 
 const courseCursorSchema = objectSchema({
@@ -596,6 +604,9 @@ const parameterIdSchema = stringSchema({ enum: [
 ] });
 const designWriteOriginSchema = stringSchema({ enum: [
   "automatic", "author", "research_condition"
+] });
+const explicitDesignWriteOriginSchema = stringSchema({ enum: [
+  "author", "research_condition"
 ] });
 const integerParameterValueSchema = { type: "integer", minimum: 1, maximum: 64 };
 const explanationFormsParameterValueSchema = {
@@ -686,10 +697,25 @@ const courseDesignCommandSchema = {
       scope: courseDesignParameterScopeSchema,
       parameterId: parameterIdSchema,
       value: parameterValueSchema,
-      origin: designWriteOriginSchema,
-      reason: stringSchema({ minLength: 1, maxLength: 1_000 })
+      mode: stringSchema({
+        enum: ["automatic", "explicit"],
+        description: "automatic delega a resolução; explicit fixa a origem autoral ou de pesquisa."
       }),
+      origin: explicitDesignWriteOriginSchema,
+      reason: stringSchema({
+        minLength: 1,
+        maxLength: 1_000,
+        description: "Justificativa pública breve, sem raciocínio privado."
+      })
+      }, ["type", "scope", "parameterId", "value", "mode", "reason"]),
       allOf: [{
+        if: {
+          properties: { mode: { const: "automatic" } },
+          required: ["mode"]
+        },
+        then: forbidFields(["origin"]),
+        else: { required: ["origin"] }
+      }, {
         if: {
           properties: { parameterId: { const:
             "new_analysis_unit_ceiling_per_expository_study_unit" } },
@@ -785,29 +811,74 @@ const courseDesignCommandSchema = {
   ]
 };
 
-const courseEntitySchema = {
-  ...objectSchema({
-    entityType: stringSchema({
-      enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
-    }),
-    entityId: stringSchema({ minLength: 1, maxLength: 240 }),
-    parentType: {
-      anyOf: [{ type: "null" }, stringSchema({
-        enum: ["module", "lesson", "microsequence"]
-      })]
-    },
-    parentId: nullableString(stringSchema({ minLength: 1, maxLength: 240 })),
-    position: { type: "integer", minimum: 0 },
-    content: { type: "object" }
-  }),
-  allOf: [{
-    if: {
-      properties: { entityType: { const: "study_unit" } },
-      required: ["entityType"]
-    },
-    then: { properties: { position: { minimum: 1 } } }
-  }]
+const entityTextListSchema = {
+  type: "array", maxItems: 256, items: stringSchema({ minLength: 1, maxLength: 2_000 })
 };
+const courseGuideSchema = objectSchema({
+  goal: stringSchema({ minLength: 1, maxLength: 8_000 }),
+  include: entityTextListSchema,
+  exclude: entityTextListSchema,
+  notation: entityTextListSchema,
+  avoid: entityTextListSchema
+});
+const courseModuleContentSchema = objectSchema({
+  title: stringSchema({ minLength: 1, maxLength: 300 }),
+  guide: courseGuideSchema
+});
+const courseLessonContentSchema = objectSchema({
+  title: stringSchema({ minLength: 1, maxLength: 300 }),
+  guide: courseGuideSchema
+});
+const courseTopicContentSchema = objectSchema({
+  label: stringSchema({ minLength: 1, maxLength: 2_000 }),
+  kind: stringSchema({ enum: ["concept", "procedure", "representation", "term"] }),
+  checks: entityTextListSchema,
+  errors: entityTextListSchema
+});
+const courseMicrosequenceContentSchema = objectSchema({
+  title: stringSchema({ minLength: 1, maxLength: 300 }),
+  goal: stringSchema({ minLength: 1, maxLength: 8_000 }),
+  role: stringSchema({ enum: ["explain", "practice", "review", "support"] }),
+  branchOf: nullableString(stringSchema({ minLength: 1, maxLength: 240 })),
+  dependsOn: entityTextListSchema,
+  covers: entityTextListSchema,
+  checks: entityTextListSchema,
+  errors: entityTextListSchema
+}, ["title", "goal", "role", "dependsOn", "covers", "checks"]);
+const courseEntityIdSchema = stringSchema({ minLength: 1, maxLength: 240 });
+const courseEntitySchemaFor = ({ entityType, parentType, positionMinimum = 0, content }) => objectSchema({
+  entityType: { const: entityType },
+  entityId: courseEntityIdSchema,
+  parentType: parentType == null ? { type: "null" } : { const: parentType },
+  parentId: parentType == null ? { type: "null" } : courseEntityIdSchema,
+  position: { type: "integer", minimum: positionMinimum },
+  content
+});
+const courseEntitySchema = {
+  oneOf: [
+    courseEntitySchemaFor({ entityType: "module", parentType: null, content: courseModuleContentSchema }),
+    courseEntitySchemaFor({ entityType: "lesson", parentType: "module", content: courseLessonContentSchema }),
+    courseEntitySchemaFor({ entityType: "topic", parentType: "lesson", content: courseTopicContentSchema }),
+    courseEntitySchemaFor({
+      entityType: "microsequence", parentType: "lesson", content: courseMicrosequenceContentSchema
+    }),
+    courseEntitySchemaFor({
+      entityType: "study_unit", parentType: "microsequence", positionMinimum: 1,
+      content: {
+        type: "object",
+        description: "Conteúdo validado pelo contrato consultado; id e position ficam no invólucro."
+      }
+    })
+  ]
+};
+const courseEntitySchemaReference = { $ref: "#/$defs/courseEntity" };
+const courseEntityDeleteSchema = objectSchema({
+  entityType: stringSchema({
+    enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
+  }),
+  entityId: stringSchema({ minLength: 1, maxLength: 240 })
+});
+const courseEntityDeleteSchemaReference = { $ref: "#/$defs/courseEntityDelete" };
 
 const materializationStepSchema = objectSchema({
   id: uuidSchema,
@@ -889,11 +960,14 @@ const designApplicationSchema = objectSchema({
         type: "array",
         maxItems: 32,
         uniqueItems: true,
-        items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 })
+        items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 }),
+        description: "Refs package@version usados na mesma Unidade de entityChanges."
       }
     })
   }
 });
+designApplicationSchema.description =
+  "Na conclusão didática, descreve as mesmas Unidades de entityChanges.";
 
 const sourceAttributionStudyUnitSchema = objectSchema({
   studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
@@ -904,12 +978,17 @@ const sourceAttributionApplicationsSchema = {
   maxItems: 64,
   items: sourceAttributionStudyUnitSchema
 };
+const sourceAttributionApplicationsSchemaReference = {
+  $ref: "#/$defs/sourceAttributionApplications"
+};
 const sourceAttributionApplicationSchema = objectSchema({
   contract: { const: "aralearn.course-source-attribution-application.v1" },
   contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
   didacticMicrosequenceId: stringSchema({ minLength: 1, maxLength: 240 }),
-  studyUnits: sourceAttributionApplicationsSchema
+  studyUnits: sourceAttributionApplicationsSchemaReference
 });
+sourceAttributionApplicationSchema.description =
+  "Na conclusão didática, atribui Fontes às mesmas Unidades do lote.";
 
 const materializationCommandSchema = {
   ...objectSchema({
@@ -932,19 +1011,14 @@ const materializationCommandSchema = {
   sourceAttributionApplication: nullableString(sourceAttributionApplicationSchema),
   entityChanges: {
     ...objectSchema({
-    upserts: { type: "array", maxItems: 64, items: courseEntitySchema },
+    upserts: { type: "array", maxItems: 64, items: courseEntitySchemaReference },
     deletes: {
       type: "array",
       maxItems: 64,
-      items: objectSchema({
-        entityType: stringSchema({
-          enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
-        }),
-        entityId: stringSchema({ minLength: 1, maxLength: 240 })
-      })
+      items: courseEntityDeleteSchemaReference
     }
     }),
-    description: "Lote com no máximo 64 alterações somando upserts e deletes."
+    description: "Lote atômico da etapa. Na conclusão, os IDs coincidem com as duas aplicações."
   }
   }, ["operation", "authoringPartId", "materializationId", "expectedMaterializationVersion"]),
   allOf: [{
@@ -1025,7 +1099,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use research para fatos e métricas de Pesquisa; audit_cycle/context antes de auditar, findings para a fila, runs para enumerar todas as rodadas inclusive as limpas e detail para um achado/correção ou uma rodada exata; preserve os deep links literais devolvidos fora das projeções de Observações. Consulte anchored_annotations para manifestações humanas: inbox e target omitem o texto integral, referências e rótulos pessoais, caminhos e links internos; detail exige includeObservationText=true e envia o texto da Observação ao cliente MCP conectado para uma triagem autoral específica, mantendo as demais omissões. Use course_sources para proveniência sem identidades pessoais nem caminhos do Storage. O download de um PDF exige includeAttachmentDownloadUrl=true e envia ao cliente MCP conectado uma credencial temporária de 60 segundos. Use instructional_plan para Partes, course_design para parâmetros, study_units para inspeção, part_materialization para retomada, outline para hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê uma vista delimitada do Curso vivo. Escolha o menor recorte necessário; a primeira página pertinente inclui phaseGuidance focal. Preserve revisões e deep links. Texto integral de Observação e download temporário de PDF exigem as declarações explícitas do schema.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
@@ -1553,7 +1627,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso vivo, suas Anotações ancoradas e o ciclo de auditoria. Releia a vista correspondente, envie checks e evidências públicos sem raciocínio privado, proponha antes de aplicar e verifique depois da aplicação. Aplicar ou desfazer uma correção exige confirmed=true após confirmação humana explícita. Use somente as versões exigidas; cada alteração é limitada e idempotente.",
+    description: "Altera o Curso por operação tipada. Releia a vista, preserve requestId e versões e siga phaseGuidance. Proponha antes de aplicar e verifique depois.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -1576,20 +1650,20 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       auditCommand: auditCommandSchema,
       variantCommand: courseVariantCommandSchema,
       materializationCommand: materializationCommandSchema,
-      upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
-      sourceAttributionApplications: sourceAttributionApplicationsSchema,
+      upserts: { type: "array", maxItems: 200, items: courseEntitySchemaReference },
+      sourceAttributionApplications: sourceAttributionApplicationsSchemaReference,
       deletes: {
         type: "array",
         maxItems: 200,
-        items: objectSchema({
-          entityType: stringSchema({
-            enum: ["module", "lesson", "topic", "microsequence", "study_unit"]
-          }),
-          entityId: stringSchema({ minLength: 1, maxLength: 240 })
-        })
+        items: courseEntityDeleteSchemaReference
       }
       }, ["requestId", "courseId", "operation"]),
-      $defs: { sourceLinks: sourceLinksSchema },
+      $defs: {
+        sourceLinks: sourceLinksSchema,
+        courseEntity: courseEntitySchema,
+        courseEntityDelete: courseEntityDeleteSchema,
+        sourceAttributionApplications: sourceAttributionApplicationsSchema
+      },
       allOf: [{
         if: {
           properties: { operation: { const: "update_course_design" } },
@@ -1733,7 +1807,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "consultarComponentesDidaticos",
     title: "Consultar componentes didáticos",
-    description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto.",
+    description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto. contracts aceita exatamente um package por chamada.",
     inputSchema: {
       ...objectSchema({
       operation: stringSchema({
@@ -1998,7 +2072,8 @@ function mapList(raw) {
 function mapRead(raw, {
   requireObservationTextDisclosure = true,
   requireAttachmentDownloadUrlDisclosure = true,
-  allowAttachmentUploadPreparation = false
+  allowAttachmentUploadPreparation = false,
+  inspectionVersion = 2
 } = {}) {
   exactFields(raw, new Set([
     "courseId", "view", "authoringPartId", "materializationId",
@@ -2525,7 +2600,7 @@ function mapRead(raw, {
         maximum: 240
       });
     }
-    return route("GET", `/v1/courses/${courseId}/study-units${searchParams({
+    return route("GET", `/v${inspectionVersion}/courses/${courseId}/study-units${searchParams({
       expectedRevision,
       scopeKind,
       scopeId,
@@ -2623,7 +2698,8 @@ function mapPersonalCourseCopy(raw) {
 function mapChange(raw, {
   requireAnnotationConfirmation = true,
   requireAuditConfirmation = true,
-  allowApplicationCompositionMetadata = false
+  allowApplicationCompositionMetadata = false,
+  normalizeExternalDesignDecision = true
 } = {}) {
   const allowedFields = new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
@@ -2758,6 +2834,31 @@ function mapChange(raw, {
       fail("invalid_tool_argument", "O comando dos parâmetros recebeu campos incompatíveis.");
     }
     const command = boundedJsonObject(raw.designCommand, "designCommand", 32 * 1024);
+    if (normalizeExternalDesignDecision && command.type === "set_parameter") {
+      const mode = requiredText(command.mode, "designCommand.mode", { maximum: 16 });
+      if (!new Set(["automatic", "explicit"]).has(mode)) {
+        fail("invalid_tool_argument", "designCommand.mode é inválido.", {
+          field: "designCommand.mode"
+        });
+      }
+      if (mode === "automatic") {
+        if (command.origin != null) {
+          fail(
+            "invalid_tool_argument",
+            "Uma decisão automática não recebe origin explícita.",
+            { field: "designCommand.origin" }
+          );
+        }
+        command.origin = "automatic";
+      } else if (!new Set(["author", "research_condition"]).has(command.origin)) {
+        fail(
+          "invalid_tool_argument",
+          "Uma decisão explícita exige origin author ou research_condition.",
+          { field: "designCommand.origin" }
+        );
+      }
+      delete command.mode;
+    }
     return route("POST", `/v1/courses/${courseId}/course-design/changes`, requestId, {
       requestId,
       expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
@@ -3188,7 +3289,11 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
   throw new AuthoringApiError(404, "unknown_tool", "Ferramenta de autoria inexistente.");
 }
 
-export function mapAuthoringApplicationToolCall(name, rawArguments) {
+export function mapAuthoringApplicationToolCall(
+  name,
+  rawArguments,
+  { inspectionVersion = 1 } = {}
+) {
   const raw = object(rawArguments ?? {}, "arguments");
   if (name === "gerirPessoas") return mapPeople(raw);
   if (name === "criarCopiaPessoalDoCurso") return mapPersonalCourseCopy(raw);
@@ -3198,14 +3303,16 @@ export function mapAuthoringApplicationToolCall(name, rawArguments) {
     return mapRead(raw, {
       requireObservationTextDisclosure: false,
       requireAttachmentDownloadUrlDisclosure: false,
-      allowAttachmentUploadPreparation: true
+      allowAttachmentUploadPreparation: true,
+      inspectionVersion
     });
   }
   if (name === "alterarCurso") {
     return mapChange(raw, {
       requireAnnotationConfirmation: false,
       requireAuditConfirmation: false,
-      allowApplicationCompositionMetadata: true
+      allowApplicationCompositionMetadata: true,
+      normalizeExternalDesignDecision: false
     });
   }
   return mapAuthoringMcpToolCall(name, raw);

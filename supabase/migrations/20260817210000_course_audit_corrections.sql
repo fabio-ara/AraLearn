@@ -991,7 +991,9 @@ begin
     raise exception 'O desenho focal possui mais de 8 parâmetros.' using errcode='54000';
   end if;
   select coalesce(jsonb_agg(jsonb_build_object(
-    'parameterId',entry->>'parameterId','value',entry#>'{effectiveAssignment,value}',
+    'parameterId',entry->>'parameterId',
+    'changeId',entry#>'{effectiveAssignment,changeId}',
+    'value',entry#>'{effectiveAssignment,value}',
     'origin',entry#>>'{effectiveAssignment,origin}',
     'reason',entry#>>'{effectiveAssignment,reason}',
     'sourceScope',entry#>'{effectiveAssignment,sourceScope}',

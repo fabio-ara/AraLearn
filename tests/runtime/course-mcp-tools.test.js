@@ -339,7 +339,7 @@ test("mapeia lista, leituras e criação sem identidade indireta", () => {
       limit: 12,
       maxBytes: 262144
     }).path,
-    `/v1/courses/${COURSE_ID}/study-units?expectedRevision=4` +
+    `/v2/courses/${COURSE_ID}/study-units?expectedRevision=4` +
       `&scopeKind=authoring_part&scopeId=${PART_ID}&anchorStudyUnitId=unit-a` +
       "&direction=backward&limit=12&maxBytes=262144"
   );
@@ -720,14 +720,38 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
       "commit_course_composition",
       "advance_part_materialization"
   ]);
-  assert.equal(schema.properties.planCommand.additionalProperties, false);
-  assert.equal(Object.hasOwn(schema.properties.planCommand.properties, "authoringGuidance"), false);
+  const planBranches = schema.properties.planCommand.oneOf;
+  const planBranch = (type) => planBranches.find((branch) =>
+    branch.properties.type.const === type
+  );
+  assert.match(
+    mapAuthoringApplicationToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "study_units",
+      expectedRevision: 4
+    }).path,
+    new RegExp(`^/v1/courses/${COURSE_ID}/study-units\\?`, "u")
+  );
+  assert.match(
+    mapAuthoringApplicationToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "study_units",
+      expectedRevision: 4
+    }, { inspectionVersion: 2 }).path,
+    new RegExp(`^/v2/courses/${COURSE_ID}/study-units\\?`, "u")
+  );
+  assert.equal(planBranches.length, 14);
+  assert.equal(planBranch("add_part").additionalProperties, false);
+  assert.deepEqual(planBranch("add_part").required, ["type", "id", "position", "title"]);
+  assert.equal(Object.hasOwn(planBranch("add_part").properties, "partId"), false);
+  assert.equal(Object.hasOwn(planBranch("remove_part").properties, "title"), false);
+  assert.equal(planBranch("update_plan").anyOf.length, 5);
   assert.equal(schema.properties.designCommand.oneOf.length, 8);
   assert.equal(
     schema.properties.designCommand.oneOf[7].properties.type.const,
     "set_target_plan_items"
   );
-  assert.equal(schema.properties.designCommand.oneOf[0].allOf.length, 4);
+  assert.equal(schema.properties.designCommand.oneOf[0].allOf.length, 5);
   assert.equal(
     schema.properties.designCommand.oneOf[0].properties.value.anyOf[1].minItems,
     1
@@ -762,9 +786,10 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     .includes("sourceAttributionApplications"));
   assert.ok(operationBranch("advance_part_materialization").then.required
     .includes("materializationCommand"));
-  assert.ok(schema.properties.planCommand.properties.type.enum.includes("split_part"));
-  assert.ok(schema.properties.planCommand.properties.type.enum.includes("assign_microsequence"));
-  assert.equal(schema.properties.planCommand.properties.microsequenceIds.maxItems, 64);
+  assert.equal(planBranch("split_part").properties.microsequenceIds.maxItems, 64);
+  assert.deepEqual(planBranch("assign_microsequence").required, [
+    "type", "partId", "microsequenceId", "position"
+  ]);
   assert.equal(schema.properties.materializationCommand.properties.steps.maxItems, 64);
   assert.equal(
     schema.properties.materializationCommand.properties.designApplication.anyOf[1].type,
@@ -1351,6 +1376,12 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   const validateChange = ajv.compile(changeSchema);
   const validateRead = ajv.compile(readSchema);
+  const readDescription = COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").description;
+  const changeDescription = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").description;
+  assert.ok(readDescription.length < 320);
+  assert.ok(changeDescription.length < 320);
+  assert.match(readDescription, /phaseGuidance focal/iu);
+  assert.match(changeDescription, /Proponha antes de aplicar e verifique depois/iu);
   const sourceChange = {
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
@@ -1425,8 +1456,15 @@ test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => 
   };
   assert.equal(validateChange({
     ...sourceChange,
-    sourceCommand: astralAnchor
+    sourceCommand: {
+      ...astralAnchor,
+      humanLocator: "Unidade 4 · Slide 12 · Figura 2"
+    }
   }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: { ...astralAnchor, humanLocator: "x".repeat(501) }
+  }), false);
   assert.equal(validateChange({
     ...sourceChange,
     sourceCommand: {
@@ -1719,16 +1757,27 @@ test("preparo de anexo exige a aplicação e MCP só mapeia download após discl
 });
 
 test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais entidades", () => {
-  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
-    .inputSchema.properties.upserts.items;
-  assert.equal(schema.properties.position.minimum, 0);
-  assert.deepEqual(schema.allOf, [{
-    if: {
-      properties: { entityType: { const: "study_unit" } },
-      required: ["entityType"]
-    },
-    then: { properties: { position: { minimum: 1 } } }
-  }]);
+  const changeSchema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
+    .inputSchema;
+  assert.equal(changeSchema.properties.upserts.items.$ref, "#/$defs/courseEntity");
+  const schema = changeSchema.$defs.courseEntity;
+  const entityBranch = (type) => schema.oneOf.find((branch) =>
+    branch.properties.entityType.const === type
+  );
+  assert.equal(entityBranch("module").properties.position.minimum, 0);
+  assert.equal(entityBranch("study_unit").properties.position.minimum, 1);
+  assert.equal(entityBranch("module").properties.parentType.type, "null");
+  assert.equal(entityBranch("lesson").properties.parentType.const, "module");
+  assert.deepEqual(entityBranch("microsequence").properties.content.properties.role.enum, [
+    "explain", "practice", "review", "support"
+  ]);
+  for (const type of ["module", "lesson", "topic", "microsequence"]) {
+    assert.equal(entityBranch(type).properties.content.properties.id, undefined);
+    assert.equal(entityBranch(type).properties.content.required.includes("id"), false);
+  }
+  assert.deepEqual(entityBranch("module").properties.content.properties.guide.required, [
+    "goal", "include", "exclude", "notation", "avoid"
+  ]);
 });
 
 test("perfil e acesso direto ao Estudo permanecem na aplicação e fora do MCP público", () => {
@@ -2095,4 +2144,70 @@ test("schema MCP condiciona revisão do Curso sem aumentar o registro de tools",
   };
   assert.equal(validate(revise), true, JSON.stringify(validate.errors));
   assert.equal(validate({ ...revise, expectedRevision: 7 }), false);
+});
+
+test("parâmetro externo distingue herança, resolução automática e decisão explícita", () => {
+  const base = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_design"
+  };
+  const automatic = mapAuthoringMcpToolCall("alterarCurso", {
+    ...base,
+    designCommand: {
+      type: "set_parameter",
+      scope: { kind: "didactic_microsequence", ref: "micro-a" },
+      parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+      value: 3,
+      mode: "automatic",
+      reason: "O contexto pede três oportunidades distintas para variar suporte e caso."
+    }
+  });
+  assert.deepEqual(automatic.body.command, {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+    value: 3,
+    reason: "O contexto pede três oportunidades distintas para variar suporte e caso.",
+    origin: "automatic"
+  });
+  const explicit = mapAuthoringMcpToolCall("alterarCurso", {
+    ...base,
+    designCommand: {
+      type: "set_parameter",
+      scope: { kind: "didactic_microsequence", ref: "micro-a" },
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+      value: 2,
+      mode: "explicit",
+      origin: "research_condition",
+      reason: "Condição experimental fixada antes da produção."
+    }
+  });
+  assert.equal(explicit.body.command.mode, undefined);
+  assert.equal(explicit.body.command.origin, "research_condition");
+  assert.throws(
+    () => mapAuthoringMcpToolCall("alterarCurso", {
+      ...base,
+      designCommand: {
+        type: "set_parameter",
+        scope: { kind: "didactic_microsequence", ref: "micro-a" },
+        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+        value: 2,
+        origin: "automatic",
+        reason: "Rótulo antigo ambíguo."
+      }
+    }),
+    (error) => error.code === "invalid_tool_argument" &&
+      error.details?.field === "designCommand.mode"
+  );
+  const inherited = mapAuthoringMcpToolCall("alterarCurso", {
+    ...base,
+    designCommand: {
+      type: "clear_parameter",
+      scope: { kind: "didactic_microsequence", ref: "micro-a" },
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit"
+    }
+  });
+  assert.equal(inherited.body.command.type, "clear_parameter");
 });

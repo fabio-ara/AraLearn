@@ -1,6 +1,6 @@
 import { assertAssistProviderEndpointAllowed } from "../../assist/providerRuntimeSecurity.js";
 
-const PROVIDER_IDS = new Set(["openai", "gemini", "deepseek", "local"]);
+const PROVIDER_IDS = new Set(["openai", "gemini", "deepseek"]);
 const RETRYABLE_HTTP_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 const DEFAULT_TIMEOUT_MS = 45_000;
 const MAX_TIMEOUT_MS = 120_000;
@@ -13,19 +13,13 @@ export const STUDY_UNIT_PROVIDER_LIMITS = Object.freeze({
 const DEFAULT_ENDPOINTS = Object.freeze({
   openai: "https://api.openai.com/v1/responses",
   gemini: "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-  deepseek: "https://api.deepseek.com/chat/completions",
-  local: "http://127.0.0.1:4183/v1/chat/completions"
+  deepseek: "https://api.deepseek.com/chat/completions"
 });
 
 const PROVIDER_ORIGINS = Object.freeze({
   openai: Object.freeze(new Set(["https://api.openai.com"])),
   gemini: Object.freeze(new Set(["https://generativelanguage.googleapis.com"])),
-  deepseek: Object.freeze(new Set(["https://api.deepseek.com"])),
-  local: Object.freeze(new Set([
-    "http://127.0.0.1:4183",
-    "http://localhost:4183",
-    "http://10.0.2.2:4183"
-  ]))
+  deepseek: Object.freeze(new Set(["https://api.deepseek.com"]))
 });
 
 export class StudyUnitProviderError extends Error {
@@ -62,9 +56,7 @@ function normalizedTimeout(value) {
   return Math.max(1_000, Math.min(MAX_TIMEOUT_MS, Math.floor(requested)));
 }
 
-function providerEndpoint(providerId, model, endpoint) {
-  const requested = text(endpoint);
-  if (requested) return requested.replace("{model}", encodeURIComponent(model));
+function providerEndpoint(providerId, model) {
   return DEFAULT_ENDPOINTS[providerId].replace("{model}", encodeURIComponent(model));
 }
 
@@ -96,28 +88,15 @@ export function normalizeStudyUnitProviderConfig(value = {}, runtimeConfig) {
     );
   }
   const model = normalizedModel(value.model);
-  const developmentRuntime = runtimeConfig?.developmentRuntime === true;
-  if (providerId !== "local" && !developmentRuntime) {
-    throw new StudyUnitProviderError(
-      "direct_provider_credential_forbidden",
-      "Nesta instalação, use o serviço local. Chaves de provedor não são aceitas no navegador."
-    );
-  }
   const endpoint = assertProviderEndpointMatches(
     providerId,
     assertAssistProviderEndpointAllowed(
-      providerEndpoint(providerId, model, value.endpoint),
+      providerEndpoint(providerId, model),
       runtimeConfig
     )
   );
   const apiKey = text(value.apiKey);
-  if (providerId === "local" && apiKey && !developmentRuntime) {
-    throw new StudyUnitProviderError(
-      "local_provider_credential_forbidden",
-      "Configure a credencial no serviço local, fora do AraLearn."
-    );
-  }
-  if (providerId !== "local" && !apiKey) {
+  if (!apiKey) {
     throw new StudyUnitProviderError(
       "provider_credential_missing",
       "Informe a credencial do serviço de linguagem."
@@ -179,10 +158,6 @@ function geminiBody({ system, prompt, schema }) {
   };
 }
 
-function localTargetAddressSpace(endpoint) {
-  return new URL(endpoint).hostname === "10.0.2.2" ? "local" : "loopback";
-}
-
 export function buildStudyUnitProviderRequest(config, { system, prompt, schema }) {
   const headers = { "content-type": "application/json" };
   let body;
@@ -200,11 +175,9 @@ export function buildStudyUnitProviderRequest(config, { system, prompt, schema }
     url: config.endpoint,
     init: Object.freeze({
       method: "POST",
+      redirect: "error",
       headers: Object.freeze(headers),
-      body: JSON.stringify(body),
-      ...(config.providerId === "local"
-        ? { targetAddressSpace: localTargetAddressSpace(config.endpoint) }
-        : {})
+      body: JSON.stringify(body)
     })
   });
 }
@@ -444,7 +417,7 @@ export async function callStudyUnitProvider({
   if (globalThis.navigator?.onLine === false) {
     throw new StudyUnitProviderError(
       "provider_offline",
-      "A assistência por API fica disponível quando a conexão voltar."
+      "A Assistência por IA fica disponível quando a conexão voltar."
     );
   }
   let lastError;

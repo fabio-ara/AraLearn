@@ -8,6 +8,7 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { listManualStudyUnitTargetIds } from "../ui/manualStudyUnitEdit.js";
 import { renderHomeScreen } from "../ui/renderHomeScreen.js";
+import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 
 function escapeHtml(value) {
@@ -19,19 +20,17 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function topbar(title, backTitle = "Voltar", upTitle = "", modeControls = "") {
+function topbar(title, backTitle = "Voltar", modeControls = "") {
   return (
     '<header class="topbar lesson-topbar navigation-topbar">' +
+    '<nav class="navigation-primary-actions" aria-label="Navegação">' +
     '<button class="icon-ghost" type="button" data-action="go-back" title="' +
     escapeHtml(backTitle) + '" aria-label="' + escapeHtml(backTitle) + '">' +
     renderUiIcon("arrow-left", "home-tab-icon") + "</button>" +
-    (upTitle
-      ? '<button class="icon-ghost navigation-up" type="button" data-action="go-up"' +
-        ' title="' + escapeHtml(upTitle) + '" aria-label="' + escapeHtml(upTitle) + '">' +
-        renderUiIcon("arrow-up", "home-tab-icon") + "</button>"
-      : '<span class="navigation-up-slot" aria-hidden="true"></span>') +
-    '<div class="topbar-heading"><div class="topbar-title">' + escapeHtml(title) +
-    '</div></div><div class="lesson-top-actions">' + modeControls +
+    '<button class="icon-ghost" type="button" data-action="go-home" title="Home" aria-label="Home">' +
+    renderUiIcon("home", "home-tab-icon") + "</button></nav>" +
+    '<div class="topbar-heading"><span class="visually-hidden">' + escapeHtml(title) +
+    '</span>' + modeControls + '</div><div class="lesson-top-actions">' +
     '<button class="icon-ghost" type="button" data-action="open-settings"' +
     ' title="Conta e aparência" aria-label="Conta e aparência">' +
     renderUiIcon("more", "home-tab-icon") + "</button></div></header>"
@@ -95,13 +94,17 @@ function navigationCard({
   openAction,
   openLabel,
   resetLabel = "",
-  studyUnitIndex = null
+  studyUnitIndex = null,
+  assistanceSelection = null,
+  structuralEdit = null
 }) {
   const percentage = total ? Math.round((completed / total) * 100) : 0;
   const attributes = Object.entries(ids).map(([name, value]) =>
     ` data-${name}="${escapeHtml(value)}"`).join("");
   return (
-    '<article class="clean-card progress-card structure-list-card navigation-list-card" data-study-level="' +
+    '<article class="clean-card progress-card structure-list-card navigation-list-card' +
+    (assistanceSelection?.selected ? " is-assistance-selected" : "") +
+    (structuralEdit?.selected ? " is-structure-selected" : "") + '" data-study-level="' +
     escapeHtml(level) + '"' + attributes + ">" +
     '<div class="card-progress-fill" style="width:' + String(percentage) + '%"></div>' +
     '<div class="lesson-copy structure-copy navigation-main">' +
@@ -115,6 +118,32 @@ function navigationCard({
         metric(detailIcon, String(detailCount), "Quantidade")
       : "") + "</p></div>" +
     '<div class="lesson-actions structure-actions navigation-actions">' +
+    (assistanceSelection?.enabled
+      ? '<button class="icon-ghost" type="button" data-action="toggle-assistance-target"' +
+        ' data-assistance-target-id="' + escapeHtml(assistanceSelection.id) + '"' +
+        ' aria-pressed="' + String(assistanceSelection.selected) + '" aria-label="' +
+        escapeHtml((assistanceSelection.selected ? "Retirar " : "Selecionar ") + title) + '" title="' +
+        escapeHtml(assistanceSelection.selected ? "Retirar da seleção" : "Selecionar") + '">' +
+        renderUiIcon(assistanceSelection.selected ? "save" : "add", "home-tab-icon") + '</button>'
+      : "") +
+    (structuralEdit?.enabled
+      ? '<button class="icon-ghost" type="button" data-action="select-study-structure-child"' +
+        ' data-child-id="' + escapeHtml(structuralEdit.id) + '" aria-pressed="' +
+        String(structuralEdit.selected) + '" aria-label="Selecionar ' + escapeHtml(title) +
+        '" title="Selecionar">' + renderUiIcon("edit", "home-tab-icon") + '</button>' +
+        (structuralEdit.selected
+          ? '<button class="icon-ghost" type="button" data-action="move-study-structure-child"' +
+            ' data-child-id="' + escapeHtml(structuralEdit.id) + '" data-direction="up"' +
+            (structuralEdit.first ? ' disabled aria-disabled="true"' : '') +
+            ' aria-label="Mover para cima" title="Mover para cima">' +
+            renderUiIcon("arrow-up", "home-tab-icon") + '</button>' +
+            '<button class="icon-ghost" type="button" data-action="move-study-structure-child"' +
+            ' data-child-id="' + escapeHtml(structuralEdit.id) + '" data-direction="down"' +
+            (structuralEdit.last ? ' disabled aria-disabled="true"' : '') +
+            ' aria-label="Mover para baixo" title="Mover para baixo">' +
+            renderUiIcon("arrow-down", "home-tab-icon") + '</button>'
+          : "")
+      : "") +
     (completed > 0 && resetLabel
       ? '<button class="icon-ghost" type="button" data-action="reset-study-progress"' +
         attributes + ' data-reset-level="' + escapeHtml(level) + '" title="' +
@@ -198,36 +227,51 @@ function renderAssistanceDraftDock(assistance = {}, scope) {
     `${assistance.saving ? "Salvando…" : "Salvar"}</span></button></div></section>`;
 }
 
-function renderStructuralEditor(structuralEditor, { titleLabel, goalLabel, childrenLabel }) {
+function assistanceSelectionLabel(selection, scope) {
+  const count = selection?.ids?.length || 0;
+  if (scope === "study_unit") {
+    return selection?.ids?.includes("study_unit")
+      ? "Unidade inteira"
+      : `${count} ${count === 1 ? "componente" : "componentes"}`;
+  }
+  if (scope === "didactic_microsequence") {
+    return `${count} ${count === 1 ? "Unidade" : "Unidades"}`;
+  }
+  return `${count} ${count === 1 ? "Microssequência" : "Microssequências"}`;
+}
+
+function renderAssistanceSelectionDock(assistance = {}, scope) {
+  if (assistance.selection?.scope !== scope) return "";
+  return '<section class="study-assistance-selection-dock" aria-label="Alcance da Assistência por IA">' +
+    '<p><span>Alterar</span><strong>' +
+    escapeHtml(assistanceSelectionLabel(assistance.selection, scope)) + '</strong></p><div>' +
+    '<button class="icon-ghost" type="button" data-action="cancel-assistance-selection"' +
+    ' aria-label="Cancelar seleção" title="Cancelar seleção">' +
+    renderUiIcon("remove-state", "home-tab-icon") + '</button>' +
+    '<button class="open-mini" type="button" data-action="start-assistance-chat">' +
+    renderUiIcon("prompt", "home-tab-icon") + '<span>Conversar</span></button></div></section>';
+}
+
+function renderStructuralEditor(structuralEditor, { titleLabel, goalLabel }) {
   if (!structuralEditor?.editing) return "";
   const fields = structuralEditor.fields || {};
-  const children = structuralEditor.children || [];
-  return '<section class="clean-card study-structure-editor" aria-label="Edição de ' +
+  return '<section class="clean-card entity-summary-card study-structure-editor" aria-label="Edição de ' +
     escapeHtml(structuralEditor.label) + '">' +
-    (fields.title == null ? "" : '<label><span>' + escapeHtml(titleLabel) + '</span>' +
-      '<input data-study-structure-field="title" value="' + escapeHtml(fields.title) +
-      '" maxlength="300" required></label>') +
-    (fields.goal == null ? "" : '<label><span>' + escapeHtml(goalLabel) + '</span>' +
-      '<textarea data-study-structure-field="goal" maxlength="2000" required>' +
-      escapeHtml(fields.goal) + '</textarea></label>') +
-    (children.length ? '<fieldset><legend>' + escapeHtml(childrenLabel) + '</legend><ol>' +
-      children.map((child, index) => '<li><span>' + escapeHtml(child.title) + '</span><span>' +
-        '<button class="icon-ghost" type="button" data-action="move-study-structure-child"' +
-        ' data-child-id="' + escapeHtml(child.id) + '" data-direction="up"' +
-        (index === 0 ? ' disabled aria-disabled="true"' : '') +
-        ' aria-label="Mover para cima" title="Mover para cima">' +
-        renderUiIcon("arrow-up", "home-tab-icon") + '</button>' +
-        '<button class="icon-ghost" type="button" data-action="move-study-structure-child"' +
-        ' data-child-id="' + escapeHtml(child.id) + '" data-direction="down"' +
-        (index === children.length - 1 ? ' disabled aria-disabled="true"' : '') +
-        ' aria-label="Mover para baixo" title="Mover para baixo">' +
-        renderUiIcon("arrow-down", "home-tab-icon") + '</button></span></li>').join('') +
-      '</ol></fieldset>' : '') +
+    (fields.title == null ? "" : '<h1 class="card-title" contenteditable="plaintext-only"' +
+      ' data-study-structure-field="title" data-maxlength="300" role="textbox"' +
+      ' aria-label="' + escapeHtml(titleLabel) + '">' + escapeHtml(fields.title) + '</h1>') +
+    (fields.goal == null ? "" : '<p class="card-subtitle" contenteditable="plaintext-only"' +
+      ' data-study-structure-field="goal" data-maxlength="2000" role="textbox"' +
+      ' aria-label="' + escapeHtml(goalLabel) + '">' + escapeHtml(fields.goal) + '</p>') +
     (structuralEditor.error
       ? '<p class="study-structure-editor-error" role="alert">' +
         escapeHtml(structuralEditor.error) + '</p>'
-      : '') +
-    '<footer><button class="icon-ghost" type="button" data-action="cancel-study-structure"' +
+      : '') + '</section>';
+}
+
+function renderStructuralEditDock(structuralEditor) {
+  if (!structuralEditor?.editing) return "";
+  return '<footer class="study-structure-edit-dock" aria-label="Ações da edição"><button class="icon-ghost" type="button" data-action="cancel-study-structure"' +
     ' aria-label="Cancelar edição" title="Cancelar edição"' +
     (structuralEditor.saving ? ' disabled aria-disabled="true"' : '') + '>' +
     renderUiIcon("remove-state", "home-tab-icon") + '</button>' +
@@ -235,11 +279,12 @@ function renderStructuralEditor(structuralEditor, { titleLabel, goalLabel, child
     ' aria-label="Salvar edição" title="Salvar edição"' +
     (structuralEditor.saving ? ' disabled aria-disabled="true"' : '') + '>' +
     renderUiIcon(structuralEditor.saving ? "rotate" : "save", "home-tab-icon") +
-    '</button></footer></section>';
+    '</button></footer>';
 }
 
 function renderCourse(course, progress, runtimeStatus, structuralEditor) {
-  const modules = (course.modules || []).map((moduleValue) => navigationCard({
+  const moduleItems = course.modules || [];
+  const modules = moduleItems.map((moduleValue, index) => navigationCard({
     level: "module",
     ids: { "course-id": course.id, "module-id": moduleValue.id },
     title: moduleValue.title || moduleValue.id,
@@ -250,7 +295,14 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
     detailCount: (moduleValue.lessons || []).length,
     openAction: "open-module",
     openLabel: "Abrir módulo",
-    resetLabel: "Zerar progresso deste Módulo"
+    resetLabel: "Zerar progresso deste Módulo",
+    structuralEdit: structuralEditor?.editing ? {
+      enabled: true,
+      id: moduleValue.id,
+      selected: structuralEditor.selectedChildId === moduleValue.id,
+      first: index === 0,
+      last: index === moduleItems.length - 1
+    } : null
   })).join("");
   const modes = renderModeControls({
     label: "Curso",
@@ -258,7 +310,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Curso", "Menu principal", "Subir para a Home", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Curso", "Voltar", modes) + runtimeNotice(runtimeStatus) +
     '<main class="screen-content course-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -268,11 +320,13 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
         })
       : summary(course.title || "Curso", course.goal || "")) +
     '<h2 class="section-heading">Módulos</h2><section class="navigation-list">' +
-    (modules || '<p class="empty-state-copy">Sem módulos.</p>') + "</section></main></section>";
+    (modules || '<p class="empty-state-copy">Sem módulos.</p>') + "</section>" +
+    renderStructuralEditDock(structuralEditor) + "</main></section>";
 }
 
 function renderModule(course, moduleValue, progress, runtimeStatus, structuralEditor) {
-  const lessons = (moduleValue.lessons || []).map((lesson) => navigationCard({
+  const lessonItems = moduleValue.lessons || [];
+  const lessons = lessonItems.map((lesson, index) => navigationCard({
     level: "lesson",
     ids: { "course-id": course.id, "module-id": moduleValue.id, "lesson-id": lesson.id },
     title: lesson.title || lesson.id,
@@ -283,7 +337,14 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
     detailCount: (lesson.microsequences || []).length,
     openAction: "open-lesson",
     openLabel: "Abrir lição",
-    resetLabel: "Zerar progresso desta Lição"
+    resetLabel: "Zerar progresso desta Lição",
+    structuralEdit: structuralEditor?.editing ? {
+      enabled: true,
+      id: lesson.id,
+      selected: structuralEditor.selectedChildId === lesson.id,
+      first: index === 0,
+      last: index === lessonItems.length - 1
+    } : null
   })).join("");
   const modes = renderModeControls({
     label: "Módulo",
@@ -291,7 +352,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Módulo", "Voltar", "Subir para o Curso", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Módulo", "Voltar", modes) + runtimeNotice(runtimeStatus) +
     '<main class="screen-content course-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -301,14 +362,16 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
         })
       : summary(moduleValue.title || "Módulo", moduleValue.guide?.goal || "")) +
     '<h2 class="section-heading">Lições</h2><section class="navigation-list">' +
-    (lessons || '<p class="empty-state-copy">Sem lições.</p>') + "</section></main></section>";
+    (lessons || '<p class="empty-state-copy">Sem lições.</p>') + "</section>" +
+    renderStructuralEditDock(structuralEditor) + "</main></section>";
 }
 
 function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assistance, structuralEditor) {
   const completedIds = new Set(
     progressEntry(course, moduleValue, lesson, progress)?.completedStudyUnitIds || []
   );
-  const rows = (lesson.microsequences || []).map((microsequence) => {
+  const microsequenceItems = lesson.microsequences || [];
+  const rows = microsequenceItems.map((microsequence, index) => {
     const units = microsequence.studyUnits || [];
     return navigationCard({
       level: "microsequence",
@@ -326,7 +389,19 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
       detailCount: units.length,
       openAction: "open-microsequence",
       openLabel: "Abrir microssequência didática",
-      resetLabel: "Zerar progresso desta Microssequência didática"
+      resetLabel: "Zerar progresso desta Microssequência didática",
+      assistanceSelection: assistance.selection?.scope === "lesson" ? {
+        enabled: true,
+        id: microsequence.id,
+        selected: assistance.selection.ids.includes(microsequence.id)
+      } : null,
+      structuralEdit: structuralEditor?.editing ? {
+        enabled: true,
+        id: microsequence.id,
+        selected: structuralEditor.selectedChildId === microsequence.id,
+        first: index === 0,
+        last: index === microsequenceItems.length - 1
+      } : null
     });
   }).join("");
   const modes = renderModeControls({
@@ -336,7 +411,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
     assistanceAction: assistance.enabled ? "open-lesson-assistance" : "",
     disabled: assistance.saving || structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Lição", "Voltar", "Subir para o Módulo", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Lição", "Voltar", modes) + runtimeNotice(runtimeStatus) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -347,6 +422,8 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
       : summary(lesson.title || "Lição", lesson.guide?.goal || "")) +
     '<h2 class="section-heading">Microssequências didáticas</h2><section class="navigation-list">' +
     (rows || '<p class="empty-state-copy">Sem microssequências.</p>') + "</section>" +
+    renderStructuralEditDock(structuralEditor) +
+    renderAssistanceSelectionDock(assistance, "lesson") +
     renderAssistanceDraftDock(assistance, "lesson") + "</main></section>";
 }
 
@@ -363,7 +440,8 @@ function renderMicrosequenceOverview(
   const completedIds = new Set(
     progressEntry(course, moduleValue, lesson, progress)?.completedStudyUnitIds || []
   );
-  const units = (microsequence.studyUnits || []).map((studyUnit, index) => navigationCard({
+  const unitItems = microsequence.studyUnits || [];
+  const units = unitItems.map((studyUnit, index) => navigationCard({
     level: "study-unit",
     ids: {
       "course-id": course.id,
@@ -379,7 +457,19 @@ function renderMicrosequenceOverview(
     openAction: "open-study-unit",
     openLabel: "Abrir unidade",
     resetLabel: "Zerar progresso a partir desta Unidade de estudo",
-    studyUnitIndex: index
+    studyUnitIndex: index,
+    assistanceSelection: assistance.selection?.scope === "didactic_microsequence" ? {
+      enabled: true,
+      id: studyUnit.id,
+      selected: assistance.selection.ids.includes(studyUnit.id)
+    } : null,
+    structuralEdit: structuralEditor?.editing ? {
+      enabled: true,
+      id: studyUnit.id,
+      selected: structuralEditor.selectedChildId === studyUnit.id,
+      first: index === 0,
+      last: index === unitItems.length - 1
+    } : null
   })).join("");
   const modes = renderModeControls({
     label: "Microssequência didática",
@@ -389,7 +479,7 @@ function renderMicrosequenceOverview(
     disabled: assistance.saving || structuralEditor?.saving
   });
   return '<section class="screen microsequence-overview-screen">' +
-    topbar("Microssequência didática", "Voltar", "Subir para a Lição", modes) +
+    topbar("Microssequência didática", "Voltar", modes) +
     runtimeNotice(runtimeStatus) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
     (structuralEditor?.editing
@@ -401,6 +491,8 @@ function renderMicrosequenceOverview(
       : summary(microsequence.title || "Microssequência didática", microsequence.goal || "")) +
     '<h2 class="section-heading">Unidades</h2><section class="navigation-list">' +
     (units || '<p class="empty-state-copy">Sem unidades.</p>') + "</section>" +
+    renderStructuralEditDock(structuralEditor) +
+    renderAssistanceSelectionDock(assistance, "didactic_microsequence") +
     renderAssistanceDraftDock(assistance, "didactic_microsequence") + "</main></section>";
 }
 
@@ -417,7 +509,12 @@ function citationSelectorLabel(selector) {
   return `“${selector.exact}”`;
 }
 
-function renderStudyCitations({ open, loading, value, error }) {
+function citationAnchorLabel(anchor) {
+  const exact = citationSelectorLabel(anchor.selector);
+  return anchor.humanLocator ? `${anchor.humanLocator} · ${exact}` : exact;
+}
+
+function renderStudyCitations({ open, loading, value, error, courseId, canAuthorSources }) {
   if (!open) return "";
   let content;
   if (loading) {
@@ -430,16 +527,29 @@ function renderStudyCitations({ open, loading, value, error }) {
   } else {
     content = '<ol class="study-citation-list">' + value.citations.map((citation) =>
       '<li><article><h3>' + escapeHtml(citation.title) + "</h3>" +
-      `<p>${escapeHtml(citation.citationText)}</p>` +
+      `<p class="study-citation-reference">${escapeHtml(citation.citationText)}</p>` +
       (citation.editionOrVersion
         ? `<small>${escapeHtml(citation.editionOrVersion)}</small>`
         : "") +
+      `<small>${citation.url ? "Link externo disponível" : "Referência sem link público"}</small>` +
       (citation.anchors.length
-        ? `<ul>${citation.anchors.map(({ selector }) =>
-            `<li>${escapeHtml(citationSelectorLabel(selector))}</li>`).join("")}</ul>`
+        ? `<ul>${citation.anchors.map((anchor) =>
+            `<li><span>${escapeHtml(citationAnchorLabel(anchor))}</span>` +
+            (canAuthorSources
+              ? `<a href="${escapeHtml(buildCourseAuthoringRoute(courseId, {
+                  section: "sources",
+                  sourceId: citation.sourceId,
+                  anchorId: anchor.anchorId
+                }))}" data-study-source-return aria-label="Revisar esta âncora">Revisar</a>`
+              : "") + "</li>").join("")}</ul>`
         : "") +
       (citation.url
         ? `<a href="${escapeHtml(citation.url)}" target="_blank" rel="noreferrer">Abrir fonte</a>`
+        : "") +
+      (canAuthorSources
+        ? `<a href="${escapeHtml(buildCourseAuthoringRoute(courseId, {
+            section: "sources", sourceId: citation.sourceId
+          }))}" data-study-source-return>Revisar Fonte no Curso</a>`
         : "") + "</article></li>").join("") + "</ol>";
   }
   return '<section class="study-citations-panel" aria-labelledby="study-citations-title">' +
@@ -527,6 +637,7 @@ function renderStudyUnit({
   citationsLoading,
   citations,
   citationsError,
+  canAuthorSources,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   const units = microsequence.studyUnits || [];
@@ -534,12 +645,16 @@ function renderStudyUnit({
   const selectedManualTargets = manualTargetIds.includes(manualEditor.targetId)
     ? [manualEditor.targetId]
     : [];
+  const assistanceSelection = manualEditor.assistance?.selection;
+  const selectedAssistanceTargets = assistanceSelection?.scope === "study_unit"
+    ? assistanceSelection.ids.filter((id) => manualTargetIds.includes(id))
+    : [];
   const runtime = renderPackageStudyUnitBlocksWithDock(studyUnit, {
     omitRepeatedHeading: true,
-    resourceSelectionEnabled: manualEditor.editing,
+    resourceSelectionEnabled: manualEditor.editing || Boolean(assistanceSelection),
     resourceSelectionDisabled: manualEditor.saving,
     resourceSelectionTargetIds: manualTargetIds,
-    selectedResourceTargetIds: selectedManualTargets,
+    selectedResourceTargetIds: assistanceSelection ? selectedAssistanceTargets : selectedManualTargets,
     manualEditingTargetId: manualEditor.editing && selectedManualTargets.length
       ? manualEditor.targetId
       : "",
@@ -570,7 +685,7 @@ function renderStudyUnit({
     unit: true
   });
   return '<section class="screen microsequence-workbench-screen">' +
-    topbar(course.title || "Curso", "Voltar", "Subir para a Microssequência", modes) +
+    topbar(course.title || "Curso", "Voltar", modes) +
     runtimeNotice(runtimeStatus) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
@@ -587,15 +702,21 @@ function renderStudyUnit({
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     renderStudyManualHistory(manualEditor) +
-    '<div class="runtime-card-rendered-content">' + renderStudyManualTitle(studyUnit, manualEditor) +
-    '<div class="card-sheet-content">' +
-    runtime.bodyHtml + "</div>" + runtime.dockHtml + "</div></article></section>" +
-    renderStudyCitations({
+    (assistanceSelection
+      ? '<button class="study-assistance-whole-target" type="button"' +
+        ' data-action="toggle-assistance-target" data-assistance-target-id="study_unit"' +
+        ' aria-pressed="' + String(assistanceSelection.ids.includes("study_unit")) + '">' +
+        renderUiIcon("study-unit", "home-tab-icon") + '<span>Unidade inteira</span></button>'
+      : "") +
+    '<div class="runtime-card-rendered-content"><div class="card-sheet-content">' +
+    renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml + renderStudyCitations({
       open: citationsOpen,
       loading: citationsLoading,
       value: citations,
-      error: citationsError
-    }) +
+      error: citationsError,
+      courseId: course.id,
+      canAuthorSources
+    }) + "</div>" + runtime.dockHtml + "</div></article></section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade ' +
     String(studyUnitIndex + 1) + " de " + String(units.length) + '">' +
     renderUiIcon("study-unit", "study-reader-count-icon") +
@@ -605,6 +726,7 @@ function renderStudyUnit({
       ? `<p class="study-manual-status" role="status" aria-live="polite">${escapeHtml(manualEditor.status)}</p>`
       : "") +
     renderAssistanceDraftDock(manualEditor.assistance, "study_unit") +
+    renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") +
     (manualEditor.editing ? renderStudyManualDock(manualEditor) :
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
@@ -649,6 +771,7 @@ export function renderCourseStudyScreen({
   reviewItems = [],
   reviewHasMore = false,
   reviewQueueOpen = false,
+  reviewUndo = null,
   runtimeStatus = {},
   coursePermissionsById,
   selectedCourseId = null,
@@ -665,6 +788,7 @@ export function renderCourseStudyScreen({
   citationsLoading = false,
   citations = null,
   citationsError = "",
+  canAuthorSources = false,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } },
   assistance = { enabled: false, activeScope: "", draft: null, saving: false, error: "" },
   structuralEditor = { enabled: false, editing: false, saving: false }
@@ -676,6 +800,7 @@ export function renderCourseStudyScreen({
       reviewItems,
       reviewHasMore,
       reviewQueueOpen,
+      reviewUndo,
       runtimeStatus,
       selectedCourseId,
       studyNavigation,
@@ -718,6 +843,7 @@ export function renderCourseStudyScreen({
     citationsLoading,
     citations,
     citationsError,
+    canAuthorSources,
     manualEditor
   });
 }

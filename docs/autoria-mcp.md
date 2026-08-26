@@ -60,10 +60,13 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
-O recurso de conhecimento `aralearn://authoring/invariants` contém somente
-invariantes de operação: Curso vivo, leitura antes de escrita, estado dinâmico
-persistido, Parte como agrupamento operacional, descoberta progressiva de
-componentes, materialização por etapas retomáveis e síntese breve do resultado.
+As instruções permanentes contêm somente invariantes transversais: Curso vivo,
+leitura focal antes da escrita, revisões correntes, ausência de invenção e ciclo
+de proposta, aplicação e verificação. Planejamento, desenho, materialização,
+Fontes, inspeção, Auditoria e componentes possuem recursos próprios sob
+`aralearn://authoring/*`. A primeira leitura pertinente também devolve
+`phaseGuidance`; assim o cliente recebe a orientação da fase sem carregar
+simultaneamente os manuais das demais fases.
 
 O recurso visual opcional `ui://aralearn/course-inspector/0.0.23.html` segue a
 extensão MCP Apps. Ele representa a prévia de uma Unidade de estudo, os
@@ -242,7 +245,7 @@ No MCP, a resposta usa `aralearn.mcp-course-sources.v1`. Identidades de ator e
 de atribuição, resumo interno do alvo, Curso de origem do objeto e caminhos do
 Storage permanecem fora; `dataDisclosure` registra essas omissões. A aplicação
 autenticada conserva o DTO interno completo para suas próprias telas. Título,
-autoria declarada, identificador, citação, endereço, edição ou versão, trecho de
+  autoria declarada, identificador, citação, endereço, edição ou versão, localizador humano, trecho de
 verificação e valores textuais dos seletores `text_quote` e `uri_fragment` são
 campos livres potencialmente pessoais que integram o detalhe autoral;
 `dataDisclosure` também os enumera quando esse recorte é enviado ao cliente
@@ -280,12 +283,15 @@ detalhe exige `annotationId` e `includeObservationText: true`. A página admite 
 de até 240 caracteres e resposta de até 256 KiB. Cada item usa
 `aralearn.mcp-anchored-annotation-page.v1`. A projeção comum contém somente
 `annotationId`, versão, origem, canal, espécie e papel da pessoa contribuinte,
-rótulo educacional do alvo, revisão observada, síntese, classificação sem IDs,
+identidade opaca e rótulo educacional do alvo, revisão observada, síntese, classificação sem IDs,
 estado e capacidades. Ela não envia `contributor.ref`, o rótulo protegido da
-pessoa, IDs e caminhos do alvo, links profundos nem IDs de Tópico. O texto
+pessoa, caminhos do alvo, links profundos nem IDs de Tópico. A identidade opaca
+do alvo permite localizar a Unidade, Fonte ou Âncora observada sem expor a
+hierarquia. O texto
 integral da Observação aparece somente no detalhe explicitamente declarado;
-horários exatos permanecem fora. `dataDisclosure` identifica o cliente MCP
-conectado, a finalidade e os campos omitidos. O texto de uma resposta autoral
+horários exatos permanecem fora. `dataDisclosure` identifica o destinatário
+real — `connected_mcp_client` no MCP ou `connected_actions_gpt` em Actions —,
+a finalidade e os campos omitidos. O texto de uma resposta autoral
 anterior também permanece fora do MCP; o recorte informa apenas que ela existe
 e sua espécie. A aplicação autenticada conserva o DTO interno completo para
 suas próprias telas e ações.
@@ -311,6 +317,11 @@ registro de retirada, ela aparece `available: false` e sem link profundo. Depois
 física prevista pelo ciclo de limpeza das Anotações, a exclusão em cascata remove apenas o
 vínculo e o identificador da projeção; nenhum texto, pseudônimo ou dado pessoal
 foi copiado para rodada, achado ou correção.
+
+Cada parâmetro efetivo do desenho inclui seu `changeId` corrente. O cliente usa
+essa identidade em `parameterRefs` para registrar quais decisões de desenho
+foram realmente auditadas; valor e justificativa continuam legíveis, e o
+servidor recusa referência herdada ou substituída que tenha ficado stale.
 
 Ao pedir que o contexto MCP inclua textos de Observações selecionadas, o
 cliente informa `includeObservationText: true`. Sem essa declaração, a leitura
@@ -386,6 +397,12 @@ migração e nunca opção de escrita. Uma identidade legada não resolvida é
 resolvida na mesma identidade, preservando literalmente o identificador; o cliente não a
 normaliza nem cria substituto.
 
+`save_source` registra somente metadados fornecidos ou verificados. Quando um
+dado necessário à referência estiver ausente, o cliente conversa com a pessoa
+antes de escrever e nunca o infere. Em `save_anchor`, `humanLocator` é opcional
+e nomeia a localização declarada pelo material; `selector` continua sendo a
+posição exata e independente.
+
 `update_course_variants` aceita `create_comparison_variants` e
 `detach_comparison_variant`. A criação recebe de duas a oito variantes, fixa o
 ponto comum do planejamento e cria Cursos independentes com diferenças
@@ -444,8 +461,10 @@ Verificação registra outra rodada e informa `resolved|still_open`. Resolver
 exige que o critério focal tenha passado; `still_open` reabre. Evidência factual
 positiva ou resolução factual exige Fonte e Âncora ativas na revisão exata:
 `supported_by` sustenta afirmações e `quoted_from` só vale para
-`quotation_fidelity`. `suggestedAnnotationActions` com `resolve|reopen` é mera
-sugestão; executá-la requer outro comando explícito de
+`quotation_fidelity`. A verificação sincroniza atomicamente o estado das
+Observações vinculadas compatíveis com `resolved|still_open` e devolve
+`suggestedAnnotationActions` vazio. Quando outra transição, como a reversão de
+correção, devolve uma sugestão, executá-la ainda requer comando explícito de
 `update_anchored_annotations` com a versão corrente.
 
 O recibo de Fonte contém exatamente `contract`, `courseId`, `courseRevision`,
@@ -667,8 +686,8 @@ Para conectar um cliente:
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
 3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das cinco ferramentas, do recurso de invariantes e, num
-   cliente compatível, do recurso visual versionado;
+5. confira a descoberta das cinco ferramentas, dos recursos focais de autoria
+   e, num cliente compatível, do recurso visual versionado;
 6. faça primeiro uma leitura sem mutação;
 7. teste criação e alteração somente num Curso de desenvolvimento.
 
@@ -696,12 +715,12 @@ registra a etapa de contexto, relê `part_materialization` e comprova a chegada 
 andamento à interface e ao IndexedDB. Abrir **Ver etapas** não envia nova escrita
 nem repete a confirmação já feita no cliente MCP. O teste encerra removendo os
 dados descartáveis criados. A jornada também cobre edição manual, assistência
-por relay, eventos `manual` e `provider_assistance`, releitura da API e do
+com provider simulado, eventos `manual` e `provider_assistance`, releitura da API e do
 PostgreSQL e promoção no IndexedDB.
 
-Essa prova é local e automatizada. Ela não comprova, sozinha, o acesso do Pages
-HTTPS à rede local, a ponte nativa num aparelho nem a usabilidade dentro de um
-cliente externo. A verificação hospedada só deve ser executada depois que as
+Essa prova é local e automatizada. Ela não comprova, sozinha, a usabilidade da
+assistência num navegador ou aparelho real nem o fluxo dentro de um cliente
+externo. A verificação hospedada só deve ser executada depois que as
 migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
 
 ## Referências normativas e técnicas

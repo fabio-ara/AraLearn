@@ -1714,7 +1714,7 @@ test("inspeção autoral usa cache paginado limitado e posição local por dispo
   let online = true;
   const calls = [];
   const page = {
-    contract: "aralearn.course-study-unit-inspection-page.v1",
+    contract: "aralearn.course-study-unit-inspection-page.v2",
     courseId: COURSE_ID,
     courseRevision: 4,
     scope: { kind: "course", id: null },
@@ -1944,7 +1944,7 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
     async loadAuthoringStudyUnits(courseId, options) {
       calls.push(["reread", courseId, structuredClone(options)]);
       return {
-        contract: "aralearn.course-study-unit-inspection-page.v1",
+        contract: "aralearn.course-study-unit-inspection-page.v2",
         courseId,
         courseRevision: 5,
         scope: { kind: "course", id: null },
@@ -2071,7 +2071,7 @@ test("edição contextual de Unidade sem atribuição preserva proveniência vaz
     },
     async loadAuthoringStudyUnits(courseId) {
       return {
-        contract: "aralearn.course-study-unit-inspection-page.v1",
+        contract: "aralearn.course-study-unit-inspection-page.v2",
         courseId,
         courseRevision: 5,
         scope: { kind: "course", id: null },
@@ -2316,7 +2316,7 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
     },
     async loadAuthoringStudyUnits(courseId) {
       return {
-        contract: "aralearn.course-study-unit-inspection-page.v1",
+        contract: "aralearn.course-study-unit-inspection-page.v2",
         courseId,
         courseRevision: 5,
         scope: { kind: "course", id: null },

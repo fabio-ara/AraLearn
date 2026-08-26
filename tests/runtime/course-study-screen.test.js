@@ -100,7 +100,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(moreOnlyHtml, /<strong>Rever<\/strong><span class="muted tiny">mais<\/span>/u);
 });
 
-test("os modos contextuais ficam no topbar, sem rótulo visível dentro dos botões", async () => {
+test("os modos contextuais ficam no topbar com nome acessível e ordem estável", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -140,7 +140,6 @@ test("os modos contextuais ficam no topbar, sem rótulo visível dentro dos bot�
     assert.ok(html.indexOf('aria-label="Visualizar"') < html.indexOf(`data-action="${action}"`));
     assert.match(html, new RegExp(`data-action="${action}"[\\s\\S]*?aria-label="Assistência por IA"`, "u"));
     assert.match(html, /data-action="study-level-edit"/u);
-    assert.doesNotMatch(html, /<button[^>]*study-mode-button[^>]*>(?:(?!<\/button>)[\s\S])*?<span>/u);
   }
 
   const draftHtml = renderCourseStudyScreen({
@@ -157,6 +156,139 @@ test("os modos contextuais ficam no topbar, sem rótulo visível dentro dos bot�
   assert.match(draftHtml, /aria-label="Rascunho da Assistência por IA"/u);
   assert.match(draftHtml, /data-action="save-assistance-draft"/u);
   assert.match(draftHtml, /data-action="discard-assistance-draft"/u);
+});
+
+test("seleção da assistência acontece nos objetos renderizados e resume o alcance sem IDs", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const originalMicrosequence = lesson.microsequences[0];
+  const secondMicrosequence = structuredClone(originalMicrosequence);
+  secondMicrosequence.id = "micro-contexto-secundario";
+  secondMicrosequence.title = "Contexto secundário";
+  lesson.microsequences.push(secondMicrosequence);
+  const studyUnit = originalMicrosequence.studyUnits[0];
+  const common = {
+    project,
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: originalMicrosequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence: originalMicrosequence,
+    studyUnit,
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: {}
+  };
+  const lessonHtml = renderCourseStudyScreen({
+    ...common,
+    view: "lesson",
+    assistance: {
+      enabled: true,
+      activeScope: "lesson",
+      selection: { scope: "lesson", ids: lesson.microsequences.map(({ id }) => id) }
+    }
+  });
+  assert.equal((lessonHtml.match(/data-action="toggle-assistance-target"/gu) || []).length, 2);
+  assert.match(lessonHtml, /Alterar[\s\S]*2 Microssequências/u);
+  assert.doesNotMatch(visibleText(lessonHtml), /micro-contexto-secundario/u);
+
+  const microHtml = renderCourseStudyScreen({
+    ...common,
+    view: "microsequence",
+    microsequenceMode: "overview",
+    assistance: {
+      enabled: true,
+      activeScope: "didactic_microsequence",
+      selection: {
+        scope: "didactic_microsequence",
+        ids: originalMicrosequence.studyUnits.map(({ id }) => id)
+      }
+    }
+  });
+  assert.equal((microHtml.match(/data-action="toggle-assistance-target"/gu) || []).length,
+    originalMicrosequence.studyUnits.length);
+  assert.match(microHtml, /Alterar[\s\S]*2 Unidades/u);
+
+  const unitHtml = renderCourseStudyScreen({
+    ...common,
+    view: "microsequence",
+    microsequenceMode: "play",
+    manualEditor: {
+      enabled: true,
+      editing: false,
+      mode: "assist",
+      targetId: "",
+      draft: { pathValues: {} },
+      assistance: {
+        selection: { scope: "study_unit", ids: [studyUnit.content[0].id] }
+      }
+    }
+  });
+  assert.match(unitHtml, /data-assistance-target-id="study_unit"/u);
+  assert.match(unitHtml, /Alterar[\s\S]*1 componente/u);
+});
+
+test("Editar mantém resumo e filhos situados e mostra organização só no alvo selecionado", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const common = {
+    project,
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: {},
+    assistance: { enabled: false }
+  };
+  for (const [view, children, selectedChildId] of [
+    ["course", course.modules, moduleValue.id],
+    ["module", moduleValue.lessons, lesson.id],
+    ["lesson", lesson.microsequences, microsequence.id],
+    ["microsequence", microsequence.studyUnits, studyUnit.id]
+  ]) {
+    const html = renderCourseStudyScreen({
+      ...common,
+      view,
+      microsequenceMode: view === "microsequence" ? "overview" : "play",
+      structuralEditor: {
+        enabled: true,
+        editing: true,
+        saving: false,
+        label: view,
+        fields: { title: "Título situado", goal: "Objetivo situado" },
+        children: children.map(({ id, title }) => ({ id, title })),
+        selectedChildId
+      }
+    });
+    assert.match(html, /class="clean-card entity-summary-card study-structure-editor"/u);
+    assert.match(html, /class="navigation-list"/u);
+    assert.doesNotMatch(html, /<fieldset>/u);
+    assert.equal((html.match(/data-action="move-study-structure-child"/gu) || []).length, 2);
+    assert.equal((html.match(/data-action="select-study-structure-child"/gu) || []).length,
+      children.length);
+  }
 });
 
 test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada contextual", async () => {
@@ -235,7 +367,7 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma entrada context
   assert.match(html, /aria-label="Selecionar Curso"/u);
   assert.match(html, /opção 1/u);
   assert.match(html, /opção 2/u);
-  assert.match(html, /Disponível neste dispositivo/u);
+  assert.doesNotMatch(html, /Disponível neste dispositivo|Disponível com conexão/u);
   assert.match(html, /aria-label="Retomar [^"]+"/u);
   assert.match(html, />Retomar<\/span>/u);
   assert.match(html, /Pertence ao selecionado/u);
@@ -291,11 +423,11 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   });
   const text = visibleText(html);
 
-  assert.match(html, />Curso do autor · Seu Curso<\/option>/u);
-  assert.match(html, />Curso compartilhado · Compartilhado com você<\/option>/u);
-  assert.match(html, />Minha continuidade · Sua cópia<\/option>/u);
-  assert.match(html, /home-course-ownership[^>]*>.*Sua cópia/su);
-  assert.match(html, /<summary>Ações deste Curso<\/summary>/u);
+  assert.match(html, />Curso do autor/u);
+  assert.match(html, />Curso compartilhado/u);
+  assert.match(html, />Minha continuidade/u);
+  assert.match(html, /home-course-ownership" aria-label="Cópia pessoal"/u);
+  assert.match(html, /<summary[^>]+aria-label="Ações deste Curso"/u);
   assert.match(html, /data-action="delete-owned-course"/u);
   assert.match(html, />Excluir este Curso<\/span>/u);
   const sharedHtml = renderHomeScreen({
@@ -366,9 +498,7 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
   assert.match(ownedHtml, /data-action="study-manual-view"[^>]*aria-label="Visualizar"/u);
   assert.match(ownedHtml, /data-action="study-manual-edit"[^>]*aria-label="Editar"/u);
   assert.match(ownedHtml, /data-action="study-provider-assistance"[^>]*aria-label="Assistência por IA"/u);
-  assert.doesNotMatch(ownedHtml, /<button[^>]*study-mode-button[^>]*>(?:(?!<\/button>)[\s\S])*?<span>/u);
-  assert.match(ownedHtml, /data-action="go-back"[\s\S]*data-action="go-up"/u);
-  assert.match(ownedHtml, /aria-label="Subir para a Microssequência"/u);
+  assert.match(ownedHtml, /data-action="go-back"/u);
   assert.match(ownedHtml, /aria-label="Salvar edição"/u);
   assert.doesNotMatch(ownedHtml, /Salvar na minha cópia|Sua cópia/u);
 
@@ -426,7 +556,8 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
         anchors: [{
           anchorId: "anchor-publica",
           anchorRevision: 1,
-          selector: { kind: "page_range", startPage: 8, endPage: 9 }
+          selector: { kind: "page_range", startPage: 8, endPage: 9 },
+          humanLocator: "Capítulo 2 · Figura 4"
         }]
       }, {
         sourceId: "fonte-com-link",
@@ -449,8 +580,23 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
   assert.match(open, /Fonte somente citada/u);
   assert.match(open, /Fonte com link público/u);
   assert.match(open, /pp\. 8–9/u);
+  assert.match(open, /Capítulo 2 · Figura 4 · pp\. 8–9/u);
   assert.match(open, /href="https:\/\/example\.test\/fonte"/u);
   assert.equal((open.match(/>Abrir fonte<\/a>/gu) || []).length, 1);
   assert.doesNotMatch(open, /Fonte oculta|Legado não resolvido|verificationExcerpt|actorId|studyVisibility/u);
   assert.doesNotMatch(open, /edit-source|retire-source|Revisar fonte|Aposentar fonte/u);
+
+  const ownedOpen = renderCourseStudyScreen({
+    ...common,
+    course: { ...course, id: "10000000-0000-4000-8000-000000000001" },
+    selection: {
+      ...common.selection,
+      courseId: "10000000-0000-4000-8000-000000000001"
+    },
+    citationsOpen: true,
+    canAuthorSources: true
+  });
+  assert.match(ownedOpen, /section=sources&amp;sourceId=fonte-citacao&amp;anchorId=anchor-publica/u);
+  assert.match(ownedOpen, /Revisar esta âncora/u);
+  assert.match(ownedOpen, /Revisar Fonte no Curso/u);
 });

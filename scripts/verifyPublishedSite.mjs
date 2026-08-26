@@ -233,7 +233,7 @@ export function parsePublicRuntimeConfig(source) {
   if (assistAllowedOrigins.length !== DEFAULT_ASSIST_ALLOWED_ORIGINS.length ||
       DEFAULT_ASSIST_ALLOWED_ORIGINS.some((origin) => !assistAllowedOrigins.includes(origin))) {
     throw new Error(
-      "runtime-config.js deve permitir somente as origens locais canônicas da assistência."
+      "runtime-config.js deve permitir somente as origens oficiais dos providers da assistência."
     );
   }
   return {
