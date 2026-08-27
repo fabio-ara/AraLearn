@@ -3075,7 +3075,11 @@ test("normaliza targetPlanItems e encaminha a atribuição multi-alvo sem aliase
 });
 
 test("traduz concorrência do banco sem expor detalhes internos", async () => {
-  const value = adapter(async () => json({ code: "40001", message: "private.secret" }, 400));
+  let concurrencyCalls = 0;
+  const value = adapter(async () => {
+    concurrencyCalls += 1;
+    return json({ code: "40001", message: "private.secret" }, 500);
+  });
   await assert.rejects(
     () => value.commitCourseComposition({
       principal: { actorId: USER_ID, authenticationKind: "oauth" },
@@ -3089,6 +3093,7 @@ test("traduz concorrência do banco sem expor detalhes internos", async () => {
       error.code === "stale_course_state" &&
       !error.message.includes("private.secret")
   );
+  assert.equal(concurrencyCalls, 1);
 
   const requestConflict = adapter(async () => json({
     code: "23514",
