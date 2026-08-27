@@ -4397,16 +4397,8 @@ export function createCourseAuthoringSurface({
         menu.open = false;
         menu.querySelector?.(":scope > summary")?.focus?.({ preventScroll: true });
       }
-      setRequestFeedback("Atualizando Curso…");
-      void refresh().then((updated) => {
-        if (updated === "deferred") return;
-        setRequestFeedback(
-          updated
-            ? "Curso atualizado a partir do estado persistido."
-            : "Não foi possível atualizar o Curso agora.",
-          { error: !updated }
-        );
-      }).catch((error) => {
+      setRequestFeedback("");
+      void refresh().catch((error) => {
         setRequestFeedback(writeFailureMessage(error), { error: true });
       });
     } else if (action === "change-design-scope" && state.course && state.courseDesign) {

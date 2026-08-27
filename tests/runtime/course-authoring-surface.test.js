@@ -85,6 +85,24 @@ class MountedPanelRoot extends TrackingRoot {
   }
 }
 
+class FeedbackRoot extends FakeRoot {
+  constructor() {
+    super();
+    this.feedback = {
+      hidden: true,
+      textContent: "",
+      classList: { toggle() {} },
+      setAttribute() {}
+    };
+  }
+
+  querySelectorAll(selector) {
+    return selector === "[data-course-authoring-request-feedback]"
+      ? [this.feedback]
+      : [];
+  }
+}
+
 class FakeWindow {
   constructor() {
     this.listeners = new Map();
@@ -1044,6 +1062,45 @@ test("refresh simultâneo do Planejamento mantém o conteúdo e não recompõe r
     "Uma revisão inalterada não deve substituir a raiz autoral."
   );
   assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
+});
+
+test("Atualizar Curso usa somente o indicador fixo de sincronização", async () => {
+  const root = new FeedbackRoot();
+  let reads = 0;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        reads += 1;
+        return courseDetailFixture();
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  const refreshButton = {
+    dataset: { courseAuthoringAction: "refresh-course" },
+    closest(selector) {
+      return selector === "[data-course-authoring-action]" ? this : null;
+    }
+  };
+  root.listeners.get("click")({ target: refreshButton, preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(reads, 2);
+  assert.equal(root.feedback.hidden, true);
+  assert.equal(root.feedback.textContent, "");
+  assert.doesNotMatch(
+    root.innerHTML,
+    /Atualizando Curso|estado persistido|Não foi possível atualizar/u
+  );
   assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
 });
 
