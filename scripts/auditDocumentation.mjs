@@ -64,11 +64,9 @@ const REQUIRED_RESEARCH_LOG_COLUMNS = Object.freeze([
   "observacoes"
 ]);
 const REQUIRED_PRODUCT_PRESENTATION_HEADINGS = Object.freeze([
-  "o problema educacional",
-  "como se estuda",
-  "como se cria e revisa conteudo",
-  "funcionamento sem conexao e sincronizacao",
-  "estado e limites",
+  "como o conteudo e organizado",
+  "estudo e autoria",
+  "autoria com inteligencia artificial",
   "documentacao"
 ]);
 const REQUIRED_DOCUMENTATION_ROUTES = Object.freeze([

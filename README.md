@@ -1,212 +1,61 @@
 # AraLearn
 
-AraLearn é uma plataforma para estudar, criar e revisar **Cursos vivos**. O
-conteúdo pode ser usado enquanto continua sendo planejado, produzido, discutido
-e corrigido. Estudo, Autoria visual e Autoria conversacional trabalham sobre o
-mesmo Curso.
+O AraLearn é uma plataforma para estudo autodidata e criação de cursos com apoio de inteligência artificial generativa. A partir de um tema, de uma ementa ou de materiais já reunidos, é possível montar um curso e estudá-lo no próprio aplicativo. A inteligência artificial (IA) ajuda a planejar a sequência, redigir explicações, propor atividades e escolher formas adequadas de apresentar cada conteúdo.
 
-Não é necessário conhecer programação, pesquisa ou teoria educacional para usar
-o aplicativo. A documentação começa pelas tarefas e oferece aprofundamento
-quando ele se torna útil.
+O estudo é dividido em pequenas etapas, para que seja possível avançar mesmo quando há pouco tempo disponível e retomar o percurso depois de uma interrupção. O AraLearn funciona na web e no Android, e parte do conteúdo necessário ao estudo pode permanecer no dispositivo para continuar disponível quando a conexão não é estável.
 
-## O problema educacional
-
-Materiais digitais costumam separar estudo, produção e revisão em ferramentas
-que não compartilham o mesmo objeto. Isso dificulta corrigir uma explicação sem
-perder seu lugar no percurso, ligar uma afirmação à fonte exata e distinguir
-conteúdo, evidência de uso e hipótese educacional. O AraLearn mantém essas
-atividades ao redor do mesmo Curso vivo e conserva seus papéis separados.
+A página [Origens do AraLearn](docs/origens-do-aralearn.md) apresenta o percurso que levou à criação do projeto.
 
 ## Como o conteúdo é organizado
 
-Todo Curso segue uma hierarquia reconhecível:
+O percurso de estudo segue uma hierarquia:
 
 ```text
-Curso → Módulo → Lição → Microssequência didática → Unidade de estudo
+curso → módulo → lição → microssequência didática → unidade de estudo
 ```
 
-Uma **Microssequência didática** organiza um avanço conceitual delimitado. Cada
-**Unidade de estudo** realiza uma etapa desse avanço e pode reunir texto,
-fórmula, código, tabela, diagrama, gráfico e uma forma de resposta.
+Uma **microssequência didática** organiza um avanço conceitual delimitado. Suas **unidades de estudo** desenvolvem etapas desse avanço por meio de explicações, exemplos, práticas e retorno. Conforme o conteúdo, uma unidade pode usar prosa, fórmulas, código ou outras representações.
 
-O AraLearn procura preparar os conhecimentos antes de usá-los, distribuir a
-explicação em avanços manejáveis, praticar o que foi desenvolvido e escolher a
-representação adequada ao objeto. Esses compromissos orientam o produto; não
-devem ser confundidos com evidência de aprendizagem. O
-[modelo didático](docs/modelo-didatico.md) explica essa diferença.
+Essa organização permite acrescentar as etapas necessárias para explicar um assunto sem depender de uma única exposição extensa ou de resumos excessivamente condensados. O [modelo didático](docs/modelo-didatico.md) apresenta os fundamentos e as decisões que orientam essa estrutura.
 
-## Como se estuda
+## Estudo e autoria
 
-Depois de entrar, a pessoa encontra Cursos próprios e Cursos compartilhados. Um
-seletor e uma prévia mostram objetivo, relação de acesso, quantidade de Módulos,
-Lições e Unidades, progresso e disponibilidade no dispositivo.
+No estudo, é possível percorrer o curso, responder a práticas, receber retorno, marcar unidades para rever, registrar observações e retomar o ponto em que o estudo foi interrompido.
 
-**Abrir** sempre entra no Curso pela lista de Módulos, sem transformar o progresso
-salvo em um atalho inesperado. **Voltar** restaura a origem real, a rolagem e o
-foco; **Home** oferece uma saída global.
-O acesso direto ao pai aparece somente quando uma jornada contextual o exige.
-Durante o estudo, a pessoa pode responder às práticas, receber retorno, marcar
-uma Unidade para rever, registrar uma Observação e consultar Fontes autorizadas.
+Na autoria, é possível planejar a estrutura do curso, produzir e revisar seu conteúdo e definir quem pode acessá-lo. Um curso pode continuar sendo planejado e corrigido enquanto o conteúdo já produzido permanece disponível para estudo.
 
-Na Unidade, **Visualizar**, **Editar** e **Assistência por IA** são modos irmãos
-sobre o mesmo alvo. Se uma pessoa com acesso ao Estudo editar um Curso
-compartilhado, a primeira gravação material cria uma cópia privada e preserva o
-original. A navegação continua na mesma Unidade da nova cópia.
+O [guia do estudante](docs/guia-estudante.md) apresenta o percurso de estudo. O [guia do professor e autor](docs/guia-professor-autor.md) apresenta criação, planejamento, produção e revisão de cursos.
 
-O [guia do estudante](docs/guia-estudante.md) ensina o percurso completo.
+## Autoria com inteligência artificial
 
-## Como se cria e revisa conteúdo
+A assistência por IA dentro do aplicativo trabalha com o contexto do conteúdo que está sendo editado e permite discutir uma proposta antes de aplicá-la.
 
-Autoria mostra somente os Cursos da pessoa proprietária. Um Curso novo nasce
-privado. A pessoa pode definir objetivo e público, construir sua hierarquia,
-planejar a produção, ajustar parâmetros, registrar Fontes e conceder acesso
-direto ao Estudo.
-
-Ao abrir um Curso, a **Visão geral** mostra seu estado, a próxima ação útil e as
-sete tarefas principais: **Planejamento**, **Conteúdo**, **Parâmetros e
-componentes**, **Fontes**, **Revisão**, **Variantes e pesquisa** e **Pessoas e
-acesso**. Conteúdo reúne a hierarquia, a leitura no renderer e a edição
-contextual. Revisão oferece um ponto de entrada comum para Observações e
-Auditoria sem confundir seus contratos.
-
-Cada Parte do Planejamento conserva o histórico completo das materializações.
-Uma execução mostra canal, estado, etapas, resultados e links para os objetos
-produzidos; Aplicativo, MCP e Actions aparecem no mesmo percurso visual. Fontes
-possuem revisões imutáveis, Âncoras e PDFs privados. Variantes relacionam Cursos
-comparáveis, e Pesquisa apresenta fatos, definições, denominadores, ausências e
-exportações sem produzir conclusões causais automáticas.
-
-O [guia do professor e autor](docs/guia-professor-autor.md) conduz essas tarefas.
-
-## Usar Assistência por IA
-
-Assistência por IA é uma conversa contextual. Cada resposta traz uma proposta
-concreta para o alvo corrente; a pessoa pode corrigir, discordar ou acrescentar
-condições em quantos turnos precisar. **Aceitar e aplicar** autoriza a geração e
-a validação da proposta corrente. O resultado validado entra no rascunho, e
-**Salvar** continua sendo uma decisão separada.
-
-A sessão pode alterar composição e conteúdo da Unidade, estrutura e conteúdo da
-Microssequência e a organização de Microssequências dentro da Lição. O contexto
-enviado é somente leitura e limitado ao alvo necessário. A resposta usa escrita
-tipada e precisa cumprir os contratos do produto.
-
-Para componentes didáticos, o AraLearn descobre progressivamente as famílias e
-os contratos exatos, valida a composição e permite reparos delimitados. JSON bem
-formado não basta: uma proposta inválida ou não renderizável nunca substitui o
-conteúdo corrente.
-
-A pessoa escolhe OpenAI, Gemini ou DeepSeek e fornece uma chave mantida somente
-na memória da sessão. O capítulo [Assistência por modelo de
-linguagem](docs/assistencia-por-ia.md) explica autoridade, contexto e falhas.
-
-## Criar por conversa
-
-Há dois canais distintos para operar Cursos a partir de uma conversa.
-
-O **Model Context Protocol (MCP)** conecta clientes compatíveis às ferramentas
-canônicas do AraLearn. Ele permite localizar Cursos próprios, ler composição,
-planejar, materializar, operar Fontes, Auditoria, Variantes e Pesquisa e
-consultar componentes didáticos.
-
-Um **GPT personalizado com Actions** usa a descrição OpenAPI publicada pelo
-AraLearn e cinco operações HTTP autorizadas. Actions possui OAuth próprio e não
-é um modo do MCP. Os dois canais reutilizam o mesmo domínio de Curso sem
-compartilhar protocolo ou sessão.
-
-Veja [Autoria por MCP](docs/autoria-mcp.md), [Criar Cursos pelo
-chat](docs/criar-cursos-pelo-chat.md) e [Fluxos, instruções e
-contratos](docs/fluxos-prompts-e-contratos.md).
-
-## Funcionamento sem conexão e sincronização
-
-O navegador e o Android mantêm no dispositivo a lista de Cursos, composições já
-abertas, estado pessoal e filas necessárias à continuidade. Conteúdo carregado
-anteriormente pode ser retomado sem rede. Progresso, **Rever** e Observações são
-sincronizados quando a conexão retorna.
-
-Operações autorais amplas, Auditoria, correções e Assistência por IA exigem
-conexão. O AraLearn não mantém uma fila autoral genérica que poderia aplicar uma
-mudança antiga sobre um Curso novo.
-
-No servidor, PostgreSQL conserva o Curso e suas relações. Storage privado guarda
-avatares e PDFs. Revisões, identificadores de pedido e repetição segura protegem
-alterações concorrentes. A explicação completa está em [Persistência relacional
-e sincronização](docs/persistencia-relacional.md).
-
-## Controlar acesso e dados
-
-Um acesso direto permite estudar o Curso, mas não concede coautoria do original.
-Na Home, **Ações deste Curso** distingue excluir um Curso próprio de sair de um
-Curso compartilhado. **Remover dados deste dispositivo**, **Sair** e **Excluir
-conta** também são ações diferentes e informam seu alcance antes da confirmação.
-
-Uma identidade administrativa autorizada encontra **Manutenção** em **Conta e
-aparência**. A área apresenta retenção e resíduos classificados pelo produto;
-cada remoção é revalidada no servidor e seguida por nova leitura do inventário.
-
-A [página de privacidade](docs/privacidade.md) descreve finalidades, retenção,
-acesso e limites.
-
-## Componentes didáticos
-
-Unidades são compostas por pacotes para texto, código, tabelas, fórmulas,
-matrizes, gráficos, diagramas, processos e respostas. Cada pacote mantém seu
-contrato, validação, apresentação, campos editáveis, acessibilidade e finalidade
-instrucional.
-
-Consulte [Componentes didáticos e pacotes](docs/componentes-didaticos.md) para
-entender como descoberta, validação e renderização se relacionam.
-
-## Web e Android
-
-A mesma experiência é entregue como site e aplicativo Android. Estudo é a
-referência visual: uma coluna central, conteúdo em primeiro lugar, poucas ações
-simultâneas e divulgação progressiva. A interface funciona em telefones de 360,
-390 e 430 pixels e em telas maiores sem criar um segundo painel de desktop.
-
-Os artefatos de instalação ficam nas publicações do repositório. As instruções
-de ambiente, backend e publicação estão em [Implantação](docs/implantacao.md).
-
-## Estado e limites
-
-O produto disponível inclui Estudo, Autoria visual, Assistência por IA,
-Autoria conversacional por MCP e por Actions, dados pessoais, controle de acesso
-e Manutenção administrativa para identidades autorizadas. O que depende de
-conexão ou de permissão é indicado antes da ação.
-
-Testes de software demonstram contratos e comportamentos nas condições
-exercitadas. Eles não demonstram, sozinhos, compreensão, usabilidade ou efeito
-educacional. Essas afirmações exigem avaliação com pessoas, população, tarefa e
-método adequados.
+Também é possível usar conversas externas para trabalhar na autoria de um curso. Clientes compatíveis com o [Model Context Protocol (MCP)](docs/autoria-mcp.md) e um [GPT personalizado com Actions](docs/autoria-actions.md) podem acessar operações autorizadas do AraLearn para trabalhar com cursos. A [Assistência por modelo de linguagem](docs/assistencia-por-ia.md) explica o funcionamento da assistência integrada ao aplicativo.
 
 ## Documentação
 
-O [mapa da documentação](docs/README.md) oferece percursos para:
+Para começar:
 
-- começar a usar o aplicativo;
-- compreender o modelo educacional;
-- criar e investigar Cursos;
-- estudar a engenharia;
-- avaliar propriedades, hipóteses e evidências;
-- implantar e manter o sistema.
-
-A página [Capacidades e limites atuais](docs/estado-atual-e-roadmap.md) resume o
-produto disponível e indica conexão, acesso e limites de cada caso de uso.
+- [Visão do produto](docs/visao-do-produto.md) — problema tratado, público e decisões centrais;
+- [Guia do estudante](docs/guia-estudante.md) — estudo, retomada, revisão e observações;
+- [Guia do professor e autor](docs/guia-professor-autor.md) — criação e autoria de cursos;
+- [Capacidades e limites atuais](docs/estado-atual-e-roadmap.md) — funções disponíveis e condições de uso;
+- [Arquitetura](docs/arquitetura.md) — organização técnica e responsabilidades do sistema;
+- [Mapa da documentação](docs/README.md) — percursos completos de uso, educação, pesquisa e engenharia.
 
 ## Desenvolvimento local
 
-Pré-requisitos: Node.js compatível com o projeto e configuração pública de uma
-instância Supabase.
+O desenvolvimento requer [Node.js 22](https://nodejs.org/en/download). Depois de clonar o repositório:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-O [guia do desenvolvedor](docs/guia-desenvolvedor.md) explica validações,
-aplicação web, Supabase local e Android.
+O aplicativo é servido em `http://127.0.0.1:4182`.
+
+Configuração do Supabase, banco local, testes, estrutura do código e desenvolvimento para Android estão no [guia do desenvolvedor](docs/guia-desenvolvedor.md). Para contribuir com o projeto, consulte também o [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Licença
 
-O código-fonte é distribuído nos termos de [LICENSE.md](LICENSE.md).
+O código-fonte é distribuído nos termos de [`LICENSE.md`](LICENSE.md).
