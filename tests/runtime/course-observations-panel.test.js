@@ -291,14 +291,16 @@ test("inbox usa query aninhada, resumo exato e identidade protegida", async () =
     "annotationId", "categories", "channels", "hierarchy", "includeUncategorized",
     "mode", "origins", "states", "subjectIds"
   ]);
-  assert.match(root.innerHTML, /Inbox única do Curso/u);
+  assert.doesNotMatch(root.innerHTML, /Inbox única do Curso|Detalhe contextual/u);
   assert.match(root.innerHTML, /Correspondentes<\/dt><dd>1/u);
   assert.match(root.innerHTML, /Estudante 7/u);
   assert.match(root.innerHTML, /Há uma possível ambiguidade/u);
-  assert.match(root.innerHTML, /Filtros e origens/u);
+  assert.match(root.innerHTML, /class="course-observations-tools"/u);
+  assert.match(root.innerHTML, /<summary class="course-observations-tool-trigger" aria-label="Filtros" title="Filtros"><svg/u);
   assert.match(root.innerHTML, /Assunto ausente da primeira página/u);
   assert.match(root.innerHTML, /Módulo fora da primeira página/u);
-  assert.match(root.innerHTML, /Nova observação autoral/u);
+  assert.match(root.innerHTML, /<summary class="course-observations-tool-trigger" aria-label="Nova observação" title="Nova observação"><svg/u);
+  assert.doesNotMatch(root.innerHTML, /<summary[^>]*>(?:Filtros|Nova observação autoral)<\/summary>/u);
   assert.match(root.innerHTML, /section=review&amp;annotationId=/u);
   assert.doesNotMatch(root.innerHTML, new RegExp(CONTRIBUTOR_REF, "u"));
   assert.doesNotMatch(root.innerHTML, /\S+@\S+|e-?mail|>chat|fórum|thread/iu);
@@ -443,7 +445,7 @@ test("deep link abre detalhe, contexto, resposta única e correção de assunto"
   });
   await panel.open();
 
-  assert.match(root.innerHTML, /Detalhe contextual/u);
+  assert.doesNotMatch(root.innerHTML, /Detalhe contextual|Inbox única do Curso/u);
   assert.match(root.innerHTML, /Abrir Unidade/u);
   assert.match(root.innerHTML, /Retorno da autoria/u);
   assert.match(root.innerHTML, /Resposta privada vinculada a esta observação/u);
@@ -625,7 +627,7 @@ test("outline permite classificar vazio e criar observação em alvo não StudyU
   }
 });
 
-test("inbox relê o catálogo e usa a revisão nova ao voltar do ChatGPT", async () => {
+test("inbox relê o catálogo e usa a revisão nova ao atualizar", async () => {
   const root = new FakeRoot();
   const revisions = [];
   let currentRevision = 7;
@@ -654,7 +656,7 @@ test("inbox relê o catálogo e usa a revisão nova ao voltar do ChatGPT", async
   assert.equal(outlineReads, 2);
 });
 
-test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Lição e Microssequência", async () => {
+test("Registrar persiste observações em Curso, Módulo, Lição e Microssequência sem fluxo de cópia", async () => {
   const cases = [
     { index: "0", kind: "course", id: COURSE_ID, title: "Curso", path: "Curso" },
     {
@@ -688,23 +690,15 @@ test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Liçã
     for (const targetCase of cases) {
       const root = new FakeRoot();
       const commands = [];
-      const deliveries = [];
-      const order = [];
       const panel = createCourseObservationsPanel({
         root,
         course: { courseId: COURSE_ID, title: "Título vindo da tela", revision: 7 },
         clock: () => new Date("2026-08-17T15:00:00.000Z"),
-        async onRequestChat(payload) {
-          order.push("callback");
-          deliveries.push(structuredClone(payload));
-          payload.requestText = "alteração externa que não pode vazar";
-        },
         controller: {
           async loadAuthoringOutline() { return outline(); },
           async loadCourseAnchoredAnnotations(_courseId, options) { return page(options.query); },
           async mutateCourseAnchoredAnnotations(input) {
             commands.push(structuredClone(input));
-            order.push("backend-confirmed");
             return {
               contract: "aralearn.course-anchored-annotation-change.v1",
               courseId: COURSE_ID,
@@ -719,14 +713,11 @@ test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Liçã
         }
       });
       await panel.open();
-      assert.match(root.innerHTML, />Registrar<\/button>/u);
-      assert.match(root.innerHTML, />Registrar e copiar<\/span><\/button>/u);
-      assert.match(root.innerHTML,
-        /aria-label="Copiar pedido sobre esta Observação para o ChatGPT"/u);
+      assert.match(root.innerHTML, /class="course-authoring-primary">Registrar<\/button>/u);
+      assert.doesNotMatch(root.innerHTML, /ChatGPT|copiar|request-chat/iu);
 
       root.listeners.get("submit")({
         preventDefault() {},
-        submitter: { dataset: { observationCreateMode: "request-chat" } },
         target: {
           fields: {
             target: targetCase.index,
@@ -739,25 +730,12 @@ test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Liçã
       await settle();
 
       assert.equal(commands.length, 1);
-      assert.equal(deliveries.length, 1);
-      assert.deepEqual(order, ["backend-confirmed", "callback"]);
       assert.deepEqual(commands[0].command.target, {
         kind: targetCase.kind,
         id: targetCase.id
       });
-      const request = deliveries[0].requestText;
-      assert.match(request, /Curso: “Curso”\./u);
-      assert.match(request, /Revisão observada ao copiar: 7\./u);
-      assert.match(request, new RegExp(`Alvo: .*\u201c${targetCase.title}\u201d, identidade ${targetCase.id}`, "u"));
-      assert.match(request, new RegExp(`Caminho: ${targetCase.path}`, "u"));
-      assert.match(request, new RegExp(`Observação vinculada: ${commands[0].command.annotationId}`, "u"));
-      assert.match(request, new RegExp(
-        `section=review&annotationId=${commands[0].command.annotationId}`,
-        "u"
-      ));
-      assert.match(request, new RegExp(`Argumento no alvo ${targetCase.kind}`, "u"));
-      assert.equal((request.match(/um Retorno da autoria/gu) || []).length, 1);
-      assert.match(root.innerHTML, /Observação registrada e pedido copiado/u);
+      assert.equal(commands[0].command.rawText, `Argumento no alvo ${targetCase.kind}.`);
+      assert.match(root.innerHTML, /Observação registrada\./u);
       panel.destroy();
     }
   } finally {
@@ -765,88 +743,13 @@ test("Registrar e copiar situa a discussão confirmada em Curso, Módulo, Liçã
   }
 });
 
-test("falha da cópia não desfaz nem duplica a Observação confirmada", async () => {
+test("inbox não oferece seleção local sem operação persistente", async () => {
   const root = new FakeRoot();
-  const commands = [];
-  let callbacks = 0;
-  const NativeFormData = globalThis.FormData;
-  globalThis.FormData = class {
-    constructor(target) { this.fields = target.fields; }
-    get(name) { return this.fields[name] ?? null; }
-  };
-  try {
-    const panel = createCourseObservationsPanel({
-      root,
-      course: { courseId: COURSE_ID, revision: 7 },
-      onRequestChat(payload) {
-        callbacks += 1;
-        payload.requestText = "modificado pelo consumidor";
-        throw new Error("Clipboard indisponível.");
-      },
-      controller: {
-        async loadAuthoringOutline() { return outline(); },
-        async loadCourseAnchoredAnnotations(_courseId, options) { return page(options.query); },
-        async mutateCourseAnchoredAnnotations(input) {
-          commands.push(structuredClone(input));
-          return {
-            contract: "aralearn.course-anchored-annotation-change.v1",
-            courseId: COURSE_ID,
-            courseRevision: 7,
-            annotationSetVersion: 6,
-            requestId: input.requestId,
-            idempotent: false,
-            changed: true,
-            annotation: null
-          };
-        }
-      }
-    });
-    await panel.open();
-    root.listeners.get("submit")({
-      preventDefault() {},
-      submitter: { dataset: { observationCreateMode: "request-chat" } },
-      target: {
-        fields: {
-          target: "1",
-          rawText: "Persistir mesmo quando a cópia falhar.",
-          category: "possible_error"
-        },
-        matches(selector) { return selector === "[data-observation-create-form]"; }
-      }
-    });
-    await settle();
-
-    assert.equal(commands.length, 1);
-    assert.equal(callbacks, 1);
-    assert.match(root.innerHTML, /A Observação foi registrada, mas o pedido não foi copiado/u);
-    assert.match(root.innerHTML, /Clipboard indisponível/u);
-
-    const node = {
-      dataset: { observationsAction: "request-chat", annotationId: ANNOTATION_ID },
-      closest(selector) {
-        return selector === "[data-observations-action]" ? this : null;
-      }
-    };
-    root.listeners.get("click")({ target: node });
-    await settle();
-    assert.equal(callbacks, 2);
-    assert.equal(commands.length, 1);
-    assert.match(root.innerHTML, /O pedido não foi copiado/u);
-    panel.destroy();
-  } finally {
-    globalThis.FormData = NativeFormData;
-  }
-});
-
-test("seleciona várias pendências e gera pedido canônico sem copiar o Curso", async () => {
-  const root = new FakeRoot();
-  const deliveries = [];
   const first = pagedItem(1);
   const second = pagedItem(2);
   const panel = createCourseObservationsPanel({
     root,
     course: { courseId: COURSE_ID, title: "Curso", revision: 7 },
-    onRequestChat(payload) { deliveries.push(structuredClone(payload)); },
     controller: {
       async loadAuthoringOutline() { return outline(); },
       async loadCourseAnchoredAnnotations(_courseId, options) {
@@ -859,36 +762,44 @@ test("seleciona várias pendências e gera pedido canônico sem copiar o Curso",
     }
   });
   await panel.open();
-  assert.match(root.innerHTML, /0 de 12 selecionadas/u);
-  for (const value of [first, second]) {
-    root.listeners.get("change")({
-      target: {
-        checked: true,
-        dataset: { observationSelect: value.annotationId },
-        matches(selector) { return selector === "[data-observation-select]"; }
-      }
-    });
-  }
-  assert.match(root.innerHTML, /2 de 12 selecionadas/u);
+  assert.match(root.innerHTML, new RegExp(first.rawText, "u"));
+  assert.match(root.innerHTML, new RegExp(second.rawText, "u"));
+  assert.doesNotMatch(root.innerHTML,
+    /data-observation-select|course-observation-selection|selecionadas|Limpar seleção/u);
+  panel.destroy();
+});
 
-  const node = {
-    dataset: { observationsAction: "request-chat-selection" },
-    closest(selector) {
-      return selector === "[data-observations-action]" ? this : null;
+test("inbox vazia mantém criação e filtros acessíveis sem quadro de zeros", async () => {
+  const root = new FakeRoot();
+  const panel = createCourseObservationsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadAuthoringOutline() { return outline(); },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return {
+          ...page(options.query),
+          summary: {
+            matchingTotal: 0,
+            byOrigin: {},
+            byChannel: {},
+            byState: {},
+            unclassifiedTotal: 0
+          },
+          items: []
+        };
+      },
+      async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
     }
-  };
-  root.listeners.get("click")({ target: node });
-  await settle();
+  });
+  assert.equal(await panel.open(), true);
 
-  assert.equal(deliveries.length, 1);
-  const request = deliveries[0].requestText;
-  assert.match(request, /Revise em conjunto as 2 Observações selecionadas/u);
-  assert.match(request, new RegExp(first.annotationId, "u"));
-  assert.match(request, new RegExp(second.annotationId, "u"));
-  assert.match(request, /contratos canônicos de Observações/u);
-  assert.doesNotMatch(request, /Observação paginada 1|Observação paginada 2/u);
-  assert.doesNotMatch(request, /\{|\}/u);
-  assert.match(root.innerHTML, /Pedido conjunto copiado para o ChatGPT/u);
+  assert.match(root.innerHTML, /class="course-observations-tools"/u);
+  assert.match(root.innerHTML, /aria-label="Nova observação" title="Nova observação"/u);
+  assert.match(root.innerHTML, /aria-label="Filtros" title="Filtros"/u);
+  assert.match(root.innerHTML, /Nenhuma observação\./u);
+  assert.doesNotMatch(root.innerHTML, /course-observations-summary/u);
+  assert.doesNotMatch(root.innerHTML, /Correspondentes<\/dt><dd>0|Por origem|Por canal|Por estado/u);
   panel.destroy();
 });
 

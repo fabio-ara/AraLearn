@@ -22,13 +22,13 @@ tarefa; o cliente escolhe a ferramenta, valida argumentos, chama o servidor e
 apresenta o resultado. O servidor continua responsável por identidade,
 propriedade, revisão, idempotência e invariantes.
 
-Na interface visual, a ação contextual **ChatGPT** abre um compositor. A pessoa
-confere o alvo e seu caminho, escolhe uma intenção compatível e edita o próprio
-argumento. Ao copiar, o AraLearn acrescenta Curso, revisão observada, identidade
-do alvo, endereço direto de retorno, referências pertinentes e limites de
-segurança. O AraLearn não apresenta essa cópia como execução. A geração e as
-chamadas MCP ocorrem no ChatGPT ou em outro cliente externo conectado pela
-pessoa.
+Na interface visual, a pessoa inspeciona o conteúdo, registra Observações no
+alvo exato e salva mudanças de Parâmetros. Esses registros permanecem visíveis
+na Autoria e integram o mesmo Curso que o ChatGPT ou outro cliente conectado lê
+por MCP. A conversa pode examinar vários registros, apresentar uma proposta e
+receber correções ou objeções antes de qualquer escrita. A operação só é enviada
+depois da aprovação explícita da pessoa no cliente conectado. A interface normal
+não abre um compositor nem depende de copiar um pedido.
 
 Curso, Módulo, Lição, Tópico, Microssequência, Unidade de estudo, Fonte, Âncora
 e Parte de autoria podem ser alvos de conversa. Planejar e preparar estrutura
@@ -37,17 +37,17 @@ corrigir pertence à Unidade; materializar pertence à Parte. Revisar e discutir
 ficam disponíveis nos alvos em que ajudam a pessoa a argumentar sem iniciar uma
 alteração automática.
 
-Copiar ou cancelar não grava API, PostgreSQL, Storage ou IndexedDB. Depois de
-uma operação confirmada no cliente MCP, voltar à guia ou focalizar a janela do
-AraLearn atualiza o cabeçalho canônico e a área visível. A ação de atualização
-do cabeçalho oferece o mesmo caminho quando o navegador não sinaliza o retorno.
+Discutir ou recusar uma proposta não altera o Curso. Depois de uma operação
+confirmada no cliente MCP, voltar à guia ou focalizar a janela do AraLearn
+atualiza o cabeçalho canônico e a área visível. A ação de atualização do
+cabeçalho oferece o mesmo caminho quando o navegador não sinaliza o retorno.
 Essa releitura não pede nova confirmação para uma alteração já confirmada no
 cliente.
 
-Se o compositor, uma confirmação ou um formulário estiver ativo, a releitura é
-adiada. O AraLearn conserva o argumento e os demais campos do rascunho e orienta
-a pessoa a concluir ou cancelar antes de atualizar. Esse adiamento não confirma
-nem desfaz uma operação no servidor.
+Se uma confirmação ou um formulário estiver ativo, a releitura é adiada. O
+AraLearn conserva os campos do rascunho e orienta a pessoa a concluir ou
+cancelar antes de atualizar. Esse adiamento não confirma nem desfaz uma operação
+no servidor.
 
 ## O que é MCP
 

@@ -99,12 +99,12 @@ em controles progressivos, sem desaparecer do produto. Planejamento mostra
 primeiro a próxima ação, o objetivo e o estado das Partes; contexto, referências
 e organização avançada são abertos quando necessários.
 
-A ação contextual do ChatGPT abre um compositor sobre a área corrente, sem
-reconstruir o painel que a pessoa estava consultando. Ele mostra o alvo e o
-caminho hierárquico, limita a intenção às operações cabíveis naquele tipo de
-objeto e oferece um campo amplo para o argumento da pessoa autora. Identidade,
-revisão, endereço direto de retorno, referências e limites operacionais são
-acrescentados pelo AraLearn. A cópia não muda o Curso.
+Em **Conteúdo**, Observações e mudanças de Parâmetros permanecem ligadas ao alvo
+inspecionado e aparecem como estado do próprio Curso. A pessoa pode percorrer os
+cards, registrar decisões e verificar resultados sem abrir uma superfície
+paralela. O ChatGPT conectado por MCP ou Actions lê esse mesmo estado, apresenta
+propostas para discussão e só executa uma operação depois da aprovação explícita.
+A interface normal não introduz compositor nem etapa de cópia e cola.
 
 Na Unidade, **Visualizar**, **Editar** e **Assistência por IA** usam o mesmo
 renderer e o mesmo alvo. A edição realça apenas os textos que o componente
@@ -133,11 +133,10 @@ O retorno de outra guia ou janela provoca a releitura do cabeçalho canônico e 
 caso em que o navegador não comunique a mudança de foco. Esse fluxo conserva o
 painel ativo e a posição útil, em vez de exigir que a pessoa reencontre o alvo.
 
-Um compositor, uma confirmação ou um formulário ativo bloqueia essa releitura
-até que a pessoa conclua ou cancele o rascunho. O texto e os campos preenchidos
-permanecem no documento, e uma mensagem explica por que a atualização foi
-adiada. Preservar o trabalho em curso tem precedência sobre substituir a área
-por uma revisão recém-lida.
+Uma confirmação ou um formulário ativo bloqueia essa releitura até que a pessoa
+conclua ou cancele o rascunho. Os campos preenchidos permanecem no documento, e
+uma mensagem explica por que a atualização foi adiada. Preservar o trabalho em
+curso tem precedência sobre substituir a área por uma revisão recém-lida.
 
 Recomposições internas seguem a mesma regra. Parâmetros, Fontes, Variantes,
 Observações, Conteúdo e Auditoria conservam valores, detalhes progressivos e

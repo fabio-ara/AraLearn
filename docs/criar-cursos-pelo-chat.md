@@ -72,11 +72,12 @@ Microssequências existem, atribua a cada uma as unidades de análise e os
 requisitos de evidência que ela precisa desenvolver. Essa atribuição é
 explícita e admite vários itens em vários alvos.
 
-Na interface, a ação **ChatGPT** da Parte abre o compositor com o alvo, o caminho
-e uma intenção inicial. Revise o argumento e use **Copiar pedido**. O texto leva
-Curso, revisão, Parte, endereço de retorno e limites operacionais para a conversa
-conectada. A cópia ainda não inicia a produção; o estado muda somente depois que
-o cliente executa e confirma as operações do MCP.
+Na interface, Observações e mudanças de Parâmetros são salvas no próprio Curso e
+permanecem visíveis na Autoria. No ChatGPT conectado por MCP ou Actions, peça
+para ler esse estado, discuta a proposta e ajuste-a até que represente a intenção
+autoral. O Curso só muda depois da aprovação explícita da operação no cliente
+conectado. A interface normal não usa compositor nem transferência por cópia e
+cola para iniciar esse trabalho.
 
 ## Configurar o desenho
 

@@ -730,7 +730,6 @@ export class CourseController {
     api,
     store,
     ownerOnly = false,
-    deliverAuthoringRequest = null,
     now = () => new Date().toISOString()
   } = {}) {
     if (!api || typeof api.listCourses !== "function" || typeof api.getCourse !== "function") {
@@ -745,10 +744,6 @@ export class CourseController {
     this.store = store;
     this.ownerOnly = ownerOnly === true;
     this.cachePrefix = this.ownerOnly ? "course-authoring.v1" : CACHE_PREFIX;
-    if (deliverAuthoringRequest != null && typeof deliverAuthoringRequest !== "function") {
-      throw new TypeError("Entrega ao chat inválida.");
-    }
-    this.deliverAuthoringRequest = deliverAuthoringRequest;
     this.now = now;
     this.accessibleCourseRefresh = null;
     this.compositionSourceSnapshots = new Map();
@@ -3365,17 +3360,6 @@ export class CourseController {
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
     ]);
     return result;
-  }
-
-  requestAuthoringRequest(payload) {
-    if (!this.deliverAuthoringRequest) {
-      throw new Error("Não há meio disponível para copiar este pedido.");
-    }
-    return Promise.resolve(this.deliverAuthoringRequest(structuredClone(payload)));
-  }
-
-  requestPartMaterialization(payload) {
-    return this.requestAuthoringRequest(payload);
   }
 
   createCourse(values) {

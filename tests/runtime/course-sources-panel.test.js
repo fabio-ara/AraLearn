@@ -713,10 +713,8 @@ test("deep link abre Fonte literal e localiza a Âncora sem cair no catálogo", 
   assert.match(root.innerHTML, /Âncora indicada/u);
 });
 
-test("Fonte e Âncora delegam contexto canônico ao ChatGPT sem quebrar o painel", async () => {
+test("Fonte e Âncora usam ações persistentes sem compositor de ChatGPT", async () => {
   const root = new FakeRoot();
-  const requests = [];
-  const routes = [];
   const panel = createCourseSourcesPanel({
     root,
     courseId: COURSE_ID,
@@ -733,57 +731,14 @@ test("Fonte e Âncora delegam contexto canônico ao ChatGPT sem quebrar o painel
       async mutateCourseSources() {
         throw new Error("Mutação inesperada.");
       }
-    },
-    onNavigate(route) {
-      routes.push(route);
-      throw new Error("Falha isolada de navegação");
-    },
-    onRequestChat(request) {
-      requests.push(structuredClone(request));
-      throw new Error("Falha isolada do integrador");
     }
   });
 
   assert.equal(await panel.open(), true);
-  assert.match(root.innerHTML, /data-source-action="request-chat-source"/u);
-  assert.match(root.innerHTML, /data-source-action="request-chat-anchor"/u);
-  assert.match(root.innerHTML, /aria-label="Trabalhar com o ChatGPT sobre Fonte 1"/u);
-  assert.match(root.innerHTML, /aria-label="Trabalhar com o ChatGPT sobre Páginas 10–12"/u);
-
-  assert.doesNotThrow(() => click(root, "request-chat-source", {
-    sourceId: "source-01",
-    sourceRevision: "1"
-  }));
-  assert.doesNotThrow(() => click(root, "request-chat-anchor", {
-    anchorId: "anchor-a",
-    sourceRevision: "1"
-  }));
-
-  const sourceRoute = `#/authoring/courses/${COURSE_ID}?section=sources&sourceId=source-01`;
-  const anchorRoute = `${sourceRoute}&anchorId=anchor-a`;
-  assert.deepEqual(routes, []);
-  assert.deepEqual(requests, [{
-    target: {
-      type: "source",
-      id: "source-01",
-      title: "Fonte 1",
-      path: ["Fontes", "Fonte 1"]
-    },
-    action: "verify_source",
-    instruction: "Confira esta Fonte comigo, incluindo identidade, metadados, disponibilidade e aderência das evidências. Aponte divergências antes de propor alterações.",
-    deepLink: sourceRoute
-  }, {
-    target: {
-      type: "source_anchor",
-      id: "anchor-a",
-      title: "Páginas 10–12",
-      path: ["Fontes", "Fonte 1", "Páginas 10–12"]
-    },
-    action: "discuss",
-    instruction: "Discuta esta Âncora comigo e confira se o localizador e o trecho de verificação sustentam o uso pretendido da Fonte. Não altere outros escopos.",
-    deepLink: anchorRoute
-  }]);
-  assert.match(root.innerHTML, /course-source-revisions/u);
+  assert.doesNotMatch(root.innerHTML, /request-chat|Trabalhar com o ChatGPT/u);
+  assert.match(root.innerHTML, /data-source-action="edit-source"/u);
+  assert.match(root.innerHTML, /data-source-action="edit-anchor"/u);
+  assert.match(root.innerHTML, /data-source-form="observation"/u);
   panel.destroy();
 });
 
@@ -1276,6 +1231,10 @@ test("editor de alvo salva o conjunto completo ordenado com relação e âncoras
   });
   await panel.open();
   await settle();
+  assert.match(root.innerHTML, /<h3>Vinculadas<\/h3>/u);
+  assert.match(root.innerHTML, /<h3>Catálogo<\/h3>/u);
+  assert.doesNotMatch(root.innerHTML, /aria-describedby="course-source-target-description"/u);
+  assert.doesNotMatch(root.innerHTML, /Salvar substitui os vínculos|Conjunto atual|Adicionar do catálogo/u);
   for (const relation of [
     "informed_by", "supported_by", "adapted_from", "quoted_from",
     "contrasted_with", "exemplified_by", "inspired_by", "needs_verification"
@@ -1329,6 +1288,44 @@ test("editor de alvo salva o conjunto completo ordenado com relação e âncoras
       anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
     }]
   });
+});
+
+test("editor de alvo resume estados vazios sem explicar o mecanismo de persistência", async () => {
+  const root = new FakeRoot();
+  const panel = createCourseSourcesPanel({
+    root,
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    mode: "target",
+    targetKind: "plan_item",
+    targetId: PLAN_ITEM_ID,
+    targetVersion: 3,
+    controller: { ...annotationController(),
+      async loadCourseSources(_courseId, options) {
+        if (options.mode === "catalog") {
+          return catalogPage([], { revision: options.expectedRevision });
+        }
+        if (options.mode === "source") {
+          return sourcePage(source(1), {
+            revision: options.expectedRevision,
+            targetKind: options.targetKind,
+            targetId: options.targetId
+          });
+        }
+        return targetPage({ revision: options.expectedRevision });
+      },
+      async mutateCourseSources() {
+        throw new Error("Não deve salvar.");
+      }
+    }
+  });
+
+  await panel.open();
+  await settle();
+
+  assert.match(root.innerHTML, /Sem fontes cadastradas\./u);
+  assert.doesNotMatch(root.innerHTML, /Nenhuma fonte cadastrada|Salvar substitui/u);
+  panel.destroy();
 });
 
 test("modal de atribuição contém foco e exige descarte explícito antes de fechar alterações", async () => {
@@ -1434,7 +1431,8 @@ test("modal de atribuição contém foco e exige descarte explícito antes de fe
   assert.match(root.innerHTML, /ainda não foram salvas/u);
   click(root, "cancel-confirmation");
   assert.equal(root.focusedSelectors.at(-1), '[data-source-action="close-target"]');
-  assert.match(root.innerHTML, /Nenhuma fonte vinculada/u);
+  assert.match(root.innerHTML, /Sem fontes vinculadas\./u);
+  assert.doesNotMatch(root.innerHTML, /conjunto vazio será salvo/iu);
 
   let escapeStopped = false;
   root.listeners.get("keydown")({

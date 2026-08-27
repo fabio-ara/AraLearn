@@ -247,8 +247,7 @@ function renderMemberFacts(member) {
 function renderList(state) {
   const items = state.list?.items || [];
   return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Variantes</h2>' +
-    '<p>Cursos independentes a partir do mesmo planejamento.</p></div>' +
+    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Variantes</h2></div>' +
     '<button type="button" class="course-authoring-header-action" data-course-variants-action="create"' +
     ' aria-label="Criar variantes" title="Criar variantes">' +
     renderUiIcon("add", "course-authoring-button-icon") + '</button></header>' +
@@ -258,8 +257,9 @@ function renderList(state) {
         `<p>${quantity(item.attachedCount, "variante vinculada", "variantes vinculadas")} · ` +
         `${quantity(item.detachedCount, "desvinculada", "desvinculadas")}</p></div>` +
         (item.attachedCount >= 2
-          ? `<button type="button" data-course-variants-action="open" data-set-id="${escapeHtml(item.comparisonSetId)}">Comparar</button>`
-          : '<p class="course-authoring-form-hint">A comparação exige duas variantes ativas.</p>') + '</article>'
+          ? `<button type="button" data-course-variants-action="open" data-set-id="${escapeHtml(item.comparisonSetId)}" aria-label="Comparar variantes" title="Comparar variantes">` +
+            `${renderUiIcon("graph", "course-authoring-button-icon")}</button>`
+          : '<span class="course-authoring-form-hint">Aguardando outra variante</span>') + '</article>'
       ).join("") + '</div>' : '<p class="course-authoring-empty-copy">Nenhuma comparação criada neste Curso.</p>') +
     (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") +
     '</section>';
@@ -274,7 +274,6 @@ function renderComponentPolicyDifference(state, index) {
   const draft = state.createDraft.variants[index];
   const allowedRefs = new Set(draft.allowedRefs);
   return `<details class="course-variants-policy"${draft.policyEnabled || allowedRefs.size ? " open" : ""}><summary>Também restringir componentes desta variante</summary>` +
-    '<p class="course-authoring-form-hint">Se marcar esta opção, selecione ao menos um componente permitido. A política completa pode ser refinada depois em Parâmetros.</p>' +
     `<label><input type="checkbox" name="policy-enabled-${index}" value="true"${draft.policyEnabled ? " checked" : ""}> Restringir aos componentes selecionados</label>` +
     '<div class="course-design-component-list">' + state.componentCatalog.options.map((option) =>
       '<label class="course-design-component-option"><input type="checkbox" name="policy-allowed-' + index +
@@ -291,7 +290,7 @@ function renderVariantFields(state, index) {
   return '<fieldset><legend>' + (baseline ? 'Base A' : 'Variante ' + label) + '</legend><label>Rótulo<input name="label-' + index + '" maxlength="80" required value="' + escapeHtml(draft.label) + '"></label>' +
     `<label>Título<input name="title-${index}" maxlength="300" required value="${escapeHtml(draft.title)}"></label>` +
     `<label>Objetivo<textarea name="goal-${index}" maxlength="2000" required>${escapeHtml(draft.goal)}</textarea></label>` +
-    (baseline ? '<p class="course-authoring-form-hint">Referência inicial: mantém os parâmetros e componentes do Curso de origem.</p>' :
+    (baseline ? '' :
       '<label>Parâmetro que muda<select name="parameter-id-' + index + '">' + integerParameters.map((candidate) =>
         `<option value="${escapeHtml(candidate.id)}"${candidate.id === draft.parameterId ? " selected" : ""}>${escapeHtml(candidate.label)}</option>`).join("") + '</select></label>' +
       '<label>Valor desta variante<input name="parameter-value-' + index + '" type="number" min="' + definition.valueSchema.minimum +
@@ -302,15 +301,15 @@ function renderVariantFields(state, index) {
 
 function renderCreate(state) {
   return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Criar variantes</h2>' +
-    '<p>Os Cursos começam com o mesmo planejamento e uma diferença declarada.</p></div>' +
+    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Criar variantes</h2></div>' +
     '<button type="button" data-course-variants-action="back" aria-label="Voltar" title="Voltar">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></header>' +
     `<form class="course-authoring-write-form" data-course-variants-create${state.busy ? ' aria-busy="true"' : ""}>` +
     '<label>Quantidade de variantes<select name="variant-count" data-course-variants-count>' + [2,3,4,5,6,7,8].map((count) =>
       `<option value="${count}"${count === state.createDraft.variantCount ? " selected" : ""}>${count}</option>`).join("") + '</select></label>' +
     Array.from({ length: state.createDraft.variantCount }, (_, index) => renderVariantFields(state, index)).join("") +
-    `<button type="submit" name="create-comparison"${state.busy ? ' aria-disabled="true"' : ""}>Criar e comparar</button></form>` +
+    `<button type="submit" name="create-comparison" aria-label="Criar e comparar" title="Criar e comparar"${state.busy ? ' aria-disabled="true"' : ""}>` +
+    `${renderUiIcon("save", "course-authoring-button-icon")}</button></form>` +
     (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") + '</section>';
 }
 
@@ -332,7 +331,8 @@ function renderComparison(state) {
       '</div></article><article class="course-authoring-card course-variants-source"><div><h3>Origem: ' +
       escapeHtml(comparison.source.title) + '</h3><p>Revisão atual ' + comparison.source.currentCourseRevision +
       ' · checkpoint ' + comparison.source.checkpointCourseRevision + '.</p></div>' +
-      '<button type="button" data-course-variants-action="visit" data-course-id="' + escapeHtml(comparison.source.courseId) + '">Abrir origem</button></article>' +
+      '<button type="button" data-course-variants-action="visit" data-course-id="' + escapeHtml(comparison.source.courseId) + '" aria-label="Abrir origem" title="Abrir origem">' +
+      renderUiIcon("arrow-right", "course-authoring-button-icon") + '</button></article>' +
       comparison.members.map((member) =>
       '<article class="course-authoring-card"><div><h3>' +
       (member.position === 0 ? 'Referência · ' : '') + escapeHtml(member.label) + ': ' + escapeHtml(member.title) + '</h3>' +
@@ -344,8 +344,10 @@ function renderComparison(state) {
         escapeHtml(differenceValue(difference.value)) + '<br><small>' + escapeHtml(difference.rationale) + '</small></li>'
       ).join("") + '</ul>' : '<p>Sem diferença de parâmetro declarada.</p>') +
       '<p>' + escapeHtml(policySummary(member.componentPolicyDifference)) + '</p></div>' +
-      '<div class="course-variants-actions"><button type="button" data-course-variants-action="visit" data-course-id="' + escapeHtml(member.courseId) + '">Abrir Curso</button>' +
-      `<button type="button" data-course-variants-action="detach" data-course-id="${escapeHtml(member.courseId)}">Desvincular</button></div>` +
+      '<div class="course-variants-actions"><button type="button" data-course-variants-action="visit" data-course-id="' + escapeHtml(member.courseId) + '" aria-label="Abrir Curso" title="Abrir Curso">' +
+      renderUiIcon("arrow-right", "course-authoring-button-icon") + '</button>' +
+      `<button type="button" data-course-variants-action="detach" data-course-id="${escapeHtml(member.courseId)}" aria-label="Desvincular" title="Desvincular">` +
+      `${renderUiIcon("trash", "course-authoring-button-icon")}</button></div>` +
       '</article>').join("") + '</div>' +
     '<div class="course-variants-comparison-differences" aria-label="Diferenças da comparação">' +
       renderComparisonDifferenceGroup("Diferenças declaradas", comparison.differences.declared, labels, "Nenhuma diferença declarada.") +
