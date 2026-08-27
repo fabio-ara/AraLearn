@@ -1152,7 +1152,7 @@ test.describe("Autoria real com Supabase local", () => {
         "A formulação pode ficar mais direta sem mudar seu significado."
       ))
         .toBeVisible();
-      await expect(providerDialog.getByRole("heading", { name: "Proposta atual" }))
+      await expect(providerDialog.getByRole("heading", { name: "Proposta", exact: true }))
         .toBeVisible();
       await providerDialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
       await expect(inspectionUnit.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))

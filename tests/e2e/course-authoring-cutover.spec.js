@@ -797,6 +797,7 @@ async function mountCourseAuthoring(page, {
       listReads: 0,
       headerReads: 0,
       outlineReads: 0,
+      courseDocumentReads: [],
       inspectionReads: [],
       annotationReads: [],
       annotationMutations: [],
@@ -1571,6 +1572,42 @@ async function mountCourseAuthoring(page, {
       async loadAuthoringOutline(courseId) {
         probe.outlineReads += 1;
         return outlineFor(courseId);
+      },
+      async loadCourseDocument(courseId, options = {}) {
+        probe.courseDocumentReads.push({ courseId, options: structuredClone(options) });
+        const detail = courseDetail(courseId);
+        if (options.verifiedRevision != null && options.verifiedRevision !== detail.revision) {
+          const error = new Error("Revisão alterada");
+          error.code = "course_revision_changed";
+          throw error;
+        }
+        const source = courseId === courseIds[0] ? studyUnits : [];
+        return {
+          document: {
+            contract: "aralearn.course-project.v1",
+            courses: [{
+              id: courseId,
+              position: 0,
+              title: detail.title,
+              modules: [{
+                id: "module-a",
+                position: 0,
+                title: "Base conceitual",
+                lessons: [{
+                  id: "lesson-a",
+                  position: 0,
+                  title: "Relações e evidências",
+                  microsequences: [{
+                    id: "microsequence-a",
+                    position: 0,
+                    title: "Comparação orientada",
+                    studyUnits: structuredClone(source)
+                  }]
+                }]
+              }]
+            }]
+          }
+        };
       },
       async loadCourseAnchoredAnnotations(courseId, options) {
         probe.annotationReads.push({ courseId, options: structuredClone(options) });
@@ -3995,11 +4032,22 @@ for (const width of [360, 390, 430, 1280]) {
 
     await expect(page.locator('[data-inspection-study-unit="study-unit-60"]')).toHaveCount(1);
     expect(await page.locator("[data-inspection-study-unit]").count()).toBeLessThanOrEqual(36);
-    const inspectionReads = await page.evaluate(() =>
-      globalThis.__courseAuthoringHarness.probe.inspectionReads);
-    expect(inspectionReads).toHaveLength(5);
+    const { courseDocumentReads, inspectionReads } = await page.evaluate(() => ({
+      courseDocumentReads: globalThis.__courseAuthoringHarness.probe.courseDocumentReads,
+      inspectionReads: globalThis.__courseAuthoringHarness.probe.inspectionReads
+    }));
+    expect(inspectionReads).toHaveLength(2);
     expect(inspectionReads.every(({ limit, maxBytes }) =>
       limit === 12 && maxBytes === 1_500_000)).toBe(true);
+    expect(inspectionReads.at(-1)).toMatchObject({
+      anchorStudyUnitId: "study-unit-50",
+      cursor: null,
+      direction: "forward"
+    });
+    expect(courseDocumentReads).toEqual([{
+      courseId: COURSE_IDS[0],
+      options: { verifiedRevision: 5 }
+    }]);
     await expect(page.locator(".course-inspection-sequence"))
       .toHaveAttribute("aria-label", "Sequência curricular de Unidades");
     expect(await page.locator("[data-inspection-study-unit]").evaluateAll((items) =>
