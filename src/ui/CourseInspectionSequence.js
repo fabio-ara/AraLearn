@@ -1453,6 +1453,7 @@ export function createCourseInspectionSequence({
   let observer = null;
   let scrollFrame = null;
   let viewportUpdateBlockedUntil = 0;
+  let renderEpoch = 0;
   let saveTimer = null;
   let requestEpoch = 0;
   let positionChannel = null;
@@ -1703,6 +1704,16 @@ export function createCourseInspectionSequence({
     if (heights.length) {
       state.averageHeight = Math.max(120, Math.min(1_600,
         heights.reduce((sum, height) => sum + height, 0) / heights.length + 12));
+      const spacers = [...(root.querySelectorAll?.(".course-inspection-spacer") || [])];
+      if (spacers.length === 2 && state.items.length > 0) {
+        spacers[0].style.height = `${Math.round(
+          Math.max(0, state.items[0].ordinal - 1) * state.averageHeight
+        )}px`;
+        spacers[1].style.height = `${Math.round(
+          Math.max(0, state.totalCount - state.items[state.items.length - 1].ordinal) *
+            state.averageHeight
+        )}px`;
+      }
     }
   }
 
@@ -1736,17 +1747,17 @@ export function createCourseInspectionSequence({
     root.querySelectorAll?.("[data-inspection-load]").forEach((element) => observer.observe(element));
   }
 
-  async function hydrate() {
+  async function hydrate(epoch) {
     try {
+      if (state.destroyed || epoch !== renderEpoch) return;
       deactivateResponses();
       await RESOURCE_PACKAGE_REGISTRY.hydrate(root);
-      if (state.destroyed) return;
+      if (state.destroyed || epoch !== renderEpoch) return;
       activateManualEditing();
       deactivateResponses();
       measureItems();
-      observeBoundaries();
     } catch {
-      if (state.destroyed) return;
+      if (state.destroyed || epoch !== renderEpoch) return;
       state.hydrationFailure = "Uma representação não pôde ser materializada.";
       const notice = root.querySelector?.(".course-inspection-copy-status");
       if (notice) notice.textContent = state.hydrationFailure;
@@ -1760,12 +1771,15 @@ export function createCourseInspectionSequence({
     captureDraft = true
   } = {}) {
     if (state.destroyed) return;
+    const epoch = ++renderEpoch;
     if (captureDraft) captureManualDraft();
     const snapshot = anchor || captureAnchor();
     const restoreObservationFocus = state.restoreObservationFocus;
     state.restoreObservationFocus = false;
     manualInlineController?.destroy?.();
     manualInlineController = null;
+    observer?.disconnect?.();
+    observer = null;
     root.innerHTML = renderSequence(state);
     if (snapshot?.controlKey || snapshot?.openControlKeys?.length) {
       restoreControlState(snapshot, { focus: false });
@@ -1782,13 +1796,15 @@ export function createCourseInspectionSequence({
       focus("[data-field='study-unit-observation']");
     }
     root.setAttribute?.("aria-busy", String(state.initialLoading || Boolean(state.loadingDirection)));
-    void hydrate().then(() => {
+    void hydrate(epoch).then(() => {
+      if (state.destroyed || epoch !== renderEpoch) return;
       if (restorePosition) restoreAnchor(snapshot, { initial });
       else restoreControlState(snapshot);
       updateActiveFromViewport();
       if (!restorePosition && scrollTarget && "scrollTop" in scrollTarget) {
         scrollTarget.scrollTop = 0;
       }
+      observeBoundaries();
     });
   }
 
@@ -2284,7 +2300,14 @@ export function createCourseInspectionSequence({
     closeSearch({ clear: true });
     const localTarget = state.items.find(({ studyUnit }) => studyUnit.id === result.id);
     if (localTarget) {
-      if (!selectStudyUnit(result.id)) return false;
+      if (!selectStudyUnit(result.id, {
+        anchor: {
+          ...captureAnchor(),
+          studyUnitId: result.id,
+          offsetFromStickyTop: 0,
+          controlKey: "search"
+        }
+      })) return false;
     } else {
       const scopePathIndex = { module: 1, lesson: 2, didactic_microsequence: 3 }[state.scope.kind];
       const resultBelongsToScope = state.scope.kind === "course" ||
@@ -2421,6 +2444,7 @@ export function createCourseInspectionSequence({
   async function moveActive(direction) {
     const current = activeItem();
     if (!current) return false;
+    const interactionAnchor = captureAnchor();
     const delta = direction === "next" ? 1 : -1;
     let target = state.items.find((item) => item.ordinal === current.ordinal + delta);
     if (!target) {
@@ -2428,7 +2452,13 @@ export function createCourseInspectionSequence({
       target = state.items.find((item) => item.ordinal === current.ordinal + delta);
     }
     if (!target) return false;
-    if (!selectStudyUnit(target.studyUnit.id)) return false;
+    if (!selectStudyUnit(target.studyUnit.id, {
+      anchor: {
+        ...interactionAnchor,
+        studyUnitId: target.studyUnit.id,
+        offsetFromStickyTop: 0
+      }
+    })) return false;
     const escapedId = globalThis.CSS?.escape
       ? globalThis.CSS.escape(target.studyUnit.id)
       : target.studyUnit.id.replace(/["\\]/gu, "\\$&");
@@ -2443,7 +2473,7 @@ export function createCourseInspectionSequence({
     return state.observationDraft.rawText !== "" || state.observationDraft.category !== null;
   }
 
-  function selectStudyUnit(studyUnitId) {
+  function selectStudyUnit(studyUnitId, { anchor = null } = {}) {
     const target = state.items.find(({ studyUnit }) => studyUnit.id === studyUnitId);
     if (!target) return false;
     if (hasObservationDraft() && state.observationDraftStudyUnitId &&
@@ -2457,7 +2487,7 @@ export function createCourseInspectionSequence({
     state.selectedStudyUnitId = studyUnitId;
     state.observationDraftStudyUnitId = studyUnitId;
     state.observationError = "";
-    render({ anchor: captureAnchor() });
+    render({ anchor: anchor || captureAnchor() });
     return true;
   }
 

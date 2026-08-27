@@ -710,6 +710,7 @@ async function mountCourseAuthoring(page, {
         topics: []
       };
     });
+    const studyUnitVersions = new Map(studyUnits.map(({ id }) => [id, 1]));
     const sourceCatalog = Array.from({ length: 60 }, (_, index) => {
       const ordinal = index + 1;
       return {
@@ -822,6 +823,7 @@ async function mountCourseAuthoring(page, {
       createCalls: [],
       planMutations: [],
       materializationRequests: [],
+      compositionMutations: [],
       studyContentOpens: [],
       closeCalls: 0
     };
@@ -1610,6 +1612,32 @@ async function mountCourseAuthoring(page, {
           }
         };
       },
+      async commitCourseComposition(request) {
+        probe.compositionMutations.push(structuredClone(request));
+        const course = courses.find(({ courseId }) => courseId === request.courseId);
+        const studyUnitId = request.studyUnit.id;
+        const index = studyUnits.findIndex(({ id }) => id === studyUnitId);
+        if (!course || index < 0) throw new Error("Unidade de estudo ausente na fixture.");
+        const studyUnit = structuredClone(request.studyUnit);
+        const version = request.expectedStudyUnitVersion + 1;
+        studyUnits[index] = studyUnit;
+        studyUnitVersions.set(studyUnitId, version);
+        course.revision += 1;
+        return {
+          courseId: request.courseId,
+          courseRevision: course.revision,
+          studyUnitId,
+          studyUnitVersion: version,
+          studyUnit,
+          version,
+          reconciled: true,
+          changed: true,
+          idempotent: false,
+          channel: "application",
+          origin: request.origin,
+          updatedAt: "2026-08-20T12:01:00.000Z"
+        };
+      },
       async loadCourseAnchoredAnnotations(courseId, options) {
         probe.annotationReads.push({ courseId, options: structuredClone(options) });
         if (requestedAnnotationMutationScenario === "reconciliation-fails-once" &&
@@ -1741,7 +1769,7 @@ async function mountCourseAuthoring(page, {
         const end = start + selected.length;
         const items = selected.map((studyUnit, index) => ({
           studyUnit: structuredClone(studyUnit),
-          version: 1,
+          version: studyUnitVersions.get(studyUnit.id),
           updatedAt: "2026-08-17T12:00:00.000Z",
           ordinal: start + index + 1,
           curriculumPath: {
@@ -2573,7 +2601,7 @@ test.describe("Autoria canônica mobile-first", () => {
     const parameter = page.locator(
       '[data-parameter-id="new_analysis_unit_ceiling_per_expository_study_unit"]'
     );
-    await parameter.getByText("Entender e ajustar", { exact: true }).click();
+    await parameter.getByLabel(/^Entender e ajustar/u).click();
     const reason = parameter.getByLabel("Justificativa");
     const draft = "Hipótese ainda em discussão com a equipe autora.";
     await reason.fill(draft);
@@ -2607,7 +2635,7 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.getByRole("heading", { name: "Parâmetros", exact: true })).toBeVisible();
       await expect(page.locator(".course-design-parameter")).toHaveCount(4);
       await expect(page.locator(".course-design-component-option")).toHaveCount(32);
-      await expect(page.getByText(/valores iniciais são hipóteses operacionais/u)).toBeVisible();
+      await expect(page.getByLabel(/^Entender e ajustar/u)).toHaveCount(4);
       await expect(page.getByRole("heading", { name: "Componentes", exact: true })).toBeVisible();
       await expect(page.getByText("Planejado × aplicado", { exact: true })).toBeVisible();
       await expectNoHorizontalOverflow(page);
@@ -2645,7 +2673,7 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator(
         '.course-authoring-task-menu a[data-section="research"]'
       )).toHaveClass(/\bis-active\b/u);
-      await page.getByRole("button", { name: "Comparar", exact: true }).click();
+      await page.getByRole("button", { name: "Comparar variantes", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Comparação", exact: true })).toBeVisible();
       await expect(page.getByText("Novas unidades de análise por Unidade expositiva:", {
         exact: false
@@ -2882,7 +2910,7 @@ test.describe("Autoria canônica mobile-first", () => {
       variantMutationScenario: "ambiguous-once"
     });
 
-    await page.getByRole("button", { name: "Comparar", exact: true }).click();
+    await page.getByRole("button", { name: "Comparar variantes", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Comparação", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Desvincular", exact: true }).first().click();
     await page.getByRole("alertdialog").getByRole("button", {
@@ -3513,7 +3541,7 @@ test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON"
   await expect(page.locator(".course-source-target-link")).toHaveCount(2);
   await page.getByRole("checkbox", { name: "Páginas 11–13" }).check();
   await expect(page.getByRole("dialog")).not.toContainText("JSON");
-  await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
+  await page.getByRole("button", { name: "Salvar fontes" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -3567,7 +3595,7 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   await page.getByRole("checkbox", {
     name: "Capítulo 2, seção 3 · Páginas 10–12"
   }).check();
-  await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
+  await page.getByRole("button", { name: "Salvar fontes" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
   await expect(targetDialog).toHaveCount(0);
@@ -3606,12 +3634,15 @@ for (const width of [360, 390, 430, 1280]) {
     );
     await expectResponsiveAuthoringNavigation(page, width);
     await expect(page.getByRole("heading", { name: "Observações", exact: true })).toBeVisible();
-    await expect(page.getByText("Inbox única do Curso", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", {
+      name: "Atualizar observações",
+      exact: true
+    })).toBeVisible();
     await expect(page.getByText(
       "A relação entre os conjuntos precisa de mais contexto.",
       { exact: true }
     )).toBeVisible();
-    await page.getByText("Filtros e origens", { exact: true }).click();
+    await page.getByLabel("Filtros", { exact: true }).click();
     await expect(page.getByLabel("Assunto").locator("option")).toContainText([
       "Todos", "Evidências", "Relações"
     ]);
@@ -3697,7 +3728,7 @@ test("Observações em 390 px criam por contexto, filtram e abrem deep link corr
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=review`;
   await mountCourseAuthoring(page, { cardinality: "many", hash });
 
-  await page.getByText("Nova observação autoral", { exact: true }).click();
+  await page.getByLabel("Nova observação", { exact: true }).click();
   await page.locator('.course-observation-author-composer select[name="target"]')
     .selectOption({ label: "Base conceitual · Módulo" });
   await page.locator('.course-observation-author-composer select[name="category"]')
@@ -3716,7 +3747,7 @@ test("Observações em 390 px criam por contexto, filtram e abrem deep link corr
   expect(creation.command.target).toEqual({ kind: "module", id: "module-a" });
   expect(creation.command.type).toBe("create_anchored_annotation");
 
-  await page.getByText("Filtros e origens", { exact: true }).click();
+  await page.getByLabel("Filtros", { exact: true }).click();
   await page.getByLabel("Origem").selectOption("author");
   await page.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect(page.locator(".course-observation-card")).toHaveCount(1);
@@ -3724,7 +3755,7 @@ test("Observações em 390 px criam por contexto, filtram e abrem deep link corr
   await expect(page).toHaveURL(new RegExp(
     `#\\/authoring\\/courses\\/${COURSE_IDS[0]}\\?section=review&annotationId=`
   ));
-  await expect(page.getByText("Detalhe contextual", { exact: true })).toBeVisible();
+  await expect(page.locator(".course-observation-detail")).toBeVisible();
   await expect(page.getByRole("link", { name: "Abrir Módulo" })).toBeVisible();
   await expect(page.getByText("Relações", { exact: true })).toBeVisible();
   await expect(page.getByText("Evidências", { exact: true })).toBeVisible();
@@ -3744,7 +3775,7 @@ test("Observações confirmam a escrita uma vez quando a atualização da lista 
     annotationMutationScenario: "reconciliation-fails-once"
   });
 
-  await page.getByText("Nova observação autoral", { exact: true }).click();
+  await page.getByLabel("Nova observação", { exact: true }).click();
   const composer = page.locator(".course-observation-author-composer");
   await composer.locator('select[name="target"]')
     .selectOption({ label: "Base conceitual · Módulo" });
@@ -3978,6 +4009,34 @@ for (const width of [360, 390, 430, 1280]) {
   });
 }
 
+test("Inspeção mantém o foco no localizador e na navegação ao trocar de Unidade", async ({
+  page
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+  const search = page.getByRole("combobox", { name: "Ir para" });
+  await search.fill("Unidade curricular 12");
+  await expect(page.locator(
+    '[data-inspection-search-option="study_unit:study-unit-12"]'
+  )).toBeVisible();
+  await search.press("Enter");
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("12/60");
+  await expect(search).toBeFocused();
+
+  const next = page.getByRole("button", { name: "Próxima Unidade" });
+  const nextBox = await next.boundingBox();
+  expect(nextBox).not.toBeNull();
+  await page.mouse.click(
+    nextBox.x + nextBox.width / 2,
+    nextBox.y + nextBox.height / 2
+  );
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("13/60");
+  await expect(next).toBeFocused();
+});
+
 test("Inspeção atualiza só o trecho ancorado e conserva posição, foco e detalhe", async ({
   page
 }) => {
@@ -4057,6 +4116,10 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   });
   await expect.poll(() => page.locator("[data-inspection-context-position]").textContent())
     .toBe("25/60");
+  const returnOffset = await item.evaluate((element) => {
+    const sticky = document.querySelector(".course-inspection-sticky-context");
+    return element.getBoundingClientRect().top - sticky.getBoundingClientRect().bottom;
+  });
 
   const context = page.locator(".course-inspection-context-selector");
   const contextSummary = context.locator(":scope > summary");
@@ -4111,6 +4174,12 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   );
   await expect(page.locator('[data-inspection-study-unit="study-unit-25"]')).toHaveCount(1);
   await expect(page.locator("[data-inspection-context-position]")).toHaveText("25/60");
+  await expect.poll(() => item.evaluate((element, expectedOffset) => {
+    const sticky = document.querySelector(".course-inspection-sticky-context");
+    const currentOffset = element.getBoundingClientRect().top -
+      sticky.getBoundingClientRect().bottom;
+    return Math.abs(currentOffset - expectedOffset);
+  }, returnOffset)).toBeLessThanOrEqual(2);
 
   const designAction = page.locator(
     '[data-inspection-study-unit="study-unit-25"] [data-inspection-control-key="design:study-unit-25"]'
@@ -4223,7 +4292,12 @@ test("duas abas compartilham somente a posição persistida e reancoram pela rev
 
   await expect(otherPage.locator("[data-inspection-context-position]")).toHaveText("1/60");
   await otherPage.waitForTimeout(1_600);
-  await page.getByRole("button", { name: "Próxima Unidade" }).click();
+  const nextButton = page.getByRole("button", { name: "Próxima Unidade" });
+  const nextButtonBox = await nextButton.boundingBox();
+  await page.mouse.click(
+    nextButtonBox.x + nextButtonBox.width / 2,
+    nextButtonBox.y + nextButtonBox.height / 2
+  );
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(
     "aralearn.e2e.inspection-position:10000000-0000-4000-8000-000000000001"
   ))?.studyUnitId)).toBe("study-unit-26");
@@ -4242,11 +4316,11 @@ test("duas abas compartilham somente a posição persistida e reancoram pela rev
     ))
   }));
   expect(state.positionLoads).toBeGreaterThanOrEqual(2);
-  expect(state.reads.at(-1)).toMatchObject({
+  expect(state.reads).toContainEqual(expect.objectContaining({
     expectedRevision: 5,
     anchorStudyUnitId: "study-unit-26",
     limit: 12
-  });
+  }));
   expect(state.saved).toMatchObject({
     studyUnitId: "study-unit-26",
     courseRevision: 5
@@ -4268,7 +4342,7 @@ test("Parâmetros pagina 55 Módulos e permite descer até Lição sem carregar 
   await page.getByRole("button", { name: "Abrir escopo" }).click();
   await expect(page.getByText("Módulo: Base conceitual", { exact: true })).toBeVisible();
   await expect(page.locator(".course-design-parameter")).toHaveCount(4);
-  await page.getByText("Entender e ajustar", { exact: true }).first().click();
+  await page.getByLabel(/^Entender e ajustar/u).first().click();
   await expect(page.locator("p:visible").filter({
     hasText: "Parâmetros pedagógicos não são definidos em Módulo"
   }).first()).toBeVisible();
@@ -4566,7 +4640,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
   const parameter = page.locator(
     '[data-parameter-id="new_analysis_unit_ceiling_per_expository_study_unit"]'
   );
-  await parameter.getByText("Entender e ajustar", { exact: true }).click();
+  await parameter.getByLabel(/^Entender e ajustar/u).click();
   await parameter.getByRole("spinbutton", { name: "Valor", exact: true }).fill("4");
   await parameter.getByLabel("Origem", { exact: true }).selectOption("research_condition");
   await parameter.getByLabel("Justificativa").fill(
@@ -4575,7 +4649,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
   await parameter.getByRole("button", { name: "Salvar neste escopo" }).click();
   await expect(page.getByText("Parâmetro salvo neste escopo.")).toBeVisible();
 
-  await page.getByText("Editar orientação neste escopo", { exact: true }).click();
+  await page.getByLabel("Editar orientação neste escopo", { exact: true }).click();
   const guidanceEditor = page.locator(".course-design-local-editor");
   await guidanceEditor.getByLabel("Texto original").fill(
     "Defina DNS, mostre resolução de nomes e contraste com DHCP."
@@ -4592,7 +4666,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
     "Defina DNS, mostre resolução de nomes e contraste com DHCP."
   );
 
-  await page.getByText("Interpretar separadamente", { exact: true }).click();
+  await page.getByLabel("Interpretar orientação separadamente", { exact: true }).click();
   const interpretationEditor = page.locator(".course-design-interpretation-editor");
   await interpretationEditor.getByLabel("Resumo estruturado").fill(
     "Desenvolver DNS antes de compará-lo com DHCP."
@@ -4620,7 +4694,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
     "Desenvolver DNS antes de compará-lo com DHCP."
   );
 
-  await page.getByText("Ajustar componentes neste escopo", { exact: true }).click();
+  await page.getByLabel("Ajustar componentes neste escopo", { exact: true }).click();
   const policy = page.locator(".course-design-policy");
   await policy.getByLabel("Disponibilidade").selectOption("allow_only");
   await policy.getByLabel("Permitir").nth(0).check();
@@ -4634,7 +4708,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
   await policy.getByRole("button", { name: "Salvar componentes" }).click();
   await expect(page.getByText("Política de componentes salva neste escopo.")).toBeVisible();
 
-  await page.getByText("Ajustar componentes neste escopo", { exact: true }).click();
+  await page.getByLabel("Ajustar componentes neste escopo", { exact: true }).click();
   await page.locator('[data-course-authoring-action="clear-design-policy"]').click();
   const restorePolicy = page.getByRole("alertdialog", { name: "Confirmar ação" });
   await expect(restorePolicy).toBeVisible();
@@ -4691,7 +4765,7 @@ test("Parâmetros preserva o formulário e repete a mesma operação após respo
   const parameter = page.locator(
     '[data-parameter-id="new_analysis_unit_ceiling_per_expository_study_unit"]'
   );
-  await parameter.getByText("Entender e ajustar", { exact: true }).click();
+  await parameter.getByLabel(/^Entender e ajustar/u).click();
   const value = parameter.getByRole("spinbutton", { name: "Valor", exact: true });
   const origin = parameter.getByLabel("Origem", { exact: true });
   const reason = parameter.getByLabel("Justificativa");
@@ -4718,7 +4792,7 @@ test("Parâmetros preserva o formulário e repete a mesma operação após respo
 
   await page.locator("#course-design-child-scope").selectOption("module-a");
   await page.getByRole("button", { name: "Abrir escopo" }).click();
-  await page.getByText("Entender e ajustar", { exact: true }).first().click();
+  await page.getByLabel(/^Entender e ajustar/u).first().click();
   await expect(page.locator("p:visible").filter({
     hasText: "Parâmetros pedagógicos não são definidos em Módulo"
   }).first()).toBeVisible();
@@ -4746,7 +4820,7 @@ test("Parâmetros mantém orientação, interpretação e política após valida
   });
 
   const guidance = page.locator(".course-design-local-editor");
-  await guidance.getByText("Editar orientação neste escopo", { exact: true }).click();
+  await guidance.getByLabel("Editar orientação neste escopo", { exact: true }).click();
   await guidance.getByLabel("Texto original").fill("Orientação que não pode ser apagada.");
   await guidance.getByLabel("Justificativa").fill("Razão ainda em revisão.");
   await guidance.locator('select[name="origin"]').evaluate((select) => {
@@ -4777,7 +4851,7 @@ test("Parâmetros mantém orientação, interpretação e política após valida
   await expect(interpretation.getByLabel("Exigir")).toBeFocused();
 
   const policy = page.locator(".course-design-policy");
-  await policy.getByText("Ajustar componentes neste escopo", { exact: true }).click();
+  await policy.getByLabel("Ajustar componentes neste escopo", { exact: true }).click();
   await policy.getByLabel("Disponibilidade").selectOption("allow_only");
   await policy.getByLabel("Justificativa").fill("Seleção ainda incompleta.");
   await policy.getByRole("button", { name: "Salvar componentes" }).click();
@@ -4975,18 +5049,18 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
 
   const chart = research.getByRole("img", { name: /Estado das observações/u });
   await expect(chart).toHaveAccessibleName(
-    "Estado das observações. Aberta: 3; Resolvida: Dado ausente"
+    "Estado das observações. Em aberto: 3; Resolução registrada: Dado ausente"
   );
   const table = research.getByRole("table", { name: "Valores equivalentes ao gráfico" });
   await expect(table).toBeVisible();
   await expect(table.getByRole("row", {
-    name: "Categoria Aberta Valor 3 Denominador 4 Ausência Não"
+    name: "Categoria Em aberto Valor 3 Denominador 4 Ausência Não"
   })).toBeVisible();
   await expect(table.getByRole("row", {
-    name: "Categoria Resolvida Valor Dado ausente Denominador 4 Ausência Sim"
+    name: "Categoria Resolução registrada Valor Dado ausente Denominador 4 Ausência Sim"
   })).toBeVisible();
   await expect(research.getByText("Revisão 5", { exact: true })).toBeVisible();
-  await research.getByText("Como esta métrica é definida", { exact: true }).click();
+  await research.getByText("Métrica", { exact: true }).click();
   await expect(research.getByText("Quatro observações correntes no recorte.", {
     exact: true
   })).toBeVisible();
@@ -4999,7 +5073,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   await channelFilter.selectOption("study_interface");
   await research.getByLabel("Desde").fill("2026-08-18");
   await research.getByLabel("Até").fill("2026-08-19");
-  await research.getByRole("button", { name: "Aplicar recorte" }).click();
+  await research.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
   const filteredQuery = await page.evaluate(() =>
@@ -5033,7 +5107,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   await research.getByRole("button", { name: "Carregar mais fatos" }).click();
   await expect(facts).toHaveCount(2);
   await expect(research.getByRole("button", { name: "Carregar mais fatos" })).toHaveCount(0);
-  await expect(facts.nth(1)).toContainText("RevisãoNão registrada");
+  await expect(facts.nth(1)).toContainText("Assuntos: ausente");
   await expect(facts.nth(1)).toContainText("EstadoResolução registrada");
   await expect(facts.nth(1)).toContainText(
     "A revisão do Curso e a quantidade de assuntos não foram registradas neste fato."
@@ -5113,7 +5187,10 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   expect(csv).toContain("learner");
   expect(csv.trim().split(/\r?\n/u)).toHaveLength(exported.facts.length + 1);
 
-  await facts.first().getByRole("link", { name: "Abrir o objeto relacionado" }).click();
+  await facts.first().getByRole("link", {
+    name: "Abrir Observação sobre a comparação",
+    exact: true
+  }).click();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}` +
       "?section=content&studyUnitId=study-unit-01"

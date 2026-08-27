@@ -2074,6 +2074,7 @@
 }
 
 .course-analytics-disclosure-trigger {
+  min-height: var(--tap);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3571,7 +3572,7 @@
 .course-inspection-search > input {
   width: 100%;
   min-width: 0;
-  min-height: calc(var(--tap) - 2px);
+  min-height: var(--tap);
   padding: 7px 9px 7px 0;
   border: 0;
   outline: 0;
@@ -3839,14 +3840,11 @@
   scroll-margin-top: calc(
     max(4px, var(--safe-top)) + var(--tap) + var(--tap) + var(--tap) + 28px
   );
-  content-visibility: auto;
-  contain-intrinsic-size: auto 520px;
 }
 
 .course-inspection-item:has(.course-inspection-item-details[open]) {
   position: relative;
   z-index: 21;
-  content-visibility: visible;
 }
 
 .course-inspection-item > article {
@@ -4448,7 +4446,7 @@
   font-weight: 750;
 }
 
-.course-observation-author-composer > form {
+.course-observation-author-composer[open] > form {
   min-width: 0;
   display: grid;
   gap: 8px;
@@ -4530,12 +4528,17 @@
   font-weight: 750;
 }
 
-.course-observations-filters > form {
+.course-observations-filters[open] > form {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
   padding: 0 11px 11px;
+}
+
+.course-observation-author-composer:not([open]) > form,
+.course-observations-filters:not([open]) > form {
+  display: none;
 }
 
 .course-observations-filter-grid {
