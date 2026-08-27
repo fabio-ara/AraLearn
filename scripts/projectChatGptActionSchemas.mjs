@@ -28,15 +28,59 @@ export function forChatGptActionDocumentation(value) {
   return value;
 }
 
+const PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS = Object.freeze([
+  "add_plan_item",
+  "update_plan_item"
+]);
+
+function planItemRequirementsForChatGptImporter(value) {
+  const commandTypes = value?.properties?.type?.enum;
+  if (!Array.isArray(commandTypes) ||
+      !PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS.every((type) => commandTypes.includes(type))) {
+    return null;
+  }
+  const branchesByType = new Map((value.oneOf || []).flatMap((branch) => {
+    const types = branch?.properties?.type?.enum;
+    return Array.isArray(types) && types.length === 1 ? [[types[0], branch]] : [];
+  }));
+  const constraints = PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS.map((type) => {
+    const branch = branchesByType.get(type);
+    if (!branch || !Array.isArray(branch.required) || !branch.required.includes("sourceLinks")) {
+      throw new TypeError(`O comando ${type} perdeu a obrigatoriedade de sourceLinks.`);
+    }
+    return {
+      properties: { type: { type: "string", enum: [type] } },
+      required: [...branch.required]
+    };
+  });
+  const remainingTypes = commandTypes.filter(
+    (type) => !PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS.includes(type)
+  );
+  if (remainingTypes.length) {
+    constraints.push({
+      properties: { type: { type: "string", enum: remainingTypes } }
+    });
+  }
+  return constraints;
+}
+
 export function forChatGptActionImporter(value) {
   if (Array.isArray(value)) return value.map(forChatGptActionImporter);
   if (!value || typeof value !== "object") return value;
   const ignoresObjectUnion = value.type === "object" &&
     value.properties && typeof value.properties === "object" &&
     Array.isArray(value.oneOf);
+  const preservedPlanItemRequirements = ignoresObjectUnion
+    ? planItemRequirementsForChatGptImporter(value)
+    : null;
+  if (preservedPlanItemRequirements && Object.hasOwn(value, "anyOf")) {
+    throw new TypeError("O comando de planejamento já possui anyOf na projeção do importador.");
+  }
   return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) =>
     key === "oneOf" && ignoresObjectUnion
-      ? []
+      ? preservedPlanItemRequirements
+        ? [["anyOf", forChatGptActionImporter(preservedPlanItemRequirements)]]
+        : []
       : [[key, forChatGptActionImporter(entry)]]
   ));
 }

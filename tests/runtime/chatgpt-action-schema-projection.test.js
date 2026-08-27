@@ -372,6 +372,81 @@ test("OpenAPI final resolve referências pela raiz e usa components.schemas", as
   }
 });
 
+test("OpenAPI final exige sourceLinks nos comandos de item do plano", async () => {
+  const openApi = JSON.parse(await fs.readFile(
+    new URL("../../docs/downloads/aralearn-chatgpt-action-openapi.yaml", import.meta.url),
+    "utf8"
+  ));
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  addFormats(ajv);
+  const documentId = "urn:aralearn:chatgpt-action-plan-items";
+  ajv.addSchema(openApi, documentId);
+  const validate = ajv.compile({
+    $ref: `${documentId}#/paths/~1alterarCurso/post/requestBody/content/application~1json/schema`
+  });
+  const planCommand = openApi.paths["/alterarCurso"].post.requestBody
+    .content["application/json"].schema.properties.planCommand;
+  assert.deepEqual(
+    sorted(planCommand.anyOf.flatMap((branch) => branch.properties.type.enum)),
+    sorted(AUTHORING_PROTOCOL_V1_VOCABULARY.planCommandTypes)
+  );
+
+  const base = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_instructional_plan",
+    expectedRevision: 3,
+    expectedPlanVersion: 2
+  };
+  const canonicalPlanCommand = canonicalByName.alterarCurso.inputSchema
+    .properties.planCommand;
+  const addPlanItem = canonicalPlanCommand.oneOf.find(
+    (branch) => branch.properties.type.const === "add_plan_item"
+  );
+  const planItemKinds = addPlanItem.properties.kind.enum;
+  for (const kind of planItemKinds) {
+    for (const type of ["add_plan_item", "update_plan_item"]) {
+      const command = {
+        type,
+        kind,
+        id: SECOND_ID,
+        statement: `Item ${kind}`,
+        sourceLinks: [],
+        ...(type === "add_plan_item" ? { position: 0 } : {})
+      };
+      assert.equal(
+        validate({ ...base, planCommand: command }),
+        true,
+        `${type}/${kind}: ${JSON.stringify(validate.errors)}`
+      );
+      const { sourceLinks, ...withoutSourceLinks } = command;
+      assert.deepEqual(sourceLinks, []);
+      assert.equal(
+        validate({ ...base, planCommand: withoutSourceLinks }),
+        false,
+        `${type}/${kind} não pode omitir sourceLinks.`
+      );
+    }
+  }
+
+  for (const planCommandValue of [
+    { type: "update_plan", objective: "Objetivo preservado" },
+    {
+      type: "add_part",
+      id: THIRD_ID,
+      position: 0,
+      title: "Parte preservada",
+      intent: "Organizar a progressão."
+    }
+  ]) {
+    assert.equal(
+      validate({ ...base, planCommand: planCommandValue }),
+      true,
+      JSON.stringify(validate.errors)
+    );
+  }
+});
+
 test("projetor classifica dinamicamente toda regra allOf e descarta só a redundante", () => {
   const rules = AUTHORING_PROTOCOL_V1_TOOLS.flatMap((tool) =>
     projectActionInputSchemaWithAudit(tool).rules
