@@ -44,6 +44,14 @@ importador do ChatGPT preserva essa forma e pode degradar `const` para um tipo
 indeterminado. A transformação muda a representação aceita pelo importador,
 não o vocabulário nem as regras do protocolo.
 
+Todo `requestBody` também declara `type: object` e `properties` na raiz. O
+importador descarta a operação quando um desses elementos falta e ignora
+`oneOf` de raiz mesmo quando o aceita no editor. Por isso, a projeção usada para
+validar Actions conserva os unions estritos, enquanto o OpenAPI entregue ao GPT
+expõe uma superfície agregada, derivada dessas variantes, com todos os campos,
+enums discriminadores e condições de uso nas descrições. O servidor continua
+aplicando as variantes estritas antes de executar a chamada.
+
 ## Preparar um cliente OAuth
 
 A configuração começa antes de o GPT possuir seu identificador definitivo. A

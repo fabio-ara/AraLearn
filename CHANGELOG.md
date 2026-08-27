@@ -4,6 +4,21 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.36] - 2026-08-27
+
+### Alterado
+
+- a projeção de Actions apresenta raízes e comandos na forma efetivamente
+  preservada pelo importador do ChatGPT, sem alterar o protocolo público v1;
+- posições de Partes documentam o índice zero-based no contrato público.
+
+### Corrigido
+
+- o GPT volta a receber os campos de revisão e os comandos completos de
+  planejamento em `lerCurso` e `alterarCurso`;
+- uma posição impossível no plano retorna o erro canônico de entrada, sem ser
+  mascarada como falha interna transitória.
+
 ## [0.0.35] - 2026-08-27
 
 ### Alterado

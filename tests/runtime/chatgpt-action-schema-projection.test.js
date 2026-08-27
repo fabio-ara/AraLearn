@@ -151,6 +151,7 @@ test("projeção de Actions deriva todos os vocabulários discriminados do proto
 
 test("projeção Action-safe não deixa allOf, const nem discriminador sem tipo", () => {
   for (const tool of actionTools) {
+    assert.equal(tool.inputSchema.type, "object", `${tool.name}: raiz importável`);
     assert.deepEqual(findSchemaKeywordPaths(tool.inputSchema, "allOf"), [], tool.name);
     assert.deepEqual(findSchemaKeywordPaths(tool.inputSchema, "const"), [], tool.name);
     walkSchema(tool.inputSchema, (node) => {
@@ -162,6 +163,172 @@ test("projeção Action-safe não deixa allOf, const nem discriminador sem tipo"
       }
     });
   }
+});
+
+test("OpenAPI entrega propriedades completas na raiz que o importador preserva", async () => {
+  const openApi = JSON.parse(await fs.readFile(
+    new URL("../../docs/downloads/aralearn-chatgpt-action-openapi.yaml", import.meta.url),
+    "utf8"
+  ));
+  for (const [pathName, pathItem] of Object.entries(openApi.paths)) {
+    const schema = pathItem.post?.requestBody?.content?.["application/json"]?.schema;
+    if (!schema) continue;
+    assert.equal(
+      schema.type,
+      "object",
+      `${pathName}: o importador do ChatGPT exige raiz de request body do tipo object.`
+    );
+    assert.ok(
+      schema.properties && Object.keys(schema.properties).length,
+      `${pathName}: o importador do ChatGPT exige properties na raiz.`
+    );
+  }
+  for (const [pathName, discriminator, vocabulary] of [
+    ["/lerCurso", "view", "readViews"],
+    ["/alterarCurso", "operation", "changeOperations"],
+    ["/consultarComponentesDidaticos", "operation", "componentOperations"]
+  ]) {
+    const schema = openApi.paths[pathName].post.requestBody
+      .content["application/json"].schema;
+    assert.deepEqual(
+      sorted(schema.properties[discriminator].enum),
+      sorted(AUTHORING_PROTOCOL_V1_VOCABULARY[vocabulary]),
+      `${pathName}: o vocabulário discriminado precisa chegar à superfície importada.`
+    );
+    assert.equal(schema.properties[discriminator].type, "string", pathName);
+    assert.equal(schema.oneOf, undefined, `${pathName}: o importador ignora o union raiz.`);
+  }
+
+  const change = openApi.paths["/alterarCurso"].post.requestBody
+    .content["application/json"].schema;
+  for (const field of [
+    "expectedRevision",
+    "expectedPlanVersion",
+    "planCommand",
+    "designCommand",
+    "sourceCommand",
+    "annotationCommand",
+    "auditCommand",
+    "variantCommand",
+    "materializationCommand"
+  ]) {
+    assert.ok(change.properties[field], `alterarCurso.${field}`);
+  }
+  for (const [field, vocabulary] of [
+    ["planCommand", "planCommandTypes"],
+    ["designCommand", "designCommandTypes"],
+    ["sourceCommand", "sourceCommandTypes"],
+    ["annotationCommand", "annotationCommandTypes"],
+    ["auditCommand", "auditCommandTypes"],
+    ["variantCommand", "variantCommandTypes"]
+  ]) {
+    const command = change.properties[field];
+    assert.equal(command.type, "object", field);
+    assert.ok(command.required.includes("type"), `${field}.type obrigatório`);
+    assert.equal(command.properties.type.type, "string", `${field}.type`);
+    assert.deepEqual(
+      sorted(command.properties.type.enum),
+      sorted(AUTHORING_PROTOCOL_V1_VOCABULARY[vocabulary]),
+      field
+    );
+  }
+  assert.deepEqual(
+    sorted(change.properties.materializationCommand.properties.operation.enum),
+    sorted(AUTHORING_PROTOCOL_V1_VOCABULARY.materializationOperations)
+  );
+  assert.match(change.properties.expectedRevision.description, /update_instructional_plan/u);
+  assert.match(change.properties.expectedPlanVersion.description, /update_instructional_plan/u);
+  assert.match(change.properties.planCommand.description, /update_instructional_plan/u);
+  for (const field of ["id", "position", "title", "intent"]) {
+    assert.match(change.properties.planCommand.properties[field].description, /add_part/u);
+  }
+  assert.match(
+    change.properties.planCommand.properties.position.description,
+    /zero-based.*primeira Parte/iu
+  );
+  assert.deepEqual(
+    sorted(change.properties.designCommand.properties.mode.enum),
+    ["automatic", "explicit"]
+  );
+  const design = change.properties.designCommand.properties;
+  assert.match(
+    design.value.description,
+    /Formato em [^.]*parameterId=new_analysis_unit_ceiling[^.]*: inteiro \(mínimo 1, máximo 64\)\./iu
+  );
+  assert.match(
+    design.value.description,
+    /Formato em [^.]*parameterId=minimum_distinct_practice_opportunities[^.]*: inteiro \(mínimo 1, máximo 64\)\./iu
+  );
+  assert.match(
+    design.value.description,
+    /Formato em [^.]*parameterId=required_explanation_forms[^.]*: lista \(mínimo 1, máximo 8\) de texto entre plain_definition[^.]*representation_link\./iu
+  );
+  assert.match(
+    design.value.description,
+    /Formato em [^.]*parameterId=required_practice_variation_dimensions[^.]*: lista \(mínimo 1, máximo 5\) de texto entre case_or_data[^.]*support_level\./iu
+  );
+  assert.match(design.value.description, /mode=automatic/iu);
+  assert.match(design.value.description, /mode=explicit/iu);
+  assert.match(design.origin.description, /mode=explicit/iu);
+  assert.doesNotMatch(design.origin.description, /mode=automatic/iu);
+  assert.match(
+    design.policy.properties.allowedRefs.description,
+    /availability=all.*máximo 0/iu
+  );
+  assert.match(
+    design.policy.properties.allowedRefs.description,
+    /availability=allow_only.*mínimo 1/iu
+  );
+
+  const read = openApi.paths["/lerCurso"].post.requestBody
+    .content["application/json"].schema;
+  for (const field of ["expectedRevision", "scope", "mode", "cursor"]) {
+    assert.ok(read.properties[field], `lerCurso.${field}`);
+  }
+  assert.match(read.properties.sourceId.description, /view=course_sources, mode=source/iu);
+  assert.match(
+    read.properties.findingId.description,
+    /view=audit_cycle, mode=detail, com findingId/iu
+  );
+  assert.match(
+    read.properties.auditRunId.description,
+    /view=audit_cycle, mode=detail, com auditRunId/iu
+  );
+  for (const field of ["findingId", "auditRunId"]) {
+    assert.match(
+      read.properties[field].description,
+      /view=audit_cycle, mode=detail`, envie exatamente um de `findingId` ou `auditRunId`; não envie mais de um\./u
+    );
+  }
+  assert.match(read.properties.targetStudyUnitId.description, /view=audit_cycle, mode=context/iu);
+  const materialization = change.properties.materializationCommand.properties;
+  assert.match(
+    materialization.expectedMaterializationVersion.description,
+    /operation=start`: inteiro 0\./u
+  );
+  assert.match(
+    materialization.steps.items.properties.targetDidacticMicrosequenceId.description,
+    /kind=context_load`, `kind=validation`: null\. Formato em `kind=didactic_microsequence_materialization`: texto\./u
+  );
+  assert.match(
+    materialization.steps.items.properties.productionPosition.description,
+    /kind=context_load`, `kind=validation`: null\. Formato em `kind=didactic_microsequence_materialization`: inteiro \(mínimo 0, máximo 63\)\./u
+  );
+  const components = openApi.paths["/consultarComponentesDidaticos"].post.requestBody
+    .content["application/json"].schema;
+  for (const field of ["packages", "studyUnitJson", "courseId", "studyUnitId"]) {
+    assert.ok(components.properties[field], `consultarComponentesDidaticos.${field}`);
+  }
+  const courseEntity = openApi.components.schemas.AlterarCursoCourseEntity;
+  assert.equal(courseEntity.type, "object");
+  assert.equal(courseEntity.oneOf, undefined);
+  assert.deepEqual(
+    sorted(courseEntity.properties.entityType.enum),
+    ["lesson", "microsequence", "module", "study_unit", "topic"]
+  );
+  assert.match(courseEntity.properties.content.description, /entityType=module/iu);
+  assert.match(courseEntity.properties.content.description, /entityType=study_unit/iu);
+  assert.deepEqual(findSchemaKeywordPaths(openApi, "oneOf"), []);
 });
 
 test("OpenAPI final resolve referências pela raiz e usa components.schemas", async () => {

@@ -252,13 +252,13 @@ jobs:
           @"
           ## AraLearn v${{ steps.identity.outputs.version }}
 
-          Esta versão corrige a inspeção autoral, a entrada e o avanço do Estudo, a Assistência por IA e o custo de autorização do backend.
+          Esta versão estabiliza a integração pública de Autoria com MCP e ChatGPT Actions.
 
-          - Autoria abre diretamente as Unidades completas e oferece ações nomeadas para editar, observar, auditar e acompanhar materializações.
-          - A entrada única Abrir sempre passa pelos Módulos, sem separar começar, continuar ou retomar.
-          - O avanço confirma a gravação local imediatamente e sincroniza com o AraLearn sem bloquear a próxima Unidade.
-          - A Assistência por IA usa uma folha estável e rolável, sem texto de bastidor, e preserva a mensagem quando falta configurar serviço, modelo ou chave.
-          - O site publica e verifica o OpenAPI corrente de Actions, enquanto o backend reduz consultas repetidas de autorização.
+          - O OpenAPI de Actions preserva operações, campos condicionais e discriminadores literais compreendidos pelo importador do ChatGPT.
+          - Planejamento e Partes podem ser lidos, alterados e relidos com revisão otimista, idempotência e deep links preservados.
+          - MCP e Actions derivam do mesmo protocolo público v1 e expõem versão e fingerprint verificáveis.
+          - Testes de contrato e publicação bloqueiam perda de semântica ou implantação de schemas defasados.
+          - Erros de posição inválida no plano retornam o diagnóstico público correto, sem persistência parcial.
 
           Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.
           "@ | Set-Content -Encoding UTF8 release-notes.md

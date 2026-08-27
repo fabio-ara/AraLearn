@@ -28,6 +28,19 @@ export function forChatGptActionDocumentation(value) {
   return value;
 }
 
+export function forChatGptActionImporter(value) {
+  if (Array.isArray(value)) return value.map(forChatGptActionImporter);
+  if (!value || typeof value !== "object") return value;
+  const ignoresObjectUnion = value.type === "object" &&
+    value.properties && typeof value.properties === "object" &&
+    Array.isArray(value.oneOf);
+  return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) =>
+    key === "oneOf" && ignoresObjectUnion
+      ? []
+      : [[key, forChatGptActionImporter(entry)]]
+  ));
+}
+
 function own(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
@@ -862,6 +875,495 @@ function projectComponentsSchema(node, context, path) {
   return { oneOf: branches };
 }
 
+function schemaIdentity(value) {
+  if (Array.isArray(value)) return `[${value.map(schemaIdentity).join(",")}]`;
+  if (!object(value)) return JSON.stringify(value);
+  return `{${Object.keys(value).sort().map((key) =>
+    `${JSON.stringify(key)}:${schemaIdentity(value[key])}`
+  ).join(",")}}`;
+}
+
+function uniqueSchemas(values) {
+  return [...new Map(values.map((value) => [schemaIdentity(value), value])).values()];
+}
+
+function commonValue(schemas, field) {
+  const values = schemas.map((schema) => schema[field]);
+  return values.every((value) => value !== undefined &&
+      schemaIdentity(value) === schemaIdentity(values[0]))
+    ? values[0]
+    : undefined;
+}
+
+function scalarSurface(schemas) {
+  const type = schemas[0].type;
+  const result = { type };
+  if (schemas.every((schema) => Array.isArray(schema.enum))) {
+    result.enum = [...new Set(schemas.flatMap((schema) => schema.enum))];
+  }
+  for (const field of ["format", "pattern"]) {
+    const value = commonValue(schemas, field);
+    if (value !== undefined) result[field] = value;
+  }
+  for (const field of ["minimum", "minLength", "minItems"]) {
+    const values = schemas.map((schema) => schema[field]);
+    if (values.every(Number.isFinite)) result[field] = Math.min(...values);
+  }
+  for (const field of ["maximum", "maxLength", "maxItems"]) {
+    const values = schemas.map((schema) => schema[field]);
+    if (values.every(Number.isFinite)) result[field] = Math.max(...values);
+  }
+  for (const field of ["uniqueItems"]) {
+    const value = commonValue(schemas, field);
+    if (value !== undefined) result[field] = value;
+  }
+  const description = commonValue(schemas, "description");
+  if (description !== undefined) result.description = description;
+  return result;
+}
+
+function branchDiscriminator(branches) {
+  for (const field of [
+    "operation", "view", "type", "entityType", "mode", "responseKind", "availability", "kind"
+  ]) {
+    const values = branches.map((branch) => singleton(branch.properties?.[field]));
+    if (new Set(values.filter((value) => value !== undefined)).size > 1) {
+      return { field, values };
+    }
+  }
+  return null;
+}
+
+function mergedForbiddenNot(...values) {
+  const constraints = values.filter(Boolean);
+  if (!constraints.length) return null;
+  const entries = constraints.flatMap((constraint) => {
+    if (!Array.isArray(constraint?.anyOf) || forbiddenFields({ not: constraint }).length === 0) {
+      throw new TypeError("A variante aninhada contém uma proibição não projetável.");
+    }
+    return constraint.anyOf;
+  });
+  return { anyOf: entries };
+}
+
+function effectiveObjectBranch(branch) {
+  const forbidden = forbiddenFields(branch);
+  if (!forbidden.length) return branch;
+  const properties = { ...schemaProperties(branch) };
+  forbidden.forEach((field) => delete properties[field]);
+  const result = {
+    ...branch,
+    properties,
+    required: (branch.required || []).filter((field) => !forbidden.includes(field))
+  };
+  delete result.not;
+  return result;
+}
+
+function mergeObjectVariantConstraint(branch, constraint, path) {
+  const unsupported = Object.keys(constraint).filter((key) =>
+    !["properties", "required", "not"].includes(key)
+  );
+  if (unsupported.length) {
+    throw new TypeError(`A variante aninhada em ${path} usa ${unsupported[0]} sem projeção.`);
+  }
+  const result = {
+    ...branch,
+    properties: Object.fromEntries([...new Set([
+      ...Object.keys(schemaProperties(branch)),
+      ...Object.keys(schemaProperties(constraint))
+    ])].map((field) => [
+      field,
+      (() => {
+        const base = schemaProperties(branch)[field] || {};
+        const narrowed = schemaProperties(constraint)[field] || {};
+        const result = { ...base, ...narrowed };
+        if (Array.isArray(base.anyOf) &&
+            (narrowed.type || narrowed.$ref || Array.isArray(narrowed.anyOf))) {
+          delete result.anyOf;
+        }
+        return result;
+      })()
+    ])),
+    required: [...new Set([...(branch.required || []), ...(constraint.required || [])])]
+  };
+  delete result.oneOf;
+  const not = mergedForbiddenNot(branch.not, constraint.not);
+  if (not) result.not = not;
+  else delete result.not;
+  return effectiveObjectBranch(result);
+}
+
+function expandNestedObjectVariants(branch, path) {
+  if (!Array.isArray(branch?.oneOf) || !object(branch.properties)) {
+    return [effectiveObjectBranch(branch)];
+  }
+  return branch.oneOf.flatMap((constraint, index) =>
+    expandNestedObjectVariants(
+      mergeObjectVariantConstraint(branch, constraint, `${path}.oneOf.${index}`),
+      `${path}.oneOf.${index}`
+    )
+  );
+}
+
+function branchEnumQualifier(value, branch, matching, discriminator) {
+  const qualifiers = [`${discriminator.field}=${value}`];
+  const fields = new Set(matching.flatMap((candidate) =>
+    Object.keys(schemaProperties(candidate))
+  ));
+  fields.delete(discriminator.field);
+  for (const field of fields) {
+    const variants = matching.map((candidate) => {
+      const values = schemaProperties(candidate)[field]?.enum;
+      return Array.isArray(values) && values.length <= 16 ? values : null;
+    });
+    const signatures = new Set(variants.map((values) => JSON.stringify(values)));
+    const current = schemaProperties(branch)[field]?.enum;
+    if (signatures.size > 1 && Array.isArray(current) && current.length <= 16) {
+      qualifiers.push(`${field}=${current.join("|")}`);
+    }
+  }
+  return qualifiers.join(", ");
+}
+
+function branchQualifier(value, branch, matching, discriminator) {
+  const qualifiers = [branchEnumQualifier(value, branch, matching, discriminator)];
+  const fields = new Set(matching.flatMap((candidate) =>
+    Object.keys(schemaProperties(candidate))
+  ));
+  fields.delete(discriminator.field);
+  const enumSignature = (candidate) => {
+    return branchEnumQualifier(value, candidate, matching, discriminator);
+  };
+  const currentSignature = enumSignature(branch);
+  if (matching.filter((candidate) => enumSignature(candidate) === currentSignature).length > 1) {
+    const varyingRequired = new Set(matching.flatMap((candidate) => candidate.required || []));
+    for (const field of varyingRequired) {
+      const presence = new Set(matching.map((candidate) => candidate.required?.includes(field)));
+      if (presence.size > 1 && branch.required?.includes(field)) qualifiers.push(`com ${field}`);
+    }
+  }
+  return qualifiers.join(", ");
+}
+
+function exclusiveRequiredAlternativeDescriptions(groups, property, discriminator) {
+  const descriptions = [];
+  for (const [value, matching] of groups) {
+    const byContext = new Map();
+    for (const branch of matching) {
+      const context = branchEnumQualifier(value, branch, matching, discriminator);
+      if (!byContext.has(context)) byContext.set(context, []);
+      byContext.get(context).push(branch);
+    }
+    for (const [context, alternatives] of byContext) {
+      if (alternatives.length < 2) continue;
+      const requiredFields = new Set(alternatives.flatMap((branch) => branch.required || []));
+      const varying = [...requiredFields].filter((field) => {
+        const values = alternatives.map((branch) => branch.required?.includes(field) === true);
+        return values.some(Boolean) && values.some((entry) => !entry);
+      });
+      if (varying.length < 2 || !varying.includes(property)) continue;
+      if (!alternatives.every((branch) =>
+        varying.filter((field) => branch.required?.includes(field)).length === 1
+      )) continue;
+      if (!varying.every((field) =>
+        alternatives.some((branch) => branch.required?.includes(field))
+      )) continue;
+      const fields = varying.map((field) => `\`${field}\``);
+      descriptions.push(
+        `Em \`${context}\`, envie exatamente um de ${fields.slice(0, -1).join(", ")} ou ${fields.at(-1)}; não envie mais de um.`
+      );
+    }
+  }
+  return [...new Set(descriptions)];
+}
+
+function validationSchemaIdentity(value) {
+  if (Array.isArray(value)) return `[${value.map(validationSchemaIdentity).join(",")}]`;
+  if (!object(value)) return JSON.stringify(value);
+  return `{${Object.keys(value).filter((key) => key !== "description").sort().map((key) =>
+    `${JSON.stringify(key)}:${validationSchemaIdentity(value[key])}`
+  ).join(",")}}`;
+}
+
+function schemaForm(schema) {
+  if (!object(schema)) return "valor JSON";
+  if (typeof schema.$ref === "string") {
+    const bounds = [
+      Number.isFinite(schema.minItems) ? `mínimo ${schema.minItems}` : null,
+      Number.isFinite(schema.maxItems) ? `máximo ${schema.maxItems}` : null
+    ].filter(Boolean).join(", ");
+    return `schema ${schema.$ref.split("/").at(-1)}${bounds ? ` (${bounds})` : ""}`;
+  }
+  if (schema.type === "integer" || schema.type === "number") {
+    if (Array.isArray(schema.enum)) {
+      return `${schema.type === "integer" ? "inteiro" : "número"} ${schema.enum.join(" | ")}`;
+    }
+    const bounds = [
+      Number.isFinite(schema.minimum) ? `mínimo ${schema.minimum}` : null,
+      Number.isFinite(schema.maximum) ? `máximo ${schema.maximum}` : null
+    ].filter(Boolean).join(", ");
+    return `${schema.type === "integer" ? "inteiro" : "número"}${bounds ? ` (${bounds})` : ""}`;
+  }
+  if (schema.type === "array") {
+    const bounds = [
+      Number.isFinite(schema.minItems) ? `mínimo ${schema.minItems}` : null,
+      Number.isFinite(schema.maxItems) ? `máximo ${schema.maxItems}` : null
+    ].filter(Boolean).join(", ");
+    return `lista${bounds ? ` (${bounds})` : ""} de ${schemaForm(schema.items)}`;
+  }
+  if (schema.type === "object") {
+    const required = Array.isArray(schema.required) && schema.required.length
+      ? `; campos obrigatórios ${schema.required.join(", ")}`
+      : "";
+    return `objeto${required}`;
+  }
+  if (schema.type === "string") {
+    return Array.isArray(schema.enum)
+      ? `texto entre ${schema.enum.join(" | ")}`
+      : "texto";
+  }
+  if (schema.type === "boolean") return "booleano";
+  if (schema.type === "null") return "null";
+  if (Array.isArray(schema.anyOf)) {
+    return schema.anyOf.map(schemaForm).join(" ou ");
+  }
+  return "valor JSON";
+}
+
+function combineDescriptionText(...values) {
+  const sentences = values.filter(Boolean).flatMap((value) =>
+    String(value).split(/(?<=\.)\s+/u).map((sentence) => sentence.trim()).filter(Boolean)
+  );
+  return [...new Set(sentences)].join(" ");
+}
+
+function variantFieldDescription(branches, property, discriminator) {
+  if (!discriminator) return null;
+  const groups = new Map();
+  branches.forEach((branch, index) => {
+    const value = discriminator.values[index];
+    if (value === undefined) return;
+    if (!groups.has(value)) groups.set(value, []);
+    groups.get(value).push(branch);
+  });
+  const conditions = (predicate) => [...groups].flatMap(([value, matching]) => {
+    const selected = matching.filter(predicate);
+    if (!selected.length) return [];
+    if (selected.length === matching.length) return [`${discriminator.field}=${value}`];
+    return selected.map((branch) => branchQualifier(value, branch, matching, discriminator));
+  });
+  const allowed = [...new Set(conditions((branch) => own(schemaProperties(branch), property)))];
+  const required = [...new Set(conditions((branch) => branch.required?.includes(property)))];
+  const allowedEverywhere = [...groups.values()].every((matching) =>
+    matching.every((branch) => own(schemaProperties(branch), property))
+  );
+  const requiredEverywhere = [...groups.values()].every((matching) =>
+    matching.every((branch) => branch.required?.includes(property))
+  );
+  if (!allowed.length) return null;
+  const format = (values) => [...values].map((value) => `\`${value}\``).join(", ");
+  const details = [];
+  if (!allowedEverywhere) {
+    details.push(`Use somente em ${format(allowed)}.`);
+  }
+  if (required.length && !requiredEverywhere) {
+    details.push(`Obrigatório em ${format(required)}.`);
+  }
+  details.push(...exclusiveRequiredAlternativeDescriptions(
+    groups,
+    property,
+    discriminator
+  ));
+  const documented = [...groups].flatMap(([value, matching]) => {
+    const descriptions = [...new Set(matching
+      .map((branch) => schemaProperties(branch)[property]?.description)
+      .filter(Boolean))];
+    return descriptions.map((description) =>
+      `Em \`${discriminator.field}=${value}\`: ${description}`
+    );
+  });
+  const propertyDescriptions = branches
+    .filter((branch) => own(schemaProperties(branch), property))
+    .map((branch) => schemaProperties(branch)[property]?.description);
+  if (new Set(propertyDescriptions.filter(Boolean)).size > 1 ||
+      propertyDescriptions.some((description) => !description)) {
+    details.push(...documented);
+  }
+  const schemas = branches.flatMap((branch, index) => {
+    const schema = schemaProperties(branch)[property];
+    const value = discriminator.values[index];
+    if (!schema || value === undefined) return [];
+    return [{ schema, value, branch }];
+  });
+  const schemaGroups = new Map();
+  for (const entry of schemas) {
+    const identity = validationSchemaIdentity(entry.schema);
+    if (!schemaGroups.has(identity)) schemaGroups.set(identity, []);
+    schemaGroups.get(identity).push(entry);
+  }
+  const onlyEnumAlternatives = schemas.length > 0 && schemas.every(({ schema }) =>
+    Array.isArray(schema.enum)
+  );
+  if (schemaGroups.size > 1 && !onlyEnumAlternatives) {
+    for (const matchingSchemas of schemaGroups.values()) {
+      const labels = [...new Set(matchingSchemas.map(({ value, branch }) =>
+        branchQualifier(value, branch, groups.get(value), discriminator)
+      ))];
+      details.push(
+        `Formato em ${format(labels)}: ${schemaForm(matchingSchemas[0].schema)}.`
+      );
+    }
+  }
+  return details.join(" ") || null;
+}
+
+function mergeActionSurfaceSchemas(values, path) {
+  const schemas = uniqueSchemas(values.map((value, index) =>
+    projectActionObjectSurfaces(value, `${path}.${index}`)
+  ));
+  if (schemas.length === 1) return schemas[0];
+  const references = schemas.map((schema) => schema.$ref);
+  if (references.every((reference) => reference && reference === references[0])) {
+    const surface = { $ref: references[0] };
+    for (const field of ["minimum", "minLength", "minItems"]) {
+      const valuesForField = schemas.map((schema) => schema[field]);
+      if (valuesForField.every(Number.isFinite)) {
+        surface[field] = Math.min(...valuesForField);
+      }
+    }
+    for (const field of ["maximum", "maxLength", "maxItems"]) {
+      const valuesForField = schemas.map((schema) => schema[field]);
+      if (valuesForField.every(Number.isFinite)) {
+        surface[field] = Math.max(...valuesForField);
+      }
+    }
+    return surface;
+  }
+  if (schemas.every((schema) => schema.type === "object")) {
+    const surface = factorActionObjectUnion({ oneOf: schemas }, path);
+    delete surface.oneOf;
+    return surface;
+  }
+  const types = new Set(schemas.map((schema) => schema.type));
+  if (types.size === 1 && ["string", "integer", "number", "boolean", "array"]
+    .includes(schemas[0].type)) {
+    const surface = scalarSurface(schemas);
+    if (schemas[0].type === "array") {
+      const itemSchemas = schemas.map((schema) => schema.items).filter(Boolean);
+      if (itemSchemas.length === schemas.length) {
+        surface.items = mergeActionSurfaceSchemas(itemSchemas, `${path}.items`);
+      }
+    }
+    return surface;
+  }
+  return { anyOf: schemas };
+}
+
+function factorActionObjectUnion(node, path) {
+  const branchSources = node.oneOf.flatMap((branch, branchIndex) =>
+    expandNestedObjectVariants(branch, `${path}.oneOf.${branchIndex}`)
+  );
+  const branches = branchSources.map((branch, branchIndex) => ({
+    ...branch,
+    properties: Object.fromEntries(Object.entries(schemaProperties(branch)).map(
+      ([field, schema]) => [
+        field,
+        projectActionObjectSurfaces(schema, `${path}.oneOf.${branchIndex}.${field}`)
+      ]
+    ))
+  }));
+  const propertySchemas = new Map();
+  for (const branch of branches) {
+    for (const [field, schema] of Object.entries(schemaProperties(branch))) {
+      if (!propertySchemas.has(field)) propertySchemas.set(field, []);
+      propertySchemas.get(field).push(schema);
+    }
+  }
+  const baseProperties = Object.fromEntries([...propertySchemas].map(([field, schemas]) => [
+    field,
+    mergeActionSurfaceSchemas(schemas, `${path}.properties.${field}`)
+  ]));
+  const discriminator = branchDiscriminator(branches);
+  const properties = Object.fromEntries(Object.entries(baseProperties).map(([field, surface]) => {
+    const description = variantFieldDescription(branches, field, discriminator);
+    const combinedDescription = combineDescriptionText(surface.description, description);
+    return [field, combinedDescription ? { ...surface, description: combinedDescription } : surface];
+  }));
+  const required = Object.keys(baseProperties).filter((field) =>
+    branches.every((branch) => branch.required?.includes(field))
+  );
+  const propertyNames = new Set(Object.keys(baseProperties));
+  const constraints = branches.map((branch) => {
+    const branchProperties = schemaProperties(branch);
+    const narrowed = Object.fromEntries(Object.entries(branchProperties).filter(
+      ([field, schema]) => schemaIdentity(schema) !== schemaIdentity(baseProperties[field])
+    ));
+    const branchRequired = (branch.required || []).filter((field) => !required.includes(field));
+    const forbidden = [...propertyNames].filter((field) => !own(branchProperties, field));
+    const constraint = Object.fromEntries(Object.entries(branch).filter(([key]) =>
+      !["type", "additionalProperties", "properties", "required"].includes(key)
+    ));
+    if (Object.keys(narrowed).length) constraint.properties = narrowed;
+    if (branchRequired.length) constraint.required = branchRequired;
+    if (forbidden.length) {
+      const forbiddenConstraint = {
+        anyOf: forbidden.map((field) => ({ required: [field] }))
+      };
+      constraint.not = constraint.not
+        ? { anyOf: [constraint.not, forbiddenConstraint] }
+        : forbiddenConstraint;
+    }
+    return constraint;
+  });
+  const result = Object.fromEntries(Object.entries(node)
+    .filter(([key]) =>
+      !["type", "additionalProperties", "properties", "required", "oneOf"].includes(key)
+    )
+    .map(([key, value]) => [
+      key,
+      projectActionObjectSurfaces(value, `${path}.${key}`)
+    ]));
+  result.type = "object";
+  result.additionalProperties = false;
+  result.properties = properties;
+  result.required = required;
+  result.oneOf = constraints;
+  return result;
+}
+
+function projectActionObjectSurfaces(value, path) {
+  if (Array.isArray(value)) {
+    return value.map((entry, index) => projectActionObjectSurfaces(entry, `${path}.${index}`));
+  }
+  if (!object(value)) return value;
+  if (value.type === "object" && object(value.properties) &&
+      Array.isArray(value.oneOf) && value.oneOf.length &&
+      value.oneOf.every((constraint) => Object.keys(constraint).every((key) =>
+        ["properties", "required", "not"].includes(key)
+      ))) {
+    const base = { ...value };
+    delete base.oneOf;
+    const variants = value.oneOf.map((constraint, index) =>
+      mergeObjectVariantConstraint(base, constraint, `${path}.oneOf.${index}`)
+    );
+    return factorActionObjectUnion({
+      ...Object.fromEntries(Object.entries(value).filter(([key]) =>
+        !["type", "additionalProperties", "properties", "required", "oneOf"].includes(key)
+      )),
+      oneOf: variants
+    }, path);
+  }
+  if (Array.isArray(value.oneOf) && value.oneOf.length &&
+      value.oneOf.every((branch) => branch?.type === "object")) {
+    return factorActionObjectUnion(value, path);
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+    key,
+    projectActionObjectSurfaces(entry, `${path}.${key}`)
+  ]));
+}
+
 export function findSchemaKeywordPaths(value, keyword) {
   const paths = [];
   function visit(entry, path) {
@@ -888,6 +1390,12 @@ export function projectActionInputSchemaWithAudit(toolDefinition) {
     projected = projectComponentsSchema(toolDefinition.inputSchema, context, toolDefinition.name);
   } else {
     projected = projectNode(toolDefinition.inputSchema, context, toolDefinition.name);
+  }
+  projected = projectActionObjectSurfaces(projected, toolDefinition.name);
+  if (projected.type !== "object") {
+    throw new TypeError(
+      `A raiz de entrada de ${toolDefinition.name} precisa ser um objeto para Actions.`
+    );
   }
   context.assertComplete();
   const remaining = findSchemaKeywordPaths(projected, "allOf");

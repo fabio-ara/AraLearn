@@ -342,9 +342,11 @@ test("recusa OpenAPI de Actions hospedado com fingerprint divergente", async () 
 test("recusa projeção OpenAPI defasada mesmo com metadata corrente", async () => {
   const staleProjection = JSON.parse(ACTIONS_OPENAPI);
   const updatePlanType = staleProjection.paths["/alterarCurso"]
-    .post.requestBody.content["application/json"].schema.oneOf[0]
-    .properties.planCommand.oneOf[0].properties.type;
-  updatePlanType.enum = ["obsolete_update_plan"];
+    .post.requestBody.content["application/json"].schema
+    .properties.planCommand.properties.type;
+  updatePlanType.enum = updatePlanType.enum.map((type) =>
+    type === "update_plan" ? "obsolete_update_plan" : type
+  );
   const { fetchImpl } = createPublishedSiteFetch({
     overrides: {
       "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {

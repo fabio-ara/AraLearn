@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.0.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.0.1";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -584,7 +584,12 @@ const authoringPlanCommandSchema = {
     }),
     objectSchema({
       type: { const: "add_part" }, id: uuidSchema,
-      position: { type: "integer", minimum: 0, maximum: 63 },
+      position: {
+        type: "integer",
+        minimum: 0,
+        maximum: 63,
+        description: "Índice zero-based na lista atual; use 0 para a primeira Parte."
+      },
       title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema
     }, ["type", "id", "position", "title", "intent"]),
     objectSchema({
@@ -1974,7 +1979,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:00d2a005c6017215c06cd4f6a9d97fe95e7d4de678761bbc455b5d0f15679cd4";
+  "sha256:f9183c9088e1ce4a475b8b0b7c9aeef3913596aa8283f378f094b42f0a53d426";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);
