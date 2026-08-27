@@ -3676,8 +3676,8 @@ export function createCourseAuthoringSurface({
     updateChatComposerHost();
     if (restoreFocus) {
       const menu = trigger?.closest?.(".course-authoring-task-menu");
-      if (menu) menu.open = true;
-      trigger?.focus?.({ preventScroll: true });
+      const focusTarget = menu?.querySelector?.(":scope > summary") || trigger;
+      focusTarget?.focus?.({ preventScroll: true });
     }
     return true;
   }

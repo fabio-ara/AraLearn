@@ -2601,8 +2601,8 @@ test.describe("Autoria canônica mobile-first", () => {
 
     await page.keyboard.press("Escape");
     await expect(composer).toHaveCount(0);
-    await expect(taskMenu).toHaveAttribute("open", "");
-    await expect(trigger).toBeFocused();
+    await expect(taskMenu).not.toHaveAttribute("open", "");
+    await expect(taskMenu.locator(":scope > summary")).toBeFocused();
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
     await expect.poll(() => page.evaluate(() =>
       globalThis.__courseAuthoringHarness.probe.headerReads)).toBe(readsBefore + 1);
