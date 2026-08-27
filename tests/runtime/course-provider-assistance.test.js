@@ -74,6 +74,13 @@ test("runtime autenticado compartilha a sessão contextual entre Estudo e Autori
     /createCourseStudyApplication\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
   assert.match(source,
     /createCourseAuthoringSurface\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
+  assert.match(source, /onOpenStudyContent\(\{\s*entityPath,\s*returnRoute,\s*returnFocusKey/u);
+  assert.match(source,
+    /authoringSurface\?\.rememberInspectionReturnFocus\?\.\(\{[\s\S]*?route:\s*returnRoute,[\s\S]*?key:\s*returnFocusKey/u);
+  assert.match(source,
+    /controlKey:\s*returnFocusKey\s*\|\|\s*origin\?\.dataset\?\.inspectionControlKey/u);
+  assert.match(source,
+    /focus\.controlKey[\s\S]*?dataset\.inspectionControlKey[\s\S]*?focus\.controlKey/u);
   assert.match(source,
     /function quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?courseProviderSession\?\.destroy\?\.\(\)/u);
 });

@@ -8,6 +8,7 @@ import {
   serializeCourseAuthoringAnalyticsCsv
 } from "../domain/courseAuthoringAnalytics.js";
 import { downloadTextFile, TEXT_EXPORT_MAX_BYTES } from "./downloadTextFile.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 const exportEncoder = new TextEncoder();
 const DATASET_LABELS = Object.freeze({
   activity: "Atividade do Curso",
@@ -205,6 +206,12 @@ const VALUE_KEY_LABELS = Object.freeze({
   has_component_policy_difference: "Possui diferença na política de componentes"
 });
 
+const HIDDEN_VALUE_KEYS = new Set([
+  "activity_kind",
+  "code",
+  "operation"
+]);
+
 const ENTITY_KIND_LABELS = Object.freeze({
   course: "Curso",
   module: "Módulo",
@@ -389,6 +396,59 @@ function factValueText(key, value) {
   return typeof value === "string" && labels?.[value] ? labels[value] : String(value);
 }
 
+function visibleValueKey(key) {
+  return Object.hasOwn(VALUE_KEY_LABELS, key) &&
+    !HIDDEN_VALUE_KEYS.has(key) &&
+    !/(?:^|_)(?:hash|id)$/u.test(key);
+}
+
+function overviewEntryLabel(entry) {
+  const key = String(entry?.key || "");
+  if (DATASET_LABELS[key]) return DATASET_LABELS[key];
+  if (FACT_KIND_LABELS[key]) return FACT_KIND_LABELS[key];
+  if (STATE_LABELS[key]) return STATE_LABELS[key];
+  if (key === "no_facts") return "Nenhum fato";
+  const separator = key.indexOf(":");
+  if (separator > 0) {
+    const kind = key.slice(0, separator);
+    const state = key.slice(separator + 1);
+    const kindText = FACT_KIND_LABELS[kind];
+    if (kindText) {
+      return state && state !== "none" && STATE_LABELS[state]
+        ? `${kindText} · ${STATE_LABELS[state]}`
+        : kindText;
+    }
+  }
+  return "Fato registrado";
+}
+
+function subjectLabel(subject) {
+  const supplied = String(subject?.label || "").trim();
+  const identifier = String(subject?.id || "").trim();
+  const opaque = supplied === identifier ||
+    /^[0-9a-f]{8}-[0-9a-f-]{27,}$/iu.test(supplied) ||
+    /^[0-9a-f]{32,}$/iu.test(supplied) ||
+    /^[a-z_]+:[^\s]+$/u.test(supplied);
+  if (supplied && !opaque) return supplied;
+  return ENTITY_KIND_LABELS[subject?.kind] || "Objeto relacionado";
+}
+
+function renderFactMetadata(fact) {
+  const entries = [];
+  if (fact.channel && CHANNEL_LABELS[fact.channel]) {
+    entries.push(["Canal", CHANNEL_LABELS[fact.channel]]);
+  }
+  if (fact.origin) entries.push(["Origem", originLabel(fact.origin)]);
+  if (fact.state) entries.push(["Estado", stateLabel(fact.state)]);
+  if (Number.isSafeInteger(fact.courseRevision) && fact.courseRevision > 0) {
+    entries.push(["Revisão", String(fact.courseRevision)]);
+  }
+  return entries.length
+    ? '<dl>' + entries.map(([label, value]) =>
+      `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("") + '</dl>'
+    : "";
+}
+
 function renderFilters(state) {
   const selectedDataset = state.query.datasets.length === COURSE_AUTHORING_ANALYTICS_DATASETS.length
     ? "all"
@@ -410,7 +470,8 @@ function renderFilters(state) {
     ).join("") + '</select></label>' +
     `<label>Desde<input name="from" type="date" value="${escapeHtml(dateValue(state.query.from))}"></label>` +
     `<label>Até<input name="to" type="date" value="${escapeHtml(dateValue(state.query.to))}"></label>` +
-    '<button type="submit">Aplicar recorte</button></form>';
+    '<button type="submit" aria-label="Aplicar filtros" title="Aplicar filtros">' +
+    `${renderUiIcon("search", "course-authoring-button-icon")}</button></form>`;
 }
 
 function renderOverview(page) {
@@ -419,32 +480,37 @@ function renderOverview(page) {
   const finiteValues = series.map(({ value }) => value).filter((value) =>
     typeof value === "number" && Number.isFinite(value) && value >= 0);
   const maximum = Math.max(1, ...finiteValues);
+  const displaySeries = series.map((entry) => ({
+    ...entry,
+    displayLabel: overviewEntryLabel(entry)
+  }));
   return '<section class="course-analytics-overview" aria-labelledby="course-analytics-overview-title">' +
     '<header><div><h3 id="course-analytics-overview-title">' + escapeHtml(page.overview.title) + '</h3>' +
-    `<p>${escapeHtml(page.overview.question)}</p></div><span>Revisão ${page.courseRevision}</span></header>` +
-    (series.length
+    `</div><span>Revisão ${page.courseRevision}</span></header>` +
+    (displaySeries.length
       ? '<div class="course-analytics-chart" role="img" aria-label="' +
-        escapeHtml(`${page.overview.title}. ${series.map((entry) =>
-          `${entry.label}: ${formatNumber(entry.value, entry.unit)}`).join("; ")}`) + '">' +
-        series.map((entry) => {
+        escapeHtml(`${page.overview.title}. ${displaySeries.map((entry) =>
+          `${entry.displayLabel}: ${formatNumber(entry.value, entry.unit)}`).join("; ")}`) + '">' +
+        displaySeries.map((entry) => {
           const width = entry.value === null || entry.value < 0
             ? 0
             : Math.max(1, Math.min(100, entry.value / maximum * 100));
-          return '<div class="course-analytics-bar"><span>' + escapeHtml(entry.label) + '</span>' +
+          return '<div class="course-analytics-bar"><span>' + escapeHtml(entry.displayLabel) + '</span>' +
             '<span class="course-analytics-bar-track" aria-hidden="true"><span style="width:' +
             width + '%"></span></span><strong>' + escapeHtml(formatNumber(entry.value, entry.unit)) +
             '</strong></div>';
         }).join("") + '</div>' +
         '<div class="course-analytics-table-wrap"><table><caption>Valores equivalentes ao gráfico</caption>' +
         '<thead><tr><th>Categoria</th><th>Valor</th><th>Denominador</th><th>Ausência</th></tr></thead><tbody>' +
-        series.map((entry) => '<tr><th scope="row" data-label="Categoria">' + escapeHtml(entry.label) +
+        displaySeries.map((entry) => '<tr><th scope="row" data-label="Categoria">' + escapeHtml(entry.displayLabel) +
           '</th><td data-label="Valor">' + escapeHtml(formatNumber(entry.value, entry.unit)) +
           '</td><td data-label="Denominador">' +
           escapeHtml(entry.denominator === null ? "Não se aplica" : String(entry.denominator)) +
           '</td><td data-label="Ausência">' + (entry.missing ? "Sim" : "Não") + '</td></tr>').join("") +
         '</tbody></table></div>'
       : '<p class="course-authoring-empty-copy">Não há linhas neste recorte. A ausência não foi convertida em zero.</p>') +
-    (metric ? '<details class="course-analytics-definition"><summary>Como esta métrica é definida</summary>' +
+    (metric ? '<details class="course-analytics-definition"><summary class="course-analytics-disclosure-trigger">' +
+      `${renderUiIcon("review", "course-authoring-button-icon")}<span>Métrica</span></summary>` +
       `<dl><div><dt>Pergunta</dt><dd>${escapeHtml(metric.question)}</dd></div>` +
       `<div><dt>Definição</dt><dd>${escapeHtml(metric.definition)}</dd></div>` +
       `<div><dt>Unidade</dt><dd>${escapeHtml(unitLabel(metric.unit))}</dd></div>` +
@@ -456,31 +522,33 @@ function renderOverview(page) {
 }
 
 function valuesSummary(values) {
-  const entries = Object.entries(values);
+  const entries = Object.entries(values).filter(([key]) => visibleValueKey(key));
   return entries.length
     ? entries.map(([key, value]) =>
       `${factValueLabel(key)}: ${factValueText(key, value)}`).join(" · ")
-    : "Sem valor adicional.";
+    : "";
 }
 
 function renderFacts(page) {
   return '<section class="course-analytics-facts" aria-labelledby="course-analytics-facts-title">' +
-    '<header><div><h3 id="course-analytics-facts-title">Fatos do recorte</h3>' +
-    '<p>Registros observáveis que sustentam a visualização e a exportação.</p></div></header>' +
+    '<header><div><h3 id="course-analytics-facts-title">Fatos do recorte</h3></div></header>' +
     (page.facts.length
-      ? '<ol>' + page.facts.map((fact) => '<li><article>' +
-        '<header><div><strong>' + escapeHtml(fact.subject.label || fact.subject.id) + '</strong>' +
-        `<span>${escapeHtml(DATASET_LABELS[fact.dataset])} · ${escapeHtml(factKindLabel(fact.kind))}</span>` +
-        `</div><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(formatInstant(fact.occurredAt))}</time></header>` +
-        `<p>${escapeHtml(valuesSummary(fact.values))}</p>` +
-        '<dl><div><dt>Canal</dt><dd>' + escapeHtml(fact.channel ? CHANNEL_LABELS[fact.channel] : "Não informado") +
-        '</dd></div><div><dt>Origem</dt><dd>' + escapeHtml(fact.origin ? originLabel(fact.origin) : "Não informada") +
-        '</dd></div><div><dt>Estado</dt><dd>' + escapeHtml(fact.state ? stateLabel(fact.state) : "Não se aplica") +
-        '</dd></div><div><dt>Revisão</dt><dd>' + escapeHtml(fact.courseRevision ?? "Não registrada") + '</dd></div></dl>' +
-        (fact.missingData.length ? '<p class="course-analytics-missing"><strong>Dados ausentes:</strong> ' +
-          escapeHtml(fact.missingData.join(" ")) + '</p>' : "") +
-        (fact.deepLink ? `<a href="${escapeHtml(fact.deepLink)}">Abrir o objeto relacionado</a>` : "") +
-        '</article></li>').join("") + '</ol>'
+      ? '<ol>' + page.facts.map((fact) => {
+        const label = subjectLabel(fact.subject);
+        const summary = valuesSummary(fact.values);
+        return '<li><article>' +
+          '<header><div><strong>' + escapeHtml(label) + '</strong>' +
+          `<span>${escapeHtml(DATASET_LABELS[fact.dataset] || "Fatos do Curso")} · ${escapeHtml(factKindLabel(fact.kind))}</span>` +
+          `</div><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(formatInstant(fact.occurredAt))}</time></header>` +
+          (summary ? `<p>${escapeHtml(summary)}</p>` : "") +
+          renderFactMetadata(fact) +
+          (fact.missingData.length ? '<details class="course-analytics-missing"><summary class="course-analytics-disclosure-trigger course-authoring-icon-action" aria-label="Ver dados ausentes" title="Dados ausentes">' +
+            `${renderUiIcon("more", "course-authoring-button-icon")}</summary><p>` +
+            escapeHtml(fact.missingData.join(" ")) + '</p></details>' : "") +
+          (fact.deepLink ? `<a href="${escapeHtml(fact.deepLink)}" aria-label="Abrir ${escapeHtml(label)}" title="Abrir objeto relacionado">` +
+            `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</a>` : "") +
+          '</article></li>';
+      }).join("") + '</ol>'
       : '<p class="course-authoring-empty-copy">Nenhum fato corresponde ao recorte.</p>') +
     '</section>';
 }
@@ -488,8 +556,7 @@ function renderFacts(page) {
 function renderPanel(state) {
   return '<section class="course-authoring-section course-analytics" aria-labelledby="course-analytics-section-title">' +
     '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-analytics-section-title">Pesquisa</h2>' +
-    '<p>Fatos do processo de criação, com definição e limites de interpretação.</p></div>' +
+    '<h2 id="course-analytics-section-title">Pesquisa</h2></div>' +
     '<div class="course-analytics-export-actions">' +
     `<button type="button" data-course-analytics-action="export-csv"${!state.page || state.exporting ? " disabled" : ""}>CSV</button>` +
     `<button type="button" data-course-analytics-action="export-json"${!state.page || state.exporting ? " disabled" : ""}>JSON</button>` +
@@ -498,10 +565,11 @@ function renderPanel(state) {
     (state.loading && !state.page
       ? '<p class="course-authoring-loading" role="status">Carregando fatos de Autoria…</p>'
       : state.page ? renderOverview(state.page) + renderFacts(state.page) : "") +
-    (state.page?.limitations?.length ? '<aside class="course-analytics-limitations"><h3>Limites deste recorte</h3><ul>' +
-      state.page.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("") + '</ul></aside>' : "") +
-    (state.page?.nextCursor ? `<button type="button" data-course-analytics-action="more"${state.loading ? " disabled" : ""}>` +
-      (state.loading ? "Carregando…" : "Carregar mais fatos") + '</button>' : "") +
+    (state.page?.limitations?.length ? '<details class="course-analytics-limitations"><summary class="course-analytics-disclosure-trigger">' +
+      `${renderUiIcon("review", "course-authoring-button-icon")}<span>Limites</span></summary><ul>` +
+      state.page.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("") + '</ul></details>' : "") +
+    (state.page?.nextCursor ? `<button type="button" data-course-analytics-action="more" aria-label="Carregar mais fatos" title="Carregar mais fatos"${state.loading ? " disabled" : ""}>` +
+      `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` : "") +
     (state.exporting ? '<p class="course-authoring-loading" role="status">Preparando a exportação do recorte…</p>' : "") +
     (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") +
     '</section>';

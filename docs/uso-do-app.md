@@ -270,38 +270,34 @@ uso normal.
 
 ## Trabalhar com o ChatGPT a partir da Autoria
 
-1. Abra a ação **ChatGPT** junto ao objeto sobre o qual quer trabalhar.
-2. Confira o alvo e seu caminho no Curso.
-3. Escolha uma intenção compatível, como planejar, preparar estrutura, revisar,
-   discutir, verificar uma Fonte, corrigir uma Unidade ou materializar uma
-   Parte.
-4. Revise e complete **Seu argumento ou pedido**. Esse campo aceita o contexto,
-   as dúvidas e os critérios que o cliente conversacional deverá considerar.
-5. Use **Copiar pedido**, cole o texto no cliente conectado e autorize ali as
-   operações propostas.
-6. Volte ao AraLearn e confira o estado confirmado.
+1. Em **Conteúdo**, localize e inspecione o objeto sobre o qual quer trabalhar.
+2. Registre uma Observação no alvo ou salve a mudança necessária em
+   **Parâmetros**. Os dois tipos de registro permanecem no Curso e aparecem na
+   Autoria.
+3. No ChatGPT conectado por MCP ou Actions, identifique o Curso e peça que ele
+   leia as Observações ou decisões de Parâmetros pertinentes.
+4. Examine a proposta. Acrescente condições, discorde ou peça outra solução
+   enquanto ela não representar sua intenção.
+5. Autorize explicitamente a operação somente depois de concordar com o efeito.
+6. Volte ao AraLearn e confira o resultado no mesmo Curso.
 
-O compositor acrescenta a identidade e a revisão observada do Curso, o tipo e a
-identidade do alvo, o caminho hierárquico, referências operacionais pertinentes,
-o endereço direto de retorno e limites de segurança. O argumento permanece
-editável antes da cópia. Fechar ou cancelar devolve o foco ao controle que abriu
-o compositor.
-
-Copiar o texto não inicia a produção nem altera o Curso. Quando o cliente
-executa a materialização, a execução aparece no histórico da Parte com seu
+A interface normal não abre um compositor e não exige copiar e colar um pedido.
+O cliente conectado obtém o contexto necessário pelas operações autorizadas,
+respeita a revisão corrente e pode devolver um endereço direto para o alvo. Uma
+conversa ou proposta sem aprovação não altera o Curso. Quando o cliente executa
+uma materialização aprovada, a execução aparece no histórico da Parte com seu
 canal. Abra-a para acompanhar etapas, resultados e objetos produzidos sem perder
 falhas ou execuções anteriores.
 
-O ícone do ChatGPT aparece no cabeçalho do Curso e nos contextos de Módulo,
-Lição, Tópico, Microssequência, Unidade, Parâmetro, Fonte e Âncora. Nesses
-níveis, as intenções disponíveis respeitam o objeto. Materialização continua
-restrita à Parte operacional.
+Curso, Módulo, Lição, Tópico, Microssequência, Unidade, Parâmetro, Fonte e
+Âncora podem ser alvos de leitura ou alteração conforme a operação disponível.
+Materialização continua restrita à Parte operacional.
 
-Para uma Parte sem Microssequência vinculada, use **Preparar estrutura**. O
-pedido orienta o cliente a criar apenas Módulos, Lições e Microssequências
-necessários e a vinculá-los ao planejamento. **Materializar Parte** só fica
-disponível depois desse vínculo. **Ver etapas** apresenta o andamento e a
-próxima ação confirmada pelo servidor.
+Para uma Parte sem Microssequência vinculada, peça ao cliente conectado que
+prepare a estrutura. A operação cria apenas os Módulos, Lições e
+Microssequências necessários e os vincula ao planejamento. A materialização da
+Parte só fica disponível depois desse vínculo. **Ver etapas** apresenta o
+andamento e a próxima ação confirmada pelo servidor.
 
 Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
@@ -309,11 +305,10 @@ devolve o foco ao aplicativo. Se o navegador não sinalizar a troca de foco, use
 **Atualizar** no cabeçalho do Curso. A atualização preserva o contexto de
 navegação e, em Conteúdo, a Unidade e a posição conhecidas.
 
-Se houver um compositor, uma confirmação ou um formulário em edição, a
-atualização automática ou manual é adiada. O AraLearn conserva o argumento e os
-campos já preenchidos e orienta concluir ou cancelar o rascunho antes de tentar
-novamente. Assim, o retorno do ChatGPT não descarta uma contribuição ainda não
-enviada.
+Se houver uma confirmação ou um formulário em edição, a atualização automática
+ou manual é adiada. O AraLearn conserva os campos já preenchidos e orienta
+concluir ou cancelar o rascunho antes de tentar novamente. Assim, o retorno do
+ChatGPT não descarta uma contribuição ainda não enviada.
 
 Validação local, recomposição do painel e resposta de rede ambígua também
 conservam o formulário aberto e devolvem o foco ao campo pertinente. Esse
@@ -355,9 +350,10 @@ Em **Revisão**, a tarefa **Observações** reúne as Anotações do Curso.
 Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
 resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
 
-**Registrar e copiar** salva primeiro a Observação no Curso e só então prepara
-o pedido situado para o ChatGPT. Assim, uma falha da área de transferência não
-apaga nem duplica o argumento já confirmado pelo servidor.
+Uma Observação salva fica visível no alvo e na caixa de entrada autoral. O
+ChatGPT conectado pode ler as Observações pendentes, discutir uma proposta e,
+depois da aprovação explícita, executar a alteração pertinente ou registrar a
+decisão de manter o estado. O resultado atualizado permanece no mesmo Curso.
 
 Na aba **Achados**, escolha uma Unidade e carregue seu contexto. Uma rodada pode
 registrar verificações estruturais, pedagógicas, factuais e editoriais. Se um

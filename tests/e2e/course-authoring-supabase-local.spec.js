@@ -120,17 +120,6 @@ async function browserSignIn(page, email) {
   await expect(page.getByRole("button", { name: "Conta e aparência" })).toBeVisible();
 }
 
-async function confirmChatCopy(page) {
-  const dialog = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Copiar pedido" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page.getByText(
-    "Pedido copiado. Cole no ChatGPT para continuar a Autoria.",
-    { exact: true }
-  )).toBeVisible();
-}
-
 async function openAuthoringSection(page, _destination, section) {
   const overviewTask = page.locator(".course-authoring-task-grid")
     .getByRole("link", { name: section, exact: true });
@@ -461,13 +450,13 @@ test.describe("Autoria real com Supabase local", () => {
     if (mcpCleanupFailure) throw mcpCleanupFailure;
   });
 
-  test("cria, copia sem mutar, persiste, protege por RLS e atualiza ao retornar", async ({
+  test("cria, persiste, protege por RLS e atualiza ao retornar", async ({
     browser
   }, testInfo) => {
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
       serviceWorkers: "block",
-      permissions: ["clipboard-read", "clipboard-write", "local-network-access"]
+      permissions: ["local-network-access"]
     });
     context.setDefaultTimeout(15_000);
     const page = await context.newPage();
@@ -516,23 +505,15 @@ test.describe("Autoria real com Supabase local", () => {
       await openAuthoringSection(page, "course", "Planejamento");
       await expect(page.getByRole("region", { name: "Crie a primeira Parte" })).toBeVisible();
 
-      const beforeCourseCopy = await readCourseIndexedDb(page, owner.id);
-      const beforeCourseRevision = (await canonicalHeader()).revision;
-      const courseCopyRequestIndex = mutatingRequests.length;
       const courseTaskMenu = page.locator(".course-authoring-task-menu");
       await courseTaskMenu.locator(":scope > summary").click();
-      await courseTaskMenu.getByRole("button", {
+      await expect(courseTaskMenu.getByRole("button", {
         name: "Planejar este Curso no ChatGPT"
-      }).click();
-      await confirmChatCopy(page);
-      const coursePrompt = await page.evaluate(() => navigator.clipboard.readText());
-      expect(coursePrompt).toContain(`Curso: “${COURSE_TITLE}”.`);
-      expect(coursePrompt).toContain(`Identidade do Curso: ${courseId}.`);
-      expect(coursePrompt).toContain("Revisão observada ao copiar: 1.");
-      expect(coursePrompt).toContain("Esta cópia não alterou o Curso");
-      expect((await canonicalHeader()).revision).toBe(beforeCourseRevision);
-      expect(await readCourseIndexedDb(page, owner.id)).toEqual(beforeCourseCopy);
-      expect(mutatingRequests.slice(courseCopyRequestIndex)).toEqual([]);
+      })).toHaveCount(0);
+      await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
+        .toHaveCount(0);
+      await courseTaskMenu.locator(":scope > summary").click();
+      await expect(courseTaskMenu).not.toHaveAttribute("open", "");
 
       await page.getByRole("region", { name: "Crie a primeira Parte" })
         .getByRole("button", { name: "Adicionar Parte", exact: true }).click();
@@ -549,17 +530,9 @@ test.describe("Autoria real com Supabase local", () => {
       expect(afterPartPlan.plan.version).toBe(2);
       expect(afterPartPlan.plan.parts).toHaveLength(1);
 
-      const beforePrepareCopy = await readCourseIndexedDb(page, owner.id);
-      const prepareCopyRequestIndex = mutatingRequests.length;
-      await page.getByRole("button", { name: "Preparar estrutura no ChatGPT" }).click();
-      await confirmChatCopy(page);
-      const preparePrompt = await page.evaluate(() => navigator.clipboard.readText());
-      expect(preparePrompt).toContain("Ação: preparar a estrutura.");
-      expect(preparePrompt).toContain("Vincule as Microssequências às Partes");
-      expect(preparePrompt).toContain("Revisão observada ao copiar: 2.");
+      await expect(page.locator('[data-course-authoring-action="prepare-structure"]'))
+        .toHaveCount(0);
       expect((await canonicalHeader()).revision).toBe(2);
-      expect(await readCourseIndexedDb(page, owner.id)).toEqual(beforePrepareCopy);
-      expect(mutatingRequests.slice(prepareCopyRequestIndex)).toEqual([]);
 
       await openAuthoringSection(page, "course", "Fontes");
       await expect(page.getByRole("heading", { name: "Fontes", exact: true }).first()).toBeVisible();
@@ -1075,14 +1048,10 @@ test.describe("Autoria real com Supabase local", () => {
       await openAuthoringSection(page, "content", "Conteúdo");
       await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
         .toBeVisible();
-      await page.locator(".course-authoring-content-hierarchy > summary").click();
-      const lessonHierarchyItem = page.locator(
-        `[data-course-authoring-entity-kind="lesson"][data-course-authoring-entity-id="${LESSON_ID}"]`
-      );
-      await lessonHierarchyItem.getByRole("button", {
-        name: "Editar Lição mínima da materialização",
-        exact: true
-      }).click();
+      const currentHierarchy = page.locator(".course-inspection-context-selector");
+      await currentHierarchy.locator(":scope > summary").click();
+      await currentHierarchy.locator('[data-inspection-edit-content="lesson"]')
+        .click();
       await expect(page.getByRole("group", { name: "Modo de Lição" })).toBeVisible();
       await page.getByRole("button", { name: "Editar", exact: true }).click();
       const lessonEditor = page.getByRole("region", { name: "Edição de Lição" });
@@ -1105,6 +1074,13 @@ test.describe("Autoria real com Supabase local", () => {
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
         .toBeVisible();
+      const returnedLessonEdit = currentHierarchy.locator(
+        '[data-inspection-edit-content="lesson"]'
+      );
+      await expect(currentHierarchy).toHaveAttribute("open", "");
+      await expect(returnedLessonEdit).toBeFocused();
+      await currentHierarchy.locator(":scope > summary").click();
+      await expect(currentHierarchy).not.toHaveAttribute("open", "");
       const inspectionUnit = page.locator(
         `[data-inspection-study-unit="${STUDY_UNIT_ID}"]`
       );

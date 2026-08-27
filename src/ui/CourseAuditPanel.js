@@ -268,7 +268,7 @@ function preview(snapshot, target, heading) {
 }
 
 function renderSummary(summary) {
-  if (!summary) return "";
+  if (!summary || summary.matchingTotal === 0) return "";
   return '<dl class="course-audit-summary">' +
     `<div><dt>Correspondentes</dt><dd>${summary.matchingTotal}</dd></div>` +
     `<div><dt>Abertos</dt><dd>${summary.byState.open}</dd></div>` +
@@ -281,13 +281,6 @@ function renderBadges(finding) {
     `<span class="course-audit-badge">${escapeHtml(label("dimensions", finding.check.dimension))}</span>` +
     `<span class="course-audit-badge">Gravidade ${escapeHtml(label("severities", finding.severity).toLowerCase())}</span>` +
     "</div>";
-}
-
-function renderAuditChatButton(state, action, accessibleLabel) {
-  if (!state.requestChatEnabled) return "";
-  return '<button type="button" class="course-authoring-header-action"' +
-    ` data-audit-action="${escapeHtml(action)}" aria-label="${escapeHtml(accessibleLabel)}"` +
-    ` title="ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`;
 }
 
 function recordDraftId(context) {
@@ -559,8 +552,7 @@ function renderChecksForm(context, {
     : "";
   return `<form class="course-audit-round-form" data-audit-form="${verification ? "verify" : "record"}"` +
     ` data-audit-draft-id="${escapeHtml(draftId)}">` +
-    `<header><div><h3>${verification ? "Verificar correção" : "Registrar auditoria"}</h3>` +
-    `<p>${verification ? "Uma nova rodada mede o estado atual." : "Os três critérios humanos são explícitos; o servidor acrescenta a conformidade estrutural."}</p></div></header>` +
+    `<header><div><h3>${verification ? "Verificar correção" : "Registrar auditoria"}</h3></div></header>` +
     annotations + checks + verificationFields +
     `<div class="course-audit-editor-actions"><button type="button" data-audit-action="cancel-round">Cancelar</button>` +
     `<button type="submit" class="is-primary"${context ? "" : " disabled"}>${verification ? "Registrar verificação" : "Registrar rodada"}</button></div></form>`;
@@ -581,13 +573,11 @@ function renderContext(state) {
     `<div><dt>Fontes</dt><dd>${context.sources.length}</dd></div>` +
     `<div><dt>Observações</dt><dd>${context.annotations.length}</dd></div>` +
     `<div><dt>Itens do plano</dt><dd>${context.plan.items.length}</dd></div></dl>` +
-    `<p>${escapeHtml(context.intent.query || "Contexto representacional preservado")}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(target.path.at(-1)?.id === target.studyUnitId
       ? buildCourseAuthoringRoute(state.courseId, { section: "content", studyUnitId: target.studyUnitId })
       : null, state.courseId, "Abrir Unidade") + "</div></div>" +
     `<div class="course-audit-preview-grid is-single">${preview(snapshot, target, "Estado atual")}</div>` +
-    '<p class="course-audit-structural-note">A interface registra três dimensões humanas. A conformidade estrutural é medida pelo servidor; uma necessidade de dividir a Unidade permanece como achado aberto no v1.</p>' +
     (state.recordOpen
       ? renderChecksForm(context, { draft: state.formDrafts.get(recordDraftId(context)) })
       : `<div class="course-audit-actions"><button type="button" class="is-primary" data-audit-action="open-record"${disabled(state)}>Registrar auditoria</button></div>`) +
@@ -625,7 +615,7 @@ function renderFindingActions(state, finding, correction) {
     actions.push(`<button type="button" class="is-danger" data-audit-action="rollback-correction"${disabled(state)}>Reverter aplicação</button>`);
   }
   return (structuralSplit
-    ? '<p class="course-audit-structural-note">Esta divisão estrutural não é aplicada pelo editor v1. O achado continua aberto até a Unidade ser reestruturada em um fluxo compatível.</p>'
+    ? '<p class="course-audit-structural-note">A divisão estrutural permanece pendente.</p>'
     : "") + (actions.length ? `<div class="course-audit-actions">${actions.join("")}</div>` : "");
 }
 
@@ -645,12 +635,7 @@ function renderCorrection(state, detail) {
     escapeHtml(correction.correctionId) + '"><header><div><p class="course-audit-caption">Correção autoral</p>' +
     `<h3>${escapeHtml(label("correctionStates", correction.status))}</h3></div>` +
     '<div class="course-authoring-header-actions">' +
-    '<span class="course-audit-badge">Base preservada</span>' +
-    renderAuditChatButton(
-      state,
-      "request-chat-correction",
-      "Trabalhar com o ChatGPT sobre esta correção"
-    ) + "</div></header>" +
+    '<span class="course-audit-badge">Base preservada</span></div></header>' +
     `<p>${escapeHtml(correction.rationale)}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(correction.deepLink, state.courseId, "Link da correção") + "</div>" +
@@ -709,15 +694,10 @@ function renderDetail(state) {
     renderDeepLink(annotation.deepLink, state.courseId, "Abrir observação relacionada")
   ).join("");
   return '<section class="course-audit-detail" data-audit-detail-id="' + escapeHtml(finding.findingId) + '">' +
-    '<header class="course-audit-detail-heading"><div><p class="course-audit-caption">Achado preservado</p>' +
+    '<header class="course-audit-detail-heading"><div><p class="course-audit-caption">Achado</p>' +
     `<h3>${escapeHtml(finding.check.criterion.statement)}</h3>${renderBadges(finding)}</div>` +
-    '<div class="course-authoring-header-actions">' +
-    renderAuditChatButton(
-      state,
-      "request-chat-finding",
-      "Trabalhar com o ChatGPT sobre este achado"
-    ) +
-    '<button type="button" data-audit-action="back-findings">Voltar aos achados</button></div></header>' +
+    '<div class="course-authoring-header-actions"><button type="button"' +
+    ' data-audit-action="back-findings">Voltar aos achados</button></div></header>' +
     `<p class="course-audit-path">${escapeHtml(pathLabel(finding.target.path))}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(finding.deepLinks.detail, state.courseId, "Link do achado") +
@@ -750,13 +730,15 @@ function renderFilters(state) {
     COURSE_AUDIT_DIMENSIONS.map((value) => option(value, state.filters.dimension, "dimensions")).join("") +
     '</select></label><label><span>Gravidade</span><select data-audit-filter="severity"><option value="">Todas</option>' +
     COURSE_AUDIT_SEVERITIES.map((value) => option(value, state.filters.severity, "severities")).join("") +
-    '</select></label><button type="button" data-audit-action="reload-findings">Atualizar</button></div>';
+    '</select></label><button type="button" class="course-authoring-icon-action"' +
+    ' data-audit-action="reload-findings" aria-label="Atualizar achados" title="Atualizar achados">' +
+    `${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div>`;
 }
 
 function renderFindings(state) {
   const items = state.findingItems;
   const pageNumber = state.findingPageIndex + 1;
-  const pagination = state.findingPageIndex >= 0
+  const pagination = state.summary?.matchingTotal > 0 && state.findingPageIndex >= 0
     ? '<nav class="course-audit-actions" aria-label="Paginação de achados">' +
       (state.findingPageIndex > 0
         ? `<button type="button" class="course-audit-load-more" data-audit-action="previous-findings"${disabled(state)}>Página anterior</button>`
@@ -768,7 +750,7 @@ function renderFindings(state) {
     : "";
   return '<section class="course-audit-findings">' + renderAuditIndexSwitch(state, "findings") +
     '<header class="course-audit-detail-heading"><div>' +
-    '<h3>Achados</h3><p>Checks falhos ou incertos, correções e verificações do Curso.</p></div></header>' +
+    '<h3>Achados</h3></div></header>' +
     renderFilters(state) + renderSummary(state.summary) +
     `<div class="course-audit-finding-list">${items.map((finding) =>
       renderFindingCard(finding, state.courseId)).join("") ||
@@ -808,9 +790,10 @@ function renderRunCard(run, courseId) {
 
 function renderRuns(state) {
   return '<section class="course-audit-runs">' + renderAuditIndexSwitch(state, "runs") +
-    '<header class="course-audit-detail-heading"><div><h3>Rodadas</h3>' +
-    '<p>Histórico completo, inclusive auditorias que não criaram achados.</p></div>' +
-    `<button type="button" data-audit-action="reload-runs"${disabled(state)}>Atualizar</button></header>` +
+    '<header class="course-audit-detail-heading"><div><h3>Rodadas</h3></div>' +
+    '<button type="button" class="course-authoring-icon-action" data-audit-action="reload-runs"' +
+    ` aria-label="Atualizar rodadas" title="Atualizar rodadas"${disabled(state)}>` +
+    `${renderUiIcon("rotate", "course-authoring-button-icon")}</button></header>` +
     `<div class="course-audit-run-list">${state.runItems.map((run) =>
       renderRunCard(run, state.courseId)).join("") ||
       (state.loading ? "" : '<p class="course-authoring-empty-copy">Nenhuma rodada foi registrada.</p>')}</div>` +
@@ -834,15 +817,9 @@ function renderRunDetail(state) {
   return '<section class="course-audit-run-detail" data-audit-run-detail-id="' +
     escapeHtml(run.auditRunId) + '"><header class="course-audit-detail-heading"><div>' +
     `<p class="course-audit-caption">${escapeHtml(label("origins", run.origin))}</p>` +
-    `<h3>${escapeHtml(label("runKinds", run.runKind))} · ${escapeHtml(formattedInstant(run.createdAt))}</h3>` +
-    '<p class="course-audit-meta">Método registrado para esta rodada</p></div>' +
-    '<div class="course-authoring-header-actions">' +
-    renderAuditChatButton(
-      state,
-      "request-chat-run",
-      "Trabalhar com o ChatGPT sobre esta rodada de auditoria"
-    ) +
-    '<button type="button" data-audit-action="back-runs">Voltar às rodadas</button></div></header>' +
+    `<h3>${escapeHtml(label("runKinds", run.runKind))} · ${escapeHtml(formattedInstant(run.createdAt))}</h3></div>` +
+    '<div class="course-authoring-header-actions"><button type="button"' +
+    ' data-audit-action="back-runs">Voltar às rodadas</button></div></header>' +
     `<p class="course-audit-path">${escapeHtml(pathLabel(run.target.path))}</p>` +
     '<div class="course-audit-links">' +
     renderDeepLink(selfLink, state.courseId, "Link da rodada") +
@@ -865,8 +842,7 @@ function renderEditor(state) {
   return '<div class="course-audit-editor-overlay" data-audit-editor-overlay>' +
     '<section class="course-audit-editor-sheet" role="dialog" aria-modal="true" aria-labelledby="course-audit-editor-title">' +
     `<header><p class="course-audit-caption">${editor.expectedCorrectionVersion ? "Ajuste versionado" : "Nova proposta"}</p>` +
-    '<h3 id="course-audit-editor-title">Editar título e folhas da Unidade</h3>' +
-    '<p>Somente campos declarados pelos packages reais podem ser alterados.</p></header>' +
+    '<h3 id="course-audit-editor-title">Editar título e folhas da Unidade</h3></header>' +
     `<form data-audit-form="correction" data-audit-draft-id="${escapeHtml(draftId)}">` +
     '<div class="course-audit-editor-fields">' +
     editor.fields.map((field) => '<label>' +
@@ -917,7 +893,7 @@ function renderAuditView(state) {
           : renderFindings(state);
   return (state.networkOnline
     ? ""
-    : '<p class="course-audit-network-note" role="alert">Auditoria indisponível sem rede. Nenhuma ação usa cache offline.</p>') +
+    : '<p class="course-audit-network-note" role="alert">Sem conexão.</p>') +
     '<p class="course-authoring-notice is-error" data-audit-hydration-error hidden role="alert"></p>' +
     (state.error ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.error)}</p>` : "") +
     (state.pendingMutation
@@ -926,7 +902,7 @@ function renderAuditView(state) {
     (state.message ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.message)}</p>` : "") +
     (state.suggestedAnnotationActions.length
       ? '<section class="course-audit-context-card"><h3>Observações sugeridas</h3>' +
-        '<p>Revise cada sugestão em sua observação; nenhuma delas é aplicada automaticamente.</p><ul>' +
+        '<ul>' +
         state.suggestedAnnotationActions.map((suggestion) => {
           const label = suggestion.action === "resolve" ? "Revisar sugestão de resolução" :
             "Revisar sugestão de reabertura";
@@ -1034,7 +1010,6 @@ export function createCourseAuditPanel({
   routeTarget = null,
   onNavigate = () => {},
   onCourseRevisionChange = () => {},
-  onRequestChat = null,
   navigatorValue = globalThis.navigator || null,
   windowValue = globalThis.window || null,
   documentValue = root?.ownerDocument || globalThis.document || null
@@ -1045,8 +1020,7 @@ export function createCourseAuditPanel({
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
       routeTarget && !["anchored_annotation", "audit_finding", "audit_run", "study_unit"].includes(routeTarget.kind) ||
-      typeof onNavigate !== "function" || typeof onCourseRevisionChange !== "function" ||
-      onRequestChat !== null && typeof onRequestChat !== "function") {
+      typeof onNavigate !== "function" || typeof onCourseRevisionChange !== "function") {
     throw new TypeError("Dependências de Auditoria e correções são inválidas.");
   }
 
@@ -1062,7 +1036,6 @@ export function createCourseAuditPanel({
     destroyed: false,
     courseId: course.courseId,
     courseRevision: course.revision,
-    requestChatEnabled: typeof onRequestChat === "function",
     routeTarget,
     activeView: ["audit_finding", "audit_run", "study_unit"].includes(routeTarget?.kind)
       ? "findings"
@@ -1313,8 +1286,6 @@ export function createCourseAuditPanel({
       routeTarget: state.routeTarget?.kind === "anchored_annotation" ? state.routeTarget : null,
       embedded: true,
       onNavigate,
-      onRequestChat,
-      locationValue: windowValue?.location || null,
       onAuditTarget({ studyUnitId, annotationId }) {
         state.activeView = "findings";
         state.mode = "context";
@@ -1774,92 +1745,6 @@ export function createCourseAuditPanel({
     return state.detailPage?.detail || null;
   }
 
-  function deliverAuditChatRequest(descriptor) {
-    if (!state.requestChatEnabled || typeof onRequestChat !== "function") return false;
-    try {
-      void Promise.resolve(onRequestChat(descriptor)).catch((error) => {
-        if (state.destroyed) return;
-        state.error = errorMessage(error);
-        renderAudit();
-      });
-      return true;
-    } catch (error) {
-      state.error = errorMessage(error);
-      renderAudit();
-      return false;
-    }
-  }
-
-  function requestFindingChat() {
-    const finding = currentDetail()?.finding;
-    if (!finding) return false;
-    return deliverAuditChatRequest({
-      target: {
-        type: "audit_finding",
-        id: finding.findingId,
-        title: label("dimensions", finding.check.dimension),
-        path: `${pathLabel(finding.target.path)} › Achado de ${label("dimensions", finding.check.dimension)}`
-      },
-      action: "review",
-      instruction: "Releia o detalhe persistido deste achado, o critério, a evidência pública, as Fontes, " +
-        "Âncoras, Observações, a Unidade e suas versões. Explique divergências e discuta comigo sem " +
-        "alterar o Curso neste pedido.",
-      deepLink: buildCourseAuthoringRoute(state.courseId, {
-        section: "review",
-        findingId: finding.findingId
-      }),
-      references: { auditRunId: finding.auditRun.auditRunId }
-    });
-  }
-
-  function requestCorrectionChat() {
-    const detail = currentDetail();
-    const finding = detail?.finding;
-    const correction = detail?.selectedCorrection;
-    if (!finding || !correction) return false;
-    return deliverAuditChatRequest({
-      target: {
-        type: "authoring_correction",
-        id: correction.correctionId,
-        title: "Correção autoral",
-        path: `${pathLabel(finding.target.path)} › Achado de ${label("dimensions", finding.check.dimension)} › ` +
-          "Correção autoral"
-      },
-      action: "review",
-      instruction: "Compare a justificativa, os checkpoints anterior e posterior, as Fontes, Âncoras e a " +
-        "versão corrente da Unidade. Explique riscos e divergências sem aplicar, rejeitar, reverter ou " +
-        "verificar a proposta neste pedido.",
-      deepLink: buildCourseAuthoringRoute(state.courseId, {
-        section: "review",
-        findingId: finding.findingId,
-        correctionId: correction.correctionId
-      }),
-      references: { auditRunId: finding.auditRun.auditRunId }
-    });
-  }
-
-  function requestRunChat() {
-    const run = state.runDetailPage?.runDetail;
-    if (!run) return false;
-    return deliverAuditChatRequest({
-      target: {
-        type: "audit_run",
-        id: run.auditRunId,
-        title: label("runKinds", run.runKind),
-        path: `${pathLabel(run.target.path)} › ${formattedInstant(run.createdAt)}`
-      },
-      action: "review",
-      instruction: "Revise esta rodada preservada, seus critérios, evidências, resultados e achados. " +
-        "Compare a revisão auditada e a versão da Unidade com o estado corrente e discuta comigo sem " +
-        "alterar o Curso neste pedido.",
-      deepLink: buildCourseAuthoringRoute(state.courseId, {
-        section: "review",
-        auditRunId: run.auditRunId
-      }),
-      references: { auditRunId: run.auditRunId }
-    });
-  }
-
   async function openCorrectionEditor() {
     const detail = currentDetail();
     if (!detail) return;
@@ -2061,12 +1946,6 @@ export function createCourseAuditPanel({
       if (!hash) return;
       event.preventDefault();
       onNavigate(hash);
-    } else if (action === "request-chat-finding") {
-      requestFindingChat();
-    } else if (action === "request-chat-correction") {
-      requestCorrectionChat();
-    } else if (action === "request-chat-run") {
-      requestRunChat();
     } else if (action === "load-more" && state.hasMore && !state.loading) {
       void loadFindings({ direction: "next" });
     } else if (action === "previous-findings" && state.findingPageIndex > 0 && !state.loading) {
@@ -2271,13 +2150,14 @@ export function createCourseAuditPanel({
   async function open() {
     root.innerHTML = '<section class="course-authoring-section course-audit-panel" aria-labelledby="course-authoring-section-title">' +
       '<header class="course-authoring-section-heading"><div>' +
-      '<h2 id="course-authoring-section-title">Auditoria e correções</h2>' +
-      '<p>Observações, rodadas, achados e correções versionadas no mesmo destino.</p></div></header>' +
+      '<h2 id="course-authoring-section-title">Auditoria e correções</h2></div></header>' +
       '<div class="course-audit-tabs" role="tablist" aria-label="Auditoria e correções">' +
-      '<button type="button" role="tab" data-audit-tab="observations" aria-controls="course-audit-observations">' +
-      `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações</span></button>` +
-      '<button type="button" role="tab" data-audit-tab="findings" aria-controls="course-audit-findings">' +
-      `${renderUiIcon("review", "course-authoring-button-icon")}<span>Achados</span></button></div>` +
+      '<button type="button" role="tab" data-audit-tab="observations" aria-controls="course-audit-observations"' +
+      ' aria-label="Observações" title="Observações">' +
+      `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>` +
+      '<button type="button" role="tab" data-audit-tab="findings" aria-controls="course-audit-findings"' +
+      ' aria-label="Achados" title="Achados">' +
+      `${renderUiIcon("review", "course-authoring-button-icon")}</button></div>` +
       '<div id="course-audit-observations" class="course-audit-view" role="tabpanel" data-course-audit-observations></div>' +
       '<div id="course-audit-findings" class="course-audit-view" role="tabpanel" data-course-audit-findings></div>' +
       "</section>";

@@ -11,7 +11,6 @@ import {
 } from "../domain/courseAnchoredAnnotations.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
-import { buildCourseAuthoringRequestText } from "./courseAuthoringRequest.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { normalizeCourseAuthoringOutline } from "./courseAuthoringViewModel.js";
 import { renderUiIcon } from "./renderUiIcons.js";
@@ -22,8 +21,6 @@ import {
 } from "./renderStudyUnitObservationSheet.js";
 
 const PAGE_SIZE = 12;
-const MAX_CHAT_SELECTION = 12;
-const PENDING_OBSERVATION_STATES = new Set(["open", "considered"]);
 const DRAFT_FOCUS_SELECTORS = Object.freeze({
   create: '[data-observation-create-form] textarea[name="rawText"]',
   edit: '[data-observation-edit-form] textarea[name="rawText"]',
@@ -123,92 +120,6 @@ function pathLabel(item) {
   return path.map(({ label: value }) => value).filter(Boolean).join(" › ") || "Contexto indisponível";
 }
 
-function requestPath(path = []) {
-  const labels = path.map(({ label: value }) => String(value || "").trim()).filter(Boolean);
-  return labels.length ? labels : null;
-}
-
-function requestTargetFromItem(item) {
-  const path = item.target.currentPath || item.target.observedPath || [];
-  const targetEntry = [...path].reverse().find(({ kind, id }) =>
-    kind === item.target.kind && id === item.target.id) || path.at(-1) || null;
-  return {
-    kind: item.target.kind,
-    id: item.target.id,
-    title: targetEntry?.label || null,
-    path: requestPath(path)
-  };
-}
-
-function requestDeepLink(state, hash) {
-  const path = `${state.locationPathname}${state.locationSearch}${hash}` || hash;
-  return state.locationOrigin ? `${state.locationOrigin}${path}` : hash;
-}
-
-function observationRequestText(state, { annotationId, target, rawText, withdrawn = false }) {
-  const observationText = withdrawn
-    ? "A Observação foi retirada. Discuta somente seu registro, estado e contexto preservados."
-    : `Texto registrado na Observação:\n${rawText}`;
-  return buildCourseAuthoringRequestText({
-    course: {
-      id: state.courseId,
-      title: state.courseTitle,
-      revision: state.courseRevision
-    },
-    target: {
-      type: target.kind,
-      id: target.id,
-      title: target.title,
-      path: target.path
-    },
-    action: "discuss",
-    instruction: "Discuta esta Observação no contexto persistido do alvo. Confira o " +
-      "planejamento, os parâmetros, as Fontes e as Âncoras relevantes. Separe evidência, " +
-      "interpretação, lacunas e opções antes de responder no ChatGPT.\n\n" + observationText,
-    deepLink: requestDeepLink(state, buildCourseAuthoringRoute(state.courseId, {
-      section: "review",
-      annotationId
-    })),
-    references: { annotationId },
-    limits: [
-      "Este pedido inicia uma discussão; não altere o Curso nem a Observação nesta etapa.",
-      "O contrato admite somente um Retorno da autoria por Observação; se uma persistência for pedida depois, atualize esse retorno em vez de criar uma segunda resposta.",
-      "Não crie outra Observação para simular conversa ou duplicar este argumento."
-    ]
-  });
-}
-
-function observationSelectionRequestText(state, items) {
-  const annotationIds = items.map(({ annotationId }) => annotationId);
-  return buildCourseAuthoringRequestText({
-    course: {
-      id: state.courseId,
-      title: state.courseTitle,
-      revision: state.courseRevision
-    },
-    target: {
-      type: "course",
-      id: state.courseId,
-      title: state.courseTitle,
-      path: null
-    },
-    action: "review",
-    instruction: `Revise em conjunto as ${items.length} Observações selecionadas. ` +
-      "Releia cada uma pelos contratos canônicos de Observações e, para os alvos pertinentes, " +
-      "consulte o Conteúdo, o desenho efetivo, as Fontes, as Âncoras e a Auditoria antes de propor reparos. " +
-      "Identidades selecionadas pelo AraLearn: " + annotationIds.join(", ") + ". " +
-      "Separe diagnóstico, proposta e verificação; não trate uma mutação bem-sucedida como prova de reparo.",
-    deepLink: requestDeepLink(state, buildCourseAuthoringRoute(state.courseId, {
-      section: "review"
-    })),
-    references: null,
-    limits: [
-      "Não copie o Curso inteiro para o chat; releia somente o conjunto selecionado e seus contextos canônicos.",
-      "Não resolva Observações nem retire marcadores antes de uma verificação factual posterior ao reparo."
-    ]
-  });
-}
-
 function targetLinkLabel(kind) {
   return `Abrir ${({
     course: "Curso",
@@ -222,7 +133,6 @@ function targetLinkLabel(kind) {
 
 function emptyOutlineCatalog() {
   return Object.freeze({
-    courseTitle: "Curso",
     targets: Object.freeze([]),
     subjects: Object.freeze([])
   });
@@ -306,7 +216,6 @@ function outlineCatalog(value, courseId, revision) {
   }
   targets[0].subjectIds = subjects.map(({ id }) => id);
   return Object.freeze({
-    courseTitle: normalized.course.title,
     targets: Object.freeze(targets.map((target) => Object.freeze({
       ...target,
       path: Object.freeze(target.path.map(Object.freeze)),
@@ -355,7 +264,9 @@ function renderFilters(state) {
         kind === state.query.hierarchy.target.kind && id === state.query.hierarchy.target.id)
     : -1;
   return '<details class="course-observations-filters"' +
-    (state.filtersOpen ? " open" : "") + '><summary>Filtros e origens</summary>' +
+    (state.filtersOpen ? " open" : "") +
+    '><summary class="course-observations-tool-trigger" aria-label="Filtros" title="Filtros">' +
+    renderUiIcon("tags", "course-authoring-button-icon") + "</summary>" +
     '<form data-course-observations-filters><div class="course-observations-filter-grid">' +
     '<label><span>Origem</span><select name="origin">' +
     options(COURSE_ANCHORED_ANNOTATION_ORIGINS, "origins", state.query.origins[0]) +
@@ -388,7 +299,9 @@ function renderAuthorComposer(state) {
   const draft = state.createDraft;
   const disabled = state.loading ? " disabled" : "";
   return '<details class="course-observation-author-composer"' + (draft ? " open" : "") +
-    '><summary>Nova observação autoral</summary>' +
+    '><summary class="course-observations-tool-trigger" aria-label="Nova observação"' +
+    ' title="Nova observação">' + renderUiIcon("add", "course-authoring-button-icon") +
+    "</summary>" +
     `<form data-observation-create-form><label><span>Contexto</span><select name="target" required${disabled}>` +
     targets.map(({ kind, label: value }, index) =>
       `<option value="${index}"${String(index) === draft?.targetIndex ? " selected" : ""}>` +
@@ -410,39 +323,19 @@ function renderAuthorComposer(state) {
     '<span id="course-author-observation-count" class="course-observation-character-count">' +
     escapeHtml(formatObservationTextBudget(draft?.rawText || "")) + "</span>" +
     '<div class="course-observation-create-actions">' +
-    `<button type="submit"${state.requestChatEnabled ? "" : ' class="course-authoring-primary"'}${disabled}>` +
-    "Registrar</button>" +
-    (state.requestChatEnabled
-        ? '<button type="submit" class="course-authoring-primary"' +
-        ` data-observation-create-mode="request-chat"${disabled}>` +
-        renderUiIcon("prompt", "course-authoring-button-icon") +
-        "<span>Registrar e copiar</span></button>"
-      : "") + "</div>" +
+    `<button type="submit" class="course-authoring-primary"${disabled}>Registrar</button></div>` +
     '</form></details>';
 }
 
-function renderItem(item, selected = false, requestChatEnabled = false, selectable = false) {
+function renderItem(item) {
   const withdrawn = item.state === "withdrawn";
-  return `<article class="course-observation-card${selected ? " is-selected" : ""}">` +
+  return '<article class="course-observation-card">' +
     '<header><div class="course-observation-badges">' +
     `<span>${escapeHtml(label("origins", item.provenance.origin))}</span>` +
     `<span>${escapeHtml(label("channels", item.provenance.channel))}</span>` +
     `<span>${escapeHtml(label("states", item.state))}</span>` +
     `<span>${escapeHtml(item.category ? label("categories", item.category) : "Sem categoria")}</span>` +
-    `</div><strong>${escapeHtml(item.contributor.label)}</strong>` +
-    (selectable
-      ? '<label class="course-observation-select"><input type="checkbox"' +
-        ` data-observation-select="${escapeHtml(item.annotationId)}"${selected ? " checked" : ""}>` +
-        '<span>Selecionar</span></label>'
-      : "") +
-    (requestChatEnabled
-      ? '<button type="button" class="course-observation-chat-action"' +
-        ' data-observations-action="request-chat"' +
-        ` data-annotation-id="${escapeHtml(item.annotationId)}"` +
-        ' aria-label="Copiar pedido sobre esta Observação para o ChatGPT"' +
-        ' title="Copiar pedido para o ChatGPT">' +
-        renderUiIcon("prompt", "course-authoring-button-icon") + "</button>"
-      : "") + "</header>" +
+    `</div><strong>${escapeHtml(item.contributor.label)}</strong></header>` +
     `<p class="course-observation-path">${escapeHtml(pathLabel(item))}</p>` +
     (item.briefSummary
       ? `<p class="course-observation-summary">${escapeHtml(item.briefSummary)}</p>`
@@ -504,7 +397,7 @@ function renderDetail(state, item) {
     `<button type="button" data-observations-action="${action}">${escapeHtml(title)}</button>`
   ).join("");
   return '<div class="course-observation-detail">' +
-    renderItem(item, true, state.requestChatEnabled) +
+    renderItem(item, true) +
     (item.target.deepLink
       ? `<a class="course-authoring-primary course-observation-target-link" href="${escapeHtml(item.target.deepLink)}"` +
         ` data-observations-action="open-target">${escapeHtml(targetLinkLabel(item.target.kind))}</a>`
@@ -572,13 +465,13 @@ function renderPanel(state) {
   return `<${element} class="${state.embedded ? "" : "course-authoring-section "}course-observations-panel"` +
     ` aria-labelledby="${titleId}">` +
     '<header class="course-authoring-section-heading"><div>' +
-    `<${titleTag} id="${titleId}">Observações</${titleTag}>` +
-    `<p>${detailMode ? "Detalhe contextual" : "Inbox única do Curso"}</p></div>` +
+    `<${titleTag} id="${titleId}">Observações</${titleTag}></div>` +
     (detailMode
       ? `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
           section: "review"
         }))}" data-observations-action="back-inbox">Voltar à inbox</a>`
-      : '<button type="button" data-observations-action="reload" aria-label="Atualizar observações">' +
+      : '<button type="button" data-observations-action="reload" aria-label="Atualizar observações"' +
+        ' title="Atualizar observações">' +
         renderUiIcon("rotate", "course-authoring-button-icon") + "</button>") + "</header>" +
     (state.error ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.error)}</p>` : "") +
     (state.outlineError
@@ -589,29 +482,16 @@ function renderPanel(state) {
       ? '<p class="course-authoring-loading" role="status">Carregando observações…</p>'
       : detailMode
         ? renderDetail(state, item)
-        : renderAuthorComposer(state) + renderFilters(state) +
-          (state.summary
+        : '<div class="course-observations-tools">' + renderAuthorComposer(state) +
+          renderFilters(state) + "</div>" +
+          (state.summary?.matchingTotal > 0
             ? '<dl class="course-observations-summary"><div><dt>Correspondentes</dt>' +
               `<dd>${state.summary.matchingTotal}</dd></div><div><dt>Sem assunto</dt>` +
               `<dd>${state.summary.unclassifiedTotal}</dd></div>${summaryRows(state.summary)}</dl>`
             : "") +
-          (state.requestChatEnabled
-            ? '<section class="course-observation-selection" aria-label="Revisão conjunta">' +
-              `<p>${state.selectedAnnotationIds.size} de ${MAX_CHAT_SELECTION} selecionadas</p>` +
-              '<button type="button" class="course-authoring-primary"' +
-              ' data-observations-action="request-chat-selection"' +
-              `${state.selectedAnnotationIds.size ? "" : " disabled"}>` +
-              renderUiIcon("prompt", "course-authoring-button-icon") +
-              '<span>Revisar selecionadas com ChatGPT</span></button></section>'
-            : "") +
           `<div class="course-observations-list">${state.items.map((value) =>
-            renderItem(
-              value,
-              state.selectedAnnotationIds.has(value.annotationId),
-              state.requestChatEnabled,
-              state.requestChatEnabled && PENDING_OBSERVATION_STATES.has(value.state)
-            )).join("") ||
-            '<p class="course-authoring-empty-copy">Nenhuma observação corresponde aos filtros.</p>'}</div>` +
+            renderItem(value)).join("") ||
+            '<p class="course-authoring-empty-copy">Nenhuma observação.</p>'}</div>` +
           (state.hasMore
             ? '<button type="button" class="course-observations-load-more" data-observations-action="load-more"' +
               `${state.loading ? " disabled" : ""}>Carregar mais</button>`
@@ -626,8 +506,6 @@ export function createCourseObservationsPanel({
   embedded = false,
   onNavigate = () => {},
   onAuditTarget = () => {},
-  onRequestChat = null,
-  locationValue = globalThis.location || null,
   clock = () => new Date(),
   documentValue = root?.ownerDocument || globalThis.document || null
 } = {}) {
@@ -638,18 +516,12 @@ export function createCourseObservationsPanel({
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
       routeTarget && routeTarget.kind !== "anchored_annotation" || typeof embedded !== "boolean" ||
-      typeof onAuditTarget !== "function" ||
-      onRequestChat !== null && typeof onRequestChat !== "function") {
+      typeof onAuditTarget !== "function") {
     throw new TypeError("Dependências da inbox de observações são inválidas.");
   }
   const state = {
     courseId: course.courseId,
-    courseTitle: String(course.title || "").trim() || "Curso",
     courseRevision: course.revision,
-    requestChatEnabled: typeof onRequestChat === "function",
-    locationOrigin: typeof locationValue?.origin === "string" ? locationValue.origin : "",
-    locationPathname: typeof locationValue?.pathname === "string" ? locationValue.pathname : "",
-    locationSearch: typeof locationValue?.search === "string" ? locationValue.search : "",
     embedded,
     query: defaultQuery(routeTarget?.id || null),
     annotationSetVersion: null,
@@ -668,7 +540,6 @@ export function createCourseObservationsPanel({
     createDraft: null,
     editDraft: null,
     responseDraft: null,
-    selectedAnnotationIds: new Set(),
     pendingMutation: null,
     restoreDraftFocus: "",
     destroyed: false
@@ -740,7 +611,6 @@ export function createCourseObservationsPanel({
         state.courseId,
         state.courseRevision
       );
-      state.courseTitle = state.outlineCatalog.courseTitle;
       return true;
     } catch (error) {
       state.outlineCatalog = emptyOutlineCatalog();
@@ -798,12 +668,6 @@ export function createCourseObservationsPanel({
         .map((item) => [item.annotationId, item]));
       page.items.forEach((item) => items.set(item.annotationId, item));
       state.items = [...items.values()];
-      const selectableIds = new Set(state.items
-        .filter(({ state: itemState }) => PENDING_OBSERVATION_STATES.has(itemState))
-        .map(({ annotationId }) => annotationId));
-      for (const annotationId of state.selectedAnnotationIds) {
-        if (!selectableIds.has(annotationId)) state.selectedAnnotationIds.delete(annotationId);
-      }
       state.hasMore = page.hasMore;
       state.nextCursor = page.nextCursor;
       if (!append) state.seenCursors.clear();
@@ -905,69 +769,6 @@ export function createCourseObservationsPanel({
     }
   }
 
-  async function requestChatForObservation({ annotationId, target, rawText, withdrawn = false }, {
-    persisted = false
-  } = {}) {
-    if (!state.requestChatEnabled) return false;
-    const priorError = persisted ? state.error : "";
-    if (!persisted) state.error = "";
-    try {
-      const requestText = observationRequestText(state, {
-        annotationId,
-        target,
-        rawText,
-        withdrawn
-      });
-      await onRequestChat(structuredClone({ requestText }));
-      if (state.destroyed) return true;
-      state.message = persisted
-        ? "Observação registrada e pedido copiado para o ChatGPT."
-        : "Pedido copiado para o ChatGPT.";
-      render();
-      return true;
-    } catch (error) {
-      if (state.destroyed) return false;
-      const detail = error instanceof Error ? error.message : "Não foi possível copiar o pedido.";
-      const deliveryError = persisted
-        ? `A Observação foi registrada, mas o pedido não foi copiado. ${detail}`
-        : `O pedido não foi copiado. ${detail}`;
-      state.error = [priorError, deliveryError].filter(Boolean).join(" ");
-      state.message = persisted ? "Observação registrada." : "";
-      render();
-      return false;
-    }
-  }
-
-  async function requestChatForSelection() {
-    if (!state.requestChatEnabled || state.selectedAnnotationIds.size === 0) return false;
-    const items = state.items.filter(({ annotationId, state: itemState }) =>
-      state.selectedAnnotationIds.has(annotationId) &&
-      PENDING_OBSERVATION_STATES.has(itemState)
-    );
-    if (items.length !== state.selectedAnnotationIds.size || items.length > MAX_CHAT_SELECTION) {
-      state.error = "A seleção mudou; escolha novamente as Observações pendentes.";
-      render();
-      return false;
-    }
-    state.error = "";
-    try {
-      await onRequestChat(structuredClone({
-        requestText: observationSelectionRequestText(state, items)
-      }));
-      if (state.destroyed) return true;
-      state.message = "Pedido conjunto copiado para o ChatGPT.";
-      render();
-      return true;
-    } catch (error) {
-      if (state.destroyed) return false;
-      const detail = error instanceof Error ? error.message : "Não foi possível copiar o pedido.";
-      state.error = `O pedido conjunto não foi copiado. ${detail}`;
-      state.message = "";
-      render();
-      return false;
-    }
-  }
-
   function stateCommand(action, item) {
     const types = {
       consider: "consider_anchored_annotation",
@@ -1043,25 +844,10 @@ export function createCourseObservationsPanel({
         })(),
         briefSummary: null
       };
-      const annotationId = command.annotationId;
-      const requestChat = event.submitter?.dataset?.observationCreateMode === "request-chat";
-      void (async () => {
-        const change = await mutate(command, "Observação registrada.", {
-          operationDraft,
-          draftKind: "create"
-        });
-        if (!change || !requestChat) return;
-        await requestChatForObservation({
-          annotationId,
-          target: {
-            kind: target.kind,
-            id: target.id,
-            title: target.title,
-            path: requestPath(target.path)
-          },
-          rawText
-        }, { persisted: true });
-      })();
+      void mutate(command, "Observação registrada.", {
+        operationDraft,
+        draftKind: "create"
+      });
       return;
     }
     const item = detailItem();
@@ -1164,24 +950,7 @@ export function createCourseObservationsPanel({
 
   root.addEventListener("change", (event) => {
     const item = detailItem();
-    if (event.target.matches?.("[data-observation-select]")) {
-      const annotationId = String(event.target.dataset.observationSelect || "");
-      const candidate = state.items.find((value) => value.annotationId === annotationId);
-      if (!candidate || !PENDING_OBSERVATION_STATES.has(candidate.state)) return;
-      if (event.target.checked) {
-        if (state.selectedAnnotationIds.size >= MAX_CHAT_SELECTION) {
-          event.target.checked = false;
-          state.error = `Selecione no máximo ${MAX_CHAT_SELECTION} Observações por revisão.`;
-        } else {
-          state.selectedAnnotationIds.add(annotationId);
-          state.error = "";
-        }
-      } else {
-        state.selectedAnnotationIds.delete(annotationId);
-        state.error = "";
-      }
-      render();
-    } else if (event.target.matches?.('[data-observation-create-form] select[name="target"]')) {
+    if (event.target.matches?.('[data-observation-create-form] select[name="target"]')) {
       state.createDraft ||= { targetIndex: "0", category: null, rawText: "" };
       state.createDraft.targetIndex = String(event.target.value || "0");
     } else if (event.target.matches?.('[data-observation-create-form] select[name="category"]')) {
@@ -1228,18 +997,6 @@ export function createCourseObservationsPanel({
       state.query = defaultQuery();
       state.filtersOpen = true;
       void read();
-    } else if (action === "request-chat") {
-      const item = state.items.find(({ annotationId }) =>
-        annotationId === String(node.dataset.annotationId || ""));
-      if (!item) return;
-      void requestChatForObservation({
-        annotationId: item.annotationId,
-        target: requestTargetFromItem(item),
-        rawText: item.rawText,
-        withdrawn: item.state === "withdrawn"
-      });
-    } else if (action === "request-chat-selection") {
-      void requestChatForSelection();
     } else if (["consider", "resolve", "reopen", "withdraw"].includes(action)) {
       const item = detailItem();
       if (!item) return;

@@ -991,19 +991,6 @@ function clearAuthoringRoute() {
   );
 }
 
-async function deliverAuthoringRequest({ requestText } = {}) {
-  const text = String(requestText || "").trim();
-  if (!text) throw new TypeError("O pedido de Autoria está vazio.");
-  if (typeof globalThis.navigator?.clipboard?.writeText !== "function") {
-    throw new Error("Não foi possível copiar o pedido para o ChatGPT.");
-  }
-  await globalThis.navigator.clipboard.writeText(text);
-  return {
-    delivery: "clipboard",
-    message: "Pedido copiado. Cole no ChatGPT para continuar a Autoria."
-  };
-}
-
 async function renderAuthenticatedApplication(root, config, authClient) {
   const courseApi = new CourseApiClient({
     projectUrl: config.projectUrl,
@@ -1014,8 +1001,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const authoringController = new CourseController({
     api: courseApi,
     store: courseLocalStore,
-    ownerOnly: true,
-    deliverAuthoringRequest
+    ownerOnly: true
   });
   pendingCompositionCleanup = () =>
     authoringController.clearPendingCourseCompositions();
@@ -1204,7 +1190,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     root: authoringRoot,
     controller: authoringController,
     providerAssistanceSession: courseProviderSession,
-    async onOpenStudyContent({ entityPath, returnRoute }) {
+    async onOpenStudyContent({ entityPath, returnRoute, returnFocusKey = "" }) {
       const origin = authoringRoot.contains(document.activeElement)
         ? document.activeElement
         : null;
@@ -1212,17 +1198,24 @@ async function renderAuthenticatedApplication(root, config, authClient) {
         route: returnRoute,
         scrollTop: Number(authoringRoot.scrollTop) || 0,
         scrollLeft: Number(authoringRoot.scrollLeft) || 0,
-        focus: origin
+        focus: origin || returnFocusKey
           ? {
-              action: origin.dataset.courseAuthoringAction || "",
-              targetKind: origin.dataset.targetKind || "",
-              targetId: origin.dataset.targetId || ""
+              action: origin?.dataset?.courseAuthoringAction || "",
+              controlKey: returnFocusKey || origin?.dataset?.inspectionControlKey || "",
+              targetKind: origin?.dataset?.targetKind || "",
+              targetId: origin?.dataset?.targetId || ""
             }
           : null
       };
       const opened = await editorApp?.openEntityPath?.(entityPath);
       if (!opened) throw new Error("Não foi possível abrir este objeto no editor contextual.");
       studyAuthoringReturn = returnState;
+      if (returnFocusKey) {
+        authoringSurface?.rememberInspectionReturnFocus?.({
+          route: returnRoute,
+          key: returnFocusKey
+        });
+      }
       authoringSurface?.destroy?.();
       authoringRoot.hidden = true;
       editorRoot.hidden = false;
@@ -1251,12 +1244,15 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       authoringRoot.scrollLeft = pending.scrollLeft;
       const focus = pending.focus;
       if (!focus) return;
-      const target = [...authoringRoot.querySelectorAll(
-        `[data-course-authoring-action="${focus.action}"]`
-      )].find((node) =>
-        String(node.dataset.targetKind || "") === focus.targetKind &&
-        String(node.dataset.targetId || "") === focus.targetId
-      );
+      const target = focus.controlKey
+        ? [...authoringRoot.querySelectorAll("[data-inspection-control-key]")]
+            .find((node) => String(node.dataset.inspectionControlKey || "") === focus.controlKey)
+        : [...authoringRoot.querySelectorAll(
+            `[data-course-authoring-action="${focus.action}"]`
+          )].find((node) =>
+            String(node.dataset.targetKind || "") === focus.targetKind &&
+            String(node.dataset.targetId || "") === focus.targetId
+          );
       target?.focus?.({ preventScroll: true });
     }).catch((error) => {
       console.warn("A Autoria poderá ser reaberta pela Home.", error);

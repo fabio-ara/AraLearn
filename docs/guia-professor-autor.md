@@ -376,12 +376,12 @@ percurso seguro de autoria é:
 4. usar a revisão do Curso e a versão do objeto como condições da escrita;
 5. reler o resultado e abrir o link visual devolvido.
 
-A ação contextual **ChatGPT** reduz o trabalho de transportar esse contexto.
-Ela abre um compositor com o alvo e seu caminho, uma lista de intenções
-compatíveis e o campo **Seu argumento ou pedido**. O AraLearn acrescenta Curso,
-revisão observada, endereço direto de retorno, referências e limites de
-segurança quando a pessoa usa **Copiar pedido**. Copiar ou cancelar não altera o
-Curso nem sua cópia local.
+Na Autoria, Observações e mudanças de Parâmetros são registradas no alvo e ficam
+visíveis no próprio Curso. O ChatGPT conectado por MCP ou Actions pode ler esse
+estado, reunir os itens pertinentes e apresentar uma proposta. A pessoa pode
+discutir, corrigir ou recusar a proposta; somente a aprovação explícita autoriza
+a operação correspondente. Não há compositor nem transporte por cópia e cola
+na interface normal.
 
 MCP e **Actions** são canais distintos. MCP autoriza um cliente por principal e
 consentimento próprios; um GPT personalizado com Actions usa o contrato OpenAPI
@@ -395,9 +395,9 @@ AraLearn. A área visível relê o cabeçalho canônico e o estado pertinente. U
 ação **Atualizar** do cabeçalho se o navegador não sinalizar o retorno. Uma
 alteração já confirmada no cliente não exige confirmação duplicada na interface.
 
-Se houver um compositor, uma confirmação ou um formulário em edição, essa
-releitura é adiada. O AraLearn conserva os campos e o argumento e pede que a
-pessoa conclua ou cancele o rascunho antes de atualizar novamente.
+Se houver uma confirmação ou um formulário em edição, essa releitura é adiada.
+O AraLearn conserva os campos e pede que a pessoa conclua ou cancele o rascunho
+antes de atualizar novamente.
 
 Os formulários de Parâmetros, Fontes, Variantes, Observações, Conteúdo e
 Auditoria também conservam campos, controles abertos e foco quando uma
@@ -415,20 +415,20 @@ operações, paginação e confirmações disponíveis.
 Para preparar a produção:
 
 1. descreva a intenção de cada Parte e organize a ordem de trabalho;
-2. se a estrutura ainda estiver vazia, use **Preparar** na Parte, revise o
-   argumento e copie o pedido para criar e vincular somente os Módulos, Lições e
-   Microssequências necessários;
+2. se a estrutura ainda estiver vazia, peça ao cliente conectado que prepare e
+   vincule somente os Módulos, Lições e Microssequências necessários;
 3. vincule as Microssequências que pertencem a cada Parte;
 4. atribua, em **Parâmetros**, as unidades de análise e os requisitos de
    evidência de cada Microssequência;
 5. resolva, em **Fontes**, o catálogo, as Âncoras e as atribuições pertinentes;
-6. use a ação **ChatGPT** na Parte, confira a intenção **Materializar Parte** e
-   complete o argumento;
-7. copie o pedido para o cliente conectado e acompanhe as etapas confirmadas pelo
-   servidor.
+6. peça ao cliente conectado que proponha a materialização da Parte e examine o
+   alcance da operação;
+7. aprove explicitamente a proposta adequada e acompanhe as etapas confirmadas
+   pelo servidor.
 
-Copiar o pedido não altera o Curso. Quando o cliente executa a materialização,
-o histórico da Parte recebe uma nova execução. Abra-a para ver todas as etapas,
+Discutir a proposta não altera o Curso. Quando o cliente executa a
+materialização aprovada, o histórico da Parte recebe uma nova execução. Abra-a
+para ver todas as etapas,
 o resultado de cada uma, os fatos registrados e os objetos produzidos. Falhas
 anteriores e execuções parciais permanecem disponíveis; nenhuma é substituída
 pela mais recente. O link de um objeto abre **Conteúdo** no alvo exato e o

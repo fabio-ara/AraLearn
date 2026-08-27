@@ -4,6 +4,29 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.34] - 2026-08-27
+
+### Alterado
+
+- Autoria mantém uma faixa curricular compacta e fixa enquanto a sequência de
+  Unidades rola, com localização por Curso, Módulo, Lição, Microssequência,
+  título, conteúdo ou número;
+- Observações e decisões de desenho aparecem no próprio card e permanecem
+  disponíveis a MCP e Actions para auditoria, discussão e reparo aprovado;
+- Visão geral, Parâmetros, Fontes, Revisão, Variantes e Pesquisa adotam a mesma
+  densidade, geometria e divulgação progressiva de Estudo.
+
+### Corrigido
+
+- Cursos extensos abrem qualquer Unidade com sua vizinhança curricular sem
+  manter mais de 36 cards no documento;
+- o localizador numérico preserva a ordem canônica do Curso mesmo quando os
+  níveis estruturais não expõem posição no Course Document;
+- retorno, foco, rolagem e marcadores são atualizados após edição, Observação,
+  MCP ou Actions sem recompor a tela nem deslocar controles estáveis;
+- foi removido o compositor paralelo de pedidos para o ChatGPT: a colaboração
+  agora usa os registros persistidos e os contratos reais de MCP ou Actions.
+
 ## [0.0.33] - 2026-08-26
 
 ### Alterado
