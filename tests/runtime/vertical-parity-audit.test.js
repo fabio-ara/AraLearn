@@ -70,11 +70,11 @@ test("o inventário exato cobre os onze casos correntes", async () => {
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 770);
+  assert.equal(inventory.objects.length, 771);
   assert.deepEqual(counts, {
     "study-course-experience": 40,
     "course-authoring-experience": 280,
-    "course-source-provenance": 121,
+    "course-source-provenance": 122,
     "course-anchored-annotations": 86,
     "course-audit-corrections": 91,
     "course-variant-comparisons": 51,
@@ -99,6 +99,12 @@ test("o inventário exato cobre os onze casos correntes", async () => {
   );
   assert.equal(
     assignments.get("table:private.course_source_pdf_upload_intents"),
+    "course-source-provenance"
+  );
+  assert.equal(
+    assignments.get(
+      "function:private.commit_course_instructional_plan_sources_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_expected_plan_version bigint, p_command jsonb, p_plan jsonb, p_channel text, p_request_id text)"
+    ),
     "course-source-provenance"
   );
   assert.equal(

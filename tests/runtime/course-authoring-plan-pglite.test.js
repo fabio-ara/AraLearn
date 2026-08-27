@@ -47,6 +47,10 @@ const courseRlsActorLookupMigrationUrl = new URL(
   "../../supabase/migrations/20260826143846_optimize_course_rls_actor_lookup.sql",
   import.meta.url
 );
+const boundedInstructionalPlanCasMigrationUrl = new URL(
+  "../../supabase/migrations/20260827185748_bound_instructional_plan_cas_retry.sql",
+  import.meta.url
+);
 const contextualCompositionMigrationUrl = new URL(
   "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
   import.meta.url
@@ -462,6 +466,25 @@ async function applyCourseSourcesMigration(database) {
     $manifest$;
   `);
   await database.exec(await fs.readFile(courseSourceHumanLocatorsMigrationUrl, "utf8"));
+}
+
+async function applyBoundedInstructionalPlanCasMigration(database) {
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  manifest.schemaRevision = "20260826143846";
+  const literal = JSON.stringify(manifest).replaceAll("'", "''");
+  await database.exec(`
+    create or replace function public.get_aralearn_runtime_manifest()
+    returns jsonb language sql stable security definer
+    set search_path=pg_catalog as $manifest$
+      select '${literal}'::jsonb
+    $manifest$;
+  `);
+  await database.exec(await fs.readFile(
+    boundedInstructionalPlanCasMigrationUrl,
+    "utf8"
+  ));
 }
 
 async function applyContinuousAuthoringInspectionMigration(database) {
@@ -4732,6 +4755,82 @@ test("#123 lookup contextual encontra revisão pinada sem varrer histórico long
   } finally {
     await database.exec("rollback");
   }
+  await database.close();
+});
+
+test("CAS obsoleto do plano retorna PGRST 409 sem retry e preserva replay", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await applyBoundedInstructionalPlanCasMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const target = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  target.audience = "Pessoas autoras que precisam revisar o plano.";
+  const command = { type: "update_plan" };
+  const changed = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,4,1,$3::jsonb,$4::jsonb,'application','plan-cas-boundary-0001'
+    ) as value
+  `, [OWNER, COURSE, command, target]);
+  assert.equal(changed.courseRevision, 5);
+  assert.equal(changed.planVersion, 2);
+  assert.equal(changed.idempotent, false);
+
+  const replay = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,4,1,$3::jsonb,$4::jsonb,'application','plan-cas-boundary-0001'
+    ) as value
+  `, [OWNER, COURSE, command, target]);
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.courseRevision, 5);
+  assert.equal(replay.planVersion, 2);
+
+  const eventCount = await scalar(database, `
+    select count(*)::integer as value
+    from private.course_events where course_id=$1
+  `, [COURSE]);
+  const startedAt = performance.now();
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,4,1,$3::jsonb,$4::jsonb,'application','plan-cas-boundary-stale-0001'
+    ) as value
+  `, [OWNER, COURSE, command, target]), (error) => isPgrstConflict(
+    error,
+    "O Curso ou plano mudou; releia antes de salvar."
+  ));
+  assert.ok(performance.now() - startedAt < 5_000);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_array(course.revision,plan.version) as value
+    from public.courses course
+    join private.course_instructional_plans plan on plan.course_id=course.id
+    where course.id=$1
+  `, [COURSE]), [5, 2]);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_events where course_id=$1
+  `, [COURSE]), eventCount);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_change_receipts
+    where actor_id=$1 and request_id='plan-cas-boundary-stale-0001'
+  `, [OWNER]), 0);
+  assert.equal(await scalar(database, `
+    select audience=$2 as value
+    from private.course_instructional_plans where course_id=$1
+  `, [COURSE, target.audience]), true);
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260827185748");
   await database.close();
 });
 

@@ -1379,6 +1379,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:private.commit_course_instructional_plan_sources_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_expected_plan_version bigint, p_command jsonb, p_plan jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "function:private.consume_course_source_pdf_upload_intent_v1()",
       "caseId": "course-source-provenance"
     },

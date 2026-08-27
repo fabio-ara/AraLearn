@@ -2225,7 +2225,7 @@ export class CourseSupabaseAdapter {
         if (response.ok) return body;
         const error = databaseError(response.status, body);
         lastError = error;
-        if (!retry || !retryableStatus(response.status) || attempt === this.attempts) throw error;
+        if (!retry || !retryableStatus(error.status) || attempt === this.attempts) throw error;
       } catch (error) {
         const normalized = controller.signal.aborted
           ? new AuthoringApiError(503, "service_timeout", "O Supabase não respondeu a tempo.")
