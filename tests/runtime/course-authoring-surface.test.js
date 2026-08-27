@@ -789,6 +789,49 @@ test("Conteúdo delega hierarquia, renderer e edição a uma única sequência",
   assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
 });
 
+test("menu de tarefas fecha antes de trocar de seção", async () => {
+  const root = new FakeRoot();
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID)
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture(),
+    locationValue,
+    historyValue: { state: null, replaceState() {} },
+    windowValue: new FakeWindow()
+  });
+  assert.equal(await surface.open(), true);
+
+  const menu = { open: true };
+  const node = {
+    dataset: { courseAuthoringAction: "change-section", section: "planning" },
+    getAttribute(name) {
+      return name === "href"
+        ? buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+        : null;
+    },
+    closest(selector) {
+      return selector === ".course-authoring-task-menu, .course-authoring-part-tools"
+        ? menu
+        : null;
+    }
+  };
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest(selector) {
+        return selector === "[data-course-authoring-action]" ? node : null;
+      }
+    }
+  });
+
+  assert.equal(menu.open, false);
+  surface.destroy();
+});
+
 test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segunda hierarquia", async () => {
   const root = new FakeRoot();
   let outlineReads = 0;

@@ -4580,6 +4580,10 @@ export function createCourseAuthoringSurface({
         section: initialSectionForCourse(course)
       }));
     } else if (action === "change-section" && state.course) {
+      const menu = node.closest?.(
+        ".course-authoring-task-menu, .course-authoring-part-tools"
+      );
+      if (menu) menu.open = false;
       const href = node.getAttribute?.("href");
       void navigate(href || buildCourseAuthoringRoute(state.course.courseId, {
         section: node.dataset.section
