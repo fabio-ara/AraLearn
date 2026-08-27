@@ -12,6 +12,9 @@ import {
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import {
+  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
+import {
   applyCourseAuthoringPlanCommand
 } from "../../supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringPlan.js";
 import {
@@ -191,7 +194,7 @@ test("Actions lê e altera Observações com destinatário e principal próprios
   assert.equal(change.data.dataDisclosure.recipient, "connected_actions_gpt");
 });
 
-test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados", async () => {
+test("Actions lê, altera e relê o plano com operações dedicadas, CAS e replay", async () => {
   let courseRevision = 1;
   let commitCalls = 0;
   const receipts = new Map();
@@ -255,8 +258,13 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
     assert.equal(response.status, 200);
     return (await response.json()).data;
   };
-  const changePlan = async (requestId, current, planCommand) => {
-    const response = await handler(request("alterarCurso", {
+  const changePlan = async (
+    requestId,
+    current,
+    planCommand,
+    actionName = "alterarCurso"
+  ) => {
+    const response = await handler(request(actionName, {
       requestId,
       courseId: ACTOR_ID,
       expectedRevision: current.courseRevision,
@@ -335,10 +343,12 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
         position: 0,
         statement: item.statement,
         sourceLinks: []
-      }
+      },
+      "add_plan_item"
     );
     assert.equal(itemChange.courseRevision, 4 + index);
     assert.equal(itemChange.planVersion, 4 + index);
+    assert.equal(itemChange.deepLink, deepLink);
     afterItems = await readPlan();
     assert.deepEqual(afterItems.plan[item.collection], [{
       id: item.id,
@@ -348,7 +358,29 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
     }]);
   }
 
-  const firstItemReplayResponse = await handler(request("alterarCurso", {
+  const updatedFirstItemStatement = "Explicar e comparar os fundamentos em uma situação nova.";
+  const firstItemUpdate = await changePlan(
+    "action-plan-item-update-0001",
+    afterItems,
+    {
+      type: "update_plan_item",
+      kind: itemCases[0].kind,
+      id: itemCases[0].id,
+      statement: updatedFirstItemStatement,
+      sourceLinks: []
+    },
+    "update_plan_item"
+  );
+  assert.equal(firstItemUpdate.courseRevision, 7);
+  assert.equal(firstItemUpdate.planVersion, 7);
+  assert.equal(firstItemUpdate.deepLink, deepLink);
+  afterItems = await readPlan();
+  assert.equal(
+    afterItems.plan.intendedLearningOutcomes[0].statement,
+    updatedFirstItemStatement
+  );
+
+  const firstItemReplayResponse = await handler(request("add_plan_item", {
     requestId: "action-plan-item-0001",
     courseId: ACTOR_ID,
     expectedRevision: beforeFirstItem.courseRevision,
@@ -368,10 +400,11 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
   assert.equal(firstItemReplay.idempotent, true);
   assert.equal(firstItemReplay.courseRevision, 4);
   assert.equal(firstItemReplay.planVersion, 4);
-  assert.equal((await readPlan()).plan.version, 6);
-  assert.equal(commitCalls, 5);
+  assert.equal(firstItemReplay.deepLink, deepLink);
+  assert.equal((await readPlan()).plan.version, 7);
+  assert.equal(commitCalls, 6);
 
-  const missingSourceLinks = await handler(request("alterarCurso", {
+  const missingSourceLinks = await handler(request("add_plan_item", {
     requestId: "action-plan-item-without-links-0001",
     courseId: ACTOR_ID,
     expectedRevision: afterItems.courseRevision,
@@ -388,7 +421,28 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
   const missingSourceLinksPayload = await missingSourceLinks.json();
   assert.equal(missingSourceLinks.status, 422);
   assert.equal(missingSourceLinksPayload.error.code, "invalid_course_source_links");
-  assert.equal(commitCalls, 5);
+  assert.notEqual(missingSourceLinksPayload.error.code, "internal_error");
+  assert.equal(commitCalls, 6);
+
+  const mismatchedDedicatedAction = await handler(request("add_plan_item", {
+    requestId: "action-plan-item-mismatch-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: afterItems.courseRevision,
+    expectedPlanVersion: afterItems.plan.version,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "update_plan_item",
+      kind: itemCases[0].kind,
+      id: itemCases[0].id,
+      statement: "A Action dedicada não pode trocar de discriminador.",
+      sourceLinks: []
+    }
+  }));
+  const mismatchPayload = await mismatchedDedicatedAction.json();
+  assert.equal(mismatchedDedicatedAction.status, 422);
+  assert.equal(mismatchPayload.error.code, "invalid_action_projection");
+  assert.notEqual(mismatchPayload.error.code, "internal_error");
+  assert.equal(commitCalls, 6);
 
   const invalid = await handler(request("alterarCurso", {
     requestId: "action-plan-invalid-0001",
@@ -401,8 +455,9 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
   const invalidPayload = await invalid.json();
   assert.equal(invalid.status, 422);
   assert.equal(invalidPayload.error.code, "invalid_course_authoring_plan_command");
-  assert.equal(commitCalls, 5);
-  assert.equal((await readPlan()).plan.version, 6);
+  assert.notEqual(invalidPayload.error.code, "internal_error");
+  assert.equal(commitCalls, 6);
+  assert.equal((await readPlan()).plan.version, 7);
 });
 
 test("Actions não aceita o bearer sem passar pelo resolvedor específico", async () => {
@@ -433,7 +488,7 @@ test("Actions limita origem, rota e corpo sem abrir transporte genérico", async
   assert.equal(oversized.status, 413);
 });
 
-test("Actions preserva as cinco operações correntes e rejeita Workspace", async () => {
+test("Actions preserva as ferramentas canônicas e acrescenta as operações dedicadas", async () => {
   const openApi = JSON.parse(await readFile(
     new URL(
       "../../docs/downloads/aralearn-chatgpt-action-openapi.yaml",
@@ -444,7 +499,10 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
   assert.equal(openApi.openapi, "3.1.0");
   assert.deepEqual(
     Object.keys(openApi.paths),
-    AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => `/${name}`)
+    [
+      ...AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => `/${name}`),
+      ...AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS.map(({ path }) => path)
+    ]
   );
   assert.equal(JSON.stringify(openApi).includes("Workspace"), false);
   assert.ok(openApi.components.schemas.SuccessResponse);
@@ -457,6 +515,12 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
       openApi.paths[`/${tool.name}`].post.description,
       forChatGptActionDocumentation(tool.description)
     );
+  }
+  for (const projection of AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS) {
+    const operation = openApi.paths[projection.path].post;
+    assert.equal(operation.operationId, projection.operationId);
+    assert.equal(operation.summary, projection.title);
+    assert.equal(operation.description, projection.description);
   }
   const oauth = openApi.components.securitySchemes.AraLearnOAuth;
   assert.match(
@@ -514,6 +578,14 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
     const operation = openApi.paths[`/${tool.name}`]?.post;
     assert.equal(operation.operationId, tool.name);
     assert.ok(operation.requestBody.content["application/json"].schema, tool.name);
+  }
+  for (const projection of AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS) {
+    const operation = openApi.paths[projection.path]?.post;
+    assert.equal(operation.operationId, projection.operationId);
+    assert.ok(
+      operation.requestBody.content["application/json"].schema,
+      projection.operationId
+    );
   }
 });
 

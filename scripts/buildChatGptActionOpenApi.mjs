@@ -8,9 +8,13 @@ import {
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import {
+  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+} from "../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
+import {
   actionLiteralSchema,
   forChatGptActionImporter,
   forChatGptActionDocumentation,
+  projectChatGptActionTransportTools,
   projectAuthoringProtocolToolsForActions
 } from "./projectChatGptActionSchemas.mjs";
 
@@ -52,7 +56,16 @@ const CHATGPT_ACTION_INPUT_DESCRIPTIONS = {
   alterarCurso:
     "Escolha uma variante de operation, preserve os controles otimistas lidos e envie somente o comando compatível que o schema expõe."
 };
-const actionTools = projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS);
+const actionTools = projectChatGptActionTransportTools(
+  projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS),
+  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+);
+const actionPathByOperationId = new Map(
+  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS.map(({ operationId, path }) => [
+    operationId,
+    path
+  ])
+);
 const actionComponentSchemas = {};
 const actionInputSchemas = new Map();
 
@@ -119,7 +132,7 @@ for (const tool of actionTools) {
   }
 }
 const paths = Object.fromEntries(actionTools.map((tool) => [
-  `/${tool.name}`,
+  actionPathByOperationId.get(tool.name) || `/${tool.name}`,
   {
     post: {
       operationId: tool.name,

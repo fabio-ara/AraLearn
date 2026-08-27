@@ -10,6 +10,9 @@ import {
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+} from "../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -32,8 +35,11 @@ const EXPECTED_ACTIONS_OPENAPI_SOURCE = readFileSync(
   new URL(`../${ACTIONS_OPENAPI_ASSET.replace(/^\.\//u, "")}`, import.meta.url),
   "utf8"
 );
-const ACTIONS_TOOL_NAMES = Object.freeze(
-  AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => name).sort()
+const ACTIONS_OPERATION_IDS = Object.freeze(
+  [
+    ...AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => name),
+    ...AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS.map(({ operationId }) => operationId)
+  ].sort()
 );
 const REQUIRED_ASSETS = Object.freeze([
   "./index.html",
@@ -397,8 +403,10 @@ function validatePublishedActionsOpenApi(source, expectedVersion, projectOrigin)
     .map((entry) => entry?.post?.operationId)
     .filter((value) => typeof value === "string")
     .sort();
-  if (JSON.stringify(actionNames) !== JSON.stringify(ACTIONS_TOOL_NAMES)) {
-    throw new Error("O OpenAPI publicado de Actions não contém as cinco operações canônicas.");
+  if (JSON.stringify(actionNames) !== JSON.stringify(ACTIONS_OPERATION_IDS)) {
+    throw new Error(
+      "O OpenAPI publicado de Actions não contém a projeção de transporte corrente."
+    );
   }
   const normalizeEndOfLines = (value) => String(value).replace(/\r\n?/gu, "\n");
   if (normalizeEndOfLines(source) !== normalizeEndOfLines(EXPECTED_ACTIONS_OPENAPI_SOURCE)) {
