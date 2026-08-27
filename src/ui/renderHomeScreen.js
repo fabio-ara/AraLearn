@@ -138,11 +138,6 @@ function renderCoursePreview({
   const action = "Abrir";
   const offline = runtimeStatus?.offline === true;
   const unavailableOffline = offline && !availableOffline;
-  const statusCopy = offline && unavailableOffline
-    ? "Conecte-se para abrir este Curso"
-    : offline && availableOffline
-      ? "Disponível offline"
-      : "";
   const buttonCopy = loading ? "Abrindo…" : error ? "Tentar novamente" : action;
   const accessibleAction = `${buttonCopy} ${title}`;
   const lifecycleAction = owned
@@ -173,30 +168,32 @@ function renderCoursePreview({
     metric("module", String(moduleCount), "Módulos") +
     '<span class="progress-meta-separator" aria-hidden="true">·</span>' +
     metric("lesson", String(lessonCount), "Lições") +
-    '</p>' + (statusCopy ? '<p class="home-course-offline-status">' +
-    renderUiIcon(availableOffline ? "offline" : "cloud", "home-tab-icon") +
-    '<span>' + escapeHtml(statusCopy) + "</span></p>" : "") + "</div>" +
+    '</p></div>' +
     '<div class="home-course-preview-actions">' +
+    '<button class="icon-ghost home-course-lifecycle-trigger" type="button"' +
+    ' data-action="course-lifecycle-menu" data-course-id="' + escapeHtml(entityId(course)) +
+    '" popovertarget="home-course-actions-menu" popovertargetaction="toggle"' +
+    ' title="Ações deste Curso" aria-label="Ações deste Curso" aria-haspopup="menu">' +
+    renderUiIcon("more", "home-tab-icon") + '</button>' +
+    '<div class="home-course-lifecycle-menu" id="home-course-actions-menu" popover="auto" role="menu"' +
+    ' aria-label="Ações deste Curso">' +
     (completed > 0
-      ? '<button class="icon-ghost study-course-reset" type="button" data-action="reset-course-progress" data-course-id="' +
-        escapeHtml(entityId(course)) + '" title="Zerar progresso de ' + escapeHtml(title) +
-        '" aria-label="Zerar progresso de ' + escapeHtml(title) + '">' +
-        renderUiIcon("rotate", "home-tab-icon") + "</button>"
+      ? '<button type="button" role="menuitem" data-action="reset-course-progress" data-course-id="' +
+        escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu"' +
+        ' popovertargetaction="hide" autofocus>' + renderUiIcon("rotate", "home-tab-icon") +
+        '<span>Zerar progresso</span></button>'
       : "") +
+    '<button class="is-danger" type="button" role="menuitem" data-action="' +
+    lifecycleAction.action + '" data-course-id="' + escapeHtml(entityId(course)) + '"' +
+    ' popovertarget="home-course-actions-menu" popovertargetaction="hide"' +
+    (completed > 0 ? "" : " autofocus") + (loading ? ' disabled aria-disabled="true"' : '') + '>' +
+    renderUiIcon(owned ? "trash" : "sign-out", "home-tab-icon") + '<span>' +
+    escapeHtml(lifecycleAction.label) + '</span></button></div>' +
     '<button class="home-course-entry" type="button" data-action="open-course" data-course-id="' +
     escapeHtml(entityId(course)) + '" title="' + escapeHtml(accessibleAction) +
     '" aria-label="' + escapeHtml(accessibleAction) + '"' +
     (loading || unavailableOffline ? ' disabled aria-disabled="true"' : "") + ">" +
-    renderUiIcon("play", "home-tab-icon") + '<span>' + escapeHtml(buttonCopy) +
-    "</span></button>" +
-    '<details class="home-course-lifecycle"><summary data-action="course-lifecycle-menu" data-course-id="' +
-    escapeHtml(entityId(course)) + '" title="Ações deste Curso" aria-label="Ações deste Curso">' +
-    renderUiIcon("more", "home-tab-icon") + '<span class="visually-hidden">Ações deste Curso</span></summary>' +
-    '<button class="open-mini is-danger" type="button" data-action="' +
-    lifecycleAction.action + '" data-course-id="' + escapeHtml(entityId(course)) + '"' +
-    (loading ? ' disabled aria-disabled="true"' : '') + '>' +
-    renderUiIcon("trash", "home-tab-icon") + '<span>' +
-    escapeHtml(lifecycleAction.label) + '</span></button></details></div>' +
+    renderUiIcon(loading ? "rotate" : "play", "home-tab-icon") + "</button></div>" +
     (loading
       ? '<p class="home-course-loading" role="status">Preparando este Curso…</p>'
       : "") + "</article>"
@@ -252,28 +249,51 @@ function renderReviewQueue(
   );
 }
 
-function renderTopbar() {
+export function renderRuntimeStatusControl(status = {}) {
+  const offline = status.offline === true;
+  const stale = status.stale === true;
+  const pending = status.pending === true;
+  const state = offline ? "offline" : stale ? "stale" : pending ? "pending" : "synced";
+  const label = offline
+    ? "Sem conexão"
+    : stale
+      ? "Atualizando Curso"
+      : pending
+        ? "Sincronização pendente"
+        : "Sincronizado";
+  const message = offline
+    ? status.availableOffline === false
+      ? "Sem conexão. Conecte-se para abrir este Curso."
+      : pending
+        ? "Sem conexão. Suas alterações aguardam sincronização."
+        : "Sem conexão. A cópia deste dispositivo continua disponível."
+    : stale
+      ? pending
+        ? "Versão salva em uso. Suas alterações aguardam sincronização."
+        : "Versão salva em uso enquanto o AraLearn atualiza este Curso."
+      : pending
+        ? "Suas alterações aguardam sincronização."
+        : "Sincronizado com a nuvem.";
+  return '<button class="icon-ghost study-runtime-status-control" type="button"' +
+    ' data-runtime-state="' + state + '" popovertarget="study-runtime-status-popover"' +
+    ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '">' +
+    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
+    '<div class="study-runtime-status-popover" id="study-runtime-status-popover" popover="auto"' +
+    ' role="status"><p>' + escapeHtml(message) + '</p></div>';
+}
+
+function renderTopbar(runtimeStatus) {
   return (
     '<header class="topbar home-topbar">' +
     '<div class="topbar-space"></div>' +
     '<h1 class="topbar-title"><span class="brand-title">' +
     '<img class="brand-mark" src="assets/brand/aralearn-mark-monochrome.svg" alt="" aria-hidden="true">' +
     '<span class="brand-text">AraLearn</span></span></h1>' +
+    '<div class="lesson-top-actions">' + renderRuntimeStatusControl(runtimeStatus) +
     '<button class="icon-ghost" type="button" data-action="open-settings"' +
     ' title="Conta e aparência" aria-label="Conta e aparência">' +
-    renderUiIcon("more", "home-tab-icon") + "</button></header>"
+    renderUiIcon("more", "home-tab-icon") + "</button></div></header>"
   );
-}
-
-function renderRuntimeNotice(status) {
-  if (status?.offline !== true && status?.stale !== true) return "";
-  const offline = status?.offline === true;
-  return '<p class="study-runtime-notice" role="status">' +
-    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") +
-    '<span>' + (offline
-      ? "Sem conexão · alterações pessoais ficam salvas neste dispositivo."
-      : "Exibindo a versão salva · o AraLearn está atualizando os dados.") +
-    "</span></p>";
 }
 
 export function renderHomeScreen({
@@ -302,6 +322,9 @@ export function renderHomeScreen({
   const labels = optionLabels(presentations);
   const selectedId = selected ? entityId(selected.course) : "";
   const loading = Boolean(selectedId && homeLoadingCourseId === selectedId);
+  const topbarRuntimeStatus = selected
+    ? { ...runtimeStatus, availableOffline: selected.availableOffline }
+    : runtimeStatus;
   const selectMarkup = selected
     ? '<section class="clean-card home-course-selector-card" aria-labelledby="home-course-selector-label">' +
       '<label id="home-course-selector-label" class="home-course-selector-label" for="home-course-select">' +
@@ -323,14 +346,13 @@ export function renderHomeScreen({
     : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">Seus Cursos</h2>' +
       '<p class="empty-state-copy">Nenhum Curso está disponível para estudo nesta conta.</p></section>';
   return (
-    '<section class="screen">' + renderTopbar() +
+    '<section class="screen">' + renderTopbar(topbarRuntimeStatus) +
     '<main class="screen-content courses-home-screen navigation-screen">' +
     '<nav class="home-product-switch" aria-label="Área principal">' +
     '<button class="is-active" type="button" aria-current="page" title="Estudo">' +
     renderUiIcon("study", "home-tab-icon") + '<span>Estudo</span></button>' +
     '<button type="button" data-action="open-authoring" title="Abrir Autoria">' +
     renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
-    renderRuntimeNotice(runtimeStatus) +
     (homeNotice ? '<div class="study-home-feedback is-notice" role="status"><span>' +
       escapeHtml(homeNotice) + "</span>" + (reviewUndo
         ? '<button class="open-mini" type="button" data-action="undo-review-removal">Desfazer</button>'

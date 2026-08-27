@@ -643,6 +643,7 @@ async function installContextualAssistanceResponses(page, {
             message: discussionMessage,
             proposal: {
               summary: "Revisar a formulação sem trocar o componente instalado.",
+              changes: ["Revisar a formulação do componente textual."],
               scope: "study_unit",
               componentNeeds: []
             }
@@ -661,22 +662,22 @@ async function installContextualAssistanceResponses(page, {
 
 async function prepareContextualAssistance(page, request) {
   await page.getByRole("button", { name: "Assistência por IA" }).click();
-  await expect(page.getByRole("region", { name: "Alcance da Assistência por IA" }))
-    .toContainText("Unidade inteira");
-  await expect(page.getByRole("button", { name: "Unidade inteira" })).toBeFocused();
-  await page.getByRole("button", { name: "Conversar" }).click();
+  const selection = page.getByRole("region", { name: "Edição com IA" });
+  await expect(selection).toBeVisible();
+  await expect(selection.getByRole("button", { name: "Abrir Edição com IA" })).toBeFocused();
+  await selection.getByRole("button", { name: "Abrir Edição com IA" }).click();
   const dialog = page.locator("[data-course-assistance]").getByRole("dialog");
   await expect(dialog).toBeVisible();
   const connection = dialog.locator(".course-assistance-connection");
-  await expect(connection).toHaveJSProperty("open", true);
+  await expect(connection.getByRole("button", {
+    name: "Configurar IA"
+  })).toHaveAttribute("aria-expanded", "true");
   await dialog.locator("[data-course-assistance-provider]").selectOption("openai");
   await dialog.locator("[data-course-assistance-model]").selectOption("gpt-5.6-luna");
   await dialog.getByLabel("Chave da OpenAI").fill("segredo-somente-em-memoria");
   await dialog.getByLabel("Mensagem").fill(request);
   await dialog.getByRole("button", { name: "Enviar" }).click();
-  await expect(dialog.getByText("Antes da mudança", { exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Confirmar e preparar" }).click();
-  await expect(dialog.getByText("Proposta validada", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Proposta", { exact: true })).toBeVisible();
   return dialog;
 }
 
@@ -773,17 +774,14 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
     "Deixe a frase mais direta."
   );
   await page.setViewportSize({ width: 360, height: 800 });
-  await assistanceDialog.getByRole("button", { name: "Ver prévia" }).click();
+  await assistanceDialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
+  await expect(page.getByRole("region", { name: "Rascunho da Assistência por IA" }))
+    .toBeVisible();
   await expect(page.getByText(
     "A conjunção só é verdadeira quando",
     { exact: false }
   )).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Voltar à conversa" }).click();
-  await expect(assistanceDialog.getByLabel("Mensagem")).toBeFocused();
-  await assistanceDialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
-  await expect(page.getByRole("region", { name: "Rascunho da Assistência por IA" }))
-    .toBeVisible();
   await page.getByRole("button", { name: "Salvar proposta" }).click();
   await expect(page.getByText("Proposta salva.", { exact: true })).toBeVisible();
   const providerRequest = await page.evaluate(() => globalThis.__manualStudyRequests.at(-1));
@@ -910,7 +908,7 @@ test("cópia pessoal permanece legível nos quatro tamanhos e nos dois temas", a
   }
 });
 
-test("prévia por API e cancelamento não criam cópia pessoal", async ({ page }) => {
+test("rascunho por assistência e cancelamento não criam cópia pessoal", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openStudyUnit(page, "shared");
   await installContextualAssistanceResponses(page, {
@@ -922,7 +920,7 @@ test("prévia por API e cancelamento não criam cópia pessoal", async ({ page }
     page,
     "Torne a explicação mais direta."
   );
-  await dialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+  await dialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
   await expect(page.getByText(
     "No rascunho, a conjunção é verdadeira quando",
     { exact: false }
@@ -950,7 +948,7 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   await page.getByRole("button", { name: "Voltar" }).click();
   await expect(page.getByRole("heading", { name: "Unidades" })).toBeVisible();
   await page.getByRole("button", { name: "Assistência por IA" }).click();
-  const microScope = page.getByRole("region", { name: "Alcance da Assistência por IA" });
+  const microScope = page.getByRole("region", { name: "Edição com IA" });
   await expect(microScope).toContainText("1 Unidade");
   await expect(page.locator(
     '[data-action="toggle-assistance-target"][aria-pressed="true"]'
@@ -970,7 +968,7 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   await page.getByRole("button", { name: "Voltar" }).click();
   await expect(page.getByRole("heading", { name: "Microssequências didáticas" })).toBeVisible();
   await page.getByRole("button", { name: "Assistência por IA" }).click();
-  const lessonScope = page.getByRole("region", { name: "Alcance da Assistência por IA" });
+  const lessonScope = page.getByRole("region", { name: "Edição com IA" });
   await expect(lessonScope).toContainText("1 Microssequência");
   await expect(page.locator(
     '[data-action="toggle-assistance-target"][aria-pressed="true"]'

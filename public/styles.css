@@ -474,8 +474,8 @@ textarea {
   right: 0;
   bottom: 0;
   width: min(100%, 430px);
-  height: min(92dvh, 680px);
-  max-height: min(92dvh, 680px);
+  height: min(396px, calc(100dvh - max(var(--safe-top), 8px)));
+  max-height: calc(100dvh - max(var(--safe-top), 8px));
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   overflow: hidden;
@@ -547,6 +547,7 @@ textarea {
   white-space: nowrap;
   font-size: var(--type-md);
   font-weight: 700;
+  text-align: center;
 }
 
 .account-settings-close {
@@ -631,11 +632,12 @@ textarea {
 }
 
 .account-settings-status {
+  min-height: calc(0.78rem * 1.35);
   padding: 2px 4px 0;
 }
 
 .account-settings-status:empty {
-  display: none;
+  visibility: hidden;
 }
 
 .account-settings-action-icon {
@@ -707,7 +709,7 @@ input:-webkit-autofill:focus {
 }
 
 .navigation-topbar {
-  grid-template-columns: auto minmax(0, 1fr) var(--tap);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   min-height: calc(var(--tap) + 8px + max(var(--safe-top), 8px));
   padding-top: max(var(--safe-top), 8px);
@@ -715,7 +717,7 @@ input:-webkit-autofill:focus {
      ganha um segundo recuo, para que voltar e as ações laterais compartilhem
      a mesma aresta dos cartões abaixo. */
   padding-inline: 0;
-  margin-inline-end: calc(var(--screen-content-scrollbar-gutter, 0px) + 1px);
+  margin-inline-end: 10px;
 }
 
 .navigation-topbar .lesson-top-actions {
@@ -947,18 +949,6 @@ button.account-settings-back[hidden] {
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
 }
 
-:where(
-  button.icon-ghost,
-  button.icon-pill,
-  button.open-mini
-)[title][aria-label] {
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
-  line-height: 1;
-  vertical-align: middle;
-}
-
 .icon-pill:active {
   transform: translateY(1px);
 }
@@ -1072,7 +1062,7 @@ button.account-settings-back[hidden] {
      lateral já pertence à moldura e a calha de rolagem é compensada pela
      navigation-topbar. */
   padding-inline: 0;
-  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  grid-template-columns: calc(var(--tap) + var(--tap) + 4px) minmax(0, 1fr) calc(var(--tap) + var(--tap) + 4px);
   min-height: calc(var(--tap) + 8px + max(var(--safe-top), 8px));
   gap: 10px;
 }
@@ -1086,6 +1076,51 @@ button.account-settings-back[hidden] {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.study-runtime-status-control {
+  display: block;
+  flex: 0 0 var(--tap);
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+}
+
+.study-runtime-status-control[data-runtime-state="offline"] {
+  color: var(--status-warning);
+}
+
+.study-runtime-status-control[data-runtime-state="stale"],
+.study-runtime-status-control[data-runtime-state="pending"] {
+  color: var(--action-primary);
+}
+
+.study-runtime-status-control[data-runtime-state="synced"] {
+  color: var(--status-success);
+}
+
+.study-runtime-status-popover[popover] {
+  position: fixed;
+  top: calc(max(var(--safe-top), 8px) + var(--tap) + 12px);
+  right: max(10px, calc((100vw - 430px) / 2 + 10px));
+  bottom: auto;
+  left: auto;
+  width: min(280px, calc(100vw - 20px));
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-floating);
+}
+
+.study-runtime-status-popover p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-xs);
+  line-height: 1.4;
 }
 
 .courses-home-screen .section-heading {
@@ -3558,7 +3593,7 @@ button.account-settings-back[hidden] {
 }
 
 .account-settings-view {
-  min-height: 100%;
+  min-height: 0;
 }
 
 .account-settings-view[hidden] {
@@ -4348,12 +4383,11 @@ button.account-settings-back[hidden] {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: auto;
+  width: 48px;
   height: 48px;
   min-width: 48px;
   min-height: 48px;
-  padding-inline: 12px;
-  gap: 6px;
+  padding: 0;
   border-radius: 14px;
   white-space: nowrap;
 }
@@ -4389,22 +4423,15 @@ button.account-settings-back[hidden] {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: auto;
+  width: 48px;
   min-width: 48px;
   min-height: 48px;
   height: 48px;
-  padding-inline: 10px;
-  gap: 5px;
+  padding: 0;
   border-radius: 14px;
   font-size: 1.1rem;
   box-shadow: var(--shadow-card);
   white-space: nowrap;
-}
-
-.study-continue-btn span,
-.study-continue-popup-btn span {
-  font-size: var(--type-xs);
-  font-weight: 750;
 }
 
 .study-advance-error {
@@ -4738,13 +4765,37 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-category-disclosure > summary {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
   min-height: var(--tap);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: var(--type-xs);
-  font-weight: 700;
+  list-style: none;
+}
+
+.study-observation-head-slot {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+}
+
+.study-observation-category-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.study-observation-category-disclosure.is-selected > summary {
+  border-color: var(--action-primary);
+  color: var(--action-primary);
+  background: var(--action-soft);
 }
 
 .study-observation-category-disclosure[open] > summary {
@@ -4791,6 +4842,14 @@ button.account-settings-back[hidden] {
   border-radius: var(--radius-control);
 }
 
+.study-observation-composer-actions .study-observation-submit {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+}
+
 .study-observation-dock-count {
   position: absolute;
   top: 3px;
@@ -4805,6 +4864,27 @@ button.account-settings-back[hidden] {
   background: var(--action-primary);
   font-size: 0.62rem;
   font-weight: 800;
+}
+
+.card-sheet-content .study-citations-panel > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--tap);
+  align-items: center;
+  gap: 8px;
+}
+
+.card-sheet-content .study-citations-panel > header > h2 {
+  min-width: 0;
+  margin: 0;
+}
+
+.card-sheet-content .study-citations-panel > header > .icon-ghost {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+  border-radius: var(--radius-control);
 }
 
 @media (max-width: 390px) {
@@ -4850,11 +4930,15 @@ button.account-settings-back[hidden] {
   flex: 0 0 auto;
 }
 
+.microsequence-workbench-screen > .navigation-topbar {
+  margin-inline-end: 1px;
+}
+
 .microsequence-workbench-screen > .screen-content {
   flex: 1 1 auto;
   min-height: 0;
   padding-bottom: 0;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
   overflow-y: hidden;
 }
 
@@ -4864,12 +4948,13 @@ button.account-settings-back[hidden] {
   z-index: 12;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  min-height: 58px;
+  justify-content: flex-end;
+  gap: 4px;
+  width: fit-content;
+  min-height: calc(var(--tap) + 8px);
   margin-top: 12px;
-  padding: 8px 10px;
+  margin-inline-start: auto;
+  padding: 4px;
   color: var(--text-primary);
   background: var(--surface-canvas);
   border: 1px solid var(--border-default);
@@ -4877,39 +4962,21 @@ button.account-settings-back[hidden] {
   box-shadow: var(--shadow-floating);
 }
 
-.study-assistance-selection-dock p,
-.study-assistance-selection-dock span,
-.study-assistance-selection-dock strong {
-  margin: 0;
+.study-assistance-selection-dock :is(.icon-ghost, .open-mini) {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
 }
 
-.study-assistance-selection-dock p,
-.study-assistance-selection-dock > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.study-assistance-selection-footer .study-action-dock {
+  justify-content: flex-end;
 }
 
-.study-assistance-selection-dock p {
-  flex: 1 1 auto;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.study-assistance-selection-dock > div {
-  flex: 0 0 auto;
-}
-
-.study-assistance-selection-dock .open-mini {
-  display: inline-flex;
-  width: auto;
-  padding-inline: 12px;
-  gap: 7px;
-}
-
-.study-assistance-selection-dock p > span {
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
+.study-assistance-selection-footer .study-assistance-selection-dock {
+  position: static;
+  margin-top: 0;
 }
 
 .navigation-list-card.is-assistance-selected,
@@ -4925,26 +4992,6 @@ button.account-settings-back[hidden] {
   z-index: 10;
   padding-top: 6px;
   background: var(--surface-canvas);
-}
-
-.study-assistance-whole-target {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: var(--tap);
-  margin: 0 0 8px;
-  padding: 6px 9px;
-  color: var(--text-secondary);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  font: inherit;
-  font-size: var(--type-xs);
-}
-
-.study-assistance-whole-target[aria-pressed="true"] {
-  color: var(--text-primary);
-  border-color: var(--action-primary);
 }
 
 .microsequence-workbench-screen .workbench-surface {
@@ -5407,26 +5454,6 @@ button.account-settings-back[hidden] {
   outline-offset: 2px;
 }
 
-.study-runtime-notice {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  padding: 7px 9px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-  background: var(--surface-subtle);
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  line-height: 1.35;
-}
-
-.study-runtime-notice .home-tab-icon {
-  flex: 0 0 auto;
-}
-
 .study-home-feedback {
   width: 100%;
   min-width: 0;
@@ -5581,10 +5608,6 @@ button.account-settings-back[hidden] {
   padding-inline: 10px;
 }
 
-.study-course-reset {
-  color: var(--text-secondary);
-}
-
 .home-course-selector-preview {
   display: grid;
   gap: 10px;
@@ -5604,15 +5627,13 @@ button.account-settings-back[hidden] {
 }
 
 .home-course-ownership,
-.home-course-offline-status,
 .home-course-loading {
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.home-course-ownership,
-.home-course-offline-status {
+.home-course-ownership {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5659,72 +5680,75 @@ button.account-settings-back[hidden] {
 .home-course-preview-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 5px;
+  padding: 5px 0 0;
 }
 
-.home-course-lifecycle {
-  position: relative;
+.home-course-lifecycle-trigger {
   flex: 0 0 var(--tap);
   width: var(--tap);
   min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
 }
 
-.home-course-lifecycle summary {
-  width: var(--tap);
-  min-width: var(--tap);
-  height: var(--tap);
+.home-course-lifecycle-menu[popover] {
+  position: fixed;
+  inset: auto auto max(12px, var(--safe-bottom-tappable)) 50%;
+  width: min(300px, calc(100vw - 24px));
+  margin: 0;
+  padding: 6px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-floating);
+}
+
+.home-course-lifecycle-menu::backdrop {
+  background: transparent;
+}
+
+.home-course-lifecycle-menu > button {
+  width: 100%;
   min-height: var(--tap);
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-default);
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
   border-radius: var(--radius-control);
-  color: var(--text-secondary);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
   font-size: var(--type-sm);
+  text-align: left;
   cursor: pointer;
-  list-style: none;
 }
 
-.home-course-lifecycle summary::-webkit-details-marker {
-  display: none;
+.home-course-lifecycle-menu > button:hover,
+.home-course-lifecycle-menu > button:focus-visible {
+  background: var(--action-secondary-hover);
 }
 
-.home-course-lifecycle .is-danger {
-  position: absolute;
-  z-index: 20;
-  right: 0;
-  top: calc(var(--tap) + 6px);
-  width: min(280px, calc(100vw - 32px));
-  min-height: var(--tap);
-  padding-inline: 12px;
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-floating);
+.home-course-lifecycle-menu > button.is-danger {
   color: var(--danger-text);
-  border-color: currentColor;
 }
 
-.home-course-preview-actions .study-course-reset {
+.home-course-entry {
   flex: 0 0 var(--tap);
   width: var(--tap);
   min-width: var(--tap);
   height: var(--tap);
-  min-height: var(--tap);
-}
-
-.home-course-entry {
-  flex: 0 0 auto;
-  min-width: 0;
   min-height: var(--tap);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 14px;
+  padding: 0;
   border: 1px solid var(--action-primary);
   border-radius: var(--radius-control);
   background: var(--action-primary);

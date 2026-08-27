@@ -378,6 +378,38 @@ test("retirada offline redige texto, síntese e resposta no cache e na memória"
   cache.close();
 });
 
+test("refresh aceita a ordem de chaves devolvida pelo backend hospedado", async () => {
+  const api = fakeApi();
+  const read = api.getMyCourseAnchoredAnnotations.bind(api);
+  api.getMyCourseAnchoredAnnotations = async (courseId, options) => {
+    const page = await read(courseId, options);
+    const query = page.query;
+    page.query = {
+      mode: query.mode,
+      states: query.states,
+      origins: query.origins,
+      channels: query.channels,
+      hierarchy: query.hierarchy,
+      categories: query.categories,
+      subjectIds: query.subjectIds,
+      annotationId: query.annotationId,
+      includeUncategorized: query.includeUncategorized
+    };
+    return page;
+  };
+  const { value, cache } = await repository(api);
+
+  assert.deepEqual(await value.refreshTarget({ studyUnitId: UNIT_ID }), []);
+  const persisted = await cache.getCache(`${COURSE_ANNOTATION_CACHE_CONTRACT}:${COURSE_ID}`);
+  assert.deepEqual(Object.keys(persisted.targetPages[UNIT_ID][0].query), [
+    "mode", "origins", "channels", "states", "categories", "includeUncategorized",
+    "subjectIds", "hierarchy", "annotationId"
+  ]);
+
+  value.close();
+  cache.close();
+});
+
 test("revisão offline reabre e remove resposta e resolução antigas da projeção", async () => {
   const api = fakeApi();
   const { value, cache } = await repository(api);
@@ -1011,6 +1043,95 @@ test("cache adulterado ou de revisão anterior falha fechado e é purgado", asyn
   await revised.initialize();
   assert.equal(await cache.getCache(key), null);
   revised.close();
+  cache.close();
+});
+
+test("cache incompatível é recuperado sem perder a outbox", async () => {
+  const api = fakeApi();
+  api.state.online = false;
+  const { value, cache } = await repository(api);
+  await value.createForTarget({ studyUnitId: UNIT_ID }, {
+    rawText: "Observação ainda não enviada.",
+    category: "question"
+  });
+  assert.equal(value.snapshot().pendingCount, 1);
+  value.close();
+
+  const cacheStorageKey = `${COURSE_ANNOTATION_CACHE_CONTRACT}:${COURSE_ID}`;
+  const outboxStorageKey = `${COURSE_ANNOTATION_OUTBOX_CONTRACT}:${COURSE_ID}`;
+  const incompatible = {
+    contract: COURSE_ANNOTATION_CACHE_CONTRACT,
+    courseId: COURSE_ID,
+    courseRevision: 6,
+    annotationSetVersion: 0,
+    targetPages: {},
+    changes: [],
+    updatedAt: "2026-08-17T13:00:00.000Z"
+  };
+  await cache.putCache(cacheStorageKey, incompatible);
+
+  const reopened = new CourseAnnotationRepository({
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    api,
+    cache,
+    clock: () => new Date("2026-08-17T14:00:00.000Z"),
+    uuidFactory: ids(),
+    windowValue: {}
+  });
+  await reopened.initialize();
+  assert.equal(await cache.getCache(cacheStorageKey), null);
+  assert.equal(reopened.snapshot().pendingCount, 1);
+  assert.equal((await cache.getCache(outboxStorageKey)).commands.length, 1);
+  assert.equal(reopened.loadForTarget({ studyUnitId: UNIT_ID })[0].rawText,
+    "Observação ainda não enviada.");
+
+  api.state.online = true;
+  await reopened.flush();
+  assert.equal(reopened.snapshot().pendingCount, 0);
+  reopened.close();
+  cache.close();
+});
+
+test("flush recupera troca concorrente por página de outro alvo", async () => {
+  const api = fakeApi();
+  const { value, cache } = await repository(api);
+  await value.refreshTarget({ studyUnitId: UNIT_ID });
+
+  const cacheStorageKey = `${COURSE_ANNOTATION_CACHE_CONTRACT}:${COURSE_ID}`;
+  const outboxStorageKey = `${COURSE_ANNOTATION_OUTBOX_CONTRACT}:${COURSE_ID}`;
+  const incompatible = await cache.getCache(cacheStorageKey);
+  incompatible.targetPages[UNIT_ID][0].query.hierarchy.target.id = "unit-other";
+
+  api.state.online = false;
+  await value.createForTarget({ studyUnitId: UNIT_ID }, {
+    rawText: "Criação offline preservada durante a troca.",
+    category: "question"
+  });
+  assert.equal(value.snapshot().pendingCount, 1);
+  assert.equal((await cache.getCache(outboxStorageKey)).commands.length, 1);
+
+  const originalUpdateCache = cache.updateCache.bind(cache);
+  let concurrentSwapApplied = false;
+  cache.updateCache = async (key, updater) => {
+    if (key === cacheStorageKey && !concurrentSwapApplied) {
+      concurrentSwapApplied = true;
+      await cache.putCache(cacheStorageKey, incompatible);
+    }
+    return originalUpdateCache(key, updater);
+  };
+
+  api.state.online = true;
+  await value.flush();
+
+  assert.equal(concurrentSwapApplied, true);
+  assert.equal(value.snapshot().pendingCount, 0);
+  assert.equal((await cache.getCache(outboxStorageKey)).commands.length, 0);
+  assert.equal(value.loadForTarget({ studyUnitId: UNIT_ID })[0].rawText,
+    "Criação offline preservada durante a troca.");
+  assert.equal(value.loadForTarget({ studyUnitId: UNIT_ID })[0].syncStatus, "synced");
+  assert.equal(api.state.items.size, 1);
+  value.close();
   cache.close();
 });
 

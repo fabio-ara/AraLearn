@@ -105,18 +105,25 @@ test("seleção inválida ou obsoleta nunca amplia autoridade de escrita", () =>
   }
 });
 
-test("um turno pode apenas discutir e outro forma plano no escopo recebido", async () => {
+test("cada turno devolve e refina uma proposta concreta no escopo recebido", async () => {
+  const requests = [];
   const fetchImpl = sequenceFetch([{
-    message: "Posso primeiro explicar a função da Unidade e depois preparar uma mudança.",
-    proposal: null
-  }, {
-    message: "O plano está pronto para sua confirmação.",
+    message: "A Unidade apresenta a regra; proponho tornar essa função mais explícita.",
     proposal: {
-      summary: "Reescrever a explicação mantendo a representação textual.",
+      summary: "Explicitar a função da Unidade sem mudar sua representação.",
+      changes: ["Reescrever a abertura com uma explicação direta."],
       scope: "study_unit",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     }
-  }]);
+  }, {
+    message: "Refinei a proposta para preservar o exemplo atual.",
+    proposal: {
+      summary: "Reescrever a explicação mantendo a representação textual.",
+      changes: ["Simplificar a explicação.", "Preservar o exemplo atual."],
+      scope: "study_unit",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    }
+  }], requests);
   const discussed = await requestCourseAssistanceDiscussion({
     project: fixture,
     selection,
@@ -125,7 +132,7 @@ test("um turno pode apenas discutir e outro forma plano no escopo recebido", asy
     runtimeConfig,
     fetchImpl
   });
-  assert.equal(discussed.proposal, null);
+  assert.equal(discussed.proposal.changes.length, 1);
   const planned = await requestCourseAssistanceDiscussion({
     project: fixture,
     selection,
@@ -134,12 +141,33 @@ test("um turno pode apenas discutir e outro forma plano no escopo recebido", asy
       { role: "user", message: "Explique primeiro o papel desta Unidade." },
       { role: "assistant", message: discussed.message }
     ],
+    currentProposal: discussed.proposal,
     providerConfig,
     runtimeConfig,
     fetchImpl
   });
   assert.equal(planned.proposal.scope, "study_unit");
+  assert.equal(planned.proposal.changes.length, 2);
   assert.equal(planned.proposal.componentNeeds.length, 1);
+  assert.deepEqual(
+    JSON.parse(requests[1].body.input).currentProposal,
+    discussed.proposal
+  );
+  assert.match(requests[0].body.instructions, /sempre a melhor proposta concreta/iu);
+});
+
+test("resposta sem proposta concreta é rejeitada", async () => {
+  await assert.rejects(() => requestCourseAssistanceDiscussion({
+    project: fixture,
+    selection,
+    message: "Explique a Unidade.",
+    providerConfig,
+    runtimeConfig,
+    fetchImpl: sequenceFetch([{
+      message: "Apenas uma explicação.",
+      proposal: null
+    }])
+  }), (error) => error.code === "provider_scope_violation");
 });
 
 test("pipeline descobre contratos, repara saída semanticamente inválida e só aceita renderer real", async () => {
@@ -154,6 +182,7 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
     selection,
     confirmedProposal: {
       summary: "Tornar a regra mais direta em texto explicado.",
+      changes: ["Reescrever a explicação em linguagem direta."],
       scope: "study_unit",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },
@@ -180,7 +209,12 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
   assert.equal(requests.length, 2);
   assert.match(requests[1].body.input, /repair/u);
   assert.match(requests[1].body.input, /curto demais/iu);
-  assert.match(requests[0].body.input, /"required":\["text"\]/u);
+  const generationPrompt = JSON.parse(requests[0].body.input);
+  assert.ok(generationPrompt.exactComponentContracts.every((item) =>
+    !Object.hasOwn(item, "schema")
+  ));
+  assert.deepEqual(generationPrompt.confirmedProposal.changes,
+    ["Reescrever a explicação em linguagem direta."]);
   assert.deepEqual(currentStudyUnit(), fixture.courses[0].modules[0]
     .lessons[0].microsequences[0].studyUnits[0]);
 });
@@ -194,6 +228,7 @@ test("três composições inválidas preservam o projeto e nunca produzem prévi
     selection,
     confirmedProposal: {
       summary: "Trocar a explicação.",
+      changes: ["Trocar a explicação atual."],
       scope: "study_unit",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },
@@ -220,6 +255,7 @@ test("Unidade e Microssequência preservam a identidade do alvo durante reparos"
     selection,
     confirmedProposal: {
       summary: "Revisar a Unidade escolhida.",
+      changes: ["Revisar somente a Unidade escolhida."],
       scope: "study_unit",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },
@@ -246,6 +282,7 @@ test("Unidade e Microssequência preservam a identidade do alvo durante reparos"
     selection,
     confirmedProposal: {
       summary: "Reordenar a Microssequência escolhida.",
+      changes: ["Reordenar as Unidades da Microssequência."],
       scope: "didactic_microsequence",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },
@@ -272,6 +309,7 @@ test("seleção focal impede escrita em componentes e Unidades usados só como c
     writeTargetIds: [changedTitle.content[0].id],
     confirmedProposal: {
       summary: "Revisar somente o componente textual.",
+      changes: ["Revisar o componente textual selecionado."],
       scope: "study_unit",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },
@@ -298,6 +336,7 @@ test("seleção focal impede escrita em componentes e Unidades usados só como c
     writeTargetIds: [selectedUnit.id],
     confirmedProposal: {
       summary: "Revisar somente a primeira Unidade.",
+      changes: ["Revisar a primeira Unidade selecionada."],
       scope: "didactic_microsequence",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },
@@ -334,6 +373,7 @@ test("Lição aceita criação de Microssequência somente como proposta da pró
     selection,
     confirmedProposal: {
       summary: "Adicionar uma Microssequência depois da atual.",
+      changes: ["Adicionar uma Microssequência após a atual."],
       scope: "lesson",
       componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
     },

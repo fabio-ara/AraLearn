@@ -108,10 +108,10 @@ acrescentados pelo AraLearn. A cópia não muda o Curso.
 
 Na Unidade, **Visualizar**, **Editar** e **Assistência por IA** usam o mesmo
 renderer e o mesmo alvo. A edição realça apenas os textos que o componente
-autoriza. A assistência abre uma sobreposição de até 430 px, apresenta a
-conversa e o plano discutível e permite alternar entre a prévia validada e o
-conteúdo sem perder o alvo. Aplicar altera o rascunho; salvar continua sendo uma
-decisão separada da pessoa.
+autoriza. A assistência abre uma sobreposição de até 430 px, mantém a conversa
+em primeiro plano e associa uma proposta concreta a cada resposta. Configuração
+do serviço e detalhes aparecem progressivamente. Aceitar gera, valida e aplica
+somente ao rascunho; salvar continua sendo uma decisão separada da pessoa.
 
 A edição de um Curso compartilhado apresenta antes da gravação a
 frase “Ao salvar, o AraLearn criará
@@ -124,7 +124,7 @@ ao lado do título, sem anexar sufixos nem expor identificadores ou revisões.
 
 A sobreposição permite escolher OpenAI, Gemini ou DeepSeek e informar uma chave
 mantida somente na memória da sessão. Mensagem, conversa multiturmo, plano,
-confirmação, estado de validação e prévia seguem uma progressão única. Endpoint,
+confirmação e estado de validação seguem uma progressão única. Endpoint,
 relay e explicações de arquitetura não aparecem no uso normal. A edição manual
 continua disponível, inclusive para código ou terminal extensos.
 

@@ -40,12 +40,6 @@ const SCOPE_LABELS = Object.freeze({
   lesson: "Lição"
 });
 
-export const COURSE_ASSISTANCE_DISCLOSURE =
-  "Para responder, o serviço escolhido (OpenAI, Gemini ou DeepSeek) recebe sua mensagem, " +
-  "o conteúdo selecionado, o restante deste objeto como contexto e um resumo do Curso. " +
-  "PDFs, Fontes e dados da conta não são enviados. Sua chave fica somente nesta sessão. " +
-  "O serviço pode guardar o conteúdo conforme os próprios termos.";
-
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -82,53 +76,23 @@ function providerOptions(selected) {
 }
 
 function conversationHtml(conversation) {
-  if (!conversation.length) {
-    return '<p class="course-assistance-empty">Diga o que deseja compreender ou mudar. Nada será aplicado sem sua confirmação.</p>';
-  }
+  if (!conversation.length) return "";
   return '<ol class="course-assistance-conversation" aria-label="Conversa desta sessão">' +
     conversation.map((turn) => `<li class="is-${turn.role}"><span>${turn.role === "user" ? "Você" : "Assistência"}</span>` +
       `<p>${escapeHtml(turn.message)}</p></li>`).join("") + "</ol>";
 }
 
-function selectedScopeLabel(scope, ids = []) {
-  const count = ids.length;
-  if (scope === "study_unit") {
-    return ids.includes("study_unit")
-      ? "Unidade inteira"
-      : `${count} ${count === 1 ? "componente" : "componentes"}`;
-  }
-  if (scope === "didactic_microsequence") {
-    return `${count} ${count === 1 ? "Unidade" : "Unidades"}`;
-  }
-  return `${count} ${count === 1 ? "Microssequência" : "Microssequências"}`;
-}
-
 function proposalHtml(proposal, pending) {
   if (!proposal) return "";
   return '<section class="course-assistance-plan" aria-labelledby="course-assistance-plan-title">' +
-    '<p>Antes da mudança</p><h3 id="course-assistance-plan-title">Plano proposto</h3>' +
+    '<h3 id="course-assistance-plan-title">Proposta</h3>' +
     `<p>${escapeHtml(proposal.summary)}</p>` +
-    '<button class="open-mini" type="button" data-course-assistance-prepare' +
+    '<ul aria-label="Mudanças propostas">' + proposal.changes
+      .map((change) => `<li>${escapeHtml(change)}</li>`).join("") + '</ul>' +
+    '<button class="open-mini" type="button" data-course-assistance-accept' +
     `${pending ? ' disabled aria-disabled="true"' : ""}>` +
-    `${renderUiIcon("play", "course-authoring-button-icon")}<span>Confirmar e preparar</span></button>` +
+    `${renderUiIcon("save", "course-authoring-button-icon")}<span>Aceitar e aplicar</span></button>` +
     '</section>';
-}
-
-function candidateHtml(candidate) {
-  if (!candidate) return "";
-  const unitCount = candidate.previews.length;
-  return '<section class="course-assistance-candidate" aria-labelledby="course-assistance-preview-title">' +
-    '<p>Proposta validada</p><h3 id="course-assistance-preview-title">Prévia pronta</h3>' +
-    `<p>${escapeHtml(candidate.message)}</p>` +
-    `<small>${unitCount} ${unitCount === 1 ? "Unidade pronta" : "Unidades prontas"} para conferência.</small>` +
-    '<div class="course-assistance-actions">' +
-    '<button class="open-mini" type="button" data-course-assistance-peek>' +
-    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Ver prévia</span></button>` +
-    '<button class="icon-ghost" type="button" data-course-assistance-discard aria-label="Descartar proposta" title="Descartar proposta">' +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
-    '<button class="open-mini" type="button" data-course-assistance-apply>' +
-    `${renderUiIcon("save", "course-authoring-button-icon")}<span>Aplicar ao rascunho</span></button>` +
-    '</div></section>';
 }
 
 function focusable(sheet) {
@@ -203,12 +167,10 @@ export function createCourseProviderAssistance({
   let requestEpoch = 0;
   let conversation = [];
   let proposal = null;
-  let candidate = null;
   let messageDraft = "";
   let status = "";
   let error = "";
   let pending = false;
-  let peeking = false;
   let connectionOpen = false;
   let destroyed = false;
 
@@ -232,24 +194,8 @@ export function createCourseProviderAssistance({
     messageDraft = text(overlay.querySelector("[data-course-assistance-message]")?.value);
   }
 
-  function renderPeek() {
-    overlay.classList.add("is-peeking");
-    overlay.innerHTML = '<section class="course-assistance-peek" role="region" aria-label="Prévia no conteúdo">' +
-      `<span>Prévia da ${escapeHtml(SCOPE_LABELS[active.scope])}</span>` +
-      '<button class="open-mini" type="button" data-course-assistance-return>' +
-      `${renderUiIcon("arrow-left", "course-authoring-button-icon")}<span>Voltar à conversa</span></button></section>`;
-    overlay.querySelector("[data-course-assistance-return]")?.addEventListener("click", () => {
-      peeking = false;
-      render({
-        focusSelector: "[data-course-assistance-message]",
-        scrollBodyToEnd: true
-      });
-    });
-  }
-
   function render({ focusSelector = "", scrollBodyToEnd = false, revealSelector = "" } = {}) {
     if (!overlay || !active) return;
-    if (peeking) return renderPeek();
     const previousBody = overlay.querySelector("[data-course-assistance-body]");
     const previousScrollTop = previousBody?.scrollTop || 0;
     if (!focusSelector && overlay.contains?.(documentValue.activeElement)) {
@@ -259,13 +205,10 @@ export function createCourseProviderAssistance({
         "data-course-assistance-model",
         "data-course-assistance-key",
         "data-course-assistance-send",
-        "data-course-assistance-prepare",
-        "data-course-assistance-discard",
-        "data-course-assistance-apply"
+        "data-course-assistance-accept"
       ].find((name) => documentValue.activeElement?.hasAttribute?.(name));
       if (focusSelector) focusSelector = `[${focusSelector}]`;
     }
-    overlay.classList.remove("is-peeking");
     const config = session.read();
     const provider = PROVIDERS[config.providerId] || null;
     const providerField = '<label><span>Serviço</span><select data-course-assistance-provider' +
@@ -277,37 +220,40 @@ export function createCourseProviderAssistance({
     overlay.innerHTML = '<div class="course-assistance-backdrop" data-course-assistance-close></div>' +
       '<section class="course-assistance-sheet" role="dialog" aria-modal="true" ' +
       'aria-labelledby="course-assistance-title" aria-describedby="course-assistance-context">' +
-      '<header><div><p class="course-assistance-eyebrow">Assistência por IA · ' +
-      `${escapeHtml(SCOPE_LABELS[active.scope])}</p><h2 id="course-assistance-title">` +
-      `${escapeHtml(active.targetTitle)}</h2>` +
-      '<p id="course-assistance-context"><strong>' +
-      `${escapeHtml(selectedScopeLabel(active.scope, active.writeTargetIds))}.</strong> ` +
-      'A IA só poderá propor mudanças nessa seleção.</p></div>' +
+      '<header><span class="course-assistance-header-space" aria-hidden="true"></span>' +
+      '<h2 id="course-assistance-title">Edição com IA</h2>' +
       '<button class="icon-ghost" type="button" data-course-assistance-close aria-label="Fechar" title="Fechar">' +
       `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
+      '<p id="course-assistance-context" class="visually-hidden">' +
+      `${escapeHtml(SCOPE_LABELS[active.scope])}: ${escapeHtml(active.targetTitle)}</p>` +
       '<div class="course-assistance-body" data-course-assistance-body>' +
-      conversationHtml(conversation) + proposalHtml(proposal, pending) + candidateHtml(candidate) +
-      `<details class="course-assistance-connection"${connectionOpen ? " open" : ""}>` +
-      '<summary>Serviço e modelo</summary>' +
-      providerField + '<label><span>Modelo</span><select data-course-assistance-model' +
+      conversationHtml(conversation) + proposalHtml(proposal, pending) +
+      `<section class="course-assistance-connection" data-open="${connectionOpen ? "true" : "false"}">` +
+      '<button class="icon-ghost" type="button" data-course-assistance-connection-toggle' +
+      ' aria-controls="course-assistance-connection-fields"' +
+      ` aria-expanded="${connectionOpen ? "true" : "false"}"` +
+      ' aria-label="Configurar IA" title="Configurar IA">' +
+      `${renderUiIcon("tags", "course-authoring-button-icon")}</button>` +
+      '<div class="course-assistance-connection-fields" id="course-assistance-connection-fields"' +
+      `${connectionOpen ? "" : " hidden"}>${providerField}` +
+      '<label><span>Modelo</span><select data-course-assistance-model' +
       `${pending ? " disabled" : ""}>${modelOptions(config.model, config.providerId)}</select></label>` +
-      `${credentialField}</details>` +
+      `${credentialField}</div></section>` +
       (status
         ? `<p class="course-assistance-status" tabindex="-1" role="status" aria-live="polite">${escapeHtml(status)}</p>`
         : "") +
       (error
         ? `<p class="course-assistance-error" tabindex="-1" role="alert">${escapeHtml(error)}</p>`
-        : "") +
-      '<details class="course-assistance-disclosure"><summary>Privacidade e envio</summary><p>' +
-      `${escapeHtml(COURSE_ASSISTANCE_DISCLOSURE)}</p></details></div>` +
-      '<form data-course-assistance-form><label class="course-assistance-message"><span>Mensagem</span>' +
+        : "") + '</div>' +
+      '<form data-course-assistance-form><label class="course-assistance-message"><span class="visually-hidden">Mensagem</span>' +
       `<textarea data-course-assistance-message maxlength="${COURSE_ASSISTANCE_LIMITS.maximumRequestLength}" ` +
       `placeholder="Discuta, peça uma explicação ou refine a mudança"${pending ? " disabled" : ""}>` +
       `${escapeHtml(messageDraft)}</textarea></label>` +
-      '<button class="open-mini" type="submit" data-course-assistance-send' +
+      '<button class="icon-ghost" type="submit" data-course-assistance-send ' +
+      `aria-label="${pending ? "Aguarde" : "Enviar"}" title="${pending ? "Aguarde" : "Enviar"}"` +
       `${pending ? ' disabled aria-disabled="true"' : ""}>` +
-      `${renderUiIcon(pending ? "rotate" : "prompt", "course-authoring-button-icon")}` +
-      `<span>${pending ? "Aguarde…" : "Enviar"}</span></button></form></section>`;
+      `${renderUiIcon(pending ? "rotate" : "arrow-right", "course-authoring-button-icon")}` +
+      '</button></form></section>';
     bind();
     const nextBody = overlay.querySelector("[data-course-assistance-body]");
     if (nextBody) {
@@ -325,30 +271,20 @@ export function createCourseProviderAssistance({
     }
   }
 
-  async function restorePreview() {
-    if (!active || !candidate) return;
-    await Promise.resolve(active.onDiscardPreview?.());
-  }
-
-  async function close({ discard = true, restoreFocus = true } = {}) {
+  async function close({ restoreFocus = true } = {}) {
     if (!active) return false;
     const trigger = active.trigger;
     const onClosed = active.onClosed;
     abortPending();
-    if (discard && candidate) {
-      try { await restorePreview(); } catch { /* O consumidor informa mudança concorrente. */ }
-    }
     overlay?.remove?.();
     documentValue?.removeEventListener?.("keydown", keydown);
     overlay = null;
     active = null;
     conversation = [];
     proposal = null;
-    candidate = null;
     messageDraft = "";
     status = "";
     error = "";
-    peeking = false;
     connectionOpen = false;
     if (typeof session.clear === "function") session.clear();
     else session.update({ ...EMPTY_CONFIG });
@@ -379,17 +315,15 @@ export function createCourseProviderAssistance({
       error = "Escolha o serviço e informe a chave desta sessão antes de enviar.";
       render({
         focusSelector: missingSelector,
-        revealSelector: ".course-assistance-connection > summary"
+        revealSelector: "[data-course-assistance-connection-toggle]"
       });
       return false;
     }
-    if (candidate) await restorePreview();
-    candidate = null;
     const userMessage = messageDraft;
     conversation = [...conversation, { role: "user", message: userMessage }]
       .slice(-COURSE_ASSISTANCE_LIMITS.maximumConversationTurns * 2);
     messageDraft = "";
-    proposal = null;
+    const currentProposal = proposal;
     pending = true;
     status = "Conversando sobre a mudança…";
     error = "";
@@ -408,6 +342,7 @@ export function createCourseProviderAssistance({
         writeTargetIds: active.writeTargetIds,
         message: userMessage,
         conversation: conversation.slice(0, -1),
+        currentProposal,
         providerConfig: session.read(),
         runtimeConfig,
         fetchImpl,
@@ -417,9 +352,7 @@ export function createCourseProviderAssistance({
       conversation = [...conversation, { role: "assistant", message: response.message }]
         .slice(-COURSE_ASSISTANCE_LIMITS.maximumConversationTurns * 2);
       proposal = response.proposal;
-      status = proposal
-        ? "Revise o plano. Você pode refiná-lo na conversa ou confirmar a preparação."
-        : "A conversa continua sem alterar o conteúdo.";
+      status = "Revise a proposta. Você pode refiná-la na conversa ou aceitar e aplicar ao rascunho.";
       return true;
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
@@ -438,11 +371,12 @@ export function createCourseProviderAssistance({
     }
   }
 
-  async function prepareProposal() {
+  async function acceptProposal() {
     if (!active || !proposal || pending) return false;
     syncForm();
+    const acceptedProposal = proposal;
     pending = true;
-    status = "Preparando a proposta para prévia…";
+    status = "Gerando e validando a proposta aceita…";
     error = "";
     const epoch = ++requestEpoch;
     requestController = new AbortController();
@@ -451,7 +385,7 @@ export function createCourseProviderAssistance({
       const prepared = await prepareCourseAssistanceProposal({
         project: active.project,
         selection: active.selection,
-        confirmedProposal: proposal,
+        confirmedProposal: acceptedProposal,
         conversation,
         writeTargetIds: active.writeTargetIds,
         providerConfig: session.read(),
@@ -460,15 +394,13 @@ export function createCourseProviderAssistance({
         signal: requestController.signal
       });
       if (!active || epoch !== requestEpoch) return false;
-      await Promise.resolve(active.onPreview(prepared));
-      candidate = prepared;
-      status = "Prévia pronta. Confira o resultado antes de aplicar.";
-      return true;
+      await Promise.resolve(active.onApplyDraft(prepared));
+      if (!active || epoch !== requestEpoch) return false;
+      return close();
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
-      error = caught instanceof Error ? caught.message : "A proposta não pôde ser preparada.";
+      error = caught instanceof Error ? caught.message : "A proposta aceita não pôde ser aplicada ao rascunho.";
       status = "O conteúdo original foi preservado.";
-      candidate = null;
       return false;
     } finally {
       if (active && epoch === requestEpoch) {
@@ -477,30 +409,6 @@ export function createCourseProviderAssistance({
         render({ focusSelector: "[data-course-assistance-message]", scrollBodyToEnd: true });
       }
     }
-  }
-
-  async function discard() {
-    if (!candidate) return false;
-    await restorePreview();
-    candidate = null;
-    status = "Proposta descartada. A conversa continua disponível.";
-    error = "";
-    render({ focusSelector: "[data-course-assistance-message]", scrollBodyToEnd: true });
-    return true;
-  }
-
-  async function apply() {
-    if (!active || !candidate) return false;
-    const applied = candidate;
-    try {
-      await Promise.resolve(active.onApplyDraft(applied));
-    } catch (caught) {
-      error = caught instanceof Error ? caught.message : "A proposta não pôde ser aplicada ao rascunho.";
-      render({ focusSelector: "[data-course-assistance-error]", scrollBodyToEnd: true });
-      return false;
-    }
-    candidate = null;
-    return close({ discard: false });
   }
 
   function changeProvider(event) {
@@ -521,13 +429,7 @@ export function createCourseProviderAssistance({
   function keydown(event) {
     if (event.key === "Escape") {
       event.preventDefault?.();
-      if (peeking) {
-        peeking = false;
-        render({
-          focusSelector: "[data-course-assistance-message]",
-          scrollBodyToEnd: true
-        });
-      } else void close();
+      void close();
       return;
     }
     if (event.key !== "Tab") return;
@@ -548,31 +450,30 @@ export function createCourseProviderAssistance({
     overlay.querySelector("[data-course-assistance-form]")?.addEventListener("submit", (event) => {
       event.preventDefault?.(); void sendMessage();
     });
-    overlay.querySelector("[data-course-assistance-prepare]")
-      ?.addEventListener("click", () => void prepareProposal());
-    overlay.querySelector("[data-course-assistance-discard]")
-      ?.addEventListener("click", () => void discard());
-    overlay.querySelector("[data-course-assistance-apply]")
-      ?.addEventListener("click", () => void apply());
-    overlay.querySelector("[data-course-assistance-peek]")?.addEventListener("click", () => {
-      peeking = true; render(); active?.onFocusPreview?.();
-    });
+    overlay.querySelector("[data-course-assistance-accept]")
+      ?.addEventListener("click", () => void acceptProposal());
     overlay.querySelector("[data-course-assistance-provider]")
       ?.addEventListener("change", changeProvider);
-    overlay.querySelector(".course-assistance-connection")?.addEventListener("toggle", (event) => {
-      connectionOpen = event.currentTarget.open;
+    overlay.querySelector("[data-course-assistance-connection-toggle]")
+      ?.addEventListener("click", (event) => {
+      connectionOpen = !connectionOpen;
+      const connection = event.currentTarget.closest(".course-assistance-connection");
+      const fields = connection?.querySelector(".course-assistance-connection-fields");
+      connection?.setAttribute("data-open", connectionOpen ? "true" : "false");
+      event.currentTarget.setAttribute("aria-expanded", connectionOpen ? "true" : "false");
+      if (fields) fields.hidden = !connectionOpen;
       if (connectionOpen) {
         const body = overlay.querySelector("[data-course-assistance-body]");
-        const summary = event.currentTarget.querySelector("summary");
-        if (body?.getBoundingClientRect && summary?.getBoundingClientRect) {
-          body.scrollTop += summary.getBoundingClientRect().top - body.getBoundingClientRect().top;
+        if (body?.getBoundingClientRect && event.currentTarget.getBoundingClientRect) {
+          body.scrollTop += event.currentTarget.getBoundingClientRect().top -
+            body.getBoundingClientRect().top;
         }
       }
     });
   }
 
   const handleOnline = () => {
-    if (!active || pending || candidate) return;
+    if (!active || pending) return;
     error = "";
     status = "Conexão restabelecida. A conversa foi preservada.";
     render();
@@ -590,15 +491,11 @@ export function createCourseProviderAssistance({
       targetTitle,
       writeTargetId = "",
       writeTargetIds = [],
-      onPreview,
-      onDiscardPreview,
       onApplyDraft,
-      onFocusPreview = null,
       onClosed = null
     } = {}) {
       if (destroyed) throw new Error("A assistência contextual foi encerrada.");
       if (active || !project || !selection || !SCOPE_LABELS[scope] ||
-          typeof onPreview !== "function" || typeof onDiscardPreview !== "function" ||
           typeof onApplyDraft !== "function") return false;
       active = {
         trigger, project: structuredClone(project), selection: structuredClone(selection),
@@ -608,7 +505,7 @@ export function createCourseProviderAssistance({
             .map(text).filter(Boolean))];
           return normalized.length ? normalized : scope === "study_unit" ? ["study_unit"] : [];
         })(),
-        onPreview, onDiscardPreview, onApplyDraft, onFocusPreview, onClosed
+        onApplyDraft, onClosed
       };
       overlay = documentValue.createElement("div");
       overlay.className = "course-assistance-overlay";
@@ -617,7 +514,6 @@ export function createCourseProviderAssistance({
       documentValue.addEventListener?.("keydown", keydown);
       conversation = [];
       proposal = null;
-      candidate = null;
       messageDraft = "";
       status = "";
       error = "";
@@ -632,20 +528,12 @@ export function createCourseProviderAssistance({
       connectionOpen = Boolean(missingSelector);
       render({
         focusSelector: missingSelector || "[data-course-assistance-message]",
-        revealSelector: missingSelector ? ".course-assistance-connection > summary" : ""
+        revealSelector: missingSelector ? "[data-course-assistance-connection-toggle]" : ""
       });
       return true;
     },
     handleBack() {
       if (!active) return false;
-      if (peeking) {
-        peeking = false;
-        render({
-          focusSelector: "[data-course-assistance-message]",
-          scrollBodyToEnd: true
-        });
-        return true;
-      }
       void close();
       return true;
     },
@@ -656,10 +544,8 @@ export function createCourseProviderAssistance({
         ...config,
         opened: Boolean(active),
         pending,
-        peeking,
         conversationTurnCount: conversation.length,
-        hasProposal: Boolean(proposal),
-        hasCandidate: Boolean(candidate)
+        hasProposal: Boolean(proposal)
       });
     },
     destroy() {
@@ -668,7 +554,7 @@ export function createCourseProviderAssistance({
       windowValue?.removeEventListener?.("online", handleOnline);
       documentValue?.removeEventListener?.("keydown", keydown);
       if (ownsSession) session.destroy?.();
-      void close({ discard: false, restoreFocus: false });
+      void close({ restoreFocus: false });
     }
   });
 }

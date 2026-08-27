@@ -41,7 +41,8 @@ const CATEGORY_LABELS = Object.freeze({
   question: "Dúvida",
   possible_error: "Possível erro",
   confusing: "Trecho confuso",
-  suggestion: "Sugestão"
+  suggestion: "Sugestão",
+  reformulation_request: "Pedido de reformulação"
 });
 const STATE_LABELS = Object.freeze({
   open: "Aberta",
@@ -84,6 +85,9 @@ export function renderStudyUnitObservationComposer({
   studyUnitId = ""
 } = {}) {
   const category = draft.category ?? null;
+  const categoryTitle = category
+    ? `Categoria: ${categoryLabel(category)}`
+    : "Escolher categoria";
   const categories = [null, ...COURSE_ANCHORED_ANNOTATION_CATEGORIES].map((value) => {
     const checked = value === category;
     return '<label class="study-observation-category-chip' + (checked ? " is-selected" : "") + '">' +
@@ -95,16 +99,18 @@ export function renderStudyUnitObservationComposer({
     '" data-observation-composer' + (studyUnitId
       ? ' data-study-unit-id="' + escapeHtml(studyUnitId) + '"'
       : "") + ">" +
-    '<h3>' + (editingId ? "Editar observação" : compact ? "Observar esta Unidade" : "Nova observação") + "</h3>" +
-    '<details class="study-observation-category-disclosure"><summary>Categoria opcional</summary>' +
+    (editingId ? '<h3>Editar observação</h3>' : "") +
+    '<details class="study-observation-category-disclosure' + (category ? " is-selected" : "") +
+    '"><summary title="' + escapeHtml(categoryTitle) + '" aria-label="' +
+    escapeHtml(categoryTitle) + '">' + renderUiIcon("tags", "home-tab-icon") + '</summary>' +
     '<div class="study-observation-category-list" role="radiogroup" aria-label="Categoria da observação">' +
     categories + "</div></details>" +
-    '<label class="field"><span class="sr-only">Texto da observação</span>' +
+    '<label class="field">' +
     '<textarea data-field="study-unit-observation" class="study-observation-textarea" aria-label="Observação"' +
     ' data-max-scalars="' + String(STUDY_UNIT_OBSERVATION_MAX_SCALARS) +
-    '" aria-describedby="study-observation-counter" placeholder="Escreva uma observação curta."' +
+    '" aria-describedby="study-observation-counter" placeholder="Observação"' +
     (saving ? " disabled" : "") + ">" + escapeHtml(draft.rawText || "") + "</textarea>" +
-    '<span class="study-observation-counter" id="study-observation-counter" aria-live="polite">' +
+    '<span class="study-observation-counter visually-hidden" id="study-observation-counter" aria-live="polite">' +
     escapeHtml(formatObservationTextBudget(draft.rawText)) + "</span></label>" +
     (error ? '<p class="field-error" role="alert">' + escapeHtml(error) + "</p>" : "") +
     '<div class="study-observation-composer-actions">' +
@@ -112,11 +118,12 @@ export function renderStudyUnitObservationComposer({
       ? '<button type="button" data-observation-action="cancel-edit"' +
         (saving ? " disabled" : "") + ">Cancelar edição</button>"
       : "") +
-    '<button type="submit" class="open-mini" data-observation-action="save"' +
+    '<button type="submit" class="open-mini study-observation-submit" data-observation-action="save"' +
+    ' title="' + (saving ? "Salvando observação" : editingId ? "Salvar edição" : "Enviar observação") +
+    '" aria-label="' + (saving ? "Salvando observação" : editingId ? "Salvar edição" : "Enviar observação") + '"' +
     (saving ? ' disabled aria-disabled="true"' : "") + ">" +
     renderUiIcon("ready-state", "home-tab-icon") +
-    "<span>" + (saving ? "Salvando…" : editingId ? "Salvar edição" : "Adicionar") +
-    "</span></button></div></form>";
+    "</button></div></form>";
 }
 
 function renderItem(item, { saving, editingId, showContributor }) {
@@ -179,7 +186,7 @@ export function renderStudyUnitObservationSheet({
   saving = false,
   loading = false,
   stale = false,
-  title = "Observações",
+  title = "Observações da Unidade",
   listLabel = "Suas observações",
   emptyLabel = "Nenhuma observação nesta Unidade.",
   showContributor = false,
@@ -202,8 +209,10 @@ export function renderStudyUnitObservationSheet({
     ' data-observation-action="close" title="Fechar" aria-label="Fechar">' +
     renderUiIcon("remove-state", "home-tab-icon") + "</button>" +
     '<p class="editor-title" id="study-observation-title">' + escapeHtml(title) + "</p>" +
-    '<span class="study-observation-count" aria-label="Quantidade de observações">' +
-    String(activeTotal) + "</span></header>" +
+    (activeTotal > 0
+      ? '<span class="study-observation-count" aria-label="Quantidade de observações">' +
+        String(activeTotal) + "</span>"
+      : '<span class="study-observation-head-slot" aria-hidden="true"></span>') + "</header>" +
     '<div class="editor-body study-observation-body">' +
     (stale
       ? '<p class="study-observation-stale" role="status">Há mudanças em outra sessão. Seu texto não foi substituído.</p>'
@@ -221,12 +230,14 @@ export function renderStudyUnitObservationSheet({
         '<a href="' + escapeHtml(canonicalHref) +
         '" data-inspection-route>Abrir todas na área Observações</a>.</p>'
       : "") +
-    '<div class="study-observation-list" aria-label="' + escapeHtml(listLabel) + '">' +
-    (visibleItems.length
-      ? visibleItems.map((item) => renderItem(item, {
-          saving, editingId, showContributor
-        })).join("")
-      : '<p class="study-observation-empty">' + escapeHtml(emptyLabel) + "</p>") + "</div>" +
+    (visibleItems.length || !showComposer
+      ? '<div class="study-observation-list" aria-label="' + escapeHtml(listLabel) + '">' +
+        (visibleItems.length
+          ? visibleItems.map((item) => renderItem(item, {
+              saving, editingId, showContributor
+            })).join("")
+          : '<p class="study-observation-empty">' + escapeHtml(emptyLabel) + "</p>") + "</div>"
+      : "") +
     (showComposer ? renderStudyUnitObservationComposer({
       draft, editingId, error, saving
     }) : "") + "</div></article></section>";

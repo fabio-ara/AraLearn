@@ -236,44 +236,37 @@ const discussionSchema = Object.freeze({
   properties: {
     message: { type: "string", minLength: 1, maxLength: 1_600 },
     proposal: {
-      anyOf: [
-        { type: "null" },
-        {
-          type: "object",
-          additionalProperties: false,
-          required: ["summary", "scope", "componentNeeds"],
-          properties: {
-            summary: { type: "string", minLength: 1, maxLength: 1_600 },
-            scope: {
-              type: "string",
-              enum: ["study_unit", "didactic_microsequence", "lesson"]
-            },
-            componentNeeds: {
-              type: "array",
-              maxItems: 6,
-              items: componentNeedSchema
-            }
-          }
+      type: "object",
+      additionalProperties: false,
+      required: ["summary", "changes", "scope", "componentNeeds"],
+      properties: {
+        summary: { type: "string", minLength: 1, maxLength: 1_600 },
+        changes: {
+          type: "array",
+          minItems: 1,
+          maxItems: 6,
+          items: { type: "string", minLength: 1, maxLength: 600 }
+        },
+        scope: {
+          type: "string",
+          enum: ["study_unit", "didactic_microsequence", "lesson"]
+        },
+        componentNeeds: {
+          type: "array",
+          maxItems: 6,
+          items: componentNeedSchema
         }
-      ]
+      }
     }
   }
 });
 
-function normalizeDiscussion(value, scope) {
-  if (!exactKeys(value, new Set(["message", "proposal"])) ||
-      !text(value.message) || text(value.message).length > 1_600) {
-    throw new StudyUnitProviderError(
-      "provider_structured_output_invalid",
-      "A resposta da assistência não respeitou o formato da conversa."
-    );
-  }
-  if (value.proposal === null) {
-    return Object.freeze({ message: text(value.message), proposal: null });
-  }
-  const proposal = value.proposal;
-  if (!exactKeys(proposal, new Set(["summary", "scope", "componentNeeds"])) ||
-      proposal.scope !== scope || !text(proposal.summary) ||
+function normalizeProposal(proposal, scope) {
+  if (!exactKeys(proposal, new Set(["summary", "changes", "scope", "componentNeeds"])) ||
+      proposal.scope !== scope || !text(proposal.summary) || text(proposal.summary).length > 1_600 ||
+      !Array.isArray(proposal.changes) || proposal.changes.length < 1 ||
+      proposal.changes.length > 6 || proposal.changes.some((change) =>
+        !text(change) || text(change).length > 600) ||
       !Array.isArray(proposal.componentNeeds) || proposal.componentNeeds.length > 6 ||
       proposal.componentNeeds.some((need) =>
         !exactKeys(need, new Set(["query", "slot"])) ||
@@ -285,15 +278,27 @@ function normalizeDiscussion(value, scope) {
     );
   }
   return Object.freeze({
+    summary: text(proposal.summary),
+    changes: Object.freeze(proposal.changes.map(text)),
+    scope,
+    componentNeeds: Object.freeze(proposal.componentNeeds.map((need) => Object.freeze({
+      query: text(need.query),
+      slot: need.slot
+    })))
+  });
+}
+
+function normalizeDiscussion(value, scope) {
+  if (!exactKeys(value, new Set(["message", "proposal"])) ||
+      !text(value.message) || text(value.message).length > 1_600) {
+    throw new StudyUnitProviderError(
+      "provider_structured_output_invalid",
+      "A resposta da assistência não respeitou o formato da conversa."
+    );
+  }
+  return Object.freeze({
     message: text(value.message),
-    proposal: Object.freeze({
-      summary: text(proposal.summary),
-      scope,
-      componentNeeds: Object.freeze(proposal.componentNeeds.map((need) => Object.freeze({
-        query: text(need.query),
-        slot: need.slot
-      })))
-    })
+    proposal: normalizeProposal(value.proposal, scope)
   });
 }
 
@@ -311,6 +316,7 @@ export async function requestCourseAssistanceDiscussion({
   writeTargetIds = [],
   message,
   conversation = [],
+  currentProposal = null,
   providerConfig,
   runtimeConfig = globalThis.__ARALEARN_ENV__ || {},
   fetchImpl = globalThis.fetch,
@@ -329,6 +335,7 @@ export async function requestCourseAssistanceDiscussion({
   const envelope = {
     ...context,
     conversation: compactConversation(conversation),
+    currentProposal: currentProposal ? normalizeProposal(currentProposal, scope) : null,
     message: request
   };
   const raw = await providerCall({
@@ -337,10 +344,11 @@ export async function requestCourseAssistanceDiscussion({
     fetchImpl,
     signal,
     prompt: {
-      system: "Você participa de uma conversa curta de edição curricular situada. " +
-        "Pode explicar e discutir sem propor mudança. Quando houver proposta suficientemente definida, " +
-        "resuma-a no escopo recebido e liste somente as necessidades de representação por linguagem comum. " +
-        "Não invente Fontes, não exponha JSON ao usuário e nunca amplie o escopo de escrita.",
+      system: "Você participa de uma conversa curta de edição curricular situada, adequada a modelos leves. " +
+        "Responda com brevidade e inclua sempre a melhor proposta concreta disponível neste turno, " +
+        "refinando a proposta atual quando houver uma. Descreva de uma a seis mudanças objetivas e liste " +
+        "somente necessidades de representação por linguagem comum. Não invente Fontes, não exponha JSON " +
+        "ao usuário e nunca amplie o escopo de escrita.",
       prompt: JSON.stringify(envelope),
       schema: discussionSchema
     }
@@ -791,6 +799,8 @@ export async function prepareCourseAssistanceProposal({
 } = {}) {
   const scope = confirmedProposal?.scope;
   if (!SCOPES.has(scope) || !text(confirmedProposal?.summary) ||
+      !Array.isArray(confirmedProposal?.changes) || confirmedProposal.changes.length < 1 ||
+      confirmedProposal.changes.length > 6 || confirmedProposal.changes.some((change) => !text(change)) ||
       !Array.isArray(confirmedProposal?.componentNeeds)) {
     throw new TypeError("Confirme uma proposta válida antes de preparar a mudança.");
   }
@@ -806,11 +816,10 @@ export async function prepareCourseAssistanceProposal({
     );
   }
   const schema = candidateSchema(scope, contracts);
-  const contractContext = contracts.map(({ package: packageId, version, contract, schema: dataSchema }) => ({
+  const contractContext = contracts.map(({ package: packageId, version, contract }) => ({
     package: packageId,
     version,
-    contract,
-    schema: dataSchema
+    contract
   }));
   let priorCandidate = null;
   let validationErrors = [];
@@ -828,7 +837,10 @@ export async function prepareCourseAssistanceProposal({
             "use posições consecutivas a partir de 1 e não invente Fontes. Devolva somente o objeto do schema.",
           prompt: JSON.stringify({
             ...context,
-            confirmedProposal: confirmedProposal.summary,
+            confirmedProposal: {
+              summary: text(confirmedProposal.summary),
+              changes: confirmedProposal.changes.map(text)
+            },
             conversation: compactConversation(conversation),
             exactComponentContracts: contractContext,
             repair: attempt === 0 ? null : {

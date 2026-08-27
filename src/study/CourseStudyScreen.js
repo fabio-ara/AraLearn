@@ -7,7 +7,10 @@ import {
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { listManualStudyUnitTargetIds } from "../ui/manualStudyUnitEdit.js";
-import { renderHomeScreen } from "../ui/renderHomeScreen.js";
+import {
+  renderHomeScreen,
+  renderRuntimeStatusControl
+} from "../ui/renderHomeScreen.js";
 import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 
@@ -20,7 +23,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function topbar(title, backTitle = "Voltar", modeControls = "") {
+function topbar(title, backTitle = "Voltar", modeControls = "", runtimeStatus = {}) {
   return (
     '<header class="topbar lesson-topbar navigation-topbar">' +
     '<nav class="navigation-primary-actions" aria-label="Navegação">' +
@@ -31,21 +34,11 @@ function topbar(title, backTitle = "Voltar", modeControls = "") {
     renderUiIcon("home", "home-tab-icon") + "</button></nav>" +
     '<div class="topbar-heading"><span class="visually-hidden">' + escapeHtml(title) +
     '</span>' + modeControls + '</div><div class="lesson-top-actions">' +
+    renderRuntimeStatusControl(runtimeStatus) +
     '<button class="icon-ghost" type="button" data-action="open-settings"' +
     ' title="Conta e aparência" aria-label="Conta e aparência">' +
     renderUiIcon("more", "home-tab-icon") + "</button></div></header>"
   );
-}
-
-function runtimeNotice(status) {
-  if (status?.offline !== true && status?.stale !== true) return "";
-  const offline = status?.offline === true;
-  return '<p class="study-runtime-notice" role="status">' +
-    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") +
-    '<span>' + (offline
-      ? "Sem conexão · alterações pessoais ficam salvas neste dispositivo."
-      : "Exibindo a versão salva · o AraLearn está atualizando os dados.") +
-    "</span></p>";
 }
 
 function progressEntry(course, moduleValue, lesson, progress) {
@@ -242,14 +235,19 @@ function assistanceSelectionLabel(selection, scope) {
 
 function renderAssistanceSelectionDock(assistance = {}, scope) {
   if (assistance.selection?.scope !== scope) return "";
-  return '<section class="study-assistance-selection-dock" aria-label="Alcance da Assistência por IA">' +
-    '<p><span>Alterar</span><strong>' +
-    escapeHtml(assistanceSelectionLabel(assistance.selection, scope)) + '</strong></p><div>' +
+  const controls = '<section class="study-assistance-selection-dock" aria-label="Edição com IA">' +
+    '<span class="visually-hidden">' +
+    escapeHtml(assistanceSelectionLabel(assistance.selection, scope)) + '</span>' +
     '<button class="icon-ghost" type="button" data-action="cancel-assistance-selection"' +
     ' aria-label="Cancelar seleção" title="Cancelar seleção">' +
     renderUiIcon("remove-state", "home-tab-icon") + '</button>' +
-    '<button class="open-mini" type="button" data-action="start-assistance-chat">' +
-    renderUiIcon("prompt", "home-tab-icon") + '<span>Conversar</span></button></div></section>';
+    '<button class="open-mini" type="button" data-action="start-assistance-chat"' +
+    ' aria-label="Abrir Edição com IA" title="Edição com IA">' +
+    renderUiIcon("sparkles", "home-tab-icon") + '</button></section>';
+  return scope === "study_unit"
+    ? '<section class="study-reader-footer study-assistance-selection-footer">' +
+      '<div class="study-action-dock">' + controls + '</div></section>'
+    : controls;
 }
 
 function renderStructuralEditor(structuralEditor, { titleLabel, goalLabel }) {
@@ -310,7 +308,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Curso", "Voltar", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Curso", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content course-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -352,7 +350,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Módulo", "Voltar", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Módulo", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content course-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -411,7 +409,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
     assistanceAction: assistance.enabled ? "open-lesson-assistance" : "",
     disabled: assistance.saving || structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Lição", "Voltar", modes) + runtimeNotice(runtimeStatus) +
+  return '<section class="screen">' + topbar("Lição", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -479,8 +477,7 @@ function renderMicrosequenceOverview(
     disabled: assistance.saving || structuralEditor?.saving
   });
   return '<section class="screen microsequence-overview-screen">' +
-    topbar("Microssequência didática", "Voltar", modes) +
-    runtimeNotice(runtimeStatus) +
+    topbar("Microssequência didática", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
@@ -523,7 +520,7 @@ function renderStudyCitations({ open, loading, value, error, courseId, canAuthor
     content = `<p class="study-citations-status is-error" role="alert">${escapeHtml(error)}</p>` +
       '<button type="button" data-action="retry-citations">Tentar novamente</button>';
   } else if (!value?.citations?.length) {
-    content = '<p class="study-citations-status">Esta Unidade não possui fontes públicas.</p>';
+    content = '<p class="study-citations-status">Nenhuma fonte.</p>';
   } else {
     content = '<ol class="study-citation-list">' + value.citations.map((citation) =>
       '<li><article><h3>' + escapeHtml(citation.title) + "</h3>" +
@@ -553,8 +550,9 @@ function renderStudyCitations({ open, loading, value, error, courseId, canAuthor
         : "") + "</article></li>").join("") + "</ol>";
   }
   return '<section class="study-citations-panel" aria-labelledby="study-citations-title">' +
-    '<header><div><p>Proveniência desta Unidade</p><h2 id="study-citations-title">Fontes</h2></div>' +
-    '<button type="button" data-action="toggle-citations" aria-label="Fechar fontes" title="Fechar fontes">' +
+    '<header><h2 id="study-citations-title">Fontes</h2>' +
+    '<button class="icon-ghost" type="button" data-action="toggle-citations"' +
+    ' aria-label="Fechar fontes" title="Fechar fontes">' +
     renderUiIcon("remove-state", "home-tab-icon") + "</button></header>" + content + "</section>";
 }
 
@@ -666,7 +664,6 @@ function renderStudyUnit({
   const nextActionLabel = feedbackEntry && !feedbackOpen
     ? "Ver explicação"
     : "Próxima Unidade";
-  const nextActionVisible = feedbackEntry && !feedbackOpen ? "Explicação" : "Próxima";
   const feedback = feedbackOpen && feedbackEntry
     ? renderPackageStudyUnitFeedback(feedbackEntry, {
         studyUnit,
@@ -679,11 +676,11 @@ function renderStudyUnit({
       '<div class="study-continue-popup-body">' + feedback.bodyHtml + "</div>" +
       feedback.dockHtml + '<div class="study-continue-popup-actions">' +
       '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-feedback"' +
-      ` title="Próxima Unidade" aria-label="Próxima Unidade"${advancePending
+      ` title="${advancePending ? "Guardando progresso" : "Próxima Unidade"}"` +
+      ` aria-label="${advancePending ? "Guardando progresso" : "Próxima Unidade"}"${advancePending
         ? ' disabled aria-disabled="true"'
         : ""}>` +
       renderUiIcon(advancePending ? "rotate" : "play", "home-tab-icon") +
-      `<span>${advancePending ? "Guardando…" : "Próxima"}</span>` +
       "</button></div></section></div>"
     : "";
   const modes = renderModeControls({
@@ -695,8 +692,7 @@ function renderStudyUnit({
     unit: true
   });
   return '<section class="screen microsequence-workbench-screen">' +
-    topbar(course.title || "Curso", "Voltar", modes) +
-    runtimeNotice(runtimeStatus) +
+    topbar(course.title || "Curso", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen"' +
@@ -712,12 +708,6 @@ function renderStudyUnit({
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     renderStudyManualHistory(manualEditor) +
-    (assistanceSelection
-      ? '<button class="study-assistance-whole-target" type="button"' +
-        ' data-action="toggle-assistance-target" data-assistance-target-id="study_unit"' +
-        ' aria-pressed="' + String(assistanceSelection.ids.includes("study_unit")) + '">' +
-        renderUiIcon("study-unit", "home-tab-icon") + '<span>Unidade inteira</span></button>'
-      : "") +
     '<div class="runtime-card-rendered-content"><div class="card-sheet-content">' +
     renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml + renderStudyCitations({
       open: citationsOpen,
@@ -739,8 +729,8 @@ function renderStudyUnit({
       ? `<p class="study-advance-error" role="alert">${escapeHtml(advanceError)}</p>`
       : "") +
     renderAssistanceDraftDock(manualEditor.assistance, "study_unit") +
-    renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") +
     (manualEditor.editing ? renderStudyManualDock(manualEditor) :
+    assistanceSelection ? renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") :
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
     '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
@@ -764,10 +754,11 @@ function renderStudyUnit({
     ' title="Unidade anterior" aria-label="Unidade anterior">' +
     renderUiIcon("arrow-left", "home-tab-icon") + "</button>" +
     '<button class="open-mini study-continue-btn" type="button" data-action="next-study-unit"' +
-    ` title="${nextActionLabel}" aria-label="${nextActionLabel}"${advancePending
+    ` title="${advancePending ? "Guardando progresso" : nextActionLabel}"` +
+    ` aria-label="${advancePending ? "Guardando progresso" : nextActionLabel}"${advancePending
       ? ' disabled aria-disabled="true"'
       : ""}>` + renderUiIcon(advancePending ? "rotate" : "play", "home-tab-icon") +
-    `<span>${advancePending ? "Guardando…" : nextActionVisible}</span></button>` +
+    "</button>" +
     feedbackMarkup + "</div></div></div></section>") +
     "</section></div></section>" +
     "</main></section>";

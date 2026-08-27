@@ -359,7 +359,8 @@ test("mantém a composição carregada até a revisão anunciada ser validada", 
   assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), {
     offline: false,
     stale: true,
-    readOnly: true
+    readOnly: true,
+    pending: false
   });
 
   const preserved = await repository.loadCourse(COURSE_A);
@@ -373,7 +374,8 @@ test("mantém a composição carregada até a revisão anunciada ser validada", 
   assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), {
     offline: false,
     stale: false,
-    readOnly: false
+    readOnly: false,
+    pending: false
   });
 });
 
@@ -511,7 +513,8 @@ test("carrega a fila Rever por páginas somente quando solicitado", async () => 
   assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), {
     offline: true,
     stale: true,
-    readOnly: true
+    readOnly: true,
+    pending: false
   });
   assert.equal(cursors.length, 1);
   assert.equal(repository.loadReviewItems().length, 1);
@@ -728,6 +731,7 @@ test("flush purga Curso revogado após mutação offline pendente e libera ciclo
   };
   await repository.setStudyUnitCompleted(reference, true);
   assert.equal(repository.isStudyUnitCompleted(reference), true);
+  assert.equal(repository.loadRuntimeStatus(COURSE_A).pending, true);
 
   offline = false;
   revoked = true;

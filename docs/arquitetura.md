@@ -256,16 +256,17 @@ uma nova via para gravar `legacy_reference`.
 
 A Assistência por IA é uma sessão contextual sobre o mesmo Curso. O serviço
 escolhido recebe a mensagem, o conteúdo selecionado, o restante do objeto atual
-como contexto, um resumo do Curso e as mensagens recentes. A pessoa discute um
-plano antes de confirmar a preparação. PDFs, Fontes e dados da conta não entram
-no envelope.
+como contexto, um resumo do Curso, as mensagens recentes e a proposta corrente.
+Cada turno devolve a melhor proposta concreta compatível com a conversa. PDFs,
+Fontes e dados da conta não entram no envelope.
 
-A preparação produz escrita tipada sobre Unidade, Microssequência ou Lição. Ao
-usar componentes didáticos, consulta primeiro as famílias pertinentes, obtém
-somente os contratos exatos, gera a candidata, valida e admite reparos
-delimitados. O renderer canônico precisa aceitar a composição antes da prévia.
-JSON bem formado não é suficiente, e uma candidata inválida ou não
-renderizável nunca substitui o conteúdo corrente.
+Somente o aceite explícito da proposta inicia a escrita tipada sobre Unidade,
+Microssequência ou Lição. Ao usar componentes didáticos, consulta primeiro as
+famílias pertinentes, obtém somente os contratos exatos, gera a candidata,
+valida e admite reparos delimitados. O renderer canônico precisa aceitar a
+composição antes da aplicação ao rascunho. JSON bem formado não é suficiente,
+e uma candidata inválida ou não renderizável nunca substitui o conteúdo
+corrente.
 
 A conexão de produção é direta com OpenAI, Gemini ou DeepSeek, escolhidos pela
 pessoa. Provider, modelo, chave, conversa e candidata permanecem apenas na

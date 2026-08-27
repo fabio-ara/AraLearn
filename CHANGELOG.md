@@ -4,6 +4,34 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.33] - 2026-08-26
+
+### Alterado
+
+- Estudo e Autoria compartilham uma gramática visual icon-first, com títulos
+  centralizados, ações quadradas e folhas de geometria estável e rolagem
+  interna;
+- a Autoria apresenta o conteúdo real das Unidades em sequência curricular e
+  mantém edição, Observações, Fontes, auditoria e ChatGPT no contexto do alvo;
+- a Assistência por IA sustenta conversa multiturmo e só gera e aplica uma
+  proposta ao rascunho depois de **Aceitar e aplicar**.
+
+### Corrigido
+
+- a entrada única do Curso passa pelos Módulos, o avanço do Runtime responde
+  imediatamente e o estado de sincronização se atualiza sem deslocar o card;
+- Observações, Fontes, Conta e Assistência por IA removem texto de bastidor,
+  preservam foco e mantêm seus controles dentro da mesma geometria;
+- menus e ações da Autoria permanecem operáveis sobre Cursos extensos, com
+  retorno ao card e foco exatos mesmo depois de abrir uma folha contextual;
+- a cache de Observações compara consultas canonizadas e preserva a fila local
+  ao reconstruir dados incompatíveis.
+
+### Desempenho
+
+- o salto para uma Unidade distante resolve o alvo uma vez e faz uma única
+  leitura ancorada, sem percorrer dezenas de páginas intermediárias.
+
 ## [0.0.32] - 2026-08-26
 
 ### Corrigido

@@ -21,7 +21,7 @@ async function expectHomeGeometry(page, width, colorMode) {
     const screen = shell.querySelector(".courses-home-screen");
     const preview = shell.querySelector(".home-course-selector-preview");
     const controls = [...shell.querySelectorAll(
-      ".home-course-selector-card > select, .home-course-preview-actions button"
+      ".home-course-selector-card > select, .home-course-preview-actions > button"
     )];
     const shellRect = shell.getBoundingClientRect();
     const previewRect = preview.getBoundingClientRect();
@@ -385,9 +385,16 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   await page.evaluate(() => globalThis.__home148Probe.app.setOfflineStatus(true));
   await expect(page.getByText("Disponível neste dispositivo", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Abrir Curso A" })).toBeEnabled();
-  await selector.selectOption(HOME_COURSE_IDS.c);
+  await page.getByRole("button", { name: "Sem conexão" }).click();
   await expect(page.getByText(
-    "Conecte-se para abrir este Curso",
+    "Sem conexão. A cópia deste dispositivo continua disponível.",
+    { exact: true }
+  )).toBeVisible();
+  await page.keyboard.press("Escape");
+  await selector.selectOption(HOME_COURSE_IDS.c);
+  await page.getByRole("button", { name: "Sem conexão" }).click();
+  await expect(page.getByText(
+    "Sem conexão. Conecte-se para abrir este Curso.",
     { exact: true }
   )).toBeVisible();
   await expect(page.getByRole("button", { name: "Abrir Curso C" })).toBeDisabled();
@@ -427,16 +434,26 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
 
   const lifecycleMenu = page.locator("[data-action='course-lifecycle-menu']");
   await lifecycleMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Excluir este Curso" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menuitem", { name: "Excluir este Curso" })).toBeHidden();
+  await expect(lifecycleMenu).toBeFocused();
+  await lifecycleMenu.click();
+  const studyArea = page.getByRole("button", { name: "Estudo", exact: true });
+  await studyArea.click();
+  await expect(page.getByRole("menuitem", { name: "Excluir este Curso" })).toBeHidden();
+  await expect(studyArea).toBeFocused();
+  await lifecycleMenu.click();
   await page.evaluate(() => { globalThis.__home148Probe.failLifecycle = true; });
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Excluir este Curso" }).click();
+  await page.getByRole("menuitem", { name: "Excluir este Curso" }).click();
   await expect(page.getByRole("alert")).toHaveText("Falha simulada no ciclo de vida.");
   await expect(lifecycleMenu).toBeFocused();
 
   await lifecycleMenu.click();
   await page.evaluate(() => { globalThis.__home148Probe.failLifecycle = false; });
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Excluir este Curso" }).click();
+  await page.getByRole("menuitem", { name: "Excluir este Curso" }).click();
   await expect(page.getByText("Curso A foi excluído.", { exact: true })).toBeVisible();
   await expect(selector).toBeFocused();
   await expect(selector).toHaveValue(HOME_COURSE_IDS.b);
@@ -742,14 +759,16 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.getByRole("button", { name: "Fechar fontes" }).click();
 
   await page.evaluate(() => globalThis.__courseStudyApp.setOfflineStatus(true));
+  await page.getByRole("button", { name: "Sem conexão" }).click();
   await expect(page.getByRole("status")).toContainText(
-    "Sem conexão · alterações pessoais ficam salvas neste dispositivo."
+    "Sem conexão. A cópia deste dispositivo continua disponível."
   );
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Marcar para rever" })).toBeEnabled();
   await page.getByRole("button", { name: "Marcar para rever" }).click();
   await page.getByRole("button", { name: /^Observações/u }).click();
   await page.getByRole("textbox", { name: "Observação" }).fill("Guardada durante a desconexão.");
-  await page.getByRole("button", { name: "Adicionar" }).click();
+  await page.getByRole("button", { name: "Enviar observação" }).click();
   await expect(page.getByText("Guardada durante a desconexão.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar" }).click();
   expect(await page.evaluate(() => ({
@@ -820,7 +839,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(studyScreen).toHaveAttribute("inert", "");
   await expect(studyScreen).toHaveAttribute("aria-hidden", "true");
   await page.keyboard.press("Shift+Tab");
-  await expect(page.getByRole("button", { name: "Adicionar" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Enviar observação" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(observationClose).toBeFocused();
   await page.keyboard.press("Escape");
@@ -854,9 +873,9 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
 
   await page.getByRole("button", { name: /^Observações/u }).click();
   await page.getByRole("textbox", { name: "Observação" }).fill("Conferir a formulação.");
-  await page.getByRole("button", { name: "Adicionar" }).click();
+  await page.getByRole("button", { name: "Enviar observação" }).click();
   await page.getByRole("textbox", { name: "Observação" }).fill("Segunda observação no mesmo alvo.");
-  await page.getByRole("button", { name: "Adicionar" }).click();
+  await page.getByRole("button", { name: "Enviar observação" }).click();
   expect(await page.evaluate(() => Object.values(globalThis.__courseStudyProbe.annotations)
     .reduce((total, items) => total + items.length, 0))).toBe(3);
   await page.getByRole("button", { name: "Editar observação" }).first().click();
@@ -954,11 +973,12 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     .toBe(scrollBeforeExternalRefresh);
 
   await page.evaluate(() => globalThis.__courseStudyApp.openCourses());
+  await page.getByRole("button", { name: "Ações deste Curso" }).click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zerar progresso de Curso atualizado pelo chat" }).click();
-  await expect(page.getByRole("button", {
-    name: "Zerar progresso de Curso atualizado pelo chat"
-  })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Zerar progresso" }).click();
+  await page.getByRole("button", { name: "Ações deste Curso" }).click();
+  await expect(page.getByRole("menuitem", { name: "Zerar progresso" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.completed.length)).toBe(0);
   await ensureReviewQueueOpen(page);
   await page.getByRole("button", { name: "Abrir para rever: Unidade marcada" }).click();
@@ -1033,7 +1053,7 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
   for (const width of [360, 390, 430, 1280]) {
     await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
     await page.getByRole("button", { name: /^Observações/u }).click();
-    await expect(page.getByRole("dialog", { name: "Observações", exact: true }))
+    await expect(page.getByRole("dialog", { name: "Observações da Unidade", exact: true }))
       .toBeVisible();
     await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
     await expect(page.locator("#study-observation-counter"))
@@ -1133,36 +1153,36 @@ test("zerar progresso mostra falhas de carga e gravação antes de concluir", as
     });
   }, project);
 
+  const courseActions = page.getByRole("button", { name: "Ações deste Curso" });
+  await courseActions.click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await page.getByRole("menuitem", { name: "Zerar progresso" }).click();
   await expect(page.getByRole("alert")).toHaveText(
     "Não foi possível abrir este Curso. Tente novamente."
   );
-  await expect(page.getByRole("button", {
-    name: "Zerar progresso de Fixture Minimal"
-  })).toBeFocused();
+  await expect(courseActions).toBeFocused();
   await expect.poll(() => page.evaluate(() => ({
     loads: globalThis.__thinStudyProbe.loads,
     clears: globalThis.__thinStudyProbe.clears
   }))).toEqual({ loads: 1, clears: 0 });
 
   await page.evaluate(() => { globalThis.__thinStudyProbe.fail = false; });
+  await courseActions.click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await page.getByRole("menuitem", { name: "Zerar progresso" }).click();
   await expect(page.getByRole("alert")).toHaveText(
     "Não foi possível zerar o progresso. Tente novamente."
   );
-  await expect(page.getByRole("button", {
-    name: "Zerar progresso de Fixture Minimal"
-  })).toBeFocused();
+  await expect(courseActions).toBeFocused();
   await expect.poll(() => page.evaluate(() => ({
     loads: globalThis.__thinStudyProbe.loads,
     clears: globalThis.__thinStudyProbe.clears
   }))).toEqual({ loads: 2, clears: 0 });
 
   await page.evaluate(() => { globalThis.__thinStudyProbe.failClear = false; });
+  await courseActions.click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zerar progresso de Fixture Minimal" }).click();
+  await page.getByRole("menuitem", { name: "Zerar progresso" }).click();
   await expect.poll(() => page.evaluate(() => ({
     loads: globalThis.__thinStudyProbe.loads,
     clears: globalThis.__thinStudyProbe.clears
@@ -1170,9 +1190,8 @@ test("zerar progresso mostra falhas de carga e gravação antes de concluir", as
     loads: 3,
     clears: 1
   });
-  await expect(page.getByRole("button", {
-    name: "Zerar progresso de Fixture Minimal"
-  })).toHaveCount(0);
+  await courseActions.click();
+  await expect(page.getByRole("menuitem", { name: "Zerar progresso" })).toHaveCount(0);
 });
 
 test("avanço guarda localmente, não espera o flush e bloqueia ativações concorrentes", async ({
@@ -1247,8 +1266,7 @@ test("avanço guarda localmente, não espera o flush e bloqueia ativações conc
     button.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
     button.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
   });
-  await expect(page.getByRole("button", { name: "Próxima Unidade" })).toBeDisabled();
-  await expect(page.getByText("Guardando…", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardando progresso" })).toBeDisabled();
   expect(await page.evaluate(() => globalThis.__studyAdvanceProbe.completionCalls)).toHaveLength(1);
   expect(await page.evaluate(() => globalThis.__studyAdvanceProbe.completionCalls[0])).toMatchObject({
     completed: true,

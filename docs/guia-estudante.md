@@ -169,9 +169,10 @@ a edição trabalha sobre título, composição e conteúdo renderizável. Toda
 gravação exige **Salvar**; cancelar preserva o estado salvo anteriormente.
 
 **Assistência por IA** está disponível em Lição, Microssequência e Unidade. Ela
-abre uma sessão contextual em memória sobre o alvo atual: primeiro a pessoa
-discute e confirma um plano, depois confere a proposta no renderer real, aplica
-ao rascunho e só então decide salvar. Uma proposta inválida, cancelada ou não
+abre uma conversa contextual em memória sobre o alvo atual. Cada resposta traz
+uma proposta; a pessoa pode discuti-la até que represente sua intenção. Somente
+**Aceitar e aplicar** autoriza gerar, validar e colocar o resultado no rascunho,
+e **Salvar** permanece separado. Uma proposta inválida, cancelada ou não
 renderizável não substitui o conteúdo corrente.
 
 Se o Curso for seu, **Editar** grava a Unidade no próprio Curso. Se ele foi

@@ -174,8 +174,8 @@ satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
 é uma ferramenta de autoria sob responsabilidade humana. O AraLearn separa
-conversa, plano, confirmação para gerar, prévia, aplicação ao rascunho e
-gravação. Escopo visível, validação, possibilidade de rejeitar e reversão são
+conversa, proposta corrente, aceite para gerar, validação, aplicação ao rascunho
+e gravação. Escopo delimitado, possibilidade de rejeitar e reversão são
 condições de supervisão; a existência desses controles não prova que a pessoa
 compreenda o erro ou exerça controle efetivo.
 

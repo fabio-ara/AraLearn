@@ -754,10 +754,13 @@ test("Conteúdo delega hierarquia, renderer e edição a uma única sequência",
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["outline", COURSE_ID]]);
   assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
-  assert.match(root.innerHTML, /Leia as Unidades como elas aparecem em Estudo/u);
+  assert.doesNotMatch(root.innerHTML, /Inspeção do conteúdo|Leia as Unidades como elas aparecem em Estudo/u);
   assert.match(root.innerHTML, /<details class="course-authoring-content-hierarchy"><summary>Estrutura do Curso<\/summary>/u);
   assert.doesNotMatch(root.innerHTML, /course-authoring-content-hierarchy" open/u);
-  assert.match(root.innerHTML, /Editar Curso/u);
+  assert.match(
+    root.innerHTML,
+    /class="course-authoring-task-menu"[\s\S]*data-target-kind="course"[\s\S]*<span>Editar Curso<\/span>/u
+  );
   assert.match(root.innerHTML, /Abrir Base em Conteúdo/u);
   assert.match(root.innerHTML, /data-course-inspection-host/u);
   assert.doesNotMatch(root.innerHTML, />Estrutura<|>Inspeção</u);
@@ -784,6 +787,49 @@ test("Conteúdo delega hierarquia, renderer e edição a uma única sequência",
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["outline", COURSE_ID], ["outline", COURSE_ID]]);
   assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
+});
+
+test("menu de tarefas fecha antes de trocar de seção", async () => {
+  const root = new FakeRoot();
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID)
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture(),
+    locationValue,
+    historyValue: { state: null, replaceState() {} },
+    windowValue: new FakeWindow()
+  });
+  assert.equal(await surface.open(), true);
+
+  const menu = { open: true };
+  const node = {
+    dataset: { courseAuthoringAction: "change-section", section: "planning" },
+    getAttribute(name) {
+      return name === "href"
+        ? buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+        : null;
+    },
+    closest(selector) {
+      return selector === ".course-authoring-task-menu, .course-authoring-part-tools"
+        ? menu
+        : null;
+    }
+  };
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest(selector) {
+        return selector === "[data-course-authoring-action]" ? node : null;
+      }
+    }
+  });
+
+  assert.equal(menu.open, false);
+  surface.destroy();
 });
 
 test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segunda hierarquia", async () => {

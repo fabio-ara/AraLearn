@@ -80,9 +80,11 @@ O [guia do professor e autor](docs/guia-professor-autor.md) conduz essas tarefas
 
 ## Usar Assistência por IA
 
-Assistência por IA é uma sessão contextual com minichat. A pessoa discute um
-plano, confirma a geração, confere a prévia no renderer real e decide se deseja
-aplicar e salvar.
+Assistência por IA é uma conversa contextual. Cada resposta traz uma proposta
+concreta para o alvo corrente; a pessoa pode corrigir, discordar ou acrescentar
+condições em quantos turnos precisar. **Aceitar e aplicar** autoriza a geração e
+a validação da proposta corrente. O resultado validado entra no rascunho, e
+**Salvar** continua sendo uma decisão separada.
 
 A sessão pode alterar composição e conteúdo da Unidade, estrutura e conteúdo da
 Microssequência e a organização de Microssequências dentro da Lição. O contexto

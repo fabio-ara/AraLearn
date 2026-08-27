@@ -749,7 +749,9 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Use Atualizar Curso depois para conferir o acesso.",
         { exact: true }
       )).toBeVisible();
-      await ownerPage.getByRole("button", { name: "Atualizar Curso" }).click();
+      const ownerTaskMenu = ownerPage.locator(".course-authoring-task-menu");
+      await ownerTaskMenu.locator(":scope > summary").click();
+      await ownerTaskMenu.getByRole("button", { name: "Atualizar Curso" }).click();
       await expect(ownerPage.locator(
         ".course-authoring-surface[data-view='course'][data-section='people']"
       )).toHaveAttribute("aria-busy", "false");

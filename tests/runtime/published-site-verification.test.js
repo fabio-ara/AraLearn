@@ -14,7 +14,7 @@ import {
 
 const BASE_URL = "https://site.example.test/AraLearn/";
 const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.32";
+const VERSION = "0.0.33";
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>

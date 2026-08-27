@@ -194,7 +194,7 @@ Curso, no navegador ou em logs para contornar uma falha.
 
 Falha, cota, recusa ou resposta fora do formato não altera o Curso. Feche a
 sugestão e continue a edição manual, ou use um cliente MCP ou um GPT conectado
-por Actions para uma tarefa mais ampla. Se **Aplicar ao rascunho** já foi usado,
+por Actions para uma tarefa mais ampla. Se **Aceitar e aplicar** já foi usado,
 confira o conteúdo e ainda use **Salvar** para efetivar a mudança; aplicar a
 candidata não grava por si só.
 

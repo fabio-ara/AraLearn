@@ -30,10 +30,10 @@ com Observações, Auditoria, correção, verificação e reversão; Variantes e
 pesquisa; Pessoas e acesso. Inclua criação, edição e exclusão segura de um Curso
 descartável.
 
-A Assistência por IA precisa demonstrar conversa, plano discutível,
-confirmação, descoberta progressiva de componentes, validação, renderer real,
-aplicação ao rascunho e gravação explícita. Uma proposta recusada deve deixar o
-conteúdo corrente intacto.
+A Assistência por IA precisa demonstrar conversa, uma proposta concreta em cada
+resposta, revisão multiturmo, aceite explícito, descoberta progressiva de
+componentes, validação no renderer real, aplicação ao rascunho e gravação
+separada. Uma proposta recusada deve deixar o conteúdo corrente intacto.
 
 ## Tamanhos e temas
 

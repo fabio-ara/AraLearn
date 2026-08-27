@@ -249,6 +249,7 @@ export function createCourseStudyApplication({
   };
   let manualInlineController = null;
   let providerAssistance = null;
+  let destroyed = false;
 
   function setHomeNotice(message, reviewUndo = null) {
     state.homeNotice = message;
@@ -987,7 +988,7 @@ export function createCourseStudyApplication({
     if (!accepted) return false;
     if (!await ensureCourseLoaded(courseId)) {
       if (state.view === "courses" && state.homeError) {
-        queueStudyFocus("[data-action='reset-course-progress']", {
+        queueStudyFocus("[data-action='course-lifecycle-menu']", {
           "data-course-id": courseId
         });
         render({ preserveFocus: false });
@@ -999,7 +1000,7 @@ export function createCourseStudyApplication({
     } catch (error) {
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
       state.homeError = "Não foi possível zerar o progresso. Tente novamente.";
-      queueStudyFocus("[data-action='reset-course-progress']", {
+      queueStudyFocus("[data-action='course-lifecycle-menu']", {
         "data-course-id": courseId
       });
       render({ preserveFocus: false });
@@ -1617,13 +1618,6 @@ export function createCourseStudyApplication({
     });
   }
 
-  function studyProviderPreviewFocus() {
-    const target = root.querySelector?.("[data-study-destination-heading], .runtime-card-title");
-    target?.focus?.({ preventScroll: true });
-    target?.scrollIntoView?.({ block: "center", behavior: "auto" });
-    return target || null;
-  }
-
   async function maintainCourseFromHome(courseId, operation) {
     if (!courseId || state.homeLoadingCourseId ||
         typeof repository.maintainCourse !== "function") return false;
@@ -1959,9 +1953,13 @@ export function createCourseStudyApplication({
     if (!initialId) return false;
     state.assistanceActiveScope = scope;
     state.assistanceSelection = { scope, ids: [initialId] };
-    queueStudyFocus("[data-action='toggle-assistance-target']", {
-      "data-assistance-target-id": initialId
-    });
+    if (scope === "study_unit" && initialId === "study_unit") {
+      queueStudyFocus("[data-action='start-assistance-chat']");
+    } else {
+      queueStudyFocus("[data-action='toggle-assistance-target']", {
+        "data-assistance-target-id": initialId
+      });
+    }
     render({ preserveFocus: false, captureDraft: false });
     return true;
   }
@@ -2047,22 +2045,10 @@ export function createCourseStudyApplication({
         targetTitle: assistanceTargetTitle(scope, current),
         writeTargetId: scope === "study_unit" ? state.manualTargetId : "",
         writeTargetIds: selectedIds,
-        onFocusPreview: studyProviderPreviewFocus,
         onClosed: () => {
           state.assistanceActiveScope = "";
           state.assistanceSelection = null;
           queueStudyFocus(`[data-action='${studyProviderTriggerAction(scope)}']`);
-          render({ preserveFocus: false, captureDraft: false });
-        },
-        onPreview: (prepared) => {
-          state.project = clone(prepared.proposedProject);
-          state.selection = retainAssistanceSelection(state.project, baselineSelection);
-          state.assistanceError = "";
-          render({ preserveFocus: false, captureDraft: false });
-        },
-        onDiscardPreview: () => {
-          state.project = clone(baselineProject);
-          state.selection = clone(baselineSelection);
           render({ preserveFocus: false, captureDraft: false });
         },
         onApplyDraft: (prepared) => {
@@ -2819,7 +2805,7 @@ export function createCourseStudyApplication({
         return false;
       }
       state.advancePending = false;
-      void Promise.resolve(repository.flush?.()).catch(() => undefined);
+      void flushPersonalState().catch(() => undefined);
     }
     const next = lessonStudyUnits[currentIndex + delta];
     if (!next) {
@@ -2834,6 +2820,14 @@ export function createCourseStudyApplication({
       return false;
     }
     return openLessonStudyUnit(next, { recordHistory: false });
+  }
+
+  async function flushPersonalState() {
+    try {
+      return await repository.flush?.();
+    } finally {
+      if (!destroyed) render();
+    }
   }
 
   async function openObservations() {
@@ -3908,10 +3902,9 @@ export function createCourseStudyApplication({
       render();
       return state.connectionOffline;
     },
-    flushPersonalState() {
-      return repository.flush();
-    },
+    flushPersonalState,
     destroy() {
+      destroyed = true;
       providerAssistance?.destroy?.();
       providerAssistance = null;
       manualInlineController?.destroy?.();

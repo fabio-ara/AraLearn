@@ -106,23 +106,32 @@ img[src$="aralearn-mark-monochrome.svg"] {
 .open-mini {
   min-width: var(--tap);
   min-height: var(--tap);
-  width: var(--tap);
-  height: var(--tap);
   border-radius: 11px;
   border: 1px solid var(--border-default);
   background: var(--surface-raised);
   color: var(--text-primary);
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
-  display: grid;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-ghost {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  line-height: 1;
   background: var(--surface-raised);
 }
 
 .open-mini {
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  gap: 6px;
+  padding: 7px 10px;
   background: var(--action-primary);
   color: var(--text-on-action);
   border-color: var(--action-primary);
@@ -142,8 +151,7 @@ img[src$="aralearn-mark-monochrome.svg"] {
   box-shadow: none;
 }
 
-.tiny-icon,
-.open-mini {
+.tiny-icon {
   min-width: 36px;
   min-height: 36px;
   width: 36px;
@@ -152,9 +160,7 @@ img[src$="aralearn-mark-monochrome.svg"] {
 
 .course-actions .icon-ghost,
 .lesson-actions .icon-ghost,
-.lesson-actions .open-mini,
-.microsequence-actions .icon-ghost,
-.microsequence-actions .open-mini {
+.microsequence-actions .icon-ghost {
   min-width: 48px;
   min-height: 48px;
   width: 48px;

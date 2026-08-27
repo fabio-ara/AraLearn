@@ -245,27 +245,28 @@ na Microssequência ou na Lição:
 
 1. escolha OpenAI, Gemini ou DeepSeek;
 2. informe o modelo quando necessário e a chave efêmera da sessão;
-3. leia o aviso sobre o recorte enviado e escreva uma mensagem;
-4. discuta o plano até que ele represente a intenção;
-5. use **Confirmar e preparar**;
-6. confira a candidata no renderer real;
-7. aplique ao rascunho ou descarte;
-8. salve somente se o resultado estiver adequado.
+3. escreva o que deseja compreender ou alterar;
+4. examine a proposta que acompanha cada resposta e continue a conversa se
+   quiser corrigir, discordar ou acrescentar algo;
+5. use **Aceitar e aplicar** quando a proposta representar sua intenção;
+6. confira o resultado no rascunho;
+7. salve somente se o resultado estiver adequado.
 
 O pedido leva sua mensagem, o conteúdo selecionado, o restante do objeto
 corrente como contexto, um resumo do Curso e as mensagens recentes. PDFs,
 Fontes e dados da conta ficam fora. A chave segue somente ao provider escolhido
 e permanece em memória até sair, recarregar ou encerrar a superfície.
 
-O aviso de cada envio separa essa memória efêmera do tratamento externo. O
-provider pode conservar dados segundo seus próprios termos; confira destino e
-conteúdo antes de autorizar.
+O provider pode conservar dados segundo seus próprios termos. A configuração
+do serviço fica disponível junto à conversa sem ocupar o espaço principal do
+chat.
 
 A sessão pode trabalhar com a composição da Unidade, com a estrutura da
 Microssequência e com a organização de Microssequências dentro da Lição. Depois
-da conversa e da confirmação, o AraLearn valida a proposta e a mostra no
-renderer real. Proposta inválida ou não renderizável deixa o conteúdo corrente
-intacto. Endpoint, relay e instruções de arquitetura não aparecem no uso normal.
+do aceite, o AraLearn gera e valida a candidata no renderer real antes de
+aplicá-la ao rascunho. Proposta inválida ou não renderizável deixa o conteúdo
+corrente intacto. Endpoint, relay e instruções de arquitetura não aparecem no
+uso normal.
 
 ## Trabalhar com o ChatGPT a partir da Autoria
 
