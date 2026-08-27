@@ -313,47 +313,73 @@ Se uma credencial ou permissão realmente impedir uma etapa, o trabalho para
 somente nesse ponto e solicita a menor intervenção humana capaz de desbloquear
 a continuação.
 
+## Evidência final publicada
+
+A fronteira pública validada é `aralearn.authoring-protocol.v1`, schema
+`1.0.1`, fingerprint
+`sha256:f9183c9088e1ce4a475b8b0b7c9aeef3913596aa8283f378f094b42f0a53d426`.
+A implementação principal foi integrada pela PR #205; o limite de retry do CAS
+foi integrado pela PR #206, no merge `3b6f3bf1`. O banco hospedado expõe a
+revisão `20260827185748`; MCP, API de Cursos e Action estão ativos,
+respectivamente, nas versões implantadas 171, 49 e 41. O Pages do mesmo merge
+foi republicado e validado contra essa revisão.
+
+No GPT final `g-6a8e39fd33a8819195127d2accd0a90f`, o Curso
+`003ba920-db66-4d21-8b79-f37c48304453` foi lido, recebeu `update_plan` e
+`add_part`, e foi relido em `courseRevision=3` e `planVersion=3`. O replay
+literal `gpt-action-v1-dataprev-plan-20260827-02` retornou `idempotent=true`,
+com receipt histórico `2/2` e estado vivo `3/3`. O pedido novo com CAS
+deliberadamente obsoleto `gpt-action-v1-dataprev-stale-cas-20260827-03`
+retornou `stale_course_state`: o log da Action registrou HTTP 409 em 351 ms, a
+releitura HTTP 200 em 258 ms e o PostgreSQL registrou uma única recusa, sem a
+rajada anterior. O conteúdo permaneceu inalterado.
+
+Os gates finais incluíram 1.147 testes aprovados e nenhuma falha, 108 testes
+pgTAP, lint JavaScript e SQL, diff semântico do protocolo, paridade dos 771
+objetos do banco real, auditorias de documentação e terminologia, smokes
+hospedados e inspeção no Chrome real.
+
 ## Checklist de aceite
 
 Marcar um item somente após evidência correspondente no estado efetivamente
 publicado. A conclusão exige todos os itens aplicáveis marcados.
 
-- [ ] Causa raiz do `invalid_course_authoring_plan_command` demonstrada.
-- [ ] Protocolo público `aralearn.authoring-protocol.v1` é a autoridade canônica.
-- [ ] Catálogo público não depende de enums ou tipos internos do domínio.
-- [ ] Adaptador v1 traduz a forma pública para o domínio corrente.
-- [ ] Estratégia de versionamento e preservação de versões antigas está implementada.
-- [ ] Snapshot e diff semântico bloqueiam breaking changes acidentais em CI.
-- [ ] Fingerprint determinístico confere com o catálogo canônico.
-- [ ] MCP deriva da autoridade v1 e publica identidade/fingerprint corretos.
-- [ ] Actions deriva da autoridade v1 e publica identidade/fingerprint corretos.
-- [ ] OpenAPI não perde regras necessárias anteriormente expressas por `allOf`.
-- [ ] `planCommand` expõe todas as variantes com discriminadores literais.
-- [ ] `designCommand`, `sourceCommand`, `annotationCommand`, `auditCommand` e
+- [x] Causa raiz do `invalid_course_authoring_plan_command` demonstrada.
+- [x] Protocolo público `aralearn.authoring-protocol.v1` é a autoridade canônica.
+- [x] Catálogo público não depende de enums ou tipos internos do domínio.
+- [x] Adaptador v1 traduz a forma pública para o domínio corrente.
+- [x] Estratégia de versionamento e preservação de versões antigas está implementada.
+- [x] Snapshot e diff semântico bloqueiam breaking changes acidentais em CI.
+- [x] Fingerprint determinístico confere com o catálogo canônico.
+- [x] MCP deriva da autoridade v1 e publica identidade/fingerprint corretos.
+- [x] Actions deriva da autoridade v1 e publica identidade/fingerprint corretos.
+- [x] OpenAPI não perde regras necessárias anteriormente expressas por `allOf`.
+- [x] `planCommand` expõe todas as variantes com discriminadores literais.
+- [x] `designCommand`, `sourceCommand`, `annotationCommand`, `auditCommand` e
       `variantCommand` expõem discriminadores literais.
-- [ ] `materializationCommand` expõe `start`, `record_step` e `finish` de forma estrutural.
-- [ ] `lerCurso` expressa as diferenças obrigatórias entre vistas.
-- [ ] `consultarComponentesDidaticos` expressa corretamente `contracts` e prévia.
-- [ ] Backend continua recusando aliases e payloads incompatíveis.
-- [ ] `requestId`, idempotência, CAS e deep links permanecem corretos.
-- [ ] Testes derivados confirmam paridade semântica MCP ↔ Actions.
-- [ ] Jornada MCP local cobre plano/Parte, design, componentes e materialização.
-- [ ] Jornada Actions local cobre plano/Parte, design, componentes e materialização.
-- [ ] Chamadas negativas são recusadas no schema antes do backend quando possível.
-- [ ] Smokes detectam deployment MCP, Action ou OpenAPI defasado.
-- [ ] OpenAPI publicado foi importado no GPT final.
-- [ ] Preview do GPT mostra discriminadores literais, sem `type: any`.
-- [ ] GPT final usa endpoint, OAuth, versão e fingerprint corretos.
-- [ ] Curso `003ba920-db66-4d21-8b79-f37c48304453` foi lido pela fronteira pública real.
-- [ ] `update_plan` foi executado e relido no Curso real com incremento correto.
-- [ ] `add_part` foi executado e relido no Curso real com posição e versão corretas.
-- [ ] Repetição de `requestId` e CAS obsoleto foram validados sem regressão.
-- [ ] Refresh da Autoria preserva o Curso e não apresenta o flicker descrito.
-- [ ] Indicador de sincronização e textos compactos seguem a identidade de Estudos.
-- [ ] Frontend foi validado no Chrome real sem regressão visual ou pedagógica.
-- [ ] Testes unitários, integração, E2E e smokes relevantes estão verdes.
-- [ ] Commits foram criados sem misturar trabalho estranho ao recorte.
-- [ ] Push e integração/merge foram concluídos.
-- [ ] MCP, Action, Pages/OpenAPI e demais superfícies necessárias foram implantados.
-- [ ] Ambiente publicado corresponde aos fingerprints e artefatos esperados.
-- [ ] Fluxo real ChatGPT → Action/MCP → AraLearn → releitura funciona de ponta a ponta.
+- [x] `materializationCommand` expõe `start`, `record_step` e `finish` de forma estrutural.
+- [x] `lerCurso` expressa as diferenças obrigatórias entre vistas.
+- [x] `consultarComponentesDidaticos` expressa corretamente `contracts` e prévia.
+- [x] Backend continua recusando aliases e payloads incompatíveis.
+- [x] `requestId`, idempotência, CAS e deep links permanecem corretos.
+- [x] Testes derivados confirmam paridade semântica MCP ↔ Actions.
+- [x] Jornada MCP local cobre plano/Parte, design, componentes e materialização.
+- [x] Jornada Actions local cobre plano/Parte, design, componentes e materialização.
+- [x] Chamadas negativas são recusadas no schema antes do backend quando possível.
+- [x] Smokes detectam deployment MCP, Action ou OpenAPI defasado.
+- [x] OpenAPI publicado foi importado no GPT final.
+- [x] Preview do GPT mostra discriminadores literais, sem `type: any`.
+- [x] GPT final usa endpoint, OAuth, versão e fingerprint corretos.
+- [x] Curso `003ba920-db66-4d21-8b79-f37c48304453` foi lido pela fronteira pública real.
+- [x] `update_plan` foi executado e relido no Curso real com incremento correto.
+- [x] `add_part` foi executado e relido no Curso real com posição e versão corretas.
+- [x] Repetição de `requestId` e CAS obsoleto foram validados sem regressão.
+- [x] Refresh da Autoria preserva o Curso e não apresenta o flicker descrito.
+- [x] Indicador de sincronização e textos compactos seguem a identidade de Estudos.
+- [x] Frontend foi validado no Chrome real sem regressão visual ou pedagógica.
+- [x] Testes unitários, integração, E2E e smokes relevantes estão verdes.
+- [x] Commits foram criados sem misturar trabalho estranho ao recorte.
+- [x] Push e integração/merge foram concluídos.
+- [x] MCP, Action, Pages/OpenAPI e demais superfícies necessárias foram implantados.
+- [x] Ambiente publicado corresponde aos fingerprints e artefatos esperados.
+- [x] Fluxo real ChatGPT → Action/MCP → AraLearn → releitura funciona de ponta a ponta.
