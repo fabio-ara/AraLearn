@@ -4,6 +4,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.38] - 2026-08-27
+
+### Corrigido
+
+- `add_plan_item` e `update_plan_item` passam a ser publicados como projeções
+  dedicadas de Actions, com os campos obrigatórios preservados diretamente no
+  objeto importado pelo ChatGPT;
+- a verificação do site publicado passa a conferir também essas projeções de
+  transporte, sem alterar o protocolo público v1 nem o MCP.
+
 ## [0.0.37] - 2026-08-27
 
 ### Corrigido

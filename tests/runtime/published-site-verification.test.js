@@ -304,10 +304,9 @@ test("recusa recurso ausente ou servido com MIME incorreto", async (context) => 
   });
 });
 
-test("recusa OpenAPI de Actions hospedado com versão ou operações divergentes", async () => {
+test("recusa OpenAPI de Actions hospedado com versão divergente", async () => {
   const incompatible = JSON.parse(ACTIONS_OPENAPI);
   incompatible.info.version = "0.0.30";
-  delete incompatible.paths["/alterarCurso"];
   const { fetchImpl } = createPublishedSiteFetch({
     overrides: {
       "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
@@ -319,6 +318,23 @@ test("recusa OpenAPI de Actions hospedado com versão ou operações divergentes
   await assert.rejects(
     () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
     /OpenAPI publicado de Actions não corresponde/u
+  );
+});
+
+test("recusa OpenAPI hospedado sem uma projeção dedicada de item do plano", async () => {
+  const incomplete = JSON.parse(ACTIONS_OPENAPI);
+  delete incomplete.paths["/add_plan_item"];
+  const { fetchImpl } = createPublishedSiteFetch({
+    overrides: {
+      "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+        body: `${JSON.stringify(incomplete)}\n`,
+        type: "application/yaml"
+      }
+    }
+  });
+  await assert.rejects(
+    () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+    /não contém a projeção de transporte corrente/u
   );
 });
 

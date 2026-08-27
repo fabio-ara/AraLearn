@@ -4,6 +4,9 @@ import {
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH
 } from "./authoringProtocolV1.js";
+import {
+  authoringActionV1DedicatedProjection
+} from "./authoringActionProjectionV1.js";
 import { createAuthoringActionOAuthHandler } from "./actionOAuthServer.js";
 import {
   corsHeaders,
@@ -57,6 +60,17 @@ function routeFromPath(pathname) {
     .map((segment) => decodeURIComponent(segment));
   const slugIndex = segments.lastIndexOf("aralearn-authoring-action");
   return slugIndex >= 0 ? segments.slice(slugIndex + 1) : segments;
+}
+
+function validateDedicatedProjection(rawArguments, projection) {
+  if (rawArguments.operation !== projection.operation ||
+      rawArguments[projection.commandProperty]?.type !== projection.commandType) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_action_projection",
+      "A operação não corresponde à Action solicitada."
+    );
+  }
 }
 
 async function readBody(request) {
@@ -132,12 +146,15 @@ export function createAuthoringActionHandler({
       if (request.method !== "POST") {
         throw new AuthoringApiError(405, "method_not_allowed", "A Action aceita somente POST.");
       }
-      actionName = route.length === 1 ? route[0] : "";
+      const requestedActionName = route.length === 1 ? route[0] : "";
+      const dedicatedProjection = authoringActionV1DedicatedProjection(requestedActionName);
+      actionName = dedicatedProjection?.canonicalToolName || requestedActionName;
       if (!authoringProtocolV1ToolDefinition(actionName)) {
         throw new AuthoringApiError(404, "unknown_action", "Operação de Curso inexistente.");
       }
       rawArguments = await readBody(request);
       requestId = rawArguments.requestId ?? null;
+      if (dedicatedProjection) validateDedicatedProjection(rawArguments, dedicatedProjection);
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = Date.now() + 40_000;
       const principal = await adapter.resolveActionPrincipal(

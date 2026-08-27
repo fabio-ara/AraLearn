@@ -357,6 +357,24 @@ links permanecem obrigatórios. A menor correção suficiente deve receber teste
 de regressão, commit, integração, push, deploy e validação no ambiente
 publicado.
 
+A release 0.0.37 corrigiu o erro público do backend e preservou a
+obrigatoriedade de `sourceLinks` numa condição `anyOf` compacta. O OpenAPI
+armazenado pelo editor do GPT continha essa condição, mas o Preview real
+demonstrou que o importador não a usava para construir a chamada: o agente
+continuava percebendo `sourceLinks` como opcional. O ensaio foi interrompido
+antes da criação de Curso ou de qualquer escrita.
+
+A correção candidata 0.0.38 mantém o protocolo v1, o MCP, o domínio e o
+fingerprint canônico inalterados. Somente a projeção de transporte das Actions
+é especializada: `add_plan_item` e `update_plan_item` tornam-se operações
+dedicadas derivadas das variantes canônicas de `alterarCurso`, com
+`operation`, `planCommand.type` e todos os campos obrigatórios expressos
+diretamente em objetos comuns. A Action genérica deixa de anunciar essas duas
+variantes para não oferecer ao GPT um caminho degradado; o backend continua
+aceitando a forma canônica anterior e valida que a rota dedicada corresponda
+exatamente ao discriminador antes de encaminhar o mesmo payload ao executor
+público.
+
 ## Checklist de aceite
 
 Marcar um item somente após evidência correspondente no estado efetivamente

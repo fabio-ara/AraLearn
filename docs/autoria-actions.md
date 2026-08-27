@@ -24,6 +24,11 @@ Planejamento, Fontes, Observações, Auditoria, Variantes e Pesquisa aparecem
 como vistas de `lerCurso` ou operações fechadas de `alterarCurso`. O GPT não
 recebe uma rota genérica para banco nem uma operação por tabela.
 
+O OpenAPI apresenta ainda `add_plan_item` e `update_plan_item` como projeções
+dedicadas de Actions. Elas continuam executando as variantes homônimas de
+`planCommand` dentro de `alterarCurso`; não acrescentam comandos ao protocolo
+público nem criam outro caminho no domínio.
+
 O OpenAPI é uma projeção do protocolo público
 `aralearn.authoring-protocol.v1`, não uma cópia dos tipos internos do domínio.
 Um adaptador explícito leva esse vocabulário ao mesmo executor usado pelo MCP,
@@ -49,11 +54,15 @@ importador descarta a operação quando um desses elementos falta e ignora
 `oneOf` de raiz mesmo quando o aceita no editor. Por isso, a projeção usada para
 validar Actions conserva os unions estritos, enquanto o OpenAPI entregue ao GPT
 expõe uma superfície agregada, derivada dessas variantes, com todos os campos,
-enums discriminadores e condições de uso nas descrições. Quando uma condição é
-necessária para construir a chamada, a superfície agregada preserva também uma
-variante estrutural compacta. É o caso de `add_plan_item` e `update_plan_item`,
-que exigem `sourceLinks` — inclusive `[]` quando não há fonte a vincular. O
-servidor continua aplicando as variantes estritas antes de executar a chamada.
+enums discriminadores e condições de uso nas descrições.
+
+O importador também ignora campos obrigatórios declarados somente dentro de
+uma condição aninhada. Por isso, `add_plan_item` e `update_plan_item` recebem
+projeções dedicadas: cada uma contém um objeto `planCommand` sem union, cujo
+`required` direto inclui `sourceLinks` — inclusive `[]` quando não há Fonte a
+vincular. A projeção genérica deixa de anunciar essas duas variantes para que o
+GPT não escolha a forma ambígua. O servidor mantém o vocabulário canônico e
+continua aplicando a variante estrita antes de executar a chamada.
 
 ## Preparar um cliente OAuth
 

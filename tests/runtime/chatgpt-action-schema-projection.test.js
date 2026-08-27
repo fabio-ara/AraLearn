@@ -10,6 +10,9 @@ import {
   COURSE_COMPONENT_CATALOG_VERSION
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import {
+  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
+import {
   ACTION_SCHEMA_RULE_CATEGORIES,
   findSchemaKeywordPaths,
   projectActionInputSchema,
@@ -226,9 +229,13 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
     assert.equal(command.type, "object", field);
     assert.ok(command.required.includes("type"), `${field}.type obrigatório`);
     assert.equal(command.properties.type.type, "string", `${field}.type`);
+    const dedicatedTypes = new Set(AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+      .filter(({ commandProperty }) => commandProperty === field)
+      .map(({ commandType }) => commandType));
     assert.deepEqual(
       sorted(command.properties.type.enum),
-      sorted(AUTHORING_PROTOCOL_V1_VOCABULARY[vocabulary]),
+      sorted(AUTHORING_PROTOCOL_V1_VOCABULARY[vocabulary]
+        .filter((type) => !dedicatedTypes.has(type))),
       field
     );
   }
@@ -372,7 +379,7 @@ test("OpenAPI final resolve referências pela raiz e usa components.schemas", as
   }
 });
 
-test("OpenAPI final exige sourceLinks nos comandos de item do plano", async () => {
+test("OpenAPI final especializa os comandos de item do plano sem unions condicionais", async () => {
   const openApi = JSON.parse(await fs.readFile(
     new URL("../../docs/downloads/aralearn-chatgpt-action-openapi.yaml", import.meta.url),
     "utf8"
@@ -381,15 +388,29 @@ test("OpenAPI final exige sourceLinks nos comandos de item do plano", async () =
   addFormats(ajv);
   const documentId = "urn:aralearn:chatgpt-action-plan-items";
   ajv.addSchema(openApi, documentId);
-  const validate = ajv.compile({
-    $ref: `${documentId}#/paths/~1alterarCurso/post/requestBody/content/application~1json/schema`
-  });
-  const planCommand = openApi.paths["/alterarCurso"].post.requestBody
+  const genericSchema = openApi.paths["/alterarCurso"].post.requestBody
     .content["application/json"].schema.properties.planCommand;
+  const dedicatedTypes = AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
+    .map(({ commandType }) => commandType);
+  const genericTypes = genericSchema.properties.type.enum;
+  const projectedTypes = [...genericTypes, ...dedicatedTypes];
   assert.deepEqual(
-    sorted(planCommand.anyOf.flatMap((branch) => branch.properties.type.enum)),
-    sorted(AUTHORING_PROTOCOL_V1_VOCABULARY.planCommandTypes)
+    dedicatedTypes.filter((type) => genericTypes.includes(type)),
+    [],
+    "alterarCurso não deve competir com as Actions dedicadas."
   );
+  assert.equal(
+    new Set(projectedTypes).size,
+    projectedTypes.length,
+    "Cada comando do plano precisa pertencer a uma única operação de Actions."
+  );
+  assert.deepEqual(
+    sorted(projectedTypes),
+    sorted(AUTHORING_PROTOCOL_V1_VOCABULARY.planCommandTypes),
+    "A projeção genérica e as dedicadas precisam cobrir juntas o vocabulário canônico."
+  );
+  assert.equal(genericSchema.anyOf, undefined);
+  assert.equal(genericSchema.oneOf, undefined);
 
   const base = {
     requestId: REQUEST_ID,
@@ -404,8 +425,55 @@ test("OpenAPI final exige sourceLinks nos comandos de item do plano", async () =
     (branch) => branch.properties.type.const === "add_plan_item"
   );
   const planItemKinds = addPlanItem.properties.kind.enum;
-  for (const kind of planItemKinds) {
-    for (const type of ["add_plan_item", "update_plan_item"]) {
+  assert.deepEqual(planItemKinds, [
+    "intended_learning_outcome",
+    "instructional_analysis_unit",
+    "evidence_requirement"
+  ]);
+
+  for (const projection of AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS) {
+    const pathItem = openApi.paths[projection.path];
+    assert.equal(pathItem.post.operationId, projection.operationId);
+    const schema = pathItem.post.requestBody.content["application/json"].schema;
+    for (const keyword of ["oneOf", "anyOf", "allOf"]) {
+      assert.deepEqual(
+        findSchemaKeywordPaths(schema, keyword),
+        [],
+        `${projection.operationId} não pode depender de ${keyword}.`
+      );
+    }
+    assert.deepEqual(schema.properties.operation.enum, [projection.operation]);
+    assert.deepEqual(
+      schema.properties.planCommand.properties.type.enum,
+      [projection.commandType]
+    );
+    assert.equal(schema.additionalProperties, false);
+    assert.equal(schema.properties.planCommand.additionalProperties, false);
+    const projectedCanonicalPlanCommand = actionByName.alterarCurso.inputSchema
+      .properties.planCommand;
+    const canonicalVariant = projectedCanonicalPlanCommand.oneOf.find(
+      (branch) => branch.properties.type.enum[0] === projection.commandType
+    );
+    const forbiddenProperties = new Set(
+      canonicalVariant.not.anyOf.map((rule) => rule.required[0])
+    );
+    assert.deepEqual(
+      sorted(Object.keys(schema.properties.planCommand.properties)),
+      sorted(Object.keys(projectedCanonicalPlanCommand.properties)
+        .filter((name) => !forbiddenProperties.has(name))),
+      `${projection.operationId} precisa conservar todos os campos permitidos pela variante.`
+    );
+    assert.ok(schema.required.includes("expectedRevision"));
+    assert.ok(schema.required.includes("expectedPlanVersion"));
+    assert.ok(schema.required.includes("planCommand"));
+    assert.ok(schema.properties.planCommand.required.includes("sourceLinks"));
+    const validate = ajv.compile({
+      $ref: `${documentId}#/paths/${jsonPointerToken(projection.path)}` +
+        "/post/requestBody/content/application~1json/schema"
+    });
+
+    for (const kind of planItemKinds) {
+      const type = projection.commandType;
       const command = {
         type,
         kind,
@@ -426,9 +494,33 @@ test("OpenAPI final exige sourceLinks nos comandos de item do plano", async () =
         false,
         `${type}/${kind} não pode omitir sourceLinks.`
       );
+      assert.equal(
+        validate({
+          ...base,
+          planCommand: {
+            ...command,
+            type: type === "add_plan_item" ? "update_plan_item" : "add_plan_item"
+          }
+        }),
+        false,
+        `${projection.operationId} não aceita o discriminador da outra Action.`
+      );
+      assert.equal(
+        validate({ ...base, planCommand: { ...command, extra: true } }),
+        false,
+        `${projection.operationId} não aceita campo extra no comando.`
+      );
+      assert.equal(
+        validate({ ...base, planCommand: command, extra: true }),
+        false,
+        `${projection.operationId} não aceita campo extra no envelope.`
+      );
     }
   }
 
+  const validateGeneric = ajv.compile({
+    $ref: `${documentId}#/paths/~1alterarCurso/post/requestBody/content/application~1json/schema`
+  });
   for (const planCommandValue of [
     { type: "update_plan", objective: "Objetivo preservado" },
     {
@@ -440,9 +532,9 @@ test("OpenAPI final exige sourceLinks nos comandos de item do plano", async () =
     }
   ]) {
     assert.equal(
-      validate({ ...base, planCommand: planCommandValue }),
+      validateGeneric({ ...base, planCommand: planCommandValue }),
       true,
-      JSON.stringify(validate.errors)
+      JSON.stringify(validateGeneric.errors)
     );
   }
 });

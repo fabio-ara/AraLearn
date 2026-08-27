@@ -28,59 +28,15 @@ export function forChatGptActionDocumentation(value) {
   return value;
 }
 
-const PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS = Object.freeze([
-  "add_plan_item",
-  "update_plan_item"
-]);
-
-function planItemRequirementsForChatGptImporter(value) {
-  const commandTypes = value?.properties?.type?.enum;
-  if (!Array.isArray(commandTypes) ||
-      !PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS.every((type) => commandTypes.includes(type))) {
-    return null;
-  }
-  const branchesByType = new Map((value.oneOf || []).flatMap((branch) => {
-    const types = branch?.properties?.type?.enum;
-    return Array.isArray(types) && types.length === 1 ? [[types[0], branch]] : [];
-  }));
-  const constraints = PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS.map((type) => {
-    const branch = branchesByType.get(type);
-    if (!branch || !Array.isArray(branch.required) || !branch.required.includes("sourceLinks")) {
-      throw new TypeError(`O comando ${type} perdeu a obrigatoriedade de sourceLinks.`);
-    }
-    return {
-      properties: { type: { type: "string", enum: [type] } },
-      required: [...branch.required]
-    };
-  });
-  const remainingTypes = commandTypes.filter(
-    (type) => !PLAN_ITEM_COMMANDS_REQUIRING_SOURCE_LINKS.includes(type)
-  );
-  if (remainingTypes.length) {
-    constraints.push({
-      properties: { type: { type: "string", enum: remainingTypes } }
-    });
-  }
-  return constraints;
-}
-
 export function forChatGptActionImporter(value) {
   if (Array.isArray(value)) return value.map(forChatGptActionImporter);
   if (!value || typeof value !== "object") return value;
   const ignoresObjectUnion = value.type === "object" &&
     value.properties && typeof value.properties === "object" &&
     Array.isArray(value.oneOf);
-  const preservedPlanItemRequirements = ignoresObjectUnion
-    ? planItemRequirementsForChatGptImporter(value)
-    : null;
-  if (preservedPlanItemRequirements && Object.hasOwn(value, "anyOf")) {
-    throw new TypeError("O comando de planejamento já possui anyOf na projeção do importador.");
-  }
   return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) =>
     key === "oneOf" && ignoresObjectUnion
-      ? preservedPlanItemRequirements
-        ? [["anyOf", forChatGptActionImporter(preservedPlanItemRequirements)]]
-        : []
+      ? []
       : [[key, forChatGptActionImporter(entry)]]
   ));
 }
@@ -1466,4 +1422,195 @@ export function projectAuthoringProtocolToolsForActions(tools) {
     ...tool,
     inputSchema: projectActionInputSchema(tool)
   }));
+}
+
+function uniqueRequired(...values) {
+  return [...new Set(values.flatMap((value) => Array.isArray(value) ? value : []))];
+}
+
+function singletonVariant(schema, property, literal, label) {
+  const matches = (schema?.oneOf || []).filter((branch) => {
+    const marker = branch?.properties?.[property];
+    return marker?.type === "string" && marker.enum?.length === 1 &&
+      marker.enum[0] === literal;
+  });
+  if (matches.length !== 1) {
+    throw new TypeError(`${label} não possui uma variante única para ${literal}.`);
+  }
+  return matches[0];
+}
+
+function selectedProperties(properties, names, overrides = {}) {
+  return Object.fromEntries(names.map((name) => {
+    const schema = overrides[name] || properties?.[name];
+    if (!schema) throw new TypeError(`A projeção dedicada perdeu a propriedade ${name}.`);
+    return [name, structuredClone(schema)];
+  }));
+}
+
+function variantPropertyNames(properties, variant, label) {
+  const forbidden = new Set(forbiddenFields(variant));
+  if (!forbidden.size) {
+    throw new TypeError(`${label} não declara os campos incompatíveis.`);
+  }
+  const names = Object.keys(properties || {}).filter((name) => !forbidden.has(name));
+  const required = new Set(variant.required || []);
+  if ([...required].some((name) => !names.includes(name))) {
+    throw new TypeError(`${label} proíbe um campo obrigatório.`);
+  }
+  return names;
+}
+
+function reachableDefinitions(definitions, schema, label) {
+  if (!definitions) return {};
+  const selected = new Map();
+  const visit = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (typeof value.$ref === "string" && value.$ref.startsWith("#/$defs/")) {
+      const token = value.$ref.slice("#/$defs/".length).split("/")[0];
+      const name = token.replaceAll("~1", "/").replaceAll("~0", "~");
+      if (!Object.hasOwn(definitions, name)) {
+        throw new TypeError(`${label} referencia a definição ausente ${name}.`);
+      }
+      if (!selected.has(name)) {
+        selected.set(name, structuredClone(definitions[name]));
+        visit(definitions[name]);
+      }
+    }
+    for (const entry of Object.values(value)) visit(entry);
+  };
+  visit(schema);
+  return Object.fromEntries(selected);
+}
+
+function specializeActionCommandTool(tool, projection) {
+  const input = tool.inputSchema;
+  const operationVariant = singletonVariant(
+    input,
+    "operation",
+    projection.operation,
+    projection.operationId
+  );
+  const command = input.properties?.[projection.commandProperty];
+  const commandVariant = singletonVariant(
+    command,
+    "type",
+    projection.commandType,
+    projection.operationId
+  );
+  const rootRequired = uniqueRequired(input.required, operationVariant.required);
+  const commandRequired = uniqueRequired(command.required, commandVariant.required);
+  const commandPropertyNames = variantPropertyNames(
+    command.properties,
+    commandVariant,
+    `${projection.operationId}.${projection.commandProperty}`
+  );
+  const specializedCommand = {
+    type: "object",
+    additionalProperties: false,
+    properties: selectedProperties(command.properties, commandPropertyNames, {
+      type: commandVariant.properties.type
+    }),
+    required: commandRequired,
+    ...(command.description ? { description: command.description } : {})
+  };
+  const rootPropertyNames = variantPropertyNames(
+    input.properties,
+    operationVariant,
+    projection.operationId
+  );
+  const specializedInput = {
+    type: "object",
+    additionalProperties: false,
+    properties: selectedProperties(input.properties, rootPropertyNames, {
+      operation: operationVariant.properties.operation,
+      [projection.commandProperty]: specializedCommand
+    }),
+    required: rootRequired
+  };
+  const definitions = reachableDefinitions(
+    input.$defs,
+    specializedInput,
+    projection.operationId
+  );
+  return {
+    ...tool,
+    name: projection.operationId,
+    title: projection.title,
+    description: projection.description,
+    inputSchema: {
+      ...(Object.keys(definitions).length ? { $defs: definitions } : {}),
+      ...specializedInput
+    }
+  };
+}
+
+function omitDedicatedCommandVariants(tool, projections) {
+  if (!projections.length) return tool;
+  const clone = structuredClone(tool);
+  const byCommandProperty = Map.groupBy(
+    projections,
+    (projection) => projection.commandProperty
+  );
+  for (const [commandProperty, commandProjections] of byCommandProperty) {
+    const command = clone.inputSchema.properties?.[commandProperty];
+    if (!command || !Array.isArray(command.oneOf)) {
+      throw new TypeError(`${tool.name}.${commandProperty} não possui variantes públicas.`);
+    }
+    const omittedTypes = new Set(commandProjections.map(({ commandType }) => commandType));
+    const omittedBranches = [];
+    const remainingBranches = [];
+    for (const branch of command.oneOf) {
+      const types = branch?.properties?.type?.enum || [];
+      (types.some((type) => omittedTypes.has(type)) ? omittedBranches : remainingBranches)
+        .push(branch);
+    }
+    if (omittedBranches.length !== omittedTypes.size) {
+      throw new TypeError(`${tool.name}.${commandProperty} perdeu uma projeção dedicada.`);
+    }
+    command.oneOf = remainingBranches;
+    command.properties.type.enum = command.properties.type.enum.filter(
+      (type) => !omittedTypes.has(type)
+    );
+    const fields = (branches) => new Set(branches.flatMap((branch) => [
+      ...Object.keys(branch.properties || {}),
+      ...(branch.required || [])
+    ]));
+    const omittedFields = fields(omittedBranches);
+    const remainingFields = fields(remainingBranches);
+    const baseRequired = new Set(command.required || []);
+    for (const field of omittedFields) {
+      if (!remainingFields.has(field) && !baseRequired.has(field)) {
+        delete command.properties[field];
+      }
+    }
+  }
+  return clone;
+}
+
+export function projectChatGptActionTransportTools(actionTools, projections) {
+  if (!Array.isArray(actionTools) || !Array.isArray(projections)) {
+    throw new TypeError("A projeção de transporte das Actions é inválida.");
+  }
+  const toolsByName = new Map(actionTools.map((tool) => [tool.name, tool]));
+  const projectionsByTool = Map.groupBy(
+    projections,
+    (projection) => projection.canonicalToolName
+  );
+  const genericTools = actionTools.map((tool) => omitDedicatedCommandVariants(
+    tool,
+    projectionsByTool.get(tool.name) || []
+  ));
+  const dedicatedTools = projections.map((projection) => {
+    const canonical = toolsByName.get(projection.canonicalToolName);
+    if (!canonical) {
+      throw new TypeError(`A Action ${projection.operationId} não possui ferramenta canônica.`);
+    }
+    return specializeActionCommandTool(canonical, projection);
+  });
+  const names = [...genericTools, ...dedicatedTools].map(({ name }) => name);
+  if (new Set(names).size !== names.length) {
+    throw new TypeError("A projeção de transporte das Actions possui operationId duplicado.");
+  }
+  return [...genericTools, ...dedicatedTools];
 }
