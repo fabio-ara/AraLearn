@@ -11,7 +11,7 @@ Evidência corrente revisada em **2026-08-25**.
 | Estudar, responder, rever e observar | sim | após o primeiro carregamento, não | pessoa com acesso ao Curso | sim | sim | sim | produto | estado pessoal sincroniza quando a rede retorna |
 | Editar Unidade no Estudo | sim | para gravar | proprietário ou pessoa apta a criar cópia | sim | sim | sim | produto | acesso compartilhado grava somente numa cópia pessoal |
 | Planejar, materializar e revisar Curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
-| Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige plano confirmado, contratos válidos e gravação explícita |
+| Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
 | Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | cinco ferramentas públicas canônicas; não inclui perfil ou Manutenção |
 | Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
 | Excluir Curso próprio ou sair de Curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
@@ -83,9 +83,10 @@ exportações sem inferir eficácia ou causalidade.
 ## Assistência por IA
 
 Assistência por IA é uma sessão contextual, não uma chamada isolada para trocar
-texto. A pessoa conversa num minichat, discute um plano e confirma a geração.
-O modelo recebe contexto somente leitura suficiente para o alvo e devolve
-operações tipadas.
+texto. A pessoa conversa, e cada resposta mantém uma proposta concreta que pode
+ser discutida em novos turnos. Somente o aceite explícito autoriza gerar,
+validar e aplicar operações tipadas ao rascunho. O modelo recebe contexto
+somente leitura suficiente para o alvo.
 
 A sessão pode trabalhar com:
 

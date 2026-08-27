@@ -85,6 +85,7 @@ async function installProviderStub(page) {
           message: "A formulação pode ficar mais direta sem mudar seu significado.",
           proposal: {
             summary: "Tornar a explicação mais direta e preservar a representação textual.",
+            changes: ["Reescrever o trecho com uma formulação mais direta."],
             scope: "study_unit",
             componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
           }
@@ -518,7 +519,11 @@ test.describe("Autoria real com Supabase local", () => {
       const beforeCourseCopy = await readCourseIndexedDb(page, owner.id);
       const beforeCourseRevision = (await canonicalHeader()).revision;
       const courseCopyRequestIndex = mutatingRequests.length;
-      await page.getByRole("button", { name: "Planejar este Curso no ChatGPT" }).click();
+      const courseTaskMenu = page.locator(".course-authoring-task-menu");
+      await courseTaskMenu.locator(":scope > summary").click();
+      await courseTaskMenu.getByRole("button", {
+        name: "Planejar este Curso no ChatGPT"
+      }).click();
       await confirmChatCopy(page);
       const coursePrompt = await page.evaluate(() => navigator.clipboard.readText());
       expect(coursePrompt).toContain(`Curso: “${COURSE_TITLE}”.`);
@@ -1128,11 +1133,14 @@ test.describe("Autoria real com Supabase local", () => {
       const providerDialog = page.locator("[data-course-assistance] [role='dialog']");
       await expect(providerDialog).toBeVisible();
       await expect(providerDialog.getByRole("heading", {
-        name: STUDY_UNIT_TITLE,
+        name: "Edição com IA",
         exact: true
       })).toBeVisible();
-      await expect(providerDialog.locator(".course-assistance-connection"))
-        .toHaveJSProperty("open", true);
+      await expect(providerDialog.getByText(STUDY_UNIT_TITLE, { exact: false }))
+        .toHaveClass(/visually-hidden/u);
+      await expect(providerDialog.getByRole("button", {
+        name: "Configurar IA"
+      })).toHaveAttribute("aria-expanded", "true");
       await providerDialog.getByLabel("Serviço").selectOption("openai");
       await providerDialog.getByLabel("Modelo").selectOption("gpt-5.6-luna");
       await providerDialog.getByLabel("Chave da OpenAI").fill("openai-stub");
@@ -1144,12 +1152,9 @@ test.describe("Autoria real com Supabase local", () => {
         "A formulação pode ficar mais direta sem mudar seu significado."
       ))
         .toBeVisible();
-      await expect(providerDialog.getByRole("heading", { name: "Plano proposto" }))
+      await expect(providerDialog.getByRole("heading", { name: "Proposta atual" }))
         .toBeVisible();
-      await providerDialog.getByRole("button", { name: "Confirmar e preparar" }).click();
-      await expect(providerDialog.getByRole("heading", { name: "Prévia pronta" }))
-        .toBeVisible();
-      await providerDialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+      await providerDialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
       await expect(inspectionUnit.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
         .toBeVisible();
       await inspectionUnit.getByRole("button", { name: "Salvar proposta" }).click();

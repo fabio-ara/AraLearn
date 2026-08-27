@@ -629,7 +629,12 @@ export class CourseAnnotationRepository {
     const key = cacheKey(this.courseId);
     const timestamp = nowIso(this.clock);
     const apply = (current) => {
-      const normalized = normalizeCache(current, this.courseId, this.courseRevision, timestamp);
+      let normalized;
+      try {
+        normalized = normalizeCache(current, this.courseId, this.courseRevision, timestamp);
+      } catch {
+        normalized = emptyCache(this.courseId, this.courseRevision, timestamp);
+      }
       const next = updater(normalized) || normalized;
       const bytes = encoder.encode(JSON.stringify(next)).byteLength;
       if (bytes > MAX_CACHE_BYTES) {

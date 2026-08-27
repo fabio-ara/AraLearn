@@ -1075,10 +1075,19 @@ export class CourseStudyRepository {
   loadRuntimeStatus(courseIdentity = "") {
     const courseId = String(courseIdentity || "").trim().toLowerCase();
     const loaded = this.loadedCourseById.get(courseId);
+    const personal = this.personalByCourseId.get(courseId);
+    let pending = false;
+    try {
+      pending = personal?.snapshot?.().pending === true;
+    } catch {
+      // Uma cópia curricular confirmada pode existir antes de o estado pessoal
+      // terminar a recuperação offline; a barra continua utilizável nesse intervalo.
+    }
     return clone({
       offline: this.listRuntimeStatus.offline || loaded?.offline === true,
       stale: this.listRuntimeStatus.stale || loaded?.stale === true,
-      readOnly: this.listRuntimeStatus.readOnly || loaded?.readOnly === true
+      readOnly: this.listRuntimeStatus.readOnly || loaded?.readOnly === true,
+      pending
     });
   }
 

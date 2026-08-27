@@ -187,7 +187,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   await capture(page, "390-licao");
   await modeButton(page, "Assistência por IA").click();
   const lessonSelectionDock = page.locator(".study-assistance-selection-dock");
-  await expect(lessonSelectionDock.getByRole("button", { name: "Conversar" })).toBeVisible();
+  await expect(lessonSelectionDock.getByRole("button", { name: "Abrir Edição com IA" })).toBeVisible();
   expect(await lessonSelectionDock.evaluate((dock) => ({
     dockOverflow: dock.scrollWidth - dock.clientWidth,
     actionOverflow: dock.querySelector("[data-action='start-assistance-chat']").scrollWidth -
@@ -218,6 +218,12 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   expect(new Set(modeGeometry.map(({ height }) => height)).size).toBe(1);
   expect(Math.max(...modeGeometry.map(({ center }) => center)) -
     Math.min(...modeGeometry.map(({ center }) => center))).toBeLessThanOrEqual(1);
+  const unitRightEdges = await page.evaluate(() => ({
+    account: document.querySelector('[data-action="open-settings"]')
+      .getBoundingClientRect().right,
+    card: document.querySelector(".workbench-surface").getBoundingClientRect().right
+  }));
+  expect(Math.abs(unitRightEdges.account - unitRightEdges.card)).toBeLessThanOrEqual(1);
   await capture(page, "390-unidade-visualizar");
 
   const overflow = await page.evaluate(() => {
@@ -472,7 +478,9 @@ test("Abrir ignora a Unidade salva, mostra os Módulos e volta ao controle de or
   await page.setViewportSize({ width: 1280, height: 800 });
   await mountStudy(page, { savedView: "microsequence" });
   const open = page.locator("[data-action='open-course']");
-  await expect(open).toContainText("Abrir");
+  await expect(open).toHaveAccessibleName("Abrir Fixture Minimal");
+  await expect(open).toHaveText("");
+  await expect(open.locator("svg")).toHaveCount(1);
   await open.click();
   await expect(page.locator("[data-study-destination-heading]")).toContainText("Fixture Minimal");
   await expect(page.locator("[data-action='open-module']")).toBeVisible();

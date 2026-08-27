@@ -557,7 +557,7 @@ export function normalizeCourseAnchoredAnnotationPage(value) {
   uuid(page.courseId, code, "A identidade do Curso");
   integer(page.courseRevision, 1, Number.MAX_SAFE_INTEGER, code, "A revisão do Curso");
   integer(page.annotationSetVersion, 0, Number.MAX_SAFE_INTEGER, code, "A versão do conjunto de observações");
-  normalizeCourseAnchoredAnnotationQuery(page.query);
+  page.query = normalizeCourseAnchoredAnnotationQuery(page.query);
   exact(page.summary, ["matchingTotal", "byOrigin", "byChannel", "byState", "unclassifiedTotal"], code, "O resumo");
   integer(page.summary.matchingTotal, 0, Number.MAX_SAFE_INTEGER, code, "O total correspondente");
   integer(page.summary.unclassifiedTotal, 0, Number.MAX_SAFE_INTEGER, code, "O total não classificado");

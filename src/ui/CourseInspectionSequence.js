@@ -18,6 +18,7 @@ import {
   readManualStudyUnitEditPathValues
 } from "./manualStudyUnitEdit.js";
 import { createCourseProviderAssistance } from "./CourseProviderAssistance.js";
+import { normalizeCourseAuthoringPlan } from "./courseAuthoringViewModel.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
@@ -603,26 +604,26 @@ function renderManualModeActions(item, state, editing) {
     `<button type="button" data-inspection-unit-mode="view" data-study-unit-id="${id}"` +
     ` aria-pressed="${editing ? "false" : "true"}" aria-label="Visualizar" title="Visualizar"` +
     `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
-    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Visualizar</span></button>` +
+    `${renderUiIcon("preview", "course-authoring-button-icon")}</button>` +
     (state.canEditManually
       ? `<button type="button" data-inspection-unit-mode="edit" data-study-unit-id="${id}"` +
         ` aria-pressed="${editing ? "true" : "false"}" aria-label="Editar" title="Editar"` +
         `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
-        `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar</span></button>`
+        `${renderUiIcon("edit", "course-authoring-button-icon")}</button>`
       : "") +
     (state.canRequestChat
       ? `<button type="button" data-inspection-unit-mode="ai" data-study-unit-id="${id}"` +
         " data-inspection-request-chat" +
         ` aria-pressed="false" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(item.studyUnit.title)}"` +
         ' title="Assistência pelo ChatGPT">' +
-        `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>ChatGPT</span></button>`
+        `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
       : "") +
     (state.canUseProviderAssistance
       ? `<button type="button" data-inspection-provider-assistance data-study-unit-id="${id}"` +
         ` aria-pressed="${state.assistanceActiveStudyUnitId === item.studyUnit.id}"` +
         ' aria-label="Assistência por IA" title="Assistência por IA"' +
         `${state.manualSaving || state.assistanceSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
-        `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Assistência</span></button>`
+        `${renderUiIcon("sparkles", "course-authoring-button-icon")}</button>`
       : "") +
     (state.canEditManually && canUndo
       ? `<button type="button" data-inspection-manual-history="undo" data-study-unit-id="${id}"` +
@@ -635,6 +636,96 @@ function renderManualModeActions(item, state, editing) {
         `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>`
       : "") +
     "</nav>";
+}
+
+function orderedCurriculumItems(value) {
+  return (Array.isArray(value) ? [...value] : []).sort((left, right) => {
+    const leftPosition = Number.isSafeInteger(Number(left?.position))
+      ? Number(left.position)
+      : Number.MAX_SAFE_INTEGER;
+    const rightPosition = Number.isSafeInteger(Number(right?.position))
+      ? Number(right.position)
+      : Number.MAX_SAFE_INTEGER;
+    return leftPosition - rightPosition || String(left?.id || "").localeCompare(
+      String(right?.id || ""),
+      "en"
+    );
+  });
+}
+
+function studyUnitIdsForInspectionScope(project, courseId, scope, authoringPlan = null) {
+  const course = (Array.isArray(project?.courses) ? project.courses : [])
+    .find((candidate) => candidate?.id === courseId || candidate?.courseId === courseId);
+  if (!course) throw new TypeError("O Curso do índice de Conteúdo não está disponível.");
+
+  const parts = authoringPlan?.plan?.parts || [];
+  const linkedMicrosequenceIds = new Set(parts.flatMap((part) =>
+    part.microsequences.map(({ id }) => id)));
+  const selectedPartMicrosequenceIds = scope.kind === "authoring_part"
+    ? new Set(parts.find(({ id }) => id === scope.id)?.microsequences.map(({ id }) => id) || [])
+    : null;
+  if (scope.kind === "authoring_part" && !parts.some(({ id }) => id === scope.id)) {
+    throw new TypeError("A Parte do índice de Conteúdo não está disponível.");
+  }
+
+  const ids = [];
+  for (const moduleValue of orderedCurriculumItems(course.modules)) {
+    if (scope.kind === "module" && moduleValue.id !== scope.id) continue;
+    for (const lesson of orderedCurriculumItems(moduleValue.lessons)) {
+      if (scope.kind === "lesson" && lesson.id !== scope.id) continue;
+      for (const microsequence of orderedCurriculumItems(lesson.microsequences)) {
+        if (scope.kind === "didactic_microsequence" && microsequence.id !== scope.id) continue;
+        if (scope.kind === "authoring_part" &&
+            !selectedPartMicrosequenceIds.has(microsequence.id)) continue;
+        if (scope.kind === "unassigned" && linkedMicrosequenceIds.has(microsequence.id)) continue;
+        for (const studyUnit of orderedCurriculumItems(microsequence.studyUnits)) {
+          ids.push(canonicalId(studyUnit?.id, "A Unidade do índice de Conteúdo"));
+        }
+      }
+    }
+  }
+  if (new Set(ids).size !== ids.length) {
+    throw new TypeError("O índice de Conteúdo repete uma Unidade de estudo.");
+  }
+  return Object.freeze(ids);
+}
+
+function renderStudyUnitContextActions(item, state, observationCount) {
+  const studyUnitId = escapeHtml(item.studyUnit.id);
+  const path = item.curriculumPath;
+  const part = item.authoringPart;
+  return `<nav class="course-inspection-item-menu" aria-label="Mais ações para ${escapeHtml(item.studyUnit.title)}">` +
+    `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
+    ` data-inspection-control-key="copy:${studyUnitId}">` +
+    `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
+    `<button type="button" data-inspection-observations data-study-unit-id="${studyUnitId}"` +
+    ` data-inspection-control-key="observations:${studyUnitId}">` +
+    `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações${
+      Number(observationCount) > 0 ? ` · ${Number(observationCount)}` : ""
+    }</span></button>` +
+    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
+      section: "parameters",
+      didacticMicrosequenceId: path.didacticMicrosequence.id
+    }))}" data-inspection-route data-inspection-control-key="design:${studyUnitId}">` +
+    `${renderUiIcon("tags", "course-authoring-button-icon")}<span>Desenho</span></a>` +
+    (part && item.authorship.production
+      ? `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
+          section: "planning",
+          authoringPartId: part.id,
+          materializationId: item.authorship.production.materializationId
+        }))}" data-inspection-route data-inspection-control-key="production:${studyUnitId}">` +
+        `${renderUiIcon("progress", "course-authoring-button-icon")}<span>Produção</span></a>`
+      : "") +
+    (state.canEditSources
+      ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${studyUnitId}"` +
+        ` data-inspection-control-key="sources:${studyUnitId}">` +
+        `${renderUiIcon("study", "course-authoring-button-icon")}<span>Fontes</span></button>`
+      : "") +
+    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
+      section: "review",
+      studyUnitId: item.studyUnit.id
+    }))}" data-inspection-route data-inspection-control-key="audit:${studyUnitId}">` +
+    `${renderUiIcon("review", "course-authoring-button-icon")}<span>Auditoria</span></a></nav>`;
 }
 
 function renderAssistanceDraftDock(item, state) {
@@ -726,41 +817,10 @@ function renderStudyUnit(
     `<div><dt>Microssequência</dt><dd>${escapeHtml(path.didacticMicrosequence.title)}</dd></div>` +
     `<div><dt>Parte</dt><dd>${escapeHtml(part?.title || "Sem Parte")}</dd></div>` +
     `<div><dt>Versão</dt><dd>${item.version}</dd></div></dl>` +
-    `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
-    ` data-inspection-control-key="copy:${escapeHtml(item.studyUnit.id)}">` +
-    `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
+    renderStudyUnitContextActions(item, state, observationCount) +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
     renderManualModeActions(item, state, editing) +
-    `<button type="button" data-inspection-observations data-study-unit-id="${escapeHtml(
-      item.studyUnit.id
-    )}" data-inspection-control-key="observations:${escapeHtml(item.studyUnit.id)}">` +
-    `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações${
-      Number(observationCount) > 0 ? ` · ${Number(observationCount)}` : ""
-    }</span></button>` +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
-      section: "parameters",
-      didacticMicrosequenceId: path.didacticMicrosequence.id
-    }))}" data-inspection-route data-inspection-control-key="design:${escapeHtml(item.studyUnit.id)}">` +
-    `${renderUiIcon("tags", "course-authoring-button-icon")}<span>Desenho</span></a>` +
-    (part && item.authorship.production
-      ? `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
-          section: "planning",
-          authoringPartId: part.id,
-          materializationId: item.authorship.production.materializationId
-        }))}" data-inspection-route data-inspection-control-key="production:${escapeHtml(item.studyUnit.id)}">` +
-        `${renderUiIcon("progress", "course-authoring-button-icon")}<span>Produção</span></a>`
-      : "") +
-    (state.canEditSources
-      ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
-        ` data-inspection-control-key="sources:${escapeHtml(item.studyUnit.id)}">` +
-        `${renderUiIcon("study", "course-authoring-button-icon")}<span>Fontes</span></button>`
-      : "") +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
-      section: "review",
-      studyUnitId: item.studyUnit.id
-    }))}" data-inspection-route data-inspection-control-key="audit:${escapeHtml(item.studyUnit.id)}">` +
-    `${renderUiIcon("review", "course-authoring-button-icon")}<span>Auditoria</span></a>` +
     "</div>" +
     renderAuthorshipState(item) +
     renderDesignComparison(item) +
@@ -923,29 +983,17 @@ function renderInspectionObservationSheet(state) {
   return `${inactiveSheet}${confirmation}`;
 }
 
-function renderInspectionIndex(state) {
+function renderInspectionJump(state, active) {
   if (state.totalCount < 1) return "";
-  const loaded = new Map(state.items.map((item) => [item.ordinal, item]));
-  const markers = Array.from({ length: state.totalCount }, (_, index) => {
-    const ordinal = index + 1;
-    const item = loaded.get(ordinal);
-    const current = item?.studyUnit.id === state.selectedStudyUnitId;
-    const observations = item && Number(state.observationCounts[item.studyUnit.id] || 0);
-    const designChanged = item?.authorship.design?.state === "changed";
-    const label = item ? `${ordinal}. ${item.studyUnit.title}` : `Unidade ${ordinal}`;
-    return `<button type="button" data-inspection-jump="${ordinal}"` +
-      ` class="course-inspection-index-item${current ? " is-current" : ""}` +
-      `${observations ? " has-observation" : ""}${designChanged ? " has-design-change" : ""}"` +
-      ` aria-label="${escapeHtml(label)}${observations ? "; Observação pendente" : ""}` +
-      `${designChanged ? "; desenho alterado" : ""}"` +
-      `${current ? ' aria-current="true"' : ""}>` +
-      `<span>${ordinal}</span>${observations ? '<i aria-hidden="true"></i>' : ""}` +
-      `${designChanged ? '<i class="is-design" aria-hidden="true"></i>' : ""}</button>`;
-  }).join("");
-  return '<section class="course-inspection-index" aria-label="Índice das Unidades">' +
-    '<div class="course-inspection-index-strip">' + markers + "</div>" +
-    '<p class="course-inspection-index-legend"><span><i aria-hidden="true"></i>Observação pendente</span>' +
-    '<span><i class="is-design" aria-hidden="true"></i>Desenho alterado</span></p></section>';
+  const ordinal = active?.ordinal || 1;
+  return '<form class="course-inspection-jump" data-inspection-jump-form aria-label="Ir para uma Unidade">' +
+    '<label for="course-inspection-jump-input"><span>Unidade</span>' +
+    `<input id="course-inspection-jump-input" name="ordinal" data-inspection-jump-input type="number"` +
+    ` inputmode="numeric" min="1" max="${state.totalCount}" value="${ordinal}" required` +
+    ' aria-label="Número da Unidade"></label>' +
+    `<span aria-hidden="true">de ${state.totalCount}</span>` +
+    '<button type="submit" aria-label="Ir para a Unidade" title="Ir para a Unidade">' +
+    `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button></form>`;
 }
 
 function renderSequence(state) {
@@ -1001,11 +1049,7 @@ function renderSequence(state) {
       `<li class="course-inspection-spacer" aria-hidden="true" style="height:${Math.round(afterCount * state.averageHeight)}px"></li></ol>`;
   }
   return '<section class="course-authoring-section course-authoring-inspection"' +
-    ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Unidades</h2>' +
-    `<p>${state.totalCount} ${state.totalCount === 1 ? "Unidade de estudo" : "Unidades de estudo"}</p></div>` +
-    (state.scopeOptions ? renderScopeSelect(state) : "") + "</header>" +
+    ' aria-label="Unidades de estudo">' +
     `<nav class="course-inspection-sticky-context" aria-label="Navegação entre Unidades">` +
     `<button type="button" data-inspection-action="previous" data-inspection-control-key="previous"` +
     `${!active || (active.ordinal <= 1 && !state.hasPrevious) ? " disabled aria-disabled=\"true\"" : ""}` +
@@ -1013,8 +1057,11 @@ function renderSequence(state) {
     `<div class="course-inspection-active-context">${renderContext(state, active)}</div>` +
     `<button type="button" data-inspection-action="next" data-inspection-control-key="next"` +
     `${!active || (active.ordinal >= state.totalCount && !state.hasMore) ? " disabled aria-disabled=\"true\"" : ""}` +
-    ` aria-label="Próxima Unidade">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button></nav>` +
-    renderInspectionIndex(state) + notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
+    ` aria-label="Próxima Unidade">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>` +
+    '<div class="course-inspection-navigation-tools">' +
+    (state.scopeOptions ? renderScopeSelect(state) : "") +
+    renderInspectionJump(state, active) + "</div></nav>" +
+    notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
     `${escapeHtml(state.manualStatus)}</p>` +
     renderInspectionObservationSheet(state) + "</section>";
 }
@@ -1173,6 +1220,9 @@ export function createCourseInspectionSequence({
   let lastInteractionAt = 0;
   let suppressBroadcastStudyUnitId = "";
   let observationEpoch = 0;
+  let jumpEpoch = 0;
+  let ordinalIndexKey = "";
+  let ordinalIndexPromise = null;
   let manualInlineController = null;
   let providerAssistance = null;
 
@@ -1227,6 +1277,10 @@ export function createCourseInspectionSequence({
   }
 
   function handleDocumentClick(event) {
+    if (event?.target && typeof documentValue?.documentElement?.contains === "function" &&
+        !documentValue.documentElement.contains(event.target)) {
+      return;
+    }
     if (state.confirmation &&
         event?.target?.matches?.("[data-inspection-confirmation-backdrop]")) {
       cancelConfirmation();
@@ -1305,6 +1359,27 @@ export function createCourseInspectionSequence({
     };
   }
 
+  function controlForKey(controlKey) {
+    if (!controlKey) return null;
+    const control = [...(root.querySelectorAll?.("[data-inspection-control-key]") || [])]
+      .find((candidate) => candidate.dataset?.inspectionControlKey === controlKey);
+    if (control) return control;
+    const selectorValue = controlKey.replace(/["\\]/gu, "\\$&");
+    return root.querySelector?.(`[data-inspection-control-key="${selectorValue}"]`) || null;
+  }
+
+  function restoreControlState(snapshot, { focus = true } = {}) {
+    for (const controlKey of snapshot?.openControlKeys || []) {
+      const details = controlForKey(controlKey)?.closest?.("details");
+      if (details) details.open = true;
+    }
+    const control = controlForKey(snapshot?.controlKey);
+    const details = control?.closest?.("details");
+    if (details) details.open = true;
+    if (focus) control?.focus?.({ preventScroll: true });
+    return Boolean(control);
+  }
+
   function restoreAnchor(snapshot, { initial = false } = {}) {
     const id = snapshot?.studyUnitId || state.activeStudyUnitId;
     if (!id) return;
@@ -1315,22 +1390,7 @@ export function createCourseInspectionSequence({
     if ((initial || Math.abs(delta) > 0.5) && typeof scrollTarget?.scrollBy === "function") {
       scrollTarget.scrollBy({ top: delta, left: 0, behavior: "auto" });
     }
-    for (const controlKey of snapshot?.openControlKeys || []) {
-      const escapedOpenKey = globalThis.CSS?.escape
-        ? globalThis.CSS.escape(controlKey)
-        : controlKey.replace(/["\\]/gu, "\\$&");
-      const control = root.querySelector?.(
-        `[data-inspection-control-key="${escapedOpenKey}"]`
-      );
-      const details = control?.closest?.("details");
-      if (details) details.open = true;
-    }
-    if (snapshot?.controlKey) {
-      const escapedKey = globalThis.CSS?.escape
-        ? globalThis.CSS.escape(snapshot.controlKey)
-        : snapshot.controlKey.replace(/["\\]/gu, "\\$&");
-      root.querySelector?.(`[data-inspection-control-key="${escapedKey}"]`)?.focus?.({ preventScroll: true });
-    }
+    restoreControlState(snapshot);
   }
 
   function measureItems() {
@@ -1404,6 +1464,9 @@ export function createCourseInspectionSequence({
     manualInlineController?.destroy?.();
     manualInlineController = null;
     root.innerHTML = renderSequence(state);
+    if (snapshot?.controlKey || snapshot?.openControlKeys?.length) {
+      restoreControlState(snapshot, { focus: false });
+    }
     if (state.manualRestoreFocus === "discard-unknown" || state.manualRestoreFocus === "save") {
       const action = state.manualRestoreFocus === "discard-unknown"
         ? "discard-unknown"
@@ -1418,6 +1481,7 @@ export function createCourseInspectionSequence({
     root.setAttribute?.("aria-busy", String(state.initialLoading || Boolean(state.loadingDirection)));
     void hydrate().then(() => {
       if (restorePosition) restoreAnchor(snapshot, { initial });
+      else restoreControlState(snapshot);
       updateActiveFromViewport();
       if (!restorePosition && scrollTarget && "scrollTop" in scrollTarget) {
         scrollTarget.scrollTop = 0;
@@ -1499,6 +1563,63 @@ export function createCourseInspectionSequence({
     );
   }
 
+  function currentOrdinalIndexKey() {
+    return JSON.stringify([
+      state.pinnedRevision,
+      state.scope.kind,
+      state.scope.id,
+      state.totalCount
+    ]);
+  }
+
+  function loadOrdinalIndex() {
+    const key = currentOrdinalIndexKey();
+    if (ordinalIndexKey === key && ordinalIndexPromise) return ordinalIndexPromise;
+    const revision = state.pinnedRevision;
+    const scope = Object.freeze({ ...state.scope });
+    const expectedCount = state.totalCount;
+    ordinalIndexKey = key;
+    const pending = (async () => {
+      if (typeof controller.loadCourseDocument !== "function") {
+        throw new TypeError("O índice curricular deste Curso não está disponível.");
+      }
+      const needsAuthoringPlan = scope.kind === "authoring_part" || scope.kind === "unassigned";
+      if (needsAuthoringPlan && typeof controller.loadAuthoringPlan !== "function") {
+        throw new TypeError("O índice de Partes deste Curso não está disponível.");
+      }
+      const [loaded, rawAuthoringPlan] = await Promise.all([
+        controller.loadCourseDocument(state.courseId, { verifiedRevision: revision }),
+        needsAuthoringPlan ? controller.loadAuthoringPlan(state.courseId) : null
+      ]);
+      const authoringPlan = rawAuthoringPlan == null
+        ? null
+        : normalizeCourseAuthoringPlan(rawAuthoringPlan, {
+            expectedCourseId: state.courseId,
+            expectedCourseRevision: revision
+          });
+      const ids = studyUnitIdsForInspectionScope(
+        loaded?.document,
+        state.courseId,
+        scope,
+        authoringPlan
+      );
+      if (ids.length !== expectedCount) {
+        const error = new Error("O Curso mudou durante a leitura do índice de Conteúdo.");
+        error.code = "course_revision_changed";
+        throw error;
+      }
+      return ids;
+    })();
+    ordinalIndexPromise = pending.catch((error) => {
+      if (ordinalIndexKey === key) {
+        ordinalIndexKey = "";
+        ordinalIndexPromise = null;
+      }
+      throw error;
+    });
+    return ordinalIndexPromise;
+  }
+
   async function readAnnotationPage(query, {
     annotationSetVersion = null,
     cursor = null,
@@ -1572,6 +1693,9 @@ export function createCourseInspectionSequence({
       render();
       return false;
     }
+    const anchor = captureAnchor();
+    anchor.controlKey = "";
+    anchor.openControlKeys = [];
     const epoch = ++observationEpoch;
     state.observationStudyUnitId = studyUnitId;
     state.observationSheetOpen = true;
@@ -1582,7 +1706,7 @@ export function createCourseInspectionSequence({
     state.observationEditingId = null;
     state.observationError = "";
     state.observationLoading = true;
-    render();
+    render({ anchor });
     try {
       const observations = await loadTargetObservations(studyUnitId);
       if (state.destroyed || epoch !== observationEpoch) return false;
@@ -1678,6 +1802,7 @@ export function createCourseInspectionSequence({
   } = {}) {
     const hasRequestedPosition = Boolean(anchorStudyUnitId);
     const epoch = ++requestEpoch;
+    state.loadingDirection = "";
     state.initialLoading = true;
     state.initialFailure = "";
     state.targetMissing = false;
@@ -1791,12 +1916,12 @@ export function createCourseInspectionSequence({
       if (currentUnit) article?.setAttribute?.("aria-current", "true");
       else article?.removeAttribute?.("aria-current");
     });
-    root.querySelectorAll?.("[data-inspection-jump]").forEach((button) => {
-      const currentUnit = Number(button.dataset.inspectionJump) === item.ordinal;
-      button.classList?.toggle("is-current", currentUnit);
-      if (currentUnit) button.setAttribute?.("aria-current", "true");
-      else button.removeAttribute?.("aria-current");
-    });
+    const jumpInput = root.querySelector?.("[data-inspection-jump-input]");
+    if (jumpInput) {
+      const ordinal = String(item.ordinal);
+      jumpInput.value = ordinal;
+      jumpInput.defaultValue = ordinal;
+    }
     const position = root.querySelector?.("[data-inspection-context-position]");
     const parent = root.querySelector?.("[data-inspection-context-parent]");
     const summary = root.querySelector?.("[data-inspection-context-summary]");
@@ -1910,16 +2035,42 @@ export function createCourseInspectionSequence({
 
   async function jumpToOrdinal(ordinal) {
     if (!Number.isSafeInteger(ordinal) || ordinal < 1 || ordinal > state.totalCount) return false;
-    let target = state.items.find((item) => item.ordinal === ordinal);
-    let attempts = 0;
-    while (!target && attempts <= Math.ceil(state.totalCount / PAGE_SIZE) + 1) {
-      const first = state.items[0]?.ordinal || 1;
-      const direction = ordinal < first ? "backward" : "forward";
-      if (!await loadDirection(direction)) break;
-      target = state.items.find((item) => item.ordinal === ordinal);
-      attempts += 1;
+    const epoch = ++jumpEpoch;
+    const localTarget = state.items.find((item) => item.ordinal === ordinal);
+    if (localTarget) {
+      state.initialFailure = "";
+      if (!selectStudyUnit(localTarget.studyUnit.id)) return false;
+      const escapedLocalId = globalThis.CSS?.escape
+        ? globalThis.CSS.escape(localTarget.studyUnit.id)
+        : localTarget.studyUnit.id.replace(/["\\]/gu, "\\$&");
+      root.querySelector?.(`[data-inspection-study-unit="${escapedLocalId}"]`)?.scrollIntoView?.({
+        block: "start",
+        behavior: windowValue?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true
+          ? "auto"
+          : "smooth"
+      });
+      scheduleSave();
+      return true;
     }
-    if (!target || !selectStudyUnit(target.studyUnit.id)) return false;
+
+    const indexKey = currentOrdinalIndexKey();
+    let studyUnitId;
+    try {
+      const ids = await loadOrdinalIndex();
+      if (state.destroyed || epoch !== jumpEpoch || indexKey !== currentOrdinalIndexKey()) return false;
+      studyUnitId = ids[ordinal - 1] || "";
+      if (!studyUnitId) throw new TypeError("A Unidade não existe no índice de Conteúdo.");
+    } catch (error) {
+      if (state.destroyed || epoch !== jumpEpoch) return false;
+      state.initialFailure = statusMessage(error);
+      render();
+      return false;
+    }
+    if (!await loadInitial({ anchorStudyUnitId: studyUnitId, allowRebase: false }) ||
+        state.destroyed || epoch !== jumpEpoch) return false;
+    const target = state.items.find((item) =>
+      item.studyUnit.id === studyUnitId && item.ordinal === ordinal);
+    if (!target) return false;
     const escapedId = globalThis.CSS?.escape
       ? globalThis.CSS.escape(target.studyUnit.id)
       : target.studyUnit.id.replace(/["\\]/gu, "\\$&");
@@ -2114,16 +2265,6 @@ export function createCourseInspectionSequence({
     });
   }
 
-  function providerPreviewFocus(studyUnitId) {
-    const escapedId = windowValue?.CSS?.escape
-      ? windowValue.CSS.escape(studyUnitId)
-      : studyUnitId.replace(/["\\]/gu, "\\$&");
-    const unit = root.querySelector?.(
-      `[data-inspection-study-unit="${escapedId}"]`
-    );
-    return unit?.querySelector?.("h3") || unit;
-  }
-
   async function openProviderAssistance(trigger) {
     if (!state.canUseProviderAssistance || state.manualSaving || state.assistanceSaving ||
         state.assistanceDraft || providerAssistance?.opened) return false;
@@ -2167,15 +2308,6 @@ export function createCourseInspectionSequence({
         scope: "study_unit",
         targetTitle: item.studyUnit.title,
         writeTargetId: "study_unit",
-        onFocusPreview: () => providerPreviewFocus(studyUnitId),
-        onPreview: (prepared) => {
-          replaceManualItem(baselineItem, prepared.candidate, baselineItem.version);
-          render({ captureDraft: false });
-        },
-        onDiscardPreview: () => {
-          replaceManualItem(baselineItem, baselineItem.studyUnit, baselineItem.version);
-          render({ captureDraft: false });
-        },
         onApplyDraft: (prepared) => {
           replaceManualItem(baselineItem, prepared.candidate, baselineItem.version);
           state.assistanceDraft = {
@@ -2553,6 +2685,7 @@ export function createCourseInspectionSequence({
         render();
         return true;
       }
+      closeOpenMenus();
       return openObservations(studyUnitId);
     }
     const observationAction = event.target.closest?.("[data-observation-action]");
@@ -2565,6 +2698,12 @@ export function createCourseInspectionSequence({
         return confirmWithdraw();
       } else if (action === "close") {
         ++observationEpoch;
+        const studyUnitId = state.observationStudyUnitId;
+        const anchor = captureAnchor();
+        if (studyUnitId) {
+          anchor.studyUnitId = studyUnitId;
+          anchor.controlKey = `observations:${studyUnitId}`;
+        }
         const preserveCreationDraft = !state.observationEditingId && hasObservationDraft();
         state.observationSheetOpen = false;
         state.observationStudyUnitId = null;
@@ -2572,7 +2711,7 @@ export function createCourseInspectionSequence({
         state.observationCollectionSummary = null;
         if (!preserveCreationDraft) state.observationDraft = { category: null, rawText: "" };
         state.observationEditingId = null;
-        render();
+        render({ anchor });
       } else if (action === "edit") {
         const item = state.observationItems.find((candidate) =>
           candidate.annotationId === annotationId);
@@ -2592,8 +2731,6 @@ export function createCourseInspectionSequence({
       }
       return true;
     }
-    const jump = event.target.closest?.("[data-inspection-jump]");
-    if (jump) return jumpToOrdinal(Number(jump.dataset.inspectionJump));
     const route = event.target.closest?.("[data-inspection-route]");
     if (route) {
       event.preventDefault?.();
@@ -2622,6 +2759,7 @@ export function createCourseInspectionSequence({
       const item = state.items.find(({ studyUnit }) =>
         studyUnit.id === String(editSources.dataset.studyUnitId || ""));
       if (item) {
+        closeOpenMenus();
         state.activeStudyUnitId = item.studyUnit.id;
         state.selectedStudyUnitId = item.studyUnit.id;
         await savePositionNow(captureAnchor());
@@ -2629,7 +2767,10 @@ export function createCourseInspectionSequence({
           targetKind: "study_unit",
           targetId: item.studyUnit.id,
           targetVersion: item.version,
-          targetLabel: item.studyUnit.title
+          targetLabel: item.studyUnit.title,
+          ...(editSources.dataset.inspectionControlKey
+            ? { returnFocusKey: String(editSources.dataset.inspectionControlKey) }
+            : {})
         });
       }
       return;
@@ -2681,6 +2822,17 @@ export function createCourseInspectionSequence({
   }
 
   function handleSubmit(event) {
+    if (event.target.matches?.("[data-inspection-jump-form]")) {
+      event.preventDefault?.();
+      const input = event.target.elements?.ordinal ||
+        event.target.querySelector?.("[data-inspection-jump-input]");
+      const ordinal = Number(input?.value);
+      if (!Number.isSafeInteger(ordinal) || ordinal < 1 || ordinal > state.totalCount) {
+        input?.reportValidity?.();
+        return false;
+      }
+      return jumpToOrdinal(ordinal);
+    }
     if (!event.target.matches?.("[data-observation-composer]")) return;
     event.preventDefault?.();
     const submittedStudyUnitId = String(
@@ -2882,6 +3034,9 @@ export function createCourseInspectionSequence({
     },
     loadMore(direction = "forward") {
       return loadDirection(direction);
+    },
+    focusControl(controlKey) {
+      return restoreControlState({ controlKey });
     },
     previewManualEdit({
       studyUnitId,

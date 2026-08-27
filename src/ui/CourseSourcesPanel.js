@@ -963,10 +963,12 @@ function renderTargetPanel(state) {
   return '<section class="course-source-target-dialog" data-source-target-dialog tabindex="-1"' +
     ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title"' +
     ' aria-describedby="course-source-target-description">' +
-    '<header><div><p>Atribuição completa</p>' +
+    '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
+    '<div><p>Atribuição completa</p>' +
     `<h2 id="course-source-target-title">Fontes de ${escapeHtml(state.targetLabel || "este item")}</h2></div>` +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
+    '<div class="course-source-target-body">' +
     '<p class="course-source-intro" id="course-source-target-description">Salvar substitui o conjunto inteiro deste item. Fontes removidas continuam no histórico.</p>' +
     renderNotice(state) + renderSourceConfirmation(state) +
     (state.targetLoading
@@ -981,7 +983,7 @@ function renderTargetPanel(state) {
           `<button type="button" class="course-source-save-target" data-source-action="save-target"${state.busy ? " disabled" : ""}>` +
           `${renderUiIcon("save", "course-authoring-button-icon")}<span>Salvar conjunto completo</span></button></div></section>`) +
     '<section class="course-source-available"><h3>Adicionar do catálogo</h3>' +
-    renderCatalog(state, { selectable: true }) + "</section></section>";
+    renderCatalog(state, { selectable: true }) + "</section></div></section>";
 }
 
 function targetExportReady(state) {

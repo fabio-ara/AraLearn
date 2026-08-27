@@ -92,9 +92,9 @@ contratos](fluxos-prompts-e-contratos.md).
 
 | Propriedade | Mecanismo corrente | Evidência executável | Limite da evidência |
 | --- | --- | --- | --- |
-| Assistência por IA é uma sessão contextual do aplicativo | estado em memória, conversa multiturmo, plano confirmado, provider escolhido e escrita tipada | testes de assistência no domínio, runtime e E2E | resposta válida não garante utilidade pedagógica |
+| Assistência por IA é uma sessão contextual do aplicativo | estado em memória, conversa multiturmo, proposta concreta corrente, provider escolhido, aceite explícito e escrita tipada | testes de assistência no domínio, runtime e E2E | resposta válida não garante utilidade pedagógica |
 | credencial do provider permanece efêmera e fora dos artefatos | chave somente em memória, origem oficial por provider e limpeza ao encerrar a sessão | oráculos preparados em `provider-runtime-security.test.js`, testes dos adapters e E2E com stubs; ativação acompanha a implementação | navegador público não protege chave duradoura; testes não fazem chamadas pagas |
-| candidato de IA não altera conteúdo antes da decisão humana | validar, reparar de forma limitada, renderizar prévia e aplicar explicitamente | testes de assistência, renderer e E2E | confirmação humana pode conter erro de julgamento |
+| candidato de IA não altera conteúdo antes da decisão humana | gerar somente após aceite, validar, reparar de forma limitada, renderizar e aplicar ao rascunho | testes de assistência, renderer e E2E | confirmação humana pode conter erro de julgamento |
 | MCP usa protocolo e OAuth próprios | cinco ferramentas, servidor MCP, PKCE S256, JWT minimizado e consentimento | testes MCP, JWT, consentimento e smokes OAuth | cliente MCP externo pode ter comportamento próprio |
 | Actions usa HTTP descrito por OpenAPI e OAuth próprio | cinco operações, cliente confidencial ligado ao GPT e tokens opacos | `course-action-server.test.js`, gerador OpenAPI e testes de OAuth | configuração real do GPT exige acesso à plataforma externa |
 | MCP e Actions compartilham operações, não sessão | executor comum depois de resolver principais distintos | testes do executor, MCP, Actions e adaptador | equivalência de contrato não torna os transportes intercambiáveis |

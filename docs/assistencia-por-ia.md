@@ -1,9 +1,9 @@
 # Assistência por modelo de linguagem
 
 O AraLearn usa modelos de linguagem para apoiar decisões de Autoria sem tratar
-uma resposta provável como comando autorizado. A pessoa conversa, discute o
-plano, confirma a geração, confere o resultado no produto e só então decide se
-deseja gravá-lo.
+uma resposta provável como comando autorizado. A pessoa conversa, discute uma
+proposta concreta e autoriza sua aplicação ao rascunho; gravar o resultado no
+Curso continua sendo uma decisão separada.
 
 Um documento JSON bem formado ainda pode apontar para o alvo errado, violar um
 contrato de componente ou produzir uma composição impossível de apresentar.
@@ -26,20 +26,21 @@ Curso e Manutenção continuam ações do aplicativo autenticado.
 
 ## A sessão de Assistência por IA
 
-Assistência por IA é uma sessão contextual com minichat. Ela não é uma chamada
-isolada para substituir texto. Ao abrir o modo, a interface mostra o alvo e o
-contexto somente leitura que poderá ser enviado. A conversa progride assim:
+Assistência por IA é uma sessão contextual, não uma chamada isolada para
+substituir texto. O alvo é fixado ao abrir o modo, e a conversa progride assim:
 
 1. a pessoa descreve o problema ou objetivo;
-2. o modelo propõe um plano;
-3. a pessoa discute, corrige ou pede esclarecimentos;
-4. a pessoa confirma que o plano pode gerar uma proposta;
-5. o AraLearn valida e apresenta a proposta no renderer real;
-6. a pessoa descarta, desfaz ou aplica ao rascunho;
-7. uma ação separada salva o resultado com a revisão esperada.
+2. o modelo responde e sempre mantém uma proposta concreta de mudanças;
+3. a pessoa discute, corrige, discorda ou acrescenta condições;
+4. cada novo turno substitui a proposta corrente por outra que incorpora a
+   conversa;
+5. **Aceitar e aplicar** autoriza a geração tipada dessa proposta;
+6. o AraLearn valida e renderiza o resultado antes de colocá-lo no rascunho;
+7. uma ação separada salva o rascunho com a revisão esperada.
 
-Fechar a sessão apaga mensagens, configuração e candidata. A conversa não entra
-no conteúdo do Curso, no PostgreSQL, no IndexedDB nem nos recibos de escrita.
+Fechar a sessão apaga mensagens, configuração e qualquer proposta ainda não
+aplicada. Um resultado já aceito permanece no rascunho; a conversa não entra no
+conteúdo do Curso, no PostgreSQL, no IndexedDB nem nos recibos de escrita.
 
 ### Escopos de escrita
 
@@ -60,8 +61,9 @@ permanecem exclusivas do proprietário.
 
 ## Contexto enviado
 
-O envelope inclui a instrução da pessoa, as mensagens da sessão, o caminho
-didático, a revisão corrente e a composição necessária para compreender o alvo.
+O envelope inclui a instrução da pessoa, as mensagens da sessão, a proposta
+corrente, o caminho didático, a revisão corrente e a composição necessária para
+compreender o alvo.
 Para a Unidade, inclui os componentes e campos editáveis. Para a
 Microssequência, inclui sua ordem e suas Unidades. Para a Lição, inclui as
 Microssequências e o contexto curricular suficiente para criar, remover ou
@@ -84,8 +86,8 @@ Quando a proposta usa componentes didáticos, o AraLearn reutiliza
 `consultarComponentesDidaticos`. A sequência é obrigatória:
 
 ```text
-planejar → confirmar → descobrir → obter contratos exatos → gerar
-→ validar → reparar de forma limitada → visualizar → aplicar
+conversar e propor → aceitar → descobrir → obter contratos exatos → gerar
+→ validar → reparar de forma limitada → aplicar ao rascunho
 ```
 
 A descoberta começa por famílias e intenção. O modelo recebe somente os
@@ -98,11 +100,13 @@ validação anterior. Se a proposta continuar inválida, a sessão preserva o
 conteúdo corrente e explica a falha. JSON válido ou uma reparação textual sem
 prévia renderizável nunca constitui aceite.
 
-## Prévia, aplicação e concorrência
+## Aplicação ao rascunho e concorrência
 
-A prévia usa o mesmo renderer da Unidade estudável. Ela não grava o Curso. A
-pessoa pode voltar ao original, aplicar a candidata ao rascunho ou descartá-la.
-A gravação é uma operação separada.
+Antes de alterar o rascunho, o AraLearn exige o aceite explícito da proposta,
+gera a candidata e a verifica com o mesmo renderer da Unidade estudável. Falha
+de geração, validação ou renderização preserva o conteúdo corrente. Uma
+candidata aceita e válida substitui somente o rascunho do alvo; a gravação é
+uma operação separada.
 
 Cada escrita informa a revisão esperada do Curso e as versões focais
 necessárias. Se outra sessão alterar o alvo entre leitura e gravação, o servidor
@@ -121,9 +125,10 @@ segue somente no cabeçalho da chamada ao provider escolhido e não entra no
 Curso, PostgreSQL, IndexedDB, Storage, logs ou artefatos.
 
 Sair, recarregar ou encerrar a superfície cancela a chamada pendente e apaga
-provider, modelo, chave, conversa e candidata. Uma resposta tardia não pode
-reabrir a sessão nem aplicar conteúdo. A interface normal não pede endpoint nem
-expõe relay ou instruções de arquitetura.
+provider, modelo, chave, conversa e qualquer candidata ainda não aplicada. Uma
+alteração já aceita permanece no rascunho. Uma resposta tardia não pode reabrir
+a sessão nem aplicar conteúdo. A interface normal não pede endpoint nem expõe
+relay ou instruções de arquitetura.
 
 Chaves duradouras não devem ser usadas num cliente público. A pessoa precisa
 revisar o recorte e os termos do provider a cada sessão; testes automatizados e

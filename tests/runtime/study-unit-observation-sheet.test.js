@@ -31,6 +31,24 @@ test("sheet não usa maxlength UTF-16 e preserva o texto bruto", () => {
   assert.match(html, /data-max-scalars="2000"/u);
   assert.match(html, /24\/2\.000 caracteres · 29 B\/16 KiB/u);
   assert.match(html, />[ ]{2}Dúvida 😀 com espaços[ ]{2}<\/textarea>/u);
+  assert.match(html, /id="study-observation-title">Observações da Unidade<\/p>/u);
+  assert.match(html, /<summary title="Categoria: Dúvida" aria-label="Categoria: Dúvida">[\s\S]*?<\/summary>/u);
+  assert.match(html, /placeholder="Observação"/u);
+  assert.match(html, /class="open-mini study-observation-submit"[\s\S]*?aria-label="Enviar observação"/u);
+  assert.doesNotMatch(html, /Nova observação|observação curta|>Adicionar<|class="study-observation-count"/u);
+  assert.doesNotMatch(html, /Nenhuma observação nesta Unidade\./u);
+});
+
+test("composer evita rótulo redundante e mantém a descrição acessível", () => {
+  const html = renderStudyUnitObservationSheet();
+  const textarea = html.match(/<textarea[^>]*>/u)?.[0] || "";
+  const counter = html.match(/<span class="study-observation-counter[^>]*>/u)?.[0] || "";
+
+  assert.doesNotMatch(html, /Texto da observação/u);
+  assert.match(textarea, /aria-label="Observação"/u);
+  assert.match(textarea, /aria-describedby="study-observation-counter"/u);
+  assert.match(counter, /class="study-observation-counter visually-hidden"/u);
+  assert.match(counter, /id="study-observation-counter"/u);
 });
 
 test("sheet nunca renderiza conteúdo nem resposta de observação retirada", () => {

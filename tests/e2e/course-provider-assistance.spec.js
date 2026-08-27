@@ -33,7 +33,13 @@ async function installHarness(page, { delayed = false, configured = true } = {})
     candidate.content[0].data.text = "Uma regra liga condições a consequências observáveis.";
     document.body.innerHTML = '<main><button id="trigger" type="button">Assistir</button>' +
       `<article id="preview" tabindex="-1">${original.content[0].data.text}</article></main>`;
-    const probe = { calls: 0, previews: 0, discards: 0, drafts: 0, current: original };
+    const probe = {
+      calls: 0,
+      discussionCalls: 0,
+      generationCalls: 0,
+      drafts: 0,
+      current: original
+    };
     const session = createCourseProviderSession();
     if (configured) {
       session.update({
@@ -57,21 +63,48 @@ async function installHarness(page, { delayed = false, configured = true } = {})
         developmentRuntime: true,
         assistAllowedOrigins: ["https://api.openai.com"]
       },
-      fetchImpl: async () => {
-        if (delayed) {
+      fetchImpl: async (_url, init) => {
+        const request = JSON.parse(init.body);
+        const prompt = JSON.parse(request.input);
+        const generation = Boolean(prompt.confirmedProposal);
+        probe.calls += 1;
+        if (generation) probe.generationCalls += 1;
+        else probe.discussionCalls += 1;
+        if (!generation && (delayed || globalThis.__delayNextDiscussion)) {
+          globalThis.__delayNextDiscussion = false;
           await new Promise((resolve) => { globalThis.__resolveCourseAssistance = resolve; });
         }
-        probe.calls += 1;
-        return probe.calls % 2 === 1
+        if (!generation && globalThis.__rejectNextDiscussion) {
+          globalThis.__rejectNextDiscussion = false;
+          return {
+            ok: false,
+            status: 400,
+            async json() { return { error: { message: "Falha simulada" } }; }
+          };
+        }
+        if (generation) return response({ message: "A explicação foi revisada.", candidate });
+        return probe.discussionCalls === 1
           ? response({
-              message: "Podemos tornar a relação causal mais explícita.",
-              proposal: {
-                summary: "Reescrever a explicação preservando o componente de parágrafo.",
-                scope: "study_unit",
-                componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
-              }
-            })
-          : response({ message: "A explicação foi revisada.", candidate });
+            message: "Podemos tornar a relação causal mais explícita.",
+            proposal: {
+              summary: "Reescrever a explicação preservando o componente de parágrafo.",
+              changes: ["Explicitar a relação entre condição e consequência."],
+              scope: "study_unit",
+              componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+            }
+          })
+          : response({
+            message: "A proposta agora preserva também o exemplo atual.",
+            proposal: {
+              summary: "Reescrever a explicação e preservar o exemplo atual.",
+              changes: [
+                "Explicitar a relação entre condição e consequência.",
+                "Preservar o exemplo atual."
+              ],
+              scope: "study_unit",
+              componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+            }
+          });
       }
     });
     const preview = document.querySelector("#preview");
@@ -86,9 +119,6 @@ async function installHarness(page, { delayed = false, configured = true } = {})
       scope: "study_unit",
       targetTitle: original.title,
       writeTargetId: "study_unit",
-      onFocusPreview: () => preview.focus(),
-      onPreview(prepared) { probe.previews += 1; paint(prepared.candidate); },
-      onDiscardPreview() { probe.discards += 1; paint(original); },
       onApplyDraft(prepared) { probe.drafts += 1; paint(prepared.candidate); }
     }));
     globalThis.__courseAssistanceProbe = probe;
@@ -97,20 +127,21 @@ async function installHarness(page, { delayed = false, configured = true } = {})
   }, { project: fixture, delayed, configured });
 }
 
-test("minichat discute, confirma, renderiza, descarta e aplica só ao rascunho", async ({ page }) => {
+test("minichat refina a proposta e só gera e aplica ao rascunho após aceite", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 568 });
   await installHarness(page);
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Regra central/u });
+  const dialog = page.getByRole("dialog", { name: "Edição com IA" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("Unidade inteira", { exact: false })).toBeVisible();
+  await expect(dialog.getByText(/Unidade: Regra central/u))
+    .toHaveClass(/visually-hidden/u);
   const initialHeight = (await dialog.boundingBox()).height;
-  await dialog.getByText("Serviço e modelo", { exact: true }).click();
+  await dialog.getByRole("button", { name: "Configurar IA" }).click();
   expect((await dialog.boundingBox()).height).toBe(initialHeight);
   const connectionLayout = await dialog.evaluate((sheet) => {
     const body = sheet.querySelector(".course-assistance-body").getBoundingClientRect();
     const controls = [
-      sheet.querySelector(".course-assistance-connection > summary"),
+      sheet.querySelector("[data-course-assistance-connection-toggle]"),
       ...sheet.querySelectorAll(".course-assistance-connection label")
     ].map((node) => {
       const bounds = node.getBoundingClientRect();
@@ -126,11 +157,10 @@ test("minichat discute, confirma, renderiza, descarta e aplica só ao rascunho",
     ...control,
     within: true
   })));
-  await dialog.getByText("Serviço e modelo", { exact: true }).click();
+  await dialog.getByRole("button", { name: "Configurar IA" }).click();
   await dialog.getByLabel("Mensagem").fill("Explique e proponha uma revisão.");
   await dialog.getByRole("button", { name: "Enviar" }).click();
-  await expect(dialog.getByText("Antes da mudança")).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "Plano proposto" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Proposta" })).toBeVisible();
   await expect(dialog.getByText("Reescrever a explicação", { exact: false })).toBeVisible();
   expect((await dialog.boundingBox()).height).toBe(initialHeight);
   await expect(dialog.getByLabel("Mensagem")).toBeFocused();
@@ -139,28 +169,35 @@ test("minichat discute, confirma, renderiza, descarta e aplica só ao rascunho",
     const bounds = sheet.getBoundingClientRect();
     return composer.bottom <= bounds.bottom && composer.top >= bounds.top;
   })).toBe(true);
-  await dialog.getByRole("button", { name: "Confirmar e preparar" }).click();
-  await expect(dialog.getByText("Proposta validada")).toBeVisible();
-  expect((await dialog.boundingBox()).height).toBe(initialHeight);
-  await expect(dialog.getByLabel("Mensagem")).toBeFocused();
-  await expect(page.locator("#preview")).toContainText("consequências observáveis");
+  await expect(page.locator("#preview")).toContainText("conjunção");
   expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.drafts)).toBe(0);
 
-  await dialog.getByRole("button", { name: "Descartar proposta" }).click();
-  await expect(page.locator("#preview")).toContainText("conjunção");
-  await dialog.getByLabel("Mensagem").fill("Prepare novamente a mesma mudança.");
+  await page.evaluate(() => { globalThis.__delayNextDiscussion = true; });
+  await dialog.getByLabel("Mensagem").fill("Preserve também o exemplo atual.");
   await dialog.getByRole("button", { name: "Enviar" }).click();
-  await dialog.getByRole("button", { name: "Confirmar e preparar" }).click();
-  await expect(dialog.getByText("Proposta validada")).toBeVisible();
-  await dialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+  await expect(dialog.getByRole("heading", { name: "Proposta" })).toBeVisible();
+  await expect(dialog.getByText("Reescrever a explicação preservando", { exact: false })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Aceitar e aplicar" })).toBeDisabled();
+  await expect(page.locator("#preview")).toContainText("conjunção");
+  await page.evaluate(() => globalThis.__resolveCourseAssistance?.());
+  await expect(dialog.getByText("Preservar o exemplo atual.", { exact: true })).toBeVisible();
+
+  await page.evaluate(() => { globalThis.__rejectNextDiscussion = true; });
+  await dialog.getByLabel("Mensagem").fill("Dê outra justificativa.");
+  await dialog.getByRole("button", { name: "Enviar" }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByText("Reescrever a explicação e preservar", { exact: false })).toBeVisible();
+  await expect(page.locator("#preview")).toContainText("conjunção");
+
+  await dialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.locator("#preview")).toContainText("consequências observáveis");
   expect(await page.evaluate(() => ({
     calls: globalThis.__courseAssistanceProbe.calls,
-    previews: globalThis.__courseAssistanceProbe.previews,
-    discards: globalThis.__courseAssistanceProbe.discards,
+    discussions: globalThis.__courseAssistanceProbe.discussionCalls,
+    generations: globalThis.__courseAssistanceProbe.generationCalls,
     drafts: globalThis.__courseAssistanceProbe.drafts
-  }))).toEqual({ calls: 4, previews: 2, discards: 1, drafts: 1 });
+  }))).toEqual({ calls: 4, discussions: 3, generations: 1, drafts: 1 });
 });
 
 test("sessão fecha por Escape, restaura foco e não persiste credencial", async ({ page }) => {
@@ -182,21 +219,29 @@ test("configuração ausente preserva a mensagem e revela o primeiro campo neces
   await page.setViewportSize({ width: 390, height: 568 });
   await installHarness(page, { configured: false });
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Regra central/u });
+  const dialog = page.getByRole("dialog", { name: "Edição com IA" });
   const connection = dialog.locator(".course-assistance-connection");
   const initialHeight = (await dialog.boundingBox()).height;
 
-  expect(await connection.evaluate((details) => details.open)).toBe(true);
-  await expect(dialog.getByLabel("Serviço")).toBeFocused();
-  await dialog.getByText("Serviço e modelo", { exact: true }).click();
-  expect(await connection.evaluate((details) => details.open)).toBe(false);
+  await expect(connection.getByRole("button", {
+    name: "Configurar IA"
+  })).toHaveAttribute("aria-expanded", "true");
+  await expect(dialog.locator("[data-course-assistance-provider]"))
+    .toBeFocused();
+  await dialog.getByRole("button", { name: "Configurar IA" }).click();
+  await expect(connection.getByRole("button", {
+    name: "Configurar IA"
+  })).toHaveAttribute("aria-expanded", "false");
 
   const draft = "Explique o problema antes de sugerir qualquer mudança.";
   await dialog.getByLabel("Mensagem").fill(draft);
   await dialog.getByRole("button", { name: "Enviar" }).click();
 
-  expect(await connection.evaluate((details) => details.open)).toBe(true);
-  await expect(dialog.getByLabel("Serviço")).toBeFocused();
+  await expect(connection.getByRole("button", {
+    name: "Configurar IA"
+  })).toHaveAttribute("aria-expanded", "true");
+  await expect(dialog.locator("[data-course-assistance-provider]"))
+    .toBeFocused();
   await expect(dialog.getByLabel("Mensagem")).toHaveValue(draft);
   await expect(dialog.getByRole("alert")).toContainText("Escolha o serviço");
   expect((await dialog.boundingBox()).height).toBe(initialHeight);
@@ -209,21 +254,16 @@ test("configuração ausente preserva a mensagem e revela o primeiro campo neces
 test("trocar provider ajusta modelos, apaga a chave anterior e não expõe endpoint", async ({ page }) => {
   await installHarness(page);
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Regra central/u });
-  await dialog.getByText("Serviço e modelo", { exact: true }).click();
-  await dialog.getByLabel("Serviço").selectOption("gemini");
+  const dialog = page.getByRole("dialog", { name: "Edição com IA" });
+  await dialog.getByRole("button", { name: "Configurar IA" }).click();
+  await dialog.locator("[data-course-assistance-provider]").selectOption("gemini");
   await expect(dialog.getByLabel("Modelo")).toHaveValue("gemini-2.5-flash");
   await dialog.getByLabel("Chave do Gemini").fill("gemini-stub");
-  await dialog.getByLabel("Serviço").selectOption("deepseek");
+  await dialog.locator("[data-course-assistance-provider]").selectOption("deepseek");
   await expect(dialog.getByLabel("Modelo")).toHaveValue("deepseek-v4-pro");
   await expect(dialog.getByLabel("Chave da DeepSeek")).toHaveValue("");
   await expect(dialog.getByText(/endpoint|relay|servidor local/iu)).toHaveCount(0);
-  await dialog.getByText("Privacidade e envio", { exact: true }).click();
-  const disclosure = dialog.locator(".course-assistance-disclosure > p");
-  await expect(disclosure).toContainText("o conteúdo selecionado");
-  await expect(disclosure).toContainText("PDFs, Fontes e dados da conta não são enviados");
-  await expect(disclosure).toContainText("O serviço pode guardar o conteúdo conforme os próprios termos");
-  await expect(disclosure).not.toContainText(/alvo de escrita|caminho curricular|renderer|contratos instalados/iu);
+  await expect(dialog.getByText("Privacidade e envio", { exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   expect(await page.evaluate(() => globalThis.__courseAssistance.sessionSnapshot())).toMatchObject({
     providerId: "",
@@ -233,10 +273,10 @@ test("trocar provider ajusta modelos, apaga a chave anterior e não expõe endpo
   });
 });
 
-test("resposta tardia depois de fechar não reabre conversa nem produz prévia", async ({ page }) => {
+test("resposta tardia depois de fechar não reabre conversa nem produz rascunho", async ({ page }) => {
   await installHarness(page, { delayed: true });
   await page.locator("#trigger").click();
-  const dialog = page.getByRole("dialog", { name: /Regra central/u });
+  const dialog = page.getByRole("dialog", { name: "Edição com IA" });
   await dialog.getByLabel("Mensagem").fill("Prepare uma mudança.");
   await dialog.getByRole("button", { name: "Enviar" }).click();
   await page.keyboard.press("Escape");
@@ -244,16 +284,13 @@ test("resposta tardia depois de fechar não reabre conversa nem produz prévia",
   await expect(dialog).toBeHidden();
   expect(await page.evaluate(() => ({
     snapshot: globalThis.__courseAssistance.sessionSnapshot(),
-    previews: globalThis.__courseAssistanceProbe.previews,
     drafts: globalThis.__courseAssistanceProbe.drafts
   }))).toEqual({
     snapshot: expect.objectContaining({
       opened: false,
       conversationTurnCount: 0,
-      hasProposal: false,
-      hasCandidate: false
+      hasProposal: false
     }),
-    previews: 0,
     drafts: 0
   });
 });

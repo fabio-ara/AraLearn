@@ -282,7 +282,10 @@ test("Curso de catálogo exercita os 32 packages no Estudo e permanece disponív
     globalThis.__catalogStudyApp.setOfflineStatus(true);
   });
   await openStudyUnit(page, screenshotPractice);
-  await expect(page.getByRole("status")).toContainText("Sem conexão");
+  const offlineStatus = page.getByRole("button", { name: "Sem conexão" });
+  await expect(offlineStatus).toBeVisible();
+  await expect(offlineStatus).toHaveAttribute("data-runtime-state", "offline");
+  await expect(offlineStatus).toHaveText("");
   await expect(page.locator(
     '[data-package="aralearn.resource.software_container"]'
   )).toBeVisible();

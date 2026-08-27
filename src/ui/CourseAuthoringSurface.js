@@ -467,22 +467,24 @@ function renderCourseHeader(course, state) {
     `<p class="course-authoring-eyebrow">${escapeHtml(course?.title || "Curso")}</p>` +
     `<h1>${escapeHtml(title)}</h1>${overview ? courseMeta(course) : ""}</div>` +
     '<div class="course-authoring-header-actions">' +
-    '<button type="button" class="course-authoring-header-action"' +
-    ' data-course-authoring-action="refresh-course" aria-label="Atualizar Curso" title="Atualizar">' +
-    renderUiIcon("rotate", "course-authoring-button-icon") + "</button>" +
-    (canAccessPlanning(course)
-      ? '<button type="button" class="course-authoring-header-action"' +
-        ' data-course-authoring-action="context-chat" data-target-kind="course"' +
-        ` data-target-id="${escapeHtml(course.courseId)}" data-target-label="${escapeHtml(course.title)}"` +
-        ' aria-label="Planejar este Curso no ChatGPT" title="ChatGPT">' +
-        renderUiIcon("prompt", "course-authoring-button-icon") + "</button>"
-      : "") +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
     ' aria-label="Abrir tarefas do Curso" title="Tarefas">' +
     renderUiIcon("more", "course-authoring-button-icon") +
     '</summary><nav aria-label="Tarefas do Curso">' +
+    '<button type="button" data-course-authoring-action="refresh-course">' +
+    `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar Curso</span></button>` +
+    (canAccessPlanning(course)
+      ? '<button type="button" data-course-authoring-action="context-chat" data-target-kind="course"' +
+        ` data-target-id="${escapeHtml(course.courseId)}" data-target-label="${escapeHtml(course.title)}">` +
+        `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Planejar este Curso no ChatGPT</span></button>`
+      : "") +
     `<a href="${escapeHtml(buildCourseAuthoringRoute(course.courseId))}"` +
     ' data-course-authoring-action="change-section" data-section="overview">Visão geral</a>' +
+    (state.section === "content" && canAccessPlanning(course) && state.canOpenStudyContent
+      ? '<button type="button" data-course-authoring-action="edit-content-entity"' +
+        ' data-target-kind="course">' +
+        `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar Curso</span></button>`
+      : "") +
     renderTaskLinks(course, state.section) + "</nav></details></div></header>";
 }
 
@@ -501,8 +503,8 @@ function renderChatComposer(composer) {
   return '<div class="course-authoring-chat-backdrop" data-course-authoring-chat-backdrop>' +
     '<section class="course-authoring-chat-composer" role="dialog" aria-modal="true"' +
     ' aria-labelledby="course-authoring-chat-title">' +
-    '<header><div><p class="course-authoring-eyebrow">Alvo atual</p>' +
-    '<h2 id="course-authoring-chat-title">Trabalhar no ChatGPT</h2></div>' +
+    '<header><span class="course-authoring-chat-header-space" aria-hidden="true"></span>' +
+    '<h2 id="course-authoring-chat-title">Trabalhar no ChatGPT</h2>' +
     '<button type="button" data-course-authoring-action="close-chat-composer"' +
     ' aria-label="Fechar pedido" title="Fechar">' +
     renderUiIcon("remove-state", "course-authoring-button-icon") + "</button></header>" +
@@ -513,7 +515,6 @@ function renderChatComposer(composer) {
     '<label for="course-authoring-chat-instruction">Seu argumento ou pedido</label>' +
     `<textarea id="course-authoring-chat-instruction" name="instruction" rows="6"` +
     ` maxlength="12000" required>${escapeHtml(composer.instruction)}</textarea>` +
-    '<p class="course-authoring-chat-help">O AraLearn acrescentará o escopo, a revisão, o endereço de retorno e os limites de segurança.</p>' +
     '<p class="course-authoring-notice" data-course-authoring-request-feedback role="status"' +
     ' aria-live="polite" hidden></p>' +
     '<div class="course-authoring-chat-actions">' +
@@ -1541,15 +1542,8 @@ function renderContentSection(state) {
     });
   }
   const items = state.outline.rows || [];
-  const editable = state.course?.canEdit === true;
-  return '<section class="course-authoring-content-flow" aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-content-heading"><div><h2 id="course-authoring-section-title">Inspeção do conteúdo</h2>' +
-    '<p>Leia as Unidades como elas aparecem em Estudo e aja no próprio conteúdo.</p></div>' +
-    (editable && state.canOpenStudyContent
-      ? '<button type="button" class="course-authoring-primary" data-course-authoring-action="edit-content-entity"' +
-        ' data-target-kind="course" aria-label="Editar Curso" title="Editar Curso">' +
-        `${renderUiIcon("edit", "course-authoring-button-icon")}</button>`
-      : "") + '</header><details class="course-authoring-content-hierarchy">' +
+  return '<section class="course-authoring-content-flow" aria-label="Conteúdo do Curso">' +
+    '<details class="course-authoring-content-hierarchy">' +
     '<summary>Estrutura do Curso</summary>' +
     (items.length
       ? `<nav class="course-authoring-entities" aria-label="Hierarquia do Curso">${items.map((item) =>
@@ -2101,9 +2095,15 @@ export function createCourseAuthoringSurface({
     return result;
   }
 
-  function openTargetSources({ targetKind, targetId, targetVersion, targetLabel }) {
+  function openTargetSources({
+    targetKind,
+    targetId,
+    targetVersion,
+    targetLabel,
+    returnFocusKey = ""
+  }) {
     if (!state.course || !canAccessPlanning(state.course)) return;
-    state.sourceTarget = { targetKind, targetId, targetVersion, targetLabel };
+    state.sourceTarget = { targetKind, targetId, targetVersion, targetLabel, returnFocusKey };
     state.writeFailure = "";
     render();
   }
@@ -2152,6 +2152,10 @@ export function createCourseAuthoringSurface({
             ...shared,
             ...state.sourceTarget,
             onClose() {
+              const returnFocusKey = state.sourceTarget?.returnFocusKey || "";
+              if (returnFocusKey) {
+                state.inspectionReturnFocus = { route: state.routeKey, key: returnFocusKey };
+              }
               state.sourceTarget = null;
               render();
             },
@@ -2159,7 +2163,7 @@ export function createCourseAuthoringSurface({
               if (state.sourceTarget?.targetKind === "study_unit") {
                 state.inspectionReturnFocus = {
                   route: state.routeKey,
-                  key: `sources:${state.sourceTarget.targetId}`
+                  key: state.sourceTarget.returnFocusKey || `sources:${state.sourceTarget.targetId}`
                 };
               }
               state.sourceTarget = null;
@@ -2183,10 +2187,7 @@ export function createCourseAuthoringSurface({
     const host = root.querySelector?.("[data-course-inspection-host]");
     if (!host) return;
     try {
-      const initialFocusKey = state.inspectionReturnFocus?.route === state.routeKey
-        ? state.inspectionReturnFocus.key
-        : "";
-      if (initialFocusKey) state.inspectionReturnFocus = null;
+      const initialFocusKey = state.inspectionReturnFocus?.key || "";
       inspectionSequence = createCourseInspectionSequence({
         root: host,
         controller,
@@ -2204,7 +2205,16 @@ export function createCourseAuthoringSurface({
         navigatorValue,
         providerAssistanceSession
       });
-      void inspectionSequence.open();
+      const mountedSequence = inspectionSequence;
+      void mountedSequence.open().then(() => {
+        if (inspectionSequence === mountedSequence && initialFocusKey) {
+          const focused = mountedSequence.focusControl?.(initialFocusKey) === true;
+          if (focused && !state.loading &&
+              state.inspectionReturnFocus?.key === initialFocusKey) {
+            state.inspectionReturnFocus = null;
+          }
+        }
+      });
     } catch (error) {
       host.innerHTML = statusPanel({
         kind: "error",
@@ -3664,11 +3674,23 @@ export function createCourseAuthoringSurface({
     state.chatComposer = null;
     state.chatComposerTrigger = null;
     updateChatComposerHost();
-    if (restoreFocus) trigger?.focus?.({ preventScroll: true });
+    if (restoreFocus) {
+      const menu = trigger?.closest?.(".course-authoring-task-menu");
+      if (menu) menu.open = true;
+      trigger?.focus?.({ preventScroll: true });
+    }
     return true;
   }
 
-  function openChatComposer({ target, action, instruction, deepLink = "", limits, references }) {
+  function openChatComposer({
+    target,
+    action,
+    instruction,
+    deepLink = "",
+    limits,
+    references,
+    trigger = documentValue?.activeElement || null
+  }) {
     if (!state.course || !canAccessPlanning(state.course)) return false;
     state.chatComposer = {
       target: structuredClone(target),
@@ -3678,7 +3700,7 @@ export function createCourseAuthoringSurface({
       ...(limits ? { limits: structuredClone(limits) } : {}),
       ...(references ? { references: structuredClone(references) } : {})
     };
-    state.chatComposerTrigger = documentValue?.activeElement || null;
+    state.chatComposerTrigger = trigger;
     setRequestFeedback();
     return updateChatComposerHost({ focus: true });
   }
@@ -3857,7 +3879,7 @@ export function createCourseAuthoringSurface({
     });
   }
 
-  function contextualChatRequest(value) {
+  function contextualChatRequest(value, trigger = documentValue?.activeElement || null) {
     const suppliedTarget = value?.target && typeof value.target === "object"
       ? value.target
       : value;
@@ -3895,7 +3917,8 @@ export function createCourseAuthoringSurface({
       instruction: value?.instruction || suppliedTarget?.instruction || instructionByType[target.type] ||
         "Leia este alvo no contexto do Curso e discuta comigo antes de propor qualquer alteração.",
       deepLink: value?.deepLink || suppliedTarget?.deepLink || contextualTargetRoute(target),
-      references: value?.references || suppliedTarget?.references
+      references: value?.references || suppliedTarget?.references,
+      trigger
     });
   }
 
@@ -4575,6 +4598,11 @@ export function createCourseAuthoringSurface({
     } else if (action === "confirm-action-confirmation") {
       confirmAction();
     } else if (action === "refresh-course") {
+      const menu = node.closest?.(".course-authoring-task-menu");
+      if (menu) {
+        menu.open = false;
+        menu.querySelector?.(":scope > summary")?.focus?.({ preventScroll: true });
+      }
       setRequestFeedback("Atualizando Curso…");
       void refresh().then((updated) => {
         if (updated === "deferred") return;
@@ -4918,6 +4946,8 @@ export function createCourseAuthoringSurface({
         : null;
       void prepareStructureRequest(part);
     } else if (action === "context-chat" && state.course && !state.writeBusy) {
+      const menu = node.closest?.(".course-authoring-task-menu");
+      if (menu) menu.open = false;
       const type = String(node.dataset.targetKind || "");
       const id = String(node.dataset.targetId || "") || null;
       const title = String(node.dataset.targetLabel || "") || null;
@@ -4933,7 +4963,7 @@ export function createCourseAuthoringSurface({
         deepLink,
         ...(chatAction ? { action: chatAction } : {}),
         ...(instruction ? { instruction } : {})
-      });
+      }, node);
     } else if (action === "materialize-part" && !state.writeBusy) {
       const partId = String(node.dataset.partId || "");
       const part = state.authoringPlan?.plan.parts.find((value) => value.id === partId);

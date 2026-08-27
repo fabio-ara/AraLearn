@@ -236,20 +236,18 @@ da pessoa. Escolha OpenAI, Gemini ou DeepSeek, informe o modelo quando
 necessário e forneça uma chave efêmera. Ela permanece somente na memória da
 sessão e é apagada ao sair, recarregar ou fechar a superfície.
 
-O aviso informa o recorte enviado: sua mensagem, o conteúdo selecionado, o
-restante do objeto corrente como contexto, um resumo do Curso e as mensagens
-recentes. PDFs, Fontes e dados da conta não são enviados.
+O pedido inclui sua mensagem, o conteúdo selecionado, o restante do objeto
+corrente como contexto, um resumo do Curso, as mensagens recentes e a proposta
+corrente. PDFs, Fontes e dados da conta não são enviados. A conversa é efêmera
+no AraLearn, mas o provider pode conservar dados de acordo com seus próprios
+termos.
 
-Confira também o provider indicado no aviso. A conversa é efêmera no AraLearn,
-mas o provider pode conservar dados de acordo com seus próprios termos.
-Autorize somente depois de revisar esse recorte.
-
-Discuta o plano no minichat e só então use **Confirmar e preparar**. Quando a
-proposta exige componentes, o AraLearn descobre as famílias, obtém os contratos
-exatos, valida e abre a prévia no renderer real. Escolha **Aplicar ao rascunho**
-ou **Descartar proposta**. Aplicar ainda não grava o Curso; use **Salvar
-proposta** depois de conferir. Uma proposta inválida ou não renderizável deixa o
-conteúdo corrente intacto.
+Cada resposta mantém uma proposta concreta. Discuta, corrija ou acrescente
+condições e use **Aceitar e aplicar** somente quando ela representar sua
+intenção. Se a proposta exigir componentes, o AraLearn descobre as famílias,
+obtém os contratos exatos, gera, valida no renderer real e só então aplica ao
+rascunho. Isso ainda não grava o Curso; confira o resultado e use **Salvar**.
+Uma proposta inválida ou não renderizável deixa o conteúdo corrente intacto.
 
 A configuração permanece somente na memória da sessão. Endpoint, relay e texto
 de arquitetura não aparecem no percurso normal.

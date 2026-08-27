@@ -305,13 +305,43 @@ function pageFor(options, totalCount = 60) {
   };
 }
 
-function controllerFixture(overrides = {}) {
+function courseDocument(totalCount = 60) {
+  return {
+    document: {
+      courses: [{
+        id: COURSE_ID,
+        position: 0,
+        modules: [{
+          id: "module-a",
+          position: 0,
+          lessons: [{
+            id: "lesson-a",
+            position: 0,
+            microsequences: [{
+              id: "micro-a",
+              position: 0,
+              studyUnits: Array.from({ length: totalCount }, (_, index) => studyUnit(index + 1))
+            }]
+          }]
+        }]
+      }]
+    }
+  };
+}
+
+function controllerFixture(overrides = {}, { totalCount = 60 } = {}) {
   const calls = [];
+  const documentCalls = [];
   const controller = {
     calls,
+    documentCalls,
     async loadAuthoringStudyUnits(courseId, options) {
       calls.push({ courseId, options: structuredClone(options) });
-      return pageFor(options);
+      return pageFor(options, totalCount);
+    },
+    async loadCourseDocument(courseId, options) {
+      documentCalls.push({ courseId, options: structuredClone(options) });
+      return courseDocument(totalCount);
     },
     async loadAuthoringInspectionPosition() {
       return null;
@@ -368,7 +398,7 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
   });
 });
 
-test("marcadores coexistem e o desenho mostra usado versus vigente sem hashes", async () => {
+test("menu situado preserva observações e produção; desenho mostra usado versus vigente sem hashes", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
@@ -389,10 +419,8 @@ test("marcadores coexistem e o desenho mostra usado versus vigente sem hashes", 
   });
 
   assert.equal(await sequence.open(), true);
-  assert.match(
-    root.innerHTML,
-    /aria-label="1\. Unidade 1; Observação pendente; desenho alterado"/u
-  );
+  assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
+  assert.match(root.innerHTML, /<span>Observações · 2<\/span>/u);
   assert.match(root.innerHTML, /Desenho usado nesta versão × vigente agora/u);
   assert.match(root.innerHTML, /Usado nesta versão/u);
   assert.match(root.innerHTML, /Vigente agora/u);
@@ -458,9 +486,9 @@ test("pagina de 12 em 12 e conserva uma janela curricular de no máximo 36 artig
   sequence.destroy();
 });
 
-test("índice compacto alcança uma Unidade distante sem abandonar a janela curricular", async () => {
+test("índice compacto alcança uma Unidade distante com uma única leitura ancorada", async () => {
   const root = new FakeRoot();
-  const controller = controllerFixture();
+  const controller = controllerFixture({}, { totalCount: 858 });
   const sequence = createCourseInspectionSequence({
     root,
     controller,
@@ -470,20 +498,77 @@ test("índice compacto alcança uma Unidade distante sem abandonar a janela curr
   });
   await sequence.open();
 
-  assert.equal(await root.listeners.get("click")({
+  assert.equal((root.innerHTML.match(/data-inspection-jump-input/gu) || []).length, 1);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-jump="/u);
+  const ordinal = { value: "858" };
+  assert.equal(await root.listeners.get("submit")({
+    preventDefault() {},
     target: {
-      closest(selector) {
-        return selector === "[data-inspection-jump]"
-          ? { dataset: { inspectionJump: "50" } }
-          : null;
+      elements: { ordinal },
+      matches(selector) {
+        return selector === "[data-inspection-jump-form]";
       }
     }
   }), true);
 
-  assert.equal(sequence.snapshot().studyUnitId, "unit-50");
-  assert.equal(sequence.snapshot().itemCount, COURSE_INSPECTION_MAX_WINDOW_ITEMS);
-  assert.match(root.innerHTML, /data-inspection-study-unit="unit-50"/u);
-  assert.equal(controller.calls.length, 5);
+  assert.equal(sequence.snapshot().studyUnitId, "unit-858");
+  assert.equal(sequence.snapshot().itemCount, 1);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-858"/u);
+  assert.equal(controller.calls.length, 2);
+  assert.equal(controller.calls.at(-1).options.anchorStudyUnitId, "unit-858");
+  assert.equal(controller.documentCalls.length, 1);
+  assert.deepEqual(controller.documentCalls[0].options, { verifiedRevision: REVISION });
+  sequence.destroy();
+});
+
+test("salto ancorado prevalece sobre uma pré-carga concorrente e libera a paginação", async () => {
+  const root = new FakeRoot();
+  const inspectionCalls = [];
+  let releasePrefetch;
+  let delayedPrefetch = false;
+  const prefetchGate = new Promise((resolve) => {
+    releasePrefetch = resolve;
+  });
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(courseId, options) {
+      inspectionCalls.push({ courseId, options: structuredClone(options) });
+      if (!delayedPrefetch && options.cursor?.studyUnitId === "unit-12" &&
+          options.direction === "forward") {
+        delayedPrefetch = true;
+        await prefetchGate;
+      }
+      return pageFor(options);
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+
+  const prefetch = sequence.loadMore("forward");
+  const ordinal = { value: "40" };
+  assert.equal(await root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      elements: { ordinal },
+      matches(selector) {
+        return selector === "[data-inspection-jump-form]";
+      }
+    }
+  }), true);
+  assert.equal(sequence.snapshot().studyUnitId, "unit-40");
+  assert.equal(inspectionCalls.length, 3);
+  assert.equal(inspectionCalls.at(-1).options.anchorStudyUnitId, "unit-40");
+
+  releasePrefetch();
+  assert.equal(await prefetch, false);
+  assert.equal(sequence.snapshot().studyUnitId, "unit-40");
+  assert.equal(await sequence.loadMore("forward"), true);
+  assert.equal(inspectionCalls.length, 4);
   sequence.destroy();
 });
 
@@ -498,7 +583,8 @@ test("Inspeção incorpora sem tradução o mesmo renderer de Unidade usado no E
   });
   await sequence.open();
 
-  assert.match(root.innerHTML, /<h2 id="course-authoring-section-title">Unidades<\/h2>/u);
+  assert.match(root.innerHTML, /aria-label="Unidades de estudo"/u);
+  assert.doesNotMatch(root.innerHTML, /<h2[^>]*>Unidades<\/h2>/u);
   assert.match(root.innerHTML, /aria-label="Navegação entre Unidades"/u);
   assert.doesNotMatch(root.innerHTML, />Inspeção<|Navegação na Inspeção/u);
   const expected = renderPackageStudyUnitBlocksWithDock(studyUnit(1), {
@@ -811,9 +897,11 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   await sequence.open();
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
+  assert.match(root.innerHTML, /class="course-inspection-item-menu"/u);
   assert.match(root.innerHTML, /<span>Observações<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /Observar esta Unidade/u);
-  assert.match(root.innerHTML, /<span>Visualizar<\/span>/u);
+  assert.match(root.innerHTML, /aria-label="Visualizar"/u);
+  assert.doesNotMatch(root.innerHTML, /<span>Visualizar<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-select-button/u);
   assert.equal(annotationCalls.length, 0);
 
@@ -828,7 +916,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   });
   assert.match(root.innerHTML, /Observações da Unidade/u);
   assert.match(root.innerHTML, /data-observation-composer/u);
-  assert.match(root.innerHTML, /Nova observação/u);
+  assert.doesNotMatch(root.innerHTML, /Nova observação/u);
   assert.doesNotMatch(root.innerHTML, /Observações · 0/u);
   assert.equal(annotationCalls.length, 1);
   assert.equal(annotationCalls[0].options.limit, 24);

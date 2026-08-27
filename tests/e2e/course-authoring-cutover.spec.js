@@ -104,6 +104,18 @@ async function expectNoHorizontalOverflow(page) {
   expect(frameWidth).toBeLessThanOrEqual(430.5);
 }
 
+async function expectModalDialogOwnsTopLayer(dialog) {
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  await expect.poll(() => dialog.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - 1, Math.max(0, bounds.left + bounds.width / 2));
+    const y = Math.min(window.innerHeight - 1, Math.max(0, bounds.top + bounds.height / 2));
+    const topElement = document.elementFromPoint(x, y);
+    return Boolean(topElement && element.contains(topElement));
+  })).toBe(true);
+}
+
 async function expectAuthoringOwnsVerticalScroll(page) {
   await expect.poll(() => page.evaluate(() => {
     const appRoot = document.querySelector("#app-root");
@@ -220,16 +232,26 @@ async function expectResponsiveAuthoringNavigation(page, width) {
   await expect(menu.locator(":scope > summary")).toHaveCount(1);
   await expect(menu.locator(":scope > nav > a")).toHaveCount(8);
   await expect(menu.locator(":scope > summary")).toHaveAccessibleName("Abrir tarefas do Curso");
+  await menu.locator(":scope > summary").click();
+  await expect(menu.getByRole("button", { name: "Atualizar Curso" })).toBeVisible();
+  await expect(menu.getByRole("button", {
+    name: "Planejar este Curso no ChatGPT"
+  })).toBeVisible();
+  await menu.locator(":scope > summary").click();
   await expect(page.locator(".course-authoring-sidebar-navigation")).toHaveCount(0);
   await expect(page.locator(".course-authoring-primary-navigation")).toHaveCount(0);
   const geometry = await page.locator(".course-authoring-surface").evaluate((surface) => {
     const frame = surface.querySelector(".course-authoring-frame");
     const layout = surface.querySelector(".course-authoring-layout");
     const main = surface.querySelector(".course-authoring-main-pane");
+    const header = surface.querySelector(".course-authoring-course-header");
+    const heading = header?.querySelector(".course-authoring-course-heading");
     const surfaceRect = surface.getBoundingClientRect();
     const frameRect = frame.getBoundingClientRect();
     const layoutRect = layout.getBoundingClientRect();
     const mainRect = main.getBoundingClientRect();
+    const headerRect = header?.getBoundingClientRect();
+    const headingRect = heading?.getBoundingClientRect();
     return {
       surfaceWidth: surfaceRect.width,
       frameWidth: frameRect.width,
@@ -237,13 +259,19 @@ async function expectResponsiveAuthoringNavigation(page, width) {
       rightSpace: innerWidth - surfaceRect.right,
       layoutColumns: getComputedStyle(layout).gridTemplateColumns,
       mainAligned: Math.abs(mainRect.left - layoutRect.left) <= 1 &&
-        Math.abs(mainRect.width - layoutRect.width) <= 1
+        Math.abs(mainRect.width - layoutRect.width) <= 1,
+      headerTitleCentered: Boolean(headerRect && headingRect &&
+        Math.abs(
+          headingRect.left + headingRect.width / 2 -
+          (headerRect.left + headerRect.width / 2)
+        ) <= 1)
     };
   });
   expect(geometry.surfaceWidth).toBeLessThanOrEqual(430);
   expect(geometry.frameWidth).toBeLessThanOrEqual(430);
   expect(geometry.layoutColumns.trim().split(/\s+/u)).toHaveLength(1);
   expect(geometry.mainAligned).toBe(true);
+  expect(geometry.headerTitleCentered).toBe(true);
   if (width > 430) {
     expect(Math.abs(geometry.leftSpace - geometry.rightSpace)).toBeLessThanOrEqual(1);
   }
@@ -2526,9 +2554,35 @@ test.describe("Autoria canônica mobile-first", () => {
     const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
     await mountCourseAuthoring(page, { cardinality: "many", hash: planningHash });
 
-    const trigger = page.getByRole("button", { name: "Planejar este Curso no ChatGPT" });
+    const taskMenu = page.locator(".course-authoring-task-menu");
+    await taskMenu.locator(":scope > summary").click();
+    const trigger = taskMenu.getByRole("button", {
+      name: "Planejar este Curso no ChatGPT"
+    });
     await trigger.click();
+    await expect(taskMenu).not.toHaveAttribute("open", "");
     const composer = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
+    await expect(composer).not.toContainText("endereço de retorno");
+    const composerHeaderGeometry = await composer.evaluate((dialog) => {
+      const header = dialog.querySelector(":scope > header");
+      const title = header.querySelector("h2");
+      const close = header.querySelector("button");
+      const headerRect = header.getBoundingClientRect();
+      const titleRect = title.getBoundingClientRect();
+      const closeRect = close.getBoundingClientRect();
+      return {
+        titleCenterDelta: Math.abs(
+          titleRect.left + titleRect.width / 2 -
+          (headerRect.left + headerRect.width / 2)
+        ),
+        closeWidth: closeRect.width,
+        closeHeight: closeRect.height
+      };
+    });
+    expect(composerHeaderGeometry.titleCenterDelta).toBeLessThanOrEqual(1);
+    expect(Math.abs(
+      composerHeaderGeometry.closeWidth - composerHeaderGeometry.closeHeight
+    )).toBeLessThanOrEqual(1);
     const instruction = composer.getByLabel("Seu argumento ou pedido");
     const draft = "Preserve este argumento enquanto consulto outra janela.";
     await instruction.fill(draft);
@@ -2547,6 +2601,7 @@ test.describe("Autoria canônica mobile-first", () => {
 
     await page.keyboard.press("Escape");
     await expect(composer).toHaveCount(0);
+    await expect(taskMenu).toHaveAttribute("open", "");
     await expect(trigger).toBeFocused();
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
     await expect.poll(() => page.evaluate(() =>
@@ -3254,7 +3309,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     }));
 
     await navigateToAuthoringArea(page, "inspection");
-    await expect(page.getByRole("heading", { name: "Unidades", exact: true })).toBeVisible();
+    await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     await expect.poll(scrollListeners).toEqual({ adds: 1, removes: 0, active: 1 });
 
     await navigateToAuthoringArea(page, "planning");
@@ -3262,7 +3317,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await expect.poll(scrollListeners).toEqual({ adds: 1, removes: 1, active: 0 });
 
     await navigateToAuthoringArea(page, "inspection");
-    await expect(page.getByRole("heading", { name: "Unidades", exact: true })).toBeVisible();
+    await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     await expect.poll(scrollListeners).toEqual({ adds: 2, removes: 1, active: 1 });
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.close());
     await expect.poll(scrollListeners).toEqual({ adds: 2, removes: 2, active: 0 });
@@ -3447,6 +3502,35 @@ test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON"
   const targetDialog = page.getByRole("dialog", { name: /Fontes de Relação entre nomes/u });
   await expect(targetDialog).toBeVisible();
   await expect(targetDialog).toBeFocused();
+  const targetGeometry = () => targetDialog.evaluate((dialog) => {
+    const sheet = dialog.parentElement;
+    const header = dialog.querySelector(":scope > header");
+    const title = header.querySelector("h2");
+    const close = header.querySelector('button[data-source-action="close-target"]');
+    const body = dialog.querySelector(":scope > .course-source-target-body");
+    const sheetRect = sheet.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    const closeRect = close.getBoundingClientRect();
+    return {
+      sheetHeight: sheetRect.height,
+      titleCenterDelta: Math.abs(
+        titleRect.left + titleRect.width / 2 -
+        (headerRect.left + headerRect.width / 2)
+      ),
+      closeWidth: closeRect.width,
+      closeHeight: closeRect.height,
+      bodyOverflowY: getComputedStyle(body).overflowY,
+      sheetOverflow: getComputedStyle(sheet).overflow
+    };
+  });
+  const initialTargetGeometry = await targetGeometry();
+  expect(initialTargetGeometry.titleCenterDelta).toBeLessThanOrEqual(1);
+  expect(Math.abs(
+    initialTargetGeometry.closeWidth - initialTargetGeometry.closeHeight
+  )).toBeLessThanOrEqual(1);
+  expect(initialTargetGeometry.bodyOverflowY).toBe("auto");
+  expect(initialTargetGeometry.sheetOverflow).toBe("hidden");
   await page.keyboard.press("Shift+Tab");
   expect(await targetDialog.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);
   await page.keyboard.press("Tab");
@@ -3457,6 +3541,7 @@ test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON"
     exact: true
   }).click();
   await expect(page.locator(".course-source-target-link")).toHaveCount(2);
+  expect((await targetGeometry()).sheetHeight).toBe(initialTargetGeometry.sheetHeight);
   await page.getByRole("checkbox", { name: "Páginas 11–13" }).check();
   await page.keyboard.press("Escape");
   const discard = page.getByRole("alertdialog", { name: "Descartar alterações?" });
@@ -3523,14 +3608,17 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
 
   const details = page.locator(
     'summary[aria-label="Abrir detalhes de Exemplo guiado com diagrama"]'
-  );
-  await details.click();
-  await details.click();
-  const sourcesAction = page.getByRole("button", { name: "Fontes", exact: true }).first();
+  ).locator("..");
+  const detailsTrigger = details.locator(":scope > summary");
+  await detailsTrigger.click();
+  await expect(details).toHaveAttribute("open", "");
+  const sourcesAction = details.getByRole("button", { name: "Fontes", exact: true });
   await sourcesAction.click();
-  await expect(page.getByRole("dialog", {
+  await expect(details).not.toHaveAttribute("open", "");
+  const targetDialog = page.getByRole("dialog", {
     name: "Fontes de Exemplo guiado com diagrama"
-  })).toBeVisible();
+  });
+  await expectModalDialogOwnsTopLayer(targetDialog);
   await page.getByRole("button", {
     name: "Vincular fonte: Fonte verificável 1",
     exact: true
@@ -3541,7 +3629,8 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(targetDialog).toHaveCount(0);
+  await expect(details).toHaveAttribute("open", "");
   await expect(sourcesAction).toBeFocused();
 
   const command = await page.evaluate(() =>
@@ -3763,8 +3852,18 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(0);
 
-  await page.getByRole("button", { name: "Observações", exact: true }).first().click();
-  await expect(page.getByRole("dialog", { name: "Observações da Unidade" })).toBeVisible();
+  const details = page.locator(".course-inspection-item-details").first();
+  const detailsTrigger = details.locator(":scope > summary");
+  await detailsTrigger.click();
+  await expect(details).toHaveAttribute("open", "");
+  const observationsAction = details.getByRole("button", {
+    name: "Observações",
+    exact: true
+  });
+  await observationsAction.click();
+  await expect(details).not.toHaveAttribute("open", "");
+  const observationDialog = page.getByRole("dialog", { name: "Observações da Unidade" });
+  await expectModalDialogOwnsTopLayer(observationDialog);
   await expect(page.getByText(
     "A relação entre os conjuntos precisa de mais contexto.",
     { exact: true }
@@ -3774,16 +3873,27 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
   await expect(page.locator("#study-observation-counter"))
     .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
-  await page.getByRole("button", { name: "Adicionar" }).click();
+  await page.getByRole("button", { name: "Enviar observação" }).click();
   await expect(page.getByText("😀a", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Observações · 2", exact: true }).first())
-    .toBeVisible();
+  await observationDialog
+    .getByRole("button", { name: "Fechar" }).click();
+  const observationsWithCount = page.getByRole("button", {
+    name: "Observações · 2",
+    exact: true
+  }).first();
+  await expect(observationDialog).toHaveCount(0);
+  await expect(details).toHaveAttribute("open", "");
+  await expect(observationsWithCount).toBeFocused();
+  await expect(observationsWithCount).toBeVisible();
 
   const mutation = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.annotationMutations[0]);
   expect(mutation.expectedCourseRevision).toBe(5);
   expect(mutation.command.target).toEqual({ kind: "study_unit", id: "study-unit-01" });
 
+  await observationsWithCount.click();
+  await expect(details).not.toHaveAttribute("open", "");
+  await expectModalDialogOwnsTopLayer(observationDialog);
   const withdraw = page.getByRole("button", { name: "Retirar observação", exact: true });
   await withdraw.click();
   const confirmation = page.getByRole("alertdialog", { name: "Retirar observação?" });
@@ -3819,17 +3929,11 @@ test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Un
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash });
 
-  const actions = page.locator(".course-inspection-item-actions").first();
-  const contextualLabels = actions.locator(":scope > :is(button, a) > span");
-  const boxes = await contextualLabels.evaluateAll((nodes) => nodes.map((node) => {
-    const rect = node.getBoundingClientRect();
-    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
-  }));
-  expect(boxes.every((box, index) => boxes.every((other, otherIndex) =>
-    index === otherIndex || box.right <= other.left || other.right <= box.left ||
-      box.bottom <= other.top || other.bottom <= box.top))).toBe(true);
-
-  await actions.getByRole("link", { name: "Desenho", exact: true }).click();
+  const item = page.locator("[data-inspection-study-unit]").first();
+  await item.locator(".course-inspection-item-details > summary").click();
+  const menu = item.locator(".course-inspection-item-menu");
+  await expect(menu).toBeVisible();
+  await menu.getByRole("link", { name: "Desenho", exact: true }).click();
   await expect(page.getByRole("heading", {
     name: "Cobertura planejada desta Microssequência"
   })).toBeVisible();
@@ -3842,7 +3946,7 @@ test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Un
 
   await page.getByRole("link", { name: "Voltar à Unidade" }).click();
   await expect(page).toHaveURL(new RegExp("section=content&studyUnitId=study-unit-01"));
-  await expect(actions.getByRole("link", { name: "Desenho", exact: true })).toBeFocused();
+  await expect(page.getByRole("link", { name: "Desenho", exact: true })).toBeFocused();
   expect(clientErrors).toEqual([]);
 });
 
@@ -3875,8 +3979,8 @@ for (const width of [360, 390, 430, 1280]) {
     const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
     await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
 
-    await expect(page.getByRole("heading", { name: "Unidades" })).toBeVisible();
-    await expect(page.getByText("60 Unidades de estudo", { exact: true })).toBeVisible();
+    await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
+    await expect(page.getByText("de 60", { exact: true })).toBeVisible();
     await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
     await expect(page.getByLabel("Filtrar por Parte")).toHaveValue("course:");
     await expect(page.locator("[data-set-diagram-state=ready]")).toHaveCount(1);
@@ -3885,7 +3989,8 @@ for (const width of [360, 390, 430, 1280]) {
     ).first()).toBeDisabled();
     await expectNoHorizontalOverflow(page);
 
-    await page.locator('[data-inspection-jump="50"]').click();
+    await page.getByLabel("Número da Unidade").fill("50");
+    await page.getByRole("button", { name: "Ir para a Unidade" }).click();
     await expect(page.locator('[data-inspection-study-unit="study-unit-50"]')).toHaveCount(1);
 
     await expect(page.locator('[data-inspection-study-unit="study-unit-60"]')).toHaveCount(1);
@@ -4033,6 +4138,11 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
     "href",
     `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
   );
+  await expect(context.getByRole("link", { name: "Esta Microssequência" })).toHaveAttribute(
+    "href",
+    `#/authoring/courses/${COURSE_IDS[0]}` +
+      "?section=content&didacticMicrosequenceId=microsequence-a"
+  );
   await context.getByRole("link", { name: "Esta Microssequência" }).click();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}` +
@@ -4051,6 +4161,9 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   const designAction = page.locator(
     '[data-inspection-study-unit="study-unit-25"] [data-inspection-control-key="design:study-unit-25"]'
   );
+  const itemDetails = item.locator(".course-inspection-item-details");
+  await itemDetails.locator(":scope > summary").click();
+  await expect(itemDetails).toHaveAttribute("open", "");
   await designAction.click();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}` +
@@ -5064,7 +5177,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
     `#/authoring/courses/${COURSE_IDS[0]}` +
       "?section=content&studyUnitId=study-unit-01"
   );
-  await expect(page.getByRole("heading", { name: "Unidades", exact: true })).toBeVisible();
+  await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
   await expect(page.locator('[data-inspection-study-unit="study-unit-01"]')).toHaveCount(1);
   expect(clientErrors).toEqual([]);
   expect(networkErrors).toEqual([]);
