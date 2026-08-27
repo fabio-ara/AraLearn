@@ -194,6 +194,7 @@ test("Actions lê e altera Observações com destinatário e principal próprios
 test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados", async () => {
   let courseRevision = 1;
   let commitCalls = 0;
+  const receipts = new Map();
   let plan = {
     id: PLAN_ID,
     version: 1,
@@ -221,6 +222,8 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
       };
     },
     async commitCourseInstructionalPlan(value) {
+      const replay = receipts.get(value.requestId);
+      if (replay) return { ...structuredClone(replay), idempotent: true };
       commitCalls += 1;
       assert.equal(value.expectedCourseRevision, courseRevision);
       assert.equal(value.expectedPlanVersion, plan.version);
@@ -228,7 +231,7 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
       const nextPlan = applyCourseAuthoringPlanCommand(editablePlan, value.command);
       courseRevision += 1;
       plan = { ...nextPlan, version: currentPlanVersion + 1 };
-      return {
+      const receipt = {
         contract: "aralearn.course-instructional-plan-change.v1",
         courseId: ACTOR_ID,
         courseRevision,
@@ -239,6 +242,8 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
         changed: true,
         deepLink
       };
+      receipts.set(value.requestId, structuredClone(receipt));
+      return receipt;
     }
   });
 
@@ -301,19 +306,103 @@ test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados
     microsequenceIds: []
   }]);
 
+  let afterItems = afterPart;
+  const beforeFirstItem = afterItems;
+  const itemCases = [{
+    kind: "intended_learning_outcome",
+    collection: "intendedLearningOutcomes",
+    id: "50000000-0000-4000-8000-000000000005",
+    statement: "Explicar os fundamentos em uma situação nova."
+  }, {
+    kind: "instructional_analysis_unit",
+    collection: "instructionalAnalysisUnits",
+    id: "60000000-0000-4000-8000-000000000006",
+    statement: "Distinguir os conceitos necessários à explicação."
+  }, {
+    kind: "evidence_requirement",
+    collection: "evidenceRequirements",
+    id: "70000000-0000-4000-8000-000000000007",
+    statement: "Produzir uma explicação fundamentada para um caso novo."
+  }];
+  for (const [index, item] of itemCases.entries()) {
+    const itemChange = await changePlan(
+      `action-plan-item-000${index + 1}`,
+      afterItems,
+      {
+        type: "add_plan_item",
+        kind: item.kind,
+        id: item.id,
+        position: 0,
+        statement: item.statement,
+        sourceLinks: []
+      }
+    );
+    assert.equal(itemChange.courseRevision, 4 + index);
+    assert.equal(itemChange.planVersion, 4 + index);
+    afterItems = await readPlan();
+    assert.deepEqual(afterItems.plan[item.collection], [{
+      id: item.id,
+      position: 0,
+      statement: item.statement,
+      sourceLinks: []
+    }]);
+  }
+
+  const firstItemReplayResponse = await handler(request("alterarCurso", {
+    requestId: "action-plan-item-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: beforeFirstItem.courseRevision,
+    expectedPlanVersion: beforeFirstItem.plan.version,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "add_plan_item",
+      kind: itemCases[0].kind,
+      id: itemCases[0].id,
+      position: 0,
+      statement: itemCases[0].statement,
+      sourceLinks: []
+    }
+  }));
+  const firstItemReplay = (await firstItemReplayResponse.json()).data;
+  assert.equal(firstItemReplayResponse.status, 200);
+  assert.equal(firstItemReplay.idempotent, true);
+  assert.equal(firstItemReplay.courseRevision, 4);
+  assert.equal(firstItemReplay.planVersion, 4);
+  assert.equal((await readPlan()).plan.version, 6);
+  assert.equal(commitCalls, 5);
+
+  const missingSourceLinks = await handler(request("alterarCurso", {
+    requestId: "action-plan-item-without-links-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: afterItems.courseRevision,
+    expectedPlanVersion: afterItems.plan.version,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "add_plan_item",
+      kind: "intended_learning_outcome",
+      id: "80000000-0000-4000-8000-000000000008",
+      position: 1,
+      statement: "Este payload precisa ser recusado antes do adaptador."
+    }
+  }));
+  const missingSourceLinksPayload = await missingSourceLinks.json();
+  assert.equal(missingSourceLinks.status, 422);
+  assert.equal(missingSourceLinksPayload.error.code, "invalid_course_source_links");
+  assert.equal(commitCalls, 5);
+
   const invalid = await handler(request("alterarCurso", {
     requestId: "action-plan-invalid-0001",
     courseId: ACTOR_ID,
-    expectedRevision: afterPart.courseRevision,
-    expectedPlanVersion: afterPart.plan.version,
+    expectedRevision: afterItems.courseRevision,
+    expectedPlanVersion: afterItems.plan.version,
     operation: "update_instructional_plan",
     planCommand: { type: "tipo_inexistente" }
   }));
   const invalidPayload = await invalid.json();
   assert.equal(invalid.status, 422);
   assert.equal(invalidPayload.error.code, "invalid_course_authoring_plan_command");
-  assert.equal(commitCalls, 2);
-  assert.equal((await readPlan()).plan.version, 3);
+  assert.equal(commitCalls, 5);
+  assert.equal((await readPlan()).plan.version, 6);
 });
 
 test("Actions não aceita o bearer sem passar pelo resolvedor específico", async () => {

@@ -185,7 +185,9 @@ function normalizeCoursePlanDomain(normalize) {
   try {
     return normalize();
   } catch (error) {
-    if (!(error instanceof CourseAuthoringPlanError)) throw error;
+    if (!(error instanceof CourseAuthoringPlanError) && !(error instanceof CourseSourcesError)) {
+      throw error;
+    }
     throw new AuthoringApiError(422, error.code, error.message, error.details);
   }
 }

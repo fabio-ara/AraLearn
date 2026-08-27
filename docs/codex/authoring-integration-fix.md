@@ -339,6 +339,24 @@ pgTAP, lint JavaScript e SQL, diff semântico do protocolo, paridade dos 771
 objetos do banco real, auditorias de documentação e terminologia, smokes
 hospedados e inspeção no Chrome real.
 
+## Hotfix residual de itens do plano
+
+Depois da validação principal, o GPT confirmou `update_plan` e as 12 operações
+`add_part` no Curso `003ba920-db66-4d21-8b79-f37c48304453`, então em
+`courseRevision = 18` e `planVersion = 18`. Uma chamada pública
+`add_plan_item` com ID não UUID foi recusada corretamente. Duas chamadas com
+UUID canônico e o mesmo `requestId`, porém, devolveram `internal_error`.
+
+Este hotfix não pode alterar nem resetar esse Curso e deve preservar suas 12
+Partes. A correção precisa usar uma fixture descartável e provar, pela mesma
+fronteira pública usada pelo GPT, a jornada `ler instructional_plan →
+add_plan_item → reler` para `intended_learning_outcome`,
+`instructional_analysis_unit` e `evidence_requirement`. CAS, UUID,
+`requestId`, idempotência, incremento de `courseRevision`/`planVersion` e deep
+links permanecem obrigatórios. A menor correção suficiente deve receber teste
+de regressão, commit, integração, push, deploy e validação no ambiente
+publicado.
+
 ## Checklist de aceite
 
 Marcar um item somente após evidência correspondente no estado efetivamente
@@ -383,3 +401,8 @@ publicado. A conclusão exige todos os itens aplicáveis marcados.
 - [x] MCP, Action, Pages/OpenAPI e demais superfícies necessárias foram implantados.
 - [x] Ambiente publicado corresponde aos fingerprints e artefatos esperados.
 - [x] Fluxo real ChatGPT → Action/MCP → AraLearn → releitura funciona de ponta a ponta.
+- [ ] OpenAPI final exige os campos estruturais de `add_plan_item` após a projeção para o importador.
+- [ ] Payload inválido de item do plano devolve erro público e nunca `internal_error`.
+- [ ] Os três tipos de item são escritos e relidos por Action em fixture descartável publicada.
+- [ ] CAS, versões, deep link e replay idempotente foram confirmados no hotfix publicado.
+- [ ] Hotfix foi commitado, integrado, enviado e implantado sem alterar o Curso real.

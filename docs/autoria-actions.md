@@ -49,8 +49,11 @@ importador descarta a operação quando um desses elementos falta e ignora
 `oneOf` de raiz mesmo quando o aceita no editor. Por isso, a projeção usada para
 validar Actions conserva os unions estritos, enquanto o OpenAPI entregue ao GPT
 expõe uma superfície agregada, derivada dessas variantes, com todos os campos,
-enums discriminadores e condições de uso nas descrições. O servidor continua
-aplicando as variantes estritas antes de executar a chamada.
+enums discriminadores e condições de uso nas descrições. Quando uma condição é
+necessária para construir a chamada, a superfície agregada preserva também uma
+variante estrutural compacta. É o caso de `add_plan_item` e `update_plan_item`,
+que exigem `sourceLinks` — inclusive `[]` quando não há fonte a vincular. O
+servidor continua aplicando as variantes estritas antes de executar a chamada.
 
 ## Preparar um cliente OAuth
 
@@ -201,7 +204,7 @@ npm.cmd run actions:openapi:check
 npm.cmd run test:authoring:actions
 ```
 
-O arquivo gerado deve permanecer abaixo de 72 KiB. O teste também confirma que
+O arquivo gerado deve permanecer abaixo de 128 KiB. O teste também confirma que
 os discriminadores chegam como enums unitários, que toda condicional canônica
 foi compilada e que chamadas válidas e inválidas são distinguidas pelo próprio
 esquema. O documento declara o identificador do protocolo, sua `schemaVersion`

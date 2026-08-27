@@ -1459,7 +1459,7 @@ function normalizeCourseAuthoringPlanInputValue(callback) {
   try {
     return callback();
   } catch (error) {
-    if (error instanceof CourseAuthoringPlanError) {
+    if (error instanceof CourseAuthoringPlanError || error instanceof CourseSourcesError) {
       throw new AuthoringApiError(422, error.code, error.message, error.details);
     }
     throw error;

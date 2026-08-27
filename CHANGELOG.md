@@ -4,6 +4,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.37] - 2026-08-27
+
+### Corrigido
+
+- `add_plan_item` preserva no OpenAPI final os campos obrigatórios da variante,
+  inclusive `sourceLinks`, e grava os três tipos de item do plano pela Action;
+- payload inválido de item do plano retorna o erro público correspondente, sem
+  ser mascarado como `internal_error` antes do acesso ao banco.
+
 ## [0.0.36] - 2026-08-27
 
 ### Alterado

@@ -3262,6 +3262,32 @@ test("posição impossível de Parte retorna o erro público sem chamar o commit
   assert.deepEqual(calls, ["get_owned_course_instructional_plan_for_actor_v1"]);
 });
 
+test("vínculos ausentes em item do plano retornam erro público antes de acessar o banco", async () => {
+  const value = adapter(async () => {
+    assert.fail("Um item inválido não pode alcançar o Supabase.");
+  });
+
+  await assert.rejects(
+    () => value.commitCourseInstructionalPlan({
+      principal: { actorId: USER_ID, authenticationKind: "action" },
+      courseId: COURSE_ID,
+      requestId: "request-invalid-plan-item-links-0001",
+      expectedCourseRevision: 18,
+      expectedPlanVersion: 18,
+      command: {
+        type: "add_plan_item",
+        kind: "intended_learning_outcome",
+        id: PLAN_ITEM_ID,
+        position: 0,
+        statement: "Explicar uma relação verificável."
+      }
+    }),
+    (error) => error instanceof AuthoringApiError &&
+      error.status === 422 &&
+      error.code === "invalid_course_source_links"
+  );
+});
+
 test("replay do plano chega ao receipt depois de outra revisão sem reaplicar o comando", async () => {
   let committed = null;
   const value = adapter(async (url, init) => {
