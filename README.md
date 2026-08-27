@@ -4,6 +4,8 @@ O AraLearn é uma plataforma para estudo autodidata e criação de cursos com ap
 
 O estudo é dividido em pequenas etapas, para que seja possível avançar mesmo quando há pouco tempo disponível e retomar o percurso depois de uma interrupção. O AraLearn funciona na web e no Android, e parte do conteúdo necessário ao estudo pode permanecer no dispositivo para continuar disponível quando a conexão não é estável.
 
+A página [Origens do AraLearn](docs/origens-do-aralearn.md) apresenta o percurso que levou à criação do projeto.
+
 ## Como o conteúdo é organizado
 
 O percurso de estudo segue uma hierarquia:
