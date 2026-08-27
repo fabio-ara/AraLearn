@@ -364,16 +364,45 @@ demonstrou que o importador não a usava para construir a chamada: o agente
 continuava percebendo `sourceLinks` como opcional. O ensaio foi interrompido
 antes da criação de Curso ou de qualquer escrita.
 
-A correção candidata 0.0.38 mantém o protocolo v1, o MCP, o domínio e o
-fingerprint canônico inalterados. Somente a projeção de transporte das Actions
-é especializada: `add_plan_item` e `update_plan_item` tornam-se operações
-dedicadas derivadas das variantes canônicas de `alterarCurso`, com
-`operation`, `planCommand.type` e todos os campos obrigatórios expressos
-diretamente em objetos comuns. A Action genérica deixa de anunciar essas duas
-variantes para não oferecer ao GPT um caminho degradado; o backend continua
-aceitando a forma canônica anterior e valida que a rota dedicada corresponda
-exatamente ao discriminador antes de encaminhar o mesmo payload ao executor
-público.
+A causa completa tinha duas camadas. O payload construído pelo GPT omitia
+`sourceLinks`, cuja obrigatoriedade estava escondida numa condicional aninhada;
+o normalizador canônico recusou a ausência com `CourseSourcesError`, mas o
+adaptador ainda só traduzia `CourseAuthoringPlanError`, convertendo a falha de
+cliente em `internal_error`. A release 0.0.37 corrigiu essa tradução para o erro
+público 422. O Preview real demonstrou, porém, que o importador do ChatGPT não
+preservava a obrigatoriedade condicional, embora o editor armazenasse o
+OpenAPI correto.
+
+A release 0.0.38 mantém o protocolo v1, o MCP, o domínio e o fingerprint
+canônico inalterados. Somente a projeção de transporte das Actions é
+especializada: `add_plan_item` e `update_plan_item` são operações dedicadas
+derivadas das variantes canônicas de `alterarCurso`, com `operation`,
+`planCommand.type` e todos os campos obrigatórios expressos diretamente em
+objetos comuns. A Action genérica deixa de anunciar essas duas variantes para
+não oferecer ao GPT um caminho degradado; o backend continua aceitando a forma
+canônica anterior e valida que a rota dedicada corresponda exatamente ao
+discriminador antes de encaminhar o mesmo payload ao executor público.
+
+A implementação foi integrada pela PR #209: commit
+`fff4a3c50f69d460f5747168eb9264e9f0675f2b`, merge
+`936689641b55fa29133a0b934b7d0168c3be5672`. A Action foi implantada na versão
+51; MCP e API permaneceram semanticamente inalterados e ativos nas versões 180
+e 58. Pages, Android e a release `v0.0.38` concluíram com sucesso. O OpenAPI
+hospedado tem sete operações, expõe `sourceLinks` diretamente em `required` e
+não usa `oneOf`, `anyOf` ou `allOf` na rota dedicada. O GPT final foi
+reconfigurado com esse artefato e passou a perceber os seis campos obrigatórios
+do comando, inclusive `sourceLinks`.
+
+No GPT real, uma fixture exclusiva
+`f04bd9de-33e9-46f2-bbd3-1be6b1de8928` foi lida em 1/1 e recebeu, pela Action
+dedicada, um item `intended_learning_outcome`, um
+`instructional_analysis_unit` e um `evidence_requirement`. A releitura após
+cada escrita confirmou 2/2, 3/3 e 4/4, respectivamente. O replay literal do
+primeiro `requestId`, com o CAS original, devolveu o recibo histórico 2/2 com
+`idempotent = true`; a releitura final continuou em 4/4, com exatamente três
+itens e sem duplicação. Os deep links permaneceram válidos. O Curso real
+`003ba920-db66-4d21-8b79-f37c48304453` não foi lido nem alterado durante esse
+ensaio e suas 12 Partes foram preservadas.
 
 ## Checklist de aceite
 
@@ -419,8 +448,8 @@ publicado. A conclusão exige todos os itens aplicáveis marcados.
 - [x] MCP, Action, Pages/OpenAPI e demais superfícies necessárias foram implantados.
 - [x] Ambiente publicado corresponde aos fingerprints e artefatos esperados.
 - [x] Fluxo real ChatGPT → Action/MCP → AraLearn → releitura funciona de ponta a ponta.
-- [ ] OpenAPI final exige os campos estruturais de `add_plan_item` após a projeção para o importador.
-- [ ] Payload inválido de item do plano devolve erro público e nunca `internal_error`.
-- [ ] Os três tipos de item são escritos e relidos por Action em fixture descartável publicada.
-- [ ] CAS, versões, deep link e replay idempotente foram confirmados no hotfix publicado.
-- [ ] Hotfix foi commitado, integrado, enviado e implantado sem alterar o Curso real.
+- [x] OpenAPI final exige os campos estruturais de `add_plan_item` após a projeção para o importador.
+- [x] Payload inválido de item do plano devolve erro público e nunca `internal_error`.
+- [x] Os três tipos de item são escritos e relidos por Action em fixture descartável publicada.
+- [x] CAS, versões, deep link e replay idempotente foram confirmados no hotfix publicado.
+- [x] Hotfix foi commitado, integrado, enviado e implantado sem alterar o Curso real.
