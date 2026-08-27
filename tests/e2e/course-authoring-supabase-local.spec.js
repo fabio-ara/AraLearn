@@ -1074,6 +1074,13 @@ test.describe("Autoria real com Supabase local", () => {
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Conteúdo", exact: true }).first())
         .toBeVisible();
+      const returnedLessonEdit = currentHierarchy.locator(
+        '[data-inspection-edit-content="lesson"]'
+      );
+      await expect(currentHierarchy).toHaveAttribute("open", "");
+      await expect(returnedLessonEdit).toBeFocused();
+      await currentHierarchy.locator(":scope > summary").click();
+      await expect(currentHierarchy).not.toHaveAttribute("open", "");
       const inspectionUnit = page.locator(
         `[data-inspection-study-unit="${STUDY_UNIT_ID}"]`
       );
