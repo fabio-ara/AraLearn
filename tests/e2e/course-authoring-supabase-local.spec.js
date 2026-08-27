@@ -512,6 +512,8 @@ test.describe("Autoria real com Supabase local", () => {
       })).toHaveCount(0);
       await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
         .toHaveCount(0);
+      await courseTaskMenu.locator(":scope > summary").click();
+      await expect(courseTaskMenu).not.toHaveAttribute("open", "");
 
       await page.getByRole("region", { name: "Crie a primeira Parte" })
         .getByRole("button", { name: "Adicionar Parte", exact: true }).click();
