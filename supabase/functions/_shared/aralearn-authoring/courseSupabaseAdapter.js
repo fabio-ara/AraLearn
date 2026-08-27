@@ -4,6 +4,7 @@ import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
 import {
   applyCourseAuthoringPlanCommand,
+  CourseAuthoringPlanError,
   normalizeCourseAuthoringPlan,
   normalizeCourseAuthoringPlanCommand
 } from "../aralearn/runtime/domain/courseAuthoringPlan.js";
@@ -1449,6 +1450,17 @@ function normalizeCourseVariantInputValue(callback) {
   } catch (error) {
     if (error instanceof CourseVariantError) {
       throw new AuthoringApiError(422, error.code, error.message);
+    }
+    throw error;
+  }
+}
+
+function normalizeCourseAuthoringPlanInputValue(callback) {
+  try {
+    return callback();
+  } catch (error) {
+    if (error instanceof CourseAuthoringPlanError) {
+      throw new AuthoringApiError(422, error.code, error.message, error.details);
     }
     throw error;
   }
@@ -3492,7 +3504,9 @@ export class CourseSupabaseAdapter {
     command,
     deadlineAt = null
   }) {
-    const normalizedCommand = normalizeCourseAuthoringPlanCommand(command);
+    const normalizedCommand = normalizeCourseAuthoringPlanInputValue(() =>
+      normalizeCourseAuthoringPlanCommand(command)
+    );
     const current = await this.getCourseInstructionalPlan({
       principal,
       courseId,
@@ -3503,7 +3517,9 @@ export class CourseSupabaseAdapter {
     const matchesFence = Number(current?.courseRevision) === expectedCourseRevision &&
       Number(current?.plan?.version) === expectedPlanVersion;
     const targetPlan = matchesFence
-      ? applyCourseAuthoringPlanCommand(currentPlan, normalizedCommand)
+      ? normalizeCourseAuthoringPlanInputValue(() =>
+          applyCourseAuthoringPlanCommand(currentPlan, normalizedCommand)
+        )
       : currentPlan;
     const result = first(await this.rpc("commit_course_instructional_plan_for_actor_v1", {
       p_actor_id: principal.actorId,

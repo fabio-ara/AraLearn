@@ -3207,6 +3207,56 @@ test("comando do plano é aplicado sobre a leitura cercada e enviado com o canal
   });
 });
 
+test("posição impossível de Parte retorna o erro público sem chamar o commit", async () => {
+  const calls = [];
+  const value = adapter(async (url) => {
+    calls.push(url.split("/").at(-1));
+    if (url.endsWith("/rpc/get_owned_course_instructional_plan_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-instructional-plan.v1",
+        courseId: COURSE_ID,
+        courseRevision: 2,
+        plan: {
+          id: PLAN_ID,
+          version: 2,
+          title: "Curso",
+          objective: "Aprender",
+          audience: "",
+          scope: "",
+          preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+          intendedLearningOutcomes: [],
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: []
+        },
+        recentActivity: []
+      });
+    }
+    assert.fail(`RPC inesperado: ${url}`);
+  });
+
+  await assert.rejects(
+    () => value.commitCourseInstructionalPlan({
+      principal: { actorId: USER_ID, authenticationKind: "action" },
+      courseId: COURSE_ID,
+      requestId: "request-invalid-part-position-0001",
+      expectedCourseRevision: 2,
+      expectedPlanVersion: 2,
+      command: {
+        type: "add_part",
+        id: PART_ID,
+        position: 1,
+        title: "Primeira Parte",
+        intent: "Organizar a progressão didática."
+      }
+    }),
+    (error) => error instanceof AuthoringApiError &&
+      error.status === 422 &&
+      error.code === "invalid_course_authoring_plan_position"
+  );
+  assert.deepEqual(calls, ["get_owned_course_instructional_plan_for_actor_v1"]);
+});
+
 test("replay do plano chega ao receipt depois de outra revisão sem reaplicar o comando", async () => {
   let committed = null;
   const value = adapter(async (url, init) => {

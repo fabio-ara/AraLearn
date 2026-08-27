@@ -9,6 +9,7 @@ import {
 } from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import {
   actionLiteralSchema,
+  forChatGptActionImporter,
   forChatGptActionDocumentation,
   projectAuthoringProtocolToolsForActions
 } from "./projectChatGptActionSchemas.mjs";
@@ -64,7 +65,9 @@ function decodeJsonPointerToken(value) {
 }
 
 function hoistActionSchemaDefinitions(tool) {
-  const documented = forChatGptActionDocumentation(tool.inputSchema);
+  const documented = forChatGptActionDocumentation(
+    forChatGptActionImporter(tool.inputSchema)
+  );
   const definitions = documented.$defs || {};
   const componentNames = Object.fromEntries(Object.keys(definitions).map((definitionName) => [
     definitionName,
