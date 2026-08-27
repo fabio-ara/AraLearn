@@ -87,6 +87,8 @@ test("Pesquisa mostra gráfico e tabela equivalentes, revisão, ausência e limi
   await panel.open();
   assert.match(root.innerHTML, /<h2 id="course-analytics-section-title">Pesquisa<\/h2>/u);
   assert.match(root.innerHTML, /role="img" aria-label="Estado das observações\./u);
+  assert.match(root.innerHTML, /Em aberto: 1/u);
+  assert.doesNotMatch(root.innerHTML, />Aberta</u);
   assert.match(root.innerHTML, /<caption>Valores equivalentes ao gráfico<\/caption>/u);
   assert.match(root.innerHTML, /Dado ausente/u);
   assert.match(root.innerHTML, /Revisão 7/u);
@@ -100,8 +102,62 @@ test("Pesquisa mostra gráfico e tabela equivalentes, revisão, ausência e limi
   assert.match(root.innerHTML, /não mede a aprendizagem do estudante/u);
   assert.match(root.innerHTML, /Não mede aprendizagem, atenção ou dificuldade/u);
   assert.match(root.innerHTML, /<dt>Unidade<\/dt><dd>Contagem<\/dd>/u);
+  assert.match(root.innerHTML, /<details class="course-analytics-limitations"><summary class="course-analytics-disclosure-trigger">/u);
   panel.destroy();
   assert.equal(root.innerHTML, "");
+});
+
+test("Pesquisa humaniza fatos e recolhe bastidores sem perder contagens ou ausências", async () => {
+  const root = new FakeRoot();
+  const downloads = [];
+  const opaqueId = "0f3a1df0-3e75-47cc-9c78-1328e7c17798";
+  const opaqueHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  const opaqueParameter = "content_density_v2";
+  const internalFact = {
+    ...fact("opaque", null),
+    courseRevision: null,
+    channel: null,
+    origin: null,
+    state: null,
+    subject: { kind: "study_unit", id: opaqueId, label: null },
+    values: {
+      operation: "update_course",
+      configuration_hash: opaqueHash,
+      parameter_id: opaqueParameter,
+      method_id: "audit-v3",
+      checkpoint_id: "checkpoint-19",
+      created_count: 2,
+      source_revision: 4
+    },
+    missingData: ["A origem deste fato não foi registrada."],
+    deepLink: null
+  };
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    download: (value) => downloads.push(value),
+    controller: { async loadCourseAuthoringAnalytics() {
+      return page({
+        facts: [internalFact],
+        revision: 7
+      });
+    } }
+  });
+
+  await panel.open();
+
+  assert.match(root.innerHTML, /<strong>Unidade de estudo<\/strong>/u);
+  assert.match(root.innerHTML, /Itens criados: 2 · Revisão da Fonte: 4/u);
+  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueId, "u"));
+  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueHash, "u"));
+  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueParameter, "u"));
+  assert.doesNotMatch(root.innerHTML, /update_course|audit-v3|checkpoint-19/u);
+  assert.doesNotMatch(root.innerHTML, /Não informad|Não registrada/u);
+  assert.match(root.innerHTML, /<details class="course-analytics-missing"><summary class="course-analytics-disclosure-trigger course-authoring-icon-action" aria-label="Ver dados ausentes"/u);
+  assert.doesNotMatch(root.innerHTML, /Dados ausentes:<\/strong>/u);
+
+  await panel.export("json");
+  assert.deepEqual(JSON.parse(downloads[0].content).facts[0].values, internalFact.values);
 });
 
 test("Pesquisa adota a revisão relida antes de atualizar após a volta do ChatGPT", async () => {

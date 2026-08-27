@@ -276,9 +276,9 @@ do servidor contiver a mudança e a tela não, registre console, rede, rota e
 revisão exibida: o defeito está na projeção ou atualização da interface, não
 numa etapa de publicação.
 
-Quando houver um compositor, uma confirmação ou um formulário em edição, o
-AraLearn adia a atualização para conservar o rascunho. Conclua ou cancele essa
-edição e use **Atualizar** novamente.
+Quando houver uma confirmação ou um formulário em edição, o AraLearn adia a
+atualização para conservar o rascunho. Conclua ou cancele essa edição e use
+**Atualizar** novamente.
 
 ## Uma Variante não mostra a diferença esperada
 

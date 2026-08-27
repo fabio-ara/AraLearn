@@ -184,7 +184,7 @@ test("painel de variantes enumera conjuntos e abre uma comparação vinculada ao
     ["detach", SET_ID, "40000000-0000-4000-8000-000000000004"],
     ["list", COURSE_ID, 4]
   ]);
-  assert.match(root.innerHTML, /exige duas variantes ativas/u);
+  assert.match(root.innerHTML, /Aguardando outra variante/u);
   assert.doesNotMatch(root.innerHTML, />Comparar</u);
   assert.equal(calls.filter(([operation]) => operation === "open").length, 1);
   panel.destroy();

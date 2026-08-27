@@ -823,8 +823,7 @@ test("deep link de achado abre detalhe e renderiza Before/After reais na 7ª ár
   assert.doesNotMatch(root.audit.innerHTML, /request-chat-(?:finding|correction|run)/u);
 });
 
-test("detalhes de achado, correção e rodada abrem o compositor sem mutar auditoria", async () => {
-  const requests = [];
+test("detalhes de achado, correção e rodada não expõem compositor paralelo", async () => {
   let writes = 0;
   const root = new FakeRoot();
   const panel = createCourseAuditPanel({
@@ -832,17 +831,16 @@ test("detalhes de achado, correção e rodada abrem o compositor sem mutar audit
     course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
     routeTarget: { kind: "audit_finding", id: FINDING_ID, correctionId: CORRECTION_ID },
     navigatorValue: { onLine: true },
-    onRequestChat(value) { requests.push(structuredClone(value)); },
     controller: {
       async loadCourseAuditCycle(_courseId, options) { return detailPage(options); },
       async mutateCourseAuditCycle() { writes += 1; throw new Error("Não deve alterar."); }
     }
   });
   await panel.open();
-  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-finding"/u);
-  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-correction"/u);
-  actionClick(root, "request-chat-finding");
-  actionClick(root, "request-chat-correction");
+  assert.doesNotMatch(root.audit.innerHTML, /ChatGPT|request-chat|copiar pedido/iu);
+  assert.match(root.audit.innerHTML, /Correção autoral/u);
+  assert.match(root.audit.innerHTML, /Texto anterior\./u);
+  assert.match(root.audit.innerHTML, /Texto corrigido\./u);
 
   const runRoot = new FakeRoot();
   const runPanel = createCourseAuditPanel({
@@ -850,56 +848,21 @@ test("detalhes de achado, correção e rodada abrem o compositor sem mutar audit
     course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
     routeTarget: { kind: "audit_run", id: CLEAN_RUN_ID },
     navigatorValue: { onLine: true },
-    onRequestChat(value) { requests.push(structuredClone(value)); },
     controller: {
       async loadCourseAuditCycle(_courseId, options) { return runDetailPage(options); },
       async mutateCourseAuditCycle() { writes += 1; throw new Error("Não deve alterar."); }
     }
   });
   await runPanel.open();
-  assert.match(runRoot.audit.innerHTML, /data-audit-action="request-chat-run"/u);
-  actionClick(runRoot, "request-chat-run");
+  assert.doesNotMatch(runRoot.audit.innerHTML, /ChatGPT|request-chat|copiar pedido/iu);
+  assert.match(runRoot.audit.innerHTML, /Checks da rodada/u);
 
   assert.equal(writes, 0);
-  assert.deepEqual(requests.map(({ target, action, references }) => ({
-    type: target.type,
-    id: target.id,
-    action,
-    auditRunId: references.auditRunId
-  })), [{
-    type: "audit_finding",
-    id: FINDING_ID,
-    action: "review",
-    auditRunId: RUN_ID
-  }, {
-    type: "authoring_correction",
-    id: CORRECTION_ID,
-    action: "review",
-    auditRunId: RUN_ID
-  }, {
-    type: "audit_run",
-    id: CLEAN_RUN_ID,
-    action: "review",
-    auditRunId: CLEAN_RUN_ID
-  }]);
-  assert.equal(
-    requests[0].deepLink,
-    `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}`
-  );
-  assert.equal(
-    requests[1].deepLink,
-    `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}` +
-      `&correctionId=${CORRECTION_ID}`
-  );
-  assert.equal(
-    requests[2].deepLink,
-    `#/authoring/courses/${COURSE_ID}?section=review&auditRunId=${CLEAN_RUN_ID}`
-  );
   panel.destroy();
   runPanel.destroy();
 });
 
-test("Auditoria usa a revisão relida ao voltar do ChatGPT sem perder o detalhe", async () => {
+test("Auditoria usa a revisão relida ao atualizar sem perder o detalhe", async () => {
   const revisions = [];
   const root = new FakeRoot();
   const panel = createCourseAuditPanel({
@@ -1045,7 +1008,7 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   });
   assert.equal(await offline.open(), false);
   assert.equal(reads, 0);
-  assert.match(offlineRoot.audit.innerHTML, /Nenhuma ação usa cache offline/u);
+  assert.match(offlineRoot.audit.innerHTML, /Sem conexão/u);
   assert.match(offlineRoot.audit.innerHTML, /Auditoria exige conexão de rede/u);
 });
 
@@ -1097,7 +1060,6 @@ test("editor preserva título, folha, justificativa e foco após validação loc
     navigatorValue,
     windowValue,
     documentValue,
-    onRequestChat() {},
     controller: {
       async loadCourseAuditCycle(courseId, options) {
         assert.equal(courseId, COURSE_ID);
@@ -1148,8 +1110,7 @@ test("editor preserva título, folha, justificativa e foco após validação loc
   assert.equal(writes, 0);
   assert.match(root.audit.innerHTML, /O título da Unidade é obrigatório/u);
   assert.match(root.audit.innerHTML, /data-audit-editor-overlay/u);
-  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-finding"/u);
-  assert.match(root.audit.innerHTML, /data-audit-action="request-chat-correction"/u);
+  assert.doesNotMatch(root.audit.innerHTML, /request-chat-(?:finding|correction|run)|ChatGPT/u);
   assert.match(root.audit.innerHTML, /data-audit-edit-field="title"[^>]*><\/textarea>/u);
   assert.match(root.audit.innerHTML, /Folha &lt;revista&gt; &amp; preservada\.<\/textarea>/u);
   assert.match(root.audit.innerHTML, /Justificativa &amp; argumento do autor\.<\/textarea>/u);
@@ -1229,7 +1190,7 @@ test("verificação preserva valores, referências abertas e foco ao ficar offli
 
   navigatorValue.onLine = false;
   windowValue.listeners.get("offline")();
-  assert.match(root.audit.innerHTML, /Auditoria indisponível sem rede/u);
+  assert.match(root.audit.innerHTML, /Sem conexão/u);
   assert.match(root.audit.innerHTML, /Evidência &lt;nova&gt; &amp; conferida\.<\/textarea>/u);
   assert.match(root.audit.innerHTML, /<option value="resolved" selected>O achado foi resolvido/u);
   assert.match(root.audit.innerHTML, /data-anchor-revision="3" checked/u);
@@ -1241,7 +1202,7 @@ test("verificação preserva valores, referências abertas e foco ao ficar offli
   assert.match(root.audit.innerHTML, /Evidência &lt;nova&gt; &amp; conferida\.<\/textarea>/u);
   navigatorValue.onLine = true;
   windowValue.listeners.get("online")();
-  assert.doesNotMatch(root.audit.innerHTML, /Auditoria indisponível sem rede/u);
+  assert.doesNotMatch(root.audit.innerHTML, /Sem conexão/u);
   assert.match(root.audit.innerHTML, /Evidência &lt;nova&gt; &amp; conferida\.<\/textarea>/u);
   assert.match(root.audit.innerHTML, /<option value="resolved" selected/u);
   assert.ok(evidence.focusCalls >= 3);
@@ -1662,7 +1623,7 @@ test("deep links externos ou javascript são reduzidos ao hash interno validado"
   assert.deepEqual(navigations, [canonicalAnchor]);
 });
 
-test("divisão estrutural permanece achado aberto e não entra no editor v1", async () => {
+test("divisão estrutural permanece achado aberto e não entra no editor", async () => {
   let writes = 0;
   const root = new FakeRoot();
   const panel = createCourseAuditPanel({
@@ -1693,8 +1654,8 @@ test("divisão estrutural permanece achado aberto e não entra no editor v1", as
   });
 
   assert.equal(await panel.open(), true);
-  assert.match(root.audit.innerHTML, /divisão estrutural não é aplicada pelo editor v1/u);
-  assert.match(root.audit.innerHTML, /achado continua aberto/u);
+  assert.match(root.audit.innerHTML, /divisão estrutural permanece pendente/iu);
+  assert.match(root.audit.innerHTML, />Aberto<\/span>/u);
   assert.doesNotMatch(root.audit.innerHTML, /data-audit-action="open-correction-editor"/u);
   assert.doesNotMatch(root.audit.innerHTML, /data-audit-action="apply-correction"/u);
   assert.doesNotMatch(root.audit.innerHTML, /data-audit-action="open-verification"/u);
@@ -1705,6 +1666,46 @@ test("divisão estrutural permanece achado aberto e não entra no editor v1", as
   await settle();
   assert.equal(writes, 0);
   assert.doesNotMatch(root.audit.innerHTML, /Editar título e folhas da Unidade/u);
+});
+
+test("índices vazios omitem métricas e paginação e mantêm atualização icon-first", async () => {
+  const root = new FakeRoot();
+  const panel = createCourseAuditPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    routeTarget: { kind: "audit_finding", id: FINDING_ID },
+    navigatorValue: { onLine: true },
+    controller: {
+      async loadCourseAuditCycle(_courseId, options) {
+        if (options.query.mode === "detail") return detailPage(options);
+        if (options.query.mode === "findings") {
+          return findingsPage(options, [], { matchingTotal: 0 });
+        }
+        return runsPage(options, []);
+      },
+      async mutateCourseAuditCycle() {
+        throw new Error("Não deve alterar.");
+      }
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  actionClick(root, "back-findings");
+  await settle();
+
+  assert.match(root.audit.innerHTML, /Nenhum achado corresponde aos filtros\./u);
+  assert.doesNotMatch(root.audit.innerHTML, /course-audit-summary|Correspondentes<\/dt>|Página 1/u);
+  assert.match(root.audit.innerHTML,
+    /data-audit-action="reload-findings" aria-label="Atualizar achados" title="Atualizar achados">/u);
+  assert.doesNotMatch(root.audit.innerHTML, />Atualizar<\/button>/u);
+
+  actionClick(root, "show-runs");
+  await settle();
+  assert.match(root.audit.innerHTML, /Nenhuma rodada foi registrada\./u);
+  assert.match(root.audit.innerHTML,
+    /data-audit-action="reload-runs" aria-label="Atualizar rodadas" title="Atualizar rodadas"/u);
+  assert.doesNotMatch(root.audit.innerHTML, />Atualizar<\/button>/u);
+  panel.destroy();
 });
 
 test("paginação de achados falha fechada quando o cursor se repete", async () => {
@@ -2047,14 +2048,14 @@ test("revogação remove do painel os achados e checkpoints já carregados", asy
   assert.doesNotMatch(root.audit.innerHTML, /Texto anterior\.|Texto corrigido\.|Achado preservado/u);
 });
 
-test("Auditoria repassa opcionalmente a entrega ao ChatGPT para Observações", async () => {
+test("Auditoria embute Observações sem reintroduzir fluxo de cópia", async () => {
   const root = new FakeRoot();
-  const onRequestChat = () => {};
+  let legacyCallbacks = 0;
   const panel = createCourseAuditPanel({
     root,
     course: { courseId: COURSE_ID, title: "Curso auditado", revision: 7 },
     navigatorValue: { onLine: true },
-    onRequestChat,
+    onRequestChat() { legacyCallbacks += 1; },
     controller: {
       async loadCourseAuditCycle() { throw new Error("Achados não devem ser lidos."); },
       async mutateCourseAuditCycle() { throw new Error("Não deve alterar auditoria."); },
@@ -2111,16 +2112,8 @@ test("Auditoria repassa opcionalmente a entrega ao ChatGPT para Observações", 
   });
 
   assert.equal(await panel.open(), true);
-  assert.match(root.observations.innerHTML, /Registrar e copiar/u);
+  assert.match(root.observations.innerHTML, />Registrar<\/button>/u);
+  assert.doesNotMatch(root.observations.innerHTML, /ChatGPT|Registrar e copiar|request-chat/iu);
+  assert.equal(legacyCallbacks, 0);
   panel.destroy();
-
-  assert.throws(() => createCourseAuditPanel({
-    root: new FakeRoot(),
-    course: { courseId: COURSE_ID, revision: 7 },
-    onRequestChat: true,
-    controller: {
-      loadCourseAuditCycle() {},
-      mutateCourseAuditCycle() {}
-    }
-  }), /Dependências de Auditoria/u);
 });

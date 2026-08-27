@@ -236,7 +236,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
   await expect(menu.getByRole("button", { name: "Atualizar Curso" })).toBeVisible();
   await expect(menu.getByRole("button", {
     name: "Planejar este Curso no ChatGPT"
-  })).toBeVisible();
+  })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" })).toHaveCount(0);
   await menu.locator(":scope > summary").click();
   await expect(page.locator(".course-authoring-sidebar-navigation")).toHaveCount(0);
   await expect(page.locator(".course-authoring-primary-navigation")).toHaveCount(0);
@@ -2490,7 +2491,7 @@ test.describe("Autoria canônica mobile-first", () => {
   }
 
   for (const width of [360, 390, 1280]) {
-    test(`etapas retomáveis abrem sob demanda sem overflow em ${width} px`, async ({
+    test(`histórico de materializações abre sob demanda sem overflow em ${width} px`, async ({
       page
     }, testInfo) => {
       const clientErrors = captureClientErrors(page);
@@ -2498,34 +2499,12 @@ test.describe("Autoria canônica mobile-first", () => {
       const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
       await mountCourseAuthoring(page, { cardinality: "many", hash: planningHash });
 
-      const copyRequest = page.locator(
-        '[data-course-authoring-action="materialize-part"]'
-      ).first();
-      await expect(copyRequest).toBeVisible();
-      await expect(copyRequest).toHaveAccessibleName(/ChatGPT/u);
-      await copyRequest.click();
-      const chatComposer = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
-      await expect(chatComposer).toBeVisible();
-      await expect(chatComposer.getByLabel("Intenção")).toHaveValue(
-        "materialize_authoring_part"
-      );
-      const instruction = chatComposer.getByLabel("Seu argumento ou pedido");
-      await expect(instruction).toHaveValue(/Materialize a Parte “Relações iniciais”/u);
-      const authorArgument = "Dê prioridade à comparação guiada e explicite qualquer lacuna.";
-      await instruction.fill(`${await instruction.inputValue()}\n\n${authorArgument}`);
-      await chatComposer.getByRole("button", { name: "Copiar pedido", exact: true }).click();
-      await expect(chatComposer).toHaveCount(0);
-      await expect(page.locator(
-        ".course-authoring-main-pane > [data-course-authoring-request-feedback]"
-      )).toHaveText("Pedido copiado. Cole no ChatGPT para continuar.");
-      await expect(copyRequest).toBeFocused();
-      const materializationRequests = await page.evaluate(() =>
-        globalThis.__courseAuthoringHarness.probe.materializationRequests);
-      expect(materializationRequests).toHaveLength(1);
-      expect(materializationRequests[0].requestText).toContain(authorArgument);
-      expect(materializationRequests[0].requestText).toContain(
-        "Ação: materializar a Parte de autoria."
-      );
+      await expect(page.locator('[data-course-authoring-action="materialize-part"]'))
+        .toHaveCount(0);
+      await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
+        .toHaveCount(0);
+      expect(await page.evaluate(() =>
+        globalThis.__courseAuthoringHarness.probe.materializationRequests)).toEqual([]);
 
       expect(await page.evaluate(() =>
         globalThis.__courseAuthoringHarness.probe.materializationReads)).toEqual([]);
@@ -2583,69 +2562,6 @@ test.describe("Autoria canônica mobile-first", () => {
     });
   }
 
-  test("retorno ao AraLearn preserva argumento ainda não enviado e adia a releitura", async ({
-    page
-  }) => {
-    const clientErrors = captureClientErrors(page);
-    await page.setViewportSize({ width: 390, height: 844 });
-    const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
-    await mountCourseAuthoring(page, { cardinality: "many", hash: planningHash });
-
-    const taskMenu = page.locator(".course-authoring-task-menu");
-    await taskMenu.locator(":scope > summary").click();
-    const trigger = taskMenu.getByRole("button", {
-      name: "Planejar este Curso no ChatGPT"
-    });
-    await trigger.click();
-    await expect(taskMenu).not.toHaveAttribute("open", "");
-    const composer = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
-    await expect(composer).not.toContainText("endereço de retorno");
-    const composerHeaderGeometry = await composer.evaluate((dialog) => {
-      const header = dialog.querySelector(":scope > header");
-      const title = header.querySelector("h2");
-      const close = header.querySelector("button");
-      const headerRect = header.getBoundingClientRect();
-      const titleRect = title.getBoundingClientRect();
-      const closeRect = close.getBoundingClientRect();
-      return {
-        titleCenterDelta: Math.abs(
-          titleRect.left + titleRect.width / 2 -
-          (headerRect.left + headerRect.width / 2)
-        ),
-        closeWidth: closeRect.width,
-        closeHeight: closeRect.height
-      };
-    });
-    expect(composerHeaderGeometry.titleCenterDelta).toBeLessThanOrEqual(1);
-    expect(Math.abs(
-      composerHeaderGeometry.closeWidth - composerHeaderGeometry.closeHeight
-    )).toBeLessThanOrEqual(1);
-    const instruction = composer.getByLabel("Seu argumento ou pedido");
-    const draft = "Preserve este argumento enquanto consulto outra janela.";
-    await instruction.fill(draft);
-    const readsBefore = await page.evaluate(() =>
-      globalThis.__courseAuthoringHarness.probe.headerReads);
-
-    const refreshResult = await page.evaluate(() =>
-      globalThis.__courseAuthoringHarness.surface.refresh());
-    expect(refreshResult).toBe("deferred");
-    await expect(instruction).toHaveValue(draft);
-    await expect(page.locator(
-      ".course-authoring-main-pane > [data-course-authoring-request-feedback]"
-    )).toContainText("Atualização adiada para preservar sua edição");
-    expect(await page.evaluate(() =>
-      globalThis.__courseAuthoringHarness.probe.headerReads)).toBe(readsBefore);
-
-    await page.keyboard.press("Escape");
-    await expect(composer).toHaveCount(0);
-    await expect(taskMenu).not.toHaveAttribute("open", "");
-    await expect(taskMenu.locator(":scope > summary")).toBeFocused();
-    await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
-    await expect.poll(() => page.evaluate(() =>
-      globalThis.__courseAuthoringHarness.probe.headerReads)).toBe(readsBefore + 1);
-    expect(clientErrors).toEqual([]);
-  });
-
   test("retorno ao AraLearn preserva formulário alterado e permite atualizar após cancelar", async ({
     page
   }) => {
@@ -2658,7 +2574,7 @@ test.describe("Autoria canônica mobile-first", () => {
       '[data-parameter-id="new_analysis_unit_ceiling_per_expository_study_unit"]'
     );
     await parameter.getByText("Entender e ajustar", { exact: true }).click();
-    const reason = parameter.getByLabel("Por que usar este valor?");
+    const reason = parameter.getByLabel("Justificativa");
     const draft = "Hipótese ainda em discussão com a equipe autora.";
     await reason.fill(draft);
     const readsBefore = await page.evaluate(() =>
@@ -2670,7 +2586,7 @@ test.describe("Autoria canônica mobile-first", () => {
     expect(await page.evaluate(() =>
       globalThis.__courseAuthoringHarness.probe.headerReads)).toBe(readsBefore);
 
-    await parameter.getByRole("button", { name: "Descartar" }).click();
+    await parameter.getByRole("button", { name: "Descartar alterações" }).click();
     await expect(reason).not.toHaveValue(draft);
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
     await expect.poll(() => page.evaluate(() =>
@@ -2691,8 +2607,8 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.getByRole("heading", { name: "Parâmetros", exact: true })).toBeVisible();
       await expect(page.locator(".course-design-parameter")).toHaveCount(4);
       await expect(page.locator(".course-design-component-option")).toHaveCount(32);
-      await expect(page.getByText("Hipótese operacional do produto").first()).toBeVisible();
-      await expect(page.getByText("Política de produção", { exact: true })).toBeVisible();
+      await expect(page.getByText(/valores iniciais são hipóteses operacionais/u)).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Componentes", exact: true })).toBeVisible();
       await expect(page.getByText("Planejado × aplicado", { exact: true })).toBeVisible();
       await expectNoHorizontalOverflow(page);
       expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe)).toMatchObject({
@@ -3032,7 +2948,7 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.getByText("Trecho mínimo para conferência.", {
         exact: true
       })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Registrar observação" }))
+      await expect(page.getByRole("heading", { name: "Observação", exact: true }))
         .toBeVisible();
       if (width === 390) {
         await page.getByRole("button", { name: "Revisar âncora", exact: true }).click();
@@ -3052,12 +2968,19 @@ test.describe("Autoria canônica mobile-first", () => {
           humanLocator: "Capítulo 2, seção 4",
           selector: { kind: "page_range", startPage: 10, endPage: 12 }
         });
-        await page.getByLabel("Intenção").selectOption("contestation");
-        await page.getByLabel("Alvo").selectOption("anchor-source-01");
-        await page.getByLabel("Observação").fill(
+        const observationForm = page.locator('[data-source-form="observation"]');
+        await observationForm.getByLabel("Tipo").selectOption("contestation");
+        await observationForm.getByLabel("Alvo").selectOption("anchor-source-01");
+        await observationForm.getByRole("textbox", {
+          name: "Observação",
+          exact: true
+        }).fill(
           "Esta Âncora não sustenta a interpretação apresentada."
         );
-        await page.getByRole("button", { name: "Registrar", exact: true }).click();
+        await observationForm.getByRole("button", {
+          name: "Salvar observação",
+          exact: true
+        }).click();
         await expect(page.getByText(
           "Esta Âncora não sustenta a interpretação apresentada.",
           { exact: true }
@@ -3196,12 +3119,12 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             const chatAssistance = page.locator("[data-inspection-study-unit]").first().getByRole(
               "button",
               {
-                name: "Trabalhar com o ChatGPT sobre Exemplo guiado com diagrama",
+                name: "Assistência por IA",
                 exact: true
               }
             );
             await expect(chatAssistance).toBeVisible();
-            await expect(chatAssistance).toHaveAttribute("title", "Assistência pelo ChatGPT");
+            await expect(chatAssistance).toHaveAttribute("title", "Assistência por IA");
             if (width === 390 && colorScheme === "dark") {
               await page.screenshot({
                 path: testInfo.outputPath("authoring-inspection-390-dark.png"),
@@ -3218,11 +3141,8 @@ test.describe("aceite focal do shell simples da Autoria", () => {
               "Fonte verificável 1"
             );
             await expect(page.getByRole("button", {
-              name: "Trabalhar com o ChatGPT sobre Fonte verificável 1"
-            })).toBeVisible();
-            await expect(page.getByRole("button", {
-              name: "Trabalhar com o ChatGPT sobre Capítulo 2, seção 3 · Páginas 10–12"
-            })).toBeVisible();
+              name: /Trabalhar com o ChatGPT/u
+            })).toHaveCount(0);
             await expectSourceMetadataDoesNotOverlap(page);
             await expectNoHorizontalOverflow(page);
             await expectVisibleTouchTargets(page);
@@ -3427,7 +3347,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     expect(clientErrors).toEqual([]);
   });
 
-  test("sem Microssequência oferece Preparar e nunca dispara materialização", async ({ page }) => {
+  test("sem Microssequência orienta vínculo e nunca abre compositor ou materialização", async ({ page }) => {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width: 430, height: 860 });
     const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
@@ -3437,38 +3357,22 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       planningScenario: "zero-microsequences"
     });
 
-    await expect(page.getByRole("heading", { name: "Prepare a estrutura" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Vincule uma microssequência" }))
+      .toBeVisible();
     await expect(page.locator('[data-course-authoring-action="materialize-part"]'))
       .toHaveCount(0);
-    await expect(page.getByRole("button", {
-      name: "Preparar estrutura para Relações iniciais no ChatGPT"
-    })).toBeVisible();
+    await expect(page.locator('[data-course-authoring-action="prepare-structure"]'))
+      .toHaveCount(0);
 
-    await page.getByRole("button", { name: "Vincular microssequência existente" }).click();
+    await page.getByRole("region", { name: "Vincule uma microssequência" })
+      .getByRole("button", { name: "Vincular microssequência existente" }).click();
     const emptyAssignment = page.locator(".course-authoring-assignment-empty");
-    await expect(emptyAssignment).toContainText(
-      "Ainda não há microssequências neste Curso. Prepare a estrutura antes de vinculá-la às Partes."
-    );
-    const prepare = emptyAssignment.getByRole("button", {
-      name: "Preparar estrutura no ChatGPT"
-    });
-    await prepare.click();
-    const chatComposer = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
-    await expect(chatComposer).toBeVisible();
-    await expect(chatComposer.getByLabel("Intenção")).toHaveValue("prepare_structure");
-    await expect(chatComposer.getByLabel("Seu argumento ou pedido"))
-      .toHaveValue(/prepare a menor estrutura coerente de Módulos, Lições e Microssequências/iu);
-    await chatComposer.getByRole("button", { name: "Copiar pedido", exact: true }).click();
-    await expect(chatComposer).toHaveCount(0);
-    await expect(page.locator(
-      ".course-authoring-main-pane > [data-course-authoring-request-feedback]"
-    )).toHaveText("Pedido copiado. Cole no ChatGPT para continuar.");
-    await expect(prepare).toBeFocused();
+    await expect(emptyAssignment).toContainText("Nenhuma microssequência disponível.");
+    await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
+      .toHaveCount(0);
     const requests = await page.evaluate(() =>
       globalThis.__courseAuthoringHarness.probe.materializationRequests);
-    expect(requests).toHaveLength(1);
-    expect(requests[0].requestText).toContain("Ação: preparar a estrutura.");
-    expect(requests[0].requestText).not.toContain("Ação: materializar a Parte de autoria.");
+    expect(requests).toEqual([]);
     expect(await page.evaluate(() =>
       globalThis.__courseAuthoringHarness.probe.planMutations)).toEqual([]);
     expect(clientErrors).toEqual([]);
@@ -3767,26 +3671,13 @@ for (const width of [360, 390, 430, 1280]) {
       annotationIds: []
     });
     if (width === 390) {
-      const trigger = page.getByRole("button", {
+      await expect(page.getByRole("button", {
         name: "Trabalhar com o ChatGPT sobre esta rodada de auditoria"
-      });
-      await trigger.click();
-      const composer = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
-      await expect(composer.getByLabel("Intenção")).toHaveValue("review");
-      const argument = "Compare esta rodada com a revisão corrente e explique as divergências.";
-      await composer.getByLabel("Seu argumento ou pedido").fill(argument);
-      await composer.getByRole("button", { name: "Copiar pedido", exact: true }).click();
-      await expect(composer).toHaveCount(0);
-      const requestText = await page.evaluate(() =>
-        globalThis.__courseAuthoringHarness.probe.materializationRequests.at(-1)?.requestText);
-      expect(requestText).toContain("Alvo: Rodada de auditoria");
-      expect(requestText).toContain(auditRunId);
-      expect(requestText).toContain(`Rodada de auditoria: ${auditRunId}`);
-      expect(requestText).toContain(`section=review&auditRunId=${auditRunId}`);
-      expect(requestText).toContain(argument);
+      })).toHaveCount(0);
+      await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
+        .toHaveCount(0);
       expect(await page.evaluate(() =>
         globalThis.__courseAuthoringHarness.probe.auditMutations)).toEqual([]);
-      await expect(trigger).toBeFocused();
     }
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
@@ -4017,17 +3908,22 @@ for (const width of [360, 390, 430, 1280]) {
     await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
 
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
-    await expect(page.getByText("de 60", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-inspection-context-position]")).toHaveText("1/60");
     await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
-    await expect(page.getByLabel("Filtrar por Parte")).toHaveValue("course:");
+    await expect(page.getByLabel("Filtrar por Parte")).toHaveCount(0);
+    await expect(page.locator("[data-inspection-jump], [data-inspection-scope]"))
+      .toHaveCount(0);
     await expect(page.locator("[data-set-diagram-state=ready]")).toHaveCount(1);
     await expect(page.locator(
       '.package-instance[data-package="aralearn.response.choice"] button'
     ).first()).toBeDisabled();
     await expectNoHorizontalOverflow(page);
 
-    await page.getByLabel("Número da Unidade").fill("50");
-    await page.getByRole("button", { name: "Ir para a Unidade" }).click();
+    const courseSearch = page.getByRole("combobox", { name: "Ir para" });
+    await courseSearch.fill("50");
+    await page.locator(
+      '[data-inspection-search-option="study_unit:study-unit-50"]'
+    ).click();
     await expect(page.locator('[data-inspection-study-unit="study-unit-50"]')).toHaveCount(1);
 
     await expect(page.locator('[data-inspection-study-unit="study-unit-60"]')).toHaveCount(1);
@@ -4036,13 +3932,17 @@ for (const width of [360, 390, 430, 1280]) {
       courseDocumentReads: globalThis.__courseAuthoringHarness.probe.courseDocumentReads,
       inspectionReads: globalThis.__courseAuthoringHarness.probe.inspectionReads
     }));
-    expect(inspectionReads).toHaveLength(2);
+    expect(inspectionReads).toHaveLength(3);
     expect(inspectionReads.every(({ limit, maxBytes }) =>
       limit === 12 && maxBytes === 1_500_000)).toBe(true);
-    expect(inspectionReads.at(-1)).toMatchObject({
+    expect(inspectionReads.at(-2)).toMatchObject({
       anchorStudyUnitId: "study-unit-50",
       cursor: null,
       direction: "forward"
+    });
+    expect(inspectionReads.at(-1)).toMatchObject({
+      cursor: { studyUnitId: "study-unit-50" },
+      direction: "backward"
     });
     expect(courseDocumentReads).toEqual([{
       courseId: COURSE_IDS[0],
@@ -4130,7 +4030,7 @@ test("Inspeção atualiza só o trecho ancorado e conserva posição, foco e det
     limit: 12,
     maxBytes: 1_500_000
   });
-  expect(probe.outlineReads).toBe(1);
+  expect(probe.outlineReads).toBe(0);
   await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
@@ -4160,7 +4060,7 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
 
   const context = page.locator(".course-inspection-context-selector");
   const contextSummary = context.locator(":scope > summary");
-  await contextSummary.focus();
+  await contextSummary.evaluate((summary) => summary.focus({ preventScroll: true }));
   await page.keyboard.press("Enter");
   await expect(context).toHaveAttribute("open", "");
   await page.keyboard.press("Escape");
@@ -4182,16 +4082,22 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
     contextSummaryBox.x + contextSummaryBox.width / 2,
     contextSummaryBox.y + contextSummaryBox.height / 2
   );
-  await expect(context.getByRole("link", { name: "Esta Unidade" })).toHaveAttribute(
+  await expect(context.getByRole("link", {
+    name: "Unidade · Unidade curricular 25"
+  })).toHaveAttribute(
     "href",
     `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
   );
-  await expect(context.getByRole("link", { name: "Esta Microssequência" })).toHaveAttribute(
+  await expect(context.getByRole("link", {
+    name: "Microssequência · Comparação orientada"
+  })).toHaveAttribute(
     "href",
     `#/authoring/courses/${COURSE_IDS[0]}` +
       "?section=content&didacticMicrosequenceId=microsequence-a"
   );
-  await context.getByRole("link", { name: "Esta Microssequência" }).click();
+  await context.getByRole("link", {
+    name: "Microssequência · Comparação orientada"
+  }).click();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}` +
       "?section=content&didacticMicrosequenceId=microsequence-a"
@@ -4223,18 +4129,8 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   );
   await expect(designAction).toBeFocused();
 
-  await page.getByLabel("Filtrar por Parte").selectOption(
-    "authoring_part:70000000-0000-4000-8000-000000000007"
-  );
-  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
-    `#/authoring/courses/${COURSE_IDS[0]}` +
-      "?section=content&authoringPartId=70000000-0000-4000-8000-000000000007"
-  );
-  await page.goBack();
-  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
-    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
-  );
-  await expect(page.locator('[data-inspection-study-unit="study-unit-25"]')).toHaveCount(1);
+  await expect(page.getByLabel("Filtrar por Parte")).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Ir para" })).toBeVisible();
 
   await page.evaluate(() => {
     globalThis.__inspectionScrollOptions = [];
@@ -4283,11 +4179,15 @@ test("Inspeção em desktop mantém o item 25 sob clique físico no contexto", a
   }, { x: box.x + box.width / 2, y: box.y + box.height / 2 })).toBe(true);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(context).toHaveAttribute("open", "");
-  await expect(context.getByRole("link", { name: "Esta Unidade" })).toHaveAttribute(
+  await expect(context.getByRole("link", {
+    name: "Unidade · Unidade curricular 25"
+  })).toHaveAttribute(
     "href",
     `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
   );
-  await context.getByRole("link", { name: "Esta Microssequência" }).click();
+  await context.getByRole("link", {
+    name: "Microssequência · Comparação orientada"
+  }).click();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}` +
       "?section=content&didacticMicrosequenceId=microsequence-a"
@@ -4495,24 +4395,17 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   await expect.poll(() => page.evaluate(() => document.activeElement?.id))
     .toBe("course-design-child-scope");
 
-  await page.getByRole("button", { name: /Revisar parâmetros de .+ no ChatGPT/u }).click();
-  let composer = page.getByRole("dialog", { name: "Trabalhar no ChatGPT" });
-  await expect(composer.getByLabel("Intenção")).toHaveValue("review");
-  await expect(composer.locator(".course-authoring-chat-context"))
-    .toHaveText("Fundamentos de relações");
-  await expect(composer.getByLabel("Seu argumento ou pedido"))
-    .toHaveValue(/Revise os parâmetros pedagógicos de Fundamentos de relações neste Curso\./u);
-  await composer.getByRole("button", { name: "Copiar pedido", exact: true }).click();
-  await expect(composer).toHaveCount(0);
-  let copiedRequest = await page.evaluate(() =>
-    globalThis.__courseAuthoringHarness.probe.materializationRequests.at(-1)?.requestText);
-  expect(copiedRequest).toContain("Ação: revisar.");
-  expect(copiedRequest).toContain("Revise os parâmetros pedagógicos");
+  await expect(page.getByRole("button", { name: /Revisar parâmetros de .+ no ChatGPT/u }))
+    .toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
+    .toHaveCount(0);
+  expect(await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.materializationRequests)).toEqual([]);
 
   await navigateToAuthoringArea(page, "content", 390);
   await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Conteúdo");
   await expect(page.getByRole("heading", { name: "Exemplo guiado com diagrama" })).toBeVisible();
-  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.outlineReads)).toBe(1);
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.outlineReads)).toBe(0);
   await page.evaluate(({ courseId }) => {
     window.location.hash = `#/authoring/courses/${courseId}?section=content&studyUnitId=study-unit-01`;
   }, { courseId: COURSE_IDS[0] });
@@ -4546,7 +4439,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   expect(await page.evaluate(() => ({
     outlineReads: globalThis.__courseAuthoringHarness.probe.outlineReads,
     inspectionReads: globalThis.__courseAuthoringHarness.probe.inspectionReads.length
-  }))).toEqual({ outlineReads: 1, inspectionReads: 2 });
+  }))).toEqual({ outlineReads: 0, inspectionReads: 3 });
 
   await page.getByRole("link", { name: "Voltar à Visão geral" }).click();
   await page.getByRole("button", { name: "Voltar aos Cursos" }).click();
@@ -4675,8 +4568,8 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
   );
   await parameter.getByText("Entender e ajustar", { exact: true }).click();
   await parameter.getByRole("spinbutton", { name: "Valor", exact: true }).fill("4");
-  await parameter.getByLabel("Origem da decisão").selectOption("research_condition");
-  await parameter.getByLabel("Por que usar este valor?").fill(
+  await parameter.getByLabel("Origem", { exact: true }).selectOption("research_condition");
+  await parameter.getByLabel("Justificativa").fill(
     "Condição experimental registrada antes da produção."
   );
   await parameter.getByRole("button", { name: "Salvar neste escopo" }).click();
@@ -4691,7 +4584,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
   await guidanceEditor.getByLabel("Justificativa").fill(
     "Preservar a progressão conceitual solicitada pelo autor."
   );
-  await guidanceEditor.getByRole("button", { name: "Salvar texto original" }).click();
+  await guidanceEditor.getByRole("button", { name: "Salvar orientação" }).click();
   await expect(page.getByText(
     "Texto original salvo; interpretações anteriores não foram sobrescritas."
   )).toBeVisible();
@@ -4738,7 +4631,7 @@ test("Parâmetros salva decisões, interpreta texto sem sobrescrevê-lo e limpa 
   await policy.getByLabel("Justificativa").fill(
     "Usar somente os componentes necessários à explicação e à prática."
   );
-  await policy.getByRole("button", { name: "Salvar política" }).click();
+  await policy.getByRole("button", { name: "Salvar componentes" }).click();
   await expect(page.getByText("Política de componentes salva neste escopo.")).toBeVisible();
 
   await page.getByText("Ajustar componentes neste escopo", { exact: true }).click();
@@ -4800,8 +4693,8 @@ test("Parâmetros preserva o formulário e repete a mesma operação após respo
   );
   await parameter.getByText("Entender e ajustar", { exact: true }).click();
   const value = parameter.getByRole("spinbutton", { name: "Valor", exact: true });
-  const origin = parameter.getByLabel("Origem da decisão");
-  const reason = parameter.getByLabel("Por que usar este valor?");
+  const origin = parameter.getByLabel("Origem", { exact: true });
+  const reason = parameter.getByLabel("Justificativa");
   await value.fill("4");
   await origin.selectOption("research_condition");
   await reason.fill("Condição preservada para confirmar a mesma gravação.");
@@ -4887,7 +4780,7 @@ test("Parâmetros mantém orientação, interpretação e política após valida
   await policy.getByText("Ajustar componentes neste escopo", { exact: true }).click();
   await policy.getByLabel("Disponibilidade").selectOption("allow_only");
   await policy.getByLabel("Justificativa").fill("Seleção ainda incompleta.");
-  await policy.getByRole("button", { name: "Salvar política" }).click();
+  await policy.getByRole("button", { name: "Salvar componentes" }).click();
   await expect(page.getByText(
     "Revise disponibilidade, exclusões, preferências e justificativa."
   )).toBeVisible();

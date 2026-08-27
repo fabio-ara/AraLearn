@@ -319,8 +319,8 @@ function renderSourceObservationForm(state, source) {
       `${escapeHtml(entry.label)}</option>`
   ).join("");
   return '<form class="course-source-form course-source-observation-form" data-source-form="observation">' +
-    '<h4>Registrar observação</h4>' +
-    '<div class="course-source-form-grid"><div><label for="course-source-observation-kind">Intenção</label>' +
+    '<h4>Observação</h4>' +
+    '<div class="course-source-form-grid"><div><label for="course-source-observation-kind">Tipo</label>' +
     `<select id="course-source-observation-kind" name="observationKind" required>${kindOptions}</select></div>` +
     '<div><label for="course-source-observation-target">Alvo</label>' +
     '<select id="course-source-observation-target" name="targetId">' +
@@ -328,9 +328,9 @@ function renderSourceObservationForm(state, source) {
     `${anchorOptions}</select></div></div>` +
     '<label for="course-source-observation-text">Observação</label>' +
     '<textarea id="course-source-observation-text" name="rawText" maxlength="2000" rows="4" required ' +
-    `placeholder="Registre a nota, a interpretação contestada ou o que precisa ser reformulado.">${escapeHtml(values.rawText)}</textarea>` +
-    '<div class="course-source-form-actions"><button type="submit"' +
-    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}<span>Registrar</span></button></div></form>`;
+    `placeholder="Escreva a observação.">${escapeHtml(values.rawText)}</textarea>` +
+    '<div class="course-source-form-actions"><button type="submit" aria-label="Salvar observação" title="Salvar observação"' +
+    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></div></form>`;
 }
 
 function observationClassificationForExport(value) {
@@ -475,8 +475,8 @@ function renderSourceObservations(state, source) {
     `<p>${items.length}${state.annotations?.hasMore ? "+" : ""} ` +
     `${items.length === 1 ? "observação carregada" : "observações carregadas"}</p></div>` +
     (!state.annotationsLoading && state.annotations && !state.annotations.hasMore
-      ? '<button type="button" data-source-action="export-observations">' +
-        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>Exportar</span></button>`
+      ? '<button type="button" data-source-action="export-observations" aria-label="Exportar observações" title="Exportar observações">' +
+        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>`
       : "") + "</header>" +
     (state.annotationsFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.annotationsFailure)}</p>`
@@ -489,8 +489,8 @@ function renderSourceObservations(state, source) {
       ? `<div class="course-source-observation-list">${items.map((item) => renderSourceObservation(item, source)).join("")}</div>`
       : '<p class="course-source-empty">Nenhuma nota, contestação ou solicitação registrada.</p>') +
     (state.annotations?.hasMore
-      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-observations"${state.annotationsLoading ? " disabled" : ""}>` +
-        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>Carregar mais observações</span></button>`
+      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-observations" aria-label="Carregar mais observações" title="Carregar mais observações"${state.annotationsLoading ? " disabled" : ""}>` +
+        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>`
       : "") + "</section>";
 }
 
@@ -570,7 +570,6 @@ function renderSourceForm(state) {
     '<label for="course-source-citation">Citação legível</label>' +
     `<textarea id="course-source-citation" name="citationText" maxlength="4096" rows="3"` +
     ` placeholder="Autores, título, ano e publicação">${escapeHtml(values.citationText)}</textarea>` +
-    '<p class="course-source-form-help">Registre somente dados fornecidos ou conferidos. Se algo faltar, deixe a lacuna explícita; não complete por plausibilidade.</p>' +
     '<div class="course-source-form-grid"><div><label for="course-source-url">Link canônico</label>' +
     `<input id="course-source-url" name="url" type="url" maxlength="4096" value="${escapeHtml(values.url)}"` +
     ' placeholder="https://…"></div><div><label for="course-source-edition">Edição ou versão</label>' +
@@ -583,10 +582,10 @@ function renderSourceForm(state) {
     `<select id="course-source-verification" name="verificationStatus" required>${verificationOptions}</select>` +
     '<label for="course-source-visibility">Visibilidade no Estudo</label>' +
     `<select id="course-source-visibility" name="studyVisibility" required>${visibilityOptions}</select>` +
-    '<p class="course-source-form-help">A autoria vê o registro completo. O Estudo recebe somente o que esta visibilidade permite.</p>' +
-    '<div class="course-source-form-actions"><button type="submit"' +
-    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}<span>Salvar fonte</span></button>` +
-    '<button type="button" data-source-action="cancel-source-form">Cancelar</button></div></form>';
+    '<div class="course-source-form-actions"><button type="submit" aria-label="Salvar fonte" title="Salvar fonte"' +
+    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+    '<button type="button" data-source-action="cancel-source-form" aria-label="Cancelar" title="Cancelar">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></div></form>`;
 }
 
 function millisecondsToSeconds(value) {
@@ -661,13 +660,12 @@ function renderAnchorForm(state) {
     '<label for="course-anchor-human-locator">Localizador para pessoas</label>' +
     `<input id="course-anchor-human-locator" name="humanLocator" maxlength="1000" value="${escapeHtml(draft.humanLocator)}"` +
     ' placeholder="Capítulo 3 · Seção 2.1 · Figura 5">' +
-    '<p class="course-source-form-help">Use capítulo, seção, unidade, slide, figura ou tabela somente quando essa identificação constar no material.</p>' +
     '<label for="course-anchor-excerpt">Trecho para conferência</label>' +
     `<textarea id="course-anchor-excerpt" name="verificationExcerpt" maxlength="4000" rows="3">${escapeHtml(draft.verificationExcerpt)}</textarea>` +
-    '<p class="course-source-form-help">Use apenas o trecho mínimo necessário para confirmar a localização.</p>' +
-    '<div class="course-source-form-actions"><button type="submit"' +
-    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}<span>Salvar âncora</span></button>` +
-    '<button type="button" data-source-action="cancel-anchor-form">Cancelar</button></div></form>';
+    '<div class="course-source-form-actions"><button type="submit" aria-label="Salvar âncora" title="Salvar âncora"' +
+    `${state.busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+    '<button type="button" data-source-action="cancel-anchor-form" aria-label="Cancelar" title="Cancelar">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></div></form>`;
 }
 
 function selectorLabel(selector) {
@@ -689,10 +687,7 @@ function anchorLabel(anchor) {
 }
 
 function renderAnchor(anchor, sourceRevision, state) {
-  const source = state.detail?.items?.[0] || null;
-  const current = sourceRevision === source?.revision;
   const editable = sourceRevision === state.detail?.items?.[0]?.revision && anchor.status === "active";
-  const canRequestChat = state.canRequestChat && current && anchor.status === "active";
   const deepLinked = state.initialAnchorMatch?.sourceRevision === sourceRevision &&
     state.initialAnchorMatch?.anchorId === anchor.anchorId &&
     state.initialAnchorMatch?.anchorRevision === anchor.revision;
@@ -705,17 +700,10 @@ function renderAnchor(anchor, sourceRevision, state) {
     (anchor.verificationExcerpt
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
-    (editable || canRequestChat ? '<div class="course-source-compact-actions">' +
-      (canRequestChat
-        ? `<button type="button" data-source-action="request-chat-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}"` +
-          ` data-source-revision="${sourceRevision}" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(anchorLabel(anchor))}"` +
-          ` title="Trabalhar com o ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
-        : "") +
-      (editable
-        ?
+    (editable ? '<div class="course-source-compact-actions">' +
       `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Revisar âncora" title="Revisar âncora">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
           `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
-        : "") + "</div>"
+        + "</div>"
       : "") + "</article>";
 }
 
@@ -731,9 +719,9 @@ function renderSourceAttachments(source, index, state) {
   return '<section class="course-source-attachments"><header><div><h4>PDFs desta revisão</h4>' +
     `<p>${attachments.length} ${attachments.length === 1 ? "anexo" : "anexos"}</p></div>` +
     (canUpload
-      ? '<label class="course-source-pdf-picker">' +
-        `${renderUiIcon("upload", "course-authoring-button-icon")}<span>${state.busy ? "Aguarde…" : "Enviar PDF"}</span>` +
-        `<input type="file" accept="application/pdf,.pdf" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
+      ? `<label class="course-source-pdf-picker" title="${state.busy ? "Aguarde" : "Enviar PDF"}">` +
+        `${renderUiIcon("upload", "course-authoring-button-icon")}<span class="visually-hidden">${state.busy ? "Aguarde" : "Enviar PDF"}</span>` +
+        `<input type="file" accept="application/pdf,.pdf" aria-label="Enviar PDF" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
         "</label>"
       : "") + "</header>" +
     (attachments.length
@@ -764,18 +752,12 @@ function renderSourceRevision(source, index, state) {
   return `<article class="course-source-revision${deepLinked ? " is-deep-linked" : ""}">` +
     '<header><div>' + sourceStatusMarkup(source) +
     `<h3>${escapeHtml(sourceTitle(source))}</h3><p>${current ? "Revisão atual" : "Revisão anterior"}</p></div>` +
-    (current && (state.canRequestChat || source.status !== "retired")
+    (current && source.status !== "retired"
       ? '<div class="course-source-compact-actions">' +
-      (state.canRequestChat
-        ? `<button type="button" data-source-action="request-chat-source" data-source-id="${escapeHtml(source.sourceId)}"` +
-          ` data-source-revision="${source.revision}" aria-label="Trabalhar com o ChatGPT sobre ${escapeHtml(sourceTitle(source))}"` +
-          ` title="Trabalhar com o ChatGPT">${renderUiIcon("prompt", "course-authoring-button-icon")}</button>`
-        : "") +
-      (source.status !== "retired" ?
       `<button type="button" data-source-action="edit-source" aria-label="${source.status === "unresolved_legacy" ? "Resolver" : "Revisar"} fonte" title="${source.status === "unresolved_legacy" ? "Resolver" : "Revisar"} fonte">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
       (source.status === "active"
         ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
-        : "") : "") + "</div>" : "") + "</header>" +
+        : "") + "</div>" : "") + "</header>" +
     (source.status === "unresolved_legacy"
       ? '<p class="course-source-unresolved">Este identificador foi preservado da migração. Título, autoria, link e âncoras ainda não foram comprovados.</p>'
       : '<dl class="course-source-metadata">' +
@@ -795,8 +777,8 @@ function renderSourceRevision(source, index, state) {
     renderSourceAttachments(source, index, state) +
     `<section class="course-source-anchors"><header><div><h4>Âncoras desta revisão</h4><p>${source.anchors.length} carregadas</p></div>` +
     (current && source.status === "active"
-      ? '<button type="button" data-source-action="add-anchor">' +
-        `${renderUiIcon("add", "course-authoring-button-icon")}<span>Adicionar</span></button>`
+      ? '<button type="button" data-source-action="add-anchor" aria-label="Adicionar âncora" title="Adicionar âncora">' +
+        `${renderUiIcon("add", "course-authoring-button-icon")}</button>`
       : "") + "</header>" +
     (current ? renderAnchorForm(state) : "") +
     (source.anchors.length
@@ -813,20 +795,21 @@ function renderSourceDetail(state) {
   if (state.detailFailure && !state.detail) {
     return renderNotice(state) +
       `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.detailFailure)}</p>` +
-      '<button type="button" data-source-action="retry-detail">Tentar novamente</button>';
+      '<button type="button" data-source-action="retry-detail" aria-label="Tentar novamente" title="Tentar novamente">' +
+      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`;
   }
   const items = state.detail?.items || [];
   return '<section class="course-source-detail" aria-labelledby="course-source-detail-title">' +
     '<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo">' +
-    `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button><div><p>Fonte versionada</p>` +
+    `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button><div>` +
     `<h2 id="course-source-detail-title">${escapeHtml(items[0] ? sourceTitle(items[0]) : state.selectedSourceId)}</h2></div></header>` +
     renderNotice(state) + renderSourceConfirmation(state) + renderSourceForm(state) +
     (items.length
       ? `<div class="course-source-revisions">${items.map((source, index) => renderSourceRevision(source, index, state)).join("")}</div>`
       : '<p class="course-source-empty">A fonte não possui revisões disponíveis.</p>') +
     (state.detail?.nextCursor
-      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-revisions"${state.detailLoading ? " disabled" : ""}>` +
-        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>${state.detailLoading ? "Carregando…" : "Carregar revisões anteriores"}</span></button>`
+      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-revisions" aria-label="Carregar revisões anteriores" title="Carregar revisões anteriores"${state.detailLoading ? " disabled" : ""}>` +
+        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>`
       : "") + "</section>";
 }
 
@@ -849,17 +832,18 @@ function renderCatalog(state, { selectable = false } = {}) {
   }
   if (state.catalogFailure && !state.catalog) {
     return `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.catalogFailure)}</p>` +
-      '<button type="button" data-source-action="retry-catalog">Tentar novamente</button>';
+      '<button type="button" data-source-action="retry-catalog" aria-label="Tentar novamente" title="Tentar novamente">' +
+      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`;
   }
   const items = state.catalog?.items || [];
   const selected = new Set(state.sourceLinks.map(({ sourceId }) => sourceId));
   return (items.length
     ? `<div class="course-source-catalog" data-source-count="${items.length}">${items.map((source) =>
         renderCatalogCard(source, { selectable, selected: selected.has(source.sourceId) })).join("")}</div>`
-    : '<p class="course-source-empty">Nenhuma fonte cadastrada.</p>') +
+    : '<p class="course-source-empty">Sem fontes cadastradas.</p>') +
     (state.catalog?.nextCursor
-      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-sources"${state.catalogLoading ? " disabled" : ""}>` +
-        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>${state.catalogLoading ? "Carregando…" : "Carregar mais fontes"}</span></button>`
+      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-sources" aria-label="Carregar mais fontes" title="Carregar mais fontes"${state.catalogLoading ? " disabled" : ""}>` +
+        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>`
       : "") + (state.catalogFailure && state.catalog
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.catalogFailure)}</p>`
       : "");
@@ -874,9 +858,8 @@ function renderCatalogPanel(state) {
   return '<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Fontes</h2>' +
     `<p>${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} carregadas${escapeHtml(pdfStorageSummary)}</p></div>` +
-    '<button type="button" class="course-source-primary-action" data-source-action="add-source">' +
-    `${renderUiIcon("add", "course-authoring-button-icon")}<span>Nova fonte</span></button></header>` +
-    '<p class="course-source-intro">Identifique a obra uma vez, registre localizadores exatos e vincule somente o conjunto que sustenta cada item.</p>' +
+    '<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte">' +
+    `${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderNotice(state) + renderSourceForm(state) + renderCatalog(state) + "</section>";
 }
 
@@ -959,30 +942,29 @@ function renderTargetPanel(state) {
   const selected = state.sourceLinks.length
     ? `<div class="course-source-target-links">${state.sourceLinks.map((link, index) =>
         renderTargetLink(state, link, index)).join("")}</div>`
-    : '<p class="course-source-empty">Nenhuma fonte vinculada. O conjunto vazio será salvo explicitamente.</p>';
+    : '<p class="course-source-empty">Sem fontes vinculadas.</p>';
   return '<section class="course-source-target-dialog" data-source-target-dialog tabindex="-1"' +
-    ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title"' +
-    ' aria-describedby="course-source-target-description">' +
+    ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title">' +
     '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
-    '<div><p>Atribuição completa</p>' +
+    '<div>' +
     `<h2 id="course-source-target-title">Fontes de ${escapeHtml(state.targetLabel || "este item")}</h2></div>` +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
     '<div class="course-source-target-body">' +
-    '<p class="course-source-intro" id="course-source-target-description">Salvar substitui o conjunto inteiro deste item. Fontes removidas continuam no histórico.</p>' +
     renderNotice(state) + renderSourceConfirmation(state) +
     (state.targetLoading
       ? '<p class="course-authoring-loading" role="status">Carregando atribuição…</p>'
       : state.targetFailure
         ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.targetFailure)}</p>` +
-          '<button type="button" data-source-action="retry-target">Tentar novamente</button>'
-        : '<section class="course-source-selected"><h3>Conjunto atual</h3>' + selected +
+          '<button type="button" data-source-action="retry-target" aria-label="Tentar novamente" title="Tentar novamente">' +
+          `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
+        : '<section class="course-source-selected"><h3>Vinculadas</h3>' + selected +
           '<div class="course-source-target-actions">' +
-          `<button type="button" class="course-source-export-target" data-source-action="export-target"${targetExportReady(state) && !state.busy ? "" : " disabled"}>` +
-          `${renderUiIcon("arrow-down", "course-authoring-button-icon")}<span>Exportar proveniência</span></button>` +
-          `<button type="button" class="course-source-save-target" data-source-action="save-target"${state.busy ? " disabled" : ""}>` +
-          `${renderUiIcon("save", "course-authoring-button-icon")}<span>Salvar conjunto completo</span></button></div></section>`) +
-    '<section class="course-source-available"><h3>Adicionar do catálogo</h3>' +
+          `<button type="button" class="course-source-export-target" data-source-action="export-target" aria-label="Exportar proveniência" title="Exportar proveniência"${targetExportReady(state) && !state.busy ? "" : " disabled"}>` +
+          `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
+          `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy ? " disabled" : ""}>` +
+          `${renderUiIcon("save", "course-authoring-button-icon")}</button></div></section>`) +
+    '<section class="course-source-available"><h3>Catálogo</h3>' +
     renderCatalog(state, { selectable: true }) + "</section></div></section>";
 }
 
@@ -1090,7 +1072,6 @@ export function createCourseSourcesPanel({
   targetLabel = "",
   initialSourceId = null,
   initialAnchorId = null,
-  onRequestChat = null,
   onNavigate = null,
   documentValue = root?.ownerDocument || globalThis.document || null,
   downloadUrl = (url) => {
@@ -1116,9 +1097,6 @@ export function createCourseSourcesPanel({
     initialSourceId, initialAnchorId
   };
   assertDependencies(root, controller, options);
-  if (onRequestChat !== null && typeof onRequestChat !== "function") {
-    throw new TypeError("Integração contextual com o ChatGPT inválida.");
-  }
   if (onNavigate !== null && typeof onNavigate !== "function") {
     throw new TypeError("Navegação contextual de Fontes inválida.");
   }
@@ -1139,7 +1117,6 @@ export function createCourseSourcesPanel({
     initialSourceId,
     initialAnchorId,
     initialAnchorMatch: null,
-    canRequestChat: mode === "catalog" && typeof onRequestChat === "function",
     detail: null,
     detailLoading: false,
     detailFailure: "",
@@ -1383,39 +1360,6 @@ export function createCourseSourcesPanel({
       section: "sources",
       sourceId,
       ...(anchorId ? { anchorId } : {})
-    });
-  }
-
-  function requestSourceChat(source) {
-    if (!source || typeof onRequestChat !== "function") return false;
-    const deepLink = routeToSource(source.sourceId);
-    return invokeSafely(onRequestChat, {
-      target: {
-        type: "source",
-        id: source.sourceId,
-        title: sourceTitle(source),
-        path: ["Fontes", sourceTitle(source)]
-      },
-      action: "verify_source",
-      instruction: "Confira esta Fonte comigo, incluindo identidade, metadados, disponibilidade e aderência das evidências. Aponte divergências antes de propor alterações.",
-      deepLink
-    });
-  }
-
-  function requestAnchorChat(source, anchor) {
-    if (!source || !anchor || typeof onRequestChat !== "function") return false;
-    const title = anchorLabel(anchor);
-    const deepLink = routeToSource(source.sourceId, anchor.anchorId);
-    return invokeSafely(onRequestChat, {
-      target: {
-        type: "source_anchor",
-        id: anchor.anchorId,
-        title,
-        path: ["Fontes", sourceTitle(source), title]
-      },
-      action: "discuss",
-      instruction: "Discuta esta Âncora comigo e confira se o localizador e o trecho de verificação sustentam o uso pretendido da Fonte. Não altere outros escopos.",
-      deepLink
     });
   }
 
@@ -2289,20 +2233,6 @@ export function createCourseSourcesPanel({
       state.observationEditor = null;
       render();
       if (!state.catalog) void loadCatalog();
-    } else if (action === "request-chat-source") {
-      const sourceId = String(node.dataset.sourceId || "");
-      const sourceRevision = Number(node.dataset.sourceRevision);
-      const source = state.detail?.items.find((item) =>
-        item.sourceId === sourceId && item.revision === sourceRevision);
-      requestSourceChat(source);
-    } else if (action === "request-chat-anchor") {
-      const source = state.detail?.items?.[0] || null;
-      const sourceRevision = Number(node.dataset.sourceRevision);
-      const anchorId = String(node.dataset.anchorId || "");
-      const anchor = source?.revision === sourceRevision
-        ? source.anchors.find((item) => item.anchorId === anchorId)
-        : null;
-      requestAnchorChat(source, anchor);
     } else if (action === "retry-detail" && state.selectedSourceId) {
       void (state.initialSourceId === state.selectedSourceId
         ? loadInitialDetail()

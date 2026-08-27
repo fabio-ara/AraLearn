@@ -1843,49 +1843,6 @@ test("leitura de materialização é sempre remota e preserva as identidades exp
     key.includes("materialization")), false);
 });
 
-test("pedido genérico é clonado para a cópia sem IndexedDB ou cache e conserva o alias", async () => {
-  const storeCalls = [];
-  const store = {
-    async getCache(key) { storeCalls.push(["get", key]); return null; },
-    async putCache(key) { storeCalls.push(["put", key]); },
-    async deleteCachePrefix(key) { storeCalls.push(["delete", key]); }
-  };
-  const deliveries = [];
-  const controller = new CourseController({
-    store,
-    api: {
-      async listCourses() { return courseListPage([]); },
-      async getCourse() { throw new Error("não usado"); }
-    },
-    deliverAuthoringRequest(payload) {
-      deliveries.push(payload);
-      return { delivery: "clipboard", message: "Pedido copiado." };
-    }
-  });
-  const payload = {
-    requestId: COURSE_B,
-    courseId: COURSE_ID,
-    authoringPartId: "30000000-0000-4000-8000-000000000003",
-    requestText: "Revise este Módulo.",
-    context: { target: { type: "module", id: "module-1" } }
-  };
-
-  assert.deepEqual(await controller.requestAuthoringRequest(payload), {
-    delivery: "clipboard",
-    message: "Pedido copiado."
-  });
-  assert.deepEqual(deliveries, [payload]);
-  payload.requestText = "alterado depois";
-  payload.context.target.id = "module-2";
-  assert.equal(deliveries[0].requestText, "Revise este Módulo.");
-  assert.equal(deliveries[0].context.target.id, "module-1");
-  assert.deepEqual(storeCalls, []);
-
-  await controller.requestPartMaterialization({ requestText: "Materialize esta Parte." });
-  assert.equal(deliveries[1].requestText, "Materialize esta Parte.");
-  assert.deepEqual(storeCalls, []);
-});
-
 test("edição contextual owner preserva proveniência e invalida todas as projeções afetadas", async () => {
   const store = new MemoryStateStore();
   const sourceLinks = [{
