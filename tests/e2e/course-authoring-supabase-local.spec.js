@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 
 import {
+  authorizeLocalActionSession,
   authorizeLocalMcpSession,
+  chatGptAction,
   cleanupLocalMcpSession,
   courseAction,
   createLocalMcpClient,
@@ -19,12 +21,15 @@ import {
 } from "../support/localSupabaseE2e.js";
 
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
+const APPLICATION_URL = process.env.ARALEARN_E2E_APPLICATION_URL || "/";
 const PASSWORD = "AraLearn-authoring-local-A9!";
 const COURSE_TITLE = "Autoria E2E com persistência real";
 const INITIAL_OBJECTIVE = "Comprovar a continuidade entre a interface e o estado canônico.";
 const RETURNED_OBJECTIVE =
   "Objetivo revisado no ChatGPT e recuperado ao voltar para a Autoria.";
 const PART_TITLE = "Parte acompanhável da prova";
+const ACTION_PART_ID = "71000000-0000-4000-8000-000000000007";
+const ACTION_PART_TITLE = "Parte criada pela Action";
 const MODULE_ID = "module-e2e-materialization";
 const LESSON_ID = "lesson-e2e-materialization";
 const MICROSEQUENCE_ID = "microsequence-e2e-materialization";
@@ -49,6 +54,7 @@ let ownerToken = "";
 let outsiderToken = "";
 let courseId = "";
 let mcpLifecycle = {};
+let actionLifecycle = {};
 const providerRequests = [];
 
 function assistedStudyUnit() {
@@ -113,7 +119,7 @@ async function expectSuccessful(label, promise, status = 200) {
 }
 
 async function browserSignIn(page, email) {
-  await page.goto("/");
+  await page.goto(APPLICATION_URL);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
@@ -355,6 +361,23 @@ function oauthCleanupEvidence() {
   `);
 }
 
+function actionOauthCleanupEvidence() {
+  if (!actionLifecycle.clientId) return null;
+  return queryLocalPostgresJson(`
+    select json_build_object(
+      'clients', (select count(*)::integer
+        from private.authoring_action_oauth_clients
+        where id='${actionLifecycle.clientId}'::uuid),
+      'authorizations', (select count(*)::integer
+        from private.authoring_action_oauth_authorizations
+        where client_id='${actionLifecycle.clientId}'::uuid),
+      'tokens', (select count(*)::integer
+        from private.authoring_action_oauth_tokens
+        where client_id='${actionLifecycle.clientId}'::uuid)
+    )::text;
+  `);
+}
+
 test.describe("Autoria real com Supabase local", () => {
   test.skip(!ENABLED, "A prova real roda somente com a stack Supabase local explícita.");
   test.setTimeout(240_000);
@@ -398,6 +421,15 @@ test.describe("Autoria real com Supabase local", () => {
     });
     expect(mcpLifecycle.accessToken).toMatch(/^[^.]+\.[^.]+\.[^.]+$/u);
     expect(mcpLifecycle.accessToken).not.toBe(ownerToken);
+    actionLifecycle = {};
+    await authorizeLocalActionSession(config, {
+      userAccessToken: ownerToken,
+      userId: owner.id,
+      lifecycle: actionLifecycle
+    });
+    expect(actionLifecycle.accessToken).toMatch(/^ara_[A-Za-z0-9_-]{40,}$/u);
+    expect(actionLifecycle.accessToken).not.toBe(ownerToken);
+    expect(actionLifecycle.accessToken).not.toBe(mcpLifecycle.accessToken);
   });
 
   test.afterAll(async ({ browserName }, testInfo) => {
@@ -434,6 +466,13 @@ test.describe("Autoria real com Supabase local", () => {
       await expect.poll(oauthCleanupEvidence).toEqual({
         activeClients: 0,
         activeConsents: 0
+      });
+    }
+    if (actionLifecycle.clientId) {
+      await expect.poll(actionOauthCleanupEvidence).toEqual({
+        clients: 0,
+        authorizations: 0,
+        tokens: 0
       });
     }
     if (deletion) {
@@ -503,7 +542,27 @@ test.describe("Autoria real com Supabase local", () => {
       expect(await page.evaluate(() => [...document.scripts].some((script) =>
         new URL(script.src, location.href).pathname.endsWith("/main.js")))).toBe(true);
       await openAuthoringSection(page, "course", "Planejamento");
-      await expect(page.getByRole("region", { name: "Crie a primeira Parte" })).toBeVisible();
+      const planning = page.locator(".course-authoring-planning");
+      await expect(planning.locator(".course-authoring-next-action")).toHaveCount(0);
+      await expect(planning.getByRole("heading", { name: "Objetivo", exact: true }))
+        .toBeVisible();
+      await expect(planning.getByText("Partes preferenciais", { exact: true })).toBeVisible();
+      await expect(planning.getByText("Unidades materializadas", { exact: true })).toBeVisible();
+      await expect(planning.getByRole("heading", { name: "Partes", exact: true }))
+        .toBeVisible();
+      await expect(planning.getByRole("button", {
+        name: "Vincular microssequência existente"
+      })).toHaveCount(0);
+      await expect(planning.locator(".course-authoring-planning-context")).toHaveCount(0);
+      await expect(planning.getByText("Referências do plano", { exact: true })).toBeHidden();
+      await expect(planning.locator(".course-authoring-plan-items > summary small"))
+        .toHaveCount(0);
+      const addReference = planning.getByRole("button", {
+        name: "Adicionar referência ao plano",
+        exact: true
+      });
+      await expect(addReference).toBeVisible();
+      await expect(addReference).toHaveText("");
 
       const courseTaskMenu = page.locator(".course-authoring-task-menu");
       await courseTaskMenu.locator(":scope > summary").click();
@@ -515,8 +574,10 @@ test.describe("Autoria real com Supabase local", () => {
       await courseTaskMenu.locator(":scope > summary").click();
       await expect(courseTaskMenu).not.toHaveAttribute("open", "");
 
-      await page.getByRole("region", { name: "Crie a primeira Parte" })
-        .getByRole("button", { name: "Adicionar Parte", exact: true }).click();
+      const addPart = planning.getByRole("button", { name: "Adicionar Parte", exact: true });
+      await expect(addPart).toBeVisible();
+      await expect(addPart).toHaveText("");
+      await addPart.click();
       await page.getByLabel("Título da Parte").fill(PART_TITLE);
       await page.getByLabel("Intenção operacional").fill(
         "Organizar uma estrutura didática verificável antes da materialização."
@@ -616,16 +677,20 @@ test.describe("Autoria real com Supabase local", () => {
       const mcpClient = await createLocalMcpClient(config, mcpLifecycle.accessToken);
       expect(mcpClient.protocolVersion).toBe("2025-11-25");
       expect(mcpClient.toolNames).toEqual(expect.arrayContaining(["lerCurso", "alterarCurso"]));
-      const planBeforeChatGpt = await mcpClient.callTool("lerCurso", {
-        courseId,
-        view: "instructional_plan"
-      });
+      const planBeforeChatGpt = (await expectSuccessful(
+        "Actions lê o plano antes da alteração",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "instructional_plan"
+        }, actionLifecycle.accessToken)
+      )).data;
       expect(planBeforeChatGpt).toMatchObject({
         courseId,
-        plan: { objective: INITIAL_OBJECTIVE }
+        plan: { objective: INITIAL_OBJECTIVE },
+        deepLink: expect.stringContaining(`courses/${courseId}?section=planning`)
       });
-      const chatGptChange = await mcpClient.callTool("alterarCurso", {
-          requestId: crypto.randomUUID(),
+      const updateRequest = {
+          requestId: "actions-e2e-update-plan-0001",
           courseId,
           expectedRevision: planBeforeChatGpt.courseRevision,
           expectedPlanVersion: planBeforeChatGpt.plan.version,
@@ -634,13 +699,263 @@ test.describe("Autoria real com Supabase local", () => {
             type: "update_plan",
             objective: RETURNED_OBJECTIVE
           }
-        });
-      const returnedRevision = chatGptChange.courseRevision;
-      expect(returnedRevision).toBe(planBeforeChatGpt.courseRevision + 1);
+        };
+      const chatGptChange = (await expectSuccessful(
+        "Actions altera a visão geral do plano",
+        chatGptAction(
+          config, "alterarCurso", updateRequest, actionLifecycle.accessToken
+        )
+      )).data;
+      expect(chatGptChange).toMatchObject({
+        courseRevision: planBeforeChatGpt.courseRevision + 1,
+        planVersion: planBeforeChatGpt.plan.version + 1,
+        idempotent: false,
+        deepLink: expect.stringContaining(`courses/${courseId}?section=planning`)
+      });
+      const replayedChange = (await expectSuccessful(
+        "Actions repete a alteração com o mesmo requestId",
+        chatGptAction(
+          config, "alterarCurso", updateRequest, actionLifecycle.accessToken
+        )
+      )).data;
+      expect(replayedChange).toMatchObject({
+        courseRevision: chatGptChange.courseRevision,
+        planVersion: chatGptChange.planVersion,
+        idempotent: true
+      });
+      const afterOverview = (await expectSuccessful(
+        "Actions relê a visão geral alterada",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "instructional_plan"
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(afterOverview).toMatchObject({
+        courseRevision: chatGptChange.courseRevision,
+        plan: {
+          version: chatGptChange.planVersion,
+          objective: RETURNED_OBJECTIVE
+        }
+      });
+
+      const partChange = (await expectSuccessful(
+        "Actions cria uma Parte do plano",
+        chatGptAction(config, "alterarCurso", {
+          requestId: "actions-e2e-add-part-0001",
+          courseId,
+          expectedRevision: afterOverview.courseRevision,
+          expectedPlanVersion: afterOverview.plan.version,
+          operation: "update_instructional_plan",
+          planCommand: {
+            type: "add_part",
+            id: ACTION_PART_ID,
+            position: afterOverview.plan.parts.length,
+            title: ACTION_PART_TITLE,
+            intent: "Comprovar a criação tipada de Parte por Actions."
+          }
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(partChange).toMatchObject({
+        courseRevision: afterOverview.courseRevision + 1,
+        planVersion: afterOverview.plan.version + 1
+      });
+      const invalidType = await chatGptAction(config, "alterarCurso", {
+        requestId: "actions-e2e-invalid-plan-type-0001",
+        courseId,
+        expectedRevision: partChange.courseRevision,
+        expectedPlanVersion: partChange.planVersion,
+        operation: "update_instructional_plan",
+        planCommand: { type: "tipo_inexistente" }
+      }, actionLifecycle.accessToken);
+      expect(invalidType.response.status, failure(
+        "Actions recusa discriminador inexistente", invalidType
+      )).toBe(422);
+      expect(invalidType.payload).toMatchObject({
+        ok: false,
+        error: { code: "invalid_course_authoring_plan_command" }
+      });
+      const afterPart = (await expectSuccessful(
+        "Actions relê a Parte criada",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "instructional_plan"
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(afterPart).toMatchObject({
+        courseRevision: partChange.courseRevision,
+        plan: {
+          version: partChange.planVersion,
+          objective: RETURNED_OBJECTIVE,
+          parts: expect.arrayContaining([expect.objectContaining({
+            id: ACTION_PART_ID,
+            title: ACTION_PART_TITLE
+          })])
+        }
+      });
+      const stalePlanChange = await chatGptAction(config, "alterarCurso", {
+        requestId: "actions-e2e-stale-plan-0001",
+        courseId,
+        expectedRevision: afterOverview.courseRevision,
+        expectedPlanVersion: afterPart.plan.version,
+        operation: "update_instructional_plan",
+        planCommand: {
+          type: "update_plan",
+          objective: "Este objetivo não pode ser persistido por uma escrita obsoleta."
+        }
+      }, actionLifecycle.accessToken);
+      expect(stalePlanChange.response.status, failure(
+        "Actions recusa revisão obsoleta", stalePlanChange
+      )).toBe(409);
+      expect(stalePlanChange.payload).toMatchObject({
+        ok: false,
+        error: {
+          code: "stale_course_state",
+          recovery: {
+            strategy: "reread_and_retry",
+            requestIdMode: "new"
+          }
+        }
+      });
+      const afterStalePlanChange = (await expectSuccessful(
+        "Actions relê o plano após conflito sem persistência",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "instructional_plan"
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(afterStalePlanChange).toMatchObject({
+        courseRevision: afterPart.courseRevision,
+        plan: {
+          version: afterPart.plan.version,
+          objective: RETURNED_OBJECTIVE,
+          parts: expect.arrayContaining([expect.objectContaining({
+            id: ACTION_PART_ID,
+            title: ACTION_PART_TITLE
+          })])
+        }
+      });
+      expect(afterStalePlanChange.plan.parts.filter(({ id }) => id === ACTION_PART_ID))
+        .toHaveLength(1);
+      const persistedActionPlan = queryLocalPostgresJson(`
+        select json_build_object(
+          'objective', (select goal from public.courses
+            where id='${courseId}'::uuid),
+          'courseRevision', (select revision::integer from public.courses
+            where id='${courseId}'::uuid),
+          'planVersion', (select version::integer
+            from private.course_instructional_plans where course_id='${courseId}'::uuid),
+          'actionPartTitle', (select title from private.course_authoring_parts
+            where course_id='${courseId}'::uuid and id='${ACTION_PART_ID}'::uuid
+              and retired_at is null),
+          'actionPartCount', (select count(*)::integer
+            from private.course_authoring_parts
+            where course_id='${courseId}'::uuid and id='${ACTION_PART_ID}'::uuid
+              and retired_at is null)
+        )::text;
+      `);
+      expect(persistedActionPlan).toEqual({
+        objective: RETURNED_OBJECTIVE,
+        courseRevision: partChange.courseRevision,
+        planVersion: partChange.planVersion,
+        actionPartTitle: ACTION_PART_TITLE,
+        actionPartCount: 1
+      });
+      const designBefore = (await expectSuccessful(
+        "Actions lê o desenho antes da decisão automática",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "course_design",
+          scope: { kind: "course", ref: courseId },
+          limit: 32
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(designBefore.courseRevision).toBe(partChange.courseRevision);
+      const automaticDesignChange = (await expectSuccessful(
+        "Actions fixa parâmetro por resolução automática",
+        chatGptAction(config, "alterarCurso", {
+          requestId: "actions-e2e-design-automatic-0001",
+          courseId,
+          expectedRevision: designBefore.courseRevision,
+          operation: "update_course_design",
+          designCommand: {
+            type: "set_parameter",
+            scope: { kind: "course", ref: courseId },
+            parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+            value: 3,
+            mode: "automatic",
+            reason: "Comprovar a decisão automática tipada pela Action."
+          }
+        }, actionLifecycle.accessToken)
+      )).data;
+      const afterAutomaticDesign = (await expectSuccessful(
+        "Actions relê a decisão automática",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "course_design",
+          scope: { kind: "course", ref: courseId },
+          limit: 32
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(afterAutomaticDesign.courseRevision).toBe(automaticDesignChange.courseRevision);
+      expect(afterAutomaticDesign.parameters.find(({ parameterId }) =>
+        parameterId === "minimum_distinct_practice_opportunities_per_evidence_requirement"
+      )?.effectiveAssignment).toMatchObject({ value: 3, origin: "automatic" });
+
+      const explicitDesignChange = (await expectSuccessful(
+        "Actions fixa parâmetro por decisão explícita",
+        chatGptAction(config, "alterarCurso", {
+          requestId: "actions-e2e-design-explicit-0001",
+          courseId,
+          expectedRevision: afterAutomaticDesign.courseRevision,
+          operation: "update_course_design",
+          designCommand: {
+            type: "set_parameter",
+            scope: { kind: "course", ref: courseId },
+            parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+            value: 3,
+            mode: "explicit",
+            origin: "author",
+            reason: "Comprovar a decisão explícita tipada pela Action."
+          }
+        }, actionLifecycle.accessToken)
+      )).data;
+      const afterExplicitDesign = (await expectSuccessful(
+        "Actions relê a decisão explícita",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "course_design",
+          scope: { kind: "course", ref: courseId },
+          limit: 32
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(afterExplicitDesign.courseRevision).toBe(explicitDesignChange.courseRevision);
+      expect(afterExplicitDesign.parameters.find(({ parameterId }) =>
+        parameterId === "new_analysis_unit_ceiling_per_expository_study_unit"
+      )?.effectiveAssignment).toMatchObject({ value: 3, origin: "author" });
+
+      const returnedRevision = explicitDesignChange.courseRevision;
       expect(await canonicalHeader()).toMatchObject({
         courseId,
         revision: returnedRevision,
         goal: RETURNED_OBJECTIVE
+      });
+
+      const actionContracts = (await expectSuccessful(
+        "Actions consulta o contrato do componente",
+        chatGptAction(config, "consultarComponentesDidaticos", {
+          operation: "contracts",
+          packages: ["aralearn.resource.paragraph@1.0.0"]
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(actionContracts).toMatchObject({
+        operation: "contracts",
+        result: {
+          items: [expect.objectContaining({
+            status: "ok",
+            packageId: "aralearn.resource.paragraph",
+            version: "1.0.0"
+          })]
+        }
       });
 
       const composition = await mcpClient.callTool("alterarCurso", {
@@ -660,6 +975,34 @@ test.describe("Autoria real com Supabase local", () => {
         revision: returnedRevision + 1,
         createdCount: 4,
         deletedCount: 0
+      });
+      const actionPreview = (await expectSuccessful(
+        "Actions pré-visualiza a Unidade persistida",
+        chatGptAction(config, "consultarComponentesDidaticos", {
+          operation: "preview_study_unit",
+          courseId,
+          studyUnitId: STUDY_UNIT_ID,
+          studyUnitJson: JSON.stringify({
+            ...assistedStudyUnit(),
+            id: STUDY_UNIT_ID,
+            content: [{
+              id: STUDY_UNIT_CONTENT_ID,
+              package: "aralearn.resource.paragraph",
+              version: "1.0.0",
+              data: { text: ORIGINAL_STUDY_UNIT_TEXT }
+            }]
+          })
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(actionPreview).toMatchObject({
+        operation: "preview_study_unit",
+        result: {
+          studyUnit: { id: STUDY_UNIT_ID },
+          previewMode: "client_renderer",
+          deepLink: expect.stringContaining(
+            `courses/${courseId}?section=content&studyUnitId=${STUDY_UNIT_ID}`
+          )
+        }
       });
       const planWithStructure = await mcpClient.callTool("lerCurso", {
         courseId,
@@ -699,17 +1042,18 @@ test.describe("Autoria real com Supabase local", () => {
 
       const actionsMaterializationId = crypto.randomUUID();
       const actionsStepId = crypto.randomUUID();
-      const actionsStarted = await expectSuccessful(
+      const actionsStarted = (await expectSuccessful(
         "iniciar materialização pelo contrato de Actions",
-        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
-          p_actor_id: owner.id,
-          p_course_id: courseId,
-          p_authoring_part_id: authoringPartId,
-          p_materialization_id: actionsMaterializationId,
-          p_expected_course_revision: materializablePlan.courseRevision,
-          p_expected_materialization_version: 0,
-          p_operation: "start",
-          p_payload: {
+        chatGptAction(config, "alterarCurso", {
+          requestId: `actions-${crypto.randomUUID()}`,
+          courseId,
+          expectedRevision: materializablePlan.courseRevision,
+          operation: "advance_part_materialization",
+          materializationCommand: {
+            operation: "start",
+            authoringPartId,
+            materializationId: actionsMaterializationId,
+            expectedMaterializationVersion: 0,
             authoringPartVersion: materializablePart.version,
             steps: [{
               id: actionsStepId,
@@ -718,11 +1062,9 @@ test.describe("Autoria real com Supabase local", () => {
               targetDidacticMicrosequenceId: MICROSEQUENCE_ID,
               productionPosition: 0
             }]
-          },
-          p_channel: "actions",
-          p_request_id: `actions-${crypto.randomUUID()}`
-        }, config.adminKey)
-      );
+          }
+        }, actionLifecycle.accessToken)
+      )).data;
       expect(actionsStarted).toMatchObject({ channel: "actions", operation: "start" });
       const actionsContextHash = actionsStarted.materialization.contextHash;
       const actionsStudyUnit = minimalMaterializableRows().find(
@@ -740,17 +1082,18 @@ test.describe("Autoria real com Supabase local", () => {
           componentRefs: ["aralearn.resource.paragraph@1.0.0"]
         }]
       };
-      const actionsStep = await expectSuccessful(
+      const actionsStep = (await expectSuccessful(
         "registrar etapa pelo contrato de Actions",
-        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
-          p_actor_id: owner.id,
-          p_course_id: courseId,
-          p_authoring_part_id: authoringPartId,
-          p_materialization_id: actionsMaterializationId,
-          p_expected_course_revision: actionsStarted.courseRevision,
-          p_expected_materialization_version: actionsStarted.materialization.version,
-          p_operation: "record_step",
-          p_payload: {
+        chatGptAction(config, "alterarCurso", {
+          requestId: `actions-${crypto.randomUUID()}`,
+          courseId,
+          expectedRevision: actionsStarted.courseRevision,
+          operation: "advance_part_materialization",
+          materializationCommand: {
+            operation: "record_step",
+            authoringPartId,
+            materializationId: actionsMaterializationId,
+            expectedMaterializationVersion: actionsStarted.materialization.version,
             stepId: actionsStepId,
             expectedStepVersion: 1,
             status: "completed",
@@ -767,32 +1110,56 @@ test.describe("Autoria real com Supabase local", () => {
               didacticMicrosequenceId: MICROSEQUENCE_ID,
               studyUnits: [{ studyUnitId: STUDY_UNIT_ID, sourceLinks: [] }]
             }
-          },
-          p_channel: "actions",
-          p_request_id: `actions-${crypto.randomUUID()}`
-        }, config.adminKey)
-      );
-      const actionsFinished = await expectSuccessful(
+          }
+        }, actionLifecycle.accessToken)
+      )).data;
+      const actionsFinished = (await expectSuccessful(
         "concluir materialização pelo contrato de Actions",
-        restRpc(config, "advance_course_authoring_part_materialization_for_actor_v2", {
-          p_actor_id: owner.id,
-          p_course_id: courseId,
-          p_authoring_part_id: authoringPartId,
-          p_materialization_id: actionsMaterializationId,
-          p_expected_course_revision: actionsStep.courseRevision,
-          p_expected_materialization_version: actionsStep.materialization.version,
-          p_operation: "finish",
-          p_payload: {
+        chatGptAction(config, "alterarCurso", {
+          requestId: `actions-${crypto.randomUUID()}`,
+          courseId,
+          expectedRevision: actionsStep.courseRevision,
+          operation: "advance_part_materialization",
+          materializationCommand: {
+            operation: "finish",
+            authoringPartId,
+            materializationId: actionsMaterializationId,
+            expectedMaterializationVersion: actionsStep.materialization.version,
             status: "completed",
             resultFacts: { summary: "Contexto conferido pela integração Actions." }
-          },
-          p_channel: "actions",
-          p_request_id: `actions-${crypto.randomUUID()}`
-        }, config.adminKey)
-      );
+          }
+        }, actionLifecycle.accessToken)
+      )).data;
       expect(actionsFinished).toMatchObject({
         channel: "actions",
         materialization: { status: "completed" }
+      });
+      const actionsMaterializationRead = (await expectSuccessful(
+        "Actions relê a materialização concluída",
+        chatGptAction(config, "lerCurso", {
+          courseId,
+          view: "part_materialization",
+          authoringPartId,
+          materializationId: actionsMaterializationId
+        }, actionLifecycle.accessToken)
+      )).data;
+      expect(actionsMaterializationRead).toMatchObject({
+        contract: "aralearn.course-authoring-part-materialization.v1",
+        courseId,
+        courseRevision: actionsFinished.courseRevision,
+        authoringPartId,
+        materialization: {
+          id: actionsMaterializationId,
+          channel: "actions",
+          status: "completed",
+          version: actionsFinished.materialization.version,
+          nextPendingStep: null,
+          steps: [expect.objectContaining({
+            id: actionsStepId,
+            status: "completed",
+            resultFacts: expect.objectContaining({ source: "actions_contract_e2e" })
+          })]
+        }
       });
 
       const failedMaterializationId = crypto.randomUUID();
@@ -1022,21 +1389,24 @@ test.describe("Autoria real com Supabase local", () => {
         courseRevision: materializationRevision,
         plan: {
           objective: RETURNED_OBJECTIVE,
-          parts: [{
+          parts: expect.arrayContaining([expect.objectContaining({
             id: authoringPartId,
-            microsequences: [{ id: MICROSEQUENCE_ID, productionPosition: 0 }],
-            progress: {
+            microsequences: expect.arrayContaining([expect.objectContaining({
+              id: MICROSEQUENCE_ID,
+              productionPosition: 0
+            })]),
+            progress: expect.objectContaining({
               state: "materializing",
               microsequenceCount: 1,
-              lastMaterialization: {
+              lastMaterialization: expect.objectContaining({
                 id: materializationId,
                 status: "running",
                 version: 2,
                 completedStepCount: 1,
                 totalStepCount: 1
-              }
-            }
-          }]
+              })
+            })
+          })])
         }
       });
       expect(await canonicalHeader()).toMatchObject({

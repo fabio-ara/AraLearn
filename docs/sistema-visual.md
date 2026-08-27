@@ -83,9 +83,11 @@ Uma grade compacta oferece, em um único nível, **Planejamento**, **Conteúdo**
 e **Pessoas e acesso**. Esses nomes expressam tarefas humanas; não expõem grupos
 históricos ou módulos internos que a pessoa precisaria memorizar.
 
-A barra superior permanece compacta, com voltar, título do objeto e menu de
-tarefas. Uma ação situada pode levar diretamente à tarefa e ao objeto
-necessários sem criar uma segunda navegação ou uma sidebar.
+A barra superior permanece compacta, com voltar, título do objeto, indicador de
+sincronização e menu de tarefas. O indicador compartilha a linguagem de Estudo,
+conserva sua geometria em todos os estados e comunica a mudança pelo ícone e
+pelo nome acessível. Uma ação situada pode levar diretamente à tarefa e ao
+objeto necessários sem criar uma segunda navegação ou uma sidebar.
 
 Celular e computador usam a mesma composição de até 430 px, centralizada em
 telas maiores. Não existe barra lateral de desktop, segunda coluna, dashboard
@@ -95,9 +97,11 @@ tabelas e comparações largas usam rolagem horizontal local.
 Uma ação frequente, reconhecível e situada prefere ícone conhecido, nome
 acessível e dica. Texto visível permanece quando evita ambiguidade real; a ação
 principal de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
-em controles progressivos, sem desaparecer do produto. Planejamento mostra
-primeiro a próxima ação, o objetivo e o estado das Partes; contexto, referências
-e organização avançada são abertos quando necessários.
+em controles progressivos, sem desaparecer do produto. Planejamento não cria um
+card textual de próxima ação: objetivo, faixa preferencial e materialização
+permanecem visíveis, enquanto ações ficam junto do objeto e priorizam ícones.
+Partes, contexto e referências sem conteúdo não acrescentam mensagens de
+ausência; detalhes e organização avançada são abertos quando necessários.
 
 Em **Conteúdo**, Observações e mudanças de Parâmetros permanecem ligadas ao alvo
 inspecionado e aparecem como estado do próprio Curso. A pessoa pode percorrer os
@@ -130,8 +134,11 @@ continua disponível, inclusive para código ou terminal extensos.
 
 O retorno de outra guia ou janela provoca a releitura do cabeçalho canônico e da
 área visível. Uma ação de atualização permanece disponível no cabeçalho para o
-caso em que o navegador não comunique a mudança de foco. Esse fluxo conserva o
-painel ativo e a posição útil, em vez de exigir que a pessoa reencontre o alvo.
+caso em que o navegador não comunique a mudança de foco. Durante a releitura, o
+conteúdo confirmado permanece montado e não muda de posição; o indicador de
+sincronização informa o andamento até a substituição pontual dos dados. Esse
+fluxo conserva o painel ativo e a posição útil, em vez de exigir que a pessoa
+reencontre o alvo.
 
 Uma confirmação ou um formulário ativo bloqueia essa releitura até que a pessoa
 conclua ou cancele o rascunho. Os campos preenchidos permanecem no documento, e

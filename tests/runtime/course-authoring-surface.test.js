@@ -55,6 +55,36 @@ class FakeRoot {
   }
 }
 
+class TrackingRoot extends FakeRoot {
+  constructor() {
+    super();
+    this.renderWrites = [];
+    this.renderedHtml = this.innerHTML;
+    Object.defineProperty(this, "innerHTML", {
+      configurable: true,
+      get: () => this.renderedHtml,
+      set: (value) => {
+        this.renderedHtml = String(value);
+        this.renderWrites.push(this.renderedHtml);
+      }
+    });
+  }
+}
+
+class MountedPanelRoot extends TrackingRoot {
+  constructor(selector) {
+    super();
+    this.panelSelector = selector;
+    this.panelHost = new FakeRoot();
+    this.panelHost.removeEventListener = (type) => this.panelHost.listeners.delete(type);
+    this.panelHost.querySelector = () => null;
+  }
+
+  querySelector(selector) {
+    return selector === this.panelSelector ? this.panelHost : null;
+  }
+}
+
 class FakeWindow {
   constructor() {
     this.listeners = new Map();
@@ -71,6 +101,44 @@ class FakeWindow {
   dispatch(type) {
     this.listeners.get(type)?.();
   }
+}
+
+function deferredValue() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolveValue, rejectValue) => {
+    resolve = resolveValue;
+    reject = rejectValue;
+  });
+  return { promise, resolve, reject };
+}
+
+function courseDetailFixture(overrides = {}) {
+  return {
+    courseId: COURSE_ID,
+    title: "Fundamentos",
+    goal: "Compreender relações essenciais.",
+    revision: 5,
+    ownership: "owned",
+    canEdit: true,
+    ...overrides
+  };
+}
+
+function authoringHeader(html) {
+  return String(html).match(
+    /<header class="course-authoring-course-header">[\s\S]*?<\/header>/u
+  )?.[0] || "";
+}
+
+function assertAccessibleSyncIndicator(html, labelPattern) {
+  const header = authoringHeader(html);
+  assert.ok(header, "O cabeçalho do Curso deve permanecer renderizado.");
+  const control = header.match(
+    /<(?:button|span)\b[^>]*aria-label="([^"]*(?:sincron|conex|nuvem)[^"]*)"[^>]*>[\s\S]*?<svg\b[\s\S]*?<\/(?:button|span)>/iu
+  );
+  assert.ok(control, "O cabeçalho deve nomear o indicador iconográfico de sincronização.");
+  assert.match(control[1], labelPattern);
 }
 
 function outlineFixture(courseId = COURSE_ID) {
@@ -913,6 +981,361 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.match(root.innerHTML, /<details class="course-authoring-part-tools"/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
+});
+
+test("refresh simultâneo do Planejamento mantém o conteúdo e não recompõe revisão inalterada", async () => {
+  const root = new TrackingRoot();
+  const courseRead = deferredValue();
+  const planRead = deferredValue();
+  let delayed = false;
+  let courseReads = 0;
+  let planReads = 0;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        courseReads += 1;
+        return delayed ? courseRead.promise : courseDetailFixture();
+      },
+      async loadAuthoringPlan() {
+        planReads += 1;
+        return delayed ? planRead.promise : authoringPlanFixture();
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+
+  delayed = true;
+  root.renderWrites.length = 0;
+  const firstRefresh = surface.refresh();
+  const simultaneousRefresh = surface.refresh();
+
+  assert.equal(courseReads, 2, "Leituras simultâneas devem compartilhar a mesma releitura.");
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /Planejamento indisponível|Carregando planejamento/u
+  );
+
+  courseRead.resolve(courseDetailFixture());
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(planReads, 2, "A mesma atualização deve ler o plano apenas uma vez.");
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /Planejamento indisponível|Carregando planejamento/u
+  );
+
+  planRead.resolve(authoringPlanFixture());
+  assert.deepEqual(await Promise.all([firstRefresh, simultaneousRefresh]), [true, true]);
+  assert.equal(
+    root.renderWrites.length,
+    0,
+    "Uma revisão inalterada não deve substituir a raiz autoral."
+  );
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
+});
+
+test("refresh do Planejamento aplica revisão nova uma vez sem telas intermediárias", async () => {
+  const root = new TrackingRoot();
+  const courseRead = deferredValue();
+  const planRead = deferredValue();
+  let delayed = false;
+  const initialPlan = authoringPlanFixture();
+  const updatedObjective = "Distinguir relações essenciais em situações novas.";
+  const updatedPlan = {
+    ...initialPlan,
+    courseRevision: 6,
+    plan: {
+      ...initialPlan.plan,
+      version: initialPlan.plan.version + 1,
+      objective: updatedObjective,
+      updatedAt: "2026-08-17T11:00:00Z"
+    }
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        return delayed
+          ? courseRead.promise
+          : courseDetailFixture();
+      },
+      async loadAuthoringPlan() {
+        return delayed ? planRead.promise : initialPlan;
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  await surface.open();
+  delayed = true;
+  root.renderWrites.length = 0;
+  const refreshing = surface.refresh();
+
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  courseRead.resolve(courseDetailFixture({
+    goal: updatedObjective,
+    revision: 6
+  }));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /Planejamento indisponível|Carregando planejamento/u
+  );
+
+  planRead.resolve(updatedPlan);
+  assert.equal(await refreshing, true);
+  assert.equal(root.renderWrites.length, 1, "A revisão nova deve ser aplicada atomicamente.");
+  assert.equal(
+    root.renderWrites.some((html) =>
+      /Planejamento indisponível|Carregando planejamento/u.test(html)
+    ),
+    false
+  );
+  assert.match(root.innerHTML, new RegExp(updatedObjective.replace(".", "\\."), "u"));
+  assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
+});
+
+test("falha de refresh preserva o Planejamento e sinaliza a indisponibilidade de sincronização", async () => {
+  const root = new TrackingRoot();
+  const courseRead = deferredValue();
+  let delayed = false;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        return delayed ? courseRead.promise : courseDetailFixture();
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  await surface.open();
+  delayed = true;
+  root.renderWrites.length = 0;
+  const refreshing = surface.refresh();
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /Planejamento indisponível|Carregando planejamento/u
+  );
+
+  const offline = new Error("Failed to fetch");
+  offline.code = "failed_to_fetch";
+  courseRead.reject(offline);
+  assert.equal(await refreshing, false);
+  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
+  assert.equal(
+    root.renderWrites.some((html) =>
+      /Planejamento indisponível|Carregando planejamento/u.test(html)
+    ),
+    false
+  );
+  assertAccessibleSyncIndicator(root.innerHTML, /sem (?:sincronização|conexão)|offline/iu);
+});
+
+test("refresh de Parâmetros preserva Curso e desenho até aplicar o snapshot completo", async () => {
+  const root = new TrackingRoot();
+  const courseRead = deferredValue();
+  const designRead = deferredValue();
+  let delayed = false;
+  let designReads = 0;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        return delayed ? courseRead.promise : courseDetailFixture();
+      },
+      async loadCourseDesign() {
+        designReads += 1;
+        return delayed ? designRead.promise : courseDesignFixture();
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.match(root.innerHTML, /Hipótese inicial do produto\./u);
+  delayed = true;
+  root.renderWrites.length = 0;
+  const refreshing = surface.refresh();
+
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Hipótese inicial do produto\./u);
+  assert.doesNotMatch(root.innerHTML, /Carregando Curso|Parâmetros indisponíveis/u);
+
+  courseRead.resolve(courseDetailFixture({ revision: 6 }));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(designReads, 2);
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Hipótese inicial do produto\./u);
+
+  designRead.resolve(courseDesignFixture({
+    courseRevision: 6,
+    localParameter: {
+      changeId: "9",
+      value: 4,
+      origin: "author",
+      reason: "Critério atualizado pelo autor."
+    }
+  }));
+  assert.equal(await refreshing, true);
+  assert.equal(root.renderWrites.length, 1);
+  assert.match(root.innerHTML, /Critério atualizado pelo autor\./u);
+  assert.doesNotMatch(root.innerHTML, /Carregando Curso|Parâmetros indisponíveis/u);
+});
+
+test("refresh de Pessoas preserva Curso e lista até aplicar o snapshot completo", async () => {
+  const root = new TrackingRoot();
+  const courseRead = deferredValue();
+  const peopleRead = deferredValue();
+  let delayed = false;
+  let peopleReads = 0;
+  const initialPeople = {
+    contract: "aralearn.course-people.v1",
+    courseId: COURSE_ID,
+    owner: {
+      userId: "30000000-0000-4000-8000-000000000003",
+      displayName: "Pessoa proprietária",
+      avatarObjectKey: null
+    },
+    people: []
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        return delayed ? courseRead.promise : courseDetailFixture();
+      },
+      async listCourseAccess() {
+        peopleReads += 1;
+        return delayed ? peopleRead.promise : initialPeople;
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  delayed = true;
+  root.renderWrites.length = 0;
+  const refreshing = surface.refresh();
+
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
+
+  courseRead.resolve(courseDetailFixture({ revision: 6 }));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(peopleReads, 2);
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.innerHTML, /Pessoa proprietária/u);
+
+  peopleRead.resolve({
+    ...initialPeople,
+    people: [{
+      userId: "40000000-0000-4000-8000-000000000004",
+      displayName: "Pessoa revisora",
+      avatarObjectKey: null
+    }]
+  });
+  assert.equal(await refreshing, true);
+  assert.equal(root.renderWrites.length, 1);
+  assert.match(root.innerHTML, /Pessoa revisora/u);
+  assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
+});
+
+test("refresh da área de Variantes preserva o painel e encaminha a releitura", async () => {
+  const root = new MountedPanelRoot("[data-course-variants-host]");
+  const courseRead = deferredValue();
+  const variantsRead = deferredValue();
+  let delayed = false;
+  let variantReads = 0;
+  const comparisonList = (attachedCount) => ({
+    contract: "aralearn.course-variant-comparison-list.v1",
+    sourceCourseId: COURSE_ID,
+    sourceCourseRevision: 5,
+    items: [{
+      comparisonSetId: "21000000-0000-4000-8000-000000000002",
+      attachedCount,
+      detachedCount: 2 - attachedCount
+    }]
+  });
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse() {
+        return delayed ? courseRead.promise : courseDetailFixture();
+      },
+      async listCourseVariantComparisons() {
+        variantReads += 1;
+        return delayed ? variantsRead.promise : comparisonList(2);
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "research" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(root.panelHost.innerHTML, /2 variantes vinculadas/u);
+
+  delayed = true;
+  root.renderWrites.length = 0;
+  const refreshing = surface.refresh();
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.panelHost.innerHTML, /2 variantes vinculadas/u);
+
+  courseRead.resolve(courseDetailFixture());
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(variantReads, 2);
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.panelHost.innerHTML, /2 variantes vinculadas/u);
+  assert.doesNotMatch(root.panelHost.innerHTML, /Carregando variantes/u);
+
+  variantsRead.resolve(comparisonList(1));
+  assert.equal(await refreshing, true);
+  assert.equal(root.renderWrites.length, 0);
+  assert.match(root.panelHost.innerHTML, /Aguardando outra variante/u);
 });
 
 test("Parâmetros lê somente o escopo e separa pedagogia, orientação, componentes e produção", async () => {
@@ -2427,12 +2850,14 @@ test("atribui microssequência existente por escolha legível somente quando sol
     operation: calls[0].operation,
     microsequenceId: calls[0].microsequenceId,
     partId: calls[0].partId,
+    position: calls[0].position,
     expectedCourseRevision: calls[0].expectedCourseRevision,
     expectedPlanVersion: calls[0].expectedPlanVersion
   }, {
     operation: "assign_microsequence",
     microsequenceId: "micro-c",
     partId: SECOND_PART_ID,
+    position: 0,
     expectedCourseRevision: 5,
     expectedPlanVersion: 3
   });
@@ -2469,8 +2894,8 @@ test("Planejamento sem estrutura usa vínculos persistidos e não oferece compos
   });
   await surface.open();
 
-  assert.match(root.innerHTML, /Vincule uma microssequência/u);
   assert.match(root.innerHTML, /data-course-authoring-action="open-microsequence-assignment"/u);
+  assert.doesNotMatch(root.innerHTML, /Vincule uma microssequência/u);
   assert.doesNotMatch(
     root.innerHTML,
     /Trabalhar no ChatGPT|Copiar pedido|context-chat|prepare-structure|materialize-part/u
@@ -2534,7 +2959,8 @@ test("itens estáveis do plano são editados por nome acadêmico e versão, nunc
     operation: "update_plan_item",
     kind: "intended_learning_outcome",
     id: OUTCOME_ID,
-    statement: "Comparar e justificar relações essenciais."
+    statement: "Comparar e justificar relações essenciais.",
+    sourceLinks: []
   });
   assert.doesNotMatch(root.innerHTML, /authoringState|JSON|brief/iu);
 });

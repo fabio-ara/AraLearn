@@ -6,10 +6,16 @@ import { fileURLToPath } from "node:url";
 
 import {
   compareRuntimeManifest,
+  EXPECTED_AUTHORING_CONTRACT_HEADER,
   validateHostedOAuthBoundary,
   validatePublicProjectConfiguration,
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const runtimeManifest = JSON.parse(readFileSync(
@@ -23,6 +29,38 @@ const FEATURES = runtimeManifest.requiredFeatures;
 
 function response(status, body, headers = {}) {
   return new Response(body == null ? null : JSON.stringify(body), { status, headers });
+}
+
+function createHostedFetch({
+  mcpContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
+  actionContract = EXPECTED_AUTHORING_CONTRACT_HEADER
+} = {}) {
+  return async (url) => {
+    if (url.endsWith("/.well-known/jwks.json")) {
+      return response(200, { keys: [{
+        kty: "EC", alg: "ES256", crv: "P-256", kid: "key-a",
+        use: "sig", key_ops: ["verify"]
+      }] });
+    }
+    if (url.endsWith("/.well-known/oauth-protected-resource")) {
+      return response(200, {
+        resource: "https://example.supabase.co/functions/v1/aralearn-authoring-mcp",
+        authorization_servers: ["https://example.supabase.co/auth/v1"],
+        scopes_supported: ["offline_access"]
+      }, { "X-AraLearn-Authoring-Contract": mcpContract });
+    }
+    if (url.endsWith("/aralearn-authoring-action/listarCursos")) {
+      return response(204, null, {
+        "Access-Control-Allow-Origin": "https://chatgpt.com",
+        "X-AraLearn-Authoring-Contract": actionContract
+      });
+    }
+    return response(200, {
+      schemaRevision: EXPECTED_REVISION,
+      contractVersion: EXPECTED_CONTRACT_VERSION,
+      features: FEATURES
+    });
+  };
 }
 
 test("verificador aceita somente configuração pública", () => {
@@ -79,41 +117,58 @@ test("verificador recusa banco atrasado ou sem capacidade obrigatória", () => {
 
 test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
   const calls = [];
+  const hostedFetch = createHostedFetch();
   const result = await verifyHostedBackend({
     projectUrl: "https://example.supabase.co",
     publishableKey: PUBLIC_KEY,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      if (url.endsWith("/.well-known/jwks.json")) {
-        return response(200, { keys: [{
-          kty: "EC", alg: "ES256", crv: "P-256", kid: "key-a",
-          use: "sig", key_ops: ["verify"]
-        }] });
-      }
-      if (url.endsWith("/.well-known/oauth-protected-resource")) {
-        return response(200, {
-          resource: "https://example.supabase.co/functions/v1/aralearn-authoring-mcp",
-          authorization_servers: ["https://example.supabase.co/auth/v1"],
-          scopes_supported: ["offline_access"]
-        });
-      }
-      return response(200, {
-        schemaRevision: EXPECTED_REVISION,
-        contractVersion: EXPECTED_CONTRACT_VERSION,
-        features: FEATURES
-      });
+      return hostedFetch(url, options);
     }
   });
   assert.equal(result.schemaRevision, EXPECTED_REVISION);
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 4);
   assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/get_aralearn_runtime_manifest");
   assert.equal(calls[0].options.headers.apikey, PUBLIC_KEY);
   assert.equal("Authorization" in calls[0].options.headers, false);
+  assert.equal(
+    calls[3].url,
+    "https://example.supabase.co/functions/v1/aralearn-authoring-action/listarCursos"
+  );
+  assert.equal(calls[3].options.method, "OPTIONS");
+  assert.equal(calls[3].options.headers.Origin, "https://chatgpt.com");
   assert.deepEqual(result.oauth, {
     algorithms: ["ES256"],
     resource: "https://example.supabase.co/functions/v1/aralearn-authoring-mcp",
     scope: "offline_access"
   });
+  assert.deepEqual(result.authoringContract, {
+    id: AUTHORING_PROTOCOL_ID,
+    version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
+    hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+  });
+});
+
+test("verificador bloqueia MCP hospedado com fingerprint defasado", async () => {
+  await assert.rejects(
+    () => verifyHostedBackend({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: createHostedFetch({ mcpContract: "aralearn.authoring-protocol.v1; version=0.9.0; hash=sha256:old" })
+    }),
+    /MCP hospedado não corresponde ao contrato público corrente/u
+  );
+});
+
+test("verificador bloqueia Action hospedada com fingerprint defasado", async () => {
+  await assert.rejects(
+    () => verifyHostedBackend({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: createHostedFetch({ actionContract: "aralearn.authoring-protocol.v1; version=0.9.0; hash=sha256:old" })
+    }),
+    /Action hospedada não corresponde ao contrato público corrente/u
+  );
 });
 
 test("verificador recusa chave simétrica e escopo de identidade no MCP", () => {

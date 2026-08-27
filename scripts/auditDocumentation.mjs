@@ -19,7 +19,8 @@ const CONTEXTUAL_CONTENT_EXCEPTIONS = new Set([
   "supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json"
 ]);
 const CONTEXTUAL_IDENTIFIER_ALLOWLIST = new Map([
-  ["docs/origens-do-aralearn.md", new Set(["instituição particular SENAI"])]
+  ["docs/origens-do-aralearn.md", new Set(["instituição particular SENAI"])],
+  ["docs/codex/authoring-integration-fix.md", new Set(["instituição particular Dataprev"])]
 ]);
 const REQUIRED_TECHNICAL_DOCUMENTS = Object.freeze([
   "docs/glossario-tecnico.md",

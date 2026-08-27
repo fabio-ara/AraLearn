@@ -4,6 +4,25 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.35] - 2026-08-27
+
+### Alterado
+
+- MCP e Actions passam a derivar de um protocolo público de Autoria estável,
+  versionado e identificável no ambiente publicado;
+- o contrato de Actions explicita as variantes de planejamento, desenho,
+  Fontes, Observações, auditoria, variantes e materialização;
+- a Autoria preserva o Curso visível enquanto sincroniza e apresenta o estado
+  da nuvem pela mesma gramática compacta de Estudo.
+
+### Corrigido
+
+- a atualização do plano instrucional e a criação de Partes voltam a funcionar
+  pelo ChatGPT com revisão otimista e idempotência;
+- a sincronização ao recuperar foco deixa de desmontar ou piscar a tela de
+  Planejamento;
+- a publicação bloqueia contratos MCP, Actions ou OpenAPI defasados.
+
 ## [0.0.34] - 2026-08-27
 
 ### Alterado

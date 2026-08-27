@@ -55,6 +55,12 @@ jobs:
         if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
+      - name: Preservar snapshots aprovados do protocolo de Autoria
+        if: steps.paths.outputs.docs_only != 'true'
+        env:
+          ARALEARN_AUTHORING_PROTOCOL_BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: npm run authoring:contract:history
+
       - name: Executar testes
         if: steps.paths.outputs.docs_only != 'true'
         run: npm test
@@ -174,6 +180,7 @@ jobs:
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-api/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-action/index.ts
 
       - name: Iniciar stack Supabase
         if: steps.paths.outputs.docs_only != 'true'

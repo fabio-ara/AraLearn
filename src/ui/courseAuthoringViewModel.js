@@ -1,6 +1,7 @@
 import { isCanonicalCourseId } from "./courseAuthoringRoute.js";
 import {
   normalizeCourseSourceChange as normalizeCourseSourceChangeDomain,
+  normalizeCourseSourceLinks,
   normalizeCourseSourcesRead
 } from "../domain/courseSources.js";
 
@@ -192,6 +193,8 @@ export function normalizeCourseListPage(value) {
   return Object.freeze({
     items: Object.freeze(items),
     ...pagination,
+    offline: value.offline === true,
+    stale: value.stale === true,
     offlineKnown: value.offlineKnown === true || value.offline === true || value.stale === true ||
       items.some((item) => item.offlineKnown)
   });
@@ -213,6 +216,8 @@ export function mergeCourseListPages(currentValue, incomingValue) {
     items: Object.freeze([...itemsById.values()]),
     hasMore: incoming.hasMore,
     nextCursor: incoming.nextCursor,
+    offline: incoming.offline,
+    stale: incoming.stale,
     offlineKnown: current?.offlineKnown === true || incoming.offlineKnown
   });
 }
@@ -237,6 +242,8 @@ export function normalizeCourseDetail(value, { expectedCourseId = "" } = {}) {
     canEdit: editCapability(value.canEdit, normalizedOwnership),
     counts: courseCounts(value.counts),
     updatedAt: text(value.updatedAt) || null,
+    offline: value.offline === true,
+    stale: value.stale === true,
     offlineKnown: value.offlineKnown === true || value.offline === true || value.stale === true
   });
 }
@@ -501,7 +508,8 @@ function normalizePlanItem(value, label) {
     statement: requiredText(value.statement, `O enunciado de ${label.toLowerCase()}`, {
       maximum: 2_000
     }),
-    version: boundedNaturalNumber(value.version, "A versão do item", { minimum: 1 })
+    version: boundedNaturalNumber(value.version, "A versão do item", { minimum: 1 }),
+    sourceLinks: Object.freeze(normalizeCourseSourceLinks(value.sourceLinks ?? []))
   });
 }
 

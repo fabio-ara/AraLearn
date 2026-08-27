@@ -1,4 +1,5 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import { renderRuntimeStatusControl } from "./renderHomeScreen.js";
 import { createUuid } from "../domain/identifiers.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
@@ -351,9 +352,14 @@ function renderCourseList(state) {
     ' title="Voltar ao Estudo">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button><div>" +
     '<p class="course-authoring-eyebrow">Autoria</p><h1>Meus cursos</h1></div>' +
+    '<div class="course-authoring-list-actions"><div class="course-authoring-runtime-status"' +
+    ' data-authoring-runtime-status>' + renderRuntimeStatusControl({
+      offline: state.syncOffline === true,
+      stale: state.syncing === true || state.syncStale === true
+    }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<button type="button" class="course-authoring-header-action"' +
     ' data-course-authoring-action="open-create" aria-label="Criar Curso" title="Criar Curso">' +
-    renderUiIcon("add", "course-authoring-button-icon") + "</button></header>" +
+    renderUiIcon("add", "course-authoring-button-icon") + "</button></div></header>" +
     '<form class="course-authoring-search" role="search" data-course-authoring-search>' +
     '<label class="course-authoring-visually-hidden" for="course-authoring-query">Buscar Cursos</label>' +
     `<input id="course-authoring-query" type="search" maxlength="120" autocomplete="off"` +
@@ -433,6 +439,11 @@ function renderCourseHeader(course, state) {
     `<p class="course-authoring-eyebrow">${escapeHtml(course?.title || "Curso")}</p>` +
     `<h1>${escapeHtml(title)}</h1>${overview ? courseMeta(course) : ""}</div>` +
     '<div class="course-authoring-header-actions">' +
+    '<div class="course-authoring-runtime-status" data-authoring-runtime-status>' +
+    renderRuntimeStatusControl({
+      offline: state.syncOffline === true,
+      stale: state.syncing === true || state.syncStale === true
+    }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
     ' aria-label="Abrir tarefas do Curso" title="Tarefas">' +
     renderUiIcon("more", "course-authoring-button-icon") +
@@ -642,7 +653,16 @@ function renderPlanItemForm(state, item = null) {
 
 function renderPlanItems(state, planning) {
   const editor = state.planItemEditor;
-  const groups = Object.entries(PLAN_ITEM_LABELS).map(([listName, label]) => {
+  const total = Object.keys(PLAN_ITEM_LABELS).reduce((count, listName) =>
+    count + planning[listName].length, 0);
+  if (total === 0) {
+    return editor?.mode === "add"
+      ? '<div class="course-authoring-plan-item-editor">' + renderPlanItemForm(state) + "</div>"
+      : "";
+  }
+  const groups = Object.entries(PLAN_ITEM_LABELS).filter(([listName]) =>
+    planning[listName].length > 0 || editor?.listName === listName
+  ).map(([listName, label]) => {
     const list = planning[listName];
     const items = list.map((item, index) => {
       if (editor?.mode === "edit" && editor.id === item.id && editor.listName === listName) {
@@ -660,16 +680,11 @@ function renderPlanItems(state, planning) {
         "</div></article>";
     }).join("");
     return `<section class="course-authoring-plan-item-group"><h4>${escapeHtml(label)}</h4>` +
-      (items || '<p class="course-authoring-empty-copy">Nenhum item.</p>') + "</section>";
+      items + "</section>";
   }).join("");
-  const total = Object.keys(PLAN_ITEM_LABELS).reduce((count, listName) =>
-    count + planning[listName].length, 0);
   return '<details class="course-authoring-plan-items" aria-labelledby="course-authoring-plan-items-title">' +
-    `<summary><span id="course-authoring-plan-items-title">Referências do plano</span><small>${escapeHtml(total)}</small></summary>` +
-    '<div class="course-authoring-plan-items-content"><header class="course-authoring-subsection-heading"><div>' +
-    '<h3>Resultados, análise e evidências</h3><p>Enunciados versionados em linguagem natural.</p></div>' +
-    renderActionButton({ action: "add-plan-item", icon: "add", label: "Adicionar item ao plano", disabled: state.writeBusy }) +
-    "</header>" +
+    `<summary><span id="course-authoring-plan-items-title">Referências</span><small>${escapeHtml(total)}</small></summary>` +
+    '<div class="course-authoring-plan-items-content">' +
     (editor?.mode === "add" ? renderPlanItemForm(state) : "") +
     groups + "</div></details>";
 }
@@ -1137,13 +1152,13 @@ function renderPart(state, part, index, parts, { detail = false } = {}) {
 function renderParts(state, planning) {
   return '<section class="course-authoring-parts" aria-labelledby="course-authoring-parts-title">' +
     '<header class="course-authoring-subsection-heading"><div><h3 id="course-authoring-parts-title">Partes</h3>' +
-    '<p>Lotes operacionais ligados à estrutura didática.</p></div><div class="course-authoring-compact-actions">' +
-    renderActionButton({
+    '</div><div class="course-authoring-compact-actions">' +
+    (planning.parts.length ? renderActionButton({
       action: "open-microsequence-assignment",
       icon: "reposition",
       label: "Vincular microssequência existente",
-      disabled: state.writeBusy || planning.parts.length === 0
-    }) +
+      disabled: state.writeBusy
+    }) : "") +
     renderActionButton({ action: "add-part", icon: "add", label: "Adicionar Parte", disabled: state.writeBusy }) +
     "</div>" +
     "</header>" +
@@ -1152,7 +1167,7 @@ function renderParts(state, planning) {
     (planning.parts.length
       ? `<div class="course-authoring-part-list">${planning.parts.map((part, index) =>
           renderPart(state, part, index, planning.parts)).join("")}</div>`
-      : '<p class="course-authoring-empty-copy">Nenhuma Parte planejada.</p>') + "</section>";
+      : "") + "</section>";
 }
 
 function renderUnlinkedContentNotice(state, planning) {
@@ -1160,14 +1175,11 @@ function renderUnlinkedContentNotice(state, planning) {
   const plannedStudyUnits = Number(planning.studyUnitCount || 0);
   if (contentStudyUnits <= plannedStudyUnits) return "";
   const unlinkedCount = contentStudyUnits - plannedStudyUnits;
-  return '<aside class="course-authoring-notice course-authoring-unlinked-content">' +
-    '<strong>Conteúdo existente ainda não vinculado ao plano</strong>' +
-    `<p>${escapeHtml(countedLabel(
-      unlinkedCount,
-      "Unidade permanece disponível",
-      "Unidades permanecem disponíveis"
-    ))} em Conteúdo, mas ${unlinkedCount === 1 ? "ainda não foi vinculada" : "ainda não foram vinculadas"} ` +
-    "a Partes deste Planejamento. Nada foi removido.</p></aside>";
+  const label = unlinkedCount === 1 ? "Unidade sem Parte" : "Unidades sem Parte";
+  return `<aside class="course-authoring-unlinked-content" aria-label="${escapeHtml(
+    `${unlinkedCount} ${label}`
+  )}">` + renderUiIcon("reposition", "course-authoring-section-icon") +
+    `<strong>${escapeHtml(unlinkedCount)}</strong><span>${escapeHtml(label)}</span></aside>`;
 }
 
 function renderPartDetailScreen(state, planning, part) {
@@ -1232,80 +1244,20 @@ function renderRecentActivity(planning) {
     }).join("") + "</ol></details>";
 }
 
-function nextPartForMaterialization(planning) {
-  return planning.parts.find((part) =>
-    part.linkedMicrosequenceCount > 0 && part.status !== "materialized") || null;
-}
-
-function renderPlanningNextAction(state, planning) {
-  let title;
-  let message;
-  let action;
-  if (planning.parts.length === 0) {
-    title = "Crie a primeira Parte";
-    message = "A Parte transforma o planejamento em um lote de trabalho acompanhável.";
-    action = renderActionButton({
-      action: "add-part",
-      icon: "add",
-      label: "Adicionar Parte",
-      className: "course-authoring-primary"
-    });
-  } else if (planning.linkedMicrosequenceCount === 0) {
-    title = "Vincule uma microssequência";
-    message = "Nenhuma microssequência está vinculada às Partes.";
-    action = renderActionButton({
-      action: "open-microsequence-assignment",
-      icon: "reposition",
-      label: "Vincular microssequência existente",
-      className: "course-authoring-primary"
-    });
-  } else {
-    const part = nextPartForMaterialization(planning);
-    if (part) {
-      title = part.status === "partially_materialized" ||
-        part.progress.lastMaterialization?.status === "running"
-        ? "Retome a materialização"
-        : "Materialize a próxima Parte";
-      message = part.title;
-      action = renderActionButton({
-        action: "focus-part",
-        icon: "arrow-down",
-        label: `Ir para ${part.title}`,
-        data: ` data-part-id="${escapeHtml(part.id)}"`,
-        className: "course-authoring-primary"
-      });
-    } else {
-      title = "Confira o resultado";
-      message = "As Partes vinculadas estão materializadas e prontas para conferência.";
-      action = renderActionButton({
-        action: "open-inspection",
-        icon: "preview",
-        label: "Abrir Conteúdo",
-        className: "course-authoring-primary"
-      });
-    }
-  }
-  return '<section class="course-authoring-next-action" aria-labelledby="course-authoring-next-action-title">' +
-    '<div><span>Próximo passo</span>' +
-    `<h3 id="course-authoring-next-action-title">${escapeHtml(title)}</h3>` +
-    `<p>${escapeHtml(message)}</p></div>${action}</section>`;
-}
-
 function renderPlanningContext(planning) {
+  if (!planning.audience && !planning.scope) return "";
   return '<details class="course-authoring-planning-context"><summary>Contexto do plano</summary>' +
     '<div class="course-authoring-planning-details">' +
-    renderPlanningCard({
+    (planning.audience ? renderPlanningCard({
       icon: "prompt",
       label: "Público",
-      value: planning.audience,
-      emptyLabel: "Ainda não definido."
-    }) +
-    renderPlanningCard({
+      value: planning.audience
+    }) : "") +
+    (planning.scope ? renderPlanningCard({
       icon: "tags",
       label: "Escopo",
-      value: planning.scope,
-      emptyLabel: "Ainda não definido."
-    }) + "</div></details>";
+      value: planning.scope
+    }) : "") + "</div></details>";
 }
 
 function renderPlanningSection(state) {
@@ -1341,9 +1293,16 @@ function renderPlanningSection(state) {
     ' aria-labelledby="course-authoring-section-title">' +
     '<header class="course-authoring-section-heading"><div>' +
     '<h2 id="course-authoring-section-title">Planejamento</h2></div>' +
+    '<div class="course-authoring-compact-actions">' +
+    renderActionButton({
+      action: "add-plan-item",
+      icon: "add",
+      label: "Adicionar referência ao plano",
+      disabled: state.writeBusy
+    }) +
     '<button type="button" class="course-authoring-header-action"' +
     ' data-course-authoring-action="open-planning-edit" aria-label="Editar planejamento" title="Editar planejamento">' +
-    renderUiIcon("edit", "course-authoring-button-icon") + "</button></header>" +
+    renderUiIcon("edit", "course-authoring-button-icon") + "</button></div></header>" +
     renderPlanningEditForm(state, planning) +
     (state.writeMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.writeMessage)}</p>`
@@ -1351,8 +1310,7 @@ function renderPlanningSection(state) {
     (state.writeFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
       : "") +
-    (state.planningEditOpen ? "" : renderPlanningNextAction(state, planning) +
-    renderUnlinkedContentNotice(state, planning) +
+    (state.planningEditOpen ? "" : renderUnlinkedContentNotice(state, planning) +
     '<div class="course-authoring-planning-details is-objective">' +
     renderPlanningCard({
       icon: "intent",
@@ -1699,6 +1657,7 @@ export function createCourseAuthoringSurface({
   let sourcesPanel = null;
   let targetSourcesPanel = null;
   let pendingInspectionComposition = null;
+  let refreshPromise = null;
   const knownCourses = new Map();
   const avatarUrls = new Map();
   const state = {
@@ -1756,8 +1715,49 @@ export function createCourseAuthoringSurface({
     writeBusy: false,
     writeMessage: "",
     writeFailure: "",
+    syncing: false,
+    syncOffline: navigatorValue?.onLine === false,
+    syncStale: false,
     avatarUrls
   };
+
+  function authoringRuntimeStatusMarkup() {
+    return renderRuntimeStatusControl({
+      offline: state.syncOffline === true,
+      stale: state.syncing === true || state.syncStale === true
+    }, { popoverId: "authoring-runtime-status-popover" });
+  }
+
+  function updateAuthoringRuntimeStatus() {
+    const host = root.querySelector?.("[data-authoring-runtime-status]");
+    if (!host) return false;
+    host.innerHTML = authoringRuntimeStatusMarkup();
+    return true;
+  }
+
+  function setAuthoringSyncState(next = {}) {
+    if (Object.hasOwn(next, "syncing")) state.syncing = next.syncing === true;
+    if (Object.hasOwn(next, "offline")) state.syncOffline = next.offline === true;
+    if (Object.hasOwn(next, "stale")) state.syncStale = next.stale === true;
+    return updateAuthoringRuntimeStatus();
+  }
+
+  function projectRefreshedCourse(detail, fallback = state.course || state.knownCourse) {
+    return Object.freeze({
+      ...detail,
+      goal: detail.goal || fallback?.goal || null,
+      ownership: detail.ownership || fallback?.ownership || null,
+      canEdit: detail.canEdit ?? fallback?.canEdit ?? null,
+      counts: detail.counts || fallback?.counts || null,
+      offlineKnown: detail.offlineKnown || fallback?.offlineKnown === true
+    });
+  }
+
+  function rememberCourse(course) {
+    state.course = course;
+    state.knownCourse = course;
+    knownCourses.set(course.courseId, course);
+  }
 
   function closeTransientMenus({ restoreFocus = false, except = null } = {}) {
     const menus = [...(root.querySelectorAll?.(
@@ -2158,6 +2158,8 @@ export function createCourseAuthoringSurface({
         throw error;
       }
       state.list = append ? mergeCourseListPages(state.list, page) : page;
+      state.syncOffline = page.offline === true;
+      state.syncStale = page.stale === true;
       state.list.items.forEach((course) => knownCourses.set(course.courseId, course));
       return true;
     } catch (error) {
@@ -2524,6 +2526,8 @@ export function createCourseAuthoringSurface({
         { expectedCourseId: courseId }
       );
       if (!state.opened || epoch !== courseEpoch || state.view !== "course") return false;
+      state.syncOffline = detail.offline === true;
+      state.syncStale = detail.stale === true;
       const course = Object.freeze({
         ...detail,
         goal: detail.goal || state.knownCourse?.goal || null,
@@ -2927,18 +2931,226 @@ export function createCourseAuthoringSurface({
     );
   }
 
-  async function refresh() {
+  async function refreshCourseListAtomically() {
+    const previousPage = state.list;
+    try {
+      const page = normalizeCourseListPage(await controller.listCourses({
+        query: state.query,
+        limit: courseLimit,
+        cursor: null
+      }));
+      if (!state.opened || state.view !== "list" ||
+          isCourseAuthoringRouteCandidate(locationValue.hash || "")) return false;
+      const changed = JSON.stringify(previousPage) !== JSON.stringify(page);
+      state.list = page;
+      state.failure = null;
+      state.syncOffline = page.offline === true;
+      state.syncStale = page.stale === true;
+      page.items.forEach((course) => knownCourses.set(course.courseId, course));
+      if (changed) render();
+      else updateAuthoringRuntimeStatus();
+      return true;
+    } catch (error) {
+      if (!state.opened || state.view !== "list") return false;
+      const code = String(error?.code || "").toLowerCase();
+      const message = String(error?.message || "").toLowerCase();
+      const offline = navigatorValue?.onLine === false ||
+        ["offline", "network_error", "network_unavailable", "request_timeout",
+          "service_unavailable", "failed_to_fetch"].includes(code) ||
+        /failed to fetch|fetch failed|network|offline|connection|socket/u.test(message);
+      const statusUpdated = setAuthoringSyncState({ offline, stale: true });
+      if (!statusUpdated) render();
+      return false;
+    }
+  }
+
+  async function refreshCourseAtomically(route) {
+    const previousCourse = state.course;
+    const previousPlan = state.authoringPlan;
+    const previousDesign = state.courseDesign;
+    const previousPeople = state.people;
+    const previousMaterialization = state.partMaterialization;
+    try {
+      let snapshot = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const detail = normalizeCourseDetail(await controller.getCourse(route.courseId), {
+          expectedCourseId: route.courseId
+        });
+        setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
+        const course = projectRefreshedCourse(detail, previousCourse);
+        const designScope = designScopeForRoute(route.courseId, route.target);
+        const needsTargetPlan = route.section === "parameters" &&
+          designScope.kind === "didactic_microsequence";
+        const needsPlan = route.section === "planning" || needsTargetPlan ||
+          route.section === "overview" && canAccessPlanning(course);
+        let plan = needsPlan ? null : undefined;
+        let planRead = null;
+        let design;
+        let designRead = null;
+        let people;
+        let peopleRead = null;
+        let partMaterialization;
+        let planningFailure = "";
+        try {
+          if (needsPlan) {
+            planRead = await controller.loadAuthoringPlan(route.courseId);
+            plan = normalizeCourseAuthoringPlan(planRead, {
+              expectedCourseId: route.courseId,
+              expectedCourseRevision: course.revision
+            });
+          }
+          if (route.section === "parameters") {
+            designRead = await controller.loadCourseDesign(route.courseId, {
+              scope: designScope,
+              limit: 32,
+              cursor: null
+            });
+            design = normalizeCourseDesign(designRead, {
+              expectedCourseId: route.courseId,
+              expectedCourseRevision: course.revision,
+              expectedScope: designScope
+            });
+          }
+          if (route.section === "people") {
+            peopleRead = await controller.listCourseAccess(route.courseId);
+            people = normalizeCoursePeople(peopleRead, route.courseId);
+          }
+          if (route.section === "planning" && route.target?.kind === "authoring_part" &&
+              route.target.materializationId) {
+            const part = plan?.plan.parts.find(({ id }) => id === route.target.id);
+            const summary = part?.progress?.materializations?.find(
+              ({ id }) => id === route.target.materializationId
+            );
+            if (part && summary) {
+              partMaterialization = normalizePartMaterializationRead(
+                await controller.loadPartMaterialization(
+                  route.courseId,
+                  part.id,
+                  route.target.materializationId
+                ),
+                {
+                  expectedCourseId: route.courseId,
+                  expectedAuthoringPartId: part.id,
+                  expectedMaterializationId: route.target.materializationId
+                }
+              );
+            } else {
+              partMaterialization = null;
+              planningFailure = part
+                ? "Não foi possível abrir esta materialização."
+                : "A Parte indicada não pertence mais ao planejamento.";
+            }
+          }
+          snapshot = {
+            course,
+            detail,
+            plan,
+            planRead,
+            design,
+            designRead,
+            people,
+            peopleRead,
+            partMaterialization,
+            planningFailure
+          };
+          break;
+        } catch (error) {
+          if (attempt === 0 && String(error?.code || "").toLowerCase() ===
+              "course_revision_changed") continue;
+          throw error;
+        }
+      }
+      if (!snapshot || !state.opened || state.view !== "course" ||
+          state.routeKey !== locationValue.hash || state.section !== route.section) {
+        return false;
+      }
+      const changed = JSON.stringify(previousCourse) !== JSON.stringify(snapshot.course) ||
+        (snapshot.plan !== undefined &&
+          JSON.stringify(previousPlan) !== JSON.stringify(snapshot.plan)) ||
+        (snapshot.design !== undefined &&
+          JSON.stringify(previousDesign) !== JSON.stringify(snapshot.design)) ||
+        (snapshot.people !== undefined &&
+          JSON.stringify(previousPeople) !== JSON.stringify(snapshot.people)) ||
+        (snapshot.partMaterialization !== undefined &&
+          JSON.stringify(previousMaterialization) !==
+            JSON.stringify(snapshot.partMaterialization));
+      rememberCourse(snapshot.course);
+      if (snapshot.plan !== undefined) state.authoringPlan = snapshot.plan;
+      if (snapshot.design !== undefined) state.courseDesign = snapshot.design;
+      if (snapshot.people !== undefined) state.people = snapshot.people;
+      if (snapshot.partMaterialization !== undefined) {
+        state.partMaterialization = snapshot.partMaterialization;
+      }
+      state.failure = null;
+      if (snapshot.plan !== undefined) {
+        state.planningFailure = snapshot.planningFailure;
+        state.planningLoading = false;
+      }
+      if (snapshot.design !== undefined) {
+        state.designFailure = "";
+        state.designMessage = "";
+        state.designLoading = false;
+      }
+      if (snapshot.people !== undefined) {
+        state.peopleFailure = "";
+        state.peopleMessage = "";
+        state.peopleLoading = false;
+      }
+      const reads = [
+        snapshot.detail,
+        snapshot.planRead,
+        snapshot.designRead,
+        snapshot.peopleRead
+      ];
+      const offline = reads.some((read) => read?.offline === true);
+      const stale = reads.some((read) => read?.stale === true);
+      state.syncOffline = offline;
+      state.syncStale = stale;
+      if (changed) render();
+      else updateAuthoringRuntimeStatus();
+      return true;
+    } catch (error) {
+      if (!state.opened || state.view !== "course" ||
+          state.routeKey !== locationValue.hash || state.section !== route.section) {
+        return false;
+      }
+      const failure = classifyCourseAuthoringError(error, { knownCourse: previousCourse });
+      const offline = failure.kind === "offline-known" || navigatorValue?.onLine === false;
+      const statusUpdated = setAuthoringSyncState({ offline, stale: true });
+      if (failure.kind === "access-revoked") {
+        state.failure = failure;
+        state.course = null;
+        state.authoringPlan = null;
+        state.courseDesign = null;
+        state.people = null;
+        state.partMaterialization = null;
+        clearAvatarUrls();
+        render();
+      } else if (!statusUpdated) {
+        // O harness sem DOM aninhado ainda recebe o mesmo estado visível; no navegador,
+        // somente o controle fixo é substituído.
+        render();
+      }
+      return false;
+    }
+  }
+
+  async function refreshCurrent() {
     if (hasPendingAuthoringDraft()) {
       announcePendingDraftDeferral();
       return "deferred";
     }
     const route = parseCourseAuthoringRoute(locationValue.hash || "");
+    if (!route && state.view === "list" && state.list) {
+      return refreshCourseListAtomically();
+    }
     if (route?.section === "review" && auditPanel) {
       const panel = auditPanel;
       try {
         const detail = normalizeCourseDetail(await controller.getCourse(route.courseId), {
           expectedCourseId: route.courseId
         });
+        setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
         if (!state.opened || panel !== auditPanel || state.routeKey !== locationValue.hash) {
           return false;
         }
@@ -2970,12 +3182,76 @@ export function createCourseAuthoringSurface({
         return false;
       }
     }
+    if (route?.section === "sources" && sourcesPanel && state.course) {
+      const panel = sourcesPanel;
+      try {
+        const detail = normalizeCourseDetail(await controller.getCourse(route.courseId), {
+          expectedCourseId: route.courseId
+        });
+        setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
+        if (!state.opened || panel !== sourcesPanel || state.routeKey !== locationValue.hash) {
+          return false;
+        }
+        const course = projectRefreshedCourse(detail);
+        if (!canAccessPlanning(course)) {
+          rememberCourse(course);
+          render();
+          return true;
+        }
+        const refreshed = await panel.refresh(course.revision);
+        if (!refreshed || !state.opened || panel !== sourcesPanel ||
+            state.routeKey !== locationValue.hash) return false;
+        rememberCourse(course);
+        const header = root.querySelector?.(".course-authoring-course-header");
+        if (header) header.outerHTML = renderCourseHeader(course, state);
+        return true;
+      } catch (error) {
+        if (panel === sourcesPanel) {
+          const failure = classifyCourseAuthoringError(error, { knownCourse: state.course });
+          setAuthoringSyncState({
+            offline: failure.kind === "offline-known" || navigatorValue?.onLine === false,
+            stale: true
+          });
+        }
+        return false;
+      }
+    }
+    if (route?.section === "research" && variantsPanel) {
+      const panel = variantsPanel;
+      try {
+        const detail = normalizeCourseDetail(await controller.getCourse(route.courseId), {
+          expectedCourseId: route.courseId
+        });
+        setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
+        if (!state.opened || panel !== variantsPanel || state.routeKey !== locationValue.hash) {
+          return false;
+        }
+        const course = projectRefreshedCourse(detail);
+        const refreshed = await panel.refresh(course);
+        if (!refreshed || !state.opened || panel !== variantsPanel ||
+            state.routeKey !== locationValue.hash) return false;
+        rememberCourse(course);
+        const header = root.querySelector?.(".course-authoring-course-header");
+        if (header) header.outerHTML = renderCourseHeader(course, state);
+        return true;
+      } catch (error) {
+        if (panel === variantsPanel) {
+          const failure = classifyCourseAuthoringError(error, { knownCourse: state.course });
+          setAuthoringSyncState({
+            offline: failure.kind === "offline-known" || navigatorValue?.onLine === false,
+            stale: true
+          });
+        }
+        return false;
+      }
+    }
     if (route?.section === "research" && analyticsPanel) {
       const panel = analyticsPanel;
       try {
         const detail = normalizeCourseDetail(await controller.getCourse(route.courseId), {
           expectedCourseId: route.courseId
         });
+        setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
         if (!state.opened || panel !== analyticsPanel || state.routeKey !== locationValue.hash) {
           return false;
         }
@@ -3013,6 +3289,7 @@ export function createCourseAuthoringSurface({
         const detail = normalizeCourseDetail(await controller.getCourse(route.courseId), {
           expectedCourseId: route.courseId
         });
+        setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
         if (!state.opened || sequence !== inspectionSequence || state.routeKey !== locationValue.hash) {
           return false;
         }
@@ -3041,6 +3318,7 @@ export function createCourseAuthoringSurface({
         return false;
       }
     }
+    if (route && state.course) return refreshCourseAtomically(route);
     const preservedRootScroll = {
       top: Number(root.scrollTop) || 0,
       left: Number(root.scrollLeft) || 0
@@ -3064,6 +3342,20 @@ export function createCourseAuthoringSurface({
     root.scrollTop = preservedRootScroll.top;
     root.scrollLeft = preservedRootScroll.left;
     return refreshed;
+  }
+
+  function refresh() {
+    if (refreshPromise) return refreshPromise;
+    if (hasPendingAuthoringDraft()) {
+      announcePendingDraftDeferral();
+      return Promise.resolve("deferred");
+    }
+    setAuthoringSyncState({ syncing: true });
+    refreshPromise = refreshCurrent().finally(() => {
+      refreshPromise = null;
+      setAuthoringSyncState({ syncing: false });
+    });
+    return refreshPromise;
   }
 
   async function rereadPlanningAfterMutation(courseId) {
@@ -3882,12 +4174,14 @@ export function createCourseAuthoringSurface({
       const payload = current ? {
         kind: PLAN_ITEM_KINDS[listName],
         id,
-        statement
+        statement,
+        sourceLinks: structuredClone(current.sourceLinks)
       } : {
         kind: PLAN_ITEM_KINDS[listName],
         id: createUuid(),
         statement,
-        position: list.length
+        position: list.length,
+        sourceLinks: []
       };
       const draft = { operation, listName, id, statement };
       const command = pendingWriteMatches(state.pendingPlanningCommand, draft)
@@ -3967,7 +4261,11 @@ export function createCourseAuthoringSurface({
       const draft = { operation: "assign_microsequence", microsequenceId, partId };
       const command = pendingWriteMatches(state.pendingPlanningCommand, draft)
         ? state.pendingPlanningCommand.command
-        : planCommand("assign_microsequence", { microsequenceId, partId });
+        : planCommand("assign_microsequence", {
+            microsequenceId,
+            partId,
+            position: part.microsequences.length
+          });
       void runPlanningCommand({
         draft,
         command,
@@ -4402,12 +4700,6 @@ export function createCourseAuthoringSurface({
       ++materializationEpoch;
       state.partMaterialization = null;
       render();
-    } else if (action === "focus-part") {
-      const partId = String(node.dataset.partId || "");
-      const target = [...(root.querySelectorAll?.("[data-course-authoring-part-card]") || [])]
-        .find((candidate) => candidate.dataset.courseAuthoringPartCard === partId);
-      target?.scrollIntoView?.({ block: "center", behavior: "smooth" });
-      target?.focus?.({ preventScroll: true });
     } else if (action === "inspect-part" && state.course) {
       const partId = String(node.dataset.partId || "");
       if (!state.authoringPlan?.plan.parts.some((part) => part.id === partId)) return;
@@ -4415,8 +4707,6 @@ export function createCourseAuthoringSurface({
         section: "content",
         authoringPartId: partId
       }));
-    } else if (action === "open-inspection" && state.course) {
-      void navigate(buildCourseAuthoringRoute(state.course.courseId, { section: "content" }));
     } else if (action === "edit-content-entity" && state.course && onOpenStudyContent) {
       const targetKind = String(node.dataset.targetKind || "course");
       const entityPath = targetKind === "course"
@@ -4485,6 +4775,13 @@ export function createCourseAuthoringSurface({
     close,
     destroy,
     refresh,
+    setOfflineStatus(offline = true) {
+      const updated = setAuthoringSyncState({
+        offline,
+        stale: offline === true || state.syncStale
+      });
+      if (!updated && state.opened && state.view === "course") render();
+    },
     handleBack,
     rememberInspectionReturnFocus,
     get opened() {

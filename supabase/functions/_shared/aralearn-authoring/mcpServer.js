@@ -1,5 +1,10 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+} from "./authoringProtocolV1.js";
+import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
   listCourseAuthoringKnowledgeResources,
   readCourseAuthoringKnowledgeResource
@@ -18,8 +23,21 @@ import {
 } from "./courseMcpAppResource.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
+export const ARALEARN_AUTHORING_CONTRACT_HEADER = [
+  AUTHORING_PROTOCOL_ID,
+  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
+  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
+].join("; ");
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.27" });
+const AUTHORING_CONTRACT_METADATA = Object.freeze({
+  id: AUTHORING_PROTOCOL_ID,
+  version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+});
+const SERVER_INFO = Object.freeze({
+  name: "aralearn-authoring",
+  version: AUTHORING_PROTOCOL_SCHEMA_VERSION
+});
 const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
 const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
@@ -27,6 +45,7 @@ const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
+  "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
   "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
   Vary: "Origin"
 });
@@ -106,6 +125,7 @@ function metadataResponse(resourceUrl, authorizationServer, headers = {}) {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "public, max-age=300",
       "X-Content-Type-Options": "nosniff",
+      "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
       ...headers
     }
   });
@@ -146,7 +166,8 @@ function preflightResponse(request, allowedOrigins) {
         "MCP-Protocol-Version"
       ].join(", "),
       "Access-Control-Max-Age": "600",
-      "X-Content-Type-Options": "nosniff"
+      "X-Content-Type-Options": "nosniff",
+      "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER
     }
   });
 }
@@ -636,7 +657,8 @@ async function dispatchMcpRequest(envelope, context) {
           resources: { subscribe: false, listChanged: false }
         },
         serverInfo: SERVER_INFO,
-        instructions: COURSE_AUTHORING_SERVER_INSTRUCTIONS
+        instructions: COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+        _meta: { authoringContract: AUTHORING_CONTRACT_METADATA }
       }
     };
   }
@@ -656,7 +678,10 @@ async function dispatchMcpRequest(envelope, context) {
     return {
       jsonrpc: JSON_RPC_VERSION,
       id,
-      result: { tools: authoringMcpToolsForPrincipal(context.principal) }
+      result: {
+        tools: authoringMcpToolsForPrincipal(context.principal),
+        _meta: { authoringContract: AUTHORING_CONTRACT_METADATA }
+      }
     };
   }
   if (method === "resources/list") {
@@ -830,7 +855,16 @@ export function createAuthoringMcpHandler({
           description: "Reconecte a conta para atualizar a autorização."
         })
       });
-      if (payload == null) return new Response(null, { status: 202, headers: { ...cors, Vary: "Origin" } });
+      if (payload == null) {
+        return new Response(null, {
+          status: 202,
+          headers: {
+            ...cors,
+            "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+            Vary: "Origin"
+          }
+        });
+      }
       return jsonRpcResponse(200, payload, cors);
     } catch (error) {
       return transportErrorResponse(error, cors, canonicalResource);

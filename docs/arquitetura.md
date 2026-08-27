@@ -70,6 +70,38 @@ nova para cada painel da interface. Perfil, avatar e acesso direto pertencem à
 aplicação autenticada; o e-mail usado para conceder acesso não é enviado ao
 cliente MCP nem ao GPT conectado por Actions.
 
+## Protocolo público de Autoria
+
+MCP e Actions projetam um protocolo público próprio, em vez de derivar sua
+linguagem dos tipos internos do domínio. A autoridade corrente é
+`aralearn.authoring-protocol.v1`, definida em `authoringProtocolV1.js`. Ela
+reúne as cinco operações, seus esquemas de entrada e saída, discriminadores,
+condicionais e vocabulários. Uma mudança interna no domínio ou na persistência
+não altera esse idioma por consequência.
+
+`courseMcpTools.js` é o adaptador explícito entre o protocolo e o backend. Ele
+confere os argumentos públicos, converte cada chamada para a rota ou comando
+interno pertinente e mantém os validadores do domínio como última fronteira de
+integridade. Esse corte permite evoluir a implementação sem publicar nomes
+internos e impede que um alias inventado pelo cliente passe a ser aceito apenas
+para ocultar uma projeção defasada.
+
+Os transportes partem da mesma autoridade, mas não servem o mesmo documento:
+
+- o MCP conserva o esquema canônico das ferramentas e acrescenta somente
+  segurança OAuth e metadados próprios do transporte e do recurso visual;
+- Actions compila uma projeção OpenAPI adequada ao importador do ChatGPT,
+  associa cada ferramenta a um caminho HTTP e usa seu OAuth próprio.
+
+O sufixo v1 do identificador fixa o major público. `schemaVersion` distingue os
+snapshots semânticos dessa linha e o fingerprint SHA-256 identifica exatamente
+o catálogo, inclusive sua versão. Mudanças compatíveis podem acrescentar
+vocabulário dentro do mesmo major; remover ferramenta ou discriminador,
+estreitar enum ou limite, tornar campo obrigatório ou acrescentar proibição é
+ruptura. Um snapshot aprovado não é sobrescrito. Uma evolução incompatível
+exige novo major e não autoriza retirar a linha v1 enquanto houver consumidores
+que ainda dependam dela.
+
 ## Shell web e inicialização
 
 O shell web é a camada que consegue abrir antes de qualquer Curso. HTML fornece
@@ -420,6 +452,9 @@ etapas e pelas cotas do Curso.
 | assistência contextual | `src/assist/`, `src/generation/providers/`, `src/ui/CourseProviderAssistance.js` |
 | catálogo e renderização | `src/resources/`, `src/render/` |
 | cliente Supabase e sessão | `src/supabase/` |
+| protocolo público de Autoria | `supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js` e snapshots em `tests/fixtures/authoring-protocol/` |
+| adaptação do protocolo ao backend e MCP | `supabase/functions/_shared/aralearn-authoring/courseMcpTools.js` |
+| projeção para Actions | `scripts/projectChatGptActionSchemas.mjs` e `scripts/buildChatGptActionOpenApi.mjs` |
 | funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/`, `supabase/functions/aralearn-authoring-action/` |
 | esquema e operações SQL | `supabase/migrations/` |
 | implantação e verificação | `scripts/`, `.github/workflows/` |
@@ -432,9 +467,19 @@ backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
 
+O protocolo público possui identidade implantável independente do manifesto do
+banco. O OpenAPI declara seu identificador, `schemaVersion` e fingerprint. O
+MCP repete os mesmos valores em `initialize`, `tools/list` e no cabeçalho
+`X-AraLearn-Authoring-Contract`; a Action envia esse cabeçalho em respostas e
+preflights. Assim uma diferença de implantação ou cache pode ser diagnosticada
+sem inferir a revisão pelo conteúdo de uma chamada.
+
 A promoção exige migrações em paridade, análise do banco, testes de
 concorrência, testes reais de funcionamento da API, do MCP e de Actions, validação de
-autenticação, testes do navegador e artefatos web e Android.
+autenticação, testes do navegador e artefatos web e Android. O smoke hospedado
+compara o esquema completo servido por `tools/list` com o snapshot local,
+ignorando apenas metadados de transporte. O fluxo de implantação também recusa
+uma Action cujo preflight anuncie outro fingerprint.
 
 Detalhes operacionais estão em [Persistência relacional e sincronização](persistencia-relacional.md),
 [Supabase](supabase.md), [Implantação](implantacao.md) e

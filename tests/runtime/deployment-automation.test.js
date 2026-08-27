@@ -293,15 +293,22 @@ test("executor de implantação verifica cada comando nativo antes de avançar",
   assert.match(source, /As etapas seguintes não foram executadas/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
+  assert.match(source, /aralearn-authoring-action\/index\.ts/u);
   assert.match(source, /deno\.json/u);
   assert.doesNotMatch(source, /\b(?:npm\.cmd|gradlew\.bat)[^\r\n]*;[^\r\n]*/u);
 });
 
-test("implantação publica somente MCP OAuth e API de Curso", () => {
+test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do contrato", () => {
   const source = fs.readFileSync(path.join(repositoryRoot, "scripts", "deploySupabase.ps1"), "utf8");
   assert.match(source, /DeployAuthoringFunctions/u);
   assert.match(source, /functions deploy aralearn-authoring-mcp/u);
   assert.match(source, /functions deploy aralearn-course-api/u);
+  assert.match(source, /functions deploy aralearn-authoring-action/u);
+  assert.match(source, /verifyAuthoringProtocolSnapshotHistory\.mjs/u);
+  assert.match(source, /buildChatGptActionOpenApi\.mjs --check/u);
+  assert.match(source, /authoring-protocol-compatibility\.test\.js/u);
+  assert.match(source, /chatgpt-action-schema-projection\.test\.js/u);
+  assert.match(source, /course-authoring-contract-runtime\.test\.js/u);
   assert.doesNotMatch(source, /functions deploy aralearn-course-revisions/u);
   assert.doesNotMatch(source, /functions delete|Remove-AraLearnSupabaseFunctionIfPresent/u);
   assert.match(source, /funções da versão publicada foram preservadas/u);
@@ -316,24 +323,47 @@ test("implantação publica somente MCP OAuth e API de Curso", () => {
     /@\(\$RequiredApplicationOrigins\)\s*\+\s*@\(\$AllowedOrigin\)/u
   );
   assert.match(source, /ARALEARN_COURSE_API_ALLOWED_ORIGINS=\$origins/u);
+  assert.match(source, /ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=\$actionOrigins/u);
   assert.match(source, /runHostedMcpOAuthSmoke\.mjs/u);
   assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-course-api\/app\/listarCursos/u);
+  assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-authoring-action\/listarCursos/u);
+  assert.match(source, /X-AraLearn-Authoring-Contract/u);
   assert.match(source, /Access-Control-Allow-Origin/u);
   assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
   assert.doesNotMatch(source, /secrets unset/u);
   assert.match(source, /runHostedCourseSourcePdfSmoke\.mjs/u);
   assert.ok(
+    source.indexOf("buildChatGptActionOpenApi.mjs --check") <
+      source.indexOf("chatgpt-action-schema-projection.test.js") &&
+    source.indexOf("chatgpt-action-schema-projection.test.js") <
+      source.indexOf("functions deploy aralearn-authoring-mcp") &&
     source.indexOf("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins") <
       source.indexOf("functions deploy aralearn-authoring-mcp") &&
+    source.indexOf("functions deploy aralearn-authoring-mcp") <
+      source.indexOf("functions deploy aralearn-course-api") &&
     source.indexOf("functions deploy aralearn-course-api") <
-      source.indexOf("Invoke-WebRequest") &&
-    source.indexOf("Invoke-WebRequest") <
+      source.indexOf("functions deploy aralearn-authoring-action") &&
+    source.indexOf("functions deploy aralearn-authoring-action") <
+      source.indexOf("X-AraLearn-Authoring-Contract") &&
+    source.indexOf("X-AraLearn-Authoring-Contract") <
       source.indexOf("runHostedMcpOAuthSmoke.mjs") &&
     source.indexOf("runHostedMcpOAuthSmoke.mjs") <
       source.indexOf("runHostedCourseSourcePdfSmoke.mjs")
   );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
+});
+
+test("scripts focais de MCP e Actions incluem o contrato público comum", () => {
+  const contract = packageManifest.scripts["test:authoring:contract"];
+  assert.match(packageManifest.scripts["authoring:contract:history"], /verifyAuthoringProtocolSnapshotHistory\.mjs/u);
+  assert.match(contract, /^npm run authoring:contract:history &&/u);
+  assert.match(contract, /authoring-protocol-snapshot-history\.test\.js/u);
+  assert.match(contract, /authoring-protocol-compatibility\.test\.js/u);
+  assert.match(contract, /chatgpt-action-schema-projection\.test\.js/u);
+  assert.match(contract, /course-authoring-contract-runtime\.test\.js/u);
+  assert.match(packageManifest.scripts["test:authoring:mcp"], /^npm run test:authoring:contract &&/u);
+  assert.match(packageManifest.scripts["test:authoring:actions"], /^npm run test:authoring:contract &&/u);
 });
 
 test("validação integrada do Supabase só aceita o stack local e restaura o ambiente", () => {
@@ -969,6 +999,8 @@ test("validação do repositório usa permissão mínima", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   assert.match(source, /permissions:\s*\n\s*contents: read/u);
   assert.doesNotMatch(source, /contents: write|actions: write|pages: write|id-token: write/u);
+  assert.match(source, /ARALEARN_AUTHORING_PROTOCOL_BASE_REF: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/u);
+  assert.match(source, /npm run authoring:contract:history/u);
 });
 
 test("validação obrigatória distingue documentação sem omitir os jobs existentes", () => {
@@ -1003,6 +1035,10 @@ test("validação obrigatória distingue documentação sem omitir os jobs exist
       new RegExp(`- name: ${expensiveStep}[\\s\\S]{0,120}if: steps\\.paths\\.outputs\\.docs_only != 'true'`, "u")
     );
   }
+  assert.match(
+    source,
+    /deno check --config supabase\/functions\/deno\.json supabase\/functions\/aralearn-authoring-action\/index\.ts/u
+  );
   assert.match(source, /always\(\) && steps\.paths\.outputs\.docs_only != 'true'/u);
 });
 

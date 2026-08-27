@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -11,10 +12,14 @@ import {
   DEFAULT_ASSIST_ALLOWED_ORIGINS,
   DEVELOPMENT_VENDOR_ASSIST_ORIGINS
 } from "../../src/assist/providerRuntimeSecurity.js";
-
 const BASE_URL = "https://site.example.test/AraLearn/";
-const PROJECT_URL = "https://project.example.supabase.co";
-const VERSION = "0.0.34";
+const ACTIONS_OPENAPI = readFileSync(
+  new URL("../../docs/downloads/aralearn-chatgpt-action-openapi.yaml", import.meta.url),
+  "utf8"
+);
+const ACTIONS_OPENAPI_DOCUMENT = JSON.parse(ACTIONS_OPENAPI);
+const PROJECT_URL = new URL(ACTIONS_OPENAPI_DOCUMENT.servers[0].url).origin;
+const VERSION = ACTIONS_OPENAPI_DOCUMENT.info.version;
 const REVISION = "0123456789abcdef0123";
 const ASSIST_ORIGINS = [...DEFAULT_ASSIST_ALLOWED_ORIGINS];
 const INDEX = `<!doctype html>
@@ -26,18 +31,6 @@ const RUNTIME_CONFIG = `globalThis.__ARALEARN_ENV__ ??= Object.freeze({
   "supabasePublishableKey": "sb_publishable_public-test-value",
   "assistAllowedOrigins": ${JSON.stringify(ASSIST_ORIGINS)}
 });\n`;
-const ACTIONS_OPENAPI = JSON.stringify({
-  openapi: "3.1.0",
-  info: { title: "AraLearn — Autoria de Cursos", version: VERSION },
-  servers: [{ url: `${PROJECT_URL}/functions/v1/aralearn-authoring-action` }],
-  paths: Object.fromEntries([
-    "listarCursos",
-    "lerCurso",
-    "criarCurso",
-    "alterarCurso",
-    "consultarComponentesDidaticos"
-  ].map((operationId) => [`/${operationId}`, { post: { operationId } }]))
-});
 const ASSETS = [
   "./index.html",
   "./runtime-config.js",
@@ -327,6 +320,56 @@ test("recusa OpenAPI de Actions hospedado com versão ou operações divergentes
     () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
     /OpenAPI publicado de Actions não corresponde/u
   );
+});
+
+test("recusa OpenAPI de Actions hospedado com fingerprint divergente", async () => {
+  const incompatible = JSON.parse(ACTIONS_OPENAPI);
+  incompatible.info["x-aralearn-contract-fingerprint"] = `sha256:${"0".repeat(64)}`;
+  const { fetchImpl } = createPublishedSiteFetch({
+    overrides: {
+      "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+        body: incompatible,
+        type: "application/yaml"
+      }
+    }
+  });
+  await assert.rejects(
+    () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+    /outro contrato público de Autoria/iu
+  );
+});
+
+test("recusa projeção OpenAPI defasada mesmo com metadata corrente", async () => {
+  const staleProjection = JSON.parse(ACTIONS_OPENAPI);
+  const updatePlanType = staleProjection.paths["/alterarCurso"]
+    .post.requestBody.content["application/json"].schema.oneOf[0]
+    .properties.planCommand.oneOf[0].properties.type;
+  updatePlanType.enum = ["obsolete_update_plan"];
+  const { fetchImpl } = createPublishedSiteFetch({
+    overrides: {
+      "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+        body: `${JSON.stringify(staleProjection, null, 2)}\n`,
+        type: "application/yaml"
+      }
+    }
+  });
+  await assert.rejects(
+    () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+    /não corresponde ao artefato gerado local desta revisão/u
+  );
+});
+
+test("aceita o OpenAPI gerado com finais de linha normalizados pelo host", async () => {
+  const { fetchImpl } = createPublishedSiteFetch({
+    overrides: {
+      "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+        body: ACTIONS_OPENAPI.replace(/\r?\n/gu, "\r\n"),
+        type: "application/yaml"
+      }
+    }
+  });
+  const result = await verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl });
+  assert.equal(result.version, VERSION);
 });
 
 test("recusa manifesto cacheado de outra versão ou revisão divergente", async (context) => {

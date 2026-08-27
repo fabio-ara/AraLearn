@@ -1333,6 +1333,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("offline", () => {
     editorApp?.setOfflineStatus?.(true);
+    authoringSurface?.setOfflineStatus?.(true);
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("hashchange", (event) => {
     if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) {

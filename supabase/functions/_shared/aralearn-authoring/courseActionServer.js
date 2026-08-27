@@ -1,4 +1,9 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+} from "./authoringProtocolV1.js";
 import { createAuthoringActionOAuthHandler } from "./actionOAuthServer.js";
 import {
   corsHeaders,
@@ -6,22 +11,41 @@ import {
   readAuthoringOAuthAuthorization,
   sha256Hex
 } from "./security.js";
-import { authoringMcpToolDefinition, authoringMcpToolIsAllowed } from "./courseMcpTools.js";
+import {
+  authoringProtocolV1ToolDefinition,
+  authoringProtocolV1ToolIsAllowed
+} from "./courseMcpTools.js";
 import { executeCourseTool } from "./courseToolExecutor.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
 
 const BODY_LIMIT = 96 * 1024;
 const RESPONSE_LIMIT = 96 * 1024;
+export const ARALEARN_ACTION_CONTRACT_HEADER = [
+  AUTHORING_PROTOCOL_ID,
+  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
+  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
+].join("; ");
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
-  "X-Content-Type-Options": "nosniff"
+  "X-Content-Type-Options": "nosniff",
+  "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
 });
 
 function jsonResponse(status, payload, headers = {}) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...JSON_HEADERS, ...headers }
+  });
+}
+
+function withAuthoringContractHeader(response) {
+  const headers = new Headers(response.headers);
+  headers.set("X-AraLearn-Authoring-Contract", ARALEARN_ACTION_CONTRACT_HEADER);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
   });
 }
 
@@ -94,17 +118,22 @@ export function createAuthoringActionHandler({
       if (request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
-          headers: preflightHeaders(request, allowedOrigins)
+          headers: {
+            ...preflightHeaders(request, allowedOrigins),
+            "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
+          }
         });
       }
       cors = corsHeaders(request, allowedOrigins);
       const route = routeFromPath(new URL(request.url).pathname);
-      if (route[0] === "oauth") return handleOAuth(request, route, cors);
+      if (route[0] === "oauth") {
+        return withAuthoringContractHeader(await handleOAuth(request, route, cors));
+      }
       if (request.method !== "POST") {
         throw new AuthoringApiError(405, "method_not_allowed", "A Action aceita somente POST.");
       }
       actionName = route.length === 1 ? route[0] : "";
-      if (!authoringMcpToolDefinition(actionName)) {
+      if (!authoringProtocolV1ToolDefinition(actionName)) {
         throw new AuthoringApiError(404, "unknown_action", "Operação de Curso inexistente.");
       }
       rawArguments = await readBody(request);
@@ -115,7 +144,7 @@ export function createAuthoringActionHandler({
         await sha256Hex(authentication.credential),
         { deadlineAt }
       );
-      if (!authoringMcpToolIsAllowed(actionName, principal)) {
+      if (!authoringProtocolV1ToolIsAllowed(actionName, principal)) {
         throw new AuthoringApiError(
           403,
           "insufficient_scope",

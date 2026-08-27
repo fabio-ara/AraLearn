@@ -1363,35 +1363,44 @@ export function createCourseSourcesPanel({
     });
   }
 
-  function readOptions(readMode, values = {}) {
+  function readOptions(readMode, values = {}, courseRevision = state.courseRevision) {
     return {
       mode: readMode,
       sourceId: null,
       targetKind: null,
       targetId: null,
-      expectedRevision: state.courseRevision,
+      expectedRevision: courseRevision,
       limit: readMode === "catalog" ? CATALOG_PAGE_LIMIT : HISTORY_PAGE_LIMIT,
       cursor: null,
       ...values
     };
   }
 
-  async function loadCatalog({ cursor = null, append = false } = {}) {
+  async function loadCatalog({
+    cursor = null,
+    append = false,
+    preserveExisting = false,
+    courseRevision = state.courseRevision
+  } = {}) {
     const requestEpoch = epoch;
     state.catalogLoading = true;
     state.catalogFailure = "";
-    if (!append) state.catalog = null;
-    render();
+    if (!append && !preserveExisting) state.catalog = null;
+    if (!preserveExisting) render();
     try {
       const page = normalizeCourseSourcesPage(
-        await controller.loadCourseSources(state.courseId, readOptions("catalog", { cursor })),
+        await controller.loadCourseSources(
+          state.courseId,
+          readOptions("catalog", { cursor }, courseRevision)
+        ),
         {
           expectedCourseId: state.courseId,
-          expectedCourseRevision: state.courseRevision,
+          expectedCourseRevision: courseRevision,
           expectedMode: "catalog"
         }
       );
       if (!state.opened || requestEpoch !== epoch) return false;
+      state.courseRevision = courseRevision;
       state.catalog = append && state.catalog
         ? mergeCourseSourceCatalogPages(state.catalog, page)
         : page;
@@ -1449,15 +1458,20 @@ export function createCourseSourcesPanel({
     return Object.freeze({ ...incoming, items: Object.freeze(items) });
   }
 
-  async function loadAnnotations(sourceId, { cursor = null, append = false } = {}) {
+  async function loadAnnotations(sourceId, {
+    cursor = null,
+    append = false,
+    preserveExisting = false,
+    courseRevision = state.courseRevision
+  } = {}) {
     const requestEpoch = epoch;
     state.annotationsLoading = true;
     state.annotationsFailure = "";
-    if (!append) state.annotations = null;
-    render();
+    if (!append && !preserveExisting) state.annotations = null;
+    if (!preserveExisting) render();
     try {
       const options = normalizeCourseAnchoredAnnotationReadOptions({
-        expectedCourseRevision: state.courseRevision,
+        expectedCourseRevision: courseRevision,
         annotationSetVersion: append ? state.annotations?.annotationSetVersion ?? null : null,
         query: annotationQuery(sourceId),
         cursor,
@@ -1480,9 +1494,13 @@ export function createCourseSourcesPanel({
       state.annotationsFailure = errorMessage(error);
       return false;
     } finally {
-      if (state.opened && requestEpoch === epoch && state.selectedSourceId === sourceId) {
+      if (!preserveExisting && state.opened && requestEpoch === epoch &&
+          state.selectedSourceId === sourceId) {
         state.annotationsLoading = false;
         render();
+      } else if (state.opened && requestEpoch === epoch &&
+          state.selectedSourceId === sourceId) {
+        state.annotationsLoading = false;
       }
     }
   }
@@ -1494,7 +1512,9 @@ export function createCourseSourcesPanel({
     requiredRevision = null,
     contextualTarget = false,
     currentTarget = false,
-    pageLimit = HISTORY_PAGE_LIMIT
+    pageLimit = HISTORY_PAGE_LIMIT,
+    preserveExisting = false,
+    courseRevision = state.courseRevision
   } = {}) {
     const requestEpoch = epoch;
     const targetLoading = currentTarget
@@ -1505,9 +1525,9 @@ export function createCourseSourcesPanel({
       state.selectedSourceId = sourceId;
       state.detailLoading = true;
       state.detailFailure = "";
-      if (!append) state.detail = null;
+      if (!append && !preserveExisting) state.detail = null;
     }
-    render();
+    if (!preserveExisting) render();
     try {
       const targetContext = contextualTarget
         ? { targetKind: state.targetKind, targetId: state.targetId }
@@ -1518,10 +1538,10 @@ export function createCourseSourcesPanel({
           cursor,
           limit: pageLimit,
           ...targetContext
-        })),
+        }, courseRevision)),
         {
           expectedCourseId: state.courseId,
-          expectedCourseRevision: state.courseRevision,
+          expectedCourseRevision: courseRevision,
           expectedMode: "source",
           expectedSourceId: sourceId,
           ...(contextualTarget ? {
@@ -1543,8 +1563,11 @@ export function createCourseSourcesPanel({
         }
       }
       else {
+        state.courseRevision = courseRevision;
         state.detail = append ? mergeDetailPages(state.detail, page) : page;
-        if (!append) await loadAnnotations(sourceId);
+        if (!append) {
+          await loadAnnotations(sourceId, { preserveExisting, courseRevision });
+        }
       }
       return page;
     } catch (error) {
@@ -1578,7 +1601,10 @@ export function createCourseSourcesPanel({
     });
   }
 
-  async function loadInitialDetail() {
+  async function loadInitialDetail({
+    preserveExisting = false,
+    courseRevision = state.courseRevision
+  } = {}) {
     const sourceId = state.initialSourceId;
     const anchorId = state.initialAnchorId;
     if (sourceId === null) return false;
@@ -1589,7 +1615,9 @@ export function createCourseSourcesPanel({
       const page = await loadDetail(sourceId, {
         cursor,
         append,
-        pageLimit: PINNED_HISTORY_PAGE_LIMIT
+        pageLimit: PINNED_HISTORY_PAGE_LIMIT,
+        preserveExisting,
+        courseRevision
       });
       if (!page) return false;
       if (!page.items.length) {
@@ -2414,6 +2442,22 @@ export function createCourseSourcesPanel({
     return loadCatalog();
   }
 
+  async function refresh(courseRevision = state.courseRevision) {
+    if (!state.opened || !Number.isSafeInteger(courseRevision) || courseRevision < 1) {
+      return false;
+    }
+    if (state.mode !== "catalog") return false;
+    if (state.selectedSourceId) {
+      return state.initialSourceId === state.selectedSourceId
+        ? loadInitialDetail({ preserveExisting: true, courseRevision })
+        : Boolean(await loadDetail(state.selectedSourceId, {
+            preserveExisting: true,
+            courseRevision
+          }));
+    }
+    return loadCatalog({ preserveExisting: true, courseRevision });
+  }
+
   function destroy() {
     state.opened = false;
     ++epoch;
@@ -2432,5 +2476,5 @@ export function createCourseSourcesPanel({
     );
   }
 
-  return Object.freeze({ open, hasPendingDraft, destroy });
+  return Object.freeze({ open, refresh, hasPendingDraft, destroy });
 }

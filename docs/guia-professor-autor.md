@@ -47,10 +47,12 @@ estado, destaca a próxima ação útil e apresenta as tarefas principais em um
 - **Variantes e pesquisa**;
 - **Pessoas e acesso**.
 
-A barra compacta preserva o título e o contexto atual. O menu de tarefas permite
-mudar de trabalho sem converter a tela em dashboard ou exigir que a pessoa
-memorize agrupamentos internos. Ao voltar, a posição útil e o objeto focal são
-restaurados sempre que o destino conserva esse contexto.
+A barra compacta preserva o título e o contexto atual. O indicador de
+sincronização usa a mesma linguagem de Estudo e permanece no mesmo lugar ao
+mudar de estado. O menu de tarefas permite mudar de trabalho sem converter a
+tela em dashboard ou exigir que a pessoa memorize agrupamentos internos. Ao
+voltar, a posição útil e o objeto focal são restaurados sempre que o destino
+conserva esse contexto.
 
 Celular e computador usam a mesma superfície de até 430 px, centralizada em
 telas maiores. O conteúdo usa um único rolador vertical; tabelas e comparações
@@ -71,9 +73,12 @@ O controle de edição altera título, objetivo, público, escopo e faixa sugeri
 de Partes. As três listas do plano aceitam linguagem natural e oferecem ações
 para acrescentar, editar, reordenar e remover itens.
 
-A tela mostra primeiro a próxima ação, o objetivo e o estado das Partes.
-Contexto, referências e controles de organização ficam recolhidos até serem
-necessários, sem retirar edição, reordenação, divisão, união ou retirada.
+A tela mostra objetivo, faixa preferencial de Partes e quantidade materializada,
+sem criar um card textual de próxima ação. Ações de criar e editar aparecem
+junto do objeto e priorizam ícones com nome acessível. Partes, contexto e
+referências vazios não acrescentam mensagens de ausência; os controles de
+organização ficam recolhidos até serem necessários, sem retirar edição,
+reordenação, divisão, união ou retirada.
 
 Uma **Parte de autoria** possui título, intenção operacional e posição na ordem
 de produção. Ela pode ser criada, editada, reordenada, dividida ou unida. As
@@ -394,6 +399,8 @@ Depois do trabalho no cliente conectado, volte à guia ou focalize a janela do
 AraLearn. A área visível relê o cabeçalho canônico e o estado pertinente. Use a
 ação **Atualizar** do cabeçalho se o navegador não sinalizar o retorno. Uma
 alteração já confirmada no cliente não exige confirmação duplicada na interface.
+Durante a releitura, o conteúdo permanece montado e na mesma posição; o
+indicador de sincronização muda de estado sem deslocar a tela.
 
 Se houver uma confirmação ou um formulário em edição, essa releitura é adiada.
 O AraLearn conserva os campos e pede que a pessoa conclua ou cancele o rascunho

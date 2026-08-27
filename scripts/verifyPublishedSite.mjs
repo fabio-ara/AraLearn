@@ -4,6 +4,12 @@ import {
   DEFAULT_ASSIST_ALLOWED_ORIGINS,
   readAssistAllowedOrigins
 } from "../src/assist/providerRuntimeSecurity.js";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
+  AUTHORING_PROTOCOL_V1_TOOLS
+} from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -22,13 +28,13 @@ const CALLBACK_PARAMETERS = Object.freeze({
   code: "aralearn-publication-check"
 });
 const ACTIONS_OPENAPI_ASSET = "./docs/downloads/aralearn-chatgpt-action-openapi.yaml";
-const ACTIONS_TOOL_NAMES = Object.freeze([
-  "alterarCurso",
-  "consultarComponentesDidaticos",
-  "criarCurso",
-  "lerCurso",
-  "listarCursos"
-]);
+const EXPECTED_ACTIONS_OPENAPI_SOURCE = readFileSync(
+  new URL(`../${ACTIONS_OPENAPI_ASSET.replace(/^\.\//u, "")}`, import.meta.url),
+  "utf8"
+);
+const ACTIONS_TOOL_NAMES = Object.freeze(
+  AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => name).sort()
+);
 const REQUIRED_ASSETS = Object.freeze([
   "./index.html",
   "./runtime-config.js",
@@ -373,6 +379,13 @@ function validatePublishedActionsOpenApi(source, expectedVersion, projectOrigin)
   if (document?.openapi !== "3.1.0" || document?.info?.version !== expectedVersion) {
     throw new Error(`O OpenAPI publicado de Actions não corresponde à versão ${expectedVersion}.`);
   }
+  if (document.info["x-aralearn-protocol"] !== AUTHORING_PROTOCOL_ID ||
+      document.info["x-aralearn-protocol-schema-version"] !==
+        AUTHORING_PROTOCOL_SCHEMA_VERSION ||
+      document.info["x-aralearn-contract-fingerprint"] !==
+        AUTHORING_PROTOCOL_V1_SCHEMA_HASH) {
+    throw new Error("O OpenAPI publicado de Actions usa outro contrato público de Autoria.");
+  }
   const expectedServer = new URL(
     "/functions/v1/aralearn-authoring-action",
     projectOrigin
@@ -386,6 +399,12 @@ function validatePublishedActionsOpenApi(source, expectedVersion, projectOrigin)
     .sort();
   if (JSON.stringify(actionNames) !== JSON.stringify(ACTIONS_TOOL_NAMES)) {
     throw new Error("O OpenAPI publicado de Actions não contém as cinco operações canônicas.");
+  }
+  const normalizeEndOfLines = (value) => String(value).replace(/\r\n?/gu, "\n");
+  if (normalizeEndOfLines(source) !== normalizeEndOfLines(EXPECTED_ACTIONS_OPENAPI_SOURCE)) {
+    throw new Error(
+      "O OpenAPI publicado de Actions não corresponde ao artefato gerado local desta revisão."
+    );
   }
 }
 

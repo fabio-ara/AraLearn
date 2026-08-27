@@ -54,7 +54,8 @@ e por uma função SQL com revisão esperada.
 
 Uma ferramenta MCP entra por `aralearn-authoring-mcp`; uma operação de Actions,
 por `aralearn-authoring-action`. As duas convergem no mesmo `courseRouter`,
-`courseToolExecutor` e `courseSupabaseAdapter`. Corrigir apenas um dos
+`courseToolExecutor` e `courseSupabaseAdapter`, mas partem do protocolo público
+v1 e usam projeções de transporte distintas. Corrigir apenas um dos
 transportes costuma deixar o contrato divergente.
 
 ## Mapa do repositório
@@ -70,7 +71,9 @@ transportes costuma deixar o contrato divergente.
 | `src/resources/` | catálogo, contratos e pacotes didáticos |
 | `src/render/` | renderização dos pacotes |
 | `supabase/migrations/` | esquema, funções, privilégios e políticas versionados |
-| `supabase/functions/_shared/aralearn-authoring/` | contrato comum da API, do MCP e de Actions |
+| `supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js` | autoridade do protocolo público v1 e de seu catálogo |
+| `supabase/functions/_shared/aralearn-authoring/courseMcpTools.js` | adaptação explícita do protocolo para rotas, comandos internos e MCP |
+| `scripts/projectChatGptActionSchemas.mjs` | projeção do protocolo para esquemas aceitos pelo importador de Actions |
 | `supabase/functions/aralearn-course-api/` | entrada HTTP da Autoria no navegador |
 | `supabase/functions/aralearn-authoring-mcp/` | servidor MCP e recurso visual |
 | `supabase/functions/aralearn-authoring-action/` | Actions/OpenAPI e OAuth do GPT personalizado |
@@ -107,7 +110,8 @@ ou renderizada.
 Localize primeiro a autoridade do dado e percorra o caminho completo:
 
 1. defina ou ajuste a regra pura em `src/domain/`;
-2. mantenha a forma remota no cliente, protocolo e adaptador;
+2. quando a capacidade for pública, altere intencionalmente o protocolo e seu
+   adaptador, sem derivá-lo dos tipos internos;
 3. altere a migração quando o contrato relacional mudar;
 4. exponha a operação pelo roteador comum da API, do MCP e de Actions;
 5. adapte o controlador e a projeção da interface;
@@ -118,6 +122,52 @@ Localize primeiro a autoridade do dado e percorra o caminho completo:
 Uma nova área visual não justifica uma nova ferramenta MCP, Action, tabela ou serviço.
 Primeiro verifique se a capacidade cabe como visão ou operação das autoridades
 existentes.
+
+## Protocolo público e projeções
+
+`authoringProtocolV1.js` é a autoridade independente para o idioma consumido
+por MCP e Actions. O domínio pode possuir estruturas mais ricas ou nomes
+internos diferentes; `courseMcpTools.js` adapta os argumentos públicos para as
+rotas e os normalizadores correspondentes. Não duplique listas de
+discriminadores no transporte e não amplie o backend com aliases para acomodar
+um esquema importado antigo.
+
+O catálogo possui três identificadores complementares:
+
+- `AUTHORING_PROTOCOL_ID` identifica o major público v1;
+- `AUTHORING_PROTOCOL_SCHEMA_VERSION` ordena snapshots por versão semântica;
+- `AUTHORING_PROTOCOL_V1_SCHEMA_HASH` é o SHA-256 do ID, da versão e do catálogo
+  serializados de forma canônica.
+
+O snapshot aprovado é imutável. Dentro do mesmo major, o gate admite ampliações
+compatíveis e bloqueia remoção de ferramenta, propriedade ou discriminador,
+estreitamento de tipo, enum, padrão ou limite, novo campo obrigatório e nova
+proibição. Uma ruptura exige novo major; a linha v1 permanece disponível para
+os consumidores existentes durante a migração.
+
+O MCP recebe o catálogo canônico e acrescenta apenas segurança e `_meta` de
+transporte. Actions usa `projectChatGptActionSchemas.mjs`. O projetor percorre
+todas as condicionais `allOf`: condições necessárias para construir a chamada
+viram variantes explícitas, e a geração falha se alguma ficar sem compilação.
+Ele também converte cada `const` em `enum` de um único valor, pois essa é a forma
+que o importador corrente do ChatGPT preserva como discriminador. Não restaure
+`allOf` indiscriminadamente nem volte a removê-lo por uma passagem genérica.
+
+Ao alterar o catálogo, gere um novo snapshot em vez de sobrescrever o anterior,
+regenere o OpenAPI e execute:
+
+```powershell
+node --test tests/runtime/authoring-protocol-compatibility.test.js
+npm.cmd run test:authoring:mcp
+npm.cmd run actions:openapi:check
+npm.cmd run test:authoring:actions
+```
+
+MCP e Action anunciam o mesmo ID, versão e hash no cabeçalho
+`X-AraLearn-Authoring-Contract`; o MCP também usa
+`_meta.authoringContract`. O smoke hospedado compara o esquema inteiro de
+`tools/list` com a autoridade local, removendo somente metadados de transporte,
+e o preflight da Action bloqueia uma implantação com fingerprint divergente.
 
 ## Concorrência e repetição
 

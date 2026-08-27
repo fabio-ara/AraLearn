@@ -443,10 +443,19 @@ export function createCourseVariantsPanel({
       }
     })();
   };
-  const refreshList = async () => {
-    state.loading = true; state.failure = ""; render();
-    try { state.list = await controller.listCourseVariantComparisons(state.course.courseId, state.course.revision); }
-    catch (error) { state.failure = errorText(error); }
+  const refreshList = async ({ course = state.course, preserveExisting = false } = {}) => {
+    state.loading = true; state.failure = "";
+    if (!preserveExisting) render();
+    try {
+      const list = await controller.listCourseVariantComparisons(
+        course.courseId,
+        course.revision
+      );
+      state.course = course;
+      state.list = list;
+      return true;
+    }
+    catch (error) { state.failure = errorText(error); return false; }
     finally { state.loading = false; render(); }
   };
   const openComparison = async (comparisonSetId) => {
@@ -597,11 +606,33 @@ export function createCourseVariantsPanel({
       state.pendingCreation || state.confirmation || state.busy || createDraftChanged
     );
   };
+  const refresh = async (course = state.course) => {
+    if (state.screen !== "comparison" || !state.comparison) {
+      return refreshList({ course, preserveExisting: true });
+    }
+    state.loading = true;
+    state.failure = "";
+    try {
+      const comparison = await controller.loadCourseVariantComparison(course.courseId, {
+        comparisonSetId: state.comparison.comparisonSetId,
+        expectedCourseRevision: course.revision
+      });
+      state.course = course;
+      state.comparison = comparison;
+      return true;
+    } catch (error) {
+      state.failure = errorText(error);
+      return false;
+    } finally {
+      state.loading = false;
+      render();
+    }
+  };
   return {
     open: initialComparisonSetId
       ? () => openComparison(initialComparisonSetId)
       : refreshList,
-    refresh: refreshList,
+    refresh,
     hasPendingDraft,
     destroy() {
       root.removeEventListener("click", onClick);
