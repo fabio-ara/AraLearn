@@ -1,231 +1,91 @@
 # Guia do estudante
 
-Este guia apresenta o percurso de Estudo. Um Curso pode pertencer à própria
-pessoa ou ter sido compartilhado diretamente pelo proprietário. Leitura,
-prática e continuidade usam o mesmo percurso; a gravação contextual difere
-porque altera o Curso próprio e cria uma cópia pessoal quando a origem é
-compartilhada.
+Em **Estudo**, é possível acessar cursos próprios e cursos compartilhados, percorrer o conteúdo, responder às práticas, retomar o ponto alcançado, marcar unidades para rever e registrar observações. Depois que um curso é carregado no dispositivo, parte desse percurso também pode continuar sem conexão.
 
-## Compreender a tela inicial
+## Escolher e abrir um curso
 
-A tela inicial de **Estudo** reúne os Cursos acessíveis num único seletor
-**Curso**. Ao escolher uma opção, aparece uma única prévia com título, objetivo,
-relação de acesso, progresso e quantidade de Módulos e Lições. Identificadores,
-hashes e revisões técnicas não aparecem nesse
-percurso.
+Na tela inicial, mantenha **Estudo** selecionado e escolha um curso no seletor **Curso**. A prévia apresenta informações como objetivo, progresso e quantidade de módulos, lições e unidades de estudo.
 
-O seletor e a prévia usam descrições resumidas. A composição completa é
-carregada somente quando a pessoa entra no Curso. Por isso, a primeira abertura
-requer conexão mesmo quando o título já aparece. A Home não repete um estado
-offline enquanto ele não altera a ação. Sem conexão, a prévia informa
-**Disponível offline** quando já existe uma composição validada; caso contrário,
-informa **Conecte-se para abrir este Curso** e bloqueia a abertura.
+Use **Abrir** para entrar no curso. A navegação começa pelos módulos, independentemente do ponto de retomada já registrado. A partir daí, escolha a lição e a microssequência didática até chegar às unidades de estudo.
 
-A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
-pessoa. O acesso à **Autoria** leva à atividade autoral. Um Curso compartilhado
-fica em Estudo e continua sob responsabilidade do proprietário. A pessoa pode
-usar **Editar** nesse percurso sem alterar o original: a
-primeira gravação com mudança material
-cria um Curso pessoal privado, que passa a aparecer como **Cópia pessoal** e também
-pertence à sua Autoria.
+Na primeira abertura, é necessário estar conectado para que o aplicativo obtenha e valide o conteúdo. Depois disso, o curso pode permanecer disponível no dispositivo para retomada sem conexão. Quando não houver uma cópia local suficiente para abrir o curso, a própria tela informa que é necessário conectar-se.
 
-## Preparar o dispositivo para estudar sem conexão
+## Percorrer e retomar o estudo
 
-1. Entre na conta correta.
-2. No seletor **Curso**, escolha o Curso que pretende usar sem rede.
-3. Use **Abrir** e escolha o Módulo.
-4. Aguarde a composição aparecer; a conclusão dessa abertura guarda a revisão
-   validada para retomada sem conexão.
+O percurso segue esta hierarquia:
 
-O AraLearn mantém no banco local do dispositivo a lista conhecida, os Cursos
-abertos e o estado pessoal. Limpar os dados do navegador, reinstalar o
-aplicativo ou apagar o armazenamento do site pode eliminar alterações que ainda
-aguardavam sincronização.
+```text
+curso → módulo → lição → microssequência didática → unidade de estudo
+```
 
-## Abrir uma sessão
+Os níveis de navegação mostram o progresso já realizado. Dentro de uma unidade, o aplicativo mantém o contexto da microssequência e a posição atual.
 
-1. Na tela inicial, escolha o Curso no seletor.
-2. Confira a prévia e use **Abrir**. A ação sempre mostra os Módulos do Curso;
-   ela não muda de nome nem pula níveis por causa do progresso salvo.
-3. Escolha Módulo, Lição ou Microssequência para chegar às Unidades. **Rever** e
-   um endereço direto continuam abrindo o alvo que a pessoa escolheu
-   explicitamente.
+Ao avançar, a unidade concluída e o novo ponto de retomada são registrados no estado pessoal de estudo. Se a sessão for interrompida, esse ponto permite continuar a lição posteriormente.
 
-Os itens de navegação mostram o progresso de cada nível. Dentro de uma
-Unidade, a barra superior informa o contexto e a posição na Microssequência.
-**Voltar** restaura a origem real do percurso, inclusive rolagem e foco depois
-de Rever ou abrir um endereço direto. **Home** oferece uma saída global
-previsível. Quando for realmente útil acessar o nível didático pai, a jornada
-apresenta essa ação no próprio contexto, sem ocupar permanentemente a barra.
+**Voltar** retorna à origem do percurso. Isso também vale quando a unidade foi aberta pela seção **Rever** ou por um endereço direto. **Home** retorna à tela inicial.
 
-Ao avançar, a Unidade é marcada como concluída. O ponto alcançado permite
-retomar a Lição depois. Sem conexão, a mudança fica no dispositivo e é enviada
-quando a rede retorna.
+O progresso registrado serve à continuidade do estudo. Ele não funciona como nota nem como medida de aprendizagem. O capítulo [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) explica com mais detalhes quais informações são conservadas e como devem ser interpretadas.
 
 ## Responder a uma prática
 
-A forma de resposta depende do componente didático. Entre as possibilidades
-estão selecionar alternativas, preencher lacunas, digitar e ordenar trechos.
+As práticas podem pedir diferentes formas de resposta, como selecionar alternativas, preencher lacunas, digitar uma resposta ou ordenar trechos. A interação disponível depende do componente usado naquela unidade.
 
-1. Leia a explicação e a tarefa inteira.
-2. Responda no próprio componente.
-3. Use **Continuar**.
-4. Complete os campos indicados caso a resposta esteja incompleta.
-5. Leia o retorno apresentado e use **Continuar** para avançar.
+Depois de responder, use **Continuar**. Se houver algum campo obrigatório incompleto, o próprio componente indica o que falta. Após o envio, leia o retorno apresentado e use **Continuar** novamente para avançar.
 
-Uma resposta incorreta pode permitir um novo envio ou exibir a resposta,
-conforme o componente. O AraLearn não converte essa interação em nota global,
-classificação entre estudantes ou bloqueio do Curso.
+Conforme o tipo de prática, uma resposta incorreta pode permitir uma nova tentativa ou apresentar a resposta esperada. O resultado dessa interação não é convertido em uma nota global do curso.
 
-Numa prática de lacunas, acionar uma lacuna vazia abre somente as alternativas
-daquele ponto. Escolher uma alternativa preenche a mesma lacuna e devolve o foco
-a ela. Acionar uma lacuna já preenchida limpa somente aquele valor, sem alterar
-as demais respostas.
+## Marcar uma unidade para rever
 
-## Consultar as Fontes de uma Unidade
+Dentro de uma unidade, use **Marcar para rever**. O estado do controle indica quando a marca está ativa.
 
-Use o ícone **Fontes** dentro da Unidade. A consulta ocorre quando o painel é
-aberto; o catálogo privado do Curso não acompanha o conteúdo de Estudo.
+As unidades marcadas aparecem na seção **Rever** da tela inicial. Ao abrir um item, o AraLearn leva novamente à unidade correspondente e conserva seu lugar no curso. A marca também pode ser retirada diretamente da tela inicial; nesse caso, **Desfazer** restaura a unidade à lista sem exigir que ela seja aberta novamente.
 
-O painel pode apresentar título, citação, edição ou versão, um localizador
-legível como capítulo, slide ou figura, a localização exata e endereço externo.
-A visibilidade definida pela pessoa autora controla o que é
-mostrado:
+A marca pertence à conta da pessoa que estuda e não altera o conteúdo do curso.
 
-- **Não mostrar no Estudo** mantém a Fonte restrita à Autoria;
-- **Mostrar citação** apresenta a identificação e a localização;
-- **Mostrar citação e link** também pode apresentar o endereço externo.
+## Consultar as fontes de uma unidade
 
-Uma referência anterior ainda pendente de comprovação também fica restrita à
-Autoria. O Estudo não recebe trecho privado de verificação, histórico de
-revisões, identidade de quem editou nem controles de manutenção da Fonte.
-Um endereço externo pode mudar ou desaparecer; um PDF anexado ao Curso é o
-material preservado pelo AraLearn. A citação e o estado de disponibilidade
-descrevem a referência, mas não prometem acesso futuro ao material remoto.
+Quando houver fontes disponíveis para consulta, use **Fontes** dentro da unidade.
 
-## Marcar para rever
+O painel apresenta somente as informações que a pessoa autora tornou disponíveis em **Estudo**. Conforme a configuração da fonte, podem aparecer sua identificação, a localização usada no material — como capítulo, página, slide ou figura — e um link externo.
 
-Na Unidade, use **Marcar para rever**. O estado pressionado do ícone indica que
-a marca está ativa.
-
-As Unidades marcadas aparecem em **Rever**, na tela inicial. Cada item conserva
-o caminho até Curso, Módulo, Lição, Microssequência e Unidade. Ao abri-lo, o
-aplicativo carrega o Curso, se necessário, e leva ao alvo; **Voltar** retorna ao
-mesmo item, com posição e foco restaurados. Também é possível retirar a marca
-diretamente na Home. A confirmação oferece **Desfazer** sem abrir a Unidade.
-
-A marca pertence à pessoa e não altera o conteúdo do Curso.
+Fontes mantidas apenas na autoria e referências que ainda precisam de comprovação não aparecem nesse painel. A configuração e a manutenção dessas informações pertencem ao percurso de autoria.
 
 ## Registrar uma observação
 
-1. Use **Observação** dentro da Unidade.
-2. Escolha **Dúvida**, **Possível erro**, **Trecho confuso**, **Sugestão** ou
-   **Sem categoria**.
-3. Escreva a observação e salve.
+Use **Observação** dentro da unidade quando quiser registrar uma dúvida, indicar um possível erro, apontar um trecho confuso ou fazer uma sugestão. Também é possível deixar a observação sem categoria.
 
-O texto aceita até 2.000 caracteres Unicode, observado o limite técnico de
-16 KiB. É possível criar várias observações próprias na mesma Unidade. A folha
-mostra categoria, estado, sincronização e eventual resposta do proprietário;
-abra um item para editar ou retirar.
+O texto pode ter até 2.000 caracteres. Uma mesma unidade pode receber várias observações da mesma pessoa.
 
-Uma observação fica ligada à Unidade e usa persistência própria. Ela pode chegar
-à caixa de entrada do proprietário, enquanto colegas veem somente os registros
-que eles mesmos criaram. Uma resposta ou o estado **Resolvida** descreve a
-triagem da observação; uma correção do conteúdo exige o ciclo próprio de
-auditoria e verificação.
+Depois de salvar, é possível acompanhar as próprias observações, sua situação e uma eventual resposta da pessoa proprietária do curso. A pessoa proprietária recebe essas observações para triagem; outros estudantes não passam a ter acesso a elas.
 
-## Interromper com segurança
+Uma resposta ou o estado **Resolvida** informa o tratamento dado à observação. Isso não significa, por si só, que o conteúdo do curso tenha sido alterado. O funcionamento completo, incluindo edição, retirada, sincronização e retenção, está em [Observações e Anotações ancoradas](observacoes-pedagogicas.md).
 
-Depois que uma ação aparece na interface, é possível voltar pelos níveis ou
-fechar o aplicativo. Se estiver sem conexão, a sincronização pode continuar
-pendente no dispositivo. Preserve os dados do aplicativo e volte a conectá-lo
-antes de trocar de navegador ou desinstalar quando houver alterações recentes
-importantes.
+## Estudar sem conexão
 
-Ao estudar em duas abas ou em dois dispositivos, cada sessão conserva a tela em
-que a pessoa está, enquanto o estado persistido é reconciliado sem deslocar a
-outra sessão durante o uso. Se o acesso ao Curso selecionado for revogado, o
-servidor recusa novas leituras e alterações; na próxima validação conectada, o
-aplicativo remove o conteúdo local do Curso compartilhado, informa a mudança e
-seleciona outro Curso acessível, quando houver. Uma cópia pessoal já confirmada
-permanece como Curso privado da pessoa.
+Para preparar um curso para uso sem conexão, abra-o enquanto estiver conectado e aguarde até que o conteúdo seja carregado. A partir daí, a cópia necessária ao estudo pode permanecer no dispositivo.
 
-## Zerar o progresso de um Curso
+Progresso, marcas **Rever** e observações feitas sem conexão ficam registrados localmente e são enviados quando a rede retorna. Enquanto houver alterações pendentes, evite limpar os dados do aplicativo, reinstalá-lo ou remover seu armazenamento local.
 
-Quando há progresso, a prévia do Curso selecionado oferece **Zerar progresso do
-Curso**. A confirmação inclui o título para evitar engano. Essa ação limpa
-somente o progresso e o ponto de retomada do Curso escolhido. O Curso, as marcas
-**Rever**, as Anotações ancoradas e os dados dos demais Cursos permanecem.
+Se uma sincronização permanecer pendente ou houver dúvida sobre quais dados estão apenas no dispositivo, consulte [Solução de problemas](solucao-de-problemas.md) antes de fazer uma limpeza local.
 
-Também há reinícios delimitados dentro do percurso. O rótulo da confirmação
-informa se o alcance começa em um Módulo, Lição, Microssequência ou Unidade.
+## Zerar o progresso
 
-## Editar ou usar Assistência por IA
+Quando um curso possui progresso registrado, sua prévia oferece **Zerar progresso**. A confirmação identifica o curso antes de executar a ação.
 
-Quando a pessoa tem autorização, o modo **Editar** aparece no nível atual.
-Curso e Módulo permitem ajustar os metadados e a composição disponíveis; Lição
-e Microssequência também permitem organizar seus elementos filhos. Na Unidade,
-a edição trabalha sobre título, composição e conteúdo renderizável. Toda
-gravação exige **Salvar**; cancelar preserva o estado salvo anteriormente.
+O reinício remove o progresso e o ponto de retomada daquele curso. O conteúdo, as marcas **Rever** e as observações permanecem.
 
-**Assistência por IA** está disponível em Lição, Microssequência e Unidade. Ela
-abre uma conversa contextual em memória sobre o alvo atual. Cada resposta traz
-uma proposta; a pessoa pode discuti-la até que represente sua intenção. Somente
-**Aceitar e aplicar** autoriza gerar, validar e colocar o resultado no rascunho,
-e **Salvar** permanece separado. Uma proposta inválida, cancelada ou não
-renderizável não substitui o conteúdo corrente.
+Também podem existir reinícios com alcance menor dentro do percurso. A confirmação informa se a ação começa em um módulo, uma lição, uma microssequência ou uma unidade.
 
-Se o Curso for seu, **Editar** grava a Unidade no próprio Curso. Se ele foi
-compartilhado, o aviso explica que **Salvar na minha cópia** criará um Curso
-pessoal privado e deixará o original intacto. A edição manual e a assistência
-por IA usam o mesmo conteúdo e a mesma prévia. Pedir uma sugestão, cancelar ou
-sair sem uma mudança material não cria a cópia.
+## Editar a partir de Estudo
 
-Depois da primeira gravação, o AraLearn continua na mesma Unidade da nova cópia.
-A estrutura e o conteúdo corrente são materializados nela, mas planejamento,
-Fontes, PDFs, acessos, progresso e Observações começam separados. A cópia aparece
-como **Cópia pessoal**; o Curso de origem continua como **Curso compartilhado**.
+Alguns cursos e níveis do percurso podem apresentar **Editar** ou **Assistência por IA** quando essa atividade de autoria está disponível para a pessoa.
 
-Se a conexão cair antes da confirmação, o rascunho e o pedido delimitado ficam
-pendentes no dispositivo. Ao reconectar, o aplicativo repete a mesma intenção
-sem criar outra cópia. Um conflito em outra aba conserva o rascunho para
-recuperação. Também é possível registrar uma observação situada no Curso em que
-a pessoa estiver estudando e conversar com o proprietário pelos canais definidos.
+Em um curso próprio, uma alteração salva modifica o próprio curso. Em um curso compartilhado, a primeira gravação de uma mudança cria uma cópia pessoal privada; o curso de origem permanece inalterado. Abrir o editor, pedir uma sugestão, cancelar ou sair sem salvar uma mudança não cria essa cópia.
 
-## Cuidar da conta e dos dados do dispositivo
+Depois que a criação da cópia é confirmada, o aplicativo continua no mesmo ponto do percurso, mas o progresso e as observações do curso de origem não são transferidos para ela. Como edição e assistência por IA pertencem à autoria, o [Guia do professor e autor](guia-professor-autor.md) desenvolve essas operações e suas regras.
 
-Abra **Conta e aparência** para alterar o nome de apresentação, escolher ou
-remover uma foto e definir o tema do sistema, claro ou escuro. A foto pode ser
-JPEG, PNG ou WebP de até 512 KiB e fica em armazenamento privado. Ao fechar a
-área, o foco retorna ao controle que a abriu.
+## Conta, dados e outras operações
 
-O painel conserva a mesma altura enquanto alterna entre a vista principal,
-**Foto do perfil** e **Dados e conta**. **Voltar** ou `Esc` retorna da subvista à
-vista principal; outro `Esc` fecha o painel. **Remover foto** só aparece quando
-há uma foto corrente ou uma nova escolha ainda não salva.
+Criação de conta, recuperação de senha, perfil, aparência, saída, limpeza dos dados locais e exclusão da conta são operações gerais do aplicativo. Elas estão descritas em [Uso do aplicativo](uso-do-app.md).
 
-**Remover dados deste dispositivo** apaga somente a réplica local da conta
-ativa e mantém a conta e os dados remotos. **Sair** encerra a sessão, mas pode
-manter dados locais já gravados; **Sair e remover dados deste dispositivo** faz
-as duas coisas. Formulários ainda abertos e não salvos não fazem parte da
-réplica. Em aparelho compartilhado, confira o alcance indicado antes de
-confirmar.
-
-**Excluir conta** é uma operação remota, exige conexão e remove a conta, os
-Cursos próprios e as relações dependentes depois da limpeza dos arquivos
-privados. Essa ação é diferente de limpar o dispositivo e não pode ser desfeita.
-Consulte [Uso do aplicativo](uso-do-app.md) e [Privacidade](privacidade.md) para
-os detalhes operacionais e de retenção.
-
-## Como interpretar o estado de estudo
-
-O estado pessoal conserva posição, conclusões e marcas necessárias à
-continuidade. As Anotações ancoradas conservam o texto declarado e o contexto da
-triagem. Esses registros descrevem ações no produto; isoladamente, não permitem
-concluir atenção, engajamento, domínio, aprendizagem ou desempenho comparável
-entre pessoas.
-
-Qualquer uso em pesquisa precisa definir o construto, a unidade de análise, o
-instrumento, o procedimento, os dados ausentes e os limites de interpretação.
-Veja [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) e o
-[Glossário de construtos](glossario-construtos.md).
+Para problemas de abertura, sincronização, acesso, observações pendentes ou cópias pessoais, consulte [Solução de problemas](solucao-de-problemas.md).
