@@ -2,8 +2,12 @@ import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 
 export const LOCAL_APPLICATION_ORIGIN = "http://127.0.0.1:4182";
+export const CHATGPT_ACTION_ORIGIN = "https://chatgpt.com";
 const MCP_PROTOCOL_VERSION = "2025-11-25";
 const MCP_REDIRECT_URI = "https://mcp-e2e.aralearn.invalid/callback";
+const ACTION_GPT_ID = "g-aralearn-e2e";
+const ACTION_REDIRECT_URI =
+  `https://chatgpt.com/aip/${ACTION_GPT_ID}/oauth/callback`;
 
 export function localSupabaseConfiguration(environment = process.env) {
   const projectUrl = String(environment.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
@@ -321,6 +325,160 @@ export async function cleanupLocalMcpSession(config, lifecycle) {
   }
 }
 
+export async function authorizeLocalActionSession(config, {
+  userAccessToken,
+  userId,
+  lifecycle = {}
+}) {
+  const actionUrl = `${config.projectUrl}/functions/v1/aralearn-authoring-action`;
+  Object.assign(lifecycle, {
+    actionUrl,
+    userAccessToken,
+    userId,
+    clientId: null,
+    accessToken: null
+  });
+
+  const registeredResult = await localSupabaseRequest(
+    config,
+    "/functions/v1/aralearn-authoring-action/oauth/clients/register",
+    {
+      method: "POST",
+      token: userAccessToken,
+      body: {},
+      origin: LOCAL_APPLICATION_ORIGIN
+    }
+  );
+  if (registeredResult.response.status !== 201) {
+    throw new Error(
+      `Registro do cliente de Actions: HTTP ${registeredResult.response.status}: ` +
+      safeRemoteFailure(registeredResult.payload)
+    );
+  }
+  const registered = registeredResult.payload;
+  const clientId = String(registered?.client_id || "");
+  const clientSecret = String(registered?.client_secret || "");
+  if (!/^[0-9a-f-]{36}$/iu.test(clientId) || !/^ars_[A-Za-z0-9_-]{40,}$/u.test(clientSecret)) {
+    throw new Error("O cadastro de Actions não devolveu credenciais válidas.");
+  }
+  lifecycle.clientId = clientId;
+
+  const linkedResult = await localSupabaseRequest(
+    config,
+    `/functions/v1/aralearn-authoring-action/oauth/clients/${encodeURIComponent(clientId)}/link`,
+    {
+      method: "POST",
+      token: userAccessToken,
+      body: { gptId: ACTION_GPT_ID },
+      origin: LOCAL_APPLICATION_ORIGIN
+    }
+  );
+  if (!linkedResult.response.ok) {
+    throw new Error(
+      `Vínculo do cliente ao GPT: HTTP ${linkedResult.response.status}: ` +
+      safeRemoteFailure(linkedResult.payload)
+    );
+  }
+  const linked = linkedResult.payload;
+  if (linked?.client_id !== clientId || linked?.gpt_id !== ACTION_GPT_ID ||
+      linked?.linked !== true) {
+    throw new Error("O cliente de Actions não foi vinculado ao GPT de teste.");
+  }
+
+  const state = randomBytes(32).toString("base64url");
+  const authorizationUrl = new URL(`${actionUrl}/oauth/authorize`);
+  authorizationUrl.search = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: ACTION_REDIRECT_URI,
+    scope: "openid email",
+    state
+  }).toString();
+  const authorizationResponse = await fetch(authorizationUrl, {
+    headers: {
+      apikey: config.publishableKey,
+      Origin: CHATGPT_ACTION_ORIGIN
+    },
+    redirect: "manual"
+  });
+  if (![302, 303].includes(authorizationResponse.status)) {
+    throw new Error(`Início da autorização de Actions: HTTP ${authorizationResponse.status}.`);
+  }
+  const consentUrl = new URL(
+    String(authorizationResponse.headers.get("location") || ""),
+    LOCAL_APPLICATION_ORIGIN
+  );
+  if (consentUrl.origin !== LOCAL_APPLICATION_ORIGIN || consentUrl.pathname !== "/") {
+    throw new Error("A autorização de Actions não abriu o consentimento do AraLearn.");
+  }
+  const authorizationId = String(
+    consentUrl.searchParams.get("action_authorization_id") || ""
+  );
+  if (!/^[0-9a-f-]{36}$/iu.test(authorizationId)) {
+    throw new Error("O consentimento de Actions não contém uma identidade válida.");
+  }
+  const authorizationPath =
+    `/functions/v1/aralearn-authoring-action/oauth/authorizations/${authorizationId}`;
+  const detailsResult = await localSupabaseRequest(config, authorizationPath, {
+    token: userAccessToken,
+    origin: LOCAL_APPLICATION_ORIGIN
+  });
+  if (!detailsResult.response.ok) {
+    throw new Error(
+      `Leitura do consentimento de Actions: HTTP ${detailsResult.response.status}: ` +
+      safeRemoteFailure(detailsResult.payload)
+    );
+  }
+  const details = detailsResult.payload;
+  if (details?.authorization_id !== authorizationId || details?.client?.id !== clientId ||
+      details?.user?.id !== userId || details?.scope !== "openid email") {
+    throw new Error("O consentimento de Actions não corresponde à pessoa autora.");
+  }
+
+  const approvedResult = await localSupabaseRequest(config, authorizationPath, {
+    method: "POST",
+    token: userAccessToken,
+    body: { action: "approve" },
+    origin: LOCAL_APPLICATION_ORIGIN
+  });
+  if (!approvedResult.response.ok) {
+    throw new Error(
+      `Aprovação do consentimento de Actions: HTTP ${approvedResult.response.status}: ` +
+      safeRemoteFailure(approvedResult.payload)
+    );
+  }
+  const approved = approvedResult.payload;
+  const callback = new URL(String(approved?.redirect_url || ""));
+  if (callback.origin + callback.pathname !== ACTION_REDIRECT_URI ||
+      callback.searchParams.get("state") !== state || !callback.searchParams.get("code")) {
+    throw new Error("O callback de Actions não corresponde à autorização aprovada.");
+  }
+
+  const tokenResponse = await fetch(`${actionUrl}/oauth/token`, {
+    method: "POST",
+    headers: {
+      apikey: config.publishableKey,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: CHATGPT_ACTION_ORIGIN
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code: callback.searchParams.get("code"),
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: ACTION_REDIRECT_URI
+    })
+  });
+  const grant = await checkedResponsePayload(tokenResponse, "Troca do código de Actions");
+  const accessToken = String(grant?.access_token || "");
+  if (!/^ara_[A-Za-z0-9_-]{40,}$/u.test(accessToken) || grant?.token_type !== "Bearer" ||
+      grant?.scope !== "openid email") {
+    throw new Error("O OAuth de Actions não devolveu o bearer esperado.");
+  }
+  lifecycle.accessToken = accessToken;
+  return lifecycle;
+}
+
 export async function createLocalMcpClient(config, accessToken) {
   const endpoint = `${config.projectUrl}/functions/v1/aralearn-authoring-mcp`;
   let rpcId = 0;
@@ -373,6 +531,14 @@ export async function courseAction(config, name, body, token) {
     config,
     `/functions/v1/aralearn-course-api/app/${encodeURIComponent(name)}`,
     { method: "POST", token, body, origin: LOCAL_APPLICATION_ORIGIN }
+  );
+}
+
+export async function chatGptAction(config, name, body, token) {
+  return localSupabaseRequest(
+    config,
+    `/functions/v1/aralearn-authoring-action/${encodeURIComponent(name)}`,
+    { method: "POST", token, body, origin: CHATGPT_ACTION_ORIGIN }
   );
 }
 

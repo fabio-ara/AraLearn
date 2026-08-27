@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
+  AUTHORING_PROTOCOL_V1_TOOLS
+} from "../functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 
 const projectUrl = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/u, "");
 const accessToken = String(
@@ -21,6 +27,16 @@ assert.equal(
 );
 const edgeUrl = `${projectUrl}/functions/v1/aralearn-authoring-mcp`;
 const protocolVersion = "2025-11-25";
+const expectedAuthoringContract = Object.freeze({
+  id: AUTHORING_PROTOCOL_ID,
+  version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+});
+const expectedAuthoringContractHeader = [
+  AUTHORING_PROTOCOL_ID,
+  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
+  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
+].join("; ");
 let rpcId = 0;
 
 const AUDIT_CRITERIA = Object.freeze({
@@ -74,6 +90,20 @@ async function readJson(response, label) {
   }
 }
 
+function withoutMcpTransportMetadata(tools) {
+  return tools.map((definition) => {
+    const normalized = structuredClone(definition);
+    delete normalized.securitySchemes;
+    if (normalized._meta) {
+      delete normalized._meta.securitySchemes;
+      delete normalized._meta.ui;
+      delete normalized._meta["openai/outputTemplate"];
+      if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
+    }
+    return normalized;
+  });
+}
+
 async function call(method, params = {}, { initialize = false } = {}) {
   rpcId += 1;
   const response = await fetch(edgeUrl, {
@@ -97,6 +127,11 @@ async function call(method, params = {}, { initialize = false } = {}) {
   assert.equal(body?.id, rpcId);
   assert.equal(body?.error, undefined, body?.error?.message);
   assert.equal(response.headers.get("mcp-session-id"), null, "O servidor deve permanecer stateless.");
+  assert.equal(
+    response.headers.get("x-aralearn-authoring-contract"),
+    expectedAuthoringContractHeader,
+    `${method}: o fingerprint servido não corresponde ao contrato canônico local.`
+  );
   return body.result;
 }
 
@@ -122,6 +157,11 @@ const metadataResponse = await fetch(
   `${edgeUrl}/.well-known/oauth-protected-resource`
 );
 assert.equal(metadataResponse.status, 200, "Protected-resource metadata indisponível.");
+assert.equal(
+  metadataResponse.headers.get("x-aralearn-authoring-contract"),
+  expectedAuthoringContractHeader,
+  "A metadata OAuth está vinculada a outra revisão do contrato de Autoria."
+);
 const metadata = await metadataResponse.json();
 assert.equal(metadata.resource, edgeUrl);
 assert.deepEqual(metadata.scopes_supported, ["offline_access"]);
@@ -146,9 +186,12 @@ const initialized = await call("initialize", {
 }, { initialize: true });
 assert.equal(initialized.protocolVersion, protocolVersion);
 assert.equal(initialized.capabilities.tools.listChanged, false);
+assert.equal(initialized.serverInfo.version, AUTHORING_PROTOCOL_SCHEMA_VERSION);
+assert.deepEqual(initialized._meta?.authoringContract, expectedAuthoringContract);
 
 await call("ping");
 const listed = await call("tools/list");
+assert.deepEqual(listed._meta?.authoringContract, expectedAuthoringContract);
 assert.deepEqual(listed.tools.map(({ name }) => name), [
   "listarCursos",
   "lerCurso",
@@ -156,6 +199,11 @@ assert.deepEqual(listed.tools.map(({ name }) => name), [
   "alterarCurso",
   "consultarComponentesDidaticos"
 ]);
+assert.deepEqual(
+  withoutMcpTransportMetadata(listed.tools),
+  AUTHORING_PROTOCOL_V1_TOOLS,
+  "O schema completo servido pelo MCP diverge do protocolo público canônico."
+);
 assert.ok(listed.tools.every((entry) =>
   entry.securitySchemes?.[0]?.type === "oauth2" &&
   entry.securitySchemes?.[0]?.scopes?.length === 1 &&

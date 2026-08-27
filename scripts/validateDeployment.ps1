@@ -46,6 +46,10 @@ try {
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-course-api/index.ts'
   )
+  Invoke-CheckedCommand 'Verificação Deno de Actions' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-authoring-action/index.ts'
+  )
 
   if ($Scope -in @('Web', 'Full')) {
     Invoke-CheckedCommand 'Build web' 'npm.cmd' @('run', 'pages:build')

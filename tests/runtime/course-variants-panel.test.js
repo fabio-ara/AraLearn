@@ -47,6 +47,23 @@ function emptyVariantList() {
   };
 }
 
+function variantList(attachedCount) {
+  return {
+    ...emptyVariantList(),
+    items: [{
+      comparisonSetId: SET_ID,
+      checkpointId: "30000000-0000-4000-8000-000000000003",
+      checkpointHash: "a".repeat(64),
+      checkpointCourseRevision: 4,
+      memberCount: 2,
+      attachedCount,
+      detachedCount: 2 - attachedCount,
+      createdAt: "2026-08-18T12:00:00Z",
+      updatedAt: "2026-08-18T12:00:00Z"
+    }]
+  };
+}
+
 test("painel de variantes enumera conjuntos e abre uma comparação vinculada ao Curso", async () => {
   const calls = []; const openedCourses = []; let detached = false;
   const controller = {
@@ -189,6 +206,40 @@ test("painel de variantes enumera conjuntos e abre uma comparação vinculada ao
   assert.equal(calls.filter(([operation]) => operation === "open").length, 1);
   panel.destroy();
   assert.equal(documentValue.listeners.has("click"), false);
+});
+
+test("refresh de Variantes preserva a lista visível até aplicar a nova leitura", async () => {
+  const root = new Root();
+  const reread = deferred();
+  let reads = 0;
+  const panel = createCourseVariantsPanel({
+    root,
+    controller: {
+      async listCourseVariantComparisons() {
+        reads += 1;
+        return reads === 1 ? variantList(2) : reread.promise;
+      }
+    },
+    course: { courseId: COURSE_ID, title: "Origem", goal: "Objetivo", revision: 4 }
+  });
+
+  assert.equal(await panel.open(), true);
+  assert.match(root.innerHTML, /2 variantes vinculadas/u);
+  const refreshing = panel.refresh({
+    courseId: COURSE_ID,
+    title: "Origem",
+    goal: "Objetivo",
+    revision: 4
+  });
+
+  assert.equal(reads, 2);
+  assert.match(root.innerHTML, /2 variantes vinculadas/u);
+  assert.doesNotMatch(root.innerHTML, /Carregando variantes/u);
+
+  reread.resolve(variantList(1));
+  assert.equal(await refreshing, true);
+  assert.match(root.innerHTML, /Aguardando outra variante/u);
+  assert.doesNotMatch(root.innerHTML, /2 variantes vinculadas/u);
 });
 
 test("painel reutiliza o catálogo real ao oferecer restrição de componentes", async () => {

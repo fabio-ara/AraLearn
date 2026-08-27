@@ -1,12 +1,25 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+} from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
 const REQUEST_TIMEOUT_MS = 20_000;
 const MCP_PATH = "/functions/v1/aralearn-authoring-mcp";
+const ACTION_PATH = "/functions/v1/aralearn-authoring-action";
+const ACTION_ORIGIN = "https://chatgpt.com";
+const AUTHORING_CONTRACT_HEADER_NAME = "X-AraLearn-Authoring-Contract";
 const SUPPORTED_JWT_KEYS = new Set(["EC:ES256:P-256"]);
+export const EXPECTED_AUTHORING_CONTRACT_HEADER = [
+  AUTHORING_PROTOCOL_ID,
+  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
+  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
+].join("; ");
 
 function requiredText(value, label) {
   const normalized = typeof value === "string" ? value.trim() : "";
@@ -141,6 +154,16 @@ async function responseJson(response, label) {
   return payload;
 }
 
+function validateHostedAuthoringContract(response, label) {
+  if (!response.ok) {
+    throw new Error(`${label} falhou (HTTP ${response.status}).`);
+  }
+  if (response.headers.get(AUTHORING_CONTRACT_HEADER_NAME) !==
+      EXPECTED_AUTHORING_CONTRACT_HEADER) {
+    throw new Error(`${label} não corresponde ao contrato público corrente da Autoria.`);
+  }
+}
+
 export async function verifyHostedBackend({
   projectUrl,
   publishableKey,
@@ -173,7 +196,7 @@ export async function verifyHostedBackend({
     );
   }
   const runtime = compareRuntimeManifest(expected, payload);
-  const [jwksResponse, metadataResponse] = await Promise.all([
+  const [jwksResponse, metadataResponse, actionPreflightResponse] = await Promise.all([
     fetchImpl(`${publicConfiguration.projectUrl}/auth/v1/.well-known/jwks.json`, {
       headers: { Accept: "application/json" },
       redirect: "error",
@@ -183,14 +206,33 @@ export async function verifyHostedBackend({
       headers: { Accept: "application/json" },
       redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    }),
+    fetchImpl(`${publicConfiguration.projectUrl}${ACTION_PATH}/listarCursos`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: ACTION_ORIGIN,
+        "Access-Control-Request-Method": "POST"
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     })
   ]);
+  validateHostedAuthoringContract(metadataResponse, "O MCP hospedado");
+  validateHostedAuthoringContract(actionPreflightResponse, "A Action hospedada");
   const oauth = validateHostedOAuthBoundary({
     projectUrl: publicConfiguration.projectUrl,
     jwks: await responseJson(jwksResponse, "A leitura do JWKS hospedado"),
     metadata: await responseJson(metadataResponse, "A leitura da metadata OAuth do MCP")
   });
-  return { ...runtime, oauth };
+  return {
+    ...runtime,
+    oauth,
+    authoringContract: {
+      id: AUTHORING_PROTOCOL_ID,
+      version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
+      hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+    }
+  };
 }
 
 async function main() {

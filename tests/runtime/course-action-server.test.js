@@ -5,12 +5,27 @@ import { readFile } from "node:fs/promises";
 import {
   createAuthoringActionHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
+  AUTHORING_PROTOCOL_V1_TOOLS
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  applyCourseAuthoringPlanCommand
+} from "../../supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringPlan.js";
+import {
+  forChatGptActionDocumentation,
+  projectAuthoringProtocolToolsForActions
+} from "../../scripts/projectChatGptActionSchemas.mjs";
 
 const ORIGIN = "https://chatgpt.com";
 const BASE_URL = "https://project.example/functions/v1/aralearn-authoring-action";
 const APP_URL = "https://app.example/";
 const ACTOR_ID = "10000000-0000-4000-8000-000000000001";
 const ANNOTATION_ID = "20000000-0000-4000-8000-000000000002";
+const PLAN_ID = "30000000-0000-4000-8000-000000000003";
+const PART_ID = "40000000-0000-4000-8000-000000000004";
 
 function annotation({ state = "open" } = {}) {
   return {
@@ -176,6 +191,131 @@ test("Actions lê e altera Observações com destinatário e principal próprios
   assert.equal(change.data.dataDisclosure.recipient, "connected_actions_gpt");
 });
 
+test("Actions lê, altera e relê o plano com CAS, Parte e deep link preservados", async () => {
+  let courseRevision = 1;
+  let commitCalls = 0;
+  let plan = {
+    id: PLAN_ID,
+    version: 1,
+    title: "Curso corrente",
+    objective: "Objetivo inicial",
+    audience: "",
+    scope: "",
+    preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+    intendedLearningOutcomes: [],
+    instructionalAnalysisUnits: [],
+    evidenceRequirements: [],
+    parts: []
+  };
+  const deepLink = `${APP_URL}#/authoring/courses/${ACTOR_ID}?section=planning`;
+  const handler = createHandler({
+    async getCourseInstructionalPlan({ courseId }) {
+      assert.equal(courseId, ACTOR_ID);
+      return {
+        contract: "aralearn.course-instructional-plan.v1",
+        courseId,
+        courseRevision,
+        plan: structuredClone(plan),
+        recentActivity: [],
+        deepLink
+      };
+    },
+    async commitCourseInstructionalPlan(value) {
+      commitCalls += 1;
+      assert.equal(value.expectedCourseRevision, courseRevision);
+      assert.equal(value.expectedPlanVersion, plan.version);
+      const { version: currentPlanVersion, ...editablePlan } = plan;
+      const nextPlan = applyCourseAuthoringPlanCommand(editablePlan, value.command);
+      courseRevision += 1;
+      plan = { ...nextPlan, version: currentPlanVersion + 1 };
+      return {
+        contract: "aralearn.course-instructional-plan-change.v1",
+        courseId: ACTOR_ID,
+        courseRevision,
+        planId: PLAN_ID,
+        planVersion: plan.version,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        deepLink
+      };
+    }
+  });
+
+  const readPlan = async () => {
+    const response = await handler(request("lerCurso", {
+      courseId: ACTOR_ID,
+      view: "instructional_plan"
+    }));
+    assert.equal(response.status, 200);
+    return (await response.json()).data;
+  };
+  const changePlan = async (requestId, current, planCommand) => {
+    const response = await handler(request("alterarCurso", {
+      requestId,
+      courseId: ACTOR_ID,
+      expectedRevision: current.courseRevision,
+      expectedPlanVersion: current.plan.version,
+      operation: "update_instructional_plan",
+      planCommand
+    }));
+    const payload = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(payload));
+    return payload.data;
+  };
+
+  const before = await readPlan();
+  assert.equal(before.courseRevision, 1);
+  assert.equal(before.plan.version, 1);
+  assert.equal(before.deepLink, deepLink);
+
+  const overviewChange = await changePlan("action-plan-overview-0001", before, {
+    type: "update_plan",
+    objective: "Objetivo persistido pela Action",
+    audience: "Pessoas autoras"
+  });
+  assert.equal(overviewChange.courseRevision, 2);
+  assert.equal(overviewChange.planVersion, 2);
+  assert.equal(overviewChange.deepLink, deepLink);
+  const afterOverview = await readPlan();
+  assert.equal(afterOverview.plan.objective, "Objetivo persistido pela Action");
+  assert.equal(afterOverview.plan.audience, "Pessoas autoras");
+  assert.equal(afterOverview.courseRevision, 2);
+  assert.equal(afterOverview.plan.version, 2);
+
+  const partChange = await changePlan("action-plan-part-0001", afterOverview, {
+    type: "add_part",
+    id: PART_ID,
+    position: 0,
+    title: "Fundamentos verificáveis",
+    intent: "Organizar a primeira progressão didática."
+  });
+  assert.equal(partChange.courseRevision, 3);
+  assert.equal(partChange.planVersion, 3);
+  const afterPart = await readPlan();
+  assert.deepEqual(afterPart.plan.parts, [{
+    id: PART_ID,
+    position: 0,
+    title: "Fundamentos verificáveis",
+    intent: "Organizar a primeira progressão didática.",
+    microsequenceIds: []
+  }]);
+
+  const invalid = await handler(request("alterarCurso", {
+    requestId: "action-plan-invalid-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: afterPart.courseRevision,
+    expectedPlanVersion: afterPart.plan.version,
+    operation: "update_instructional_plan",
+    planCommand: { type: "tipo_inexistente" }
+  }));
+  const invalidPayload = await invalid.json();
+  assert.equal(invalid.status, 422);
+  assert.equal(invalidPayload.error.code, "invalid_course_authoring_plan_command");
+  assert.equal(commitCalls, 2);
+  assert.equal((await readPlan()).plan.version, 3);
+});
+
 test("Actions não aceita o bearer sem passar pelo resolvedor específico", async () => {
   const response = await createHandler()(new Request(`${BASE_URL}/listarCursos`, {
     method: "POST",
@@ -213,26 +353,21 @@ test("Actions preserva as cinco operações correntes e rejeita Workspace", asyn
     "utf8"
   ));
   assert.equal(openApi.openapi, "3.1.0");
-  assert.deepEqual(Object.keys(openApi.paths), [
-    "/listarCursos",
-    "/lerCurso",
-    "/criarCurso",
-    "/alterarCurso",
-    "/consultarComponentesDidaticos"
-  ]);
+  assert.deepEqual(
+    Object.keys(openApi.paths),
+    AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => `/${name}`)
+  );
   assert.equal(JSON.stringify(openApi).includes("Workspace"), false);
-  assert.deepEqual(Object.keys(openApi.components.schemas), [
-    "SuccessResponse", "ErrorResponse"
-  ]);
+  assert.ok(openApi.components.schemas.SuccessResponse);
+  assert.ok(openApi.components.schemas.ErrorResponse);
   for (const pathValue of Object.values(openApi.paths)) {
     assert.ok(pathValue.post.description.length <= 300);
   }
-  const readDescription = openApi.paths["/lerCurso"].post.description;
-  for (const view of [
-    "course_sources", "anchored_annotations", "audit_cycle",
-    "variant_comparison", "variant_comparisons"
-  ]) {
-    assert.match(readDescription, new RegExp(view, "u"));
+  for (const tool of AUTHORING_PROTOCOL_V1_TOOLS) {
+    assert.equal(
+      openApi.paths[`/${tool.name}`].post.description,
+      forChatGptActionDocumentation(tool.description)
+    );
   }
   const oauth = openApi.components.securitySchemes.AraLearnOAuth;
   assert.match(
@@ -269,24 +404,28 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
       import.meta.url
     )
   );
-  assert.ok(file.byteLength < 72 * 1024);
+  assert.ok(file.byteLength < 128 * 1024);
   const openApi = JSON.parse(file);
+  assert.equal(openApi.info["x-aralearn-protocol"], AUTHORING_PROTOCOL_ID);
+  assert.equal(
+    openApi.info["x-aralearn-protocol-schema-version"],
+    AUTHORING_PROTOCOL_SCHEMA_VERSION
+  );
+  assert.equal(
+    openApi.info["x-aralearn-contract-fingerprint"],
+    AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+  );
   const inputSchemas = Object.values(openApi.paths).map(
     ({ post }) => post.requestBody.content["application/json"].schema
   );
   assert.equal(inputSchemas.some((schema) => JSON.stringify(schema).includes('"allOf"')), false);
-  assert.match(openApi.paths["/alterarCurso"].post.description, /mode automatic/iu);
-  const changeInput = openApi.paths["/alterarCurso"].post.requestBody
-    .content["application/json"].schema.description;
-  assert.match(changeInput, /sourceAttributionApplications/iu);
-  assert.match(changeInput, /nunca em content/iu);
-  assert.match(changeInput, /record_step sempre inclui[\s\S]+resultFacts/iu);
-  assert.match(changeInput,
-    /record_audit e verify_finding incluem ao menos um check factual_quality, um pedagogical_quality e um editorial_quality/iu);
-  const readInput = openApi.paths["/lerCurso"].post.requestBody
-    .content["application/json"].schema.description;
-  assert.match(readInput, /part_materialization/iu);
-  assert.match(readInput, /proíbe expectedRevision/iu);
+  assert.equal(inputSchemas.some((schema) => JSON.stringify(schema).includes('"const"')), false);
+  const projected = projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS);
+  for (const tool of projected) {
+    const operation = openApi.paths[`/${tool.name}`]?.post;
+    assert.equal(operation.operationId, tool.name);
+    assert.ok(operation.requestBody.content["application/json"].schema, tool.name);
+  }
 });
 
 test("migration de Actions restaura somente a execução server-side do OAuth", async () => {

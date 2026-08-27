@@ -353,6 +353,16 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+function deferredValue() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolveValue, rejectValue) => {
+    resolve = resolveValue;
+    reject = rejectValue;
+  });
+  return { promise, resolve, reject };
+}
+
 test("catálogo pagina mais de 55 Fontes em páginas estritas de 10", async () => {
   const all = Array.from({ length: 55 }, (_, index) => source(index + 1));
   const calls = [];
@@ -403,6 +413,40 @@ test("catálogo pagina mais de 55 Fontes em páginas estritas de 10", async () =
     { limit: 10, expectedRevision: 5, cursor: "page-40" },
     { limit: 10, expectedRevision: 5, cursor: "page-50" }
   ]);
+});
+
+test("refresh do catálogo preserva as Fontes visíveis até aplicar a nova leitura", async () => {
+  const root = new FakeRoot();
+  const reread = deferredValue();
+  let reads = 0;
+  const panel = createCourseSourcesPanel({
+    root,
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    controller: {
+      ...annotationController(),
+      async loadCourseSources() {
+        reads += 1;
+        return reads === 1
+          ? catalogPage([source(1)])
+          : reread.promise;
+      },
+      async mutateCourseSources() {}
+    }
+  });
+
+  assert.equal(await panel.open(), true);
+  assert.match(root.innerHTML, /Fonte 1/u);
+  const refreshing = panel.refresh(5);
+
+  assert.equal(reads, 2);
+  assert.match(root.innerHTML, /Fonte 1/u);
+  assert.doesNotMatch(root.innerHTML, /Carregando fontes/u);
+
+  reread.resolve(catalogPage([source(2)]));
+  assert.equal(await refreshing, true);
+  assert.match(root.innerHTML, /Fonte 2/u);
+  assert.doesNotMatch(root.innerHTML, /Fonte 1/u);
 });
 
 test("Fonte registra nota, contestação e reformulação e exporta a mesma proveniência", async () => {

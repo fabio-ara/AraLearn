@@ -966,6 +966,39 @@ if (!accessToken) {
   assert.equal(secondPage.hasPrevious, true);
   assert.equal(secondPage.hasMore, false);
 
+  const paragraphContracts = await tool("consultarComponentesDidaticos", {
+    operation: "contracts",
+    packages: ["aralearn.resource.paragraph@1.0.0"]
+  });
+  const paragraphContract = paragraphContracts.result.items[0];
+  assert.equal(paragraphContracts.operation, "contracts");
+  assert.equal(paragraphContract.status, "ok");
+  assert.equal(paragraphContract.packageId, "aralearn.resource.paragraph");
+  assert.equal(paragraphContract.version, "1.0.0");
+  assert.equal(typeof paragraphContract.definition, "object");
+
+  const previewedStudyUnit = await tool("consultarComponentesDidaticos", {
+    operation: "preview_study_unit",
+    courseId: created.courseId,
+    studyUnitId: firstPage.items[0].studyUnit.id,
+    studyUnitJson: JSON.stringify(firstPage.items[0].studyUnit)
+  });
+  assert.equal(previewedStudyUnit.operation, "preview_study_unit");
+  assert.equal(
+    previewedStudyUnit.result.studyUnit.id,
+    firstPage.items[0].studyUnit.id
+  );
+  assert.equal(previewedStudyUnit.result.previewMode, "client_renderer");
+  assert.ok(previewedStudyUnit.result.accessibleText);
+  assert.match(
+    previewedStudyUnit.result.deepLink,
+    new RegExp(
+      `/#/authoring/courses/${created.courseId}` +
+        `\\?section=content&studyUnitId=${firstPage.items[0].studyUnit.id}$`,
+      "u"
+    )
+  );
+
   const analysisItemId = randomUUID();
   const evidenceItemId = randomUUID();
   const analysisChange = await tool("alterarCurso", {
@@ -1046,10 +1079,45 @@ if (!accessToken) {
   assert.equal(initialDesign.definitions.length, 4);
   assert.equal(initialDesign.componentCatalog.options.length, 32);
 
-  const designChange = await tool("alterarCurso", {
+  const automaticDesignChange = await tool("alterarCurso", {
     requestId: randomUUID(),
     courseId: created.courseId,
     expectedRevision: targetChange.courseRevision,
+    operation: "update_course_design",
+    designCommand: {
+      type: "set_parameter",
+      scope: { kind: "course", ref: created.courseId },
+      parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+      value: 3,
+      mode: "automatic",
+      reason: "Exercitar a resolução automática pelo MCP local."
+    }
+  });
+  assert.equal(
+    automaticDesignChange.courseRevision,
+    provenanceComposition.revision + 4
+  );
+  assert.equal(automaticDesignChange.change.type, "set_parameter");
+
+  const automaticallyResolvedDesign = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "course_design",
+    scope: { kind: "course", ref: created.courseId },
+    limit: 32
+  });
+  const automaticPracticeMinimum = automaticallyResolvedDesign.parameters.find(
+    ({ parameterId }) => parameterId
+      === "minimum_distinct_practice_opportunities_per_evidence_requirement"
+  );
+  assert.equal(automaticallyResolvedDesign.courseRevision,
+    automaticDesignChange.courseRevision);
+  assert.equal(automaticPracticeMinimum.effectiveAssignment.value, 3);
+  assert.equal(automaticPracticeMinimum.effectiveAssignment.origin, "automatic");
+
+  const designChange = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: automaticDesignChange.courseRevision,
     operation: "update_course_design",
     designCommand: {
       type: "set_parameter",
@@ -1061,7 +1129,7 @@ if (!accessToken) {
       reason: "Exercitar a resolução explícita pelo MCP local."
     }
   });
-  assert.equal(designChange.courseRevision, provenanceComposition.revision + 4);
+  assert.equal(designChange.courseRevision, provenanceComposition.revision + 5);
   assert.equal(designChange.change.type, "set_parameter");
 
   const resolvedDesign = await tool("lerCurso", {
@@ -1074,7 +1142,9 @@ if (!accessToken) {
     ({ parameterId }) => parameterId
       === "new_analysis_unit_ceiling_per_expository_study_unit"
   );
+  assert.equal(resolvedDesign.courseRevision, designChange.courseRevision);
   assert.equal(resolvedCeiling.effectiveAssignment.value, 3);
+  assert.equal(resolvedCeiling.effectiveAssignment.origin, "author");
 
   const annotationId = randomUUID();
   const annotationRequestId = randomUUID();

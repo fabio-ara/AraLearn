@@ -3,9 +3,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
+  ARALEARN_AUTHORING_CONTRACT_HEADER,
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
+  AUTHORING_PROTOCOL_V1_TOOLS
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { courseVariantComparisonFixture } from
   "../support/courseVariantComparisonFixture.js";
@@ -65,12 +72,29 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     clientInfo: { name: "teste", version: "1" }
   }));
   const initialized = await initialize.json();
-  assert.equal(initialized.result.serverInfo.version, "0.0.27");
+  const expectedContract = {
+    id: AUTHORING_PROTOCOL_ID,
+    version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
+    hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+  };
+  assert.equal(
+    initialize.headers.get("X-AraLearn-Authoring-Contract"),
+    ARALEARN_AUTHORING_CONTRACT_HEADER
+  );
+  assert.equal(initialized.result.serverInfo.version, AUTHORING_PROTOCOL_SCHEMA_VERSION);
+  assert.equal(initialized.result.capabilities.tools.listChanged, false);
+  assert.deepEqual(initialized.result._meta.authoringContract, expectedContract);
   assert.match(initialized.result.instructions, /Curso vivo e mutável/iu);
   assert.match(initialized.result.instructions, /phaseGuidance focal/iu);
 
   const listed = await handler()(request("tools/list"));
-  const tools = (await listed.json()).result.tools;
+  const listedPayload = await listed.json();
+  assert.equal(
+    listed.headers.get("X-AraLearn-Authoring-Contract"),
+    ARALEARN_AUTHORING_CONTRACT_HEADER
+  );
+  assert.deepEqual(listedPayload.result._meta.authoringContract, expectedContract);
+  const tools = listedPayload.result.tools;
   const names = tools.map(({ name }) => name);
   assert.deepEqual(names, [
     "listarCursos",
@@ -85,6 +109,16 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     assert.deepEqual(tool.securitySchemes, [{ type: "oauth2", scopes: ["offline_access"] }]);
     assert.deepEqual(tool._meta.securitySchemes, tool.securitySchemes);
   }
+  const contractTools = tools.map((definition) => {
+    const normalized = structuredClone(definition);
+    delete normalized.securitySchemes;
+    delete normalized._meta.securitySchemes;
+    delete normalized._meta.ui;
+    delete normalized._meta["openai/outputTemplate"];
+    if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
+    return normalized;
+  });
+  assert.deepEqual(contractTools, AUTHORING_PROTOCOL_V1_TOOLS);
 });
 
 test("MCP publica conhecimento e componente opcional e lê o plano pela rota compartilhada", async () => {

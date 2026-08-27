@@ -111,6 +111,26 @@ function Resolve-ProjectRefFromUrl {
 
 Push-Location $repositoryRoot
 try {
+  Write-Host 'Validando o protocolo público de Autoria antes da implantação...'
+  & node .\scripts\verifyAuthoringProtocolSnapshotHistory.mjs
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Um snapshot aprovado do protocolo público de Autoria foi alterado ou removido.'
+  }
+  & node .\scripts\buildChatGptActionOpenApi.mjs --check
+  if ($LASTEXITCODE -ne 0) {
+    throw 'O OpenAPI de Actions não corresponde ao protocolo público corrente.'
+  }
+  & node --test `
+    .\tests\runtime\authoring-protocol-compatibility.test.js `
+    .\tests\runtime\chatgpt-action-schema-projection.test.js `
+    .\tests\runtime\course-authoring-contract-runtime.test.js `
+    .\tests\runtime\course-action-server.test.js `
+    .\tests\runtime\course-mcp-server.test.js `
+    .\tests\runtime\course-mcp-tools.test.js
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Os gates do protocolo público de Autoria falharam; a implantação foi bloqueada.'
+  }
+
   $resolvedProjectRef = Resolve-ProjectRef
   Write-Host "Vinculando este repositório ao projeto $resolvedProjectRef..."
   Invoke-AraLearnSupabase link --project-ref $resolvedProjectRef
@@ -161,6 +181,26 @@ try {
 
     Write-Host 'Validando a configuração CORS da API de Cursos...'
     $resolvedProjectUrl = "https://$resolvedProjectRef.supabase.co"
+    $contractIdentitySource = @'
+import {
+  AUTHORING_PROTOCOL_ID,
+  AUTHORING_PROTOCOL_SCHEMA_VERSION,
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+} from "./supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+process.stdout.write([
+  AUTHORING_PROTOCOL_ID,
+  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
+  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
+].join("; "));
+'@
+    $expectedAuthoringContractHeader = [string](
+      & node --input-type=module --eval $contractIdentitySource
+    )
+    if ($LASTEXITCODE -ne 0 -or
+        [string]::IsNullOrWhiteSpace($expectedAuthoringContractHeader)) {
+      throw 'Não foi possível obter a identidade canônica local da Autoria.'
+    }
+    $expectedAuthoringContractHeader = $expectedAuthoringContractHeader.Trim()
     $courseApiPreflight = Invoke-WebRequest `
       -Uri "$resolvedProjectUrl/functions/v1/aralearn-course-api/app/listarCursos" `
       -Method Options `
@@ -190,6 +230,10 @@ try {
         $actionPreflight.Headers['Access-Control-Allow-Origin'] -ne
           'https://chatgpt.com') {
       throw 'O preflight hospedado de Actions falhou; a publicação deve ser interrompida.'
+    }
+    if ([string]$actionPreflight.Headers['X-AraLearn-Authoring-Contract'] -ne
+        $expectedAuthoringContractHeader) {
+      throw 'A Action hospedada não corresponde ao contrato canônico local da Autoria.'
     }
 
     Write-Host 'Validando o MCP OAuth hospedado...'

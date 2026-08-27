@@ -249,7 +249,9 @@ function renderReviewQueue(
   );
 }
 
-export function renderRuntimeStatusControl(status = {}) {
+export function renderRuntimeStatusControl(status = {}, {
+  popoverId = "study-runtime-status-popover"
+} = {}) {
   const offline = status.offline === true;
   const stale = status.stale === true;
   const pending = status.pending === true;
@@ -257,7 +259,7 @@ export function renderRuntimeStatusControl(status = {}) {
   const label = offline
     ? "Sem conexão"
     : stale
-      ? "Atualizando Curso"
+      ? "Sincronizando Curso"
       : pending
         ? "Sincronização pendente"
         : "Sincronizado";
@@ -275,10 +277,10 @@ export function renderRuntimeStatusControl(status = {}) {
         ? "Suas alterações aguardam sincronização."
         : "Sincronizado com a nuvem.";
   return '<button class="icon-ghost study-runtime-status-control" type="button"' +
-    ' data-runtime-state="' + state + '" popovertarget="study-runtime-status-popover"' +
+    ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
     ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '">' +
     renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
-    '<div class="study-runtime-status-popover" id="study-runtime-status-popover" popover="auto"' +
+    '<div class="study-runtime-status-popover" id="' + escapeHtml(popoverId) + '" popover="auto"' +
     ' role="status"><p>' + escapeHtml(message) + '</p></div>';
 }
 

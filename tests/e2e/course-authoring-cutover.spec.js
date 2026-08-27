@@ -3375,7 +3375,57 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     expect(clientErrors).toEqual([]);
   });
 
-  test("sem Microssequência orienta vínculo e nunca abre compositor ou materialização", async ({ page }) => {
+  test("Planejamento vazio mantém capacidades em ações compactas e situadas", async ({
+    page
+  }) => {
+    const clientErrors = captureClientErrors(page);
+    await page.setViewportSize({ width: 390, height: 820 });
+    const hash = `#/authoring/courses/${COURSE_IDS[1]}?section=planning`;
+    await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+    const planning = page.locator(".course-authoring-planning");
+    await expect(planning.locator(".course-authoring-next-action")).toHaveCount(0);
+    await expect(planning.getByRole("heading", { name: "Objetivo", exact: true }))
+      .toBeVisible();
+    await expect(planning.getByText("7–12", { exact: true })).toBeVisible();
+    await expect(planning.getByText("Partes preferenciais", { exact: true })).toBeVisible();
+    await expect(planning.getByText("0", { exact: true })).toBeVisible();
+    await expect(planning.getByText("Unidades materializadas", { exact: true })).toBeVisible();
+    await expect(planning.getByRole("heading", { name: "Partes", exact: true }))
+      .toBeVisible();
+
+    const addPart = planning.getByRole("button", { name: "Adicionar Parte", exact: true });
+    await expect(addPart).toBeVisible();
+    await expect(addPart).toHaveText("");
+    await expect(planning.getByRole("button", {
+      name: "Vincular microssequência existente"
+    })).toHaveCount(0);
+    await expect(planning.locator(".course-authoring-planning-context")).toHaveCount(0);
+    await expect(planning.getByText("Lotes operacionais ligados à estrutura didática.", {
+      exact: true
+    })).toHaveCount(0);
+    await expect(planning.getByText("Nenhuma Parte planejada.", { exact: true }))
+      .toHaveCount(0);
+    await expect(planning.getByText("Referências do plano", { exact: true })).toBeHidden();
+    await expect(planning.locator(".course-authoring-plan-items > summary small"))
+      .toHaveCount(0);
+
+    const addReference = planning.getByRole("button", {
+      name: "Adicionar referência ao plano",
+      exact: true
+    });
+    await expect(addReference).toBeVisible();
+    await expect(addReference).toHaveText("");
+    await addReference.click();
+    await expect(page.locator("[data-course-authoring-plan-item]")).toBeVisible();
+    await expect(page.getByLabel("Tipo", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Descrição", { exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await expectVisibleTouchTargets(page);
+    expect(clientErrors).toEqual([]);
+  });
+
+  test("Parte sem Microssequência oferece vínculo situado e nunca abre compositor ou materialização", async ({ page }) => {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width: 430, height: 860 });
     const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
@@ -3385,15 +3435,17 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       planningScenario: "zero-microsequences"
     });
 
-    await expect(page.getByRole("heading", { name: "Vincule uma microssequência" }))
-      .toBeVisible();
+    await expect(page.locator(".course-authoring-next-action")).toHaveCount(0);
     await expect(page.locator('[data-course-authoring-action="materialize-part"]'))
       .toHaveCount(0);
     await expect(page.locator('[data-course-authoring-action="prepare-structure"]'))
       .toHaveCount(0);
 
-    await page.getByRole("region", { name: "Vincule uma microssequência" })
-      .getByRole("button", { name: "Vincular microssequência existente" }).click();
+    const linkMicrosequence = page.locator(".course-authoring-parts")
+      .getByRole("button", { name: "Vincular microssequência existente" });
+    await expect(linkMicrosequence).toBeVisible();
+    await expect(linkMicrosequence).toHaveText("");
+    await linkMicrosequence.click();
     const emptyAssignment = page.locator(".course-authoring-assignment-empty");
     await expect(emptyAssignment).toContainText("Nenhuma microssequência disponível.");
     await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
@@ -3909,7 +3961,7 @@ test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Un
   expect(clientErrors).toEqual([]);
 });
 
-test("Planejamento explica Conteúdo existente que ainda não está ligado a Partes", async ({
+test("Planejamento sinaliza de forma compacta Conteúdo ainda sem Parte", async ({
   page
 }) => {
   const clientErrors = captureClientErrors(page);
@@ -3922,9 +3974,10 @@ test("Planejamento explica Conteúdo existente que ainda não está ligado a Par
   });
 
   const notice = page.locator(".course-authoring-unlinked-content");
-  await expect(notice).toContainText("Conteúdo existente ainda não vinculado ao plano");
-  await expect(notice).toContainText("60 Unidades permanecem disponíveis em Conteúdo");
-  await expect(notice).toContainText("Nada foi removido");
+  await expect(notice).toHaveAccessibleName("60 Unidades sem Parte");
+  await expect(notice).toHaveText("60Unidades sem Parte");
+  await expect(notice).not.toContainText("Conteúdo existente ainda não vinculado ao plano");
+  await expect(notice).not.toContainText("Nada foi removido");
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
 });

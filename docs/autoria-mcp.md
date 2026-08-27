@@ -60,6 +60,28 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
+As cinco ferramentas são projetadas do protocolo público
+`aralearn.authoring-protocol.v1`. Essa autoridade não é gerada a partir das
+estruturas internas do domínio. `courseMcpTools` funciona como adaptador:
+preserva o vocabulário público, acrescenta os metadados OAuth e MCP Apps do
+transporte e converte cada chamada para o roteador e os validadores do backend.
+Uma alteração interna, portanto, não muda silenciosamente o esquema descoberto
+por `tools/list`.
+
+O protocolo possui três níveis de identidade. O sufixo v1 do identificador
+aponta para o major público, `schemaVersion` identifica o snapshot semântico e o
+fingerprint SHA-256 identifica exatamente seu catálogo. `initialize` usa a
+`schemaVersion` em `serverInfo.version`; `initialize` e `tools/list` expõem os
+três valores em `_meta.authoringContract`. As respostas HTTP, a descoberta OAuth
+e o preflight repetem a identidade em
+`X-AraLearn-Authoring-Contract`.
+
+O servidor permanece sem sessão e não anuncia `listChanged`, pois não emite a
+notificação correspondente. Depois de publicar outro snapshot compatível, um
+cliente que conservou a descoberta anterior precisa reconectar a integração. O
+fingerprint permite distinguir esse cache de uma Edge Function realmente
+defasada.
+
 As instruções permanentes contêm somente invariantes transversais: Curso vivo,
 leitura focal antes da escrita, revisões correntes, ausência de invenção e ciclo
 de proposta, aplicação e verificação. Planejamento, desenho, materialização,
@@ -681,13 +703,14 @@ https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
 
 Para conectar um cliente:
 
-1. confirme que migrações, manifesto e Edge Function pertencem à mesma
-   revisão;
+1. confirme que migrações e manifesto pertencem à mesma revisão e que o
+   fingerprint da Edge Function corresponde ao protocolo local;
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
 3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das cinco ferramentas, dos recursos focais de autoria
-   e, num cliente compatível, do recurso visual versionado;
+5. confira a descoberta das cinco ferramentas, seu `_meta.authoringContract`,
+   os recursos focais de autoria e, num cliente compatível, o recurso visual
+   versionado;
 6. faça primeiro uma leitura sem mutação;
 7. teste criação e alteração somente num Curso de desenvolvimento.
 
@@ -701,6 +724,7 @@ node --test tests/runtime/course-mcp-server.test.js
 node --test tests/runtime/course-mcp-tools.test.js
 node --test tests/runtime/course-tool-executor.test.js
 node --test tests/runtime/course-router.test.js
+node --test tests/runtime/authoring-protocol-compatibility.test.js
 npm run test:authoring:mcp:local
 npm run test:authoring:mcp:local:oauth
 npm run test:authoring:supabase:e2e
@@ -722,6 +746,10 @@ Essa prova é local e automatizada. Ela não comprova, sozinha, a usabilidade da
 assistência num navegador ou aparelho real nem o fluxo dentro de um cliente
 externo. A verificação hospedada só deve ser executada depois que as
 migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
+O smoke hospedado também compara o cabeçalho e o metadado servidos, além do
+esquema completo de `tools/list`, com o catálogo canônico local. Somente
+`securitySchemes` e metadados próprios do transporte são retirados antes dessa
+comparação.
 
 ## Referências normativas e técnicas
 

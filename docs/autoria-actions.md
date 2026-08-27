@@ -24,11 +24,25 @@ Planejamento, Fontes, Observações, Auditoria, Variantes e Pesquisa aparecem
 como vistas de `lerCurso` ou operações fechadas de `alterarCurso`. O GPT não
 recebe uma rota genérica para banco nem uma operação por tabela.
 
-O OpenAPI apresenta todos os campos e operações, mas deixa condicionais de
-exclusão e descrições mecânicas profundas para o mesmo validador server-side
-usado pelo MCP. A primeira leitura da fase inclui `phaseGuidance` focal.
-Isso reduz o contrato importado sem tornar a escrita livre nem criar uma API de
-negócio paralela.
+O OpenAPI é uma projeção do protocolo público
+`aralearn.authoring-protocol.v1`, não uma cópia dos tipos internos do domínio.
+Um adaptador explícito leva esse vocabulário ao mesmo executor usado pelo MCP,
+e os validadores do servidor continuam conferindo a operação antes da escrita.
+A primeira leitura da fase inclui `phaseGuidance` focal.
+
+A projeção para Actions preserva as regras necessárias para o GPT montar uma
+chamada válida. Uma regra redundante pode ser simplificada, uma orientação sem
+efeito estrutural permanece na descrição e uma condição necessária vira
+variantes `oneOf` explícitas, com campos obrigatórios e proibidos próprios. O
+compilador precisa consumir cada condicional `allOf` estrutural; a geração falha
+se alguma ficar sem tratamento. Não existe remoção global de `allOf` seguida
+apenas de validação tardia no backend.
+
+Os discriminadores públicos usam `const` no protocolo canônico. Na projeção de
+Actions, cada literal vira `type` com `enum` de um único valor, porque o
+importador do ChatGPT preserva essa forma e pode degradar `const` para um tipo
+indeterminado. A transformação muda a representação aceita pelo importador,
+não o vocabulário nem as regras do protocolo.
 
 ## Preparar um cliente OAuth
 
@@ -180,8 +194,18 @@ npm.cmd run test:authoring:actions
 ```
 
 O arquivo gerado deve permanecer abaixo de 72 KiB. O teste também confirma que
-as condicionais removidas do documento continuam impostas pelo mapeador e pelos
-validadores do servidor.
+os discriminadores chegam como enums unitários, que toda condicional canônica
+foi compilada e que chamadas válidas e inválidas são distinguidas pelo próprio
+esquema. O documento declara o identificador do protocolo, sua `schemaVersion`
+e o fingerprint SHA-256 do catálogo.
+
+O endpoint da Action devolve a mesma identidade no cabeçalho
+`X-AraLearn-Authoring-Contract`, inclusive no preflight. Durante a implantação,
+esse valor precisa coincidir com a autoridade local; divergência interrompe o
+gate. Como o editor do GPT conserva uma cópia da especificação importada,
+publicar outro arquivo não atualiza sozinho um GPT existente: reimporte, salve e
+confira no Preview os discriminadores e argumentos efetivamente apresentados ao
+modelo.
 
 Se a importação divergir, regenere o documento com `npm run actions:openapi` e
 revise o diff. Se a conexão falhar antes do consentimento, confronte

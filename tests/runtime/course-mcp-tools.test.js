@@ -295,6 +295,111 @@ test("contrato de componente exige uma única identidade por chamada", () => {
       "aralearn.resource.chart@1.0.0"
     ]
   }), false);
+  assert.equal(validate({ operation: "contracts", packages: [] }), false);
+  assert.throws(
+    () => mapAuthoringMcpToolCall("consultarComponentesDidaticos", {
+      operation: "contracts",
+      packages: []
+    }),
+    /exatamente um package/iu
+  );
+});
+
+test("biblioteca publica variantes fechadas por operação", () => {
+  const schema = COURSE_MCP_TOOLS.find(
+    ({ name }) => name === "consultarComponentesDidaticos"
+  ).inputSchema;
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const valid = [
+    { operation: "explore" },
+    { operation: "search", query: "gráfico", limit: 4 },
+    { operation: "inspect", packages: ["aralearn.resource.chart@1.0.0"] },
+    { operation: "contracts", packages: ["aralearn.resource.chart@1.0.0"] },
+    { operation: "validate_study_unit", studyUnitJson: "{}" },
+    { operation: "audit_representation", studyUnitJson: "{}", intent: "Comparar." },
+    { operation: "preview_study_unit", studyUnitJson: "{}" },
+    {
+      operation: "preview_study_unit",
+      studyUnitJson: "{}",
+      courseId: COURSE_ID,
+      studyUnitId: "unit-a"
+    }
+  ];
+  for (const value of valid) {
+    assert.equal(validate(value), true, `${JSON.stringify(value)}: ${JSON.stringify(validate.errors)}`);
+  }
+  for (const value of [
+    { operation: "contracts" },
+    { operation: "preview_study_unit" },
+    { operation: "preview_study_unit", studyUnitJson: "{}", courseId: COURSE_ID },
+    { operation: "search", query: "gráfico", packages: ["aralearn.resource.chart@1.0.0"] },
+    { operation: "validate_study_unit", studyUnitJson: "{}", query: "excedente" }
+  ]) {
+    assert.equal(validate(value), false, JSON.stringify(value));
+  }
+});
+
+test("schema de leitura espelha escopos, paginação e alvos aceitos pelo adaptador", () => {
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").inputSchema;
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const studyUnits = { courseId: COURSE_ID, view: "study_units", expectedRevision: 1 };
+  for (const scope of [
+    { kind: "course" },
+    { kind: "unassigned" },
+    { kind: "authoring_part", id: PART_ID },
+    { kind: "module", id: "module-a" }
+  ]) {
+    assert.equal(validate({ ...studyUnits, scope }), true, JSON.stringify(validate.errors));
+  }
+  assert.equal(validate({ ...studyUnits, scope: { kind: "course", id: "course-a" } }), false);
+  assert.equal(validate({ ...studyUnits, scope: { kind: "authoring_part" } }), false);
+  assert.equal(validate({
+    ...studyUnits,
+    anchorStudyUnitId: "unit-a",
+    cursor: { studyUnitId: "unit-b" }
+  }), false);
+
+  assert.equal(validate({
+    courseId: COURSE_ID,
+    view: "entities",
+    expectedRevision: 1,
+    limit: 100
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    courseId: COURSE_ID,
+    view: "entities",
+    expectedRevision: 1,
+    limit: 101
+  }), false);
+
+  const sourceTarget = {
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 1,
+    mode: "target",
+    targetKind: "plan_item"
+  };
+  assert.equal(validate({ ...sourceTarget, targetId: PART_ID }), true,
+    JSON.stringify(validate.errors));
+  assert.equal(validate({ ...sourceTarget, targetId: "plan-item-legado" }), false);
+  assert.equal(validate({
+    ...sourceTarget,
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), true, JSON.stringify(validate.errors));
+
+  const attachment = {
+    courseId: COURSE_ID,
+    view: "course_source_attachment",
+    expectedRevision: 1,
+    attachmentOperation: "download",
+    sourceId: "source-a",
+    sourceRevision: 1,
+    contentHash: "a".repeat(64),
+    includeAttachmentDownloadUrl: true
+  };
+  assert.equal(validate(attachment), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...attachment, limit: 2 }), false);
 });
 
 test("mapeia lista, leituras e criação sem identidade indireta", () => {
@@ -742,7 +847,11 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   );
   assert.equal(planBranches.length, 14);
   assert.equal(planBranch("add_part").additionalProperties, false);
-  assert.deepEqual(planBranch("add_part").required, ["type", "id", "position", "title"]);
+  assert.deepEqual(planBranch("add_part").required, [
+    "type", "id", "position", "title", "intent"
+  ]);
+  assert.ok(planBranch("update_part").required.includes("intent"));
+  assert.ok(planBranch("split_part").required.includes("intent"));
   assert.equal(Object.hasOwn(planBranch("add_part").properties, "partId"), false);
   assert.equal(Object.hasOwn(planBranch("remove_part").properties, "title"), false);
   assert.equal(planBranch("update_plan").anyOf.length, 5);
@@ -1152,6 +1261,23 @@ test("MCP lê, cria e desvincula variantes pela mesma dupla de ferramentas", () 
     operation: "update_course_variants",
     variantCommand: create
   }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    operation: "update_course_variants",
+    variantCommand: create
+  }), false);
+  assert.equal(validate({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    operation: "update_course_variants",
+    variantCommand: {
+      type: "detach_comparison_variant",
+      comparisonSetId,
+      courseId: "82000000-0000-4000-8000-000000000009"
+    }
+  }), false);
   assert.equal(validate({
     requestId: REQUEST_ID,
     courseId: COURSE_ID,

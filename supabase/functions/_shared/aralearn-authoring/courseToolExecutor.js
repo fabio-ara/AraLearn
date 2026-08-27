@@ -3,9 +3,9 @@ import { routeCourseRequest } from "./courseProtocol.js";
 import { executeCourseRoute } from "./courseRouter.js";
 import {
   authoringApplicationToolIsAllowed,
-  authoringMcpToolIsAllowed,
+  authoringProtocolV1ToolIsAllowed,
   mapAuthoringApplicationToolCall,
-  mapAuthoringMcpToolCall,
+  mapAuthoringProtocolV1Call,
   validateAuthoringApplicationToolOutput,
   validateAuthoringMcpToolOutput
 } from "./courseMcpTools.js";
@@ -541,7 +541,7 @@ export async function executeCourseTool({
 }) {
   const allowed = surface === "application"
     ? authoringApplicationToolIsAllowed(name, principal)
-    : authoringMcpToolIsAllowed(name, principal);
+    : authoringProtocolV1ToolIsAllowed(name, principal);
   if (!allowed) {
     throw new AuthoringApiError(
       403,
@@ -553,7 +553,7 @@ export async function executeCourseTool({
     ? mapAuthoringApplicationToolCall(name, rawArguments, {
         inspectionVersion: applicationInspectionVersion
       })
-    : mapAuthoringMcpToolCall(name, rawArguments);
+    : mapAuthoringProtocolV1Call(name, rawArguments);
   if (typeof onRequestIdValidated === "function") {
     onRequestIdValidated(operation.requestId ?? null);
   }
