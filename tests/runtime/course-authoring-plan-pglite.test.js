@@ -51,6 +51,10 @@ const boundedInstructionalPlanCasMigrationUrl = new URL(
   "../../supabase/migrations/20260827185748_bound_instructional_plan_cas_retry.sql",
   import.meta.url
 );
+const inspectionFocusMigrationUrl = new URL(
+  "../../supabase/migrations/20260828120000_course_inspection_focuses.sql",
+  import.meta.url
+);
 const contextualCompositionMigrationUrl = new URL(
   "../../supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql",
   import.meta.url
@@ -485,6 +489,27 @@ async function applyBoundedInstructionalPlanCasMigration(database) {
     boundedInstructionalPlanCasMigrationUrl,
     "utf8"
   ));
+}
+
+async function applyInspectionFocusMigration(database) {
+  await database.exec(`
+    do $normalize_receipt_constraint$
+    declare v_name text;
+    begin
+      select constraint_value.conname into v_name
+      from pg_constraint constraint_value
+      where constraint_value.conrelid='private.course_change_receipts'::regclass
+        and constraint_value.conname like 'course_change_receipts_operation_v%';
+      if v_name <> 'course_change_receipts_operation_v8' then
+        execute format(
+          'alter table private.course_change_receipts rename constraint %I to course_change_receipts_operation_v8',
+          v_name
+        );
+      end if;
+    end
+    $normalize_receipt_constraint$;
+  `);
+  await database.exec(await fs.readFile(inspectionFocusMigrationUrl, "utf8"));
 }
 
 async function applyContinuousAuthoringInspectionMigration(database) {
@@ -2528,6 +2553,45 @@ test("inspeção contínua projeta pendências e estado autoral sem N+1", async 
     ).check_expression,
     /SELECT auth\.uid\(\)/iu
   );
+  await applyBoundedInstructionalPlanCasMigration(database);
+  await applyInspectionFocusMigration(database);
+  await actor(database, OWNER, "service_role");
+  const createdFocus = await scalar(database, `
+    select public.create_course_inspection_focus_for_actor_v1(
+      $1,$2,6,'Microssequência · Micro A','["card-a"]'::jsonb,
+      'inspection-focus-create-0001'
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(createdFocus.contract, "aralearn.course-inspection-focus.v1");
+  assert.equal(createdFocus.courseRevision, 6);
+  assert.deepEqual(createdFocus.studyUnitIds, ["card-a"]);
+  assert.equal(createdFocus.idempotent, false);
+  assert.equal(await scalar(database, `
+    select revision::integer as value from public.courses where id=$1
+  `, [COURSE]), 6);
+  const replayedFocus = await scalar(database, `
+    select public.create_course_inspection_focus_for_actor_v1(
+      $1,$2,6,'Microssequência · Micro A','["card-a"]'::jsonb,
+      'inspection-focus-create-0001'
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(replayedFocus.inspectionFocusId, createdFocus.inspectionFocusId);
+  assert.equal(replayedFocus.idempotent, true);
+  const focusedPage = await scalar(database, `
+    select public.list_owned_course_inspection_focus_units_for_actor_v1(
+      $1,$2,6,$3,null,'forward',24,524288
+    ) as value
+  `, [OWNER, COURSE, createdFocus.inspectionFocusId]);
+  assert.equal(focusedPage.contract, "aralearn.course-study-unit-inspection-page.v2");
+  assert.equal(focusedPage.totalCount, 1);
+  assert.equal(focusedPage.items[0].studyUnit.id, "card-a");
+  assert.equal(focusedPage.items[0].ordinal, 1);
+  assert.equal(focusedPage.items[0].authorship.pendingObservationCount, 2);
+  const focusManifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  assert.equal(focusManifest.schemaRevision, "20260828120000");
+  assert.equal(focusManifest.features.includes("course-inspection-focus-v1"), true);
   await database.close();
 });
 

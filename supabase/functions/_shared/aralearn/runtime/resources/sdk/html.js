@@ -86,6 +86,9 @@ function renderPackageGapMarker(marker) {
   const blankIndex = escapePackageAttribute(marker.index);
   const current = String(marker.value ?? "");
   const classes = `runtime-text-gap-blank ${marker.code ? "runtime-code-gap-blank" : "runtime-paragraph-gap-blank"}`;
+  if (marker.readOnly === true) {
+    return `<span class="${classes} is-resolved" dir="auto" data-empty="false" aria-label="Resposta esperada: ${escapePackageAttribute(current)}">${escapePackageHtml(current)}</span>`;
+  }
   if (marker.responseMode === "choice") {
     const label = current ? `Editar resposta: ${current}` : "Escolher resposta";
     return `<span class="${classes} runtime-text-gap-choice-blank" role="button" tabindex="0" dir="auto" data-text-gap-choice="true" data-action="text-gap-open-choice" data-complete-block-key="${blockKey}" data-complete-blank-index="${blankIndex}" data-empty="${current ? "false" : "true"}" title="${escapePackageAttribute(label)}" aria-label="${escapePackageAttribute(label)}">${escapePackageHtml(current)}</span>`;

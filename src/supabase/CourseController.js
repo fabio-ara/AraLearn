@@ -671,6 +671,7 @@ function normalizeInspectionPosition(courseId, value) {
 function inspectionRequestOptions({
   expectedRevision,
   scope = { kind: "course", id: null },
+  inspectionFocusId = null,
   anchorStudyUnitId = null,
   cursor = null,
   direction = "forward",
@@ -679,6 +680,9 @@ function inspectionRequestOptions({
 } = {}) {
   const revision = Number(expectedRevision);
   const normalizedDirection = String(direction || "").trim();
+  const normalizedInspectionFocusId = inspectionFocusId == null
+    ? null
+    : String(inspectionFocusId).trim().toLowerCase();
   const normalizedAnchor = anchorStudyUnitId == null
     ? null
     : String(anchorStudyUnitId).trim();
@@ -689,6 +693,7 @@ function inspectionRequestOptions({
   const normalizedMaxBytes = Number(maxBytes);
   if (!Number.isSafeInteger(revision) || revision < 1 ||
       !new Set(["forward", "backward"]).has(normalizedDirection) ||
+      normalizedInspectionFocusId !== null && !UUID_PATTERN.test(normalizedInspectionFocusId) ||
       (normalizedAnchor != null && (!normalizedAnchor || normalizedAnchor.length > 240)) ||
       (normalizedCursor != null && (
         !normalizedCursor.studyUnitId || normalizedCursor.studyUnitId.length > 240 ||
@@ -700,9 +705,16 @@ function inspectionRequestOptions({
       normalizedMaxBytes > 1_500_000) {
     throw new TypeError("Paginação da inspeção inválida.");
   }
+  const normalizedScope = normalizedInspectionScope(scope);
+  if (normalizedInspectionFocusId !== null && (
+    normalizedScope.kind !== "course" || normalizedScope.id !== null || normalizedAnchor !== null
+  )) {
+    throw new TypeError("Paginação da inspeção inválida.");
+  }
   return {
     expectedRevision: revision,
-    scope: normalizedInspectionScope(scope),
+    scope: normalizedScope,
+    ...(normalizedInspectionFocusId === null ? {} : { inspectionFocusId: normalizedInspectionFocusId }),
     anchorStudyUnitId: normalizedAnchor,
     cursor: normalizedCursor,
     direction: normalizedDirection,

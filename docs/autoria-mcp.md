@@ -90,12 +90,14 @@ Fontes, inspeção, Auditoria e componentes possuem recursos próprios sob
 `phaseGuidance`; assim o cliente recebe a orientação da fase sem carregar
 simultaneamente os manuais das demais fases.
 
-O recurso visual opcional `ui://aralearn/course-inspector/0.0.23.html` segue a
-extensão MCP Apps. Ele representa a prévia de uma Unidade de estudo, os
-indicadores agregados de Pesquisa e a comparação de Variantes; também apresenta
-um resumo adequado para as demais operações da biblioteca de componentes. Um
-cliente sem MCP Apps continua recebendo a forma textual canônica do mesmo
-resultado autorizado.
+O recurso visual opcional `ui://aralearn/course-inspector/0.0.24.html` segue a
+extensão MCP Apps. Ele representa focos de inspeção agrupados por
+Microssequência, a prévia de uma Unidade de estudo, os indicadores agregados de
+Pesquisa e a comparação de Variantes; também apresenta um resumo adequado para
+as demais operações da biblioteca de componentes. No foco, cada Unidade traz
+referência curta, conteúdo final, prática já resolvida, feedback e desenho
+contextual sob divulgação progressiva. Um cliente sem MCP Apps continua
+recebendo a forma textual canônica do mesmo resultado autorizado.
 
 A política estável do MCP Apps não permite a compilação WebAssembly usada pelos
 diagramas Graphviz. Nesses componentes, o recurso apresenta a descrição textual
@@ -219,7 +221,8 @@ Lê uma destas projeções:
 - `part_materialization`: uma execução persistida, seu contexto e fatos
   limitados, as etapas com versão e a próxima etapa pendente;
 - `study_units`: Unidades de estudo em ordem curricular, com contexto, Parte e
-  links profundos;
+  links profundos; com `inspectionFocusId`, lê somente o conjunto ordenado
+  persistido pelo cliente;
 - `entities`: página de entidades do Curso.
 
 `entities` exige `expectedRevision`. O cursor contém tipo e identidade da
@@ -233,6 +236,12 @@ primeira página; `cursor: {studyUnitId}` continua para frente ou para trás e
 não pode coexistir com a âncora. A página normal contém 12 itens, o máximo é 24
 e `maxBytes` fica entre 64 KiB e 1.500.000 bytes. O contrato falha fechado se a
 resposta completa ultrapassar 1,75 MiB.
+
+Quando `inspectionFocusId` está presente, o foco substitui escopo e âncora. A
+página preserva a ordem escolhida, informa Unidades que deixaram de existir e
+fornece um endereço que abre **Conteúdo** com o mesmo filtro. O registro conserva
+somente Curso, revisão de origem, título e identidades das Unidades; o conteúdo
+continua vindo do Curso vivo.
 
 `part_materialization` exige `authoringPartId` e `materializationId`, ambos
 obtidos do plano ou do recibo anterior. A resposta traz no máximo 64 etapas e
@@ -397,7 +406,10 @@ Possui oito operações fechadas:
   desvincula um membro sem excluir o Curso;
 - `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
 - `advance_part_materialization`: inicia uma execução, registra uma etapa
-  delimitada ou finaliza a materialização de uma Parte.
+  delimitada ou finaliza a materialização de uma Parte;
+- `create_inspection_focus`: registra de uma a 64 Unidades ordenadas para
+  inspeção incorporada e para o endereço filtrado da Autoria, sem avançar a
+  revisão do Curso.
 
 Todas exigem `courseId` e `requestId`. Operações de conteúdo exigem a revisão
 esperada do Curso; em Anotações ancoradas ela aparece somente ao criar ou

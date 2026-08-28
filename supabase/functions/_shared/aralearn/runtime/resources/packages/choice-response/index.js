@@ -53,11 +53,12 @@ export const choiceResponsePackage = Object.freeze({
   render(data, options = {}) {
     const blockKey = String(options.blockKey || options.instanceId || "package-choice");
     const manualEditing = options.manualEditing === true;
-    const selected = new Set((manualEditing ? [] : options.responseState?.selected || []).map(String));
-    const feedback = manualEditing ? null : options.responseState?.feedback || null;
     const expected = new Set(data.answerIds);
+    const revealAnswers = options.revealPracticeAnswers === true;
+    const selected = new Set((revealAnswers ? data.answerIds : manualEditing ? [] : options.responseState?.selected || []).map(String));
+    const feedback = manualEditing || revealAnswers ? null : options.responseState?.feedback || null;
     const items = data.options.map((option, index) => ({ option, index }));
-    const displayed = options.manualEditEnabled
+    const displayed = options.manualEditEnabled || revealAnswers
       ? items
       : shuffleExerciseOptions(items, `${options.exerciseShuffleSeed || "runtime"}::${blockKey}`);
     const optionsHtml = displayed.map(({ option }) => {
@@ -67,25 +68,32 @@ export const choiceResponsePackage = Object.freeze({
       const shouldBeChecked = expected.has(option.id);
       const classes = [
         checked ? "active" : "",
-        evaluatedCorrect && checked && shouldBeChecked ? "selected-correct" : "",
+        (revealAnswers || evaluatedCorrect) && checked && shouldBeChecked ? "selected-correct" : "",
         evaluatedWrong && checked && !shouldBeChecked ? "selected-incorrect" : ""
       ].filter(Boolean).join(" ");
       const value = option.kind === "code"
         ? `<pre class="multiple-choice-code"><code data-language="${escapePackageAttribute(option.language)}">${renderPackageInline(option.code)}</code></pre>`
         : renderPackageInline(option.text);
-      const optionFeedback = checked && (evaluatedCorrect || evaluatedWrong) && option.feedback
+      const optionFeedback = option.feedback && (
+        revealAnswers || checked && (evaluatedCorrect || evaluatedWrong)
+      )
         ? `<div class="multiple-choice-option-feedback">${renderPackageProse(option.feedback)}</div>`
         : "";
-      const tag = manualEditing ? "div" : "button";
-      const interaction = manualEditing
+      const tag = manualEditing || revealAnswers ? "div" : "button";
+      const interaction = manualEditing || revealAnswers
         ? ""
         : ` type="button" data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}" role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"`;
       return `<${tag} class="multiple-choice-option${classes ? ` ${classes}` : ""}"${interaction} data-choice-option-id="${escapePackageAttribute(option.id)}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label"><span>${value}</span>${optionFeedback}</span></${tag}>`;
     }).join("");
-    const feedbackHtml = responseFeedback(blockKey, feedback);
+    const feedbackHtml = revealAnswers
+      ? '<div class="inline-feedback ok"><p class="tiny">Resposta esperada exibida.</p></div>'
+      : responseFeedback(blockKey, feedback);
     if (feedbackHtml && Array.isArray(options.dockExerciseParts)) options.dockExerciseParts.push(feedbackHtml);
-    const listRole = manualEditing ? "group" : data.selectionMode === "single" ? "radiogroup" : "group";
-    return `<section class="runtime-block runtime-choice-block multiple-choice-exercise package-choice-response"><div class="runtime-choice-body"><div>${renderPackageProse(data.question)}</div><p class="multiple-choice-instruction" id="${escapePackageAttribute(`${blockKey}::instruction`)}">${instruction(data)}</p></div><div class="multiple-choice-list" role="${listRole}" aria-labelledby="${escapePackageAttribute(`${blockKey}::instruction`)}">${optionsHtml}</div>${Array.isArray(options.dockExerciseParts) ? "" : feedbackHtml}</section>`;
+    const listRole = manualEditing || revealAnswers ? "group" : data.selectionMode === "single" ? "radiogroup" : "group";
+    const instructionText = revealAnswers
+      ? "Alternativas e resposta esperada."
+      : instruction(data);
+    return `<section class="runtime-block runtime-choice-block multiple-choice-exercise package-choice-response"><div class="runtime-choice-body"><div>${renderPackageProse(data.question)}</div><p class="multiple-choice-instruction" id="${escapePackageAttribute(`${blockKey}::instruction`)}">${instructionText}</p></div><div class="multiple-choice-list" role="${listRole}" aria-labelledby="${escapePackageAttribute(`${blockKey}::instruction`)}">${optionsHtml}</div>${Array.isArray(options.dockExerciseParts) ? "" : feedbackHtml}</section>`;
   },
   accessibleText(data) { return `${data.question} ${data.options.map((option, index) => `${index + 1}: ${optionValue(option)}`).join("; ")}`; },
   editableTargets(data) { return [{ path: "question", label: "Editar pergunta" }, ...data.options.flatMap((option, index) => [{ path: `options[${index}].${option.kind === "code" ? "code" : "text"}`, label: `Editar alternativa ${index + 1}` }, ...(option.feedback ? [{ path: `options[${index}].feedback`, label: `Editar feedback ${index + 1}` }] : [])])]; },

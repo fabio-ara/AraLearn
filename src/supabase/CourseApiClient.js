@@ -1338,6 +1338,7 @@ export class CourseApiClient {
   loadAuthoringStudyUnits(courseId, {
     expectedRevision,
     scope = { kind: "course", id: null },
+    inspectionFocusId = null,
     anchorStudyUnitId = null,
     cursor: cursorValue = null,
     direction = "forward",
@@ -1345,21 +1346,28 @@ export class CourseApiClient {
     maxBytes = 512 * 1024
   } = {}) {
     const normalizedScope = authoringInspectionScope(scope);
+    const normalizedInspectionFocusId = inspectionFocusId == null
+      ? null
+      : uuid(inspectionFocusId, "Foco de inspeção");
     const normalizedCursor = authoringStudyUnitCursor(cursorValue);
     const normalizedAnchor = anchorStudyUnitId == null
       ? null
       : boundedIdentifier(anchorStudyUnitId, "Unidade de âncora");
     const normalizedDirection = String(direction || "").trim();
     if (!new Set(["forward", "backward"]).has(normalizedDirection) ||
-        (normalizedAnchor && normalizedCursor)) {
+        (normalizedAnchor && normalizedCursor) ||
+        normalizedInspectionFocusId !== null && (
+          normalizedScope.kind !== "course" || normalizedScope.id !== null || normalizedAnchor !== null
+        )) {
       throw new TypeError("Paginação da inspeção inválida.");
     }
     return this.executeCourseAction("lerCurso", {
       courseId: uuid(courseId, "Curso"),
       view: "study_units",
       expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
-      scope: normalizedScope,
-      anchorStudyUnitId: normalizedAnchor,
+      ...(normalizedInspectionFocusId === null
+        ? { scope: normalizedScope, anchorStudyUnitId: normalizedAnchor }
+        : { inspectionFocusId: normalizedInspectionFocusId }),
       cursor: normalizedCursor,
       direction: normalizedDirection,
       limit: positiveInteger(limit, "Limite da inspeção", { maximum: 24 }),

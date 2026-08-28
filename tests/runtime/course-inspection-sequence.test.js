@@ -449,6 +449,48 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
     scope: { kind: "authoring_part", id: PART_ID },
     anchorStudyUnitId: null
   });
+  assert.deepEqual(inspectionRequestFromTarget({ kind: "inspection_focus", id: PART_ID }), {
+    scope: { kind: "course", id: null },
+    anchorStudyUnitId: null,
+    inspectionFocusId: PART_ID
+  });
+});
+
+test("foco mostra somente o conjunto e oferece saída para o Curso no ponto corrente", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      assert.equal(options.inspectionFocusId, PART_ID);
+      const page = pageFor(options, 3);
+      page.inspectionFocus = {
+        id: PART_ID,
+        title: "Microssequência · Relações essenciais",
+        deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=content&inspectionFocusId=${PART_ID}`,
+        requestedCount: 3,
+        availableCount: 3,
+        missingStudyUnitIds: []
+      };
+      return page;
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    routeTarget: { kind: "inspection_focus", id: PART_ID },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+
+  assert.equal(await sequence.open(), true);
+  assert.match(root.innerHTML, /Filtro de inspeção ativo/u);
+  assert.match(root.innerHTML, /Microssequência · Relações essenciais/u);
+  assert.match(root.innerHTML, /3 Unidades/u);
+  assert.match(root.innerHTML, /data-inspection-exit-focus/u);
+  assert.match(root.innerHTML, /section=content&amp;studyUnitId=unit-01/u);
+  assert.doesNotMatch(root.innerHTML, /inspectionFocusId=20000000/u);
+  sequence.destroy();
 });
 
 test("menu situado preserva observações e produção; desenho mostra usado versus vigente sem hashes", async () => {

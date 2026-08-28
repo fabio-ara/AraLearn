@@ -198,16 +198,25 @@ uma responsabilidade humana apoiada por auditoria.
 
 Depois de produzir ou alterar conteúdo:
 
-1. confira o plano, as Partes e o histórico de materializações em **Planejamento**;
-2. confirme decisões e proveniência em **Parâmetros e componentes** e **Fontes**;
-3. verifique a hierarquia e percorra as Unidades em **Conteúdo**;
-4. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
+1. peça ou receba um foco coerente — normalmente uma Microssequência — e
+   confira no chat as Unidades materiais, suas práticas resolvidas, feedbacks e
+   parâmetros;
+2. use as referências curtas das Unidades para comentar diretamente na
+   conversa;
+3. abra o endereço do foco em **Conteúdo** quando precisar comparar o conjunto,
+   registrar Observações ou continuar por Unidades fora do filtro;
+4. confira o plano, as Partes e o histórico de materializações em
+   **Planejamento**, e confirme decisões e proveniência em **Parâmetros e
+   componentes** e **Fontes**;
+5. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
    citações visíveis;
-5. trate divergências em **Revisão**.
+6. trate divergências em **Revisão**.
 
-Conteúdo reproduz o material real com as respostas inertes. A edição manual
-e a Assistência por IA ativam somente os textos autorizados nesse mesmo
-renderer; não existe outra representação ou persistência de Unidade.
+Conteúdo e o foco incorporado reproduzem o material real sem pedir que a pessoa
+resolva a prática: lacunas, alternativas esperadas e feedback ficam expostos
+para inspeção. A edição manual e a Assistência por IA ativam somente os textos
+autorizados nesse mesmo renderer; não existe outra representação ou
+persistência de Unidade.
 
 ## Registrar e tratar Observações
 

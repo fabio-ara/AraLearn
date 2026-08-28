@@ -7,7 +7,8 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "Use as ferramentas para observar ou modificar fatos; não invente conteúdo, Fontes, permissões, resultados nem estado de materialização.",
   "Registre apenas conclusões e evidências públicas, nunca conversa completa, prompt secreto ou raciocínio privado.",
   "Achado não autoriza alteração: proponha, obtenha a confirmação exigida, aplique e verifique separadamente no Curso vivo.",
-  "Preserve os deep links literais devolvidos e informe ao final apenas o que mudou e a incerteza ainda aberta."
+  "Preserve os deep links literais devolvidos e informe ao final apenas o que mudou e a incerteza ainda aberta.",
+  "Não mostre Unidades em toda interação. Ao concluir uma etapa material ou quando a pessoa pedir ou precisar conferir evidência, crie um foco coerente — de preferência a Microssequência afetada inteira — e leia suas Unidades para apresentá-las visualmente no chat."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({
@@ -26,7 +27,9 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Antes de cada Microssequência, use targetPlanItems e produza somente as unidades de análise e requisitos de evidência atribuídos ao alvo.",
       "Inicie sem designContext, use o contexto selado devolvido e, na etapa didática, envie os mesmos ids em entityChanges, designApplication e sourceAttributionApplication.",
       "O servidor confere revisões, pertencimento, unicidade, política de componentes, cobertura e mínimos quantitativos; trate cada falha localizada antes de repetir.",
-      "Retome pelo estado persistido e não duplique conteúdo ou aplicações em resultFacts."
+      "Retome pelo estado persistido e não duplique conteúdo ou aplicações em resultFacts.",
+      "Na resposta final, não descreva novamente o conteúdo visível dos cards. Escreva uma nota editorial curta: intenção e progressão didática, como os parâmetros efetivos orientaram as escolhas, quais Fontes e Âncoras verificadas sustentaram as decisões, por que os componentes foram escolhidos e que incerteza permanece.",
+      "Ao encerrar uma Microssequência, faça uma síntese curta, crie um foco com todas as Unidades dela e leia esse foco uma vez para a inspeção material. Se a etapa abrange muitas Microssequências, apresente apenas o primeiro recorte útil e ofereça os demais sob demanda."
     ])
   }),
   sources: Object.freeze({
@@ -42,6 +45,9 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Inspeção contínua",
     instructions: Object.freeze([
       "Inspecione Unidades pela vista paginada no menor escopo curricular pertinente e preserve os deep links devolvidos.",
+      "Para apresentar material no chat, crie inspection_focus com as Unidades escolhidas e depois leia study_units com inspectionFocusId. O componente agrupa o conjunto por Microssequência e fornece referências curtas para comentários na conversa.",
+      "Prefira a Microssequência inteira a pedidos sucessivos de uma Unidade, mas aceite uma Unidade ou um conjunto arbitrário quando a pergunta exigir comparação localizada. Não renderize cards em respostas rotineiras sem finalidade de inspeção.",
+      "Ao comentar um foco, interprete-o editorialmente à luz do desenho vigente e das Fontes/Âncoras lidas para o alvo; não substitua a inspeção por uma paráfrase das Unidades já visíveis.",
       "Corrija somente a Unidade ou o segmento que mudou; identidades e posições alheias permanecem estáveis.",
       "Um marcador de desenho só volta ao estado verificado depois de prova focal sobre a revisão e a versão correntes."
     ])
@@ -51,7 +57,8 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Abra audit_cycle em mode context para o alvo exato; use mode runs para rodadas inclusive limpas e detail para uma rodada, achado ou correção.",
       "Checks, achados e propostas são conclusões públicas, localizadas e limitadas; alegação factual exige sourceLinks e incerteza explícita.",
-      "Mostre a proposta e o antes/depois. Aplicação não prova resolução: somente verificação posterior pode resolver ou reabrir pendências vinculadas."
+      "Mostre a proposta e o antes/depois. Aplicação não prova resolução: somente verificação posterior pode resolver ou reabrir pendências vinculadas.",
+      "Ao concluir auditoria, reparo ou verificação, apresente seletivamente as Unidades afetadas; use a Microssequência inteira quando a relação entre elas fizer parte do julgamento e não repita o mesmo conjunto sem mudança material."
     ])
   }),
   linguistic_didactic_review: Object.freeze({

@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.0.1";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.1.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -1267,6 +1267,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
         type: "array", minItems: 1, maxItems: 12, uniqueItems: true, items: uuidSchema
       },
       comparisonSetId: uuidSchema,
+      inspectionFocusId: uuidSchema,
       datasets: {
         type: "array", minItems: 1,
         maxItems: COURSE_AUTHORING_ANALYTICS_DATASETS.length,
@@ -1727,7 +1728,8 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
         "update_anchored_annotations",
         "update_audit_cycle", "update_course_variants",
         "commit_course_composition",
-        "advance_part_materialization"
+        "advance_part_materialization",
+        "create_inspection_focus"
       ] }),
       planCommand: authoringPlanCommandSchema,
       designCommand: courseDesignCommandSchema,
@@ -1736,6 +1738,13 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
       auditCommand: auditCommandSchema,
       variantCommand: courseVariantCommandSchema,
       materializationCommand: materializationCommandSchema,
+      inspectionFocus: objectSchema({
+        title: stringSchema({ minLength: 1, maxLength: 160 }),
+        studyUnitIds: {
+          type: "array", minItems: 1, maxItems: 64, uniqueItems: true,
+          items: stringSchema({ minLength: 1, maxLength: 240 })
+        }
+      }, ["title", "studyUnitIds"]),
       upserts: { type: "array", maxItems: 200, items: courseEntitySchemaReference },
       sourceAttributionApplications: sourceAttributionApplicationsSchemaReference,
       deletes: {
@@ -1751,6 +1760,20 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
         sourceAttributionApplications: sourceAttributionApplicationsSchema
       },
       allOf: [{
+        if: {
+          properties: { operation: { const: "create_inspection_focus" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["expectedRevision", "inspectionFocus"],
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand", "sourceCommand",
+            "annotationCommand", "auditCommand", "variantCommand", "materializationCommand",
+            "upserts", "deletes", "sourceAttributionApplications"
+          ])
+        },
+        else: forbidFields(["inspectionFocus"])
+      }, {
         if: {
           properties: { operation: { const: "update_course_design" } },
           required: ["operation"]
@@ -1979,7 +2002,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:f9183c9088e1ce4a475b8b0b7c9aeef3913596aa8283f378f094b42f0a53d426";
+  "sha256:1a55a965bbb3aead7b0b827fe10921c2d8573ce0067b9b445aa25fc4fdfae1a1";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

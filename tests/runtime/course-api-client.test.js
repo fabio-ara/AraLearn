@@ -1139,8 +1139,13 @@ test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", 
     limit: 12,
     maxBytes: 262144
   });
+  await client.loadAuthoringStudyUnits(COURSE_ID, {
+    expectedRevision: 9,
+    inspectionFocusId: AVATAR_ID,
+    limit: 24
+  });
 
-  assert.deepEqual(calls.map(({ body }) => body.view), ["outline", "study_units"]);
+  assert.deepEqual(calls.map(({ body }) => body.view), ["outline", "study_units", "study_units"]);
   assert.deepEqual(calls[1].body, {
     courseId: COURSE_ID,
     view: "study_units",
@@ -1156,6 +1161,16 @@ test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", 
     calls[1].headers.get("accept"),
     "application/vnd.aralearn.course-study-unit-inspection.v2+json"
   );
+  assert.deepEqual(calls[2].body, {
+    courseId: COURSE_ID,
+    view: "study_units",
+    expectedRevision: 9,
+    inspectionFocusId: AVATAR_ID,
+    cursor: null,
+    direction: "forward",
+    limit: 24,
+    maxBytes: 512 * 1024
+  });
   assert.throws(
     () => client.loadAuthoringStudyUnits(COURSE_ID, {
       expectedRevision: 9,

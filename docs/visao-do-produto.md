@@ -154,9 +154,13 @@ O mesmo Curso pode ser observado em dois contextos complementares:
   Unidade; quando o Curso é
   compartilhado, a primeira gravação cria um Curso pessoal privado sem alterar o
   original;
-- na **Autoria**, a pessoa proprietária planeja, produz e inspeciona o Curso,
-  mantém sua proveniência, tria Anotações, audita correções, compara variantes,
-  consulta fatos da produção e concede acesso direto para Estudo.
+- na **Autoria**, a pessoa proprietária parametriza e inspeciona o planejamento,
+  a materialização e a revisão do Curso, registra intenções e pode editar texto
+  existente. Ela também mantém a proveniência, tria Anotações, audita correções,
+  compara variantes, consulta fatos da produção e concede acesso direto para
+  Estudo. O fluxo conectado pode planejar, materializar, auditar e revisar; a
+  responsabilidade humana permanece sobretudo em conferir o objeto produzido e
+  indicar o que deve mudar.
 
 A assistência computacional chega ao Curso por três canais distintos. A
 **Assistência por IA** dentro do aplicativo mantém uma sessão contextual em
@@ -165,6 +169,14 @@ memória para Unidade, Microssequência ou Lição. O **Model Context Protocol
 canal **Actions/OpenAPI** permite que um GPT personalizado use cinco operações
 HTTP do mesmo domínio. Eles não compartilham protocolo, sessão, credencial ou
 principal de autorização, embora obedeçam às mesmas regras de Curso.
+
+Quando a conversa precisa mostrar conteúdo material, o cliente pode reunir um
+conjunto ordenado de Unidades — de preferência uma Microssequência coerente — e
+apresentá-lo no próprio chat. Cada Unidade conserva a representação final, a
+resposta esperada e o feedback de práticas, a referência curta para comentário e
+o desenho contextual. O mesmo conjunto possui um endereço para a área
+**Conteúdo** da Autoria, onde permanece filtrado sem impedir que a pessoa retire
+o filtro e percorra o restante do Curso.
 
 Uma alteração não precisa transportar todos os Cursos. A entrada inicial recebe
 descritores finos para selecionar um Curso; a composição é lida em páginas sob

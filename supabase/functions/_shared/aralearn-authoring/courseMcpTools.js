@@ -285,7 +285,7 @@ function mapRead(raw, {
     "dimensions", "severities", "annotationIds", "comparisonSetId",
     "includeObservationText", "includeAttachmentDownloadUrl",
     "attachmentOperation", "sourceRevision", "contentHash", "byteSize", "mediaType",
-    "datasets", "from", "to"
+    "datasets", "from", "to", "inspectionFocusId"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 32 });
@@ -331,6 +331,9 @@ function mapRead(raw, {
   }
   if (view !== "variant_comparison" && raw.comparisonSetId != null) {
     fail("invalid_tool_argument", "comparisonSetId pertence somente às variantes.");
+  }
+  if (view !== "study_units" && raw.inspectionFocusId != null) {
+    fail("invalid_tool_argument", "inspectionFocusId pertence somente ao foco de inspeção.");
   }
   if (!["anchored_annotations", "audit_cycle"].includes(view) &&
       raw.includeObservationText != null) {
@@ -800,7 +803,16 @@ function mapRead(raw, {
         maximum: 240
       });
     }
-    return route("GET", `/v${inspectionVersion}/courses/${courseId}/study-units${searchParams({
+    const inspectionFocusId = raw.inspectionFocusId == null
+      ? null
+      : requiredUuid(raw.inspectionFocusId, "inspectionFocusId");
+    if (inspectionFocusId != null && (raw.scope != null || anchorStudyUnitId != null)) {
+      fail("invalid_tool_argument", "O foco substitui escopo e âncora na leitura das Unidades.");
+    }
+    const inspectionPath = inspectionFocusId == null
+      ? `/v${inspectionVersion}/courses/${courseId}/study-units`
+      : `/v1/courses/${courseId}/inspection-focuses/${inspectionFocusId}/study-units`;
+    return route("GET", `${inspectionPath}${searchParams({
       expectedRevision,
       scopeKind,
       scopeId,
@@ -905,7 +917,7 @@ function mapChange(raw, {
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
     "operation", "planCommand", "designCommand", "materializationCommand",
     "sourceCommand", "annotationCommand", "auditCommand", "upserts", "deletes",
-    "sourceAttributionApplications", "variantCommand"
+    "sourceAttributionApplications", "variantCommand", "inspectionFocus"
   ]);
   if (allowApplicationCompositionMetadata) {
     allowedFields.add("expectedStudyUnitVersion");
@@ -923,7 +935,8 @@ function mapChange(raw, {
     "update_audit_cycle",
     "update_course_variants",
     "commit_course_composition",
-    "advance_part_materialization"
+    "advance_part_materialization",
+    "create_inspection_focus"
   ]).has(operation)) {
     fail("invalid_tool_argument", "operation é inválida.", { field: "operation" });
   }
@@ -940,6 +953,36 @@ function mapChange(raw, {
   }
   if (operation !== "update_course_variants" && raw.variantCommand != null) {
     fail("invalid_tool_argument", "variantCommand pertence somente às variantes.");
+  }
+  if (operation !== "create_inspection_focus" && raw.inspectionFocus != null) {
+    fail("invalid_tool_argument", "inspectionFocus pertence somente à criação do foco.");
+  }
+  if (operation === "create_inspection_focus") {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.designCommand != null || raw.sourceCommand != null || raw.annotationCommand != null ||
+        raw.auditCommand != null || raw.variantCommand != null || raw.materializationCommand != null ||
+        raw.upserts != null || raw.deletes != null || raw.sourceAttributionApplications != null) {
+      fail("invalid_tool_argument", "A criação do foco recebeu campos incompatíveis.");
+    }
+    const focus = object(raw.inspectionFocus, "inspectionFocus");
+    exactFields(focus, new Set(["title", "studyUnitIds"]));
+    const title = requiredText(focus.title, "inspectionFocus.title", { maximum: 160 });
+    if (!Array.isArray(focus.studyUnitIds) ||
+        focus.studyUnitIds.length < 1 || focus.studyUnitIds.length > 64) {
+      fail("invalid_tool_argument", "O foco precisa conter de uma a 64 Unidades.");
+    }
+    const studyUnitIds = focus.studyUnitIds.map((value, index) =>
+      requiredText(value, `inspectionFocus.studyUnitIds[${index}]`, { maximum: 240 })
+    );
+    if (new Set(studyUnitIds).size !== studyUnitIds.length) {
+      fail("invalid_tool_argument", "O foco não aceita Unidades repetidas.");
+    }
+    return route("POST", `/v1/courses/${courseId}/inspection-focuses`, requestId, {
+      requestId,
+      expectedRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
+      title,
+      studyUnitIds
+    });
   }
   if (operation === "update_course_variants") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||

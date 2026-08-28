@@ -23,6 +23,12 @@ const TARGET_DEFINITIONS = Object.freeze([
     kind: "didactic_microsequence"
   }),
   Object.freeze({ option: "studyUnitId", query: "studyUnitId", kind: "study_unit" }),
+  Object.freeze({
+    option: "inspectionFocusId",
+    query: "inspectionFocusId",
+    kind: "inspection_focus",
+    uuid: true
+  }),
   Object.freeze({ option: "annotationId", query: "annotationId", kind: "anchored_annotation", uuid: true }),
   Object.freeze({ option: "findingId", query: "findingId", kind: "audit_finding", uuid: true }),
   Object.freeze({ option: "auditRunId", query: "auditRunId", kind: "audit_run", uuid: true }),
@@ -36,7 +42,7 @@ const TARGET_DEFINITIONS = Object.freeze([
 ]);
 const BUILD_OPTION_FIELDS = new Set([
   "section", "authoringPartId", "moduleId", "lessonId", "topicId", "didacticMicrosequenceId",
-  "studyUnitId", "annotationId", "findingId", "correctionId", "auditRunId", "sourceId", "anchorId",
+  "studyUnitId", "inspectionFocusId", "annotationId", "findingId", "correctionId", "auditRunId", "sourceId", "anchorId",
   "comparisonSetId", "materializationId", "returnAuthoringPartId", "returnMaterializationId",
   "unassigned"
 ]);
@@ -127,6 +133,7 @@ function targetAllowedForSection(target, section) {
   if (target.kind === "audit_run") return section === "review";
   if (target.kind === "course_source") return section === "sources";
   if (target.kind === "study_unit" && section === "review") return true;
+  if (target.kind === "inspection_focus") return section === "content";
   if (target.kind === "topic") return section === "content";
   if (section === "content") return true;
   return section === "parameters" && [

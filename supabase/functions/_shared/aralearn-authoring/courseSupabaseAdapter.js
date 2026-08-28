@@ -1631,6 +1631,39 @@ function withInspectionDeepLinks(value, publicAppUrl) {
   return result;
 }
 
+function normalizeInspectionFocus(value, { courseId, inspectionFocusId = null } = {}) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      value.contract !== "aralearn.course-inspection-focus.v1" ||
+      value.courseId !== courseId ||
+      typeof value.inspectionFocusId !== "string" ||
+      !UUID_PATTERN.test(value.inspectionFocusId) ||
+      inspectionFocusId !== null && value.inspectionFocusId !== inspectionFocusId ||
+      !Number.isSafeInteger(value.courseRevision) || value.courseRevision < 1 ||
+      typeof value.title !== "string" || !value.title.trim() || value.title !== value.title.trim() ||
+      !Array.isArray(value.studyUnitIds) || value.studyUnitIds.length < 1 ||
+      value.studyUnitIds.length > 64 ||
+      !Array.isArray(value.availableStudyUnitIds) || !Array.isArray(value.missingStudyUnitIds) ||
+      value.studyUnitIds.some((id) => typeof id !== "string" || !id || id !== id.trim()) ||
+      new Set(value.studyUnitIds).size !== value.studyUnitIds.length ||
+      [...value.availableStudyUnitIds, ...value.missingStudyUnitIds]
+        .some((id) => !value.studyUnitIds.includes(id))) {
+    throw new AuthoringApiError(
+      503,
+      "invalid_inspection_focus_state",
+      "O serviço devolveu um foco de inspeção inválido."
+    );
+  }
+  return structuredClone(value);
+}
+
+function withInspectionFocusDeepLink(value, publicAppUrl) {
+  return {
+    ...value,
+    deepLink: `${publicAppUrl}/#/authoring/courses/${encodeURIComponent(value.courseId)}` +
+      `?section=content&inspectionFocusId=${encodeURIComponent(value.inspectionFocusId)}`
+  };
+}
+
 function auditCourseHref(publicAppUrl, courseId, parameters) {
   try {
     const query = Object.entries(parameters)
@@ -3335,6 +3368,105 @@ export class CourseSupabaseAdapter {
       scopeKind,
       scopeId
     }, validateCourseEntityContent), this.publicAppUrl);
+  }
+
+  async getCourseInspectionFocus({
+    principal,
+    courseId,
+    inspectionFocusId,
+    deadlineAt = null
+  }) {
+    const result = first(await this.rpc("get_course_inspection_focus_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_inspection_focus_id: inspectionFocusId
+    }, { deadlineAt }));
+    return withInspectionFocusDeepLink(
+      normalizeInspectionFocus(result, { courseId, inspectionFocusId }),
+      this.publicAppUrl
+    );
+  }
+
+  async createCourseInspectionFocus({
+    principal,
+    courseId,
+    expectedRevision,
+    title,
+    studyUnitIds,
+    requestId,
+    deadlineAt = null
+  }) {
+    const result = first(await this.rpc("create_course_inspection_focus_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_expected_revision: expectedRevision,
+      p_title: title,
+      p_study_unit_ids: studyUnitIds,
+      p_request_id: requestId
+    }, { deadlineAt }));
+    const focus = normalizeInspectionFocus(result, { courseId });
+    if (focus.requestId !== requestId || typeof focus.idempotent !== "boolean") {
+      throw new AuthoringApiError(
+        503,
+        "invalid_inspection_focus_state",
+        "A confirmação do foco de inspeção não corresponde ao pedido."
+      );
+    }
+    return withInspectionFocusDeepLink(focus, this.publicAppUrl);
+  }
+
+  async listCourseInspectionFocusStudyUnits({
+    principal,
+    courseId,
+    inspectionFocusId,
+    expectedRevision,
+    cursorStudyUnitId = null,
+    direction = "forward",
+    limit = 12,
+    maxBytes = 512 * 1024,
+    deadlineAt = null
+  }) {
+    const [focusResult, pageResult] = await Promise.all([
+      this.rpc("get_course_inspection_focus_for_actor_v1", {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_inspection_focus_id: inspectionFocusId
+      }, { deadlineAt }),
+      this.rpc("list_owned_course_inspection_focus_units_for_actor_v1", {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_inspection_focus_id: inspectionFocusId,
+        p_expected_revision: expectedRevision,
+        p_cursor_study_unit_id: cursorStudyUnitId,
+        p_direction: direction,
+        p_limit: limit,
+        p_max_bytes: maxBytes
+      }, { deadlineAt })
+    ]);
+    const focus = withInspectionFocusDeepLink(
+      normalizeInspectionFocus(first(focusResult), { courseId, inspectionFocusId }),
+      this.publicAppUrl
+    );
+    const { validateCourseEntityContent } = await import(
+      "../aralearn/runtime/domain/courseEntities.js"
+    );
+    const page = withInspectionDeepLinks(normalizeInspectionPage(first(pageResult), {
+      courseId,
+      expectedRevision,
+      scopeKind: "course",
+      scopeId: null
+    }, validateCourseEntityContent), this.publicAppUrl);
+    return {
+      ...page,
+      inspectionFocus: {
+        id: focus.inspectionFocusId,
+        title: focus.title,
+        deepLink: focus.deepLink,
+        requestedCount: focus.studyUnitIds.length,
+        availableCount: focus.availableStudyUnitIds.length,
+        missingStudyUnitIds: focus.missingStudyUnitIds
+      }
+    };
   }
 
   async listCourseAccess({ principal, courseId, deadlineAt = null }) {

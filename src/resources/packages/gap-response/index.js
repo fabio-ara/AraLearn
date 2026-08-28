@@ -91,6 +91,7 @@ function declaredPracticeTarget(practiceTargets, path) {
 }
 
 function markerForBlank(blank, index, options) {
+  const revealAnswers = options.revealPracticeAnswers === true;
   return createPackageGapMarker({
     blockKey: options.responseBlockKey || options.blockKey,
     index,
@@ -98,11 +99,13 @@ function markerForBlank(blank, index, options) {
     layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
       .map((candidate) => practiceValueLabel(blank, candidate, options))
       .reduce((widest, candidate) => candidate.length > widest.length ? candidate : widest, ""),
-    value: practiceValueLabel(blank, options.responseState?.values?.[index] ?? "", options)
+    value: practiceValueLabel(blank, revealAnswers ? blank.answer : options.responseState?.values?.[index] ?? "", options),
+    readOnly: revealAnswers
   });
 }
 
 function choicePrompt(data, options) {
+  if (options.revealPracticeAnswers === true) return "";
   const active = options?.activeTextGapPrompt;
   if (!active || active.blockKey !== options.blockKey) return "";
   const blank = data.blanks[Number(active.blankIndex)];
@@ -234,7 +237,9 @@ export const gapResponsePackage = Object.freeze({
   render(data, options = {}) {
     if (options.manualEditing === true) return "";
     const prompt = choicePrompt(data, options);
-    const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
+    const feedback = options.revealPracticeAnswers === true
+      ? '<div class="inline-feedback ok"><p class="tiny">Respostas esperadas exibidas.</p></div>'
+      : feedbackHtml(options.blockKey, options.responseState?.feedback);
     if (Array.isArray(options.dockExerciseParts)) {
       if (prompt) options.dockExerciseParts.push(prompt);
       if (feedback) options.dockExerciseParts.push(feedback);

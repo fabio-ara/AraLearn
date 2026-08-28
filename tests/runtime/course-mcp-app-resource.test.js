@@ -10,7 +10,7 @@ import {
 
 test("o recurso visual usa MCP Apps com URI versionada e degradação textual", () => {
   assert.equal(COURSE_MCP_APP_RESOURCE_URI,
-    "ui://aralearn/course-inspector/0.0.23.html");
+    "ui://aralearn/course-inspector/0.0.24.html");
   assert.equal(COURSE_MCP_APP_MIME_TYPE, "text/html;profile=mcp-app");
   assert.deepEqual(courseMcpAppToolMeta(), {
     ui: { resourceUri: COURSE_MCP_APP_RESOURCE_URI },
@@ -38,9 +38,9 @@ test("o recurso visual usa MCP Apps com URI versionada e degradação textual", 
   assert.match(resource.text, /resizeObserver\?\.disconnect\(\)/u);
   assert.match(resource.text, /respond\(id\)/u);
   assert.doesNotMatch(resource.text, /ui\/notifications\/teardown-complete/u);
-  assert.match(resource.text, /renderPackageStudyUnitArticle\(studyUnit\)/u);
+  assert.match(resource.text, /renderPackageStudyUnitArticle\(studyUnit, \{/u);
   assert.match(resource.text,
-    /https:\/\/fabio-ara\.github\.io\/AraLearn\/src\/render\/renderPackageStudyUnit\.js\?v=0\.0\.23/u);
+    /https:\/\/fabio-ara\.github\.io\/AraLearn\/src\/render\/renderPackageStudyUnit\.js\?v=0\.0\.24/u);
   assert.doesNotMatch(resource._meta.ui.csp.resourceDomains[0], /\/AraLearn/u);
   assert.match(resource.text, /A representação textual do resultado continua disponível/u);
   assert.match(resource.text, /member\?\.currentCourseRevision/u);
@@ -48,6 +48,11 @@ test("o recurso visual usa MCP Apps com URI versionada e degradação textual", 
   assert.match(resource.text, /differenceCount\("accidentalDeviations"/u);
   assert.match(resource.text, /member\?\.courseId === differences\.referenceCourseId \? "Referência"/u);
   assert.match(resource.text, /function renderComponentLibrary\(data\)/u);
+  assert.match(resource.text, /async function renderInspectionFocus\(data, version\)/u);
+  assert.match(resource.text, /revealPracticeAnswers: true/u);
+  assert.match(resource.text, /Use a referência de cada Unidade para comentar no chat/u);
+  assert.match(resource.text, /Parâmetros e orientação desta Unidade/u);
+  assert.doesNotMatch(resource.text, /data-observation|update_anchored_annotations/u);
   assert.doesNotMatch(resource.text, /planningMatch|differenceCount\)|declaredParameterDifferences/u);
 });
 

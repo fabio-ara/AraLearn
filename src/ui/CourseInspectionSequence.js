@@ -398,12 +398,13 @@ function normalizeCursor(value, expected) {
 export function normalizeCourseInspectionPage(value, {
   expectedCourseId = "",
   expectedRevision = null,
-  expectedScope = null
+  expectedScope = null,
+  expectedInspectionFocusId = null
 } = {}) {
   const topLevelFields = [
     "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions", "items",
     "hasPrevious", "hasMore", "previousCursor", "nextCursor", "pageBytes",
-    "offline", "stale", "offlineKnown"
+    "inspectionFocus", "offline", "stale", "offlineKnown"
   ];
   exactRecord(value, topLevelFields, "A página de Conteúdo é inválida.");
   if (value.contract !== PAGE_CONTRACT || !Array.isArray(value.items) ||
@@ -427,6 +428,41 @@ export function normalizeCourseInspectionPage(value, {
       items.some((item, index) => index > 0 && item.ordinal !== items[index - 1].ordinal + 1)) {
     throw new TypeError("A ordem da página de Conteúdo é inválida.");
   }
+  let inspectionFocus = null;
+  if (value.inspectionFocus != null) {
+    exactRecord(value.inspectionFocus, [
+      "id", "title", "deepLink", "requestedCount", "availableCount", "missingStudyUnitIds"
+    ], "O foco de inspeção é inválido.");
+    const id = canonicalId(value.inspectionFocus.id, "O foco de inspeção", { uuid: true });
+    const requestedCount = natural(
+      value.inspectionFocus.requestedCount,
+      "A quantidade solicitada pelo foco",
+      { minimum: 1, maximum: 64 }
+    );
+    const availableCount = natural(
+      value.inspectionFocus.availableCount,
+      "A quantidade disponível no foco",
+      { maximum: requestedCount }
+    );
+    if (!Array.isArray(value.inspectionFocus.missingStudyUnitIds) ||
+        value.inspectionFocus.missingStudyUnitIds.length !== requestedCount - availableCount) {
+      throw new TypeError("O foco de inspeção é inválido.");
+    }
+    inspectionFocus = Object.freeze({
+      id,
+      title: requiredText(value.inspectionFocus.title, "O título do foco", 160),
+      deepLink: requiredText(value.inspectionFocus.deepLink, "O link do foco", DEEP_LINK_MAX_LENGTH),
+      requestedCount,
+      availableCount,
+      missingStudyUnitIds: Object.freeze(value.inspectionFocus.missingStudyUnitIds.map((studyUnitId) =>
+        canonicalId(studyUnitId, "Uma Unidade ausente do foco")
+      ))
+    });
+  }
+  if ((expectedInspectionFocusId !== null) !== (inspectionFocus !== null) ||
+      expectedInspectionFocusId !== null && inspectionFocus.id !== expectedInspectionFocusId) {
+    throw new TypeError("O foco de inspeção não corresponde ao pedido.");
+  }
   return Object.freeze({
     contract: PAGE_CONTRACT,
     courseId,
@@ -440,12 +476,20 @@ export function normalizeCourseInspectionPage(value, {
     previousCursor: normalizeCursor(value.previousCursor, value.hasPrevious),
     nextCursor: normalizeCursor(value.nextCursor, value.hasMore),
     pageBytes: natural(value.pageBytes, "O tamanho da página", { maximum: MAX_PAGE_BYTES }),
+    inspectionFocus,
     offlineKnown: value.offline === true || value.stale === true || value.offlineKnown === true
   });
 }
 
 export function inspectionRequestFromTarget(target) {
   if (!target) return Object.freeze({ scope: Object.freeze({ kind: "course", id: null }), anchorStudyUnitId: null });
+  if (target.kind === "inspection_focus") {
+    return Object.freeze({
+      scope: Object.freeze({ kind: "course", id: null }),
+      anchorStudyUnitId: null,
+      inspectionFocusId: canonicalId(target.id, "O foco de inspeção", { uuid: true })
+    });
+  }
   if (target.kind === "study_unit") {
     return Object.freeze({
       scope: Object.freeze({ kind: "course", id: null }),
@@ -950,6 +994,7 @@ function renderStudyUnit(
     resourceSelectionDisabled: state.manualSaving,
     resourceSelectionTargetIds: resourceTargetIds,
     selectedResourceTargetIds,
+    revealPracticeAnswers: !editing,
     manualEditingTargetId: editing && selectedResourceTargetIds.length
       ? state.manualTargetId
       : ""
@@ -978,7 +1023,7 @@ function renderStudyUnit(
     renderAuthorshipState(item, observationCount) +
     renderDesignComparison(item) +
     (runtime.dockHtml
-      ? '<p class="course-inspection-response-notice">Respostas desativadas durante a inspeção.</p>'
+      ? '<p class="course-inspection-response-notice">Prática exibida com as respostas esperadas.</p>'
       : "") +
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
     `<div class="card-sheet-content">${runtime.bodyHtml}</div>${runtime.dockHtml}</div>` +
@@ -1235,6 +1280,26 @@ function renderInspectionSyncState(state) {
     )}</span>`;
 }
 
+function renderInspectionFocus(state, active) {
+  const focus = state.inspectionFocus;
+  if (!focus) return "";
+  const available = focus.availableCount;
+  const missing = focus.requestedCount - available;
+  const route = buildCourseAuthoringRoute(state.courseId, {
+    section: "content",
+    ...(active ? { studyUnitId: active.studyUnit.id } : {})
+  });
+  return '<section class="course-inspection-focus" aria-label="Filtro de inspeção ativo">' +
+    '<div><small>Foco de inspeção</small>' +
+    `<strong>${escapeHtml(focus.title)}</strong>` +
+    `<span>${available} ${available === 1 ? "Unidade" : "Unidades"}${missing
+      ? ` · ${missing} ${missing === 1 ? "indisponível" : "indisponíveis"}`
+      : ""}</span></div>` +
+    `<a href="${escapeHtml(route)}" data-inspection-route data-inspection-exit-focus` +
+    ' aria-label="Remover o filtro e ver o Curso">' +
+    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Ver no Curso</span></a></section>`;
+}
+
 function renderSequence(state) {
   const active = state.items.find(({ studyUnit }) => studyUnit.id === state.activeStudyUnitId) ||
     state.items[0] || null;
@@ -1300,7 +1365,8 @@ function renderSequence(state) {
     ` aria-label="Próxima Unidade">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>` +
     '<div class="course-inspection-navigation-tools">' +
     renderInspectionSearch(state) + renderInspectionSyncState(state) + "</div></nav>" +
-    notice + body + '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
+    renderInspectionFocus(state, active) + notice + body +
+    '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
     `${escapeHtml(state.manualStatus)}</p>` +
     renderInspectionObservationSheet(state) + "</section>";
 }
@@ -1393,6 +1459,8 @@ export function createCourseInspectionSequence({
       typeof onSaveManualEdit === "function" &&
       typeof controller.loadCourseDocument === "function",
     scope: requested.scope,
+    inspectionFocusId: requested.inspectionFocusId ?? null,
+    inspectionFocus: null,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
     requestedAnchorStudyUnitId: requested.anchorStudyUnitId,
@@ -1850,6 +1918,7 @@ export function createCourseInspectionSequence({
     state.items = ordered;
     state.totalCount = page.totalCount;
     state.scopeOptions = page.scopeOptions;
+    state.inspectionFocus = page.inspectionFocus;
     state.offlineKnown = page.offlineKnown;
     if (direction === "backward") {
       state.hasPrevious = page.hasPrevious;
@@ -1873,6 +1942,7 @@ export function createCourseInspectionSequence({
     return {
       expectedRevision: state.pinnedRevision,
       scope: state.scope,
+      ...(state.inspectionFocusId === null ? {} : { inspectionFocusId: state.inspectionFocusId }),
       ...(anchorStudyUnitId ? { anchorStudyUnitId } : {}),
       cursor,
       direction,
@@ -1887,7 +1957,8 @@ export function createCourseInspectionSequence({
       {
         expectedCourseId: state.courseId,
         expectedRevision: state.pinnedRevision,
-        expectedScope: state.scope
+        expectedScope: state.scope,
+        expectedInspectionFocusId: state.inspectionFocusId
       }
     );
   }
@@ -3318,7 +3389,7 @@ export function createCourseInspectionSequence({
     const signal = event?.data;
     if (!isPlainObject(signal) || Object.keys(signal).length !== 3 ||
         signal.courseId !== state.courseId || signal.revision !== state.pinnedRevision ||
-        typeof signal.studyUnitId !== "string" ||
+        typeof signal.studyUnitId !== "string" || state.inspectionFocusId !== null ||
         Date.now() - lastInteractionAt < 1_500 || state.initialLoading || state.loadingDirection ||
         state.manualStudyUnitId) {
       return;
