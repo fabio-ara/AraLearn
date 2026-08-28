@@ -1360,7 +1360,9 @@ test.describe("Autoria real com Supabase local", () => {
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await expect(actionsExecution).toBeVisible();
       await expect(actionsExecution.getByText("Versão 3 · Actions", { exact: true })).toBeVisible();
-      await page.getByRole("link", { name: PART_TITLE, exact: true }).first().click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
+      await expect(page.getByRole("heading", { name: PART_TITLE, exact: true }).first())
+        .toBeVisible();
       await page.locator(`a[href*="materializationId=${materializationId}"]`).click();
       const materializationRegion = page.getByRole("region", {
         name: "Etapas e resultados da materialização"
