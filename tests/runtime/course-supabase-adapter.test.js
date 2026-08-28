@@ -348,7 +348,7 @@ test("Pesquisa usa uma RPC limitada e acrescenta dicionário e links fora do ban
   assert.equal(
     page.facts[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      "?section=sources&sourceId=source-a"
+      "?section=sources"
   );
   assert.equal(page.deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}?section=research`);

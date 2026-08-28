@@ -524,7 +524,7 @@ test.describe("Autoria real com Supabase local", () => {
       await page.locator("[data-course-authoring-create]")
         .getByRole("button", { name: "Criar Curso" }).click();
       await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Visão geral");
-      await expect(page.locator(".course-authoring-course-heading .course-authoring-eyebrow"))
+      await expect(page.locator(".course-authoring-course-heading .course-authoring-context-title"))
         .toHaveText(COURSE_TITLE);
       const hashMatch = page.url().match(/#\/authoring\/courses\/([0-9a-f-]{36})/u);
       expect(hashMatch).not.toBeNull();
