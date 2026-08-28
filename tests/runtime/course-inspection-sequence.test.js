@@ -2118,6 +2118,7 @@ test("teclado fecha menus, clique externo os recolhe e a navegação usa o rolad
   };
   const unitTwo = {
     scroll: null,
+    getBoundingClientRect() { return { top: 240 }; },
     scrollIntoView(value) { this.scroll = value; }
   };
   root.querySelectorAll = (selector) => selector.includes("details.course-inspection")
@@ -2168,6 +2169,7 @@ test("teclado fecha menus, clique externo os recolhe e a navegação usa o rolad
     }
   });
   assert.equal(unitTwo.scroll, null);
+  assert.deepEqual(windowValue.scrolls.at(-1), { top: 240, left: 0, behavior: "auto" });
   assert.match(root.innerHTML, /data-inspection-context-position>2\/60<\/span>/u);
   assert.match(root.innerHTML,
     /data-inspection-study-unit="unit-02"[^>]*>[\s\S]*?<article[^>]*aria-current="true"/u);
