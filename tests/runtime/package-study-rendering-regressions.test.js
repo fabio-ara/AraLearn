@@ -33,6 +33,80 @@ test("artigos independentes isolam a memória visual pela identidade da Unidade 
   assert.match(second, /data-package-render-key="study-unit:second-card::content:shared-instance"/u);
 });
 
+test("inspeção revela Choice, Gap e feedback sem controles de resolução", () => {
+  const choice = {
+    ...studyUnitWith({
+      id: "choice-context",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Compare os protocolos." }
+    }),
+    role: "practice",
+    response: {
+      id: "choice-answer",
+      package: "aralearn.response.choice",
+      version: "1.0.0",
+      data: {
+        question: "Qual entrega um fluxo confiável?",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        options: [
+          { id: "tcp", text: "TCP", feedback: "Confirma entrega e ordenação." },
+          { id: "udp", text: "UDP", feedback: "Não confirma entrega nem ordenação." }
+        ],
+        answerIds: ["tcp"]
+      }
+    },
+    feedback: [{
+      id: "choice-feedback",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "A confiabilidade decorre do contrato do TCP." }
+    }]
+  };
+  const choiceHtml = renderPackageStudyUnitArticle(choice, {
+    revealPracticeAnswers: true
+  });
+  assert.match(choiceHtml, /selected-correct/u);
+  assert.match(choiceHtml, /Alternativas e resposta esperada\./u);
+  assert.doesNotMatch(choiceHtml, /Selecione a alternativa correta\./u);
+  assert.match(choiceHtml, /Confirma entrega e ordenação\./u);
+  assert.match(choiceHtml, /Não confirma entrega nem ordenação\./u);
+  assert.match(choiceHtml, /Resposta esperada exibida\./u);
+  assert.match(choiceHtml, /A confiabilidade decorre do contrato do TCP\./u);
+  assert.doesNotMatch(choiceHtml, /data-action="choice-toggle"|<button class="multiple-choice-option/u);
+
+  const gap = {
+    ...studyUnitWith({
+      id: "gap-context",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "O DNS resolve nomes." }
+    }),
+    role: "practice",
+    response: {
+      id: "gap-answer",
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "dns",
+          targetInstanceId: "gap-context",
+          targetPath: "text:dns",
+          responseMode: "choice",
+          answer: "DNS",
+          distractors: ["HTTP"]
+        }]
+      }
+    }
+  };
+  const gapHtml = renderPackageStudyUnitArticle(gap, { revealPracticeAnswers: true });
+  assert.match(gapHtml, /is-resolved/u);
+  assert.match(gapHtml, /Resposta esperada: DNS/u);
+  assert.match(gapHtml, /Respostas esperadas exibidas\./u);
+  assert.doesNotMatch(gapHtml, /contenteditable="true"|text-gap-open-choice/u);
+});
+
 test("edição manual preserva o resource e publica somente o mapa textual invisível", () => {
   const instance = {
     id: "paragraph-edit",

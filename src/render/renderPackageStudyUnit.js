@@ -84,7 +84,7 @@ export function renderPackageStudyUnitBlocks(studyUnit, options = {}) {
   const response = studyUnit.response && (!manualEditing || editingResponse)
     ? renderInstance(studyUnit, studyUnit.response, "response", 0, options, dockExerciseParts)
     : "";
-  const authoringFeedback = options.resourceSelectionEnabled
+  const authoringFeedback = options.resourceSelectionEnabled || options.revealPracticeAnswers
     ? '<section class="runtime-authoring-support-resources" aria-label="Explicações da Unidade de estudo"><span class="runtime-authoring-support-title">Explicações</span>' +
       studyUnit.feedback.map((instance, index) => renderInstance(studyUnit, instance, "feedback", index, options, dockExerciseParts)).join("") +
       "</section>"
@@ -123,10 +123,10 @@ export function renderPackageStudyUnitFeedback(entry, options = {}) {
   };
 }
 
-export function renderPackageStudyUnitArticle(studyUnit) {
+export function renderPackageStudyUnitArticle(studyUnit, options = {}) {
   assertPackageStudyUnit(studyUnit);
   const blockKeyPrefix = `study-unit:${studyUnit.id}`;
-  return `<article class="card card-package" data-study-unit-id="${escapePackageAttribute(studyUnit.id)}"><header class="card-head"><h4>${escapePackageHtml(studyUnit.title || "Unidade de estudo")}</h4></header><div class="card-body">${renderPackageStudyUnitBlocks(studyUnit, { blockKeyPrefix })}</div></article>`;
+  return `<article class="card card-package" data-study-unit-id="${escapePackageAttribute(studyUnit.id)}"><header class="card-head"><h4>${escapePackageHtml(studyUnit.title || "Unidade de estudo")}</h4></header><div class="card-body">${renderPackageStudyUnitBlocks(studyUnit, { ...options, blockKeyPrefix })}</div></article>`;
 }
 
 export function readPackageStudyUnitText(studyUnit) {

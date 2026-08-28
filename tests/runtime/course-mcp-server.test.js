@@ -132,10 +132,10 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
     "aralearn://authoring/audit-repair",
     "aralearn://authoring/linguistic-didactic-review",
     "aralearn://authoring/components",
-    "ui://aralearn/course-inspector/0.0.23.html"
+    "ui://aralearn/course-inspector/0.0.24.html"
   ]);
   const componentResponse = await handler()(request("resources/read", {
-    uri: "ui://aralearn/course-inspector/0.0.23.html"
+    uri: "ui://aralearn/course-inspector/0.0.24.html"
   }));
   const component = (await componentResponse.json()).result.contents[0];
   assert.equal(component.mimeType, "text/html;profile=mcp-app");

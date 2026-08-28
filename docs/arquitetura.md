@@ -207,6 +207,12 @@ produção. A comparação com o desenho vigente é derivada no servidor em uma
 única leitura paginada; a interface apresenta valores e origens legíveis, sem
 expor hashes nem buscar Observações ou parâmetros Unidade por Unidade.
 
+Um foco de inspeção persiste apenas Curso, revisão de origem, título e ordem de
+até 64 identidades de Unidade. A leitura sempre projeta as versões correntes do
+Curso e indica identidades que já não estão disponíveis. MCP Apps e o endereço
+filtrado da Autoria consomem essa mesma projeção; não há cópia de conteúdo nem
+segundo renderer.
+
 Estado pessoal e Anotações possuem contratos independentes. Progresso e itens
 para rever usam estado pessoal v2. Anotações guardam texto, classificação,
 âncoras e citações em repositório próprio. As filas locais dessas duas famílias

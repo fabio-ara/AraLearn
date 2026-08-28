@@ -16,7 +16,10 @@ async function mountResource(page, html, {
   initialize = true,
   hostCapabilities = { openLinks: {} }
 } = {}) {
-  await page.setContent(`<!doctype html><html><body>
+  await page.setContent(`<!doctype html><html><head><style>
+    html, body { margin: 0; min-height: 100%; }
+    #mcp-app { border: 0; display: block; width: 100%; }
+  </style></head><body>
     <iframe id="mcp-app" title="Recurso MCP" sandbox="allow-scripts allow-same-origin"></iframe>
     <script>
       window.__mcpMessages = [];
@@ -25,6 +28,10 @@ async function mountResource(page, html, {
         const message = event.data;
         if (event.source !== frame.contentWindow || !message || message.jsonrpc !== "2.0") return;
         window.__mcpMessages.push(message);
+        if (message.method === "ui/notifications/size-changed") {
+          const height = Number(message.params?.height);
+          if (Number.isFinite(height) && height > 0) frame.style.height = Math.min(1200, height) + "px";
+        }
         if (window.__initializeMcpApp && message.method === "ui/initialize" && message.id !== undefined) {
           event.source.postMessage({
             jsonrpc: "2.0",
@@ -102,6 +109,146 @@ const setDiagramStudyUnit = Object.freeze({
   topics: []
 });
 
+function focusedInspectionPayload() {
+  const design = {
+    parameters: [{
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+      value: 2,
+      origin: "author",
+      sourceScopeKind: "didactic_microsequence"
+    }],
+    guidance: [{
+      guidance: "Contrastar a condição de ordenação antes de generalizar o algoritmo.",
+      origin: "researcher",
+      sourceScopeKind: "didactic_microsequence"
+    }],
+    componentPolicy: {
+      availability: "allow_only",
+      allowedCount: 5,
+      excludedCount: 1,
+      preferredCount: 2,
+      origin: "author",
+      sourceScopeKind: "course"
+    }
+  };
+  const path = {
+    module: { id: "module-a", position: 1, title: "Algoritmos" },
+    lesson: { id: "lesson-a", position: 2, title: "Busca eficiente" },
+    didacticMicrosequence: { id: "micro-a", position: 3, title: "Busca binária" }
+  };
+  const item = (studyUnit, state = "current") => ({
+    studyUnit,
+    version: 2,
+    updatedAt: "2026-08-28T00:00:00Z",
+    ordinal: studyUnit.position,
+    curriculumPath: path,
+    authoringPart: null,
+    authorship: {
+      pendingObservationCount: 0,
+      production: null,
+      design: {
+        used: design,
+        current: state === "current" ? design : {
+          ...design,
+          parameters: [{ ...design.parameters[0], value: 3 }]
+        },
+        state
+      }
+    }
+  });
+  return {
+    contract: "aralearn.course-study-unit-inspection-page.v2",
+    courseId: "10000000-0000-4000-8000-000000000001",
+    courseRevision: 8,
+    scope: { kind: "course", id: null },
+    totalCount: 2,
+    scopeOptions: { authoringParts: [], unassignedStudyUnitCount: 2 },
+    items: [item({
+      id: "unit-gap",
+      position: 1,
+      title: "Redução do intervalo",
+      role: "practice",
+      content: [{
+        id: "unit-gap-text",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "A cada comparação, a busca binária reduz pela metade o intervalo restante." }
+      }],
+      response: {
+        id: "unit-gap-response",
+        package: "aralearn.response.gap",
+        version: "1.0.0",
+        data: {
+          prompt: "Complete a propriedade.",
+          blanks: [{
+            id: "gap-a",
+            targetInstanceId: "unit-gap-text",
+            targetPath: "text",
+            responseMode: "choice",
+            answer: "pela metade",
+            distractors: ["em uma posição", "aleatoriamente"]
+          }]
+        }
+      },
+      feedback: [{
+        id: "unit-gap-feedback",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "A comparação elimina uma das duas metades do intervalo." }
+      }],
+      topics: []
+    }), item({
+      id: "unit-choice",
+      position: 2,
+      title: "Condição de segurança",
+      role: "practice",
+      content: [],
+      response: {
+        id: "unit-choice-response",
+        package: "aralearn.response.choice",
+        version: "1.0.0",
+        data: {
+          question: "Quando a busca binária pode eliminar metade dos candidatos?",
+          selectionMode: "single",
+          selectionCriterion: "correct",
+          options: [{
+            id: "ordered",
+            kind: "text",
+            text: "Quando os valores estão ordenados pelo critério comparado.",
+            feedback: "A ordenação torna segura a eliminação de uma metade."
+          }, {
+            id: "short",
+            kind: "text",
+            text: "Quando a lista tem menos de dez valores.",
+            feedback: "O tamanho não substitui a condição de ordenação."
+          }],
+          answerIds: ["ordered"]
+        }
+      },
+      feedback: [{
+        id: "unit-choice-feedback",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "A ordem é a invariante que sustenta o descarte." }
+      }],
+      topics: []
+    }, "changed")],
+    hasPrevious: false,
+    hasMore: false,
+    previousCursor: null,
+    nextCursor: null,
+    pageBytes: 4096,
+    inspectionFocus: {
+      id: "20000000-0000-4000-8000-000000000002",
+      title: "Busca binária · condição e redução",
+      deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/10000000-0000-4000-8000-000000000001?section=content&inspectionFocusId=20000000-0000-4000-8000-000000000002",
+      requestedCount: 2,
+      availableCount: 2,
+      missingStudyUnitIds: []
+    }
+  };
+}
+
 test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   const requestedUrls = [];
@@ -131,7 +278,7 @@ test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", 
   ));
   expect(initializeRequest.params).toEqual({
     protocolVersion: "2026-01-26",
-    appInfo: { name: "AraLearn Course Inspector", version: "0.0.23" },
+    appInfo: { name: "AraLearn Course Inspector", version: "0.0.24" },
     appCapabilities: { availableDisplayModes: ["inline"] }
   });
   await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
@@ -361,6 +508,78 @@ test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", 
   expect(await page.evaluate(() => window.__mcpMessages.filter(
     ({ method }) => method === "ui/notifications/size-changed"
   ).length)).toBe(sizeCount);
+});
+
+test("o foco incorporado expõe a microssequência, práticas resolvidas e desenho no celular", async ({ page }, testInfo) => {
+  await page.route(`${publishedBaseUrl}**`, async (route) => {
+    const url = new URL(route.request().url());
+    const filePath = localPublishedPath(url);
+    if (!filePath) return route.abort();
+    await route.fulfill({
+      status: 200,
+      contentType: contentType(filePath),
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: await fs.readFile(filePath)
+    });
+  });
+  const resource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+  const appFrame = await mountResource(page, resource.text);
+  await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(
+    ({ method }) => method === "ui/notifications/initialized"
+  ))).toBe(true);
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { ok: true, data: focusedInspectionPayload() } }
+  });
+
+  await expect(appFrame.getByRole("heading", {
+    name: "Busca binária · condição e redução"
+  })).toBeVisible();
+  await expect(appFrame.getByRole("heading", { name: "Busca binária", level: 2 })).toHaveCount(1);
+  await expect(appFrame.getByText("M1.L2.µ3.U1", { exact: true })).toBeVisible();
+  await expect(appFrame.getByText("M1.L2.µ3.U2", { exact: true })).toBeVisible();
+  await expect(appFrame.getByText("Redução do intervalo", { exact: true })).toHaveCount(1);
+  await expect(appFrame.getByText("Condição de segurança", { exact: true })).toHaveCount(1);
+  await expect(appFrame.locator(".runtime-text-gap-blank.is-resolved")).toHaveText("pela metade");
+  await expect(appFrame.locator(".multiple-choice-option.selected-correct"))
+    .toContainText("Quando os valores estão ordenados");
+  await expect(appFrame.getByText("A ordenação torna segura a eliminação de uma metade."))
+    .toBeVisible();
+  await expect(appFrame.locator(".mcp-app-study-unit button")).toHaveCount(0);
+  await appFrame.locator(".mcp-app-design > summary").last().click();
+  await expect(appFrame.getByText("Usado na materialização")).toBeVisible();
+  await expect(appFrame.getByRole("link", { name: "Abrir este conjunto na Autoria" })).toBeVisible();
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await postToResource(page, {
+      jsonrpc: "2.0",
+      method: "ui/notifications/host-context-changed",
+      params: { containerDimensions: { maxWidth: width, maxHeight: 1200 } }
+    });
+    expect(await appFrame.evaluate(() => document.documentElement.scrollWidth <=
+      document.documentElement.clientWidth)).toBe(true);
+    await appFrame.locator("html").screenshot({
+      path: testInfo.outputPath(`mcp-focus-${width}.png`),
+      animations: "disabled"
+    });
+  }
+  await postToResource(page, {
+    jsonrpc: "2.0",
+    method: "ui/notifications/host-context-changed",
+    params: {
+      theme: "dark",
+      containerDimensions: { maxWidth: 390, maxHeight: 1200 }
+    }
+  });
+  await expect(appFrame.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  expect(await appFrame.evaluate(() => document.documentElement.scrollWidth <=
+    document.documentElement.clientWidth)).toBe(true);
+  await appFrame.locator("html").screenshot({
+    path: testInfo.outputPath("mcp-focus-390-dark.png"),
+    animations: "disabled"
+  });
 });
 
 test("teardown responde ao id do host mesmo quando coincide com pedido da aplicação", async ({ page }) => {

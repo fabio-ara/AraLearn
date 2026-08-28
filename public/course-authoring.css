@@ -3487,6 +3487,55 @@
   gap: 5px;
 }
 
+.course-inspection-focus {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--action-primary) 28%, var(--border-default));
+  border-radius: 12px;
+  background: var(--action-primary-subtle);
+}
+
+.course-inspection-focus > div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.course-inspection-focus :is(small, strong, span) {
+  min-width: 0;
+}
+
+.course-inspection-focus small,
+.course-inspection-focus > div > span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.course-inspection-focus strong {
+  overflow: hidden;
+  font-size: var(--type-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-inspection-focus > a {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: var(--radius-control);
+  color: var(--action-primary);
+  font-size: var(--type-xs);
+  font-weight: 650;
+  text-decoration: none;
+}
+
 .course-inspection-search {
   position: relative;
   min-width: 0;

@@ -1,13 +1,13 @@
 export const COURSE_MCP_APP_RESOURCE_URI =
-  "ui://aralearn/course-inspector/0.0.23.html";
+  "ui://aralearn/course-inspector/0.0.24.html";
 export const COURSE_MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
 
 const PUBLISHED_APP_ORIGIN = "https://fabio-ara.github.io";
 const PUBLISHED_APP_BASE = `${PUBLISHED_APP_ORIGIN}/AraLearn`;
 const PUBLISHED_RENDERER =
-  `${PUBLISHED_APP_BASE}/src/render/renderPackageStudyUnit.js?v=0.0.23`;
+  `${PUBLISHED_APP_BASE}/src/render/renderPackageStudyUnit.js?v=0.0.24`;
 const PUBLISHED_REGISTRY =
-  `${PUBLISHED_APP_BASE}/src/resources/packages/index.js?v=0.0.23`;
+  `${PUBLISHED_APP_BASE}/src/resources/packages/index.js?v=0.0.24`;
 
 const COURSE_MCP_APP_HTML = `<!doctype html>
 <html lang="pt-BR">
@@ -15,8 +15,8 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Inspeção do Curso no AraLearn</title>
-  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles-tokens.css?v=0.0.23">
-  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles.css?v=0.0.23">
+  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles-tokens.css?v=0.0.24">
+  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles.css?v=0.0.24">
   <style>
     :root {
       color-scheme: light dark;
@@ -49,6 +49,24 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
     tr:last-child > * { border-block-end: 0; }
     .mcp-app-study-unit { min-width: 0; overflow: clip; }
     .mcp-app-study-unit .card { margin: 0; max-width: 100%; }
+    .mcp-app-focus-head { display: grid; gap: .35rem; }
+    .mcp-app-focus-summary { display: flex; flex-wrap: wrap; gap: .35rem .65rem; color: var(--text-secondary, #5f6368); font-size: .8rem; }
+    .mcp-app-microsequence { min-width: 0; display: grid; gap: .75rem; padding-block-start: .25rem; }
+    .mcp-app-microsequence + .mcp-app-microsequence { padding-block-start: 1rem; border-block-start: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+    .mcp-app-unit { min-width: 0; display: grid; gap: .55rem; }
+    .mcp-app-unit + .mcp-app-unit { margin-block-start: .35rem; }
+    .mcp-app-unit-reference { display: flex; justify-content: flex-end; }
+    .mcp-app-unit-reference code { padding: .15rem .35rem; border-radius: .35rem; color: var(--text-secondary, #5f6368); background: color-mix(in srgb, currentColor 8%, transparent); font: 600 .75rem/1.3 var(--font-mono, ui-monospace, monospace); }
+    .mcp-app-design { border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: .65rem; }
+    .mcp-app-design > summary { padding: .6rem .7rem; cursor: pointer; font-size: .82rem; font-weight: 650; }
+    .mcp-app-design-body { display: grid; gap: .7rem; padding: 0 .7rem .7rem; }
+    .mcp-app-design-body h3 { margin: 0; font-size: .82rem; }
+    .mcp-app-design-list { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+    .mcp-app-design-list li { display: grid; gap: .1rem; }
+    .mcp-app-design-list span { font-size: .85rem; }
+    .mcp-app-design-list small, .mcp-app-guidance small { color: var(--text-secondary, #5f6368); font-size: .74rem; }
+    .mcp-app-guidance { display: grid; gap: .35rem; }
+    .mcp-app-guidance p { font-size: .85rem; line-height: 1.45; white-space: pre-wrap; }
     .mcp-app-link { width: fit-content; color: var(--action-primary, #3159c7); text-underline-offset: .18em; }
     .mcp-app-empty { color: var(--text-secondary, #5f6368); }
     @media (max-width: 430px) {
@@ -233,6 +251,57 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
       })[value] || "Não informada";
     }
 
+    const DESIGN_PARAMETER_LABELS = Object.freeze({
+      new_analysis_unit_ceiling_per_expository_study_unit: "Novas unidades de análise por Unidade expositiva",
+      required_explanation_forms: "Formas de explicação requeridas",
+      minimum_distinct_practice_opportunities_per_evidence_requirement: "Oportunidades distintas por requisito",
+      required_practice_variation_dimensions: "Dimensões de variação da prática"
+    });
+
+    const DESIGN_VALUE_LABELS = Object.freeze({
+      plain_definition: "definição direta",
+      concrete_example: "exemplo concreto",
+      mechanism: "mecanismo",
+      contrast: "contraste",
+      application_condition: "condição de aplicação",
+      limit_or_exception: "limite ou exceção",
+      worked_example: "exemplo resolvido",
+      representation_link: "ligação entre representações",
+      case_or_data: "caso ou dados",
+      context: "contexto",
+      task_feature: "característica da tarefa",
+      external_representation: "representação externa",
+      support_level: "nível de apoio"
+    });
+
+    function designOriginLabel(value) {
+      return ({
+        automatic: "Automático",
+        author: "Autoria",
+        research_condition: "Condição de pesquisa",
+        migration: "Decisão preservada",
+        system_default: "Padrão do produto"
+      })[value] || "Origem preservada";
+    }
+
+    function designScopeLabel(value) {
+      return ({
+        course: "Curso",
+        module: "Módulo",
+        lesson: "Lição",
+        didactic_microsequence: "Microssequência"
+      })[value] || "Padrão geral";
+    }
+
+    function designValueLabel(value) {
+      if (Array.isArray(value)) {
+        return value.length
+          ? value.map((item) => DESIGN_VALUE_LABELS[item] || String(item)).join("; ")
+          : "Nenhum";
+      }
+      return String(value ?? "Não informado");
+    }
+
     function safeLink(value) {
       try {
         const url = new URL(String(value || ""));
@@ -259,7 +328,7 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
       if (context) app.append(element("p", context, "mcp-app-context"));
     }
 
-    function appendLink(value, label = "Abrir no AraLearn") {
+    function appendLink(value, label = "Abrir no AraLearn", container = app) {
       const href = safeLink(value);
       if (!href || !hostCapabilities || typeof hostCapabilities !== "object" ||
           !Object.hasOwn(hostCapabilities, "openLinks")) return;
@@ -270,7 +339,7 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
         if (tornDown) return;
         void request("ui/open-link", { url: href }).catch(() => {});
       });
-      app.append(link);
+      container.append(link);
     }
 
     function appendTable(columns, rows, captionText) {
@@ -315,6 +384,156 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
       app.append(list);
     }
 
+    function appendDesignSnapshot(container, snapshot, title) {
+      if (!snapshot || typeof snapshot !== "object") return;
+      container.append(element("h3", title));
+      const list = element("ul", null, "mcp-app-design-list");
+      boundedArray(snapshot.parameters, 8).forEach((parameter) => {
+        const item = element("li");
+        item.append(
+          element("strong", DESIGN_PARAMETER_LABELS[parameter?.parameterId] || parameter?.parameterId || "Parâmetro"),
+          element("span", designValueLabel(parameter?.value)),
+          element("small", designOriginLabel(parameter?.origin) + " · " + designScopeLabel(parameter?.sourceScopeKind))
+        );
+        list.append(item);
+      });
+      container.append(list);
+      const guidance = boundedArray(snapshot.guidance, 8);
+      const guidanceSection = element("section", null, "mcp-app-guidance");
+      guidanceSection.append(element("strong", "Orientação contextual"));
+      if (!guidance.length) {
+        guidanceSection.append(element("p", "Nenhuma orientação adicional."));
+      } else {
+        guidance.forEach((revision) => {
+          guidanceSection.append(
+            element("p", String(revision?.guidance || "")),
+            element("small", designOriginLabel(revision?.origin) + " · " + designScopeLabel(revision?.sourceScopeKind))
+          );
+        });
+      }
+      container.append(guidanceSection);
+      const policy = snapshot.componentPolicy;
+      if (policy && typeof policy === "object") {
+        const policyText = policy.availability === "all"
+          ? "Todos os componentes instalados"
+          : String(policy.allowedCount ?? 0) + " componentes permitidos";
+        container.append(element(
+          "p",
+          policyText + "; " + String(policy.excludedCount ?? 0) + " excluídos; " +
+            String(policy.preferredCount ?? 0) + " preferidos. " +
+            designOriginLabel(policy.origin) + " · " + designScopeLabel(policy.sourceScopeKind),
+          "mcp-app-context"
+        ));
+      }
+    }
+
+    function appendUnitDesign(container, item) {
+      const design = item?.authorship?.design;
+      const details = element("details", null, "mcp-app-design");
+      details.append(element(
+        "summary",
+        design ? "Parâmetros e orientação desta Unidade" : "Parâmetros desta Unidade indisponíveis"
+      ));
+      const body = element("div", null, "mcp-app-design-body");
+      if (!design) {
+        body.append(element("p", "Esta Unidade não possui um snapshot de materialização para comparar.", "mcp-app-context"));
+      } else {
+        appendDesignSnapshot(body, design.current, "Vigente para esta Unidade");
+        if (design.state !== "current") {
+          appendDesignSnapshot(body, design.used, "Usado na materialização");
+        }
+      }
+      details.append(body);
+      container.append(details);
+    }
+
+    function unitReference(item) {
+      const path = item?.curriculumPath || {};
+      return "M" + String(path.module?.position ?? "?") +
+        ".L" + String(path.lesson?.position ?? "?") +
+        ".µ" + String(path.didacticMicrosequence?.position ?? "?") +
+        ".U" + String(item?.studyUnit?.position ?? "?");
+    }
+
+    async function renderInspectionFocus(data, version) {
+      clear();
+      const focus = data?.inspectionFocus;
+      const items = boundedArray(data?.items, 24);
+      const title = String(focus?.title || "Unidades para inspeção");
+      appendHeader(title, "Revisão " + String(data?.courseRevision ?? "não informada"));
+      const summary = element("p", null, "mcp-app-focus-summary");
+      summary.append(
+        element("span", String(focus?.availableCount ?? items.length) + " Unidades no foco"),
+        element("span", "Use a referência de cada Unidade para comentar no chat.")
+      );
+      app.append(summary);
+      appendLink(focus?.deepLink, "Abrir este conjunto na Autoria");
+      if (!items.length) {
+        app.append(element("p", "Nenhuma Unidade deste foco permanece disponível.", "mcp-app-empty"));
+        return;
+      }
+      let rendererModule;
+      let registryModule;
+      try {
+        [rendererModule, registryModule] = await Promise.all([
+          import("${PUBLISHED_RENDERER}"),
+          import("${PUBLISHED_REGISTRY}")
+        ]);
+      } catch {
+        app.append(element("p", "A representação visual não pôde ser carregada. Abra o conjunto na Autoria.", "mcp-app-notice"));
+        return;
+      }
+      if (tornDown || version !== renderVersion) return;
+      const groups = new Map();
+      items.forEach((item) => {
+        const key = String(item?.curriculumPath?.didacticMicrosequence?.id || "sem-microssequencia");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      });
+      for (const group of groups.values()) {
+        const first = group[0];
+        const path = first?.curriculumPath || {};
+        const section = element("section", null, "mcp-app-microsequence");
+        section.append(
+          element("h2", String(path.didacticMicrosequence?.title || "Microssequência")),
+          element("p", String(path.module?.title || "Módulo") + " · " + String(path.lesson?.title || "Lição"), "mcp-app-context")
+        );
+        app.append(section);
+        for (const item of group) {
+          const studyUnit = item?.studyUnit;
+          const unit = element("section", null, "mcp-app-unit");
+          const reference = element("header", null, "mcp-app-unit-reference");
+          const referenceCode = element("code", unitReference(item));
+          referenceCode.setAttribute("aria-label", "Referência da Unidade: " + unitReference(item));
+          reference.append(referenceCode);
+          unit.append(reference);
+          if (!studyUnit || typeof studyUnit !== "object" || requiresTextOnlyPreview(studyUnit)) {
+            unit.append(element(
+              "p",
+              "Esta Unidade usa uma representação gráfica restrita neste cliente; abra o conjunto na Autoria para a visualização integral.",
+              "mcp-app-notice"
+            ));
+          } else {
+            const host = element("section", null, "mcp-app-study-unit");
+            host.setAttribute("aria-label", "Representação final de " + String(studyUnit.title || "Unidade de estudo"));
+            try {
+              host.innerHTML = rendererModule.renderPackageStudyUnitArticle(studyUnit, {
+                revealPracticeAnswers: true
+              });
+              unit.append(host);
+              await registryModule.RESOURCE_PACKAGE_REGISTRY.hydrate(host);
+            } catch {
+              host.remove();
+              unit.append(element("p", "A representação desta Unidade não pôde ser carregada.", "mcp-app-notice"));
+            }
+          }
+          appendUnitDesign(unit, item);
+          section.append(unit);
+          if (tornDown || version !== renderVersion) return;
+        }
+      }
+    }
+
     async function renderStudyUnit(data, version) {
       const preview = data?.result;
       const studyUnit = preview?.studyUnit;
@@ -345,7 +564,9 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
         const rendererModule = await import("${PUBLISHED_RENDERER}");
         const registryModule = await import("${PUBLISHED_REGISTRY}");
         if (tornDown || version !== renderVersion || !host.isConnected) return;
-        host.innerHTML = rendererModule.renderPackageStudyUnitArticle(studyUnit);
+        host.innerHTML = rendererModule.renderPackageStudyUnitArticle(studyUnit, {
+          revealPracticeAnswers: true
+        });
         await registryModule.RESOURCE_PACKAGE_REGISTRY.hydrate(host);
         if (tornDown || version !== renderVersion || !host.isConnected) {
           host.remove();
@@ -545,6 +766,9 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
         renderComponentLibrary(data);
       } else if (data?.contract === "aralearn.course-authoring-analytics.v1") {
         renderAnalytics(data);
+      } else if (data?.contract === "aralearn.course-study-unit-inspection-page.v2" &&
+          data?.inspectionFocus) {
+        await renderInspectionFocus(data, version);
       } else if (data?.contract === "aralearn.course-variant-comparison.v1" ||
           data?.comparisonSetId && Array.isArray(data?.members)) {
         renderVariantComparison(data);
@@ -582,7 +806,7 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
     try {
       const initialized = await request("ui/initialize", {
         protocolVersion: "2026-01-26",
-        appInfo: { name: "AraLearn Course Inspector", version: "0.0.23" },
+        appInfo: { name: "AraLearn Course Inspector", version: "0.0.24" },
         appCapabilities: { availableDisplayModes: ["inline"] }
       });
       if (!tornDown) {
@@ -603,7 +827,7 @@ const RESOURCE_DESCRIPTOR = Object.freeze({
   uri: COURSE_MCP_APP_RESOURCE_URI,
   name: "aralearn-course-inspector",
   title: "Inspeção visual do Curso",
-  description: "Apresenta prévias compatíveis de Unidades de estudo, descrições textuais para componentes gráficos restritos, indicadores de Pesquisa, comparações de variantes e consultas da biblioteca a partir do resultado autorizado das ferramentas de Curso.",
+  description: "Apresenta focos de inspeção por Microssequência com Unidades completas, práticas resolvidas, parâmetros contextuais e deeplink, além de prévias, indicadores de Pesquisa, comparações de variantes e consultas da biblioteca.",
   mimeType: COURSE_MCP_APP_MIME_TYPE
 });
 

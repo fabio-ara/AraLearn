@@ -4,7 +4,7 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Evidência corrente revisada em **2026-08-25**.
+Evidência corrente revisada em **2026-08-28**.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -14,6 +14,7 @@ Evidência corrente revisada em **2026-08-25**.
 | Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
 | Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | cinco ferramentas públicas canônicas; não inclui perfil ou Manutenção |
 | Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
+| Inspecionar Unidades focadas no chat ou na Autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | MCP Apps incorpora o material; o endereço abre o mesmo conjunto filtrado |
 | Excluir Curso próprio ou sair de Curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
 | Executar Manutenção | sim | sim | identidade administrativa | sim | sim | sim | operação | inventário classificado e revalidação por objeto; sem consulta genérica |
 | Medir efeito educacional | não automaticamente | não se aplica | pesquisa autorizada | não como inferência do produto | depende de estudo | quando houver pergunta empírica | pesquisa | requer desenho, participantes, instrumentos e análise |
@@ -112,7 +113,9 @@ O AraLearn oferece dois canais conversacionais distintos.
 O **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
 canônicas de Curso. Ele permite localizar Cursos próprios, ler composição,
 planejar, materializar, operar Fontes, Auditoria, Variantes, Pesquisa e consultar
-componentes didáticos. OAuth, escopos e principal do MCP pertencem a esse canal.
+componentes didáticos. Também pode reunir Unidades num foco ordenado, mostrá-las
+por Microssequência no próprio chat e oferecer o endereço filtrado da Autoria.
+OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
 autorizadas. Suas cinco operações correntes atuam sobre os mesmos contratos de

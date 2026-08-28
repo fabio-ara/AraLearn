@@ -35,6 +35,7 @@ test("rota canônica abre tarefa, objeto e detalhe de materialização", () => {
       kind: "didactic_microsequence", id: "micro 1"
     }],
     [{ section: "content", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
+    [{ section: "content", inspectionFocusId: UUID }, { kind: "inspection_focus", id: UUID }],
     [{ section: "content", unassigned: true }, { kind: "unassigned", id: null }],
     [{ section: "review", annotationId: UUID }, { kind: "anchored_annotation", id: UUID }],
     [{ section: "review", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
@@ -99,6 +100,7 @@ test("parser rejeita identidades, detalhes e combinações alheias à tarefa", (
     `#/authoring/courses/${COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=map`,
     `#/authoring/courses/${COURSE_ID}?section=parameters&studyUnitId=a`,
+    `#/authoring/courses/${COURSE_ID}?section=parameters&inspectionFocusId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=content&annotationId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=review&moduleId=a`,
     `#/authoring/courses/${COURSE_ID}?section=research&authoringPartId=${UUID}`,

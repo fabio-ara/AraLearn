@@ -815,6 +815,28 @@ function validateCreate(body, request) {
   };
 }
 
+function validateInspectionFocusCreate(body, request) {
+  exactFields(body, new Set([
+    "requestId", "expectedRevision", "title", "studyUnitIds"
+  ]));
+  if (!Array.isArray(body.studyUnitIds) ||
+      body.studyUnitIds.length < 1 || body.studyUnitIds.length > 64) {
+    fail("invalid_course_command", "O foco precisa conter de uma a 64 Unidades.");
+  }
+  const studyUnitIds = body.studyUnitIds.map((value, index) =>
+    text(value, `studyUnitIds[${index}]`, { maximum: 240 })
+  );
+  if (new Set(studyUnitIds).size !== studyUnitIds.length) {
+    fail("invalid_course_command", "O foco não aceita Unidades repetidas.");
+  }
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedRevision: positiveInteger(body.expectedRevision, "expectedRevision"),
+    title: text(body.title, "title", { maximum: 160 }),
+    studyUnitIds
+  };
+}
+
 async function validateCompositionChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedRevision", "upserts", "deletes",
@@ -1667,6 +1689,40 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "listCourseInspectionFocusStudyUnits") {
+    assertPrincipal(principal);
+    const query = courseStudyUnitQuery(request);
+    if (query.scopeKind !== "course" || query.scopeId !== null ||
+        query.anchorStudyUnitId !== null) {
+      fail("invalid_pagination", "O foco de inspeção não aceita outro escopo ou âncora.");
+    }
+    return {
+      requestId: null,
+      data: await adapter.listCourseInspectionFocusStudyUnits({
+        principal,
+        courseId: route.courseId,
+        inspectionFocusId: route.inspectionFocusId,
+        expectedRevision: query.expectedRevision,
+        cursorStudyUnitId: query.cursorStudyUnitId,
+        direction: query.direction,
+        limit: query.limit,
+        maxBytes: query.maxBytes,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "getCourseInspectionFocus") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseInspectionFocus({
+        principal,
+        courseId: route.courseId,
+        inspectionFocusId: route.inspectionFocusId,
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "listCourseEntities") {
     assertPrincipal(principal);
     return {
@@ -1731,6 +1787,19 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: value.requestId,
       data: await adapter.createCourse({ principal, ...value, deadlineAt })
+    };
+  }
+  if (route.name === "createCourseInspectionFocus") {
+    assertPrincipal(principal, { write: true });
+    const value = validateInspectionFocusCreate(await readCourseJsonBody(request), request);
+    return {
+      requestId: value.requestId,
+      data: await adapter.createCourseInspectionFocus({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
     };
   }
   if (route.name === "maintainCourse") {

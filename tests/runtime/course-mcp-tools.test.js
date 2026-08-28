@@ -83,7 +83,7 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").annotations.destructiveHint,
     true
   );
-  const componentUri = "ui://aralearn/course-inspector/0.0.23.html";
+  const componentUri = "ui://aralearn/course-inspector/0.0.24.html";
   for (const name of ["lerCurso", "consultarComponentesDidaticos"]) {
     const definition = COURSE_MCP_TOOLS.find((tool) => tool.name === name);
     assert.equal(definition._meta.ui.resourceUri, componentUri);
@@ -451,6 +451,17 @@ test("mapeia lista, leituras e criação sem identidade indireta", () => {
   assert.equal(
     mapAuthoringMcpToolCall("lerCurso", {
       courseId: COURSE_ID,
+      view: "study_units",
+      expectedRevision: 4,
+      inspectionFocusId: MATERIALIZATION_ID,
+      limit: 24
+    }).path,
+    `/v1/courses/${COURSE_ID}/inspection-focuses/${MATERIALIZATION_ID}/study-units` +
+      "?expectedRevision=4&scopeKind=course&direction=forward&limit=24&maxBytes=524288"
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
       view: "instructional_plan"
     }).path,
     `/v1/courses/${COURSE_ID}/instructional-plan`
@@ -741,6 +752,34 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
   });
 });
 
+test("cria foco ordenado sem alterar a revisão do Curso", () => {
+  const mapped = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "create_inspection_focus",
+    inspectionFocus: {
+      title: "Microssequência · transporte confiável",
+      studyUnitIds: ["unit-a", "unit-c", "unit-b"]
+    }
+  });
+  assert.equal(mapped.method, "POST");
+  assert.equal(mapped.path, `/v1/courses/${COURSE_ID}/inspection-focuses`);
+  assert.deepEqual(mapped.body, {
+    requestId: REQUEST_ID,
+    expectedRevision: 4,
+    title: "Microssequência · transporte confiável",
+    studyUnitIds: ["unit-a", "unit-c", "unit-b"]
+  });
+  assert.throws(() => mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "create_inspection_focus",
+    inspectionFocus: { title: "Repetido", studyUnitIds: ["unit-a", "unit-a"] }
+  }), (error) => error.code === "invalid_tool_argument");
+});
+
 test("mapeamento MCP limita comando de Fontes a 196608 bytes", () => {
   const base = {
     requestId: REQUEST_ID,
@@ -823,7 +862,8 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
       "update_audit_cycle",
       "update_course_variants",
       "commit_course_composition",
-      "advance_part_materialization"
+      "advance_part_materialization",
+      "create_inspection_focus"
   ]);
   const planBranches = schema.properties.planCommand.oneOf;
   const planBranch = (type) => planBranches.find((branch) =>
@@ -879,7 +919,7 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     schema.properties.designCommand.oneOf[5].properties.policy.properties.catalogVersion.const,
     "1-3e5629f8"
   );
-  assert.equal(schema.allOf.length, 8);
+  assert.equal(schema.allOf.length, 9);
   const operationBranch = (operation) => schema.allOf.find((branch) =>
     branch.if?.properties?.operation?.const === operation
   );
@@ -887,6 +927,8 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   assert.ok(operationBranch("update_course_sources").then.required.includes("sourceCommand"));
   assert.ok(operationBranch("update_anchored_annotations").then.required
     .includes("annotationCommand"));
+  assert.ok(operationBranch("create_inspection_focus").then.required
+    .includes("inspectionFocus"));
   assert.ok(operationBranch("update_audit_cycle").then.required
     .includes("auditCommand"));
   assert.ok(operationBranch("update_instructional_plan").then.required.includes("planCommand"));

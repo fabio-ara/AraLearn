@@ -20,6 +20,7 @@ const PART_ID = "40000000-0000-4000-8000-000000000004";
 const MATERIALIZATION_ID = "50000000-0000-4000-8000-000000000005";
 const STEP_ID = "60000000-0000-4000-8000-000000000006";
 const PLAN_ITEM_ID = "70000000-0000-4000-8000-000000000007";
+const FOCUS_ID = "80000000-0000-4000-8000-000000000018";
 const AUDIT_RUN_ID = "11111111-1111-5111-8111-111111111111";
 const AUDIT_FINDING_ID = "22222222-2222-5222-8222-222222222222";
 const AUDIT_CORRECTION_ID = "33333333-3333-5333-8333-333333333333";
@@ -2182,6 +2183,45 @@ function inspectionDesignSnapshot({ ceiling = 2 } = {}) {
     }
   };
 }
+
+test("cria foco idempotente e acrescenta o deeplink filtrado fora do banco", async () => {
+  let payload = null;
+  const requestId = "request-inspection-focus-0001";
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/create_course_inspection_focus_for_actor_v1$/u);
+    payload = JSON.parse(init.body);
+    return json({
+      contract: "aralearn.course-inspection-focus.v1",
+      courseId: COURSE_ID,
+      courseRevision: 7,
+      currentCourseRevision: 7,
+      inspectionFocusId: FOCUS_ID,
+      title: "Microssequência de contraste",
+      studyUnitIds: ["unit-a", "unit-b"],
+      availableStudyUnitIds: ["unit-a", "unit-b"],
+      missingStudyUnitIds: [],
+      requestId,
+      idempotent: false
+    });
+  });
+  const result = await value.createCourseInspectionFocus({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    expectedRevision: 7,
+    title: "Microssequência de contraste",
+    studyUnitIds: ["unit-a", "unit-b"],
+    requestId
+  });
+
+  assert.equal(payload.p_expected_revision, 7);
+  assert.deepEqual(payload.p_study_unit_ids, ["unit-a", "unit-b"]);
+  assert.equal(payload.p_request_id, requestId);
+  assert.equal(
+    result.deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+      `?section=content&inspectionFocusId=${FOCUS_ID}`
+  );
+});
 
 test("lê inspeção curricular limitada e acrescenta link exato da Unidade", async () => {
   let payload = null;

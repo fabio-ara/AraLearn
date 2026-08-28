@@ -11,6 +11,7 @@ const PLAN_ID = "15000000-0000-4000-8000-000000000005";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
 const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
 const STEP_ID = "40000000-0000-4000-8000-000000000004";
+const FOCUS_ID = "50000000-0000-4000-8000-000000000005";
 const PRINCIPAL = { actorId: COURSE_ID, scopes: ["authoring:write"] };
 
 function request(path, { method = "GET", body = null, requestId = null } = {}) {
@@ -58,6 +59,29 @@ test("roteia somente endpoints canônicos de Curso", () => {
   assert.deepEqual(routeCourseRequest("GET", `/v2/courses/${COURSE_ID}/study-units`), {
     name: "listContinuousCourseStudyUnits",
     courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/inspection-focuses`
+  ), {
+    name: "createCourseInspectionFocus",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/inspection-focuses/${FOCUS_ID}`
+  ), {
+    name: "getCourseInspectionFocus",
+    courseId: COURSE_ID,
+    inspectionFocusId: FOCUS_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/inspection-focuses/${FOCUS_ID}/study-units`
+  ), {
+    name: "listCourseInspectionFocusStudyUnits",
+    courseId: COURSE_ID,
+    inspectionFocusId: FOCUS_ID
   });
   assert.deepEqual(routeCourseRequest(
     "GET",
@@ -737,6 +761,65 @@ test("lê Unidades de estudo por escopo com âncora e orçamento limitado", asyn
   const invalid = request(
     `/v1/courses/${COURSE_ID}/study-units?expectedRevision=8` +
       "&anchorStudyUnitId=unit-a&cursorStudyUnitId=unit-b"
+  );
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: invalid,
+      route: routeCourseRequest("GET", new URL(invalid.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_pagination"
+  );
+});
+
+test("cria e lê o conjunto focal sem aceitar filtros concorrentes", async () => {
+  const calls = [];
+  const adapter = {
+    async createCourseInspectionFocus(value) {
+      calls.push(["create", value]);
+      return { inspectionFocusId: FOCUS_ID };
+    },
+    async listCourseInspectionFocusStudyUnits(value) {
+      calls.push(["list", value]);
+      return { courseRevision: value.expectedRevision, items: [] };
+    }
+  };
+  const create = request(`/v1/courses/${COURSE_ID}/inspection-focuses`, {
+    method: "POST",
+    requestId: "request-focus-0001",
+    body: {
+      expectedRevision: 8,
+      title: "Microssequência de contraste",
+      studyUnitIds: ["unit-a", "unit-b"]
+    }
+  });
+  await executeCourseRoute({
+    request: create,
+    route: routeCourseRequest("POST", new URL(create.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(calls[0][1].studyUnitIds, ["unit-a", "unit-b"]);
+  assert.equal(calls[0][1].requestId, "request-focus-0001");
+
+  const read = request(
+    `/v1/courses/${COURSE_ID}/inspection-focuses/${FOCUS_ID}/study-units` +
+      "?expectedRevision=8&cursorStudyUnitId=unit-a&direction=forward&limit=12&maxBytes=262144"
+  );
+  await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[1][1].inspectionFocusId, FOCUS_ID);
+  assert.equal(calls[1][1].cursorStudyUnitId, "unit-a");
+  assert.equal(calls[1][1].maxBytes, 262144);
+
+  const invalid = request(
+    `/v1/courses/${COURSE_ID}/inspection-focuses/${FOCUS_ID}/study-units` +
+      `?expectedRevision=8&scopeKind=module&scopeId=${PART_ID}`
   );
   await assert.rejects(
     () => executeCourseRoute({

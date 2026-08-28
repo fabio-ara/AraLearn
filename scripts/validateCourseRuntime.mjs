@@ -24,6 +24,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-part-materialization-history-v1",
   "course-study-unit-inspection-v1",
   "continuous-authoring-inspection-v1",
+  "course-inspection-focus-v1",
   "course-design-parameters-v1",
   "course-authoring-guidance-v1",
   "course-component-policy-v1",
@@ -256,7 +257,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260827185748" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260828120000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -343,6 +344,9 @@ async function validateManifest() {
   );
   const boundedInstructionalPlanCasMigration = await read(
     "supabase/migrations/20260827185748_bound_instructional_plan_cas_retry.sql"
+  );
+  const inspectionFocusMigration = await read(
+    "supabase/migrations/20260828120000_course_inspection_focuses.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -500,6 +504,12 @@ async function validateManifest() {
       ) ||
       !boundedInstructionalPlanCasMigration.includes(
         "to_jsonb('20260827185748'::text)"
+      ) ||
+      !inspectionFocusMigration.includes(
+        "$advance_course_inspection_focus_manifest$"
+      ) ||
+      !inspectionFocusMigration.includes(
+        "to_jsonb('20260828120000'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -526,7 +536,8 @@ async function validateManifest() {
         !sourceHumanLocatorsMigration.includes(`'${feature}'`) &&
         !continuousInspectionMigration.includes(`'${feature}'`) &&
         !unitAnnotationScopeMigration.includes(`'${feature}'`) &&
-        !continuousInspectionV2Migration.includes(`'${feature}'`)) {
+        !continuousInspectionV2Migration.includes(`'${feature}'`) &&
+        !inspectionFocusMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

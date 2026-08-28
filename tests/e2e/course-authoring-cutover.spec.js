@@ -4093,7 +4093,11 @@ for (const width of [360, 390, 430, 1280]) {
     await expect(page.locator("[data-set-diagram-state=ready]")).toHaveCount(1);
     await expect(page.locator(
       '.package-instance[data-package="aralearn.response.choice"] button'
-    ).first()).toBeDisabled();
+    )).toHaveCount(0);
+    await expect(page.locator(
+      '.package-instance[data-package="aralearn.response.choice"] .selected-correct'
+    ).first()).toBeVisible();
+    await expect(page.getByText("Resposta esperada exibida.").first()).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     const courseSearch = page.getByRole("combobox", { name: "Ir para" });
@@ -4636,7 +4640,11 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   await expect(page.locator("[data-set-diagram-state=ready]")).toHaveCount(1);
   await expect(page.locator(
     '.package-instance[data-package="aralearn.response.choice"] button'
-  ).first()).toBeDisabled();
+  )).toHaveCount(0);
+  await expect(page.locator(
+    '.package-instance[data-package="aralearn.response.choice"] .selected-correct'
+  ).first()).toBeVisible();
+  await expect(page.getByText("Resposta esperada exibida.").first()).toBeVisible();
   const scrollBeforeRefresh = await page.evaluate(() => {
     const scroller = document.querySelector(".course-authoring-root");
     scroller.scrollTop = Math.min(120, Math.max(0, scroller.scrollHeight - scroller.clientHeight));

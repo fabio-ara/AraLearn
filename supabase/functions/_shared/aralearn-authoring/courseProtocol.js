@@ -188,6 +188,32 @@ export function routeCourseRequest(method, pathname) {
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };
   }
+  const inspectionFocusStudyUnits = path.match(
+    /^\/v1\/courses\/([^/]+)\/inspection-focuses\/([^/]+)\/study-units$/u
+  );
+  if (inspectionFocusStudyUnits && verb === "GET") {
+    return {
+      name: "listCourseInspectionFocusStudyUnits",
+      courseId: courseUuid(inspectionFocusStudyUnits[1]),
+      inspectionFocusId: courseUuid(inspectionFocusStudyUnits[2], "inspectionFocusId")
+    };
+  }
+  const inspectionFocus = path.match(
+    /^\/v1\/courses\/([^/]+)\/inspection-focuses\/([^/]+)$/u
+  );
+  if (inspectionFocus && verb === "GET") {
+    return {
+      name: "getCourseInspectionFocus",
+      courseId: courseUuid(inspectionFocus[1]),
+      inspectionFocusId: courseUuid(inspectionFocus[2], "inspectionFocusId")
+    };
+  }
+  const inspectionFocuses = path.match(
+    /^\/v1\/courses\/([^/]+)\/inspection-focuses$/u
+  );
+  if (inspectionFocuses && verb === "POST") {
+    return { name: "createCourseInspectionFocus", courseId: courseUuid(inspectionFocuses[1]) };
+  }
   const studyUnits = path.match(/^\/v1\/courses\/([^/]+)\/study-units$/u);
   if (studyUnits && verb === "GET") {
     return { name: "listCourseStudyUnits", courseId: courseUuid(studyUnits[1]) };
