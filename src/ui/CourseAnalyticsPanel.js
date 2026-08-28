@@ -8,6 +8,7 @@ import {
   serializeCourseAuthoringAnalyticsCsv
 } from "../domain/courseAuthoringAnalytics.js";
 import { downloadTextFile, TEXT_EXPORT_MAX_BYTES } from "./downloadTextFile.js";
+import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 const exportEncoder = new TextEncoder();
 const DATASET_LABELS = Object.freeze({
@@ -474,105 +475,136 @@ function renderFilters(state) {
     `${renderUiIcon("search", "course-authoring-button-icon")}</button></form>`;
 }
 
-function renderOverview(page) {
-  const metric = page.metrics.find(({ id }) => id === page.overview.metricId);
-  const series = page.overview.series;
-  const finiteValues = series.map(({ value }) => value).filter((value) =>
-    typeof value === "number" && Number.isFinite(value) && value >= 0);
-  const maximum = Math.max(1, ...finiteValues);
-  const displaySeries = series.map((entry) => ({
+function displaySeries(page) {
+  return page.overview.series.map((entry) => ({
     ...entry,
     displayLabel: overviewEntryLabel(entry)
   }));
+}
+
+function renderOverview(page, detail) {
+  const metric = page.metrics.find(({ id }) => id === page.overview.metricId);
+  const series = displaySeries(page);
+  const finiteValues = series.map(({ value }) => value).filter((value) =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0);
+  const maximum = Math.max(1, ...finiteValues);
   return '<section class="course-analytics-overview" aria-labelledby="course-analytics-overview-title">' +
-    '<header><div><h3 id="course-analytics-overview-title">' + escapeHtml(page.overview.title) + '</h3>' +
-    `</div><span>Revisão ${page.courseRevision}</span></header>` +
-    (displaySeries.length
+    '<header><div><h3 id="course-analytics-overview-title">' + escapeHtml(page.overview.title) +
+    '</h3></div><div class="course-analytics-overview-actions"><span>Revisão ' +
+    escapeHtml(page.courseRevision) + '</span>' +
+    (metric ? '<button type="button" class="course-authoring-icon-action"' +
+      ' data-course-analytics-action="open-metric" aria-label="Detalhes da pesquisa"' +
+      ' title="Detalhes da pesquisa" aria-expanded="' + String(detail?.kind === "metric") + '">' +
+      renderUiIcon("review", "course-authoring-button-icon") + '</button>' : "") +
+    '</div></header>' +
+    (series.length
       ? '<div class="course-analytics-chart" role="img" aria-label="' +
-        escapeHtml(`${page.overview.title}. ${displaySeries.map((entry) =>
+        escapeHtml(`${page.overview.title}. ${series.map((entry) =>
           `${entry.displayLabel}: ${formatNumber(entry.value, entry.unit)}`).join("; ")}`) + '">' +
-        displaySeries.map((entry) => {
+        series.map((entry) => {
           const width = entry.value === null || entry.value < 0
             ? 0
             : Math.max(1, Math.min(100, entry.value / maximum * 100));
-          return '<div class="course-analytics-bar"><span>' + escapeHtml(entry.displayLabel) + '</span>' +
-            '<span class="course-analytics-bar-track" aria-hidden="true"><span style="width:' +
+          return '<div class="course-analytics-bar"><span>' + escapeHtml(entry.displayLabel) +
+            '</span><span class="course-analytics-bar-track" aria-hidden="true"><span style="width:' +
             width + '%"></span></span><strong>' + escapeHtml(formatNumber(entry.value, entry.unit)) +
             '</strong></div>';
-        }).join("") + '</div>' +
-        '<div class="course-analytics-table-wrap"><table><caption>Valores equivalentes ao gráfico</caption>' +
-        '<thead><tr><th>Categoria</th><th>Valor</th><th>Denominador</th><th>Ausência</th></tr></thead><tbody>' +
-        displaySeries.map((entry) => '<tr><th scope="row" data-label="Categoria">' + escapeHtml(entry.displayLabel) +
-          '</th><td data-label="Valor">' + escapeHtml(formatNumber(entry.value, entry.unit)) +
-          '</td><td data-label="Denominador">' +
-          escapeHtml(entry.denominator === null ? "Não se aplica" : String(entry.denominator)) +
-          '</td><td data-label="Ausência">' + (entry.missing ? "Sim" : "Não") + '</td></tr>').join("") +
-        '</tbody></table></div>'
-      : '<p class="course-authoring-empty-copy">Não há linhas neste recorte. A ausência não foi convertida em zero.</p>') +
-    (metric ? '<details class="course-analytics-definition"><summary class="course-analytics-disclosure-trigger">' +
-      `${renderUiIcon("review", "course-authoring-button-icon")}<span>Métrica</span></summary>` +
-      `<dl><div><dt>Pergunta</dt><dd>${escapeHtml(metric.question)}</dd></div>` +
-      `<div><dt>Definição</dt><dd>${escapeHtml(metric.definition)}</dd></div>` +
-      `<div><dt>Unidade</dt><dd>${escapeHtml(unitLabel(metric.unit))}</dd></div>` +
-      `<div><dt>Denominador</dt><dd>${escapeHtml(metric.denominator || "Não se aplica")}</dd></div>` +
-      `<div><dt>Dados ausentes</dt><dd>${escapeHtml(metric.missingData)}</dd></div></dl>` +
-      (metric.prohibitedInferences.length ? '<p><strong>Esta métrica não permite concluir:</strong> ' +
-        escapeHtml(metric.prohibitedInferences.join(" ")) + '</p>' : "") + '</details>' : "") +
+        }).join("") + '</div>'
+      : '<p class="course-authoring-empty-copy">Não há linhas neste recorte.</p>') +
     '</section>';
 }
 
 function valuesSummary(values) {
-  const entries = Object.entries(values).filter(([key]) => visibleValueKey(key));
+  const entries = Object.entries(values).filter(([key, value]) =>
+    value !== null && visibleValueKey(key));
   return entries.length
     ? entries.map(([key, value]) =>
       `${factValueLabel(key)}: ${factValueText(key, value)}`).join(" · ")
     : "";
 }
 
-function renderFacts(page) {
+function renderFacts(page, detail) {
   return '<section class="course-analytics-facts" aria-labelledby="course-analytics-facts-title">' +
     '<header><div><h3 id="course-analytics-facts-title">Fatos do recorte</h3></div></header>' +
     (page.facts.length
       ? '<ol>' + page.facts.map((fact) => {
         const label = subjectLabel(fact.subject);
-        const summary = valuesSummary(fact.values);
-        return '<li><article>' +
-          '<header><div><strong>' + escapeHtml(label) + '</strong>' +
-          `<span>${escapeHtml(DATASET_LABELS[fact.dataset] || "Fatos do Curso")} · ${escapeHtml(factKindLabel(fact.kind))}</span>` +
-          `</div><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(formatInstant(fact.occurredAt))}</time></header>` +
-          (summary ? `<p>${escapeHtml(summary)}</p>` : "") +
-          renderFactMetadata(fact) +
-          (fact.missingData.length ? '<details class="course-analytics-missing"><summary class="course-analytics-disclosure-trigger course-authoring-icon-action" aria-label="Ver dados ausentes" title="Dados ausentes">' +
-            `${renderUiIcon("more", "course-authoring-button-icon")}</summary><p>` +
-            escapeHtml(fact.missingData.join(" ")) + '</p></details>' : "") +
+        const context = fact.subject?.kind === "course" ? "" : label;
+        const hasDetails = Boolean(valuesSummary(fact.values) ||
+          renderFactMetadata(fact) || fact.missingData.length);
+        return '<li><article><header><div><strong>' + escapeHtml(factKindLabel(fact.kind)) +
+          '</strong>' + (context ? `<span>${escapeHtml(context)}</span>` : "") +
+          `</div><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(
+            formatInstant(fact.occurredAt)
+          )}</time></header><div class="course-analytics-fact-actions">` +
+          (hasDetails ? '<button type="button" class="course-authoring-icon-action"' +
+            ' data-course-analytics-action="open-fact" data-fact-id="' + escapeHtml(fact.factId) +
+            '" aria-label="Detalhes de ' + escapeHtml(factKindLabel(fact.kind)) + '"' +
+            ' title="Detalhes" aria-expanded="' +
+            String(detail?.kind === "fact" && detail.factId === fact.factId) + '">' +
+            renderUiIcon("more", "course-authoring-button-icon") + '</button>' : "") +
           (fact.deepLink ? `<a href="${escapeHtml(fact.deepLink)}" aria-label="Abrir ${escapeHtml(label)}" title="Abrir objeto relacionado">` +
             `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</a>` : "") +
-          '</article></li>';
+          '</div></article></li>';
       }).join("") + '</ol>'
       : '<p class="course-authoring-empty-copy">Nenhum fato corresponde ao recorte.</p>') +
     '</section>';
 }
 
+function renderDetailSheet(page, detail) {
+  if (!detail) return "";
+  const close = '<button type="button" class="course-authoring-icon-action"' +
+    ' data-course-analytics-action="close-details" aria-label="Fechar" title="Fechar">' +
+    renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>';
+  if (detail.kind === "metric") {
+    const metric = page.metrics.find(({ id }) => id === page.overview.metricId);
+    if (!metric) return "";
+    return '<div class="course-analytics-sheet-backdrop" data-course-analytics-backdrop>' +
+      '<section class="course-analytics-sheet" role="dialog" aria-modal="true"' +
+      ' data-course-authoring-readonly-dialog' +
+      ' aria-labelledby="course-analytics-sheet-title"><header>' +
+      '<h3 id="course-analytics-sheet-title">Detalhes da pesquisa</h3>' + close + '</header>' +
+      '<div class="course-analytics-sheet-body"><dl>' +
+      `<div><dt>Mede</dt><dd>${escapeHtml(metric.question)}</dd></div>` +
+      `<div><dt>Unidade</dt><dd>${escapeHtml(unitLabel(metric.unit))}</dd></div>` +
+      `<div><dt>Base</dt><dd>${escapeHtml(metric.denominator || "Não se aplica")}</dd></div>` +
+      '</dl></div></section></div>';
+  }
+  const fact = page.facts.find(({ factId }) => factId === detail.factId);
+  if (!fact) return "";
+  const summary = valuesSummary(fact.values);
+  return '<div class="course-analytics-sheet-backdrop" data-course-analytics-backdrop>' +
+    '<section class="course-analytics-sheet" role="dialog" aria-modal="true"' +
+    ' data-course-authoring-readonly-dialog' +
+    ' aria-labelledby="course-analytics-sheet-title"><header>' +
+    `<h3 id="course-analytics-sheet-title">${escapeHtml(factKindLabel(fact.kind))}</h3>` +
+    close + '</header><div class="course-analytics-sheet-body">' +
+    `<p><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(
+      formatInstant(fact.occurredAt)
+    )}</time></p>` +
+    (summary ? `<p>${escapeHtml(summary)}</p>` : "") + renderFactMetadata(fact) +
+    (fact.missingData.length ? `<p>${escapeHtml(fact.missingData.join(" "))}</p>` : "") +
+    '</div></section></div>';
+}
+
 function renderPanel(state) {
   return '<section class="course-authoring-section course-analytics" aria-labelledby="course-analytics-section-title">' +
-    '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-analytics-section-title">Pesquisa</h2></div>' +
-    '<div class="course-analytics-export-actions">' +
+    '<h2 class="course-authoring-visually-hidden" id="course-analytics-section-title">Pesquisa</h2>' +
+    '<header class="course-authoring-section-toolbar"><details class="course-analytics-export-menu">' +
+    '<summary class="course-authoring-icon-action" aria-label="Exportar fatos" title="Exportar">' +
+    renderUiIcon("download", "course-authoring-button-icon") + '</summary><div>' +
     `<button type="button" data-course-analytics-action="export-csv"${!state.page || state.exporting ? " disabled" : ""}>CSV</button>` +
     `<button type="button" data-course-analytics-action="export-json"${!state.page || state.exporting ? " disabled" : ""}>JSON</button>` +
-    '</div></header>' +
-    renderFilters(state) +
+    '</div></details></header>' + renderFilters(state) +
     (state.loading && !state.page
       ? '<p class="course-authoring-loading" role="status">Carregando fatos de Autoria…</p>'
-      : state.page ? renderOverview(state.page) + renderFacts(state.page) : "") +
-    (state.page?.limitations?.length ? '<details class="course-analytics-limitations"><summary class="course-analytics-disclosure-trigger">' +
-      `${renderUiIcon("review", "course-authoring-button-icon")}<span>Limites</span></summary><ul>` +
-      state.page.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("") + '</ul></details>' : "") +
+      : state.page ? renderOverview(state.page, state.detail) +
+        renderFacts(state.page, state.detail) : "") +
     (state.page?.nextCursor ? `<button type="button" data-course-analytics-action="more" aria-label="Carregar mais fatos" title="Carregar mais fatos"${state.loading ? " disabled" : ""}>` +
       `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` : "") +
     (state.exporting ? '<p class="course-authoring-loading" role="status">Preparando a exportação do recorte…</p>' : "") +
     (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") +
-    '</section>';
+    (state.page ? renderDetailSheet(state.page, state.detail) : "") + '</section>';
 }
 
 function mergePages(current, incoming) {
@@ -604,9 +636,33 @@ export function createCourseAnalyticsPanel({
     page: null,
     loading: false,
     exporting: false,
-    failure: ""
+    failure: "",
+    detail: null
   };
-  const render = () => { root.innerHTML = renderPanel(state); };
+  const render = ({ focusDetails = false } = {}) => {
+    const active = root.ownerDocument?.activeElement || null;
+    const preserveDetailsFocus = Boolean(
+      state.detail && root.querySelector?.(".course-analytics-sheet")?.contains?.(active)
+    );
+    root.innerHTML = renderPanel(state);
+    if (focusDetails || preserveDetailsFocus) {
+      root.querySelector?.('[data-course-analytics-action="close-details"]')
+        ?.focus?.({ preventScroll: true });
+    }
+  };
+  const closeDetails = ({ restoreFocus = true } = {}) => {
+    const previous = state.detail;
+    if (!previous) return false;
+    state.detail = null;
+    render();
+    if (restoreFocus) {
+      const selector = previous.kind === "fact"
+        ? `[data-course-analytics-action="open-fact"][data-fact-id="${previous.factId}"]`
+        : '[data-course-analytics-action="open-metric"]';
+      root.querySelector?.(selector)?.focus?.({ preventScroll: true });
+    }
+    return true;
+  };
 
   const load = async ({ append = false } = {}) => {
     state.loading = true;
@@ -752,20 +808,54 @@ export function createCourseAnalyticsPanel({
       limit: state.query.limit
     });
     state.page = null;
+    state.detail = null;
     void load();
   };
 
   const onClick = (event) => {
+    if (event.target?.matches?.("[data-course-analytics-backdrop]")) {
+      closeDetails();
+      return;
+    }
     const node = event.target?.closest?.("[data-course-analytics-action]");
     if (!node) return;
     const action = node.dataset.courseAnalyticsAction;
-    if (action === "more" && state.page?.nextCursor) void load({ append: true });
-    if (action === "export-csv") void exportFacts("csv");
-    if (action === "export-json") void exportFacts("json");
+    if (action === "open-metric") {
+      state.detail = { kind: "metric" };
+      render({ focusDetails: true });
+    } else if (action === "open-fact") {
+      state.detail = { kind: "fact", factId: String(node.dataset.factId || "") };
+      render({ focusDetails: true });
+    } else if (action === "close-details") {
+      closeDetails();
+    } else if (action === "more" && state.page?.nextCursor) {
+      void load({ append: true });
+    } else if (action === "export-csv") {
+      void exportFacts("csv");
+    } else if (action === "export-json") {
+      void exportFacts("json");
+    }
+  };
+
+  const onKeyDown = (event) => {
+    if (!state.detail) return;
+    if (event.key === "Tab") {
+      trapAuthoringConfirmationTab({
+        event,
+        root,
+        confirmationSelector: ".course-analytics-sheet"
+      });
+      return;
+    }
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation?.();
+    closeDetails();
   };
 
   root.addEventListener("submit", onSubmit);
   root.addEventListener("click", onClick);
+  root.addEventListener("keydown", onKeyDown);
   render();
   return {
     open: () => load(),
@@ -781,6 +871,7 @@ export function createCourseAnalyticsPanel({
     destroy() {
       root.removeEventListener("submit", onSubmit);
       root.removeEventListener("click", onClick);
+      root.removeEventListener("keydown", onKeyDown);
       root.innerHTML = "";
     }
   };

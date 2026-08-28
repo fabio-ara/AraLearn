@@ -547,7 +547,8 @@ test.describe("Autoria real com Supabase local", () => {
       await expect(planning.getByRole("heading", { name: "Objetivo", exact: true }))
         .toBeVisible();
       await expect(planning.getByText("Partes preferenciais", { exact: true })).toBeVisible();
-      await expect(planning.getByText("Unidades materializadas", { exact: true })).toBeVisible();
+      await expect(planning.getByText("0 microssequências", { exact: true })).toBeVisible();
+      await expect(planning.getByText("0 unidades", { exact: true })).toBeVisible();
       await expect(planning.getByRole("heading", { name: "Partes", exact: true }))
         .toBeVisible();
       await expect(planning.getByRole("button", {

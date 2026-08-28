@@ -472,8 +472,7 @@ export function renderCourseDesignPanel(state) {
   const design = state.courseDesign;
   return '<section class="course-authoring-section course-design"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Parâmetros</h2></div></header>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros e componentes</h2>' +
     (state.designMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.designMessage)}</p>`
       : "") +

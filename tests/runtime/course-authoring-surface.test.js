@@ -989,6 +989,10 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.match(root.innerHTML, /Resultados de aprendizagem/u);
   assert.match(root.innerHTML, /Comparar relações essenciais\./u);
   assert.match(root.innerHTML, /Parte 1/u);
+  assert.match(
+    root.innerHTML,
+    /<div class="course-authoring-part-counts" aria-label="Planejado e produzido"><span>2 microssequências<\/span><span>7 unidades<\/span><\/div>/u
+  );
   assert.match(root.innerHTML, /Materialização.*etapa|Etapa de materialização registrada/isu);
   assert.match(
     root.innerHTML,
@@ -1435,7 +1439,15 @@ test("Parâmetros lê somente o escopo e separa pedagogia, orientação, compone
   }]);
   assert.equal(outlineReads, 0);
   assert.equal(planReads, 0);
-  assert.match(root.innerHTML, /<h2 id="course-authoring-section-title">Parâmetros<\/h2>/u);
+  assert.match(root.innerHTML, /<h1>Parâmetros<\/h1>/u);
+  assert.match(
+    root.innerHTML,
+    /<p class="course-authoring-context-title" title="Fundamentos">Fundamentos<\/p>/u
+  );
+  assert.match(
+    root.innerHTML,
+    /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros e componentes<\/h2>/u
+  );
   assert.doesNotMatch(root.innerHTML, /Os valores iniciais são hipóteses operacionais/iu);
   assert.match(
     root.innerHTML,
@@ -2038,6 +2050,15 @@ test("desenho mantém o envelope até a releitura e não reaplica escrita já co
 test("deep link abre qualquer materialização e mantém retorno à mesma Parte", async () => {
   const root = new FakeRoot();
   const calls = [];
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, {
+      section: "planning",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    })
+  };
   const fixture = partMaterializationFixture();
   fixture.materialization.designContext = {
     contract: "aralearn.course-design-context.v2",
@@ -2061,15 +2082,7 @@ test("deep link abre qualquer materialização e mantém retorno à mesma Parte"
         return fixture;
       }
     }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, {
-        section: "planning",
-        authoringPartId: PART_ID,
-        materializationId: MATERIALIZATION_ID
-      })
-    },
+    locationValue,
     windowValue: new FakeWindow()
   });
 
@@ -2089,40 +2102,60 @@ test("deep link abre qualquer materialização e mantém retorno à mesma Parte"
   assert.doesNotMatch(root.innerHTML, /Course Id|Component Catalog Version|c{64}|Design Application/u);
   assert.match(root.innerHTML, /returnAuthoringPartId=/u);
   assert.match(root.innerHTML, /returnMaterializationId=/u);
-  assert.match(root.innerHTML, new RegExp(
+  assert.equal(
+    (root.innerHTML.match(/class="course-authoring-back"/gu) || []).length,
+    1,
+    "A execução usa somente o botão Voltar global."
+  );
+  const detailNavigation = root.innerHTML.match(
+    /<header class="course-authoring-detail-navigation is-heading-only">[\s\S]*?<\/header>/u
+  )?.[0];
+  assert.ok(detailNavigation);
+  assert.doesNotMatch(detailNavigation, /<a\b|<button\b|>Voltar</u);
+  assert.equal(surface.handleBack(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(
+    locationValue.hash,
     buildCourseAuthoringRoute(COURSE_ID, {
       section: "planning", authoringPartId: PART_ID
-    }).replaceAll("&", "&amp;").replace("?", "\\?"),
-    "u"
-  ));
+    })
+  );
   assert.equal(calls.length, 1);
 
   const directRoot = new FakeRoot();
+  const directLocationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, {
+      section: "content",
+      moduleId: "module-a",
+      returnAuthoringPartId: PART_ID,
+      returnMaterializationId: MATERIALIZATION_ID
+    })
+  };
   const directSurface = createCourseAuthoringSurface({
     root: directRoot,
     controller: controllerFixture(),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, {
-        section: "content",
-        moduleId: "module-a",
-        returnAuthoringPartId: PART_ID,
-        returnMaterializationId: MATERIALIZATION_ID
-      })
-    },
+    locationValue: directLocationValue,
     windowValue: new FakeWindow()
   });
   assert.equal(await directSurface.open(), true);
-  assert.match(directRoot.innerHTML, /aria-label="Voltar à execução"/u);
-  assert.match(directRoot.innerHTML, new RegExp(
+  assert.equal(
+    (directRoot.innerHTML.match(/class="course-authoring-back"/gu) || []).length,
+    1,
+    "O Conteúdo também conserva somente o botão Voltar global."
+  );
+  assert.doesNotMatch(directRoot.innerHTML, /aria-label="Voltar à execução"|>Voltar à execução</u);
+  assert.equal(directSurface.handleBack(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(
+    directLocationValue.hash,
     buildCourseAuthoringRoute(COURSE_ID, {
       section: "planning",
       authoringPartId: PART_ID,
       materializationId: MATERIALIZATION_ID
-    }).replaceAll("&", "&amp;").replace("?", "\\?"),
-    "u"
-  ));
+    })
+  );
 });
 
 test("Parte mostra histórico completo com execução parcial, concluída e falha anterior", async () => {
@@ -3095,8 +3128,13 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   });
 
   assert.equal(await surface.open(), true);
+  assert.match(root.innerHTML, /<h1>Pessoas e acesso<\/h1>/u);
+  assert.match(
+    root.innerHTML,
+    /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso<\/h2>/u
+  );
   assert.match(root.innerHTML, /Pessoa proprietária/u);
-  assert.match(root.innerHTML, /Acesso direto ao Estudo/u);
+  assert.doesNotMatch(root.innerHTML, /Acesso direto ao Estudo/u);
   assert.doesNotMatch(root.innerHTML, /@|diretório/iu);
 
   root.listeners.get("click")({
@@ -3408,16 +3446,39 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
     /\.course-authoring-course-header \{[\s\S]*?grid-template-columns: var\(--tap\) minmax\(0, 1fr\) var\(--tap\)/u
   );
   assert.match(
-    css,
-    /\.course-authoring-course-heading \.course-authoring-eyebrow \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+    surfaceSource,
+    /const title = state\.section === "research" && state\.researchView === "variants"[\s\S]*?: AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1>\$\{escapeHtml\(title\)\}<\/h1>[\s\S]*?course-authoring-context-title/u
   );
   assert.match(
     css,
-    /\.course-authoring-course-heading h1 \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+    /\.course-authoring-course-heading \{[\s\S]*?text-align: center;/u
   );
   assert.match(
     css,
-    /\.course-authoring-course-heading \.course-authoring-meta \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/u
+    /\.course-authoring-eyebrow \{[\s\S]*?letter-spacing: 0;[\s\S]*?text-transform: none;/u
+  );
+  const contextTitleRule = css.match(
+    /\.course-authoring-context-title \{([\s\S]*?)\}/u
+  )?.[1];
+  assert.ok(contextTitleRule);
+  assert.match(contextTitleRule, /overflow:\s*hidden/u);
+  assert.match(contextTitleRule, /text-overflow:\s*ellipsis/u);
+  assert.match(contextTitleRule, /white-space:\s*nowrap/u);
+  assert.doesNotMatch(
+    contextTitleRule,
+    /text-transform:\s*uppercase/u
+  );
+  assert.match(
+    surfaceSource,
+    /class="course-authoring-context-title" title="\$\{escapeHtml\(/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-course-header \{[\s\S]*?height: calc\(var\(--tap\) \+ 8px\);/u
+  );
+  assert.match(
+    css,
+    /\.course-authoring-part-counts span \{[\s\S]*?white-space: nowrap;/u
   );
   assert.doesNotMatch(css, /-webkit-line-clamp: 4/u);
   assert.doesNotMatch(css, /\.course-authoring-sections\.has-standard/u);

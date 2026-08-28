@@ -1,9 +1,9 @@
 import {
   getPackageStudyUnitFeedbackEntry,
-  readPackageStudyUnitText,
   renderPackageStudyUnitBlocksWithDock,
   renderPackageStudyUnitFeedback
 } from "../render/renderPackageStudyUnit.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { listManualStudyUnitTargetIds } from "../ui/manualStudyUnitEdit.js";
@@ -150,12 +150,24 @@ function navigationCard({
   );
 }
 
+function levelHeading(label) {
+  return '<h1 class="section-heading entity-level-heading">' + escapeHtml(label) + '</h1>';
+}
+
 function summary(title, description) {
-  return '<section class="clean-card entity-summary-card"><h1 class="card-title"' +
+  return '<section class="clean-card entity-summary-card"><h2 class="card-title"' +
     ' data-study-destination-heading tabindex="-1">' +
-    escapeHtml(title) + "</h1>" +
+    escapeHtml(title) + "</h2>" +
     (description ? '<p class="card-subtitle">' + escapeHtml(description) + "</p>" : "") +
     "</section>";
+}
+
+function readStudyUnitOverviewDescription(studyUnit) {
+  const visibleStudyUnit = RESOURCE_PACKAGE_REGISTRY.prepareStudyUnitForSemantics(studyUnit);
+  return visibleStudyUnit.content
+    .map((instance) => RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content"))
+    .filter(Boolean)
+    .join(" ");
 }
 
 function renderAssistanceModeButton({ action, pressed, disabled = false }) {
@@ -255,9 +267,9 @@ function renderStructuralEditor(structuralEditor, { titleLabel, goalLabel }) {
   const fields = structuralEditor.fields || {};
   return '<section class="clean-card entity-summary-card study-structure-editor" aria-label="Edição de ' +
     escapeHtml(structuralEditor.label) + '">' +
-    (fields.title == null ? "" : '<h1 class="card-title" contenteditable="plaintext-only"' +
+    (fields.title == null ? "" : '<h2 class="card-title" contenteditable="plaintext-only"' +
       ' data-study-structure-field="title" data-maxlength="300" role="textbox"' +
-      ' aria-label="' + escapeHtml(titleLabel) + '">' + escapeHtml(fields.title) + '</h1>') +
+      ' aria-label="' + escapeHtml(titleLabel) + '">' + escapeHtml(fields.title) + '</h2>') +
     (fields.goal == null ? "" : '<p class="card-subtitle" contenteditable="plaintext-only"' +
       ' data-study-structure-field="goal" data-maxlength="2000" role="textbox"' +
       ' aria-label="' + escapeHtml(goalLabel) + '">' + escapeHtml(fields.goal) + '</p>') +
@@ -310,6 +322,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
   });
   return '<section class="screen">' + topbar("Curso", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content course-screen">' +
+    levelHeading("Curso") +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
           titleLabel: "Título",
@@ -352,6 +365,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
   });
   return '<section class="screen">' + topbar("Módulo", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content course-screen">' +
+    levelHeading("Módulo") +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
           titleLabel: "Título",
@@ -411,6 +425,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
   });
   return '<section class="screen">' + topbar("Lição", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
+    levelHeading("Lição") +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
           titleLabel: "Título",
@@ -449,7 +464,7 @@ function renderMicrosequenceOverview(
       "study-unit-id": studyUnit.id
     },
     title: studyUnit.title || studyUnit.id,
-    description: readPackageStudyUnitText(studyUnit).slice(0, 140),
+    description: readStudyUnitOverviewDescription(studyUnit),
     completed: completedIds.has(studyUnit.id) ? 1 : 0,
     total: 1,
     openAction: "open-study-unit",
@@ -479,6 +494,7 @@ function renderMicrosequenceOverview(
   return '<section class="screen microsequence-overview-screen">' +
     topbar("Microssequência didática", "Voltar", modes, runtimeStatus) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
+    levelHeading("Microssequência") +
     (structuralEditor?.editing
       ? renderStructuralEditor(structuralEditor, {
           titleLabel: "Título",

@@ -157,10 +157,11 @@ function renderCoursePreview({
     '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
     String(percentage) + '"></div>' +
     '<div class="home-course-preview-copy">' +
-    '<p class="home-course-ownership" aria-label="' + escapeHtml(ownershipLabel) + '">' +
+    '<div class="home-course-title-row"><p class="home-course-ownership" aria-label="' +
+    escapeHtml(ownershipLabel) + '">' +
     renderUiIcon(personalCopy ? "copy" : owned ? "key" : "account-add", "home-course-origin-icon") +
     '<span class="visually-hidden">' + escapeHtml(ownershipLabel) + "</span></p>" +
-    '<h2 class="card-title">' + escapeHtml(title) + "</h2>" +
+    '<h2 class="card-title">' + escapeHtml(title) + "</h2></div>" +
     (goal ? '<p class="card-subtitle">' + escapeHtml(goal) + "</p>" : "") +
     '<p class="muted tiny progress-meta">' +
     metric("progress", `${completed}/${total}`, `Progresso: ${completed} de ${total}`) +
@@ -355,6 +356,7 @@ export function renderHomeScreen({
     renderUiIcon("study", "home-tab-icon") + '<span>Estudo</span></button>' +
     '<button type="button" data-action="open-authoring" title="Abrir Autoria">' +
     renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
+    '<div class="study-home-feedback-layer">' +
     (homeNotice ? '<div class="study-home-feedback is-notice" role="status"><span>' +
       escapeHtml(homeNotice) + "</span>" + (reviewUndo
         ? '<button class="open-mini" type="button" data-action="undo-review-removal">Desfazer</button>'
@@ -364,7 +366,7 @@ export function renderHomeScreen({
     (homePendingPersonalCopyDiscard
       ? '<button class="open-mini study-home-discard-pending" type="button"' +
         ' data-action="discard-pending-personal-copy">Descartar alteração guardada</button>'
-      : "") +
+      : "") + "</div>" +
     selectMarkup +
     renderReviewQueue(reviewItems, reviewHasMore, selectedId, reviewQueueOpen) +
     "</main></section>"

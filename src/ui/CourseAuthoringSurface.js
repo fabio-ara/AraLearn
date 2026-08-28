@@ -67,7 +67,9 @@ const AUTHORING_TASKS = Object.freeze([
 ]);
 const AUTHORING_SECTION_LABELS = Object.freeze({
   overview: "Visão geral",
-  ...Object.fromEntries(AUTHORING_TASKS.map(({ key, label }) => [key, label]))
+  ...Object.fromEntries(AUTHORING_TASKS.map(({ key, label }) => [key, label])),
+  parameters: "Parâmetros",
+  research: "Pesquisa"
 });
 const MATERIALIZATION_STATUS_LABELS = Object.freeze({
   running: "Em andamento",
@@ -317,15 +319,9 @@ function renderCourseList(state) {
         : state.query ? "A busca não encontrou Cursos." : "Seus Cursos aparecerão aqui."
     });
   } else {
-    content = (page.offlineKnown
-      ? '<p class="course-authoring-notice" role="status">Exibindo o que já está neste dispositivo.</p>'
-      : "") +
-      `<div class="course-authoring-course-list" data-cardinality="${cardinality}">` +
+    content = `<div class="course-authoring-course-list" data-cardinality="${cardinality}">` +
       page.items.map(renderCourseCard).join("") +
       "</div>" +
-      (state.failure
-        ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure.message)}</p>`
-        : "") +
       (page.hasMore
         ? '<button type="button" class="course-authoring-more" data-course-authoring-action="load-more-courses"' +
           (state.loading ? " disabled" : "") + ">" +
@@ -366,15 +362,21 @@ function renderCourseList(state) {
     ` value="${escapeHtml(state.query)}" placeholder="Buscar Curso" data-course-authoring-query>` +
     '<button type="submit" aria-label="Buscar Cursos">' +
     renderUiIcon("search", "course-authoring-button-icon") + "</button></form>" +
-    '<p class="course-authoring-notice" data-course-authoring-request-feedback' +
+    '<div class="course-authoring-feedback-layer"><p class="course-authoring-notice" data-course-authoring-request-feedback' +
     ' role="status" aria-live="polite" hidden></p>' +
-    createForm +
+    (page?.offlineKnown
+      ? '<p class="course-authoring-notice" role="status">Exibindo o que já está neste dispositivo.</p>'
+      : "") +
+    (state.failure && page
+      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure.message)}</p>`
+      : "") +
     (state.writeMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.writeMessage)}</p>`
       : "") +
     (state.writeFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
-      : "") +
+      : "") + "</div>" +
+    createForm +
     `<main class="course-authoring-list-content">${content}</main></div>`;
 }
 
@@ -402,7 +404,9 @@ function renderTaskLinks(course, section, { taskCards = false } = {}) {
 
 function renderCourseHeader(course, state) {
   const overview = state.section === "overview";
-  const title = AUTHORING_SECTION_LABELS[state.section] || "Autoria";
+  const title = state.section === "research" && state.researchView === "variants"
+    ? "Variantes"
+    : AUTHORING_SECTION_LABELS[state.section] || "Autoria";
   if (!course?.courseId) {
     return '<header class="course-authoring-course-header">' +
       '<button type="button" class="course-authoring-back" data-course-authoring-action="show-list"' +
@@ -411,33 +415,18 @@ function renderCourseHeader(course, state) {
       '<div class="course-authoring-course-heading"><p class="course-authoring-eyebrow">Autoria</p>' +
       `<h1>${escapeHtml(title)}</h1></div></header>`;
   }
-  const materializationReturn = state.section === "content" && state.contentReturnRoute;
-  const contextualReturn = state.contextualReturn &&
-    state.contextualReturn.route === state.routeKey
-    ? state.contextualReturn.returnTo
-    : "";
-  const returnRoute = materializationReturn || contextualReturn;
-  const returnLabel = materializationReturn
-    ? "Voltar à execução"
-    : contextualReturn
-      ? "Voltar à Unidade"
-      : "Voltar à Visão geral";
-  const back = overview
-    ? '<button type="button" class="course-authoring-back" data-course-authoring-action="show-list"' +
-      ' aria-label="Voltar aos Cursos" title="Voltar aos Cursos">' +
-      renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button>"
-    : `<a class="course-authoring-back" href="${escapeHtml(
-        returnRoute || buildCourseAuthoringRoute(course.courseId)
-      )}"` +
-      ` data-course-authoring-action="change-section" data-section="${
-        materializationReturn ? "planning" : contextualReturn ? "content" : "overview"
-      }"` +
-      ` aria-label="${returnLabel}" title="${returnLabel}">` +
-      renderUiIcon("arrow-left", "course-authoring-button-icon") + "</a>";
+  const backLabel = overview ? "Voltar aos Cursos" : "Voltar";
+  const back = '<button type="button" class="course-authoring-back"' +
+    ' data-course-authoring-action="back" aria-label="' + backLabel + '" title="' +
+    backLabel + '">' + renderUiIcon("arrow-left", "course-authoring-button-icon") +
+    "</button>";
   return '<header class="course-authoring-course-header">' + back +
     '<div class="course-authoring-course-heading">' +
-    `<p class="course-authoring-eyebrow">${escapeHtml(course?.title || "Curso")}</p>` +
-    `<h1>${escapeHtml(title)}</h1>${overview ? courseMeta(course) : ""}</div>` +
+    `<h1>${escapeHtml(title)}</h1>` +
+    `<p class="course-authoring-context-title" title="${escapeHtml(
+      course?.title || "Curso"
+    )}">${escapeHtml(course?.title || "Curso")}</p>` +
+    '</div>' +
     '<div class="course-authoring-header-actions">' +
     '<div class="course-authoring-runtime-status" data-authoring-runtime-status>' +
     renderRuntimeStatusControl({
@@ -451,7 +440,11 @@ function renderCourseHeader(course, state) {
     '<button type="button" data-course-authoring-action="refresh-course">' +
     `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar Curso</span></button>` +
     `<a href="${escapeHtml(buildCourseAuthoringRoute(course.courseId))}"` +
-    ' data-course-authoring-action="change-section" data-section="overview">Visão geral</a>' +
+    ` class="${overview ? "is-active" : ""}" data-course-authoring-action="change-section"` +
+    ` data-section="overview"${overview ? ' aria-current="page"' : ""}>` +
+    `<span class="course-authoring-task-icon">${renderUiIcon(
+      "home", "course-authoring-section-icon"
+    )}</span><span><strong>Visão geral</strong></span></a>` +
     (state.section === "content" && canAccessPlanning(course) && state.canOpenStudyContent
       ? '<button type="button" data-course-authoring-action="edit-content-entity"' +
         ' data-target-kind="course">' +
@@ -538,19 +531,12 @@ function renderPeopleSection(state) {
     : "";
   return '<section class="course-authoring-section course-authoring-people"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Pessoas</h2>' +
-    '<p>Acesso direto ao Estudo</p></div>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso</h2>' +
+    '<header class="course-authoring-section-toolbar" aria-label="Ações de acesso">' +
     '<button type="button" class="course-authoring-people-add"' +
     ' data-course-authoring-action="open-grant" aria-label="Conceder acesso" title="Conceder acesso">' +
     renderUiIcon("add", "course-authoring-button-icon") + "</button></header>" +
     grant + `<div class="course-authoring-people-content">${content}</div>` +
-    (state.peopleMessage
-      ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.peopleMessage)}</p>`
-      : "") +
-    (state.peopleFailure && people
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.peopleFailure)}</p>`
-      : "") +
     "</section>";
 }
 
@@ -563,11 +549,14 @@ function renderPlanningCard({ icon, label, value, emptyLabel }) {
     "</div></article>";
 }
 
-function renderPlanningMetric({ icon, count, label, detail = "" }) {
+function renderPlanningMetric({ icon, count, label, detail = "", lines = [] }) {
   return '<div class="course-authoring-planning-metric">' +
     renderUiIcon(icon, "course-authoring-section-icon") +
-    `<div><strong>${escapeHtml(count)}</strong><span>${escapeHtml(label)}</span>` +
-    (detail ? `<small>${escapeHtml(detail)}</small>` : "") + "</div></div>";
+    (lines.length
+      ? '<div class="course-authoring-planning-metric-counts">' + lines.map((line) =>
+          `<span>${escapeHtml(line)}</span>`).join("") + "</div>"
+      : `<div><strong>${escapeHtml(count)}</strong><span>${escapeHtml(label)}</span>` +
+        (detail ? `<small>${escapeHtml(detail)}</small>` : "") + "</div>") + "</div>";
 }
 
 function renderActionButton({
@@ -1111,8 +1100,10 @@ function renderPart(state, part, index, parts, { detail = false } = {}) {
     `<p class="course-authoring-part-status">${escapeHtml(PART_STATUS_LABELS[part.status])}</p></div></header>` +
     (part.intent ? `<p class="course-authoring-part-intent">${escapeHtml(part.intent)}</p>` : "") +
     '<div class="course-authoring-part-counts" aria-label="Planejado e produzido">' +
-    `<span><strong>${escapeHtml(part.linkedMicrosequenceCount)}</strong> micros no plano</span>` +
-    `<span><strong>${escapeHtml(part.studyUnitCount)}</strong> unidades materializadas</span></div>` +
+    `<span>${escapeHtml(countedLabel(
+      part.linkedMicrosequenceCount, "microssequência", "microssequências"
+    ))}</span>` +
+    `<span>${escapeHtml(countedLabel(part.studyUnitCount, "unidade", "unidades"))}</span></div>` +
     (detail ? renderMaterializationHistory(state, part) : renderLastMaterialization(state, part)) +
     renderPartLinks(state, part, parts) +
     renderPartConfirmation(state, part, previousPart) +
@@ -1186,24 +1177,16 @@ function renderPartDetailScreen(state, planning, part) {
   const index = planning.parts.findIndex(({ id }) => id === part.id);
   return '<section class="course-authoring-section course-authoring-part-detail"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-detail-navigation">' +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.course.courseId, {
-      section: "planning"
-    }))}" data-course-authoring-action="change-section" data-section="planning">` +
-    `${renderUiIcon("arrow-left", "course-authoring-button-icon")}<span>Planejamento</span></a>` +
-    '<div><p class="course-authoring-eyebrow">Parte</p>' +
-    `<h2 id="course-authoring-section-title">${escapeHtml(part.title)}</h2></div></header>` +
+    `<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">${escapeHtml(
+      part.title
+    )}</h2>` +
     renderPart(state, part, index, planning.parts, { detail: true }) + "</section>";
 }
 
 function renderMaterializationScreen(state, part) {
   return '<section class="course-authoring-section course-authoring-execution"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-detail-navigation">' +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.course.courseId, {
-      section: "planning", authoringPartId: part.id
-    }))}" data-course-authoring-action="change-section" data-section="planning">` +
-    `${renderUiIcon("arrow-left", "course-authoring-button-icon")}<span>${escapeHtml(part.title)}</span></a>` +
+    '<header class="course-authoring-detail-navigation is-heading-only">' +
     '<div><p class="course-authoring-eyebrow">Materialização</p>' +
     '<h2 id="course-authoring-section-title">Execução</h2></div></header>' +
     renderMaterializationDetails(state, part) + "</section>";
@@ -1291,8 +1274,8 @@ function renderPlanningSection(state) {
   if (targetPart) return renderPartDetailScreen(state, planning, targetPart);
   return '<section class="course-authoring-section course-authoring-planning"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Planejamento</h2></div>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Planejamento</h2>' +
+    '<header class="course-authoring-section-toolbar" aria-label="Ações do planejamento">' +
     '<div class="course-authoring-compact-actions">' +
     renderActionButton({
       action: "add-plan-item",
@@ -1304,12 +1287,6 @@ function renderPlanningSection(state) {
     ' data-course-authoring-action="open-planning-edit" aria-label="Editar planejamento" title="Editar planejamento">' +
     renderUiIcon("edit", "course-authoring-button-icon") + "</button></div></header>" +
     renderPlanningEditForm(state, planning) +
-    (state.writeMessage
-      ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.writeMessage)}</p>`
-      : "") +
-    (state.writeFailure
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
-      : "") +
     (state.planningEditOpen ? "" : renderUnlinkedContentNotice(state, planning) +
     '<div class="course-authoring-planning-details is-objective">' +
     renderPlanningCard({
@@ -1327,9 +1304,10 @@ function renderPlanningSection(state) {
     }) +
     renderPlanningMetric({
       icon: "progress",
-      count: planning.studyUnitCount,
-      label: "Unidades materializadas",
-      detail: `${planning.linkedMicrosequenceCount} microssequências no plano`
+      lines: [
+        countedLabel(planning.linkedMicrosequenceCount, "microssequência", "microssequências"),
+        countedLabel(planning.studyUnitCount, "unidade", "unidades")
+      ]
     }) +
     "</div>" + renderParts(state, planning) + renderPlanningContext(planning) +
     renderPlanItems(state, planning) +
@@ -1344,8 +1322,7 @@ function renderContentSection() {
 function renderOverviewNextAction(state) {
   const course = state.course;
   if (!canAccessPlanning(course)) {
-    return '<section class="course-authoring-overview-next"><span>Próxima ação</span>' +
-      '<h3>Conteúdo</h3>' +
+    return '<section class="course-authoring-overview-next"><h3>Conteúdo</h3>' +
       `<a class="course-authoring-primary" href="${escapeHtml(buildCourseAuthoringRoute(
         course.courseId, { section: "content" }
       ))}" data-course-authoring-action="change-section" data-section="content"` +
@@ -1353,12 +1330,11 @@ function renderOverviewNextAction(state) {
       `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</a></section>`;
   }
   if (state.planningLoading && !state.authoringPlan) {
-    return '<section class="course-authoring-overview-next" aria-busy="true"><span>Próxima ação</span>' +
+    return '<section class="course-authoring-overview-next" aria-busy="true">' +
       '<h3>Consultando o planejamento…</h3></section>';
   }
   if (!state.authoringPlan) {
-    return '<section class="course-authoring-overview-next"><span>Próxima ação</span>' +
-      '<h3>Planejamento</h3>' +
+    return '<section class="course-authoring-overview-next"><h3>Planejamento</h3>' +
       `<a href="${escapeHtml(buildCourseAuthoringRoute(course.courseId, { section: "planning" }))}"` +
       ' data-course-authoring-action="change-section" data-section="planning"' +
       ' aria-label="Abrir Planejamento" title="Abrir Planejamento">' +
@@ -1383,7 +1359,7 @@ function renderOverviewNextAction(state) {
         ? "Retomar a materialização"
         : "Continuar a próxima Parte"
     : planning.parts.length ? "Conferir o Conteúdo" : "Criar a primeira Parte";
-  return '<section class="course-authoring-overview-next"><span>Próxima ação</span>' +
+  return '<section class="course-authoring-overview-next">' +
     `<h3>${escapeHtml(title)}</h3>` + (attention?.title ? `<p>${escapeHtml(attention.title)}</p>` : "") +
     `<a class="course-authoring-primary" href="${escapeHtml(route)}"` +
     ` data-course-authoring-action="change-section" data-section="${attention ? "planning" : planning.parts.length ? "content" : "planning"}"` +
@@ -1393,15 +1369,18 @@ function renderOverviewNextAction(state) {
 
 function renderOverviewSection(state) {
   const course = state.course;
+  const counts = courseCountsLabel(course.counts);
   return '<section class="course-authoring-section course-authoring-overview"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-overview-identity"><p>Curso em edição</p>' +
-    `<h2 id="course-authoring-section-title">${escapeHtml(course.title)}</h2>` +
-    (course.goal ? `<p>${escapeHtml(course.goal)}</p>` : "") +
-    `<span>${escapeHtml(accessLabel(course) || "Curso próprio")}</span></header>` +
+    '<header class="course-authoring-overview-identity">' +
+    '<h2 id="course-authoring-section-title">Objetivo</h2>' +
+    (course.goal ? `<p>${escapeHtml(course.goal)}</p>` : '<p>Não definido.</p>') +
+    `<span>${escapeHtml(accessLabel(course) || "Curso próprio")}</span>` +
+    (counts ? `<p class="course-authoring-meta">${escapeHtml(counts)}</p>` : "") +
+    '</header>' +
     renderOverviewNextAction(state) +
     '<section class="course-authoring-task-section" aria-labelledby="course-authoring-task-title">' +
-    '<div><h3 id="course-authoring-task-title">O que você quer fazer?</h3></div>' +
+    '<div><h3 id="course-authoring-task-title">Tarefas</h3></div>' +
     `<nav class="course-authoring-task-grid" data-course-authoring-task-list` +
     ` aria-label="Tarefas principais">${renderTaskLinks(
       course, state.section, { taskCards: true }
@@ -1413,8 +1392,7 @@ function renderResearchSection(state) {
   const active = state.researchView === "analytics" && analyticsAllowed ? "analytics" : "variants";
   return '<section class="course-authoring-section course-authoring-research-workspace"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div>' +
-    '<h2 id="course-authoring-section-title">Variantes e pesquisa</h2></div></header>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Variantes e pesquisa</h2>' +
     '<nav class="course-authoring-task-switch" aria-label="Tarefa de variantes e pesquisa">' +
     `<button type="button" data-course-authoring-action="show-research-variants" aria-pressed="${active === "variants"}">Variantes</button>` +
     (analyticsAllowed
@@ -1483,14 +1461,20 @@ function renderCourseDetail(state) {
     renderCourseHeader(visibleCourse, state) +
     '<div class="course-authoring-layout">' +
     '<div class="course-authoring-main-pane">' +
-    '<p class="course-authoring-notice" data-course-authoring-request-feedback' +
+    '<div class="course-authoring-feedback-layer"><p class="course-authoring-notice" data-course-authoring-request-feedback' +
     ' role="status" aria-live="polite" hidden></p>' +
-    (state.section !== "planning" && state.writeMessage
+    (state.writeMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.writeMessage)}</p>`
       : "") +
-    (state.section !== "planning" && state.writeFailure
+    (state.writeFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
       : "") +
+    (state.section === "people" && state.peopleMessage
+      ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.peopleMessage)}</p>`
+      : "") +
+    (state.section === "people" && state.peopleFailure && state.people
+      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.peopleFailure)}</p>`
+      : "") + "</div>" +
     `<main class="course-authoring-course-content">${renderCourseSection(state)}</main></div></div>` +
     (state.sourceTarget
       ? '<div class="course-source-target-overlay"><div data-course-source-target-host></div></div>'
@@ -1670,6 +1654,7 @@ export function createCourseAuthoringSurface({
     contentReturnRoute: "",
     contextualReturn: null,
     inspectionReturnFocus: null,
+    inspectionReturnPosition: null,
     canOpenStudyContent: typeof onOpenStudyContent === "function",
     loading: false,
     list: null,
@@ -2006,6 +1991,9 @@ export function createCourseAuthoringSurface({
         controller,
         course: state.course,
         routeTarget: state.routeTarget,
+        initialPosition: state.inspectionReturnPosition?.route === state.routeKey
+          ? state.inspectionReturnPosition.position
+          : null,
         initialFocusKey,
         onNavigate: (hash, options) => navigate(hash, options),
         onEditSources: (target) => openTargetSources(target),
@@ -2019,7 +2007,11 @@ export function createCourseAuthoringSurface({
         providerAssistanceSession
       });
       const mountedSequence = inspectionSequence;
-      void mountedSequence.open().then(() => {
+      void mountedSequence.open().then((opened) => {
+        if (inspectionSequence === mountedSequence && opened &&
+            state.inspectionReturnPosition?.route === state.routeKey) {
+          state.inspectionReturnPosition = null;
+        }
         if (inspectionSequence === mountedSequence && initialFocusKey) {
           const focused = mountedSequence.focusControl?.(initialFocusKey) === true;
           if (focused && !state.loading &&
@@ -2662,6 +2654,7 @@ export function createCourseAuthoringSurface({
     state.knownCourse = null;
     state.routeTarget = null;
     state.contextualReturn = null;
+    state.inspectionReturnPosition = null;
     state.sourceTarget = null;
     state.people = null;
     state.peopleFailure = "";
@@ -2706,7 +2699,12 @@ export function createCourseAuthoringSurface({
     return `${locationValue.pathname || ""}${locationValue.search || ""}${hash}` || hash;
   }
 
-  function navigate(hash, { replace = false, returnTo = "", returnFocusKey = "" } = {}) {
+  function navigate(hash, {
+    replace = false,
+    returnTo = "",
+    returnFocusKey = "",
+    returnPosition = null
+  } = {}) {
     const currentRoute = state.routeKey.startsWith?.("#/")
       ? state.routeKey
       : String(locationValue.hash || "");
@@ -2720,6 +2718,9 @@ export function createCourseAuthoringSurface({
       state.contextualReturn = { route: hash, returnTo };
       state.inspectionReturnFocus = returnFocusKey
         ? { route: returnTo, key: returnFocusKey }
+        : null;
+      state.inspectionReturnPosition = returnPosition
+        ? { route: returnTo, position: structuredClone(returnPosition) }
         : null;
       historyValue.replaceState(historyValue.state ?? null, "", locationUrl(returnTo));
     }
@@ -2775,6 +2776,7 @@ export function createCourseAuthoringSurface({
     state.routeKey = "";
     state.loading = false;
     state.actionConfirmation = null;
+    state.inspectionReturnPosition = null;
     state.grantDraftEmail = "";
     state.pendingPeopleCommand = null;
     destroyInspectionSequence();
@@ -2821,6 +2823,8 @@ export function createCourseAuthoringSurface({
     if (!state.opened) return false;
     if (closeActionConfirmation()) return true;
     if (cancelPartConfirmation()) return true;
+    if (state.section === "research" && state.researchView === "variants" &&
+        variantsPanel?.handleBack?.()) return true;
     if (state.microsequenceAssignment) {
       state.microsequenceAssignment = null;
       render({ focus: '[data-course-authoring-action="open-microsequence-assignment"]' });
@@ -2828,6 +2832,14 @@ export function createCourseAuthoringSurface({
     }
     if (closeTransientMenus({ restoreFocus: true })) return true;
     if (state.view === "course" && state.course) {
+      if (state.section === "content" && state.contentReturnRoute) {
+        void navigate(state.contentReturnRoute);
+        return true;
+      }
+      if (state.contextualReturn && state.contextualReturn.route === state.routeKey) {
+        void navigate(state.contextualReturn.returnTo);
+        return true;
+      }
       if (state.section === "planning" && state.routeTarget?.kind === "authoring_part") {
         void navigate(buildCourseAuthoringRoute(state.course.courseId, {
           section: "planning",
@@ -2919,7 +2931,9 @@ export function createCourseAuthoringSurface({
   function hasPendingAuthoringDraft() {
     if (hasPendingWriteEnvelope() || hasTransientAuthoringDraft() ||
         mountedPanelHasPendingDraft()) return true;
-    if (root.querySelector?.('[role="dialog"], [role="alertdialog"]')) return true;
+    if (root.querySelector?.(
+      '[role="alertdialog"], [role="dialog"]:not([data-course-authoring-readonly-dialog])'
+    )) return true;
     return [...(root.querySelectorAll?.("form") || [])].some((form) =>
       [...(form.elements || [])].some(controlHasDraft));
   }
@@ -4371,6 +4385,8 @@ export function createCourseAuthoringSurface({
       void navigate(buildCourseAuthoringRoute(node.dataset.courseId, {
         section: initialSectionForCourse(course)
       }));
+    } else if (action === "back") {
+      handleBack();
     } else if (action === "change-section" && state.course) {
       const menu = node.closest?.(
         ".course-authoring-task-menu, .course-authoring-part-tools"

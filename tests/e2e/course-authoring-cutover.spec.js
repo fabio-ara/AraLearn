@@ -247,6 +247,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
     const main = surface.querySelector(".course-authoring-main-pane");
     const header = surface.querySelector(".course-authoring-course-header");
     const heading = header?.querySelector(".course-authoring-course-heading");
+    const title = heading?.querySelector("h1");
+    const contextTitle = heading?.querySelector(".course-authoring-context-title");
     const surfaceRect = surface.getBoundingClientRect();
     const frameRect = frame.getBoundingClientRect();
     const layoutRect = layout.getBoundingClientRect();
@@ -265,7 +267,11 @@ async function expectResponsiveAuthoringNavigation(page, width) {
         Math.abs(
           headingRect.left + headingRect.width / 2 -
           (headerRect.left + headerRect.width / 2)
-        ) <= 1)
+        ) <= 1),
+      titleFits: Boolean(title && title.scrollWidth <= title.clientWidth + 1),
+      titleTransform: title ? getComputedStyle(title).textTransform : null,
+      contextTitle: contextTitle?.textContent?.trim() || "",
+      contextTransform: contextTitle ? getComputedStyle(contextTitle).textTransform : null
     };
   });
   expect(geometry.surfaceWidth).toBeLessThanOrEqual(430);
@@ -273,6 +279,10 @@ async function expectResponsiveAuthoringNavigation(page, width) {
   expect(geometry.layoutColumns.trim().split(/\s+/u)).toHaveLength(1);
   expect(geometry.mainAligned).toBe(true);
   expect(geometry.headerTitleCentered).toBe(true);
+  expect(geometry.titleFits).toBe(true);
+  expect(geometry.titleTransform).toBe("none");
+  expect(geometry.contextTitle.length).toBeGreaterThan(0);
+  expect(geometry.contextTransform).toBe("none");
   if (width > 430) {
     expect(Math.abs(geometry.leftSpace - geometry.rightSpace)).toBeLessThanOrEqual(1);
   }
@@ -372,7 +382,8 @@ async function mountCourseAuthoring(page, {
   variantMutationScenario = "default",
   peopleMutationScenario = "default",
   annotationMutationScenario = "default",
-  objective = "Compreender relações essenciais por meio de exemplos graduais."
+  objective = "Compreender relações essenciais por meio de exemplos graduais.",
+  courseTitle = "Fundamentos de relações"
 } = {}) {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
@@ -391,6 +402,7 @@ async function mountCourseAuthoring(page, {
     requestedPeopleMutationScenario,
     requestedAnnotationMutationScenario,
     requestedObjective,
+    requestedCourseTitle,
     courseIds,
     createdCourseId,
     ownerId,
@@ -412,7 +424,7 @@ async function mountCourseAuthoring(page, {
 
     const definitions = [{
       courseId: courseIds[0],
-      title: "Fundamentos de relações",
+      title: requestedCourseTitle,
       goal: requestedObjective,
       revision: 5,
       plan: {
@@ -2482,6 +2494,7 @@ async function mountCourseAuthoring(page, {
     requestedPeopleMutationScenario: peopleMutationScenario,
     requestedAnnotationMutationScenario: annotationMutationScenario,
     requestedObjective: objective,
+    requestedCourseTitle: courseTitle,
     courseIds: COURSE_IDS,
     createdCourseId: CREATED_COURSE_ID,
     ownerId: OWNER_ID,
@@ -2576,7 +2589,8 @@ test.describe("Autoria canônica mobile-first", () => {
         fullPage: true,
         animations: "disabled"
       });
-      await page.getByRole("link", { name: "Voltar à execução", exact: true }).click();
+      await page.locator(".course-authoring-course-header")
+        .getByRole("button", { name: "Voltar", exact: true }).click();
       await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(executionHash);
       await expect(page.getByText("Etapas e resultados", { exact: true })).toBeVisible();
       await expectNoHorizontalOverflow(page);
@@ -2632,7 +2646,8 @@ test.describe("Autoria canônica mobile-first", () => {
       const parametersHash = `#/authoring/courses/${COURSE_IDS[0]}?section=parameters`;
       await mountCourseAuthoring(page, { cardinality: "many", hash: parametersHash });
 
-      await expect(page.getByRole("heading", { name: "Parâmetros", exact: true })).toBeVisible();
+      await expect(page.locator(".course-authoring-course-header h1"))
+        .toHaveText("Parâmetros");
       await expect(page.locator(".course-design-parameter")).toHaveCount(4);
       await expect(page.locator(".course-design-component-option")).toHaveCount(32);
       await expect(page.getByLabel(/^Entender e ajustar/u)).toHaveCount(4);
@@ -2668,7 +2683,8 @@ test.describe("Autoria canônica mobile-first", () => {
       const variantsHash = `#/authoring/courses/${COURSE_IDS[0]}?section=research`;
       await mountCourseAuthoring(page, { cardinality: "many", hash: variantsHash });
 
-      await expect(page.getByRole("heading", { name: "Variantes", exact: true })).toBeVisible();
+      await expect(page.locator(".course-authoring-course-header h1"))
+        .toHaveText("Variantes");
       await expectResponsiveAuthoringNavigation(page, width);
       await expect(page.locator(
         '.course-authoring-task-menu a[data-section="research"]'
@@ -2759,7 +2775,8 @@ test.describe("Autoria canônica mobile-first", () => {
     const variantTitle = page.locator('input[name="title-1"]');
     await variantTitle.fill("Contraste ainda em elaboração");
     await page.getByRole("button", { name: "Voltar", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Variantes", exact: true })).toBeVisible();
+    await expect(page.locator(".course-authoring-course-header h1"))
+      .toHaveText("Variantes");
 
     expect(await page.evaluate(() =>
       globalThis.__courseAuthoringHarness.surface.refresh())).toBe("deferred");
@@ -2769,7 +2786,7 @@ test.describe("Autoria canônica mobile-first", () => {
       "research"
     );
     await expect(page.locator(
-      ".course-authoring-main-pane > [data-course-authoring-request-feedback]"
+      ".course-authoring-feedback-layer [data-course-authoring-request-feedback]"
     )).toContainText("Navegação adiada para preservar sua edição");
 
     await page.getByRole("button", { name: "Criar variantes", exact: true }).click();
@@ -2842,7 +2859,7 @@ test.describe("Autoria canônica mobile-first", () => {
     await expect(page.locator(".course-authoring-surface"))
       .toHaveAttribute("data-section", "research");
     await expect(page.locator(
-      ".course-authoring-main-pane > [data-course-authoring-request-feedback]"
+      ".course-authoring-feedback-layer [data-course-authoring-request-feedback]"
     )).toContainText("Navegação adiada para preservar sua edição");
     await expect(variantTitle).toHaveValue("Contraste preservado");
 
@@ -2926,7 +2943,8 @@ test.describe("Autoria canônica mobile-first", () => {
       name: "Desvincular",
       exact: true
     }).click();
-    await expect(page.getByRole("heading", { name: "Variantes", exact: true })).toBeVisible();
+    await expect(page.locator(".course-authoring-course-header h1"))
+      .toHaveText("Variantes");
 
     const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
     expect(probe.variantMutations).toHaveLength(2);
@@ -3058,7 +3076,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     { section: "content", heading: "Conteúdo", ready: "[data-inspection-study-unit]" },
     {
       section: "parameters",
-      heading: "Parâmetros e componentes",
+      heading: "Parâmetros",
       ready: ".course-design-parameter"
     },
     { section: "sources", heading: "Fontes", ready: ".course-source-card" },
@@ -3067,7 +3085,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       heading: "Revisão",
       ready: ".course-audit-panel"
     },
-    { section: "research", heading: "Variantes e pesquisa", ready: ".course-variants" },
+    { section: "research", heading: "Variantes", ready: ".course-variants" },
     { section: "people", heading: "Pessoas e acesso", ready: ".course-authoring-people" }
   ];
 
@@ -3096,6 +3114,23 @@ test.describe("aceite focal do shell simples da Autoria", () => {
         await expect.poll(() => page.locator(".course-authoring-root").evaluate(
           (element) => element.scrollTop
         )).toBeLessThanOrEqual(1);
+        const planningCounts = page.locator(
+          ".course-authoring-planning-metric-counts > span"
+        );
+        await expect(planningCounts).toHaveText(["1 microssequência", "2 unidades"]);
+        expect(await planningCounts.evaluateAll((nodes) => nodes.map((node) => {
+          const style = getComputedStyle(node);
+          return {
+            text: node.textContent.trim(),
+            whiteSpace: style.whiteSpace,
+            fits: node.scrollWidth <= node.clientWidth + 1
+          };
+        }))).toEqual([
+          { text: "1 microssequência", whiteSpace: "nowrap", fits: true },
+          { text: "2 unidades", whiteSpace: "nowrap", fits: true }
+        ]);
+        const stableHeaderHeight = await page.locator(".course-authoring-course-header")
+          .evaluate((element) => element.getBoundingClientRect().height);
         if ((width === 390 && colorScheme === "light") ||
             (width === 1280 && colorScheme === "dark")) {
           await page.screenshot({
@@ -3119,6 +3154,9 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             area.heading
           );
           await expect(page.locator(area.ready).first()).toBeVisible();
+          expect(await page.locator(".course-authoring-course-header")
+            .evaluate((element) => element.getBoundingClientRect().height))
+            .toBe(stableHeaderHeight);
           await expect.poll(() => page.locator(".course-authoring-root").evaluate(
             (element) => element.scrollTop
           )).toBeLessThanOrEqual(1);
@@ -3134,6 +3172,8 @@ test.describe("aceite focal do shell simples da Autoria", () => {
           }
           if (area.section === "research") {
             await page.getByRole("button", { name: "Pesquisa", exact: true }).click();
+            await expect(page.locator(".course-authoring-course-header h1"))
+              .toHaveText("Pesquisa");
             await expect(page.locator(".course-analytics")).toBeVisible();
           }
           if (area.section === "research" && width === 1280 && colorScheme === "dark") {
@@ -3257,7 +3297,8 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       .toBe(beforeRefresh);
 
     await navigateToAuthoringArea(page, "parameters");
-    await expect(page.getByRole("heading", { name: "Parâmetros", exact: true })).toBeVisible();
+    await expect(page.locator(".course-authoring-course-header h1"))
+      .toHaveText("Parâmetros");
     await expect.poll(() => root.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
     expect(clientErrors).toEqual([]);
   });
@@ -3389,8 +3430,8 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       .toBeVisible();
     await expect(planning.getByText("7–12", { exact: true })).toBeVisible();
     await expect(planning.getByText("Partes preferenciais", { exact: true })).toBeVisible();
-    await expect(planning.getByText("0", { exact: true })).toBeVisible();
-    await expect(planning.getByText("Unidades materializadas", { exact: true })).toBeVisible();
+    await expect(planning.getByText("0 microssequências", { exact: true })).toBeVisible();
+    await expect(planning.getByText("0 unidades", { exact: true })).toBeVisible();
     await expect(planning.getByRole("heading", { name: "Partes", exact: true }))
       .toBeVisible();
 
@@ -3505,6 +3546,58 @@ test.describe("entrada e Conteúdo cotidiano da Autoria", () => {
       });
     }
   }
+});
+
+test("Conteúdo mantém cabeçalhos separados em 360 px com título longo", async ({ page }) => {
+  const clientErrors = captureClientErrors(page);
+  const courseTitle = "Dataprev: Gestão de Servidores e Segurança da Informação";
+  await page.setViewportSize({ width: 360, height: 780 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash, courseTitle });
+
+  const contextTitle = page.locator(".course-authoring-context-title");
+  await expect(contextTitle).toHaveText(courseTitle);
+  await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
+
+  const geometry = async () => page.locator(".course-authoring-surface").evaluate((surface) => {
+    const header = surface.querySelector(".course-authoring-course-header");
+    const title = surface.querySelector(".course-authoring-context-title");
+    const sticky = surface.querySelector(".course-inspection-sticky-context");
+    const headerRect = header.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    const stickyRect = sticky.getBoundingClientRect();
+    const titleStyle = getComputedStyle(title);
+    return {
+      headerHeight: headerRect.height,
+      separated: headerRect.bottom <= stickyRect.top + 1,
+      titleWhiteSpace: titleStyle.whiteSpace,
+      titleTextOverflow: titleStyle.textOverflow,
+      titleInsideHeader: titleRect.top >= headerRect.top - 1 &&
+        titleRect.bottom <= headerRect.bottom + 1
+    };
+  });
+
+  const before = await geometry();
+  expect(before).toMatchObject({
+    separated: true,
+    titleWhiteSpace: "nowrap",
+    titleTextOverflow: "ellipsis",
+    titleInsideHeader: true
+  });
+  await expect(contextTitle).toHaveAttribute("title", courseTitle);
+
+  await page.locator(".course-authoring-root").evaluate((root) => {
+    root.scrollTop = 640;
+  });
+  await expect.poll(geometry).toMatchObject({
+    headerHeight: before.headerHeight,
+    separated: true,
+    titleWhiteSpace: "nowrap",
+    titleTextOverflow: "ellipsis",
+    titleInsideHeader: true
+  });
+  await expectNoHorizontalOverflow(page);
+  expect(clientErrors).toEqual([]);
 });
 
 test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON", async ({ page }) => {
@@ -3932,7 +4025,7 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   expect(clientErrors).toEqual([]);
 });
 
-test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Unidade", async ({
+test("Inspeção abre o Desenho situado uma vez e retorna à Unidade pelo cabeçalho", async ({
   page
 }) => {
   const clientErrors = captureClientErrors(page);
@@ -3950,12 +4043,12 @@ test("Inspeção abre o Desenho situado uma vez e oferece retorno visível à Un
   })).toBeVisible();
   await expect(page.getByText("Não foi possível carregar os itens do Planejamento."))
     .toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Voltar à Unidade" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Voltar", exact: true })).toBeVisible();
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
   expect(probe.planReads).toBe(1);
   expect(probe.designReads).toHaveLength(1);
 
-  await page.getByRole("link", { name: "Voltar à Unidade" }).click();
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
   await expect(page).toHaveURL(new RegExp("section=content&studyUnitId=study-unit-01"));
   await expect(page.getByRole("link", { name: "Desenho", exact: true })).toBeFocused();
   expect(clientErrors).toEqual([]);
@@ -4492,7 +4585,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
 
   await navigateToAuthoringArea(page, "parameters", 390);
   await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Parâmetros e componentes");
+    .toHaveText("Parâmetros");
   await expect(page.locator(".course-design-parameter")).toHaveCount(4);
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe)).toMatchObject({
     outlineReads: 0,
@@ -4512,7 +4605,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   });
   await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
   await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Parâmetros e componentes");
+    .toHaveText("Parâmetros");
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}?section=parameters`
   );
@@ -4568,7 +4661,8 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
     inspectionReads: globalThis.__courseAuthoringHarness.probe.inspectionReads.length
   }))).toEqual({ outlineReads: 0, inspectionReads: 3 });
 
-  await page.getByRole("link", { name: "Voltar à Visão geral" }).click();
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
+  await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Visão geral");
   await page.getByRole("button", { name: "Voltar aos Cursos" }).click();
   await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("");
@@ -5003,7 +5097,7 @@ test("planejamento ambíguo mantém formulário e envelope até a mesma confirma
     "planning"
   );
   await expect(page.locator(
-    ".course-authoring-main-pane > [data-course-authoring-request-feedback]"
+    ".course-authoring-feedback-layer [data-course-authoring-request-feedback]"
   )).toContainText("Navegação adiada para preservar sua edição");
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.surface.handleBack())).toBe(true);
@@ -5014,7 +5108,7 @@ test("planejamento ambíguo mantém formulário e envelope até a mesma confirma
 
   await page.getByRole("button", { name: "Salvar planejamento" }).click();
   await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Planejamento");
-  await expect(page.locator(".course-authoring-course-heading .course-authoring-eyebrow"))
+  await expect(page.locator(".course-authoring-course-heading .course-authoring-context-title"))
     .toHaveText("Planejamento confirmado uma vez");
   await expect(page.getByText("Planejamento salvo.")).toBeVisible();
   const calls = await page.evaluate(() =>
@@ -5033,7 +5127,8 @@ test("criação e edição persistem pelo controlador compartilhado", async ({ p
   await page.getByLabel("Objetivo").fill("Investigar a comparação de explicações.");
   await page.getByRole("button", { name: "Criar Curso" }).last().click();
   await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Visão geral");
-  await expect(page.getByRole("heading", { name: "Curso criado na Autoria" })).toBeVisible();
+  await expect(page.locator(".course-authoring-course-heading .course-authoring-context-title"))
+    .toHaveText("Curso criado na Autoria");
   const createCalls = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.createCalls);
   expect(createCalls).toHaveLength(1);
@@ -5049,7 +5144,7 @@ test("criação e edição persistem pelo controlador compartilhado", async ({ p
   await page.getByLabel("Objetivo").fill("Comparar explicações com critérios explícitos.");
   await page.getByRole("button", { name: "Salvar planejamento" }).click();
 
-  await expect(page.locator(".course-authoring-course-heading .course-authoring-eyebrow"))
+  await expect(page.locator(".course-authoring-course-heading .course-authoring-context-title"))
     .toHaveText("Curso revisado na Autoria");
   await expect(page.getByText("Planejamento salvo.")).toBeVisible();
   const planMutations = await page.evaluate(() =>
@@ -5104,23 +5199,64 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   await expect(chart).toHaveAccessibleName(
     "Estado das observações. Em aberto: 3; Resolução registrada: Dado ausente"
   );
-  const table = research.getByRole("table", { name: "Valores equivalentes ao gráfico" });
-  await expect(table).toBeVisible();
-  await expect(table.getByRole("row", {
-    name: "Categoria Em aberto Valor 3 Denominador 4 Ausência Não"
-  })).toBeVisible();
-  await expect(table.getByRole("row", {
-    name: "Categoria Resolução registrada Valor Dado ausente Denominador 4 Ausência Sim"
-  })).toBeVisible();
+  await expect(research.getByRole("table")).toHaveCount(0);
+  await expect(research.getByText("Métrica", { exact: true })).toHaveCount(0);
+  const factsTop = await research.locator(".course-analytics-facts").evaluate((element) =>
+    element.getBoundingClientRect().top);
+  const metricTrigger = research.getByRole("button", { name: "Detalhes da pesquisa" });
+  await metricTrigger.click();
+  const metricSheet = page.getByRole("dialog", { name: "Detalhes da pesquisa" });
+  await expect(metricSheet).toBeVisible();
+  const metricClose = metricSheet.getByRole("button", { name: "Fechar" });
+  await expect(metricClose).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(metricClose).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(metricClose).toBeFocused();
+  await expect(metricSheet.getByRole("table")).toHaveCount(0);
+  await expect(metricSheet.getByText("Mede", { exact: true })).toBeVisible();
+  await expect(metricSheet.getByText("Unidade", { exact: true })).toBeVisible();
+  await expect(metricSheet.getByText("Base", { exact: true })).toBeVisible();
+  await expect(metricSheet.getByText("Definição", { exact: true })).toHaveCount(0);
   await expect(research.getByText("Revisão 5", { exact: true })).toBeVisible();
-  await research.getByText("Métrica", { exact: true }).click();
-  await expect(research.getByText("Quatro observações correntes no recorte.", {
+  await expect(metricSheet.getByText("Quatro observações correntes no recorte.", {
     exact: true
   })).toBeVisible();
-  await expect(research.getByText(
-    "A ausência de uma contagem permanece indicada como dado ausente.",
-    { exact: true }
-  )).toBeVisible();
+  await expect(metricSheet).not.toContainText(
+    "Conta cada observação corrente uma vez pelo estado registrado."
+  );
+  await expect(metricSheet).not.toContainText(
+    "A ausência de uma contagem permanece indicada como dado ausente."
+  );
+  await expect(metricSheet).not.toContainText(
+    "A contagem não mede aprendizagem, atenção ou dificuldade."
+  );
+  await expect(metricSheet).not.toContainText(
+    "O estado da observação não mede a aprendizagem da pessoa estudante."
+  );
+  await expect(metricSheet).not.toContainText(
+    "Os números descrevem este recorte e não demonstram relação causal."
+  );
+  expect(await metricSheet.evaluate((element) => ({
+    position: getComputedStyle(element.parentElement).position,
+    overflow: getComputedStyle(element).overflow,
+    bodyOverflow: getComputedStyle(
+      element.querySelector(".course-analytics-sheet-body")
+    ).overflowY
+  }))).toEqual({ position: "fixed", overflow: "hidden", bodyOverflow: "auto" });
+  expect(await research.locator(".course-analytics-facts").evaluate((element) =>
+    element.getBoundingClientRect().top)).toBe(factsTop);
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh()))
+    .not.toBe("deferred");
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
+  await expect(metricSheet).toBeVisible();
+  await expect(metricClose).toBeFocused();
+  expect(await research.locator(".course-analytics-facts").evaluate((element) =>
+    element.getBoundingClientRect().top)).toBe(factsTop);
+  await page.keyboard.press("Escape");
+  await expect(metricSheet).toHaveCount(0);
+  await expect(metricTrigger).toBeFocused();
 
   await datasetFilter.selectOption("annotations");
   await channelFilter.selectOption("study_interface");
@@ -5128,7 +5264,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   await research.getByLabel("Até").fill("2026-08-19");
   await research.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect.poll(() => page.evaluate(() =>
-    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
+    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(3);
   const filteredQuery = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.at(-1));
   expect(filteredQuery).toEqual({
@@ -5151,20 +5287,27 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   const facts = research.locator(".course-analytics-facts > ol > li");
   await expect(facts).toHaveCount(1);
   await expect(facts.first()).toContainText("Observação sobre a comparação");
-  await expect(facts.first()).toContainText("Observações · Observação reaberta");
-  await expect(facts.first()).toContainText("Versão da Observação: 3");
-  await expect(facts.first()).toContainText("Tipo do evento: Reabertura");
-  await expect(facts.first()).toContainText("Tipo do objeto: Unidade de estudo");
-  await expect(facts.first()).toContainText("OrigemPessoa estudante");
-  await expect(facts.first()).toContainText("EstadoEm aberto");
+  await expect(facts.first()).toContainText("Observação reaberta");
+  await expect(facts.first()).not.toContainText("Versão da Observação");
+  await facts.first().getByRole("button", { name: "Detalhes de Observação reaberta" }).click();
+  const factSheet = page.getByRole("dialog", { name: "Observação reaberta" });
+  await expect(factSheet).toContainText("Versão da Observação: 3");
+  await expect(factSheet).toContainText("Tipo do evento: Reabertura");
+  await expect(factSheet).toContainText("Tipo do objeto: Unidade de estudo");
+  await expect(factSheet).toContainText("OrigemPessoa estudante");
+  await expect(factSheet).toContainText("EstadoEm aberto");
+  await factSheet.getByRole("button", { name: "Fechar" }).click();
   await research.getByRole("button", { name: "Carregar mais fatos" }).click();
   await expect(facts).toHaveCount(2);
   await expect(research.getByRole("button", { name: "Carregar mais fatos" })).toHaveCount(0);
-  await expect(facts.nth(1)).toContainText("Assuntos: ausente");
-  await expect(facts.nth(1)).toContainText("EstadoResolução registrada");
-  await expect(facts.nth(1)).toContainText(
+  await expect(facts.nth(1)).not.toContainText("Assuntos: ausente");
+  await facts.nth(1).getByRole("button", { name: "Detalhes de Observação resolvida" }).click();
+  const missingSheet = page.getByRole("dialog", { name: "Observação resolvida" });
+  await expect(missingSheet).toContainText("EstadoResolução registrada");
+  await expect(missingSheet).toContainText(
     "A revisão do Curso e a quantidade de assuntos não foram registradas neste fato."
   );
+  await missingSheet.getByRole("button", { name: "Fechar" }).click();
   await expect(research).not.toContainText(/annotation_(?:reopened|resolved)|learner|study_unit/u);
 
   const interactiveTargets = await research.locator(
@@ -5187,6 +5330,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   });
 
   const csvStarted = page.waitForEvent("download");
+  await research.locator('summary[aria-label="Exportar fatos"]').click();
   await research.getByRole("button", { name: "CSV", exact: true }).click();
   const csvDownload = await csvStarted;
   const csvPath = await csvDownload.path();
@@ -5198,6 +5342,7 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   expect(csv).toContain("annotation:resolved:2");
 
   const jsonStarted = page.waitForEvent("download");
+  await research.locator('summary[aria-label="Exportar fatos"]').click();
   await research.getByRole("button", { name: "JSON", exact: true }).click();
   const jsonDownload = await jsonStarted;
   const jsonPath = await jsonDownload.path();

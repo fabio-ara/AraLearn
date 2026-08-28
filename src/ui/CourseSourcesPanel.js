@@ -856,8 +856,9 @@ function renderCatalogPanel(state) {
     ? ` · PDFs ${byteSizeLabel(pdfStorage.uniqueBytes)} de ${byteSizeLabel(pdfStorage.maxUniqueBytes)}`
     : "";
   return '<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-authoring-section-title">Fontes</h2>' +
-    `<p>${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} carregadas${escapeHtml(pdfStorageSummary)}</p></div>` +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Fontes</h2>' +
+    '<header class="course-authoring-section-toolbar" aria-label="Ações de Fontes">' +
+    `<span class="course-source-catalog-summary">${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} fontes${escapeHtml(pdfStorageSummary)}</span>` +
     '<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte">' +
     `${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderNotice(state) + renderSourceForm(state) + renderCatalog(state) + "</section>";

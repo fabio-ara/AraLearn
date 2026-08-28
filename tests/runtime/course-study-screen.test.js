@@ -62,6 +62,26 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(moduleHtml, /data-reset-level="lesson"[^>]+Zerar progresso desta Lição/u);
   assert.match(lessonHtml, /data-reset-level="microsequence"[^>]+Zerar progresso desta Microssequência didática/u);
   assert.match(unitListHtml, /data-reset-level="study-unit"[^>]+Zerar progresso a partir desta Unidade de estudo/u);
+  for (const [html, label] of [
+    [courseHtml, "Curso"],
+    [moduleHtml, "Módulo"],
+    [lessonHtml, "Lição"],
+    [unitListHtml, "Microssequência"]
+  ]) {
+    const heading = `<h1 class="section-heading entity-level-heading">${label}</h1>`;
+    const headingIndex = html.indexOf(heading);
+    const parentCardIndex = html.indexOf('<section class="clean-card entity-summary-card">');
+    const parentCardEndIndex = html.indexOf("</section>", parentCardIndex);
+    assert.ok(headingIndex >= 0, `Rótulo de ${label} ausente antes do card-pai.`);
+    assert.ok(parentCardIndex > headingIndex, `Card-pai de ${label} precedeu seu rótulo.`);
+    assert.ok(parentCardEndIndex > parentCardIndex, `Card-pai de ${label} não foi encerrado.`);
+    const parentCard = html.slice(parentCardIndex, parentCardEndIndex + "</section>".length);
+    assert.match(
+      parentCard,
+      /<h2 class="card-title" data-study-destination-heading tabindex="-1">[^<]+<\/h2>/u
+    );
+    assert.doesNotMatch(parentCard, /<\/h1>/u);
+  }
 
   const homeHtml = renderCourseStudyScreen({
     ...common,
@@ -102,6 +122,79 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(moreOnlyHtml, /<strong>Rever<\/strong><span class="muted tiny">mais<\/span>/u);
   assert.match(moreOnlyHtml, /data-runtime-state="synced"[^>]+aria-label="Sincronizado"/u);
   assert.match(moreOnlyHtml, /Sincronizado com a nuvem\./u);
+});
+
+test("a descrição da Unidade preserva toda a explicação sem antecipar resposta ou feedback", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const finalMarker = "MARCADOR_FINAL_DA_DESCRIÇÃO";
+  const longDescription = `${"Descrição extensa da Unidade. ".repeat(8)}${finalMarker}`;
+  assert.ok(longDescription.length > 140);
+  studyUnit.content[0].data.text = longDescription;
+  studyUnit.response = {
+    id: "resposta-que-nao-deve-aparecer",
+    package: "aralearn.response.choice",
+    version: "1.0.0",
+    data: {
+      question: "PERGUNTA_QUE_NAO_DEVE_APARECER",
+      selectionMode: "single",
+      selectionCriterion: "correct",
+      options: [
+        {
+          id: "correta",
+          kind: "text",
+          text: "RESPOSTA_QUE_NAO_DEVE_APARECER",
+          feedback: "FEEDBACK_DA_OPCAO_QUE_NAO_DEVE_APARECER"
+        },
+        {
+          id: "distrator",
+          kind: "text",
+          text: "DISTRATOR_QUE_NAO_DEVE_APARECER"
+        }
+      ],
+      answerIds: ["correta"]
+    }
+  };
+  studyUnit.feedback = [{
+    id: "feedback-que-nao-deve-aparecer",
+    package: "aralearn.resource.paragraph",
+    version: "1.0.0",
+    data: { text: "FEEDBACK_AVALIATIVO_QUE_NAO_DEVE_APARECER" }
+  }];
+
+  const html = renderCourseStudyScreen({
+    project,
+    view: "microsequence",
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    microsequenceMode: "overview",
+    progress: { version: 1, lessons: {} },
+    coursePermissionsById: {}
+  });
+
+  assert.ok(html.includes(longDescription));
+  assert.match(html, new RegExp(`${finalMarker}</p>`, "u"));
+  assert.doesNotMatch(
+    visibleText(html),
+    /PERGUNTA_QUE_NAO_DEVE_APARECER|RESPOSTA_QUE_NAO_DEVE_APARECER|DISTRATOR_QUE_NAO_DEVE_APARECER|FEEDBACK_DA_OPCAO_QUE_NAO_DEVE_APARECER|FEEDBACK_AVALIATIVO_QUE_NAO_DEVE_APARECER/u
+  );
+  assert.match(visibleText(html), /A conjunção é verdadeira quando \[…\]/u);
+  assert.doesNotMatch(visibleText(html), /as duas são verdadeiras/u);
 });
 
 test("os modos contextuais ficam no topbar com nome acessível e ordem estável", async () => {
@@ -399,6 +492,9 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma única entrada"
   assert.equal((html.match(/<select\b/gu) || []).length, 1);
   assert.equal((html.match(/<option\b/gu) || []).length, 3);
   assert.equal((html.match(/class="progress-card home-course-selector-preview"/gu) || []).length, 1);
+  const titleRow = html.match(/<div class="home-course-title-row">[\s\S]*?<\/div>/u)?.[0] || "";
+  assert.match(titleRow, /<p class="home-course-ownership"[^>]*>[\s\S]*home-course-origin-icon[\s\S]*<\/p>/u);
+  assert.ok(titleRow.includes(`<h2 class="card-title">${selected.title}</h2>`));
   assert.match(html, /aria-label="Selecionar Curso"/u);
   assert.match(html, /opção 1/u);
   assert.match(html, /opção 2/u);
@@ -413,6 +509,18 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma única entrada"
   assert.doesNotMatch(html, /Pertence a outro Curso/u);
   assert.doesNotMatch(html, /<details[^>]+study-review-queue[^>]+open/u);
   assert.doesNotMatch(html, /navigation-list-card|courses-home-list|Abrir Curso/u);
+
+  const feedbackHtml = renderHomeScreen({
+    project: { ...project, courses },
+    progress: { version: 1, lessons: {} },
+    editorSupport: { coursePermissionsById: permissions },
+    selectedCourseId: selected.id,
+    homeNotice: "Seu acesso ao Curso selecionado foi encerrado."
+  });
+  assert.match(
+    feedbackHtml,
+    /<div class="study-home-feedback-layer"><div class="study-home-feedback is-notice" role="status"><span>Seu acesso ao Curso selecionado foi encerrado\.<\/span><\/div><\/div><section class="clean-card home-course-selector-card"/u
+  );
 
   const lessonPath = `${selected.id}::${moduleValue.id}::${lesson.id}`;
   const completedStates = [

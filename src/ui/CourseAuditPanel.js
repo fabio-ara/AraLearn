@@ -2149,8 +2149,7 @@ export function createCourseAuditPanel({
 
   async function open() {
     root.innerHTML = '<section class="course-authoring-section course-audit-panel" aria-labelledby="course-authoring-section-title">' +
-      '<header class="course-authoring-section-heading"><div>' +
-      '<h2 id="course-authoring-section-title">Auditoria e correções</h2></div></header>' +
+      '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Revisão</h2>' +
       '<div class="course-audit-tabs" role="tablist" aria-label="Auditoria e correções">' +
       '<button type="button" role="tab" data-audit-tab="observations" aria-controls="course-audit-observations"' +
       ' aria-label="Observações" title="Observações">' +
