@@ -1553,7 +1553,7 @@ test.describe("Autoria real com Supabase local", () => {
         contentType: "image/png"
       });
 
-      await page.getByRole("link", { name: "Voltar à Visão geral" }).click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await page.getByRole("button", { name: "Voltar aos Cursos" }).click();
       await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
       await page.getByRole("button", { name: "Voltar ao Estudo" }).click();
