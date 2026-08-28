@@ -9,10 +9,73 @@ import { createCourseAnalyticsPanel } from "../../src/ui/CourseAnalyticsPanel.js
 
 const COURSE_ID = "123e4567-e89b-42d3-a456-426614174000";
 
+class FakeFocusable {
+  constructor(root, name) {
+    this.root = root;
+    this.name = name;
+    this.focusOptions = [];
+  }
+
+  focus(options) {
+    this.focusOptions.push(options);
+    this.root.ownerDocument.activeElement = this;
+  }
+}
+
 class FakeRoot {
-  constructor() { this.innerHTML = ""; this.listeners = new Map(); }
+  constructor() {
+    this.innerHTML = "";
+    this.listeners = new Map();
+    this.ownerDocument = { activeElement: null };
+    this.metricTrigger = new FakeFocusable(this, "metric-trigger");
+    this.factTrigger = new FakeFocusable(this, "fact-trigger");
+    this.closeControl = new FakeFocusable(this, "close-details");
+    this.sheet = { contains: (node) => node === this.closeControl };
+  }
   addEventListener(type, listener) { this.listeners.set(type, listener); }
   removeEventListener(type) { this.listeners.delete(type); }
+  querySelector(selector) {
+    const sheetOpen = this.innerHTML.includes('class="course-analytics-sheet"');
+    if (selector === ".course-analytics-sheet") return sheetOpen ? this.sheet : null;
+    if (selector === '[data-course-analytics-action="close-details"]') {
+      return sheetOpen ? this.closeControl : null;
+    }
+    if (selector === '[data-course-analytics-action="open-metric"]') {
+      return this.innerHTML.includes('data-course-analytics-action="open-metric"')
+        ? this.metricTrigger
+        : null;
+    }
+    if (selector.startsWith('[data-course-analytics-action="open-fact"]')) {
+      return this.innerHTML.includes('data-course-analytics-action="open-fact"')
+        ? this.factTrigger
+        : null;
+    }
+    return null;
+  }
+  querySelectorAll(selector) {
+    return selector.startsWith(".course-analytics-sheet :is(") &&
+      this.innerHTML.includes('class="course-analytics-sheet"')
+      ? [this.closeControl]
+      : [];
+  }
+}
+
+function clickAction(root, action, dataset = {}) {
+  const target = {
+    dataset: { courseAnalyticsAction: action, ...dataset },
+    matches: () => false,
+    closest: (selector) => selector === "[data-course-analytics-action]" ? target : null
+  };
+  root.listeners.get("click")({ target });
+}
+
+function clickBackdrop(root) {
+  root.listeners.get("click")({
+    target: {
+      matches: (selector) => selector === "[data-course-analytics-backdrop]",
+      closest: () => null
+    }
+  });
 }
 
 function fact(id, label, value = 1) {
@@ -77,7 +140,7 @@ function page({
   };
 }
 
-test("Pesquisa mostra gráfico e tabela equivalentes, revisão, ausência e limites", async () => {
+test("Pesquisa abre uma sheet compacta, contém o foco e o restaura ao acionador", async () => {
   const root = new FakeRoot();
   const panel = createCourseAnalyticsPanel({
     root,
@@ -85,29 +148,60 @@ test("Pesquisa mostra gráfico e tabela equivalentes, revisão, ausência e limi
     controller: { async loadCourseAuthoringAnalytics() { return page(); } }
   });
   await panel.open();
-  assert.match(root.innerHTML, /<h2 id="course-analytics-section-title">Pesquisa<\/h2>/u);
+  assert.match(root.innerHTML, /course-authoring-visually-hidden[^>]*>Pesquisa<\/h2>/u);
   assert.match(root.innerHTML, /role="img" aria-label="Estado das observações\./u);
   assert.match(root.innerHTML, /Em aberto: 1/u);
   assert.doesNotMatch(root.innerHTML, />Aberta</u);
-  assert.match(root.innerHTML, /<caption>Valores equivalentes ao gráfico<\/caption>/u);
-  assert.match(root.innerHTML, /Dado ausente/u);
   assert.match(root.innerHTML, /Revisão 7/u);
-  assert.match(root.innerHTML, /Observações · Observação reaberta/u);
-  assert.match(root.innerHTML, /Versão da Observação: 1/u);
-  assert.match(root.innerHTML, /Tipo do evento: Reabertura/u);
-  assert.match(root.innerHTML, /Tipo do objeto: Unidade de estudo/u);
-  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>Pessoa estudante<\/dd>/u);
-  assert.match(root.innerHTML, /<dt>Estado<\/dt><dd>Em aberto<\/dd>/u);
-  assert.doesNotMatch(root.innerHTML, /annotation_reopened|learner|study_unit/u);
-  assert.match(root.innerHTML, /não mede a aprendizagem do estudante/u);
-  assert.match(root.innerHTML, /Não mede aprendizagem, atenção ou dificuldade/u);
-  assert.match(root.innerHTML, /<dt>Unidade<\/dt><dd>Contagem<\/dd>/u);
-  assert.match(root.innerHTML, /<details class="course-analytics-limitations"><summary class="course-analytics-disclosure-trigger">/u);
+  assert.match(root.innerHTML, /data-course-analytics-action="open-metric"/u);
+  assert.doesNotMatch(root.innerHTML, /<table|<dt>Pergunta<\/dt>|<dt>Definição<\/dt>/u);
+  assert.doesNotMatch(root.innerHTML, /não mede a aprendizagem do estudante/u);
+
+  clickAction(root, "open-metric");
+  const sheetHtml = root.innerHTML.slice(root.innerHTML.indexOf(
+    '<div class="course-analytics-sheet-backdrop"'
+  ));
+  assert.match(root.innerHTML, /course-analytics-sheet-backdrop/u);
+  assert.match(root.innerHTML, /role="dialog"[^>]*aria-modal="true"/u);
+  assert.match(root.innerHTML, /<h3 id="course-analytics-sheet-title">Detalhes da pesquisa<\/h3>/u);
+  assert.match(sheetHtml, /<dt>Mede<\/dt><dd>Qual é o estado corrente das observações do recorte\?<\/dd>/u);
+  assert.match(sheetHtml, /<dt>Unidade<\/dt><dd>Contagem<\/dd>/u);
+  assert.match(sheetHtml, /<dt>Base<\/dt><dd>Observações correntes no recorte\.<\/dd>/u);
+  assert.doesNotMatch(sheetHtml, /<table|Definição|Dados ausentes|Dado ausente/u);
+  assert.doesNotMatch(sheetHtml, /Não mede aprendizagem|não mede a aprendizagem/u);
+  assert.equal(root.ownerDocument.activeElement, root.closeControl);
+  assert.deepEqual(root.closeControl.focusOptions.at(-1), { preventScroll: true });
+
+  const tab = { key: "Tab", shiftKey: false, defaultPrevented: false, preventDefault() {
+    this.defaultPrevented = true;
+  } };
+  root.listeners.get("keydown")(tab);
+  assert.equal(tab.defaultPrevented, true);
+  assert.equal(root.ownerDocument.activeElement, root.closeControl);
+
+  const escape = { key: "Escape", defaultPrevented: false, preventDefault() {
+    this.defaultPrevented = true;
+  } };
+  root.listeners.get("keydown")(escape);
+  assert.equal(escape.defaultPrevented, true);
+  assert.doesNotMatch(root.innerHTML, /course-analytics-sheet-backdrop/u);
+  assert.equal(root.ownerDocument.activeElement, root.metricTrigger);
+  assert.deepEqual(root.metricTrigger.focusOptions.at(-1), { preventScroll: true });
+
+  clickAction(root, "open-metric");
+  clickAction(root, "close-details");
+  assert.doesNotMatch(root.innerHTML, /course-analytics-sheet-backdrop/u);
+  assert.equal(root.ownerDocument.activeElement, root.metricTrigger);
+
+  clickAction(root, "open-metric");
+  clickBackdrop(root);
+  assert.doesNotMatch(root.innerHTML, /course-analytics-sheet-backdrop/u);
+  assert.equal(root.ownerDocument.activeElement, root.metricTrigger);
   panel.destroy();
   assert.equal(root.innerHTML, "");
 });
 
-test("Pesquisa humaniza fatos e recolhe bastidores sem perder contagens ou ausências", async () => {
+test("Pesquisa mantém bastidores fora dos cards e preserva os dados no detalhe e na exportação", async () => {
   const root = new FakeRoot();
   const downloads = [];
   const opaqueId = "0f3a1df0-3e75-47cc-9c78-1328e7c17798";
@@ -115,10 +209,6 @@ test("Pesquisa humaniza fatos e recolhe bastidores sem perder contagens ou ausê
   const opaqueParameter = "content_density_v2";
   const internalFact = {
     ...fact("opaque", null),
-    courseRevision: null,
-    channel: null,
-    origin: null,
-    state: null,
     subject: { kind: "study_unit", id: opaqueId, label: null },
     values: {
       operation: "update_course",
@@ -146,21 +236,31 @@ test("Pesquisa humaniza fatos e recolhe bastidores sem perder contagens ou ausê
 
   await panel.open();
 
-  assert.match(root.innerHTML, /<strong>Unidade de estudo<\/strong>/u);
-  assert.match(root.innerHTML, /Itens criados: 2 · Revisão da Fonte: 4/u);
+  assert.match(root.innerHTML, /<strong>Observação reaberta<\/strong><span>Unidade de estudo<\/span>/u);
+  assert.match(root.innerHTML, /data-course-analytics-action="open-fact" data-fact-id="opaque"/u);
+  assert.doesNotMatch(root.innerHTML, /Itens criados: 2|Revisão da Fonte: 4/u);
+  assert.doesNotMatch(root.innerHTML, /<dt>Canal<\/dt>|<dt>Origem<\/dt>|<dt>Estado<\/dt>/u);
   assert.doesNotMatch(root.innerHTML, new RegExp(opaqueId, "u"));
   assert.doesNotMatch(root.innerHTML, new RegExp(opaqueHash, "u"));
   assert.doesNotMatch(root.innerHTML, new RegExp(opaqueParameter, "u"));
   assert.doesNotMatch(root.innerHTML, /update_course|audit-v3|checkpoint-19/u);
-  assert.doesNotMatch(root.innerHTML, /Não informad|Não registrada/u);
-  assert.match(root.innerHTML, /<details class="course-analytics-missing"><summary class="course-analytics-disclosure-trigger course-authoring-icon-action" aria-label="Ver dados ausentes"/u);
-  assert.doesNotMatch(root.innerHTML, /Dados ausentes:<\/strong>/u);
+
+  clickAction(root, "open-fact", { factId: "opaque" });
+  assert.match(root.innerHTML, /role="dialog"[^>]*aria-modal="true"/u);
+  assert.match(root.innerHTML, /Itens criados: 2 · Revisão da Fonte: 4/u);
+  assert.match(root.innerHTML, /<dt>Canal<\/dt><dd>Estudo<\/dd>/u);
+  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>Pessoa estudante<\/dd>/u);
+  assert.match(root.innerHTML, /<dt>Estado<\/dt><dd>Em aberto<\/dd>/u);
+  assert.match(root.innerHTML, /A origem deste fato não foi registrada\./u);
+  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueHash, "u"));
+  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueParameter, "u"));
+  assert.doesNotMatch(root.innerHTML, /update_course|audit-v3|checkpoint-19/u);
 
   await panel.export("json");
   assert.deepEqual(JSON.parse(downloads[0].content).facts[0].values, internalFact.values);
 });
 
-test("Pesquisa adota a revisão relida antes de atualizar após a volta do ChatGPT", async () => {
+test("sheet aberta sobrevive ao refresh que adota a revisão relida", async () => {
   const root = new FakeRoot();
   const revisions = [];
   const panel = createCourseAnalyticsPanel({
@@ -175,10 +275,18 @@ test("Pesquisa adota a revisão relida antes de atualizar após a volta do ChatG
   });
 
   await panel.open();
+  clickAction(root, "open-metric");
+  assert.match(root.innerHTML, /course-analytics-sheet-backdrop/u);
   await panel.refresh(8);
 
   assert.deepEqual(revisions, [7, 8]);
   assert.match(root.innerHTML, /Revisão 8/u);
+  assert.match(root.innerHTML, /course-analytics-sheet-backdrop/u);
+  assert.match(root.innerHTML, /<dt>Mede<\/dt>/u);
+  assert.doesNotMatch(root.innerHTML.slice(root.innerHTML.indexOf(
+    '<div class="course-analytics-sheet-backdrop"'
+  )), /<table|<dt>Definição<\/dt>/u);
+  assert.equal(root.ownerDocument.activeElement, root.closeControl);
 });
 
 test("CSV e JSON exportam todas as páginas do mesmo recorte", async () => {

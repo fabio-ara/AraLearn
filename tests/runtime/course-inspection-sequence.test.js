@@ -2055,6 +2055,12 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
     microsequenceRoute,
     {
       returnTo: inspectionItem(2).deepLink,
+      returnPosition: {
+        scope: { kind: "course", id: null },
+        studyUnitId: "unit-02",
+        offsetFromStickyTop: 0,
+        courseRevision: REVISION
+      },
       returnFocusKey: "production:unit-02"
     }
   ]);

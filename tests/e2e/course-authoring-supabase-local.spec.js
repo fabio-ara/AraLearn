@@ -524,7 +524,7 @@ test.describe("Autoria real com Supabase local", () => {
       await page.locator("[data-course-authoring-create]")
         .getByRole("button", { name: "Criar Curso" }).click();
       await expect(page.locator(".course-authoring-course-header h1")).toHaveText("Visão geral");
-      await expect(page.locator(".course-authoring-course-heading .course-authoring-eyebrow"))
+      await expect(page.locator(".course-authoring-course-heading .course-authoring-context-title"))
         .toHaveText(COURSE_TITLE);
       const hashMatch = page.url().match(/#\/authoring\/courses\/([0-9a-f-]{36})/u);
       expect(hashMatch).not.toBeNull();
@@ -547,7 +547,8 @@ test.describe("Autoria real com Supabase local", () => {
       await expect(planning.getByRole("heading", { name: "Objetivo", exact: true }))
         .toBeVisible();
       await expect(planning.getByText("Partes preferenciais", { exact: true })).toBeVisible();
-      await expect(planning.getByText("Unidades materializadas", { exact: true })).toBeVisible();
+      await expect(planning.getByText("0 microssequências", { exact: true })).toBeVisible();
+      await expect(planning.getByText("0 unidades", { exact: true })).toBeVisible();
       await expect(planning.getByRole("heading", { name: "Partes", exact: true }))
         .toBeVisible();
       await expect(planning.getByRole("button", {
@@ -1353,13 +1354,15 @@ test.describe("Autoria real com Supabase local", () => {
         .toBeVisible();
       await actionsExecution.getByRole("link", { name: /Unidade produzida 1/u }).click();
       await expect(page.getByRole("heading", { name: STUDY_UNIT_TITLE, exact: true })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Voltar à execução", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Voltar", exact: true })).toBeVisible();
       await page.reload();
       await expect(page.getByRole("heading", { name: STUDY_UNIT_TITLE, exact: true })).toBeVisible();
-      await page.getByRole("link", { name: "Voltar à execução", exact: true }).click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await expect(actionsExecution).toBeVisible();
       await expect(actionsExecution.getByText("Versão 3 · Actions", { exact: true })).toBeVisible();
-      await page.getByRole("link", { name: PART_TITLE, exact: true }).first().click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
+      await expect(page.getByRole("heading", { name: PART_TITLE, exact: true }).first())
+        .toBeVisible();
       await page.locator(`a[href*="materializationId=${materializationId}"]`).click();
       const materializationRegion = page.getByRole("region", {
         name: "Etapas e resultados da materialização"
@@ -1550,7 +1553,7 @@ test.describe("Autoria real com Supabase local", () => {
         contentType: "image/png"
       });
 
-      await page.getByRole("link", { name: "Voltar à Visão geral" }).click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await page.getByRole("button", { name: "Voltar aos Cursos" }).click();
       await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
       await page.getByRole("button", { name: "Voltar ao Estudo" }).click();

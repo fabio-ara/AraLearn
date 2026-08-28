@@ -408,28 +408,111 @@ function analyticsBaseUrl(publicAppUrl) {
   return normalized.replace(/[#?].*$/u, "").replace(/\/+$/u, "");
 }
 
+function courseFactSection(fact) {
+  if (fact.dataset === "materializations") return "planning";
+  if (fact.dataset === "design") return "parameters";
+  if (fact.dataset === "sources") return "sources";
+  if (fact.dataset === "annotations" || fact.dataset === "audits") return "review";
+  if (fact.dataset === "variants") return "research";
+  if ([
+    "update_course_instructional_plan",
+    "advance_course_authoring_part_materialization",
+    "plan_changed",
+    "materialization_started",
+    "materialization_step_recorded",
+    "materialization_finished",
+    "part_materialization_pending",
+    "part_materialization_running",
+    "part_materialization_completed",
+    "part_materialization_failed"
+  ].includes(fact.kind)) return "planning";
+  if ([
+    "update_course_design",
+    "design_parameter_set",
+    "design_parameter_clear",
+    "authoring_guidance_set",
+    "authoring_guidance_clear",
+    "authoring_guidance_interpreted",
+    "component_policy_set",
+    "component_policy_clear"
+  ].includes(fact.kind)) return "parameters";
+  if (["update_course_sources", "course_source_changed"].includes(fact.kind)) {
+    return "sources";
+  }
+  if (fact.kind === "grant_course_access" || fact.kind === "revoke_course_access") {
+    return "people";
+  }
+  if (["replace_course_composition", "commit_course_composition"].includes(fact.kind)) {
+    return "content";
+  }
+  return "overview";
+}
+
+function referenceWithKind(fact, kinds) {
+  return [fact.related, fact.subject].find((reference) =>
+    reference !== null && kinds.includes(reference.kind)) || null;
+}
+
+function uuidReference(fact, kinds) {
+  const reference = referenceWithKind(fact, kinds);
+  return reference && UUID.test(reference.id)
+    ? { ...reference, id: reference.id.toLowerCase() }
+    : null;
+}
+
+function routeWithTarget(route, section, query, id) {
+  return `${route}?section=${section}&${query}=${encodeURIComponent(id)}`;
+}
+
 function analyticsObjectDeepLink(baseUrl, courseId, fact) {
   const route = `${baseUrl}/#/authoring/courses/${encodeURIComponent(courseId)}`;
-  const reference = fact.related ?? fact.subject;
-  const id = encodeURIComponent(reference.id);
-  if (reference.kind === "authoring_part") {
-    return `${route}?section=planning&authoringPartId=${id}`;
+  const section = courseFactSection(fact);
+
+  if (fact.dataset === "materializations") {
+    const part = uuidReference(fact, ["authoring_part"]);
+    if (!part) return `${route}?section=planning`;
+    const materialization = uuidReference(fact, ["materialization"]);
+    const partRoute = routeWithTarget(route, "planning", "authoringPartId", part.id);
+    return materialization
+      ? `${partRoute}&materializationId=${encodeURIComponent(materialization.id)}`
+      : partRoute;
   }
-  if (reference.kind === "study_unit") {
-    return `${route}?section=content&studyUnitId=${id}`;
+
+  if (fact.dataset === "design") {
+    const targetQuery = {
+      module: "moduleId",
+      lesson: "lessonId",
+      didactic_microsequence: "didacticMicrosequenceId"
+    }[fact.subject.kind];
+    return targetQuery
+      ? routeWithTarget(route, "parameters", targetQuery, fact.subject.id)
+      : `${route}?section=parameters`;
   }
-  if (reference.kind === "source") {
-    return `${route}?section=sources&sourceId=${id}`;
+
+  if (fact.dataset === "annotations") {
+    const annotation = uuidReference(fact, ["annotation"]);
+    return annotation
+      ? routeWithTarget(route, "review", "annotationId", annotation.id)
+      : `${route}?section=review`;
   }
-  if (["anchored_annotation", "audit_run", "audit_finding", "correction"].includes(
-    reference.kind
-  )) {
-    return `${route}?section=review`;
+
+  if (fact.dataset === "audits") {
+    const finding = uuidReference(fact, ["audit_finding"]);
+    if (finding) return routeWithTarget(route, "review", "findingId", finding.id);
+    const run = uuidReference(fact, ["audit_run"]);
+    return run
+      ? routeWithTarget(route, "review", "auditRunId", run.id)
+      : `${route}?section=review`;
   }
-  if (["comparison_set", "variant"].includes(reference.kind)) {
-    return `${route}?section=research&comparisonSetId=${id}`;
+
+  if (fact.dataset === "variants") {
+    const comparison = uuidReference(fact, ["variant_comparison"]);
+    return comparison
+      ? routeWithTarget(route, "research", "comparisonSetId", comparison.id)
+      : `${route}?section=research`;
   }
-  return `${route}?section=research`;
+
+  return `${route}?section=${section}`;
 }
 
 function humanizeIdentifier(value) {

@@ -40,6 +40,7 @@ const ENTITY_ID_MAX_LENGTH = 240;
 const DEEP_LINK_MAX_LENGTH = 2_048;
 const POSITION_CHANNEL_NAME = "aralearn.course-authoring-inspection.v1";
 const SEARCH_RESULT_LIMIT = 12;
+const INSPECTION_ACTIVE_LINE_OFFSET = 16;
 const SEARCH_KIND_LABELS = Object.freeze({
   course: "Curso",
   module: "Módulo",
@@ -1347,6 +1348,7 @@ export function createCourseInspectionSequence({
   controller,
   course,
   routeTarget = null,
+  initialPosition = null,
   initialFocusKey = "",
   onNavigate = () => {},
   onEditSources = () => {},
@@ -1373,6 +1375,9 @@ export function createCourseInspectionSequence({
     throw new TypeError("Dependências da sequência de Conteúdo são inválidas.");
   }
   const scrollTarget = root.closest?.(".course-authoring-root") || windowValue;
+  const returnPosition = initialPosition == null
+    ? null
+    : normalizeInspectionPosition(initialPosition);
   let pendingInitialFocusKey = typeof initialFocusKey === "string" ? initialFocusKey : "";
   const requested = inspectionRequestFromTarget(routeTarget);
   const state = {
@@ -1640,7 +1645,7 @@ export function createCourseInspectionSequence({
   function captureAnchor() {
     const activeElement = documentValue?.activeElement;
     const focusedUnit = activeElement?.closest?.("[data-inspection-study-unit]");
-    const threshold = stickyTop() + 8;
+    const threshold = stickyTop() + INSPECTION_ACTIVE_LINE_OFFSET;
     const viewportUnit = [...(root.querySelectorAll?.("[data-inspection-study-unit]") || [])]
       .find((element) => element.getBoundingClientRect?.().bottom > threshold);
     const selectedId = focusedUnit?.dataset?.inspectionStudyUnit ||
@@ -1690,9 +1695,14 @@ export function createCourseInspectionSequence({
     const escapedId = globalThis.CSS?.escape ? globalThis.CSS.escape(id) : id.replace(/["\\]/gu, "\\$&");
     const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
     if (!element?.getBoundingClientRect) return;
-    const delta = element.getBoundingClientRect().top - stickyTop() - Number(snapshot?.offsetFromStickyTop || 0);
+    const expectedOffset = Number(snapshot?.offsetFromStickyTop || 0);
+    const delta = element.getBoundingClientRect().top - stickyTop() - expectedOffset;
     if ((initial || Math.abs(delta) > 0.5) && typeof scrollTarget?.scrollBy === "function") {
       scrollTarget.scrollBy({ top: delta, left: 0, behavior: "auto" });
+      const remaining = element.getBoundingClientRect().top - stickyTop() - expectedOffset;
+      if (Math.abs(remaining) > 0.5 && Math.abs(remaining - delta) > 0.5) {
+        scrollTarget.scrollBy({ top: remaining, left: 0, behavior: "auto" });
+      }
     }
     restoreControlState(snapshot);
   }
@@ -2343,7 +2353,7 @@ export function createCourseInspectionSequence({
     scrollFrame = null;
     if (Date.now() < viewportUpdateBlockedUntil) return;
     if (state.destroyed || state.items.length === 0) return;
-    const threshold = stickyTop() + 8;
+    const threshold = stickyTop() + INSPECTION_ACTIVE_LINE_OFFSET;
     const elements = [...(root.querySelectorAll?.("[data-inspection-study-unit]") || [])];
     const current = elements.find((element) => element.getBoundingClientRect().bottom > threshold) ||
       elements[elements.length - 1];
@@ -2519,6 +2529,14 @@ export function createCourseInspectionSequence({
       : null;
     return onNavigate(route, {
       returnTo,
+      ...(returnItem ? {
+        returnPosition: {
+          scope: state.scope,
+          studyUnitId: returnItem.studyUnit.id,
+          offsetFromStickyTop: anchor.offsetFromStickyTop,
+          courseRevision: state.pinnedRevision
+        }
+      } : {}),
       ...(controlKey || captured.controlKey
         ? { returnFocusKey: controlKey || captured.controlKey }
         : {})
@@ -3422,8 +3440,8 @@ export function createCourseInspectionSequence({
   return Object.freeze({
     hasPendingDraft,
     async open() {
-      let position = null;
-      if (!routeTarget || routeTarget.kind === "study_unit") {
+      let position = returnPosition;
+      if (!position && (!routeTarget || routeTarget.kind === "study_unit")) {
         try {
           position = normalizeInspectionPosition(
             await controller.loadAuthoringInspectionPosition(state.courseId)

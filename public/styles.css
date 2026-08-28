@@ -798,10 +798,10 @@ button.account-settings-back[hidden] {
 
 .study-mode-button {
   position: relative;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
   display: grid;
   place-items: center;
   padding: 0;
@@ -826,9 +826,11 @@ button.account-settings-back[hidden] {
 .study-mode-button[aria-pressed="true"]::after {
   content: "";
   position: absolute;
+  bottom: 3px;
+  left: 50%;
   width: 5px;
   height: 5px;
-  margin-top: 27px;
+  transform: translateX(-50%);
   border-radius: 50%;
   background: currentColor;
 }
@@ -1036,6 +1038,29 @@ button.account-settings-back[hidden] {
   overflow-wrap: anywhere;
 }
 
+.entity-level-heading,
+.course-screen > .section-heading,
+.navigation-screen > .section-heading {
+  text-align: center;
+}
+
+.entity-summary-card {
+  display: grid;
+  gap: 7px;
+}
+
+.entity-summary-card .card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.26;
+  letter-spacing: 0.01em;
+}
+
+.entity-summary-card .card-subtitle {
+  font-size: var(--type-sm);
+  line-height: 1.38;
+}
+
 .card-title {
   font-size: clamp(0.96rem, 0.92rem + 0.26vw, 1.14rem);
   font-weight: 700;
@@ -1192,7 +1217,7 @@ button.account-settings-back[hidden] {
 
 .navigation-list-card .card-subtitle {
   display: block;
-  font-size: 0.95rem;
+  font-size: var(--type-sm);
   line-height: 1.38;
   color: var(--text-secondary);
   overflow: visible;
@@ -1220,10 +1245,10 @@ button.account-settings-back[hidden] {
 
 .navigation-actions .icon-ghost,
 .navigation-actions .open-mini {
-  min-width: 40px;
-  min-height: 40px;
-  width: 40px;
-  height: 40px;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
   border-radius: 12px;
 }
 
@@ -4383,22 +4408,22 @@ button.account-settings-back[hidden] {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
+  width: var(--tap);
+  height: var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
   padding: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   white-space: nowrap;
 }
 
 .study-observation-btn,
 .study-review-btn {
-  width: 48px;
-  height: 48px;
-  min-height: 48px;
-  min-width: 48px;
-  border-radius: 14px;
+  width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  min-width: var(--tap);
+  border-radius: var(--radius-control);
 }
 
 .study-observation-btn {
@@ -4423,12 +4448,12 @@ button.account-settings-back[hidden] {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 48px;
-  min-width: 48px;
-  min-height: 48px;
-  height: 48px;
+  width: var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  height: var(--tap);
   padding: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   font-size: 1.1rem;
   box-shadow: var(--shadow-card);
   white-space: nowrap;
@@ -5041,13 +5066,6 @@ button.account-settings-back[hidden] {
     gap: 1px;
   }
 
-  .study-mode-button {
-    width: 32px;
-    min-width: 32px;
-    height: 36px;
-    min-height: 36px;
-  }
-
 .microsequence-generator-screen {
     min-width: 0;
   }
@@ -5404,6 +5422,8 @@ button.account-settings-back[hidden] {
   border-radius: var(--radius-control);
   background: var(--input-surface);
   color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-sm);
   cursor: pointer;
 }
 
@@ -5466,6 +5486,24 @@ button.account-settings-back[hidden] {
   font-size: var(--type-sm);
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+.study-home-feedback-layer {
+  position: fixed;
+  z-index: 70;
+  right: max(10px, calc((100vw - 430px) / 2 + 10px));
+  bottom: max(12px, var(--safe-bottom-tappable));
+  left: max(10px, calc((100vw - 430px) / 2 + 10px));
+  display: grid;
+  gap: 6px;
+  max-height: min(35dvh, 240px);
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.study-home-feedback-layer > * {
+  pointer-events: auto;
+  box-shadow: var(--shadow-floating);
 }
 
 .study-home-feedback.is-error {
@@ -5626,6 +5664,17 @@ button.account-settings-back[hidden] {
   padding-inline: 2px;
 }
 
+.home-course-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.home-course-title-row .card-title {
+  min-width: 0;
+}
+
 .home-course-ownership,
 .home-course-loading {
   min-width: 0;
@@ -5671,7 +5720,7 @@ button.account-settings-back[hidden] {
   margin: 0;
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: var(--type-sm);
   line-height: 1.38;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;

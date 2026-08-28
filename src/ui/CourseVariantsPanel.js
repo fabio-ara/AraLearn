@@ -247,7 +247,8 @@ function renderMemberFacts(member) {
 function renderList(state) {
   const items = state.list?.items || [];
   return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Variantes</h2></div>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-variants-section-title">Variantes</h2>' +
+    '<header class="course-authoring-section-toolbar" aria-label="Ações de variantes">' +
     '<button type="button" class="course-authoring-header-action" data-course-variants-action="create"' +
     ' aria-label="Criar variantes" title="Criar variantes">' +
     renderUiIcon("add", "course-authoring-button-icon") + '</button></header>' +
@@ -301,9 +302,7 @@ function renderVariantFields(state, index) {
 
 function renderCreate(state) {
   return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
-    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Criar variantes</h2></div>' +
-    '<button type="button" data-course-variants-action="back" aria-label="Voltar" title="Voltar">' +
-    renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></header>' +
+    '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Criar variantes</h2></div></header>' +
     `<form class="course-authoring-write-form" data-course-variants-create${state.busy ? ' aria-busy="true"' : ""}>` +
     '<label>Quantidade de variantes<select name="variant-count" data-course-variants-count>' + [2,3,4,5,6,7,8].map((count) =>
       `<option value="${count}"${count === state.createDraft.variantCount ? " selected" : ""}>${count}</option>`).join("") + '</select></label>' +
@@ -320,9 +319,7 @@ function renderComparison(state) {
   const checkpointPlan = comparison.planning.snapshot?.plan || comparison.planning.snapshot;
   return '<section class="course-authoring-section course-variants" aria-labelledby="course-variants-section-title">' +
     '<header class="course-authoring-section-heading"><div><h2 id="course-variants-section-title">Comparação</h2>' +
-    `<p>${comparison.source.changedSinceCheckpoint ? "A origem mudou desde o checkpoint." : "A origem corresponde ao checkpoint."}</p></div>` +
-    '<button type="button" data-course-variants-action="back" aria-label="Voltar" title="Voltar">' +
-    renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></header>' +
+    `<p>${comparison.source.changedSinceCheckpoint ? "A origem mudou desde o checkpoint." : "A origem corresponde ao checkpoint."}</p></div></header>` +
     '<div class="course-variants-list"><article class="course-authoring-card course-variants-source"><div><h3>Planejamento comum</h3>' +
       '<p>Checkpoint do Curso na revisão ' + comparison.planning.courseRevision +
       ' · plano ' + comparison.planning.planVersion + '.</p>' +
@@ -383,6 +380,15 @@ export function createCourseVariantsPanel({
     state.confirmation = null;
     render();
     if (restoreFocus) focus(confirmation.returnFocusSelector);
+    return true;
+  };
+  const handleBack = () => {
+    if (cancelConfirmation()) return true;
+    if (state.screen === "list") return false;
+    state.screen = "list";
+    state.comparison = null;
+    state.pendingDetach = null;
+    void refreshList();
     return true;
   };
   const requestDetach = (courseId) => {
@@ -482,7 +488,7 @@ export function createCourseVariantsPanel({
     const node = event.target?.closest?.("[data-course-variants-action]"); if (!node) return;
     const action = node.dataset.courseVariantsAction;
     if (action === "create") { state.screen = "create"; state.failure = ""; state.pendingDetach = null; render(); void loadComponentCatalog(); }
-    else if (action === "back") { state.screen = "list"; state.comparison = null; state.pendingDetach = null; void refreshList(); }
+    else if (action === "back") handleBack();
     else if (action === "open") {
       if (state.pendingDetach?.draft?.comparisonSetId !== node.dataset.setId) {
         state.pendingDetach = null;
@@ -634,6 +640,7 @@ export function createCourseVariantsPanel({
       : refreshList,
     refresh,
     hasPendingDraft,
+    handleBack,
     destroy() {
       root.removeEventListener("click", onClick);
       root.removeEventListener("input", onInput);

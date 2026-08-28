@@ -490,6 +490,106 @@ test("Abrir ignora a Unidade salva, mostra os Módulos e volta ao controle de or
   await capture(page, "1280-home-retorno");
 });
 
+test("avisos da Home preservam exatamente a geometria do seletor e do Curso", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page);
+  const geometry = await page.evaluate(async (project) => {
+    const { renderHomeScreen } = await import("/src/ui/renderHomeScreen.js");
+    const course = project.courses[0];
+    const root = document.querySelector("#study-root");
+    const input = {
+      project,
+      progress: { version: 1, lessons: {} },
+      selectedCourseId: course.id,
+      editorSupport: {
+        coursePermissionsById: {
+          [course.id]: { ownership: "owned", canEdit: true, availableOffline: true }
+        }
+      }
+    };
+    const bounds = () => {
+      const card = document.querySelector(".home-course-selector-card").getBoundingClientRect();
+      const preview = document.querySelector(".home-course-selector-preview").getBoundingClientRect();
+      return {
+        card: [card.top, card.left, card.width, card.height],
+        preview: [preview.top, preview.left, preview.width, preview.height]
+      };
+    };
+    root.innerHTML = renderHomeScreen(input);
+    const before = bounds();
+    root.innerHTML = renderHomeScreen({
+      ...input,
+      homeNotice: "Seu acesso ao Curso selecionado foi encerrado."
+    });
+    const after = bounds();
+    return {
+      before,
+      after,
+      feedbackPosition: getComputedStyle(
+        document.querySelector(".study-home-feedback-layer")
+      ).position
+    };
+  }, fixture);
+
+  expect(geometry.after).toEqual(geometry.before);
+  expect(geometry.feedbackPosition).toBe("fixed");
+  await expect(page.getByText("Seu acesso ao Curso selecionado foi encerrado."))
+    .toBeVisible();
+});
+
+test("níveis e cards compartilham tipografia e a Unidade preserva a descrição inteira", async ({ page }) => {
+  const longProject = structuredClone(fixture);
+  const marker = "MARCADOR-FINAL-DA-DESCRIÇÃO";
+  const unit = longProject.courses[0].modules[0].lessons[0]
+    .microsequences[0].studyUnits[0];
+  unit.content[0].data.text = `${"Descrição integral da Unidade. ".repeat(8)}${marker}`;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountStudy(page, { projectValue: longProject });
+
+  for (const step of [
+    ["Curso", "Módulos", "open-course"],
+    ["Módulo", "Lições", "open-module"],
+    ["Lição", "Microssequências didáticas", "open-lesson"],
+    ["Microssequência", "Unidades", "open-microsequence"]
+  ]) {
+    await page.locator(`[data-action='${step[2]}']`).first().click();
+    await expect(page.locator(".entity-level-heading")).toHaveText(step[0]);
+    const sectionHeading = page.getByRole("heading", { name: step[1], exact: true });
+    await expect(sectionHeading).toBeVisible();
+    const geometry = await page.evaluate((childHeading) => {
+      const level = document.querySelector(".entity-level-heading");
+      const child = [...document.querySelectorAll(".section-heading")]
+        .find((node) => node.textContent.trim() === childHeading);
+      const parentTitle = document.querySelector(".entity-summary-card .card-title");
+      const parentDescription = document.querySelector(".entity-summary-card .card-subtitle");
+      const childTitle = document.querySelector(".navigation-list-card .card-title");
+      const childDescription = document.querySelector(".navigation-list-card .card-subtitle");
+      const parentTitleRect = parentTitle.getBoundingClientRect();
+      const parentDescriptionRect = parentDescription.getBoundingClientRect();
+      return {
+        textAlignment: [getComputedStyle(level).textAlign, getComputedStyle(child).textAlign],
+        titleSize: [getComputedStyle(parentTitle).fontSize, getComputedStyle(childTitle).fontSize],
+        descriptionSize: [
+          getComputedStyle(parentDescription).fontSize,
+          getComputedStyle(childDescription).fontSize
+        ],
+        titleDescriptionGap: parentDescriptionRect.top - parentTitleRect.bottom
+      };
+    }, step[1]);
+    expect(geometry.textAlignment, step[0]).toEqual(["center", "center"]);
+    expect(new Set(geometry.titleSize).size, step[0]).toBe(1);
+    expect(new Set(geometry.descriptionSize).size, step[0]).toBe(1);
+    expect(geometry.titleDescriptionGap, step[0]).toBeGreaterThanOrEqual(5);
+  }
+
+  const unitCard = page.locator(".navigation-list-card").first();
+  await expect(unitCard).toContainText(marker);
+  expect(await unitCard.locator(".card-subtitle").evaluate((node) => ({
+    overflow: getComputedStyle(node).overflow,
+    scrollFits: node.scrollHeight <= node.clientHeight + 1
+  }))).toEqual({ overflow: "visible", scrollFits: true });
+});
+
 test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ page }) => {
   for (const [width, colorScheme] of [[360, "light"], [390, "dark"], [430, "light"], [1280, "dark"]]) {
     await page.emulateMedia({ colorScheme });
@@ -521,20 +621,20 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       const heading = document.querySelector(".topbar-heading").getBoundingClientRect();
       const actions = document.querySelector(".lesson-top-actions").getBoundingClientRect();
       const back = document.querySelector("[data-action='go-back']").getBoundingClientRect();
+      const home = document.querySelector("[data-action='go-home']").getBoundingClientRect();
+      const sync = document.querySelector(".study-runtime-status-control").getBoundingClientRect();
       const account = document.querySelector("[data-action='open-settings']").getBoundingClientRect();
       const buttons = [...document.querySelectorAll(".study-mode-button")]
         .map((button) => button.getBoundingClientRect());
+      const controls = [back, home, sync, account, ...buttons];
       return {
         barFits: bar.left >= 0 && bar.right <= innerWidth,
-        controlsFit: [back, account].every(({ left, right }) =>
+        controlsFit: controls.every(({ left, right }) =>
           left >= 0 && right <= innerWidth),
         documentFits: document.documentElement.scrollWidth <= innerWidth,
         overlap: Math.max(0, heading.right - actions.left),
-        buttonWidths: buttons.map(({ width: value }) => value),
-        buttonHeights: buttons.map(({ height: value }) => value),
-        targetsMeetMinimum: [back, account, ...buttons]
-          .every(({ width: valueWidth, height: valueHeight }) =>
-            valueWidth >= 24 && valueHeight >= 24)
+        buttonWidths: controls.map(({ width: value }) => Math.round(value)),
+        buttonHeights: controls.map(({ height: value }) => Math.round(value))
       };
       });
       expect(topbar.barFits, label).toBe(true);
@@ -543,22 +643,28 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       expect(topbar.overlap, label).toBe(0);
       expect(new Set(topbar.buttonWidths).size, label).toBe(1);
       expect(new Set(topbar.buttonHeights).size, label).toBe(1);
-      expect(topbar.targetsMeetMinimum, label).toBe(true);
+      expect(topbar.buttonWidths[0], label).toBe(44);
+      expect(topbar.buttonHeights[0], label).toBe(44);
     };
     await assertTopbarFits("Lição");
     await page.locator("[data-action='open-microsequence']").click();
     await assertTopbarFits("Microssequência");
     await page.locator("[data-action='open-study-unit']").first().click();
+    await assertTopbarFits("Unidade");
     const runtimeDock = await page.evaluate(() => {
       const dock = document.querySelector(".study-next-wrap").getBoundingClientRect();
       const next = document.querySelector(".study-continue-btn").getBoundingClientRect();
       const nextStyle = getComputedStyle(document.querySelector(".study-continue-btn"));
+      const buttons = [...document.querySelectorAll(".study-next-wrap > button")]
+        .map((button) => button.getBoundingClientRect());
       return {
         display: nextStyle.display,
         fitsDock: next.left >= dock.left && next.right <= dock.right + 1,
         fitsViewport: next.left >= 0 && next.right <= innerWidth,
         singleLine: next.height <= 48,
-        documentFits: document.documentElement.scrollWidth <= innerWidth
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+        buttonWidths: buttons.map(({ width: value }) => Math.round(value)),
+        buttonHeights: buttons.map(({ height: value }) => Math.round(value))
       };
     });
     expect(runtimeDock.display, `Runtime ${width}px`).toBe("flex");
@@ -566,5 +672,7 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.fitsViewport, `Runtime ${width}px`).toBe(true);
     expect(runtimeDock.singleLine, `Runtime ${width}px`).toBe(true);
     expect(runtimeDock.documentFits, `Runtime ${width}px`).toBe(true);
+    expect(runtimeDock.buttonWidths, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
+    expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
   }
 });
