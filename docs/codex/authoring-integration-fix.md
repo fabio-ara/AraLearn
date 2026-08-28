@@ -404,6 +404,42 @@ itens e sem duplicação. Os deep links permaneceram válidos. O Curso real
 `003ba920-db66-4d21-8b79-f37c48304453` não foi lido nem alterado durante esse
 ensaio e suas 12 Partes foram preservadas.
 
+## Reconexão do contrato MCP no ChatGPT
+
+Uma conversa do ChatGPT criada antes das últimas publicações continuou
+apresentando o catálogo MCP histórico: `planCommand` achatado e
+`designCommand.set_parameter` com `origin` aceitando `automatic`, `author` e
+`research_condition`. Essa forma coincide com o artefato anterior a
+`a17961d4` e `f89952e6`, e não com o protocolo público corrente.
+
+A investigação separou as duas fronteiras sem executar ferramentas de Curso.
+O `tools/list` OAuth servido pelo MCP hospedado na versão 180 coincidiu, por
+comparação estrutural, com o catálogo canônico local: protocolo
+`aralearn.authoring-protocol.v1`, schema `1.0.1`, fingerprint
+`sha256:f9183c9088e1ce4a475b8b0b7c9aeef3913596aa8283f378f094b42f0a53d426`,
+`planCommand.oneOf` com 14 variantes e `designCommand.oneOf` com oito
+variantes. Os 47 testes focais de ferramentas e servidor MCP também passaram.
+Logo, não havia achatamento no servidor implantado nem na projeção corrente.
+
+O detalhe do plugin AraLearn no ChatGPT ainda exibia o snapshot antigo da
+conexão criada em 25 de agosto. O comando visual `Atualizar` informou sucesso,
+mas não substituiu os schemas de entrada apresentados. A reconexão OAuth da
+mesma integração forçou a reimportação efetiva. Depois dela, o próprio detalhe
+do plugin no ChatGPT passou a expor:
+
+- as 14 variantes literais de `planCommand` em `oneOf`;
+- `add_plan_item` exigindo diretamente `type`, `kind`, `id`, `position`,
+  `statement` e `sourceLinks`;
+- as oito variantes literais de `designCommand` em `oneOf`;
+- `set_parameter` exigindo `mode = automatic | explicit`;
+- `origin` restrito a `author | research_condition`, sem aceitar
+  `origin = automatic`.
+
+Essa correção alterou apenas a conexão MCP do ChatGPT. Nenhuma ferramenta foi
+executada e nenhum Curso foi lido ou modificado. Conversas que já receberam um
+catálogo antigo podem conservar o snapshot daquela sessão; uma conversa nova
+usa a conexão reimportada.
+
 ## Checklist de aceite
 
 Marcar um item somente após evidência correspondente no estado efetivamente
