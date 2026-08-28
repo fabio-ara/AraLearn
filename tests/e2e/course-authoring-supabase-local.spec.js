@@ -1354,10 +1354,10 @@ test.describe("Autoria real com Supabase local", () => {
         .toBeVisible();
       await actionsExecution.getByRole("link", { name: /Unidade produzida 1/u }).click();
       await expect(page.getByRole("heading", { name: STUDY_UNIT_TITLE, exact: true })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Voltar à execução", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Voltar", exact: true })).toBeVisible();
       await page.reload();
       await expect(page.getByRole("heading", { name: STUDY_UNIT_TITLE, exact: true })).toBeVisible();
-      await page.getByRole("link", { name: "Voltar à execução", exact: true }).click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await expect(actionsExecution).toBeVisible();
       await expect(actionsExecution.getByText("Versão 3 · Actions", { exact: true })).toBeVisible();
       await page.getByRole("link", { name: PART_TITLE, exact: true }).first().click();

@@ -684,7 +684,7 @@ for (const width of [360, 390, 430, 1280]) {
     await mountAuditPanel(page);
     await expectCompactAuditSurface(page, width);
 
-    await expect(page.getByRole("heading", { name: "Auditoria e correções" })).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Auditoria e correções" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Achados" })).toHaveAttribute(
       "aria-selected",
       "true"
