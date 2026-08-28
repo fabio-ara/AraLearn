@@ -2109,7 +2109,7 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
   sequence.destroy();
 });
 
-test("teclado fecha menus, clique externo os recolhe e reduced motion evita animação", async () => {
+test("teclado fecha menus, clique externo os recolhe e a navegação usa o rolador da Autoria", async () => {
   const root = new FakeRoot();
   const summary = { focused: false, focus() { this.focused = true; } };
   const menu = {
@@ -2135,7 +2135,6 @@ test("teclado fecha menus, clique externo os recolhe e reduced motion evita anim
     }
   };
   const windowValue = new FakeWindow();
-  windowValue.matchMedia = () => ({ matches: true });
   const sequence = createCourseInspectionSequence({
     root,
     controller: controllerFixture(),
@@ -2168,7 +2167,7 @@ test("teclado fecha menus, clique externo os recolhe e reduced motion evita anim
       }
     }
   });
-  assert.deepEqual(unitTwo.scroll, { block: "start", behavior: "auto" });
+  assert.equal(unitTwo.scroll, null);
   assert.match(root.innerHTML, /data-inspection-context-position>2\/60<\/span>/u);
   assert.match(root.innerHTML,
     /data-inspection-study-unit="unit-02"[^>]*>[\s\S]*?<article[^>]*aria-current="true"/u);

@@ -4191,7 +4191,7 @@ test("Inspeção atualiza só o trecho ancorado e conserva posição, foco e det
   page
 }) => {
   const clientErrors = captureClientErrors(page);
-  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+  await page.emulateMedia({ colorScheme: "dark" });
   await page.setViewportSize({ width: 390, height: 820 });
   const studyUnitId = "study-unit-25";
   const hash = `#/authoring/courses/${COURSE_IDS[0]}` +
@@ -4351,22 +4351,15 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   await expect(page.getByLabel("Filtrar por Parte")).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Ir para" })).toBeVisible();
 
-  await page.evaluate(() => {
-    globalThis.__inspectionScrollOptions = [];
-    globalThis.__inspectionOriginalScrollIntoView = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function captureInspectionScroll(options) {
-      globalThis.__inspectionScrollOptions.push(options);
-    };
-  });
+  const documentScrollBefore = await page.evaluate(() => document.documentElement.scrollTop);
+  const positionBefore = await page.locator("[data-inspection-context-position]").textContent();
+  const [ordinalBefore, totalBefore] = positionBefore.split("/").map(Number);
   await page.getByRole("button", { name: "Próxima Unidade" }).click();
-  expect(await page.evaluate(() => globalThis.__inspectionScrollOptions.at(-1))).toEqual({
-    block: "start",
-    behavior: "auto"
-  });
-  await page.evaluate(() => {
-    Element.prototype.scrollIntoView = globalThis.__inspectionOriginalScrollIntoView;
-    delete globalThis.__inspectionOriginalScrollIntoView;
-  });
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText(
+    `${ordinalBefore + 1}/${totalBefore}`
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollTop)).toBe(documentScrollBefore);
+  await expect(page.locator(".course-inspection-sticky-context")).toBeInViewport();
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
 });
