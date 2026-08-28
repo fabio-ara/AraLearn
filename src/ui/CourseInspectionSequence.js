@@ -2381,14 +2381,15 @@ export function createCourseInspectionSequence({
     closeSearch({ clear: true });
     const localTarget = state.items.find(({ studyUnit }) => studyUnit.id === result.id);
     if (localTarget) {
-      if (!selectStudyUnit(result.id, {
-        anchor: {
-          ...captureAnchor(),
-          studyUnitId: result.id,
-          offsetFromStickyTop: 0,
-          controlKey: "search"
-        }
-      })) return false;
+      const targetAnchor = {
+        ...captureAnchor(),
+        studyUnitId: result.id,
+        offsetFromStickyTop: 0,
+        controlKey: "search"
+      };
+      if (!selectStudyUnit(result.id, { anchor: targetAnchor })) return false;
+      blockViewportUpdates();
+      restoreAnchor(targetAnchor, { initial: true });
     } else {
       const scopePathIndex = { module: 1, lesson: 2, didactic_microsequence: 3 }[state.scope.kind];
       const resultBelongsToScope = state.scope.kind === "course" ||
@@ -2524,13 +2525,14 @@ export function createCourseInspectionSequence({
       target = state.items.find((item) => item.ordinal === current.ordinal + delta);
     }
     if (!target) return false;
-    if (!selectStudyUnit(target.studyUnit.id, {
-      anchor: {
-        ...interactionAnchor,
-        studyUnitId: target.studyUnit.id,
-        offsetFromStickyTop: 0
-      }
-    })) return false;
+    const targetAnchor = {
+      ...interactionAnchor,
+      studyUnitId: target.studyUnit.id,
+      offsetFromStickyTop: 0
+    };
+    if (!selectStudyUnit(target.studyUnit.id, { anchor: targetAnchor })) return false;
+    blockViewportUpdates();
+    restoreAnchor(targetAnchor, { initial: true });
     scheduleSave();
     return true;
   }

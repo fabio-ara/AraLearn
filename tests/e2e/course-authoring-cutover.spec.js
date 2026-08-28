@@ -4352,6 +4352,8 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
   await expect(page.getByRole("combobox", { name: "Ir para" })).toBeVisible();
 
   const documentScrollBefore = await page.evaluate(() => document.documentElement.scrollTop);
+  const authoringScrollBefore = await page.locator(".course-authoring-root")
+    .evaluate((element) => element.scrollTop);
   const positionBefore = await page.locator("[data-inspection-context-position]").textContent();
   const [ordinalBefore, totalBefore] = positionBefore.split("/").map(Number);
   await page.getByRole("button", { name: "Próxima Unidade" }).click();
@@ -4359,6 +4361,14 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
     `${ordinalBefore + 1}/${totalBefore}`
   );
   expect(await page.evaluate(() => document.documentElement.scrollTop)).toBe(documentScrollBefore);
+  expect(await page.locator(".course-authoring-root").evaluate((element) => element.scrollTop))
+    .not.toBe(authoringScrollBefore);
+  await expect.poll(() => page.locator(
+    `[data-inspection-study-unit="study-unit-${ordinalBefore + 1}"]`
+  ).evaluate((element) => {
+    const sticky = document.querySelector(".course-inspection-sticky-context");
+    return Math.abs(element.getBoundingClientRect().top - sticky.getBoundingClientRect().bottom);
+  })).toBeLessThanOrEqual(2);
   await expect(page.locator(".course-inspection-sticky-context")).toBeInViewport();
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
