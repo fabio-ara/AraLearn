@@ -2402,15 +2402,6 @@ export function createCourseInspectionSequence({
       pendingInitialFocusKey = "search";
       if (!await loadInitial({ anchorStudyUnitId: result.id, allowRebase: false })) return false;
     }
-    const escapedId = globalThis.CSS?.escape
-      ? globalThis.CSS.escape(result.id)
-      : result.id.replace(/["\\]/gu, "\\$&");
-    root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`)?.scrollIntoView?.({
-      block: "start",
-      behavior: windowValue?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true
-        ? "auto"
-        : "smooth"
-    });
     scheduleSave();
     return true;
   }
@@ -2540,12 +2531,6 @@ export function createCourseInspectionSequence({
         offsetFromStickyTop: 0
       }
     })) return false;
-    const escapedId = globalThis.CSS?.escape
-      ? globalThis.CSS.escape(target.studyUnit.id)
-      : target.studyUnit.id.replace(/["\\]/gu, "\\$&");
-    const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
-    const reducedMotion = windowValue?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
-    element?.scrollIntoView?.({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
     scheduleSave();
     return true;
   }
