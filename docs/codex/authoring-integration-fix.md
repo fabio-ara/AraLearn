@@ -440,6 +440,35 @@ executada e nenhum Curso foi lido ou modificado. Conversas que já receberam um
 catálogo antigo podem conservar o snapshot daquela sessão; uma conversa nova
 usa a conexão reimportada.
 
+## Validação funcional MCP após a reconexão
+
+Uma jornada funcional independente foi concluída exclusivamente pelo MCP
+AraLearn, sem Actions nem HTTP externo. O ensaio usou apenas a fixture
+`82dac2da-3562-403c-827c-2956e32e0465`, criada com o título “Smoke MCP
+pós-refatoração — 2026-08-27 — descartável”. Nenhum Curso preexistente foi
+usado como alvo de leitura detalhada ou escrita.
+
+As jornadas públicas de descoberta, criação, leituras, planejamento, itens do
+plano, Partes, CAS, idempotência, desenho, guidance, políticas, composição,
+entidades, biblioteca didática, operações estruturais, Fontes, Observações,
+materialização e Auditoria passaram com releitura após as mutações. Os erros
+deliberados de CAS obsoleto, proveniência inexistente e conclusão factual sem
+Fonte adequada devolveram códigos públicos de domínio, sem `internal_error` e
+sem persistência indevida. A rodada de Auditoria incluiu corretamente um check
+automático adicional de conformidade estrutural.
+
+Não foram executados `attach_pdf`, variantes nem rollback de achado: o primeiro
+exigia um arquivo real ausente; variantes criariam Cursos derivados sem cleanup
+público; e a rodada válida terminou sem achados. Envelopes estruturalmente
+inválidos foram recusados pelo próprio contrato MCP antes do backend, como
+esperado.
+
+Depois do aceite, a fixture foi excluída pela rotina canônica
+`aralearn.course-lifecycle.v1`, com `status = completed` e `changed = true`.
+A verificação posterior confirmou ausência em `public.courses`, zero vínculo
+em `course_access`, zero objeto no prefixo correspondente do Storage e zero
+resultado numa busca exata por `listarCursos`.
+
 ## Checklist de aceite
 
 Marcar um item somente após evidência correspondente no estado efetivamente
