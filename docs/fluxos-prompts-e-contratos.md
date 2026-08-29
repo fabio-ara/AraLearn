@@ -112,7 +112,7 @@ altera a propriedade do Curso nem o resultado da validação.
 
 ## Superfícies conversacionais
 
-MCP expõe seis ferramentas; Actions expõe as seis operações canônicas e duas
+MCP expõe seis ferramentas; Actions expõe as seis operações canônicas e três
 projeções dedicadas descritas por OpenAPI. Nomes canônicos e executor são
 compartilhados. O OpenAPI pode omitir
 condicionais mecânicas profundas que o servidor continua validando, sem criar

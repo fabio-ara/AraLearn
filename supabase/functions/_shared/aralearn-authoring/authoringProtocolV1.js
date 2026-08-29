@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.3.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.4.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -121,8 +121,30 @@ const forbidFields = (fields) => ({
   not: { anyOf: fields.map((field) => ({ required: [field] })) }
 });
 
+const identityRequiredUnlessNew = (identityField, revisionField) => ({
+  anyOf: [
+    { required: [identityField] },
+    {
+      properties: { [revisionField]: { const: 0 } },
+      required: [revisionField]
+    }
+  ]
+});
+
+const exactlyOneReference = (identityField, indexField) => ({
+  oneOf: [
+    { required: [identityField], ...forbidFields([indexField]) },
+    { required: [indexField], ...forbidFields([identityField]) }
+  ]
+});
+
 const stringSchema = (options = {}) => ({ type: "string", ...options });
 const uuidSchema = stringSchema({ pattern: UUID_PATTERN.source });
+const generatedUuidSchema = stringSchema({
+  pattern: UUID_PATTERN.source,
+  description:
+    "Opcional somente por compatibilidade. Ao criar, omita: a camada confiável gera a identidade."
+});
 const requestIdSchema = stringSchema({ pattern: REQUEST_ID_PATTERN.source });
 const nullableString = (schema) => ({ anyOf: [schema, { type: "null" }] });
 const COURSE_SOURCE_NO_CONTROL_PATTERN =
@@ -135,6 +157,22 @@ const courseSourceOpaqueIdSchema = stringSchema({
   minLength: 1,
   maxLength: 240,
   pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+});
+const generatedCourseSourceIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 2_048,
+  pattern: "^[^\\u0000-\\u001F\\u007F-\\u009F]+$",
+  description:
+    "Quando expectedSourceRevision=0, omita: a camada confiável gera a identidade. " +
+    "Em revisão maior que zero, preserve a identidade lida da Fonte existente."
+});
+const generatedCourseSourceAnchorIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 240,
+  pattern: COURSE_SOURCE_NO_CONTROL_PATTERN,
+  description:
+    "Quando expectedAnchorRevision=0, omita: a camada confiável gera a identidade. " +
+    "Em revisão maior que zero, preserve a identidade lida da Âncora existente."
 });
 const legacySourceIdSchema = stringSchema({
   minLength: 1,
@@ -209,7 +247,7 @@ const anchoredAnnotationCommandSchema = {
   oneOf: [
     objectSchema({
       type: { const: "create_anchored_annotation" },
-      annotationId: uuidSchema,
+      annotationId: generatedUuidSchema,
       target: anchoredAnnotationTargetSchema,
       rawText: anchoredAnnotationLayoutTextSchema,
       category: anchoredAnnotationCategorySchema,
@@ -220,7 +258,7 @@ const anchoredAnnotationCommandSchema = {
         pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
       }),
       confirmed: { type: "boolean", const: true }
-    }),
+    }, ["type", "target", "rawText", "category", "capturedAt", "briefSummary", "confirmed"]),
     objectSchema({
       type: { const: "revise_anchored_annotation" },
       annotationId: uuidSchema,
@@ -362,20 +400,24 @@ const sourceDocumentSchema = {
 
 const sourceCommandSchema = {
   oneOf: [
-    objectSchema({
+    {
+      ...objectSchema({
       type: { const: "save_source" },
-      sourceId: legacySourceIdSchema,
+      sourceId: generatedCourseSourceIdSchema,
       expectedSourceRevision: { type: "integer", minimum: 0 },
       source: sourceDocumentSchema
-    }),
+      }, ["type", "expectedSourceRevision", "source"]),
+      ...identityRequiredUnlessNew("sourceId", "expectedSourceRevision")
+    },
     objectSchema({
       type: { const: "retire_source" },
       sourceId: legacySourceIdSchema,
       expectedSourceRevision: { type: "integer", minimum: 1 }
     }),
-    objectSchema({
+    {
+      ...objectSchema({
       type: { const: "save_anchor" },
-      anchorId: courseSourceOpaqueIdSchema,
+      anchorId: generatedCourseSourceAnchorIdSchema,
       sourceId: legacySourceIdSchema,
       sourceRevision: { type: "integer", minimum: 1 },
       expectedAnchorRevision: { type: "integer", minimum: 0 },
@@ -386,7 +428,9 @@ const sourceCommandSchema = {
       verificationExcerpt: nullableString(stringSchema({
         minLength: 1, maxLength: 2_000, pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
       }))
-    }, ["type", "anchorId", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "verificationExcerpt"]),
+      }, ["type", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "verificationExcerpt"]),
+      ...identityRequiredUnlessNew("anchorId", "expectedAnchorRevision")
+    },
     objectSchema({
       type: { const: "retire_anchor" },
       anchorId: courseSourceOpaqueIdSchema,
@@ -424,7 +468,12 @@ const courseSourcePdfIntentSchema = {
     }),
     objectSchema({
       mode: { const: "save" },
-      sourceId: { anyOf: [legacySourceIdSchema, { type: "null" }] },
+      sourceId: {
+        anyOf: [legacySourceIdSchema, { type: "null" }],
+        description:
+          "Use null somente ao criar, com expectedSourceRevision=0; " +
+          "em revisão maior que zero, preserve a identidade lida da Fonte."
+      },
       expectedSourceRevision: { type: "integer", minimum: 0 },
       source: sourceDocumentSchema
     })
@@ -465,7 +514,7 @@ const auditMethodSchema = objectSchema({
   version: stringSchema({ minLength: 1, maxLength: 80, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN })
 });
 const auditCheckSchema = objectSchema({
-  checkId: uuidSchema,
+  checkId: generatedUuidSchema,
   dimension: stringSchema({ enum: [...COURSE_AUDIT_HUMAN_DIMENSIONS] }),
   criterion: objectSchema({
     code: auditCodeSchema,
@@ -496,14 +545,31 @@ const auditCheckSchema = objectSchema({
     })
   },
   sourceLinks: sourceLinksSchemaReference
-});
+}, [
+  "dimension", "criterion", "result", "publicEvidence", "adequacy",
+  "planItemRefs", "parameterRefs", "sourceLinks"
+]);
 const auditChecksSchema = {
   type: "array", minItems: 3, maxItems: 31, uniqueItems: true,
   items: auditCheckSchema
 };
-const auditFindingInputSchema = objectSchema({
-  findingId: uuidSchema,
-  checkId: uuidSchema,
+const auditFindingInputSchema = {
+  ...objectSchema({
+  findingId: generatedUuidSchema,
+  checkId: stringSchema({
+    pattern: UUID_PATTERN.source,
+    description:
+      "Use somente para uma verificação do mesmo comando cujo ID foi fornecido " +
+      "explicitamente por compatibilidade; para verificação nova sem ID, use checkIndex."
+  }),
+  checkIndex: {
+    type: "integer",
+    minimum: 0,
+    maximum: 30,
+    description:
+      "Índice zero-based da verificação nova no mesmo comando; use exatamente " +
+      "um de checkId ou checkIndex."
+  },
   code: auditCodeSchema,
   severity: stringSchema({ enum: [...COURSE_AUDIT_SEVERITIES] }),
   annotationRefs: {
@@ -513,7 +579,9 @@ const auditFindingInputSchema = objectSchema({
       annotationVersion: { type: "integer", minimum: 1 }
     })
   }
-});
+  }, ["code", "severity", "annotationRefs"]),
+  ...exactlyOneReference("checkId", "checkIndex")
+};
 const auditCommandRefsSchema = {
   findingId: uuidSchema,
   expectedFindingVersion: { type: "integer", minimum: 1 },
@@ -524,7 +592,7 @@ const auditCommandSchema = {
   oneOf: [
     objectSchema({
       type: { const: "record_audit" },
-      auditRunId: uuidSchema,
+      auditRunId: generatedUuidSchema,
       targetStudyUnitId: anchoredAnnotationOpaqueIdSchema,
       contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
       origin: stringSchema({ enum: [...COURSE_AUDIT_ORIGINS] }),
@@ -534,17 +602,28 @@ const auditCommandSchema = {
         type: "array", maxItems: 15, uniqueItems: true,
         items: auditFindingInputSchema
       }
-    }),
-    objectSchema({
+    }, ["type", "targetStudyUnitId", "contextHash", "origin", "method", "checks", "findings"]),
+    {
+      ...objectSchema({
       type: { const: "propose_authoring_correction" },
-      correctionId: uuidSchema,
+      correctionId: stringSchema({
+        pattern: UUID_PATTERN.source,
+        description:
+          "Quando expectedCorrectionVersion=0, omita: a camada confiável gera a identidade. " +
+          "Em versão maior que zero, preserve a identidade lida da correção existente."
+      }),
       findingId: uuidSchema,
       expectedFindingVersion: { type: "integer", minimum: 1 },
       expectedCorrectionVersion: { type: "integer", minimum: 0 },
       afterContent: { type: "object" },
       afterSourceLinks: sourceLinksSchemaReference,
       rationale: auditLayoutTextSchema(2_000)
-    }),
+    }, [
+      "type", "findingId", "expectedFindingVersion", "expectedCorrectionVersion",
+      "afterContent", "afterSourceLinks", "rationale"
+      ]),
+      ...identityRequiredUnlessNew("correctionId", "expectedCorrectionVersion")
+    },
     objectSchema({
       type: { const: "reject_authoring_correction" },
       ...auditCommandRefsSchema
@@ -562,14 +641,17 @@ const auditCommandSchema = {
     }),
     objectSchema({
       type: { const: "verify_finding" },
-      auditRunId: uuidSchema,
+      auditRunId: generatedUuidSchema,
       ...auditCommandRefsSchema,
       contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
       origin: stringSchema({ enum: [...COURSE_AUDIT_ORIGINS] }),
       method: auditMethodSchema,
       checks: auditChecksSchema,
       outcome: stringSchema({ enum: ["resolved", "still_open"] })
-    })
+    }, [
+      "type", "findingId", "expectedFindingVersion", "correctionId",
+      "expectedCorrectionVersion", "contextHash", "origin", "method", "checks", "outcome"
+    ])
   ]
 };
 
@@ -602,11 +684,11 @@ const authoringPlanCommandSchema = {
         .map((field) => ({ required: [field] }))
     },
     objectSchema({
-      type: { const: "add_plan_item" }, kind: planItemKindSchema, id: uuidSchema,
+      type: { const: "add_plan_item" }, kind: planItemKindSchema, id: generatedUuidSchema,
       position: { type: "integer", minimum: 0, maximum: 255 },
       statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
       sourceLinks: sourceLinksSchemaReference
-    }),
+    }, ["type", "kind", "position", "statement", "sourceLinks"]),
     objectSchema({
       type: { const: "update_plan_item" }, kind: planItemKindSchema, id: uuidSchema,
       statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
@@ -618,7 +700,7 @@ const authoringPlanCommandSchema = {
       orderedIds: planItemIdListSchema(256)
     }),
     objectSchema({
-      type: { const: "add_part" }, id: uuidSchema,
+      type: { const: "add_part" }, id: generatedUuidSchema,
       position: {
         type: "integer",
         minimum: 0,
@@ -626,7 +708,7 @@ const authoringPlanCommandSchema = {
         description: "Índice zero-based na lista atual; use 0 para a primeira Parte."
       },
       title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema
-    }, ["type", "id", "position", "title", "intent"]),
+    }, ["type", "position", "title", "intent"]),
     objectSchema({
       type: { const: "update_part" }, id: uuidSchema,
       title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema
@@ -634,14 +716,14 @@ const authoringPlanCommandSchema = {
     objectSchema({ type: { const: "remove_part" }, id: uuidSchema }),
     objectSchema({ type: { const: "reorder_parts" }, orderedIds: planItemIdListSchema(64) }),
     objectSchema({
-      type: { const: "split_part" }, partId: uuidSchema, newPartId: uuidSchema,
+      type: { const: "split_part" }, partId: uuidSchema, newPartId: generatedUuidSchema,
       newPartPosition: { type: "integer", minimum: 0, maximum: 63 },
       title: stringSchema({ minLength: 1, maxLength: 300 }), intent: partIntentSchema,
       microsequenceIds: {
         type: "array", maxItems: 64, uniqueItems: true, items: microsequenceIdSchema
       }
     }, [
-      "type", "partId", "newPartId", "newPartPosition", "title", "intent",
+      "type", "partId", "newPartPosition", "title", "intent",
       "microsequenceIds"
     ]),
     objectSchema({ type: { const: "join_parts" }, sourcePartId: uuidSchema, targetPartId: uuidSchema }),
@@ -773,7 +855,7 @@ const courseVariantCommandSchema = {
   oneOf: [
     objectSchema({
       type: { const: "create_comparison_variants" },
-      comparisonSetId: uuidSchema,
+      comparisonSetId: generatedUuidSchema,
       expectedCourseRevision: {
         type: "integer",
         minimum: 1,
@@ -794,7 +876,7 @@ const courseVariantCommandSchema = {
           }
         })
       }
-    }),
+    }, ["type", "expectedCourseRevision", "variants"]),
     objectSchema({
       type: { const: "detach_comparison_variant" },
       comparisonSetId: uuidSchema,
@@ -952,20 +1034,71 @@ const courseMicrosequenceContentSchema = objectSchema({
   title: stringSchema({ minLength: 1, maxLength: 300 }),
   goal: stringSchema({ minLength: 1, maxLength: 8_000 }),
   role: stringSchema({ enum: ["explain", "practice", "review", "support"] }),
-  branchOf: nullableString(stringSchema({ minLength: 1, maxLength: 240 })),
-  dependsOn: entityTextListSchema,
+  branchOf: nullableString(stringSchema({
+    minLength: 1,
+    maxLength: 240,
+    description:
+      "Identidade de uma Microssequência existente da mesma Lição; para uma nova " +
+      "no mesmo lote, use branchOfUpsertIndex."
+  })),
+  branchOfUpsertIndex: {
+    type: "integer",
+    minimum: 0,
+    maximum: 199,
+    description:
+      "Índice zero-based de outra Microssequência nova da mesma Lição no mesmo lote."
+  },
+  dependsOn: {
+    ...entityTextListSchema,
+    description:
+      "Identidades de Microssequências existentes e anteriores da mesma Lição; " +
+      "para novas no mesmo lote, use dependsOnUpsertIndexes."
+  },
+  dependsOnUpsertIndexes: {
+    type: "array",
+    maxItems: 200,
+    uniqueItems: true,
+    items: { type: "integer", minimum: 0, maximum: 199 },
+    description:
+      "Índices zero-based de Microssequências novas, anteriores e da mesma Lição, " +
+      "adicionados às referências de dependsOn."
+  },
   covers: entityTextListSchema,
   checks: entityTextListSchema,
   errors: entityTextListSchema
 }, ["title", "goal", "role", "dependsOn", "covers", "checks"]);
-const courseEntityIdSchema = stringSchema({ minLength: 1, maxLength: 240 });
-const courseEntitySchemaFor = ({ entityType, parentType, positionMinimum = 0, content }) => objectSchema({
-  entityType: { const: entityType },
-  entityId: courseEntityIdSchema,
-  parentType: parentType == null ? { type: "null" } : { const: parentType },
-  parentId: parentType == null ? { type: "null" } : courseEntityIdSchema,
-  position: { type: "integer", minimum: positionMinimum },
-  content
+const generatedCourseEntityIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 240,
+  description:
+    "Presente significa entidade existente; ausente cria uma identidade na camada confiável."
+});
+const courseEntitySchemaFor = ({ entityType, parentType, positionMinimum = 0, content }) => ({
+  ...objectSchema({
+    entityType: { const: entityType },
+    entityId: generatedCourseEntityIdSchema,
+    parentType: parentType == null ? { type: "null" } : { const: parentType },
+    parentId: parentType == null ? { type: "null" } : stringSchema({
+      minLength: 1,
+      maxLength: 240,
+      description:
+        "Use somente para um pai existente; para um pai novo no mesmo lote, " +
+        "omita parentId e use parentUpsertIndex."
+    }),
+    ...(parentType == null ? {} : {
+      parentUpsertIndex: {
+        type: "integer",
+        minimum: 0,
+        maximum: 199,
+        description:
+          "Índice zero-based do pai novo no mesmo lote; use exatamente um de " +
+          "parentId ou parentUpsertIndex."
+      }
+    }),
+    position: { type: "integer", minimum: positionMinimum },
+    content
+  }, ["entityType", "parentType", "position", "content"]),
+  ...(parentType == null ? {} : exactlyOneReference("parentId", "parentUpsertIndex"))
 });
 const courseEntitySchema = {
   oneOf: [
@@ -994,7 +1127,7 @@ const courseEntityDeleteSchema = objectSchema({
 const courseEntityDeleteSchemaReference = { $ref: "#/$defs/courseEntityDelete" };
 
 const materializationStepSchema = objectSchema({
-  id: uuidSchema,
+  id: generatedUuidSchema,
   position: { type: "integer", minimum: 0, maximum: 63 },
   kind: stringSchema({ enum: [
     "context_load",
@@ -1007,7 +1140,7 @@ const materializationStepSchema = objectSchema({
   productionPosition: {
     anyOf: [{ type: "integer", minimum: 0, maximum: 63 }, { type: "null" }]
   }
-});
+}, ["position", "kind", "targetDidacticMicrosequenceId", "productionPosition"]);
 materializationStepSchema.allOf = [{
   if: {
     properties: { kind: { const: "didactic_microsequence_materialization" } },
@@ -1033,8 +1166,23 @@ const designApplicationSchema = objectSchema({
   studyUnits: {
     type: "array",
     maxItems: 64,
-    items: objectSchema({
-      studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
+    items: {
+      ...objectSchema({
+      studyUnitId: stringSchema({
+        minLength: 1,
+        maxLength: 240,
+        description:
+          "Use somente para uma Unidade existente; para uma Unidade nova no mesmo lote, " +
+          "omita studyUnitId e use studyUnitUpsertIndex."
+      }),
+      studyUnitUpsertIndex: {
+        type: "integer",
+        minimum: 0,
+        maximum: 63,
+        description:
+          "Índice zero-based da Unidade nova em entityChanges.upserts; use exatamente " +
+          "um de studyUnitId ou studyUnitUpsertIndex."
+      },
       mode: stringSchema({ enum: ["expository", "practice", "mixed"] }),
       introducedInstructionalAnalysisUnitIds: {
         type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema
@@ -1076,16 +1224,38 @@ const designApplicationSchema = objectSchema({
         items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 }),
         description: "Refs package@version usados na mesma Unidade de entityChanges."
       }
-    })
+      }, [
+        "mode", "introducedInstructionalAnalysisUnitIds", "explanationApplications",
+        "practiceApplications", "componentRefs"
+      ]),
+      ...exactlyOneReference("studyUnitId", "studyUnitUpsertIndex")
+    }
   }
 });
 designApplicationSchema.description =
   "Na conclusão didática, descreve as mesmas Unidades de entityChanges.";
 
-const sourceAttributionStudyUnitSchema = objectSchema({
-  studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
-  sourceLinks: sourceLinksSchemaReference
-});
+const sourceAttributionStudyUnitSchema = {
+  ...objectSchema({
+    studyUnitId: stringSchema({
+      minLength: 1,
+      maxLength: 240,
+      description:
+        "Use somente para uma Unidade existente; para uma Unidade nova no mesmo lote, " +
+        "omita studyUnitId e use studyUnitUpsertIndex."
+    }),
+    studyUnitUpsertIndex: {
+      type: "integer",
+      minimum: 0,
+      maximum: 199,
+      description:
+        "Índice zero-based da Unidade nova em upserts; use exatamente um de " +
+        "studyUnitId ou studyUnitUpsertIndex."
+    },
+    sourceLinks: sourceLinksSchemaReference
+  }, ["sourceLinks"]),
+  ...exactlyOneReference("studyUnitId", "studyUnitUpsertIndex")
+};
 const sourceAttributionApplicationsSchema = {
   type: "array",
   maxItems: 64,
@@ -1107,7 +1277,12 @@ const materializationCommandSchema = {
   ...objectSchema({
   operation: stringSchema({ enum: ["start", "record_step", "finish"] }),
   authoringPartId: uuidSchema,
-  materializationId: uuidSchema,
+  materializationId: stringSchema({
+    pattern: UUID_PATTERN.source,
+    description:
+      "Ao iniciar, omita: a camada confiável gera a identidade. " +
+      "Em record_step ou finish, preserve o UUID lido da materialização existente."
+  }),
   expectedMaterializationVersion: { type: "integer", minimum: 0 },
   authoringPartVersion: { type: "integer", minimum: 1 },
   steps: { type: "array", minItems: 1, maxItems: 64, items: materializationStepSchema },
@@ -1133,7 +1308,7 @@ const materializationCommandSchema = {
     }),
     description: "Lote atômico da etapa. Na conclusão, os IDs coincidem com as duas aplicações."
   }
-  }, ["operation", "authoringPartId", "materializationId", "expectedMaterializationVersion"]),
+  }, ["operation", "authoringPartId", "expectedMaterializationVersion"]),
   allOf: [{
     if: { properties: { operation: { const: "start" } }, required: ["operation"] },
     then: {
@@ -1148,17 +1323,23 @@ const materializationCommandSchema = {
     if: { properties: { operation: { const: "record_step" } }, required: ["operation"] },
     then: {
       required: [
-        "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
+        "materializationId", "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
         "designApplication", "sourceAttributionApplication"
       ],
-      properties: { expectedMaterializationVersion: { minimum: 1 } },
+      properties: {
+        materializationId: uuidSchema,
+        expectedMaterializationVersion: { minimum: 1 }
+      },
       ...forbidFields(["authoringPartVersion", "steps"])
     }
   }, {
     if: { properties: { operation: { const: "finish" } }, required: ["operation"] },
     then: {
-      required: ["status", "resultFacts"],
-      properties: { expectedMaterializationVersion: { minimum: 1 } },
+      required: ["materializationId", "status", "resultFacts"],
+      properties: {
+        materializationId: uuidSchema,
+        expectedMaterializationVersion: { minimum: 1 }
+      },
       ...forbidFields([
         "authoringPartVersion", "steps", "stepId", "expectedStepVersion",
         "designApplication", "sourceAttributionApplication", "entityChanges"
@@ -1776,7 +1957,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso por operação tipada. Use controles e orientação em silêncio. Proponha antes de aplicar e verifique depois; confirme efeitos pedagógicos, preservações e materialização. Só revele detalhes técnicos sob pedido.",
+    description: "Altera o Curso por operação tipada. Em criações, omita a identidade opcional: a camada confiável a gera; preserve IDs apenas para entidades já lidas. Proponha antes de aplicar e verifique depois. Confirme efeitos pedagógicos e só revele detalhes técnicos sob pedido.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -2078,7 +2259,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:e8f55b11247f05ebee37f1a0952c6d3e05379bd43dd12eee8c2dc27d0d936a70";
+  "sha256:680280b94aaa749b5dcc0f1b5606ca76859f73fc093ce416a98a5ca95b661c04";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

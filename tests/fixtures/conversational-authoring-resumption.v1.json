@@ -4,7 +4,7 @@
     "synthetic": true,
     "mutableTargetAllowed": false,
     "liveCourseLookupAllowed": false,
-    "pdfBytes": "generated-minimal-pdf-only"
+    "pdfBytes": "generated-valid-synthetic-pdf-only"
   },
   "machineState": {
     "contract": "aralearn.course-authoring-resumption-state.v1",
@@ -77,8 +77,8 @@
         "fileName": "fixture-edital-dataprev-2026.pdf",
         "sourceRevision": 1,
         "mediaType": "application/pdf",
-        "contentHash": "230f890266387d61d67f61e9479fbe00429a2e410d894ee51ebbc5b00c6e8777",
-        "byteSize": 185,
+        "contentHash": "ff13a9271f4b670a2a06f56c798f5680a1e5e3899de7bb389572b2f4ce234c24",
+        "byteSize": 24862,
         "stored": true
       },
       "anchors": [

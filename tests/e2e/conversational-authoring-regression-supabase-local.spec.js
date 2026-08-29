@@ -4,14 +4,20 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
+import { createAuthoringActionHandler } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
+import { CourseSupabaseAdapter } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import {
   authorizeLocalActionSession,
   authorizeLocalMcpSession,
+  CHATGPT_ACTION_ORIGIN,
   chatGptAction,
   cleanupLocalMcpSession,
   courseAction,
   createConfirmedLocalUser,
   createLocalMcpClient,
+  LOCAL_APPLICATION_ORIGIN,
   localSupabaseConfiguration,
   localSupabaseFailure,
   localSupabaseRequest,
@@ -32,6 +38,10 @@ const fixtureUrl = new URL(
   "../fixtures/conversational-authoring-resumption.v1.json",
   import.meta.url
 );
+const editalPdfFixtureUrl = new URL(
+  "../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf",
+  import.meta.url
+);
 
 let config = null;
 let fixture = null;
@@ -42,6 +52,7 @@ let outsiderToken = "";
 let courseId = "";
 let mcpLifecycle = {};
 let actionLifecycle = {};
+let editalPdfBytes = null;
 
 function failure(label, result) {
   return localSupabaseFailure(label, result);
@@ -53,7 +64,8 @@ async function expectSuccessful(label, promise, status = 200) {
   return result.payload;
 }
 
-function syntheticPdfBytes(key) {
+function fixturePdfBytes(key) {
+  if (key === "edital") return editalPdfBytes;
   return Buffer.from(
     "%PDF-1.4\n" +
     "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
@@ -63,6 +75,68 @@ function syntheticPdfBytes(key) {
     "startxref\n45\n%%EOF\n",
     "utf8"
   );
+}
+
+async function discoverPublishedAction(operationId) {
+  const response = await fetch(
+    `${LOCAL_APPLICATION_ORIGIN}/docs/downloads/aralearn-chatgpt-action-openapi.yaml`,
+    { cache: "no-store" }
+  );
+  expect(response.status).toBe(200);
+  const openApi = JSON.parse(await response.text());
+  const match = Object.entries(openApi.paths).find(([, pathItem]) =>
+    pathItem?.post?.operationId === operationId
+  );
+  expect(match, `A discovery publicada não contém ${operationId}.`).toBeTruthy();
+  return { openApi, path: match[0], operation: match[1].post };
+}
+
+function createBoundActionHarness(pdfBytes) {
+  const downloadLink = "https://files.oaiusercontent.com/aralearn-edital-fixture.pdf?temporary=1";
+  const adapter = new CourseSupabaseAdapter({
+    supabaseUrl: config.projectUrl,
+    publicSupabaseUrl: config.projectUrl,
+    serverApiKey: config.adminKey,
+    publishableKey: config.publishableKey,
+    publicAppUrl: LOCAL_APPLICATION_ORIGIN,
+    attempts: 1,
+    fetchImpl: async (url, init) => {
+      if (String(url) === downloadLink) {
+        return new Response(pdfBytes, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Length": String(pdfBytes.byteLength)
+          }
+        });
+      }
+      return globalThis.fetch(url, init);
+    }
+  });
+  const handler = createAuthoringActionHandler({
+    adapter,
+    allowedOrigins: new Set([CHATGPT_ACTION_ORIGIN]),
+    actionBaseUrl: `${config.projectUrl}/functions/v1/aralearn-authoring-action`,
+    publicAppUrl: LOCAL_APPLICATION_ORIGIN
+  });
+  return {
+    downloadLink,
+    async call(path, body, token = actionLifecycle.accessToken) {
+      const response = await handler(new Request(
+        `${config.projectUrl}/functions/v1/aralearn-authoring-action${path}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Origin: CHATGPT_ACTION_ORIGIN
+          },
+          body: JSON.stringify(body)
+        }
+      ));
+      return { response, payload: await response.json() };
+    }
+  };
 }
 
 function expectNominalConversation(conversation, internalValues = []) {
@@ -162,6 +236,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     testInfo.setTimeout(120_000);
     config = localSupabaseConfiguration();
     fixture = JSON.parse(await readFile(fixtureUrl, "utf8"));
+    editalPdfBytes = await readFile(editalPdfFixtureUrl);
     const suffix = `${Date.now()}-${process.pid}`;
     owner = await expectSuccessful(
       "criar pessoa autora sintética",
@@ -274,10 +349,11 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     expect(currentRevision).toBe(1);
     expect(planVersion).toBe(1);
 
+    const persistedPartIds = [];
     for (const [position, title] of fixture.course.plan.parts.entries()) {
       const changed = await expectSuccessful(
         `Actions cria Parte sintética ${position + 1}`,
-        chatGptAction(config, "alterarCurso", {
+        chatGptAction(config, "add_part", {
           requestId: `e2e223-part-${String(position + 1).padStart(2, "0")}`,
           courseId,
           expectedRevision: currentRevision,
@@ -285,7 +361,6 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
           operation: "update_instructional_plan",
           planCommand: {
             type: "add_part",
-            id: fixture.machineState.partIds[position],
             position,
             title,
             intent: `Delimitar ${title} antes de qualquer produção de conteúdo.`
@@ -297,10 +372,37 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
       currentRevision = changed.data.courseRevision;
       planVersion = changed.data.planVersion;
     }
+    const generatedParts = await expectSuccessful(
+      "Actions relê as Partes com identidades geradas",
+      chatGptAction(config, "lerCurso", {
+        courseId,
+        view: "instructional_plan"
+      }, actionLifecycle.accessToken)
+    );
+    persistedPartIds.push(...generatedParts.data.plan.parts.map(({ id }) => id));
+    expect(persistedPartIds).toHaveLength(12);
+    persistedPartIds.forEach((id) => expect(id).toMatch(UUID_PATTERN));
+    expect(new Set(persistedPartIds).size).toBe(12);
+
+    const discoveredIngestion = await discoverPublishedAction("incorporarPdfComoFonte");
+    const ingestionSchema = discoveredIngestion.operation.requestBody
+      .content["application/json"].schema;
+    expect(ingestionSchema.required).toContain("openaiFileIdRefs");
+    expect(ingestionSchema.properties.openaiFileIdRefs).toMatchObject({
+      type: "array",
+      minItems: 1,
+      maxItems: 1,
+      items: { type: "string" }
+    });
+    const visibleIngestionSchema = JSON.stringify(ingestionSchema);
+    expect(visibleIngestionSchema).not.toContain("storagePath");
+    expect(visibleIngestionSchema).not.toContain("contentHash");
+    expect(visibleIngestionSchema).not.toContain("byteSize");
+    expect(visibleIngestionSchema).not.toContain('"pdf"');
 
     const ingestionClient = await createLocalMcpClient(config, mcpLifecycle.accessToken);
     expect(ingestionClient.toolNames).toEqual(expect.arrayContaining([
-      "listarCursos", "lerCurso", "alterarCurso"
+      "listarCursos", "lerCurso", "alterarCurso", "incorporarPdfComoFonte"
     ]));
     const webClient = new CourseApiClient({
       projectUrl: config.projectUrl,
@@ -314,8 +416,86 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
       }
     });
     let uploadCount = 0;
+    const persistedSources = new Map();
 
-    for (const sourceFixture of fixture.sources) {
+    for (const [sourceIndex, sourceFixture] of fixture.sources.entries()) {
+      const pdfBytes = fixturePdfBytes(sourceFixture.key);
+      expect(pdfBytes.byteLength).toBe(sourceFixture.attachment.byteSize);
+      expect(createHash("sha256").update(pdfBytes).digest("hex"))
+        .toBe(sourceFixture.attachment.contentHash);
+
+      if (sourceIndex === 0) {
+        const httpBindingProbe = await chatGptAction(
+          config,
+          discoveredIngestion.operation.operationId,
+          {
+            requestId: "e2e223-public-pdf-binding-probe",
+            courseId,
+            expectedRevision: currentRevision,
+            sourceIntent: {
+              mode: "save",
+              sourceId: null,
+              expectedSourceRevision: 0,
+              source: sourceFixture.source
+            },
+            openaiFileIdRefs: [{
+              name: sourceFixture.attachment.fileName,
+              id: "file-aralearn-binding-probe",
+              mime_type: "application/pdf",
+              download_link: "https://example.invalid/not-an-openai-file.pdf"
+            }]
+          },
+          actionLifecycle.accessToken
+        );
+        expect(httpBindingProbe.response.status).toBe(422);
+        expect(httpBindingProbe.payload.error?.code).toBe("invalid_openai_file");
+
+        const boundAction = createBoundActionHarness(pdfBytes);
+        const ingested = await expectSuccessful(
+          "handler público da Action recebe o arquivo do ChatGPT e o persiste como Fonte",
+          boundAction.call(discoveredIngestion.path, {
+            requestId: "e2e223-public-pdf-edital",
+            courseId,
+            expectedRevision: currentRevision,
+            sourceIntent: {
+              mode: "save",
+              sourceId: null,
+              expectedSourceRevision: 0,
+              source: sourceFixture.source
+            },
+            openaiFileIdRefs: [{
+              name: sourceFixture.attachment.fileName,
+              id: "file-aralearn-edital-fixture",
+              mime_type: "application/pdf",
+              download_link: boundAction.downloadLink
+            }]
+          })
+        );
+        expect(ingested.data).toMatchObject({
+          stored: true,
+          changed: true,
+          source: {
+            sourceId: expect.stringMatching(UUID_PATTERN),
+            sourceRevision: 1,
+            bibliographyChanged: true
+          }
+        });
+        expect(ingested.data.courseRevision).toBe(currentRevision + 2);
+        expectNominalConversation(ingested.conversation, [
+          courseId,
+          ingested.data.source.sourceId,
+          sourceFixture.attachment.contentHash,
+          boundAction.downloadLink
+        ]);
+        currentRevision = ingested.data.courseRevision;
+        persistedSources.set(sourceFixture.key, {
+          ...sourceFixture,
+          sourceId: ingested.data.source.sourceId
+        });
+        uploadCount += 1;
+        continue;
+      }
+
       const saved = await ingestionClient.callTool("alterarCurso", {
         requestId: `e2e223-source-${sourceFixture.key}`,
         courseId,
@@ -340,10 +520,6 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
       });
       currentRevision = saved.courseRevision;
 
-      const pdfBytes = syntheticPdfBytes(sourceFixture.key);
-      expect(pdfBytes.byteLength).toBe(sourceFixture.attachment.byteSize);
-      expect(createHash("sha256").update(pdfBytes).digest("hex"))
-        .toBe(sourceFixture.attachment.contentHash);
       uploadCount += 1;
       const uploaded = await webClient.uploadCourseSourcePdf({
         requestId: `e2e223-upload-${sourceFixture.key}`,
@@ -366,12 +542,16 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
         }
       });
       currentRevision = uploaded.courseRevision;
+      persistedSources.set(sourceFixture.key, sourceFixture);
     }
     expect(uploadCount).toBe(4);
 
     let anchorOrdinal = 0;
     let replayArguments = null;
+    let replayAnchorId = null;
+    const persistedAnchorIds = [];
     for (const sourceFixture of fixture.sources) {
+      const persistedSource = persistedSources.get(sourceFixture.key);
       for (const anchor of sourceFixture.anchors) {
         anchorOrdinal += 1;
         const argumentsValue = {
@@ -381,8 +561,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
           operation: "update_course_sources",
           sourceCommand: {
             type: "save_anchor",
-            anchorId: anchor.anchorId,
-            sourceId: sourceFixture.sourceId,
+            sourceId: persistedSource.sourceId,
             sourceRevision: anchor.sourceRevision,
             expectedAnchorRevision: 0,
             selector: anchor.selector,
@@ -390,27 +569,45 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
             verificationExcerpt: anchor.verificationExcerpt
           }
         };
-        const saved = await ingestionClient.callTool("alterarCurso", argumentsValue);
+        const saved = anchorOrdinal === 1
+          ? (await expectSuccessful(
+              "Actions cria Âncora sem identidade fornecida pelo chamador",
+              chatGptAction(
+                config,
+                "alterarCurso",
+                argumentsValue,
+                actionLifecycle.accessToken
+              )
+            )).data
+          : await ingestionClient.callTool("alterarCurso", argumentsValue);
+        expect(saved.change.subjectId).toMatch(UUID_PATTERN);
         expect(saved).toMatchObject({
           courseRevision: currentRevision + 1,
           idempotent: false,
           changed: true,
-          change: { type: "save_anchor", subjectId: anchor.anchorId, revision: 1 }
+          change: {
+            type: "save_anchor",
+            subjectId: expect.stringMatching(UUID_PATTERN),
+            revision: 1
+          }
         });
+        persistedAnchorIds.push(saved.change.subjectId);
         currentRevision = saved.courseRevision;
         replayArguments = structuredClone(argumentsValue);
+        replayAnchorId = saved.change.subjectId;
       }
     }
     expect(anchorOrdinal).toBe(5);
+    expect(new Set(persistedAnchorIds).size).toBe(5);
 
     const replay = await ingestionClient.callTool("alterarCurso", replayArguments);
     expect(replay).toMatchObject({
       courseRevision: currentRevision,
       idempotent: true,
       changed: true,
-      change: replayArguments.sourceCommand && {
+      change: {
         type: "save_anchor",
-        subjectId: replayArguments.sourceCommand.anchorId,
+        subjectId: replayAnchorId,
         revision: 1
       }
     });
@@ -438,24 +635,34 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     });
     expectNominalConversation(stale.payload.conversation, [courseId]);
 
+    const resumedActionLifecycle = {};
+    await authorizeLocalActionSession(config, {
+      userAccessToken: ownerToken,
+      userId: owner.id,
+      lifecycle: resumedActionLifecycle
+    });
+    expect(resumedActionLifecycle.accessToken).not.toBe(actionLifecycle.accessToken);
+
     const discovered = await expectSuccessful(
       "Actions descobre Curso sintético somente pelo título",
       chatGptAction(config, "listarCursos", {
         query: fixture.course.title,
         limit: 10
-      }, actionLifecycle.accessToken)
+      }, resumedActionLifecycle.accessToken)
     );
-    expect(discovered.data.items).toEqual(expect.arrayContaining([
-      expect.objectContaining({ courseId, title: fixture.course.title })
-    ]));
+    const discoveredCourse = discovered.data.items.find(
+      ({ title }) => title === fixture.course.title
+    );
+    expect(discoveredCourse).toMatchObject({ courseId, title: fixture.course.title });
+    const resumedActionCourseId = discoveredCourse.courseId;
     expectNominalConversation(discovered.conversation, [courseId]);
 
     planRead = await expectSuccessful(
       "Actions relê plano sintético consolidado",
       chatGptAction(config, "lerCurso", {
-        courseId,
+        courseId: resumedActionCourseId,
         view: "instructional_plan"
-      }, actionLifecycle.accessToken)
+      }, resumedActionLifecycle.accessToken)
     );
     expect(planRead.data).toMatchObject({ courseId, courseRevision: currentRevision });
     expect(planRead.data.plan.parts).toHaveLength(12);
@@ -472,12 +679,12 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     const actionCatalog = await expectSuccessful(
       "Actions resume as Fontes persistentes",
       chatGptAction(config, "lerCurso", {
-        courseId,
+        courseId: resumedActionCourseId,
         view: "course_sources",
         expectedRevision: currentRevision,
         mode: "catalog",
         limit: 10
-      }, actionLifecycle.accessToken)
+      }, resumedActionLifecycle.accessToken)
     );
     expect(actionCatalog.data.items).toHaveLength(4);
     for (const { source } of fixture.sources) {
@@ -485,7 +692,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     }
     expectNominalConversation(actionCatalog.conversation, [
       courseId,
-      ...fixture.sources.map(({ sourceId }) => sourceId),
+      ...fixture.sources.map(({ key }) => persistedSources.get(key).sourceId),
       ...fixture.sources.map(({ attachment }) => attachment.contentHash)
     ]);
 
@@ -578,7 +785,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
       const downloaded = await fetch(access.signedUrl);
       expect(downloaded.status).toBe(200);
       const downloadedBytes = Buffer.from(await downloaded.arrayBuffer());
-      expect(downloadedBytes).toEqual(syntheticPdfBytes(sourceFixture.key));
+      expect(downloadedBytes).toEqual(fixturePdfBytes(sourceFixture.key));
       expect(createHash("sha256").update(downloadedBytes).digest("hex"))
         .toBe(sourceFixture.attachment.contentHash);
     }
@@ -586,28 +793,58 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     expect((await listPdfObjects()).map(({ name }) => name))
       .toEqual(storageBeforeDownloads.map(({ name }) => name));
 
-    const firstSource = fixture.sources[0];
+    const firstSource = persistedSources.get("edital");
+    const firstActionCatalogItem = actionCatalog.data.items.find(
+      ({ citationText }) => citationText === firstSource.source.citationText
+    );
     const nominalDetail = await expectSuccessful(
       "Actions apresenta Fonte focal sem controles internos",
       chatGptAction(config, "lerCurso", {
-        courseId,
+        courseId: resumedActionCourseId,
         view: "course_sources",
         expectedRevision: currentRevision,
         mode: "source",
-        sourceId: firstSource.sourceId,
+        sourceId: firstActionCatalogItem.sourceId,
         limit: 10
-      }, actionLifecycle.accessToken)
+      }, resumedActionLifecycle.accessToken)
     );
     expect(nominalDetail.conversation.message).toContain(firstSource.source.citationText);
     expect(nominalDetail.conversation.message).toContain(
       firstSource.anchors[0].humanLocator
     );
+    expect(nominalDetail.conversation.message).toContain("p. 44");
     expectNominalConversation(nominalDetail.conversation, [
       courseId,
       firstSource.sourceId,
-      firstSource.anchors[0].anchorId,
+      persistedAnchorIds[0],
       firstSource.attachment.contentHash
     ]);
+
+    const firstRecoveredSource = nominalDetail.data.items[0];
+    const actionAttachment = await expectSuccessful(
+      "Actions da segunda sessão recupera o PDF persistido",
+      chatGptAction(config, "lerCurso", {
+        courseId: resumedActionCourseId,
+        view: "course_source_attachment",
+        expectedRevision: currentRevision,
+        attachmentOperation: "download",
+        sourceId: firstRecoveredSource.sourceId,
+        sourceRevision: firstRecoveredSource.revision,
+        contentHash: firstRecoveredSource.attachments[0].contentHash,
+        includeAttachmentDownloadUrl: true
+      }, resumedActionLifecycle.accessToken)
+    );
+    expect(actionAttachment.data.signedUrl).toMatch(/^https?:\/\//u);
+    expectNominalConversation(actionAttachment.conversation, [
+      courseId,
+      firstRecoveredSource.sourceId,
+      firstRecoveredSource.attachments[0].contentHash,
+      actionAttachment.data.signedUrl
+    ]);
+    const actionDownloaded = await fetch(actionAttachment.data.signedUrl);
+    expect(actionDownloaded.status).toBe(200);
+    expect(Buffer.from(await actionDownloaded.arrayBuffer()))
+      .toEqual(fixturePdfBytes("edital"));
 
     expect(persistenceEvidence()).toEqual({
       courseRevision: currentRevision,

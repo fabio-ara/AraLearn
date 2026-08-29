@@ -1679,6 +1679,60 @@ async function sha256Hex(bytes) {
     .join("");
 }
 
+async function normalizedCourseSourcePdfIngestionIdentity({
+  courseId,
+  expectedCourseRevision,
+  requestId,
+  sourceIntent,
+  fileIdentity
+}) {
+  const normalizedFileIdentity = (() => {
+    if (!fileIdentity || typeof fileIdentity !== "object" || Array.isArray(fileIdentity)) {
+      throw invalidCourseSourcePdf();
+    }
+    const fileId = typeof fileIdentity.fileId === "string" ? fileIdentity.fileId.trim() : "";
+    const fileName = fileIdentity.fileName == null
+      ? null
+      : typeof fileIdentity.fileName === "string" ? fileIdentity.fileName.trim() : "";
+    const mediaType = fileIdentity.mediaType == null
+      ? null
+      : typeof fileIdentity.mediaType === "string"
+        ? fileIdentity.mediaType.trim().toLowerCase()
+        : "";
+    if (!fileId || fileId.length > 240 || fileName === "" ||
+        fileName !== null && fileName.length > 500 ||
+        mediaType !== null && mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE ||
+        /\p{Cc}/u.test(fileId) || fileName !== null && /\p{Cc}/u.test(fileName)) {
+      throw invalidCourseSourcePdf();
+    }
+    return { fileId, fileName, mediaType };
+  })();
+  const request = normalizeCourseSourcesInputValue(() =>
+    normalizeCourseSourcePdfIngestionRequest({
+      courseId,
+      expectedCourseRevision,
+      requestId,
+      sourceIntent
+    })
+  );
+  if (request.sourceIntent.mode !== "save" || request.sourceIntent.sourceId !== null) {
+    return { ...request, fileIdentity: normalizedFileIdentity };
+  }
+  const identityHash = await sha256Hex(new TextEncoder().encode(
+    `aralearn.course-source-pdf-ingestion.v1\0${request.courseId}\0${request.requestId}`
+  ));
+  return {
+    ...request,
+    fileIdentity: normalizedFileIdentity,
+    sourceIntent: normalizeCourseSourcesInputValue(() =>
+      normalizeCourseSourcePdfSourceIntent({
+        ...request.sourceIntent,
+        sourceId: deterministicCourseSourceUuid(identityHash)
+      })
+    )
+  };
+}
+
 function withDeepLink(value, publicAppUrl, section = "planning") {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const result = structuredClone(value);
@@ -2507,6 +2561,7 @@ export class CourseSupabaseAdapter {
     requestId,
     sourceIntent,
     attachment,
+    fileIdentity,
     deadlineAt
   }) {
     const raw = first(await this.rpc("ingest_course_source_pdf_for_actor_v1", {
@@ -2515,6 +2570,7 @@ export class CourseSupabaseAdapter {
       p_expected_revision: expectedCourseRevision,
       p_source_intent: sourceIntent,
       p_attachment: attachment,
+      p_file_identity: fileIdentity,
       p_channel: authoringChannel(principal),
       p_request_id: requestId
     }, {
@@ -2522,6 +2578,24 @@ export class CourseSupabaseAdapter {
       timeoutMs: 40_000,
       responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
     }));
+    return await this.#confirmedCourseSourcePdfIngestion(raw, {
+      courseId,
+      expectedCourseRevision,
+      requestId,
+      sourceIntent,
+      attachment,
+      deadlineAt
+    });
+  }
+
+  async #confirmedCourseSourcePdfIngestion(raw, {
+    courseId,
+    expectedCourseRevision,
+    requestId,
+    sourceIntent,
+    attachment = null,
+    deadlineAt
+  }) {
     const result = normalizeCourseSourcesDatabaseValue(() =>
       normalizeCourseSourcePdfIngestion(raw)
     );
@@ -2535,7 +2609,7 @@ export class CourseSupabaseAdapter {
         result.courseRevision !== expectedResultRevision ||
         result.source.sourceId !== sourceIntent.sourceId ||
         result.source.sourceRevision !== expectedSourceRevision ||
-        !courseSourcePdfAttachmentEquals(result.attachment, attachment) &&
+        attachment !== null && !courseSourcePdfAttachmentEquals(result.attachment, attachment) &&
           !(result.idempotent && courseSourcePdfAttachmentBinaryEquals(
             result.attachment,
             attachment
@@ -2551,6 +2625,45 @@ export class CourseSupabaseAdapter {
       requireStructure: true
     });
     return result;
+  }
+
+  async getCourseSourcePdfIngestionReceipt({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    requestId,
+    sourceIntent,
+    fileIdentity,
+    deadlineAt = null
+  }) {
+    const request = await normalizedCourseSourcePdfIngestionIdentity({
+      courseId,
+      expectedCourseRevision,
+      requestId,
+      sourceIntent,
+      fileIdentity
+    });
+    const raw = first(await this.rpc(
+      "get_course_source_pdf_ingestion_receipt_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_course_id: request.courseId,
+        p_expected_revision: request.expectedCourseRevision,
+        p_source_intent: request.sourceIntent,
+        p_file_identity: request.fileIdentity,
+        p_channel: authoringChannel(principal),
+        p_request_id: request.requestId
+      },
+      { deadlineAt, responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES }
+    ));
+    if (raw === null) return null;
+    return await this.#confirmedCourseSourcePdfIngestion(raw, {
+      courseId: request.courseId,
+      expectedCourseRevision: request.expectedCourseRevision,
+      requestId: request.requestId,
+      sourceIntent: request.sourceIntent,
+      deadlineAt
+    });
   }
 
   async #cancelCourseSourcePdfIngestion({
@@ -3145,33 +3258,26 @@ export class CourseSupabaseAdapter {
     expectedCourseRevision,
     requestId,
     sourceIntent,
+    fileIdentity,
     bytes,
     mediaType,
     deadlineAt = null
   }) {
-    const request = normalizeCourseSourcesInputValue(() =>
-      normalizeCourseSourcePdfIngestionRequest({
-        courseId,
-        expectedCourseRevision,
-        requestId,
-        sourceIntent
-      })
-    );
+    const request = await normalizedCourseSourcePdfIngestionIdentity({
+      courseId,
+      expectedCourseRevision,
+      requestId,
+      sourceIntent,
+      fileIdentity: fileIdentity ?? {
+        fileId: `received-pdf:${requestId}`,
+        fileName: null,
+        mediaType: COURSE_SOURCE_PDF_MEDIA_TYPE
+      }
+    });
     if (mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE) throw invalidCourseSourcePdf();
     const pdfBytes = courseSourcePdfBytes(bytes);
     const contentHash = await sha256Hex(pdfBytes);
-    let normalizedIntent = request.sourceIntent;
-    if (normalizedIntent.mode === "save" && normalizedIntent.sourceId === null) {
-      const identityHash = await sha256Hex(new TextEncoder().encode(
-        `aralearn.course-source-pdf-ingestion.v1\0${request.courseId}\0${request.requestId}`
-      ));
-      normalizedIntent = normalizeCourseSourcesInputValue(() =>
-        normalizeCourseSourcePdfSourceIntent({
-          ...normalizedIntent,
-          sourceId: deterministicCourseSourceUuid(identityHash)
-        })
-      );
-    }
+    const normalizedIntent = request.sourceIntent;
     let attachment = {
       contentHash,
       byteSize: pdfBytes.byteLength,
@@ -3185,6 +3291,7 @@ export class CourseSupabaseAdapter {
       requestId: request.requestId,
       sourceIntent: normalizedIntent,
       attachment,
+      fileIdentity: request.fileIdentity,
       deadlineAt
     });
     let preparation;

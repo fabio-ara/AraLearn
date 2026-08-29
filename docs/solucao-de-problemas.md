@@ -244,7 +244,7 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
 3. verifique as seis ferramentas MCP ou, em Actions, as seis operações
-   canônicas e as duas projeções dedicadas a itens do plano no ambiente
+   canônicas e as três projeções dedicadas a itens do plano e à criação de Parte no ambiente
    hospedado;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;
@@ -267,6 +267,12 @@ outro cliente; se o GPT já estava vinculado e precisa substituir a credencial,
 vincular um novo cliente ao mesmo identificador desativa o anterior e revoga
 seus tokens. A execução corrente não possui uma ação separada para revogar uma
 concessão já vinculada.
+
+Se um PDF anexado não puder ser incorporado, confira na discovery da Action se
+`incorporarPdfComoFonte` contém `openaiFileIdRefs` e se o comando legado
+`attach_pdf` não aparece. Se `add_part` pedir `id`, o GPT ainda está usando um
+OpenAPI anterior. Publicar o arquivo não atualiza a configuração salva:
+reimporte o documento, salve o GPT e teste em uma conversa nova.
 
 ## A alteração por MCP ou Actions não aparece na interface
 

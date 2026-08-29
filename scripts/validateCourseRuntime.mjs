@@ -32,6 +32,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-source-provenance-v1",
   "course-source-pdf-attachments-v1",
   "course-source-pdf-ingestion-v1",
+  "course-source-pdf-ingestion-receipt-v1",
   "course-source-human-locators-v1",
   "course-anchored-annotations-v1",
   "course-annotation-subject-classification-v1",
@@ -258,7 +259,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260829043629" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260829205000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -351,6 +352,9 @@ async function validateManifest() {
   );
   const sourcePdfIngestionMigration = await read(
     "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql"
+  );
+  const sourcePdfReceiptReplayMigration = await read(
+    "supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -520,6 +524,12 @@ async function validateManifest() {
       ) ||
       !sourcePdfIngestionMigration.includes(
         "to_jsonb('20260829043629'::text)"
+      ) ||
+      !sourcePdfReceiptReplayMigration.includes(
+        "$advance_course_source_pdf_receipt_replay_manifest$"
+      ) ||
+      !sourcePdfReceiptReplayMigration.includes(
+        "to_jsonb('20260829205000'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -548,7 +558,8 @@ async function validateManifest() {
         !unitAnnotationScopeMigration.includes(`'${feature}'`) &&
         !continuousInspectionV2Migration.includes(`'${feature}'`) &&
         !inspectionFocusMigration.includes(`'${feature}'`) &&
-        !sourcePdfIngestionMigration.includes(`'${feature}'`)) {
+        !sourcePdfIngestionMigration.includes(`'${feature}'`) &&
+        !sourcePdfReceiptReplayMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

@@ -307,6 +307,32 @@ test("ingestão conversacional recebe arquivo oficial sem metadados de Storage",
     }),
     (error) => error.code === "invalid_course_source_pdf_ingestion"
   );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", {
+      ...input,
+      sourceIntent: {
+        mode: "save",
+        sourceId: null,
+        expectedSourceRevision: 1,
+        source: {
+          kind: "document",
+          title: "Edital Dataprev 2026",
+          authorship: null,
+          publicationDate: "2026",
+          identifier: null,
+          language: "pt-BR",
+          citationText: "Edital Dataprev 2026",
+          url: null,
+          editionOrVersion: null,
+          origin: "author_provided",
+          availability: "private",
+          verificationStatus: "author_verified",
+          studyVisibility: "citation"
+        }
+      }
+    }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion"
+  );
 });
 
 test("prévia de componente aceita somente um alvo persistido completo", () => {
@@ -949,8 +975,9 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   assert.equal(planBranches.length, 14);
   assert.equal(planBranch("add_part").additionalProperties, false);
   assert.deepEqual(planBranch("add_part").required, [
-    "type", "id", "position", "title", "intent"
+    "type", "position", "title", "intent"
   ]);
+  assert.equal(planBranch("add_part").properties.id.description.includes("camada confiável"), true);
   assert.ok(planBranch("update_part").required.includes("intent"));
   assert.ok(planBranch("split_part").required.includes("intent"));
   assert.equal(Object.hasOwn(planBranch("add_part").properties, "partId"), false);
@@ -2000,6 +2027,14 @@ test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais e
   assert.deepEqual(entityBranch("microsequence").properties.content.properties.role.enum, [
     "explain", "practice", "review", "support"
   ]);
+  assert.equal(
+    entityBranch("microsequence").properties.content.properties.branchOfUpsertIndex.maximum,
+    199
+  );
+  assert.equal(
+    entityBranch("microsequence").properties.content.properties.dependsOnUpsertIndexes.items.type,
+    "integer"
+  );
   for (const type of ["module", "lesson", "topic", "microsequence"]) {
     assert.equal(entityBranch(type).properties.content.properties.id, undefined);
     assert.equal(entityBranch(type).properties.content.required.includes("id"), false);

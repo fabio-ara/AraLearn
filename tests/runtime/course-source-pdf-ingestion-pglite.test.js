@@ -8,6 +8,10 @@ const migrationUrl = new URL(
   "../../supabase/migrations/20260829043629_course_source_pdf_ingestion.sql",
   import.meta.url
 );
+const receiptReplayMigrationUrl = new URL(
+  "../../supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql",
+  import.meta.url
+);
 
 const OWNER = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
@@ -52,6 +56,10 @@ function attachment(courseId, hash, byteSize) {
     mediaType: "application/pdf",
     storagePath: `${courseId}/${hash}.pdf`
   };
+}
+
+function fileIdentity(fileId = "file-pdf-a", fileName = "edital.pdf") {
+  return { fileId, fileName, mediaType: "application/pdf" };
 }
 
 async function actor(database, actorId = OWNER, role = "service_role") {
@@ -217,7 +225,14 @@ async function databaseFixture() {
       request_hash text not null,
       result jsonb not null,
       expires_at timestamptz not null default now()+interval '1 day',
-      primary key(actor_id,request_id)
+      primary key(actor_id,request_id),
+      constraint course_change_receipts_operation_v9 check(operation in(
+        'create_course','commit_course_composition','commit_instructional_plan',
+        'advance_authoring_part_materialization','apply_course_design_command',
+        'execute_course_source_command','grant_access','revoke_access',
+        'update_audit_cycle','create_course_variants','detach_course_variant',
+        'commit_personal_course_copy_edit','create_inspection_focus'
+      ))
     );
 
     create function private.valid_course_source_pdf_object_v1(
@@ -396,6 +411,8 @@ async function databaseFixture() {
   `);
   const migration = await fs.readFile(migrationUrl, "utf8");
   await database.exec(migration);
+  const receiptReplayMigration = await fs.readFile(receiptReplayMigrationUrl, "utf8");
+  await database.exec(receiptReplayMigration);
   await actor(database);
   return database;
 }
@@ -433,26 +450,45 @@ async function ingest(database, {
   expectedRevision = 5,
   sourceIntent = existing(),
   pdf = attachment(COURSE, HASH_A, 1_024),
+  identity = fileIdentity(),
   requestId = "pdf-request-a"
 } = {}) {
   return scalar(database, `
     select public.ingest_course_source_pdf_for_actor_v1(
+      $1,$2,$3,$4,$5,$6,'application',$7
+    ) value
+  `, [
+    OWNER, COURSE, expectedRevision, JSON.stringify(sourceIntent),
+    JSON.stringify(pdf), JSON.stringify(identity), requestId
+  ]);
+}
+
+async function ingestionReceipt(database, {
+  expectedRevision = 5,
+  sourceIntent = existing(),
+  identity = fileIdentity(),
+  requestId = "pdf-request-a"
+} = {}) {
+  return scalar(database, `
+    select public.get_course_source_pdf_ingestion_receipt_for_actor_v1(
       $1,$2,$3,$4,$5,'application',$6
     ) value
   `, [
     OWNER, COURSE, expectedRevision, JSON.stringify(sourceIntent),
-    JSON.stringify(pdf), requestId
+    JSON.stringify(identity), requestId
   ]);
 }
 
 test("#220 instala RPCs service-only, manifesto, autorização e CAS", async () => {
   const database = await databaseFixture();
   const manifest = await scalar(database, "select public.get_aralearn_runtime_manifest() value");
-  assert.equal(manifest.schemaRevision, "20260829043629");
+  assert.equal(manifest.schemaRevision, "20260829205000");
   assert.ok(manifest.features.includes("course-source-pdf-ingestion-v1"));
+  assert.ok(manifest.features.includes("course-source-pdf-ingestion-receipt-v1"));
   for (const signature of [
     "public.prepare_course_source_pdf_ingestion_for_actor_v1(uuid,uuid,bigint,jsonb,text,bigint,text,text)",
-    "public.ingest_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,text,text)",
+    "public.ingest_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,jsonb,text,text)",
+    "public.get_course_source_pdf_ingestion_receipt_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,text,text)",
     "public.cancel_course_source_pdf_ingestion_for_actor_v1(uuid,uuid,text,text)"
   ]) {
     const privileges = await database.query(`
@@ -624,13 +660,14 @@ test("#220 reutiliza vínculo herdado e recupera seu path no replay stale", asyn
   await prepareInherited();
   const first = await scalar(database, `
     select public.ingest_course_source_pdf_for_actor_v1(
-      $1,$2,1,$3,$4,'application',$5
+      $1,$2,1,$3,$4,$5,'application',$6
     ) value
   `, [
     OWNER,
     VARIANT,
     JSON.stringify(sourceIntent),
     JSON.stringify(attachment(COURSE, HASH_A, 1_024)),
+    JSON.stringify(fileIdentity("file-inherited")),
     requestId
   ]);
   assert.equal(first.idempotent, false);
@@ -641,13 +678,14 @@ test("#220 reutiliza vínculo herdado e recupera seu path no replay stale", asyn
   await assert.rejects(prepareInherited(), error => error.code === "40001");
   const replay = await scalar(database, `
     select public.ingest_course_source_pdf_for_actor_v1(
-      $1,$2,1,$3,$4,'application',$5
+      $1,$2,1,$3,$4,$5,'application',$6
     ) value
   `, [
     OWNER,
     VARIANT,
     JSON.stringify(sourceIntent),
     JSON.stringify(attachment(VARIANT, HASH_A, 1_024)),
+    JSON.stringify(fileIdentity("file-inherited")),
     requestId
   ]);
   assert.equal(replay.idempotent, true);
@@ -724,6 +762,35 @@ test("#220 finaliza vínculo idempotente e separa bibliografia de conteúdo bin�
   assert.equal(await scalar(database, `
     select count(*)::integer value from private.course_source_pdf_upload_intents
   `), 0);
+  const recovered = await ingestionReceipt(database);
+  assert.equal(recovered.idempotent, true);
+  assert.equal(recovered.stored, true);
+  assert.deepEqual(recovered.attachment, attachment(COURSE, HASH_A, 1_024));
+  assert.equal(await ingestionReceipt(database, { requestId: "pdf-request-missing" }), null);
+  await assert.rejects(
+    ingestionReceipt(database, {
+      sourceIntent: existing("source-b", 1),
+      requestId: "pdf-request-a"
+    }),
+    error => error.code === "23514"
+  );
+  await assert.rejects(
+    ingestionReceipt(database, {
+      identity: fileIdentity("file-pdf-different"),
+      requestId: "pdf-request-a"
+    }),
+    error => error.code === "23514"
+  );
+  await database.query("update public.courses set owner_id=$1 where id=$2", [OTHER, COURSE]);
+  await assert.rejects(
+    ingestionReceipt(database),
+    error => error.code === "42501"
+  );
+  await assert.rejects(
+    ingest(database),
+    error => error.code === "42501"
+  );
+  await database.query("update public.courses set owner_id=$1 where id=$2", [OWNER, COURSE]);
   const retry = await ingest(database);
   assert.equal(retry.idempotent, true);
   assert.equal(retry.courseRevision, 6);
@@ -740,6 +807,15 @@ test("#220 finaliza vínculo idempotente e separa bibliografia de conteúdo bin�
     select count(*)::integer value from private.course_source_attachments
     where course_id=$1 and content_hash=$2
   `, [COURSE, HASH_B]), 0);
+  await database.query(`
+    update private.course_change_receipts
+    set expires_at=statement_timestamp()-interval '1 second'
+    where actor_id=$1 and request_id='pdf-request-a'
+  `, [OWNER]);
+  assert.equal(await ingestionReceipt(database), null);
+  const afterReceiptExpiry = await ingest(database);
+  assert.equal(afterReceiptExpiry.idempotent, true);
+  assert.equal(afterReceiptExpiry.courseRevision, 6);
 
   const secondBinary = await prepare(database, {
     expectedRevision: 6,

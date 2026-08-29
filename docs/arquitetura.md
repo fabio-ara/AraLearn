@@ -5,7 +5,7 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
 Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260829043629`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260829205000`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -45,7 +45,7 @@ A interface separa responsabilidades sem duplicar o domínio:
 | Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
-| Actions | oferecer seis operações canônicas e duas projeções HTTP dedicadas descritas por OpenAPI a um GPT personalizado conectado |
+| Actions | oferecer seis operações canônicas e três projeções HTTP dedicadas descritas por OpenAPI a um GPT personalizado conectado |
 
 Na Autoria, a Visão geral apresenta estado e próxima ação. Planejamento,
 Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e
@@ -79,9 +79,9 @@ reúne as seis operações canônicas, seus esquemas de entrada e saída, discri
 condicionais e vocabulários. Uma mudança interna no domínio ou na persistência
 não altera esse idioma por consequência.
 
-A projeção OpenAPI acrescenta dois caminhos dedicados para criar e atualizar
-itens do plano. Eles especializam a operação canônica de alteração para o
-importador de Actions; não criam uma segunda regra de domínio.
+A projeção OpenAPI acrescenta três caminhos dedicados para criar e atualizar
+itens do plano e criar uma Parte. Eles especializam a operação canônica de
+alteração para o importador de Actions; não criam uma segunda regra de domínio.
 
 `courseMcpTools.js` é o adaptador explícito entre o protocolo e o backend. Ele
 confere os argumentos públicos, converte cada chamada para a rota ou comando
@@ -104,11 +104,26 @@ humana. A fronteira é explícita: **preservar internamente != mostrar ao
 usuário**. Controles de concorrência continuam disponíveis ao cliente sem se
 tornarem requisitos de retomada para a pessoa.
 
+Antes do adaptador de domínio, o executor comum completa identidades ausentes
+de entidades novas. A derivação combina Curso, `requestId`, operação e posição
+estrutural, de modo que um retry reconstrói o mesmo UUID e conserva o mesmo
+payload idempotente. IDs presentes continuam sendo preservados para clientes
+anteriores e para referências lidas do Curso. Relações entre vários objetos
+novos usam índices locais validados, resolvidos antes da escrita. Assim, o
+modelo descreve Parte, resultado, unidade de análise, requisito de evidência,
+Fonte, Âncora ou composição, mas não inventa sua identidade técnica.
+
 Um arquivo transportado pela conversa só ganha vínculo persistente com uma
 Fonte quando sua função no Curso é clara ou confirmada. Depois que a ingestão
 canônica confirma esse vínculo, PDF, revisão e Âncoras pertencem ao Curso vivo e
 podem ser recuperados por outra sessão; a memória da conversa não participa
 dessa persistência.
+
+A repetição consulta antes do download um recibo curto, owner-only e ligado à
+identidade pública estável do arquivo, nunca à URL temporária. O recibo só é
+aceito depois de revalidar propriedade e o objeto privado no Storage; outro PDF
+sob o mesmo `requestId` é recusado. A escrita original e o recibo são atômicos,
+e recibos expirados deixam de bloquear uma nova tentativa.
 
 O sufixo v1 do identificador fixa o major público. `schemaVersion` distingue os
 snapshots semânticos dessa linha e o fingerprint SHA-256 identifica exatamente
@@ -479,6 +494,7 @@ etapas e pelas cotas do Curso.
 | cliente Supabase e sessão | `src/supabase/` |
 | protocolo público de Autoria | `supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js` e snapshots em `tests/fixtures/authoring-protocol/` |
 | adaptação do protocolo ao backend e MCP | `supabase/functions/_shared/aralearn-authoring/courseMcpTools.js` |
+| identidades de criação conversacional | `supabase/functions/_shared/aralearn-authoring/trustedCreationIdentity.js` |
 | projeção para Actions | `scripts/projectChatGptActionSchemas.mjs` e `scripts/buildChatGptActionOpenApi.mjs` |
 | funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/`, `supabase/functions/aralearn-authoring-action/` |
 | esquema e operações SQL | `supabase/migrations/` |
@@ -487,7 +503,7 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260829043629` e a versão de contrato. O
+esquema `20260829205000` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
