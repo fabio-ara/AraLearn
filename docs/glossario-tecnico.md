@@ -423,10 +423,15 @@ sem metadados ou Âncora inventados. Fica oculta em Estudo até receber uma revi
 ativa na mesma identidade.
 
 **Anexo PDF de Fonte.** Objeto privado e imutável ligado à revisão exata da
-Fonte. A API cria uma intenção curta; o navegador faz `POST` autenticado no
-Storage, sem URL assinada de envio. O anexo só se torna válido depois da
-conferência dos bytes e da confirmação do vínculo relacional. URL assinada é
-emitida apenas para leitura temporária.
+Fonte. O serviço canônico recebe o arquivo autorizado, limita e valida os bytes,
+calcula tamanho e SHA-256, escolhe o objeto privado e confirma o vínculo. O
+cliente não fornece hash nem caminho do Storage. URL assinada é emitida apenas
+para leitura temporária.
+
+**Ingestão de PDF de Fonte.** Caso de uso único que transforma bytes autorizados
+em anexo persistente. Pode usar uma Fonte existente ou criar/revisar a Fonte e
+ligar o PDF atomicamente. Metadados bibliográficos ausentes continuam ausentes;
+identidade binária não cria autoria, data, edição ou identificador.
 
 **Deduplicação por conteúdo.** Reutilização dos mesmos bytes quando o SHA-256,
 tamanho e tipo coincidem dentro do Curso e da política de acesso. Cada revisão

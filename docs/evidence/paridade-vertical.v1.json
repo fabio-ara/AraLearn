@@ -149,14 +149,15 @@
           "course-sources-v1",
           "course-source-provenance-v1",
           "course-source-pdf-attachments-v1",
+          "course-source-pdf-ingestion-v1",
           "course-source-human-locators-v1",
           "authenticated-course-source-pdf-upload-v1"
         ],
         "databasePatterns": [
           "^table:private\\.course_source_(?:revisions|anchor_revisions|attributions|attribution_sources|attribution_anchors|attachments|pdf_upload_intents)$",
           "^function:private\\.(?:advance_course_authoring_part_materialization_design_core_v1|apply_course_source_attribution_v1|assert_course_source_target_citation_budget_v1|commit_course_composition_core_v1|commit_course_instructional_plan_core_v1|commit_course_instructional_plan_sources_core_v1|course_design_context_with_sources_v1|course_effective_source_attribution_v1|course_effective_source_links_v1|course_instructional_plan_command_document_core_v1|course_materialization_design_context_core_v1|course_plan_item_sources_projection_v1|course_plan_sources_projection_v1|course_plan_without_sources_v1|course_source_context_plan_items_v1|course_source_cursor_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|execute_course_source_command_core_v1|get_course_instructional_plan_for_actor_core_v1|get_course_study_citations_core_v1|get_owned_course_authoring_part_materialization_design_core_v1|get_owned_course_sources_core_v1|get_owned_course_sources_with_attachments_v1|reject_course_source_fact_change_v1|valid_course_design_application_v2|valid_course_source_links_shape_v1|valid_course_source_materialization_application_v1|valid_course_source_publication_date_v1)\\(.*\\)$",
-          "^function:private\\.(?:can_read_course_source_pdf_v1|can_upload_course_source_pdf_v1|consume_course_source_pdf_upload_intent_v1|course_source_pdf_unique_bytes_v1|valid_course_source_pdf_object_v1)\\(.*\\)$",
-          "^function:public\\.(?:attach_course_source_pdf_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_attachment_access_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1)\\(.*\\)$",
+          "^function:private\\.(?:can_read_course_source_pdf_v1|can_upload_course_source_pdf_v1|consume_course_source_pdf_upload_intent_v1|course_source_pdf_unique_bytes_v1|valid_course_source_pdf_ingestion_intent_v1|valid_course_source_pdf_object_v1)\\(.*\\)$",
+          "^function:public\\.(?:attach_course_source_pdf_for_actor_v1|cancel_course_source_pdf_ingestion_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_attachment_access_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1|ingest_course_source_pdf_for_actor_v1|prepare_course_source_pdf_ingestion_for_actor_v1)\\(.*\\)$",
           "^bucket:storage\\.course-source-pdfs$"
         ]
       },
@@ -174,23 +175,28 @@
         { "path": "src/supabase/CourseController.js", "token": "mutateCourseSources" },
         { "path": "src/supabase/CourseController.js", "token": "uploadCourseSourcePdf" },
         { "path": "src/study/CourseStudyRepository.js", "token": "getStudyUnitCitations" },
-        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "course_source_pdf_upload_intents" }
+        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "course_source_pdf_upload_intents" },
+        { "path": "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql", "token": "ingest_course_source_pdf_for_actor_v1" }
       ],
       "routes": [
         { "path": "src/supabase/CourseApiClient.js", "token": "view: \"course_sources\"" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "ingerirPdfDaFonte" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseProtocol.js", "token": "name: \"getCourseSources\"" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "courseSourcesQuery" }
       ],
       "tests": [
         "tests/runtime/course-sources.test.js",
         "tests/runtime/course-sources-panel.test.js",
+        "tests/runtime/course-api-client.test.js",
+        "tests/runtime/course-api-server.test.js",
         "tests/runtime/course-source-attachments-pglite.test.js",
+        "tests/runtime/course-source-pdf-ingestion-pglite.test.js",
         "tests/runtime/course-data-lifecycle-pglite.test.js",
         "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js",
         "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "Catálogo, Âncora, atribuição append-only e projeção redigida são uma única cadeia observável. A relação só é completa quando a mesma autoridade sustenta o planejamento, a composição atômica, a materialização e a citação lazy no Estudo. O preparo de PDF concede uma intenção exata e temporária; a gravação continua autenticada e sujeita à sessão viva, sem URL de upload irrevogável."
+      "justification": "Catálogo, Âncora, atribuição append-only e projeção redigida são uma única cadeia observável. A relação só é completa quando a mesma autoridade sustenta o planejamento, a composição atômica, a materialização e a citação lazy no Estudo. A ingestão recebe o arquivo na API autenticada, deriva identidade binária e path no servidor, aplica cota e deduplicação e confirma Fonte e vínculo atomicamente; compensação só alcança o blob criado pelo pedido e ainda sem vínculo global."
     },
     {
       "id": "course-anchored-annotations",

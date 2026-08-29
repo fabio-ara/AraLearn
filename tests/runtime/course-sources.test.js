@@ -11,6 +11,10 @@ import {
   normalizeCourseSourceAttachmentAccess,
   normalizeCourseSourceCommand,
   normalizeCourseSourceContext,
+  normalizeCourseSourcePdfIngestion,
+  normalizeCourseSourcePdfIngestionPreparation,
+  normalizeCourseSourcePdfIngestionRequest,
+  normalizeCourseSourcePdfSourceIntent,
   normalizeCourseSourceLinks,
   normalizeCourseSourceSelector,
   normalizeCourseSourcesRead,
@@ -73,6 +77,118 @@ function sourceDocument(overrides = {}) {
 function pdfStorage(uniqueBytes = 0) {
   return { uniqueBytes, maxUniqueBytes: 64 * 1024 * 1024 };
 }
+
+test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado factual", () => {
+  const existing = {
+    mode: "existing",
+    sourceId: "source-a",
+    sourceRevision: 2
+  };
+  assert.deepEqual(normalizeCourseSourcePdfSourceIntent(existing), existing);
+  const save = {
+    mode: "save",
+    sourceId: null,
+    expectedSourceRevision: 0,
+    source: sourceDocument({
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      language: null,
+      citationText: null,
+      url: null,
+      studyVisibility: "hidden"
+    })
+  };
+  assert.deepEqual(normalizeCourseSourcePdfIngestionRequest({
+    courseId: IDS.course,
+    expectedCourseRevision: 7,
+    requestId: "request-pdf-ingestion-1",
+    sourceIntent: save
+  }).sourceIntent, save);
+  assert.throws(
+    () => normalizeCourseSourcePdfSourceIntent({
+      ...save,
+      expectedSourceRevision: 1
+    }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion"
+  );
+  assert.throws(
+    () => normalizeCourseSourcePdfSourceIntent({
+      ...save,
+      source: { ...save.source, author: "Autoria inventada" }
+    }),
+    (error) => error.code === "invalid_course_source"
+  );
+
+  const preparation = {
+    contract: "aralearn.course-source-pdf-ingestion-preparation.v1",
+    courseId: IDS.course,
+    courseRevision: 7,
+    requestId: "request-pdf-ingestion-1",
+    sourceId: "source-a",
+    sourceRevision: 2,
+    attachment: attachment(),
+    uploadRequired: true,
+    alreadyLinked: false
+  };
+  assert.deepEqual(
+    normalizeCourseSourcePdfIngestionPreparation(preparation),
+    preparation
+  );
+  const inheritedPreparation = {
+    ...preparation,
+    attachment: {
+      ...preparation.attachment,
+      storagePath: `${IDS.part}/${HASH_A}.pdf`
+    },
+    uploadRequired: false,
+    alreadyLinked: true
+  };
+  assert.deepEqual(
+    normalizeCourseSourcePdfIngestionPreparation(inheritedPreparation),
+    inheritedPreparation
+  );
+  assert.throws(
+    () => normalizeCourseSourcePdfIngestionPreparation({
+      ...preparation,
+      uploadRequired: true,
+      alreadyLinked: true
+    }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion_preparation"
+  );
+
+  const result = {
+    contract: "aralearn.course-source-pdf-ingestion.v1",
+    courseId: IDS.course,
+    courseRevision: 8,
+    requestId: "request-pdf-ingestion-1",
+    idempotent: false,
+    changed: true,
+    change: { type: "attach_pdf", subjectId: "source-a", revision: 2 },
+    source: {
+      sourceId: "source-a",
+      sourceRevision: 2,
+      bibliographyChanged: false
+    },
+    attachment: attachment(),
+    stored: true
+  };
+  assert.deepEqual(normalizeCourseSourcePdfIngestion(result), result);
+  assert.throws(
+    () => normalizeCourseSourcePdfIngestion({
+      ...result,
+      stored: false
+    }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion"
+  );
+  assert.throws(
+    () => normalizeCourseSourcePdfIngestion({
+      ...result,
+      change: { ...result.change, subjectId: "source-b" }
+    }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion"
+  );
+});
 
 test("anexo PDF sela hash, caminho, limite e transporte autorizado da revisão exata", () => {
   assert.deepEqual(normalizeCourseSourceAttachment(attachment()), attachment());

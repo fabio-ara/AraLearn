@@ -39,6 +39,7 @@ auditoria:
 | `aralearn.resource-library.v1` | descoberta, inspeção e validação do catálogo de pacotes |
 | `aralearn.course-sources.v1` | catálogo privado, revisões, Âncoras e atribuições de Fontes na Autoria |
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
+| `aralearn.course-source-pdf-ingestion.v1` | resultado estruturado da ingestão server-side de um PDF e de seu vínculo à revisão exata da Fonte |
 | `aralearn.course-source-attachment-access.v1` | abertura temporária de PDF privado |
 | `aralearn.course-source-attachment-access.v2` | preparação de envio autenticado de PDF privado de uma Fonte |
 | `aralearn.mcp-course-sources.v1` | projeção autoral de Fontes para MCP ou Actions, sem identidades pessoais, resumo interno do alvo nem caminhos do Storage |

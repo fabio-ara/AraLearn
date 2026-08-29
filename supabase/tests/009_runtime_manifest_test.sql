@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260828120000',
+  '20260829043629',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -23,7 +23,7 @@ select is(
 
 select is(
   jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
-  43,
+  44,
   'o manifesto não omite nem duplica capacidades correntes'
 );
 
@@ -54,6 +54,7 @@ select ok(
     "course-sources-v1",
     "course-source-provenance-v1",
     "course-source-pdf-attachments-v1",
+    "course-source-pdf-ingestion-v1",
     "course-source-human-locators-v1",
     "course-anchored-annotations-v1",
     "course-annotation-subject-classification-v1",
@@ -773,8 +774,14 @@ select ok(
       'private.can_upload_course_source_pdf_v1(text,jsonb)'::regprocedure
     ),
     'contentLength'
+  ) > 0
+  and strpos(
+    pg_get_functiondef(
+      'private.can_upload_course_source_pdf_v1(text,jsonb)'::regprocedure
+    ),
+    'intent.request_id is null'
   ) > 0,
-  'o upload de PDF autentica tamanho e tipo contra a autorização exata do banco'
+  'o upload direto de PDF aceita só intent legada com tamanho e tipo exatos'
 );
 
 select ok(

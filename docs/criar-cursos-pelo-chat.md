@@ -173,10 +173,11 @@ Curso aceita até 64 MiB de conteúdo PDF único. Arquivos com os mesmos bytes s
 reutilizados dentro do Curso quando impressão digital, tamanho, tipo e autorização
 coincidem.
 
-O envio de PDF é uma operação da aplicação autenticada, não do cliente
-conversacional: o preparo cria uma intenção de dez minutos, o Storage exige uma
-sessão ainda viva e a inserção consome essa intenção. O MCP pode consultar os
-metadados autorizados, mas não recebe o arquivo nem uma credencial de upload.
+Na interface visual, o arquivo segue para o mesmo serviço de ingestão que valida
+os bytes, calcula a identidade binária, aplica a cota e confirma o vínculo. A
+pessoa não informa hash, tamanho ou caminho de Storage. Canais conversacionais
+só podem incorporar um anexo quando entregam ao AraLearn um mecanismo de arquivo
+efetivamente suportado; anexar à conversa, por si só, ainda não prova persistência.
 
 ## Descobrir componentes conforme a intenção
 

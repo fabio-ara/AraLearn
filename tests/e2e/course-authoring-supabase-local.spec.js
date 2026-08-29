@@ -43,7 +43,10 @@ let sourceId = "";
 const SOURCE_TITLE = "Fonte PDF da prova de Autoria";
 const SOURCE_BUCKET = "course-source-pdfs";
 const PDF_BYTES = Buffer.from(
-  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n",
+  "%PDF-1.4\n" +
+  "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+  "xref\n0 2\n0000000000 65535 f \n0000000009 00000 n \n" +
+  "trailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n45\n%%EOF\n",
   "utf8"
 );
 

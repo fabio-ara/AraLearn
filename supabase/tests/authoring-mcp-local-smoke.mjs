@@ -587,7 +587,7 @@ if (!accessToken) {
   assert.match(finishResult.content[0].text, /5 de 5 concluídas; 0 com falha/u);
   assert.match(finishResult.content[0].text,
     /Entidades nesta operação: criadas 0; alteradas 0; removidas 0/u);
-  assert.match(finishResult.content[0].text, /Abrir no AraLearn:/u);
+  assert.match(finishResult.content[0].text, /Abrir a área alterada no AraLearn/u);
 
   const completedResult = await toolResult("lerCurso", {
     courseId: journeyCourseId,

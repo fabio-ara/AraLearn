@@ -36,10 +36,11 @@ function Get-LocalSupabaseStatus {
     throw 'O Supabase local não respondeu. Execute npx.cmd --yes supabase@2.115.0 start.'
   }
   $objectStart = $source.IndexOf('{')
-  if ($objectStart -lt 0) {
+  $objectEnd = $source.LastIndexOf('}')
+  if ($objectStart -lt 0 -or $objectEnd -lt $objectStart) {
     throw 'A Supabase CLI não retornou o estado local em JSON.'
   }
-  return $source.Substring($objectStart) | ConvertFrom-Json
+  return $source.Substring($objectStart, $objectEnd - $objectStart + 1) | ConvertFrom-Json
 }
 
 function Assert-LocalProjectUrl {
@@ -168,7 +169,8 @@ try {
   )
 
   Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
-    '--yes', 'supabase@2.115.0', 'db', 'lint', '--local', '--level', 'warning', '--fail-on', 'warning'
+    '--yes', 'supabase@2.115.0', 'db', 'lint', '--local', '--schema', 'public,private',
+    '--level', 'warning', '--fail-on', 'warning'
   )
 
   $courseApiHandle = Start-LocalEdgeFunction -Name 'aralearn-course-api'

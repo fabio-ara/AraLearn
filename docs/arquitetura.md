@@ -333,21 +333,23 @@ vez de sobrescrever sua proveniência.
 Ancoragens ligam trechos do Curso às fontes. Atribuições e Anotações podem
 referir-se a essas âncoras sem incorporar uma cópia opaca do documento.
 
-PDFs ficam no bucket privado `course-source-pdfs`. O
-navegador faz a verificação inicial do cabeçalho, calcula SHA-256 e solicita à
-API uma intenção de envio válida por dez minutos. O upload usa a sessão
-autenticada diretamente no endpoint do Storage, confronta caminho, tamanho e
-tipo e consome a intenção na inserção. A escrita participa do mesmo bloqueio da
-exclusão da conta. Antes de confirmar o vínculo relacional, a API lê o objeto com a
-credencial do servidor e confere os bytes reais: limite, tamanho declarado,
-cabeçalho `%PDF-` e SHA-256. O caminho físico segue
-`<curso-de-origem>/<sha256>.pdf`; acesso depende do vínculo autorizado no
-banco, não do conhecimento desse caminho.
+PDFs ficam no bucket privado `course-source-pdfs`. A interface entrega o arquivo
+à API autenticada, sem calcular ou declarar sua identidade binária. O serviço de
+ingestão lê no máximo 20 MiB, confere tipo, assinatura e estrutura mínima do PDF,
+calcula tamanho e SHA-256 e só então reserva cota e escolhe o objeto privado. O
+caminho físico segue `<curso-de-origem>/<sha256>.pdf`; acesso depende do vínculo
+autorizado no banco, não do conhecimento desse caminho.
 
-Um upload cujo conteúdo não corresponde ao resumo preparado não recebe vínculo.
-O inventário administrativo o classifica como órfão para uma decisão posterior,
-sem apagar automaticamente um objeto cuja classe e retenção ainda precisam ser
-confirmadas.
+Quando a ingestão também cria ou revisa a Fonte, essa revisão bibliográfica e o
+vínculo do PDF são confirmados na mesma transação depois que o objeto existe.
+Repetições usam o recibo do pedido e voltam a verificar o objeto por conteúdo antes
+de afirmar que ele está armazenado. Se uma etapa posterior falha, a API encerra a
+autorização de envio e deixa o eventual objeto sem vínculo para o reconciliador já
+existente; assim, não apaga um blob que outra ingestão possa vincular no intervalo.
+
+Um upload cujo conteúdo não corresponde aos bytes recebidos não recebe vínculo.
+Resíduos permanecem classificáveis pelo inventário administrativo e podem ser
+reaproveitados por uma repetição válida ou removidos depois da idade de segurança.
 
 `download` responde com o contrato temporário de leitura; `prepare_upload`
 responde com o contrato autenticado e nunca devolve URL assinada de envio. A
