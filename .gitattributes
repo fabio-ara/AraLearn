@@ -7,3 +7,4 @@ authoring/schemas/effective-design-snapshot.schema.json text eol=lf
 authoring/schemas/instructional-analysis.schema.json text eol=lf
 authoring/schemas/materialization-manifest.schema.json text eol=lf
 authoring/schemas/resource-set.schema.json text eol=lf
+*.pdf binary
