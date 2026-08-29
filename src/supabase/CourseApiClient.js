@@ -36,8 +36,10 @@ import {
 import {
   COURSE_SOURCE_PDF_MAX_BYTES,
   COURSE_SOURCE_PDF_MEDIA_TYPE,
+  COURSE_SOURCE_CHANGE_CONTRACT,
   normalizeCourseSourceAttachmentAccess,
   normalizeCourseSourceAttributionApplication,
+  normalizeCourseSourcePdfIngestion,
   normalizeSourceAttributionApplications,
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
@@ -51,11 +53,6 @@ const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const AVATAR_BUCKET = "person-avatars";
-const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
-const COURSE_SOURCE_PDF_STORAGE_PATH = new RegExp(
-  `^${UUID_PATTERN.source.slice(1, -1)}/[a-f0-9]{64}\\.pdf$`,
-  "u"
-);
 const AVATAR_MAX_BYTES = 512 * 1024;
 const AVATAR_EXTENSIONS = Object.freeze({
   "image/jpeg": "jpg",
@@ -65,6 +62,7 @@ const AVATAR_EXTENSIONS = Object.freeze({
 const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/u;
 const COURSE_EDGE_RETRY_DELAY_MS = 750;
 const COURSE_EDGE_TRANSIENT_STATUSES = new Set([502, 503, 504]);
+const COURSE_SOURCE_PDF_TIMEOUT_MS = 145_000;
 
 function first(value) {
   return Array.isArray(value) && value.length === 1 ? value[0] : value;
@@ -308,24 +306,6 @@ function boundCourseSourceAttachmentAccess(value, request) {
   return access;
 }
 
-function bytesToHex(value) {
-  return [...new Uint8Array(value)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function pdfHeaderIsValid(value) {
-  const bytes = new Uint8Array(value, 0, Math.min(5, value.byteLength));
-  return bytes.length === 5 && bytes[0] === 0x25 && bytes[1] === 0x50 &&
-    bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d;
-}
-
-function storageObjectExists(status, body) {
-  const message = String(body?.message || body?.error || body || "").toLowerCase();
-  return status === 409 || status === 400 &&
-    /(?:already exists|resource exists|duplicate)/u.test(message);
-}
-
 function timestamp(value, label) {
   const normalized = String(value || "").trim();
   if (!RFC3339.test(normalized) || !Number.isFinite(Date.parse(normalized))) {
@@ -549,14 +529,6 @@ function accountDeletionInProgressError(cause = null) {
   error.code = "account_deletion_in_progress";
   if (cause) error.cause = cause;
   return error;
-}
-
-function courseSourcePdfStoragePath(value) {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (!COURSE_SOURCE_PDF_STORAGE_PATH.test(normalized)) {
-    throw new TypeError("Objeto PDF de Fonte inválido.");
-  }
-  return normalized.split("/").map(encodeURIComponent).join("/");
 }
 
 function defaultAnchoredAnnotationQuery(mode = "inbox") {
@@ -1065,27 +1037,6 @@ export class CourseApiClient {
     return result;
   }
 
-  async prepareCourseSourceAttachmentUpload(value = {}) {
-    const request = courseSourceAttachmentIdentity(value, {
-      operation: "prepare_upload",
-      requireSize: true
-    });
-    return boundCourseSourceAttachmentAccess(
-      await this.executeCourseAction("lerCurso", {
-        courseId: request.courseId,
-        view: "course_source_attachment",
-        attachmentOperation: request.operation,
-        expectedRevision: request.expectedRevision,
-        sourceId: request.sourceId,
-        sourceRevision: request.sourceRevision,
-        contentHash: request.contentHash,
-        byteSize: request.byteSize,
-        mediaType: request.mediaType
-      }),
-      request
-    );
-  }
-
   async getCourseSourceAttachmentDownload(value = {}) {
     const request = courseSourceAttachmentIdentity(value, {
       operation: "download"
@@ -1116,25 +1067,17 @@ export class CourseApiClient {
     const mediaType = String(file?.type || "").trim().toLowerCase();
     if (mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE ||
         !Number.isSafeInteger(size) || size < 1 || size > COURSE_SOURCE_PDF_MAX_BYTES ||
-        typeof file?.arrayBuffer !== "function" ||
-        !globalThis.crypto?.subtle || typeof this.fetchImpl !== "function") {
+        typeof file?.stream !== "function" || typeof this.fetchImpl !== "function") {
       throw new TypeError("Use um PDF de até 20 MiB.");
     }
-    const bytes = await file.arrayBuffer();
-    if (!(bytes instanceof ArrayBuffer) || bytes.byteLength !== size || !pdfHeaderIsValid(bytes)) {
-      throw new TypeError("O arquivo não contém um PDF válido.");
-    }
-    const contentHash = bytesToHex(await globalThis.crypto.subtle.digest("SHA-256", bytes));
-    const access = await this.prepareCourseSourceAttachmentUpload({
-      courseId,
-      expectedRevision,
-      sourceId,
-      sourceRevision,
-      contentHash,
-      byteSize: size,
-      mediaType
-    });
-    if (access.uploadRequired) {
+    const normalized = {
+      requestId: requestIdentity(requestId),
+      courseId: uuid(courseId, "Curso"),
+      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
+      sourceId: boundedLegacySourceId(sourceId, "Identidade da Fonte"),
+      sourceRevision: positiveInteger(sourceRevision, "Revisão da Fonte")
+    };
+    try {
       const accessToken = await this.authClient.getAccessToken();
       if (!accessToken) {
         throw Object.assign(new Error("Entre novamente para continuar."), {
@@ -1142,45 +1085,60 @@ export class CourseApiClient {
           code: "AUTH_REQUIRED"
         });
       }
-      try {
-        await this.http.request(
-          `/storage/v1/object/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
-            courseSourcePdfStoragePath(access.attachment.storagePath),
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": mediaType,
-              "cache-control": "3600",
-              "x-upsert": "false"
-            },
-            body: file,
-            rawBody: true,
-            accessToken,
-            timeoutMs: 60_000
-          }
-        );
-      } catch (error) {
-        if (!storageObjectExists(Number(error?.status || 0), error?.response)) {
-          if (authenticationFailure(error)) {
-            await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
-            this.authClient.emit?.("SESSION_INVALID");
-            error.authRequired = true;
-          }
-          throw error;
+      const body = new FormData();
+      body.set("requestId", normalized.requestId);
+      body.set("courseId", normalized.courseId);
+      body.set("expectedRevision", String(normalized.expectedRevision));
+      body.set("sourceId", normalized.sourceId);
+      body.set("sourceRevision", String(normalized.sourceRevision));
+      body.set("file", file, typeof file.name === "string" && file.name ? file.name : "fonte.pdf");
+      const execute = () => this.http.request(
+        "/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte",
+        {
+          method: "POST",
+          body,
+          rawBody: true,
+          accessToken,
+          timeoutMs: COURSE_SOURCE_PDF_TIMEOUT_MS
         }
+      );
+      let response;
+      try {
+        response = await execute();
+      } catch (error) {
+        if (!transientCourseEdgeFailure(error)) throw error;
+        await new Promise((resolve) => globalThis.setTimeout(resolve, COURSE_EDGE_RETRY_DELAY_MS));
+        response = await execute();
       }
+      const ingestion = normalizeCourseSourcePdfIngestion(response?.data ?? null);
+      const result = normalizeCourseSourceChange({
+        contract: COURSE_SOURCE_CHANGE_CONTRACT,
+        courseId: ingestion.courseId,
+        courseRevision: ingestion.courseRevision,
+        requestId: ingestion.requestId,
+        idempotent: ingestion.idempotent,
+        changed: ingestion.changed,
+        change: ingestion.change
+      });
+      if (result.courseId !== normalized.courseId ||
+          result.requestId !== normalized.requestId ||
+          result.courseRevision !== normalized.expectedRevision + (result.changed ? 1 : 0) ||
+          result.change !== null && (
+            result.change.type !== "attach_pdf" ||
+            result.change.subjectId !== normalized.sourceId ||
+            result.change.revision !== normalized.sourceRevision
+          )) {
+        throw new TypeError("A confirmação da ingestão do PDF não corresponde ao pedido.");
+      }
+      return result;
+    } catch (error) {
+      if (authenticationFailure(error)) {
+        await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
+        this.authClient.emit?.("SESSION_INVALID");
+        error.authRequired = true;
+      }
+      throw error;
     }
-    return this.mutateCourseSources({
-      requestId,
-      courseId,
-      expectedRevision,
-      sourceCommand: {
-        type: "attach_pdf",
-        sourceId,
-        sourceRevision,
-        attachment: access.attachment
-      }
-    });
   }
 
   async loadCourseAnchoredAnnotations(courseId, value = {}) {

@@ -4,7 +4,7 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Evidência corrente revisada em **2026-08-28**.
+Evidência corrente revisada em **2026-08-29**.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -12,7 +12,7 @@ Evidência corrente revisada em **2026-08-28**.
 | Editar Unidade no Estudo | sim | para gravar | proprietário ou pessoa apta a criar cópia | sim | sim | sim | produto | acesso compartilhado grava somente numa cópia pessoal |
 | Planejar, materializar e revisar Curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
 | Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
-| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | cinco ferramentas públicas canônicas; não inclui perfil ou Manutenção |
+| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | seis ferramentas públicas canônicas; não inclui perfil ou Manutenção |
 | Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
 | Inspecionar Unidades focadas no chat ou na Autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | MCP Apps incorpora o material; o endereço abre o mesmo conjunto filtrado |
 | Excluir Curso próprio ou sair de Curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
@@ -118,9 +118,18 @@ por Microssequência no próprio chat e oferecer o endereço filtrado da Autoria
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
-autorizadas. Suas cinco operações correntes atuam sobre os mesmos contratos de
-Curso, com OAuth confidencial próprio. Actions não é um nome alternativo para
+autorizadas. Suas seis operações canônicas e duas projeções dedicadas a itens do
+plano atuam sobre os mesmos contratos de Curso, com OAuth confidencial próprio.
+Actions não é um nome alternativo para
 MCP e não compartilha sua sessão ou seu protocolo.
+
+Nos dois canais, a pessoa pode retomar o Curso pelo título e conversar sobre o
+estado e os efeitos da autoria. Identidades, revisões e chaves de repetição
+permanecem no estado estruturado do cliente, sem virar dados que a pessoa precise
+transportar entre sessões. Um arquivo anexado só se torna Fonte persistente
+quando sua função no Curso é clara ou confirmada; depois de incorporado, pode ser
+recuperado pelo Curso em outra sessão sem novo envio. Análise declarada como
+temporária não incorpora o documento.
 
 Perfil, cópia pessoal, ciclo de vida de Curso e Manutenção permanecem ações do
 aplicativo autenticado. Elas não são expostas como ferramentas públicas só para

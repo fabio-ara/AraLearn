@@ -1,22 +1,43 @@
 # Criar e desenvolver Cursos por conversa
 
 Este guia apresenta a Autoria por um cliente conectado ao Model Context
-Protocol (MCP). A conversa e a interface visual trabalham sobre o mesmo Curso.
-O cliente traduz a intenção expressa em linguagem natural para leituras e
-operações delimitadas, enquanto o AraLearn verifica propriedade, revisões,
-contratos e relações antes de confirmar uma mudança.
+Protocol (MCP) ou por um GPT personalizado com Actions. A conversa e a interface
+visual trabalham sobre o mesmo Curso. O cliente traduz a intenção expressa em
+linguagem natural para leituras e operações delimitadas, enquanto o AraLearn
+verifica propriedade, revisões, contratos e relações antes de confirmar uma
+mudança.
 
 Este percurso pressupõe que a organização já disponibilizou um cliente MCP
 compatível. Ele não implica que um app do AraLearn esteja publicado ou
 instalável no ChatGPT e não substitui um tutorial de instalação na interface
 corrente desse produto.
 
+## Conversar sobre o Curso, não sobre o protocolo
+
+O cliente precisa conservar internamente identidades, revisões, versões e
+chaves de repetição segura. Isso não obriga a pessoa a operar esses campos. A
+regra é **preservar internamente != mostrar ao usuário**.
+
+A conversa progride em quatro níveis. Por padrão, mostra onde a autoria parou,
+o que existe, o que falta, o efeito da proposta, o que permanecerá intacto e a
+decisão humana necessária. Quando útil, acrescenta transparência leve, como
+“Reli o estado atual do Curso antes de preparar esta proposta”. Diante de falha,
+explica em linguagem de tarefa o que foi ou não salvo e o próximo passo seguro.
+IDs, revisões, CAS, payloads, hashes, caminhos e erros brutos aparecem somente
+sob pedido explícito.
+
+Prefira “A alteração foi gravada e validada; as 12 Partes continuam intactas”.
+Evite “Sucesso no `requestId` X, revisão Y, com este payload”. Se a pessoa pedir
+“Mostre os IDs, as revisões e a chamada que falhou”, o cliente pode apresentar o
+detalhe recuperado sem fabricar campos ausentes.
+
 ## Antes de começar
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
 2. Autorize sua conta individual por OAuth.
-3. Confirme a descoberta das cinco ferramentas e do recurso
-   `aralearn://authoring/invariants`.
+3. No MCP, confirme a descoberta das seis ferramentas e dos recursos
+   `aralearn://authoring/*`; em Actions, confira as seis operações canônicas e as
+   duas projeções dedicadas importadas do OpenAPI.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
    propor alterações.
 
@@ -41,9 +62,10 @@ resultado de aprendizagem, valor de parâmetro ou alegação de eficácia.
 
 ## Localizar ou criar o Curso
 
-Peça ao cliente que procure pelo título com `listarCursos`. Diante de homônimos,
-ele deve apresentar título, objetivo e revisão suficientes para uma escolha
-segura.
+Peça ao cliente que procure pelo título com `listarCursos`. Uma correspondência
+única plausível pode ser usada diretamente. Diante de homônimos, ele deve pedir
+uma escolha por informações humanas, como objetivo, etapa atual ou atividade
+recente; UUID não é a primeira opção de desambiguação.
 
 Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título e
 objetivo. A operação usa um `requestId`, que permite recuperar o mesmo resultado
@@ -72,12 +94,23 @@ Microssequências existem, atribua a cada uma as unidades de análise e os
 requisitos de evidência que ela precisa desenvolver. Essa atribuição é
 explícita e admite vários itens em vários alvos.
 
+Quando a escrita ainda depender de uma decisão humana ou possuir confirmação
+própria, a confirmação deve explicar alcance e efeito pedagógico. Um
+exemplo adequado é: “Vou acrescentar 9 resultados de aprendizagem, 30 elementos
+fundamentais e 12 formas de evidência. As 12 Partes permanecem como estão e
+nenhuma aula será criada. Confirmo?”. Essa forma se adapta à mudança real; não é
+um texto fixo. Pedir confirmação de um nome de operação, de revisões ou de um
+payload é inadequado porque não esclarece o que mudará no Curso. Uma intenção
+que já declara inequivocamente manter um PDF entre as Fontes autoriza somente
+essa incorporação sem repetir uma pergunta cerimonial; as demais confirmações
+continuam regidas pela operação pertinente.
+
 Na interface, Observações e mudanças de Parâmetros são salvas no próprio Curso e
 permanecem visíveis na Autoria. No ChatGPT conectado por MCP ou Actions, peça
 para ler esse estado, discuta a proposta e ajuste-a até que represente a intenção
-autoral. O Curso só muda depois da aprovação explícita da operação no cliente
-conectado. A interface normal não usa compositor nem transferência por cópia e
-cola para iniciar esse trabalho.
+autoral. Quando a decisão ainda estiver aberta, o Curso só muda depois da
+aprovação explícita no cliente conectado. A interface normal não usa compositor
+nem transferência por cópia e cola para iniciar esse trabalho.
 
 ## Configurar o desenho
 
@@ -114,6 +147,12 @@ unidades de análise e requisitos de evidência daquele alvo.
 
 ## Registrar Fontes e Âncoras
 
+Ao retomar em outra sessão, localize o Curso pelo título, releia o planejamento
+e consulte primeiro o catálogo. O resumo conversacional usa referências e
+localizadores humanos e permanece curto. Abra o detalhe apenas das Fontes
+pertinentes e solicite um PDF por vez somente quando a tarefa exigir verificação
+focal; não é necessário anexar novamente um documento já mantido no Curso.
+
 Use `course_sources` para percorrer o catálogo, abrir uma Fonte ou consultar o
 histórico de um alvo. Registre somente metadados conhecidos. Se faltarem autoria,
 data, edição, periódico ou outros dados necessários à referência, explicite a
@@ -127,6 +166,10 @@ Uma atribuição liga a revisão exata da Fonte e suas Âncoras a um item do pla
 ou a uma Unidade. A relação pode indicar que a Fonte informou, sustentou,
 inspirou, exemplificou, contrastou ou serviu de base para adaptação ou citação.
 Também pode registrar que o caso ainda precisa de verificação.
+
+Uma nova edição, errata ou norma substituta não herda seletores. Crie Âncoras
+na revisão ativa correspondente. A aposentadoria impede novas atribuições, mas
+mantém legíveis as referências históricas do planejamento e das Unidades.
 
 `set_target_sources` substitui o conjunto completo e ordenado do alvo. Para
 cada Unidade criada ou substituída numa operação de composição, o cliente envia
@@ -146,10 +189,32 @@ Curso aceita até 64 MiB de conteúdo PDF único. Arquivos com os mesmos bytes s
 reutilizados dentro do Curso quando impressão digital, tamanho, tipo e autorização
 coincidem.
 
-O envio de PDF é uma operação da aplicação autenticada, não do cliente
-conversacional: o preparo cria uma intenção de dez minutos, o Storage exige uma
-sessão ainda viva e a inserção consome essa intenção. O MCP pode consultar os
-metadados autorizados, mas não recebe o arquivo nem uma credencial de upload.
+Na interface visual, selecione o arquivo na área **Fontes**. Em MCP ou Actions,
+use `incorporarPdfComoFonte`: a operação recebe o PDF pelo mecanismo de arquivo
+suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
+salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
+ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
+
+A intenção determina se o anexo fica apenas na conversa ou passa a integrar o
+Curso:
+
+- “Use este edital para fundamentar o Curso”, “considere este PPC e esta prova
+  no planejamento” ou “incorpore esta nova norma e revise a Parte” são pedidos
+  inequívocos; o cliente incorpora cada PDF sem pedir uma frase mágica ou outra
+  confirmação cerimonial;
+- diante de “O que você acha deste PDF?”, o cliente pergunta exatamente “Você
+  quer usar este documento só nesta análise ou mantê-lo entre as Fontes do
+  Curso?”;
+- “compare só nesta análise” ou “não incorpore ao Curso” limita o uso à análise
+  temporária e não chama a operação.
+
+Essa regra vale no planejamento, materialização, revisão de Parte, Auditoria,
+correção, atualização normativa, bibliografia, Observações e Pesquisa. Se uma
+confirmação ainda for necessária, ela fala do efeito — manter o documento entre
+as Fontes e onde ele será considerado —, não do transporte. O cliente só informa
+que o PDF foi mantido depois que o AraLearn confirma a gravação. Falha de
+transferência, tamanho ou cota não vira sucesso; detalhes técnicos ficam para um
+pedido explícito.
 
 ## Descobrir componentes conforme a intenção
 
@@ -276,7 +341,15 @@ aprendizagem, atenção, esforço ou eficácia.
 
 ## Retomar em outra conversa
 
-Uma nova sessão deve reler:
+Não é necessário levar um prompt de restauração, UUIDs ou revisões para outra
+sessão. Um pedido suficiente pode ser:
+
+> Continue a autoria do curso Gestão de Servidores; quero terminar o planejamento
+> antes de produzir conteúdo.
+
+O cliente localiza os Cursos próprios pelo nome. Se houver uma única
+correspondência plausível, continua com ela; se houver ambiguidade real,
+apresenta diferenças compreensíveis e pede uma escolha. Em seguida, deve reler:
 
 1. o recurso de invariantes;
 2. o Curso e sua revisão;
@@ -286,7 +359,11 @@ Uma nova sessão deve reler:
 6. o achado, a rodada ou a comparação pertinente, quando aplicável.
 
 O estado recuperável está no Curso e em seus registros associados. A conversa
-anterior não se torna uma cópia oculta do planejamento.
+anterior não se torna uma cópia oculta do planejamento. Ela pode ajudar a
+descobrir o alvo, mas o cliente reconstrói revisões e versões a partir do estado
+vivo, identifica a etapa autoral e responde com o que falta e a próxima decisão.
+Um link para a interface é oferecido quando ajuda uma ação concreta, não como
+detalhe obrigatório de toda retomada.
 
 ## Resolver falhas comuns
 
@@ -294,13 +371,15 @@ anterior não se torna uma cópia oculta do planejamento.
 | --- | --- |
 | autorização expirou | refaça o OAuth com a mesma conta |
 | Curso não foi encontrado | confira conta, identidade e propriedade |
-| revisão mudou | releia a vista e reconcilie a proposta |
-| pedido perdeu a resposta | repita o mesmo `requestId` apenas com o mesmo comando |
+| revisão mudou | releia o estado vivo, preserve o trabalho novo e reconcilie a proposta |
+| pedido perdeu a resposta | não anuncie sucesso; recupere o resultado ou repita com segurança |
 | componente foi bloqueado | releia a política efetiva e escolha entre os permitidos |
 | Fonte ou Âncora foi recusada | releia a revisão ativa e envie o conjunto completo do alvo |
+| PDF não foi transferido | informe que a incorporação não foi confirmada e tente novamente com o mesmo documento quando for seguro |
+| PDF excedeu tamanho ou cota | explique o limite aplicável e peça outro arquivo ou a liberação de espaço, sem afirmar que o documento foi mantido |
 | evidência factual foi recusada | confira relação, Fonte, Âncora e revisão do critério |
 | correção ficou desatualizada | releia a Unidade e prepare outra proposta sobre o estado corrente |
-| resultado não apareceu | confirme ambiente, conta, Curso, revisão e destino da interface |
+| resultado não apareceu | informe o que não pôde ser confirmado e confira ambiente, conta, Curso e destino da interface |
 
 Os argumentos completos estão em [Autoria por MCP](autoria-mcp.md). Para os
 fundamentos da assistência, consulte [Assistência por modelo de

@@ -18,7 +18,8 @@ O AraLearn oferece três integrações relacionadas, mas distintas:
   Lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
   canônicas de Curso;
-- **Actions/OpenAPI** conecta um GPT personalizado a cinco operações HTTP.
+- **Actions/OpenAPI** conecta um GPT personalizado a seis operações canônicas
+  e duas projeções HTTP dedicadas a itens do plano.
 
 Os três caminhos chegam às mesmas regras de Curso. Eles não compartilham
 credencial, sessão ou protocolo. Perfil, acesso, cópia pessoal, ciclo de vida do
@@ -136,21 +137,24 @@ ensaios de desenvolvimento usam stubs determinísticos, nunca uma chamada paga.
 
 ## MCP e Actions
 
-O MCP e Actions oferecem as mesmas cinco funções de alto nível:
+O MCP e Actions oferecem as mesmas seis funções de alto nível:
 
 - localizar Cursos próprios;
 - ler um recorte corrente;
 - criar a raiz privada de um Curso;
 - executar alterações autorais tipadas;
+- manter um PDF entre as Fontes do Curso;
 - descobrir, validar e visualizar componentes didáticos.
 
 No MCP, essas funções aparecem como `listarCursos`, `lerCurso`, `criarCurso`,
-`alterarCurso` e `consultarComponentesDidaticos`. Leituras especializadas usam
-vistas, como Planejamento, Fontes, Observações, Auditoria, Variantes e Pesquisa.
-Escritas especializadas usam comandos fechados de `alterarCurso`.
+`alterarCurso`, `incorporarPdfComoFonte` e `consultarComponentesDidaticos`.
+Leituras especializadas usam vistas, como Planejamento, Fontes, Observações,
+Auditoria, Variantes e Pesquisa. Escritas especializadas usam comandos fechados
+de `alterarCurso`.
 
-Actions publica cinco operações HTTP com os mesmos nomes e uma descrição
-OpenAPI. Seu cliente OAuth é confidencial e separado do principal OAuth do MCP.
+Actions publica as seis operações canônicas e duas projeções HTTP dedicadas a
+itens do plano em uma descrição OpenAPI. Seu cliente OAuth é confidencial e
+separado do principal OAuth do MCP.
 A [Autoria por MCP](autoria-mcp.md) documenta o primeiro canal; [GPT
 personalizado com Actions](autoria-actions.md) documenta o segundo.
 
@@ -165,6 +169,16 @@ Fontes possuem revisões e Âncoras exatas. URLs temporárias de PDF e o texto
 integral de Observações só são enviados ao cliente conectado depois de uma
 solicitação explícita. Uma citação torna a origem localizável; não garante a
 verdade da afirmação nem a qualidade da Fonte.
+
+Um arquivo anexado à conversa só se torna Fonte persistente quando sua função
+no Curso é clara ou confirmada. Uma vez incorporado, ele pertence ao Curso vivo
+e não depende da sessão anterior; uso declarado como temporário permanece fora
+das Fontes.
+
+Em outra sessão, a assistência retoma essas Fontes a partir do Curso vivo,
+resume referências e localizadores humanos e abre somente o PDF necessário à
+verificação focal. A memória da conversa e um novo upload não substituem essa
+base persistente.
 
 Na Auditoria, contexto, achado, proposta, aplicação, verificação e reversão são
 estados distintos. Uma correção focal preserva o restante da estrutura e exige

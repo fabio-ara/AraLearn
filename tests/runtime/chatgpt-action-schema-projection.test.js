@@ -152,6 +152,25 @@ test("projeção de Actions deriva todos os vocabulários discriminados do proto
   );
 });
 
+test("Actions projeta o PDF canônico somente pelo transporte oficial de arquivos", () => {
+  const canonical = canonicalByName.incorporarPdfComoFonte.inputSchema;
+  const action = actionByName.incorporarPdfComoFonte.inputSchema;
+
+  assert.ok(canonical.properties.pdf);
+  assert.ok(canonical.required.includes("pdf"));
+  assert.equal(action.properties.pdf, undefined);
+  assert.equal(action.required.includes("pdf"), false);
+  assert.deepEqual(action.properties.openaiFileIdRefs, {
+    type: "array",
+    minItems: 1,
+    maxItems: 1,
+    items: { type: "string" },
+    description:
+      "Referência ao único PDF enviado pela pessoa nesta conversa. O ChatGPT preenche este campo com a referência temporária do arquivo."
+  });
+  assert.ok(action.required.includes("openaiFileIdRefs"));
+});
+
 test("projeção Action-safe não deixa allOf, const nem discriminador sem tipo", () => {
   for (const tool of actionTools) {
     assert.equal(tool.inputSchema.type, "object", `${tool.name}: raiz importável`);

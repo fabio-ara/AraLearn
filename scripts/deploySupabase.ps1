@@ -248,6 +248,12 @@ process.stdout.write([
       throw 'O smoke hospedado de PDF falhou; a implantação requer correção.'
     }
 
+    Write-Host 'Validando a retomada conversacional hospedada em nova sessão lógica...'
+    & node .\scripts\runHostedConversationalSourceSmoke.mjs
+    if ($LASTEXITCODE -ne 0) {
+      throw 'O smoke conversacional hospedado falhou; a implantação requer correção.'
+    }
+
     Write-Host 'As funções da versão publicada foram preservadas até a verificação do novo site.'
   }
 

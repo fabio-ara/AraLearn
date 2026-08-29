@@ -98,6 +98,7 @@ function withoutMcpTransportMetadata(tools) {
       delete normalized._meta.securitySchemes;
       delete normalized._meta.ui;
       delete normalized._meta["openai/outputTemplate"];
+      delete normalized._meta["openai/fileParams"];
       if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
     }
     return normalized;
@@ -197,6 +198,7 @@ assert.deepEqual(listed.tools.map(({ name }) => name), [
   "lerCurso",
   "criarCurso",
   "alterarCurso",
+  "incorporarPdfComoFonte",
   "consultarComponentesDidaticos"
 ]);
 assert.deepEqual(

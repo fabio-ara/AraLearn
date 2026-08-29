@@ -86,6 +86,32 @@ function json(value, status = 200) {
   });
 }
 
+function syntheticPdf(label = "fixture") {
+  return new TextEncoder().encode(
+    `%PDF-1.7\n% ${label}\n1 0 obj\n<< /Type /Catalog >>\nendobj\n` +
+      "startxref\n42\n%%EOF\n"
+  );
+}
+
+function pdfSourceDocument(overrides = {}) {
+  return {
+    kind: "document",
+    title: "Documento autorizado",
+    authorship: null,
+    publicationDate: null,
+    identifier: null,
+    language: null,
+    citationText: null,
+    url: null,
+    editionOrVersion: null,
+    origin: "author_provided",
+    availability: "private",
+    verificationStatus: "author_verified",
+    studyVisibility: "hidden",
+    ...overrides
+  };
+}
+
 const ANNOTATION_ID = "80000000-0000-4000-8000-000000000008";
 
 function anchoredAnnotation({
@@ -2738,8 +2764,514 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   );
 });
 
+test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bibliográficas", async () => {
+  const pdfBytes = syntheticPdf("save-new");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const calls = [];
+  let derivedSourceId = null;
+  const value = adapter(async (url, init) => {
+    const isStorageUpload = init.method === "POST" &&
+      url.includes("/storage/v1/object/course-source-pdfs/");
+    const body = isStorageUpload || init.body == null ? init.body : JSON.parse(init.body);
+    calls.push({ url, init, body });
+    if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+      derivedSourceId = body.p_source_intent.sourceId;
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion-preparation.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-ingest-save-1",
+        sourceId: derivedSourceId,
+        sourceRevision: 1,
+        attachment: {
+          contentHash,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath
+        },
+        uploadRequired: true,
+        alreadyLinked: false
+      });
+    }
+    if (isStorageUpload) return json({ Key: storagePath });
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: {
+          "Content-Length": String(pdfBytes.byteLength),
+          "Content-Type": "application/pdf"
+        }
+      });
+    }
+    if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+      assert.equal(body.p_source_intent.source.authorship, null);
+      assert.equal(body.p_source_intent.source.publicationDate, null);
+      assert.equal(body.p_source_intent.source.identifier, null);
+      assert.equal(body.p_source_intent.source.url, null);
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        requestId: "request-ingest-save-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: derivedSourceId, revision: 1 },
+        source: {
+          sourceId: derivedSourceId,
+          sourceRevision: 1,
+          bibliographyChanged: true
+        },
+        attachment: body.p_attachment,
+        stored: true
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  const result = await value.ingestCourseSourcePdf({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-save-1",
+    sourceIntent: {
+      mode: "save",
+      sourceId: null,
+      expectedSourceRevision: 0,
+      source: pdfSourceDocument()
+    },
+    bytes: pdfBytes.buffer,
+    mediaType: "application/pdf"
+  });
+  assert.equal(result.stored, true);
+  assert.equal(result.courseRevision, 7);
+  assert.match(derivedSourceId, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+  const upload = calls.find(({ url, init }) => init.method === "POST" &&
+    url.includes("/storage/v1/object/course-source-pdfs/"));
+  assert(upload);
+  assert.deepEqual(new Uint8Array(upload.body), pdfBytes);
+  assert.equal(new Headers(upload.init.headers).get("content-type"), "application/pdf");
+  assert.equal(new Headers(upload.init.headers).get("x-upsert"), "false");
+  assert.equal(new Headers(upload.init.headers).get("apikey"), "sb_secret_test");
+  assert.match(upload.url, new RegExp(`${COURSE_ID}/${contentHash}\\.pdf$`, "u"));
+});
+
+test("ingestão recusa mídia e estrutura inválidas antes de acessar Supabase", async () => {
+  let calls = 0;
+  const value = adapter(async () => {
+    calls += 1;
+    assert.fail("PDF inválido não pode acessar o Supabase.");
+  });
+  const input = {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-invalid-1",
+    sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+    bytes: syntheticPdf("invalid"),
+    mediaType: "application/pdf"
+  };
+  await assert.rejects(
+    () => value.ingestCourseSourcePdf({ ...input, mediaType: "text/plain" }),
+    (error) => error.status === 422 && error.code === "invalid_course_source_pdf"
+  );
+  await assert.rejects(
+    () => value.ingestCourseSourcePdf({
+      ...input,
+      requestId: "request-ingest-invalid-2",
+      bytes: new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n")
+    }),
+    (error) => error.status === 422 && error.code === "invalid_course_source_pdf"
+  );
+  await assert.rejects(
+    () => value.ingestCourseSourcePdf({
+      ...input,
+      requestId: "request-ingest-invalid-3",
+      bytes: new Uint8Array()
+    }),
+    (error) => error.status === 422 && error.code === "invalid_course_source_pdf"
+  );
+  assert.equal(calls, 0);
+});
+
+test("ingestão traduz cota e limite de anexos em mensagens humanas", async () => {
+  const cases = [{
+    message: "A cota de 64 MiB de PDFs únicos do Curso seria excedida.",
+    code: "course_source_pdf_quota_exceeded",
+    pattern: /cota de 64 MiB/iu
+  }, {
+    message: "Uma revisão de Fonte aceita no máximo oito anexos PDF.",
+    code: "course_source_pdf_attachment_limit",
+    pattern: /máximo de oito PDFs/iu
+  }];
+  for (const [index, current] of cases.entries()) {
+    const pdfBytes = syntheticPdf(`limit-${index}`);
+    const value = adapter(async (url) => {
+      if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+        return json({ code: "23514", message: current.message }, 400);
+      }
+      if (url.endsWith("/cancel_course_source_pdf_ingestion_for_actor_v1")) {
+        return json(true);
+      }
+      assert.fail(`Requisição inesperada: ${url}`);
+    });
+    await assert.rejects(
+      () => value.ingestCourseSourcePdf({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        expectedCourseRevision: 5,
+        requestId: `request-ingest-limit-${index + 1}`,
+        sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+        bytes: pdfBytes,
+        mediaType: "application/pdf"
+      }),
+      (error) => error.status === 413 && error.code === current.code &&
+        current.pattern.test(error.message),
+      current.code
+    );
+  }
+});
+
+test("conflito de upload é deduplicação binária e ainda exige verificação e vínculo", async () => {
+  const pdfBytes = syntheticPdf("dedup");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const attachment = {
+    contentHash,
+    byteSize: pdfBytes.byteLength,
+    mediaType: "application/pdf",
+    storagePath: `${COURSE_ID}/${contentHash}.pdf`
+  };
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, method: init.method });
+    if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion-preparation.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-ingest-dedup-1",
+        sourceId: "source-pdf",
+        sourceRevision: 2,
+        attachment,
+        uploadRequired: true,
+        alreadyLinked: false
+      });
+    }
+    if (init.method === "POST" && url.includes("/storage/v1/object/course-source-pdfs/")) {
+      return json({ statusCode: "409", error: "Duplicate", message: "The resource already exists" }, 409);
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: { "Content-Length": String(pdfBytes.byteLength) }
+      });
+    }
+    if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-ingest-dedup-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 },
+        source: {
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment,
+        stored: true
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.ingestCourseSourcePdf({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-dedup-1",
+    sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+    bytes: pdfBytes,
+    mediaType: "application/pdf"
+  });
+  assert.equal(result.stored, true);
+  assert.equal(calls.some(({ method }) => method === "DELETE"), false);
+  assert.equal(calls.filter(({ url }) =>
+    url.includes("/storage/v1/object/authenticated/course-source-pdfs/")).length, 2);
+});
+
+test("upload ambíguo relê preflight e objeto antes de finalizar", async () => {
+  const pdfBytes = syntheticPdf("uncertain");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const attachment = {
+    contentHash,
+    byteSize: pdfBytes.byteLength,
+    mediaType: "application/pdf",
+    storagePath: `${COURSE_ID}/${contentHash}.pdf`
+  };
+  let preparations = 0;
+  let uploadAttempts = 0;
+  const value = adapter(async (url, init) => {
+    if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+      preparations += 1;
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion-preparation.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-ingest-uncertain-1",
+        sourceId: "source-pdf",
+        sourceRevision: 2,
+        attachment,
+        uploadRequired: preparations === 1,
+        alreadyLinked: false
+      });
+    }
+    if (init.method === "POST" && url.includes("/storage/v1/object/course-source-pdfs/")) {
+      uploadAttempts += 1;
+      throw new TypeError("resposta perdida após o envio");
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: { "Content-Length": String(pdfBytes.byteLength) }
+      });
+    }
+    if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-ingest-uncertain-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 },
+        source: {
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment,
+        stored: true
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.ingestCourseSourcePdf({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-uncertain-1",
+    sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+    bytes: pdfBytes,
+    mediaType: "application/pdf"
+  });
+  assert.equal(result.stored, true);
+  assert.equal(preparations, 2);
+  assert.equal(uploadAttempts, 1);
+});
+
+test("replay pós-timeout recupera receipt e path herdado antes de confirmar stored", async () => {
+  const pdfBytes = syntheticPdf("replay");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const storageOriginCourseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const inheritedAttachment = {
+    contentHash,
+    byteSize: pdfBytes.byteLength,
+    mediaType: "application/pdf",
+    storagePath: `${storageOriginCourseId}/${contentHash}.pdf`
+  };
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push(url);
+    if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+      return json({ code: "40001", message: "O Curso mudou." }, 409);
+    }
+    if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+      const body = JSON.parse(init.body);
+      assert.deepEqual(body.p_attachment, {
+        contentHash,
+        byteSize: pdfBytes.byteLength,
+        mediaType: "application/pdf",
+        storagePath: `${COURSE_ID}/${contentHash}.pdf`
+      });
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-ingest-replay-1",
+        idempotent: true,
+        changed: false,
+        change: null,
+        source: {
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment: inheritedAttachment,
+        stored: true
+      });
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: { "Content-Length": String(pdfBytes.byteLength) }
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.ingestCourseSourcePdf({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-replay-1",
+    sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+    bytes: pdfBytes,
+    mediaType: "application/pdf"
+  });
+  assert.equal(result.idempotent, true);
+  assert.equal(calls.length, 3);
+  assert.equal(calls.filter((url) =>
+    url.includes("/storage/v1/object/authenticated/course-source-pdfs/")).length, 1);
+  assert.equal(calls.some((url) => url.endsWith(
+    `/course-source-pdfs/${storageOriginCourseId}/${contentHash}.pdf`
+  )), true);
+});
+
+test("replay não confirma stored quando o objeto está ausente ou corrompido", async () => {
+  const cases = [
+    { label: "ausente", objectResponse: () => new Response(null, { status: 404 }) },
+    {
+      label: "corrompido",
+      objectResponse: () => {
+        const bytes = syntheticPdf("outro-binario");
+        return new Response(bytes, {
+          headers: { "Content-Length": String(bytes.byteLength) }
+        });
+      }
+    }
+  ];
+  for (const current of cases) {
+    const pdfBytes = syntheticPdf(`replay-${current.label}`);
+    const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+    const requestId = `request-ingest-replay-${current.label}`;
+    const attachment = {
+      contentHash,
+      byteSize: pdfBytes.byteLength,
+      mediaType: "application/pdf",
+      storagePath: `${COURSE_ID}/${contentHash}.pdf`
+    };
+    let cancels = 0;
+    const value = adapter(async (url) => {
+      if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+        return json({ code: "40001", message: "O Curso mudou." }, 409);
+      }
+      if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+        return json({
+          contract: "aralearn.course-source-pdf-ingestion.v1",
+          courseId: COURSE_ID,
+          courseRevision: 6,
+          requestId,
+          idempotent: true,
+          changed: true,
+          change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 },
+          source: {
+            sourceId: "source-pdf",
+            sourceRevision: 2,
+            bibliographyChanged: false
+          },
+          attachment,
+          stored: true
+        });
+      }
+      if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+        return current.objectResponse();
+      }
+      if (url.endsWith("/cancel_course_source_pdf_ingestion_for_actor_v1")) {
+        cancels += 1;
+        return json(true);
+      }
+      assert.fail(`Requisição inesperada em ${current.label}: ${url}`);
+    });
+    await assert.rejects(
+      () => value.ingestCourseSourcePdf({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        expectedCourseRevision: 5,
+        requestId,
+        sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+        bytes: pdfBytes,
+        mediaType: "application/pdf"
+      }),
+      (error) => error.status === 422 && error.code === "invalid_course_source_pdf",
+      current.label
+    );
+    assert.equal(cancels, 1, current.label);
+  }
+});
+
+test("falha após upload cancela a intent e deixa o órfão para a manutenção", async () => {
+  const pdfBytes = syntheticPdf("residual-maintenance");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const attachment = {
+    contentHash,
+    byteSize: pdfBytes.byteLength,
+    mediaType: "application/pdf",
+    storagePath: `${COURSE_ID}/${contentHash}.pdf`
+  };
+  let uploads = 0;
+  let cancels = 0;
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, method: init.method });
+    if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion-preparation.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-ingest-residual-1",
+        sourceId: "source-pdf",
+        sourceRevision: 2,
+        attachment,
+        uploadRequired: true,
+        alreadyLinked: false
+      });
+    }
+    if (init.method === "POST" && url.includes("/storage/v1/object/course-source-pdfs/")) {
+      uploads += 1;
+      return json({ Key: attachment.storagePath });
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: { "Content-Length": String(pdfBytes.byteLength) }
+      });
+    }
+    if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+      return json({ code: "XX000", message: "falha após upload" }, 500);
+    }
+    if (url.endsWith("/cancel_course_source_pdf_ingestion_for_actor_v1")) {
+      cancels += 1;
+      return json(true);
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  await assert.rejects(
+    () => value.ingestCourseSourcePdf({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      expectedCourseRevision: 5,
+      requestId: "request-ingest-residual-1",
+      sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+      bytes: pdfBytes,
+      mediaType: "application/pdf"
+    }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+  assert.equal(uploads, 1);
+  assert.equal(cancels, 1);
+  assert.equal(calls.some(({ method }) => method === "DELETE"), false);
+  assert.equal(calls.some(({ url }) =>
+    url.endsWith("/can_compensate_course_source_pdf_ingestion_for_actor_v1")), false);
+});
+
 test("Adapter autoriza upload autenticado e só assina download depois da autorização", async () => {
-  const pdfBytes = new TextEncoder().encode("%PDF-1.7\nfixture");
+  const pdfBytes = syntheticPdf("legacy-attachment");
   const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
   const storageOriginCourseId = "90000000-0000-4000-8000-000000000009";
   const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
@@ -2869,9 +3401,10 @@ test("Adapter autoriza upload autenticado e só assina download depois da autori
 });
 
 test("Adapter recusa conteúdo adulterado, cabeçalho inválido e objeto acima de 20 MiB", async () => {
-  const declaredPdf = new TextEncoder().encode("%PDF-1.7\nalpha");
-  const otherPdf = new TextEncoder().encode("%PDF-1.7\nbravo");
-  const invalidHeader = new TextEncoder().encode("NOTPD1.7\nalpha");
+  const declaredPdf = syntheticPdf("alpha");
+  const otherPdf = syntheticPdf("bravo");
+  const invalidHeader = new Uint8Array(declaredPdf);
+  invalidHeader[0] = 0x4e;
   assert.equal(otherPdf.byteLength, declaredPdf.byteLength);
   assert.equal(invalidHeader.byteLength, declaredPdf.byteLength);
 

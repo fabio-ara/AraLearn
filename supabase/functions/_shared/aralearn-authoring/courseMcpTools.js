@@ -20,6 +20,10 @@ import {
   CourseAuthoringAnalyticsError,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
+import {
+  CourseSourcesError,
+  normalizeCourseSourcePdfSourceIntent
+} from "../aralearn/runtime/domain/courseSources.js";
 import { courseMcpAppToolMeta } from "./courseMcpAppResource.js";
 import {
   ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES,
@@ -49,11 +53,19 @@ export {
 export const COURSE_MCP_TOOLS = Object.freeze(
   AUTHORING_PROTOCOL_V1_TOOLS.map((definition) => {
     const tool = structuredClone(definition);
-    return Object.freeze(new Set([
+    const uiTool = new Set([
       "lerCurso",
       "consultarComponentesDidaticos"
-    ]).has(definition.name)
-      ? { ...tool, _meta: courseMcpAppToolMeta() }
+    ]).has(definition.name);
+    const fileTool = definition.name === "incorporarPdfComoFonte";
+    return Object.freeze(uiTool || fileTool
+      ? {
+        ...tool,
+        _meta: {
+          ...(uiTool ? courseMcpAppToolMeta() : {}),
+          ...(fileTool ? { "openai/fileParams": ["pdf"] } : {})
+        }
+      }
       : tool);
   })
 );
@@ -62,7 +74,9 @@ const BY_NAME = new Map(COURSE_MCP_TOOLS.map((definition) => [definition.name, d
 const PROTOCOL_BY_NAME = new Map(
   AUTHORING_PROTOCOL_V1_TOOLS.map((definition) => [definition.name, definition])
 );
-const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso"]);
+const WRITE_TOOLS = new Set([
+  "criarCurso", "alterarCurso", "incorporarPdfComoFonte"
+]);
 export const COURSE_APPLICATION_ONLY_TOOLS = Object.freeze([
   Object.freeze({ name: "gerirPessoas" }),
   Object.freeze({ name: "criarCopiaPessoalDoCurso" }),
@@ -182,6 +196,15 @@ function normalizeCourseAuditCycleDomain(normalize) {
     return normalize();
   } catch (error) {
     if (!(error instanceof CourseAuditCycleError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+function normalizeCourseSourcesDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseSourcesError)) throw error;
     throw new AuthoringApiError(422, error.code, error.message, error.details);
   }
 }
@@ -863,6 +886,29 @@ function mapCreate(raw) {
     title: requiredText(raw.title, "title", { maximum: 300 }),
     objective: requiredText(raw.objective, "objective", { maximum: 2_000 })
   });
+}
+
+function mapCourseSourcePdfIngestion(raw) {
+  exactFields(raw, new Set([
+    "requestId", "courseId", "expectedRevision", "sourceIntent", "pdf"
+  ]));
+  const requestId = requiredRequestId(raw.requestId);
+  const sourceIntent = normalizeCourseSourcesDomain(() =>
+    normalizeCourseSourcePdfSourceIntent(
+      boundedJsonObject(raw.sourceIntent, "sourceIntent", 16 * 1024)
+    )
+  );
+  return {
+    kind: "course-source-pdf-ingestion",
+    requestId,
+    body: {
+      requestId,
+      courseId: requiredUuid(raw.courseId, "courseId"),
+      expectedCourseRevision: positiveInteger(raw.expectedRevision, "expectedRevision"),
+      sourceIntent,
+      pdf: boundedJsonObject(raw.pdf, "pdf", 12 * 1024)
+    }
+  };
 }
 
 function mapPersonalCourseCopy(raw) {
@@ -1557,6 +1603,7 @@ export function mapAuthoringProtocolV1Call(name, rawArguments) {
   if (name === "lerCurso") return mapRead(raw);
   if (name === "criarCurso") return mapCreate(raw);
   if (name === "alterarCurso") return mapChange(raw);
+  if (name === "incorporarPdfComoFonte") return mapCourseSourcePdfIngestion(raw);
   if (name === "consultarComponentesDidaticos") return mapResourceLibrary(raw);
   throw new AuthoringApiError(404, "unknown_tool", "Ferramenta de autoria inexistente.");
 }

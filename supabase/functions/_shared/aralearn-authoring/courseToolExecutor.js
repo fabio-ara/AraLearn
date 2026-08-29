@@ -10,6 +10,9 @@ import {
   validateAuthoringMcpToolOutput
 } from "./courseMcpTools.js";
 import { courseAuthoringGuidanceForCall } from "./courseKnowledge.js";
+import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
+import { normalizeCourseSourcePdfIngestion } from
+  "../aralearn/runtime/domain/courseSources.js";
 
 function parseStudyUnitJson(source) {
   try {
@@ -42,7 +45,21 @@ const COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACTS = new Set([
   "aralearn.course-source-attachment-access.v1",
   "aralearn.course-source-attachment-access.v2"
 ]);
+const COURSE_SOURCE_PDF_INGESTION_CONTRACT =
+  "aralearn.course-source-pdf-ingestion.v1";
 const MCP_ATTACHMENT_DOWNLOAD_EXPIRY_SECONDS = 60;
+
+function confirmedCourseSourcePdfIngestion(value) {
+  try {
+    return normalizeCourseSourcePdfIngestion(value);
+  } catch {
+    throw new AuthoringApiError(
+      502,
+      "course_source_pdf_persistence_unconfirmed",
+      "O AraLearn não confirmou que o PDF foi mantido entre as Fontes do Curso."
+    );
+  }
+}
 
 function annotationTargetLabel(target) {
   const path = Array.isArray(target?.currentPath) && target.currentPath.length
@@ -372,6 +389,34 @@ function projectSourceAttachmentAccessForMcp(
   };
 }
 
+function projectSourcePdfIngestionForMcp(value, recipient) {
+  return {
+    contract: "aralearn.mcp-course-source-pdf-ingestion.v1",
+    courseRevision: value.courseRevision ?? null,
+    requestId: value.requestId ?? null,
+    idempotent: value.idempotent === true,
+    changed: value.changed === true,
+    stored: value.stored === true,
+    source: {
+      sourceId: value.source?.sourceId ?? null,
+      sourceRevision: value.source?.sourceRevision ?? null,
+      bibliographyChanged: value.source?.bibliographyChanged === true
+    },
+    technicalDetails: {
+      contentHash: value.attachment?.contentHash ?? null,
+      byteSize: value.attachment?.byteSize ?? null,
+      mediaType: value.attachment?.mediaType ?? null,
+      storagePath: value.attachment?.storagePath ?? null
+    },
+    dataDisclosure: {
+      recipient,
+      purpose: "author_requested_source_persistence",
+      technicalDetailsMachineFacing: true,
+      omitted: ["courseId", "attachment.actorId"]
+    }
+  };
+}
+
 /**
  * Projeta somente os recortes de dados necessários ao cliente MCP.
  * A aplicação continua recebendo os DTOs relacionais completos pelas próprias rotas.
@@ -393,6 +438,9 @@ export function projectCourseToolResultForMcp(
       includeAttachmentDownloadUrl,
       recipient
     });
+  }
+  if (value.contract === COURSE_SOURCE_PDF_INGESTION_CONTRACT) {
+    return projectSourcePdfIngestionForMcp(value, recipient);
   }
   if (value.contract === MCP_ANNOTATION_PAGE_CONTRACT) {
     return {
@@ -564,6 +612,36 @@ export async function executeCourseTool({
       await resourceLibraryResult(operation.body, adapter?.publicAppUrl),
       surface
     );
+  }
+  if (operation.kind === "course-source-pdf-ingestion") {
+    if (typeof adapter?.ingestCourseSourcePdf !== "function") {
+      throw new AuthoringApiError(
+        503,
+        "course_source_pdf_ingestion_unavailable",
+        "O AraLearn não conseguiu receber este documento agora."
+      );
+    }
+    const bytes = await resolveOpenAiTemporaryPdf({
+      descriptor: operation.body.pdf,
+      fetchImpl: adapter.fetchImpl ?? globalThis.fetch,
+      deadlineAt
+    });
+    const result = confirmedCourseSourcePdfIngestion(
+      await adapter.ingestCourseSourcePdf({
+        principal,
+        courseId: operation.body.courseId,
+        expectedCourseRevision: operation.body.expectedCourseRevision,
+        requestId: operation.body.requestId,
+        sourceIntent: operation.body.sourceIntent,
+        bytes,
+        mediaType: "application/pdf",
+        deadlineAt
+      })
+    );
+    const data = surface === "mcp"
+      ? projectCourseToolResultForMcp(result, { recipient: projectionRecipient })
+      : result;
+    return validatedSuccess(name, operation.requestId, data, surface);
   }
   const headers = new Headers({ "Content-Type": "application/json" });
   if (operation.requestId) headers.set("Idempotency-Key", operation.requestId);

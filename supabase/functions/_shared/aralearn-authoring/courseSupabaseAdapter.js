@@ -20,6 +20,7 @@ import {
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 import {
   COURSE_DESIGN_CONTEXT_V2_CONTRACT,
+  COURSE_SOURCE_PDF_MEDIA_TYPE,
   COURSE_SOURCE_PDF_MAX_BYTES,
   CourseSourcesError,
   normalizeCourseSourceAttachmentAccess,
@@ -27,6 +28,10 @@ import {
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourceContext,
+  normalizeCourseSourcePdfIngestion,
+  normalizeCourseSourcePdfIngestionPreparation,
+  normalizeCourseSourcePdfIngestionRequest,
+  normalizeCourseSourcePdfSourceIntent,
   normalizeCourseSourcesRead,
   normalizeSourceAttributionApplications
 } from "../aralearn/runtime/domain/courseSources.js";
@@ -1355,6 +1360,22 @@ function databaseError(status, body) {
         )
       : invalidPersonalCourseCopyResponse();
   }
+  if (code === "23514" &&
+      databaseMessage.startsWith("A cota de 64 MiB de PDFs")) {
+    return new AuthoringApiError(
+      413,
+      "course_source_pdf_quota_exceeded",
+      "O Curso já atingiu a cota de 64 MiB de PDFs únicos."
+    );
+  }
+  if (code === "23514" &&
+      databaseMessage.startsWith("Uma revisão de Fonte aceita no máximo oito anexos PDF")) {
+    return new AuthoringApiError(
+      413,
+      "course_source_pdf_attachment_limit",
+      "Esta revisão da Fonte já possui o máximo de oito PDFs."
+    );
+  }
   if (code === "23514" && databaseMessage.startsWith("requestId reutilizado")) {
     return new AuthoringApiError(
       409,
@@ -1588,6 +1609,67 @@ async function readBoundedResponseBytes(response, limitBytes) {
 function validPdfHeader(bytes) {
   return bytes.byteLength >= PDF_HEADER.length &&
     PDF_HEADER.every((value, index) => bytes[index] === value);
+}
+
+function validPdfStructure(bytes) {
+  if (!validPdfHeader(bytes)) return false;
+  const source = new TextDecoder("latin1").decode(bytes);
+  return /(?:^|\s)\d+\s+\d+\s+obj(?:\s|<)/u.test(source) &&
+    /(?:^|\s)endobj(?:\s|$)/u.test(source) &&
+    /(?:^|\s)startxref\s+\d+\s+%%EOF\s*$/u.test(source);
+}
+
+function courseSourcePdfBytes(value) {
+  let bytes;
+  try {
+    if (value instanceof Uint8Array) {
+      bytes = new Uint8Array(value);
+    } else if (value instanceof ArrayBuffer) {
+      bytes = new Uint8Array(value.slice(0));
+    }
+  } catch {
+    throw invalidCourseSourcePdf();
+  }
+  if (bytes === undefined) {
+    throw invalidCourseSourcePdf();
+  }
+  if (bytes.byteLength < 1 || bytes.byteLength > COURSE_SOURCE_PDF_MAX_BYTES ||
+      !validPdfStructure(bytes)) {
+    throw invalidCourseSourcePdf();
+  }
+  return bytes;
+}
+
+function courseSourcePdfAttachmentBinaryEquals(left, right) {
+  return left?.contentHash === right?.contentHash &&
+    left?.byteSize === right?.byteSize &&
+    left?.mediaType === right?.mediaType;
+}
+
+function courseSourcePdfAttachmentEquals(left, right) {
+  return courseSourcePdfAttachmentBinaryEquals(left, right) &&
+    left?.storagePath === right?.storagePath;
+}
+
+function courseSourcePdfUploadConflict(status, body) {
+  if (status !== 400 && status !== 409) return false;
+  const description = [body?.statusCode, body?.error, body?.code, body?.message]
+    .map((value) => String(value || ""))
+    .join(" ")
+    .toLowerCase();
+  return /duplicate|already exists|resource already exists/u.test(description);
+}
+
+function deterministicCourseSourceUuid(hash) {
+  const normalized = `${hash.slice(0, 12)}5${hash.slice(13, 16)}` +
+    `${((Number.parseInt(hash[16], 16) & 0x3) | 0x8).toString(16)}${hash.slice(17, 32)}`;
+  return [
+    normalized.slice(0, 8),
+    normalized.slice(8, 12),
+    normalized.slice(12, 16),
+    normalized.slice(16, 20),
+    normalized.slice(20, 32)
+  ].join("-");
 }
 
 async function sha256Hex(bytes) {
@@ -2276,7 +2358,10 @@ export class CourseSupabaseAdapter {
     throw lastError;
   }
 
-  async #verifyCourseSourcePdf(attachment, { deadlineAt = null } = {}) {
+  async #verifyCourseSourcePdf(attachment, {
+    deadlineAt = null,
+    requireStructure = false
+  } = {}) {
     const remaining = deadlineAt == null
       ? COURSE_SOURCE_PDF_VERIFICATION_TIMEOUT_MS
       : deadlineAt - Date.now();
@@ -2310,7 +2395,8 @@ export class CourseSupabaseAdapter {
         throw unavailableCourseSourcePdf();
       }
       const bytes = await readBoundedResponseBytes(response, COURSE_SOURCE_PDF_MAX_BYTES);
-      if (bytes.byteLength !== attachment.byteSize || !validPdfHeader(bytes) ||
+      if (bytes.byteLength !== attachment.byteSize ||
+          (requireStructure ? !validPdfStructure(bytes) : !validPdfHeader(bytes)) ||
           await sha256Hex(bytes) !== attachment.contentHash) {
         throw invalidCourseSourcePdf();
       }
@@ -2321,6 +2407,175 @@ export class CourseSupabaseAdapter {
       clearTimeout(timer);
     }
   }
+
+  async #prepareCourseSourcePdfIngestion({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    requestId,
+    sourceIntent,
+    attachment,
+    deadlineAt
+  }) {
+    const raw = first(await this.rpc("prepare_course_source_pdf_ingestion_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_expected_revision: expectedCourseRevision,
+      p_source_intent: sourceIntent,
+      p_content_hash: attachment.contentHash,
+      p_byte_size: attachment.byteSize,
+      p_media_type: attachment.mediaType,
+      p_request_id: requestId
+    }, {
+      deadlineAt,
+      responseLimitBytes: 32 * 1024
+    }));
+    const preparation = normalizeCourseSourcesDatabaseValue(() =>
+      normalizeCourseSourcePdfIngestionPreparation(raw)
+    );
+    const expectedSourceRevision = sourceIntent.mode === "existing"
+      ? sourceIntent.sourceRevision
+      : sourceIntent.expectedSourceRevision + 1;
+    if (preparation.courseId !== courseId ||
+        preparation.courseRevision !== expectedCourseRevision ||
+        preparation.requestId !== requestId ||
+        preparation.sourceId !== sourceIntent.sourceId ||
+        preparation.sourceRevision !== expectedSourceRevision ||
+        preparation.attachment.contentHash !== attachment.contentHash ||
+        preparation.attachment.byteSize !== attachment.byteSize ||
+        preparation.attachment.mediaType !== attachment.mediaType ||
+        !preparation.alreadyLinked &&
+          preparation.attachment.storagePath !== attachment.storagePath) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A preparação do PDF não corresponde à Fonte solicitada."
+      );
+    }
+    return preparation;
+  }
+
+  async #uploadCourseSourcePdf(attachment, bytes, { deadlineAt = null } = {}) {
+    const remaining = deadlineAt == null ? this.requestTimeoutMs : deadlineAt - Date.now();
+    if (remaining <= 0) return "uncertain";
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      Math.max(1, Math.min(this.requestTimeoutMs, remaining))
+    );
+    try {
+      const response = await this.fetchImpl(
+        `${this.supabaseUrl}/storage/v1/object/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
+          storageObjectPath(attachment.storagePath),
+        {
+          method: "POST",
+          headers: {
+            ...supabaseServerHeaders(this.serverApiKey, { contentType: false }),
+            "Content-Type": COURSE_SOURCE_PDF_MEDIA_TYPE,
+            "Cache-Control": "no-store",
+            "x-upsert": "false"
+          },
+          body: bytes,
+          signal: controller.signal
+        }
+      );
+      const source = await readBoundedResponseText(response, 32 * 1024);
+      let body = null;
+      try {
+        body = source ? JSON.parse(source) : null;
+      } catch {
+        body = source;
+      }
+      if (response.ok) return "created";
+      if (courseSourcePdfUploadConflict(response.status, body)) return "conflict";
+      if (retryableStatus(response.status)) return "uncertain";
+      throw unavailableCourseSourcePdf();
+    } catch (error) {
+      if (controller.signal.aborted || !(error instanceof AuthoringApiError)) {
+        return "uncertain";
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async #finalizeCourseSourcePdfIngestion({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    requestId,
+    sourceIntent,
+    attachment,
+    deadlineAt
+  }) {
+    const raw = first(await this.rpc("ingest_course_source_pdf_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_expected_revision: expectedCourseRevision,
+      p_source_intent: sourceIntent,
+      p_attachment: attachment,
+      p_channel: authoringChannel(principal),
+      p_request_id: requestId
+    }, {
+      deadlineAt,
+      timeoutMs: 40_000,
+      responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
+    }));
+    const result = normalizeCourseSourcesDatabaseValue(() =>
+      normalizeCourseSourcePdfIngestion(raw)
+    );
+    const expectedSourceRevision = sourceIntent.mode === "existing"
+      ? sourceIntent.sourceRevision
+      : sourceIntent.expectedSourceRevision + 1;
+    const expectedResultRevision = expectedCourseRevision +
+      (result.source.bibliographyChanged ? 1 : 0) +
+      (result.change === null ? 0 : 1);
+    if (result.courseId !== courseId || result.requestId !== requestId ||
+        result.courseRevision !== expectedResultRevision ||
+        result.source.sourceId !== sourceIntent.sourceId ||
+        result.source.sourceRevision !== expectedSourceRevision ||
+        !courseSourcePdfAttachmentEquals(result.attachment, attachment) &&
+          !(result.idempotent && courseSourcePdfAttachmentBinaryEquals(
+            result.attachment,
+            attachment
+          ))) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação da ingestão não corresponde ao PDF e à Fonte solicitados."
+      );
+    }
+    await this.#verifyCourseSourcePdf(result.attachment, {
+      deadlineAt,
+      requireStructure: true
+    });
+    return result;
+  }
+
+  async #cancelCourseSourcePdfIngestion({
+    principal,
+    courseId,
+    requestId,
+    storagePath,
+    deadlineAt
+  }) {
+    const result = first(await this.rpc("cancel_course_source_pdf_ingestion_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_storage_path: storagePath,
+      p_request_id: requestId
+    }, { deadlineAt, responseLimitBytes: 4 * 1024 }));
+    if (typeof result !== "boolean") {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço não confirmou o cancelamento da ingestão de PDF."
+      );
+    }
+    return result;
+  }
+
 
   async #deleteAccountWithJwt(accessToken, confirmation, { deadlineAt = null } = {}) {
     const result = await this.#request(
@@ -2882,6 +3137,118 @@ export class CourseSupabaseAdapter {
       );
     }
     return normalized;
+  }
+
+  async ingestCourseSourcePdf({
+    principal,
+    courseId,
+    expectedCourseRevision,
+    requestId,
+    sourceIntent,
+    bytes,
+    mediaType,
+    deadlineAt = null
+  }) {
+    const request = normalizeCourseSourcesInputValue(() =>
+      normalizeCourseSourcePdfIngestionRequest({
+        courseId,
+        expectedCourseRevision,
+        requestId,
+        sourceIntent
+      })
+    );
+    if (mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE) throw invalidCourseSourcePdf();
+    const pdfBytes = courseSourcePdfBytes(bytes);
+    const contentHash = await sha256Hex(pdfBytes);
+    let normalizedIntent = request.sourceIntent;
+    if (normalizedIntent.mode === "save" && normalizedIntent.sourceId === null) {
+      const identityHash = await sha256Hex(new TextEncoder().encode(
+        `aralearn.course-source-pdf-ingestion.v1\0${request.courseId}\0${request.requestId}`
+      ));
+      normalizedIntent = normalizeCourseSourcesInputValue(() =>
+        normalizeCourseSourcePdfSourceIntent({
+          ...normalizedIntent,
+          sourceId: deterministicCourseSourceUuid(identityHash)
+        })
+      );
+    }
+    let attachment = {
+      contentHash,
+      byteSize: pdfBytes.byteLength,
+      mediaType: COURSE_SOURCE_PDF_MEDIA_TYPE,
+      storagePath: `${request.courseId}/${contentHash}.pdf`
+    };
+    const finalize = () => this.#finalizeCourseSourcePdfIngestion({
+      principal,
+      courseId: request.courseId,
+      expectedCourseRevision: request.expectedCourseRevision,
+      requestId: request.requestId,
+      sourceIntent: normalizedIntent,
+      attachment,
+      deadlineAt
+    });
+    let preparation;
+    try {
+      try {
+        preparation = await this.#prepareCourseSourcePdfIngestion({
+          principal,
+          courseId: request.courseId,
+          expectedCourseRevision: request.expectedCourseRevision,
+          requestId: request.requestId,
+          sourceIntent: normalizedIntent,
+          attachment,
+          deadlineAt
+        });
+        attachment = preparation.attachment;
+      } catch (error) {
+        if (error instanceof AuthoringApiError && error.code === "stale_course_state") {
+          return await finalize();
+        }
+        throw error;
+      }
+
+      for (let attempt = 1; preparation.uploadRequired; attempt += 1) {
+        const outcome = await this.#uploadCourseSourcePdf(attachment, pdfBytes, {
+          deadlineAt
+        });
+        if (outcome === "created" || outcome === "conflict") break;
+        try {
+          preparation = await this.#prepareCourseSourcePdfIngestion({
+            principal,
+            courseId: request.courseId,
+            expectedCourseRevision: request.expectedCourseRevision,
+            requestId: request.requestId,
+            sourceIntent: normalizedIntent,
+            attachment,
+            deadlineAt
+          });
+          attachment = preparation.attachment;
+        } catch (error) {
+          if (error instanceof AuthoringApiError && error.code === "stale_course_state") {
+            return await finalize();
+          }
+          throw error;
+        }
+        if (preparation.uploadRequired && attempt >= this.attempts) {
+          throw unavailableCourseSourcePdf();
+        }
+      }
+
+      await this.#verifyCourseSourcePdf(attachment, {
+        deadlineAt,
+        requireStructure: true
+      });
+      return await finalize();
+    } catch (error) {
+      await this.#cancelCourseSourcePdfIngestion({
+        principal,
+        courseId: request.courseId,
+        requestId: request.requestId,
+        storagePath: attachment.storagePath,
+        deadlineAt
+      }).catch(() => undefined);
+      throw error;
+    }
   }
 
   async getCourseSourceAttachmentAccess({
@@ -3748,7 +4115,10 @@ export class CourseSupabaseAdapter {
           deadlineAt
         });
         if (access.uploadRequired) throw invalidCourseSourcePdf();
-        await this.#verifyCourseSourcePdf(access.attachment, { deadlineAt });
+        await this.#verifyCourseSourcePdf(access.attachment, {
+          deadlineAt,
+          requireStructure: true
+        });
       } catch (error) {
         if (!(error instanceof AuthoringApiError) || error.code !== "stale_course_state") {
           throw error;

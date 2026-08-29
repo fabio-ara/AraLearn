@@ -31,6 +31,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-sources-v1",
   "course-source-provenance-v1",
   "course-source-pdf-attachments-v1",
+  "course-source-pdf-ingestion-v1",
   "course-source-human-locators-v1",
   "course-anchored-annotations-v1",
   "course-annotation-subject-classification-v1",
@@ -257,7 +258,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260828120000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260829043629" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -347,6 +348,9 @@ async function validateManifest() {
   );
   const inspectionFocusMigration = await read(
     "supabase/migrations/20260828120000_course_inspection_focuses.sql"
+  );
+  const sourcePdfIngestionMigration = await read(
+    "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -510,6 +514,12 @@ async function validateManifest() {
       ) ||
       !inspectionFocusMigration.includes(
         "to_jsonb('20260828120000'::text)"
+      ) ||
+      !sourcePdfIngestionMigration.includes(
+        "$advance_course_source_pdf_ingestion_manifest$"
+      ) ||
+      !sourcePdfIngestionMigration.includes(
+        "to_jsonb('20260829043629'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -537,7 +547,8 @@ async function validateManifest() {
         !continuousInspectionMigration.includes(`'${feature}'`) &&
         !unitAnnotationScopeMigration.includes(`'${feature}'`) &&
         !continuousInspectionV2Migration.includes(`'${feature}'`) &&
-        !inspectionFocusMigration.includes(`'${feature}'`)) {
+        !inspectionFocusMigration.includes(`'${feature}'`) &&
+        !sourcePdfIngestionMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -673,10 +684,11 @@ async function validateEdgeAndMcp() {
   const names = toolsModule.COURSE_MCP_TOOLS.map(({ name }) => name);
   const expected = [
     "listarCursos", "lerCurso", "criarCurso", "alterarCurso",
+    "incorporarPdfComoFonte",
     "consultarComponentesDidaticos"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às cinco ferramentas públicas esperadas.");
+    fail("O catálogo MCP não corresponde às seis ferramentas públicas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

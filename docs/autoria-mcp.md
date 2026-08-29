@@ -5,10 +5,10 @@ Este capítulo ensina como um cliente conversacional opera a Autoria pelo
 visual usa a API de Cursos, enquanto o cliente conversacional usa o MCP; ambos
 leem e alteram o mesmo Curso vivo no PostgreSQL.
 
-O ambiente hospedado oferece cinco ferramentas. Perfil e
+O ambiente hospedado oferece seis ferramentas. Perfil e
 gestão de acesso permanecem na aplicação autenticada. O escopo
-`offline_access`, os aliases pareados e o upload autenticado integram o contrato
-publicado.
+`offline_access`, os aliases pareados e o transporte de PDF compatível integram
+o contrato publicado.
 
 ## O problema que o serviço resolve
 
@@ -22,13 +22,51 @@ tarefa; o cliente escolhe a ferramenta, valida argumentos, chama o servidor e
 apresenta o resultado. O servidor continua responsável por identidade,
 propriedade, revisão, idempotência e invariantes.
 
+O resultado da ferramenta e a resposta para a pessoa têm funções distintas. O
+primeiro preserva identidades, revisões, versões esperadas, chaves de repetição,
+códigos e contexto de diagnóstico. A segunda explica o Curso e a decisão em
+linguagem humana. A regra é **preservar internamente != mostrar ao usuário**:
+metadados necessários ao cliente não devem ser removidos do contrato nem
+recitados por padrão na conversa.
+
+A apresentação progride em quatro níveis. No padrão, informa estado autoral,
+lacunas, efeito da proposta, preservações e decisão humana. Em transparência
+leve, pode dizer que releu, gravou ou reconciliou o Curso, sem mostrar protocolo.
+Em diagnóstico, explica o que foi ou não salvo e o próximo passo seguro. Sob
+pedido técnico explícito, mostra IDs, revisões, CAS, payload, hashes, caminhos,
+operações e erro bruto disponíveis, sem fabricar valores ausentes. Links
+profundos também são progressivos: o
+cliente os oferece como ação humana útil, não como inventário em toda resposta.
+
 Na interface visual, a pessoa inspeciona o conteúdo, registra Observações no
 alvo exato e salva mudanças de Parâmetros. Esses registros permanecem visíveis
 na Autoria e integram o mesmo Curso que o ChatGPT ou outro cliente conectado lê
 por MCP. A conversa pode examinar vários registros, apresentar uma proposta e
-receber correções ou objeções antes de qualquer escrita. A operação só é enviada
-depois da aprovação explícita da pessoa no cliente conectado. A interface normal
-não abre um compositor nem depende de copiar um pedido.
+receber correções ou objeções antes de escrever. Uma decisão ainda em aberto ou
+uma operação que exige confirmação própria só é enviada depois da aprovação
+explícita. A exceção focal é a incorporação de PDF: quando o próprio pedido já
+declara inequivocamente que o documento deve integrar as Fontes do Curso, não
+há uma segunda pergunta cerimonial. A interface normal não abre um compositor
+nem depende de copiar um pedido.
+
+A confirmação, quando necessária, descreve a mudança pedagógica e seu alcance,
+não o comando. “Vou
+acrescentar estes resultados e formas de evidência; as Partes e o conteúdo já
+produzido permanecerão intactos. Confirmo?” é adequado. “Vou enviar este payload
+com `expectedRevision` e `requestId`. Confirmo?” transfere o protocolo à pessoa
+e deve ser evitado. O cliente relê silenciosamente as revisões correntes quando
+necessário antes da escrita.
+
+Essa distinção vale também para anexos. “Use este edital para fundamentar o
+Curso”, “considere este PPC e esta prova no planejamento” e “incorpore esta nova
+norma e revise a Parte” já expressam a decisão de manter cada PDF entre as
+Fontes; o cliente chama `incorporarPdfComoFonte` sem exigir uma frase mágica. Se
+o pedido for apenas “O que você acha deste PDF?”, pergunte exatamente: “Você
+quer usar este documento só nesta análise ou mantê-lo entre as Fontes do
+Curso?”. Se a pessoa escolher a análise temporária ou já tiver dito que o
+documento não deve integrar o Curso, não chame a operação. A regra é a mesma no
+planejamento, materialização, revisão de Parte, Auditoria, correção, atualização
+normativa, bibliografia, Observações e Pesquisa.
 
 Curso, Módulo, Lição, Tópico, Microssequência, Unidade de estudo, Fonte, Âncora
 e Parte de autoria podem ser alvos de conversa. Planejar e preparar estrutura
@@ -60,7 +98,7 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
-As cinco ferramentas são projetadas do protocolo público
+As seis ferramentas são projetadas do protocolo público
 `aralearn.authoring-protocol.v1`. Essa autoridade não é gerada a partir das
 estruturas internas do domínio. `courseMcpTools` funciona como adaptador:
 preserva o vocabulário público, acrescenta os metadados OAuth e MCP Apps do
@@ -191,8 +229,11 @@ Lista Cursos próprios em páginas de até 50 itens. Aceita busca opcional e cur
 formado por data de atualização e identidade. A resposta é fina e inclui links
 para a interface visual; não carrega toda a composição.
 
-Use-a primeiro quando a pessoa nomear um Curso por título. Não escolha entre
-homônimos sem confirmar o contexto.
+Use-a primeiro quando a pessoa nomear um Curso por título, inclusive em uma nova
+sessão. Adote uma correspondência única plausível; diante de homônimos, peça uma
+escolha por objetivo, etapa autoral ou atividade recente. Não exija UUID como
+primeira opção. Depois, releia as vistas vivas e reconstrua o estado técnico;
+memória conversacional ajuda na descoberta, mas não substitui o Curso.
 
 ### `lerCurso`
 
@@ -272,6 +313,15 @@ corrente; o detalhe preserva revisões e Âncoras; o alvo preserva atribuições
 somente por acréscimo e indica qual ainda corresponde à versão e ao resumo
 criptográfico atuais.
 
+Uma nova sessão não depende da memória da conversa anterior. Ela localiza o
+Curso pelo título, relê o planejamento, percorre o catálogo e abre somente as
+Fontes pertinentes. O texto comum resume referências e localizadores humanos;
+identidades, revisões e demais controles permanecem no resultado estruturado.
+Ao partir de um alvo, o cliente lê seus vínculos e abre cada Fonte necessária
+nesse contexto, preservando a edição e a Âncora historicamente atribuídas. PDFs
+não são carregados em lote: o acesso temporário é solicitado apenas quando uma
+verificação focal exige o documento.
+
 No MCP, a resposta usa `aralearn.mcp-course-sources.v1`. Identidades de ator e
 de atribuição, resumo interno do alvo, Curso de origem do objeto e caminhos do
 Storage permanecem fora; `dataDisclosure` registra essas omissões. A aplicação
@@ -283,29 +333,21 @@ campos livres potencialmente pessoais que integram o detalhe autoral;
 conectado, conforme os tipos de seletor efetivamente presentes.
 
 Na aplicação, o DTO interno contém exatamente `contract`, `courseId`,
-`courseRevision`, `mode`, `query`, `items` e `nextCursor`. A projeção MCP troca
-o contrato por `aralearn.mcp-course-sources.v1`, omite `courseId` e acrescenta
-`pdfStorage` e `dataDisclosure`. Em ambos os recortes, `query` explicita os três binds e deixa
+`courseRevision`, `mode`, `query`, `pdfStorage`, `items` e `nextCursor`. A
+projeção MCP troca o contrato por `aralearn.mcp-course-sources.v1`, omite
+`courseId`, preserva o resumo de armazenamento `pdfStorage` e acrescenta
+`dataDisclosure`. Em ambos os recortes, `query` explicita os três binds e deixa
 nulos os que não pertencem ao modo. Cada vínculo de alvo tem
 `{sourceId, sourceRevision, relation, anchors}`; cada referência de Âncora tem
 `{anchorId, anchorRevision}`. Campos adicionais não são extensão tolerada.
 
-`course_source_attachment` exige revisão do Curso, Fonte e revisão da Fonte. Na
-aplicação, `prepare_upload` valida tipo, tamanho e resumo criptográfico e cria
-uma intenção privada de dez minutos para o caminho e as revisões exatas; não
-devolve URL de upload. O aplicativo envia o PDF ao Storage com sua sessão viva,
-e a inserção consome a intenção. O MCP não oferece essa preparação porque seu
-token não é uma sessão do aplicativo. No MCP, `download` exige
+`course_source_attachment` exige revisão do Curso, Fonte e revisão da Fonte. No
+MCP, `download` exige
 `includeAttachmentDownloadUrl: true` antes da chamada ao adaptador; a resposta
 `aralearn.mcp-course-source-attachment-access.v1` omite caminhos e identidade
 do Curso de Storage, identifica a URL como credencial temporária e a limita a
-60 segundos. Depois do envio feito pela aplicação, `attach_pdf` confirma o
-vínculo relacional. Há limite de 20 MiB por arquivo, 64 MiB de conteúdo único
-por Curso e oito anexos por Fonte.
-
-O backend emite v2 somente para `prepare_upload` e v1 somente para `download`.
-Um upload incompatível falha fechado, sem restaurar URL assinada. A seleção
-ocorre pela operação, nunca por `User-Agent`.
+60 segundos. A incorporação de um novo arquivo pertence à ferramenta dedicada
+`incorporarPdfComoFonte`, não a esta leitura.
 
 `anchored_annotations` escolhe `inbox`, `target` ou `detail`. A caixa de entrada
 aceita filtros por origem, canal, estado, categoria, ausência de categoria,
@@ -386,7 +428,7 @@ autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui oito operações fechadas:
+Possui nove operações fechadas:
 
 - `update_instructional_plan`: aplica um comando semântico ao plano, como atualizar
   campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
@@ -396,8 +438,8 @@ Possui oito operações fechadas:
   aplica `set_target_plan_items` para substituir as duas listas de itens de uma
   Microssequência;
 - `update_course_sources`: cria ou revisa uma Fonte, aposenta Fonte ou Âncora,
-  salva Âncora, confirma um PDF já enviado ou substitui o conjunto ordenado de
-  Fontes de um item do plano ou de uma Unidade;
+  salva Âncora ou substitui o conjunto ordenado de Fontes de um item do plano ou
+  de uma Unidade;
 - `update_anchored_annotations`: cria ou revisa Anotação ancorada, retira,
   considera, responde, resolve, reabre ou corrige assuntos;
 - `update_audit_cycle`: registra rodada, propõe ou rejeita correção, decide
@@ -436,6 +478,37 @@ dado necessário à referência estiver ausente, o cliente conversa com a pessoa
 antes de escrever e nunca o infere. Em `save_anchor`, `humanLocator` é opcional
 e nomeia a localização declarada pelo material; `selector` continua sendo a
 posição exata e independente.
+
+### `incorporarPdfComoFonte`
+
+Mantém um PDF transportado pelo cliente entre as Fontes do Curso e converge para
+o mesmo serviço de ingestão usado pela interface visual e por Actions. A chamada
+recebe `requestId`, `courseId`, `expectedRevision`, `sourceIntent` e `pdf`. O
+cliente MCP fornece `pdf` pelo parâmetro de arquivo declarado em
+`_meta["openai/fileParams"]`; a pessoa não precisa calcular tamanho, impressão
+digital nem caminho técnico.
+
+`sourceIntent` escolhe um dos dois efeitos de produto:
+
+- `existing` liga o PDF a uma Fonte e revisão já existentes;
+- `save` cria ou revisa os metadados da Fonte e incorpora o PDF na mesma
+  intenção, com os controles de concorrência pertinentes.
+
+Uma intenção inequívoca de usar edital, livro, capítulo, prova, gabarito, PPC,
+artigo ou norma como base do Curso autoriza a chamada em qualquer fase, sem
+confirmação redundante. Anexo ambíguo exige a pergunta humana definida acima;
+uso explicitamente temporário não chama a ferramenta. Cada chamada incorpora
+um PDF de até 20 MiB; cada revisão de Fonte admite oito anexos e o Curso admite
+64 MiB de conteúdo PDF único. Repetir os mesmos bytes reutiliza o conteúdo sem
+duplicá-lo.
+
+O cliente só anuncia que o documento passou a integrar as Fontes quando o
+resultado confirma `stored: true`. Falha de transferência, limite excedido ou
+resultado incerto são explicados em termos da tarefa e nunca viram falso
+sucesso. Hash, tamanho e caminho ficam no estado estruturado e só aparecem sob
+pedido técnico explícito. O comando `attach_pdf` de `update_course_sources`
+permanece aceito apenas para compatibilidade com clientes anteriores; novas
+integrações usam `incorporarPdfComoFonte`.
 
 `update_course_variants` aceita `create_comparison_variants` e
 `detach_comparison_variant`. A criação recebe de duas a oito variantes, fixa o
@@ -670,7 +743,20 @@ Ferramentas retornam `structuredContent` no formato:
 }
 ```
 
-Falhas de ferramenta retornam `ok: false`, código, mensagem e detalhes seguros.
+Esse envelope é estado de máquina para o cliente, não um modelo de resposta
+humana. `requestId` e `data` conservam o resultado técnico; uma projeção
+determinística separada alimenta `content` com o texto humano do MCP, sem ser
+duplicada no estado estruturado. Um sucesso pode ser acrescido do efeito
+confirmado e de uma ação legível. Recitar o identificador, revisão e payload por
+padrão não acrescenta compreensão.
+
+Falhas de ferramenta retornam `ok: false`, código, mensagem, detalhes seguros e
+recuperação operacional. A projeção humana deriva desse estado a classificação
+semântica, a certeza de escrita nenhuma, parcial, concluída ou desconhecida, a
+possibilidade de repetição segura e a necessidade de releitura. Ela começa pela tarefa:
+informa exatamente o que não foi salvo, evita afirmar sucesso diante de tempo
+esgotado ou resultado incerto e propõe o próximo passo seguro. O erro bruto permanece
+disponível quando a pessoa pedir o diagnóstico técnico.
 Erros previsíveis incluem:
 
 - autenticação ausente ou revogada;
@@ -693,11 +779,11 @@ chamada não autoriza aumentar o lote indefinidamente; a produção por Partes
 precisa respeitar limites reais de modelo, rede e transação.
 
 As leituras de Fontes têm resposta máxima de 256 KiB, página de até 24 itens e
-cursor opaco de até 240 caracteres. Metadados e URLs ficam no PostgreSQL; o
-contrato não envia arquivos de referência ao Storage. Esses limites reduzem
-transferência, mas o crescimento somente por acréscimo e o consumo real de
-banco, saída de dados e funções ainda precisam ser medidos antes de afirmar
-sustentabilidade no plano gratuito.
+cursor opaco de até 240 caracteres. Elas não carregam os bytes dos PDFs; a
+incorporação transfere um arquivo por vez pela ferramenta dedicada. Esses
+limites reduzem transferência, mas o crescimento somente por acréscimo e o
+consumo real de banco, saída de dados e funções ainda precisam ser medidos antes
+de afirmar sustentabilidade no plano gratuito.
 
 O ciclo de auditoria limita páginas e resultados de mudança a 240 KiB, comandos
 a 192 KiB, 256 rodadas por Curso com reserva para correções aplicadas, 1.024
@@ -720,7 +806,7 @@ Para conectar um cliente:
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
 3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das cinco ferramentas, seu `_meta.authoringContract`,
+5. confira a descoberta das seis ferramentas, seu `_meta.authoringContract`,
    os recursos focais de autoria e, num cliente compatível, o recurso visual
    versionado;
 6. faça primeiro uma leitura sem mutação;

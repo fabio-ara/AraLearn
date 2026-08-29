@@ -35,7 +35,7 @@ test("o registro corrente cobre UI, ferramentas, Edge, manifesto e testes", asyn
   assert.deepEqual(await auditVerticalParity({ repositoryRoot }), []);
 });
 
-test("o registro usa somente as cinco ferramentas públicas canônicas de Curso", async () => {
+test("o registro usa somente as seis ferramentas públicas canônicas de Curso", async () => {
   const current = await registry();
   const registered = current.cases.flatMap((caseRecord) =>
     caseRecord.objects?.mcpTools || []
@@ -70,11 +70,11 @@ test("o inventário exato cobre os onze casos correntes", async () => {
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 786);
+  assert.equal(inventory.objects.length, 793);
   assert.deepEqual(counts, {
     "study-course-experience": 40,
     "course-authoring-experience": 295,
-    "course-source-provenance": 122,
+    "course-source-provenance": 129,
     "course-anchored-annotations": 86,
     "course-audit-corrections": 91,
     "course-variant-comparisons": 51,

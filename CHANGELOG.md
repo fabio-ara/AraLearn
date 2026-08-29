@@ -4,6 +4,29 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.43] - 2026-08-29
+
+### Adicionado
+
+- PDFs recebidos por MCP ou Actions podem ser incorporados com segurança como
+  Fontes persistentes do Curso quando a intenção é inequívoca;
+- a retomada em outra sessão recupera Fontes, revisões, Âncoras e o PDF exato
+  sem exigir novo envio do arquivo.
+
+### Alterado
+
+- a conversa autoral retoma o Curso pelo título e apresenta estado, pendências
+  e próxima decisão em linguagem humana, mantendo revisões, CAS, identificadores
+  e hashes somente no estado estruturado necessário;
+- anexos ambíguos ou declarados temporários não são persistidos sem confirmação.
+
+### Corrigido
+
+- erros de upload, limite, acesso e concorrência deixam de produzir confirmação
+  indevida de escrita;
+- MCP, Actions, aplicação web e Android passam a compartilhar o contrato de
+  ingestão e retomada de Fontes da revisão hospedada `20260829043629`.
+
 ## [0.0.38] - 2026-08-27
 
 ### Corrigido

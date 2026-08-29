@@ -44,6 +44,11 @@ const scripts = {
     "tests",
     "authoring-mcp-local-smoke.mjs"
   ),
+  hostedConversationalSourceSmoke: path.join(
+    repositoryRoot,
+    "scripts",
+    "runHostedConversationalSourceSmoke.mjs"
+  ),
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
   courseRuntimeSmoke: path.join(
@@ -152,13 +157,18 @@ function packApk(
   }
   const zipPath = path.join(temporaryRoot, "application.zip");
   const apkPath = path.join(temporaryRoot, fileName);
-  const compressed = spawnSync("pwsh", [
-    "-NoProfile",
-    "-Command",
-    "& { param([string]$source, [string]$destination) Compress-Archive -LiteralPath $source -DestinationPath $destination }",
-    path.join(temporaryRoot, "payload", "assets"),
-    zipPath
-  ], { encoding: "utf8" });
+  const compressed = process.platform === "win32"
+    ? spawnSync("tar", ["-a", "-c", "-f", zipPath, "assets"], {
+      cwd: path.join(temporaryRoot, "payload"),
+      encoding: "utf8"
+    })
+    : spawnSync("pwsh", [
+      "-NoProfile",
+      "-Command",
+      "& { param([string]$source, [string]$destination) Compress-Archive -LiteralPath $source -DestinationPath $destination }",
+      path.join(temporaryRoot, "payload", "assets"),
+      zipPath
+    ], { encoding: "utf8" });
   assert.equal(compressed.status, 0, compressed.stderr);
   fs.renameSync(zipPath, apkPath);
   return apkPath;
@@ -228,11 +238,13 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     StaticHostManagedSupabase: ["build", "verify-artifact", "upload", "verify-published"],
     LocalDevelopment: ["start-supabase", "reset-local", "stop"]
   };
+  const plansByProfile = new Map();
 
   for (const [profile, stepIds] of Object.entries(expectedSteps)) {
     const result = runScript(scripts.plan, ["-Profile", profile, "-AsJson"]);
     assert.equal(result.status, 0, result.stderr);
     const plan = parseJsonOutput(result);
+    plansByProfile.set(profile, plan);
     assert.equal(plan.profile, profile);
     assert.equal(plan.support, "supported");
     const actualIds = plan.steps.map((step) => step.id);
@@ -253,11 +265,10 @@ test("planos de implantação cobrem somente os três perfis suportados", {
   assert.doesNotMatch(source, /npm\.cmd[^\r\n]*;[^\r\n]*npm\.cmd/u);
   assert.match(source, /validateDeployment\.ps1/u);
   assert.match(source, /deployment:verify-site/u);
-  for (const plan of [
-    runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"]),
-    runScript(scripts.plan, ["-Profile", "StaticHostManagedSupabase", "-AsJson"]),
+  for (const parsedPlan of [
+    plansByProfile.get("GitHubPagesManagedSupabase"),
+    plansByProfile.get("StaticHostManagedSupabase"),
   ]) {
-    const parsedPlan = parseJsonOutput(plan);
     const diagnose = parsedPlan.steps.find(({ id }) => id === "diagnose");
     const apply = parsedPlan.steps.find(({ id }) => id === "database-apply");
     assert.match(diagnose.command, /-Authoring/u);
@@ -266,9 +277,7 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     assert.match(apply.command, /-PublicAppUrl https:\/\//u);
   }
 
-  const githubPlan = parseJsonOutput(
-    runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"])
-  );
+  const githubPlan = plansByProfile.get("GitHubPagesManagedSupabase");
   const githubStepIds = githubPlan.steps.map(({ id }) => id);
   const position = (id) => githubStepIds.indexOf(id);
   assert.ok(position("validate") < position("integrate-main"));
@@ -332,6 +341,7 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
   assert.doesNotMatch(source, /secrets unset/u);
   assert.match(source, /runHostedCourseSourcePdfSmoke\.mjs/u);
+  assert.match(source, /runHostedConversationalSourceSmoke\.mjs/u);
   assert.ok(
     source.indexOf("buildChatGptActionOpenApi.mjs --check") <
       source.indexOf("chatgpt-action-schema-projection.test.js") &&
@@ -348,10 +358,27 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
     source.indexOf("X-AraLearn-Authoring-Contract") <
       source.indexOf("runHostedMcpOAuthSmoke.mjs") &&
     source.indexOf("runHostedMcpOAuthSmoke.mjs") <
-      source.indexOf("runHostedCourseSourcePdfSmoke.mjs")
+      source.indexOf("runHostedCourseSourcePdfSmoke.mjs") &&
+    source.indexOf("runHostedCourseSourcePdfSmoke.mjs") <
+      source.indexOf("runHostedConversationalSourceSmoke.mjs")
   );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
+});
+
+test("smoke hospedado focal retoma somente o Curso sintético e limpa seus resíduos", () => {
+  const source = fs.readFileSync(scripts.hostedConversationalSourceSmoke, "utf8");
+  assert.match(source, /provisionHostedMcpOAuthToken/u);
+  assert.match(source, /refreshLocalMcpOAuthToken/u);
+  assert.match(source, /"listarCursos"/u);
+  assert.match(source, /ingerirPdfDaFonte/u);
+  assert.match(source, /type:\s*"save_anchor"/u);
+  assert.match(source, /view:\s*"course_sources"/u);
+  assert.match(source, /view:\s*"course_source_attachment"/u);
+  assert.match(source, /assertHostedHumanProjection/u);
+  assert.match(source, /cleanupHostedCourseSourcePdfFixture/u);
+  assert.match(source, /cleanupLocalMcpOAuthProvision/u);
+  assert.doesNotMatch(source, /Dataprev/iu);
 });
 
 test("scripts focais de MCP e Actions incluem o contrato público comum", () => {
@@ -513,7 +540,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260828120000");
+  assert.equal(manifest.schemaRevision, "20260829043629");
   assert.equal(manifest.requiredFeatures.includes("continuous-authoring-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
@@ -523,6 +550,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     manifest.requiredFeatures.includes("authenticated-course-source-pdf-upload-v1"),
     true
   );
+  assert.equal(manifest.requiredFeatures.includes("course-source-pdf-ingestion-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
@@ -540,7 +568,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
 });
 
-test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de cinco tools", () => {
+test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de seis tools", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     for (const toolName of [
@@ -548,6 +576,7 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
       "lerCurso",
       "criarCurso",
       "alterarCurso",
+      "incorporarPdfComoFonte",
       "consultarComponentesDidaticos"
     ]) {
       assert.match(source, new RegExp(`"${toolName}"`, "u"));

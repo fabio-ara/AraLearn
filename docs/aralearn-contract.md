@@ -39,6 +39,7 @@ auditoria:
 | `aralearn.resource-library.v1` | descoberta, inspeção e validação do catálogo de pacotes |
 | `aralearn.course-sources.v1` | catálogo privado, revisões, Âncoras e atribuições de Fontes na Autoria |
 | `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
+| `aralearn.course-source-pdf-ingestion.v1` | resultado estruturado da ingestão server-side de um PDF e de seu vínculo à revisão exata da Fonte |
 | `aralearn.course-source-attachment-access.v1` | abertura temporária de PDF privado |
 | `aralearn.course-source-attachment-access.v2` | preparação de envio autenticado de PDF privado de uma Fonte |
 | `aralearn.mcp-course-sources.v1` | projeção autoral de Fontes para MCP ou Actions, sem identidades pessoais, resumo interno do alvo nem caminhos do Storage |
@@ -191,6 +192,11 @@ para cada Fonte. O limite de escrita é 32 Fontes por alvo e oito identidades de
 Âncora por revisão de Fonte. Salvar substitui o conjunto completo sob revisão esperada do Curso e
 versão exata do alvo; o histórico permanece somente por acréscimo.
 
+Uma edição nova, errata ou norma substituta acrescenta uma revisão da Fonte,
+mas não recicla Âncoras da anterior. Aposentar a Fonte ou a Âncora bloqueia
+novos usos; atribuições históricas continuam apontando para as revisões exatas
+que sustentaram o planejamento ou a Unidade.
+
 Referências anteriores ao contrato são preservadas, na mesma identidade e
 ordem, como `legacy_reference`. Enquanto não resolvidas, têm estado
 `unresolved_legacy`, metadados nulos, visibilidade `hidden` e podem não possuir
@@ -239,6 +245,12 @@ o disclosure enumera título, autoria declarada, identificador, citação, ender
 edição ou versão, localizador humano, trecho de verificação e valores textuais dos seletores
 `text_quote` e `uri_fragment` como texto livre potencialmente pessoal, conforme
 os tipos de seletor efetivamente presentes.
+
+A projeção conversacional correspondente resume catálogo, detalhe e
+proveniência com `citationText` e localizadores humanos, sem narrar identidades,
+revisões, hashes ou caminhos. Outra sessão pode reconstruir esse percurso a
+partir do Curso persistido; nenhum estado da conversa e nenhum reenvio do PDF
+fazem parte do contrato de recuperação.
 
 ### Solicitação de acesso sem resposta enumerável
 

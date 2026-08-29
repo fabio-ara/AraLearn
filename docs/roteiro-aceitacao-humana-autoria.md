@@ -80,6 +80,30 @@ forma incorreta, ajuda solicitada, resultado e comentário espontâneo.
 | “Continue depois de perder a conexão e de abrir o mesmo Curso em outra aba.” | preserva última revisão válida, rascunhos e posição; entende sincronização e retoma sem duplicar | estado offline, reconexão, conflito e resultado final |
 | “Peça no ChatGPT uma alteração e acompanhe o resultado no AraLearn.” | chat e Autoria mostram o mesmo Curso, escopo e revisão; o resultado aparece sem segunda confirmação | recibo, endereço direto, atualização e ausência de mutação duplicada |
 
+## Jornada integrada de retomada e Fontes
+
+Use somente uma fixture de regressão com título humano inequívoco, 12 Partes,
+nenhuma aula, plano formal incompleto, edital, prova, gabarito e PPC sintéticos,
+além de PDFs e Âncoras persistentes. Nenhum Curso real pode ser alvo mutável.
+
+1. Em uma nova conversa lógica, apresente apenas: “Continue a autoria do curso
+   Gestão de Servidores — fixture sintética; quero terminar o planejamento antes
+   de produzir conteúdo.” A resposta deve localizar o Curso pelo título, resumir
+   o estado, mencionar as Fontes relevantes quando útil e indicar a próxima
+   decisão pedagógica sem pedir identificadores, revisões de controle ou reenvio
+   dos PDFs.
+2. Anexe um edital sintético e diga que ele é a referência do que deve cair numa
+   Parte. O cliente deve incorporá-lo como Fonte sem exigir frase mágica nem
+   confirmação redundante. Encerre e recrie a conversa; a Fonte, o PDF e a
+   Âncora precisam continuar recuperáveis pelo Curso.
+3. Em outro recorte, anexe um PDF sintético e pergunte apenas “O que acha
+   disso?”. O cliente deve esclarecer se o uso é temporário ou persistente antes
+   de incorporar. Se a pessoa pedir comparação somente naquela análise, o Curso
+   permanece inalterado.
+4. Confirme que respostas nominais continuam em linguagem humana. Um pedido
+   técnico explícito ainda pode revelar os detalhes autorizados no resultado
+   estruturado, sem transformar esses dados em requisito da sessão seguinte.
+
 ## Perguntas finais
 
 Pergunte sem mostrar a navegação nem sugerir os termos esperados:

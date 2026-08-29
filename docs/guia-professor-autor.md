@@ -375,11 +375,25 @@ Um assistente pode operar o mesmo Curso da interface visual por meio de um
 protocolo aberto, o **Model Context Protocol (MCP)**. Um
 percurso seguro de autoria é:
 
-1. listar os Cursos próprios e confirmar a identidade do Curso desejado;
+1. localizar o Curso pelo nome e, somente se houver homônimos, escolher por
+   objetivo, etapa ou atividade recente;
 2. ler o plano, o desenho e apenas o recorte necessário da composição;
 3. formular e revisar a alteração;
 4. usar a revisão do Curso e a versão do objeto como condições da escrita;
 5. reler o resultado e abrir o link visual devolvido.
+
+A pessoa conversa sobre o efeito no Curso; não precisa fornecer UUID, revisão,
+CAS ou payload para retomar o trabalho. O assistente preserva esses dados
+internamente e pode mostrá-los quando houver pedido técnico explícito. Antes de
+uma escrita, a confirmação explica o que será acrescentado, alterado ou mantido.
+Se uma operação falhar ou ficar incerta, a resposta informa o que não pôde ser
+confirmado e o próximo passo seguro, sem anunciar falso sucesso.
+
+Um arquivo anexado à conversa só se torna Fonte persistente quando sua função
+no Curso já está clara ou é confirmada pela pessoa. Se o pedido for apenas para
+uma análise temporária, o documento não é incorporado. Depois da incorporação,
+outra sessão pode recuperar a Fonte, suas Âncoras e o PDF pelo próprio Curso,
+sem exigir que o arquivo seja anexado novamente.
 
 Na Autoria, Observações e mudanças de Parâmetros são registradas no alvo e ficam
 visíveis no próprio Curso. O ChatGPT conectado por MCP ou Actions pode ler esse

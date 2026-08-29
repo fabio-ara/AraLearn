@@ -23,6 +23,8 @@ const AUTHORIZATION_SERVER = "https://project.example/auth/v1";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
 const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
+const PDF_HASH = "a".repeat(64);
+const PDF_PATH = `${COURSE_ID}/${PDF_HASH}.pdf`;
 
 async function minimalStudyUnit() {
   const project = JSON.parse(await readFile(
@@ -101,6 +103,7 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     "lerCurso",
     "criarCurso",
     "alterarCurso",
+    "incorporarPdfComoFonte",
     "consultarComponentesDidaticos"
   ]);
   assert.equal(names.includes("gerirPessoas"), false);
@@ -115,10 +118,314 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     delete normalized._meta.securitySchemes;
     delete normalized._meta.ui;
     delete normalized._meta["openai/outputTemplate"];
+    delete normalized._meta["openai/fileParams"];
     if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
     return normalized;
   });
   assert.deepEqual(contractTools, AUTHORING_PROTOCOL_V1_TOOLS);
+  assert.deepEqual(
+    tools.find(({ name }) => name === "incorporarPdfComoFonte")
+      ._meta["openai/fileParams"],
+    ["pdf"]
+  );
+});
+
+test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados técnicos", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  let ingested = null;
+  const response = await handler({
+    fetchImpl: async () => new Response(pdfBytes, {
+      headers: {
+        "content-type": "application/pdf",
+        "content-length": String(pdfBytes.byteLength)
+      }
+    }),
+    async ingestCourseSourcePdf(value) {
+      ingested = value;
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-edital", revision: 1 },
+        source: {
+          sourceId: "source-edital",
+          sourceRevision: 1,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash: PDF_HASH,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: PDF_PATH
+        },
+        stored: true
+      };
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/edital.pdf?token=temporary",
+        file_id: "file-edital-synthetic",
+        mime_type: "application/pdf",
+        file_name: "edital-sintetico.pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.isError, false);
+  assert.deepEqual(ingested.bytes, pdfBytes);
+  assert.equal(ingested.expectedCourseRevision, 3);
+  assert.equal(payload.result.structuredContent.data.stored, true);
+  assert.equal(
+    payload.result.structuredContent.data.technicalDetails.storagePath,
+    PDF_PATH
+  );
+  assert.match(payload.result.content[0].text, /mantido entre as Fontes do Curso/iu);
+  assert.equal(payload.result.content[0].text.includes(PDF_HASH), false);
+  assert.equal(payload.result.content[0].text.includes(PDF_PATH), false);
+  assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
+  assert.doesNotMatch(payload.result.content[0].text, /file-edital|download_url|storage/iu);
+});
+
+test("MCP não alega persistência quando o arquivo temporário não pode ser transferido", async () => {
+  let ingestionCalls = 0;
+  const response = await handler({
+    fetchImpl: async () => new Response(null, { status: 410 }),
+    async ingestCourseSourcePdf() {
+      ingestionCalls += 1;
+      throw new Error("não deveria ingerir");
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-expired-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/expired.pdf?token=secret",
+        file_id: "file-expired-secret",
+        mime_type: "application/pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(ingestionCalls, 0);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "openai_file_expired");
+  assert.match(payload.result.content[0].text, /expirou|anexe/iu);
+  assert.doesNotMatch(payload.result.content[0].text, /mantido|persistido|concluíd/iu);
+  assert.equal(JSON.stringify(payload).includes("token=secret"), false);
+  assert.equal(JSON.stringify(payload).includes("file-expired-secret"), false);
+});
+
+test("MCP explica a cota de PDFs sem afirmar persistência", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const response = await handler({
+    fetchImpl: async () => new Response(pdfBytes, {
+      headers: { "content-type": "application/pdf" }
+    }),
+    async ingestCourseSourcePdf() {
+      throw new AuthoringApiError(
+        413,
+        "course_source_pdf_quota_exceeded",
+        "O Curso atingiu a cota de 64 MiB para PDFs mantidos entre as Fontes."
+      );
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-quota-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/quota.pdf?token=temporary",
+        file_id: "file-quota-synthetic",
+        mime_type: "application/pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "course_source_pdf_quota_exceeded"
+  );
+  assert.match(payload.result.content[0].text, /cota de 64 MiB/iu);
+  assert.match(payload.result.content[0].text, /Nada foi salvo/iu);
+  assert.doesNotMatch(payload.result.content[0].text, /mantido com sucesso|incorporado/iu);
+});
+
+test("MCP não narra sucesso quando a ingestão não confirma stored true", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const response = await handler({
+    fetchImpl: async () => new Response(pdfBytes, {
+      headers: { "content-type": "application/pdf" }
+    }),
+    async ingestCourseSourcePdf(value) {
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-edital", revision: 1 },
+        source: {
+          sourceId: "source-edital",
+          sourceRevision: 1,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash: PDF_HASH,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: PDF_PATH
+        },
+        stored: false
+      };
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-unconfirmed-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/unconfirmed.pdf?token=temporary",
+        file_id: "file-unconfirmed-synthetic",
+        mime_type: "application/pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "course_source_pdf_persistence_unconfirmed"
+  );
+  assert.match(payload.result.content[0].text, /Não foi possível confirmar/iu);
+  assert.doesNotMatch(
+    payload.result.content[0].text,
+    /foi mantido|foi incorporado|gravação foi concluída/iu
+  );
+});
+
+test("MCP retoma uma Fonte com referência humana sem narrar controles internos", async () => {
+  const sourceId = "source-edital-private";
+  const anchorId = "anchor-edital-page-44";
+  const contentHash = "b".repeat(64);
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const sourceCitation = "Edital Dataprev 2026";
+  const humanLocator =
+    "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo";
+  const toolResponse = await handler({
+    async getCourseSources() {
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        mode: "source",
+        query: { sourceId, targetKind: null, targetId: null },
+        pdfStorage: { uniqueBytes: 1_024, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: [{
+          sourceId,
+          revision: 1,
+          status: "active",
+          kind: "document",
+          title: "Edital Dataprev 2026 — fixture sintética",
+          authorship: null,
+          publicationDate: "2026",
+          identifier: null,
+          language: "pt-BR",
+          citationText: sourceCitation,
+          url: null,
+          editionOrVersion: null,
+          origin: "author_provided",
+          availability: "private",
+          verificationStatus: "author_verified",
+          studyVisibility: "citation",
+          anchorCount: 1,
+          createdAt: "2026-08-29T12:00:00Z",
+          actorId: COURSE_ID,
+          anchors: [{
+            anchorId,
+            revision: 1,
+            sourceRevision: 1,
+            status: "active",
+            selector: { kind: "page_range", startPage: 44, endPage: 44 },
+            humanLocator,
+            verificationExcerpt: "Trecho sintético privado.",
+            actorId: COURSE_ID,
+            createdAt: "2026-08-29T12:00:00Z"
+          }],
+          attachments: [{
+            contentHash,
+            byteSize: 1_024,
+            mediaType: "application/pdf",
+            storagePath,
+            actorId: COURSE_ID,
+            createdAt: "2026-08-29T12:00:00Z"
+          }]
+        }],
+        nextCursor: null
+      };
+    }
+  })(request("tools/call", {
+    name: "lerCurso",
+    arguments: {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 5,
+      mode: "source",
+      sourceId
+    }
+  }));
+  const payload = await toolResponse.json();
+  const text = payload.result.content[0].text;
+
+  assert.equal(payload.result.isError, false);
+  assert.match(text, new RegExp(sourceCitation, "u"));
+  assert.match(text, /Perfil 13 .*Gestão de Servidores, p\. 44 do arquivo/u);
+  assert.equal(payload.result.structuredContent.data.items[0].sourceId, sourceId);
+  assert.equal(
+    payload.result.structuredContent.data.items[0].attachments[0].contentHash,
+    contentHash
+  );
+  for (const internalValue of [COURSE_ID, sourceId, anchorId, contentHash, storagePath]) {
+    assert.equal(text.includes(internalValue), false, internalValue);
+  }
+  assert.doesNotMatch(text, /storagePath|contentHash|sourceId|anchorId/iu);
 });
 
 test("MCP publica conhecimento e componente opcional e lê o plano pela rota compartilhada", async () => {
@@ -159,10 +466,11 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   assert.equal(payload.result.structuredContent.data.courseRevision, 2);
   assert.equal(payload.result.structuredContent.data.plan.version, 3);
   assert.match(payload.result.content[0].text, /A leitura foi concluída\./u);
-  assert.match(payload.result.content[0].text, /Revisão do Curso: 2\./u);
+  assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision|plan\.version/iu);
   assert.match(payload.result.content[0].text, /0 registros de atividade recente/u);
   assert.doesNotMatch(payload.result.content[0].text, /structuredContent/u);
   assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
 });
 
 test("MCP lê a materialização retomável sem duplicar o DTO no texto", async () => {
@@ -202,7 +510,8 @@ test("MCP lê a materialização retomável sem duplicar o DTO no texto", async 
   assert.equal(call.authoringPartId, PART_ID);
   assert.equal(call.materializationId, MATERIALIZATION_ID);
   assert.equal(payload.result.content[0].text.includes(MATERIALIZATION_ID), false);
-  assert.match(payload.result.content[0].text, new RegExp(`Parte: ${PART_ID}`, "u"));
+  assert.equal(payload.result.content[0].text.includes(PART_ID), false);
+  assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision/iu);
   assert.match(payload.result.content[0].text, /Uma Fonte ainda precisa de revisão/u);
   assert.match(payload.result.content[0].text, /primeira Microssequência foi preservada/u);
 });
@@ -294,13 +603,14 @@ test("MCP minimiza Observações e sinaliza quando o detalhe envia texto bruto",
   const detail = (await detailResponse.json()).result;
   assert.equal(detail.structuredContent.data.items[0].rawText, rawText);
   assert.equal(detail.structuredContent.data.dataDisclosure.rawObservationTextIncluded, true);
-  assert.match(detail.content[0].text, /envia ao cliente MCP conectado/iu);
+  assert.match(detail.content[0].text, /texto integral solicitado/iu);
+  assert.doesNotMatch(detail.content[0].text, /cliente MCP|payload|schema/iu);
   for (const protectedValue of [protectedRef, "Estudante FEED", COURSE_ID]) {
     assert.equal(JSON.stringify(detail).includes(protectedValue), false, protectedValue);
   }
 });
 
-test("MCP devolve recibo legível da conclusão com contagens e link", async () => {
+test("MCP devolve recibo humano e mantém controles e link no estado estruturado", async () => {
   const deepLink = `https://app.example/#/authoring/courses/${COURSE_ID}?section=planning`;
   let call = null;
   const response = await handler({
@@ -365,12 +675,14 @@ test("MCP devolve recibo legível da conclusão com contagens e link", async () 
 
   assert.equal(call.operation, "finish");
   assert.match(text, /materialização da Parte foi concluída/u);
-  assert.match(text, new RegExp(`Parte: ${PART_ID}`, "u"));
+  assert.equal(text.includes(PART_ID), false);
   assert.match(text, /5 de 5 concluídas; 0 com falha/u);
   assert.match(text, /criadas 0; alteradas 0; removidas 0/u);
-  assert.match(text, /Abrir no AraLearn:/u);
+  assert.equal(text.includes(deepLink), false);
   assert.equal(text.includes(MATERIALIZATION_ID), false);
   assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
+  assert.match(text, /Abrir a área alterada no AraLearn/u);
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
 });
 
 test("MCP entrega o mesmo DTO factual de comparação usado pela interface", async () => {
@@ -410,18 +722,18 @@ test("MCP entrega o mesmo DTO factual de comparação usado pela interface", asy
   assert.deepEqual(payload.result.structuredContent.data, expected);
   const text = payload.result.content[0].text;
   assert.match(text, /comparação de variantes foi lida/iu);
-  assert.match(text, /Planejamento comum: revisão 7; versão 2/u);
-  assert.match(text, /Referência: A, revisão 1/u);
-  assert.match(text, /A: revisão 1; 1 Parte; 0 Unidades/u);
-  assert.match(text, /B: revisão 1; 1 Parte; 0 Unidades/u);
+  assert.match(text, /Referência: A/u);
+  assert.match(text, /A: 1 Parte; 0 Unidades/u);
+  assert.match(text, /B: 1 Parte; 0 Unidades/u);
   assert.match(text, /desvios acidentais 1/u);
   assert.match(text, /A variante B contém uma Unidade adicional/u);
+  assert.doesNotMatch(text, /revisão|planVersion|courseRevision/iu);
   assert.doesNotMatch(text, /"comparisonSetId"|\{"contract"/u);
   assert.equal(call.comparisonSetId, comparisonSetId);
   assert.equal(call.expectedCourseRevision, 7);
 });
 
-test("MCP resume fatos de Pesquisa com pergunta, revisão e limites", async () => {
+test("MCP resume fatos de Pesquisa com pergunta e limites sem revisão técnica", async () => {
   let call = null;
   const deepLink = `https://app.example/#/authoring/courses/${COURSE_ID}?section=research`;
   const response = await handler({
@@ -462,13 +774,14 @@ test("MCP resume fatos de Pesquisa com pergunta, revisão e limites", async () =
   assert.equal(call.expectedCourseRevision, 7);
   assert.deepEqual(call.query.datasets, ["materializations"]);
   assert.match(payload.result.content[0].text, /fatos de pesquisa da Autoria/iu);
-  assert.match(payload.result.content[0].text, /Revisão do Curso: 7/u);
+  assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision/iu);
   assert.match(
     payload.result.content[0].text,
     /Concluída: 2 \(unidade: contagem; denominador: 5\)/u
   );
   assert.match(payload.result.content[0].text, /não mede aprendizagem/u);
-  assert.match(payload.result.content[0].text, /Abrir no AraLearn:/u);
+  assert.equal(payload.result.content[0].text.includes(deepLink), false);
+  assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
 });
 
 test("MCP avisa quando a síntese textual de Pesquisa limita as categorias", async () => {
@@ -495,11 +808,11 @@ test("MCP avisa quando a síntese textual de Pesquisa limita as categorias", asy
   }));
   const text = (await response.json()).result.content[0].text;
   assert.match(text, /12 de 13 categorias/u);
-  assert.match(text, /conteúdo estruturado conserva o recorte completo/u);
+  assert.match(text, /demais categorias continuam disponíveis/u);
   assert.doesNotMatch(text, /Categoria 13:/u);
 });
 
-test("MCP entrega prévia textual e link exato para a Unidade persistida", async () => {
+test("MCP entrega prévia textual e oferece o link como ação estruturada", async () => {
   const studyUnit = await minimalStudyUnit();
   const response = await handler({
     publicAppUrl: "https://fabio-ara.github.io/AraLearn"
@@ -524,7 +837,9 @@ test("MCP entrega prévia textual e link exato para a Unidade persistida", async
       `?section=content&studyUnitId=${studyUnit.id}`
   );
   assert.match(payload.result.content[0].text, /A conjunção só é verdadeira/u);
-  assert.match(payload.result.content[0].text, /Abrir no AraLearn:/u);
+  assert.equal(payload.result.content[0].text.includes(preview.deepLink), false);
+  assert.match(payload.result.content[0].text, /Abrir a prévia no AraLearn/u);
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
   assert.doesNotMatch(JSON.stringify(payload), /"rendered":false/u);
 });
 
@@ -542,8 +857,8 @@ test("MCP resume operações não visuais da biblioteca sem despejar JSON", asyn
   assert.equal(payload.result.structuredContent.data.operation, "search");
   assert.match(text, /biblioteca de componentes didáticos foi consultada/iu);
   assert.match(text, /Operação: Busca de componentes/u);
-  assert.match(text, /Catálogo:/u);
   assert.match(text, /Candidatos:/u);
+  assert.doesNotMatch(text, /Catálogo:|catalogVersion/iu);
   assert.doesNotMatch(text, /"candidates"|\{"contract"/u);
 });
 
@@ -576,6 +891,43 @@ test("MCP interrompe envelope acima de 1 MiB antes de despachar ferramenta", asy
   assert.equal(payload.error.data.code, "mcp_message_too_large");
 });
 
+test("MCP não induz repetição quando a resposta estoura após criar o Curso", async () => {
+  let writes = 0;
+  const response = await handler({
+    async createCourse({ title }) {
+      writes += 1;
+      return {
+        contract: "aralearn.course.v1",
+        courseId: COURSE_ID,
+        title,
+        revision: 1,
+        deepLink: `https://example.test/#/authoring/courses/${COURSE_ID}`,
+        padding: "x".repeat(2 * 1024 * 1024 - 350)
+      };
+    }
+  })(request("tools/call", {
+    name: "criarCurso",
+    arguments: {
+      requestId: "mcp-large-created-course-0001",
+      title: "Curso já gravado",
+      objective: "Provar a certeza de escrita após o limite da resposta."
+    }
+  }));
+  const payload = await response.json();
+  const result = payload.result;
+
+  assert.equal(writes, 1);
+  assert.equal(response.status, 200);
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.requestId, "mcp-large-created-course-0001");
+  assert.equal(result.structuredContent.error.code, "mcp_response_too_large");
+  assert.equal(result.structuredContent.error.recovery.strategy, "verify_state");
+  assert.equal(result.structuredContent.error.recovery.retryable, false);
+  assert.match(result.content[0].text, /gravação foi concluída/iu);
+  assert.doesNotMatch(result.content[0].text, /Nada foi salvo|reduza a página/iu);
+  assert.equal(Object.hasOwn(result.structuredContent, "conversation"), false);
+});
+
 test("MCP torna recuperável o conflito de versão do Curso sem instruções substituídas", async () => {
   const response = await handler({
     async commitCourseInstructionalPlan() {
@@ -605,6 +957,9 @@ test("MCP torna recuperável o conflito de versão do Curso sem instruções sub
   assert.equal(result.structuredContent.error.code, "stale_course_state");
   assert.equal(result.structuredContent.error.recovery.strategy, "reread_and_retry");
   assert.equal(result.structuredContent.error.recovery.requestIdMode, "new");
+  assert.match(result.content[0].text, /Nada foi sobrescrito/u);
+  assert.doesNotMatch(result.content[0].text, /stale_course_state|requestId|revisão \d/iu);
+  assert.equal(Object.hasOwn(result.structuredContent, "conversation"), false);
   assert.doesNotMatch(JSON.stringify(result), /workspace|trilha|salvarCards/iu);
 });
 
@@ -730,8 +1085,9 @@ test("MCP não reflete token, e-mail, Authorization ou payload bruto em erros", 
   assert.equal(unknownResult.isError, true);
   assert.equal(unknownResult.structuredContent.error.message,
     "O comando contém um campo não reconhecido.");
-  assert.equal(unknownResult.content[0].text,
-    "unknown_tool_argument: O comando contém um campo não reconhecido.");
+  assert.match(unknownResult.content[0].text, /operação de autoria não foi concluída/iu);
+  assert.doesNotMatch(unknownResult.content[0].text, /unknown_tool_argument|requestId/iu);
+  assert.equal(Object.hasOwn(unknownResult.structuredContent, "conversation"), false);
   assert.equal(JSON.stringify(unknownPayload).includes(hostileField), false);
 
   const hostileRequestId = sentinels[1];

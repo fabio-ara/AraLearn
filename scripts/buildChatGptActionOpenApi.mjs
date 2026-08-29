@@ -5,11 +5,15 @@ import {
   AUTHORING_PROTOCOL_ID,
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
+  AUTHORING_CONVERSATION_SCHEMA,
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import {
   AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
 } from "../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
+import {
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+} from "../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
   actionLiteralSchema,
   forChatGptActionImporter,
@@ -33,28 +37,32 @@ const baseUrl =
 const responseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["ok", "requestId", "data"],
+  required: ["ok", "requestId", "data", "conversation"],
   properties: {
     ok: actionLiteralSchema(true),
     requestId: { type: ["string", "null"] },
-    data: {}
+    data: {},
+    conversation: { $ref: "#/components/schemas/ConversationProjection" }
   }
 };
 const errorSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["ok", "requestId", "error"],
+  required: ["ok", "requestId", "error", "conversation"],
   properties: {
     ok: actionLiteralSchema(false),
     requestId: { type: ["string", "null"] },
-    error: { type: "object" }
+    error: { type: "object" },
+    conversation: { $ref: "#/components/schemas/ConversationProjection" }
   }
 };
 const CHATGPT_ACTION_INPUT_DESCRIPTIONS = {
   lerCurso:
-    "Escolha uma variante de view e envie somente os campos declarados nela. Use paginação apenas quando a resposta anterior devolver cursor.",
+    "Escolha uma variante de view e envie somente os campos declarados nela. Use paginação apenas quando a resposta anterior devolver cursor. Preserve metadados técnicos internamente e converse em linguagem de domínio.",
   alterarCurso:
-    "Escolha uma variante de operation, preserve os controles otimistas lidos e envie somente o comando compatível que o schema expõe."
+    "Escolha uma variante de operation, use silenciosamente os controles lidos e envie somente o comando compatível que o schema expõe. Confirme efeitos pedagógicos, não o payload.",
+  incorporarPdfComoFonte:
+    "Use o único PDF anexado pela pessoa como Fonte persistente do Curso quando a intenção estiver clara. O ChatGPT fornece a referência temporária em openaiFileIdRefs; converse sobre o efeito no Curso, não sobre IDs nem URLs."
 };
 const actionTools = projectChatGptActionTransportTools(
   projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS),
@@ -185,14 +193,17 @@ const document = {
     "x-aralearn-protocol": AUTHORING_PROTOCOL_ID,
     "x-aralearn-protocol-schema-version": AUTHORING_PROTOCOL_SCHEMA_VERSION,
     "x-aralearn-contract-fingerprint": AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
-    description:
-      "Permite que um GPT personalizado opere os Cursos próprios da pessoa conectada pelos contratos correntes do AraLearn."
+    description: [
+      "Permite que um GPT personalizado opere os Cursos próprios da pessoa conectada pelos contratos correntes do AraLearn.",
+      COURSE_AUTHORING_SERVER_INSTRUCTIONS
+    ].join("\n\n")
   },
   servers: [{ url: baseUrl }],
   paths,
   components: {
     schemas: {
       ...actionComponentSchemas,
+      ConversationProjection: AUTHORING_CONVERSATION_SCHEMA,
       SuccessResponse: responseSchema,
       ErrorResponse: errorSchema
     },

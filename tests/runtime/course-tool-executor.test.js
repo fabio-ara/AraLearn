@@ -580,6 +580,147 @@ test("projeção defensiva não devolve URL sem opt-in e a aplicação conserva 
   assert.deepEqual(applicationDownload.data, raw);
 });
 
+test("arquivo conversacional chega à ingestão canônica e preserva detalhes só no estruturado", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  let received = null;
+  const requestId = "request-conversation-pdf-0001";
+  const result = await executeCourseTool({
+    adapter: {
+      fetchImpl: async () => new Response(pdfBytes, {
+        headers: {
+          "content-type": "application/pdf",
+          "content-length": String(pdfBytes.byteLength)
+        }
+      }),
+      async ingestCourseSourcePdf(value) {
+        received = value;
+        return {
+          contract: "aralearn.course-source-pdf-ingestion.v1",
+          courseId: COURSE_ID,
+          courseRevision: 8,
+          requestId,
+          idempotent: false,
+          changed: true,
+          change: { type: "attach_pdf", subjectId: "source-edital", revision: 2 },
+          source: {
+            sourceId: "source-edital",
+            sourceRevision: 2,
+            bibliographyChanged: false
+          },
+          attachment: {
+            contentHash: PDF_HASH,
+            byteSize: pdfBytes.byteLength,
+            mediaType: "application/pdf",
+            storagePath: PDF_STORAGE_PATH
+          },
+          stored: true
+        };
+      }
+    },
+    principal: PRINCIPAL,
+    name: "incorporarPdfComoFonte",
+    rawArguments: {
+      requestId,
+      courseId: COURSE_ID,
+      expectedRevision: 7,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 2
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/synthetic.pdf?token=temporary",
+        file_id: "file-synthetic-pdf",
+        mime_type: "application/pdf",
+        file_name: "edital-sintetico.pdf"
+      }
+    },
+    deadlineAt: Date.now() + 1_000,
+    surface: "mcp",
+    projectionRecipient: "connected_mcp_client"
+  });
+
+  assert.deepEqual(received.bytes, pdfBytes);
+  assert.equal(received.courseId, COURSE_ID);
+  assert.equal(received.expectedCourseRevision, 7);
+  assert.equal(received.requestId, requestId);
+  assert.deepEqual(received.sourceIntent, {
+    mode: "existing",
+    sourceId: "source-edital",
+    sourceRevision: 2
+  });
+  assert.equal(Object.hasOwn(received, "pdf"), false);
+  assert.equal(result.data.contract, "aralearn.mcp-course-source-pdf-ingestion.v1");
+  assert.equal(result.data.stored, true);
+  assert.equal(Object.hasOwn(result.data, "courseId"), false);
+  assert.deepEqual(result.data.technicalDetails, {
+    contentHash: PDF_HASH,
+    byteSize: pdfBytes.byteLength,
+    mediaType: "application/pdf",
+    storagePath: PDF_STORAGE_PATH
+  });
+  assert.equal(result.data.dataDisclosure.technicalDetailsMachineFacing, true);
+});
+
+test("ingestão conversacional não produz sucesso sem stored true", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  for (const [index, stored] of [false, undefined].entries()) {
+    const requestId = `request-conversation-pdf-unconfirmed-000${index + 1}`;
+    await assert.rejects(executeCourseTool({
+      adapter: {
+        fetchImpl: async () => new Response(pdfBytes, {
+          headers: { "content-type": "application/pdf" }
+        }),
+        async ingestCourseSourcePdf() {
+          return {
+            contract: "aralearn.course-source-pdf-ingestion.v1",
+            courseId: COURSE_ID,
+            courseRevision: 8,
+            requestId,
+            idempotent: false,
+            changed: true,
+            change: { type: "attach_pdf", subjectId: "source-edital", revision: 2 },
+            source: {
+              sourceId: "source-edital",
+              sourceRevision: 2,
+              bibliographyChanged: false
+            },
+            attachment: {
+              contentHash: PDF_HASH,
+              byteSize: pdfBytes.byteLength,
+              mediaType: "application/pdf",
+              storagePath: PDF_STORAGE_PATH
+            },
+            ...(stored === undefined ? {} : { stored })
+          };
+        }
+      },
+      principal: PRINCIPAL,
+      name: "incorporarPdfComoFonte",
+      rawArguments: {
+        requestId,
+        courseId: COURSE_ID,
+        expectedRevision: 7,
+        sourceIntent: {
+          mode: "existing",
+          sourceId: "source-edital",
+          sourceRevision: 2
+        },
+        pdf: {
+          download_url: "https://files.oaiusercontent.com/unconfirmed.pdf?token=temporary",
+          file_id: `file-unconfirmed-${index + 1}`,
+          mime_type: "application/pdf"
+        }
+      },
+      deadlineAt: Date.now() + 1_000,
+      surface: "mcp"
+    }), (error) => {
+      assert.equal(error.code, "course_source_pdf_persistence_unconfirmed");
+      return true;
+    });
+  }
+});
+
 test("executa cópia pessoal somente pela superfície da aplicação", async () => {
   const studyUnit = {
     id: "unit-a",

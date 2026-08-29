@@ -2,12 +2,21 @@ const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "O AraLearn mantém um Curso vivo e mutável como única autoridade da autoria.",
-  "Leia somente o recorte necessário antes de alterar e envie as revisões e versões recebidas.",
-  "As leituras pertinentes devolvem phaseGuidance focal; use essa orientação na fase corrente, sem fixar plano, desenho, Fontes ou progresso na conversa.",
+  "Em uma nova conversa, localize Cursos próprios pelo título em linguagem humana. Use uma correspondência única plausível; se houver duas, peça uma desambiguação compreensível sem exigir ID como primeira opção. Depois, releia o estado vivo e identifique onde a autoria parou.",
+  "Leia somente o recorte necessário antes de alterar. Preserve IDs, revisões, versões, CAS, requestId, hashes, caminhos, operações e payloads exclusivamente no estado estruturado necessário ao trabalho; nunca os fabrique.",
+  "Preservar internamente não significa mostrar à pessoa. Na conversa padrão, não enumere UUIDs, revisions, planVersion, CAS, requestIds, expectedRevision, expectedPlanVersion, hashes, payloads, storage paths, nomes de operações, enums internos, sourceLinks ou schemas.",
+  "Apresente primeiro onde o Curso parou, o que existe, o que falta, a mudança pedagógica proposta, sua justificativa, o que permanecerá intacto, a decisão humana necessária e se haverá materialização.",
+  "Quando útil, dê transparência operacional leve — por exemplo, que releu o estado atual ou que a alteração foi gravada e validada — sem narrar o protocolo.",
+  "Em falhas, explique a tarefa afetada, a certeza sobre qualquer escrita e o próximo passo seguro. Nunca declare sucesso incerto. Revele o detalhe técnico literal somente sob pedido explícito ou quando uma intervenção técnica real for necessária.",
+  "Antes de escrever, descreva e confirme os efeitos pedagógicos da proposta, não o payload. Releia silenciosamente os controles correntes quando necessário.",
+  "Uma intenção inequívoca de manter um PDF entre as Fontes do Curso autoriza incorporarPdfComoFonte diretamente em qualquer fase da autoria, sem pergunta cerimonial. Se o anexo ou o pedido for ambíguo, pergunte exatamente: ‘Você quer usar este documento só nesta análise ou mantê-lo entre as Fontes do Curso?’",
+  "Se a pessoa disser que o documento serve só à análise corrente, é temporário ou não deve integrar o Curso, não chame incorporarPdfComoFonte. A presença do anexo, por si só, não autoriza persistência.",
+  "Só informe que o PDF foi mantido entre as Fontes depois de incorporarPdfComoFonte confirmar stored igual a true. Falha de transferência ou resultado incerto nunca é sucesso; em uma resposta normal, descreva o efeito confirmado sem expor hash, tamanho, caminho ou outros detalhes técnicos.",
+  "As leituras pertinentes devolvem phaseGuidance focal; use essa orientação internamente na fase corrente, sem fixar plano, desenho, Fontes ou progresso na conversa.",
   "Use as ferramentas para observar ou modificar fatos; não invente conteúdo, Fontes, permissões, resultados nem estado de materialização.",
   "Registre apenas conclusões e evidências públicas, nunca conversa completa, prompt secreto ou raciocínio privado.",
   "Achado não autoriza alteração: proponha, obtenha a confirmação exigida, aplique e verifique separadamente no Curso vivo.",
-  "Preserve os deep links literais devolvidos e informe ao final apenas o que mudou e a incerteza ainda aberta.",
+  "Preserve deep links no estado estruturado. Ofereça um link como ação humana rotulada, por exemplo ‘Abrir planejamento no AraLearn’, apenas quando ele for útil; não despeje a URL na conversa comum.",
   "Não mostre Unidades em toda interação. Ao concluir uma etapa material ou quando a pessoa pedir ou precisar conferir evidência, crie um foco coerente — de preferência a Microssequência afetada inteira — e leia suas Unidades para apresentá-las visualmente no chat."
 ].join("\n");
 
@@ -15,7 +24,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   planning_design: Object.freeze({
     title: "Planejamento e desenho",
     instructions: Object.freeze([
-      "Leia instructional_plan antes de replanejar; preserve ids de itens e Partes e a versão do plano.",
+      "Leia instructional_plan antes de replanejar; preserve internamente os ids de itens e Partes e a versão do plano, sem mostrá-los por padrão.",
       "Leia course_design no escopo exato antes de decidir ou materializar.",
       "Herdar é não manter decisão local. Automático delega a escolha ao AraLearn/GPT, registra o valor resolvido e uma justificativa pública breve. Explícito fixa decisão da autoria ou condição de pesquisa.",
       "Uma Parte é agrupamento operacional configurável, não nível da hierarquia didática."
@@ -35,16 +44,21 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   sources: Object.freeze({
     title: "Fontes e proveniência",
     instructions: Object.freeze([
-      "Leia o catálogo, a revisão da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência.",
+      "Numa nova sessão, localize primeiro o Curso pelo título humano, releia o planejamento corrente e percorra o catálogo de Fontes; preserve as identidades estruturadas internamente sem mostrá-las como referências para a pessoa.",
+      "Leia o catálogo, a edição pertinente da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência. Aprofunde somente as Fontes relevantes; não carregue nem abra todos os PDFs por padrão.",
       "Registre somente metadados fornecidos ou verificados; explicite lacunas e pergunte em vez de completar por plausibilidade.",
-      "citationText identifica a Fonte para pessoas, humanLocator nomeia o local declarado e selector preserva a localização exata.",
-      "Não grave Fontes dentro do conteúdo da Unidade; use sourceLinks e sourceAttributionApplication."
+      "citationText identifica a Fonte para pessoas, humanLocator nomeia o local declarado e selector preserva a localização exata. Em texto humano, cite a referência e o local, nunca sourceId, anchorId, revisão, hash ou caminho.",
+      "Para explicar a proveniência de um alvo, leia seus vínculos e depois abra cada Fonte necessária no contexto desse alvo; assim a citação usa a edição e a Âncora historicamente pinadas.",
+      "Crie uma Âncora nova somente na edição ativa e com localização verificada. Uma nova edição, errata ou norma substituta exige Âncoras próprias; nunca recicle silenciosamente seletores de outra edição.",
+      "Aposentar uma Fonte ou Âncora impede novos usos, mas não apaga a proveniência histórica. Não atualize conteúdo antigo apenas para fazê-lo apontar à edição mais recente.",
+      "Solicite o acesso temporário a um PDF somente quando uma verificação focal realmente exigir seus bytes e somente após a divulgação explícita exigida pelo contrato.",
+      "Não grave Fontes dentro do conteúdo da Unidade; use sourceLinks para itens do planejamento e sourceAttributionApplication para Unidades de estudo. Não invente outro tipo de alvo."
     ])
   }),
   inspection: Object.freeze({
     title: "Inspeção contínua",
     instructions: Object.freeze([
-      "Inspecione Unidades pela vista paginada no menor escopo curricular pertinente e preserve os deep links devolvidos.",
+      "Inspecione Unidades pela vista paginada no menor escopo curricular pertinente e preserve os deep links internamente; ofereça uma ação rotulada somente quando útil à pessoa.",
       "Para apresentar material no chat, crie inspection_focus com as Unidades escolhidas e depois leia study_units com inspectionFocusId. O componente agrupa o conjunto por Microssequência e fornece referências curtas para comentários na conversa.",
       "Prefira a Microssequência inteira a pedidos sucessivos de uma Unidade, mas aceite uma Unidade ou um conjunto arbitrário quando a pergunta exigir comparação localizada. Não renderize cards em respostas rotineiras sem finalidade de inspeção.",
       "Ao comentar um foco, interprete-o editorialmente à luz do desenho vigente e das Fontes/Âncoras lidas para o alvo; não substitua a inspeção por uma paráfrase das Unidades já visíveis.",

@@ -63,3 +63,28 @@ test("campo desconhecido não é refletido no erro público", () => {
   assert.equal(Object.hasOwn(projected, "details"), false);
   assert.equal(serialized.includes(unknownField), false);
 });
+
+test("limites de PDF recebem recuperação própria sem repetição automática", () => {
+  const tooLarge = toolErrorData(new AuthoringApiError(
+    413,
+    "pdf_too_large",
+    "Use um PDF de até 20 MiB."
+  ), { requestId: "request-pdf-too-large-0001" });
+  assert.equal(tooLarge.recovery.strategy, "correct_and_retry");
+  assert.equal(tooLarge.recovery.requestIdMode, "new");
+  assert.match(tooLarge.recovery.steps.join(" "), /PDF de até 20 MiB/iu);
+  assert.doesNotMatch(tooLarge.recovery.steps.join(" "), /composição|lote menor/iu);
+
+  for (const [code, message] of [
+    ["course_source_pdf_quota_exceeded", "O Curso atingiu a cota de PDFs."],
+    ["course_source_pdf_attachment_limit", "A revisão atingiu o limite de anexos."]
+  ]) {
+    const projected = toolErrorData(new AuthoringApiError(413, code, message), {
+      requestId: `request-${code}-0001`
+    });
+    assert.equal(projected.recovery.strategy, "stop");
+    assert.equal(projected.recovery.retryable, false);
+    assert.equal(projected.recovery.requestIdMode, "none");
+    assert.doesNotMatch(projected.recovery.steps.join(" "), /composição|lote menor/iu);
+  }
+});

@@ -18,11 +18,14 @@ cliente, consentimento ou token.
 | `lerCurso` | ler o recorte corrente necessário à tarefa |
 | `criarCurso` | criar um Curso privado com título e objetivo |
 | `alterarCurso` | executar uma alteração tipada, cercada por revisão e identidade de pedido |
+| `incorporarPdfComoFonte` | manter um PDF transportado pelo ChatGPT entre as Fontes do Curso |
 | `consultarComponentesDidaticos` | descobrir, inspecionar, validar e visualizar componentes progressivamente |
 
-Planejamento, Fontes, Observações, Auditoria, Variantes e Pesquisa aparecem
-como vistas de `lerCurso` ou operações fechadas de `alterarCurso`. O GPT não
-recebe uma rota genérica para banco nem uma operação por tabela.
+Planejamento, metadados e vínculos de Fontes, Observações, Auditoria, Variantes
+e Pesquisa aparecem como vistas de `lerCurso` ou operações fechadas de
+`alterarCurso`. A transferência do PDF fica isolada em
+`incorporarPdfComoFonte`. O GPT não recebe uma rota genérica para banco nem uma
+operação por tabela.
 
 O OpenAPI apresenta ainda `add_plan_item` e `update_plan_item` como projeções
 dedicadas de Actions. Elas continuam executando as variantes homônimas de
@@ -149,10 +152,54 @@ argumentos admitidos e às revisões esperadas.
 
 ## Como uma conversa segura progride
 
-Antes de alterar um Curso, o GPT localiza o alvo, lê a revisão corrente e
-explica a operação proposta. Uma escrita usa um identificador de pedido estável
-e a revisão esperada. Se o Curso mudar, a Action devolve conflito para que a
-conversa releia o estado, em vez de sobrescrever trabalho novo.
+Antes de alterar um Curso, o GPT localiza o alvo pelo título, lê a revisão
+corrente e explica a operação proposta. Se houver uma correspondência única
+plausível, pode usá-la; se houver Cursos homônimos, pede uma escolha por objetivo,
+etapa ou atividade recente, sem exigir UUID como primeira opção. Uma nova sessão
+pode, assim, retomar o Curso vivo por nome sem receber um prompt técnico de
+restauração.
+
+Depois de localizar o Curso, a retomada documental relê o planejamento e o
+catálogo de Fontes persistido. O GPT apresenta um resumo curto por referência
+humana, aprofunda somente as Fontes ligadas à tarefa e combina `citationText`
+com o localizador verificável da Âncora. IDs, revisões, hashes e caminhos ficam
+nos dados estruturados. O PDF de uma edição só é solicitado quando a tarefa
+exige leitura focal; os demais documentos permanecem fechados.
+
+O esquema da Action conserva um identificador de pedido estável, revisões,
+versões esperadas e demais metadados necessários. A fala do GPT não é uma cópia
+desse esquema: **preservar internamente != mostrar ao usuário**. Por padrão, ela
+explica estado autoral, lacunas, efeito, preservações, materialização e decisão
+humana. Pode acrescentar transparência leve sobre releitura ou validação; em uma
+falha, passa a diagnóstico humano; IDs, CAS, payload, chamada e erro bruto ficam
+para pedido técnico explícito.
+
+As respostas HTTP mantêm `requestId`, `data` ou `error` e acrescentam
+`conversation` como projeção separada. Assim, os controles continuam
+recuperáveis pelo GPT, enquanto a mensagem padrão permanece humana. A certeza
+de escrita distingue estado nenhum, parcial, concluído ou desconhecido; uma
+falha de entrega posterior à gravação não pode ser descrita como “nada foi
+salvo”.
+
+Quando uma decisão ainda estiver aberta ou o domínio exigir confirmação, uma
+forma adequada seria “Vou acrescentar 9 resultados de aprendizagem,
+30 elementos fundamentais e 12 formas de evidência. As 12 Partes permanecem
+como estão e nenhuma aula será criada. Confirmo?”. “Vou chamar
+`update_instructional_plan` com `expectedRevision` e este payload. Confirmo?” é
+inadequado: descreve o mecanismo, não o efeito pedagógico. O primeiro texto é um
+exemplo, não um template rígido. Somente a incorporação de PDF dispensa uma
+segunda pergunta quando o próprio pedido já declara inequivocamente que o
+documento deve integrar as Fontes do Curso.
+
+Se o Curso mudar, a Action devolve conflito para que a conversa releia o estado
+e reconcilie a intenção, em vez de sobrescrever trabalho novo. Falha, tempo
+esgotado ou resposta perdida não autorizam falso sucesso: o GPT informa o que foi ou não
+confirmado e segue o próximo passo seguro indicado pelo resultado estruturado.
+Quando a pessoa pedir “Mostre os IDs, as revisões e a chamada que falhou”, o GPT
+apresenta os dados disponíveis literalmente e não inventa os ausentes. Links
+para a interface permanecem no resultado e são oferecidos como ação útil, por
+exemplo **Abrir planejamento no AraLearn**, sem serem despejados em toda
+retomada.
 
 Em parâmetros, `clear_parameter` remove a decisão local e restaura a herança.
 `set_parameter` com `mode: automatic` delega a resolução ao AraLearn/GPT e
@@ -172,6 +219,32 @@ autoria, data, edição, periódico ou outro dado necessário estiver ausente, e
 explica a lacuna e pergunta à pessoa em vez de inventar. A citação identifica a
 Fonte; o localizador humano identifica capítulo, seção, unidade, slide, figura
 ou tabela declarados pelo material; o seletor conserva a posição exata.
+
+Uma edição nova, errata ou norma substituta recebe Âncoras próprias. Aposentar
+uma Fonte ou Âncora bloqueia novos vínculos, mas preserva a proveniência do
+planejamento e do conteúdo históricos; a conversa não troca silenciosamente a
+edição atribuída.
+
+Para manter um PDF no Curso, a Action `incorporarPdfComoFonte` recebe os
+controles do Curso, um `sourceIntent` e a referência de arquivo oficial do
+ChatGPT. `sourceIntent` usa `existing` para uma Fonte já registrada ou `save`
+para criar ou revisar a Fonte junto com a incorporação. No OpenAPI importado, o
+ChatGPT preenche `openaiFileIdRefs`; o adaptador converte a única referência PDF
+da chamada no objeto `pdf` canônico. A pessoa não informa hash, tamanho nem
+caminho técnico.
+
+Pedidos como “use este edital para fundamentar o Curso”, “considere este PPC e
+esta prova no planejamento” ou “incorpore esta nova norma e revise a Parte” já
+autorizam manter os respectivos documentos, sem exigir “salve este arquivo” ou
+outra frase mágica. Diante de “O que você acha deste PDF?”, o GPT pergunta
+exatamente: “Você quer usar este documento só nesta análise ou mantê-lo entre as
+Fontes do Curso?”. Se a resposta ou o pedido inicial limitar o uso à conversa,
+a Action não é chamada. Essa política vale em qualquer fase da autoria.
+
+Sucesso só é anunciado depois de o resultado confirmar `stored: true`. Arquivo
+repetido é reutilizado; falha de transferência, tamanho ou cota é comunicada em
+linguagem humana sem inventar sucesso. Os detalhes técnicos disponíveis só são
+mostrados quando a pessoa os pedir explicitamente.
 
 Para produzir uma Unidade com componentes didáticos:
 
@@ -198,7 +271,7 @@ somente quando a tarefa precisar ler aquele PDF.
 | cliente OAuth | confidencial, ligado ao GPT | público ou conforme o cliente MCP cadastrado dinamicamente |
 | escopo | `openid email` | `offline_access` |
 | token | opaco, resolvido por hash | JWT ES256 minimizado e destinado ao recurso MCP |
-| catálogo | cinco operações HTTP | cinco ferramentas canônicas |
+| catálogo | seis operações canônicas e duas projeções dedicadas | seis ferramentas canônicas |
 
 Depois de autenticar seus principais, os dois canais chegam ao mesmo executor
 de Curso. Essa convergência mantém revisão, idempotência, validação e histórico;
@@ -212,6 +285,11 @@ O OpenAPI é gerado a partir do catálogo corrente:
 npm.cmd run actions:openapi:check
 npm.cmd run test:authoring:actions
 ```
+
+O próprio `info.description` do artefato inclui as instruções compartilhadas de
+autoria e divulgação progressiva. A reimportação continua necessária para um
+GPT já salvo, pois sua configuração externa conserva a cópia anterior; esse ato
+não pode ser realizado pelo repositório.
 
 O arquivo gerado deve permanecer abaixo de 128 KiB. O teste também confirma que
 os discriminadores chegam como enums unitários, que toda condicional canônica

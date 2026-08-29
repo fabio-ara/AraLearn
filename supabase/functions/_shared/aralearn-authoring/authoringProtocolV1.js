@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.1.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.3.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -414,6 +414,41 @@ const sourceCommandSchema = {
     })
   ]
 };
+
+const courseSourcePdfIntentSchema = {
+  oneOf: [
+    objectSchema({
+      mode: { const: "existing" },
+      sourceId: legacySourceIdSchema,
+      sourceRevision: { type: "integer", minimum: 1 }
+    }),
+    objectSchema({
+      mode: { const: "save" },
+      sourceId: { anyOf: [legacySourceIdSchema, { type: "null" }] },
+      expectedSourceRevision: { type: "integer", minimum: 0 },
+      source: sourceDocumentSchema
+    })
+  ]
+};
+
+const temporaryPdfFileSchema = objectSchema({
+  download_url: stringSchema({
+    minLength: 8,
+    maxLength: 8_192,
+    pattern: "^https://[^\\s]+$"
+  }),
+  file_id: stringSchema({
+    minLength: 1,
+    maxLength: 240,
+    pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+  }),
+  mime_type: stringSchema({ enum: ["application/pdf"] }),
+  file_name: stringSchema({
+    minLength: 1,
+    maxLength: 500,
+    pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+  })
+}, ["download_url", "file_id"]);
 
 const auditCodeSchema = stringSchema({
   minLength: 3,
@@ -1132,6 +1167,33 @@ const materializationCommandSchema = {
   }]
 };
 
+export const AUTHORING_CONVERSATION_SCHEMA = Object.freeze(objectSchema({
+  contract: { const: "aralearn.conversational-authoring-projection.v1" },
+  kind: stringSchema({ enum: [
+    "resumption_not_found", "resumption_disambiguation", "resumption",
+    "confirmation", "success", "error"
+  ] }),
+  level: stringSchema({ enum: ["standard", "operational", "diagnostic", "technical"] }),
+  message: stringSchema({ minLength: 1, maxLength: 12_000 }),
+  needsHumanDecision: { type: "boolean" },
+  choices: {
+    type: "array", maxItems: 50,
+    items: stringSchema({ minLength: 1, maxLength: 500 })
+  },
+  success: { type: "boolean" },
+  action: objectSchema({
+    label: stringSchema({ minLength: 1, maxLength: 160 })
+  }, ["label"]),
+  classification: stringSchema({ enum: [
+    "conflict", "limit", "validation", "access", "uncertain", "failure"
+  ] }),
+  writeState: stringSchema({ enum: ["none", "partial", "complete", "unknown"] }),
+  retrySafe: { type: "boolean" },
+  reloadRequired: { type: "boolean" },
+  concurrencyConflict: { type: "boolean" },
+  technicalDetails: { type: "object" }
+}, ["contract", "kind", "level", "message"]));
+
 const outputSchema = objectSchema({
   ok: { type: "boolean", const: true },
   requestId: {
@@ -1165,7 +1227,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "listarCursos",
     title: "Listar Cursos",
-    description: "Lista somente os Cursos próprios disponíveis na Autoria. Use query para localizar por título; a resposta inclui links para a interface visual.",
+    description: "Lista os Cursos próprios. Na retomada, localize por título, use a correspondência única plausível e peça desambiguação humana se houver duplicidade; mantenha IDs e links apenas no estado estruturado.",
     inputSchema: objectSchema({
       query: stringSchema({ maxLength: 120 }),
       limit: { type: "integer", minimum: 1, maximum: 50 },
@@ -1177,7 +1239,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê uma vista delimitada do Curso vivo. Escolha o menor recorte necessário; a primeira página pertinente inclui phaseGuidance focal. Preserve revisões e deep links. Texto integral de Observação e download temporário de PDF exigem as declarações explícitas do schema.",
+    description: "Lê o menor recorte necessário do Curso vivo. Use phaseGuidance focal, revisões e links silenciosamente; converse em linguagem de domínio e só revele detalhes técnicos sob pedido. Observação integral e download de PDF exigem as declarações do schema.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
@@ -1702,7 +1764,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "criarCurso",
     title: "Criar Curso",
-    description: "Cria atomicamente um Curso privado e vazio, pronto para receber planejamento e materialização, sem recipiente ou estágio intermediário.",
+    description: "Cria atomicamente um Curso privado e vazio. Confirme título, objetivo e próximo passo autoral; mantenha controles somente no estado estruturado.",
     inputSchema: objectSchema({
       requestId: requestIdSchema,
       title: stringSchema({ minLength: 1, maxLength: 300 }),
@@ -1714,7 +1776,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso por operação tipada. Releia a vista, preserve requestId e versões e siga phaseGuidance. Proponha antes de aplicar e verifique depois.",
+    description: "Altera o Curso por operação tipada. Use controles e orientação em silêncio. Proponha antes de aplicar e verifique depois; confirme efeitos pedagógicos, preservações e materialização. Só revele detalhes técnicos sob pedido.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -1937,6 +1999,20 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
     annotations: courseChangeAnnotations
   }),
   Object.freeze({
+    name: "incorporarPdfComoFonte",
+    title: "Incorporar PDF como Fonte",
+    description: "Mantém um PDF anexado entre as Fontes permanentes do Curso quando esse efeito estiver inequívoco ou confirmado. Não use para análise descartável; diante de ambiguidade real, faça uma única pergunta curta. Referência e metadados são machine-facing: nunca os fabrique nem os mostre por padrão.",
+    inputSchema: objectSchema({
+      requestId: requestIdSchema,
+      courseId: uuidSchema,
+      expectedRevision: { type: "integer", minimum: 1 },
+      sourceIntent: courseSourcePdfIntentSchema,
+      pdf: temporaryPdfFileSchema
+    }),
+    outputSchema,
+    annotations: courseChangeAnnotations
+  }),
+  Object.freeze({
     name: "consultarComponentesDidaticos",
     title: "Consultar componentes didáticos",
     description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto. contracts aceita exatamente um package por chamada.",
@@ -2002,7 +2078,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:1a55a965bbb3aead7b0b827fe10921c2d8573ce0067b9b445aa25fc4fdfae1a1";
+  "sha256:e8f55b11247f05ebee37f1a0952c6d3e05379bd43dd12eee8c2dc27d0d936a70";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

@@ -20,9 +20,19 @@ import {
 } from "./courseMcpTools.js";
 import { executeCourseTool } from "./courseToolExecutor.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
+import {
+  projectConversationalAuthoringError,
+  projectConversationalAuthoringToolSuccess
+} from "./conversationalAuthoringProjection.js";
 
 const BODY_LIMIT = 96 * 1024;
 const RESPONSE_LIMIT = 96 * 1024;
+const ACTION_PDF_RUNTIME_FIELDS = Object.freeze([
+  "download_link",
+  "id",
+  "mime_type",
+  "name"
+]);
 export const ARALEARN_ACTION_CONTRACT_HEADER = [
   AUTHORING_PROTOCOL_ID,
   `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
@@ -34,6 +44,19 @@ const JSON_HEADERS = Object.freeze({
   "X-Content-Type-Options": "nosniff",
   "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
 });
+
+function actionSuccessOutcome(actionName) {
+  if (actionName === "listarCursos") return "Os Cursos próprios foram localizados.";
+  if (actionName === "lerCurso") return "Reli o estado atual do Curso.";
+  if (actionName === "criarCurso") return "O Curso foi criado.";
+  if (actionName === "incorporarPdfComoFonte") {
+    return "O PDF foi incorporado às Fontes do Curso.";
+  }
+  if (actionName === "consultarComponentesDidaticos") {
+    return "A biblioteca de componentes didáticos foi consultada.";
+  }
+  return "A alteração foi gravada e validada.";
+}
 
 function jsonResponse(status, payload, headers = {}) {
   return new Response(JSON.stringify(payload), {
@@ -71,6 +94,55 @@ function validateDedicatedProjection(rawArguments, projection) {
       "A operação não corresponde à Action solicitada."
     );
   }
+}
+
+function invalidActionPdf() {
+  return new AuthoringApiError(
+    422,
+    "invalid_action_pdf",
+    "O PDF anexado não está disponível para incorporação. Anexe-o novamente e repita a operação."
+  );
+}
+
+function normalizeActionTransportArguments(actionName, rawArguments) {
+  if (actionName !== "incorporarPdfComoFonte") return rawArguments;
+  if (Object.hasOwn(rawArguments, "pdf")) throw invalidActionPdf();
+  const references = rawArguments.openaiFileIdRefs;
+  if (!Array.isArray(references) || references.length !== 1) throw invalidActionPdf();
+  const reference = references[0];
+  if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
+    throw invalidActionPdf();
+  }
+  const fields = Object.keys(reference).sort();
+  if (fields.length !== ACTION_PDF_RUNTIME_FIELDS.length ||
+      fields.some((field, index) => field !== ACTION_PDF_RUNTIME_FIELDS[index])) {
+    throw invalidActionPdf();
+  }
+  if (ACTION_PDF_RUNTIME_FIELDS.some((field) =>
+    typeof reference[field] !== "string" || !reference[field].trim()
+  )) {
+    throw invalidActionPdf();
+  }
+  try {
+    const downloadUrl = new URL(reference.download_link);
+    if (downloadUrl.protocol !== "https:" || downloadUrl.username || downloadUrl.password) {
+      throw invalidActionPdf();
+    }
+  } catch (error) {
+    if (error instanceof AuthoringApiError) throw error;
+    throw invalidActionPdf();
+  }
+  const normalized = {
+    ...rawArguments,
+    pdf: {
+      file_name: reference.name,
+      file_id: reference.id,
+      mime_type: reference.mime_type,
+      download_url: reference.download_link
+    }
+  };
+  delete normalized.openaiFileIdRefs;
+  return normalized;
 }
 
 async function readBody(request) {
@@ -128,6 +200,7 @@ export function createAuthoringActionHandler({
     let requestId = null;
     let actionName = null;
     let rawArguments = null;
+    let completedWrite = false;
     try {
       if (request.method === "OPTIONS") {
         return new Response(null, {
@@ -168,6 +241,7 @@ export function createAuthoringActionHandler({
           "A conta conectada não permite esta operação."
         );
       }
+      rawArguments = normalizeActionTransportArguments(actionName, rawArguments);
       const result = await executeCourseTool({
         adapter,
         principal,
@@ -180,7 +254,21 @@ export function createAuthoringActionHandler({
           requestId = value;
         }
       });
-      const payload = { ok: true, requestId: result.requestId, data: result.data ?? null };
+      completedWrite = new Set([
+        "criarCurso",
+        "alterarCurso",
+        "incorporarPdfComoFonte"
+      ]).has(actionName);
+      const envelope = { ok: true, requestId: result.requestId, data: result.data ?? null };
+      const payload = {
+        ...envelope,
+        conversation: projectConversationalAuthoringToolSuccess({
+          envelope,
+          toolName: actionName,
+          rawArguments,
+          summary: { outcome: actionSuccessOutcome(actionName) }
+        })
+      };
       if (new TextEncoder().encode(JSON.stringify(payload)).byteLength >= RESPONSE_LIMIT) {
         throw new AuthoringApiError(
           413,
@@ -195,10 +283,34 @@ export function createAuthoringActionHandler({
       if (normalized.status === 401) headers["WWW-Authenticate"] = "Bearer";
       if (normalized.status === 429) headers["Retry-After"] = "60";
       if (normalized.status === 405) headers.Allow = "POST, OPTIONS";
-      return jsonResponse(normalized.status, {
+      const failedAfterCompletedWrite = completedWrite &&
+        normalized.code === "action_response_too_large";
+      const publicError = toolErrorData(
+        normalized,
+        { toolName: actionName, rawArguments, requestId }
+      );
+      if (failedAfterCompletedWrite) {
+        publicError.recovery = {
+          strategy: "verify_state",
+          retryable: false,
+          requestIdMode: "none",
+          steps: [
+            "Releia o estado atual antes de continuar.",
+            "Não repita a escrita apenas porque a resposta excedeu o limite."
+          ]
+        };
+      }
+      const envelope = {
         ok: false,
         requestId,
-        error: toolErrorData(normalized, { toolName: actionName, rawArguments, requestId })
+        error: publicError
+      };
+      return jsonResponse(normalized.status, {
+        ...envelope,
+        conversation: projectConversationalAuthoringError({
+          envelope,
+          failure: failedAfterCompletedWrite ? { writeState: "complete" } : {}
+        })
       }, headers);
     }
   };

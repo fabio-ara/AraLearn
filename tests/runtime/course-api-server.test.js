@@ -39,6 +39,34 @@ function request(path, {
   });
 }
 
+function pdfIngestionRequest({
+  sourceId = "fonte-pdf",
+  file = new Blob(["%PDF-1.7\nfixture"], { type: "application/pdf" }),
+  requestId = "request-pdf-ingestion-0001",
+  token = "session",
+  extra = null
+} = {}) {
+  const body = new FormData();
+  body.set("requestId", requestId);
+  body.set("courseId", COURSE_ID);
+  body.set("expectedRevision", "4");
+  body.set("sourceId", sourceId);
+  body.set("sourceRevision", "2");
+  body.set("file", file, "fonte.pdf");
+  if (extra) body.set(extra.name, extra.value);
+  return new Request(
+    "https://edge.example/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte",
+    {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        Authorization: `Bearer ${token}`
+      },
+      body
+    }
+  );
+}
+
 test("negocia inspeção v2 sem alterar a operação legada do aplicativo", async () => {
   const versions = [];
   const handler = createCourseApiHandler({
@@ -311,6 +339,148 @@ test("autentica antes de ler o corpo e interrompe payload acima de 512 KiB", asy
   const oversizedResponse = await handler(oversized);
   assert.equal(oversizedResponse.status, 413);
   assert.equal(authenticationCalls, 1);
+});
+
+test("ingere PDF multipart autenticado sem reduzir a identidade Unicode da Fonte", async () => {
+  const sourceId = "😀".repeat(2_048);
+  let call = null;
+  let authenticationDeadlineAt = null;
+  const principal = {
+    actorId: COURSE_ID,
+    authenticationKind: "application",
+    scopes: ["authoring:read", "authoring:write"]
+  };
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal(token, { deadlineAt }) {
+        assert.equal(token, "session");
+        authenticationDeadlineAt = deadlineAt;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return principal;
+      },
+      async ingestCourseSourcePdf(value) {
+        call = value;
+        return { contract: "fixture.pdf-ingestion.v1", stored: true };
+      }
+    }
+  });
+
+  const response = await handler(pdfIngestionRequest({ sourceId }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.requestId, "request-pdf-ingestion-0001");
+  assert.deepEqual(payload.data, { contract: "fixture.pdf-ingestion.v1", stored: true });
+  assert.equal(call.principal, principal);
+  assert.equal(call.courseId, COURSE_ID);
+  assert.equal(call.expectedCourseRevision, 4);
+  assert.equal(call.requestId, "request-pdf-ingestion-0001");
+  assert.deepEqual(call.sourceIntent, {
+    mode: "existing",
+    sourceId,
+    sourceRevision: 2
+  });
+  assert.equal(call.mediaType, "application/pdf");
+  assert.equal(new TextDecoder().decode(call.bytes), "%PDF-1.7\nfixture");
+  assert.ok(Number.isFinite(call.deadlineAt));
+  assert.ok(
+    call.deadlineAt >= authenticationDeadlineAt + 10,
+    "o processamento recebe orçamento próprio depois da autenticação e do multipart"
+  );
+});
+
+test("ingestão autentica antes do stream e limita multipart acima de 20 MiB + 64 KiB", async () => {
+  let pulls = 0;
+  let authenticationCalls = 0;
+  const stream = new ReadableStream({
+    pull(controller) {
+      pulls += 1;
+      controller.enqueue(new Uint8Array(1024 * 1024));
+    }
+  });
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        authenticationCalls += 1;
+        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
+      },
+      async ingestCourseSourcePdf() {
+        assert.fail("Um multipart excedente não pode alcançar a ingestão.");
+      }
+    }
+  });
+  const unauthenticated = new Request(
+    "https://edge.example/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte",
+    {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        "Content-Type": "multipart/form-data; boundary=fixture"
+      },
+      body: stream,
+      duplex: "half"
+    }
+  );
+  const unauthorized = await handler(unauthenticated);
+  assert.equal(unauthorized.status, 401);
+  assert.equal(authenticationCalls, 0);
+  assert.equal(unauthenticated.bodyUsed, false);
+  assert.ok(pulls <= 1, "o runtime pode antecipar um chunk sem entregar o stream ao handler");
+
+  let oversizedPulls = 0;
+  const oversizedStream = new ReadableStream({
+    pull(controller) {
+      oversizedPulls += 1;
+      controller.enqueue(new Uint8Array(1024 * 1024));
+    }
+  });
+  const oversized = new Request(
+    "https://edge.example/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte",
+    {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        Authorization: "Bearer session",
+        "Content-Type": "multipart/form-data; boundary=fixture"
+      },
+      body: oversizedStream,
+      duplex: "half"
+    }
+  );
+  const rejected = await handler(oversized);
+  assert.equal(rejected.status, 413);
+  assert.equal(authenticationCalls, 1);
+  assert.equal(oversized.bodyUsed, true);
+  assert.ok(oversizedPulls >= 21 && oversizedPulls <= 22);
+});
+
+test("ingestão exige seis campos exatos e um único Blob PDF", async () => {
+  let ingestionCalls = 0;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
+      },
+      async ingestCourseSourcePdf() {
+        ingestionCalls += 1;
+      }
+    }
+  });
+  const wrongMedia = await handler(pdfIngestionRequest({
+    file: new Blob(["texto"], { type: "text/plain" })
+  }));
+  assert.equal(wrongMedia.status, 422);
+  assert.equal((await wrongMedia.json()).error.code, "invalid_pdf");
+
+  const extraField = await handler(pdfIngestionRequest({
+    extra: { name: "contentHash", value: "inventado-no-cliente" }
+  }));
+  assert.equal(extraField.status, 422);
+  assert.equal((await extraField.json()).error.code, "invalid_pdf_ingestion");
+  assert.equal(ingestionCalls, 0);
 });
 
 test("preserva o envelope CAS do plano até o adaptador", async () => {

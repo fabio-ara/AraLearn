@@ -166,7 +166,7 @@ A assistência computacional chega ao Curso por três canais distintos. A
 **Assistência por IA** dentro do aplicativo mantém uma sessão contextual em
 memória para Unidade, Microssequência ou Lição. O **Model Context Protocol
 (MCP)** conecta um cliente compatível às operações canônicas de Autoria. O
-canal **Actions/OpenAPI** permite que um GPT personalizado use cinco operações
+canal **Actions/OpenAPI** permite que um GPT personalizado use seis operações
 HTTP do mesmo domínio. Eles não compartilham protocolo, sessão, credencial ou
 principal de autorização, embora obedeçam às mesmas regras de Curso.
 

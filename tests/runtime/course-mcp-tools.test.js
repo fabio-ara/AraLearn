@@ -71,6 +71,7 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     "lerCurso",
     "criarCurso",
     "alterarCurso",
+    "incorporarPdfComoFonte",
     "consultarComponentesDidaticos"
   ]);
   const serialized = JSON.stringify(COURSE_MCP_TOOLS);
@@ -83,6 +84,11 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").annotations.destructiveHint,
     true
   );
+  const pdfTool = COURSE_MCP_TOOLS.find(
+    ({ name }) => name === "incorporarPdfComoFonte"
+  );
+  assert.equal(pdfTool.annotations.destructiveHint, true);
+  assert.deepEqual(pdfTool._meta["openai/fileParams"], ["pdf"]);
   const componentUri = "ui://aralearn/course-inspector/0.0.24.html";
   for (const name of ["lerCurso", "consultarComponentesDidaticos"]) {
     const definition = COURSE_MCP_TOOLS.find((tool) => tool.name === name);
@@ -238,6 +244,11 @@ test("leitura exige identidade e escrita também exige escopo", () => {
     actorId: COURSE_ID,
     scopes: ["authoring:write"]
   }), true);
+  assert.equal(authoringMcpToolIsAllowed("incorporarPdfComoFonte", reader), false);
+  assert.equal(authoringMcpToolIsAllowed("incorporarPdfComoFonte", {
+    actorId: COURSE_ID,
+    scopes: ["authoring:write"]
+  }), true);
   for (const substitutedScope of ["authoring:private:write", "*"]) {
     const principal = { actorId: COURSE_ID, scopes: [substitutedScope] };
     assert.equal(authoringMcpToolIsAllowed("criarCurso", principal), false);
@@ -246,6 +257,56 @@ test("leitura exige identidade e escrita também exige escopo", () => {
       ["listarCursos", "lerCurso", "consultarComponentesDidaticos"]
     );
   }
+});
+
+test("ingestão conversacional recebe arquivo oficial sem metadados de Storage", () => {
+  const definition = COURSE_MCP_TOOLS.find(
+    ({ name }) => name === "incorporarPdfComoFonte"
+  );
+  const validate = new Ajv2020({ allErrors: true, strict: false })
+    .compile(definition.inputSchema);
+  const pdf = {
+    download_url: "https://files.oaiusercontent.com/file-synthetic?token=temporary",
+    file_id: "file-synthetic",
+    mime_type: "application/pdf",
+    file_name: "edital-sintetico.pdf"
+  };
+  const input = {
+    requestId: "request-source-pdf-chat-0001",
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "source-edital",
+      sourceRevision: 2
+    },
+    pdf
+  };
+  assert.equal(validate(input), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...input, pdf: undefined }), false);
+  assert.equal(validate({ ...input, pdf: [pdf] }), false);
+  assert.doesNotMatch(
+    JSON.stringify(definition.inputSchema),
+    /contentHash|byteSize|storagePath/u
+  );
+  assert.deepEqual(mapAuthoringMcpToolCall("incorporarPdfComoFonte", input), {
+    kind: "course-source-pdf-ingestion",
+    requestId: input.requestId,
+    body: {
+      requestId: input.requestId,
+      courseId: COURSE_ID,
+      expectedCourseRevision: 4,
+      sourceIntent: input.sourceIntent,
+      pdf
+    }
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", {
+      ...input,
+      sourceIntent: { ...input.sourceIntent, sourceRevision: 0 }
+    }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion"
+  );
 });
 
 test("prévia de componente aceita somente um alvo persistido completo", () => {
@@ -2255,8 +2316,8 @@ test("MCP usa o mesmo fato de Fonte e exige referências na reformulação", () 
   }), (error) => error.code === "invalid_course_anchored_annotation_command");
 });
 
-test("schema MCP condiciona revisão do Curso sem aumentar o registro de tools", () => {
-  assert.equal(COURSE_MCP_TOOLS.length, 5);
+test("schema MCP condiciona a revisão do Curso no registro público", () => {
+  assert.equal(COURSE_MCP_TOOLS.length, 6);
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
     .inputSchema;
   const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);

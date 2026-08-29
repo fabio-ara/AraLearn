@@ -5,7 +5,7 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
 Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260827185748`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260829043629`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -45,7 +45,7 @@ A interface separa responsabilidades sem duplicar o domínio:
 | Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
-| Actions | oferecer cinco operações HTTP descritas por OpenAPI a um GPT personalizado conectado |
+| Actions | oferecer seis operações canônicas e duas projeções HTTP dedicadas descritas por OpenAPI a um GPT personalizado conectado |
 
 Na Autoria, a Visão geral apresenta estado e próxima ação. Planejamento,
 Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e
@@ -62,9 +62,9 @@ consulta o documento validado no IndexedDB para informar disponibilidade sem
 conexão; revogação elimina a réplica local do Curso compartilhado e o ponto
 local, sem apagar uma cópia pessoal já confirmada.
 
-O MCP conserva cinco ferramentas estáveis: `listarCursos`, `lerCurso`,
-`criarCurso`, `alterarCurso` e
-`consultarComponentesDidaticos`. Fontes, auditoria, variantes e Pesquisa são
+O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
+`criarCurso`, `alterarCurso`, `consultarComponentesDidaticos` e
+`incorporarPdfComoFonte`. Fontes, auditoria, variantes e Pesquisa são
 visões ou operações dessas ferramentas. O contrato não cria uma ferramenta
 nova para cada painel da interface. Perfil, avatar e acesso direto pertencem à
 aplicação autenticada; o e-mail usado para conceder acesso não é enviado ao
@@ -75,9 +75,13 @@ cliente MCP nem ao GPT conectado por Actions.
 MCP e Actions projetam um protocolo público próprio, em vez de derivar sua
 linguagem dos tipos internos do domínio. A autoridade corrente é
 `aralearn.authoring-protocol.v1`, definida em `authoringProtocolV1.js`. Ela
-reúne as cinco operações, seus esquemas de entrada e saída, discriminadores,
+reúne as seis operações canônicas, seus esquemas de entrada e saída, discriminadores,
 condicionais e vocabulários. Uma mudança interna no domínio ou na persistência
 não altera esse idioma por consequência.
+
+A projeção OpenAPI acrescenta dois caminhos dedicados para criar e atualizar
+itens do plano. Eles especializam a operação canônica de alteração para o
+importador de Actions; não criam uma segunda regra de domínio.
 
 `courseMcpTools.js` é o adaptador explícito entre o protocolo e o backend. Ele
 confere os argumentos públicos, converte cada chamada para a rota ou comando
@@ -92,6 +96,19 @@ Os transportes partem da mesma autoridade, mas não servem o mesmo documento:
   segurança OAuth e metadados próprios do transporte e do recurso visual;
 - Actions compila uma projeção OpenAPI adequada ao importador do ChatGPT,
   associa cada ferramenta a um caminho HTTP e usa seu OAuth próprio.
+
+O executor conserva identidades, revisões, versões esperadas, chaves de
+repetição e detalhes de diagnóstico no resultado estruturado. Uma projeção
+conversacional separada apresenta o estado e os efeitos do Curso em linguagem
+humana. A fronteira é explícita: **preservar internamente != mostrar ao
+usuário**. Controles de concorrência continuam disponíveis ao cliente sem se
+tornarem requisitos de retomada para a pessoa.
+
+Um arquivo transportado pela conversa só ganha vínculo persistente com uma
+Fonte quando sua função no Curso é clara ou confirmada. Depois que a ingestão
+canônica confirma esse vínculo, PDF, revisão e Âncoras pertencem ao Curso vivo e
+podem ser recuperados por outra sessão; a memória da conversa não participa
+dessa persistência.
 
 O sufixo v1 do identificador fixa o major público. `schemaVersion` distingue os
 snapshots semânticos dessa linha e o fingerprint SHA-256 identifica exatamente
@@ -333,21 +350,23 @@ vez de sobrescrever sua proveniência.
 Ancoragens ligam trechos do Curso às fontes. Atribuições e Anotações podem
 referir-se a essas âncoras sem incorporar uma cópia opaca do documento.
 
-PDFs ficam no bucket privado `course-source-pdfs`. O
-navegador faz a verificação inicial do cabeçalho, calcula SHA-256 e solicita à
-API uma intenção de envio válida por dez minutos. O upload usa a sessão
-autenticada diretamente no endpoint do Storage, confronta caminho, tamanho e
-tipo e consome a intenção na inserção. A escrita participa do mesmo bloqueio da
-exclusão da conta. Antes de confirmar o vínculo relacional, a API lê o objeto com a
-credencial do servidor e confere os bytes reais: limite, tamanho declarado,
-cabeçalho `%PDF-` e SHA-256. O caminho físico segue
-`<curso-de-origem>/<sha256>.pdf`; acesso depende do vínculo autorizado no
-banco, não do conhecimento desse caminho.
+PDFs ficam no bucket privado `course-source-pdfs`. A interface entrega o arquivo
+à API autenticada, sem calcular ou declarar sua identidade binária. O serviço de
+ingestão lê no máximo 20 MiB, confere tipo, assinatura e estrutura mínima do PDF,
+calcula tamanho e SHA-256 e só então reserva cota e escolhe o objeto privado. O
+caminho físico segue `<curso-de-origem>/<sha256>.pdf`; acesso depende do vínculo
+autorizado no banco, não do conhecimento desse caminho.
 
-Um upload cujo conteúdo não corresponde ao resumo preparado não recebe vínculo.
-O inventário administrativo o classifica como órfão para uma decisão posterior,
-sem apagar automaticamente um objeto cuja classe e retenção ainda precisam ser
-confirmadas.
+Quando a ingestão também cria ou revisa a Fonte, essa revisão bibliográfica e o
+vínculo do PDF são confirmados na mesma transação depois que o objeto existe.
+Repetições usam o recibo do pedido e voltam a verificar o objeto por conteúdo antes
+de afirmar que ele está armazenado. Se uma etapa posterior falha, a API encerra a
+autorização de envio e deixa o eventual objeto sem vínculo para o reconciliador já
+existente; assim, não apaga um blob que outra ingestão possa vincular no intervalo.
+
+Um upload cujo conteúdo não corresponde aos bytes recebidos não recebe vínculo.
+Resíduos permanecem classificáveis pelo inventário administrativo e podem ser
+reaproveitados por uma repetição válida ou removidos depois da idade de segurança.
 
 `download` responde com o contrato temporário de leitura; `prepare_upload`
 responde com o contrato autenticado e nunca devolve URL assinada de envio. A
@@ -468,7 +487,7 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260827185748` e a versão de contrato. O
+esquema `20260829043629` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.

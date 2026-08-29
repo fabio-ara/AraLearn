@@ -23,7 +23,7 @@ O banco conserva o Curso vivo, sua hierarquia, planejamento, materializações,
 parâmetros, política de componentes, Fontes, Âncoras, vínculos de PDF,
 Observações, Auditoria, Variantes, acesso, estado pessoal e fatos projetados
 para Pesquisa. As migrations reproduzem o esquema, e o manifesto corrente
-termina em `20260827185748_bound_instructional_plan_cas_retry.sql`.
+termina em `20260829043629_course_source_pdf_ingestion.sql`.
 
 A inspeção contínua de Autoria agrega na página das Unidades os marcadores de
 Observações, a materialização de origem e a comparação entre desenho usado e
@@ -133,8 +133,8 @@ aceita até 20 MiB; o conteúdo único vinculado a um Curso aceita até 64 MiB.
 | Função | Entrada | Identidade aceita |
 | --- | --- | --- |
 | `aralearn-course-api` | aplicação web e Android | sessão AraLearn validada pelo handler |
-| `aralearn-authoring-mcp` | protocolo MCP e cinco ferramentas canônicas | JWT OAuth minimizado do MCP |
-| `aralearn-authoring-action` | cinco operações HTTP importadas por OpenAPI | access token opaco do OAuth de Actions |
+| `aralearn-authoring-mcp` | protocolo MCP e seis ferramentas canônicas | JWT OAuth minimizado do MCP |
+| `aralearn-authoring-action` | seis operações HTTP importadas por OpenAPI | access token opaco do OAuth de Actions |
 
 As três funções usam `verify_jwt = false` na configuração. Isso não as torna
 anônimas. Cada handler precisa receber formatos que o verificador genérico da

@@ -927,84 +927,66 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   );
 });
 
-test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo comando", async () => {
+test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requisição idempotente", async () => {
   const sourceId = "source-pdf";
   const contentHash = "f581fc87f30296eff11777c3ce1b9a8b7077071ad8abedfcba317fef0c807224";
   const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
   const pdf = new Blob(["%PDF-1.7\nfixture"], { type: "application/pdf" });
+  let browserRead = false;
+  Object.defineProperty(pdf, "arrayBuffer", {
+    value() {
+      browserRead = true;
+      throw new Error("O cliente não deve ler os bytes do PDF.");
+    }
+  });
   const calls = [];
-  let revision = 4;
-  let linked = false;
   const { client } = clientWithFetch(async (url, init) => {
-    if (init.body === pdf) {
-      calls.push({ kind: "upload", url, init });
-      assert.equal(init.method, "POST");
-      assert.equal(init.headers.get("x-upsert"), "false");
-      assert.equal(init.headers.get("Authorization"), "Bearer token");
-      assert.equal(init.headers.get("apikey"), "publishable");
-      assert.equal(init.headers.get("Content-Type"), "application/pdf");
-      assert.equal(init.headers.get("cache-control"), "3600");
-      assert.match(url, new RegExp(
-        `/storage/v1/object/course-source-pdfs/${COURSE_ID}/${contentHash}\\.pdf$`,
-        "u"
-      ));
-      assert.equal(init.body.size, pdf.size);
-      return new Response("{}", { status: 200 });
-    }
-    const body = JSON.parse(init.body);
-    calls.push({ kind: "edge", url, body });
-    if (body.view === "course_source_attachment") {
-      assert.deepEqual(body, {
-        courseId: COURSE_ID,
-        view: "course_source_attachment",
-        attachmentOperation: "prepare_upload",
-        expectedRevision: revision,
-        sourceId,
-        sourceRevision: 1,
-        contentHash,
-        byteSize: pdf.size,
-        mediaType: "application/pdf"
-      });
-      return jsonResponse({ ok: true, data: {
-        contract: "aralearn.course-source-attachment-access.v2",
-        courseId: COURSE_ID,
-        courseRevision: revision,
-        operation: "prepare_upload",
-        sourceId,
-        sourceRevision: 1,
-        storageOriginCourseId: COURSE_ID,
-        attachment: { contentHash, byteSize: pdf.size, mediaType: "application/pdf", storagePath },
-        uploadRequired: !linked,
-        alreadyLinked: linked,
-        signedUrl: null,
-        expiresAt: null
-      }});
-    }
-    if (body.operation === "update_course_sources") {
-      assert.equal(body.sourceCommand.type, "attach_pdf");
-      assert.deepEqual(body.sourceCommand.attachment, {
+    calls.push({ url, init });
+    assert.equal(init.method, "POST");
+    assert.equal(init.headers.get("Authorization"), "Bearer token");
+    assert.equal(init.headers.get("apikey"), "publishable");
+    assert.equal(init.headers.get("Content-Type"), null);
+    assert.ok(init.body instanceof FormData);
+    assert.deepEqual([...init.body.keys()], [
+      "requestId", "courseId", "expectedRevision", "sourceId", "sourceRevision", "file"
+    ]);
+    assert.equal(init.body.get("requestId"), "request-pdf-client-1");
+    assert.equal(init.body.get("courseId"), COURSE_ID);
+    assert.equal(init.body.get("expectedRevision"), "4");
+    assert.equal(init.body.get("sourceId"), sourceId);
+    assert.equal(init.body.get("sourceRevision"), "1");
+    assert.equal(init.body.get("file").type, "application/pdf");
+    assert.equal(init.body.get("file").size, pdf.size);
+    assert.equal([...init.body.keys()].some((name) => /hash|path/iu.test(name)), false);
+    assert.match(url, /\/functions\/v1\/aralearn-course-api\/app\/ingerirPdfDaFonte$/u);
+    assert.doesNotMatch(url, /\/storage\/v1\//u);
+    if (calls.length === 1) return new Response("temporariamente indisponível", { status: 503 });
+    return jsonResponse({ ok: true, requestId: "request-pdf-client-1", data: {
+      contract: "aralearn.course-source-pdf-ingestion.v1",
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      requestId: "request-pdf-client-1",
+      idempotent: true,
+      changed: true,
+      change: { type: "attach_pdf", subjectId: sourceId, revision: 1 },
+      source: { sourceId, sourceRevision: 1, bibliographyChanged: false },
+      attachment: {
         contentHash,
         byteSize: pdf.size,
         mediaType: "application/pdf",
         storagePath
-      });
-      const changed = !linked;
-      linked = true;
-      if (changed) revision += 1;
-      return jsonResponse({ ok: true, data: {
-        contract: "aralearn.course-source-change.v1",
-        courseId: COURSE_ID,
-        courseRevision: revision,
-        requestId: body.requestId,
-        idempotent: !changed,
-        changed,
-        change: changed ? { type: "attach_pdf", subjectId: sourceId, revision: 1 } : null
-      }});
-    }
-    assert.fail(`Requisição inesperada: ${url}`);
+      },
+      stored: true
+    }});
   });
+  const requestTimeouts = [];
+  const requestPdf = client.http.request.bind(client.http);
+  client.http.request = (path, options) => {
+    requestTimeouts.push(options.timeoutMs);
+    return requestPdf(path, options);
+  };
 
-  const first = await client.uploadCourseSourcePdf({
+  const result = await client.uploadCourseSourcePdf({
     requestId: "request-pdf-client-1",
     courseId: COURSE_ID,
     expectedRevision: 4,
@@ -1012,17 +994,19 @@ test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo c
     sourceRevision: 1,
     file: pdf
   });
-  assert.equal(first.changed, true);
-  const second = await client.uploadCourseSourcePdf({
-    requestId: "request-pdf-client-2",
+  assert.deepEqual(result, {
+    contract: "aralearn.course-source-change.v1",
     courseId: COURSE_ID,
-    expectedRevision: 5,
-    sourceId,
-    sourceRevision: 1,
-    file: pdf
+    courseRevision: 5,
+    requestId: "request-pdf-client-1",
+    idempotent: true,
+    changed: true,
+    change: { type: "attach_pdf", subjectId: sourceId, revision: 1 }
   });
-  assert.equal(second.changed, false);
-  assert.equal(calls.filter(({ kind }) => kind === "upload").length, 1);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].init.body, calls[1].init.body);
+  assert.deepEqual(requestTimeouts, [145_000, 145_000]);
+  assert.equal(browserRead, false);
 
   let downloadBody = null;
   const downloadClient = clientWithFetch(async (url, init) => {
@@ -1061,14 +1045,27 @@ test("PDF de Fonte é hasheado, enviado sem sobrescrever e confirmado no mesmo c
     contentHash
   });
 
-  const invalid = clientWithFetch(async () => assert.fail("Não deve abrir a rede.")).client;
+  let invalidCalls = 0;
+  const invalid = clientWithFetch(async () => { invalidCalls += 1; }).client;
   await assert.rejects(() => invalid.uploadCourseSourcePdf({
     courseId: COURSE_ID,
     expectedRevision: 4,
     sourceId,
     sourceRevision: 1,
-    file: new Blob(["not a pdf"], { type: "application/pdf" })
-  }), /não contém um PDF válido/u);
+    file: new Blob(["texto"], { type: "text/plain" })
+  }), /PDF de até 20 MiB/u);
+  await assert.rejects(() => invalid.uploadCourseSourcePdf({
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    sourceId,
+    sourceRevision: 1,
+    file: {
+      size: 20 * 1024 * 1024 + 1,
+      type: "application/pdf",
+      stream() {}
+    }
+  }), /PDF de até 20 MiB/u);
+  assert.equal(invalidCalls, 0);
 });
 
 test("cliente usa o DTO factual de variantes e o nome canônico ao desvincular", async () => {
