@@ -22,6 +22,22 @@ tarefa; o cliente escolhe a ferramenta, valida argumentos, chama o servidor e
 apresenta o resultado. O servidor continua responsável por identidade,
 propriedade, revisão, idempotência e invariantes.
 
+O resultado da ferramenta e a resposta para a pessoa têm funções distintas. O
+primeiro preserva identidades, revisões, versões esperadas, chaves de repetição,
+códigos e contexto de diagnóstico. A segunda explica o Curso e a decisão em
+linguagem humana. A regra é **preservar internamente != mostrar ao usuário**:
+metadados necessários ao cliente não devem ser removidos do contrato nem
+recitados por padrão na conversa.
+
+A apresentação progride em quatro níveis. No padrão, informa estado autoral,
+lacunas, efeito da proposta, preservações e decisão humana. Em transparência
+leve, pode dizer que releu, gravou ou reconciliou o Curso, sem mostrar protocolo.
+Em diagnóstico, explica o que foi ou não salvo e o próximo passo seguro. Sob
+pedido técnico explícito, mostra IDs, revisões, CAS, payload, hashes, caminhos,
+operações e erro bruto disponíveis, sem fabricar valores ausentes. Links
+profundos também são progressivos: o
+cliente os oferece como ação humana útil, não como inventário em toda resposta.
+
 Na interface visual, a pessoa inspeciona o conteúdo, registra Observações no
 alvo exato e salva mudanças de Parâmetros. Esses registros permanecem visíveis
 na Autoria e integram o mesmo Curso que o ChatGPT ou outro cliente conectado lê
@@ -29,6 +45,13 @@ por MCP. A conversa pode examinar vários registros, apresentar uma proposta e
 receber correções ou objeções antes de qualquer escrita. A operação só é enviada
 depois da aprovação explícita da pessoa no cliente conectado. A interface normal
 não abre um compositor nem depende de copiar um pedido.
+
+A aprovação descreve a mudança pedagógica e seu alcance, não o comando. “Vou
+acrescentar estes resultados e formas de evidência; as Partes e o conteúdo já
+produzido permanecerão intactos. Confirmo?” é adequado. “Vou enviar este payload
+com `expectedRevision` e `requestId`. Confirmo?” transfere o protocolo à pessoa
+e deve ser evitado. O cliente relê silenciosamente as revisões correntes quando
+necessário antes da escrita.
 
 Curso, Módulo, Lição, Tópico, Microssequência, Unidade de estudo, Fonte, Âncora
 e Parte de autoria podem ser alvos de conversa. Planejar e preparar estrutura
@@ -191,8 +214,11 @@ Lista Cursos próprios em páginas de até 50 itens. Aceita busca opcional e cur
 formado por data de atualização e identidade. A resposta é fina e inclui links
 para a interface visual; não carrega toda a composição.
 
-Use-a primeiro quando a pessoa nomear um Curso por título. Não escolha entre
-homônimos sem confirmar o contexto.
+Use-a primeiro quando a pessoa nomear um Curso por título, inclusive em uma nova
+sessão. Adote uma correspondência única plausível; diante de homônimos, peça uma
+escolha por objetivo, etapa autoral ou atividade recente. Não exija UUID como
+primeira opção. Depois, releia as vistas vivas e reconstrua o estado técnico;
+memória conversacional ajuda na descoberta, mas não substitui o Curso.
 
 ### `lerCurso`
 
@@ -670,7 +696,20 @@ Ferramentas retornam `structuredContent` no formato:
 }
 ```
 
-Falhas de ferramenta retornam `ok: false`, código, mensagem e detalhes seguros.
+Esse envelope é estado de máquina para o cliente, não um modelo de resposta
+humana. `requestId` e `data` conservam o resultado técnico; uma projeção
+determinística separada alimenta `content` com o texto humano do MCP, sem ser
+duplicada no estado estruturado. Um sucesso pode ser acrescido do efeito
+confirmado e de uma ação legível. Recitar o identificador, revisão e payload por
+padrão não acrescenta compreensão.
+
+Falhas de ferramenta retornam `ok: false`, código, mensagem, detalhes seguros e
+recuperação operacional. A projeção humana deriva desse estado a classificação
+semântica, a certeza de escrita nenhuma, parcial, concluída ou desconhecida, a
+possibilidade de repetição segura e a necessidade de releitura. Ela começa pela tarefa:
+informa exatamente o que não foi salvo, evita afirmar sucesso diante de tempo
+esgotado ou resultado incerto e propõe o próximo passo seguro. O erro bruto permanece
+disponível quando a pessoa pedir o diagnóstico técnico.
 Erros previsíveis incluem:
 
 - autenticação ausente ou revogada;

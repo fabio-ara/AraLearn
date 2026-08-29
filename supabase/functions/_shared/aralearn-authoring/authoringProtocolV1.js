@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.1.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.2.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -1132,6 +1132,33 @@ const materializationCommandSchema = {
   }]
 };
 
+export const AUTHORING_CONVERSATION_SCHEMA = Object.freeze(objectSchema({
+  contract: { const: "aralearn.conversational-authoring-projection.v1" },
+  kind: stringSchema({ enum: [
+    "resumption_not_found", "resumption_disambiguation", "resumption",
+    "confirmation", "success", "error"
+  ] }),
+  level: stringSchema({ enum: ["standard", "operational", "diagnostic", "technical"] }),
+  message: stringSchema({ minLength: 1, maxLength: 12_000 }),
+  needsHumanDecision: { type: "boolean" },
+  choices: {
+    type: "array", maxItems: 50,
+    items: stringSchema({ minLength: 1, maxLength: 500 })
+  },
+  success: { type: "boolean" },
+  action: objectSchema({
+    label: stringSchema({ minLength: 1, maxLength: 160 })
+  }, ["label"]),
+  classification: stringSchema({ enum: [
+    "conflict", "limit", "validation", "access", "uncertain", "failure"
+  ] }),
+  writeState: stringSchema({ enum: ["none", "partial", "complete", "unknown"] }),
+  retrySafe: { type: "boolean" },
+  reloadRequired: { type: "boolean" },
+  concurrencyConflict: { type: "boolean" },
+  technicalDetails: { type: "object" }
+}, ["contract", "kind", "level", "message"]));
+
 const outputSchema = objectSchema({
   ok: { type: "boolean", const: true },
   requestId: {
@@ -1165,7 +1192,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "listarCursos",
     title: "Listar Cursos",
-    description: "Lista somente os Cursos próprios disponíveis na Autoria. Use query para localizar por título; a resposta inclui links para a interface visual.",
+    description: "Lista os Cursos próprios. Na retomada, localize por título, use a correspondência única plausível e peça desambiguação humana se houver duplicidade; mantenha IDs e links apenas no estado estruturado.",
     inputSchema: objectSchema({
       query: stringSchema({ maxLength: 120 }),
       limit: { type: "integer", minimum: 1, maximum: 50 },
@@ -1177,7 +1204,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê uma vista delimitada do Curso vivo. Escolha o menor recorte necessário; a primeira página pertinente inclui phaseGuidance focal. Preserve revisões e deep links. Texto integral de Observação e download temporário de PDF exigem as declarações explícitas do schema.",
+    description: "Lê o menor recorte necessário do Curso vivo. Use phaseGuidance focal, revisões e links silenciosamente; converse em linguagem de domínio e só revele detalhes técnicos sob pedido. Observação integral e download de PDF exigem as declarações do schema.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
@@ -1702,7 +1729,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "criarCurso",
     title: "Criar Curso",
-    description: "Cria atomicamente um Curso privado e vazio, pronto para receber planejamento e materialização, sem recipiente ou estágio intermediário.",
+    description: "Cria atomicamente um Curso privado e vazio. Confirme título, objetivo e próximo passo autoral; mantenha controles somente no estado estruturado.",
     inputSchema: objectSchema({
       requestId: requestIdSchema,
       title: stringSchema({ minLength: 1, maxLength: 300 }),
@@ -1714,7 +1741,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o Curso por operação tipada. Releia a vista, preserve requestId e versões e siga phaseGuidance. Proponha antes de aplicar e verifique depois.",
+    description: "Altera o Curso por operação tipada. Use controles e orientação em silêncio. Proponha antes de aplicar e verifique depois; confirme efeitos pedagógicos, preservações e materialização. Só revele detalhes técnicos sob pedido.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -2002,7 +2029,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:1a55a965bbb3aead7b0b827fe10921c2d8573ce0067b9b445aa25fc4fdfae1a1";
+  "sha256:e128a49328f2cd058e519c64b65b4a400a98f251f35778aa77abc29b9678e3bc";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

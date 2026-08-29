@@ -159,10 +159,11 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   assert.equal(payload.result.structuredContent.data.courseRevision, 2);
   assert.equal(payload.result.structuredContent.data.plan.version, 3);
   assert.match(payload.result.content[0].text, /A leitura foi concluída\./u);
-  assert.match(payload.result.content[0].text, /Revisão do Curso: 2\./u);
+  assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision|plan\.version/iu);
   assert.match(payload.result.content[0].text, /0 registros de atividade recente/u);
   assert.doesNotMatch(payload.result.content[0].text, /structuredContent/u);
   assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
 });
 
 test("MCP lê a materialização retomável sem duplicar o DTO no texto", async () => {
@@ -202,7 +203,8 @@ test("MCP lê a materialização retomável sem duplicar o DTO no texto", async 
   assert.equal(call.authoringPartId, PART_ID);
   assert.equal(call.materializationId, MATERIALIZATION_ID);
   assert.equal(payload.result.content[0].text.includes(MATERIALIZATION_ID), false);
-  assert.match(payload.result.content[0].text, new RegExp(`Parte: ${PART_ID}`, "u"));
+  assert.equal(payload.result.content[0].text.includes(PART_ID), false);
+  assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision/iu);
   assert.match(payload.result.content[0].text, /Uma Fonte ainda precisa de revisão/u);
   assert.match(payload.result.content[0].text, /primeira Microssequência foi preservada/u);
 });
@@ -294,13 +296,14 @@ test("MCP minimiza Observações e sinaliza quando o detalhe envia texto bruto",
   const detail = (await detailResponse.json()).result;
   assert.equal(detail.structuredContent.data.items[0].rawText, rawText);
   assert.equal(detail.structuredContent.data.dataDisclosure.rawObservationTextIncluded, true);
-  assert.match(detail.content[0].text, /envia ao cliente MCP conectado/iu);
+  assert.match(detail.content[0].text, /texto integral solicitado/iu);
+  assert.doesNotMatch(detail.content[0].text, /cliente MCP|payload|schema/iu);
   for (const protectedValue of [protectedRef, "Estudante FEED", COURSE_ID]) {
     assert.equal(JSON.stringify(detail).includes(protectedValue), false, protectedValue);
   }
 });
 
-test("MCP devolve recibo legível da conclusão com contagens e link", async () => {
+test("MCP devolve recibo humano e mantém controles e link no estado estruturado", async () => {
   const deepLink = `https://app.example/#/authoring/courses/${COURSE_ID}?section=planning`;
   let call = null;
   const response = await handler({
@@ -365,12 +368,14 @@ test("MCP devolve recibo legível da conclusão com contagens e link", async () 
 
   assert.equal(call.operation, "finish");
   assert.match(text, /materialização da Parte foi concluída/u);
-  assert.match(text, new RegExp(`Parte: ${PART_ID}`, "u"));
+  assert.equal(text.includes(PART_ID), false);
   assert.match(text, /5 de 5 concluídas; 0 com falha/u);
   assert.match(text, /criadas 0; alteradas 0; removidas 0/u);
-  assert.match(text, /Abrir no AraLearn:/u);
+  assert.equal(text.includes(deepLink), false);
   assert.equal(text.includes(MATERIALIZATION_ID), false);
   assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
+  assert.match(text, /Abrir a área alterada no AraLearn/u);
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
 });
 
 test("MCP entrega o mesmo DTO factual de comparação usado pela interface", async () => {
@@ -410,18 +415,18 @@ test("MCP entrega o mesmo DTO factual de comparação usado pela interface", asy
   assert.deepEqual(payload.result.structuredContent.data, expected);
   const text = payload.result.content[0].text;
   assert.match(text, /comparação de variantes foi lida/iu);
-  assert.match(text, /Planejamento comum: revisão 7; versão 2/u);
-  assert.match(text, /Referência: A, revisão 1/u);
-  assert.match(text, /A: revisão 1; 1 Parte; 0 Unidades/u);
-  assert.match(text, /B: revisão 1; 1 Parte; 0 Unidades/u);
+  assert.match(text, /Referência: A/u);
+  assert.match(text, /A: 1 Parte; 0 Unidades/u);
+  assert.match(text, /B: 1 Parte; 0 Unidades/u);
   assert.match(text, /desvios acidentais 1/u);
   assert.match(text, /A variante B contém uma Unidade adicional/u);
+  assert.doesNotMatch(text, /revisão|planVersion|courseRevision/iu);
   assert.doesNotMatch(text, /"comparisonSetId"|\{"contract"/u);
   assert.equal(call.comparisonSetId, comparisonSetId);
   assert.equal(call.expectedCourseRevision, 7);
 });
 
-test("MCP resume fatos de Pesquisa com pergunta, revisão e limites", async () => {
+test("MCP resume fatos de Pesquisa com pergunta e limites sem revisão técnica", async () => {
   let call = null;
   const deepLink = `https://app.example/#/authoring/courses/${COURSE_ID}?section=research`;
   const response = await handler({
@@ -462,13 +467,14 @@ test("MCP resume fatos de Pesquisa com pergunta, revisão e limites", async () =
   assert.equal(call.expectedCourseRevision, 7);
   assert.deepEqual(call.query.datasets, ["materializations"]);
   assert.match(payload.result.content[0].text, /fatos de pesquisa da Autoria/iu);
-  assert.match(payload.result.content[0].text, /Revisão do Curso: 7/u);
+  assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision/iu);
   assert.match(
     payload.result.content[0].text,
     /Concluída: 2 \(unidade: contagem; denominador: 5\)/u
   );
   assert.match(payload.result.content[0].text, /não mede aprendizagem/u);
-  assert.match(payload.result.content[0].text, /Abrir no AraLearn:/u);
+  assert.equal(payload.result.content[0].text.includes(deepLink), false);
+  assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
 });
 
 test("MCP avisa quando a síntese textual de Pesquisa limita as categorias", async () => {
@@ -495,11 +501,11 @@ test("MCP avisa quando a síntese textual de Pesquisa limita as categorias", asy
   }));
   const text = (await response.json()).result.content[0].text;
   assert.match(text, /12 de 13 categorias/u);
-  assert.match(text, /conteúdo estruturado conserva o recorte completo/u);
+  assert.match(text, /demais categorias continuam disponíveis/u);
   assert.doesNotMatch(text, /Categoria 13:/u);
 });
 
-test("MCP entrega prévia textual e link exato para a Unidade persistida", async () => {
+test("MCP entrega prévia textual e oferece o link como ação estruturada", async () => {
   const studyUnit = await minimalStudyUnit();
   const response = await handler({
     publicAppUrl: "https://fabio-ara.github.io/AraLearn"
@@ -524,7 +530,9 @@ test("MCP entrega prévia textual e link exato para a Unidade persistida", async
       `?section=content&studyUnitId=${studyUnit.id}`
   );
   assert.match(payload.result.content[0].text, /A conjunção só é verdadeira/u);
-  assert.match(payload.result.content[0].text, /Abrir no AraLearn:/u);
+  assert.equal(payload.result.content[0].text.includes(preview.deepLink), false);
+  assert.match(payload.result.content[0].text, /Abrir a prévia no AraLearn/u);
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
   assert.doesNotMatch(JSON.stringify(payload), /"rendered":false/u);
 });
 
@@ -542,8 +550,8 @@ test("MCP resume operações não visuais da biblioteca sem despejar JSON", asyn
   assert.equal(payload.result.structuredContent.data.operation, "search");
   assert.match(text, /biblioteca de componentes didáticos foi consultada/iu);
   assert.match(text, /Operação: Busca de componentes/u);
-  assert.match(text, /Catálogo:/u);
   assert.match(text, /Candidatos:/u);
+  assert.doesNotMatch(text, /Catálogo:|catalogVersion/iu);
   assert.doesNotMatch(text, /"candidates"|\{"contract"/u);
 });
 
@@ -576,6 +584,43 @@ test("MCP interrompe envelope acima de 1 MiB antes de despachar ferramenta", asy
   assert.equal(payload.error.data.code, "mcp_message_too_large");
 });
 
+test("MCP não induz repetição quando a resposta estoura após criar o Curso", async () => {
+  let writes = 0;
+  const response = await handler({
+    async createCourse({ title }) {
+      writes += 1;
+      return {
+        contract: "aralearn.course.v1",
+        courseId: COURSE_ID,
+        title,
+        revision: 1,
+        deepLink: `https://example.test/#/authoring/courses/${COURSE_ID}`,
+        padding: "x".repeat(2 * 1024 * 1024 - 350)
+      };
+    }
+  })(request("tools/call", {
+    name: "criarCurso",
+    arguments: {
+      requestId: "mcp-large-created-course-0001",
+      title: "Curso já gravado",
+      objective: "Provar a certeza de escrita após o limite da resposta."
+    }
+  }));
+  const payload = await response.json();
+  const result = payload.result;
+
+  assert.equal(writes, 1);
+  assert.equal(response.status, 200);
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.requestId, "mcp-large-created-course-0001");
+  assert.equal(result.structuredContent.error.code, "mcp_response_too_large");
+  assert.equal(result.structuredContent.error.recovery.strategy, "verify_state");
+  assert.equal(result.structuredContent.error.recovery.retryable, false);
+  assert.match(result.content[0].text, /gravação foi concluída/iu);
+  assert.doesNotMatch(result.content[0].text, /Nada foi salvo|reduza a página/iu);
+  assert.equal(Object.hasOwn(result.structuredContent, "conversation"), false);
+});
+
 test("MCP torna recuperável o conflito de versão do Curso sem instruções substituídas", async () => {
   const response = await handler({
     async commitCourseInstructionalPlan() {
@@ -605,6 +650,9 @@ test("MCP torna recuperável o conflito de versão do Curso sem instruções sub
   assert.equal(result.structuredContent.error.code, "stale_course_state");
   assert.equal(result.structuredContent.error.recovery.strategy, "reread_and_retry");
   assert.equal(result.structuredContent.error.recovery.requestIdMode, "new");
+  assert.match(result.content[0].text, /Nada foi sobrescrito/u);
+  assert.doesNotMatch(result.content[0].text, /stale_course_state|requestId|revisão \d/iu);
+  assert.equal(Object.hasOwn(result.structuredContent, "conversation"), false);
   assert.doesNotMatch(JSON.stringify(result), /workspace|trilha|salvarCards/iu);
 });
 
@@ -730,8 +778,9 @@ test("MCP não reflete token, e-mail, Authorization ou payload bruto em erros", 
   assert.equal(unknownResult.isError, true);
   assert.equal(unknownResult.structuredContent.error.message,
     "O comando contém um campo não reconhecido.");
-  assert.equal(unknownResult.content[0].text,
-    "unknown_tool_argument: O comando contém um campo não reconhecido.");
+  assert.match(unknownResult.content[0].text, /operação de autoria não foi concluída/iu);
+  assert.doesNotMatch(unknownResult.content[0].text, /unknown_tool_argument|requestId/iu);
+  assert.equal(Object.hasOwn(unknownResult.structuredContent, "conversation"), false);
   assert.equal(JSON.stringify(unknownPayload).includes(hostileField), false);
 
   const hostileRequestId = sentinels[1];

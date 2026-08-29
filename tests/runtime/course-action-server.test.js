@@ -115,13 +115,18 @@ test("Actions lista Cursos pelo canal HTTP e pelo principal opaco próprio", asy
         scopes: ["authoring:read", "authoring:write"]
       };
     }
-  })(request("listarCursos"));
+  })(request("listarCursos", { query: "Curso corrente" }));
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
   const payload = await response.json();
   assert.equal(payload.ok, true);
   assert.equal(payload.data.items[0].title, "Curso corrente");
+  assert.equal(payload.conversation.kind, "resumption");
+  assert.equal(payload.conversation.level, "standard");
+  assert.match(payload.conversation.message, /Localizei “Curso corrente”/u);
+  assert.equal(JSON.stringify(payload.conversation).includes(ACTOR_ID), false);
+  assert.equal(payload.data.items[0].courseId, ACTOR_ID);
   assert.equal(resolved, 1);
 });
 
@@ -175,6 +180,8 @@ test("Actions lê e altera Observações com destinatário e principal próprios
   assert.equal(read.data.items[0].rawText, "Rever a explicação antes da publicação.");
   assert.equal(read.data.dataDisclosure.recipient, "connected_actions_gpt");
   assert.equal(read.data.dataDisclosure.rawObservationTextIncluded, true);
+  assert.equal(read.conversation.level, "operational");
+  assert.equal(JSON.stringify(read.conversation).includes(ACTOR_ID), false);
 
   const changeResponse = await handler(request("alterarCurso", {
     requestId: "request-action-observation-0001",
@@ -192,11 +199,14 @@ test("Actions lê e altera Observações com destinatário e principal próprios
   assert.equal(mutation.command.type, "resolve_anchored_annotation");
   assert.equal(change.data.annotation.state, "resolved");
   assert.equal(change.data.dataDisclosure.recipient, "connected_actions_gpt");
+  assert.match(change.conversation.message, /alteração foi gravada e validada/iu);
+  assert.equal(change.conversation.level, "operational");
 });
 
 test("Actions lê, altera e relê o plano com operações dedicadas, CAS e replay", async () => {
   let courseRevision = 1;
   let commitCalls = 0;
+  let lastPlanConversation = null;
   const receipts = new Map();
   let plan = {
     id: PLAN_ID,
@@ -256,7 +266,11 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
       view: "instructional_plan"
     }));
     assert.equal(response.status, 200);
-    return (await response.json()).data;
+    const payload = await response.json();
+    lastPlanConversation = payload.conversation;
+    assert.equal(payload.conversation.kind, "resumption");
+    assert.equal(JSON.stringify(payload.conversation).includes(ACTOR_ID), false);
+    return payload.data;
   };
   const changePlan = async (
     requestId,
@@ -278,6 +292,8 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
   };
 
   const before = await readPlan();
+  assert.match(lastPlanConversation.message, /Planejamento incompleto/u);
+  assert.match(lastPlanConversation.message, /Próxima decisão/u);
   assert.equal(before.courseRevision, 1);
   assert.equal(before.plan.version, 1);
   assert.equal(before.deepLink, deepLink);
@@ -455,6 +471,12 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
   const invalidPayload = await invalid.json();
   assert.equal(invalid.status, 422);
   assert.equal(invalidPayload.error.code, "invalid_course_authoring_plan_command");
+  assert.equal(invalidPayload.conversation.level, "diagnostic");
+  assert.equal(invalidPayload.conversation.success, false);
+  assert.doesNotMatch(
+    invalidPayload.conversation.message,
+    /invalid_course_authoring_plan_command|requestId|expectedRevision/iu
+  );
   assert.notEqual(invalidPayload.error.code, "internal_error");
   assert.equal(commitCalls, 6);
   assert.equal((await readPlan()).plan.version, 7);
@@ -488,6 +510,39 @@ test("Actions limita origem, rota e corpo sem abrir transporte genérico", async
   assert.equal(oversized.status, 413);
 });
 
+test("Actions não afirma ausência de escrita quando a resposta estoura após a gravação", async () => {
+  let writes = 0;
+  const response = await createHandler({
+    async createCourse({ title }) {
+      writes += 1;
+      return {
+        contract: "aralearn.course.v1",
+        courseId: ACTOR_ID,
+        title,
+        revision: 1,
+        deepLink: `${APP_URL}#/authoring/courses/${ACTOR_ID}`,
+        padding: "x".repeat(100 * 1024)
+      };
+    }
+  })(request("criarCurso", {
+    requestId: "action-large-created-course-0001",
+    title: "Curso já gravado",
+    objective: "Provar a certeza de escrita após o limite da resposta."
+  }));
+  const payload = await response.json();
+
+  assert.equal(writes, 1);
+  assert.equal(response.status, 413);
+  assert.equal(payload.error.code, "action_response_too_large");
+  assert.equal(payload.error.recovery.strategy, "verify_state");
+  assert.equal(payload.error.recovery.retryable, false);
+  assert.equal(payload.conversation.success, false);
+  assert.equal(payload.conversation.writeState, "complete");
+  assert.equal(payload.conversation.retrySafe, false);
+  assert.match(payload.conversation.message, /gravação foi concluída/iu);
+  assert.doesNotMatch(payload.conversation.message, /Nada foi salvo/u);
+});
+
 test("Actions preserva as ferramentas canônicas e acrescenta as operações dedicadas", async () => {
   const openApi = JSON.parse(await readFile(
     new URL(
@@ -497,6 +552,8 @@ test("Actions preserva as ferramentas canônicas e acrescenta as operações ded
     "utf8"
   ));
   assert.equal(openApi.openapi, "3.1.0");
+  assert.match(openApi.info.description, /Preservar internamente não significa mostrar/iu);
+  assert.match(openApi.info.description, /detalhe técnico literal somente sob pedido explícito/iu);
   assert.deepEqual(
     Object.keys(openApi.paths),
     [
@@ -507,6 +564,15 @@ test("Actions preserva as ferramentas canônicas e acrescenta as operações ded
   assert.equal(JSON.stringify(openApi).includes("Workspace"), false);
   assert.ok(openApi.components.schemas.SuccessResponse);
   assert.ok(openApi.components.schemas.ErrorResponse);
+  assert.ok(openApi.components.schemas.ConversationProjection);
+  assert.deepEqual(
+    openApi.components.schemas.SuccessResponse.properties.conversation,
+    { $ref: "#/components/schemas/ConversationProjection" }
+  );
+  assert.deepEqual(
+    openApi.components.schemas.ErrorResponse.properties.conversation,
+    { $ref: "#/components/schemas/ConversationProjection" }
+  );
   for (const pathValue of Object.values(openApi.paths)) {
     assert.ok(pathValue.post.description.length <= 300);
   }

@@ -149,10 +149,44 @@ argumentos admitidos e às revisões esperadas.
 
 ## Como uma conversa segura progride
 
-Antes de alterar um Curso, o GPT localiza o alvo, lê a revisão corrente e
-explica a operação proposta. Uma escrita usa um identificador de pedido estável
-e a revisão esperada. Se o Curso mudar, a Action devolve conflito para que a
-conversa releia o estado, em vez de sobrescrever trabalho novo.
+Antes de alterar um Curso, o GPT localiza o alvo pelo título, lê a revisão
+corrente e explica a operação proposta. Se houver uma correspondência única
+plausível, pode usá-la; se houver Cursos homônimos, pede uma escolha por objetivo,
+etapa ou atividade recente, sem exigir UUID como primeira opção. Uma nova sessão
+pode, assim, retomar o Curso vivo por nome sem receber um prompt técnico de
+restauração.
+
+O esquema da Action conserva um identificador de pedido estável, revisões,
+versões esperadas e demais metadados necessários. A fala do GPT não é uma cópia
+desse esquema: **preservar internamente != mostrar ao usuário**. Por padrão, ela
+explica estado autoral, lacunas, efeito, preservações, materialização e decisão
+humana. Pode acrescentar transparência leve sobre releitura ou validação; em uma
+falha, passa a diagnóstico humano; IDs, CAS, payload, chamada e erro bruto ficam
+para pedido técnico explícito.
+
+As respostas HTTP mantêm `requestId`, `data` ou `error` e acrescentam
+`conversation` como projeção separada. Assim, os controles continuam
+recuperáveis pelo GPT, enquanto a mensagem padrão permanece humana. A certeza
+de escrita distingue estado nenhum, parcial, concluído ou desconhecido; uma
+falha de entrega posterior à gravação não pode ser descrita como “nada foi
+salvo”.
+
+Uma confirmação adequada seria “Vou acrescentar 9 resultados de aprendizagem,
+30 elementos fundamentais e 12 formas de evidência. As 12 Partes permanecem
+como estão e nenhuma aula será criada. Confirmo?”. “Vou chamar
+`update_instructional_plan` com `expectedRevision` e este payload. Confirmo?” é
+inadequado: descreve o mecanismo, não o efeito pedagógico. O primeiro texto é um
+exemplo, não um template rígido.
+
+Se o Curso mudar, a Action devolve conflito para que a conversa releia o estado
+e reconcilie a intenção, em vez de sobrescrever trabalho novo. Falha, tempo
+esgotado ou resposta perdida não autorizam falso sucesso: o GPT informa o que foi ou não
+confirmado e segue o próximo passo seguro indicado pelo resultado estruturado.
+Quando a pessoa pedir “Mostre os IDs, as revisões e a chamada que falhou”, o GPT
+apresenta os dados disponíveis literalmente e não inventa os ausentes. Links
+para a interface permanecem no resultado e são oferecidos como ação útil, por
+exemplo **Abrir planejamento no AraLearn**, sem serem despejados em toda
+retomada.
 
 Em parâmetros, `clear_parameter` remove a decisão local e restaura a herança.
 `set_parameter` com `mode: automatic` delega a resolução ao AraLearn/GPT e
@@ -212,6 +246,11 @@ O OpenAPI é gerado a partir do catálogo corrente:
 npm.cmd run actions:openapi:check
 npm.cmd run test:authoring:actions
 ```
+
+O próprio `info.description` do artefato inclui as instruções compartilhadas de
+autoria e divulgação progressiva. A reimportação continua necessária para um
+GPT já salvo, pois sua configuração externa conserva a cópia anterior; esse ato
+não pode ser realizado pelo repositório.
 
 O arquivo gerado deve permanecer abaixo de 128 KiB. O teste também confirma que
 os discriminadores chegam como enums unitários, que toda condicional canônica

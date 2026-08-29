@@ -22,6 +22,76 @@ significado, autoridade, versões e invariantes. Um **envelope** transporta o
 conteúdo e seus metadados. JSON válido só se torna mudança de Curso depois de
 passar por essas regras.
 
+## Estado de máquina e fala humana
+
+O cliente conversacional precisa de identidades, revisões, versões esperadas,
+chaves de repetição segura, códigos de erro e vínculos exatos para operar sem
+corromper o Curso. Esses dados pertencem ao estado de máquina. A pessoa, por sua
+vez, precisa compreender onde o Curso parou, o que existe, o que falta, qual
+efeito uma proposta terá e que decisão continua sob seu julgamento.
+
+A regra entre as duas projeções é explícita:
+**preservar internamente != mostrar ao usuário**. O envelope estruturado
+continua completo para o cliente executar, reler e diagnosticar. A resposta
+humana seleciona desse envelope apenas o que ajuda a tarefa corrente. O cliente
+não demonstra competência recitando UUIDs, revisões, `planVersion`, CAS,
+`requestId`, hashes, caminhos de armazenamento, nomes de operações, enums,
+`sourceLinks`, payloads ou esquemas.
+
+Essa apresentação usa quatro níveis progressivos:
+
+1. **Conversa padrão.** Explica o estado autoral, a proposta, sua justificativa,
+   o que permanecerá intacto, a decisão necessária e se haverá materialização.
+2. **Transparência operacional leve.** Quando ajuda a confiança, informa que
+   releu o Curso, gravou e validou uma alteração ou reconciliou uma mudança
+   concorrente, sem expor o protocolo.
+3. **Diagnóstico humano.** Diante de falha, informa o que foi ou não salvo, o
+   limite ou conflito relevante e o próximo passo seguro.
+4. **Detalhe técnico.** Sob pedido explícito, mostra literalmente IDs, revisões,
+   CAS, chamada, payload, hash, caminho e erro bruto disponíveis. Campo ausente
+   nunca é inventado.
+
+Links profundos seguem a mesma progressão. Permanecem no resultado estruturado
+e aparecem na conversa quando oferecem uma ação útil, como **Abrir planejamento
+no AraLearn**, não como um bloco técnico em toda resposta.
+
+## Retomada, confirmação e falha
+
+Uma nova sessão pode começar com “Continue a autoria do curso Gestão de
+Servidores; quero terminar o planejamento antes de produzir conteúdo”. O
+cliente procura Cursos próprios pelo título, usa uma correspondência única
+plausível e, se houver homônimos reais, pede uma escolha por informações
+compreensíveis, como objetivo, etapa atual ou atividade recente. UUID não é a
+primeira forma de desambiguação.
+
+Depois da descoberta, o cliente relê o Curso vivo, reconstrói internamente
+revisões e versões, identifica a etapa de autoria e apresenta a próxima decisão
+em linguagem comum. Memória da conversa pode sugerir o alvo, mas nunca substitui
+o estado persistido nem exige um “prompt de restauração” técnico.
+
+A confirmação descreve o efeito pedagógico, o alcance e as preservações. Por
+exemplo:
+
+> Vou acrescentar 9 resultados de aprendizagem, 30 elementos fundamentais e 12
+> formas de evidência. As 12 Partes permanecem como estão e nenhuma aula será
+> criada. Confirmo?
+
+Esse enunciado não é um template rígido. O cliente adapta a explicação à mudança
+real e relê silenciosamente as revisões necessárias antes de escrever. Deve-se
+evitar uma confirmação como “Vou enviar `update_instructional_plan` com
+`expectedRevision`, `expectedPlanVersion` e este payload. Confirmo?”, porque ela
+transfere a operação da máquina para a pessoa sem explicar o efeito educacional.
+
+Sucesso só pode ser anunciado quando a operação tiver sido confirmada pelo
+contrato. Uma falha, tempo esgotado ou resposta perdida não vira “pronto”: a
+conversa declara a incerteza, informa se existe certeza de escrita parcial ou de nenhuma
+escrita — ou se a escrita foi concluída antes de uma falha de entrega — e usa
+releitura ou repetição segura conforme o envelope permitir. Um
+conflito de revisão não sobrescreve o estado novo; o cliente relê e reconcilia a
+intenção. Se a pessoa pedir “Mostre os IDs, as revisões e a chamada que falhou”,
+o cliente sobe ao nível técnico e apresenta somente os dados realmente
+recuperados.
+
 ## Uma autoridade, três entradas de autoria
 
 A interface visual, um cliente MCP e um GPT conectado por Actions operam o

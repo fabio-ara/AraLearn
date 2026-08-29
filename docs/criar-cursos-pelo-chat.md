@@ -11,6 +11,25 @@ compatível. Ele não implica que um app do AraLearn esteja publicado ou
 instalável no ChatGPT e não substitui um tutorial de instalação na interface
 corrente desse produto.
 
+## Conversar sobre o Curso, não sobre o protocolo
+
+O cliente precisa conservar internamente identidades, revisões, versões e
+chaves de repetição segura. Isso não obriga a pessoa a operar esses campos. A
+regra é **preservar internamente != mostrar ao usuário**.
+
+A conversa progride em quatro níveis. Por padrão, mostra onde a autoria parou,
+o que existe, o que falta, o efeito da proposta, o que permanecerá intacto e a
+decisão humana necessária. Quando útil, acrescenta transparência leve, como
+“Reli o estado atual do Curso antes de preparar esta proposta”. Diante de falha,
+explica em linguagem de tarefa o que foi ou não salvo e o próximo passo seguro.
+IDs, revisões, CAS, payloads, hashes, caminhos e erros brutos aparecem somente
+sob pedido explícito.
+
+Prefira “A alteração foi gravada e validada; as 12 Partes continuam intactas”.
+Evite “Sucesso no `requestId` X, revisão Y, com este payload”. Se a pessoa pedir
+“Mostre os IDs, as revisões e a chamada que falhou”, o cliente pode apresentar o
+detalhe recuperado sem fabricar campos ausentes.
+
 ## Antes de começar
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
@@ -41,9 +60,10 @@ resultado de aprendizagem, valor de parâmetro ou alegação de eficácia.
 
 ## Localizar ou criar o Curso
 
-Peça ao cliente que procure pelo título com `listarCursos`. Diante de homônimos,
-ele deve apresentar título, objetivo e revisão suficientes para uma escolha
-segura.
+Peça ao cliente que procure pelo título com `listarCursos`. Uma correspondência
+única plausível pode ser usada diretamente. Diante de homônimos, ele deve pedir
+uma escolha por informações humanas, como objetivo, etapa atual ou atividade
+recente; UUID não é a primeira opção de desambiguação.
 
 Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título e
 objetivo. A operação usa um `requestId`, que permite recuperar o mesmo resultado
@@ -71,6 +91,13 @@ Partes. Essas mudanças preservam as Unidades já produzidas. Depois que as
 Microssequências existem, atribua a cada uma as unidades de análise e os
 requisitos de evidência que ela precisa desenvolver. Essa atribuição é
 explícita e admite vários itens em vários alvos.
+
+Antes da escrita, a confirmação deve explicar alcance e efeito pedagógico. Um
+exemplo adequado é: “Vou acrescentar 9 resultados de aprendizagem, 30 elementos
+fundamentais e 12 formas de evidência. As 12 Partes permanecem como estão e
+nenhuma aula será criada. Confirmo?”. Essa forma se adapta à mudança real; não é
+um texto fixo. Pedir confirmação de um nome de operação, de revisões ou de um
+payload é inadequado porque não esclarece o que mudará no Curso.
 
 Na interface, Observações e mudanças de Parâmetros são salvas no próprio Curso e
 permanecem visíveis na Autoria. No ChatGPT conectado por MCP ou Actions, peça
@@ -276,7 +303,15 @@ aprendizagem, atenção, esforço ou eficácia.
 
 ## Retomar em outra conversa
 
-Uma nova sessão deve reler:
+Não é necessário levar um prompt de restauração, UUIDs ou revisões para outra
+sessão. Um pedido suficiente pode ser:
+
+> Continue a autoria do curso Gestão de Servidores; quero terminar o planejamento
+> antes de produzir conteúdo.
+
+O cliente localiza os Cursos próprios pelo nome. Se houver uma única
+correspondência plausível, continua com ela; se houver ambiguidade real,
+apresenta diferenças compreensíveis e pede uma escolha. Em seguida, deve reler:
 
 1. o recurso de invariantes;
 2. o Curso e sua revisão;
@@ -286,7 +321,11 @@ Uma nova sessão deve reler:
 6. o achado, a rodada ou a comparação pertinente, quando aplicável.
 
 O estado recuperável está no Curso e em seus registros associados. A conversa
-anterior não se torna uma cópia oculta do planejamento.
+anterior não se torna uma cópia oculta do planejamento. Ela pode ajudar a
+descobrir o alvo, mas o cliente reconstrói revisões e versões a partir do estado
+vivo, identifica a etapa autoral e responde com o que falta e a próxima decisão.
+Um link para a interface é oferecido quando ajuda uma ação concreta, não como
+detalhe obrigatório de toda retomada.
 
 ## Resolver falhas comuns
 
@@ -294,13 +333,13 @@ anterior não se torna uma cópia oculta do planejamento.
 | --- | --- |
 | autorização expirou | refaça o OAuth com a mesma conta |
 | Curso não foi encontrado | confira conta, identidade e propriedade |
-| revisão mudou | releia a vista e reconcilie a proposta |
-| pedido perdeu a resposta | repita o mesmo `requestId` apenas com o mesmo comando |
+| revisão mudou | releia o estado vivo, preserve o trabalho novo e reconcilie a proposta |
+| pedido perdeu a resposta | não anuncie sucesso; recupere o resultado ou repita com segurança |
 | componente foi bloqueado | releia a política efetiva e escolha entre os permitidos |
 | Fonte ou Âncora foi recusada | releia a revisão ativa e envie o conjunto completo do alvo |
 | evidência factual foi recusada | confira relação, Fonte, Âncora e revisão do critério |
 | correção ficou desatualizada | releia a Unidade e prepare outra proposta sobre o estado corrente |
-| resultado não apareceu | confirme ambiente, conta, Curso, revisão e destino da interface |
+| resultado não apareceu | informe o que não pôde ser confirmado e confira ambiente, conta, Curso e destino da interface |
 
 Os argumentos completos estão em [Autoria por MCP](autoria-mcp.md). Para os
 fundamentos da assistência, consulte [Assistência por modelo de

@@ -10,6 +10,10 @@ import {
   readCourseAuthoringKnowledgeResource
 } from "./courseKnowledge.js";
 import { executeCourseTool } from "./courseToolExecutor.js";
+import {
+  projectConversationalAuthoringError,
+  projectConversationalAuthoringToolSuccess
+} from "./conversationalAuthoringProjection.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
 import {
@@ -40,6 +44,7 @@ const SERVER_INFO = Object.freeze({
 });
 const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
+const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso"]);
 const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
@@ -285,9 +290,6 @@ function appendLimitations(parts, value) {
 
 function summarizeAnalytics(value) {
   const parts = ["Os fatos de pesquisa da Autoria foram lidos."];
-  if (Number.isSafeInteger(value.courseRevision)) {
-    parts.push(`Revisão do Curso: ${value.courseRevision}.`);
-  }
   if (value.overview?.question) parts.push(String(value.overview.question));
   const completeSeries = Array.isArray(value.overview?.series) ? value.overview.series : [];
   const series = completeSeries.slice(0, 12);
@@ -304,20 +306,23 @@ function summarizeAnalytics(value) {
       const denominator = entry?.denominator === null || entry?.denominator === undefined
         ? "ausente"
         : entry.denominator;
-      return `${entry?.label || entry?.key}: ${valueText} ` +
+      return `${entry?.label || "Indicador"}: ${valueText} ` +
         `(unidade: ${unit}; denominador: ${denominator})`;
     }).join("; ") + ".");
   }
   if (completeSeries.length > series.length) {
     parts.push(
       `A síntese apresenta ${series.length} de ${completeSeries.length} categorias; ` +
-      "o conteúdo estruturado conserva o recorte completo."
+      "As demais categorias continuam disponíveis se forem necessárias."
     );
   }
   appendPageSummary(parts, value);
   appendLimitations(parts, value);
-  if (value.deepLink) parts.push(`Abrir no AraLearn: ${value.deepLink}`);
   return parts.join(" ");
+}
+
+function exceedsMcpResponseLimit(payload) {
+  return new TextEncoder().encode(JSON.stringify(payload)).byteLength > MCP_RESPONSE_LIMIT;
 }
 
 function summarizePreview(value) {
@@ -326,7 +331,6 @@ function summarizePreview(value) {
     ? "A Unidade de estudo passou pela validação estrutural e está pronta para pré-visualização."
     : "A Unidade de estudo não passou pela validação estrutural."];
   if (preview?.accessibleText) parts.push(String(preview.accessibleText));
-  if (preview?.deepLink) parts.push(`Abrir no AraLearn: ${preview.deepLink}`);
   return parts.join(" ");
 }
 
@@ -344,14 +348,13 @@ function summarizeComponentLibrary(value) {
     "A biblioteca de componentes didáticos foi consultada.",
     `Operação: ${operationLabels[value?.operation] || "Consulta"}.`
   ];
-  if (result.catalogVersion) parts.push(`Catálogo: ${result.catalogVersion}.`);
   if (Number.isSafeInteger(result.packageCount)) {
     parts.push(`Componentes disponíveis no recorte: ${result.packageCount}.`);
   }
   const candidates = Array.isArray(result.candidates) ? result.candidates.slice(0, 8) : [];
   if (candidates.length) {
     parts.push("Candidatos: " + candidates.map((candidate) => {
-      const identity = firstText(candidate?.label, candidate?.title, candidate?.packageId) || "Componente";
+      const identity = firstText(candidate?.label, candidate?.title) || "Componente";
       const fit = ({ canonical: "canônico", versatile: "versátil", substitute: "substituto" })[
         candidate?.fit
       ];
@@ -363,8 +366,7 @@ function summarizeComponentLibrary(value) {
     parts.push("Itens: " + items.map((item) => {
       const identity = firstText(
         item?.profile?.label,
-        item?.profile?.packageId,
-        item?.packageId
+        item?.profile?.title
       ) || "Componente";
       return `${identity}: ${item?.status === "ok" ? "disponível" : "não encontrado"}`;
     }).join("; ") + ".");
@@ -393,29 +395,16 @@ function summarizeComponentLibrary(value) {
 
 function summarizeVariantComparison(value) {
   const parts = ["A comparação de variantes foi lida."];
-  if (Number.isSafeInteger(value?.planning?.courseRevision) &&
-      Number.isSafeInteger(value?.planning?.planVersion)) {
-    parts.push(
-      `Planejamento comum: revisão ${value.planning.courseRevision}; ` +
-      `versão ${value.planning.planVersion}.`
-    );
-  }
   const members = Array.isArray(value?.members) ? value.members.slice(0, 8) : [];
   const referenceId = value?.differences?.referenceCourseId;
   const reference = members.find(({ courseId }) => courseId === referenceId) || members[0];
   if (reference) {
     const label = firstText(reference.label, reference.title) || "Primeira variante";
-    const revision = Number.isSafeInteger(reference.currentCourseRevision)
-      ? `, revisão ${reference.currentCourseRevision}`
-      : "";
-    parts.push(`Referência: ${label}${revision}.`);
+    parts.push(`Referência: ${label}.`);
   }
   if (members.length) {
     parts.push("Variantes: " + members.map((member) => {
       const label = firstText(member?.label, member?.title) || "Variante";
-      const revision = Number.isSafeInteger(member?.currentCourseRevision)
-        ? member.currentCourseRevision
-        : "não informada";
       const partCount = member?.materialization?.plannedPartCount;
       const unitCount = member?.materialization?.studyUnitCount;
       const partsText = Number.isSafeInteger(partCount)
@@ -424,8 +413,7 @@ function summarizeVariantComparison(value) {
       const unitsText = Number.isSafeInteger(unitCount)
         ? `${unitCount} ${unitCount === 1 ? "Unidade" : "Unidades"}`
         : "Unidades: dados ausentes";
-      return `${label}: revisão ${revision}; ` +
-        `${partsText}; ${unitsText}`;
+      return `${label}: ${partsText}; ${unitsText}`;
     }).join(". ") + ".");
   }
   const differences = value?.differences || {};
@@ -444,7 +432,6 @@ function summarizeVariantComparison(value) {
     : []).map(({ explanation }) => firstText(explanation))
     .filter(Boolean).slice(0, 4);
   if (explanations.length) parts.push(`Detalhes: ${explanations.join(" ")}`);
-  if (value?.deepLink) parts.push(`Abrir no AraLearn: ${value.deepLink}`);
   return parts.join(" ");
 }
 
@@ -477,10 +464,6 @@ function summarizeMaterialization(value) {
           : "A materialização da Parte foi encerrada com falha."
     : "A materialização da Parte foi lida.";
   const parts = [action];
-  if (value.authoringPartId) parts.push(`Parte: ${value.authoringPartId}.`);
-  if (Number.isSafeInteger(value.courseRevision)) {
-    parts.push(`Revisão do Curso: ${value.courseRevision}.`);
-  }
   const completed = materialization.completedStepCount;
   const failed = materialization.failedStepCount;
   const total = materialization.totalStepCount;
@@ -499,7 +482,6 @@ function summarizeMaterialization(value) {
     );
   }
   parts.push(...materializationFactLines(materialization.resultFacts));
-  if (value.deepLink) parts.push(`Abrir no AraLearn: ${value.deepLink}`);
   return parts.join(" ");
 }
 
@@ -514,7 +496,7 @@ function summarizeMcpAnnotations(value) {
     ? "A operação de Observação foi concluída."
     : `${count} ${count === 1 ? "Observação foi lida" : "Observações foram lidas"}.`];
   parts.push(disclosure.rawObservationTextIncluded === true
-    ? "O detalhe inclui o texto da Observação para esta triagem autoral e o envia ao cliente MCP conectado; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
+    ? "Incluí o texto integral solicitado para esta triagem autoral; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
     : "O recorte omite o texto integral, referências e rótulos pessoais, caminhos e links internos.");
   appendPageSummary(parts, value);
   return parts.join(" ").slice(0, 12000);
@@ -556,30 +538,35 @@ function summarizeToolResult(name, value) {
   const parts = [action];
   const title = firstText(value?.course?.title, value?.title, value?.source?.title);
   if (title) parts.push(`Escopo: ${title}.`);
-  const revision = value?.courseRevision ?? value?.revision ?? value?.course?.revision;
-  if (Number.isSafeInteger(revision)) parts.push(`Revisão do Curso: ${revision}.`);
   appendPageSummary(parts, value);
   appendLimitations(parts, value);
   const warning = firstText(value?.warning, value?.summary?.warning);
   if (warning) parts.push(`Atenção: ${warning}`);
   if (value?.dataDisclosure?.purpose === "author_audit_context") {
     parts.push(value.dataDisclosure.rawObservationTextIncluded === true
-      ? "O contexto inclui os textos das Observações selecionadas para esta auditoria autoral e os envia ao cliente MCP conectado; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
+      ? "Incluí os textos das Observações selecionadas para esta auditoria autoral; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
       : "O contexto omite os textos das Observações, referências e rótulos pessoais, caminhos e links internos.");
   }
-  const deepLink = firstText(value?.deepLink, value?.course?.deepLink);
-  if (deepLink) parts.push(`Abrir no AraLearn: ${deepLink}`);
   return parts.join(" ").slice(0, 12000);
 }
 
-function toolSuccess(requestId, name, value) {
-  const structuredContent = { ok: true, requestId, data: value ?? null };
+function toolSuccess(requestId, name, value, rawArguments = {}) {
+  const envelope = { ok: true, requestId, data: value ?? null };
+  const conversation = projectConversationalAuthoringToolSuccess({
+    envelope,
+    toolName: name,
+    rawArguments,
+    summary: { outcome: summarizeToolResult(name, value) }
+  });
+  const text = conversation.action?.label
+    ? `${conversation.message} ${conversation.action.label}.`
+    : conversation.message;
   return {
     content: [{
       type: "text",
-      text: summarizeToolResult(name, value)
+      text
     }],
-    structuredContent,
+    structuredContent: envelope,
     isError: false
   };
 }
@@ -587,17 +574,33 @@ function toolSuccess(requestId, name, value) {
 function toolFailure(
   requestId,
   error,
-  challenge = null
+  challenge = null,
+  failure = {}
 ) {
   const normalized = asAuthoringApiError(error);
   const publicError = toolErrorData(normalized, { requestId });
+  if (failure.writeState === "complete") {
+    publicError.recovery = {
+      strategy: "verify_state",
+      retryable: false,
+      requestIdMode: "none",
+      steps: [
+        "Releia o estado atual antes de continuar.",
+        "Não repita a escrita apenas porque a resposta excedeu o limite."
+      ]
+    };
+  }
   const structuredContent = {
     ok: false,
     requestId,
     error: publicError
   };
+  const conversation = projectConversationalAuthoringError({
+    envelope: structuredContent,
+    failure
+  });
   return {
-    content: [{ type: "text", text: `${publicError.code}: ${publicError.message}` }],
+    content: [{ type: "text", text: conversation.message }],
     structuredContent,
     isError: true,
     ...(challenge
@@ -622,7 +625,7 @@ async function executeTool({
     deadlineAt,
     onRequestIdValidated
   });
-  return toolSuccess(result.requestId, name, result.data);
+  return toolSuccess(result.requestId, name, result.data, rawArguments);
 }
 
 async function dispatchMcpRequest(envelope, context) {
@@ -753,7 +756,26 @@ async function dispatchMcpRequest(envelope, context) {
           requestId = value;
         }
       });
-      return { jsonrpc: JSON_RPC_VERSION, id, result };
+      const payload = { jsonrpc: JSON_RPC_VERSION, id, result };
+      if (!exceedsMcpResponseLimit(payload)) return payload;
+      const completedWrite = WRITE_TOOLS.has(params.name);
+      const tooLarge = new AuthoringApiError(
+        413,
+        "mcp_response_too_large",
+        completedWrite
+          ? "A gravação foi concluída, mas a resposta excedeu o limite de 2 MiB."
+          : "A resposta MCP excede o limite de 2 MiB; leia uma parcela menor."
+      );
+      return {
+        jsonrpc: JSON_RPC_VERSION,
+        id,
+        result: toolFailure(
+          requestId,
+          tooLarge,
+          null,
+          completedWrite ? { writeState: "complete" } : {}
+        )
+      };
     } catch (error) {
       const normalized = asAuthoringApiError(error);
       if (normalized.status === 429) throw normalized;

@@ -20,6 +20,10 @@ import {
 } from "./courseMcpTools.js";
 import { executeCourseTool } from "./courseToolExecutor.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
+import {
+  projectConversationalAuthoringError,
+  projectConversationalAuthoringToolSuccess
+} from "./conversationalAuthoringProjection.js";
 
 const BODY_LIMIT = 96 * 1024;
 const RESPONSE_LIMIT = 96 * 1024;
@@ -34,6 +38,16 @@ const JSON_HEADERS = Object.freeze({
   "X-Content-Type-Options": "nosniff",
   "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
 });
+
+function actionSuccessOutcome(actionName) {
+  if (actionName === "listarCursos") return "Os Cursos próprios foram localizados.";
+  if (actionName === "lerCurso") return "Reli o estado atual do Curso.";
+  if (actionName === "criarCurso") return "O Curso foi criado.";
+  if (actionName === "consultarComponentesDidaticos") {
+    return "A biblioteca de componentes didáticos foi consultada.";
+  }
+  return "A alteração foi gravada e validada.";
+}
 
 function jsonResponse(status, payload, headers = {}) {
   return new Response(JSON.stringify(payload), {
@@ -128,6 +142,7 @@ export function createAuthoringActionHandler({
     let requestId = null;
     let actionName = null;
     let rawArguments = null;
+    let completedWrite = false;
     try {
       if (request.method === "OPTIONS") {
         return new Response(null, {
@@ -180,7 +195,17 @@ export function createAuthoringActionHandler({
           requestId = value;
         }
       });
-      const payload = { ok: true, requestId: result.requestId, data: result.data ?? null };
+      completedWrite = new Set(["criarCurso", "alterarCurso"]).has(actionName);
+      const envelope = { ok: true, requestId: result.requestId, data: result.data ?? null };
+      const payload = {
+        ...envelope,
+        conversation: projectConversationalAuthoringToolSuccess({
+          envelope,
+          toolName: actionName,
+          rawArguments,
+          summary: { outcome: actionSuccessOutcome(actionName) }
+        })
+      };
       if (new TextEncoder().encode(JSON.stringify(payload)).byteLength >= RESPONSE_LIMIT) {
         throw new AuthoringApiError(
           413,
@@ -195,10 +220,34 @@ export function createAuthoringActionHandler({
       if (normalized.status === 401) headers["WWW-Authenticate"] = "Bearer";
       if (normalized.status === 429) headers["Retry-After"] = "60";
       if (normalized.status === 405) headers.Allow = "POST, OPTIONS";
-      return jsonResponse(normalized.status, {
+      const failedAfterCompletedWrite = completedWrite &&
+        normalized.code === "action_response_too_large";
+      const publicError = toolErrorData(
+        normalized,
+        { toolName: actionName, rawArguments, requestId }
+      );
+      if (failedAfterCompletedWrite) {
+        publicError.recovery = {
+          strategy: "verify_state",
+          retryable: false,
+          requestIdMode: "none",
+          steps: [
+            "Releia o estado atual antes de continuar.",
+            "Não repita a escrita apenas porque a resposta excedeu o limite."
+          ]
+        };
+      }
+      const envelope = {
         ok: false,
         requestId,
-        error: toolErrorData(normalized, { toolName: actionName, rawArguments, requestId })
+        error: publicError
+      };
+      return jsonResponse(normalized.status, {
+        ...envelope,
+        conversation: projectConversationalAuthoringError({
+          envelope,
+          failure: failedAfterCompletedWrite ? { writeState: "complete" } : {}
+        })
       }, headers);
     }
   };

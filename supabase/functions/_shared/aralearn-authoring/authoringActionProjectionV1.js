@@ -8,7 +8,7 @@ export const AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS = Object.freeze([
     commandType: "add_plan_item",
     title: "Adicionar item ao plano",
     description:
-      "Adiciona um item formal ao plano instrucional com CAS, requestId e vínculos de Fontes explícitos."
+      "Adiciona um item formal ao plano instrucional. Use os controles estruturados silenciosamente e descreva à pessoa o efeito pedagógico e os vínculos de Fontes."
   }),
   Object.freeze({
     path: "/update_plan_item",
@@ -19,7 +19,7 @@ export const AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS = Object.freeze([
     commandType: "update_plan_item",
     title: "Atualizar item do plano",
     description:
-      "Atualiza um item formal do plano instrucional com CAS, requestId e vínculos de Fontes explícitos."
+      "Atualiza um item formal do plano instrucional. Use os controles estruturados silenciosamente e descreva à pessoa o efeito pedagógico e os vínculos de Fontes."
   })
 ]);
 
