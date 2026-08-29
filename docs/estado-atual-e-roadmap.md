@@ -4,7 +4,7 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Evidência corrente revisada em **2026-08-28**.
+Evidência corrente revisada em **2026-08-29**.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -118,9 +118,18 @@ por Microssequência no próprio chat e oferecer o endereço filtrado da Autoria
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
-autorizadas. Suas seis operações correntes atuam sobre os mesmos contratos de
-Curso, com OAuth confidencial próprio. Actions não é um nome alternativo para
+autorizadas. Suas seis operações canônicas e duas projeções dedicadas a itens do
+plano atuam sobre os mesmos contratos de Curso, com OAuth confidencial próprio.
+Actions não é um nome alternativo para
 MCP e não compartilha sua sessão ou seu protocolo.
+
+Nos dois canais, a pessoa pode retomar o Curso pelo título e conversar sobre o
+estado e os efeitos da autoria. Identidades, revisões e chaves de repetição
+permanecem no estado estruturado do cliente, sem virar dados que a pessoa precise
+transportar entre sessões. Um arquivo anexado só se torna Fonte persistente
+quando sua função no Curso é clara ou confirmada; depois de incorporado, pode ser
+recuperado pelo Curso em outra sessão sem novo envio. Análise declarada como
+temporária não incorpora o documento.
 
 Perfil, cópia pessoal, ciclo de vida de Curso e Manutenção permanecem ações do
 aplicativo autenticado. Elas não são expostas como ferramentas públicas só para

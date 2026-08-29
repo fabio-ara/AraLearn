@@ -6,6 +6,28 @@
     "liveCourseLookupAllowed": false,
     "pdfBytes": "generated-minimal-pdf-only"
   },
+  "machineState": {
+    "contract": "aralearn.course-authoring-resumption-state.v1",
+    "courseId": "10000000-0000-4000-8000-000000000001",
+    "courseRevision": 19,
+    "planId": "21000000-0000-4000-8000-000000000001",
+    "planVersion": 3,
+    "ownerAuthorized": true,
+    "partIds": [
+      "23000000-0000-4000-8000-000000000001",
+      "23000000-0000-4000-8000-000000000002",
+      "23000000-0000-4000-8000-000000000003",
+      "23000000-0000-4000-8000-000000000004",
+      "23000000-0000-4000-8000-000000000005",
+      "23000000-0000-4000-8000-000000000006",
+      "23000000-0000-4000-8000-000000000007",
+      "23000000-0000-4000-8000-000000000008",
+      "23000000-0000-4000-8000-000000000009",
+      "23000000-0000-4000-8000-000000000010",
+      "23000000-0000-4000-8000-000000000011",
+      "23000000-0000-4000-8000-000000000012"
+    ]
+  },
   "course": {
     "title": "Dataprev: Gestão de Servidores",
     "objective": "Fixture sintética para planejar um Curso de preparação sem produzir conteúdo.",
@@ -51,7 +73,14 @@
         "verificationStatus": "author_verified",
         "studyVisibility": "citation"
       },
-      "pdfFileName": "fixture-edital-dataprev-2026.pdf",
+      "attachment": {
+        "fileName": "fixture-edital-dataprev-2026.pdf",
+        "sourceRevision": 1,
+        "mediaType": "application/pdf",
+        "contentHash": "230f890266387d61d67f61e9479fbe00429a2e410d894ee51ebbc5b00c6e8777",
+        "byteSize": 185,
+        "stored": true
+      },
       "anchors": [
         {
           "anchorId": "fixture-anchor-edital-perfil-13-r1",
@@ -84,7 +113,14 @@
         "verificationStatus": "author_verified",
         "studyVisibility": "citation"
       },
-      "pdfFileName": "fixture-prova-fgv-2024.pdf",
+      "attachment": {
+        "fileName": "fixture-prova-fgv-2024.pdf",
+        "sourceRevision": 1,
+        "mediaType": "application/pdf",
+        "contentHash": "326c520b38194d90496e28511bdda91f313888750f93e6b4f6dcae9b8b2dc22a",
+        "byteSize": 184,
+        "stored": true
+      },
       "anchors": [
         {
           "anchorId": "fixture-anchor-prova-questoes-45-51-r1",
@@ -122,7 +158,14 @@
         "verificationStatus": "author_verified",
         "studyVisibility": "citation"
       },
-      "pdfFileName": "fixture-gabarito-fgv-2024.pdf",
+      "attachment": {
+        "fileName": "fixture-gabarito-fgv-2024.pdf",
+        "sourceRevision": 1,
+        "mediaType": "application/pdf",
+        "contentHash": "567d63ea33fcbeb5eea80388b9a2d2e6a1720bfcb4a018a906f97f8436ffbc76",
+        "byteSize": 187,
+        "stored": true
+      },
       "anchors": [
         {
           "anchorId": "fixture-anchor-gabarito-questoes-45-51-r1",
@@ -160,7 +203,14 @@
         "verificationStatus": "author_verified",
         "studyVisibility": "citation"
       },
-      "pdfFileName": "fixture-ppc-ifsp.pdf",
+      "attachment": {
+        "fileName": "fixture-ppc-ifsp.pdf",
+        "sourceRevision": 1,
+        "mediaType": "application/pdf",
+        "contentHash": "3951f5415da7860673a78a4a03bea5f1dfc9d5c0e8ca46ec134e3a79225b3ac6",
+        "byteSize": 182,
+        "stored": true
+      },
       "anchors": [
         {
           "anchorId": "fixture-anchor-ppc-sistemas-operacionais-r1",
@@ -183,8 +233,10 @@
       ]
     }
   ],
-  "attributions": [
+  "liveAttributions": [],
+  "attributionExamples": [
     {
+      "state": "example_after_plan_completion",
       "semanticTarget": "intended_learning_outcome",
       "targetKind": "plan_item",
       "targetId": "22000000-0000-4000-8000-000000000001",
@@ -201,6 +253,7 @@
       ]
     },
     {
+      "state": "example_after_plan_completion",
       "semanticTarget": "instructional_analysis_unit",
       "targetKind": "plan_item",
       "targetId": "22000000-0000-4000-8000-000000000002",
@@ -217,6 +270,7 @@
       ]
     },
     {
+      "state": "example_after_plan_completion",
       "semanticTarget": "evidence_requirement",
       "targetKind": "plan_item",
       "targetId": "22000000-0000-4000-8000-000000000003",
@@ -233,6 +287,7 @@
       ]
     },
     {
+      "state": "example_after_future_materialization",
       "semanticTarget": "materialized_content",
       "targetKind": "study_unit",
       "targetId": "fixture-study-unit-gestao-servidores",
@@ -307,6 +362,7 @@
   "resumption": {
     "prompt": "Continue a autoria do curso Dataprev: Gestão de Servidores; quero terminar o planejamento antes de produzir conteúdo.",
     "sourceSummary": "O planejamento continua baseado no edital da Dataprev, na prova e no gabarito de 2024 e no PPC do IFSP. Esses documentos permanecem disponíveis no Curso.",
+    "semanticResponse": "O Curso continua com as 12 Partes planejadas e ainda não possui aulas. A parte formal do plano — resultados de aprendizagem, conteúdos fundamentais e formas de verificar a aprendizagem — continua vazia. O planejamento segue apoiado no edital da Dataprev, na prova e no gabarito da FGV e no PPC do IFSP. Antes de produzir conteúdo, precisamos confirmar como as questões da prova orientarão os requisitos de evidência.",
     "requiresPdfReupload": false,
     "loadsPdfBytesByDefault": false,
     "recoveryPlan": [
@@ -396,8 +452,8 @@
     {
       "case": "A",
       "kind": "clear_source",
-      "phase": "bibliography",
-      "utterance": "Use este edital para fundamentar o Curso.",
+      "phase": "planning",
+      "utterance": "Este edital é a referência do que deve cair nesta Parte.",
       "expected": "ingest_without_extra_confirmation"
     },
     {
@@ -411,7 +467,7 @@
       "case": "C",
       "kind": "late_source",
       "phase": "part_revision",
-      "utterance": "O Curso já foi produzido; incorpore esta nova norma às Fontes e considere-a na revisão da Parte.",
+      "utterance": "O Curso já foi produzido; incorpore esta nova documentação do Kubernetes às Fontes e considere-a na revisão da Parte.",
       "expected": "ingest_without_extra_confirmation"
     },
     {

@@ -389,6 +389,12 @@ uma escrita, a confirmação explica o que será acrescentado, alterado ou manti
 Se uma operação falhar ou ficar incerta, a resposta informa o que não pôde ser
 confirmado e o próximo passo seguro, sem anunciar falso sucesso.
 
+Um arquivo anexado à conversa só se torna Fonte persistente quando sua função
+no Curso já está clara ou é confirmada pela pessoa. Se o pedido for apenas para
+uma análise temporária, o documento não é incorporado. Depois da incorporação,
+outra sessão pode recuperar a Fonte, suas Âncoras e o PDF pelo próprio Curso,
+sem exigir que o arquivo seja anexado novamente.
+
 Na Autoria, Observações e mudanças de Parâmetros são registradas no alvo e ficam
 visíveis no próprio Curso. O ChatGPT conectado por MCP ou Actions pode ler esse
 estado, reunir os itens pertinentes e apresentar uma proposta. A pessoa pode

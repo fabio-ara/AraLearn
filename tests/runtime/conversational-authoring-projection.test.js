@@ -32,6 +32,15 @@ function assertHumanProjection(projection) {
   for (const value of FORBIDDEN_DEFAULT) {
     assert.equal(visible.includes(value), false, `A projeção padrão expôs ${value}.`);
   }
+  assert.doesNotMatch(
+    visible,
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu
+  );
+  assert.doesNotMatch(visible, /\b[0-9a-f]{64}\b/iu);
+  assert.doesNotMatch(
+    visible,
+    /\b(?:courseId|sourceId|sourceRevision|anchorId|anchorRevision|revision|planVersion|expectedRevision|expectedPlanVersion|requestId|storagePath|contentHash|CAS|payload|schema|sourceLinks)\b/iu
+  );
   assert.equal(Object.hasOwn(projection, "technicalDetails"), false);
 }
 
@@ -105,6 +114,125 @@ test("A — retomada percorre descoberta e plano vivo por título humano sem ID"
   assert.match(projected.message, /resultados de aprendizagem/u);
   assert.equal(projected.level, "standard");
   assertHumanProjection(projected);
+});
+
+test("#223 — retomada mínima integra plano vivo, Fontes persistentes e próxima decisão", async () => {
+  const fixture = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const { machineState } = fixture;
+  const courses = [{
+    courseId: machineState.courseId,
+    revision: machineState.courseRevision,
+    title: fixture.course.title,
+    objective: fixture.course.objective
+  }];
+  const resolution = resolveConversationalCourseTitle(courses, fixture.course.title);
+  const discovery = projectConversationalAuthoringResumption({ resolution });
+  const plan = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: { view: "instructional_plan", courseId: machineState.courseId },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        courseId: machineState.courseId,
+        courseRevision: machineState.courseRevision,
+        plan: {
+          id: machineState.planId,
+          version: machineState.planVersion,
+          title: fixture.course.title,
+          intendedLearningOutcomes: [],
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: machineState.partIds.map(() => ({
+            progress: { materializations: [] }
+          })),
+          counts: {
+            intendedLearningOutcomeCount: 0,
+            instructionalAnalysisUnitCount: 0,
+            evidenceRequirementCount: 0,
+            authoringPartCount: fixture.course.plan.partCount,
+            studyUnitCount: fixture.course.materializationCount
+          }
+        }
+      }
+    }
+  });
+  const catalog = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      view: "course_sources",
+      mode: "catalog",
+      courseId: machineState.courseId,
+      expectedRevision: machineState.courseRevision
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "catalog",
+        items: fixture.sources.map(({ sourceId, source, status }) => ({
+          sourceId,
+          citationText: source.citationText,
+          status
+        })),
+        nextCursor: null
+      }
+    }
+  });
+  const edital = fixture.sources.find(({ key }) => key === "edital");
+  const focalSource = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      view: "course_sources",
+      mode: "source",
+      sourceId: edital.sourceId,
+      courseId: machineState.courseId,
+      expectedRevision: machineState.courseRevision
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "source",
+        items: [{
+          sourceId: edital.sourceId,
+          revision: edital.revision,
+          status: edital.status,
+          citationText: edital.source.citationText,
+          anchors: edital.anchors,
+          attachments: [edital.attachment]
+        }],
+        nextCursor: null
+      }
+    }
+  });
+
+  assert.equal(resolution.status, "matched");
+  assertHumanProjection(discovery);
+  assertHumanProjection(plan);
+  assertHumanProjection(catalog);
+  assertHumanProjection(focalSource);
+  assert.match(plan.message, /12 Partes/u);
+  assert.match(plan.message, /Nenhum conteúdo foi produzido/u);
+  assert.match(plan.message, /resultados de aprendizagem/u);
+  assert.match(plan.message, /unidades de análise/u);
+  assert.match(plan.message, /requisitos de evidência/u);
+  assert.match(plan.message, /Próxima decisão/u);
+  assert.match(catalog.message, /4 Fontes/u);
+  assert.match(catalog.message, /Edital Dataprev 2026/u);
+  assert.match(catalog.message, /Prova FGV 2024/u);
+  assert.match(catalog.message, /Gabarito FGV 2024/u);
+  assert.match(catalog.message, /PPC do TADS\/IFSP/u);
+  assert.match(focalSource.message, /p\. 44 do arquivo/u);
+  assert.equal(fixture.sources.every(({ attachment }) => attachment.stored), true);
+  assert.equal(fixture.resumption.requiresPdfReupload, false);
+  assert.doesNotMatch(
+    fixture.resumption.semanticResponse,
+    /\b(?:courseId|expectedRevision|expectedPlanVersion|requestId|storagePath|contentHash|CAS)\b/iu
+  );
+  assert.match(fixture.resumption.semanticResponse, /requisitos de evidência/u);
 });
 
 test("#222 — nova sessão resume o catálogo de Fontes em linguagem humana", () => {
@@ -473,6 +601,7 @@ test("diagnóstico distingue reconexão de falta de permissão", () => {
   assert.equal(disconnected.classification, "access");
   assert.equal(disconnected.retrySafe, true);
   assert.match(disconnected.message, /Reconecte a conta/u);
+  assertHumanProjection(disconnected);
 
   const forbidden = projectConversationalAuthoringError({
     envelope: {
@@ -488,6 +617,7 @@ test("diagnóstico distingue reconexão de falta de permissão", () => {
   assert.equal(forbidden.retrySafe, false);
   assert.match(forbidden.message, /não possui a permissão necessária/iu);
   assert.doesNotMatch(forbidden.message, /Reconecte/u);
+  assertHumanProjection(forbidden);
 });
 
 test("G — pedido técnico explícito recupera envelope e chamada literais", () => {
@@ -545,4 +675,5 @@ test("H — títulos duplicados pedem desambiguação humana sem UUID", () => {
   assert.equal(projected.message.includes(COURSE_ID), false);
   assert.equal(projected.message.includes(courses[1].courseId), false);
   assert.doesNotMatch(projected.message, /revisão|revision/iu);
+  assertHumanProjection(projected);
 });

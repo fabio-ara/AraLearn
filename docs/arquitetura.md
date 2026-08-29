@@ -45,7 +45,7 @@ A interface separa responsabilidades sem duplicar o domínio:
 | Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
-| Actions | oferecer seis operações HTTP descritas por OpenAPI a um GPT personalizado conectado |
+| Actions | oferecer seis operações canônicas e duas projeções HTTP dedicadas descritas por OpenAPI a um GPT personalizado conectado |
 
 Na Autoria, a Visão geral apresenta estado e próxima ação. Planejamento,
 Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e
@@ -75,9 +75,13 @@ cliente MCP nem ao GPT conectado por Actions.
 MCP e Actions projetam um protocolo público próprio, em vez de derivar sua
 linguagem dos tipos internos do domínio. A autoridade corrente é
 `aralearn.authoring-protocol.v1`, definida em `authoringProtocolV1.js`. Ela
-reúne as seis operações, seus esquemas de entrada e saída, discriminadores,
+reúne as seis operações canônicas, seus esquemas de entrada e saída, discriminadores,
 condicionais e vocabulários. Uma mudança interna no domínio ou na persistência
 não altera esse idioma por consequência.
+
+A projeção OpenAPI acrescenta dois caminhos dedicados para criar e atualizar
+itens do plano. Eles especializam a operação canônica de alteração para o
+importador de Actions; não criam uma segunda regra de domínio.
 
 `courseMcpTools.js` é o adaptador explícito entre o protocolo e o backend. Ele
 confere os argumentos públicos, converte cada chamada para a rota ou comando
@@ -92,6 +96,19 @@ Os transportes partem da mesma autoridade, mas não servem o mesmo documento:
   segurança OAuth e metadados próprios do transporte e do recurso visual;
 - Actions compila uma projeção OpenAPI adequada ao importador do ChatGPT,
   associa cada ferramenta a um caminho HTTP e usa seu OAuth próprio.
+
+O executor conserva identidades, revisões, versões esperadas, chaves de
+repetição e detalhes de diagnóstico no resultado estruturado. Uma projeção
+conversacional separada apresenta o estado e os efeitos do Curso em linguagem
+humana. A fronteira é explícita: **preservar internamente != mostrar ao
+usuário**. Controles de concorrência continuam disponíveis ao cliente sem se
+tornarem requisitos de retomada para a pessoa.
+
+Um arquivo transportado pela conversa só ganha vínculo persistente com uma
+Fonte quando sua função no Curso é clara ou confirmada. Depois que a ingestão
+canônica confirma esse vínculo, PDF, revisão e Âncoras pertencem ao Curso vivo e
+podem ser recuperados por outra sessão; a memória da conversa não participa
+dessa persistência.
 
 O sufixo v1 do identificador fixa o major público. `schemaVersion` distingue os
 snapshots semânticos dessa linha e o fingerprint SHA-256 identifica exatamente

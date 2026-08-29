@@ -18,7 +18,7 @@
     "test:authoring:contract": "npm run authoring:contract:history && node --test ./tests/runtime/authoring-protocol-snapshot-history.test.js ./tests/runtime/authoring-protocol-compatibility.test.js ./tests/runtime/chatgpt-action-schema-projection.test.js ./tests/runtime/course-authoring-contract-runtime.test.js",
     "test:authoring:mcp": "npm run test:authoring:contract && node --test ./tests/runtime/course-mcp-server.test.js ./tests/runtime/course-mcp-tools.test.js",
     "test:authoring:actions": "npm run test:authoring:contract && node --test ./tests/runtime/course-action-server.test.js",
-    "test:authoring:supabase:e2e": "playwright test tests/e2e/course-authoring-supabase-local.spec.js --config=playwright.authoring-supabase-local.config.js",
+    "test:authoring:supabase:e2e": "playwright test tests/e2e/course-authoring-supabase-local.spec.js tests/e2e/conversational-authoring-regression-supabase-local.spec.js --config=playwright.authoring-supabase-local.config.js",
     "test:e2e": "node ./scripts/runE2eTests.mjs",
     "lint": "eslint .",
     "validate:example": "node ./scripts/validateExampleProject.js",

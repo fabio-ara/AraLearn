@@ -208,7 +208,8 @@ o alvo mudou, releia e reconcilie antes de tentar novamente.
 Uma referência **Legado não resolvido** pode não ter metadados nem Âncora. Para
 resolvê-la, revise a mesma identidade literal; não crie uma Fonte parecida nem
 remova espaços do identificador. Depois de falha de rede sem resposta, repita o
-mesmo pedido com o mesmo `requestId` e comando.
+pedido pelo mesmo controle, sem editar a intenção. O cliente reaproveita
+internamente o pedido pendente e recupera o recibo sem duplicar a alteração.
 
 ## Um PDF de Fonte não foi enviado ou não abre
 
@@ -242,8 +243,9 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. verifique as seis ferramentas MCP ou as seis operações de Actions no
-   ambiente hospedado;
+3. verifique as seis ferramentas MCP ou, em Actions, as seis operações
+   canônicas e as duas projeções dedicadas a itens do plano no ambiente
+   hospedado;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;
 6. confira se cliente e interface apontam para o mesmo ambiente.
