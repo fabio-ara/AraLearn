@@ -27,6 +27,12 @@ import {
 
 const BODY_LIMIT = 96 * 1024;
 const RESPONSE_LIMIT = 96 * 1024;
+const ACTION_PDF_RUNTIME_FIELDS = Object.freeze([
+  "download_link",
+  "id",
+  "mime_type",
+  "name"
+]);
 export const ARALEARN_ACTION_CONTRACT_HEADER = [
   AUTHORING_PROTOCOL_ID,
   `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
@@ -43,6 +49,9 @@ function actionSuccessOutcome(actionName) {
   if (actionName === "listarCursos") return "Os Cursos próprios foram localizados.";
   if (actionName === "lerCurso") return "Reli o estado atual do Curso.";
   if (actionName === "criarCurso") return "O Curso foi criado.";
+  if (actionName === "incorporarPdfComoFonte") {
+    return "O PDF foi incorporado às Fontes do Curso.";
+  }
   if (actionName === "consultarComponentesDidaticos") {
     return "A biblioteca de componentes didáticos foi consultada.";
   }
@@ -85,6 +94,55 @@ function validateDedicatedProjection(rawArguments, projection) {
       "A operação não corresponde à Action solicitada."
     );
   }
+}
+
+function invalidActionPdf() {
+  return new AuthoringApiError(
+    422,
+    "invalid_action_pdf",
+    "O PDF anexado não está disponível para incorporação. Anexe-o novamente e repita a operação."
+  );
+}
+
+function normalizeActionTransportArguments(actionName, rawArguments) {
+  if (actionName !== "incorporarPdfComoFonte") return rawArguments;
+  if (Object.hasOwn(rawArguments, "pdf")) throw invalidActionPdf();
+  const references = rawArguments.openaiFileIdRefs;
+  if (!Array.isArray(references) || references.length !== 1) throw invalidActionPdf();
+  const reference = references[0];
+  if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
+    throw invalidActionPdf();
+  }
+  const fields = Object.keys(reference).sort();
+  if (fields.length !== ACTION_PDF_RUNTIME_FIELDS.length ||
+      fields.some((field, index) => field !== ACTION_PDF_RUNTIME_FIELDS[index])) {
+    throw invalidActionPdf();
+  }
+  if (ACTION_PDF_RUNTIME_FIELDS.some((field) =>
+    typeof reference[field] !== "string" || !reference[field].trim()
+  )) {
+    throw invalidActionPdf();
+  }
+  try {
+    const downloadUrl = new URL(reference.download_link);
+    if (downloadUrl.protocol !== "https:" || downloadUrl.username || downloadUrl.password) {
+      throw invalidActionPdf();
+    }
+  } catch (error) {
+    if (error instanceof AuthoringApiError) throw error;
+    throw invalidActionPdf();
+  }
+  const normalized = {
+    ...rawArguments,
+    pdf: {
+      file_name: reference.name,
+      file_id: reference.id,
+      mime_type: reference.mime_type,
+      download_url: reference.download_link
+    }
+  };
+  delete normalized.openaiFileIdRefs;
+  return normalized;
 }
 
 async function readBody(request) {
@@ -183,6 +241,7 @@ export function createAuthoringActionHandler({
           "A conta conectada não permite esta operação."
         );
       }
+      rawArguments = normalizeActionTransportArguments(actionName, rawArguments);
       const result = await executeCourseTool({
         adapter,
         principal,
@@ -195,7 +254,11 @@ export function createAuthoringActionHandler({
           requestId = value;
         }
       });
-      completedWrite = new Set(["criarCurso", "alterarCurso"]).has(actionName);
+      completedWrite = new Set([
+        "criarCurso",
+        "alterarCurso",
+        "incorporarPdfComoFonte"
+      ]).has(actionName);
       const envelope = { ok: true, requestId: result.requestId, data: result.data ?? null };
       const payload = {
         ...envelope,

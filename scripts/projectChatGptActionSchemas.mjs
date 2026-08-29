@@ -1416,11 +1416,37 @@ export function projectActionInputSchema(toolDefinition) {
   return projectActionInputSchemaWithAudit(toolDefinition).inputSchema;
 }
 
+function projectChatGptActionFileInput(toolName, inputSchema) {
+  if (toolName !== "incorporarPdfComoFonte") return inputSchema;
+  const projected = structuredClone(inputSchema);
+  if (!object(projected.properties?.pdf) ||
+      !Array.isArray(projected.required) ||
+      !projected.required.includes("pdf")) {
+    throw new TypeError(
+      "incorporarPdfComoFonte precisa declarar o descritor canônico pdf como obrigatório."
+    );
+  }
+  delete projected.properties.pdf;
+  projected.properties.openaiFileIdRefs = {
+    type: "array",
+    minItems: 1,
+    maxItems: 1,
+    items: { type: "string" },
+    description:
+      "Referência ao único PDF enviado pela pessoa nesta conversa. O ChatGPT preenche este campo com a referência temporária do arquivo."
+  };
+  projected.required = [
+    ...projected.required.filter((property) => property !== "pdf"),
+    "openaiFileIdRefs"
+  ];
+  return projected;
+}
+
 export function projectAuthoringProtocolToolsForActions(tools) {
   if (!Array.isArray(tools)) throw new TypeError("O catálogo público de Autoria é inválido.");
   return tools.map((tool) => ({
     ...tool,
-    inputSchema: projectActionInputSchema(tool)
+    inputSchema: projectChatGptActionFileInput(tool.name, projectActionInputSchema(tool))
   }));
 }
 

@@ -6,6 +6,17 @@ const CONFLICT_CODES = new Set([
   "stale_course_state"
 ]);
 const NO_WRITE_STRATEGIES = new Set(["reconnect", "stop"]);
+const COURSE_SOURCE_PDF_NO_WRITE_CODES = new Set([
+  "invalid_openai_file",
+  "unsupported_pdf_media_type",
+  "openai_file_expired",
+  "openai_file_unavailable",
+  "openai_file_timeout",
+  "pdf_too_large",
+  "invalid_course_source_pdf",
+  "course_source_pdf_quota_exceeded",
+  "course_source_pdf_attachment_limit"
+]);
 
 function record(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -343,6 +354,9 @@ function semanticError(error) {
 
 function writeStateFor(error, classification, requested) {
   if (["none", "partial", "complete", "unknown"].includes(requested)) return requested;
+  if (COURSE_SOURCE_PDF_NO_WRITE_CODES.has(optionalText(error.code).toLowerCase())) {
+    return "none";
+  }
   if (classification === "conflict" || classification === "validation" ||
       classification === "limit" || classification === "access" ||
       NO_WRITE_STRATEGIES.has(optionalText(error.recovery?.strategy))) {
@@ -372,7 +386,12 @@ export function projectConversationalAuthoringError({
       "correct_and_retry", "reconnect", "split_and_retry"
     ]).has(recoveryStrategy);
   let message;
-  if (classification === "conflict") {
+  if (COURSE_SOURCE_PDF_NO_WRITE_CODES.has(optionalText(error.code).toLowerCase())) {
+    message = sentences(
+      optionalText(error.message) || "O PDF não pôde ser incorporado ao Curso",
+      "Nada foi salvo"
+    );
+  } else if (classification === "conflict") {
     message = sentences(
       "O Curso mudou desde a última leitura",
       "Nada foi sobrescrito com o estado antigo",

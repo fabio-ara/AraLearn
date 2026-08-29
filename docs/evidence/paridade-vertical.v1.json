@@ -145,6 +145,9 @@
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
+        "mcpTools": [
+          "incorporarPdfComoFonte"
+        ],
         "manifestFeatures": [
           "course-sources-v1",
           "course-source-provenance-v1",
@@ -191,6 +194,9 @@
         "tests/runtime/course-api-server.test.js",
         "tests/runtime/course-source-attachments-pglite.test.js",
         "tests/runtime/course-source-pdf-ingestion-pglite.test.js",
+        "tests/runtime/course-mcp-server.test.js",
+        "tests/runtime/course-action-server.test.js",
+        "tests/runtime/openai-temporary-pdf.test.js",
         "tests/runtime/course-data-lifecycle-pglite.test.js",
         "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js",
@@ -530,7 +536,7 @@
         "tests/runtime/course-action-server.test.js",
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
-      "justification": "Aplicativo, MCP e Actions reutilizam o mesmo executor de Curso. MCP mantém seu protocolo e principal OAuth; Actions publica cinco operações HTTP e um OpenAPI próprio para GPT personalizado, sem converter um canal no outro nem criar segundo motor de autoria."
+      "justification": "Aplicativo, MCP e Actions reutilizam o mesmo executor de Curso. MCP mantém seu protocolo e principal OAuth; Actions publica seis operações HTTP e um OpenAPI próprio para GPT personalizado, sem converter um canal no outro nem criar segundo motor de autoria."
     }
   ]
 }

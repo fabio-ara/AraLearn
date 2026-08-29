@@ -175,7 +175,7 @@ outro contexto.
 
 ## Uso por MCP e Actions
 
-O ciclo utiliza duas das cinco operações públicas, apresentadas como ferramentas
+O ciclo utiliza duas das seis operações públicas, apresentadas como ferramentas
 no MCP e como caminhos HTTP em Actions:
 
 - `lerCurso` com `view: "audit_cycle"` lê contexto, achados, rodadas e detalhe;

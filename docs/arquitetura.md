@@ -45,7 +45,7 @@ A interface separa responsabilidades sem duplicar o domínio:
 | Autoria | planejar, estruturar, inspecionar, auditar e analisar o Curso |
 | API de Cursos | executar operações autorais solicitadas pelo navegador |
 | servidor MCP | oferecer as mesmas operações a clientes conversacionais autorizados |
-| Actions | oferecer cinco operações HTTP descritas por OpenAPI a um GPT personalizado conectado |
+| Actions | oferecer seis operações HTTP descritas por OpenAPI a um GPT personalizado conectado |
 
 Na Autoria, a Visão geral apresenta estado e próxima ação. Planejamento,
 Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e pesquisa e
@@ -62,9 +62,9 @@ consulta o documento validado no IndexedDB para informar disponibilidade sem
 conexão; revogação elimina a réplica local do Curso compartilhado e o ponto
 local, sem apagar uma cópia pessoal já confirmada.
 
-O MCP conserva cinco ferramentas estáveis: `listarCursos`, `lerCurso`,
-`criarCurso`, `alterarCurso` e
-`consultarComponentesDidaticos`. Fontes, auditoria, variantes e Pesquisa são
+O MCP conserva seis ferramentas estáveis: `listarCursos`, `lerCurso`,
+`criarCurso`, `alterarCurso`, `consultarComponentesDidaticos` e
+`incorporarPdfComoFonte`. Fontes, auditoria, variantes e Pesquisa são
 visões ou operações dessas ferramentas. O contrato não cria uma ferramenta
 nova para cada painel da interface. Perfil, avatar e acesso direto pertencem à
 aplicação autenticada; o e-mail usado para conceder acesso não é enviado ao
@@ -75,7 +75,7 @@ cliente MCP nem ao GPT conectado por Actions.
 MCP e Actions projetam um protocolo público próprio, em vez de derivar sua
 linguagem dos tipos internos do domínio. A autoridade corrente é
 `aralearn.authoring-protocol.v1`, definida em `authoringProtocolV1.js`. Ela
-reúne as cinco operações, seus esquemas de entrada e saída, discriminadores,
+reúne as seis operações, seus esquemas de entrada e saída, discriminadores,
 condicionais e vocabulários. Uma mudança interna no domínio ou na persistência
 não altera esse idioma por consequência.
 

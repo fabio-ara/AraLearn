@@ -69,8 +69,8 @@ revisões e versões, identifica a etapa de autoria e apresenta a próxima decis
 em linguagem comum. Memória da conversa pode sugerir o alvo, mas nunca substitui
 o estado persistido nem exige um “prompt de restauração” técnico.
 
-A confirmação descreve o efeito pedagógico, o alcance e as preservações. Por
-exemplo:
+Quando uma decisão ainda estiver aberta ou o domínio exigir confirmação, ela
+descreve o efeito pedagógico, o alcance e as preservações. Por exemplo:
 
 > Vou acrescentar 9 resultados de aprendizagem, 30 elementos fundamentais e 12
 > formas de evidência. As 12 Partes permanecem como estão e nenhuma aula será
@@ -81,6 +81,10 @@ real e relê silenciosamente as revisões necessárias antes de escrever. Deve-s
 evitar uma confirmação como “Vou enviar `update_instructional_plan` com
 `expectedRevision`, `expectedPlanVersion` e este payload. Confirmo?”, porque ela
 transfere a operação da máquina para a pessoa sem explicar o efeito educacional.
+As confirmações específicas de cada operação continuam valendo. A exceção
+focal é a incorporação de PDF: quando o próprio pedido já declara
+inequivocamente que o documento deve integrar as Fontes do Curso, não há uma
+segunda pergunta cerimonial.
 
 Sucesso só pode ser anunciado quando a operação tiver sido confirmada pelo
 contrato. Uma falha, tempo esgotado ou resposta perdida não vira “pronto”: a
@@ -96,8 +100,9 @@ recuperados.
 
 A interface visual, um cliente MCP e um GPT conectado por Actions operam o
 mesmo Curso. A interface oferece campos e controles compreensíveis. Nos canais
-conversacionais, a pessoa descreve sua intenção e o cliente escolhe uma das
-cinco operações tipadas. As três entradas chegam aos mesmos casos de uso, às
+conversacionais, a pessoa descreve sua intenção e o cliente escolhe uma das seis
+responsabilidades canônicas tipadas. As três entradas chegam aos mesmos casos de
+uso, às
 mesmas funções do banco e às mesmas regras de autorização, depois de resolverem
 identidades por mecanismos próprios.
 
@@ -107,8 +112,9 @@ altera a propriedade do Curso nem o resultado da validação.
 
 ## Superfícies conversacionais
 
-MCP expõe cinco ferramentas; Actions expõe cinco operações HTTP descritas por
-OpenAPI. Nomes e executor são compartilhados. O OpenAPI pode omitir
+MCP expõe seis ferramentas; Actions expõe as seis operações canônicas e duas
+projeções dedicadas descritas por OpenAPI. Nomes canônicos e executor são
+compartilhados. O OpenAPI pode omitir
 condicionais mecânicas profundas que o servidor continua validando, sem criar
 uma entrada de negócio para cada objeto:
 
@@ -118,6 +124,7 @@ uma entrada de negócio para cada objeto:
 | `lerCurso` | ler uma vista delimitada e versionada |
 | `criarCurso` | criar a raiz privada do Curso |
 | `alterarCurso` | alterar plano, desenho, Fontes, Observações, auditoria, variantes, composição ou materialização |
+| `incorporarPdfComoFonte` | manter um PDF transportado pelo cliente em uma Fonte existente, nova ou revisada |
 | `consultarComponentesDidaticos` | descobrir, inspecionar, validar, auditar e apresentar componentes |
 
 Perfil, avatar e acesso direto são operações exclusivas da aplicação
@@ -242,12 +249,20 @@ Fontes e Âncoras possuem revisões próprias. `set_target_sources` substitui o
 conjunto ordenado de atribuições de um item do plano ou de uma Unidade. Cada
 vínculo declara relação e Âncoras exatas.
 
-PDFs ficam em armazenamento privado e são ligados a uma revisão de Fonte por
-impressão digital, tamanho e tipo. A preparação cria uma intenção privada de dez
-minutos para o ator, caminho e revisões exatos. O envio direto usa a sessão
-autenticada e consome a intenção; a confirmação transacional verifica o objeto
-antes de criar o vínculo. A leitura usa uma URL assinada de 60 segundos e uma
-URL já emitida continua válida até expirar.
+`incorporarPdfComoFonte` recebe o arquivo por um mecanismo oficialmente
+suportado pelo canal e um `sourceIntent`: `existing` escolhe uma Fonte já
+registrada; `save` cria ou revisa seus metadados junto com a incorporação. MCP,
+Actions e interface visual convergem para a mesma ingestão, que valida o PDF,
+aplica limites e confirma o vínculo. A pessoa não precisa informar impressão
+digital, tamanho ou caminho técnico. A leitura posterior usa uma URL assinada
+de 60 segundos, emitida apenas sob declaração explícita.
+
+Intenção inequívoca de usar edital, PPC, prova, livro, artigo ou norma como base
+do Curso autoriza a incorporação em qualquer fase sem confirmação redundante. Um
+anexo ambíguo recebe a pergunta “Você quer usar este documento só nesta análise
+ou mantê-lo entre as Fontes do Curso?”. Uso explicitamente temporário não chama
+a operação. Sucesso só é anunciado depois de `stored: true`; falha de
+transferência ou resultado incerto não prova persistência.
 
 Uma exportação de proveniência reúne o alvo, as atribuições, as revisões das
 Fontes, as Âncoras e os metadados dos anexos. O arquivo não contém o PDF nem

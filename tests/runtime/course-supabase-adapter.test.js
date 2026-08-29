@@ -2893,6 +2893,44 @@ test("ingestão recusa mídia e estrutura inválidas antes de acessar Supabase",
   assert.equal(calls, 0);
 });
 
+test("ingestão traduz cota e limite de anexos em mensagens humanas", async () => {
+  const cases = [{
+    message: "A cota de 64 MiB de PDFs únicos do Curso seria excedida.",
+    code: "course_source_pdf_quota_exceeded",
+    pattern: /cota de 64 MiB/iu
+  }, {
+    message: "Uma revisão de Fonte aceita no máximo oito anexos PDF.",
+    code: "course_source_pdf_attachment_limit",
+    pattern: /máximo de oito PDFs/iu
+  }];
+  for (const [index, current] of cases.entries()) {
+    const pdfBytes = syntheticPdf(`limit-${index}`);
+    const value = adapter(async (url) => {
+      if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+        return json({ code: "23514", message: current.message }, 400);
+      }
+      if (url.endsWith("/cancel_course_source_pdf_ingestion_for_actor_v1")) {
+        return json(true);
+      }
+      assert.fail(`Requisição inesperada: ${url}`);
+    });
+    await assert.rejects(
+      () => value.ingestCourseSourcePdf({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        expectedCourseRevision: 5,
+        requestId: `request-ingest-limit-${index + 1}`,
+        sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+        bytes: pdfBytes,
+        mediaType: "application/pdf"
+      }),
+      (error) => error.status === 413 && error.code === current.code &&
+        current.pattern.test(error.message),
+      current.code
+    );
+  }
+});
+
 test("conflito de upload é deduplicação binária e ainda exige verificação e vínculo", async () => {
   const pdfBytes = syntheticPdf("dedup");
   const contentHash = createHash("sha256").update(pdfBytes).digest("hex");

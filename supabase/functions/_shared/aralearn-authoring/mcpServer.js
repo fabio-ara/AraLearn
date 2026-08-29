@@ -44,7 +44,9 @@ const SERVER_INFO = Object.freeze({
 });
 const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
-const WRITE_TOOLS = new Set(["criarCurso", "alterarCurso"]);
+const WRITE_TOOLS = new Set([
+  "criarCurso", "alterarCurso", "incorporarPdfComoFonte"
+]);
 const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
@@ -532,6 +534,8 @@ function summarizeToolResult(name, value) {
     ? "O Curso foi criado."
     : name === "alterarCurso"
       ? "A alteração foi concluída."
+      : name === "incorporarPdfComoFonte"
+        ? "O documento foi mantido entre as Fontes do Curso."
       : name === "consultarComponentesDidaticos"
         ? "A biblioteca de componentes didáticos foi consultada."
         : "A leitura foi concluída.";

@@ -23,6 +23,8 @@ const AUTHORIZATION_SERVER = "https://project.example/auth/v1";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
 const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
+const PDF_HASH = "a".repeat(64);
+const PDF_PATH = `${COURSE_ID}/${PDF_HASH}.pdf`;
 
 async function minimalStudyUnit() {
   const project = JSON.parse(await readFile(
@@ -101,6 +103,7 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     "lerCurso",
     "criarCurso",
     "alterarCurso",
+    "incorporarPdfComoFonte",
     "consultarComponentesDidaticos"
   ]);
   assert.equal(names.includes("gerirPessoas"), false);
@@ -115,10 +118,227 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     delete normalized._meta.securitySchemes;
     delete normalized._meta.ui;
     delete normalized._meta["openai/outputTemplate"];
+    delete normalized._meta["openai/fileParams"];
     if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
     return normalized;
   });
   assert.deepEqual(contractTools, AUTHORING_PROTOCOL_V1_TOOLS);
+  assert.deepEqual(
+    tools.find(({ name }) => name === "incorporarPdfComoFonte")
+      ._meta["openai/fileParams"],
+    ["pdf"]
+  );
+});
+
+test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados técnicos", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  let ingested = null;
+  const response = await handler({
+    fetchImpl: async () => new Response(pdfBytes, {
+      headers: {
+        "content-type": "application/pdf",
+        "content-length": String(pdfBytes.byteLength)
+      }
+    }),
+    async ingestCourseSourcePdf(value) {
+      ingested = value;
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-edital", revision: 1 },
+        source: {
+          sourceId: "source-edital",
+          sourceRevision: 1,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash: PDF_HASH,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: PDF_PATH
+        },
+        stored: true
+      };
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/edital.pdf?token=temporary",
+        file_id: "file-edital-synthetic",
+        mime_type: "application/pdf",
+        file_name: "edital-sintetico.pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.isError, false);
+  assert.deepEqual(ingested.bytes, pdfBytes);
+  assert.equal(ingested.expectedCourseRevision, 3);
+  assert.equal(payload.result.structuredContent.data.stored, true);
+  assert.equal(
+    payload.result.structuredContent.data.technicalDetails.storagePath,
+    PDF_PATH
+  );
+  assert.match(payload.result.content[0].text, /mantido entre as Fontes do Curso/iu);
+  assert.equal(payload.result.content[0].text.includes(PDF_HASH), false);
+  assert.equal(payload.result.content[0].text.includes(PDF_PATH), false);
+  assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
+  assert.doesNotMatch(payload.result.content[0].text, /file-edital|download_url|storage/iu);
+});
+
+test("MCP não alega persistência quando o arquivo temporário não pode ser transferido", async () => {
+  let ingestionCalls = 0;
+  const response = await handler({
+    fetchImpl: async () => new Response(null, { status: 410 }),
+    async ingestCourseSourcePdf() {
+      ingestionCalls += 1;
+      throw new Error("não deveria ingerir");
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-expired-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/expired.pdf?token=secret",
+        file_id: "file-expired-secret",
+        mime_type: "application/pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(ingestionCalls, 0);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "openai_file_expired");
+  assert.match(payload.result.content[0].text, /expirou|anexe/iu);
+  assert.doesNotMatch(payload.result.content[0].text, /mantido|persistido|concluíd/iu);
+  assert.equal(JSON.stringify(payload).includes("token=secret"), false);
+  assert.equal(JSON.stringify(payload).includes("file-expired-secret"), false);
+});
+
+test("MCP explica a cota de PDFs sem afirmar persistência", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const response = await handler({
+    fetchImpl: async () => new Response(pdfBytes, {
+      headers: { "content-type": "application/pdf" }
+    }),
+    async ingestCourseSourcePdf() {
+      throw new AuthoringApiError(
+        413,
+        "course_source_pdf_quota_exceeded",
+        "O Curso atingiu a cota de 64 MiB para PDFs mantidos entre as Fontes."
+      );
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-quota-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/quota.pdf?token=temporary",
+        file_id: "file-quota-synthetic",
+        mime_type: "application/pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "course_source_pdf_quota_exceeded"
+  );
+  assert.match(payload.result.content[0].text, /cota de 64 MiB/iu);
+  assert.match(payload.result.content[0].text, /Nada foi salvo/iu);
+  assert.doesNotMatch(payload.result.content[0].text, /mantido com sucesso|incorporado/iu);
+});
+
+test("MCP não narra sucesso quando a ingestão não confirma stored true", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const response = await handler({
+    fetchImpl: async () => new Response(pdfBytes, {
+      headers: { "content-type": "application/pdf" }
+    }),
+    async ingestCourseSourcePdf(value) {
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-edital", revision: 1 },
+        source: {
+          sourceId: "source-edital",
+          sourceRevision: 1,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash: PDF_HASH,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: PDF_PATH
+        },
+        stored: false
+      };
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-unconfirmed-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/unconfirmed.pdf?token=temporary",
+        file_id: "file-unconfirmed-synthetic",
+        mime_type: "application/pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "course_source_pdf_persistence_unconfirmed"
+  );
+  assert.match(payload.result.content[0].text, /Não foi possível confirmar/iu);
+  assert.doesNotMatch(
+    payload.result.content[0].text,
+    /foi mantido|foi incorporado|gravação foi concluída/iu
+  );
 });
 
 test("MCP publica conhecimento e componente opcional e lê o plano pela rota compartilhada", async () => {

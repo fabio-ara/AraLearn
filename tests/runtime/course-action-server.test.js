@@ -17,6 +17,8 @@ import {
 import {
   applyCourseAuthoringPlanCommand
 } from "../../supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringPlan.js";
+import { AuthoringApiError } from
+  "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import {
   forChatGptActionDocumentation,
   projectAuthoringProtocolToolsForActions
@@ -508,6 +510,308 @@ test("Actions limita origem, rota e corpo sem abrir transporte genérico", async
     query: "x".repeat(97 * 1024)
   }));
   assert.equal(oversized.status, 413);
+});
+
+test("Actions autentica e converte o runtime oficial de um PDF antes da ingestão", async () => {
+  const order = [];
+  let ingestion = null;
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const downloadLink =
+    "https://files.oaiusercontent.com/arquivo.pdf?sig=segredo-temporario";
+  const fileId = "file-segredo-temporario";
+  const contentHash = "a".repeat(64);
+  const response = await createHandler({
+    async resolveActionPrincipal() {
+      order.push("oauth");
+      return {
+        actorId: ACTOR_ID,
+        authenticationKind: "action",
+        scopes: ["authoring:read", "authoring:write"]
+      };
+    },
+    async fetchImpl(url, options) {
+      order.push("download");
+      assert.equal(url, downloadLink);
+      assert.equal(options.credentials, "omit");
+      assert.equal(new Headers(options.headers).has("authorization"), false);
+      return new Response(pdfBytes, {
+        headers: { "content-type": "application/pdf" }
+      });
+    },
+    async ingestCourseSourcePdf(value) {
+      order.push("ingest");
+      ingestion = value;
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 5,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "fonte-edital", revision: 2 },
+        source: {
+          sourceId: "fonte-edital",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: `${ACTOR_ID}/${contentHash}.pdf`
+        },
+        stored: true
+      };
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-source-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "fonte-edital",
+      sourceRevision: 1
+    },
+    openaiFileIdRefs: [{
+      name: "edital-sintetico.pdf",
+      id: fileId,
+      mime_type: "application/pdf",
+      download_link: downloadLink
+    }]
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(order, ["oauth", "download", "ingest"]);
+  assert.equal(ingestion.principal.authenticationKind, "action");
+  assert.equal(ingestion.courseId, ACTOR_ID);
+  assert.equal(ingestion.expectedCourseRevision, 4);
+  assert.equal(ingestion.requestId, "action-pdf-source-0001");
+  assert.deepEqual(ingestion.sourceIntent, {
+    mode: "existing",
+    sourceId: "fonte-edital",
+    sourceRevision: 1
+  });
+  assert.deepEqual(ingestion.bytes, pdfBytes);
+  assert.equal(ingestion.mediaType, "application/pdf");
+  assert.equal(payload.data.stored, true);
+  assert.equal(payload.data.technicalDetails.contentHash, contentHash);
+  assert.equal(
+    payload.data.technicalDetails.storagePath,
+    `${ACTOR_ID}/${contentHash}.pdf`
+  );
+  assert.equal(payload.conversation.level, "operational");
+  assert.match(payload.conversation.message, /incorporado às Fontes/iu);
+  assert.equal(JSON.stringify(payload).includes(downloadLink), false);
+  assert.equal(JSON.stringify(payload).includes(fileId), false);
+});
+
+test("Actions recusa referência sem URL ou fora do objeto runtime sem buscar nem ingerir", async () => {
+  let oauthCalls = 0;
+  let downloads = 0;
+  let ingestions = 0;
+  const handler = createHandler({
+    async resolveActionPrincipal() {
+      oauthCalls += 1;
+      return {
+        actorId: ACTOR_ID,
+        authenticationKind: "action",
+        scopes: ["authoring:read", "authoring:write"]
+      };
+    },
+    async fetchImpl() {
+      downloads += 1;
+      assert.fail("Uma referência inválida não pode iniciar download.");
+    },
+    async ingestCourseSourcePdf() {
+      ingestions += 1;
+      assert.fail("Uma referência inválida não pode iniciar ingestão.");
+    }
+  });
+  const base = {
+    requestId: "action-pdf-invalid-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "fonte-edital",
+      sourceRevision: 1
+    }
+  };
+  const invalidReferences = [
+    undefined,
+    ["file-sem-url"],
+    [{
+      name: "edital.pdf",
+      id: "file-sem-url",
+      mime_type: "application/pdf"
+    }],
+    [{
+      name: "edital.pdf",
+      id: "file-com-campo-extra",
+      mime_type: "application/pdf",
+      download_link: "https://files.oaiusercontent.com/edital.pdf?sig=segredo",
+      extra: "não permitido"
+    }]
+  ];
+
+  for (const [index, openaiFileIdRefs] of invalidReferences.entries()) {
+    const response = await handler(request("incorporarPdfComoFonte", {
+      ...base,
+      requestId: `action-pdf-invalid-000${index + 1}`,
+      openaiFileIdRefs
+    }));
+    const payload = await response.json();
+    assert.equal(response.status, 422);
+    assert.equal(payload.error.code, "invalid_action_pdf");
+    assert.match(payload.conversation.message, /Nada foi salvo/iu);
+    assert.equal(JSON.stringify(payload).includes("segredo"), false);
+  }
+  assert.equal(oauthCalls, invalidReferences.length);
+  assert.equal(downloads, 0);
+  assert.equal(ingestions, 0);
+});
+
+test("Actions relata falha de transferência sem sucesso nem vazamento da referência", async () => {
+  let ingestions = 0;
+  const downloadLink =
+    "https://files.oaiusercontent.com/arquivo.pdf?sig=segredo-indisponivel";
+  const fileId = "file-segredo-indisponivel";
+  const response = await createHandler({
+    async fetchImpl() {
+      throw new Error(`${downloadLink} ${fileId}`);
+    },
+    async ingestCourseSourcePdf() {
+      ingestions += 1;
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-transfer-failure-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "fonte-edital",
+      sourceRevision: 1
+    },
+    openaiFileIdRefs: [{
+      name: "edital.pdf",
+      id: fileId,
+      mime_type: "application/pdf",
+      download_link: downloadLink
+    }]
+  }));
+  const payload = await response.json();
+  const serialized = JSON.stringify(payload);
+
+  assert.equal(response.status, 502);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.code, "openai_file_unavailable");
+  assert.equal(payload.conversation.success, false);
+  assert.equal(payload.conversation.writeState, "none");
+  assert.doesNotMatch(payload.conversation.message, /incorporado|mantido/iu);
+  assert.equal(serialized.includes(downloadLink), false);
+  assert.equal(serialized.includes(fileId), false);
+  assert.equal(serialized.includes("segredo-indisponivel"), false);
+  assert.equal(ingestions, 0);
+});
+
+test("Actions explica a cota de PDFs sem afirmar persistência", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const response = await createHandler({
+    async fetchImpl() {
+      return new Response(pdfBytes, {
+        headers: { "content-type": "application/pdf" }
+      });
+    },
+    async ingestCourseSourcePdf() {
+      throw new AuthoringApiError(
+        413,
+        "course_source_pdf_quota_exceeded",
+        "O Curso atingiu a cota de 64 MiB para PDFs mantidos entre as Fontes."
+      );
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-quota-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "fonte-edital",
+      sourceRevision: 1
+    },
+    openaiFileIdRefs: [{
+      name: "edital.pdf",
+      id: "file-quota-synthetic",
+      mime_type: "application/pdf",
+      download_link: "https://files.oaiusercontent.com/quota.pdf?sig=temporary"
+    }]
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 413);
+  assert.equal(payload.error.code, "course_source_pdf_quota_exceeded");
+  assert.equal(payload.conversation.writeState, "none");
+  assert.match(payload.conversation.message, /cota de 64 MiB/iu);
+  assert.match(payload.conversation.message, /Nada foi salvo/iu);
+  assert.doesNotMatch(payload.conversation.message, /incorporado|mantido com sucesso/iu);
+});
+
+test("Actions não narra sucesso quando a ingestão não confirma stored true", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const response = await createHandler({
+    async fetchImpl() {
+      return new Response(pdfBytes, {
+        headers: { "content-type": "application/pdf" }
+      });
+    },
+    async ingestCourseSourcePdf(value) {
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 5,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "fonte-edital", revision: 2 },
+        source: {
+          sourceId: "fonte-edital",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash: "b".repeat(64),
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: `${ACTOR_ID}/${"b".repeat(64)}.pdf`
+        }
+      };
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-unconfirmed-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "fonte-edital",
+      sourceRevision: 1
+    },
+    openaiFileIdRefs: [{
+      name: "edital.pdf",
+      id: "file-unconfirmed-synthetic",
+      mime_type: "application/pdf",
+      download_link: "https://files.oaiusercontent.com/unconfirmed.pdf?sig=temporary"
+    }]
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 502);
+  assert.equal(payload.error.code, "course_source_pdf_persistence_unconfirmed");
+  assert.equal(payload.conversation.writeState, "unknown");
+  assert.match(payload.conversation.message, /Não foi possível confirmar/iu);
+  assert.doesNotMatch(
+    payload.conversation.message,
+    /foi incorporado|foi mantido|gravação foi concluída/iu
+  );
 });
 
 test("Actions não afirma ausência de escrita quando a resposta estoura após a gravação", async () => {

@@ -104,26 +104,90 @@
       ]
     }
   },
+  "fileIntentPolicy": {
+    "operation": "incorporarPdfComoFonte",
+    "ambiguityQuestion": "Você quer usar este documento só nesta análise ou mantê-lo entre as Fontes do Curso?",
+    "appliesInPhases": [
+      "planning",
+      "materialization",
+      "part_revision",
+      "audit",
+      "correction",
+      "legal_or_document_update",
+      "bibliography",
+      "student_observations",
+      "research"
+    ],
+    "successPredicate": "stored === true",
+    "normalResponseOmits": [
+      "contentHash",
+      "byteSize",
+      "storagePath"
+    ]
+  },
   "fileIntentCases": [
     {
+      "case": "A",
       "kind": "clear_source",
+      "phase": "bibliography",
       "utterance": "Use este edital para fundamentar o Curso.",
-      "expected": "ingest"
+      "expected": "ingest_without_extra_confirmation"
     },
     {
+      "case": "B",
+      "kind": "planning_sources",
+      "phase": "planning",
+      "utterance": "Use este PPC e esta prova como base para fechar o planejamento.",
+      "expected": "ingest_each_without_extra_confirmation"
+    },
+    {
+      "case": "C",
+      "kind": "late_source",
+      "phase": "part_revision",
+      "utterance": "O Curso já foi produzido; incorpore esta nova norma às Fontes e considere-a na revisão da Parte.",
+      "expected": "ingest_without_extra_confirmation"
+    },
+    {
+      "case": "D",
+      "kind": "ambiguous",
+      "phase": "audit",
+      "utterance": "O que você acha deste PDF?",
+      "expected": "ask_exact_ambiguity_question"
+    },
+    {
+      "case": "E",
       "kind": "discardable",
+      "phase": "research",
       "utterance": "Compare este rascunho só nesta conversa; não o incorpore ao Curso.",
       "expected": "do_not_persist"
     },
     {
-      "kind": "ambiguous",
-      "utterance": "Veja este PDF.",
-      "expected": "ask_once"
+      "case": "F",
+      "kind": "duplicate",
+      "phase": "materialization",
+      "utterance": "Mantenha novamente este mesmo arquivo entre as Fontes da Unidade.",
+      "expected": "reuse_without_duplicate"
     },
     {
-      "kind": "late_source",
-      "utterance": "Acrescente esta nova edição às Fontes do Curso já produzido.",
-      "expected": "ingest"
+      "case": "G",
+      "kind": "transfer_failure",
+      "phase": "correction",
+      "utterance": "Incorpore este parecer às Fontes usadas na correção.",
+      "expected": "report_not_confirmed_without_success"
+    },
+    {
+      "case": "H",
+      "kind": "limit_failure",
+      "phase": "student_observations",
+      "utterance": "Mantenha este caderno entre as Fontes consideradas para as Observações.",
+      "expected": "explain_human_limit_without_technical_invention"
+    },
+    {
+      "case": "I",
+      "kind": "explicit_technical_details",
+      "phase": "legal_or_document_update",
+      "utterance": "Incorpore esta norma e depois mostre os detalhes técnicos disponíveis da operação.",
+      "expected": "ingest_then_disclose_available_technical_details"
     }
   ]
 }

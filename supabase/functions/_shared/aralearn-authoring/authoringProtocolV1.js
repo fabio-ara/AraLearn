@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.2.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.3.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -414,6 +414,41 @@ const sourceCommandSchema = {
     })
   ]
 };
+
+const courseSourcePdfIntentSchema = {
+  oneOf: [
+    objectSchema({
+      mode: { const: "existing" },
+      sourceId: legacySourceIdSchema,
+      sourceRevision: { type: "integer", minimum: 1 }
+    }),
+    objectSchema({
+      mode: { const: "save" },
+      sourceId: { anyOf: [legacySourceIdSchema, { type: "null" }] },
+      expectedSourceRevision: { type: "integer", minimum: 0 },
+      source: sourceDocumentSchema
+    })
+  ]
+};
+
+const temporaryPdfFileSchema = objectSchema({
+  download_url: stringSchema({
+    minLength: 8,
+    maxLength: 8_192,
+    pattern: "^https://[^\\s]+$"
+  }),
+  file_id: stringSchema({
+    minLength: 1,
+    maxLength: 240,
+    pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+  }),
+  mime_type: stringSchema({ enum: ["application/pdf"] }),
+  file_name: stringSchema({
+    minLength: 1,
+    maxLength: 500,
+    pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+  })
+}, ["download_url", "file_id"]);
 
 const auditCodeSchema = stringSchema({
   minLength: 3,
@@ -1964,6 +1999,20 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
     annotations: courseChangeAnnotations
   }),
   Object.freeze({
+    name: "incorporarPdfComoFonte",
+    title: "Incorporar PDF como Fonte",
+    description: "Mantém um PDF anexado entre as Fontes permanentes do Curso quando esse efeito estiver inequívoco ou confirmado. Não use para análise descartável; diante de ambiguidade real, faça uma única pergunta curta. Referência e metadados são machine-facing: nunca os fabrique nem os mostre por padrão.",
+    inputSchema: objectSchema({
+      requestId: requestIdSchema,
+      courseId: uuidSchema,
+      expectedRevision: { type: "integer", minimum: 1 },
+      sourceIntent: courseSourcePdfIntentSchema,
+      pdf: temporaryPdfFileSchema
+    }),
+    outputSchema,
+    annotations: courseChangeAnnotations
+  }),
+  Object.freeze({
     name: "consultarComponentesDidaticos",
     title: "Consultar componentes didáticos",
     description: "Explora, pesquisa, inspeciona, valida e abre a prévia dos componentes didáticos instalados sem carregar contratos desnecessários no contexto. contracts aceita exatamente um package por chamada.",
@@ -2029,7 +2078,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:e128a49328f2cd058e519c64b65b4a400a98f251f35778aa77abc29b9678e3bc";
+  "sha256:e8f55b11247f05ebee37f1a0952c6d3e05379bd43dd12eee8c2dc27d0d936a70";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

@@ -121,6 +121,39 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
+  if (error.code === "pdf_too_large") {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Envie um único PDF de até 20 MiB.",
+        "Repita a operação com o novo arquivo e um novo requestId."
+      ]
+    };
+  }
+  if (error.code === "course_source_pdf_quota_exceeded") {
+    return {
+      strategy: "stop",
+      retryable: false,
+      requestIdMode: "none",
+      steps: [
+        "Informe que o Curso atingiu a cota de PDFs mantidos entre as Fontes.",
+        "Peça à pessoa que revise quais documentos precisam permanecer antes de uma nova tentativa."
+      ]
+    };
+  }
+  if (error.code === "course_source_pdf_attachment_limit") {
+    return {
+      strategy: "stop",
+      retryable: false,
+      requestIdMode: "none",
+      steps: [
+        "Informe que esta revisão da Fonte já atingiu o limite de anexos.",
+        "Peça à pessoa que decida se deve atualizar a Fonte ou usar outra Fonte."
+      ]
+    };
+  }
   if (error.status === 413) {
     return {
       strategy: "split_and_retry",

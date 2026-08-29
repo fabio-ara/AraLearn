@@ -541,7 +541,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
 });
 
-test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de cinco tools", () => {
+test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrato de seis tools", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     for (const toolName of [
@@ -549,6 +549,7 @@ test("smokes MCP exercitam proveniência, Observações e auditoria pelo contrat
       "lerCurso",
       "criarCurso",
       "alterarCurso",
+      "incorporarPdfComoFonte",
       "consultarComponentesDidaticos"
     ]) {
       assert.match(source, new RegExp(`"${toolName}"`, "u"));

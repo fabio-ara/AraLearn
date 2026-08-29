@@ -60,7 +60,9 @@ const CHATGPT_ACTION_INPUT_DESCRIPTIONS = {
   lerCurso:
     "Escolha uma variante de view e envie somente os campos declarados nela. Use paginação apenas quando a resposta anterior devolver cursor. Preserve metadados técnicos internamente e converse em linguagem de domínio.",
   alterarCurso:
-    "Escolha uma variante de operation, use silenciosamente os controles lidos e envie somente o comando compatível que o schema expõe. Confirme efeitos pedagógicos, não o payload."
+    "Escolha uma variante de operation, use silenciosamente os controles lidos e envie somente o comando compatível que o schema expõe. Confirme efeitos pedagógicos, não o payload.",
+  incorporarPdfComoFonte:
+    "Use o único PDF anexado pela pessoa como Fonte persistente do Curso quando a intenção estiver clara. O ChatGPT fornece a referência temporária em openaiFileIdRefs; converse sobre o efeito no Curso, não sobre IDs nem URLs."
 };
 const actionTools = projectChatGptActionTransportTools(
   projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS),

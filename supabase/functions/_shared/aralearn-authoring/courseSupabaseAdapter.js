@@ -1360,6 +1360,22 @@ function databaseError(status, body) {
         )
       : invalidPersonalCourseCopyResponse();
   }
+  if (code === "23514" &&
+      databaseMessage.startsWith("A cota de 64 MiB de PDFs")) {
+    return new AuthoringApiError(
+      413,
+      "course_source_pdf_quota_exceeded",
+      "O Curso já atingiu a cota de 64 MiB de PDFs únicos."
+    );
+  }
+  if (code === "23514" &&
+      databaseMessage.startsWith("Uma revisão de Fonte aceita no máximo oito anexos PDF")) {
+    return new AuthoringApiError(
+      413,
+      "course_source_pdf_attachment_limit",
+      "Esta revisão da Fonte já possui o máximo de oito PDFs."
+    );
+  }
   if (code === "23514" && databaseMessage.startsWith("requestId reutilizado")) {
     return new AuthoringApiError(
       409,

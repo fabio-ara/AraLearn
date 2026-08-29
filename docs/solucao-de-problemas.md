@@ -242,7 +242,7 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. verifique as cinco ferramentas MCP ou as cinco operações de Actions no
+3. verifique as seis ferramentas MCP ou as seis operações de Actions no
    ambiente hospedado;
 4. use `listarCursos` e `lerCurso` antes da mutação;
 5. diante de conflito, releia a revisão;

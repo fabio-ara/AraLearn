@@ -2821,8 +2821,9 @@ try {
       },
     },
   );
-  assert.equal(rejectedQuota.response.status, 422, failureMessage("cota de PDFs", rejectedQuota));
-  assert.equal(rejectedQuota.payload?.error?.code, "invalid_course_command");
+  assert.equal(rejectedQuota.response.status, 413, failureMessage("cota de PDFs", rejectedQuota));
+  assert.equal(rejectedQuota.payload?.error?.code, "course_source_pdf_quota_exceeded");
+  assert.equal(rejectedQuota.payload?.error?.recovery?.strategy, "stop");
 
   const primaryStoragePath = `${courseId}/${primaryPdf.contentHash}.pdf`;
   const learnerPdfDelete = await request(`/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}`, {

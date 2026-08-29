@@ -193,6 +193,7 @@ if (!accessToken) {
     "lerCurso",
     "criarCurso",
     "alterarCurso",
+    "incorporarPdfComoFonte",
     "consultarComponentesDidaticos"
   ]);
   assert.equal(

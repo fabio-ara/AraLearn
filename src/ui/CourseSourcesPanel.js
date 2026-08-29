@@ -1777,7 +1777,7 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingCommand = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
+        ? `${errorMessage(error)} Confirme novamente para verificar o resultado com segurança.`
         : errorMessage(error);
       state.busy = false;
       render();
@@ -1842,7 +1842,7 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingAttachment = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
+        ? `${errorMessage(error)} Confirme novamente para verificar o resultado com segurança.`
         : errorMessage(error);
       state.busy = false;
       render();
@@ -2047,7 +2047,7 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingAnnotation = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error)} Confirme novamente para consultar o mesmo requestId.`
+        ? `${errorMessage(error)} Confirme novamente para verificar o resultado com segurança.`
         : errorMessage(error);
       state.busy = false;
       render();

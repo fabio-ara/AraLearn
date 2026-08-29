@@ -2763,7 +2763,8 @@ test("PDF distingue TypeError de transporte e repete naturalmente o envelope pre
   change(root, "[data-source-pdf-input]", { files: [file] });
   await settle();
   assert.match(root.innerHTML, /Confirmar o mesmo PDF/u);
-  assert.match(root.innerHTML, /mesmo requestId/u);
+  assert.match(root.innerHTML, /verificar o resultado com segurança/u);
+  assert.doesNotMatch(root.innerHTML, /requestId/u);
   assert.equal(panel.hasPendingDraft(), true);
 
   change(root, "[data-source-pdf-input]", { files: [file] });

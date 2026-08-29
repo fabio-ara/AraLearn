@@ -1,10 +1,11 @@
 # Criar e desenvolver Cursos por conversa
 
 Este guia apresenta a Autoria por um cliente conectado ao Model Context
-Protocol (MCP). A conversa e a interface visual trabalham sobre o mesmo Curso.
-O cliente traduz a intenção expressa em linguagem natural para leituras e
-operações delimitadas, enquanto o AraLearn verifica propriedade, revisões,
-contratos e relações antes de confirmar uma mudança.
+Protocol (MCP) ou por um GPT personalizado com Actions. A conversa e a interface
+visual trabalham sobre o mesmo Curso. O cliente traduz a intenção expressa em
+linguagem natural para leituras e operações delimitadas, enquanto o AraLearn
+verifica propriedade, revisões, contratos e relações antes de confirmar uma
+mudança.
 
 Este percurso pressupõe que a organização já disponibilizou um cliente MCP
 compatível. Ele não implica que um app do AraLearn esteja publicado ou
@@ -34,8 +35,9 @@ detalhe recuperado sem fabricar campos ausentes.
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
 2. Autorize sua conta individual por OAuth.
-3. Confirme a descoberta das cinco ferramentas e do recurso
-   `aralearn://authoring/invariants`.
+3. No MCP, confirme a descoberta das seis ferramentas e dos recursos
+   `aralearn://authoring/*`; em Actions, confira as seis operações canônicas e as
+   duas projeções dedicadas importadas do OpenAPI.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
    propor alterações.
 
@@ -92,19 +94,23 @@ Microssequências existem, atribua a cada uma as unidades de análise e os
 requisitos de evidência que ela precisa desenvolver. Essa atribuição é
 explícita e admite vários itens em vários alvos.
 
-Antes da escrita, a confirmação deve explicar alcance e efeito pedagógico. Um
+Quando a escrita ainda depender de uma decisão humana ou possuir confirmação
+própria, a confirmação deve explicar alcance e efeito pedagógico. Um
 exemplo adequado é: “Vou acrescentar 9 resultados de aprendizagem, 30 elementos
 fundamentais e 12 formas de evidência. As 12 Partes permanecem como estão e
 nenhuma aula será criada. Confirmo?”. Essa forma se adapta à mudança real; não é
 um texto fixo. Pedir confirmação de um nome de operação, de revisões ou de um
-payload é inadequado porque não esclarece o que mudará no Curso.
+payload é inadequado porque não esclarece o que mudará no Curso. Uma intenção
+que já declara inequivocamente manter um PDF entre as Fontes autoriza somente
+essa incorporação sem repetir uma pergunta cerimonial; as demais confirmações
+continuam regidas pela operação pertinente.
 
 Na interface, Observações e mudanças de Parâmetros são salvas no próprio Curso e
 permanecem visíveis na Autoria. No ChatGPT conectado por MCP ou Actions, peça
 para ler esse estado, discuta a proposta e ajuste-a até que represente a intenção
-autoral. O Curso só muda depois da aprovação explícita da operação no cliente
-conectado. A interface normal não usa compositor nem transferência por cópia e
-cola para iniciar esse trabalho.
+autoral. Quando a decisão ainda estiver aberta, o Curso só muda depois da
+aprovação explícita no cliente conectado. A interface normal não usa compositor
+nem transferência por cópia e cola para iniciar esse trabalho.
 
 ## Configurar o desenho
 
@@ -173,11 +179,32 @@ Curso aceita até 64 MiB de conteúdo PDF único. Arquivos com os mesmos bytes s
 reutilizados dentro do Curso quando impressão digital, tamanho, tipo e autorização
 coincidem.
 
-Na interface visual, o arquivo segue para o mesmo serviço de ingestão que valida
-os bytes, calcula a identidade binária, aplica a cota e confirma o vínculo. A
-pessoa não informa hash, tamanho ou caminho de Storage. Canais conversacionais
-só podem incorporar um anexo quando entregam ao AraLearn um mecanismo de arquivo
-efetivamente suportado; anexar à conversa, por si só, ainda não prova persistência.
+Na interface visual, selecione o arquivo na área **Fontes**. Em MCP ou Actions,
+use `incorporarPdfComoFonte`: a operação recebe o PDF pelo mecanismo de arquivo
+suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
+salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
+ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
+
+A intenção determina se o anexo fica apenas na conversa ou passa a integrar o
+Curso:
+
+- “Use este edital para fundamentar o Curso”, “considere este PPC e esta prova
+  no planejamento” ou “incorpore esta nova norma e revise a Parte” são pedidos
+  inequívocos; o cliente incorpora cada PDF sem pedir uma frase mágica ou outra
+  confirmação cerimonial;
+- diante de “O que você acha deste PDF?”, o cliente pergunta exatamente “Você
+  quer usar este documento só nesta análise ou mantê-lo entre as Fontes do
+  Curso?”;
+- “compare só nesta análise” ou “não incorpore ao Curso” limita o uso à análise
+  temporária e não chama a operação.
+
+Essa regra vale no planejamento, materialização, revisão de Parte, Auditoria,
+correção, atualização normativa, bibliografia, Observações e Pesquisa. Se uma
+confirmação ainda for necessária, ela fala do efeito — manter o documento entre
+as Fontes e onde ele será considerado —, não do transporte. O cliente só informa
+que o PDF foi mantido depois que o AraLearn confirma a gravação. Falha de
+transferência, tamanho ou cota não vira sucesso; detalhes técnicos ficam para um
+pedido explícito.
 
 ## Descobrir componentes conforme a intenção
 
@@ -338,6 +365,8 @@ detalhe obrigatório de toda retomada.
 | pedido perdeu a resposta | não anuncie sucesso; recupere o resultado ou repita com segurança |
 | componente foi bloqueado | releia a política efetiva e escolha entre os permitidos |
 | Fonte ou Âncora foi recusada | releia a revisão ativa e envie o conjunto completo do alvo |
+| PDF não foi transferido | informe que a incorporação não foi confirmada e tente novamente com o mesmo documento quando for seguro |
+| PDF excedeu tamanho ou cota | explique o limite aplicável e peça outro arquivo ou a liberação de espaço, sem afirmar que o documento foi mantido |
 | evidência factual foi recusada | confira relação, Fonte, Âncora e revisão do critério |
 | correção ficou desatualizada | releia a Unidade e prepare outra proposta sobre o estado corrente |
 | resultado não apareceu | informe o que não pôde ser confirmado e confira ambiente, conta, Curso e destino da interface |
