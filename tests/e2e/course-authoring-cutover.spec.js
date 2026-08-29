@@ -2890,8 +2890,9 @@ test.describe("Autoria canônica mobile-first", () => {
     await sourceUrl.fill("https://example.com/fonte-preservada");
     await saveSource.click();
 
-    await expect(page.getByText(/Confirme novamente para consultar o mesmo requestId/u))
+    await expect(page.getByText(/Confirme novamente para verificar o resultado com segurança/u))
       .toBeVisible();
+    await expect(page.getByText(/requestId/iu)).toHaveCount(0);
     await expectReturnRefreshesDeferred();
     await navigateToAuthoringArea(page, "structure");
     await expect(page.locator(".course-authoring-surface"))

@@ -632,6 +632,19 @@ async function cleanupAndVerify({
   }
 }
 
+export function normalizeHostedCourseSourcePdfEnvironment(environment = process.env) {
+  return normalizeHostedEnvironment(environment);
+}
+
+export async function cleanupHostedCourseSourcePdfFixture({
+  configuration,
+  fetchImpl = globalThis.fetch,
+  lifecycle,
+  inspectResiduals = inspectHostedCourseSourcePdfResiduals
+} = {}) {
+  return cleanupAndVerify({ configuration, fetchImpl, inspectResiduals, lifecycle });
+}
+
 export async function runHostedCourseSourcePdfSmoke({
   environment = process.env,
   fetchImpl = globalThis.fetch,

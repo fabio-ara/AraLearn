@@ -44,6 +44,11 @@ const scripts = {
     "tests",
     "authoring-mcp-local-smoke.mjs"
   ),
+  hostedConversationalSourceSmoke: path.join(
+    repositoryRoot,
+    "scripts",
+    "runHostedConversationalSourceSmoke.mjs"
+  ),
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
   courseRuntimeSmoke: path.join(
@@ -336,6 +341,7 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
   assert.doesNotMatch(source, /secrets unset/u);
   assert.match(source, /runHostedCourseSourcePdfSmoke\.mjs/u);
+  assert.match(source, /runHostedConversationalSourceSmoke\.mjs/u);
   assert.ok(
     source.indexOf("buildChatGptActionOpenApi.mjs --check") <
       source.indexOf("chatgpt-action-schema-projection.test.js") &&
@@ -352,10 +358,27 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
     source.indexOf("X-AraLearn-Authoring-Contract") <
       source.indexOf("runHostedMcpOAuthSmoke.mjs") &&
     source.indexOf("runHostedMcpOAuthSmoke.mjs") <
-      source.indexOf("runHostedCourseSourcePdfSmoke.mjs")
+      source.indexOf("runHostedCourseSourcePdfSmoke.mjs") &&
+    source.indexOf("runHostedCourseSourcePdfSmoke.mjs") <
+      source.indexOf("runHostedConversationalSourceSmoke.mjs")
   );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
+});
+
+test("smoke hospedado focal retoma somente o Curso sintético e limpa seus resíduos", () => {
+  const source = fs.readFileSync(scripts.hostedConversationalSourceSmoke, "utf8");
+  assert.match(source, /provisionHostedMcpOAuthToken/u);
+  assert.match(source, /refreshLocalMcpOAuthToken/u);
+  assert.match(source, /"listarCursos"/u);
+  assert.match(source, /ingerirPdfDaFonte/u);
+  assert.match(source, /type:\s*"save_anchor"/u);
+  assert.match(source, /view:\s*"course_sources"/u);
+  assert.match(source, /view:\s*"course_source_attachment"/u);
+  assert.match(source, /assertHostedHumanProjection/u);
+  assert.match(source, /cleanupHostedCourseSourcePdfFixture/u);
+  assert.match(source, /cleanupLocalMcpOAuthProvision/u);
+  assert.doesNotMatch(source, /Dataprev/iu);
 });
 
 test("scripts focais de MCP e Actions incluem o contrato público comum", () => {

@@ -23,7 +23,7 @@ O banco conserva o Curso vivo, sua hierarquia, planejamento, materializações,
 parâmetros, política de componentes, Fontes, Âncoras, vínculos de PDF,
 Observações, Auditoria, Variantes, acesso, estado pessoal e fatos projetados
 para Pesquisa. As migrations reproduzem o esquema, e o manifesto corrente
-termina em `20260827185748_bound_instructional_plan_cas_retry.sql`.
+termina em `20260829043629_course_source_pdf_ingestion.sql`.
 
 A inspeção contínua de Autoria agrega na página das Unidades os marcadores de
 Observações, a materialização de origem e a comparação entre desenho usado e

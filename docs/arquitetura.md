@@ -5,7 +5,7 @@ identidade aparece na interface de Estudo, na Autoria, na API de Cursos e nas
 integrações por Model Context Protocol (MCP) e Actions. Esse desenho abrange
 Fontes e PDFs, auditoria e correções, variantes e a projeção factual de Pesquisa.
 
-Os clientes correntes exigem o manifesto `20260827185748`. O ambiente hospedado
+Os clientes correntes exigem o manifesto `20260829043629`. O ambiente hospedado
 precisa expor essa revisão antes de oferecer operações dependentes dela. A
 topologia relacional inclui minimização de sessão e MCP, retenção periódica,
 upload autenticado de PDFs, operações de ciclo de vida e Actions/OpenAPI.
@@ -487,7 +487,7 @@ etapas e pelas cotas do Curso.
 ## Contrato implantável
 
 No repositório publicado, `supabase/runtime-manifest.json` declara a revisão de
-esquema `20260827185748` e a versão de contrato. O
+esquema `20260829043629` e a versão de contrato. O
 backend hospedado e os clientes precisam usar essa revisão. A
 inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
