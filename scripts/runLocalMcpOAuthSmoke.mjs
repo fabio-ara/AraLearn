@@ -13,6 +13,7 @@ import {
 const LOCAL_APP_ORIGIN = "http://127.0.0.1:4182";
 const CLIENT_REDIRECT_URI = "https://mcp-smoke.aralearn.invalid/callback";
 const MCP_OAUTH_SCOPE = "offline_access";
+const MCP_TOKEN_CLOCK_SKEW_SECONDS = 120;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 function localEnvironmentFromStatus(environment = process.env) {
@@ -154,7 +155,11 @@ function assertMcpAccessTokenClaims(accessToken, {
   assert.equal(claims.scope, MCP_OAUTH_SCOPE, `${label}: scope inesperado.`);
   assert.equal(claims.role, "authenticated", `${label}: role inesperado.`);
   assert.equal(claims.is_anonymous, false, `${label}: token anônimo.`);
-  assert(Number.isFinite(claims.iat) && claims.iat <= nowSeconds() + 30);
+  assert(
+    Number.isFinite(claims.iat)
+      && claims.iat <= nowSeconds() + MCP_TOKEN_CLOCK_SKEW_SECONDS,
+    `${label}: iat está mais de ${MCP_TOKEN_CLOCK_SKEW_SECONDS} segundos à frente.`
+  );
   assert(Number.isFinite(claims.exp) && claims.exp > nowSeconds());
 
   const pairwiseSubject = String(claims.sub || "");

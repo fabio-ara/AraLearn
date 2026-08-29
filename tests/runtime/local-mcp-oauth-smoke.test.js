@@ -300,7 +300,7 @@ function environment() {
   };
 }
 
-test("runner provisiona OAuth Supabase realista, roda o smoke e limpa identidades", async () => {
+test("runner tolera desvio limitado do relógio, roda o smoke e limpa identidades", async () => {
   const requests = [];
   let receivedToken = null;
   let receivedRefreshToken = null;
@@ -316,7 +316,7 @@ test("runner provisiona OAuth Supabase realista, roda o smoke e limpa identidade
     fetchImpl: oauthFetch(requests),
     createId: () => ids.shift(),
     createBytes: (size) => Buffer.alloc(size, size),
-    nowSeconds: () => 1_000,
+    nowSeconds: () => 850,
     executeSmoke: async (token, options) => {
       receivedToken = token;
       receivedOptions = options;
@@ -395,6 +395,39 @@ test("runner provisiona OAuth Supabase realista, roda o smoke e limpa identidade
       ["POST", "/auth/v1/factors"],
       ["GET", "/auth/v1/reauthenticate"],
       ["POST", "/auth/v1/logout"]
+    ]
+  );
+});
+
+test("runner rejeita token mais de 120 segundos à frente e ainda limpa identidades", async () => {
+  const requests = [];
+  const ids = [
+    "65656565-6565-4565-8565-656565656565",
+    "76767676-7676-4676-8676-767676767676",
+    "87878787-8787-4787-8787-878787878787",
+    "98989898-9898-4989-8989-989898989898"
+  ];
+
+  await assert.rejects(
+    runLocalMcpOAuthSmoke({
+      environment: environment(),
+      fetchImpl: oauthFetch(requests),
+      createId: () => ids.shift(),
+      createBytes: (size) => Buffer.alloc(size, size + 4),
+      nowSeconds: () => 779,
+      executeSmoke: async () => {
+        assert.fail("O token fora do limite não pode alcançar o smoke MCP.");
+      }
+    }),
+    /iat está mais de 120 segundos à frente/u
+  );
+
+  assert.deepEqual(
+    requests.slice(-3).map(({ method, url }) => [method, url.pathname]),
+    [
+      ["DELETE", "/auth/v1/user/oauth/grants"],
+      ["DELETE", `/auth/v1/admin/oauth/clients/${CLIENT_ID}`],
+      ["DELETE", `/auth/v1/admin/users/${USER_ID}`]
     ]
   );
 });
