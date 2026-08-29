@@ -1,0 +1,129 @@
+{
+  "contract": "aralearn.conversational-authoring-regression.v1",
+  "safety": {
+    "synthetic": true,
+    "mutableTargetAllowed": false,
+    "liveCourseLookupAllowed": false,
+    "pdfBytes": "generated-minimal-pdf-only"
+  },
+  "course": {
+    "title": "Dataprev: Gestão de Servidores",
+    "objective": "Fixture sintética para planejar um Curso de preparação sem produzir conteúdo.",
+    "plan": {
+      "complete": false,
+      "partCount": 12,
+      "parts": [
+        "Público e recorte",
+        "Resultados pretendidos",
+        "Administração pública",
+        "Gestão de pessoas",
+        "Desenvolvimento e desempenho",
+        "Direitos e deveres",
+        "Processos de trabalho",
+        "Governança",
+        "Segurança institucional",
+        "Análise de questões",
+        "Integração das Fontes",
+        "Revisão do planejamento"
+      ],
+      "nextDecision": "Confirmar como as questões da prova devem orientar os requisitos de evidência."
+    },
+    "materializationCount": 0
+  },
+  "sources": [
+    {
+      "key": "edital",
+      "title": "Edital Dataprev 2026 — fixture sintética",
+      "citationText": "Edital Dataprev 2026 (fixture sintética)",
+      "pdfFileName": "fixture-edital-dataprev-2026.pdf",
+      "anchors": [
+        {
+          "humanLocator": "p. 44",
+          "selector": { "kind": "page_range", "startPage": 44, "endPage": 44 }
+        }
+      ]
+    },
+    {
+      "key": "prova",
+      "title": "Prova FGV 2024 — fixture sintética",
+      "citationText": "Prova FGV 2024 (fixture sintética)",
+      "pdfFileName": "fixture-prova-fgv-2024.pdf",
+      "anchors": [
+        {
+          "humanLocator": "questões 45–51",
+          "selector": { "kind": "text_quote", "exact": "Questões 45 a 51 — conteúdo sintético de regressão" }
+        }
+      ]
+    },
+    {
+      "key": "gabarito",
+      "title": "Gabarito FGV 2024 — fixture sintética",
+      "citationText": "Gabarito FGV 2024 (fixture sintética)",
+      "pdfFileName": "fixture-gabarito-fgv-2024.pdf",
+      "anchors": [
+        {
+          "humanLocator": "questões 45–51",
+          "selector": { "kind": "text_quote", "exact": "Gabarito 45 a 51 — conteúdo sintético de regressão" }
+        }
+      ]
+    },
+    {
+      "key": "ppc",
+      "title": "PPC IFSP — fixture sintética",
+      "citationText": "PPC IFSP (fixture sintética)",
+      "pdfFileName": "fixture-ppc-ifsp.pdf",
+      "anchors": [
+        {
+          "humanLocator": "pp. 112–114",
+          "selector": { "kind": "page_range", "startPage": 112, "endPage": 114 }
+        },
+        {
+          "humanLocator": "pp. 123–124",
+          "selector": { "kind": "page_range", "startPage": 123, "endPage": 124 }
+        }
+      ]
+    }
+  ],
+  "resumption": {
+    "prompt": "Continue a autoria do curso Dataprev: Gestão de Servidores; quero terminar o planejamento antes de produzir conteúdo.",
+    "expected": {
+      "mentions": [
+        "planejamento incompleto",
+        "12 Partes",
+        "nenhum conteúdo produzido",
+        "próxima decisão"
+      ],
+      "doesNotExpose": [
+        "courseId",
+        "expectedRevision",
+        "expectedPlanVersion",
+        "requestId",
+        "storagePath",
+        "contentHash",
+        "payload"
+      ]
+    }
+  },
+  "fileIntentCases": [
+    {
+      "kind": "clear_source",
+      "utterance": "Use este edital para fundamentar o Curso.",
+      "expected": "ingest"
+    },
+    {
+      "kind": "discardable",
+      "utterance": "Compare este rascunho só nesta conversa; não o incorpore ao Curso.",
+      "expected": "do_not_persist"
+    },
+    {
+      "kind": "ambiguous",
+      "utterance": "Veja este PDF.",
+      "expected": "ask_once"
+    },
+    {
+      "kind": "late_source",
+      "utterance": "Acrescente esta nova edição às Fontes do Curso já produzido.",
+      "expected": "ingest"
+    }
+  ]
+}
