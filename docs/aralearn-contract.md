@@ -192,6 +192,11 @@ para cada Fonte. O limite de escrita é 32 Fontes por alvo e oito identidades de
 Âncora por revisão de Fonte. Salvar substitui o conjunto completo sob revisão esperada do Curso e
 versão exata do alvo; o histórico permanece somente por acréscimo.
 
+Uma edição nova, errata ou norma substituta acrescenta uma revisão da Fonte,
+mas não recicla Âncoras da anterior. Aposentar a Fonte ou a Âncora bloqueia
+novos usos; atribuições históricas continuam apontando para as revisões exatas
+que sustentaram o planejamento ou a Unidade.
+
 Referências anteriores ao contrato são preservadas, na mesma identidade e
 ordem, como `legacy_reference`. Enquanto não resolvidas, têm estado
 `unresolved_legacy`, metadados nulos, visibilidade `hidden` e podem não possuir
@@ -240,6 +245,12 @@ o disclosure enumera título, autoria declarada, identificador, citação, ender
 edição ou versão, localizador humano, trecho de verificação e valores textuais dos seletores
 `text_quote` e `uri_fragment` como texto livre potencialmente pessoal, conforme
 os tipos de seletor efetivamente presentes.
+
+A projeção conversacional correspondente resume catálogo, detalhe e
+proveniência com `citationText` e localizadores humanos, sem narrar identidades,
+revisões, hashes ou caminhos. Outra sessão pode reconstruir esse percurso a
+partir do Curso persistido; nenhum estado da conversa e nenhum reenvio do PDF
+fazem parte do contrato de recuperação.
 
 ### Solicitação de acesso sem resposta enumerável
 

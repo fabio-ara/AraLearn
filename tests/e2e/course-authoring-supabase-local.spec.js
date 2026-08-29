@@ -678,9 +678,122 @@ test.describe("Autoria real com Supabase local", () => {
       await chatGptTab.setContent("<title>ChatGPT simulado para a troca de aba</title>");
       await chatGptTab.bringToFront();
 
+      const discoveryMcpClient = await createLocalMcpClient(
+        config,
+        mcpLifecycle.accessToken
+      );
+      const discoveredCourses = await discoveryMcpClient.callTool("listarCursos", {
+        query: COURSE_TITLE,
+        limit: 10
+      });
+      expect(discoveredCourses.items).toEqual(expect.arrayContaining([
+        expect.objectContaining({ courseId, title: COURSE_TITLE })
+      ]));
+      const sourceResumptionRevision = (await canonicalHeader()).revision;
+      const discoveredSources = await discoveryMcpClient.callTool("lerCurso", {
+        courseId,
+        view: "course_sources",
+        expectedRevision: sourceResumptionRevision,
+        mode: "catalog",
+        limit: 10
+      });
+      expect(discoveredSources.items).toEqual(expect.arrayContaining([
+        expect.objectContaining({ sourceId, title: SOURCE_TITLE, status: "active" })
+      ]));
+
+      // Uma segunda instância representa outra sessão: nenhuma referência ao arquivo
+      // transportado é reapresentada; toda a retomada parte do Curso persistido.
       const mcpClient = await createLocalMcpClient(config, mcpLifecycle.accessToken);
       expect(mcpClient.protocolVersion).toBe("2025-11-25");
       expect(mcpClient.toolNames).toEqual(expect.arrayContaining(["lerCurso", "alterarCurso"]));
+      expect(mcpClient).not.toBe(discoveryMcpClient);
+      const resumedSource = await mcpClient.callTool("lerCurso", {
+        courseId,
+        view: "course_sources",
+        expectedRevision: sourceResumptionRevision,
+        mode: "source",
+        sourceId,
+        limit: 10
+      });
+      expect(resumedSource.items).toHaveLength(1);
+      expect(resumedSource.items[0]).toMatchObject({
+        sourceId,
+        revision: 1,
+        title: SOURCE_TITLE,
+        attachments: [expect.objectContaining({
+          mediaType: "application/pdf",
+          byteSize: PDF_BYTES.byteLength
+        })]
+      });
+      const resumedAttachment = resumedSource.items[0].attachments[0];
+      const focalPdf = await mcpClient.callTool("lerCurso", {
+        courseId,
+        view: "course_source_attachment",
+        expectedRevision: sourceResumptionRevision,
+        attachmentOperation: "download",
+        sourceId,
+        sourceRevision: 1,
+        contentHash: resumedAttachment.contentHash,
+        includeAttachmentDownloadUrl: true
+      });
+      expect(focalPdf).toMatchObject({
+        operation: "download",
+        sourceId,
+        sourceRevision: 1,
+        attachment: {
+          contentHash: resumedAttachment.contentHash,
+          byteSize: PDF_BYTES.byteLength,
+          mediaType: "application/pdf"
+        },
+        signedUrl: expect.stringMatching(/^https?:\/\//u),
+        expiresAt: expect.any(String)
+      });
+      const focalPdfResponse = await fetch(focalPdf.signedUrl);
+      expect(focalPdfResponse.status).toBe(200);
+      expect(Buffer.from(await focalPdfResponse.arrayBuffer())).toEqual(PDF_BYTES);
+
+      const anchoredSource = await mcpClient.callTool("alterarCurso", {
+        requestId: "mcp-e2e-resume-source-anchor-0001",
+        courseId,
+        expectedRevision: sourceResumptionRevision,
+        operation: "update_course_sources",
+        sourceCommand: {
+          type: "save_anchor",
+          anchorId: "anchor-e2e-resumed-profile-13",
+          sourceId,
+          sourceRevision: 1,
+          expectedAnchorRevision: 0,
+          selector: { kind: "page_range", startPage: 44, endPage: 44 },
+          humanLocator:
+            "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo",
+          verificationExcerpt: "Trecho sintético conferido na retomada MCP."
+        }
+      });
+      expect(anchoredSource).toMatchObject({
+        courseRevision: sourceResumptionRevision + 1,
+        changed: true,
+        change: { type: "save_anchor", revision: 1 }
+      });
+      const sourceAfterResumption = await mcpClient.callTool("lerCurso", {
+        courseId,
+        view: "course_sources",
+        expectedRevision: anchoredSource.courseRevision,
+        mode: "source",
+        sourceId,
+        limit: 10
+      });
+      expect(sourceAfterResumption.items[0].anchors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          humanLocator:
+            "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo",
+          selector: { kind: "page_range", startPage: 44, endPage: 44 }
+        })
+      ]));
+      expect(sourcePersistenceEvidence(pdfPath)).toEqual({
+        sourceRevisions: 1,
+        attachments: 1,
+        storageObjects: 1
+      });
       const planBeforeChatGpt = (await expectSuccessful(
         "Actions lê o plano antes da alteração",
         chatGptAction(config, "lerCurso", {

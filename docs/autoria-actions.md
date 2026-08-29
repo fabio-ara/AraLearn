@@ -159,6 +159,13 @@ etapa ou atividade recente, sem exigir UUID como primeira opção. Uma nova sess
 pode, assim, retomar o Curso vivo por nome sem receber um prompt técnico de
 restauração.
 
+Depois de localizar o Curso, a retomada documental relê o planejamento e o
+catálogo de Fontes persistido. O GPT apresenta um resumo curto por referência
+humana, aprofunda somente as Fontes ligadas à tarefa e combina `citationText`
+com o localizador verificável da Âncora. IDs, revisões, hashes e caminhos ficam
+nos dados estruturados. O PDF de uma edição só é solicitado quando a tarefa
+exige leitura focal; os demais documentos permanecem fechados.
+
 O esquema da Action conserva um identificador de pedido estável, revisões,
 versões esperadas e demais metadados necessários. A fala do GPT não é uma cópia
 desse esquema: **preservar internamente != mostrar ao usuário**. Por padrão, ela
@@ -212,6 +219,11 @@ autoria, data, edição, periódico ou outro dado necessário estiver ausente, e
 explica a lacuna e pergunta à pessoa em vez de inventar. A citação identifica a
 Fonte; o localizador humano identifica capítulo, seção, unidade, slide, figura
 ou tabela declarados pelo material; o seletor conserva a posição exata.
+
+Uma edição nova, errata ou norma substituta recebe Âncoras próprias. Aposentar
+uma Fonte ou Âncora bloqueia novos vínculos, mas preserva a proveniência do
+planejamento e do conteúdo históricos; a conversa não troca silenciosamente a
+edição atribuída.
 
 Para manter um PDF no Curso, a Action `incorporarPdfComoFonte` recebe os
 controles do Curso, um `sourceIntent` e a referência de arquivo oficial do

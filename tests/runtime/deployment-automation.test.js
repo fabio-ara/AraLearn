@@ -152,13 +152,18 @@ function packApk(
   }
   const zipPath = path.join(temporaryRoot, "application.zip");
   const apkPath = path.join(temporaryRoot, fileName);
-  const compressed = spawnSync("pwsh", [
-    "-NoProfile",
-    "-Command",
-    "& { param([string]$source, [string]$destination) Compress-Archive -LiteralPath $source -DestinationPath $destination }",
-    path.join(temporaryRoot, "payload", "assets"),
-    zipPath
-  ], { encoding: "utf8" });
+  const compressed = process.platform === "win32"
+    ? spawnSync("tar", ["-a", "-c", "-f", zipPath, "assets"], {
+      cwd: path.join(temporaryRoot, "payload"),
+      encoding: "utf8"
+    })
+    : spawnSync("pwsh", [
+      "-NoProfile",
+      "-Command",
+      "& { param([string]$source, [string]$destination) Compress-Archive -LiteralPath $source -DestinationPath $destination }",
+      path.join(temporaryRoot, "payload", "assets"),
+      zipPath
+    ], { encoding: "utf8" });
   assert.equal(compressed.status, 0, compressed.stderr);
   fs.renameSync(zipPath, apkPath);
   return apkPath;
@@ -228,11 +233,13 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     StaticHostManagedSupabase: ["build", "verify-artifact", "upload", "verify-published"],
     LocalDevelopment: ["start-supabase", "reset-local", "stop"]
   };
+  const plansByProfile = new Map();
 
   for (const [profile, stepIds] of Object.entries(expectedSteps)) {
     const result = runScript(scripts.plan, ["-Profile", profile, "-AsJson"]);
     assert.equal(result.status, 0, result.stderr);
     const plan = parseJsonOutput(result);
+    plansByProfile.set(profile, plan);
     assert.equal(plan.profile, profile);
     assert.equal(plan.support, "supported");
     const actualIds = plan.steps.map((step) => step.id);
@@ -253,11 +260,10 @@ test("planos de implantação cobrem somente os três perfis suportados", {
   assert.doesNotMatch(source, /npm\.cmd[^\r\n]*;[^\r\n]*npm\.cmd/u);
   assert.match(source, /validateDeployment\.ps1/u);
   assert.match(source, /deployment:verify-site/u);
-  for (const plan of [
-    runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"]),
-    runScript(scripts.plan, ["-Profile", "StaticHostManagedSupabase", "-AsJson"]),
+  for (const parsedPlan of [
+    plansByProfile.get("GitHubPagesManagedSupabase"),
+    plansByProfile.get("StaticHostManagedSupabase"),
   ]) {
-    const parsedPlan = parseJsonOutput(plan);
     const diagnose = parsedPlan.steps.find(({ id }) => id === "diagnose");
     const apply = parsedPlan.steps.find(({ id }) => id === "database-apply");
     assert.match(diagnose.command, /-Authoring/u);
@@ -266,9 +272,7 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     assert.match(apply.command, /-PublicAppUrl https:\/\//u);
   }
 
-  const githubPlan = parseJsonOutput(
-    runScript(scripts.plan, ["-Profile", "GitHubPagesManagedSupabase", "-AsJson"])
-  );
+  const githubPlan = plansByProfile.get("GitHubPagesManagedSupabase");
   const githubStepIds = githubPlan.steps.map(({ id }) => id);
   const position = (id) => githubStepIds.indexOf(id);
   assert.ok(position("validate") < position("integrate-main"));

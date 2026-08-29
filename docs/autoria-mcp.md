@@ -313,6 +313,15 @@ corrente; o detalhe preserva revisões e Âncoras; o alvo preserva atribuições
 somente por acréscimo e indica qual ainda corresponde à versão e ao resumo
 criptográfico atuais.
 
+Uma nova sessão não depende da memória da conversa anterior. Ela localiza o
+Curso pelo título, relê o planejamento, percorre o catálogo e abre somente as
+Fontes pertinentes. O texto comum resume referências e localizadores humanos;
+identidades, revisões e demais controles permanecem no resultado estruturado.
+Ao partir de um alvo, o cliente lê seus vínculos e abre cada Fonte necessária
+nesse contexto, preservando a edição e a Âncora historicamente atribuídas. PDFs
+não são carregados em lote: o acesso temporário é solicitado apenas quando uma
+verificação focal exige o documento.
+
 No MCP, a resposta usa `aralearn.mcp-course-sources.v1`. Identidades de ator e
 de atribuição, resumo interno do alvo, Curso de origem do objeto e caminhos do
 Storage permanecem fora; `dataDisclosure` registra essas omissões. A aplicação
@@ -324,9 +333,10 @@ campos livres potencialmente pessoais que integram o detalhe autoral;
 conectado, conforme os tipos de seletor efetivamente presentes.
 
 Na aplicação, o DTO interno contém exatamente `contract`, `courseId`,
-`courseRevision`, `mode`, `query`, `items` e `nextCursor`. A projeção MCP troca
-o contrato por `aralearn.mcp-course-sources.v1`, omite `courseId` e acrescenta
-`pdfStorage` e `dataDisclosure`. Em ambos os recortes, `query` explicita os três binds e deixa
+`courseRevision`, `mode`, `query`, `pdfStorage`, `items` e `nextCursor`. A
+projeção MCP troca o contrato por `aralearn.mcp-course-sources.v1`, omite
+`courseId`, preserva o resumo de armazenamento `pdfStorage` e acrescenta
+`dataDisclosure`. Em ambos os recortes, `query` explicita os três binds e deixa
 nulos os que não pertencem ao modo. Cada vínculo de alvo tem
 `{sourceId, sourceRevision, relation, anchors}`; cada referência de Âncora tem
 `{anchorId, anchorRevision}`. Campos adicionais não são extensão tolerada.

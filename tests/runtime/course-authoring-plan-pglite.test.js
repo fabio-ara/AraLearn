@@ -6338,6 +6338,324 @@ test("#192 versiona localizador humano sem misturá-lo ao seletor e o projeta no
   });
 });
 
+test("#222 retoma Fontes e Âncoras exatas sem reescrever história aposentada", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const planId = await scalar(database, `
+    select id as value from private.course_instructional_plans
+    where course_id=$1
+  `, [COURSE]);
+  await database.query(`
+    insert into private.course_instructional_plan_items(
+      id,course_id,instructional_plan_id,item_kind,position,statement
+    ) values(
+      $1,$2,$3,'intended_learning_outcome',0,
+      'Analisar requisitos de Gestão de Servidores com base documental verificável.'
+    )
+  `, [PLAN_ITEM, COURSE, planId]);
+
+  const ids = {
+    edital: "source-fixture-edital-dataprev-2026",
+    prova: "source-fixture-prova-fgv-2024",
+    gabarito: "source-fixture-gabarito-fgv-2024",
+    ppc: "source-fixture-ppc-tads-ifsp"
+  };
+  const anchorIds = {
+    edital: "anchor-fixture-edital-perfil-13",
+    prova: "anchor-fixture-prova-questoes-45-51",
+    gabarito: "anchor-fixture-gabarito-questoes-45-51",
+    sistemas: "anchor-fixture-ppc-sistemas-operacionais",
+    redes: "anchor-fixture-ppc-redes",
+    retificacao: "anchor-fixture-edital-retificacao-perfil-13"
+  };
+  const syntheticSource = (title, citationText, overrides = {}) => sourceDocument({
+    title,
+    authorship: null,
+    publicationDate: null,
+    identifier: null,
+    language: null,
+    citationText,
+    url: null,
+    editionOrVersion: null,
+    origin: "author_provided",
+    availability: "private",
+    studyVisibility: "citation",
+    ...overrides
+  });
+  let courseRevision = 4;
+  let requestOrdinal = 0;
+  const change = async (command) => {
+    requestOrdinal += 1;
+    const result = await executeCourseSourceCommand(
+      database,
+      courseRevision,
+      command,
+      `issue222-source-change-${String(requestOrdinal).padStart(2, "0")}`
+    );
+    assert.equal(result.changed, true);
+    courseRevision = result.courseRevision;
+    return result;
+  };
+
+  for (const [sourceId, source] of [
+    [ids.edital, syntheticSource(
+      "Edital Dataprev 2026 — fixture sintética",
+      "Edital Dataprev 2026"
+    )],
+    [ids.prova, syntheticSource(
+      "Prova FGV 2024 — fixture sintética",
+      "Prova FGV 2024"
+    )],
+    [ids.gabarito, syntheticSource(
+      "Gabarito FGV 2024 — fixture sintética",
+      "Gabarito FGV 2024"
+    )],
+    [ids.ppc, syntheticSource(
+      "PPC do TADS/IFSP — fixture sintética",
+      "PPC do TADS/IFSP"
+    )]
+  ]) {
+    await change({
+      type: "save_source",
+      sourceId,
+      expectedSourceRevision: 0,
+      source
+    });
+  }
+
+  const anchors = [{
+    anchorId: anchorIds.edital,
+    sourceId: ids.edital,
+    humanLocator: "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo",
+    selector: { kind: "page_range", startPage: 44, endPage: 44 },
+    verificationExcerpt: "Perfil 13 — Gestão de Servidores."
+  }, {
+    anchorId: anchorIds.prova,
+    sourceId: ids.prova,
+    humanLocator: "questões 45–51",
+    selector: {
+      kind: "text_quote",
+      exact: "Questões 45 a 51 — conteúdo sintético de regressão",
+      prefix: null,
+      suffix: null
+    },
+    verificationExcerpt: "Questões sintéticas 45 a 51."
+  }, {
+    anchorId: anchorIds.gabarito,
+    sourceId: ids.gabarito,
+    humanLocator: "questões 45–51",
+    selector: {
+      kind: "text_quote",
+      exact: "Gabarito 45 a 51 — conteúdo sintético de regressão",
+      prefix: null,
+      suffix: null
+    },
+    verificationExcerpt: "Gabarito sintético das questões 45 a 51."
+  }, {
+    anchorId: anchorIds.sistemas,
+    sourceId: ids.ppc,
+    humanLocator: "Sistemas Operacionais, pp. 112–114",
+    selector: { kind: "page_range", startPage: 112, endPage: 114 },
+    verificationExcerpt: "Ementa sintética de Sistemas Operacionais."
+  }, {
+    anchorId: anchorIds.redes,
+    sourceId: ids.ppc,
+    humanLocator: "Redes de Computadores, pp. 123–124",
+    selector: { kind: "page_range", startPage: 123, endPage: 124 },
+    verificationExcerpt: "Ementa sintética de Redes de Computadores."
+  }];
+  for (const anchor of anchors) {
+    await change({
+      type: "save_anchor",
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      ...anchor
+    });
+  }
+
+  const sourceLink = (sourceId, anchorId, relation = "supported_by") => ({
+    sourceId,
+    sourceRevision: 1,
+    relation,
+    anchors: [{ anchorId, anchorRevision: 1 }]
+  });
+  await change({
+    type: "set_target_sources",
+    targetKind: "plan_item",
+    targetId: PLAN_ITEM,
+    expectedTargetVersion: 1,
+    sourceLinks: [
+      sourceLink(ids.edital, anchorIds.edital, "informed_by"),
+      sourceLink(ids.ppc, anchorIds.sistemas)
+    ]
+  });
+  await change({
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 1,
+    sourceLinks: [
+      sourceLink(ids.prova, anchorIds.prova),
+      sourceLink(ids.gabarito, anchorIds.gabarito, "contrasted_with"),
+      sourceLink(ids.ppc, anchorIds.redes)
+    ]
+  });
+
+  await change({
+    type: "save_source",
+    sourceId: ids.edital,
+    expectedSourceRevision: 1,
+    source: syntheticSource(
+      "Edital Dataprev 2026 — fixture sintética retificada",
+      "Edital Dataprev 2026, retificação",
+      { editionOrVersion: "Retificação 1" }
+    )
+  });
+  await change({
+    type: "save_anchor",
+    anchorId: anchorIds.retificacao,
+    sourceId: ids.edital,
+    sourceRevision: 2,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 44, endPage: 45 },
+    humanLocator: "Retificação do Perfil 13, pp. 44–45 do arquivo",
+    verificationExcerpt: "Retificação sintética do Perfil 13."
+  });
+  await change({
+    type: "retire_source",
+    sourceId: ids.edital,
+    expectedSourceRevision: 2
+  });
+  assert.equal(courseRevision, 18);
+
+  await assert.rejects(() => executeCourseSourceCommand(database, courseRevision, {
+    type: "set_target_sources",
+    targetKind: "plan_item",
+    targetId: PLAN_ITEM,
+    expectedTargetVersion: 1,
+    sourceLinks: [{
+      sourceId: ids.edital,
+      sourceRevision: 2,
+      relation: "supported_by",
+      anchors: [{ anchorId: anchorIds.retificacao, anchorRevision: 1 }]
+    }]
+  }, "issue222-retired-new-use"), (error) => (
+    error.code === "23514" && /Fonte atual, ativa/iu.test(error.message)
+  ));
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), courseRevision);
+
+  // Simula outra sessão lógica: nenhuma referência permanece no cliente; o ator
+  // volta a localizar todo o estado somente pelas leituras públicas autorizadas.
+  await database.query("select set_config('request.jwt.claim.sub','',false)");
+  await database.query("select set_config('request.jwt.claim.role','',false)");
+  await actor(database, OWNER, "service_role");
+
+  const catalog = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,$3,'catalog',null,null,null,null,10
+    ) as value
+  `, [OWNER, COURSE, courseRevision]);
+  assert.equal(catalog.items.length, 4);
+  const currentEdital = catalog.items.find(({ sourceId }) => sourceId === ids.edital);
+  const currentGabarito = catalog.items.find(({ sourceId }) => sourceId === ids.gabarito);
+  assert.deepEqual({ revision: currentEdital.revision, status: currentEdital.status }, {
+    revision: 3,
+    status: "retired"
+  });
+  assert.deepEqual({
+    authorship: currentGabarito.authorship,
+    publicationDate: currentGabarito.publicationDate,
+    identifier: currentGabarito.identifier,
+    language: currentGabarito.language,
+    url: currentGabarito.url,
+    editionOrVersion: currentGabarito.editionOrVersion
+  }, {
+    authorship: null,
+    publicationDate: null,
+    identifier: null,
+    language: null,
+    url: null,
+    editionOrVersion: null
+  });
+
+  const recoveredLocators = [];
+  for (const sourceId of Object.values(ids)) {
+    const detail = await scalar(database, `
+      select public.get_owned_course_sources_for_actor_v1(
+        $1,$2,$3,'source',$4,null,null,null,10
+      ) as value
+    `, [OWNER, COURSE, courseRevision, sourceId]);
+    for (const sourceRevision of detail.items) {
+      for (const anchor of sourceRevision.anchors) {
+        recoveredLocators.push(anchor.humanLocator);
+      }
+    }
+  }
+  for (const locator of anchors.map(({ humanLocator }) => humanLocator)) {
+    assert.equal(recoveredLocators.includes(locator), true, locator);
+  }
+  assert.equal(
+    recoveredLocators.includes("Retificação do Perfil 13, pp. 44–45 do arquivo"),
+    true
+  );
+
+  const planHistory = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,$3,'target',null,'plan_item',$4,null,10
+    ) as value
+  `, [OWNER, COURSE, courseRevision, PLAN_ITEM]);
+  const effectivePlan = planHistory.items.find(({ effective }) => effective);
+  assert.equal(effectivePlan.sourceLinks[0].sourceRevision, 1);
+  assert.deepEqual(effectivePlan.sourceLinks[0].anchors, [{
+    anchorId: anchorIds.edital,
+    anchorRevision: 1
+  }]);
+
+  const pinnedEdital = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,$3,'source',$4,'plan_item',$5,null,1
+    ) as value
+  `, [OWNER, COURSE, courseRevision, ids.edital, PLAN_ITEM]);
+  assert.equal(pinnedEdital.items.length, 1);
+  assert.deepEqual({
+    revision: pinnedEdital.items[0].revision,
+    status: pinnedEdital.items[0].status,
+    humanLocator: pinnedEdital.items[0].anchors.find(
+      ({ anchorId }) => anchorId === anchorIds.edital
+    ).humanLocator
+  }, {
+    revision: 1,
+    status: "active",
+    humanLocator: "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo"
+  });
+
+  const studyHistory = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,$3,'target',null,'study_unit','card-a',null,10
+    ) as value
+  `, [OWNER, COURSE, courseRevision]);
+  const effectiveStudy = studyHistory.items.find(({ effective }) => effective);
+  assert.deepEqual(effectiveStudy.sourceLinks.map(({ sourceId }) => sourceId), [
+    ids.prova,
+    ids.gabarito,
+    ids.ppc
+  ]);
+
+  await database.close();
+});
+
 test("#149 cria uma cópia pessoal mínima, idempotente e independente da origem", async () => {
   const database = await databaseFixture();
   await applyMigration(database);

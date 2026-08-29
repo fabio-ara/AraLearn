@@ -132,6 +132,88 @@ test("Actions lista Cursos pelo canal HTTP e pelo principal opaco próprio", asy
   assert.equal(resolved, 1);
 });
 
+test("Actions retoma uma Fonte com referência humana sem narrar controles internos", async () => {
+  const sourceId = "source-edital-private";
+  const anchorId = "anchor-edital-page-44";
+  const contentHash = "b".repeat(64);
+  const storagePath = `${ACTOR_ID}/${contentHash}.pdf`;
+  const sourceCitation = "Edital Dataprev 2026";
+  const humanLocator =
+    "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo";
+  const response = await createHandler({
+    async getCourseSources() {
+      return {
+        contract: "aralearn.course-sources.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 5,
+        mode: "source",
+        query: { sourceId, targetKind: null, targetId: null },
+        pdfStorage: { uniqueBytes: 1_024, maxUniqueBytes: 64 * 1024 * 1024 },
+        items: [{
+          sourceId,
+          revision: 1,
+          status: "active",
+          kind: "document",
+          title: "Edital Dataprev 2026 — fixture sintética",
+          authorship: null,
+          publicationDate: "2026",
+          identifier: null,
+          language: "pt-BR",
+          citationText: sourceCitation,
+          url: null,
+          editionOrVersion: null,
+          origin: "author_provided",
+          availability: "private",
+          verificationStatus: "author_verified",
+          studyVisibility: "citation",
+          anchorCount: 1,
+          createdAt: "2026-08-29T12:00:00Z",
+          actorId: ACTOR_ID,
+          anchors: [{
+            anchorId,
+            revision: 1,
+            sourceRevision: 1,
+            status: "active",
+            selector: { kind: "page_range", startPage: 44, endPage: 44 },
+            humanLocator,
+            verificationExcerpt: "Trecho sintético privado.",
+            actorId: ACTOR_ID,
+            createdAt: "2026-08-29T12:00:00Z"
+          }],
+          attachments: [{
+            contentHash,
+            byteSize: 1_024,
+            mediaType: "application/pdf",
+            storagePath,
+            actorId: ACTOR_ID,
+            createdAt: "2026-08-29T12:00:00Z"
+          }]
+        }],
+        nextCursor: null
+      };
+    }
+  })(request("lerCurso", {
+    courseId: ACTOR_ID,
+    view: "course_sources",
+    expectedRevision: 5,
+    mode: "source",
+    sourceId
+  }));
+  const payload = await response.json();
+  const text = payload.conversation.message;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.conversation.kind, "resumption");
+  assert.match(text, new RegExp(sourceCitation, "u"));
+  assert.match(text, /Perfil 13 .*Gestão de Servidores, p\. 44 do arquivo/u);
+  assert.equal(payload.data.items[0].sourceId, sourceId);
+  assert.equal(payload.data.items[0].attachments[0].contentHash, contentHash);
+  for (const internalValue of [ACTOR_ID, sourceId, anchorId, contentHash, storagePath]) {
+    assert.equal(text.includes(internalValue), false, internalValue);
+  }
+  assert.doesNotMatch(text, /storagePath|contentHash|sourceId|anchorId/iu);
+});
+
 test("Actions lê e altera Observações com destinatário e principal próprios", async () => {
   let mutation = null;
   const handler = createHandler({

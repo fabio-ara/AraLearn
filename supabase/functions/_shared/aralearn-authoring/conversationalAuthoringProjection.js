@@ -140,6 +140,172 @@ function instructionalPlanState(data) {
   };
 }
 
+function pluralized(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function sourceHumanLabel(source) {
+  return (optionalText(source?.citationText) || optionalText(source?.title) ||
+    "Fonte sem referência humana informada").slice(0, 360);
+}
+
+function sourceHumanStatus(source) {
+  if (source?.status === "retired") return "aposentada";
+  if (source?.status === "unresolved_legacy") return "ainda não verificada";
+  return "ativa";
+}
+
+function humanTime(milliseconds) {
+  if (!Number.isSafeInteger(milliseconds) || milliseconds < 0) return "";
+  const totalSeconds = Math.floor(milliseconds / 1_000);
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor(totalSeconds % 3_600 / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":")
+    : [minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+function sourceAnchorHumanLocator(anchor) {
+  const declared = optionalText(anchor?.humanLocator);
+  if (declared) return declared;
+  const selector = anchor?.selector;
+  if (!selector || typeof selector !== "object" || Array.isArray(selector)) return "";
+  if (selector.kind === "page_range" && Number.isSafeInteger(selector.startPage) &&
+      Number.isSafeInteger(selector.endPage)) {
+    return selector.startPage === selector.endPage
+      ? `p. ${selector.startPage}`
+      : `pp. ${selector.startPage}–${selector.endPage}`;
+  }
+  if (selector.kind === "time_range") {
+    const start = humanTime(selector.startMilliseconds);
+    const end = humanTime(selector.endMilliseconds);
+    return start && end ? `${start}–${end}` : "";
+  }
+  if (selector.kind === "uri_fragment") return "fragmento de endereço verificável";
+  if (selector.kind === "text_quote") return "trecho textual verificável";
+  return "";
+}
+
+function sourceCatalogResumption(data) {
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const labels = items.slice(0, 6).map((source) =>
+    `${sourceHumanLabel(source)} (${sourceHumanStatus(source)})`);
+  const omittedLabelCount = Math.max(0, items.length - labels.length);
+  return projection(
+    "resumption",
+    sentences(
+      `Retomei o catálogo documental desta página com ${pluralized(items.length, "Fonte", "Fontes")}`,
+      labels.length
+        ? `Referências deste resumo: ${labels.join("; ")}${omittedLabelCount
+          ? `; e outras ${omittedLabelCount} nesta página`
+          : ""}`
+        : "Nenhuma Fonte foi encontrada neste recorte",
+      data?.nextCursor
+        ? "Há outras Fontes; continue pelo próximo trecho do catálogo"
+        : "O catálogo consultado chegou ao fim",
+      "Abra somente a Fonte relevante para conferir seu histórico, suas Âncoras e seus PDFs"
+    ),
+    { needsHumanDecision: false }
+  );
+}
+
+function sourceDetailResumption(data) {
+  const items = Array.isArray(data?.items) ? data.items : [];
+  if (items.length === 0) {
+    return projection(
+      "resumption",
+      "Esta Fonte não participa do contexto consultado. Nenhum detalhe documental foi carregado.",
+      { needsHumanDecision: false }
+    );
+  }
+  const focal = items[0];
+  const contextual = data?.query?.targetKind != null;
+  const anchors = (Array.isArray(focal.anchors) ? focal.anchors : [])
+    .map(sourceAnchorHumanLocator)
+    .filter(Boolean)
+    .slice(0, 8);
+  const attachmentCount = Array.isArray(focal.attachments) ? focal.attachments.length : 0;
+  return projection(
+    "resumption",
+    sentences(
+      contextual
+        ? `Retomei a edição historicamente atribuída de “${sourceHumanLabel(focal)}”`
+        : `Retomei “${sourceHumanLabel(focal)}”; esta edição está ${sourceHumanStatus(focal)}`,
+      attachmentCount > 0
+        ? `${pluralized(attachmentCount, "PDF permanece mantido", "PDFs permanecem mantidos")} nesta edição`
+        : "Nenhum PDF está mantido nesta edição",
+      contextual
+        ? anchors.length
+          ? "A edição contém Âncoras; apresente somente os locais que também constam no vínculo do alvo"
+          : "Nenhuma Âncora verificável foi registrada nesta edição"
+        : anchors.length
+          ? `Locais verificáveis: ${anchors.join("; ")}`
+          : "Nenhuma Âncora verificável foi registrada nesta edição",
+      contextual
+        ? "Esta leitura histórica não decide se a Fonte aceita novos usos; consulte o catálogo antes de atribuí-la novamente"
+        : items.length > 1
+        ? `O histórico consultado preserva ${pluralized(items.length, "estado documental", "estados documentais")}, sem transferir Âncoras entre edições`
+        : "As Âncoras permanecem ligadas exatamente a esta edição",
+      data?.nextCursor ? "Há histórico anterior; leia-o somente se ele for pertinente" : "",
+      attachmentCount > 0
+        ? "Abra um PDF somente quando a tarefa exigir verificação focal"
+        : ""
+    ),
+    { needsHumanDecision: false }
+  );
+}
+
+function sourceTargetResumption(data) {
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const effective = items.find((item) => item?.effective === true) || null;
+  const sourceLinks = Array.isArray(effective?.sourceLinks) ? effective.sourceLinks : [];
+  const anchorCount = sourceLinks.reduce((count, link) =>
+    count + (Array.isArray(link?.anchors) ? link.anchors.length : 0), 0);
+  const targetLabel = data?.query?.targetKind === "study_unit"
+    ? "conteúdo"
+    : "item do planejamento";
+  return projection(
+    "resumption",
+    sentences(
+      effective
+        ? `A proveniência vigente deste ${targetLabel} reúne ${pluralized(sourceLinks.length, "Fonte", "Fontes")} e ${pluralized(anchorCount, "Âncora", "Âncoras")}`
+        : `Este ${targetLabel} não possui proveniência vigente`,
+      items.length > 1
+        ? `O histórico conserva ${pluralized(items.length, "atribuição", "atribuições")}`
+        : "",
+      sourceLinks.length
+        ? "Abra apenas as Fontes necessárias neste contexto para apresentar suas referências e seus locais verificáveis"
+        : ""
+    ),
+    { needsHumanDecision: false }
+  );
+}
+
+function sourceAttachmentResumption(data) {
+  const authorized = data?.operation === "download" && optionalText(data?.signedUrl);
+  return projection(
+    "resumption",
+    sentences(
+      authorized
+        ? "O PDF solicitado foi autorizado temporariamente para esta verificação focal"
+        : "O PDF desta edição foi localizado sem abrir seu conteúdo",
+      authorized
+        ? "O endereço temporário permanece somente no resultado estruturado e deve ser usado antes de expirar"
+        : "Solicite o acesso temporário somente quando a tarefa exigir consultar o documento"
+    ),
+    { needsHumanDecision: false }
+  );
+}
+
+function courseSourcesResumption(data) {
+  if (data?.contract !== "aralearn.mcp-course-sources.v1") return null;
+  if (data.mode === "catalog") return sourceCatalogResumption(data);
+  if (data.mode === "source") return sourceDetailResumption(data);
+  if (data.mode === "target") return sourceTargetResumption(data);
+  return null;
+}
+
 export function resolveConversationalCourseTitle(courses, requestedTitle) {
   if (!Array.isArray(courses)) throw new TypeError("A lista de Cursos precisa ser uma lista.");
   const query = normalizedTitle(requestedTitle);
@@ -330,6 +496,14 @@ export function projectConversationalAuthoringToolSuccess({
         state
       });
     }
+  }
+  if (toolName === "lerCurso" && rawArguments?.view === "course_sources") {
+    const projected = courseSourcesResumption(envelope?.data);
+    if (projected) return projected;
+  }
+  if (toolName === "lerCurso" && rawArguments?.view === "course_source_attachment" &&
+      envelope?.data?.contract === "aralearn.mcp-course-source-attachment-access.v1") {
+    return sourceAttachmentResumption(envelope.data);
   }
   return projectConversationalAuthoringSuccess({ envelope, summary, toolName });
 }

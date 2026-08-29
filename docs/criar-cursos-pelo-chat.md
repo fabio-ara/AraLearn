@@ -147,6 +147,12 @@ unidades de análise e requisitos de evidência daquele alvo.
 
 ## Registrar Fontes e Âncoras
 
+Ao retomar em outra sessão, localize o Curso pelo título, releia o planejamento
+e consulte primeiro o catálogo. O resumo conversacional usa referências e
+localizadores humanos e permanece curto. Abra o detalhe apenas das Fontes
+pertinentes e solicite um PDF por vez somente quando a tarefa exigir verificação
+focal; não é necessário anexar novamente um documento já mantido no Curso.
+
 Use `course_sources` para percorrer o catálogo, abrir uma Fonte ou consultar o
 histórico de um alvo. Registre somente metadados conhecidos. Se faltarem autoria,
 data, edição, periódico ou outros dados necessários à referência, explicite a
@@ -160,6 +166,10 @@ Uma atribuição liga a revisão exata da Fonte e suas Âncoras a um item do pla
 ou a uma Unidade. A relação pode indicar que a Fonte informou, sustentou,
 inspirou, exemplificou, contrastou ou serviu de base para adaptação ou citação.
 Também pode registrar que o caso ainda precisa de verificação.
+
+Uma nova edição, errata ou norma substituta não herda seletores. Crie Âncoras
+na revisão ativa correspondente. A aposentadoria impede novas atribuições, mas
+mantém legíveis as referências históricas do planejamento e das Unidades.
 
 `set_target_sources` substitui o conjunto completo e ordenado do alvo. Para
 cada Unidade criada ou substituída numa operação de composição, o cliente envia

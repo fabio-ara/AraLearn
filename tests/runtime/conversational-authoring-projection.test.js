@@ -107,6 +107,250 @@ test("A — retomada percorre descoberta e plano vivo por título humano sem ID"
   assertHumanProjection(projected);
 });
 
+test("#222 — nova sessão resume o catálogo de Fontes em linguagem humana", () => {
+  const projected = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 19,
+      mode: "catalog"
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "catalog",
+        items: [
+          { sourceId: "source-edital", citationText: "Edital Dataprev 2026", status: "active" },
+          { sourceId: "source-prova", citationText: "Prova FGV 2024", status: "active" },
+          { sourceId: "source-gabarito", citationText: "Gabarito FGV 2024", status: "active" },
+          { sourceId: "source-ppc", citationText: "PPC TADS IFSP", status: "retired" }
+        ],
+        nextCursor: null
+      }
+    }
+  });
+
+  assert.equal(projected.kind, "resumption");
+  assert.match(projected.message, /4 Fontes/u);
+  assert.match(projected.message, /Edital Dataprev 2026 \(ativa\)/u);
+  assert.match(projected.message, /PPC TADS IFSP \(aposentada\)/u);
+  assert.match(projected.message, /Abra somente a Fonte relevante/u);
+  assert.doesNotMatch(projected.message, /source-edital|revision|hash|path/iu);
+  assertHumanProjection(projected);
+});
+
+test("#222 — detalhe focal cita a Fonte e os locais sem vazar controles", () => {
+  const signedHash = "a".repeat(64);
+  const sourceId = "source-edital-interno";
+  const anchorId = "anchor-perfil-interno";
+  const projected = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 19,
+      mode: "source",
+      sourceId
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "source",
+        items: [{
+          sourceId,
+          revision: 2,
+          status: "active",
+          citationText: "Edital Dataprev 2026",
+          anchors: [{
+            anchorId,
+            revision: 1,
+            status: "active",
+            humanLocator: "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo",
+            selector: { kind: "page_range", startPage: 44, endPage: 44 },
+            verificationExcerpt: "Trecho privado que não pertence ao resumo."
+          }],
+          attachments: [{ contentHash: signedHash, byteSize: 1_024, mediaType: "application/pdf" }]
+        }, {
+          sourceId,
+          revision: 1,
+          status: "retired",
+          citationText: "Edital Dataprev 2025",
+          anchors: [],
+          attachments: []
+        }],
+        nextCursor: null
+      }
+    }
+  });
+
+  assert.match(projected.message, /Edital Dataprev 2026/u);
+  assert.match(projected.message, /1 PDF permanece mantido/u);
+  assert.match(projected.message, /Perfil 13.*p\. 44 do arquivo/u);
+  assert.match(projected.message, /2 estados documentais/u);
+  assert.doesNotMatch(projected.message, /Trecho privado|source-edital|anchor-perfil/iu);
+  assert.equal(projected.message.includes(signedHash), false);
+  assert.doesNotMatch(projected.message, /revis[aã]o|contentHash|storagePath/iu);
+  assertHumanProjection(projected);
+});
+
+test("#222 — detalhe contextual não atribui Âncora alheia nem promete novo uso", () => {
+  const linkedAnchorId = "anchor-linked-internal";
+  const unrelatedAnchorId = "anchor-unrelated-internal";
+  const projected = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 19,
+      mode: "source",
+      sourceId: "source-historical-internal",
+      targetKind: "plan_item",
+      targetId: "20000000-0000-4000-8000-000000000002"
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "source",
+        query: { targetKind: "plan_item" },
+        items: [{
+          status: "active",
+          citationText: "Edital Dataprev 2026",
+          anchors: [{
+            anchorId: linkedAnchorId,
+            status: "active",
+            humanLocator: "p. 44",
+            selector: { kind: "page_range", startPage: 44, endPage: 44 }
+          }, {
+            anchorId: unrelatedAnchorId,
+            status: "active",
+            humanLocator: "Anexo sem vínculo, p. 90",
+            selector: { kind: "page_range", startPage: 90, endPage: 90 }
+          }],
+          attachments: []
+        }],
+        nextCursor: null
+      }
+    }
+  });
+
+  assert.match(projected.message, /edição historicamente atribuída/u);
+  assert.match(projected.message, /somente os locais que também constam no vínculo/u);
+  assert.match(projected.message, /consulte o catálogo antes de atribuí-la novamente/u);
+  assert.doesNotMatch(projected.message, /p\. 44|p\. 90|esta edição está ativa/u);
+  assert.equal(projected.message.includes(linkedAnchorId), false);
+  assert.equal(projected.message.includes(unrelatedAnchorId), false);
+  assertHumanProjection(projected);
+});
+
+test("#222 — catálogo compacto informa as referências omitidas na própria página", () => {
+  const items = Array.from({ length: 8 }, (_, index) => ({
+    sourceId: `source-${index}`,
+    citationText: `Fonte sintética ${index + 1}`,
+    status: "active"
+  }));
+  const projected = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: { view: "course_sources", mode: "catalog" },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "catalog",
+        items,
+        nextCursor: null
+      }
+    }
+  });
+
+  assert.match(projected.message, /8 Fontes/u);
+  assert.match(projected.message, /e outras 2 nesta página/u);
+  assert.doesNotMatch(projected.message, /Fonte sintética 7|Fonte sintética 8/u);
+  assertHumanProjection(projected);
+});
+
+test("#222 — atribuição e PDF focal são retomados sem expor identidades ou URL", () => {
+  const sourceId = "source-prova-interno";
+  const targetId = "study-unit-interna";
+  const target = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 19,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-sources.v1",
+        mode: "target",
+        query: { targetKind: "study_unit" },
+        items: [{
+          targetId,
+          effective: true,
+          sourceLinks: [{
+            sourceId,
+            sourceRevision: 1,
+            anchors: [
+              { anchorId: "anchor-a", anchorRevision: 1 },
+              { anchorId: "anchor-b", anchorRevision: 1 }
+            ]
+          }]
+        }],
+        nextCursor: null
+      }
+    }
+  });
+  assert.match(target.message, /conteúdo.*1 Fonte.*2 Âncoras/u);
+  assert.match(target.message, /Abra apenas as Fontes necessárias/u);
+  assert.equal(target.message.includes(sourceId), false);
+  assert.equal(target.message.includes(targetId), false);
+  assertHumanProjection(target);
+
+  const signedUrl = "https://storage.example.test/signed/private.pdf?token=secret";
+  const attachment = projectConversationalAuthoringToolSuccess({
+    toolName: "lerCurso",
+    rawArguments: {
+      courseId: COURSE_ID,
+      view: "course_source_attachment",
+      expectedRevision: 19,
+      attachmentOperation: "download",
+      sourceId,
+      sourceRevision: 1,
+      contentHash: HASH,
+      includeAttachmentDownloadUrl: true
+    },
+    envelope: {
+      ok: true,
+      requestId: null,
+      data: {
+        contract: "aralearn.mcp-course-source-attachment-access.v1",
+        operation: "download",
+        sourceId,
+        sourceRevision: 1,
+        signedUrl,
+        expiresAt: "2026-08-29T12:01:00Z"
+      }
+    }
+  });
+  assert.match(attachment.message, /autorizado temporariamente/u);
+  assert.match(attachment.message, /resultado estruturado/u);
+  assert.equal(attachment.message.includes(signedUrl), false);
+  assert.equal(attachment.message.includes(sourceId), false);
+  assertHumanProjection(attachment);
+});
+
 test("B/C — proposta e confirmação descrevem efeito pedagógico sem payload", () => {
   const command = {
     requestId: REQUEST_ID,

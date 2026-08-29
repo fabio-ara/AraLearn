@@ -33,68 +33,335 @@
   "sources": [
     {
       "key": "edital",
-      "title": "Edital Dataprev 2026 — fixture sintética",
-      "citationText": "Edital Dataprev 2026 (fixture sintética)",
+      "sourceId": "fixture-source-edital-dataprev-2026",
+      "revision": 1,
+      "status": "active",
+      "source": {
+        "kind": "document",
+        "title": "Edital Dataprev 2026 — fixture sintética",
+        "authorship": null,
+        "publicationDate": "2026",
+        "identifier": null,
+        "language": "pt-BR",
+        "citationText": "Edital Dataprev 2026 — fixture sintética",
+        "url": null,
+        "editionOrVersion": "edição sintética inicial",
+        "origin": "author_provided",
+        "availability": "private",
+        "verificationStatus": "author_verified",
+        "studyVisibility": "citation"
+      },
       "pdfFileName": "fixture-edital-dataprev-2026.pdf",
       "anchors": [
         {
-          "humanLocator": "p. 44",
-          "selector": { "kind": "page_range", "startPage": 44, "endPage": 44 }
+          "anchorId": "fixture-anchor-edital-perfil-13-r1",
+          "revision": 1,
+          "sourceRevision": 1,
+          "status": "active",
+          "humanLocator": "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo",
+          "selector": { "kind": "page_range", "startPage": 44, "endPage": 44 },
+          "verificationExcerpt": "Trecho sintético sobre o Perfil 13 para verificar a localização."
         }
       ]
     },
     {
       "key": "prova",
-      "title": "Prova FGV 2024 — fixture sintética",
-      "citationText": "Prova FGV 2024 (fixture sintética)",
+      "sourceId": "fixture-source-prova-fgv-2024",
+      "revision": 1,
+      "status": "active",
+      "source": {
+        "kind": "document",
+        "title": "Prova FGV 2024 — fixture sintética",
+        "authorship": "FGV — identificação sintética de teste",
+        "publicationDate": "2024",
+        "identifier": null,
+        "language": "pt-BR",
+        "citationText": "Prova FGV 2024 — fixture sintética",
+        "url": null,
+        "editionOrVersion": null,
+        "origin": "author_provided",
+        "availability": "private",
+        "verificationStatus": "author_verified",
+        "studyVisibility": "citation"
+      },
       "pdfFileName": "fixture-prova-fgv-2024.pdf",
       "anchors": [
         {
+          "anchorId": "fixture-anchor-prova-questoes-45-51-r1",
+          "revision": 1,
+          "sourceRevision": 1,
+          "status": "active",
           "humanLocator": "questões 45–51",
-          "selector": { "kind": "text_quote", "exact": "Questões 45 a 51 — conteúdo sintético de regressão" }
+          "selector": {
+            "kind": "text_quote",
+            "exact": "Questão sintética 45: administração de servidores em ambiente de teste.",
+            "prefix": null,
+            "suffix": null
+          },
+          "verificationExcerpt": "Questões sintéticas 45 a 51, sem conteúdo de prova real."
         }
       ]
     },
     {
       "key": "gabarito",
-      "title": "Gabarito FGV 2024 — fixture sintética",
-      "citationText": "Gabarito FGV 2024 (fixture sintética)",
+      "sourceId": "fixture-source-gabarito-fgv-2024",
+      "revision": 1,
+      "status": "active",
+      "source": {
+        "kind": "document",
+        "title": "Gabarito FGV 2024 — fixture sintética",
+        "authorship": null,
+        "publicationDate": null,
+        "identifier": null,
+        "language": "pt-BR",
+        "citationText": "Gabarito FGV 2024 — fixture sintética",
+        "url": null,
+        "editionOrVersion": null,
+        "origin": "author_provided",
+        "availability": "private",
+        "verificationStatus": "author_verified",
+        "studyVisibility": "citation"
+      },
       "pdfFileName": "fixture-gabarito-fgv-2024.pdf",
       "anchors": [
         {
+          "anchorId": "fixture-anchor-gabarito-questoes-45-51-r1",
+          "revision": 1,
+          "sourceRevision": 1,
+          "status": "active",
           "humanLocator": "questões 45–51",
-          "selector": { "kind": "text_quote", "exact": "Gabarito 45 a 51 — conteúdo sintético de regressão" }
+          "selector": {
+            "kind": "text_quote",
+            "exact": "Gabarito sintético: 45-A, 46-B, 47-C, 48-D, 49-A, 50-B, 51-C.",
+            "prefix": null,
+            "suffix": null
+          },
+          "verificationExcerpt": "Sequência sintética usada somente para testar a vinculação."
         }
       ]
     },
     {
       "key": "ppc",
-      "title": "PPC IFSP — fixture sintética",
-      "citationText": "PPC IFSP (fixture sintética)",
+      "sourceId": "fixture-source-ppc-tads-ifsp",
+      "revision": 1,
+      "status": "active",
+      "source": {
+        "kind": "document",
+        "title": "PPC TADS IFSP — fixture sintética",
+        "authorship": null,
+        "publicationDate": null,
+        "identifier": null,
+        "language": "pt-BR",
+        "citationText": "PPC do TADS/IFSP — fixture sintética",
+        "url": null,
+        "editionOrVersion": null,
+        "origin": "author_provided",
+        "availability": "private",
+        "verificationStatus": "author_verified",
+        "studyVisibility": "citation"
+      },
       "pdfFileName": "fixture-ppc-ifsp.pdf",
       "anchors": [
         {
-          "humanLocator": "pp. 112–114",
-          "selector": { "kind": "page_range", "startPage": 112, "endPage": 114 }
+          "anchorId": "fixture-anchor-ppc-sistemas-operacionais-r1",
+          "revision": 1,
+          "sourceRevision": 1,
+          "status": "active",
+          "humanLocator": "Sistemas Operacionais, pp. 112–114",
+          "selector": { "kind": "page_range", "startPage": 112, "endPage": 114 },
+          "verificationExcerpt": "Ementa sintética de Sistemas Operacionais."
         },
         {
-          "humanLocator": "pp. 123–124",
-          "selector": { "kind": "page_range", "startPage": 123, "endPage": 124 }
+          "anchorId": "fixture-anchor-ppc-redes-computadores-r1",
+          "revision": 1,
+          "sourceRevision": 1,
+          "status": "active",
+          "humanLocator": "Redes de Computadores, pp. 123–124",
+          "selector": { "kind": "page_range", "startPage": 123, "endPage": 124 },
+          "verificationExcerpt": "Ementa sintética de Redes de Computadores."
         }
       ]
     }
   ],
+  "attributions": [
+    {
+      "semanticTarget": "intended_learning_outcome",
+      "targetKind": "plan_item",
+      "targetId": "22000000-0000-4000-8000-000000000001",
+      "expectedTargetVersion": 1,
+      "sourceLinks": [
+        {
+          "sourceId": "fixture-source-edital-dataprev-2026",
+          "sourceRevision": 1,
+          "relation": "supported_by",
+          "anchors": [
+            { "anchorId": "fixture-anchor-edital-perfil-13-r1", "anchorRevision": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "semanticTarget": "instructional_analysis_unit",
+      "targetKind": "plan_item",
+      "targetId": "22000000-0000-4000-8000-000000000002",
+      "expectedTargetVersion": 1,
+      "sourceLinks": [
+        {
+          "sourceId": "fixture-source-prova-fgv-2024",
+          "sourceRevision": 1,
+          "relation": "informed_by",
+          "anchors": [
+            { "anchorId": "fixture-anchor-prova-questoes-45-51-r1", "anchorRevision": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "semanticTarget": "evidence_requirement",
+      "targetKind": "plan_item",
+      "targetId": "22000000-0000-4000-8000-000000000003",
+      "expectedTargetVersion": 1,
+      "sourceLinks": [
+        {
+          "sourceId": "fixture-source-gabarito-fgv-2024",
+          "sourceRevision": 1,
+          "relation": "supported_by",
+          "anchors": [
+            { "anchorId": "fixture-anchor-gabarito-questoes-45-51-r1", "anchorRevision": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "semanticTarget": "materialized_content",
+      "targetKind": "study_unit",
+      "targetId": "fixture-study-unit-gestao-servidores",
+      "expectedTargetVersion": 1,
+      "sourceLinks": [
+        {
+          "sourceId": "fixture-source-ppc-tads-ifsp",
+          "sourceRevision": 1,
+          "relation": "adapted_from",
+          "anchors": [
+            { "anchorId": "fixture-anchor-ppc-sistemas-operacionais-r1", "anchorRevision": 1 },
+            { "anchorId": "fixture-anchor-ppc-redes-computadores-r1", "anchorRevision": 1 }
+          ]
+        }
+      ]
+    }
+  ],
+  "sourceLifecycle": {
+    "sourceId": "fixture-source-edital-dataprev-2026",
+    "initialRevision": 1,
+    "newEdition": {
+      "revision": 2,
+      "expectedSourceRevision": 1,
+      "status": "active",
+      "source": {
+        "kind": "document",
+        "title": "Edital Dataprev 2026 retificado — fixture sintética",
+        "authorship": null,
+        "publicationDate": "2026",
+        "identifier": null,
+        "language": "pt-BR",
+        "citationText": "Edital Dataprev 2026 retificado — fixture sintética",
+        "url": null,
+        "editionOrVersion": "retificação sintética 1",
+        "origin": "author_provided",
+        "availability": "private",
+        "verificationStatus": "author_verified",
+        "studyVisibility": "citation"
+      },
+      "anchor": {
+        "anchorId": "fixture-anchor-edital-perfil-13-r2",
+        "revision": 1,
+        "sourceRevision": 2,
+        "status": "active",
+        "humanLocator": "Perfil 13 — Analista de Processamento → Gestão de Servidores, p. 44 do arquivo",
+        "selector": { "kind": "page_range", "startPage": 44, "endPage": 44 },
+        "verificationExcerpt": "Trecho sintético da retificação para verificar a revisão nova."
+      }
+    },
+    "retirement": {
+      "revision": 3,
+      "expectedSourceRevision": 2,
+      "status": "retired",
+      "preventsNewAttributions": true,
+      "preservesHistoricalAttributions": true
+    },
+    "historicalAttribution": {
+      "targetKind": "plan_item",
+      "targetId": "22000000-0000-4000-8000-000000000001",
+      "sourceLinks": [
+        {
+          "sourceId": "fixture-source-edital-dataprev-2026",
+          "sourceRevision": 1,
+          "relation": "supported_by",
+          "anchors": [
+            { "anchorId": "fixture-anchor-edital-perfil-13-r1", "anchorRevision": 1 }
+          ]
+        }
+      ]
+    }
+  },
   "resumption": {
     "prompt": "Continue a autoria do curso Dataprev: Gestão de Servidores; quero terminar o planejamento antes de produzir conteúdo.",
+    "sourceSummary": "O planejamento continua baseado no edital da Dataprev, na prova e no gabarito de 2024 e no PPC do IFSP. Esses documentos permanecem disponíveis no Curso.",
+    "requiresPdfReupload": false,
+    "loadsPdfBytesByDefault": false,
+    "recoveryPlan": [
+      {
+        "tool": "listarCursos",
+        "purpose": "locate_by_human_title",
+        "query": "Dataprev: Gestão de Servidores"
+      },
+      {
+        "tool": "lerCurso",
+        "view": "summary",
+        "purpose": "recover_live_course_revision"
+      },
+      {
+        "tool": "lerCurso",
+        "view": "instructional_plan",
+        "purpose": "recover_pending_authoring_decision"
+      },
+      {
+        "tool": "lerCurso",
+        "view": "course_sources",
+        "mode": "catalog",
+        "purpose": "summarize_persistent_sources"
+      },
+      {
+        "tool": "lerCurso",
+        "view": "course_sources",
+        "mode": "source",
+        "purpose": "inspect_only_the_relevant_source"
+      },
+      {
+        "tool": "lerCurso",
+        "view": "course_source_attachment",
+        "attachmentOperation": "download",
+        "purpose": "read_pdf_only_when_the_task_requires_it"
+      }
+    ],
+    "prohibitedOperations": [
+      "incorporarPdfComoFonte",
+      "uploadCourseSourcePdf"
+    ],
     "expected": {
       "mentions": [
         "planejamento incompleto",
         "12 Partes",
         "nenhum conteúdo produzido",
-        "próxima decisão"
+        "próxima decisão",
+        "Fontes permanecem disponíveis"
       ],
       "doesNotExpose": [
         "courseId",
+        "sourceId",
+        "sourceRevision",
+        "anchorId",
+        "anchorRevision",
         "expectedRevision",
         "expectedPlanVersion",
         "requestId",

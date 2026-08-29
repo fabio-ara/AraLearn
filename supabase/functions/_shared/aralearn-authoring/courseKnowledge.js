@@ -44,10 +44,15 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   sources: Object.freeze({
     title: "Fontes e proveniência",
     instructions: Object.freeze([
-      "Leia o catálogo, a revisão da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência.",
+      "Numa nova sessão, localize primeiro o Curso pelo título humano, releia o planejamento corrente e percorra o catálogo de Fontes; preserve as identidades estruturadas internamente sem mostrá-las como referências para a pessoa.",
+      "Leia o catálogo, a edição pertinente da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência. Aprofunde somente as Fontes relevantes; não carregue nem abra todos os PDFs por padrão.",
       "Registre somente metadados fornecidos ou verificados; explicite lacunas e pergunte em vez de completar por plausibilidade.",
-      "citationText identifica a Fonte para pessoas, humanLocator nomeia o local declarado e selector preserva a localização exata.",
-      "Não grave Fontes dentro do conteúdo da Unidade; use sourceLinks e sourceAttributionApplication."
+      "citationText identifica a Fonte para pessoas, humanLocator nomeia o local declarado e selector preserva a localização exata. Em texto humano, cite a referência e o local, nunca sourceId, anchorId, revisão, hash ou caminho.",
+      "Para explicar a proveniência de um alvo, leia seus vínculos e depois abra cada Fonte necessária no contexto desse alvo; assim a citação usa a edição e a Âncora historicamente pinadas.",
+      "Crie uma Âncora nova somente na edição ativa e com localização verificada. Uma nova edição, errata ou norma substituta exige Âncoras próprias; nunca recicle silenciosamente seletores de outra edição.",
+      "Aposentar uma Fonte ou Âncora impede novos usos, mas não apaga a proveniência histórica. Não atualize conteúdo antigo apenas para fazê-lo apontar à edição mais recente.",
+      "Solicite o acesso temporário a um PDF somente quando uma verificação focal realmente exigir seus bytes e somente após a divulgação explícita exigida pelo contrato.",
+      "Não grave Fontes dentro do conteúdo da Unidade; use sourceLinks para itens do planejamento e sourceAttributionApplication para Unidades de estudo. Não invente outro tipo de alvo."
     ])
   }),
   inspection: Object.freeze({

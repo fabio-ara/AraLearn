@@ -166,6 +166,11 @@ integral de Observações só são enviados ao cliente conectado depois de uma
 solicitação explícita. Uma citação torna a origem localizável; não garante a
 verdade da afirmação nem a qualidade da Fonte.
 
+Em outra sessão, a assistência retoma essas Fontes a partir do Curso vivo,
+resume referências e localizadores humanos e abre somente o PDF necessário à
+verificação focal. A memória da conversa e um novo upload não substituem essa
+base persistente.
+
 Na Auditoria, contexto, achado, proposta, aplicação, verificação e reversão são
 estados distintos. Uma correção focal preserva o restante da estrutura e exige
 confirmação. Pesquisa e Variantes apresentam fatos e diferenças, sem converter
