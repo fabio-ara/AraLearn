@@ -348,6 +348,11 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
                 sourceId: metadata.sourceId,
                 sourceRevision: metadata.sourceRevision
               },
+              fileIdentity: {
+                fileId: `application-multipart:${requestId}`,
+                fileName: null,
+                mediaType: "application/pdf"
+              },
               bytes,
               mediaType: "application/pdf",
               deadlineAt: ingestionDeadlineAt

@@ -169,6 +169,48 @@ test("Actions projeta o PDF canônico somente pelo transporte oficial de arquivo
       "Referência ao único PDF enviado pela pessoa nesta conversa. O ChatGPT preenche este campo com a referência temporária do arquivo."
   });
   assert.ok(action.required.includes("openaiFileIdRefs"));
+
+  const source = {
+    kind: "document",
+    title: "Edital Dataprev 2026",
+    authorship: null,
+    publicationDate: "2026",
+    identifier: null,
+    language: "pt-BR",
+    citationText: "Edital Dataprev 2026",
+    url: null,
+    editionOrVersion: null,
+    origin: "author_provided",
+    availability: "private",
+    verificationStatus: "author_verified",
+    studyVisibility: "citation"
+  };
+  const payload = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 1,
+    sourceIntent: {
+      mode: "save",
+      sourceId: null,
+      expectedSourceRevision: 0,
+      source
+    },
+    openaiFileIdRefs: ["file-synthetic"]
+  };
+  const validate = actionValidators.incorporarPdfComoFonte;
+  assert.equal(validate(payload), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...payload,
+    sourceIntent: { ...payload.sourceIntent, expectedSourceRevision: 1 }
+  }), false);
+  assert.equal(validate({
+    ...payload,
+    sourceIntent: {
+      ...payload.sourceIntent,
+      sourceId: "source-existing",
+      expectedSourceRevision: 1
+    }
+  }), true, JSON.stringify(validate.errors));
 });
 
 test("projeção Action-safe não deixa allOf, const nem discriminador sem tipo", () => {
@@ -251,6 +293,7 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
     const dedicatedTypes = new Set(AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
       .filter(({ commandProperty }) => commandProperty === field)
       .map(({ commandType }) => commandType));
+    if (field === "sourceCommand") dedicatedTypes.add("attach_pdf");
     assert.deepEqual(
       sorted(command.properties.type.enum),
       sorted(AUTHORING_PROTOCOL_V1_VOCABULARY[vocabulary]
@@ -266,12 +309,18 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
   assert.match(change.properties.expectedPlanVersion.description, /update_instructional_plan/u);
   assert.match(change.properties.planCommand.description, /update_instructional_plan/u);
   for (const field of ["id", "position", "title", "intent"]) {
-    assert.match(change.properties.planCommand.properties[field].description, /add_part/u);
+    assert.doesNotMatch(
+      change.properties.planCommand.properties[field].description,
+      /add_part/u,
+      `${field} genérico não anuncia a operação dedicada removida`
+    );
   }
-  assert.match(
-    change.properties.planCommand.properties.position.description,
-    /zero-based.*primeira Parte/iu
-  );
+  const addPart = openApi.paths["/add_part"].post.requestBody
+    .content["application/json"].schema.properties.planCommand;
+  assert.equal(addPart.properties.id, undefined);
+  assert.deepEqual(addPart.properties.type.enum, ["add_part"]);
+  assert.equal(addPart.properties.position.maximum, 63);
+  assert.match(addPart.properties.position.description, /zero-based.*primeira Parte/iu);
   assert.deepEqual(
     sorted(change.properties.designCommand.properties.mode.enum),
     ["automatic", "explicit"]
@@ -328,6 +377,12 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
   }
   assert.match(read.properties.targetStudyUnitId.description, /view=audit_cycle, mode=context/iu);
   const materialization = change.properties.materializationCommand.properties;
+  assert.equal(materialization.materializationId.type, "string");
+  assert.equal(materialization.materializationId.anyOf, undefined);
+  assert.match(
+    materialization.materializationId.description,
+    /Ao iniciar, omita.*record_step.*finish.*preserve/iu
+  );
   assert.match(
     materialization.expectedMaterializationVersion.description,
     /operation=start`: inteiro 0\./u
@@ -354,6 +409,14 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
   );
   assert.match(courseEntity.properties.content.description, /entityType=module/iu);
   assert.match(courseEntity.properties.content.description, /entityType=study_unit/iu);
+  assert.equal(
+    courseEntity.properties.content.properties.branchOfUpsertIndex.maximum,
+    199
+  );
+  assert.equal(
+    courseEntity.properties.content.properties.dependsOnUpsertIndexes.items.type,
+    "integer"
+  );
   assert.deepEqual(findSchemaKeywordPaths(openApi, "oneOf"), []);
 });
 
@@ -430,6 +493,12 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
   );
   assert.equal(genericSchema.anyOf, undefined);
   assert.equal(genericSchema.oneOf, undefined);
+  assert.equal(
+    openApi.paths["/alterarCurso"].post.requestBody.content["application/json"]
+      .schema.properties.sourceCommand.properties.type.enum.includes("attach_pdf"),
+    false,
+    "Actions não deve oferecer o comando que pressupõe metadados internos de Storage."
+  );
 
   const base = {
     requestId: REQUEST_ID,
@@ -476,43 +545,62 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
     const forbiddenProperties = new Set(
       canonicalVariant.not.anyOf.map((rule) => rule.required[0])
     );
+    const generatedIdentityFields = new Set(projection.generatedIdentityFields || []);
     assert.deepEqual(
       sorted(Object.keys(schema.properties.planCommand.properties)),
       sorted(Object.keys(projectedCanonicalPlanCommand.properties)
-        .filter((name) => !forbiddenProperties.has(name))),
+        .filter((name) =>
+          !forbiddenProperties.has(name) && !generatedIdentityFields.has(name)
+        )),
       `${projection.operationId} precisa conservar todos os campos permitidos pela variante.`
     );
     assert.ok(schema.required.includes("expectedRevision"));
     assert.ok(schema.required.includes("expectedPlanVersion"));
     assert.ok(schema.required.includes("planCommand"));
-    assert.ok(schema.properties.planCommand.required.includes("sourceLinks"));
     const validate = ajv.compile({
       $ref: `${documentId}#/paths/${jsonPointerToken(projection.path)}` +
         "/post/requestBody/content/application~1json/schema"
     });
 
-    for (const kind of planItemKinds) {
+    const commands = projection.commandType === "add_plan_item"
+      ? planItemKinds.map((kind) => ({
+          type: "add_plan_item",
+          kind,
+          position: 0,
+          statement: `Item ${kind}`,
+          sourceLinks: []
+        }))
+      : projection.commandType === "update_plan_item"
+        ? planItemKinds.map((kind) => ({
+            type: "update_plan_item",
+            kind,
+            id: SECOND_ID,
+            statement: `Item ${kind}`,
+            sourceLinks: []
+          }))
+        : [{
+            type: "add_part",
+            position: 0,
+            title: "Fundamentos de Linux",
+            intent: "Introduzir terminal, arquivos e permissões."
+          }];
+    for (const command of commands) {
       const type = projection.commandType;
-      const command = {
-        type,
-        kind,
-        id: SECOND_ID,
-        statement: `Item ${kind}`,
-        sourceLinks: [],
-        ...(type === "add_plan_item" ? { position: 0 } : {})
-      };
       assert.equal(
         validate({ ...base, planCommand: command }),
         true,
-        `${type}/${kind}: ${JSON.stringify(validate.errors)}`
+        `${type}: ${JSON.stringify(validate.errors)}`
       );
-      const { sourceLinks, ...withoutSourceLinks } = command;
-      assert.deepEqual(sourceLinks, []);
-      assert.equal(
-        validate({ ...base, planCommand: withoutSourceLinks }),
-        false,
-        `${type}/${kind} não pode omitir sourceLinks.`
-      );
+      assert.equal(Object.hasOwn(command, "id"), type === "update_plan_item");
+      if (Object.hasOwn(command, "sourceLinks")) {
+        const { sourceLinks, ...withoutSourceLinks } = command;
+        assert.deepEqual(sourceLinks, []);
+        assert.equal(
+          validate({ ...base, planCommand: withoutSourceLinks }),
+          false,
+          `${type} não pode omitir sourceLinks.`
+        );
+      }
       assert.equal(
         validate({
           ...base,
@@ -543,9 +631,8 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
   for (const planCommandValue of [
     { type: "update_plan", objective: "Objetivo preservado" },
     {
-      type: "add_part",
+      type: "update_part",
       id: THIRD_ID,
-      position: 0,
       title: "Parte preservada",
       intent: "Organizar a progressão."
     }
@@ -857,6 +944,13 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
     ...materializationEnvelope,
     materializationCommand: start
   }, true);
+  const naturalStart = structuredClone(start);
+  delete naturalStart.materializationId;
+  delete naturalStart.steps[0].id;
+  assertParity("materialização start sem IDs novos", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: naturalStart
+  }, true);
   assertParity("materialização start incompleta", "alterarCurso", {
     ...materializationEnvelope,
     materializationCommand: {
@@ -886,6 +980,21 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
       entityChanges: { upserts: [], deletes: [] }
     }
   }, true);
+  assertParity("materialização record_step preserva identidade", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "record_step",
+      authoringPartId: SECOND_ID,
+      expectedMaterializationVersion: 1,
+      stepId: THIRD_ID,
+      expectedStepVersion: 1,
+      status: "completed",
+      resultFacts: {},
+      designApplication: null,
+      sourceAttributionApplication: null,
+      entityChanges: { upserts: [], deletes: [] }
+    }
+  }, false);
   assertParity("materialização finish", "alterarCurso", {
     ...materializationEnvelope,
     materializationCommand: {
@@ -897,6 +1006,19 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
       resultFacts: {}
     }
   }, true);
+  for (const invalidIdentity of [null, { generated: "não" }]) {
+    assertParity("materialização finish rejeita identidade inválida", "alterarCurso", {
+      ...materializationEnvelope,
+      materializationCommand: {
+        operation: "finish",
+        authoringPartId: SECOND_ID,
+        materializationId: invalidIdentity,
+        expectedMaterializationVersion: 2,
+        status: "completed",
+        resultFacts: {}
+      }
+    }, false);
+  }
 });
 
 test("AJV preserva vistas, paginação e operações de componentes", () => {

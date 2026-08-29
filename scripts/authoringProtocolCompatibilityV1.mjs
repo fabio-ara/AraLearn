@@ -443,16 +443,66 @@ const compareProperties = (previous, next, schemaPath, issues, compareSchema) =>
   }
 };
 
+const constraintGuaranteedBySchemas = (schemas, constraint, compareSchema) => {
+  if (!isObject(constraint)) return false;
+  const supported = new Set(["properties", "required", "not"]);
+  if (Object.keys(constraint).some((key) => !supported.has(key))) return false;
+  const propertySchemas = schemas.filter(isObject);
+  const required = Array.isArray(constraint.required) ? constraint.required : [];
+  if (required.some((field) => !propertySchemas.some((schema) =>
+    Array.isArray(schema.required) && schema.required.includes(field)
+  ))) {
+    return false;
+  }
+  for (const [field, requiredSchema] of Object.entries(constraint.properties || {})) {
+    const guaranteed = propertySchemas.some((schema) => {
+      const existing = schema.properties?.[field];
+      if (existing === undefined) {
+        return schema.additionalProperties === false;
+      }
+      const candidateIssues = [];
+      compareSchema(existing, requiredSchema, `$.constraint.${field}`, candidateIssues);
+      return candidateIssues.length === 0;
+    });
+    if (!guaranteed) return false;
+  }
+  if (constraint.not !== undefined) {
+    const forbidden = Array.isArray(constraint.not?.anyOf)
+      ? constraint.not.anyOf.flatMap((entry) =>
+          Array.isArray(entry?.required) && entry.required.length === 1
+            ? entry.required
+            : []
+        )
+      : [];
+    if (!forbidden.length || forbidden.some((field) => !propertySchemas.some((schema) =>
+      (schema.additionalProperties === false && !Object.hasOwn(schema.properties || {}, field)) ||
+      (Array.isArray(schema.not?.anyOf) && schema.not.anyOf.some(
+        (entry) => Array.isArray(entry?.required) && entry.required.includes(field)
+      ))
+    ))) {
+      return false;
+    }
+  }
+  return true;
+};
+
 const compareUnion = (previous, next, keyword, schemaPath, issues, compareSchema) => {
   const previousBranches = Array.isArray(previous?.[keyword]) ? previous[keyword] : null;
   const nextKeyword = Array.isArray(next?.[keyword])
     ? keyword
-    : keyword === "oneOf" && Array.isArray(next?.anyOf)
+    : keyword === "oneOf" && previousBranches && Array.isArray(next?.anyOf)
       ? "anyOf"
       : null;
   const nextBranches = nextKeyword ? next[nextKeyword] : null;
   if (!previousBranches) {
     if (nextBranches) {
+      const preservesPreviousSchema = nextBranches.some((nextBranch) => {
+        const candidateIssues = [];
+        compareSchema(previous, nextBranch, schemaPath, candidateIssues);
+        return candidateIssues.length === 0 ||
+          constraintGuaranteedBySchemas([previous], nextBranch, compareSchema);
+      });
+      if (preservesPreviousSchema) return;
       issues.push(issue(
         "union_constraint_added",
         `${schemaPath}.${nextKeyword}`,
@@ -533,6 +583,14 @@ const compareAllOf = (previous, next, schemaPath, issues, compareSchema) => {
     const key = allOfBranchKey(nextBranch);
     const previousBranch = previousByKey.get(key);
     if (previousBranch) {
+      const conditionalConstraintsRemainRedundant = ["then", "else"].every((keyword) =>
+        nextBranch[keyword] === undefined || constraintGuaranteedBySchemas(
+          [previous, previousBranch[keyword]],
+          nextBranch[keyword],
+          compareSchema
+        )
+      );
+      if (conditionalConstraintsRemainRedundant) continue;
       compareSchema(previousBranch, nextBranch, `${schemaPath}.allOf[${index}]`, issues);
       continue;
     }

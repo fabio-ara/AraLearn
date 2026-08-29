@@ -19,7 +19,7 @@ O AraLearn oferece três integrações relacionadas, mas distintas:
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
   canônicas de Curso;
 - **Actions/OpenAPI** conecta um GPT personalizado a seis operações canônicas
-  e duas projeções HTTP dedicadas a itens do plano.
+  e três projeções HTTP dedicadas a itens do plano e à criação de Parte.
 
 Os três caminhos chegam às mesmas regras de Curso. Eles não compartilham
 credencial, sessão ou protocolo. Perfil, acesso, cópia pessoal, ciclo de vida do
@@ -152,9 +152,9 @@ Leituras especializadas usam vistas, como Planejamento, Fontes, Observações,
 Auditoria, Variantes e Pesquisa. Escritas especializadas usam comandos fechados
 de `alterarCurso`.
 
-Actions publica as seis operações canônicas e duas projeções HTTP dedicadas a
-itens do plano em uma descrição OpenAPI. Seu cliente OAuth é confidencial e
-separado do principal OAuth do MCP.
+Actions publica as seis operações canônicas e três projeções HTTP dedicadas a
+itens do plano e à criação de Parte em uma descrição OpenAPI. Seu cliente OAuth
+é confidencial e separado do principal OAuth do MCP.
 A [Autoria por MCP](autoria-mcp.md) documenta o primeiro canal; [GPT
 personalizado com Actions](autoria-actions.md) documenta o segundo.
 

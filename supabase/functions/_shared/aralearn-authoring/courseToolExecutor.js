@@ -13,6 +13,7 @@ import { courseAuthoringGuidanceForCall } from "./courseKnowledge.js";
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
 import { normalizeCourseSourcePdfIngestion } from
   "../aralearn/runtime/domain/courseSources.js";
+import { withTrustedCreationIdentities } from "./trustedCreationIdentity.js";
 
 function parseStudyUnitJson(source) {
   try {
@@ -597,11 +598,12 @@ export async function executeCourseTool({
       "A sessão não permite usar esta ferramenta."
     );
   }
+  const trustedArguments = await withTrustedCreationIdentities(name, rawArguments);
   const operation = surface === "application"
-    ? mapAuthoringApplicationToolCall(name, rawArguments, {
+    ? mapAuthoringApplicationToolCall(name, trustedArguments, {
         inspectionVersion: applicationInspectionVersion
       })
-    : mapAuthoringProtocolV1Call(name, rawArguments);
+    : mapAuthoringProtocolV1Call(name, trustedArguments);
   if (typeof onRequestIdValidated === "function") {
     onRequestIdValidated(operation.requestId ?? null);
   }
@@ -621,23 +623,36 @@ export async function executeCourseTool({
         "O AraLearn não conseguiu receber este documento agora."
       );
     }
-    const bytes = await resolveOpenAiTemporaryPdf({
-      descriptor: operation.body.pdf,
-      fetchImpl: adapter.fetchImpl ?? globalThis.fetch,
+    const ingestion = {
+      principal,
+      courseId: operation.body.courseId,
+      expectedCourseRevision: operation.body.expectedCourseRevision,
+      requestId: operation.body.requestId,
+      sourceIntent: operation.body.sourceIntent,
+      fileIdentity: {
+        fileId: operation.body.pdf.file_id,
+        fileName: operation.body.pdf.file_name ?? null,
+        mediaType: operation.body.pdf.mime_type ?? null
+      },
       deadlineAt
-    });
-    const result = confirmedCourseSourcePdfIngestion(
-      await adapter.ingestCourseSourcePdf({
-        principal,
-        courseId: operation.body.courseId,
-        expectedCourseRevision: operation.body.expectedCourseRevision,
-        requestId: operation.body.requestId,
-        sourceIntent: operation.body.sourceIntent,
-        bytes,
-        mediaType: "application/pdf",
+    };
+    let result = typeof adapter?.getCourseSourcePdfIngestionReceipt === "function"
+      ? await adapter.getCourseSourcePdfIngestionReceipt(ingestion)
+      : null;
+    if (result === null) {
+      const bytes = await resolveOpenAiTemporaryPdf({
+        descriptor: operation.body.pdf,
+        fetchImpl: adapter.fetchImpl ?? globalThis.fetch,
         deadlineAt
-      })
-    );
+      });
+      result = confirmedCourseSourcePdfIngestion(await adapter.ingestCourseSourcePdf({
+        ...ingestion,
+        bytes,
+        mediaType: "application/pdf"
+      }));
+    } else {
+      result = confirmedCourseSourcePdfIngestion(result);
+    }
     const data = surface === "mcp"
       ? projectCourseToolResultForMcp(result, { recipient: projectionRecipient })
       : result;

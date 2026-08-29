@@ -118,8 +118,9 @@ por Microssequência no próprio chat e oferecer o endereço filtrado da Autoria
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
-autorizadas. Suas seis operações canônicas e duas projeções dedicadas a itens do
-plano atuam sobre os mesmos contratos de Curso, com OAuth confidencial próprio.
+autorizadas. Suas seis operações canônicas e três projeções dedicadas a itens do
+plano e à criação de Parte atuam sobre os mesmos contratos de Curso, com OAuth
+confidencial próprio.
 Actions não é um nome alternativo para
 MCP e não compartilha sua sessão ou seu protocolo.
 

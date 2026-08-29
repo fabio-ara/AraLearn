@@ -9,7 +9,8 @@ import {
   AUTHORING_PROTOCOL_ID,
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
-  AUTHORING_PROTOCOL_V1_TOOLS
+  AUTHORING_PROTOCOL_V1_TOOLS,
+  UUID_PATTERN
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import {
   AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
@@ -30,7 +31,6 @@ const APP_URL = "https://app.example/";
 const ACTOR_ID = "10000000-0000-4000-8000-000000000001";
 const ANNOTATION_ID = "20000000-0000-4000-8000-000000000002";
 const PLAN_ID = "30000000-0000-4000-8000-000000000003";
-const PART_ID = "40000000-0000-4000-8000-000000000004";
 
 function annotation({ state = "open" } = {}) {
   return {
@@ -398,38 +398,38 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
 
   const partChange = await changePlan("action-plan-part-0001", afterOverview, {
     type: "add_part",
-    id: PART_ID,
     position: 0,
     title: "Fundamentos verificáveis",
     intent: "Organizar a primeira progressão didática."
-  });
+  }, "add_part");
   assert.equal(partChange.courseRevision, 3);
   assert.equal(partChange.planVersion, 3);
   const afterPart = await readPlan();
-  assert.deepEqual(afterPart.plan.parts, [{
-    id: PART_ID,
-    position: 0,
-    title: "Fundamentos verificáveis",
-    intent: "Organizar a primeira progressão didática.",
-    microsequenceIds: []
-  }]);
+  assert.equal(afterPart.plan.parts.length, 1);
+  assert.match(afterPart.plan.parts[0].id, UUID_PATTERN);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(afterPart.plan.parts[0]).filter(([field]) => field !== "id")),
+    {
+      position: 0,
+      title: "Fundamentos verificáveis",
+      intent: "Organizar a primeira progressão didática.",
+      microsequenceIds: []
+    }
+  );
 
   let afterItems = afterPart;
   const beforeFirstItem = afterItems;
   const itemCases = [{
     kind: "intended_learning_outcome",
     collection: "intendedLearningOutcomes",
-    id: "50000000-0000-4000-8000-000000000005",
     statement: "Explicar os fundamentos em uma situação nova."
   }, {
     kind: "instructional_analysis_unit",
     collection: "instructionalAnalysisUnits",
-    id: "60000000-0000-4000-8000-000000000006",
     statement: "Distinguir os conceitos necessários à explicação."
   }, {
     kind: "evidence_requirement",
     collection: "evidenceRequirements",
-    id: "70000000-0000-4000-8000-000000000007",
     statement: "Produzir uma explicação fundamentada para um caso novo."
   }];
   for (const [index, item] of itemCases.entries()) {
@@ -439,7 +439,6 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
       {
         type: "add_plan_item",
         kind: item.kind,
-        id: item.id,
         position: 0,
         statement: item.statement,
         sourceLinks: []
@@ -450,12 +449,14 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
     assert.equal(itemChange.planVersion, 4 + index);
     assert.equal(itemChange.deepLink, deepLink);
     afterItems = await readPlan();
-    assert.deepEqual(afterItems.plan[item.collection], [{
-      id: item.id,
-      position: 0,
-      statement: item.statement,
-      sourceLinks: []
-    }]);
+    assert.equal(afterItems.plan[item.collection].length, 1);
+    item.id = afterItems.plan[item.collection][0].id;
+    assert.match(item.id, UUID_PATTERN);
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(afterItems.plan[item.collection][0])
+        .filter(([field]) => field !== "id")),
+      { position: 0, statement: item.statement, sourceLinks: [] }
+    );
   }
 
   const updatedFirstItemStatement = "Explicar e comparar os fundamentos em uma situação nova.";
@@ -489,7 +490,6 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
     planCommand: {
       type: "add_plan_item",
       kind: itemCases[0].kind,
-      id: itemCases[0].id,
       position: 0,
       statement: itemCases[0].statement,
       sourceLinks: []
@@ -513,7 +513,6 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
     planCommand: {
       type: "add_plan_item",
       kind: "intended_learning_outcome",
-      id: "80000000-0000-4000-8000-000000000008",
       position: 1,
       statement: "Este payload precisa ser recusado antes do adaptador."
     }
@@ -674,6 +673,11 @@ test("Actions autentica e converte o runtime oficial de um PDF antes da ingestã
     sourceId: "fonte-edital",
     sourceRevision: 1
   });
+  assert.deepEqual(ingestion.fileIdentity, {
+    fileId,
+    fileName: "edital-sintetico.pdf",
+    mediaType: "application/pdf"
+  });
   assert.deepEqual(ingestion.bytes, pdfBytes);
   assert.equal(ingestion.mediaType, "application/pdf");
   assert.equal(payload.data.stored, true);
@@ -684,6 +688,79 @@ test("Actions autentica e converte o runtime oficial de um PDF antes da ingestã
   );
   assert.equal(payload.conversation.level, "operational");
   assert.match(payload.conversation.message, /incorporado às Fontes/iu);
+  assert.equal(JSON.stringify(payload).includes(downloadLink), false);
+  assert.equal(JSON.stringify(payload).includes(fileId), false);
+});
+
+test("Actions recupera ingestão confirmada antes de acessar uma URL temporária expirada", async () => {
+  const downloadLink =
+    "https://files.oaiusercontent.com/edital.pdf?sig=expirado-e-nao-reutilizavel";
+  const fileId = "file-ingestion-receipt-0001";
+  const contentHash = "c".repeat(64);
+  let downloads = 0;
+  let ingestions = 0;
+  let receiptInput = null;
+  const response = await createHandler({
+    async fetchImpl() {
+      downloads += 1;
+      assert.fail("Um replay confirmado não pode baixar novamente a URL temporária.");
+    },
+    async ingestCourseSourcePdf() {
+      ingestions += 1;
+      assert.fail("Um replay confirmado não pode repetir a ingestão.");
+    },
+    async getCourseSourcePdfIngestionReceipt(value) {
+      receiptInput = value;
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 5,
+        requestId: value.requestId,
+        idempotent: true,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "fonte-edital", revision: 2 },
+        source: {
+          sourceId: "fonte-edital",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash,
+          byteSize: 24_862,
+          mediaType: "application/pdf",
+          storagePath: `${ACTOR_ID}/${contentHash}.pdf`
+        },
+        stored: true
+      };
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-receipt-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "existing",
+      sourceId: "fonte-edital",
+      sourceRevision: 1
+    },
+    openaiFileIdRefs: [{
+      name: "edital-dataprev-2026.pdf",
+      id: fileId,
+      mime_type: "application/pdf",
+      download_link: downloadLink
+    }]
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(downloads, 0);
+  assert.equal(ingestions, 0);
+  assert.deepEqual(receiptInput.fileIdentity, {
+    fileId,
+    fileName: "edital-dataprev-2026.pdf",
+    mediaType: "application/pdf"
+  });
+  assert.equal(payload.data.stored, true);
+  assert.equal(payload.data.idempotent, true);
   assert.equal(JSON.stringify(payload).includes(downloadLink), false);
   assert.equal(JSON.stringify(payload).includes(fileId), false);
 });
@@ -1009,7 +1086,7 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
       import.meta.url
     )
   );
-  assert.ok(file.byteLength < 128 * 1024);
+  assert.ok(file.byteLength < 136 * 1024);
   const openApi = JSON.parse(file);
   assert.equal(openApi.info["x-aralearn-protocol"], AUTHORING_PROTOCOL_ID);
   assert.equal(

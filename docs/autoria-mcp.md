@@ -461,6 +461,44 @@ na mesma transação.
 O alvo do plano aceita até 192 vínculos de Microssequência no total e 512 KiB;
 esse limite mantém sua leitura enriquecida abaixo do orçamento do transporte.
 
+### Responsabilidade pelas identidades
+
+Uma referência a entidade existente vem da leitura do Curso e é preservada
+pelo cliente. A identidade de uma entidade nova é responsabilidade da camada
+confiável comum a MCP e Actions, não da pessoa nem do modelo. O protocolo v1
+mantém os campos antigos opcionais para clientes compatíveis, mas uma integração
+nova deve omiti-los na criação.
+
+A geração usa Curso, `requestId`, operação e um slot estrutural estável. Um
+retry idêntico recebe os mesmos UUIDs e chega à idempotência com o mesmo payload.
+A regra cobre:
+
+- resultado de aprendizagem pretendido, unidade de análise instrucional,
+  requisito de evidência, Parte nova e Parte resultante de divisão;
+- Fonte e Âncora criadas com revisão esperada zero e Anotação nova;
+- rodada, verificação, achado e correção de Auditoria;
+- conjunto de comparação de variantes;
+- Módulo, Lição, Tópico, Microssequência e Unidade novos na composição;
+- execução, etapas e entidades novas de uma materialização.
+
+Relações entre objetos novos do mesmo lote usam índices locais validados, como
+`parentUpsertIndex`, `studyUnitUpsertIndex`, `checkIndex`,
+`branchOfUpsertIndex` e `dependsOnUpsertIndexes`; a camada confiável os resolve
+para as identidades geradas antes do domínio. Dependências de Microssequência
+continuam restritas a objetos anteriores da mesma Lição, e a ramificação só
+aceita outra Microssequência da mesma Lição. Em atualizações,
+aposentadorias, vínculos e demais operações sobre objetos existentes, o ID lido
+continua obrigatório. `criarCurso` e `create_inspection_focus` já delegam suas
+identidades ao banco. A ingestão de PDF também gera a identidade da Fonte de
+forma estável quando `sourceIntent: save` cria uma Fonte nova.
+
+Os Cursos filhos criados por `create_comparison_variants` recebem identidade do
+banco; o cliente fornece apenas as diferenças declaradas e o conjunto de
+comparação. `opportunityId`, usado na aplicação do desenho, é uma chave semântica
+local da oportunidade pedagógica, não UUID de infraestrutura nem identidade de
+entidade persistida. Do mesmo modo, `covers`, `checks` e `errors` são enunciados
+pedagógicos; não devem ser tratados como referências técnicas.
+
 `update_course_sources` aceita somente os comandos `save_source`,
 `retire_source`, `save_anchor`, `retire_anchor`, `attach_pdf` e
 `set_target_sources`. Um
@@ -502,13 +540,23 @@ um PDF de até 20 MiB; cada revisão de Fonte admite oito anexos e o Curso admit
 64 MiB de conteúdo PDF único. Repetir os mesmos bytes reutiliza o conteúdo sem
 duplicá-lo.
 
+Antes de baixar novamente uma URL temporária, o executor consulta um recibo
+owner-only pela pessoa, Curso, revisão, intenção, `requestId`, canal e identidade
+estável do arquivo fornecida pelo cliente. Um recibo compatível evita novo
+download, mas ainda exige que o objeto privado seja relido e tenha tamanho,
+estrutura e hash confirmados. Reutilizar o mesmo `requestId` com outro arquivo é
+recusado; a URL assinada nunca participa do recibo. Recibos expirados são
+removidos sob o mesmo lock da repetição segura.
+
 O cliente só anuncia que o documento passou a integrar as Fontes quando o
 resultado confirma `stored: true`. Falha de transferência, limite excedido ou
 resultado incerto são explicados em termos da tarefa e nunca viram falso
 sucesso. Hash, tamanho e caminho ficam no estado estruturado e só aparecem sob
 pedido técnico explícito. O comando `attach_pdf` de `update_course_sources`
 permanece aceito apenas para compatibilidade com clientes anteriores; novas
-integrações usam `incorporarPdfComoFonte`.
+integrações usam `incorporarPdfComoFonte`. A projeção de Actions não anuncia o
+comando legado, evitando que um GPT escolha por engano o caminho que pressupõe
+metadados internos já existentes.
 
 `update_course_variants` aceita `create_comparison_variants` e
 `detach_comparison_variant`. A criação recebe de duas a oito variantes, fixa o
@@ -831,7 +879,14 @@ npm run test:authoring:supabase:e2e
 O último teste exige Supabase e todas as Edge Functions locais em execução,
 credenciais efêmeras e `ARALEARN_E2E_REAL_SUPABASE=1`. Ele atravessa a interface
 servida por `public/main.js`, IndexedDB, API de Cursos, PostgreSQL, Storage, RLS,
-registro e autorização OAuth com PKCE e chamadas MCP. A mesma jornada cria a
+registro e autorização OAuth com PKCE, chamadas MCP e o OpenAPI servido pela
+superfície de Actions. Um probe HTTP chama a Edge Function local pela rota
+publicada e comprova que o binding inválido é recusado antes de qualquer escrita.
+O caso bem-sucedido usa o mesmo handler público da Action e injeta somente o
+fetch da URL temporária que, fora do teste, é fornecida pela OpenAI; executor,
+autorização, banco e Storage são reais. Outro cliente Actions localiza o Curso
+apenas pelo título e recupera
+a Fonte, o mesmo PDF e a Âncora. A mesma jornada cria a
 estrutura mínima, vincula uma Microssequência à Parte, inicia uma materialização,
 registra a etapa de contexto, relê `part_materialization` e comprova a chegada do
 andamento à interface e ao IndexedDB. Abrir **Ver etapas** não envia nova escrita
@@ -840,9 +895,11 @@ dados descartáveis criados. A jornada também cobre edição manual, assistênc
 com provider simulado, eventos `manual` e `provider_assistance`, releitura da API e do
 PostgreSQL e promoção no IndexedDB.
 
-Essa prova é local e automatizada. Ela não comprova, sozinha, a usabilidade da
-assistência num navegador ou aparelho real nem o fluxo dentro de um cliente
-externo. A verificação hospedada só deve ser executada depois que as
+Essa prova é local e automatizada. Ela não comprova, sozinha, que um GPT externo
+salvo recebeu o OpenAPI novo nem que o ChatGPT emitiu a referência temporária do
+anexo. Essa ligação final exige uma conversa nova no GPT configurado. A prova
+também não substitui a usabilidade da assistência num navegador ou aparelho
+real. A verificação hospedada só deve ser executada depois que as
 migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
 O smoke hospedado também compara o cabeçalho e o metadado servidos, além do
 esquema completo de `tools/list`, com o catálogo canônico local. Somente

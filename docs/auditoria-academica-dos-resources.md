@@ -293,7 +293,7 @@ pelo modelo (tokens).
 | maior resposta de um contrato exato | 13.117 bytes | 16 KiB |
 | soma das 32 respostas de contrato, consultadas separadamente | 191.078 bytes | 200 KiB |
 | Curso de catálogo completo em disco | 361.088 bytes | lido por recortes no produto |
-| definições das seis ferramentas MCP publicadas | 94.698 bytes | 100.000 bytes |
+| definições das seis ferramentas MCP publicadas | 101.763 bytes | 104.000 bytes |
 | código dos componentes espelhado no navegador e na Edge | 51 arquivos; 548.156 bytes | 560 KiB |
 
 O fluxo publicado permanece com seis ferramentas MCP e não cria tabela ou objeto de

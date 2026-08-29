@@ -4,6 +4,32 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.44] - 2026-08-29
+
+### Alterado
+
+- a camada confiável comum a MCP e Actions passa a gerar identidades estáveis
+  para entidades novas, sem pedir UUID à pessoa ou depender de identificador
+  inventado pelo modelo;
+- Actions publica uma projeção dedicada para criar Parte e mantém IDs técnicos
+  fora das projeções de criação de Parte e item formal do plano;
+- a descoberta de Actions oferece `incorporarPdfComoFonte` com o binding oficial
+  de arquivo e deixa de anunciar o comando legado que pressupõe metadados do
+  Storage.
+
+### Corrigido
+
+- a ingestão de PDF pela superfície conversacional percorre o binding público,
+  autorização, validação, RLS, PostgreSQL e Storage antes de confirmar a Fonte;
+- retries de criação preservam o mesmo payload, CAS e idempotência, inclusive
+  para Partes, itens do plano, Fontes, Âncoras e demais entidades autorais;
+- retries de ingestão já confirmada deixam de depender da URL temporária,
+  revalidam propriedade e Storage e recusam outro arquivo sob o mesmo pedido;
+- relações entre Microssequências novas do mesmo lote usam índices locais sem
+  exigir que o modelo invente identidades técnicas;
+- a regressão de retomada abre outro cliente, localiza o Curso apenas pelo
+  título e recupera Parte, Fonte, PDF e Âncora persistidos.
+
 ## [0.0.43] - 2026-08-29
 
 ### Adicionado
@@ -25,7 +51,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - erros de upload, limite, acesso e concorrência deixam de produzir confirmação
   indevida de escrita;
 - MCP, Actions, aplicação web e Android passam a compartilhar o contrato de
-  ingestão e retomada de Fontes da revisão hospedada `20260829043629`.
+  ingestão e retomada de Fontes da revisão hospedada `20260829205000`.
 
 ## [0.0.38] - 2026-08-27
 

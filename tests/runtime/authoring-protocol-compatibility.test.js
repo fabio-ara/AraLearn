@@ -146,6 +146,13 @@ test("detector permite somente ampliações conhecidas do idioma público", () =
   }, ["operation"]))];
 
   assert.deepEqual(findBreakingAuthoringProtocolChanges(previous, next), []);
+
+  assert.deepEqual(findBreakingAuthoringProtocolChanges(
+    [syntheticTool(objectSchema({ value: { type: "string" } }))],
+    [syntheticTool(objectSchema({
+      value: { anyOf: [{ type: "string" }, { type: "null" }] }
+    }))]
+  ), []);
 });
 
 test("detector bloqueia remoções e estreitamentos de schema no mesmo major", () => {

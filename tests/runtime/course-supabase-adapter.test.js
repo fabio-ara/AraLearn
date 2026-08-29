@@ -2855,6 +2855,68 @@ test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bib
   assert.match(upload.url, new RegExp(`${COURSE_ID}/${contentHash}\\.pdf$`, "u"));
 });
 
+test("adapter recupera recibo de ingestão pelo arquivo público e reverifica o PDF privado", async () => {
+  const pdfBytes = syntheticPdf("receipt");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const fileIdentity = {
+    fileId: "file-adapter-receipt-0001",
+    fileName: "edital.pdf",
+    mediaType: "application/pdf"
+  };
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, method: init.method, body });
+    if (url.endsWith("/get_course_source_pdf_ingestion_receipt_for_actor_v1")) {
+      assert.deepEqual(body.p_file_identity, fileIdentity);
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-ingest-receipt-1",
+        idempotent: true,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 },
+        source: {
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment: {
+          contentHash,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath
+        },
+        stored: true
+      });
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: {
+          "Content-Length": String(pdfBytes.byteLength),
+          "Content-Type": "application/pdf"
+        }
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  const result = await value.getCourseSourcePdfIngestionReceipt({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-receipt-1",
+    sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+    fileIdentity
+  });
+  assert.equal(result.idempotent, true);
+  assert.equal(result.stored, true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].method, "GET");
+});
+
 test("ingestão recusa mídia e estrutura inválidas antes de acessar Supabase", async () => {
   let calls = 0;
   const value = adapter(async () => {

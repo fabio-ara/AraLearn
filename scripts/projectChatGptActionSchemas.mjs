@@ -1426,6 +1426,23 @@ function projectChatGptActionFileInput(toolName, inputSchema) {
       "incorporarPdfComoFonte precisa declarar o descritor canônico pdf como obrigatório."
     );
   }
+  const sourceIntent = projected.properties?.sourceIntent;
+  if (!object(sourceIntent) || !object(sourceIntent.properties?.sourceId) ||
+      !object(sourceIntent.properties?.expectedSourceRevision)) {
+    throw new TypeError(
+      "incorporarPdfComoFonte perdeu os controles de identidade da Fonte."
+    );
+  }
+  sourceIntent.anyOf = [{
+    properties: { sourceId: { type: "string" } },
+    required: ["sourceId"]
+  }, {
+    properties: {
+      sourceId: { type: "null" },
+      expectedSourceRevision: { type: "integer", enum: [0] }
+    },
+    required: ["sourceId", "expectedSourceRevision"]
+  }];
   delete projected.properties.pdf;
   projected.properties.openaiFileIdRefs = {
     type: "array",
@@ -1531,13 +1548,18 @@ function specializeActionCommandTool(tool, projection) {
     commandVariant,
     `${projection.operationId}.${projection.commandProperty}`
   );
+  const generatedIdentityFields = new Set(projection.generatedIdentityFields || []);
+  const commandProperties = selectedProperties(
+    command.properties,
+    commandPropertyNames,
+    commandVariant.properties
+  );
+  for (const field of generatedIdentityFields) delete commandProperties[field];
   const specializedCommand = {
     type: "object",
     additionalProperties: false,
-    properties: selectedProperties(command.properties, commandPropertyNames, {
-      type: commandVariant.properties.type
-    }),
-    required: commandRequired,
+    properties: commandProperties,
+    required: commandRequired.filter((field) => !generatedIdentityFields.has(field)),
     ...(command.description ? { description: command.description } : {})
   };
   const rootPropertyNames = variantPropertyNames(
@@ -1610,6 +1632,37 @@ function omitDedicatedCommandVariants(tool, projections) {
         delete command.properties[field];
       }
     }
+    const stripOmittedTypeFromDescriptions = (value, commandType) => {
+      if (!value || typeof value !== "object") return;
+      if (typeof value.description === "string") {
+        const marker = `\`type=${commandType}\``;
+        value.description = value.description
+          .split(/(?<=\.)\s+/u)
+          .flatMap((sentence) => {
+            if (sentence.startsWith(`Em ${marker}:`)) return [];
+            const cleaned = sentence
+              .replaceAll(`${marker}, `, "")
+              .replaceAll(`, ${marker}`, "")
+              .replaceAll(marker, "")
+              .trim();
+            return /^(?:Use somente em|Obrigatório em)\s*\.$/u.test(cleaned)
+              ? []
+              : [cleaned];
+          })
+          .join(" ");
+      }
+      for (const child of Object.values(value)) {
+        stripOmittedTypeFromDescriptions(child, commandType);
+      }
+    };
+    for (const commandType of omittedTypes) {
+      stripOmittedTypeFromDescriptions(command, commandType);
+      if (JSON.stringify(command).includes(`type=${commandType}`)) {
+        throw new TypeError(
+          `${tool.name}.${commandProperty} ainda descreve a variante omitida ${commandType}.`
+        );
+      }
+    }
   }
   return clone;
 }
@@ -1623,10 +1676,18 @@ export function projectChatGptActionTransportTools(actionTools, projections) {
     projections,
     (projection) => projection.canonicalToolName
   );
-  const genericTools = actionTools.map((tool) => omitDedicatedCommandVariants(
-    tool,
-    projectionsByTool.get(tool.name) || []
-  ));
+  const genericTools = actionTools.map((tool) => {
+    const withoutDedicated = omitDedicatedCommandVariants(
+      tool,
+      projectionsByTool.get(tool.name) || []
+    );
+    return tool.name === "alterarCurso"
+      ? omitDedicatedCommandVariants(withoutDedicated, [{
+          commandProperty: "sourceCommand",
+          commandType: "attach_pdf"
+        }])
+      : withoutDedicated;
+  });
   const dedicatedTools = projections.map((projection) => {
     const canonical = toolsByName.get(projection.canonicalToolName);
     if (!canonical) {

@@ -14,11 +14,16 @@ const fixtureUrl = new URL(
   "../fixtures/conversational-authoring-resumption.v1.json",
   import.meta.url
 );
+const editalPdfFixtureUrl = new URL(
+  "../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf",
+  import.meta.url
+);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const NOMINAL_TECHNICAL_PATTERN = /\b(?:courseId|sourceId|sourceRevision|anchorId|anchorRevision|expectedRevision|expectedPlanVersion|requestId|storagePath|contentHash|CAS)\b/iu;
 
-function syntheticPdfBytes(key) {
+async function fixturePdfBytes(key) {
+  if (key === "edital") return readFile(editalPdfFixtureUrl);
   return Buffer.from(
     "%PDF-1.4\n" +
     "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
@@ -62,7 +67,7 @@ test("fixture conversacional Dataprev é sintética, segura e cobre a retomada p
     synthetic: true,
     mutableTargetAllowed: false,
     liveCourseLookupAllowed: false,
-    pdfBytes: "generated-minimal-pdf-only"
+    pdfBytes: "generated-valid-synthetic-pdf-only"
   });
   assert.equal(fixture.course.title, "Dataprev: Gestão de Servidores");
   assert.equal(fixture.course.plan.complete, false);
@@ -98,12 +103,19 @@ test("fixture conversacional Dataprev é sintética, segura e cobre a retomada p
     attachment.sourceRevision === revision &&
     attachment.stored === true));
   for (const { key, attachment } of fixture.sources) {
-    const pdfBytes = syntheticPdfBytes(key);
+    const pdfBytes = await fixturePdfBytes(key);
     assert.equal(attachment.byteSize, pdfBytes.byteLength);
     assert.equal(
       attachment.contentHash,
       createHash("sha256").update(pdfBytes).digest("hex")
     );
+    if (key === "edital") {
+      const pdfStructure = pdfBytes.toString("latin1");
+      assert.match(pdfStructure, /^%PDF-1\.[4-9]/u);
+      assert.match(pdfStructure, /\/Type\s*\/Pages/u);
+      assert.match(pdfStructure, /\/Count\s+44\b/u);
+      assert.match(pdfStructure, /%%EOF\s*$/u);
+    }
   }
   assert.deepEqual(
     fixture.sources.map(({ source }) => ({

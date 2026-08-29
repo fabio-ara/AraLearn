@@ -37,7 +37,7 @@ detalhe recuperado sem fabricar campos ausentes.
 2. Autorize sua conta individual por OAuth.
 3. No MCP, confirme a descoberta das seis ferramentas e dos recursos
    `aralearn://authoring/*`; em Actions, confira as seis operações canônicas e as
-   duas projeções dedicadas importadas do OpenAPI.
+   três projeções dedicadas importadas do OpenAPI.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
    propor alterações.
 
@@ -93,6 +93,12 @@ Partes. Essas mudanças preservam as Unidades já produzidas. Depois que as
 Microssequências existem, atribua a cada uma as unidades de análise e os
 requisitos de evidência que ela precisa desenvolver. Essa atribuição é
 explícita e admite vários itens em vários alvos.
+
+Ao criar um resultado de aprendizagem, uma unidade de análise, um requisito de
+evidência ou uma Parte, informe apenas os dados autorais. A camada confiável
+gera a identidade; nem a pessoa nem o modelo precisam fornecer um UUID. Para
+editar, mover, dividir ou vincular algo existente, o cliente preserva em
+silêncio a identidade recuperada na leitura do Curso.
 
 Quando a escrita ainda depender de uma decisão humana ou possuir confirmação
 própria, a confirmação deve explicar alcance e efeito pedagógico. Um
@@ -194,6 +200,11 @@ use `incorporarPdfComoFonte`: a operação recebe o PDF pelo mecanismo de arquiv
 suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
 salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
 ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
+
+Quando a intenção cria uma Fonte ou uma Âncora, a pessoa também não informa ID:
+a camada confiável o gera de forma repetível e a releitura confirma o registro.
+Em Actions, o GPT deve descobrir `openaiFileIdRefs` em
+`incorporarPdfComoFonte`; o comando legado `attach_pdf` não é oferecido.
 
 A intenção determina se o anexo fica apenas na conversa ou passa a integrar o
 Curso:

@@ -27,10 +27,12 @@ e Pesquisa aparecem como vistas de `lerCurso` ou operações fechadas de
 `incorporarPdfComoFonte`. O GPT não recebe uma rota genérica para banco nem uma
 operação por tabela.
 
-O OpenAPI apresenta ainda `add_plan_item` e `update_plan_item` como projeções
-dedicadas de Actions. Elas continuam executando as variantes homônimas de
-`planCommand` dentro de `alterarCurso`; não acrescentam comandos ao protocolo
-público nem criam outro caminho no domínio.
+O OpenAPI apresenta ainda `add_plan_item`, `update_plan_item` e `add_part` como
+projeções dedicadas de Actions. Elas continuam executando as variantes
+homônimas de `planCommand` dentro de `alterarCurso`; não acrescentam comandos ao
+protocolo público nem criam outro caminho no domínio. As projeções de criação
+omitem a identidade técnica: a camada confiável a gera antes de chegar ao
+domínio.
 
 O OpenAPI é uma projeção do protocolo público
 `aralearn.authoring-protocol.v1`, não uma cópia dos tipos internos do domínio.
@@ -60,12 +62,14 @@ expõe uma superfície agregada, derivada dessas variantes, com todos os campos,
 enums discriminadores e condições de uso nas descrições.
 
 O importador também ignora campos obrigatórios declarados somente dentro de
-uma condição aninhada. Por isso, `add_plan_item` e `update_plan_item` recebem
-projeções dedicadas: cada uma contém um objeto `planCommand` sem union, cujo
-`required` direto inclui `sourceLinks` — inclusive `[]` quando não há Fonte a
-vincular. A projeção genérica deixa de anunciar essas duas variantes para que o
-GPT não escolha a forma ambígua. O servidor mantém o vocabulário canônico e
-continua aplicando a variante estrita antes de executar a chamada.
+uma condição aninhada. Por isso, `add_plan_item`, `update_plan_item` e
+`add_part` recebem projeções dedicadas. As duas primeiras contêm um objeto
+`planCommand` sem union, cujo `required` direto inclui `sourceLinks` — inclusive
+`[]` quando não há Fonte a vincular. `add_part` expõe somente os dados
+pedagógicos e de posição; não pede ID. A projeção genérica deixa de anunciar
+essas três variantes para que o GPT não escolha a forma ambígua. O servidor
+mantém o vocabulário canônico e continua aplicando a variante estrita antes de
+executar a chamada.
 
 ## Preparar um cliente OAuth
 
@@ -174,6 +178,23 @@ humana. Pode acrescentar transparência leve sobre releitura ou validação; em 
 falha, passa a diagnóstico humano; IDs, CAS, payload, chamada e erro bruto ficam
 para pedido técnico explícito.
 
+Identidades têm uma regra única. O GPT preserva as identidades que releu para
+alterar objetos existentes, mas omite a identidade de um objeto novo. Antes da
+validação do domínio, a camada confiável comum a Actions e MCP gera um UUID a
+partir do Curso, do `requestId`, da operação e da posição estrutural do objeto.
+Repetir a mesma chamada produz, assim, a mesma identidade e o mesmo payload;
+CAS e idempotência continuam independentes. Isso vale para novos itens formais
+do plano, Partes, Fontes, Âncoras, Anotações, rodadas e achados de Auditoria,
+correções, comparações, entidades da composição e etapas de materialização. Os
+campos antigos continuam aceitos pelo protocolo v1 para compatibilidade, mas
+um GPT não precisa nem deve fabricá-los.
+
+Quando vários objetos novos se referem entre si no mesmo lote, o GPT usa os
+índices locais publicados: pai, Unidade, verificação, ramificação e dependência
+de Microssequência são resolvidos pela camada confiável. Cursos filhos de uma
+comparação recebem identidade do banco. `opportunityId` é uma chave semântica da
+oportunidade pedagógica, não um UUID de entidade a ser inventado.
+
 As respostas HTTP mantêm `requestId`, `data` ou `error` e acrescentam
 `conversation` como projeção separada. Assim, os controles continuam
 recuperáveis pelo GPT, enquanto a mensagem padrão permanece humana. A certeza
@@ -233,6 +254,11 @@ ChatGPT preenche `openaiFileIdRefs`; o adaptador converte a única referência P
 da chamada no objeto `pdf` canônico. A pessoa não informa hash, tamanho nem
 caminho técnico.
 
+O comando legado `attach_pdf`, que pressupõe um objeto já gravado no Storage,
+continua aceito pelo protocolo canônico para clientes anteriores, mas fica fora
+da descoberta de Actions. Para um GPT, `incorporarPdfComoFonte` é o único
+caminho anunciado de ingestão.
+
 Pedidos como “use este edital para fundamentar o Curso”, “considere este PPC e
 esta prova no planejamento” ou “incorpore esta nova norma e revise a Parte” já
 autorizam manter os respectivos documentos, sem exigir “salve este arquivo” ou
@@ -245,6 +271,11 @@ Sucesso só é anunciado depois de o resultado confirmar `stored: true`. Arquivo
 repetido é reutilizado; falha de transferência, tamanho ou cota é comunicada em
 linguagem humana sem inventar sucesso. Os detalhes técnicos disponíveis só são
 mostrados quando a pessoa os pedir explicitamente.
+
+Um retry consulta primeiro um recibo vinculado à identidade estável do arquivo,
+sem conservar a URL temporária. Se o recibo for compatível, o backend reverifica
+o objeto privado e devolve o resultado confirmado sem novo download. Trocar o
+arquivo e reutilizar o mesmo `requestId` é conflito, não sucesso idempotente.
 
 Para produzir uma Unidade com componentes didáticos:
 
@@ -271,7 +302,7 @@ somente quando a tarefa precisar ler aquele PDF.
 | cliente OAuth | confidencial, ligado ao GPT | público ou conforme o cliente MCP cadastrado dinamicamente |
 | escopo | `openid email` | `offline_access` |
 | token | opaco, resolvido por hash | JWT ES256 minimizado e destinado ao recurso MCP |
-| catálogo | seis operações canônicas e duas projeções dedicadas | seis ferramentas canônicas |
+| catálogo | seis operações canônicas e três projeções dedicadas | seis ferramentas canônicas |
 
 Depois de autenticar seus principais, os dois canais chegam ao mesmo executor
 de Curso. Essa convergência mantém revisão, idempotência, validação e histórico;
@@ -291,7 +322,7 @@ autoria e divulgação progressiva. A reimportação continua necessária para u
 GPT já salvo, pois sua configuração externa conserva a cópia anterior; esse ato
 não pode ser realizado pelo repositório.
 
-O arquivo gerado deve permanecer abaixo de 128 KiB. O teste também confirma que
+O arquivo gerado deve permanecer abaixo de 136 KiB. O teste também confirma que
 os discriminadores chegam como enums unitários, que toda condicional canônica
 foi compilada e que chamadas válidas e inválidas são distinguidas pelo próprio
 esquema. O documento declara o identificador do protocolo, sua `schemaVersion`
@@ -304,6 +335,18 @@ gate. Como o editor do GPT conserva uma cópia da especificação importada,
 publicar outro arquivo não atualiza sozinho um GPT existente: reimporte, salve e
 confira no Preview os discriminadores e argumentos efetivamente apresentados ao
 modelo.
+
+Depois de publicar uma mudança de contrato, importe novamente o OpenAPI no GPT,
+salve a configuração e abra uma conversa nova. Antes do smoke, confirme na
+discovery que `incorporarPdfComoFonte` contém `openaiFileIdRefs`, que `add_part`
+não contém `id` e que `attach_pdf` não é oferecido. A regressão automatizada
+`npm.cmd run test:authoring:supabase:e2e` combina duas provas: um probe HTTP usa
+o OpenAPI e a rota local realmente servidos para validar o binding na borda; o
+caso de sucesso usa o mesmo handler público, com apenas o fetch temporário da
+OpenAI injetado, e atravessa executor, RLS, PostgreSQL e Storage antes de reabrir
+o Curso por título em outro cliente. O smoke no GPT continua necessário para
+comprovar a configuração externa salva, a discovery apresentada ao modelo e a
+referência temporária emitida pelo ChatGPT.
 
 Se a importação divergir, regenere o documento com `npm run actions:openapi` e
 revise o diff. Se a conexão falhar antes do consentimento, confronte

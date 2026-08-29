@@ -603,7 +603,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v9[check]",
+      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v10[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1739,6 +1739,10 @@
       "caseId": "course-audit-corrections"
     },
     {
+      "object": "function:private.ingest_course_source_pdf_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_attachment jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "function:private.inventory_current_data_orphans_v1(p_limit integer)",
       "caseId": "current-data-lifecycle"
     },
@@ -1911,6 +1915,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:private.valid_course_source_pdf_file_identity_v1(p_value jsonb)",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "function:private.valid_course_source_pdf_ingestion_intent_v1(p_source_intent jsonb)",
       "caseId": "course-source-provenance"
     },
@@ -2055,6 +2063,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:public.get_course_source_pdf_ingestion_receipt_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_file_identity jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "function:public.get_course_study_citations_v1(p_course_id uuid, p_expected_revision bigint, p_study_unit_id text)",
       "caseId": "course-source-provenance"
     },
@@ -2119,7 +2131,7 @@
       "caseId": "person-profile-and-course-access"
     },
     {
-      "object": "function:public.ingest_course_source_pdf_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_attachment jsonb, p_channel text, p_request_id text)",
+      "object": "function:public.ingest_course_source_pdf_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_attachment jsonb, p_file_identity jsonb, p_channel text, p_request_id text)",
       "caseId": "course-source-provenance"
     },
     {
