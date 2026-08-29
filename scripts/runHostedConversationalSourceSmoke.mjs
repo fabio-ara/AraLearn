@@ -287,7 +287,7 @@ export async function runHostedConversationalSourceSmoke({
           origin: "external",
           availability: "restricted",
           verificationStatus: "author_verified",
-          studyVisibility: "citation_only"
+          studyVisibility: "citation"
         }
       }
     });

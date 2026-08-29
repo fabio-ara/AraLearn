@@ -209,6 +209,7 @@ test("smoke orquestra nova sessão, ingestão canônica, Âncora e limpeza zero"
         ));
       }
       if (name === "alterarCurso" && argumentsValue.sourceCommand?.type === "save_source") {
+        assert.equal(argumentsValue.sourceCommand.source.studyVisibility, "citation");
         currentRevision = 2;
         return mcpResponse(request, toolResult({
           courseRevision: currentRevision,
