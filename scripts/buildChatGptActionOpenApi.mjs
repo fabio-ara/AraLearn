@@ -64,6 +64,23 @@ const CHATGPT_ACTION_INPUT_DESCRIPTIONS = {
   incorporarPdfComoFonte:
     "Use o único PDF anexado pela pessoa como Fonte persistente do Curso quando a intenção estiver clara. O ChatGPT fornece a referência temporária em openaiFileIdRefs; converse sobre o efeito no Curso, não sobre IDs nem URLs."
 };
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 190_000;
+const ACTION_INPUT_COMPONENT_PROPERTIES = Object.freeze({
+  lerCurso: Object.freeze(["cursor", "scope"]),
+  alterarCurso: Object.freeze([
+    "planCommand",
+    "designCommand",
+    "sourceCommand",
+    "annotationCommand",
+    "auditCommand",
+    "variantCommand",
+    "materializationCommand"
+  ]),
+  incorporarPdfComoFonte: Object.freeze(["sourceIntent"]),
+  add_plan_item: Object.freeze(["planCommand"]),
+  update_plan_item: Object.freeze(["planCommand"]),
+  add_part: Object.freeze(["planCommand"])
+});
 const actionTools = projectChatGptActionTransportTools(
   projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS),
   AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
@@ -83,6 +100,91 @@ function upperInitial(value) {
 
 function decodeJsonPointerToken(value) {
   return value.replaceAll("~1", "/").replaceAll("~0", "~");
+}
+
+function visitObject(value, visitor) {
+  if (!value || typeof value !== "object") return;
+  visitor(value);
+  if (Array.isArray(value)) value.forEach((entry) => visitObject(entry, visitor));
+  else Object.values(value).forEach((entry) => visitObject(entry, visitor));
+}
+
+function removeRedundantAlternativeDescriptions(value) {
+  visitObject(value, (entry) => {
+    if (Array.isArray(entry) || typeof entry.description !== "string") return;
+    for (const keyword of ["anyOf", "oneOf"]) {
+      for (const alternative of entry[keyword] || []) {
+        if (alternative?.description === entry.description) delete alternative.description;
+      }
+    }
+  });
+}
+
+function operationById(document, operationId) {
+  const matches = Object.values(document.paths).map(({ post }) => post)
+    .filter((operation) => operation?.operationId === operationId);
+  if (matches.length !== 1) {
+    throw new TypeError(`A operação OpenAPI ${operationId} precisa ser única.`);
+  }
+  return matches[0];
+}
+
+function hoistActionInputComponents(document) {
+  for (const [operationId, propertyNames] of Object.entries(
+    ACTION_INPUT_COMPONENT_PROPERTIES
+  )) {
+    const operation = operationById(document, operationId);
+    const input = operation.requestBody?.content?.["application/json"]?.schema;
+    if (input?.type !== "object" || !input.properties) {
+      throw new TypeError(
+        `A raiz de ${operationId} precisa continuar inline para o importador de Actions.`
+      );
+    }
+    for (const propertyName of propertyNames) {
+      const propertySchema = input.properties[propertyName];
+      if (!propertySchema) {
+        throw new TypeError(`A operação ${operationId} perdeu ${propertyName}.`);
+      }
+      const componentName = `${upperInitial(operationId)}${upperInitial(propertyName)}`;
+      if (Object.hasOwn(document.components.schemas, componentName)) {
+        throw new TypeError(`O componente OpenAPI ${componentName} está duplicado.`);
+      }
+      document.components.schemas[componentName] = propertySchema;
+      input.properties[propertyName] = {
+        $ref: `#/components/schemas/${componentName}`
+      };
+    }
+  }
+}
+
+function deduplicateActionComponentSchemas(document) {
+  const canonicalBySchema = new Map();
+  const aliases = new Map();
+  for (const [name, schema] of Object.entries(document.components.schemas)) {
+    const identity = JSON.stringify(schema);
+    const canonical = canonicalBySchema.get(identity);
+    if (canonical) aliases.set(name, canonical);
+    else canonicalBySchema.set(identity, name);
+  }
+  if (!aliases.size) return;
+  visitObject(document, (entry) => {
+    if (Array.isArray(entry) || typeof entry.$ref !== "string") return;
+    for (const [alias, canonical] of aliases) {
+      const prefix = `#/components/schemas/${alias}`;
+      if (entry.$ref === prefix || entry.$ref.startsWith(`${prefix}/`)) {
+        entry.$ref = `#/components/schemas/${canonical}${entry.$ref.slice(prefix.length)}`;
+      }
+    }
+  });
+  for (const alias of aliases.keys()) delete document.components.schemas[alias];
+}
+
+function compactChatGptActionDocument(document) {
+  // O importador exige type/properties na raiz do requestBody. Somente filhos
+  // volumosos são movidos para components.schemas.
+  hoistActionInputComponents(document);
+  removeRedundantAlternativeDescriptions(document);
+  deduplicateActionComponentSchemas(document);
 }
 
 function hoistActionSchemaDefinitions(tool) {
@@ -147,7 +249,6 @@ const paths = Object.fromEntries(actionTools.map((tool) => [
       summary: tool.title,
       description: forChatGptActionDocumentation(tool.description),
       "x-openai-isConsequential": tool.annotations?.destructiveHint === true,
-      security: [{ AraLearnOAuth: ["openid", "email"] }],
       requestBody: {
         required: true,
         content: {
@@ -161,27 +262,10 @@ const paths = Object.fromEntries(actionTools.map((tool) => [
           }
         }
       },
-      responses: Object.fromEntries([
-        ["200", {
-          description: "Operação concluída.",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/SuccessResponse" }
-            }
-          }
-        }],
-        ...[400, 401, 403, 404, 409, 413, 415, 422, 429].map((status) => [
-          String(status),
-          {
-            description: "A operação não pôde ser concluída.",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" }
-              }
-            }
-          }
-        ])
-      ])
+      responses: {
+        "200": { $ref: "#/components/responses/Success" },
+        default: { $ref: "#/components/responses/Error" }
+      }
     }
   }
 ]));
@@ -199,6 +283,7 @@ const document = {
     ].join("\n\n")
   },
   servers: [{ url: baseUrl }],
+  security: [{ AraLearnOAuth: ["openid", "email"] }],
   paths,
   components: {
     schemas: {
@@ -206,6 +291,24 @@ const document = {
       ConversationProjection: AUTHORING_CONVERSATION_SCHEMA,
       SuccessResponse: responseSchema,
       ErrorResponse: errorSchema
+    },
+    responses: {
+      Success: {
+        description: "Operação concluída.",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/SuccessResponse" }
+          }
+        }
+      },
+      Error: {
+        description: "A operação não pôde ser concluída.",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
     },
     securitySchemes: {
       AraLearnOAuth: {
@@ -224,8 +327,16 @@ const document = {
     }
   }
 };
+compactChatGptActionDocument(document);
 // JSON é OpenAPI 3.1 válido e também YAML 1.2 válido. A projeção Action-safe
 // compila as condicionais públicas em variantes sem alterar o protocolo v1.
+const editorProjectionLength = JSON.stringify(document, null, 2).length;
+if (editorProjectionLength >= CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET) {
+  throw new Error(
+    `O OpenAPI de Actions ocupa ${editorProjectionLength} caracteres no editor; ` +
+    `o orçamento é menor que ${CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET}.`
+  );
+}
 const output = `${JSON.stringify(document)}\n`;
 if (process.argv.includes("--check")) {
   const current = await fs.readFile(target, "utf8").catch(() => "");

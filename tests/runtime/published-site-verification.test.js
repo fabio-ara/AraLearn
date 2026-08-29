@@ -357,9 +357,8 @@ test("recusa OpenAPI de Actions hospedado com fingerprint divergente", async () 
 
 test("recusa projeção OpenAPI defasada mesmo com metadata corrente", async () => {
   const staleProjection = JSON.parse(ACTIONS_OPENAPI);
-  const updatePlanType = staleProjection.paths["/alterarCurso"]
-    .post.requestBody.content["application/json"].schema
-    .properties.planCommand.properties.type;
+  const updatePlanType = staleProjection.components.schemas
+    .AlterarCursoPlanCommand.properties.type;
   updatePlanType.enum = updatePlanType.enum.map((type) =>
     type === "update_plan" ? "obsolete_update_plan" : type
   );

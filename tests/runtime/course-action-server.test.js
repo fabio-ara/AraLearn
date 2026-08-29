@@ -1088,6 +1088,20 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
   );
   assert.ok(file.byteLength < 136 * 1024);
   const openApi = JSON.parse(file);
+  const editorProjectionLength = JSON.stringify(openApi, null, 2).length;
+  assert.ok(
+    editorProjectionLength < 190_000,
+    `O editor de GPT expandiria o OpenAPI para ${editorProjectionLength} caracteres.`
+  );
+  assert.deepEqual(openApi.security, [{ AraLearnOAuth: ["openid", "email"] }]);
+  assert.ok(openApi.components.responses.Success);
+  assert.ok(openApi.components.responses.Error);
+  for (const pathValue of Object.values(openApi.paths)) {
+    assert.deepEqual(pathValue.post.responses, {
+      "200": { $ref: "#/components/responses/Success" },
+      default: { $ref: "#/components/responses/Error" }
+    });
+  }
   assert.equal(openApi.info["x-aralearn-protocol"], AUTHORING_PROTOCOL_ID);
   assert.equal(
     openApi.info["x-aralearn-protocol-schema-version"],
